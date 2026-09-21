@@ -19,3 +19,8 @@ Agorix is also a practical multi-agent Agora AI-SDLC experiment. Claude, Codex, 
 ## Start building
 
 The recommended issue/dependency sequence is documented in [Implementation order](docs/delivery/IMPLEMENTATION_ORDER.md). Agents should start from GitHub issues and the referenced product/architecture specs rather than private chat context.
+
+
+## Multi-platform target
+
+Agorix is TypeScript-first. The reference application is React/Vite + Phaser, delivered first as Web/PWA, then packaged for Android/iOS with Capacitor. A VS Code extension reuses the same canonical program/runtime/code-generation packages rather than creating a separate implementation.
