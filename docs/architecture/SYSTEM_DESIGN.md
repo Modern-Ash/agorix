@@ -1,11 +1,25 @@
 # System design
 
+## Product architecture target
+
+Agorix is a TypeScript-first, multi-surface product.
+
+Target surfaces:
+- Web application / PWA.
+- Android and iOS applications packaged from the web surface with Capacitor.
+- VS Code extension for opening and working with Agorix projects from the IDE.
+
+The canonical program model, runtime semantics, curriculum contracts, generated-code projection and tutor contracts are shared across surfaces.
+
 ## POC stack
 
-- TypeScript.
-- React + Vite for web UI.
+- TypeScript as the primary language.
+- React + Vite for the main web UI.
 - Blockly as the initial block-editor adapter.
-- Canvas rendering through a thin stage abstraction; Phaser is preferred if collision/game-loop needs justify it, otherwise use a minimal Canvas implementation.
+- Phaser for the 2D stage/game surface.
+- PWA capabilities for installable/offline-friendly web delivery.
+- Capacitor as the mobile packaging/native bridge for Android/iOS.
+- VS Code Extension API + Webview for the future IDE surface.
 - Vitest for unit/component tests.
 - Playwright for browser E2E.
 - pnpm workspace/monorepo.
@@ -16,18 +30,42 @@
 apps/
   web/
   tutor-api/
+  mobile/
+extensions/
+  vscode/
 packages/
   program-model/
   block-editor/
   runtime/
   stage/
   curriculum/
+  code-generator/
   tutor-contract/
   persistence/
+  platform-contract/
 docs/
 ```
 
-The POC may initially run tutor-api as a small local Node service.
+`apps/mobile` may contain Capacitor configuration/native shells while reusing the web application and shared packages rather than duplicating product logic.
+
+## Surface model
+
+```
+                         Shared TypeScript packages
+                                   |
+           +-----------------------+-----------------------+
+           |                       |                       |
+           v                       v                       v
+        Web/PWA              Android / iOS             VS Code
+      React + Vite             Capacitor            Extension/Webview
+           |                       |                       |
+           +-----------------------+-----------------------+
+                                   |
+                              program-model
+                              runtime
+                              curriculum
+                              code-generator
+```
 
 ## Dependency direction
 
@@ -36,19 +74,20 @@ UI / Blockly adapter
         |
         v
   program-model
-        |
-        v
-     runtime
-        |
-        v
-      stage
+     |      \
+     |       \--> code-generator --> always-visible generated code
+     v
+   runtime
+     |
+     v
+    stage (Phaser adapter)
 
 curriculum ---> program-model/runtime observations
 
 AI tutor ---> tutor-contract ---> curriculum + sanitized program snapshot
 ```
 
-Domain packages must not import React, Blockly or provider SDKs.
+Domain packages must not import React, Blockly, Phaser, Capacitor, VS Code APIs or provider SDKs.
 
 ## Boundaries
 
@@ -62,10 +101,13 @@ Maps visual blocks to/from program-model. Blockly-specific identifiers do not le
 Executes program-model deterministically. Produces events/observations.
 
 ### stage
-Sprite state and rendering boundary.
+Framework-neutral stage state and commands. Phaser is the first renderer/adapter, not the domain authority.
+
+### code-generator
+Projects canonical program state into readable TypeScript/JavaScript-like code and node→text mappings.
 
 ### curriculum
-Mission definitions, completion predicates, hint ladders.
+Mission definitions, completion predicates and hint ladders.
 
 ### tutor-contract
 Provider-neutral request/response model and pedagogical guardrails.
@@ -74,8 +116,27 @@ Provider-neutral request/response model and pedagogical guardrails.
 Only component allowed to call an external LLM provider.
 
 ### persistence
-Versioned local project storage.
+Versioned project storage abstraction. Web starts with browser-local persistence; other surfaces can provide adapters.
+
+### platform-contract
+Small boundary for capabilities that differ across web, mobile and VS Code: filesystem access, persistence backend, sharing/export, native integrations.
+
+## Multi-platform rules
+
+- Shared domain logic must be platform-neutral.
+- Web is the reference UI implementation for the POC.
+- Mobile reuses the web product through Capacitor unless a proven UX limitation requires a native-specific component.
+- VS Code reuses shared packages and may host the visual editor in a Webview.
+- No surface may invent a second programming model.
+- Generated text is never executed as arbitrary JavaScript.
+- The product must remain usable without AI availability.
 
 ## POC deployment
 
-Static web + optional local/server API for tutor. No arbitrary learner code is evaluated on the server.
+Phase 1: static web/PWA + optional local/server tutor API.
+
+Phase 2: Capacitor Android/iOS packaging over the same product.
+
+Phase 3: VS Code extension using shared packages and a Webview/editor integration.
+
+No arbitrary learner code is evaluated on the server.
