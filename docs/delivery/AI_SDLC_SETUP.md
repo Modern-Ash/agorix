@@ -8,7 +8,7 @@ Recommended installer choices once `agora-ai-sdlc install` is available:
 - profile: starter
 - depth: standard
 - language: typescript
-- framework: react-vite
+- framework: react-vite (Phaser for stage; Capacitor/PWA/VS Code are architecture targets, not installer language/framework values)
 - pathway: new-product
 - integrations: github, ci, security, observability
 - swarm: product-poc
