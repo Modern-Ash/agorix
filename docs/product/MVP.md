@@ -73,3 +73,20 @@ Sensing/state:
 - AI tutor can be disabled and core product still works;
 - automated unit/integration tests plus one browser E2E cover the vertical slice;
 - no secret or child PII is required.
+
+
+## Platform scope
+
+The POC is web/PWA-first, but architecture must preserve direct reuse for mobile and VS Code.
+
+### POC required
+- responsive web application;
+- installable PWA baseline;
+- touch-capable editor interactions where Blockly permits;
+- no desktop-only assumptions in shared domain packages.
+
+### Post-POC surface validation
+- Capacitor packaging for Android/iOS using the same web application and shared packages;
+- VS Code extension/Webview that can open an Agorix project and render the same canonical program/code relationship.
+
+These future surfaces must not fork the programming model, runtime semantics or curriculum contracts.
