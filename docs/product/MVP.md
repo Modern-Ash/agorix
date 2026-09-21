@@ -20,7 +20,7 @@ The POC is complete when a learner can finish one end-to-end challenge using the
 - stop/reset;
 - mission panel;
 - tutor/help panel;
-- optional text-code view.
+- persistent generated-code panel visible at all times beside the visual workspace;
 
 ### Required blocks
 Events:
@@ -51,10 +51,14 @@ Sensing/state:
 - deterministic completion predicate;
 - at least three progressive hints.
 
-### Text bridge
+### Persistent code bridge
+- generated code is visible at all times while the learner edits blocks;
+- every supported block change updates the textual projection immediately;
+- the textual projection highlights or otherwise indicates the structure corresponding to the current visual selection where practical;
 - render the canonical program into readable JavaScript-like or TypeScript-like code;
 - preserve structural correspondence between block groups and generated text;
-- text is read-only for first POC.
+- text is read-only for the first POC;
+- the learner never needs to switch modes to discover the code behind the visual program.
 
 ### Persistence
 - browser-local persistence is sufficient for POC;
