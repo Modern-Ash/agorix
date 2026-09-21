@@ -30,3 +30,13 @@ Agorix is built under Agora AI-SDLC. GitHub issues are the executable work queue
 - Renderer/runtime must not depend on the AI tutor.
 - AI provider integration is behind a server-side boundary.
 - Domain packages must not import UI framework code.
+
+
+## Agorix-specific invariants
+
+- Generated code is continuously visible beside the visual block program during normal editing.
+- Visual blocks and generated code never own separate program state; both derive from the canonical program model.
+- Generated textual code is display/learning output in the POC and is never executed.
+- Every PR SHOULD identify the producing agent/runtime and reviewer when AI agents are used.
+- Claude, Codex, Copilot, OpenCode and local agents are interchangeable executors; none is the product architecture authority.
+- A change produced by one agent SHOULD be independently reviewed by a different agent/provider or a human when practical.
