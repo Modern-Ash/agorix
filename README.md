@@ -14,3 +14,8 @@ Agorix keeps the visual program and its generated textual code visible together.
 ## Agentic AI development proof
 
 Agorix is also a practical multi-agent Agora AI-SDLC experiment. Claude, Codex, Copilot, OpenCode and local/Ollama-backed agents can execute bounded roles while Agora provides the common contracts, provenance, gates, evidence and independent review.
+
+
+## Start building
+
+The recommended issue/dependency sequence is documented in [Implementation order](docs/delivery/IMPLEMENTATION_ORDER.md). Agents should start from GitHub issues and the referenced product/architecture specs rather than private chat context.
