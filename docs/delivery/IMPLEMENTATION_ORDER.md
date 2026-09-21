@@ -88,13 +88,26 @@ Do not start with a provider SDK. The fake tutor proves the product interaction 
 
 Provider/model must be configurable. Claude/OpenAI/local implementations are adapters, not domain dependencies.
 
-## Phase 6 — Hardening and proof
+## Phase 6 — Web/PWA hardening and proof
 
 - #28 versioned persistence/migrations;
 - #30 safety/security baseline;
-- #31 full Playwright learner journey;
-- #34 Agora provenance/review/metrics exercise;
-- #35 final demo and retrospective.
+- #36 PWA baseline;
+- #31 full Playwright learner journey including narrow/mobile viewport;
+- #34 Agora provenance/review/metrics exercise.
+
+At this point the web/PWA vertical slice should be stable.
+
+## Phase 7 — Multi-platform portability validation
+
+- #37 package the shared web application with Capacitor for Android/iOS;
+- #38 create the VS Code extension proof using shared TypeScript packages.
+
+These issues validate portability. They must not fork the canonical program model, runtime semantics, curriculum or code-generator.
+
+## Phase 8 — Final evidence
+
+- #35 final demo, traceability and Agora retrospective, including explicit status/evidence for Web/PWA, Capacitor and VS Code.
 
 ## Multi-agent execution suggestion
 
@@ -129,3 +142,19 @@ issue
 ```
 
 No agent self-merges.
+
+
+## Platform strategy summary
+
+TypeScript is the primary product language across Agorix.
+
+```
+Shared TypeScript contracts
+   |
+   +--> React/Vite + Phaser --> Web/PWA
+   |                         \-> Capacitor --> Android/iOS
+   |
+   +--> VS Code Extension/Webview
+```
+
+The web/PWA experience is built first. Mobile and VS Code validate reuse after the canonical program, runtime and editor contracts are stable.
