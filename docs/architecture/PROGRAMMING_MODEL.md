@@ -72,3 +72,28 @@ whenStarted(() => {
   });
 });
 ```
+
+
+## Persistent visual-to-code relationship
+
+The textual projection is a first-class learning surface, not an optional export.
+
+POC rules:
+- the code panel is always present in the main editor layout;
+- block edits update the canonical program first, then regenerate text;
+- the visual workspace and text panel never maintain independent program state;
+- selecting a block SHOULD expose the corresponding canonical node and text region;
+- execution always uses the canonical program, never the displayed generated text;
+- generated text remains read-only in the POC to avoid dual-authority synchronization problems.
+
+This makes the relationship explicit:
+
+```
+Visual blocks
+     |
+     v
+Canonical program
+   /        \
+  v          v
+Runtime   Generated code
+```
