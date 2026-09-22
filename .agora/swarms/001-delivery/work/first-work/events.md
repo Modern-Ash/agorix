@@ -1,0 +1,32 @@
+# Work events
+
+- 2026-09-22T16:57:36.894155Z | work.created | state=inception actor=project:product-owner
+- 2026-09-22T16:57:36.911087Z | artifact.added | kind=active-profile-starter uri=repo://ai-sdlc/profiles/active-profile-starter.md actor=project:product-owner
+- 2026-09-22T20:39:31.036549Z | work.clarified-advisory | questions=5 actor=project:ai-runtime-2
+- 2026-09-22T20:40:30.403236Z | work.criterion-stage-marked | criterion=outcome actor=project:product-owner stage=elaborated
+- 2026-09-22T20:40:30.622995Z | work.criterion-stage-marked | criterion=outcome actor=project:ai-runtime-2 stage=elaborated
+- 2026-09-22T20:41:06.636205Z | artifact.added | kind=intent uri=.agora/intents/issue-9/INTENT.md actor=project:product-owner
+- 2026-09-22T20:41:06.869283Z | artifact.added | kind=unit-of-work uri=.agora/intents/issue-9/UNIT-OF-WORK.md actor=project:ai-runtime-2
+- 2026-09-22T20:41:07.129018Z | artifact.added | kind=requirements uri=.agora/intents/issue-9/REQUIREMENTS.md actor=project:ai-runtime-2
+- 2026-09-22T20:41:25.467955Z | approval.added | role=developer actor=project:ai-runtime-2 delegation=none
+- 2026-09-22T20:41:56.700509Z | approval.added | role=product-owner actor=project:product-owner delegation=none
+- 2026-09-22T20:41:56.914277Z | work.transitioned | from=inception to=construction actor=project:product-owner
+- 2026-09-22T20:42:25.508943Z | artifact.added | kind=active-profile-starter uri=docs/product/CONTENT_GUIDE.md actor=project:ai-runtime-2
+- 2026-09-22T20:44:29.257303Z | artifact.added | kind=domain-model uri=.agora/intents/issue-9/DOMAIN-MODEL.md actor=project:ai-runtime-2
+- 2026-09-22T20:44:29.478775Z | artifact.added | kind=architecture uri=.agora/intents/issue-9/ARCHITECTURE.md actor=project:ai-runtime-2
+- 2026-09-22T20:44:29.694634Z | artifact.added | kind=implementation-plan uri=.agora/intents/issue-9/IMPLEMENTATION-PLAN.md actor=project:ai-runtime-2
+- 2026-09-22T20:44:29.910755Z | artifact.added | kind=test-strategy uri=.agora/intents/issue-9/TEST-STRATEGY.md actor=project:ai-runtime-2
+- 2026-09-22T20:44:33.671575Z | evidence.added | id=evidence-000001 type=test-suite result=success revision=1 actor=project:ai-runtime-2
+- 2026-09-22T20:44:38.248869Z | work.criterion-stage-marked | criterion=outcome actor=project:ai-runtime-2 stage=designed
+- 2026-09-22T20:44:38.473164Z | work.criterion-stage-marked | criterion=outcome actor=project:ai-runtime-2 stage=built
+- 2026-09-22T20:44:38.696901Z | work.criterion-stage-marked | criterion=outcome actor=project:ai-runtime-2 stage=verified
+- 2026-09-22T20:44:41.982307Z | approval.added | role=developer actor=project:ai-runtime-2 delegation=none
+- 2026-09-22T20:44:42.202058Z | work.transitioned | from=construction to=operations actor=project:ai-runtime-2
+- 2026-09-22T20:45:00.994307Z | artifact.added | kind=operational-readiness uri=.agora/intents/issue-9/OPERATIONAL-READINESS.md actor=project:ai-runtime-2
+- 2026-09-22T20:45:01.219849Z | artifact.added | kind=rollback-procedure uri=.agora/intents/issue-9/ROLLBACK-PROCEDURE.md actor=project:ai-runtime-2
+- 2026-09-22T20:45:01.441367Z | evidence.added | id=evidence-000002 type=deployment result=success revision=1 actor=project:ai-runtime-2
+- 2026-09-22T20:45:01.664343Z | evidence.added | id=evidence-000003 type=security-scan result=success revision=1 actor=project:ai-runtime-2
+- 2026-09-22T20:45:13.899815Z | work.criterion-stage-marked | criterion=outcome actor=project:ai-runtime-2 stage=deployed
+- 2026-09-22T20:45:14.119184Z | work.criterion-stage-marked | criterion=outcome actor=project:product-owner stage=accepted
+- 2026-09-22T20:45:40.476233Z | approval.added | role=product-owner actor=project:product-owner delegation=none
+- 2026-09-22T20:45:40.705366Z | work.transitioned | from=operations to=completed actor=project:product-owner
