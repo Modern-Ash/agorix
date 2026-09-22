@@ -3,7 +3,9 @@ import { PACKAGE_NAME } from "./index.js";
 import { ProjectStore, BrowserLocalStorageAdapter, PersistenceError } from "./store.js";
 import { SCHEMA_VERSION } from "../../program-model/dist/index.js";
 
-const makeProgram = (scripts: readonly { id: string; trigger: { type: string }; statements: unknown[] }[]) => ({
+const makeProgram = (
+  scripts: readonly { id: string; trigger: { type: string }; statements: unknown[] }[],
+) => ({
   schema: SCHEMA_VERSION,
   scripts,
 });
@@ -45,7 +47,12 @@ describe("ProjectStore — save and load", () => {
     const mock = new MockStorage();
     const store = new ProjectStore({ storage: mock });
     const program = makeProgram([makeScript()]);
-    const metadata = { createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", missionProgress: 0, hintLevel: 0 };
+    const metadata = {
+      createdAt: "2026-01-01T00:00:00Z",
+      updatedAt: "2026-01-01T00:00:00Z",
+      missionProgress: 0,
+      hintLevel: 0,
+    };
     store.save("proj-1", program, metadata);
     const loaded = store.load("proj-1");
     expect(loaded.program).toEqual(program);
@@ -70,12 +77,20 @@ describe("ProjectStore — load error codes", () => {
 
   it("throws UNKNOWN_VERSION when no migration path exists", () => {
     const mock = new MockStorage();
-    const stored = JSON.stringify({ schemaVersion: "agorix/program/v99", program: makeProgram([makeScript()]), metadata: { createdAt: "", updatedAt: "", missionProgress: 0, hintLevel: 0 } });
+    const stored = JSON.stringify({
+      schemaVersion: "agorix/program/v99",
+      program: makeProgram([makeScript()]),
+      metadata: { createdAt: "", updatedAt: "", missionProgress: 0, hintLevel: 0 },
+    });
     mock.data.set("proj-1", stored);
     const store = new ProjectStore({ storage: mock });
     expect(() => store.load("proj-1")).toThrow(PersistenceError);
     let err: PersistenceError;
-    try { store.load("proj-1"); } catch (e) { err = e as PersistenceError; }
+    try {
+      store.load("proj-1");
+    } catch (e) {
+      err = e as PersistenceError;
+    }
     expect(err.code).toBe("UNKNOWN_VERSION");
   });
 });
@@ -84,10 +99,22 @@ describe("ProjectStore — migration", () => {
   it("applies a registered migration step", () => {
     const mock = new MockStorage();
     const oldSchema = "agorix/program/v1-old";
-    const migration = { fromVersion: oldSchema, toVersion: SCHEMA_VERSION, migrate: (p: typeof makeProgram) => p };
-    const stored = JSON.stringify({ schemaVersion: oldSchema, program: makeProgram([makeScript()]), metadata: { createdAt: "", updatedAt: "", missionProgress: 0, hintLevel: 0 } });
+    const migration = {
+      fromVersion: oldSchema,
+      toVersion: SCHEMA_VERSION,
+      migrate: (p: typeof makeProgram) => p,
+    };
+    const stored = JSON.stringify({
+      schemaVersion: oldSchema,
+      program: makeProgram([makeScript()]),
+      metadata: { createdAt: "", updatedAt: "", missionProgress: 0, hintLevel: 0 },
+    });
     mock.data.set("proj-1", stored);
-    const store = new ProjectStore({ storage: mock, currentSchemaVersion: SCHEMA_VERSION, migrations: [migration] });
+    const store = new ProjectStore({
+      storage: mock,
+      currentSchemaVersion: SCHEMA_VERSION,
+      migrations: [migration],
+    });
     const loaded = store.load("proj-1");
     expect(loaded.schemaVersion).toBe(SCHEMA_VERSION);
   });

@@ -96,11 +96,13 @@ export class ProjectStore {
   private readonly currentSchemaVersion: string;
   private readonly migrations: Map<string, MigrationStep>;
 
-  constructor(options: {
-    storage?: BrowserStorageAdapter;
-    currentSchemaVersion?: string;
-    migrations?: MigrationStep[];
-  } = {}) {
+  constructor(
+    options: {
+      storage?: BrowserStorageAdapter;
+      currentSchemaVersion?: string;
+      migrations?: MigrationStep[];
+    } = {},
+  ) {
     this.storage = options.storage ?? new BrowserLocalStorageAdapter();
     this.currentSchemaVersion = options.currentSchemaVersion ?? SCHEMA_VERSION;
     this.migrations = new Map();
@@ -118,7 +120,7 @@ export class ProjectStore {
     try {
       const json = JSON.stringify(stored);
       this.storage.set(projectId, json);
-    } catch (err) {
+    } catch {
       throw new PersistenceError("SERIALIZATION_ERROR", projectId, "failed to serialize project");
     }
   }
@@ -156,8 +158,11 @@ export class ProjectStore {
     const key = `${stored.schemaVersion}→${this.currentSchemaVersion}`;
     const step = this.migrations.get(key);
     if (!step) {
-      throw new PersistenceError("UNKNOWN_VERSION", projectId,
-        `no migration path from ${stored.schemaVersion} to ${this.currentSchemaVersion}`);
+      throw new PersistenceError(
+        "UNKNOWN_VERSION",
+        projectId,
+        `no migration path from ${stored.schemaVersion} to ${this.currentSchemaVersion}`,
+      );
     }
     try {
       const migratedProgram = step.migrate(stored.program);
