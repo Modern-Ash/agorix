@@ -12,3 +12,15 @@
 - 2026-09-22T22:23:37.745918Z | session.prepared | session=run-structured-validation-error-codes-20260922t22231790126610z-retry-20260922t22231790126617z actor=project:ai-runtime-2 executor=project:ai-runtime-2 swarm=structured-validation
 - 2026-09-22T22:23:37.747298Z | session.running | session=run-structured-validation-error-codes-20260922t22231790126610z-retry-20260922t22231790126617z
 - 2026-09-22T22:23:40.925503Z | session.failed | session=run-structured-validation-error-codes-20260922t22231790126610z-retry-20260922t22231790126617z exit-code=1
+- 2026-09-22T22:29:30.406226Z | session.prepared | session=run-persistence-versioned-local-persistence-20260922t22291790126970z actor=project:ai-runtime-2 executor=project:ai-runtime-2 swarm=persistence
+- 2026-09-22T22:29:30.407547Z | session.running | session=run-persistence-versioned-local-persistence-20260922t22291790126970z
+- 2026-09-22T22:29:33.696831Z | session.failed | session=run-persistence-versioned-local-persistence-20260922t22291790126970z exit-code=1
+- 2026-09-22T22:30:44.974614Z | lifecycle-action.prepared | action=clarification-1 kind=work.clarify actor=project:ai-runtime-2 swarm=persistence work=versioned-local-persistence
+- 2026-09-22T22:31:54.566536Z | lifecycle-action.prepared | action=clarification-2 kind=work.clarify actor=project:ai-runtime-2 swarm=persistence work=versioned-local-persistence
+- 2026-09-22T22:32:22.779031Z | lifecycle-action.prepared | action=clarification-3 kind=work.clarify actor=project:ai-runtime-2 swarm=persistence work=versioned-local-persistence
+- 2026-09-22T22:34:43.546779Z | session.prepared | session=run-persistence-versioned-local-persistence-20260922t22291790126970z-retry-20260922t22341790127283z actor=project:ai-runtime-2 executor=project:ai-runtime-2 swarm=persistence
+- 2026-09-22T22:35:14.930333Z | session.running | session=run-persistence-versioned-local-persistence-20260922t22291790126970z-retry-20260922t22341790127283z
+- 2026-09-22T22:35:16.256490Z | session.failed | session=run-persistence-versioned-local-persistence-20260922t22291790126970z-retry-20260922t22341790127283z exit-code=1
+- 2026-09-22T22:35:40.235992Z | lifecycle-action.prepared | action=clarification-final kind=work.clarify actor=project:ai-runtime-2 swarm=persistence work=versioned-local-persistence
+- 2026-09-22T22:35:46.661831Z | lifecycle-action.prepared | action=clarification-final kind=work.clarify actor=project:ai-runtime-2 swarm=persistence work=versioned-local-persistence
+- 2026-09-22T22:41:03.968258Z | lifecycle-action.prepared | action=clarification-v2 kind=work.clarify actor=project:ai-runtime-2 swarm=persistence work=versioned-local-persistence
