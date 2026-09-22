@@ -178,3 +178,18 @@ Changes reported:
 - `LEARNER_JOURNEY.md`: modified locally, still untracked at the time of this log entry.
 - Construction: not started.
 - Next step: second independent review of the revised Inception artifact.
+
+
+## 6. Portable handoff validation exposed contract and lifecycle gaps
+
+After installing the portable Inception handoff improvement, the same issue #8 was executed again with OpenCode.
+
+The improvement worked at the UX level: the agent read the handoff and guided skill directly, without requiring the long methodology prompt that had been manually pasted in the first cycle.
+
+However, the run exposed three framework defects before human approval:
+
+1. **Work binding mismatch.** The Start flow was scoped to issue #8 / Intent `issue-8`, while `aisdlc continue --json` still projected the installer placeholder `delivery/first-work` in readiness. This is tracked as agora-ai-sdlc #158.
+2. **Invalid persisted Inception artifacts.** The agent created Level 1 Plan / Unit / Bolt Markdown that looked plausible but did not conform to the flavor's own parsers: non-canonical IDs, empty structured `steps` and `bolts` frontmatter, and invalid Plan/Unit references. This is tracked as #159.
+3. **Wrong installed lifecycle.** The project still had the legacy Core `ai-dlc` 1.0.0 method (initiation/ideation/readiness-era flow) rather than the AI-SDLC 0.2.0 three-phase candidate lifecycle. This is tracked as #160.
+
+The cycle was intentionally stopped before approving D1–D8 or Construction. Human review should not approve artifacts that the framework itself cannot parse or that are bound to unrelated lifecycle state.
