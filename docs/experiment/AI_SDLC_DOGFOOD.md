@@ -139,3 +139,42 @@ waiting for Level 1 Plan / Units / Bolts
     ↓
 human review required before Construction
 ```
+
+
+## 5. Independent review and rework of issue #8
+
+An independent review was performed after the first Inception draft.
+
+### Main finding
+
+The most important finding was not a UX detail but a governance gap: several choices were described as "(approved decision)" in the learner-journey artifact, but Agora had no durable record proving who selected those trade-offs.
+
+This became Agora AI-SDLC issue #155:
+
+`Persist material human Inception decisions as durable AI-SDLC evidence`.
+
+Until that framework gap is resolved, the artifact must not present conversational human choices as if they were auditable Core approvals.
+
+### Rework performed
+
+The producer revised `docs/product/LEARNER_JOURNEY.md` without touching product code.
+
+Changes reported:
+
+- replaced "(approved decision)" with "(human-selected POC decision)";
+- added a Decision provenance section listing the human-selected choices;
+- documented that those choices are not yet durable Agora approval evidence and reference framework issue #155;
+- removed the invented requirement that tutor help requires a prior failed attempt;
+- defined the tutor-unavailable stuck-path fallback;
+- clarified narrow-viewport stacking and tutor overlap behavior;
+- added explicit happy-path and stuck-path mappings;
+- clarified Reset semantics;
+- defined the unsupported-version load state;
+- defined editing behavior while a program is running.
+
+### Current state
+
+- Product code: unchanged.
+- `LEARNER_JOURNEY.md`: modified locally, still untracked at the time of this log entry.
+- Construction: not started.
+- Next step: second independent review of the revised Inception artifact.
