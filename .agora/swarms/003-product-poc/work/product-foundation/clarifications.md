@@ -1,0 +1,21 @@
+---
+schema: "agora/clarifications/v1"
+swarm: "product-poc"
+work: "product-foundation"
+created-at: "2026-09-22T20:56:06.089151Z"
+last-run-input-sha256: "1d9083bc67de30862247e71d10ab45930392721412f85dc76d3c3594a8ab55e3"
+last-run-question-count: 5
+last-run-unanswered-count: 0
+last-run-by: "project:ai-runtime-2"
+last-run-at: "2026-09-22T20:56:06.089151Z"
+---
+
+# Clarifications for product-foundation
+
+| Question | Answer | Actor | Timestamp | Input SHA-256 |
+| --- | --- | --- | --- | --- |
+| Which Method Pack flavor and profile/depth (e.g., base AI-SDLC 0.2.0 vs. a bolt flavor) is being adopted for this bootstrap, and is that choice already documented anywhere? | Base AI-SDLC Method Pack 0.2.0, profile "starter", depth "standard" — already recorded in .agora/project.md (active-flavor/active-profile/active-depth) since original quickstart; this work formalizes it, it doesn't change it. | project:product-owner | 2026-09-22T20:56:06.089151Z | 1d9083bc67de30862247e71d10ab45930392721412f85dc76d3c3594a8ab55e3 |
+| Has the product-poc swarm (referenced as .agora/swarms/003-product-poc/) already been created and linked to this work item, or is creating it part of the inception-approved deliverable? | Already created before this clarification ran (agora swarm create --id product-poc), with this work item (product-foundation) as its first work — matching the issue #32 recommended naming exactly. | project:product-owner | 2026-09-22T20:56:06.089151Z | 1d9083bc67de30862247e71d10ab45930392721412f85dc76d3c3594a8ab55e3 |
+| What are the concrete, enumerable acceptance criteria from issue #32 beyond the single 'outcome' statement — is there a checklist (flavor selected, swarm created, product-foundation work opened, multi-runtime declared, agora validate green, no secrets) that must each be evidenced individually? | Yes — exactly the 6 issue #32 checkboxes: .agora/ present and valid; active flavor/profile/depth recorded; first swarm/work created; at least two distinct runtime declarations; agora validate passes; install config has no secrets and repo builds without LLM credentials. Each is evidenced individually in the requirements artifact. | project:product-owner | 2026-09-22T20:56:06.089151Z | 1d9083bc67de30862247e71d10ab45930392721412f85dc76d3c3594a8ab55e3 |
+| Which artifacts (e.g., docs/delivery/AI_SDLC_SETUP.md updates, validation output, actor declarations) must exist as required-artifacts before requesting the inception-approved gate, given required-artifacts is currently empty? | intent, unit-of-work and requirements per the ai-sdlc Method Pack's inception-approved gate; no change to docs/delivery/AI_SDLC_SETUP.md is needed since the recommended config already matches what was bootstrapped. | project:product-owner | 2026-09-22T20:56:06.089151Z | 1d9083bc67de30862247e71d10ab45930392721412f85dc76d3c3594a8ab55e3 |
+| Who holds the product-owner role for this gate approval (the pack requires both developer and product-owner sign-off), and are they available to approve alongside project:ai-runtime-2? | project:product-owner (assigned to the product-poc swarm), available to approve alongside project:ai-runtime-2 as developer. | project:product-owner | 2026-09-22T20:56:06.089151Z | 1d9083bc67de30862247e71d10ab45930392721412f85dc76d3c3594a8ab55e3 |
