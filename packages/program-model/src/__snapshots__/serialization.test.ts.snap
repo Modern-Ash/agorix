@@ -1,0 +1,94 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`serialization snapshots > serializes the documented example deterministically 1`] = `
+"{
+  "schema": "agorix/program/v1",
+  "scripts": [
+    {
+      "id": "main",
+      "trigger": {
+        "type": "onStart"
+      },
+      "statements": [
+        {
+          "type": "repeat",
+          "count": 5,
+          "body": [
+            {
+              "type": "move",
+              "steps": 10
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}"
+`;
+
+exports[`serialization snapshots > serializes the full-coverage program deterministically 1`] = `
+"{
+  "schema": "agorix/program/v1",
+  "scripts": [
+    {
+      "id": "full-coverage",
+      "trigger": {
+        "type": "onStart"
+      },
+      "statements": [
+        {
+          "type": "move",
+          "steps": 3
+        },
+        {
+          "type": "turn",
+          "degrees": 90
+        },
+        {
+          "type": "repeat",
+          "count": 2,
+          "body": [
+            {
+              "type": "move",
+              "steps": 1
+            }
+          ]
+        },
+        {
+          "type": "if",
+          "condition": {
+            "type": "touchingGoal"
+          },
+          "then": [
+            {
+              "type": "turn",
+              "degrees": -90
+            }
+          ]
+        },
+        {
+          "type": "if",
+          "condition": {
+            "type": "booleanLiteral",
+            "value": true
+          },
+          "then": [
+            {
+              "type": "move",
+              "steps": 0
+            }
+          ]
+        },
+        {
+          "type": "if",
+          "condition": {
+            "type": "numericLiteral",
+            "value": 42
+          },
+          "then": []
+        }
+      ]
+    }
+  ]
+}"
+`;

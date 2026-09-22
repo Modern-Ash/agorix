@@ -1,0 +1,21 @@
+---
+schema: "agora/clarifications/v1"
+swarm: "program-model"
+work: "schema-v1"
+created-at: "2026-09-22T21:25:29.892630Z"
+last-run-input-sha256: "0c936a0e1c0ce3ceaeed5dd756e850f8bffa11df1811ea3c24206a07ef064aa4"
+last-run-question-count: 5
+last-run-unanswered-count: 0
+last-run-by: "project:ai-runtime-2"
+last-run-at: "2026-09-22T21:25:29.892630Z"
+---
+
+# Clarifications for schema-v1
+
+| Question | Answer | Actor | Timestamp | Input SHA-256 |
+| --- | --- | --- | --- | --- |
+| What discriminator field name and value format should union types (Statement, Expression, Trigger) use — e.g. a `kind` string literal per variant, or a different convention already established elsewhere in the codebase? | `type` as a string-literal discriminator, matching PROGRAMMING_MODEL.md's own JSON example exactly (`{"type": "repeat", ...}`, `{"type": "move", ...}`, `{"type": "onStart"}`) — no new convention introduced. | project:product-owner | 2026-09-22T21:25:29.892630Z | 0c936a0e1c0ce3ceaeed5dd756e850f8bffa11df1811ea3c24206a07ef064aa4 |
+| What exact string/format is `agorix/program/v1` expected to appear as in the schema — a top-level `$schema` or `version` field on ProjectProgram, and is 'v1' the semantic version or a separate schema-id namespace? | A top-level `schema` field (not `$schema`/`version`) on `ProjectProgram`, typed as the literal `"agorix/program/v1"` — matching PROGRAMMING_MODEL.md's example verbatim. "v1" is a schema-id namespace segment (like a URI/media-type version), not semver; a v2 schema would be a new literal type, not a bumped number field. | project:product-owner | 2026-09-22T21:25:29.892630Z | 0c936a0e1c0ce3ceaeed5dd756e850f8bffa11df1811ea3c24206a07ef064aa4 |
+| For the round-trip preservation acceptance criterion, does 'semantic equality' mean structural deep-equality of the parsed object graph, or equality after a defined normalization step (e.g. ignoring key order, optional-field presence, or floating point precision)? | Structural deep-equality of the parsed object graph after `JSON.stringify` → `JSON.parse` (key order is not semantically meaningful for JS objects/JSON); no other normalization needed since the schema has no optional fields whose absence vs. `undefined` would create ambiguity. | project:product-owner | 2026-09-22T21:25:29.892630Z | 0c936a0e1c0ce3ceaeed5dd756e850f8bffa11df1811ea3c24206a07ef064aa4 |
+| For the 'unknown/future operation is rejected' criterion, should validation fail closed via the schema itself (e.g. discriminated union with no catch-all/`unknown` variant) or via an explicit runtime validator function with a defined error type/shape? | Both: TypeScript's discriminated unions constrain what code can construct/handle, but persisted JSON is untrusted input at runtime, so an explicit `validateProgram(input: unknown): ProjectProgram` function with a defined `ProgramValidationError` (including the offending path and discriminator value) is required — TypeScript types alone cannot reject bad JSON at runtime. | project:product-owner | 2026-09-22T21:25:29.892630Z | 0c936a0e1c0ce3ceaeed5dd756e850f8bffa11df1811ea3c24206a07ef064aa4 |
+| Does docs/architecture/PROGRAMMING_MODEL.md already fully enumerate the Statement/Expression/Trigger variant sets for v1, or is this Issue #12 also responsible for deciding which operations are in scope for v1 vs deferred? | Fully enumerated by issue #12's own scope list — no expansion: Trigger = onStart only; Statement = move, turn, repeat, if; Expression = touchingGoal, boolean literal, numeric literal. Anything else (e.g. additional motion/sensing blocks from MVP.md) is out of scope for this schema issue and deferred to whichever later issue introduces it. | project:product-owner | 2026-09-22T21:25:29.892630Z | 0c936a0e1c0ce3ceaeed5dd756e850f8bffa11df1811ea3c24206a07ef064aa4 |
