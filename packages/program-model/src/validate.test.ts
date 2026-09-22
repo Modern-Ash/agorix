@@ -68,6 +68,7 @@ describe("validateProgram", () => {
     } catch (error) {
       expect(error).toBeInstanceOf(ProgramValidationError);
       expect((error as ProgramValidationError).path).toBe("$.scripts[0].statements[0].type");
+      expect((error as ProgramValidationError).code).toBe("UNKNOWN_STATEMENT_TYPE");
     }
   });
 

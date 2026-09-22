@@ -1,0 +1,29 @@
+# Work events
+
+- 2026-09-22T22:18:55.033514Z | work.created | state=inception actor=project:product-owner
+- 2026-09-22T22:19:15.489950Z | work.clarified-advisory | questions=5 actor=project:ai-runtime-2
+- 2026-09-22T22:20:18.113539Z | work.criterion-stage-marked | criterion=outcome actor=project:product-owner stage=elaborated
+- 2026-09-22T22:20:18.330878Z | work.criterion-stage-marked | criterion=outcome actor=project:ai-runtime-2 stage=elaborated
+- 2026-09-22T22:20:18.551120Z | artifact.added | kind=intent uri=.agora/intents/issue-13/INTENT.md actor=project:product-owner
+- 2026-09-22T22:20:18.765558Z | artifact.added | kind=unit-of-work uri=.agora/intents/issue-13/UNIT-OF-WORK.md actor=project:ai-runtime-2
+- 2026-09-22T22:20:18.981837Z | artifact.added | kind=requirements uri=.agora/intents/issue-13/REQUIREMENTS.md actor=project:ai-runtime-2
+- 2026-09-22T22:20:19.189220Z | approval.added | role=developer actor=project:ai-runtime-2 delegation=none
+- 2026-09-22T22:20:48.891180Z | approval.added | role=product-owner actor=project:product-owner delegation=none
+- 2026-09-22T22:20:49.106407Z | work.transitioned | from=inception to=construction actor=project:product-owner
+- 2026-09-22T22:24:32.302230Z | work.criterion-stage-marked | criterion=outcome actor=project:ai-runtime-2 stage=elaborated
+- 2026-09-22T22:24:32.519593Z | work.criterion-stage-marked | criterion=outcome actor=project:ai-runtime-2 stage=designed
+- 2026-09-22T22:24:32.742719Z | work.criterion-stage-marked | criterion=outcome actor=project:ai-runtime-2 stage=built
+- 2026-09-22T22:24:32.965699Z | work.criterion-stage-marked | criterion=outcome actor=project:ai-runtime-2 stage=verified
+- 2026-09-22T22:24:46.247716Z | artifact.added | kind=domain-model uri=docs/architecture/PROGRAMMING_MODEL.md actor=project:ai-runtime-2
+- 2026-09-22T22:24:46.422043Z | artifact.added | kind=architecture uri=docs/architecture/SYSTEM_DESIGN.md actor=project:ai-runtime-2
+- 2026-09-22T22:24:46.626369Z | artifact.added | kind=implementation-plan uri=docs/delivery/IMPLEMENTATION_ORDER.md actor=project:ai-runtime-2
+- 2026-09-22T22:24:46.799494Z | artifact.added | kind=test-strategy uri=packages/program-model/src/validate.errors.test.ts actor=project:ai-runtime-2
+- 2026-09-22T22:24:58.015307Z | evidence.added | id=test-suite-validation type=test-suite result=success revision=1 actor=project:ai-runtime-2
+- 2026-09-22T22:24:59.924160Z | work.transitioned | from=construction to=operations actor=project:ai-runtime-2
+- 2026-09-22T22:25:35.819494Z | artifact.added | kind=operational-readiness uri=docs/delivery/POC_PLAN.md actor=project:ai-runtime-2
+- 2026-09-22T22:25:36.046172Z | artifact.added | kind=rollback-procedure uri=docs/delivery/AGENTIC_DEVELOPMENT.md actor=project:ai-runtime-2
+- 2026-09-22T22:25:38.082890Z | work.criterion-stage-marked | criterion=outcome actor=project:ai-runtime-2 stage=deployed
+- 2026-09-22T22:25:38.315319Z | work.criterion-stage-marked | criterion=outcome actor=project:product-owner stage=accepted
+- 2026-09-22T22:25:41.233985Z | evidence.added | id=deployment-poc type=deployment result=success revision=1 actor=project:ai-runtime-2
+- 2026-09-22T22:25:46.448463Z | evidence.added | id=security-scan type=security-scan result=success revision=1 actor=project:ai-runtime-2
+- 2026-09-22T22:25:48.754337Z | work.transitioned | from=operations to=completed actor=project:product-owner
