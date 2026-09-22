@@ -24,3 +24,36 @@ The recommended issue/dependency sequence is documented in [Implementation order
 ## Multi-platform target
 
 Agorix is TypeScript-first. The reference application is React/Vite + Phaser, delivered first as Web/PWA, then packaged for Android/iOS with Capacitor. A VS Code extension reuses the same canonical program/runtime/code-generation packages rather than creating a separate implementation.
+
+## Developer bootstrap
+
+Prerequisites: Node 22 (see `.nvmrc`) and pnpm 9 via Corepack.
+
+```bash
+git clone https://github.com/Modern-Ash/agorix.git
+cd agorix
+corepack enable        # one-time, enables the pnpm shim declared in package.json
+pnpm install            # clean install
+pnpm dev --filter @agorix/web   # run the web app locally (http://localhost:5173)
+pnpm lint                # ESLint across the workspace
+pnpm test                 # Vitest across the workspace
+pnpm build                 # build all packages/apps
+pnpm run verify              # install --frozen-lockfile && lint && test && build, single command/exit code
+                               # (note: `pnpm ci` is a reserved pnpm command, not this script — use `pnpm run verify`)
+```
+
+### Repository layout
+
+```
+apps/web            React + Vite reference UI
+apps/tutor-api      Only surface allowed to call an external LLM provider (placeholder)
+apps/mobile         Capacitor packaging placeholder
+extensions/vscode   VS Code extension placeholder
+packages/*          9 domain packages (program-model, block-editor, runtime, stage,
+                     code-generator, curriculum, tutor-contract, persistence,
+                     platform-contract) — see each package's README.md
+```
+
+Domain packages under `packages/` must not import React, Blockly, Phaser, Capacitor,
+VS Code APIs or provider SDKs — enforced by the root ESLint config's
+`no-restricted-imports` rule, not just convention.
