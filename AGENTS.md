@@ -31,7 +31,6 @@ Agorix is built under Agora AI-SDLC. GitHub issues are the executable work queue
 - AI provider integration is behind a server-side boundary.
 - Domain packages must not import UI framework code.
 
-
 ## Agorix-specific invariants
 
 - Generated code is continuously visible beside the visual block program during normal editing.

@@ -7,7 +7,14 @@ dependencies: []
 required-roles: ["spec-owner", "developer"]
 work-states: ["drafting", "clarified", "planned", "implementing", "verifying", "completed"]
 criterion-stages: ["specified", "planned", "implemented", "verified", "accepted"]
-criterion-stage-roles: {"specified":["spec-owner"],"planned":["spec-owner"],"implemented":["spec-owner","developer"],"verified":["spec-owner","developer"],"accepted":["spec-owner"]}
+criterion-stage-roles:
+  {
+    "specified": ["spec-owner"],
+    "planned": ["spec-owner"],
+    "implemented": ["spec-owner", "developer"],
+    "verified": ["spec-owner", "developer"],
+    "accepted": ["spec-owner"],
+  }
 terminal-state: "completed"
 wip-limits: {}
 ---

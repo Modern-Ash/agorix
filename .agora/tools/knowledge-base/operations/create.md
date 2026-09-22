@@ -4,8 +4,22 @@ id: "create"
 name: "Create a document"
 capability: "docs.write"
 risk: "write"
-arguments: ["page","create","--space","{space}","--parent","{parent}","--title","{title}","--body","{body}","--output","json"]
-inputs: ["space","parent","title","body"]
+arguments:
+  [
+    "page",
+    "create",
+    "--space",
+    "{space}",
+    "--parent",
+    "{parent}",
+    "--title",
+    "{title}",
+    "--body",
+    "{body}",
+    "--output",
+    "json",
+  ]
+inputs: ["space", "parent", "title", "body"]
 result-kind: "documentation"
 ---
 

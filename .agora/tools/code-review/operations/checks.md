@@ -4,7 +4,7 @@ id: "checks"
 name: "Inspect code review checks"
 capability: "review.read"
 risk: "read"
-arguments: ["checks","--review","{review}"]
+arguments: ["checks", "--review", "{review}"]
 inputs: ["review"]
 result-kind: "code-review-checks"
 ---

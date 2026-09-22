@@ -20,15 +20,18 @@ type Script = {
 ```
 
 Initial Trigger:
+
 - onStart.
 
 Initial Statement:
+
 - move;
 - turn;
 - repeat;
 - if.
 
 Initial Expression:
+
 - touchingGoal;
 - boolean literal;
 - numeric literal.
@@ -38,15 +41,19 @@ Initial Expression:
 ```json
 {
   "schema": "agorix/program/v1",
-  "scripts": [{
-    "id": "main",
-    "trigger": {"type": "onStart"},
-    "statements": [{
-      "type": "repeat",
-      "count": 5,
-      "body": [{"type": "move", "steps": 10}]
-    }]
-  }]
+  "scripts": [
+    {
+      "id": "main",
+      "trigger": { "type": "onStart" },
+      "statements": [
+        {
+          "type": "repeat",
+          "count": 5,
+          "body": [{ "type": "move", "steps": 10 }]
+        }
+      ]
+    }
+  ]
 }
 ```
 
@@ -73,12 +80,12 @@ whenStarted(() => {
 });
 ```
 
-
 ## Persistent visual-to-code relationship
 
 The textual projection is a first-class learning surface, not an optional export.
 
 POC rules:
+
 - the code panel is always present in the main editor layout;
 - block edits update the canonical program first, then regenerate text;
 - the visual workspace and text panel never maintain independent program state;

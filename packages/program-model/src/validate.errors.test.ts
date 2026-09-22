@@ -33,7 +33,9 @@ describe("validateProgram — positive cases (R1)", () => {
     "repeat at the count boundary": programWithStatements([
       { type: "repeat", count: 1000, body: [{ type: "move", steps: 1 }] },
     ]),
-    "nesting exactly at the depth limit": programWithStatements([deeplyNestedRepeat(MAX_NESTING_DEPTH - 1)]),
+    "nesting exactly at the depth limit": programWithStatements([
+      deeplyNestedRepeat(MAX_NESTING_DEPTH - 1),
+    ]),
     "numeric literal at the upper bound": programWithStatements([
       { type: "if", condition: { type: "numericLiteral", value: 1_000_000 }, then: [] },
     ]),
@@ -54,7 +56,10 @@ describe("validateProgram — positive cases (R1)", () => {
 describe("validateProgram — negative cases by stable code (R2-R5, R7)", () => {
   const invalidPrograms: Record<string, [unknown, ProgramValidationErrorCode]> = {
     "non-object root": [null, "INVALID_ROOT"],
-    "unknown schema version": [{ schema: "agorix/program/v2", scripts: [] }, "INVALID_SCHEMA_VERSION"],
+    "unknown schema version": [
+      { schema: "agorix/program/v2", scripts: [] },
+      "INVALID_SCHEMA_VERSION",
+    ],
     "duplicate script ids": [
       {
         schema: SCHEMA_VERSION,
@@ -66,7 +71,10 @@ describe("validateProgram — negative cases by stable code (R2-R5, R7)", () => 
       "DUPLICATE_ID",
     ],
     "unknown trigger type": [
-      { schema: SCHEMA_VERSION, scripts: [{ id: "a", trigger: { type: "onCollision" }, statements: [] }] },
+      {
+        schema: SCHEMA_VERSION,
+        scripts: [{ id: "a", trigger: { type: "onCollision" }, statements: [] }],
+      },
       "UNKNOWN_TRIGGER_TYPE",
     ],
     "unknown statement type": [
@@ -116,24 +124,24 @@ describe("validateProgram — negative cases by stable code (R2-R5, R7)", () => 
     ],
   };
 
-  it.each(Object.entries(invalidPrograms))("rejects: %s (code=%s)", (_name, [program, expectedCode]) => {
-    let caught: unknown;
-    try {
-      validateProgram(program);
-    } catch (error) {
-      caught = error;
-    }
-    expect(caught).toBeInstanceOf(ProgramValidationError);
-    expect((caught as ProgramValidationError).code).toBe(expectedCode);
-  });
+  it.each(Object.entries(invalidPrograms))(
+    "rejects: %s (code=%s)",
+    (_name, [program, expectedCode]) => {
+      let caught: unknown;
+      try {
+        validateProgram(program);
+      } catch (error) {
+        caught = error;
+      }
+      expect(caught).toBeInstanceOf(ProgramValidationError);
+      expect((caught as ProgramValidationError).code).toBe(expectedCode);
+    },
+  );
 });
 
 describe("validateProgram — no partial execution after failure (R6)", () => {
   it("throws rather than returning a partially-validated program", () => {
-    const input = programWithStatements([
-      { type: "move", steps: 1 },
-      { type: "unknownFutureOp" },
-    ]);
+    const input = programWithStatements([{ type: "move", steps: 1 }, { type: "unknownFutureOp" }]);
     let result: unknown;
     let threw = false;
     try {

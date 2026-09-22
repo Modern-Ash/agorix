@@ -4,7 +4,7 @@ id: "current-branch"
 name: "Inspect current branch"
 capability: "repository.read"
 risk: "read"
-arguments: ["branch","--show-current"]
+arguments: ["branch", "--show-current"]
 inputs: []
 result-kind: "repository-branch"
 ---

@@ -4,7 +4,14 @@ id: "issue-12"
 status: "accepted"
 author: "project:product-owner"
 affected-systems: ["Modern-Ash/agorix"]
-constraints: ["every union (Trigger, Statement, Expression) has an explicit discriminator field","no Blockly-specific fields anywhere in the schema","no executable functions in the persisted JSON form","unknown/future operation must fail validation, not silently pass through","schema/version constant is exported for persistence and migration code to consume"]
+constraints:
+  [
+    "every union (Trigger, Statement, Expression) has an explicit discriminator field",
+    "no Blockly-specific fields anywhere in the schema",
+    "no executable functions in the persisted JSON form",
+    "unknown/future operation must fail validation, not silently pass through",
+    "schema/version constant is exported for persistence and migration code to consume",
+  ]
 open-questions: []
 source: "https://github.com/Modern-Ash/agorix/issues/12"
 created-at: "2026-09-22T21:25:11.813411Z"

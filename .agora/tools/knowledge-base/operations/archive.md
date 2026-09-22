@@ -4,7 +4,7 @@ id: "archive"
 name: "Archive a document"
 capability: "docs.archive"
 risk: "destructive"
-arguments: ["page","archive","{document}","--output","json"]
+arguments: ["page", "archive", "{document}", "--output", "json"]
 inputs: ["document"]
 result-kind: "documentation-archive"
 ---

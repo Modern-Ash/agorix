@@ -4,9 +4,9 @@ id: "transition"
 name: "Transition a GitHub issue"
 capability: "issue.transition"
 risk: "write"
-arguments: ["issue","{state}","{issue}"]
-inputs: ["issue","state"]
-input-values: {"state":["close","reopen"]}
+arguments: ["issue", "{state}", "{issue}"]
+inputs: ["issue", "state"]
+input-values: { "state": ["close", "reopen"] }
 result-kind: "work-item-transition"
 ---
 

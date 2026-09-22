@@ -9,9 +9,13 @@ operational-status: "active"
 status-reason: null
 status-by: null
 status-at: null
-acceptance-criteria: {"outcome":"Clean install, root lint/test/build succeed; shared packages importable from web; domain packages have zero UI/platform SDK imports; one CI command contract exists; README developer bootstrap documented"}
+acceptance-criteria:
+  {
+    "outcome": "Clean install, root lint/test/build succeed; shared packages importable from web; domain packages have zero UI/platform SDK imports; one CI command contract exists; README developer bootstrap documented",
+  }
 satisfied-criteria: ["outcome"]
-criterion-statuses: {"outcome":["elaborated","designed","built","verified","deployed","accepted"]}
+criterion-statuses:
+  { "outcome": ["elaborated", "designed", "built", "verified", "deployed", "accepted"] }
 required-artifacts: []
 child-work-refs: []
 budget-limits: null

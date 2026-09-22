@@ -4,7 +4,13 @@ id: "issue-11"
 status: "accepted"
 author: "project:product-owner"
 affected-systems: ["Modern-Ash/agorix"]
-constraints: ["domain packages (program-model, runtime, stage, curriculum, code-generator, tutor-contract, persistence, platform-contract) must not import React, Blockly, Phaser, Capacitor, VS Code APIs or provider SDKs","platform-specific capabilities go behind adapters (platform-contract)","no duplicate program/runtime implementations by surface","mobile and VS Code directories may start as placeholders/config boundaries"]
+constraints:
+  [
+    "domain packages (program-model, runtime, stage, curriculum, code-generator, tutor-contract, persistence, platform-contract) must not import React, Blockly, Phaser, Capacitor, VS Code APIs or provider SDKs",
+    "platform-specific capabilities go behind adapters (platform-contract)",
+    "no duplicate program/runtime implementations by surface",
+    "mobile and VS Code directories may start as placeholders/config boundaries",
+  ]
 open-questions: []
 source: "https://github.com/Modern-Ash/agorix/issues/11"
 created-at: "2026-09-22T21:10:36.393516Z"

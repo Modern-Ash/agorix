@@ -4,8 +4,19 @@ id: "trigger"
 name: "Trigger a pipeline"
 capability: "ci.run"
 risk: "write"
-arguments: ["pipeline","trigger","{pipeline}","--ref","{ref}","--parameters","{parameters}","--output","json"]
-inputs: ["pipeline","ref","parameters"]
+arguments:
+  [
+    "pipeline",
+    "trigger",
+    "{pipeline}",
+    "--ref",
+    "{ref}",
+    "--parameters",
+    "{parameters}",
+    "--output",
+    "json",
+  ]
+inputs: ["pipeline", "ref", "parameters"]
 result-kind: "pipeline-run"
 ---
 

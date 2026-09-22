@@ -3,8 +3,24 @@ schema: "agora/role/v1"
 id: "architect"
 required-capabilities: ["specification"]
 allowed-actor-kinds: ["human", "ai-agent", "swarm"]
-allowed-actions: ["swarm.assign", "work.decompose", "work.clarify", "work.verify-consistency", "work.gherkin", "criterion.satisfy", "work.transition", "artifact.add", "evidence.add", "checklist.add", "checklist.check", "approval.add", "handoff.create"]
-allowed-tool-capabilities: ["repository.read", "repository.governance.read", "docs.read", "docs.write", "review.read"]
+allowed-actions:
+  [
+    "swarm.assign",
+    "work.decompose",
+    "work.clarify",
+    "work.verify-consistency",
+    "work.gherkin",
+    "criterion.satisfy",
+    "work.transition",
+    "artifact.add",
+    "evidence.add",
+    "checklist.add",
+    "checklist.check",
+    "approval.add",
+    "handoff.create",
+  ]
+allowed-tool-capabilities:
+  ["repository.read", "repository.governance.read", "docs.read", "docs.write", "review.read"]
 allowed-environments: ["*"]
 ---
 

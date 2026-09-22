@@ -11,10 +11,10 @@ work: "program-model/schema-v1"
 - **ProjectProgram**: root document — `schema` (literal `"agorix/program/v1"`) +
   `scripts: Script[]`.
 - **Script**: `id` (stable, caller-supplied) + `trigger: Trigger` + `statements:
-  Statement[]`.
+Statement[]`.
 - **Trigger**: discriminated union, v1 has one variant — `onStart`.
 - **Statement**: discriminated union — `move`, `turn`, `repeat` (recursive: `body:
-  Statement[]`), `if` (recursive: `condition: Expression`, `then: Statement[]`).
+Statement[]`), `if` (recursive: `condition: Expression`, `then: Statement[]`).
 - **Expression**: discriminated union — `touchingGoal`, `booleanLiteral`,
   `numericLiteral`.
 - **ProgramValidationError**: thrown by `validateProgram`, carries `path` (e.g.

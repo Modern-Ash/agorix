@@ -1,4 +1,4 @@
-import { SCHEMA_VERSION, type ProjectProgram } from "../../program-model/dist/index.js";
+import { SCHEMA_VERSION, type ProjectProgram } from "@agorix/program-model";
 
 export const PACKAGE_NAME = "@agorix/persistence";
 

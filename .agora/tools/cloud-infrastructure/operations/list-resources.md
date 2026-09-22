@@ -5,7 +5,7 @@ name: "List cloud resources"
 capability: "cloud.read"
 risk: "read"
 environment-required: true
-arguments: ["resource","list","--environment","{environment}","--output","json"]
+arguments: ["resource", "list", "--environment", "{environment}", "--output", "json"]
 inputs: ["environment"]
 result-kind: "cloud-resource-list"
 ---

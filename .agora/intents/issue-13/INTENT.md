@@ -4,7 +4,13 @@ id: "issue-13"
 status: "accepted"
 author: "project:product-owner"
 affected-systems: ["Modern-Ash/agorix"]
-constraints: ["each error has a stable code, a node/path reference, and a developer-safe message","duplicate ids across the whole program (not just within one script) must fail","POC size/nesting limits are explicit constants, not implicit engine limits","validation must not partially apply \u2014 a rejected program produces zero executable state"]
+constraints:
+  [
+    "each error has a stable code, a node/path reference, and a developer-safe message",
+    "duplicate ids across the whole program (not just within one script) must fail",
+    "POC size/nesting limits are explicit constants, not implicit engine limits",
+    "validation must not partially apply \u2014 a rejected program produces zero executable state",
+  ]
 open-questions: []
 source: "https://github.com/Modern-Ash/agorix/issues/13"
 created-at: "2026-09-22T22:18:40.825216Z"

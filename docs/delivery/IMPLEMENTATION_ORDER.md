@@ -13,6 +13,7 @@ Do not wait until the end to collect Agora evidence.
 ## Phase 1 — Product contracts
 
 These can run mostly in parallel:
+
 - #8 learner journey;
 - #9 child-facing content;
 - #10 accessibility/interaction requirements.
@@ -115,14 +116,14 @@ Use different agents intentionally rather than assigning one agent to the whole 
 
 Example rotation:
 
-| Work type | Producer example | Reviewer example |
-| --- | --- | --- |
-| Product/spec | Claude | Codex or human |
-| Program model | Codex | Claude |
-| Blockly/UI | Copilot or Codex | Claude/OpenCode |
-| Runtime tests | OpenCode/local | Codex |
-| Tutor adapter | Claude | Codex/human |
-| CI/security | Codex/OpenCode | Claude/human |
+| Work type     | Producer example | Reviewer example |
+| ------------- | ---------------- | ---------------- |
+| Product/spec  | Claude           | Codex or human   |
+| Program model | Codex            | Claude           |
+| Blockly/UI    | Copilot or Codex | Claude/OpenCode  |
+| Runtime tests | OpenCode/local   | Codex            |
+| Tutor adapter | Claude           | Codex/human      |
+| CI/security   | Codex/OpenCode   | Claude/human     |
 
 This table is illustrative, not mandatory. Use only agents actually available. The purpose is to exercise Agora's portability and review separation.
 
@@ -142,7 +143,6 @@ issue
 ```
 
 No agent self-merges.
-
 
 ## Platform strategy summary
 

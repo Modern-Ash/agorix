@@ -3,7 +3,16 @@ schema: "agora/role/v1"
 id: "operator"
 required-capabilities: ["implementation"]
 allowed-actor-kinds: ["human", "ai-agent", "swarm", "automation"]
-allowed-actions: ["criterion.satisfy", "work.transition", "artifact.add", "evidence.add", "checklist.add", "checklist.check", "handoff.create"]
+allowed-actions:
+  [
+    "criterion.satisfy",
+    "work.transition",
+    "artifact.add",
+    "evidence.add",
+    "checklist.add",
+    "checklist.check",
+    "handoff.create",
+  ]
 allowed-tool-capabilities: ["repository.read", "ci.read", "ci.run", "cloud.read", "release.read"]
 allowed-environments: ["*"]
 ---

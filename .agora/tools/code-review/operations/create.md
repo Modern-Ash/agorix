@@ -4,8 +4,21 @@ id: "create"
 name: "Create a code review"
 capability: "review.write"
 risk: "write"
-arguments: ["create","--project","{project}","--base","{base}","--head","{head}","--title","{title}","--description","{description}"]
-inputs: ["project","base","head","title","description"]
+arguments:
+  [
+    "create",
+    "--project",
+    "{project}",
+    "--base",
+    "{base}",
+    "--head",
+    "{head}",
+    "--title",
+    "{title}",
+    "--description",
+    "{description}",
+  ]
+inputs: ["project", "base", "head", "title", "description"]
 result-kind: "code-review"
 ---
 

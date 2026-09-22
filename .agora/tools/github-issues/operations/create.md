@@ -4,8 +4,20 @@ id: "create"
 name: "Create a GitHub issue"
 capability: "issue.write"
 risk: "write"
-arguments: ["issue","create","--repo","{project}","--type","{type}","--title","{title}","--body","{description}"]
-inputs: ["project","type","title","description"]
+arguments:
+  [
+    "issue",
+    "create",
+    "--repo",
+    "{project}",
+    "--type",
+    "{type}",
+    "--title",
+    "{title}",
+    "--body",
+    "{description}",
+  ]
+inputs: ["project", "type", "title", "description"]
 result-kind: "work-item"
 ---
 

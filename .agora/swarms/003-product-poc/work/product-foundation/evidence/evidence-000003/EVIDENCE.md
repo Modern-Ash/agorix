@@ -6,7 +6,7 @@ phase: null
 result: "success"
 revision: 1
 artifact-references: [".agora/intents/issue-32/BOOTSTRAP-CONFIRMATION.md"]
-artifact-content-sha256: {".agora/intents/issue-32/BOOTSTRAP-CONFIRMATION.md":null}
+artifact-content-sha256: { ".agora/intents/issue-32/BOOTSTRAP-CONFIRMATION.md": null }
 produced-by: "project:ai-runtime-2"
 timestamp: "2026-09-22T20:59:01.017475Z"
 tested-commit: null

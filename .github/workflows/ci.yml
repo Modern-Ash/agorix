@@ -82,7 +82,7 @@ jobs:
         with:
           version: ${{ env.PNPM_VERSION }}
       - run: pnpm install --frozen-lockfile
-      - run: pnpm lint -- --rule 'no-restricted-imports'
+      - run: pnpm exec eslint packages --max-warnings=0
 
   browser-smoke:
     runs-on: ubuntu-latest
@@ -93,8 +93,8 @@ jobs:
           version: ${{ env.PNPM_VERSION }}
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-      - run: npx playwright install --with-deps
-      - run: npx playwright test
+      - run: pnpm --filter @agorix/web exec playwright install --with-deps
+      - run: pnpm --filter @agorix/web test:e2e
 
   dependency-scan:
     runs-on: ubuntu-latest

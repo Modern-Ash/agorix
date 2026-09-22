@@ -4,7 +4,7 @@ id: "view"
 name: "View a document"
 capability: "docs.read"
 risk: "read"
-arguments: ["page","view","{document}","--output","json"]
+arguments: ["page", "view", "{document}", "--output", "json"]
 inputs: ["document"]
 result-kind: "documentation"
 ---

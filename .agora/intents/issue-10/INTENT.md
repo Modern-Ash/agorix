@@ -4,7 +4,13 @@ id: "issue-10"
 status: "accepted"
 author: "project:product-owner"
 affected-systems: ["Modern-Ash/agorix"]
-constraints: ["requirements must be testable","known Blockly limitations explicitly documented","code panel font/contrast/scroll requirements included","formal accessibility certification not required for POC"]
+constraints:
+  [
+    "requirements must be testable",
+    "known Blockly limitations explicitly documented",
+    "code panel font/contrast/scroll requirements included",
+    "formal accessibility certification not required for POC",
+  ]
 open-questions: []
 source: "https://github.com/Modern-Ash/agorix/issues/10"
 created-at: "2026-09-22T20:49:03.666007Z"

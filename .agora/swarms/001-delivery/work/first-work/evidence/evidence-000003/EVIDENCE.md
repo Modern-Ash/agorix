@@ -6,7 +6,7 @@ phase: null
 result: "success"
 revision: 1
 artifact-references: ["docs/product/CONTENT_GUIDE.md"]
-artifact-content-sha256: {"docs/product/CONTENT_GUIDE.md":null}
+artifact-content-sha256: { "docs/product/CONTENT_GUIDE.md": null }
 produced-by: "project:ai-runtime-2"
 timestamp: "2026-09-22T20:45:01.664173Z"
 tested-commit: null

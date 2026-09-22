@@ -4,7 +4,7 @@ id: "list-projects"
 name: "List portfolio projects"
 capability: "portfolio.read"
 risk: "read"
-arguments: ["project","list","--owner","{owner}","--limit","50","--output","json"]
+arguments: ["project", "list", "--owner", "{owner}", "--limit", "50", "--output", "json"]
 inputs: ["owner"]
 result-kind: "portfolio-project-list"
 ---

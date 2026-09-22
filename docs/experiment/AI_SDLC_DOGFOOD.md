@@ -140,7 +140,6 @@ waiting for Level 1 Plan / Units / Bolts
 human review required before Construction
 ```
 
-
 ## 5. Independent review and rework of issue #8
 
 An independent review was performed after the first Inception draft.
@@ -178,7 +177,6 @@ Changes reported:
 - `LEARNER_JOURNEY.md`: modified locally, still untracked at the time of this log entry.
 - Construction: not started.
 - Next step: second independent review of the revised Inception artifact.
-
 
 ## 6. Portable handoff validation exposed contract and lifecycle gaps
 

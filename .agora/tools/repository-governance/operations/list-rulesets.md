@@ -4,7 +4,7 @@ id: "list-rulesets"
 name: "List repository rulesets"
 capability: "repository.governance.read"
 risk: "read"
-arguments: ["ruleset","list","--project","{project}","--limit","50","--output","json"]
+arguments: ["ruleset", "list", "--project", "{project}", "--limit", "50", "--output", "json"]
 inputs: ["project"]
 result-kind: "repository-ruleset-list"
 ---

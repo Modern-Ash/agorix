@@ -5,8 +5,8 @@ name: "Apply an infrastructure plan"
 capability: "cloud.deploy"
 risk: "write"
 environment-required: true
-arguments: ["change","apply","{plan}","--environment","{environment}","--output","json"]
-inputs: ["plan","environment"]
+arguments: ["change", "apply", "{plan}", "--environment", "{environment}", "--output", "json"]
+inputs: ["plan", "environment"]
 result-kind: "cloud-deployment"
 ---
 

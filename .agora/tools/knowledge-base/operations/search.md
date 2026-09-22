@@ -4,8 +4,8 @@ id: "search"
 name: "Search knowledge"
 capability: "docs.read"
 risk: "read"
-arguments: ["page","search","--space","{space}","--query","{query}","--output","json"]
-inputs: ["space","query"]
+arguments: ["page", "search", "--space", "{space}", "--query", "{query}", "--output", "json"]
+inputs: ["space", "query"]
 result-kind: "document-list"
 ---
 

@@ -6,7 +6,7 @@ phase: null
 result: "success"
 revision: 1
 artifact-references: [".agora/intents/issue-11/TEST-STRATEGY.md"]
-artifact-content-sha256: {".agora/intents/issue-11/TEST-STRATEGY.md":null}
+artifact-content-sha256: { ".agora/intents/issue-11/TEST-STRATEGY.md": null }
 produced-by: "project:ai-runtime-2"
 timestamp: "2026-09-22T21:18:14.773516Z"
 tested-commit: null

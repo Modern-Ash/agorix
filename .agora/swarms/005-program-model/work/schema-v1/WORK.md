@@ -9,9 +9,13 @@ operational-status: "active"
 status-reason: null
 status-by: null
 status-at: null
-acceptance-criteria: {"outcome":"Documented example validates; every union has explicit discriminator; round-trip preserves semantic equality; unknown/future operation is rejected; schema/version exported"}
+acceptance-criteria:
+  {
+    "outcome": "Documented example validates; every union has explicit discriminator; round-trip preserves semantic equality; unknown/future operation is rejected; schema/version exported",
+  }
 satisfied-criteria: ["outcome"]
-criterion-statuses: {"outcome":["elaborated","designed","built","verified","deployed","accepted"]}
+criterion-statuses:
+  { "outcome": ["elaborated", "designed", "built", "verified", "deployed", "accepted"] }
 required-artifacts: []
 child-work-refs: []
 budget-limits: null

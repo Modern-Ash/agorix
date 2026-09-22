@@ -4,8 +4,20 @@ id: "add-item"
 name: "Add an item to a portfolio project"
 capability: "portfolio.write"
 risk: "write"
-arguments: ["item","add","--owner","{owner}","--project","{project}","--item","{item-url}","--output","json"]
-inputs: ["owner","project","item-url"]
+arguments:
+  [
+    "item",
+    "add",
+    "--owner",
+    "{owner}",
+    "--project",
+    "{project}",
+    "--item",
+    "{item-url}",
+    "--output",
+    "json",
+  ]
+inputs: ["owner", "project", "item-url"]
 result-kind: "portfolio-item"
 ---
 

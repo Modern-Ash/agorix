@@ -4,7 +4,7 @@ id: "create-branch"
 name: "Create a branch"
 capability: "repository.write"
 risk: "write"
-arguments: ["checkout","-b","{branch}"]
+arguments: ["checkout", "-b", "{branch}"]
 inputs: ["branch"]
 result-kind: "repository-change"
 ---

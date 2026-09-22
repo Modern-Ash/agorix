@@ -9,8 +9,16 @@ work: null
 environment: null
 capability: "issue.read"
 risk: "read"
-inputs: {"issue":"https://github.com/Modern-Ash/agorix/issues/9"}
-command: ["gh","issue","view","https://github.com/Modern-Ash/agorix/issues/9","--json","number,title,body,state,stateReason,labels,assignees,milestone,url,createdAt,updatedAt"]
+inputs: { "issue": "https://github.com/Modern-Ash/agorix/issues/9" }
+command:
+  [
+    "gh",
+    "issue",
+    "view",
+    "https://github.com/Modern-Ash/agorix/issues/9",
+    "--json",
+    "number,title,body,state,stateReason,labels,assignees,milestone,url,createdAt,updatedAt",
+  ]
 runtime-available: true
 status: "completed"
 result-kind: "work-item"

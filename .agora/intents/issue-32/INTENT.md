@@ -4,7 +4,13 @@ id: "issue-32"
 status: "accepted"
 author: "project:product-owner"
 affected-systems: ["Modern-Ash/agorix"]
-constraints: [".agora/ must be present and valid","at least two distinct runtime declarations supported if available","install config contains no secrets","repository remains buildable without any LLM credential"]
+constraints:
+  [
+    ".agora/ must be present and valid",
+    "at least two distinct runtime declarations supported if available",
+    "install config contains no secrets",
+    "repository remains buildable without any LLM credential",
+  ]
 open-questions: []
 source: "https://github.com/Modern-Ash/agorix/issues/32"
 created-at: "2026-09-22T20:55:44.993490Z"

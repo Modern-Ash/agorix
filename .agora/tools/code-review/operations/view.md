@@ -4,7 +4,7 @@ id: "view"
 name: "View a code review"
 capability: "review.read"
 risk: "read"
-arguments: ["view","--review","{review}"]
+arguments: ["view", "--review", "{review}"]
 inputs: ["review"]
 result-kind: "code-review"
 ---

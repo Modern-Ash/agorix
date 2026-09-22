@@ -1,23 +1,21 @@
 import { describe, expect, it } from "vitest";
+import { SCHEMA_VERSION, type ProjectProgram, type Script } from "@agorix/program-model";
 import { PACKAGE_NAME } from "./index.js";
 import { ProjectStore, BrowserLocalStorageAdapter, PersistenceError } from "./store.js";
-import { SCHEMA_VERSION } from "../../program-model/dist/index.js";
 
-const makeProgram = (
-  scripts: readonly { id: string; trigger: { type: string }; statements: unknown[] }[],
-) => ({
+const makeProgram = (scripts: readonly Script[]): ProjectProgram => ({
   schema: SCHEMA_VERSION,
   scripts,
 });
 
-const makeScript = (id = "main") => ({
+const makeScript = (id = "main"): Script => ({
   id,
   trigger: { type: "onStart" },
   statements: [],
 });
 
 class MockStorage extends BrowserLocalStorageAdapter {
-  private data = new Map<string, string>();
+  data = new Map<string, string>();
 
   override get(key: string): string | null {
     return this.data.get(key) ?? null;
@@ -85,13 +83,13 @@ describe("ProjectStore — load error codes", () => {
     mock.data.set("proj-1", stored);
     const store = new ProjectStore({ storage: mock });
     expect(() => store.load("proj-1")).toThrow(PersistenceError);
-    let err: PersistenceError;
+    let err: PersistenceError | undefined;
     try {
       store.load("proj-1");
     } catch (e) {
       err = e as PersistenceError;
     }
-    expect(err.code).toBe("UNKNOWN_VERSION");
+    expect(err?.code).toBe("UNKNOWN_VERSION");
   });
 });
 
@@ -102,7 +100,7 @@ describe("ProjectStore — migration", () => {
     const migration = {
       fromVersion: oldSchema,
       toVersion: SCHEMA_VERSION,
-      migrate: (p: typeof makeProgram) => p,
+      migrate: (program: ProjectProgram) => program,
     };
     const stored = JSON.stringify({
       schemaVersion: oldSchema,

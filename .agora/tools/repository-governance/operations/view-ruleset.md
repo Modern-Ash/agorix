@@ -4,8 +4,9 @@ id: "view-ruleset"
 name: "View a repository ruleset"
 capability: "repository.governance.read"
 risk: "read"
-arguments: ["ruleset","view","--project","{project}","--ruleset","{ruleset}","--output","json"]
-inputs: ["project","ruleset"]
+arguments:
+  ["ruleset", "view", "--project", "{project}", "--ruleset", "{ruleset}", "--output", "json"]
+inputs: ["project", "ruleset"]
 result-kind: "repository-ruleset"
 ---
 

@@ -7,6 +7,7 @@ Agorix is intentionally built as a visible proof of multi-agent software deliver
 Demonstrate that different coding agents can participate in the same governed SDLC without making any one agent or vendor authoritative.
 
 Examples include:
+
 - Claude / Claude Code;
 - OpenAI Codex;
 - GitHub Copilot coding agents;
@@ -20,20 +21,21 @@ These are examples of executors, not dependencies of Agorix.
 
 Suggested assignment model:
 
-| SDLC role | Typical agent use |
-| --- | --- |
-| Product/intent support | Claude, Codex, Copilot, OpenCode or human |
-| Architect | Claude, Codex, OpenCode |
-| Builder | Codex, Claude Code, Copilot, OpenCode, local agent |
-| Reviewer | a different agent/provider than the producer where possible |
-| Operator | human or automation/agent |
-| Quality reviewer | human-final for governed decisions |
+| SDLC role              | Typical agent use                                           |
+| ---------------------- | ----------------------------------------------------------- |
+| Product/intent support | Claude, Codex, Copilot, OpenCode or human                   |
+| Architect              | Claude, Codex, OpenCode                                     |
+| Builder                | Codex, Claude Code, Copilot, OpenCode, local agent          |
+| Reviewer               | a different agent/provider than the producer where possible |
+| Operator               | human or automation/agent                                   |
+| Quality reviewer       | human-final for governed decisions                          |
 
 Agora owns the work contract, evidence, provenance and gates. The selected agent only executes bounded work.
 
 ## Visibility requirements
 
 Every implementation issue SHOULD make the execution path observable:
+
 - producing agent/runtime;
 - provider/model when available;
 - session/provenance;
@@ -46,6 +48,7 @@ The goal is to be able to compare agents by real work output without changing th
 ## Producer/reviewer diversity
 
 Where practical:
+
 - Claude-produced work is reviewed by Codex/OpenCode/human;
 - Codex-produced work is reviewed by Claude/OpenCode/human;
 - OpenCode/local-agent work is reviewed by a different provider or human;
@@ -58,6 +61,7 @@ Issues and specs must contain enough context that a new agent can start from Git
 ## No privileged agent
 
 No agent may:
+
 - self-merge;
 - bypass CI;
 - silently alter product scope;
@@ -68,6 +72,7 @@ No agent may:
 ## POC evidence
 
 The final Agorix retrospective must report:
+
 - which agents executed which issue classes;
 - handoff friction;
 - token/context efficiency observations;

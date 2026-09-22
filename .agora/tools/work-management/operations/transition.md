@@ -4,8 +4,8 @@ id: "transition"
 name: "Transition a work item"
 capability: "issue.transition"
 risk: "write"
-arguments: ["issue","transition","{issue}","--to","{state}","--output","json"]
-inputs: ["issue","state"]
+arguments: ["issue", "transition", "{issue}", "--to", "{state}", "--output", "json"]
+inputs: ["issue", "state"]
 result-kind: "work-item-transition"
 ---
 

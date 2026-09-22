@@ -4,7 +4,7 @@ id: "view-deployment"
 name: "View a deployment"
 capability: "ci.read"
 risk: "read"
-arguments: ["deployment","view","{deployment}","--output","json"]
+arguments: ["deployment", "view", "{deployment}", "--output", "json"]
 inputs: ["deployment"]
 result-kind: "deployment"
 ---

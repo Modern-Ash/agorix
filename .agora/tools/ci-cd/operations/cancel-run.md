@@ -4,7 +4,7 @@ id: "cancel-run"
 name: "Cancel a pipeline run"
 capability: "ci.cancel"
 risk: "destructive"
-arguments: ["run","cancel","{run}","--output","json"]
+arguments: ["run", "cancel", "{run}", "--output", "json"]
 inputs: ["run"]
 result-kind: "pipeline-run"
 ---

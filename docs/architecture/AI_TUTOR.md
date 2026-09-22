@@ -7,6 +7,7 @@ Help the learner reason about the current mission and program without making the
 ## Provider-neutral contract
 
 Input:
+
 - mission id/version;
 - concept targets;
 - sanitized canonical program;
@@ -16,6 +17,7 @@ Input:
 - requested language/reading level if configured.
 
 Output:
+
 - hint level;
 - child-facing message;
 - optional highlighted concept/program node ids;
@@ -42,6 +44,7 @@ Implement an interface plus a deterministic fake tutor first. Add one real LLM a
 ## Observability
 
 Record non-PII events:
+
 - hint requested;
 - hint level;
 - mission id;

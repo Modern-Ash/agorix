@@ -8,7 +8,15 @@ required-roles: ["product-owner", "developer"]
 optional-roles: ["quality-reviewer"]
 work-states: ["inception", "construction", "operations", "completed"]
 criterion-stages: ["elaborated", "designed", "built", "verified", "deployed", "accepted"]
-criterion-stage-roles: {"elaborated":["product-owner","developer"],"designed":["developer"],"built":["developer"],"verified":["developer"],"deployed":["developer"],"accepted":["product-owner"]}
+criterion-stage-roles:
+  {
+    "elaborated": ["product-owner", "developer"],
+    "designed": ["developer"],
+    "built": ["developer"],
+    "verified": ["developer"],
+    "deployed": ["developer"],
+    "accepted": ["product-owner"],
+  }
 terminal-state: "completed"
 wip-limits: {}
 ---

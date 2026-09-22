@@ -2,7 +2,14 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "noEmit": true,
+    "jsx": "react-jsx",
     "lib": ["ES2022", "DOM"]
   },
-  "exclude": ["**/node_modules/**", "**/dist/**", ".venv/**"]
+  "exclude": [
+    "**/node_modules/**",
+    "**/dist/**",
+    ".venv/**",
+    "**/playwright.config.ts",
+    "**/e2e/**"
+  ]
 }

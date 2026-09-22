@@ -4,7 +4,7 @@ id: "inspect-repository"
 name: "Inspect repository governance"
 capability: "repository.governance.read"
 risk: "read"
-arguments: ["repository","inspect","--project","{project}","--output","json"]
+arguments: ["repository", "inspect", "--project", "{project}", "--output", "json"]
 inputs: ["project"]
 result-kind: "repository-governance"
 ---

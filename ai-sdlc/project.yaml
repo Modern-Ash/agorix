@@ -7,19 +7,19 @@ language: typescript
 framework: react-vite
 pathway: brownfield
 integrations:
-- github
-- ci
+  - github
+  - ci
 profile: starter
 depth: standard
 runtimes:
-- id: primary
-  integration: generic
-  provider: local
-  model: local
-- id: runtime-2
-  integration: generic
-  provider: local
-  model: local
+  - id: primary
+    integration: generic
+    provider: local
+    model: local
+  - id: runtime-2
+    integration: generic
+    provider: local
+    model: local
 role_execution:
   developer: runtime-2
 method:
