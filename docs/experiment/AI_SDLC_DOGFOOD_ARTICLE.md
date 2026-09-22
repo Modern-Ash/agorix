@@ -316,3 +316,24 @@ El humano corrige las decisiones importantes.
 Y el sistema conserva la evidencia de cómo llegó hasta ahí.
 
 Agorix todavía está en el primer ciclo, pero el dogfood ya hizo su trabajo: obligó a Agora AI-SDLC a pasar de ser una colección de controles correctos a empezar a convertirse en una experiencia realmente AI-driven.
+
+
+## Second dogfood result: fewer prompts exposed deeper framework problems
+
+The portable handoff solved the first visible problem: I no longer had to paste the complete Inception methodology into OpenCode. The agent read the handoff, the skill, the Intent and the source issue and produced a Level 1 Plan, Units and Bolts on its own.
+
+That was progress, but the next layer of dogfood was more revealing.
+
+The generated Markdown looked correct to a human while being invalid to the framework itself. The Plan used non-canonical references and an empty structured `steps` list; the Bolt Plan described Bolts in prose while persisting `bolts: []`. AI-SDLC had told the agent what to write, but it had not required the agent to validate what it persisted.
+
+At the same time, `aisdlc continue` was still reading the bootstrap `first-work` rather than a Work bound to issue #8. The conversational context and the governed lifecycle had diverged.
+
+A third mismatch appeared in the installed Method Pack: Agorix was still operating the legacy Core AI-DLC lifecycle instead of the newer AI-SDLC 0.2.0 three-phase method.
+
+These findings became issues #158, #159 and #160.
+
+That changes the next target for Agora AI-SDLC:
+
+> Reducing prompts is necessary, but not sufficient. The framework must also guarantee that the agent's output is structurally valid, bound to the correct governed Work and evaluated against the intended Method Pack before a human is asked to approve anything.
+
+The experiment therefore stopped before approving the Inception proposal. The correct next step is to fix the framework, then repeat the same issue and verify that the user only sees valid, correctly scoped decisions.
