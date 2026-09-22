@@ -19,6 +19,7 @@ The POC needs only sequence, events, repetition and simple conditions, but the m
 ## Challenge structure
 
 Each mission has:
+
 - id/version;
 - title and child-facing goal;
 - concepts;
@@ -42,6 +43,7 @@ The tutor must record which level was used so product experiments can evaluate w
 ## Feedback
 
 Prefer feedback about behavior:
+
 - “The character moved before the game started.”
 - “Your loop never reaches the condition.”
 
@@ -54,6 +56,7 @@ Mission completion is deterministic and evaluated by the runtime/state, not by a
 ## Reflection
 
 After completion, ask one short question such as:
+
 - “What made the character start moving?”
 - “What would happen if the loop ran twice as many times?”
 

@@ -4,7 +4,18 @@ id: "list-secret-alerts"
 name: "List redacted secret scanning alerts"
 capability: "security.read"
 risk: "read"
-arguments: ["secret","list","--project","{project}","--limit","50","--redact-secrets","--output","json"]
+arguments:
+  [
+    "secret",
+    "list",
+    "--project",
+    "{project}",
+    "--limit",
+    "50",
+    "--redact-secrets",
+    "--output",
+    "json",
+  ]
 inputs: ["project"]
 result-kind: "security-alert-list"
 ---

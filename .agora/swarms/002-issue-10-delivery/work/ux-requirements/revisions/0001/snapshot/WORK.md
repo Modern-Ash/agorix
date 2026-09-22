@@ -9,9 +9,13 @@ operational-status: "active"
 status-reason: null
 status-by: null
 status-at: null
-acceptance-criteria: {"outcome":"UX_REQUIREMENTS.md is published, testable, covers all required categories, documents Blockly limitations, and is reviewed"}
+acceptance-criteria:
+  {
+    "outcome": "UX_REQUIREMENTS.md is published, testable, covers all required categories, documents Blockly limitations, and is reviewed",
+  }
 satisfied-criteria: ["outcome"]
-criterion-statuses: {"outcome":["elaborated","designed","built","verified","deployed","accepted"]}
+criterion-statuses:
+  { "outcome": ["elaborated", "designed", "built", "verified", "deployed", "accepted"] }
 required-artifacts: []
 child-work-refs: []
 budget-limits: null

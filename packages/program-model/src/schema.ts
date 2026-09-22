@@ -30,9 +30,7 @@ export interface NumericLiteralExpression {
 }
 
 export type Expression =
-  | TouchingGoalExpression
-  | BooleanLiteralExpression
-  | NumericLiteralExpression;
+  TouchingGoalExpression | BooleanLiteralExpression | NumericLiteralExpression;
 
 // --- Statements -----------------------------------------------------------
 

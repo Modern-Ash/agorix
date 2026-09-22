@@ -4,7 +4,7 @@ id: "view-run"
 name: "View a pipeline run"
 capability: "ci.read"
 risk: "read"
-arguments: ["run","view","{run}","--output","json"]
+arguments: ["run", "view", "{run}", "--output", "json"]
 inputs: ["run"]
 result-kind: "pipeline-run"
 ---

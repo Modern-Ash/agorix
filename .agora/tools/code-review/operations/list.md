@@ -4,9 +4,9 @@ id: "list"
 name: "List code reviews"
 capability: "review.read"
 risk: "read"
-arguments: ["list","--project","{project}","--state","{state}","--limit","50"]
-inputs: ["project","state"]
-input-values: {"state":["open","closed","merged","all"]}
+arguments: ["list", "--project", "{project}", "--state", "{state}", "--limit", "50"]
+inputs: ["project", "state"]
+input-values: { "state": ["open", "closed", "merged", "all"] }
 result-kind: "code-review-list"
 ---
 

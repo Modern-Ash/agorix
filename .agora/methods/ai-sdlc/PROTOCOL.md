@@ -4,12 +4,12 @@ The operating pattern remains: **plan -> clarify -> human decision -> execute ->
 
 ## Phases
 
-| Phase | Base roles | Purpose |
-| --- | --- | --- |
-| inception | product-owner, developer | frame Intent, elaborate requirements, Units and design inputs, then approve construction |
-| construction | developer | design, implement and verify the approved work |
-| operations | developer, product-owner | deploy, observe, remediate through governed decisions and accept the revision |
-| completed | product-owner | terminal Agora record of accepted work |
+| Phase        | Base roles               | Purpose                                                                                  |
+| ------------ | ------------------------ | ---------------------------------------------------------------------------------------- |
+| inception    | product-owner, developer | frame Intent, elaborate requirements, Units and design inputs, then approve construction |
+| construction | developer                | design, implement and verify the approved work                                           |
+| operations   | developer, product-owner | deploy, observe, remediate through governed decisions and accept the revision            |
+| completed    | product-owner            | terminal Agora record of accepted work                                                   |
 
 ## Forward gates
 

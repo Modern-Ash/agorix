@@ -17,7 +17,7 @@ issue #32's six acceptance checkboxes individually.
 ## In scope
 
 - Verify `.agora/project.md` records `active-flavor: ai-sdlc`, `active-profile:
-  starter`, `active-depth: standard` (already true from the original quickstart).
+starter`, `active-depth: standard` (already true from the original quickstart).
 - Create a swarm named `product-poc` with an initial work item named
   `product-foundation`, matching the issue's recommended naming exactly.
 - Declare at least two distinct actor runtime integrations (already done:

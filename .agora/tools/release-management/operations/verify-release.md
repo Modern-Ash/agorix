@@ -4,8 +4,9 @@ id: "verify-release"
 name: "Verify a release"
 capability: "release.read"
 risk: "read"
-arguments: ["release","verify","--project","{project}","--release","{release}","--output","json"]
-inputs: ["project","release"]
+arguments:
+  ["release", "verify", "--project", "{project}", "--release", "{release}", "--output", "json"]
+inputs: ["project", "release"]
 result-kind: "release-verification"
 ---
 

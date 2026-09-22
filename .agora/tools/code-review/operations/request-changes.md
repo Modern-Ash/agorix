@@ -4,8 +4,8 @@ id: "request-changes"
 name: "Request code review changes"
 capability: "review.decide"
 risk: "write"
-arguments: ["request-changes","--review","{review}","--body","{body}"]
-inputs: ["review","body"]
+arguments: ["request-changes", "--review", "{review}", "--body", "{body}"]
+inputs: ["review", "body"]
 result-kind: "code-review-decision"
 ---
 

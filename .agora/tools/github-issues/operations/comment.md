@@ -4,8 +4,8 @@ id: "comment"
 name: "Comment on a GitHub issue"
 capability: "issue.write"
 risk: "write"
-arguments: ["issue","comment","{issue}","--body","{body}"]
-inputs: ["issue","body"]
+arguments: ["issue", "comment", "{issue}", "--body", "{body}"]
+inputs: ["issue", "body"]
 result-kind: "work-item-comment"
 ---
 

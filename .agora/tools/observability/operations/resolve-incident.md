@@ -4,8 +4,8 @@ id: "resolve-incident"
 name: "Resolve an incident"
 capability: "incident.resolve"
 risk: "write"
-arguments: ["incident","resolve","{incident}","--resolution","{resolution}","--output","json"]
-inputs: ["incident","resolution"]
+arguments: ["incident", "resolve", "{incident}", "--resolution", "{resolution}", "--output", "json"]
+inputs: ["incident", "resolution"]
 result-kind: "incident-resolution"
 ---
 

@@ -4,9 +4,9 @@ id: "commit"
 name: "Create a Conventional Commit"
 capability: "repository.write"
 risk: "write"
-arguments: ["commit","-m","{message}"]
+arguments: ["commit", "-m", "{message}"]
 inputs: ["message"]
-input-rules: {"message":"conventional-commits/v1.0.0"}
+input-rules: { "message": "conventional-commits/v1.0.0" }
 result-kind: "repository-change"
 ---
 

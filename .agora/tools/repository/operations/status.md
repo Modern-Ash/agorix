@@ -4,7 +4,7 @@ id: "status"
 name: "Inspect repository status"
 capability: "repository.read"
 risk: "read"
-arguments: ["status","--short"]
+arguments: ["status", "--short"]
 inputs: []
 result-kind: "repository-status"
 ---

@@ -9,9 +9,13 @@ operational-status: "active"
 status-reason: null
 status-by: null
 status-at: null
-acceptance-criteria: {"outcome":"Valid fixtures pass; unknown schema/duplicate ids/unsupported operations/excessive size-or-depth each fail with a distinct stable code; no partial execution after failure"}
+acceptance-criteria:
+  {
+    "outcome": "Valid fixtures pass; unknown schema/duplicate ids/unsupported operations/excessive size-or-depth each fail with a distinct stable code; no partial execution after failure",
+  }
 satisfied-criteria: ["outcome"]
-criterion-statuses: {"outcome":["elaborated","designed","built","verified","deployed","accepted"]}
+criterion-statuses:
+  { "outcome": ["elaborated", "designed", "built", "verified", "deployed", "accepted"] }
 required-artifacts: []
 child-work-refs: []
 budget-limits: null

@@ -4,8 +4,20 @@ id: "query-metrics"
 name: "Query service metrics"
 capability: "observability.read"
 risk: "read"
-arguments: ["metrics","query","--service","{service}","--window","{window}","--query","{query}","--output","json"]
-inputs: ["service","window","query"]
+arguments:
+  [
+    "metrics",
+    "query",
+    "--service",
+    "{service}",
+    "--window",
+    "{window}",
+    "--query",
+    "{query}",
+    "--output",
+    "json",
+  ]
+inputs: ["service", "window", "query"]
 result-kind: "metric-report"
 ---
 

@@ -4,9 +4,22 @@ id: "search"
 name: "Search GitHub issues"
 capability: "issue.read"
 risk: "read"
-arguments: ["search","issues","{query}","--repo","{project}","--state","{state}","--limit","50","--json","number,title,state,url,repository,updatedAt"]
-inputs: ["query","project","state"]
-input-values: {"state":["open","closed"]}
+arguments:
+  [
+    "search",
+    "issues",
+    "{query}",
+    "--repo",
+    "{project}",
+    "--state",
+    "{state}",
+    "--limit",
+    "50",
+    "--json",
+    "number,title,state,url,repository,updatedAt",
+  ]
+inputs: ["query", "project", "state"]
+input-values: { "state": ["open", "closed"] }
 result-kind: "work-item-list"
 ---
 

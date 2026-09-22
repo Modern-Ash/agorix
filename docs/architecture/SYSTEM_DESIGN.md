@@ -5,6 +5,7 @@
 Agorix is a TypeScript-first, multi-surface product.
 
 Target surfaces:
+
 - Web application / PWA.
 - Android and iOS applications packaged from the web surface with Capacitor.
 - VS Code extension for opening and working with Agorix projects from the IDE.
@@ -92,33 +93,43 @@ Domain packages must not import React, Blockly, Phaser, Capacitor, VS Code APIs 
 ## Boundaries
 
 ### program-model
+
 Canonical, serializable AST-like representation of learner programs.
 
 ### block-editor
+
 Maps visual blocks to/from program-model. Blockly-specific identifiers do not leak into domain documents.
 
 ### runtime
+
 Executes program-model deterministically. Produces events/observations.
 
 ### stage
+
 Framework-neutral stage state and commands. Phaser is the first renderer/adapter, not the domain authority.
 
 ### code-generator
+
 Projects canonical program state into readable TypeScript/JavaScript-like code and node→text mappings.
 
 ### curriculum
+
 Mission definitions, completion predicates and hint ladders.
 
 ### tutor-contract
+
 Provider-neutral request/response model and pedagogical guardrails.
 
 ### tutor-api
+
 Only component allowed to call an external LLM provider.
 
 ### persistence
+
 Versioned project storage abstraction. Web starts with browser-local persistence; other surfaces can provide adapters.
 
 ### platform-contract
+
 Small boundary for capabilities that differ across web, mobile and VS Code: filesystem access, persistence backend, sharing/export, native integrations.
 
 ## Multi-platform rules

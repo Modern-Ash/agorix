@@ -5,7 +5,7 @@ action: "work.clarify"
 actor: "project:ai-runtime-2"
 swarm: "persistence"
 work: "versioned-local-persistence"
-parameters: {"runner":"claude"}
+parameters: { "runner": "claude" }
 precondition-sha256: "69addde2160f64f4ca72370c1ebe9919a574556dd6d4e09e17a18c20869826e3"
 status: "prepared"
 created-at: "2026-09-22T22:41:03.968187Z"

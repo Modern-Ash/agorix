@@ -6,7 +6,7 @@ phase: null
 result: "success"
 revision: 1
 artifact-references: [".agora/intents/issue-12/OPERATIONAL-READINESS.md"]
-artifact-content-sha256: {".agora/intents/issue-12/OPERATIONAL-READINESS.md":null}
+artifact-content-sha256: { ".agora/intents/issue-12/OPERATIONAL-READINESS.md": null }
 produced-by: "project:ai-runtime-2"
 timestamp: "2026-09-22T21:36:12.597447Z"
 tested-commit: null

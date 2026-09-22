@@ -4,7 +4,7 @@ id: "show-revision"
 name: "Inspect a revision"
 capability: "repository.read"
 risk: "read"
-arguments: ["show","--stat","--oneline","{revision}"]
+arguments: ["show", "--stat", "--oneline", "{revision}"]
 inputs: ["revision"]
 result-kind: "repository-revision"
 ---

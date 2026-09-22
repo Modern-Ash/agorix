@@ -4,8 +4,8 @@ id: "create-project"
 name: "Create a portfolio project"
 capability: "portfolio.write"
 risk: "write"
-arguments: ["project","create","--owner","{owner}","--title","{title}","--output","json"]
-inputs: ["owner","title"]
+arguments: ["project", "create", "--owner", "{owner}", "--title", "{title}", "--output", "json"]
+inputs: ["owner", "title"]
 result-kind: "portfolio-project"
 ---
 

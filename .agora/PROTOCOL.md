@@ -19,7 +19,7 @@ project: "agorix"
 9. Use installed Tool Pack operations for governed external actions, retain their results, and use
    `agora tool result --run <id>` when captured provider output must be inspected.
 10. In chat and non-TTY environments, run Agora with `AGORA_TRACE=compact` and relay its stderr
-   milestones. Never merge trace lines into the structured stdout result.
+    milestones. Never merge trace lines into the structured stdout result.
 11. Read `.agora/STANDARDS.md` and validate commit messages before creating repository history.
 12. When an actor requires authentication, prepare, externally sign, and apply each covered
     lifecycle mutation through its durable `ACTION.md` intent.

@@ -9,7 +9,7 @@ Requirements: `.agora/intents/issue-9/REQUIREMENTS.md` (R1-R6).
   ("iterate," "execute," "instantiate").
 - Be concise and encouraging without being patronizing — no baby talk, no exclamation
   overload, no "Great job, superstar!" filler.
-- Describe *behavior*, not correctness labels. Say what happened, not whether it was
+- Describe _behavior_, not correctness labels. Say what happened, not whether it was
   good or bad ("wrong"/"bad" framing avoided wherever a behavior-specific message
   works — R5).
 - Never ask for a name, age, school, location or photo (R6).
@@ -22,7 +22,7 @@ These must read as different voices (R3):
 
 - **System feedback** (runtime, errors, success): short, factual, plain-labeled
   ("Run", "Stopped", "Goal reached"). No personality, no first person.
-- **AI tutor feedback**: conversational but explicitly a *tool*, never a person.
+- **AI tutor feedback**: conversational but explicitly a _tool_, never a person.
   - Do: "The tutor thinks your loop might run more times than you meant."
   - Don't: "I'm here to help you, buddy!" or anything implying friendship,
     feelings, or human identity.
@@ -31,14 +31,14 @@ These must read as different voices (R3):
 
 ## Block / toolbox labels
 
-| Block | Label |
-| --- | --- |
+| Block             | Label                |
+| ----------------- | -------------------- |
 | `when run starts` | "When you press Run" |
-| `move steps` | "Move [N] steps" |
-| `turn` | "Turn [N] degrees" |
-| `repeat N` | "Repeat [N] times" |
-| `if condition` | "If ___, then" |
-| `touching goal?` | "Touching the goal?" |
+| `move steps`      | "Move [N] steps"     |
+| `turn`            | "Turn [N] degrees"   |
+| `repeat N`        | "Repeat [N] times"   |
+| `if condition`    | "If ___, then"       |
+| `touching goal?`  | "Touching the goal?" |
 
 Toolbox section headers: "Start", "Move", "Repeat & Decide", "Check" — task words,
 not category jargon ("Events", "Control").
@@ -67,13 +67,13 @@ move it there."
 
 ## Retry / error states (deterministic runtime errors → child-facing messages, R2)
 
-| Runtime condition | Message |
-| --- | --- |
-| Program run without any blocks in `when run starts` | "Nothing happens yet — add a block to 'When you press Run' to get started." |
-| Sprite never reaches goal after run completes | "Not there yet. Your sprite stopped before reaching the goal — try adjusting how far it moves or turns." |
-| `repeat` block with 0 or missing count | "This repeat block needs a number of times — try adding one." |
-| Project file version mismatch on load | "This project was made with a different version of Agorix and can't be opened here. Start a new project to keep going." |
-| Autosave/persistence failure | "We couldn't save your project just now. Keep working — we'll try again, or you can try reloading." |
+| Runtime condition                                   | Message                                                                                                                 |
+| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Program run without any blocks in `when run starts` | "Nothing happens yet — add a block to 'When you press Run' to get started."                                             |
+| Sprite never reaches goal after run completes       | "Not there yet. Your sprite stopped before reaching the goal — try adjusting how far it moves or turns."                |
+| `repeat` block with 0 or missing count              | "This repeat block needs a number of times — try adding one."                                                           |
+| Project file version mismatch on load               | "This project was made with a different version of Agorix and can't be opened here. Start a new project to keep going." |
+| Autosave/persistence failure                        | "We couldn't save your project just now. Keep working — we'll try again, or you can try reloading."                     |
 
 Error copy always names what happened and, where possible, a next step — never a bare
 "Error" or error code.

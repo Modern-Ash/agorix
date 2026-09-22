@@ -4,9 +4,9 @@ id: "merge"
 name: "Merge a code review"
 capability: "review.merge"
 risk: "destructive"
-arguments: ["merge","--review","{review}","--method","{method}"]
-inputs: ["review","method"]
-input-values: {"method":["merge","squash","rebase"]}
+arguments: ["merge", "--review", "{review}", "--method", "{method}"]
+inputs: ["review", "method"]
+input-values: { "method": ["merge", "squash", "rebase"] }
 result-kind: "code-review-merge"
 ---
 

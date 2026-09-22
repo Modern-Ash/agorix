@@ -4,7 +4,7 @@ id: "publish"
 name: "Publish a document"
 capability: "docs.publish"
 risk: "write"
-arguments: ["page","publish","{document}","--output","json"]
+arguments: ["page", "publish", "{document}", "--output", "json"]
 inputs: ["document"]
 result-kind: "documentation-publication"
 ---

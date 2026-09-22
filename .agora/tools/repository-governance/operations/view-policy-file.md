@@ -4,8 +4,8 @@ id: "view-policy-file"
 name: "View a repository policy file"
 capability: "repository.governance.read"
 risk: "read"
-arguments: ["policy-file","view","--project","{project}","--path","{path}"]
-inputs: ["project","path"]
+arguments: ["policy-file", "view", "--project", "{project}", "--path", "{path}"]
+inputs: ["project", "path"]
 result-kind: "repository-policy-file"
 ---
 

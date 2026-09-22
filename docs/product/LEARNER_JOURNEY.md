@@ -11,6 +11,7 @@ Traces to GitHub issue #8. Source: PRODUCT_INTENT.md, MVP.md, PEDAGOGY.md, AGENT
 ## 2. Editor first load
 
 Layout (desktop/normal viewport):
+
 - 60% blocks workspace / 40% generated code panel, side by side, with the generated code panel as the right-hand surface of the desktop layout (human-selected POC decision; D1).
 - Mission context lives in a top/header area, visible without navigating away from the editor.
 - Stage/canvas, one starter sprite, block toolbox and workspace are visible immediately (MVP.md "Editor").
@@ -19,6 +20,7 @@ Layout (desktop/normal viewport):
 - Tutor/help is a contextual side panel or non-blocking overlay; exact visual treatment is an implementation detail (human-selected POC decision) but it must never cover or replace the code panel.
 
 Narrow viewport:
+
 - Panels stack vertically: blocks first, generated code immediately below (human-selected POC decision).
 - A single CSS breakpoint (approx. 768px; the exact value is an implementation detail) switches desktop side-by-side to the vertical stack, at all orientations.
 - In the stacked layout the generated-code panel occupies the band immediately below the blocks workspace; it remains continuously visible, never behind a tab, toggle, scroll region or "advanced mode" at any viewport width (issue #8 required layout decision; MVP.md "Persistent code bridge").

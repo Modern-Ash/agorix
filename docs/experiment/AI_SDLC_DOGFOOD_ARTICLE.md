@@ -317,7 +317,6 @@ Y el sistema conserva la evidencia de cómo llegó hasta ahí.
 
 Agorix todavía está en el primer ciclo, pero el dogfood ya hizo su trabajo: obligó a Agora AI-SDLC a pasar de ser una colección de controles correctos a empezar a convertirse en una experiencia realmente AI-driven.
 
-
 ## Second dogfood result: fewer prompts exposed deeper framework problems
 
 The portable handoff solved the first visible problem: I no longer had to paste the complete Inception methodology into OpenCode. The agent read the handoff, the skill, the Intent and the source issue and produced a Level 1 Plan, Units and Bolts on its own.

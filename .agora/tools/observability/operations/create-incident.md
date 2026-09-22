@@ -4,8 +4,22 @@ id: "create-incident"
 name: "Create an incident"
 capability: "incident.write"
 risk: "write"
-arguments: ["incident","create","--service","{service}","--severity","{severity}","--title","{title}","--summary","{summary}","--output","json"]
-inputs: ["service","severity","title","summary"]
+arguments:
+  [
+    "incident",
+    "create",
+    "--service",
+    "{service}",
+    "--severity",
+    "{severity}",
+    "--title",
+    "{title}",
+    "--summary",
+    "{summary}",
+    "--output",
+    "json",
+  ]
+inputs: ["service", "severity", "title", "summary"]
 result-kind: "incident"
 ---
 

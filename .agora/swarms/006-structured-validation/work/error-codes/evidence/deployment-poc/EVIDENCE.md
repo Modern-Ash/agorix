@@ -6,7 +6,7 @@ phase: "deploy"
 result: "success"
 revision: 1
 artifact-references: ["docs/delivery/POC_PLAN.md"]
-artifact-content-sha256: {"docs/delivery/POC_PLAN.md":null}
+artifact-content-sha256: { "docs/delivery/POC_PLAN.md": null }
 produced-by: "project:ai-runtime-2"
 timestamp: "2026-09-22T22:25:41.233825Z"
 tested-commit: null

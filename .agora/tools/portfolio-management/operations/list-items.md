@@ -4,8 +4,22 @@ id: "list-items"
 name: "List portfolio items"
 capability: "portfolio.read"
 risk: "read"
-arguments: ["item","list","--owner","{owner}","--project","{project}","--query","{query}","--limit","50","--output","json"]
-inputs: ["owner","project","query"]
+arguments:
+  [
+    "item",
+    "list",
+    "--owner",
+    "{owner}",
+    "--project",
+    "{project}",
+    "--query",
+    "{query}",
+    "--limit",
+    "50",
+    "--output",
+    "json",
+  ]
+inputs: ["owner", "project", "query"]
 result-kind: "portfolio-item-list"
 ---
 

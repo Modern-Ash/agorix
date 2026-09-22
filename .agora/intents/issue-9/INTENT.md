@@ -4,7 +4,15 @@ id: "issue-9"
 status: "accepted"
 author: "project:product-owner"
 affected-systems: ["Modern-Ash/agorix"]
-constraints: ["concise and encouraging without being patronizing","distinguish system feedback from AI tutor feedback","avoid \"wrong/bad\" framing where behavior-specific feedback works","no PII prompts","AI tutor must not be anthropomorphized as a human friend","generated code explained as \"the code behind your blocks\", not magic"]
+constraints:
+  [
+    "concise and encouraging without being patronizing",
+    "distinguish system feedback from AI tutor feedback",
+    'avoid "wrong/bad" framing where behavior-specific feedback works',
+    "no PII prompts",
+    "AI tutor must not be anthropomorphized as a human friend",
+    'generated code explained as "the code behind your blocks", not magic',
+  ]
 open-questions: []
 source: "https://github.com/Modern-Ash/agorix/issues/9"
 created-at: "2026-09-22T17:18:20.969454Z"

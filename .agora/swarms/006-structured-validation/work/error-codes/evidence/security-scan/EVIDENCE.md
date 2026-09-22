@@ -6,7 +6,7 @@ phase: "security"
 result: "success"
 revision: 1
 artifact-references: ["docs/architecture/SYSTEM_DESIGN.md"]
-artifact-content-sha256: {"docs/architecture/SYSTEM_DESIGN.md":null}
+artifact-content-sha256: { "docs/architecture/SYSTEM_DESIGN.md": null }
 produced-by: "project:ai-runtime-2"
 timestamp: "2026-09-22T22:25:46.448286Z"
 tested-commit: null

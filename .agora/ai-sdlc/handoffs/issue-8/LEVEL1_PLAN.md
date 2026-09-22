@@ -48,7 +48,14 @@ steps:
   - id: "implementation"
     decision: "execute"
     rationale: "Tighten the document per the confirmed decisions. The deliverable stays documentation only; no product code."
-    dependencies: ["clarify-intent", "elaborate-stories", "assess-risks", "decompose-units", "measurement-criteria"]
+    dependencies:
+      [
+        "clarify-intent",
+        "elaborate-stories",
+        "assess-risks",
+        "decompose-units",
+        "measurement-criteria",
+      ]
     required-artifacts: ["unit-of-work"]
     produced-artifacts: ["docs/product/LEARNER_JOURNEY.md"]
 required-sections: ["Scope", "Level and parent", "Steps", "Approval"]

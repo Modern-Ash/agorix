@@ -9,9 +9,11 @@ operational-status: "active"
 status-reason: null
 status-by: null
 status-at: null
-acceptance-criteria: {"outcome":"Bootstrap acceptance criteria from issue #32 are all satisfied and evidenced"}
+acceptance-criteria:
+  { "outcome": "Bootstrap acceptance criteria from issue #32 are all satisfied and evidenced" }
 satisfied-criteria: ["outcome"]
-criterion-statuses: {"outcome":["elaborated","designed","built","verified","deployed","accepted"]}
+criterion-statuses:
+  { "outcome": ["elaborated", "designed", "built", "verified", "deployed", "accepted"] }
 required-artifacts: []
 child-work-refs: []
 budget-limits: null

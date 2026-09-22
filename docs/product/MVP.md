@@ -7,11 +7,13 @@ The POC is complete when a learner can finish one end-to-end challenge using the
 ## Required experience
 
 ### Home / project entry
+
 - create or open a local learner project;
 - choose “First Mission”;
 - enter editor.
 
 ### Editor
+
 - stage/canvas;
 - one sprite;
 - block toolbox;
@@ -23,35 +25,44 @@ The POC is complete when a learner can finish one end-to-end challenge using the
 - persistent generated-code panel visible at all times beside the visual workspace;
 
 ### Required blocks
+
 Events:
+
 - when run starts.
 
 Motion:
+
 - move steps;
 - turn.
 
 Control:
+
 - repeat N;
 - if condition.
 
 Sensing/state:
+
 - touching goal?;
 - position X/Y (may remain internal).
 
 ### Runtime
+
 - deterministic execution;
 - fixed/update loop;
 - reset to initial state;
 - observable execution state for challenge evaluation.
 
 ### Mission
+
 “Reach the goal”
+
 - starter sprite and goal;
 - learner composes behavior;
 - deterministic completion predicate;
 - at least three progressive hints.
 
 ### Persistent code bridge
+
 - generated code is visible at all times while the learner edits blocks;
 - every supported block change updates the textual projection immediately;
 - the textual projection highlights or otherwise indicates the structure corresponding to the current visual selection where practical;
@@ -61,6 +72,7 @@ Sensing/state:
 - the learner never needs to switch modes to discover the code behind the visual program.
 
 ### Persistence
+
 - browser-local persistence is sufficient for POC;
 - versioned project document;
 - explicit migration/version failure instead of silent corruption.
@@ -74,18 +86,19 @@ Sensing/state:
 - automated unit/integration tests plus one browser E2E cover the vertical slice;
 - no secret or child PII is required.
 
-
 ## Platform scope
 
 The POC is web/PWA-first, but architecture must preserve direct reuse for mobile and VS Code.
 
 ### POC required
+
 - responsive web application;
 - installable PWA baseline;
 - touch-capable editor interactions where Blockly permits;
 - no desktop-only assumptions in shared domain packages.
 
 ### Post-POC surface validation
+
 - Capacitor packaging for Android/iOS using the same web application and shared packages;
 - VS Code extension/Webview that can open an Agorix project and render the same canonical program/code relationship.
 

@@ -4,7 +4,7 @@ id: "search"
 name: "Search work items"
 capability: "issue.read"
 risk: "read"
-arguments: ["issue","search","--query","{query}","--output","json"]
+arguments: ["issue", "search", "--query", "{query}", "--output", "json"]
 inputs: ["query"]
 result-kind: "work-item-list"
 ---

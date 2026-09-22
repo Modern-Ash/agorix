@@ -17,6 +17,7 @@ The product must still be usable by an older beginner. Age must not be encoded a
 ## Product promise
 
 A first-time learner can:
+
 1. open a project;
 2. see a stage and a character;
 3. compose a small program visually;

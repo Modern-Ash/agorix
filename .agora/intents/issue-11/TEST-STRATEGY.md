@@ -12,16 +12,16 @@ prose self-assessment.
 
 ## Checklist (= test suite)
 
-| Check | Requirement | Command | Result |
-| --- | --- | --- | --- |
-| Clean install | R1 | `pnpm install` (and re-run with `--frozen-lockfile`) | pass — exit 0 |
-| Lint | R2 | `pnpm lint` | pass — 0 errors, 0 warnings |
-| Unit tests | R2 | `pnpm test` | pass — 11/11 test files, 11/11 tests |
-| Build | R2 | `pnpm build` | pass — 12/12 workspace projects (11 with a build script) |
-| Web imports domain package | R3 | `apps/web/src/App.tsx` imports `@agorix/program-model`; `App.test.tsx` asserts the imported value; `pnpm build` resolves it under Vite/tsc | pass |
-| Domain packages have no forbidden imports | R4 | `grep -rE "from [\"'](react\|react-dom\|blockly\|phaser\|@capacitor\|vscode\|openai\|@anthropic-ai)"` across the 8 restricted packages' `src/`, plus ESLint's `no-restricted-imports` rule scoped to the same paths | pass — 0 matches, 0 lint errors |
-| Single CI command contract | R5 | `pnpm run verify` (install --frozen-lockfile && lint && test && build) | pass — full pipeline green |
-| README developer bootstrap | R6 | manual read-through of `README.md`'s new "Developer bootstrap" section against a clean clone | pass |
+| Check                                     | Requirement | Command                                                                                                                                                                                                             | Result                                                   |
+| ----------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| Clean install                             | R1          | `pnpm install` (and re-run with `--frozen-lockfile`)                                                                                                                                                                | pass — exit 0                                            |
+| Lint                                      | R2          | `pnpm lint`                                                                                                                                                                                                         | pass — 0 errors, 0 warnings                              |
+| Unit tests                                | R2          | `pnpm test`                                                                                                                                                                                                         | pass — 11/11 test files, 11/11 tests                     |
+| Build                                     | R2          | `pnpm build`                                                                                                                                                                                                        | pass — 12/12 workspace projects (11 with a build script) |
+| Web imports domain package                | R3          | `apps/web/src/App.tsx` imports `@agorix/program-model`; `App.test.tsx` asserts the imported value; `pnpm build` resolves it under Vite/tsc                                                                          | pass                                                     |
+| Domain packages have no forbidden imports | R4          | `grep -rE "from [\"'](react\|react-dom\|blockly\|phaser\|@capacitor\|vscode\|openai\|@anthropic-ai)"` across the 8 restricted packages' `src/`, plus ESLint's `no-restricted-imports` rule scoped to the same paths | pass — 0 matches, 0 lint errors                          |
+| Single CI command contract                | R5          | `pnpm run verify` (install --frozen-lockfile && lint && test && build)                                                                                                                                              | pass — full pipeline green                               |
+| README developer bootstrap                | R6          | manual read-through of `README.md`'s new "Developer bootstrap" section against a clean clone                                                                                                                        | pass                                                     |
 
 8 of 8 checks pass (R1-R6, with R2 and R3/R4 each covered by more than one check).
 

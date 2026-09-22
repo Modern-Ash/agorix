@@ -6,7 +6,7 @@ phase: null
 result: "success"
 revision: 1
 artifact-references: ["docs/product/UX_REQUIREMENTS.md"]
-artifact-content-sha256: {"docs/product/UX_REQUIREMENTS.md":null}
+artifact-content-sha256: { "docs/product/UX_REQUIREMENTS.md": null }
 produced-by: "project:ai-runtime-2"
 timestamp: "2026-09-22T20:52:50.555359Z"
 tested-commit: null

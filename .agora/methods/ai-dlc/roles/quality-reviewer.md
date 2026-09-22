@@ -3,8 +3,26 @@ schema: "agora/role/v1"
 id: "quality-reviewer"
 required-capabilities: ["acceptance"]
 allowed-actor-kinds: ["human", "ai-agent", "swarm"]
-allowed-actions: ["criterion.satisfy", "work.transition", "artifact.add", "evidence.add", "checklist.add", "checklist.check", "approval.add", "handoff.create"]
-allowed-tool-capabilities: ["repository.read", "repository.governance.read", "review.read", "review.write", "review.decide", "security.read"]
+allowed-actions:
+  [
+    "criterion.satisfy",
+    "work.transition",
+    "artifact.add",
+    "evidence.add",
+    "checklist.add",
+    "checklist.check",
+    "approval.add",
+    "handoff.create",
+  ]
+allowed-tool-capabilities:
+  [
+    "repository.read",
+    "repository.governance.read",
+    "review.read",
+    "review.write",
+    "review.decide",
+    "security.read",
+  ]
 allowed-environments: ["*"]
 ---
 

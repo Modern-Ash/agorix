@@ -11,9 +11,9 @@ work: "program-model/schema-v1"
    `Trigger`/`Statement`/`Expression` discriminated unions, `type` as the
    discriminator (clarified decision), matching the doc's field names exactly
    (`steps`, `degrees`, `count`, `body`, `condition`, `then`, `value`).
-2b. Kept every field `readonly` and every array `readonly T[]` — persisted
-    program data should not be mutated in place by callers (supports the "no
-    executable functions / pure data" invariant in spirit, not just field type).
+   2b. Kept every field `readonly` and every array `readonly T[]` — persisted
+   program data should not be mutated in place by callers (supports the "no
+   executable functions / pure data" invariant in spirit, not just field type).
 3. Write `validate.ts`: `ProgramValidationError` (path + value), a
    `validateProgram(input: unknown): ProjectProgram` entry point, and one
    `validate*` helper per union type, each ending in an exhaustive-by-convention

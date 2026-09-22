@@ -4,8 +4,8 @@ id: "approve"
 name: "Approve a code review"
 capability: "review.decide"
 risk: "write"
-arguments: ["approve","--review","{review}","--body","{body}"]
-inputs: ["review","body"]
+arguments: ["approve", "--review", "{review}", "--body", "{body}"]
+inputs: ["review", "body"]
 result-kind: "code-review-decision"
 ---
 

@@ -1,11 +1,5 @@
 import { SCHEMA_VERSION } from "./schema.js";
-import type {
-  Expression,
-  ProjectProgram,
-  Script,
-  Statement,
-  Trigger,
-} from "./schema.js";
+import type { Expression, ProjectProgram, Script, Statement, Trigger } from "./schema.js";
 import {
   MAX_NESTING_DEPTH,
   MAX_PROGRAM_NODES,
@@ -58,7 +52,12 @@ export class ProgramValidationError extends Error {
   }
 }
 
-function fail(code: ProgramValidationErrorCode, path: string, message: string, value: unknown): never {
+function fail(
+  code: ProgramValidationErrorCode,
+  path: string,
+  message: string,
+  value: unknown,
+): never {
   throw new ProgramValidationError(code, path, message, value);
 }
 
@@ -66,12 +65,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function checkBounds(
-  value: number,
-  min: number,
-  max: number,
-  path: string,
-): void {
+function checkBounds(value: number, min: number, max: number, path: string): void {
   if (!Number.isFinite(value) || value < min || value > max) {
     fail("NUMERIC_OUT_OF_BOUNDS", path, `expected a finite number in [${min}, ${max}]`, value);
   }
@@ -262,7 +256,12 @@ export function validateProgram(input: unknown): ProjectProgram {
     fail("INVALID_ROOT", "$", "expected an object", input);
   }
   if (input.schema !== SCHEMA_VERSION) {
-    fail("INVALID_SCHEMA_VERSION", "$.schema", `expected ${JSON.stringify(SCHEMA_VERSION)}`, input.schema);
+    fail(
+      "INVALID_SCHEMA_VERSION",
+      "$.schema",
+      `expected ${JSON.stringify(SCHEMA_VERSION)}`,
+      input.schema,
+    );
   }
   if (!Array.isArray(input.scripts)) {
     fail("INVALID_FIELD_TYPE", "$.scripts", "expected an array", input.scripts);

@@ -6,7 +6,7 @@ phase: "test"
 result: "success"
 revision: 1
 artifact-references: ["packages/program-model/src/validate.errors.test.ts"]
-artifact-content-sha256: {"packages/program-model/src/validate.errors.test.ts":null}
+artifact-content-sha256: { "packages/program-model/src/validate.errors.test.ts": null }
 produced-by: "project:ai-runtime-2"
 timestamp: "2026-09-22T22:24:58.015165Z"
 tested-commit: null
