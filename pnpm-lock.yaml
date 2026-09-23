@@ -69,7 +69,11 @@ importers:
 
   packages/block-editor: {}
 
-  packages/code-generator: {}
+  packages/code-generator:
+    dependencies:
+      '@agorix/program-model':
+        specifier: workspace:*
+        version: link:../program-model
 
   packages/curriculum: {}
 
