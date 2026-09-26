@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import { SCHEMA_VERSION, type ProjectProgram } from "@agorix/program-model";
 import { createWorldState, runProgram, type RunResult } from "@agorix/runtime";
 import {
+  FIRST_MISSION,
   MISSION_SCHEMA_VERSION,
   MissionValidationError,
   PACKAGE_NAME,
+  createMissionRunFeedback,
   evaluateMission,
   validateMission,
   type MissionDefinition,
@@ -70,6 +72,45 @@ const run = (steps: number): RunResult =>
 describe("curriculum package", () => {
   it("exports a package identity", () => {
     expect(PACKAGE_NAME).toBe("@agorix/curriculum");
+  });
+});
+
+describe("First Mission", () => {
+  it("is the canonical POC learner challenge and is solvable with POC blocks", () => {
+    const validated = validateMission(FIRST_MISSION);
+    const result = runProgram(programFor(160), createWorldState(FIRST_MISSION.starterStage), {
+      collectObservations: true,
+    });
+    const evaluation = evaluateMission({ mission: FIRST_MISSION, result });
+
+    expect(validated.id).toBe("first-mission.reach-goal");
+    expect(validated.concepts).toContain("movement");
+    expect(validated.hintLadder).toHaveLength(5);
+    expect(evaluation.completed).toBe(true);
+  });
+
+  it("gives deterministic behavior feedback for a reasonable incorrect attempt", () => {
+    const result = runProgram(programFor(10), createWorldState(FIRST_MISSION.starterStage), {
+      collectObservations: true,
+    });
+
+    expect(evaluateMission({ mission: FIRST_MISSION, result }).completed).toBe(false);
+    expect(createMissionRunFeedback({ mission: FIRST_MISSION, result })).toEqual({
+      completed: false,
+      message: "Not there yet: the sprite moved toward the goal but stopped short. Try more steps.",
+    });
+  });
+
+  it("returns the reflection prompt only after runtime completion", () => {
+    const result = runProgram(programFor(160), createWorldState(FIRST_MISSION.starterStage), {
+      collectObservations: true,
+    });
+
+    expect(createMissionRunFeedback({ mission: FIRST_MISSION, result })).toEqual({
+      completed: true,
+      message: "Mission complete: your sprite reached the goal.",
+      reflectionPrompt: FIRST_MISSION.reflectionPrompt,
+    });
   });
 });
 

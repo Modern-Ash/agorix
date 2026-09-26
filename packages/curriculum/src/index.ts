@@ -1,5 +1,5 @@
 /** Mission definitions, completion predicates and hint ladders. */
-import type { ProjectProgram } from "@agorix/program-model";
+import { SCHEMA_VERSION, type ProjectProgram } from "@agorix/program-model";
 import { validateProgram } from "@agorix/program-model";
 import {
   createWorldState,
@@ -17,7 +17,7 @@ export const MISSION_SCHEMA_VERSION = "agorix/mission/v1";
 
 export type MissionSchemaVersion = typeof MISSION_SCHEMA_VERSION;
 
-export type MissionConcept = "sequence" | "events" | "repetition" | "conditions";
+export type MissionConcept = "sequence" | "events" | "movement" | "repetition" | "conditions";
 
 export type CompletionPredicate =
   | {
@@ -76,6 +76,57 @@ export interface MissionEvaluation {
   readonly observations: readonly RuntimeObservation[];
 }
 
+export interface MissionRunFeedback {
+  readonly completed: boolean;
+  readonly message: string;
+  readonly reflectionPrompt?: string;
+}
+
+export const FIRST_MISSION = Object.freeze({
+  schema: MISSION_SCHEMA_VERSION,
+  id: "first-mission.reach-goal",
+  version: 1,
+  title: "Reach the Goal",
+  goal: {
+    title: "Get your sprite to the goal",
+    learnerFacing: "Use blocks to move the sprite until it reaches the goal.",
+  },
+  concepts: ["sequence", "events", "movement"],
+  starterProject: {
+    schema: SCHEMA_VERSION,
+    scripts: [
+      {
+        id: "main",
+        trigger: { type: "onStart" },
+        statements: [],
+      },
+    ],
+  },
+  starterStage: {
+    sprite: { x: 52, y: 128, heading: 0 },
+    goal: { x: 212, y: 128 },
+  },
+  completion: { type: "spriteTouchingGoal" },
+  constraints: [
+    {
+      id: "poc-blocks-only",
+      description: "The mission is solvable with the POC Move block and no tutor dependency.",
+    },
+    {
+      id: "runtime-completion",
+      description: "Completion is evaluated from runtime world state, not an LLM judgment.",
+    },
+  ],
+  hintLadder: [
+    { level: 1, text: "What changed on the stage after you pressed Run?" },
+    { level: 2, text: "A Move block changes how far the sprite travels." },
+    { level: 3, text: "Compare the Move steps with the gap between the sprite and the goal." },
+    { level: 4, text: "Try one Move block that travels the same distance as the gap." },
+    { level: 5, text: "From this starter stage, Move 160 steps reaches the goal." },
+  ],
+  reflectionPrompt: "What number made the sprite reach the goal, and why did it work?",
+} satisfies MissionDefinition);
+
 export class MissionValidationError extends Error {
   readonly path: string;
 
@@ -123,6 +174,45 @@ export function evaluateMission(input: MissionEvaluationInput): MissionEvaluatio
   };
 }
 
+export function createMissionRunFeedback(input: MissionEvaluationInput): MissionRunFeedback {
+  const mission = validateMission(input.mission);
+  const evaluation = evaluateMission({ mission, result: input.result });
+  if (evaluation.completed) {
+    return {
+      completed: true,
+      message: "Mission complete: your sprite reached the goal.",
+      reflectionPrompt: mission.reflectionPrompt,
+    };
+  }
+
+  const start = createWorldState(mission.starterStage);
+  const final = evaluation.finalWorld;
+  const sameRow = final.sprite.y === final.goal.y;
+  if (input.result.stepsUsed === 0) {
+    return {
+      completed: false,
+      message: "Nothing moved yet. Add a Move block, then press Run again.",
+    };
+  }
+  if (sameRow && final.sprite.x < final.goal.x) {
+    return {
+      completed: false,
+      message: "Not there yet: the sprite moved toward the goal but stopped short. Try more steps.",
+    };
+  }
+  if (sameRow && final.sprite.x > final.goal.x && start.sprite.x < final.goal.x) {
+    return {
+      completed: false,
+      message: "The sprite passed the goal. Try fewer steps so it stops on the goal.",
+    };
+  }
+  return {
+    completed: false,
+    message:
+      "The sprite did not finish on the goal. Compare the stage with your generated code, then adjust one block.",
+  };
+}
+
 function evaluatePredicate(predicate: CompletionPredicate, result: RunResult): boolean {
   switch (predicate.type) {
     case "spriteTouchingGoal":
@@ -162,7 +252,13 @@ function assertConcepts(concepts: readonly MissionConcept[]): void {
   if (!Array.isArray(concepts) || concepts.length === 0) {
     fail("$.concepts", "expected at least one concept");
   }
-  const allowed = new Set<MissionConcept>(["sequence", "events", "repetition", "conditions"]);
+  const allowed = new Set<MissionConcept>([
+    "sequence",
+    "events",
+    "movement",
+    "repetition",
+    "conditions",
+  ]);
   concepts.forEach((concept, index) => {
     if (!allowed.has(concept)) {
       fail(`$.concepts[${index}]`, "expected supported POC concept");

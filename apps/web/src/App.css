@@ -159,6 +159,17 @@ h3 {
   background: #ddf4d7;
 }
 
+.run-state-retry {
+  background: #fff0b8;
+}
+
+.reflection-prompt {
+  max-width: 520px;
+  padding: 8px 10px;
+  border: 2px solid #18201c;
+  background: #f2e6ff;
+}
+
 .workspace-grid {
   display: grid;
   grid-template-columns: minmax(168px, 0.75fr) minmax(270px, 1.35fr) minmax(260px, 1fr);

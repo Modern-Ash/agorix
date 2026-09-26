@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@agorix/block-editor": "workspace:*",
+    "@agorix/curriculum": "workspace:*",
     "@agorix/persistence": "workspace:*",
     "@agorix/program-model": "workspace:*",
     "@agorix/runtime": "workspace:*",

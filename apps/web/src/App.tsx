@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ProjectMetadata } from "@agorix/persistence";
 import { POC_TOOLBOX, type BlockNode } from "@agorix/block-editor";
+import { FIRST_MISSION, createMissionRunFeedback } from "@agorix/curriculum";
 import {
   createDeterministicTutorResponse,
   createTutorRequest,
@@ -12,6 +13,7 @@ import {
   framesFromRuntimeObservations,
   resetStageSession,
   type ObservationFrame,
+  type StageState,
 } from "@agorix/stage";
 import {
   addBlockToWorkspace,
@@ -35,7 +37,7 @@ import {
 } from "./projectStorage.js";
 import "./App.css";
 
-type RunStatus = "idle" | "running" | "stopped" | "complete" | "error";
+type RunStatus = "idle" | "running" | "stopped" | "complete" | "retry" | "error";
 
 const addableBlocks = new Set<AddableBlockType>([
   "motion_move",
@@ -138,11 +140,17 @@ function CodePanel({
   );
 }
 
-function StageView({ frame }: { frame: ObservationFrame | undefined }) {
-  const state = frame?.state;
-  const sprite = state?.sprite ?? { x: 52, y: 128, heading: 0, radius: 12 };
-  const goal = state?.goal ?? { x: 212, y: 128, radius: 14 };
-  const viewport = state?.viewport ?? { width: 264, height: 192 };
+function StageView({
+  frame,
+  fallback,
+}: {
+  frame: ObservationFrame | undefined;
+  fallback: StageState;
+}) {
+  const state = frame?.state ?? fallback;
+  const sprite = state.sprite;
+  const goal = state.goal;
+  const viewport = state.viewport;
   return (
     <section className="stage-panel" aria-labelledby="stage-title">
       <div className="panel-heading">
@@ -195,6 +203,7 @@ export function App() {
   const [hintHistory, setHintHistory] = useState<readonly TutorHintHistoryEntry[]>([]);
   const [tutorResponse, setTutorResponse] = useState<TutorResponse | undefined>();
   const [lastRunResult, setLastRunResult] = useState<RunResult | undefined>();
+  const [reflectionPrompt, setReflectionPrompt] = useState<string | undefined>();
   const timerRef = useRef<number | undefined>();
 
   const statements = model.workspace.scripts[0]?.statements ?? [];
@@ -236,6 +245,7 @@ export function App() {
     setFrameIndex(0);
     setTutorResponse(undefined);
     setLastRunResult(undefined);
+    setReflectionPrompt(undefined);
     setStatus("idle");
   }
 
@@ -289,6 +299,7 @@ export function App() {
     setHintHistory([]);
     setTutorResponse(undefined);
     setLastRunResult(undefined);
+    setReflectionPrompt(undefined);
     setStatus("idle");
     setMessage("Reset");
   }
@@ -322,13 +333,10 @@ export function App() {
           if (next >= nextFrames.length) {
             window.clearInterval(timerRef.current);
             timerRef.current = undefined;
-            setStatus("complete");
-            setMessage(
-              result.world.sprite.x === result.world.goal.x &&
-                result.world.sprite.y === result.world.goal.y
-                ? "You did it! Your sprite reached the goal."
-                : "Not there yet. Your sprite stopped before reaching the goal — try adjusting how far it moves or turns.",
-            );
+            const feedback = createMissionRunFeedback({ mission: FIRST_MISSION, result });
+            setStatus(feedback.completed ? "complete" : "retry");
+            setMessage(feedback.message);
+            setReflectionPrompt(feedback.reflectionPrompt);
             setHighlightedNodeId(undefined);
             return Math.max(nextFrames.length - 1, 0);
           }
@@ -354,9 +362,9 @@ export function App() {
       const response = createDeterministicTutorResponse(
         createTutorRequest({
           mission: {
-            id: "first-mission.reach-goal",
-            version: 1,
-            concepts: ["sequence", "events"],
+            id: FIRST_MISSION.id,
+            version: FIRST_MISSION.version,
+            concepts: FIRST_MISSION.concepts,
           },
           program: model.program,
           runtime: {
@@ -409,13 +417,16 @@ export function App() {
 
       <section className="mission-strip" aria-live="polite">
         <div>
-          <h2>Mission: Get your sprite to the goal.</h2>
-          <p>Use blocks to move it there.</p>
+          <h2>Mission: {FIRST_MISSION.goal.title}.</h2>
+          <p>{FIRST_MISSION.goal.learnerFacing}</p>
         </div>
         <div className="state-stack">
           <strong className={`run-state run-state-${status}`}>{message}</strong>
           {persistenceMessage === undefined ? null : (
             <strong className="run-state run-state-error">{persistenceMessage}</strong>
+          )}
+          {reflectionPrompt === undefined ? null : (
+            <strong className="reflection-prompt">Reflection: {reflectionPrompt}</strong>
           )}
         </div>
       </section>
@@ -509,7 +520,7 @@ export function App() {
           </div>
         </section>
 
-        <StageView frame={activeFrame} />
+        <StageView frame={activeFrame} fallback={model.stage.current} />
 
         <section className="code-panel" aria-labelledby="code-title">
           <div className="panel-heading">

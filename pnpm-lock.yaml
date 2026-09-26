@@ -44,6 +44,9 @@ importers:
       '@agorix/block-editor':
         specifier: workspace:*
         version: link:../../packages/block-editor
+      '@agorix/curriculum':
+        specifier: workspace:*
+        version: link:../../packages/curriculum
       '@agorix/persistence':
         specifier: workspace:*
         version: link:../../packages/persistence

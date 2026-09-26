@@ -92,7 +92,13 @@ const RUNTIME_KEYS = new Set(["outcome", "stepsUsed", "finalWorld", "observation
 const RUNTIME_ERROR_KEYS = new Set(["code", "nodeId", "message"]);
 const HISTORY_KEYS = new Set(["level", "concept", "nodeId"]);
 const READING_KEYS = new Set(["locale", "readingLevel"]);
-const CONCEPTS = new Set<MissionConcept>(["sequence", "events", "repetition", "conditions"]);
+const CONCEPTS = new Set<MissionConcept>([
+  "sequence",
+  "events",
+  "movement",
+  "repetition",
+  "conditions",
+]);
 const OUTCOMES = new Set<RunOutcome>(["completed", "budget-exceeded", "stopped"]);
 
 export function validateTutorRequest(request: TutorRequest): TutorRequest {
