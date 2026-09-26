@@ -58,28 +58,25 @@ A successful Agorix session combines programming, experimentation and critical u
 
 ```mermaid
 flowchart TD
-    A["💡 I want to build something"] --> B["🗣️ Express intent"]
-    B --> C["🤖 AI asks, explains or proposes"]
-    C --> D["👀 Learner inspects the proposal"]
-    D --> E{"Learner decision"}
-    E -->|Accept| F["🧩 Canonical Program"]
+    A[Idea] --> B[Express intent]
+    B --> C[AI asks, explains or proposes]
+    C --> D[Learner inspects proposal]
+    D --> E{Learner decision}
+    E -->|Accept| F[Canonical Program]
     E -->|Modify| F
     E -->|Reject| B
-
-    F --> G["🧱 Blocks + 💻 Code"]
-    G --> H["🔮 Predict behavior"]
-    H --> I["▶️ Run / Step"]
-    I --> J["📊 Observable execution"]
-
-    J --> K{"Expected result?"}
-    K -->|Yes| L["🧠 Explain why it works"]
-    K -->|No| M["🔍 Investigate evidence"]
-    M --> N["🤖 AI helps reason from runtime facts"]
-    N --> O["✏️ Learner changes the program"]
+    F --> G[Blocks and Code]
+    G --> H[Predict behavior]
+    H --> I[Run or Step]
+    I --> J[Observable execution]
+    J --> K{Expected result}
+    K -->|Yes| L[Explain why it works]
+    K -->|No| M[Investigate evidence]
+    M --> N[AI reasons from runtime facts]
+    N --> O[Learner changes program]
     O --> F
-
-    L --> P["💬 Reflect"]
-    P --> Q["🚀 Create more independently"]
+    L --> P[Reflect]
+    P --> Q[Create more independently]
 ```
 
 The AI is part of the learning process.
@@ -98,14 +95,14 @@ Every AI-originated program change follows a visible path:
 
 ```mermaid
 flowchart LR
-    A["🤖 AI proposal"] --> B["✅ Validate"]
-    B --> C["👀 Preview"]
-    C --> D["📝 Explanation + Diff"]
-    D --> E{"Child decides"}
-    E -->|Accept| F["Canonical Program"]
-    E -->|Modify| G["Learner edits proposal"]
+    A[AI proposal] --> B[Validate]
+    B --> C[Preview]
+    C --> D[Explanation and Diff]
+    D --> E{Child decides}
+    E -->|Accept| F[Canonical Program]
+    E -->|Modify| G[Learner edits proposal]
     G --> F
-    E -->|Reject| H["Program unchanged"]
+    E -->|Reject| H[Program unchanged]
 ```
 
 The learner should always be able to answer:
@@ -125,13 +122,13 @@ An LLM does not decide whether a program works.
 
 ```mermaid
 flowchart TD
-    A["AI suggestion"] --> B["Learner-approved program"]
-    B --> C["Canonical validator"]
-    C --> D["Deterministic runtime"]
-    D --> E["Runtime observations"]
-    E --> F["Visible behavior"]
-    E --> G["Mission evaluation"]
-    E --> H["AI debugging context"]
+    A[AI suggestion] --> B[Learner approved program]
+    B --> C[Canonical validator]
+    C --> D[Deterministic runtime]
+    D --> E[Runtime observations]
+    E --> F[Visible behavior]
+    E --> G[Mission evaluation]
+    E --> H[AI debugging context]
 ```
 
 The model can help interpret evidence.
@@ -164,10 +161,10 @@ The learner should be able to see:
 
 ```mermaid
 flowchart LR
-    A["Instruction"] --> B["Execution"]
-    B --> C["State change"]
-    C --> D["Visible behavior"]
-    D --> E["Explanation"]
+    A[Instruction] --> B[Execution]
+    B --> C[State change]
+    C --> D[Visible behavior]
+    D --> E[Explanation]
 ```
 
 That applies to both human-created and AI-proposed code.
@@ -182,15 +179,12 @@ Visual programming and textual programming are synchronized views over **one can
 
 ```mermaid
 flowchart TB
-    CP["Canonical Program"]
-
-    CP --> B["🧱 Blocks"]
-    CP --> A["🌱 Agorix Code"]
-    CP --> P["🐍 Python"]
-    CP --> T["TS TypeScript"]
-    CP --> L["🔌 Future language packs"]
-
-    B -. "same node ids" .-> CP
+    CP[Canonical Program]
+    CP --> B[Blocks]
+    CP --> A[Agorix Code]
+    CP --> P[Python]
+    CP --> T[TypeScript]
+    CP --> L[Future language packs]
 ```
 
 Blocks do not own one program while Python owns another.
@@ -245,10 +239,10 @@ Agorix is built around a simple idea:
 
 ```mermaid
 flowchart LR
-    B["🧱 Blocks"] --> A["🌱 Agorix Code"]
-    A --> P["🐍 Python"]
-    P --> T["TS TypeScript / JavaScript"]
-    T --> X["🔌 Lua / future language packs"]
+    B[Blocks] --> A[Agorix Code]
+    A --> P[Python]
+    P --> T[TypeScript or JavaScript]
+    T --> X[Lua and future language packs]
 ```
 
 ## Agorix Code
@@ -318,19 +312,12 @@ Visible result
 ```
 
 ```mermaid
-sequenceDiagram
-    participant Child
-    participant Code
-    participant Runtime
-    participant Stage
-
-    Child->>Code: Step
-    Code->>Code: Highlight "move 10"
-    Code->>Runtime: Execute canonical node
-    Runtime->>Runtime: x: 20 → 30
-    Runtime->>Stage: Apply movement
-    Stage-->>Child: Character moves
-    Runtime-->>Child: Show execution evidence
+flowchart LR
+    A[Step] --> B[Highlight current instruction]
+    B --> C[Execute canonical node]
+    C --> D[Update runtime state]
+    D --> E[Render stage change]
+    E --> F[Show execution evidence]
 ```
 
 AI debugging must reason from these runtime observations instead of inventing execution facts.
@@ -361,11 +348,11 @@ AI help should increase gradually.
 
 ```mermaid
 flowchart TD
-    L1["1 · Diagnostic question"] --> L2["2 · Concept reminder"]
-    L2 --> L3["3 · Point to relevant area"]
-    L3 --> L4["4 · Structural hint"]
-    L4 --> L5["5 · Partial example"]
-    L5 --> L6["6 · Complete explanation when justified"]
+    L1[1 Diagnostic question] --> L2[2 Concept reminder]
+    L2 --> L3[3 Point to relevant area]
+    L3 --> L4[4 Structural hint]
+    L4 --> L5[5 Partial example]
+    L5 --> L6[6 Complete explanation when justified]
 ```
 
 The provider is not allowed to jump directly to a complete solution when pedagogical policy forbids it.
@@ -403,26 +390,14 @@ Agorix is evolving beyond the narrow concept of an “AI Tutor”.
 The provider-neutral **Learning Companion** supports several pedagogical roles.
 
 ```mermaid
-mindmap
-  root((Learning Companion))
-    Coach
-      asks questions
-      scaffolds thinking
-    Builder
-      proposes bounded changes
-      never auto-applies
-    Debugger
-      reads runtime evidence
-      suggests where to investigate
-    Explainer
-      explains code
-      explains concepts
-    Challenger
-      asks for predictions
-      compares alternatives
-    Reflector
-      asks why it works
-      reinforces understanding
+flowchart TB
+    LC[Learning Companion]
+    LC --> C[Coach: questions and scaffolding]
+    LC --> B[Builder: bounded proposals]
+    LC --> D[Debugger: runtime evidence]
+    LC --> E[Explainer: code and concepts]
+    LC --> CH[Challenger: predictions and alternatives]
+    LC --> R[Reflector: explain what was learned]
 ```
 
 These are capabilities.
@@ -449,11 +424,11 @@ Agorix should teach children that:
 
 ```mermaid
 flowchart LR
-    A["🤖 Proposal"] --> B["🔮 Prediction"]
-    B --> C["🧪 Experiment"]
-    C --> D["📊 Evidence"]
-    D --> E["🧠 Conclusion"]
-    E --> F["💬 Explanation"]
+    A[Proposal] --> B[Prediction]
+    B --> C[Experiment]
+    C --> D[Evidence]
+    D --> E[Conclusion]
+    E --> F[Explanation]
 ```
 
 An advanced activity may deliberately compare two AI proposals and ask the learner to predict and test them.
@@ -507,17 +482,14 @@ Agorix should not depend on a single AI vendor.
 
 ```mermaid
 flowchart TD
-    LC["Learning Companion"] --> PC["Provider-neutral contract"]
-
-    PC --> FAKE["Deterministic fake<br/>CI / tests"]
-    PC --> OLLAMA["Ollama<br/>local/open models"]
-    PC --> GW["Compatible gateway<br/>llama.cpp / vLLM / others"]
-    PC --> COMM["Optional commercial<br/>provider adapters"]
-
-    OLLAMA --> CAP["Capability negotiation"]
+    LC[Learning Companion] --> PC[Provider neutral contract]
+    PC --> FAKE[Deterministic fake for CI]
+    PC --> OLLAMA[Ollama local models]
+    PC --> GW[Compatible local gateways]
+    PC --> COMM[Optional commercial adapters]
+    OLLAMA --> CAP[Capability negotiation]
     GW --> CAP
     COMM --> CAP
-
     CAP --> LC
 ```
 
@@ -545,33 +517,26 @@ The existing architecture already provides much of the foundation required for t
 
 ```mermaid
 flowchart TB
-    CHILD["👧 Learner"]
-
-    CHILD --> EDITOR["Visual editor"]
-    CHILD --> LC["AI Learning Companion"]
-
-    EDITOR --> CP["Canonical Program"]
-
-    LC --> PP["ProgramProposal"]
-    PP --> VALIDATE["Proposal validation"]
-    VALIDATE --> REVIEW["Preview / Diff / Learner decision"]
-    REVIEW -->|accepted| CP
-
-    CP --> BLOCKS["Blockly adapter"]
-    CP --> LP["LanguageProjection"]
-    CP --> V["Canonical validator"]
-
-    LP --> AC["Agorix Code"]
-    LP --> PY["Python"]
-    LP --> TS["TypeScript"]
-    LP --> MORE["Language packs"]
-
-    V --> RT["Deterministic runtime"]
-    RT --> OBS["Runtime observations"]
-    OBS --> STAGE["Stage / UI"]
-    OBS --> TRACE["Execution trace"]
-    OBS --> DEBUG["Evidence-grounded AI debugging"]
-
+    CHILD[Learner]
+    CHILD --> EDITOR[Visual editor]
+    CHILD --> LC[AI Learning Companion]
+    EDITOR --> CP[Canonical Program]
+    LC --> PP[ProgramProposal]
+    PP --> VALIDATE[Proposal validation]
+    VALIDATE --> REVIEW[Preview Diff and learner decision]
+    REVIEW -->|Accepted| CP
+    CP --> BLOCKS[Blockly adapter]
+    CP --> LP[LanguageProjection]
+    CP --> V[Canonical validator]
+    LP --> AC[Agorix Code]
+    LP --> PY[Python]
+    LP --> TS[TypeScript]
+    LP --> MORE[Language packs]
+    V --> RT[Deterministic runtime]
+    RT --> OBS[Runtime observations]
+    OBS --> STAGE[Stage and UI]
+    OBS --> TRACE[Execution trace]
+    OBS --> DEBUG[Evidence grounded AI debugging]
     DEBUG --> LC
 ```
 
@@ -622,15 +587,10 @@ Agorix is TypeScript-first.
 
 ```mermaid
 flowchart LR
-    CORE["Shared Agorix Core"]
-
-    CORE --> WEB["Web / PWA<br/>reference surface"]
-    CORE --> MOBILE["Android / iOS<br/>Capacitor"]
-    CORE --> VSC["VS Code<br/>extension"]
-
-    WEB -. first priority .-> CORE
-    MOBILE -. deferred until core stable .-> CORE
-    VSC -. deferred until core stable .-> CORE
+    CORE[Shared Agorix Core]
+    CORE --> WEB[Web and PWA]
+    CORE --> MOBILE[Android and iOS]
+    CORE --> VSC[VS Code extension]
 ```
 
 Current priority is the **AI-native browser learning loop**.
@@ -645,14 +605,12 @@ The AI-native re-foundation is organized into six primary epics.
 
 ```mermaid
 flowchart TD
-    E63["#63<br/>Product + Pedagogy"] --> E64["#64<br/>Transparent Programming"]
-    E63 --> E65["#65<br/>Multi-language"]
-    E63 --> E66["#66<br/>Learning Companion"]
-
-    E66 --> E67["#67<br/>Multi-LLM / Open-source-first"]
-    E66 --> E68["#68<br/>AI Literacy + Safety"]
-
-    E64 --> PROOF["AI-native product proof"]
+    E63[63 Product and Pedagogy] --> E64[64 Transparent Programming]
+    E63 --> E65[65 Multi language]
+    E63 --> E66[66 Learning Companion]
+    E66 --> E67[67 Multi LLM and Open Source]
+    E66 --> E68[68 AI Literacy and Safety]
+    E64 --> PROOF[AI native product proof]
     E65 --> PROOF
     E67 --> PROOF
     E68 --> PROOF
@@ -685,17 +643,16 @@ GitHub issues are the executable work queue.
 
 ```mermaid
 flowchart LR
-    ISSUE["GitHub Issue"] --> SPEC["Spec / Artifact"]
-    SPEC --> IMPL["Implementation"]
-    IMPL --> TEST["Deterministic tests"]
-    TEST --> EVID["Evidence / CI"]
-    EVID --> REVIEW["Independent review"]
-    REVIEW --> PR["PR / Merge"]
-
-    AGORA["Agora Flow"] -. governs .-> ISSUE
-    AGORA -. tracks .-> SPEC
-    AGORA -. tracks .-> EVID
-    AGORA -. gates .-> REVIEW
+    ISSUE[GitHub Issue] --> SPEC[Spec or Artifact]
+    SPEC --> IMPL[Implementation]
+    IMPL --> TEST[Deterministic tests]
+    TEST --> EVID[Evidence and CI]
+    EVID --> REVIEW[Independent review]
+    REVIEW --> PR[PR and Merge]
+    AGORA[Agora Flow] --> ISSUE
+    AGORA --> SPEC
+    AGORA --> EVID
+    AGORA --> REVIEW
 ```
 
 Different agents can execute bounded work under the same contracts.
@@ -857,13 +814,13 @@ See [#73](https://github.com/Modern-Ash/agorix/issues/73).
 
 ```mermaid
 flowchart LR
-    IDEA["💡 Idea"] --> TALK["🗣️ Child + AI"]
-    TALK --> PROPOSE["🤖 Visible proposal"]
-    PROPOSE --> DECIDE["👧 Child decides"]
-    DECIDE --> CODE["🧱 Blocks + 💻 Code"]
-    CODE --> RUN["▶️ Run / Step"]
-    RUN --> EVID["📊 Evidence"]
-    EVID --> THINK["🧠 Explain / Debug"]
+    IDEA[Idea] --> TALK[Child and AI]
+    TALK --> PROPOSE[Visible proposal]
+    PROPOSE --> DECIDE[Child decides]
+    DECIDE --> CODE[Blocks and Code]
+    CODE --> RUN[Run or Step]
+    RUN --> EVID[Evidence]
+    EVID --> THINK[Explain or Debug]
     THINK --> CODE
 ```
 
