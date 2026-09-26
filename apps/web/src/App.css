@@ -1,0 +1,376 @@
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  color: #18201c;
+  background: #f4f1ea;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background:
+    linear-gradient(90deg, rgba(25, 31, 28, 0.05) 1px, transparent 1px) 0 0 / 24px 24px,
+    linear-gradient(0deg, rgba(25, 31, 28, 0.04) 1px, transparent 1px) 0 0 / 24px 24px,
+    #f4f1ea;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  min-height: 44px;
+  border: 2px solid #18201c;
+  background: #fffdf7;
+  color: #18201c;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 #18201c;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  box-shadow: none;
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 4px solid #2f6fed;
+  outline-offset: 3px;
+}
+
+.editor-shell {
+  min-height: 100vh;
+  padding: 18px;
+}
+
+.topbar,
+.mission-strip,
+.toolbox,
+.program-panel,
+.stage-panel,
+.code-panel,
+.tutor-panel {
+  border: 2px solid #18201c;
+  background: #fffdf7;
+  box-shadow: 5px 5px 0 #18201c;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 14px 16px;
+}
+
+.eyebrow {
+  margin: 0 0 4px;
+  color: #516158;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 0;
+  font-size: clamp(1.55rem, 4vw, 2.55rem);
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+h2 {
+  margin-bottom: 8px;
+  font-size: 1rem;
+  letter-spacing: 0;
+}
+
+h3 {
+  margin: 16px 0 8px;
+  font-size: 0.78rem;
+  color: #516158;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.run-controls,
+.block-actions,
+.toolbox-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.run-controls button {
+  padding: 0 16px;
+  font-weight: 800;
+}
+
+.mission-strip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  margin: 16px 0;
+  padding: 14px 16px;
+}
+
+.mission-strip p {
+  margin-bottom: 0;
+}
+
+.run-state {
+  max-width: 520px;
+  padding: 8px 10px;
+  border: 2px solid #18201c;
+  background: #e7f0ff;
+}
+
+.run-state-error {
+  background: #ffe5da;
+}
+
+.run-state-complete {
+  background: #ddf4d7;
+}
+
+.workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(168px, 0.75fr) minmax(270px, 1.35fr) minmax(260px, 1fr);
+  grid-template-areas:
+    "toolbox workspace stage"
+    "toolbox code tutor";
+  gap: 16px;
+  align-items: stretch;
+}
+
+.toolbox {
+  grid-area: toolbox;
+  padding: 14px;
+}
+
+.toolbox-list {
+  flex-direction: column;
+}
+
+.toolbox button {
+  width: 100%;
+  padding: 8px 10px;
+  text-align: left;
+  font-weight: 800;
+}
+
+.program-panel {
+  grid-area: workspace;
+  min-height: 360px;
+  padding: 14px;
+}
+
+.panel-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.panel-heading span,
+.status-pill,
+.highlight-readout,
+.block-note {
+  color: #516158;
+  font-size: 0.85rem;
+}
+
+.block-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.empty-state {
+  min-height: 112px;
+  display: grid;
+  place-items: center;
+  border: 2px dashed #8b978f;
+  color: #516158;
+}
+
+.block-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 2px solid #18201c;
+  background: #f7d56f;
+}
+
+.block-card.active {
+  background: #7fded1;
+}
+
+.block-title {
+  min-height: 44px;
+  box-shadow: none;
+  background: #18201c;
+  color: #fffdf7;
+  text-align: left;
+  font-weight: 900;
+}
+
+.block-card label {
+  display: grid;
+  grid-template-columns: minmax(70px, auto) minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.block-card input {
+  min-height: 44px;
+  width: 100%;
+  border: 2px solid #18201c;
+  padding: 8px;
+  background: #fffdf7;
+}
+
+.block-actions button {
+  flex: 1 1 76px;
+  box-shadow: none;
+  min-height: 40px;
+}
+
+.stage-panel {
+  grid-area: stage;
+  padding: 14px;
+}
+
+.stage-canvas {
+  display: block;
+  width: 100%;
+  aspect-ratio: 11 / 8;
+}
+
+.stage-canvas rect {
+  fill: #dcecff;
+}
+
+.stage-canvas line {
+  stroke: #89a2b8;
+  stroke-width: 2;
+  stroke-dasharray: 5 5;
+}
+
+.stage-canvas .goal {
+  fill: #ff6b4a;
+  stroke: #18201c;
+  stroke-width: 3;
+}
+
+.stage-canvas .sprite {
+  fill: #2f6fed;
+  stroke: #18201c;
+  stroke-width: 3;
+}
+
+.stage-canvas path {
+  fill: #18201c;
+}
+
+.code-panel {
+  grid-area: code;
+  min-height: 280px;
+  padding: 14px;
+}
+
+.code-surface {
+  min-height: 220px;
+  max-height: 46vh;
+  overflow: auto;
+  margin: 0;
+  padding: 12px;
+  border: 2px solid #18201c;
+  background: #18201c;
+  color: #f8f4e8;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.code-surface mark {
+  background: #7fded1;
+  color: #18201c;
+}
+
+.highlight-readout {
+  margin: 10px 0 0;
+}
+
+.tutor-panel {
+  grid-area: tutor;
+  padding: 14px;
+}
+
+.tutor-panel p {
+  margin-bottom: 0;
+  line-height: 1.45;
+}
+
+@media (max-width: 980px) {
+  .workspace-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      "stage stage"
+      "toolbox workspace"
+      "code code"
+      "tutor tutor";
+  }
+}
+
+@media (max-width: 720px) {
+  .editor-shell {
+    padding: 10px;
+  }
+
+  .topbar,
+  .mission-strip {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .workspace-grid {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "stage"
+      "toolbox"
+      "workspace"
+      "code"
+      "tutor";
+  }
+
+  .run-controls {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .code-surface {
+    min-height: 240px;
+  }
+}

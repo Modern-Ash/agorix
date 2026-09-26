@@ -41,9 +41,18 @@ importers:
 
   apps/web:
     dependencies:
+      '@agorix/block-editor':
+        specifier: workspace:*
+        version: link:../../packages/block-editor
       '@agorix/program-model':
         specifier: workspace:*
         version: link:../../packages/program-model
+      '@agorix/runtime':
+        specifier: workspace:*
+        version: link:../../packages/runtime
+      '@agorix/stage':
+        specifier: workspace:*
+        version: link:../../packages/stage
       react:
         specifier: ^18.3.1
         version: 18.3.1
