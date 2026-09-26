@@ -5,7 +5,7 @@ version: 1
 id: "PLN-008"
 work: "issue-8"
 revision: 1
-traces-to: ["INT-008", "UOW-008"]
+traces-to: ["INT-008","UOW-008"]
 level: 1
 parent-plan: null
 intent: "INT-008"
@@ -14,51 +14,8 @@ proposed-by: "project:ai-primary"
 approval-state: "approved"
 approved-by: "project:product-owner"
 approved-revision: 1
-steps:
-  - id: "clarify-intent"
-    decision: "execute"
-    rationale: "Confirm material decisions D1-D8; they are Product-Owner-owned judgement calls, not AI facts."
-    dependencies: []
-    required-artifacts: ["intent"]
-    produced-artifacts: []
-  - id: "elaborate-stories"
-    decision: "execute"
-    rationale: "Validate the draft LEARNER_JOURNEY.md against PRODUCT_INTENT, MVP, PEDAGOGY, AGENTS and the dual-surface invariant."
-    dependencies: ["clarify-intent"]
-    required-artifacts: ["intent"]
-    produced-artifacts: ["docs/product/LEARNER_JOURNEY.md"]
-  - id: "assess-risks"
-    decision: "execute"
-    rationale: "Record risks, constraints and dependencies from the bounded product/architecture context."
-    dependencies: ["clarify-intent"]
-    required-artifacts: []
-    produced-artifacts: []
-  - id: "decompose-units"
-    decision: "execute"
-    rationale: "Split the intent into cohesive documentation slices as unit-of-work criteria."
-    dependencies: ["clarify-intent", "elaborate-stories"]
-    required-artifacts: ["intent"]
-    produced-artifacts: ["unit-of-work"]
-  - id: "measurement-criteria"
-    decision: "execute"
-    rationale: "Trace issue #8 acceptance criteria to concrete document sections so implementation needs no guessing."
-    dependencies: ["elaborate-stories"]
-    required-artifacts: []
-    produced-artifacts: ["docs/product/LEARNER_JOURNEY.md"]
-  - id: "implementation"
-    decision: "execute"
-    rationale: "Tighten the document per the confirmed decisions. The deliverable stays documentation only; no product code."
-    dependencies:
-      [
-        "clarify-intent",
-        "elaborate-stories",
-        "assess-risks",
-        "decompose-units",
-        "measurement-criteria",
-      ]
-    required-artifacts: ["unit-of-work"]
-    produced-artifacts: ["docs/product/LEARNER_JOURNEY.md"]
-required-sections: ["Scope", "Level and parent", "Steps", "Approval"]
+steps: [{"id":"clarify-intent","decision":"execute","rationale":"Confirm material decisions D1-D8; they are Product-Owner-owned judgement calls, not AI facts.","dependencies":[],"required-artifacts":["intent"],"produced-artifacts":[]},{"id":"elaborate-stories","decision":"execute","rationale":"Validate the draft LEARNER_JOURNEY.md against PRODUCT_INTENT, MVP, PEDAGOGY, AGENTS and the dual-surface invariant.","dependencies":["clarify-intent"],"required-artifacts":["intent"],"produced-artifacts":["docs/product/LEARNER_JOURNEY.md"]},{"id":"assess-risks","decision":"execute","rationale":"Record risks, constraints and dependencies from the bounded product/architecture context.","dependencies":["clarify-intent"],"required-artifacts":[],"produced-artifacts":[]},{"id":"decompose-units","decision":"execute","rationale":"Split the intent into cohesive documentation slices as unit-of-work criteria.","dependencies":["clarify-intent","elaborate-stories"],"required-artifacts":["intent"],"produced-artifacts":["unit-of-work"]},{"id":"measurement-criteria","decision":"execute","rationale":"Trace issue #8 acceptance criteria to concrete document sections so implementation needs no guessing.","dependencies":["elaborate-stories"],"required-artifacts":[],"produced-artifacts":["docs/product/LEARNER_JOURNEY.md"]},{"id":"implementation","decision":"execute","rationale":"Tighten the document per the confirmed decisions. The deliverable stays documentation only; no product code.","dependencies":["clarify-intent","elaborate-stories","assess-risks","decompose-units","measurement-criteria"],"required-artifacts":["unit-of-work"],"produced-artifacts":["docs/product/LEARNER_JOURNEY.md"]}]
+required-sections: ["Scope","Level and parent","Steps","Approval"]
 ---
 
 # Plan
