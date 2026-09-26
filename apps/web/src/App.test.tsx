@@ -30,6 +30,8 @@ describe("main editor shell", () => {
     expect(html).toContain("Stage");
     expect(html).toContain("Code");
     expect(html).toContain("Tutor suggestion");
+    expect(html).toContain("Get hint");
+    expect(html).toContain("Hints used: 0");
     expect(html).toContain("Run");
     expect(html).toContain("Stop");
     expect(html).toContain("Reset");

@@ -339,6 +339,30 @@ h3 {
   line-height: 1.45;
 }
 
+.tutor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: 14px;
+}
+
+.tutor-actions button {
+  padding: 0 14px;
+  font-weight: 800;
+}
+
+.hint-meter,
+.hint-history {
+  color: #516158;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.hint-history {
+  margin-top: 10px;
+}
+
 @media (max-width: 980px) {
   .workspace-grid {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
