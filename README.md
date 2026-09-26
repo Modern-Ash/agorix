@@ -1,6 +1,6 @@
 # Agorix
 
-> **Open-source, AI-native creative coding for children.**
+> **Open-source, AI-native creative coding for children**
 >
 > **AI proposes. Child decides. Runtime proves. Child explains.**
 >
@@ -8,192 +8,198 @@
 
 Agorix is a programming learning environment for children designed for the era of AI.
 
-It is not intended to be “Scratch plus a chatbot”, and it is not a code generator that hides implementation behind an assistant. Agorix teaches children to **think, build, inspect, test, debug and explain programs while collaborating with AI**.
+It is **not** “Scratch plus a chatbot”, and it is not a code generator that hides implementation behind an assistant.
 
-The learner remains the author.
+Agorix teaches children to **think, build, inspect, test, debug and explain programs while collaborating with AI**.
 
-AI may ask, explain, challenge, propose or help diagnose. It must not silently own the solution.
-
-The program remains visible. The learner decides what enters it. A deterministic runtime executes it. Observable evidence shows what actually happened.
-
----
-
-## Why Agorix
-
-Programming education is changing.
-
-A child learning today should still understand sequence, events, loops, conditions, state, functions and debugging. But they should also learn how to work critically with AI:
-
-- how to express intent;
-- how to decompose a problem;
-- how to inspect an AI proposal;
-- how to decide whether to accept, modify or reject it;
-- how to test what AI suggested;
-- how to distinguish a confident answer from actual evidence;
-- how to compare alternative solutions;
-- how to explain why a program works.
-
-Agorix treats these as **programming skills**, not as a separate “prompt engineering” course.
-
-The product goal is not to help a child finish code as quickly as possible.
-
-The goal is to help the child understand what is being built and progressively become more autonomous.
+| Principle | What it means |
+| --- | --- |
+| 🧠 **Pedagogy first** | AI exists to improve learning, not merely to finish code faster. |
+| 👧 **Child authorship** | AI can propose; the learner decides what becomes part of the program. |
+| 👀 **Code always visible** | Blocks and textual code are synchronized views of the same program. |
+| ▶️ **Runtime proves** | Program behavior is established by deterministic execution, not by LLM confidence. |
+| 🔎 **Nothing hidden** | Proposals, changes, execution and state transitions must be inspectable. |
+| 🌍 **Multi-language** | One canonical program can be projected as Agorix Code, Python, TypeScript and future language packs. |
+| 🧩 **Multi-LLM** | Providers and models are replaceable adapters, not product authority. |
+| 🏠 **Open-source-first** | Local/open models and self-hosting are preferred where practical. |
 
 ---
 
-## North star
+## Why Agorix?
 
-A successful Agorix learning experience looks like this:
+Children learning programming today still need to understand sequence, events, loops, conditions, state, functions and debugging.
 
-```text
-             CHILD
-               |
-               v
-      What do I want to build?
-               |
-               v
-        Express intention
-               |
-               v
-          Child <-> AI
-               |
-       ask / plan / propose
-               |
-               v
-      inspect and decide
-               |
-               v
-        Blocks <-> Code
-               |
-        predict behavior
-               |
-               v
-             Run
-               |
-               v
-      observable execution
-               |
-        +------+------+
-        |             |
-      works         differs
-        |             |
-        v             v
-     explain      investigate
-        |         child + AI
-        +------+------+
-               |
-               v
-            improve
-               |
-               v
-            reflect
+But they also need new skills:
+
+- expressing intent clearly;
+- decomposing a problem;
+- inspecting an AI proposal;
+- deciding whether to accept, modify or reject it;
+- testing what AI suggested;
+- distinguishing a confident answer from actual evidence;
+- comparing alternative solutions;
+- explaining why a program works.
+
+Agorix treats these as **programming skills**, not as a separate “prompt engineering” subject.
+
+The objective is not:
+
+> “Get the program finished as quickly as possible.”
+
+The objective is:
+
+> **Understand what is being built and progressively become more autonomous.**
+
+---
+
+# Learning loop
+
+A successful Agorix session combines programming, experimentation and critical use of AI.
+
+```mermaid
+flowchart TD
+    A["💡 I want to build something"] --> B["🗣️ Express intent"]
+    B --> C["🤖 AI asks, explains or proposes"]
+    C --> D["👀 Learner inspects the proposal"]
+    D --> E{"Learner decision"}
+    E -->|Accept| F["🧩 Canonical Program"]
+    E -->|Modify| F
+    E -->|Reject| B
+
+    F --> G["🧱 Blocks + 💻 Code"]
+    G --> H["🔮 Predict behavior"]
+    H --> I["▶️ Run / Step"]
+    I --> J["📊 Observable execution"]
+
+    J --> K{"Expected result?"}
+    K -->|Yes| L["🧠 Explain why it works"]
+    K -->|No| M["🔍 Investigate evidence"]
+    M --> N["🤖 AI helps reason from runtime facts"]
+    N --> O["✏️ Learner changes the program"]
+    O --> F
+
+    L --> P["💬 Reflect"]
+    P --> Q["🚀 Create more independently"]
 ```
 
-The AI is part of the learning process, but not the authority.
+The AI is part of the learning process.
+
+It is **not the authority**.
 
 ---
 
-## Four rules that define Agorix
+# The four rules
 
-### 1. AI proposes. Child decides.
+## 1. AI proposes. Child decides.
 
-AI-generated changes are proposals.
+An AI response never automatically becomes the learner's program.
 
-A provider response must never silently mutate the learner's program.
+Every AI-originated program change follows a visible path:
 
-The expected path is:
-
-```text
-AI structured proposal
-        |
-        v
-    validation
-        |
-        v
- preview + explanation + diff
-        |
-   +----+-----+
-   |    |     |
-accept edit reject
-   |          |
-   v          v
-canonical   unchanged
- program     program
+```mermaid
+flowchart LR
+    A["🤖 AI proposal"] --> B["✅ Validate"]
+    B --> C["👀 Preview"]
+    C --> D["📝 Explanation + Diff"]
+    D --> E{"Child decides"}
+    E -->|Accept| F["Canonical Program"]
+    E -->|Modify| G["Learner edits proposal"]
+    G --> F
+    E -->|Reject| H["Program unchanged"]
 ```
 
-The learner should be able to answer:
+The learner should always be able to answer:
 
 - What is AI proposing?
 - What will change?
 - Why is it suggesting this?
 - Do I want to use it?
 
-### 2. Runtime proves.
+There is no hidden “AI fixed it for you” path.
 
-An LLM does not decide whether the program works.
+---
 
-Agorix executes the canonical program deterministically and produces observable runtime facts.
+## 2. Runtime proves.
 
-```text
-AI suggestion
-     |
-     v
-accepted canonical program
-     |
-     v
-validator
-     |
-     v
-deterministic runtime
-     |
-     v
-execution evidence
+An LLM does not decide whether a program works.
+
+```mermaid
+flowchart TD
+    A["AI suggestion"] --> B["Learner-approved program"]
+    B --> C["Canonical validator"]
+    C --> D["Deterministic runtime"]
+    D --> E["Runtime observations"]
+    E --> F["Visible behavior"]
+    E --> G["Mission evaluation"]
+    E --> H["AI debugging context"]
 ```
 
-The model can help interpret that evidence. It cannot replace it.
+The model can help interpret evidence.
 
-### 3. Child explains.
+It cannot replace evidence.
 
-Completion is not the only learning signal.
+---
 
-The learner should progressively be able to answer questions such as:
+## 3. Child explains.
+
+Finishing the mission is not enough.
+
+The learner should progressively be able to explain:
 
 - What made the character move?
 - Why did the loop repeat?
 - What happened when the condition was false?
-- What was wrong with the original AI proposal?
+- What was wrong with an AI proposal?
 - Why does the corrected version work?
 
-### 4. Nothing happens under the rug.
-
-There should be no “magic” programming path.
-
-The learner must be able to see what program exists, what changed, what instruction is executing and what happened because of that instruction.
+Agorix values **understanding over completion**.
 
 ---
 
-## Code is always visible
+## 4. Nothing happens under the rug.
+
+Programming must never look like magic.
+
+The learner should be able to see:
+
+```mermaid
+flowchart LR
+    A["Instruction"] --> B["Execution"]
+    B --> C["State change"]
+    C --> D["Visible behavior"]
+    D --> E["Explanation"]
+```
+
+That applies to both human-created and AI-proposed code.
+
+---
+
+# Code is always visible
 
 Agorix deliberately avoids treating textual code as a hidden “advanced mode”.
 
 Visual programming and textual programming are synchronized views over **one canonical program**.
 
-```text
-                 Canonical Program
-                        |
-       +----------------+----------------+
-       |                |                |
-       v                v                v
-     Blocks        Agorix Code         Python
-                                      TypeScript
-                                         Lua...
+```mermaid
+flowchart TB
+    CP["Canonical Program"]
+
+    CP --> B["🧱 Blocks"]
+    CP --> A["🌱 Agorix Code"]
+    CP --> P["🐍 Python"]
+    CP --> T["TS TypeScript"]
+    CP --> L["🔌 Future language packs"]
+
+    B -. "same node ids" .-> CP
 ```
 
-The learner is not expected to understand every syntax detail on day one.
+Blocks do not own one program while Python owns another.
 
-But the code should be visible from the beginning so that programming is never presented as an invisible mechanism behind colored blocks.
+There is only one semantic source of truth.
 
-A block such as:
+### Example
+
+The visual idea:
 
 ```text
 repeat 4
@@ -201,7 +207,7 @@ repeat 4
     turn 90
 ```
 
-can progressively be seen as Agorix Code:
+can be shown as **Agorix Code**:
 
 ```text
 al iniciar
@@ -210,7 +216,7 @@ al iniciar
         girar 90
 ```
 
-then Python:
+then as **Python**:
 
 ```python
 for _ in range(4):
@@ -218,7 +224,7 @@ for _ in range(4):
     turn(90)
 ```
 
-and TypeScript:
+and as **TypeScript**:
 
 ```typescript
 for (let i = 0; i < 4; i++) {
@@ -227,41 +233,29 @@ for (let i = 0; i < 4; i++) {
 }
 ```
 
-These are not separate programs.
-
-They are different representations of the same program.
+They are different representations of the **same program**.
 
 ---
 
-## Progressive multi-language learning
+# Progressive multi-language learning
 
-Agorix is designed around the idea that:
+Agorix is built around a simple idea:
 
-> **The programming concept is more fundamental than the language syntax used to express it.**
+> **The programming concept is more fundamental than the syntax used to express it.**
 
-The intended progression is:
-
-```text
-Blocks
-   |
-   v
-Agorix Code
-   |
-   v
-Python
-   |
-   v
-TypeScript / JavaScript
-   |
-   v
-additional language packs
+```mermaid
+flowchart LR
+    B["🧱 Blocks"] --> A["🌱 Agorix Code"]
+    A --> P["🐍 Python"]
+    P --> T["TS TypeScript / JavaScript"]
+    T --> X["🔌 Lua / future language packs"]
 ```
 
-### Agorix Code
+## Agorix Code
 
-Agorix Code is the planned child-friendly textual projection.
+**Agorix Code** is the planned child-friendly textual projection.
 
-Its purpose is to reduce early syntax load while preserving real programming structure:
+It should reduce early syntax load while preserving real programming structure:
 
 - sequence;
 - nesting;
@@ -270,338 +264,399 @@ Its purpose is to reduce early syntax load while preserving real programming str
 - state;
 - decomposition.
 
-It is inspired by gradual-programming approaches such as [Hedy](https://www.hedy.org/), while remaining an Agorix-specific projection over the canonical program.
+It takes inspiration from gradual-programming approaches such as [Hedy](https://www.hedy.org/), while remaining an Agorix-specific projection over the canonical program.
 
-### Python first
+## Python first
 
 Python is the planned first conventional textual language because it provides a relatively direct bridge from structured educational code to general-purpose programming.
 
-### TypeScript second
+## TypeScript second
 
-TypeScript is a second primary projection and also aligns naturally with the Agorix implementation stack.
+TypeScript is the second primary projection and also aligns naturally with the Agorix implementation stack.
 
-### Language packs
+## Language packs
 
-The architecture should allow later projections such as Lua and other community-contributed languages without modifying canonical program semantics.
+Additional languages should be pluggable without changing canonical program semantics.
 
-The multi-language roadmap is tracked in epic [#65](https://github.com/Modern-Ash/agorix/issues/65).
+The first extension spike is planned around Lua.
+
+Roadmap: [Epic #65 — Progressive multi-language code learning](https://github.com/Modern-Ash/agorix/issues/65)
 
 ---
 
-## Observable execution
+# Observable execution
 
-Seeing source code is only part of transparency.
+Seeing source code is only half of transparency.
 
-The learner should also be able to see **execution**.
+The learner should also be able to see the **program executing**.
 
-Agorix is moving toward:
+Agorix is evolving toward:
 
-- Run;
-- Stop;
-- Reset;
-- **Step**;
+- **Run**
+- **Step**
+- **Stop**
+- **Reset**
 - synchronized block highlighting;
 - synchronized code highlighting;
 - child-readable execution traces;
-- relevant before/after state.
+- relevant state before/after.
 
-For example:
+Example:
 
 ```text
-Instruction: move 10
+Instruction
+  move 10
 
-Before:
-x = 20
+Before
+  x = 20
 
-After:
-x = 30
+After
+  x = 30
 
-Visible result:
-the character moved right
+Visible result
+  the character moved right
 ```
 
-This builds the causal model:
+```mermaid
+sequenceDiagram
+    participant Child
+    participant Code
+    participant Runtime
+    participant Stage
 
-```text
-instruction
-    |
-    v
-execution
-    |
-    v
-state change
-    |
-    v
-visible behavior
+    Child->>Code: Step
+    Code->>Code: Highlight "move 10"
+    Code->>Runtime: Execute canonical node
+    Runtime->>Runtime: x: 20 → 30
+    Runtime->>Stage: Apply movement
+    Stage-->>Child: Character moves
+    Runtime-->>Child: Show execution evidence
 ```
 
 AI debugging must reason from these runtime observations instead of inventing execution facts.
 
-This work is tracked in epic [#64](https://github.com/Modern-Ash/agorix/issues/64).
+Roadmap: [Epic #64 — Transparent programming and observable execution](https://github.com/Modern-Ash/agorix/issues/64)
 
 ---
 
-## Pedagogy before automation
+# Pedagogy before automation
 
 Agorix is an educational product first.
 
-A feature is not automatically valuable because an LLM can perform it.
+A capability is not valuable merely because an LLM can perform it.
 
 The relevant question is:
 
 > **What does the learner understand better because this capability exists?**
 
-### Learn by making
+## Learn by making
 
 Programming concepts should produce observable behavior.
 
-Instead of beginning with a lecture about loops, Agorix can create a need for repetition and help the learner discover the abstraction.
+Rather than starting with a lecture about loops, Agorix can create a need for repetition and help the learner discover the abstraction.
 
-### Progressive scaffolding
+## Progressive scaffolding
 
-AI assistance should increase only as needed.
+AI help should increase gradually.
 
-A typical progression may be:
-
-```text
-1. diagnostic question
-2. concept reminder
-3. point to the relevant program area
-4. structural hint
-5. partial example
-6. complete explanation when pedagogically justified
+```mermaid
+flowchart TD
+    L1["1 · Diagnostic question"] --> L2["2 · Concept reminder"]
+    L2 --> L3["3 · Point to relevant area"]
+    L3 --> L4["4 · Structural hint"]
+    L4 --> L5["5 · Partial example"]
+    L5 --> L6["6 · Complete explanation when justified"]
 ```
 
-The provider must not be free to jump directly to a complete solution when the current pedagogical policy forbids it.
+The provider is not allowed to jump directly to a complete solution when pedagogical policy forbids it.
 
-### Mistakes are learning material
+## Mistakes are learning material
 
 Agorix should not optimize mistakes away.
 
-A failed execution creates evidence that can be inspected.
+A failed execution creates evidence to inspect.
 
 Instead of:
 
 > “Change 3 to 5.”
 
-Agorix should prefer interactions such as:
+Agorix should prefer:
 
 > “The move instruction ran three times and the character stopped before the goal. What could we change?”
 
-### Prediction and reflection
+## Prediction before execution
 
-Learners should sometimes predict before running and explain after running.
+Whenever useful, the learner should predict what the program will do before pressing Run.
 
-This helps turn code execution into reasoning rather than trial-and-error clicking.
+## Reflection after execution
 
-The pedagogical re-foundation is tracked in epic [#63](https://github.com/Modern-Ash/agorix/issues/63).
+After solving a problem, Agorix should ask the learner to explain what changed and why it works.
 
----
-
-## AI Learning Companion
-
-The current tutor concept is evolving into a broader, provider-neutral **Learning Companion**.
-
-A single configured model may support multiple pedagogical capabilities.
-
-| Role | Purpose |
-| --- | --- |
-| **Coach** | Ask questions and scaffold thinking |
-| **Builder** | Propose bounded program structures |
-| **Debugger** | Reason from deterministic runtime evidence |
-| **Explainer** | Explain code and concepts |
-| **Challenger** | Ask the learner to predict, compare or justify |
-| **Reflector** | Help the learner explain what was learned |
-
-These are roles, not necessarily separate agents or separate models.
-
-The companion must remain constrained by product and pedagogical policy.
-
-It does not receive authority merely because it is an LLM.
-
-The Learning Companion roadmap is tracked in epic [#66](https://github.com/Modern-Ash/agorix/issues/66).
+Roadmap: [Epic #63 — AI-native product and pedagogical re-foundation](https://github.com/Modern-Ash/agorix/issues/63)
 
 ---
 
-## AI literacy is part of programming literacy
+# AI Learning Companion
+
+Agorix is evolving beyond the narrow concept of an “AI Tutor”.
+
+The provider-neutral **Learning Companion** supports several pedagogical roles.
+
+```mermaid
+mindmap
+  root((Learning Companion))
+    Coach
+      asks questions
+      scaffolds thinking
+    Builder
+      proposes bounded changes
+      never auto-applies
+    Debugger
+      reads runtime evidence
+      suggests where to investigate
+    Explainer
+      explains code
+      explains concepts
+    Challenger
+      asks for predictions
+      compares alternatives
+    Reflector
+      asks why it works
+      reinforces understanding
+```
+
+These are capabilities.
+
+They do not require separate models or separate agents.
+
+The same configured model may perform several roles while remaining constrained by product and pedagogical policy.
+
+Roadmap: [Epic #66 — AI-native Learning Companion](https://github.com/Modern-Ash/agorix/issues/66)
+
+---
+
+# AI literacy is programming literacy
 
 Agorix should teach children that:
 
 - AI can be wrong;
 - fluent language is not proof;
-- a suggestion needs to be inspected;
-- code needs to be tested;
-- different models may suggest different solutions;
-- the runtime provides stronger evidence about execution than model confidence;
-- the learner remains responsible for the final decision.
+- suggestions must be inspected;
+- code must be tested;
+- models may disagree;
+- runtime evidence matters more than model confidence;
+- the learner owns the final decision.
 
-An advanced activity may deliberately compare two different AI proposals and ask the learner to predict and test them.
-
-The goal is not to create a model leaderboard.
-
-The goal is to teach:
-
-```text
-proposal
-   |
-   v
-prediction
-   |
-   v
-experiment
-   |
-   v
-evidence
-   |
-   v
-conclusion
+```mermaid
+flowchart LR
+    A["🤖 Proposal"] --> B["🔮 Prediction"]
+    B --> C["🧪 Experiment"]
+    C --> D["📊 Evidence"]
+    D --> E["🧠 Conclusion"]
+    E --> F["💬 Explanation"]
 ```
 
-This work is tracked in epic [#68](https://github.com/Modern-Ash/agorix/issues/68).
+An advanced activity may deliberately compare two AI proposals and ask the learner to predict and test them.
+
+The goal is **not** a model leaderboard.
+
+The goal is critical AI literacy.
+
+Roadmap: [Epic #68 — AI literacy, child safety and learning evidence](https://github.com/Modern-Ash/agorix/issues/68)
 
 ---
 
-## Open source by design
+# Open source by design
 
-Agorix is intended to be an open-source project, not a closed educational surface around a proprietary AI service.
+Agorix is intended to be an **open-source project**, not a closed educational surface around a proprietary AI service.
 
 The project aims for:
 
 - auditable source code;
 - auditable pedagogical rules;
-- visible learning contracts;
 - inspectable AI integration boundaries;
 - community-extensible curriculum;
 - community-extensible language packs;
 - community-extensible provider adapters;
 - self-hosting where practical.
 
-The repository license and contribution/governance model are being formalized in [#73](https://github.com/Modern-Ash/agorix/issues/73). Until that work is merged, do not infer a license solely from this README.
+## Preferred license: Apache License 2.0
+
+The preferred licensing direction is **Apache-2.0**.
+
+Why it fits Agorix:
+
+- permissive use in education, research and commercial products;
+- modification and redistribution are allowed;
+- explicit patent grant;
+- contributor-friendly ecosystem model;
+- good fit for adapters, language packs and integrations;
+- consistent with the open ecosystem direction of the broader Agora work.
+
+**Important:** the repository is not formally Apache-2.0 until the root `LICENSE` and governance artifacts are committed.
+
+That work is tracked in [#73 — Formalize Agorix open-source license, governance and contribution model](https://github.com/Modern-Ash/agorix/issues/73).
+
+Model weights, third-party assets and external providers may have their **own licenses** and are not automatically covered by the Agorix source-code license.
 
 ---
 
-## Open-source-first and multi-LLM
+# Open-source-first and multi-LLM
 
 Agorix should not depend on a single AI vendor.
 
-The architecture direction is:
+```mermaid
+flowchart TD
+    LC["Learning Companion"] --> PC["Provider-neutral contract"]
 
-```text
-               Learning Companion
-                       |
-             provider-neutral contract
-                       |
-       +---------------+---------------+
-       |               |               |
-       v               v               v
-   local/open      compatible       commercial
-     models         gateways         providers
-       |               |               |
-     Ollama       llama.cpp/vLLM      optional
-                  compatible APIs      adapters
+    PC --> FAKE["Deterministic fake<br/>CI / tests"]
+    PC --> OLLAMA["Ollama<br/>local/open models"]
+    PC --> GW["Compatible gateway<br/>llama.cpp / vLLM / others"]
+    PC --> COMM["Optional commercial<br/>provider adapters"]
+
+    OLLAMA --> CAP["Capability negotiation"]
+    GW --> CAP
+    COMM --> CAP
+
+    CAP --> LC
 ```
 
 Priorities:
 
 1. provider-neutral contracts;
-2. deterministic fake provider for CI/tests;
+2. deterministic fake provider for CI;
 3. local/open models where practical;
-4. OpenAI-compatible interoperability gateways for local/open inference servers;
-5. optional commercial providers behind the same boundary;
-6. capability negotiation instead of vendor assumptions.
+4. Ollama as a first-class local path;
+5. OpenAI-compatible gateways for local/open inference servers;
+6. optional commercial providers;
+7. capability negotiation rather than vendor assumptions.
 
-A commercial provider may offer stronger capabilities for a particular task.
+A commercial model may perform better for a particular task.
 
-That does not make the provider part of Agorix's domain model.
+That does not make its vendor part of the Agorix domain model.
 
-The multi-provider roadmap is tracked in epic [#67](https://github.com/Modern-Ash/agorix/issues/67).
+Roadmap: [Epic #67 — Open-source-first multi-LLM provider architecture](https://github.com/Modern-Ash/agorix/issues/67)
 
 ---
 
-## Architecture
+# Architecture
 
-The existing Agorix architecture already contains much of the foundation required for this direction.
+The existing architecture already provides much of the foundation required for this direction.
 
-```text
-                           Learner
-                              |
-              +---------------+---------------+
-              |                               |
-              v                               v
-         Visual editor                  Learning Companion
-              |                               |
-              v                               v
-        Canonical Program <---- ProgramProposal boundary
-              |
-      +-------+---------+----------------+
-      |                 |                |
-      v                 v                v
-  block adapter    LanguageProjection   validator
-                        |                |
-              +---------+------+         v
-              |         |      |       runtime
-              v         v      v         |
-         Agorix Code  Python   TS         v
-                                      observations
-                                          |
-                            +-------------+-------------+
-                            |                           |
-                            v                           v
-                       stage/UI                 AI debugging context
+```mermaid
+flowchart TB
+    CHILD["👧 Learner"]
+
+    CHILD --> EDITOR["Visual editor"]
+    CHILD --> LC["AI Learning Companion"]
+
+    EDITOR --> CP["Canonical Program"]
+
+    LC --> PP["ProgramProposal"]
+    PP --> VALIDATE["Proposal validation"]
+    VALIDATE --> REVIEW["Preview / Diff / Learner decision"]
+    REVIEW -->|accepted| CP
+
+    CP --> BLOCKS["Blockly adapter"]
+    CP --> LP["LanguageProjection"]
+    CP --> V["Canonical validator"]
+
+    LP --> AC["Agorix Code"]
+    LP --> PY["Python"]
+    LP --> TS["TypeScript"]
+    LP --> MORE["Language packs"]
+
+    V --> RT["Deterministic runtime"]
+    RT --> OBS["Runtime observations"]
+    OBS --> STAGE["Stage / UI"]
+    OBS --> TRACE["Execution trace"]
+    OBS --> DEBUG["Evidence-grounded AI debugging"]
+
+    DEBUG --> LC
 ```
 
-### Canonical program
+## Canonical Program
 
 The canonical program is the programming source of truth.
 
-Blockly is not the domain model.
+- Blockly is not the domain model.
+- Python is not the domain model.
+- TypeScript is not the domain model.
+- An LLM response is not the domain model.
 
-A textual language projection is not the domain model.
-
-An LLM response is not the domain model.
-
-### Deterministic runtime
+## Deterministic Runtime
 
 The runtime executes canonical semantics without `eval`, arbitrary generated JavaScript or provider-generated executable code.
 
-### LanguageProjection
+## LanguageProjection
 
-All textual representations should be deterministic projections over canonical state with stable canonical-node-to-text mappings.
+Textual languages are deterministic projections over canonical state with stable canonical-node-to-text mappings.
 
-### ProgramProposal
+## ProgramProposal
 
-AI-generated changes should enter through a structured proposal boundary, be validated and previewed, and require an explicit learner decision before canonical mutation.
+AI-generated program changes enter through a structured proposal boundary.
 
-### Runtime observations
+They must be:
 
-Objective execution facts can support:
+1. validated;
+2. previewed;
+3. understood;
+4. explicitly accepted or modified by the learner.
+
+## Runtime observations
+
+Objective execution facts support:
 
 - mission completion;
 - highlighting;
-- child-readable traces;
+- traces;
 - debugging;
 - AI grounding;
 - learning evidence.
 
 ---
 
-## Product surfaces
+# Product surfaces
 
-Agorix is TypeScript-first and currently targets:
+Agorix is TypeScript-first.
 
-- Web / PWA as the reference surface;
-- Android / iOS through Capacitor after the core learning model is stable;
-- VS Code extension as a later portability/advanced-learning proof.
+```mermaid
+flowchart LR
+    CORE["Shared Agorix Core"]
 
-The architecture should share canonical program, runtime, curriculum, projections and learning contracts across surfaces.
+    CORE --> WEB["Web / PWA<br/>reference surface"]
+    CORE --> MOBILE["Android / iOS<br/>Capacitor"]
+    CORE --> VSC["VS Code<br/>extension"]
 
-Broad platform expansion must not take priority over validating the AI-native pedagogical loop.
+    WEB -. first priority .-> CORE
+    MOBILE -. deferred until core stable .-> CORE
+    VSC -. deferred until core stable .-> CORE
+```
+
+Current priority is the **AI-native browser learning loop**.
+
+Platform breadth must not outrun product and pedagogical validation.
 
 ---
 
-## Current roadmap
+# Roadmap
 
-The AI-native product re-foundation is organized as six executable epics:
+The AI-native re-foundation is organized into six primary epics.
+
+```mermaid
+flowchart TD
+    E63["#63<br/>Product + Pedagogy"] --> E64["#64<br/>Transparent Programming"]
+    E63 --> E65["#65<br/>Multi-language"]
+    E63 --> E66["#66<br/>Learning Companion"]
+
+    E66 --> E67["#67<br/>Multi-LLM / Open-source-first"]
+    E66 --> E68["#68<br/>AI Literacy + Safety"]
+
+    E64 --> PROOF["AI-native product proof"]
+    E65 --> PROOF
+    E67 --> PROOF
+    E68 --> PROOF
+```
 
 | Epic | Focus |
 | --- | --- |
@@ -612,23 +667,40 @@ The AI-native product re-foundation is organized as six executable epics:
 | [#67](https://github.com/Modern-Ash/agorix/issues/67) | Open-source-first multi-LLM provider architecture |
 | [#68](https://github.com/Modern-Ash/agorix/issues/68) | AI literacy, child safety and learning evidence |
 
-Each epic contains child issues with dependencies, acceptance criteria and evidence requirements.
+The cross-epic execution sequence is tracked in:
 
-Existing implementation is not being discarded. The canonical model, runtime, observations, editor, block adapter, initial code generator, mission system and persistence are inputs to this next phase.
+➡️ [#106 — AI-native backlog execution map for Agora Flow](https://github.com/Modern-Ash/agorix/issues/106)
+
+Existing implementation is not being discarded.
+
+The canonical model, runtime, observations, editor, Blockly adapter, initial code generator, mission system and persistence remain the technical foundation.
 
 ---
 
-## Built with Agora AI-SDLC
+# Built with Agora AI-SDLC
 
 Agorix is also a real-world consumer and proving ground for [Agora AI-SDLC](https://github.com/Modern-Ash/agora-ai-sdlc).
 
 GitHub issues are the executable work queue.
 
-Product intent, architecture, plans, decisions, evidence and review should live in durable repository artifacts rather than private chat history.
+```mermaid
+flowchart LR
+    ISSUE["GitHub Issue"] --> SPEC["Spec / Artifact"]
+    SPEC --> IMPL["Implementation"]
+    IMPL --> TEST["Deterministic tests"]
+    TEST --> EVID["Evidence / CI"]
+    EVID --> REVIEW["Independent review"]
+    REVIEW --> PR["PR / Merge"]
+
+    AGORA["Agora Flow"] -. governs .-> ISSUE
+    AGORA -. tracks .-> SPEC
+    AGORA -. tracks .-> EVID
+    AGORA -. gates .-> REVIEW
+```
 
 Different agents can execute bounded work under the same contracts.
 
-Examples may include:
+Examples include:
 
 - Claude / Claude Code;
 - OpenAI Codex;
@@ -636,29 +708,26 @@ Examples may include:
 - Ollama-backed/local agents;
 - other compatible runtimes.
 
-No agent or provider is the architecture authority.
+No coding agent or provider is the architecture authority.
 
-Agora governs the workflow. Repository artifacts govern the product. Runtime evidence governs execution facts.
-
-### Starting an issue
-
-From a repository configured with Agora AI-SDLC:
+### Start an issue
 
 ```bash
 aisdlc start --issue <issue-number> --agent <runtime>
 ```
 
-The assigned agent should:
+The executor should:
 
 1. read the issue;
-2. read every referenced source-of-truth document;
-3. create required artifacts;
-4. implement only approved scope;
-5. add deterministic tests;
-6. collect evidence;
-7. open a linked PR;
-8. obtain independent review;
-9. never self-merge.
+2. read referenced source-of-truth documents;
+3. respect dependencies;
+4. create required artifacts;
+5. implement only approved scope;
+6. add deterministic tests;
+7. collect evidence;
+8. open a linked PR;
+9. obtain independent review;
+10. never self-merge.
 
 See:
 
@@ -668,7 +737,7 @@ See:
 
 ---
 
-## Developer bootstrap
+# Developer bootstrap
 
 Prerequisites:
 
@@ -693,61 +762,61 @@ pnpm run verify
 
 ---
 
-## Repository layout
+# Repository layout
 
 ```text
 apps/
-  web/              React + Vite reference UI
-  tutor-api/        Current server-side AI boundary; evolving toward Learning Companion API
-  mobile/           Capacitor packaging boundary
+  web/                React + Vite reference UI
+  tutor-api/          Current AI server boundary; evolving to Learning Companion API
+  mobile/             Capacitor packaging boundary
 
 extensions/
-  vscode/           VS Code extension boundary
+  vscode/             VS Code extension boundary
 
 packages/
-  program-model/    Canonical serializable program
-  block-editor/     Blockly adapter
-  runtime/          Deterministic interpreter
-  stage/            Platform-neutral stage state
-  code-generator/   Current textual projection; evolving to LanguageProjection
-  curriculum/       Missions and learning content
-  tutor-contract/   Current tutor contract; evolving to LearningCompanion
-  persistence/      Versioned project storage
-  platform-contract/ Platform capability boundary
+  program-model/      Canonical serializable program
+  block-editor/       Blockly adapter
+  runtime/            Deterministic interpreter
+  stage/              Platform-neutral stage state
+  code-generator/     Evolving into LanguageProjection
+  curriculum/         Missions and learning content
+  tutor-contract/     Evolving into LearningCompanion contract
+  persistence/        Versioned project storage
+  platform-contract/  Platform capability boundary
 ```
 
-Domain packages must not import React, Blockly, Phaser, Capacitor, VS Code APIs or provider SDKs unless the package is explicitly an adapter boundary intended for that dependency.
+Domain packages must remain independent from UI frameworks and provider SDKs unless they are explicitly adapter packages.
 
 ---
 
-## Safety and privacy
+# Safety and privacy
 
-Agorix is designed for children, so safety constraints are architectural.
+Agorix is designed for children, so safety constraints belong in the architecture.
 
-Core expectations include:
+Core expectations:
 
-- no name, school, address, exact location or contact data required to learn programming;
+- no name, school, address, exact location or contact data required;
 - no public chat/DM/social network in the current scope;
-- no provider secret in browser/client bundles;
+- no provider secrets in browser/client bundles;
 - raw child free text is not logged by default;
-- remote providers receive only the context required for the requested capability;
+- remote providers receive only capability-required context;
 - local/offline operation should be possible where practical;
 - malformed AI output fails closed;
-- AI-generated source text is never executed as arbitrary code simply because a model returned it;
-- deterministic runtime and validators remain security boundaries.
+- provider-generated source is never executed merely because an LLM returned it;
+- deterministic runtime and validators remain trust boundaries.
 
 ---
 
-## Design references
+# Design references
 
 Agorix is not a clone, but it learns from strong ideas in existing educational tools:
 
 - [Scratch](https://scratch.mit.edu/) — creative, immediate visual programming;
-- [Blockly](https://developers.google.com/blockly) — visual programming infrastructure and language generation;
+- [Blockly](https://developers.google.com/blockly) — visual programming infrastructure;
 - [Microsoft MakeCode](https://www.microsoft.com/makecode) — blocks/text bridging;
-- [Hedy](https://www.hedy.org/) — gradual textual programming and reduced early syntax load.
+- [Hedy](https://www.hedy.org/) — gradual textual programming.
 
-Agorix combines these inspirations with a different central question:
+Agorix combines those ideas around a different central question:
 
 > **How should children learn programming when AI can already propose code?**
 
@@ -757,17 +826,57 @@ It is to make the collaboration, the program and the execution **more visible**.
 
 ---
 
-## The short version
+# Contributing
 
-Agorix teaches children to program with AI without turning programming into magic.
+Agorix is being prepared as an open-source project.
 
-```text
-AI proposes.
-Child decides.
-Code stays visible.
-Runtime executes.
-Evidence shows what happened.
-Child explains.
+Contribution and governance rules are being formalized in [#73](https://github.com/Modern-Ash/agorix/issues/73).
+
+Until those artifacts are merged:
+
+- use GitHub issues as the work queue;
+- follow `AGENTS.md`;
+- keep changes reviewable;
+- add deterministic tests;
+- do not self-merge;
+- do not introduce vendor lock-in or hidden AI mutation paths.
+
+---
+
+# License
+
+**Preferred direction: Apache License 2.0.**
+
+The repository should only be described as formally Apache-2.0 licensed after the root `LICENSE` file is committed.
+
+See [#73](https://github.com/Modern-Ash/agorix/issues/73).
+
+---
+
+# In one diagram
+
+```mermaid
+flowchart LR
+    IDEA["💡 Idea"] --> TALK["🗣️ Child + AI"]
+    TALK --> PROPOSE["🤖 Visible proposal"]
+    PROPOSE --> DECIDE["👧 Child decides"]
+    DECIDE --> CODE["🧱 Blocks + 💻 Code"]
+    CODE --> RUN["▶️ Run / Step"]
+    RUN --> EVID["📊 Evidence"]
+    EVID --> THINK["🧠 Explain / Debug"]
+    THINK --> CODE
 ```
 
-That is the product.
+> **AI proposes.**
+>
+> **Child decides.**
+>
+> **Code stays visible.**
+>
+> **Runtime executes.**
+>
+> **Evidence shows what happened.**
+>
+> **Child explains.**
+
+That is Agorix.
