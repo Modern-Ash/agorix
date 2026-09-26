@@ -16,6 +16,7 @@
     "@agorix/program-model": "workspace:*",
     "@agorix/runtime": "workspace:*",
     "@agorix/stage": "workspace:*",
+    "@agorix/tutor-contract": "workspace:*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

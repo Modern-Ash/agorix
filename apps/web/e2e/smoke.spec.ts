@@ -39,3 +39,24 @@ test("block edits survive reload from canonical storage", async ({ page }) => {
   await expect(page.getByLabel("Move block").getByRole("spinbutton")).toHaveValue("24");
   await expect(page.getByText("sprite.move(24);")).toBeVisible();
 });
+
+test("offline tutor hints escalate without changing blocks", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Move [N] steps" }).click();
+  await expect(page.getByLabel("Move block").getByRole("spinbutton")).toHaveValue("10");
+
+  await page.getByRole("button", { name: "Get hint" }).click();
+  await expect(page.getByText("Hint level 1 of 5")).toBeVisible();
+  await expect(page.getByText("Hints used: 1")).toBeVisible();
+  await expect(page.getByText("What changed on the stage after Run")).toBeVisible();
+  await expect(
+    page.locator(".code-surface mark").filter({ hasText: "sprite.move(10);" }),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: "Get hint" }).click();
+  await expect(page.getByText("Hint level 2 of 5")).toBeVisible();
+  await expect(page.getByText("Hints used: 2")).toBeVisible();
+  await expect(page.getByText("Compare that number with the distance to the goal")).toBeVisible();
+  await expect(page.getByLabel("Move block").getByRole("spinbutton")).toHaveValue("10");
+});

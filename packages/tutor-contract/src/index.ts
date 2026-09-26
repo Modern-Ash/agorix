@@ -145,6 +145,75 @@ export function assertTutorProviderContract(
   return parseTutorResponse(makeResponse());
 }
 
+export function createDeterministicTutorResponse(request: TutorRequest): TutorResponse {
+  const validated = validateTutorRequest(request);
+  const hintLevel = nextHintLevel(validated.hintHistory);
+  const nodeIds = firstUsefulNodeId(validated);
+  const concepts = preferredConcepts(validated);
+  return createTutorResponse({
+    hintLevel,
+    message: messageForHintLevel(hintLevel, validated),
+    nodeIds,
+    concepts,
+  });
+}
+
+function nextHintLevel(history: readonly TutorHintHistoryEntry[]): TutorHintLevel {
+  const highest = history.reduce((level, entry) => Math.max(level, entry.level), 0);
+  return Math.min(highest + 1, 5) as TutorHintLevel;
+}
+
+function firstUsefulNodeId(request: TutorRequest): readonly string[] {
+  const traceNode = [...request.runtime.observations]
+    .reverse()
+    .find((observation) => observation.nodeId !== "$" && observation.statementType !== undefined);
+  if (traceNode !== undefined) {
+    return [traceNode.nodeId];
+  }
+
+  for (let scriptIndex = 0; scriptIndex < request.program.scripts.length; scriptIndex += 1) {
+    const script = request.program.scripts[scriptIndex];
+    if (script !== undefined && script.statements.length > 0) {
+      return [`scripts[${scriptIndex}]/statements[0]`];
+    }
+  }
+  return [];
+}
+
+function preferredConcepts(request: TutorRequest): readonly MissionConcept[] {
+  return request.mission.concepts.slice(0, 2);
+}
+
+function messageForHintLevel(level: TutorHintLevel, request: TutorRequest): string {
+  const hasBlocks = request.program.scripts.some((script) => script.statements.length > 0);
+  const reachedGoal =
+    request.runtime.finalWorld.sprite.x === request.runtime.finalWorld.goal.x &&
+    request.runtime.finalWorld.sprite.y === request.runtime.finalWorld.goal.y;
+
+  if (reachedGoal) {
+    return "Your program reached the goal. What block made the sprite move there?";
+  }
+
+  if (!hasBlocks) {
+    return level === 1
+      ? "What should happen after you press Run? Try adding one movement block first."
+      : "Add a Move block, then run again so you can compare the sprite with the goal.";
+  }
+
+  switch (level) {
+    case 1:
+      return "What changed on the stage after Run, and what still needs to change?";
+    case 2:
+      return "The sprite moves by the number in your Move block. Compare that number with the distance to the goal.";
+    case 3:
+      return "Look at the highlighted block. That is the first place to adjust how far the sprite travels.";
+    case 4:
+      return "Try changing the Move steps a little at a time, then run again and watch whether the sprite gets closer.";
+    case 5:
+      return "A simple solution is to move the sprite the same distance as the gap to the goal, then run and check the stage.";
+  }
+}
+
 function assertMission(value: TutorMissionContext, path: string): void {
   assertPlainObject(value, path, MISSION_KEYS);
   assertBoundedString(value.id, `${path}.id`, 1, 120);

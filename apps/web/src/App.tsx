@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ProjectMetadata } from "@agorix/persistence";
 import { POC_TOOLBOX, type BlockNode } from "@agorix/block-editor";
-import { runProgram } from "@agorix/runtime";
+import {
+  createDeterministicTutorResponse,
+  createTutorRequest,
+  type TutorHintHistoryEntry,
+  type TutorResponse,
+} from "@agorix/tutor-contract";
+import { runProgram, type RunResult, type WorldState } from "@agorix/runtime";
 import {
   framesFromRuntimeObservations,
   resetStageSession,
@@ -57,6 +63,17 @@ function createProjectMetadata(createdAt: string, programBlockCount: number): Pr
 
 function countProgramBlocks(model: EditorModel): number {
   return model.program.scripts.reduce((total, script) => total + script.statements.length, 0);
+}
+
+function initialWorldFor(model: EditorModel): WorldState {
+  return {
+    sprite: {
+      x: model.stage.initial.sprite.x,
+      y: model.stage.initial.sprite.y,
+      heading: model.stage.initial.sprite.heading,
+    },
+    goal: { x: model.stage.initial.goal.x, y: model.stage.initial.goal.y },
+  };
 }
 
 function initialProjectFor(
@@ -175,6 +192,9 @@ export function App() {
   const [highlightedNodeId, setHighlightedNodeId] = useState<string | undefined>();
   const [frameIndex, setFrameIndex] = useState(0);
   const [frames, setFrames] = useState<readonly ObservationFrame[]>([]);
+  const [hintHistory, setHintHistory] = useState<readonly TutorHintHistoryEntry[]>([]);
+  const [tutorResponse, setTutorResponse] = useState<TutorResponse | undefined>();
+  const [lastRunResult, setLastRunResult] = useState<RunResult | undefined>();
   const timerRef = useRef<number | undefined>();
 
   const statements = model.workspace.scripts[0]?.statements ?? [];
@@ -214,6 +234,8 @@ export function App() {
     setHighlightedNodeId(undefined);
     setFrames([]);
     setFrameIndex(0);
+    setTutorResponse(undefined);
+    setLastRunResult(undefined);
     setStatus("idle");
   }
 
@@ -264,6 +286,9 @@ export function App() {
     setFrames([]);
     setFrameIndex(0);
     setHighlightedNodeId(undefined);
+    setHintHistory([]);
+    setTutorResponse(undefined);
+    setLastRunResult(undefined);
     setStatus("idle");
     setMessage("Reset");
   }
@@ -278,18 +303,11 @@ export function App() {
       return;
     }
     try {
-      const result = runProgram(
-        model.program,
-        {
-          sprite: {
-            x: model.stage.initial.sprite.x,
-            y: model.stage.initial.sprite.y,
-            heading: model.stage.initial.sprite.heading,
-          },
-          goal: { x: model.stage.initial.goal.x, y: model.stage.initial.goal.y },
-        },
-        { collectObservations: true, stopAfterSteps: 24 },
-      );
+      const result = runProgram(model.program, initialWorldFor(model), {
+        collectObservations: true,
+        stopAfterSteps: 24,
+      });
+      setLastRunResult(result);
       const nextFrames = framesFromRuntimeObservations(result.observations);
       setFrames(nextFrames);
       setFrameIndex(0);
@@ -322,6 +340,50 @@ export function App() {
     } catch {
       setStatus("error");
       setMessage("This block setup needs a small fix before it can run.");
+    }
+  }
+
+  function requestHint() {
+    try {
+      const result =
+        lastRunResult ??
+        runProgram(model.program, initialWorldFor(model), {
+          collectObservations: true,
+          stopAfterSteps: 24,
+        });
+      const response = createDeterministicTutorResponse(
+        createTutorRequest({
+          mission: {
+            id: "first-mission.reach-goal",
+            version: 1,
+            concepts: ["sequence", "events"],
+          },
+          program: model.program,
+          runtime: {
+            outcome: result.outcome,
+            stepsUsed: result.stepsUsed,
+            finalWorld: result.world,
+            observations: result.observations,
+          },
+          hintHistory,
+          reading: { locale: "en-US", readingLevel: "middle-grade" },
+        }),
+      );
+      const nextHistory: TutorHintHistoryEntry = {
+        level: response.hintLevel,
+        ...(response.concepts[0] === undefined ? {} : { concept: response.concepts[0] }),
+        ...(response.nodeIds[0] === undefined ? {} : { nodeId: response.nodeIds[0] }),
+      };
+
+      setLastRunResult(result);
+      setTutorResponse(response);
+      setHintHistory((current) => [...current, nextHistory]);
+      if (response.nodeIds[0] !== undefined) {
+        setHighlightedNodeId(response.nodeIds[0]);
+      }
+    } catch {
+      setStatus("error");
+      setMessage("The tutor needs a runnable block setup before it can help.");
     }
   }
 
@@ -465,11 +527,25 @@ export function App() {
         </section>
 
         <aside className="tutor-panel" aria-labelledby="tutor-title">
-          <h2 id="tutor-title">Tutor suggestion — may not be right</h2>
-          <p>
-            The tutor isn't available right now. You can still finish this mission — check your code
-            against the blocks, and use Reset if you want a fresh start.
+          <div className="panel-heading">
+            <h2 id="tutor-title">Tutor suggestion — may not be right</h2>
+            <span>
+              {tutorResponse === undefined ? "Offline" : `Level ${tutorResponse.hintLevel}/5`}
+            </span>
+          </div>
+          <p aria-live="polite">
+            {tutorResponse?.message ??
+              "Ask for a hint when you want a small nudge. The first hint will not give away the full answer."}
           </p>
+          <div className="tutor-actions">
+            <button type="button" onClick={requestHint}>
+              Get hint
+            </button>
+            <span className="hint-meter">Hints used: {hintHistory.length}</span>
+          </div>
+          {tutorResponse === undefined ? null : (
+            <p className="hint-history">Hint level {tutorResponse.hintLevel} of 5</p>
+          )}
         </aside>
       </div>
     </main>
