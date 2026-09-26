@@ -129,7 +129,17 @@ importers:
         specifier: workspace:*
         version: link:../runtime
 
-  packages/tutor-contract: {}
+  packages/tutor-contract:
+    dependencies:
+      '@agorix/curriculum':
+        specifier: workspace:*
+        version: link:../curriculum
+      '@agorix/program-model':
+        specifier: workspace:*
+        version: link:../program-model
+      '@agorix/runtime':
+        specifier: workspace:*
+        version: link:../runtime
 
 packages:
 

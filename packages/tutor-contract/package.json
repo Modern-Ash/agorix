@@ -8,5 +8,10 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run"
+  },
+  "dependencies": {
+    "@agorix/curriculum": "workspace:*",
+    "@agorix/program-model": "workspace:*",
+    "@agorix/runtime": "workspace:*"
   }
 }
