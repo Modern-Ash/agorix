@@ -114,7 +114,8 @@ h3 {
 
 .run-controls,
 .block-actions,
-.toolbox-list {
+.toolbox-list,
+.mission-progress {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -138,6 +139,26 @@ h3 {
   margin-bottom: 0;
 }
 
+.mission-progress {
+  margin-top: 12px;
+}
+
+.progress-dot {
+  min-height: 32px;
+  padding: 6px 9px;
+  border: 2px solid #8b978f;
+  color: #516158;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.progress-dot.active {
+  border-color: #18201c;
+  background: #7fded1;
+  color: #18201c;
+}
+
 .state-stack {
   display: grid;
   gap: 8px;
@@ -151,11 +172,18 @@ h3 {
   background: #e7f0ff;
 }
 
+.attempt-readout {
+  color: #516158;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
 .run-state-error {
   background: #ffe5da;
 }
 
-.run-state-complete {
+.run-state-complete,
+.run-state-freeplay {
   background: #ddf4d7;
 }
 
@@ -164,10 +192,48 @@ h3 {
 }
 
 .reflection-prompt {
+  display: grid;
+  gap: 10px;
   max-width: 520px;
   padding: 8px 10px;
   border: 2px solid #18201c;
   background: #f2e6ff;
+}
+
+.reflection-prompt button,
+.secondary-action {
+  justify-self: end;
+  min-height: 38px;
+  padding: 0 12px;
+  font-weight: 800;
+}
+
+.mission-complete .stage-canvas .goal {
+  animation: goal-pulse 900ms ease-out 2;
+}
+
+@keyframes goal-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    transform-origin: center;
+  }
+
+  50% {
+    transform: scale(1.12);
+    transform-origin: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
 }
 
 .workspace-grid {

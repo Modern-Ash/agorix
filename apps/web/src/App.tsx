@@ -37,7 +37,7 @@ import {
 } from "./projectStorage.js";
 import "./App.css";
 
-type RunStatus = "idle" | "running" | "stopped" | "complete" | "retry" | "error";
+type RunStatus = "idle" | "running" | "stopped" | "complete" | "retry" | "freeplay" | "error";
 
 const addableBlocks = new Set<AddableBlockType>([
   "motion_move",
@@ -204,12 +204,15 @@ export function App() {
   const [tutorResponse, setTutorResponse] = useState<TutorResponse | undefined>();
   const [lastRunResult, setLastRunResult] = useState<RunResult | undefined>();
   const [reflectionPrompt, setReflectionPrompt] = useState<string | undefined>();
+  const [attempts, setAttempts] = useState(0);
   const timerRef = useRef<number | undefined>();
 
   const statements = model.workspace.scripts[0]?.statements ?? [];
   const activeFrame = frames[frameIndex];
   const highlightedCode =
     highlightedNodeId === undefined ? "" : codeSliceForNode(model, highlightedNodeId);
+  const missionStep =
+    status === "complete" || status === "freeplay" ? 3 : attempts > 0 || status === "retry" ? 2 : 1;
 
   const toolbox = useMemo(
     () =>
@@ -300,6 +303,7 @@ export function App() {
     setTutorResponse(undefined);
     setLastRunResult(undefined);
     setReflectionPrompt(undefined);
+    setAttempts(0);
     setStatus("idle");
     setMessage("Reset");
   }
@@ -319,6 +323,7 @@ export function App() {
         stopAfterSteps: 24,
       });
       setLastRunResult(result);
+      setAttempts((current) => current + 1);
       const nextFrames = framesFromRuntimeObservations(result.observations);
       setFrames(nextFrames);
       setFrameIndex(0);
@@ -395,8 +400,26 @@ export function App() {
     }
   }
 
+  function retryMission() {
+    stopRun();
+    setFrames([]);
+    setFrameIndex(0);
+    setHighlightedNodeId(undefined);
+    setTutorResponse(undefined);
+    setLastRunResult(undefined);
+    setReflectionPrompt(undefined);
+    setStatus("idle");
+    setMessage("Keep your blocks and try again.");
+  }
+
+  function continueFreePlay() {
+    setStatus("freeplay");
+    setReflectionPrompt(undefined);
+    setMessage("Free play unlocked. Keep experimenting with your program.");
+  }
+
   return (
-    <main className="editor-shell">
+    <main className={status === "complete" ? "editor-shell mission-complete" : "editor-shell"}>
       <header className="topbar">
         <div>
           <p className="eyebrow">Agorix First Mission</p>
@@ -419,15 +442,43 @@ export function App() {
         <div>
           <h2>Mission: {FIRST_MISSION.goal.title}.</h2>
           <p>{FIRST_MISSION.goal.learnerFacing}</p>
+          <div
+            className="mission-progress"
+            aria-label={`Mission progress step ${missionStep} of 3`}
+          >
+            <span className={missionStep >= 1 ? "progress-dot active" : "progress-dot"}>Build</span>
+            <span className={missionStep >= 2 ? "progress-dot active" : "progress-dot"}>Run</span>
+            <span className={missionStep >= 3 ? "progress-dot active" : "progress-dot"}>
+              Reflect
+            </span>
+          </div>
         </div>
         <div className="state-stack">
           <strong className={`run-state run-state-${status}`}>{message}</strong>
+          <span className="attempt-readout">
+            Attempts: {attempts} · Hints: {hintHistory.length}
+          </span>
           {persistenceMessage === undefined ? null : (
             <strong className="run-state run-state-error">{persistenceMessage}</strong>
           )}
           {reflectionPrompt === undefined ? null : (
-            <strong className="reflection-prompt">Reflection: {reflectionPrompt}</strong>
+            <div className="reflection-prompt">
+              <strong>Reflection: {reflectionPrompt}</strong>
+              <button type="button" onClick={continueFreePlay}>
+                Keep building
+              </button>
+            </div>
           )}
+          {status === "retry" ? (
+            <button type="button" className="secondary-action" onClick={retryMission}>
+              Try again
+            </button>
+          ) : null}
+          {status === "complete" ? (
+            <button type="button" className="secondary-action" onClick={continueFreePlay}>
+              Free play
+            </button>
+          ) : null}
         </div>
       </section>
 
