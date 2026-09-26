@@ -79,3 +79,43 @@ test("first mission completes from runtime facts and shows reflection", async ({
   ).toBeVisible();
   await expect(page.getByText("sprite.move(160);")).toBeVisible();
 });
+
+test("mission retry keeps work, code, and unlocks non-blocking free play", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Move [N] steps" }).click();
+  await page.getByLabel("Move block").getByRole("spinbutton").fill("10");
+  await page.getByRole("button", { name: "Run" }).click();
+  await expect(page.getByText("stopped short")).toBeVisible({ timeout: 5000 });
+  await expect(page.getByText("Attempts: 1")).toBeVisible();
+  await expect(page.getByText("sprite.move(10);")).toBeVisible();
+
+  await page.getByRole("button", { name: "Try again" }).click();
+  await expect(page.getByLabel("Move block").getByRole("spinbutton")).toHaveValue("10");
+  await expect(page.getByText("sprite.move(10);")).toBeVisible();
+
+  await page.getByLabel("Move block").getByRole("spinbutton").fill("160");
+  await page.getByRole("button", { name: "Run" }).click();
+  await expect(page.getByText("Mission complete: your sprite reached the goal.")).toBeVisible({
+    timeout: 5000,
+  });
+  await page.getByRole("button", { name: "Keep building" }).click();
+  await expect(
+    page.getByText("Free play unlocked. Keep experimenting with your program."),
+  ).toBeVisible();
+  await expect(page.getByText("sprite.move(160);")).toBeVisible();
+});
+
+test("mission celebration respects reduced motion", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+
+  const reducedAnimationSeconds = await page.locator(".stage-canvas .goal").evaluate((node) => {
+    const duration = window.getComputedStyle(node).animationDuration;
+    return duration.endsWith("ms")
+      ? Number.parseFloat(duration) / 1000
+      : Number.parseFloat(duration);
+  });
+
+  expect(reducedAnimationSeconds).toBeLessThanOrEqual(0.001);
+});
