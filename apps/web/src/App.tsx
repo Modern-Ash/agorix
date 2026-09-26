@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { ProjectMetadata } from "@agorix/persistence";
 import { POC_TOOLBOX, type BlockNode } from "@agorix/block-editor";
 import { runProgram } from "@agorix/runtime";
 import {
@@ -19,6 +20,13 @@ import {
   type EditorModel,
   type EditorProjection,
 } from "./editorModel.js";
+import {
+  createBrowserProjectPersistence,
+  loadEditorProject,
+  saveEditorProject,
+  type LoadedEditorProject,
+  type ProjectPersistence,
+} from "./projectStorage.js";
 import "./App.css";
 
 type RunStatus = "idle" | "running" | "stopped" | "complete" | "error";
@@ -36,6 +44,26 @@ function isAddable(type: string): type is AddableBlockType {
 
 function mergeProjection(model: EditorModel, projection: EditorProjection): EditorModel {
   return { ...model, ...projection };
+}
+
+function createProjectMetadata(createdAt: string, programBlockCount: number): ProjectMetadata {
+  return {
+    createdAt,
+    updatedAt: new Date().toISOString(),
+    missionProgress: programBlockCount > 0 ? 1 : 0,
+    hintLevel: 0,
+  };
+}
+
+function countProgramBlocks(model: EditorModel): number {
+  return model.program.scripts.reduce((total, script) => total + script.statements.length, 0);
+}
+
+function initialProjectFor(
+  persistence: ProjectPersistence | undefined,
+): LoadedEditorProject & { readonly model: EditorModel } {
+  const loaded = loadEditorProject(persistence);
+  return { ...loaded, model: loaded.model ?? createEditorModel() };
 }
 
 function numericFieldFor(block: BlockNode): "steps" | "degrees" | "count" | undefined {
@@ -125,10 +153,24 @@ function StageView({ frame }: { frame: ObservationFrame | undefined }) {
 }
 
 export function App() {
-  const [model, setModel] = useState<EditorModel>(() => createEditorModel());
+  const persistenceRef = useRef<ProjectPersistence | undefined>(createBrowserProjectPersistence());
+  const initialProjectRef = useRef<ReturnType<typeof initialProjectFor>>();
+  if (initialProjectRef.current === undefined) {
+    initialProjectRef.current = initialProjectFor(persistenceRef.current);
+  }
+
+  const [model, setModel] = useState<EditorModel>(() => initialProjectRef.current!.model);
+  const [createdAt, setCreatedAt] = useState(
+    () => initialProjectRef.current!.metadata?.createdAt ?? new Date().toISOString(),
+  );
   const [status, setStatus] = useState<RunStatus>("idle");
   const [message, setMessage] = useState(
-    "Nothing happens yet — add a block to 'When you press Run' to get started.",
+    () =>
+      initialProjectRef.current!.message ??
+      "Nothing happens yet — add a block to 'When you press Run' to get started.",
+  );
+  const [persistenceMessage, setPersistenceMessage] = useState<string | undefined>(
+    () => initialProjectRef.current!.message,
   );
   const [highlightedNodeId, setHighlightedNodeId] = useState<string | undefined>();
   const [frameIndex, setFrameIndex] = useState(0);
@@ -157,7 +199,17 @@ export function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (initialProjectRef.current?.message !== undefined) {
+      return;
+    }
+    const metadata = createProjectMetadata(createdAt, countProgramBlocks(model));
+    setPersistenceMessage(saveEditorProject(persistenceRef.current, model.program, metadata));
+  }, [createdAt, model.program]);
+
   function applyProjection(projection: EditorProjection) {
+    initialProjectRef.current = { ...initialProjectRef.current!, message: undefined };
+    setPersistenceMessage(undefined);
     setModel((current) => mergeProjection(current, projection));
     setHighlightedNodeId(undefined);
     setFrames([]);
@@ -202,6 +254,9 @@ export function App() {
   function resetEditor() {
     stopRun();
     const projection = resetWorkspace();
+    initialProjectRef.current = { ...initialProjectRef.current!, message: undefined };
+    setPersistenceMessage(undefined);
+    setCreatedAt(new Date().toISOString());
     setModel((current) => ({
       ...mergeProjection(current, projection),
       stage: resetStageSession(current.stage),
@@ -295,7 +350,12 @@ export function App() {
           <h2>Mission: Get your sprite to the goal.</h2>
           <p>Use blocks to move it there.</p>
         </div>
-        <strong className={`run-state run-state-${status}`}>{message}</strong>
+        <div className="state-stack">
+          <strong className={`run-state run-state-${status}`}>{message}</strong>
+          {persistenceMessage === undefined ? null : (
+            <strong className="run-state run-state-error">{persistenceMessage}</strong>
+          )}
+        </div>
       </section>
 
       <div className="workspace-grid">

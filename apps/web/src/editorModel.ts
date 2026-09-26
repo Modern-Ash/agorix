@@ -2,6 +2,7 @@ import {
   applyWorkspaceChange,
   createDefaultBlock,
   createStarterWorkspace,
+  programToWorkspace,
   projectWorkspace,
   type BlockEditorProjectionUpdate,
   type BlockNode,
@@ -45,6 +46,10 @@ function project(workspace: BlockWorkspaceSnapshot): EditorProjection {
 
 export function createEditorModel(): EditorModel {
   return { ...project(createStarterWorkspace()), stage: INITIAL_STAGE };
+}
+
+export function createEditorModelFromProgram(program: ProjectProgram): EditorModel {
+  return { ...project(programToWorkspace(program).workspace), stage: INITIAL_STAGE };
 }
 
 export function blockNodeId(index: number): string {
