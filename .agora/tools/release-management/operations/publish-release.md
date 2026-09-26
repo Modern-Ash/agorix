@@ -4,25 +4,8 @@ id: "publish-release"
 name: "Publish a release"
 capability: "release.publish"
 risk: "write"
-arguments:
-  [
-    "release",
-    "publish",
-    "--project",
-    "{project}",
-    "--release",
-    "{release}",
-    "--title",
-    "{title}",
-    "--notes",
-    "{notes}",
-    "--artifact",
-    "{artifact}",
-    "--verify-tag",
-    "--output",
-    "json",
-  ]
-inputs: ["project", "release", "title", "notes", "artifact"]
+arguments: ["release","publish","--project","{project}","--release","{release}","--title","{title}","--notes","{notes}","--artifact","{artifact}","--verify-tag","--output","json"]
+inputs: ["project","release","title","notes","artifact"]
 result-kind: "release"
 ---
 

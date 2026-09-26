@@ -1,17 +1,6 @@
 ---
 schema: "agora/artifacts/v2"
-artifact-kinds:
-  [
-    "intent",
-    "unit-of-work",
-    "requirements",
-    "domain-model",
-    "architecture",
-    "implementation-plan",
-    "test-strategy",
-    "operational-readiness",
-    "rollback-procedure",
-  ]
+artifact-kinds: ["intent","unit-of-work","requirements","domain-model","architecture","implementation-plan","test-strategy","operational-readiness","rollback-procedure"]
 ---
 
 # Artifacts
