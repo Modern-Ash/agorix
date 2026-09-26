@@ -67,7 +67,14 @@ importers:
         specifier: ^7.1.0
         version: 7.3.6(@types/node@26.6.2)
 
-  packages/block-editor: {}
+  packages/block-editor:
+    dependencies:
+      '@agorix/code-generator':
+        specifier: workspace:*
+        version: link:../code-generator
+      '@agorix/program-model':
+        specifier: workspace:*
+        version: link:../program-model
 
   packages/code-generator:
     dependencies:
@@ -87,9 +94,21 @@ importers:
 
   packages/program-model: {}
 
-  packages/runtime: {}
+  packages/runtime:
+    dependencies:
+      '@agorix/program-model':
+        specifier: workspace:*
+        version: link:../program-model
+    devDependencies:
+      '@agorix/code-generator':
+        specifier: workspace:*
+        version: link:../code-generator
 
-  packages/stage: {}
+  packages/stage:
+    dependencies:
+      '@agorix/runtime':
+        specifier: workspace:*
+        version: link:../runtime
 
   packages/tutor-contract: {}
 

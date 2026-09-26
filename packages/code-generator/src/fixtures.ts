@@ -67,9 +67,7 @@ export const EMPTY_EDGE_PROGRAM: ProjectProgram = {
     {
       id: "empty",
       trigger: { type: "onStart" },
-      statements: [
-        { type: "if", condition: { type: "booleanLiteral", value: true }, then: [] },
-      ],
+      statements: [{ type: "if", condition: { type: "booleanLiteral", value: true }, then: [] }],
     },
     {
       id: "empty-body",
