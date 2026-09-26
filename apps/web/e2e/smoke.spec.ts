@@ -60,3 +60,22 @@ test("offline tutor hints escalate without changing blocks", async ({ page }) =>
   await expect(page.getByText("Compare that number with the distance to the goal")).toBeVisible();
   await expect(page.getByLabel("Move block").getByRole("spinbutton")).toHaveValue("10");
 });
+
+test("first mission completes from runtime facts and shows reflection", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Move [N] steps" }).click();
+  await page.getByLabel("Move block").getByRole("spinbutton").fill("10");
+  await page.getByRole("button", { name: "Run" }).click();
+  await expect(page.getByText("stopped short")).toBeVisible({ timeout: 5000 });
+
+  await page.getByLabel("Move block").getByRole("spinbutton").fill("160");
+  await page.getByRole("button", { name: "Run" }).click();
+  await expect(page.getByText("Mission complete: your sprite reached the goal.")).toBeVisible({
+    timeout: 5000,
+  });
+  await expect(
+    page.getByText("Reflection: What number made the sprite reach the goal"),
+  ).toBeVisible();
+  await expect(page.getByText("sprite.move(160);")).toBeVisible();
+});

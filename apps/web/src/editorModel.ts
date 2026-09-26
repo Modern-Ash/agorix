@@ -1,7 +1,6 @@
 import {
   applyWorkspaceChange,
   createDefaultBlock,
-  createStarterWorkspace,
   programToWorkspace,
   projectWorkspace,
   type BlockEditorProjectionUpdate,
@@ -9,6 +8,7 @@ import {
   type BlockType,
   type BlockWorkspaceSnapshot,
 } from "@agorix/block-editor";
+import { FIRST_MISSION } from "@agorix/curriculum";
 import type { ProjectProgram } from "@agorix/program-model";
 import { createStageSession, type StageSession } from "@agorix/stage";
 
@@ -26,8 +26,8 @@ export interface EditorModel extends EditorProjection {
 export type AddableBlockType = "motion_move" | "motion_turn" | "control_repeat" | "control_if";
 
 export const INITIAL_STAGE = createStageSession({
-  sprite: { x: 52, y: 128, heading: 0, radius: 12 },
-  goal: { x: 212, y: 128, radius: 14 },
+  sprite: { ...FIRST_MISSION.starterStage.sprite, radius: 12 },
+  goal: { ...FIRST_MISSION.starterStage.goal, radius: 14 },
   viewport: { width: 264, height: 192 },
 });
 
@@ -45,7 +45,10 @@ function project(workspace: BlockWorkspaceSnapshot): EditorProjection {
 }
 
 export function createEditorModel(): EditorModel {
-  return { ...project(createStarterWorkspace()), stage: INITIAL_STAGE };
+  return {
+    ...project(programToWorkspace(FIRST_MISSION.starterProject).workspace),
+    stage: INITIAL_STAGE,
+  };
 }
 
 export function createEditorModelFromProgram(program: ProjectProgram): EditorModel {
@@ -127,7 +130,7 @@ export function editNumericBlockField(
 }
 
 export function resetWorkspace(): EditorProjection {
-  return project(createStarterWorkspace());
+  return project(programToWorkspace(FIRST_MISSION.starterProject).workspace);
 }
 
 export function codeSliceForNode(model: EditorProjection, nodeId: string): string {
