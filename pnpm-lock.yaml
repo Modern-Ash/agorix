@@ -44,6 +44,9 @@ importers:
       '@agorix/block-editor':
         specifier: workspace:*
         version: link:../../packages/block-editor
+      '@agorix/persistence':
+        specifier: workspace:*
+        version: link:../../packages/persistence
       '@agorix/program-model':
         specifier: workspace:*
         version: link:../../packages/program-model
