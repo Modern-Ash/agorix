@@ -94,7 +94,14 @@ importers:
         specifier: workspace:*
         version: link:../program-model
 
-  packages/curriculum: {}
+  packages/curriculum:
+    dependencies:
+      '@agorix/program-model':
+        specifier: workspace:*
+        version: link:../program-model
+      '@agorix/runtime':
+        specifier: workspace:*
+        version: link:../runtime
 
   packages/persistence:
     dependencies:
