@@ -5,6 +5,7 @@ method: "ai-sdlc"
 status: "ready"
 branch: "feat/issue-29-ci"
 required-roles: ["product-owner", "developer"]
+optional-roles: ["quality-reviewer"]
 assignments: { "product-owner": "project:product-owner", "developer": "project:ai-runtime-2" }
 ---
 
