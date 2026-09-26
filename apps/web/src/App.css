@@ -138,6 +138,12 @@ h3 {
   margin-bottom: 0;
 }
 
+.state-stack {
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+}
+
 .run-state {
   max-width: 520px;
   padding: 8px 10px;
@@ -353,6 +359,10 @@ h3 {
   .mission-strip {
     grid-template-columns: 1fr;
     display: grid;
+  }
+
+  .state-stack {
+    justify-items: stretch;
   }
 
   .workspace-grid {
