@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { PACKAGE_NAME } from "./index.js";
 import {
+  TYPESCRIPT_LIKE_PROJECTION,
   UnsupportedNodeError,
   formatNumber,
   projectProgram,
+  projectProgramLanguage,
+  typescriptLikeProjection,
   type ProjectionResult,
 } from "./project.js";
+import { assertLanguageProjectionConformance } from "@agorix/language-projection";
 import {
   DOCUMENTED_EXAMPLE_PROGRAM,
   EMPTY_EDGE_PROGRAM,
@@ -208,6 +212,40 @@ describe("projectProgram", () => {
       expect(err.nodeType).toBe("onKey");
       expect(err.nodeId).toBe("scripts[0]/trigger");
     }
+  });
+
+  it("represents existing output through the LanguageProjection contract", () => {
+    const legacy = projectProgram(FULL_COVERAGE_PROGRAM);
+    const language = projectProgramLanguage(FULL_COVERAGE_PROGRAM);
+
+    expect(language.projection).toEqual(TYPESCRIPT_LIKE_PROJECTION);
+    expect(language.text).toBe(legacy.code);
+    expect(language.diagnostics).toEqual([]);
+    for (const [nodeId, range] of Object.entries(legacy.mapping)) {
+      expect(language.mapping[nodeId]).toEqual([range]);
+    }
+  });
+
+  it("satisfies reusable LanguageProjection conformance", () => {
+    const bad = {
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [{ type: "wait", seconds: 1 }],
+        },
+      ],
+    } as unknown as ProjectProgram;
+
+    expect(() =>
+      assertLanguageProjectionConformance(typescriptLikeProjection, {
+        name: "typescript-like full coverage",
+        program: FULL_COVERAGE_PROGRAM,
+        requiredNodeIds: ["scripts[0]", "scripts[0]/trigger", "scripts[0]/statements[0]"],
+        unsupportedProgram: bad,
+      }),
+    ).toThrow(UnsupportedNodeError);
   });
 
   it("handles multi-script programs with blank line separation", () => {
