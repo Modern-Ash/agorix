@@ -1,0 +1,17 @@
+{
+  "name": "@agorix/provider-runtime",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@agorix/program-model": "workspace:*",
+    "@agorix/runtime": "workspace:*",
+    "@agorix/tutor-contract": "workspace:*"
+  }
+}

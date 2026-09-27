@@ -43,6 +43,7 @@ packages/
   language-projection/      # shared projection contract and conformance helpers
   code-generator/            # current TypeScript-like projection implementation
   tutor-contract/         # legacy name; evolves into LearningCompanion contract
+  provider-runtime/       # provider-neutral runtime/capability negotiation boundary
   persistence/
   platform-contract/
 docs/
@@ -110,6 +111,9 @@ curriculum ---> program-model/runtime observations
 Learning Companion contract ---> curriculum + sanitized program snapshot + runtime evidence
           |
           v
+ProviderRuntime contract ---> capability negotiation + normalized provider errors
+          |
+          v
 provider adapter boundary (local/open/remote/commercial)
 ```
 
@@ -149,9 +153,13 @@ Structured proposed change produced by a human action, deterministic scaffold or
 
 Provider-neutral request/response model for coaching, bounded proposals, debugging, explanation, challenge and reflection. It consumes sanitized context and deterministic evidence.
 
+### ProviderRuntime contract
+
+Provider-neutral runtime interface for Learning Companion adapters. It describes provider/runtime identity, model id/config, supported Learning Companion capabilities, structured-output support, context limits, local/remote locality, health, timeout/cancellation and normalized errors. It must not import vendor SDKs or expose provider-specific payloads to domain contracts.
+
 ### provider adapter
 
-Only boundary allowed to call local/open model servers, compatible gateways or commercial providers. Provider identity and SDK details do not enter domain packages.
+Only boundary allowed to call local/open model servers, compatible gateways or commercial providers. Provider identity and SDK details stay behind this boundary; domain packages consume the ProviderRuntime contract and Learning Companion schemas only.
 
 ### tutor-api
 

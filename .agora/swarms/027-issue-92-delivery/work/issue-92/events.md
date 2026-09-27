@@ -1,0 +1,26 @@
+# Work events
+
+- 2026-09-27T15:59:15.926455Z | work.created | state=inception actor=project:product-owner
+- 2026-09-27T15:59:16.462412Z | artifact.added | kind=intent uri=repo://.agora/intents/issue-92/INTENT.md actor=project:ai-codex
+- 2026-09-27T15:59:16.465542Z | artifact.added | kind=requirements uri=repo://.agora/intents/issue-92/REQUIREMENTS.md actor=project:ai-codex
+- 2026-09-27T15:59:16.468601Z | artifact.added | kind=unit-of-work uri=repo://.agora/intents/issue-92/UNIT-OF-WORK.md actor=project:ai-codex
+- 2026-09-27T15:59:16.471323Z | work.criterion-stage-marked | criterion=source-issue actor=project:ai-codex stage=elaborated
+- 2026-09-27T15:59:16.495726Z | work.clarified-advisory | questions=0 actor=project:ai-codex
+- 2026-09-27T16:00:09.160805Z | artifact.added | kind=plan uri=repo://.agora/ai-sdlc/handoffs/issue-92/LEVEL1_PLAN.md actor=project:ai-codex
+- 2026-09-27T16:00:09.423224Z | artifact.added | kind=user-stories uri=repo://.agora/ai-sdlc/handoffs/issue-92/USER_STORIES.md actor=project:ai-codex
+- 2026-09-27T16:00:09.667281Z | artifact.added | kind=nfr uri=repo://.agora/ai-sdlc/handoffs/issue-92/NFR.md actor=project:ai-codex
+- 2026-09-27T16:00:09.950138Z | artifact.added | kind=risk-register uri=repo://.agora/ai-sdlc/handoffs/issue-92/RISK_REGISTER.md actor=project:ai-codex
+- 2026-09-27T16:00:10.228557Z | artifact.added | kind=measurement-criteria uri=repo://.agora/ai-sdlc/handoffs/issue-92/MEASUREMENT_CRITERIA.md actor=project:ai-codex
+- 2026-09-27T16:00:10.481881Z | artifact.added | kind=bolt-plan uri=repo://.agora/ai-sdlc/handoffs/issue-92/BOLTS.md actor=project:ai-codex
+- 2026-09-27T16:07:19.950167Z | approval.added | role=product-owner actor=project:product-owner delegation=none
+- 2026-09-27T16:07:20.222266Z | approval.added | role=developer actor=project:ai-codex delegation=none
+- 2026-09-27T16:07:20.505609Z | work.transitioned | from=inception to=construction actor=project:ai-codex
+- 2026-09-27T16:11:49.336117Z | artifact.added | kind=domain-model uri=repo://.agora/ai-sdlc/handoffs/issue-92/DOMAIN_MODEL.md actor=project:ai-codex
+- 2026-09-27T16:11:49.610836Z | artifact.added | kind=logical-design uri=repo://.agora/ai-sdlc/handoffs/issue-92/LOGICAL_DESIGN.md actor=project:ai-codex
+- 2026-09-27T16:11:49.867524Z | artifact.added | kind=implementation-plan uri=repo://.agora/ai-sdlc/handoffs/issue-92/IMPLEMENTATION_PLAN.md actor=project:ai-codex
+- 2026-09-27T16:11:50.133408Z | artifact.added | kind=test-strategy uri=repo://.agora/ai-sdlc/handoffs/issue-92/TEST_STRATEGY.md actor=project:ai-codex
+- 2026-09-27T16:11:50.395613Z | artifact.added | kind=deployment-unit uri=repo://.agora/ai-sdlc/handoffs/issue-92/DEPLOYMENT_UNIT.md actor=project:ai-codex
+- 2026-09-27T16:11:50.680080Z | evidence.added | id=evidence-000001 type=test-suite result=success revision=1 actor=project:ai-codex
+- 2026-09-27T16:11:50.987420Z | evidence.added | id=evidence-000002 type=typecheck result=success revision=1 actor=project:ai-codex
+- 2026-09-27T16:11:51.270734Z | evidence.added | id=evidence-000003 type=lint result=success revision=1 actor=project:ai-codex
+- 2026-09-27T16:11:51.591227Z | evidence.added | id=evidence-000004 type=build result=success revision=1 actor=project:ai-codex
