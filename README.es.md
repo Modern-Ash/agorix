@@ -25,6 +25,7 @@ Agorix enseña a los chicos a **pensar, construir, inspeccionar, probar, depurar
 | 🧩 **Multi-LLM**                      | Proveedores y modelos son adapters reemplazables, no autoridad del producto.                                        |
 | 🏠 **Open-source-first**              | Se priorizan modelos locales/abiertos y self-hosting cuando sea razonable.                                          |
 | 🌐 **Producto multilingüe**           | UI, curriculum y Learning Companion deben soportar múltiples idiomas humanos sin cambiar la semántica del programa. |
+| 📱 **Crece con el alumno**            | Tablet/Web comienza simple y touch-first; Agorix Studio incorpora progresivamente prácticas reales de IDE.          |
 
 ---
 
@@ -821,18 +822,18 @@ flowchart TD
     E68 --> PROOF
 ```
 
-| Épica / Trabajo | Foco |
-| --- | --- |
-| [#63](https://github.com/Modern-Ash/agorix/issues/63) | Re-fundación AI-native de producto y pedagogía |
+| Épica / Trabajo                                         | Foco                                                       |
+| ------------------------------------------------------- | ---------------------------------------------------------- |
+| [#63](https://github.com/Modern-Ash/agorix/issues/63)   | Re-fundación AI-native de producto y pedagogía             |
 | [#116](https://github.com/Modern-Ash/agorix/issues/116) | Arquitectura de experiencia Tablet, Worlds y Agorix Studio |
-| [#64](https://github.com/Modern-Ash/agorix/issues/64) | Programación transparente y ejecución observable |
-| [#65](https://github.com/Modern-Ash/agorix/issues/65) | Aprendizaje progresivo multi-lenguaje |
-| [#66](https://github.com/Modern-Ash/agorix/issues/66) | Learning Companion AI-native y colaboración gobernada |
-| [#67](https://github.com/Modern-Ash/agorix/issues/67) | Arquitectura multi-LLM open-source-first |
-| [#68](https://github.com/Modern-Ash/agorix/issues/68) | AI literacy, seguridad infantil y evidencia de aprendizaje |
-| [#110](https://github.com/Modern-Ash/agorix/issues/110) | UI, curriculum y Learning Companion multilingües |
-| [#36](https://github.com/Modern-Ash/agorix/issues/36) | Superficie Web/PWA tablet-first instalable |
-| [#38](https://github.com/Modern-Ash/agorix/issues/38) | Agorix Studio como extensión VS Code |
+| [#64](https://github.com/Modern-Ash/agorix/issues/64)   | Programación transparente y ejecución observable           |
+| [#65](https://github.com/Modern-Ash/agorix/issues/65)   | Aprendizaje progresivo multi-lenguaje                      |
+| [#66](https://github.com/Modern-Ash/agorix/issues/66)   | Learning Companion AI-native y colaboración gobernada      |
+| [#67](https://github.com/Modern-Ash/agorix/issues/67)   | Arquitectura multi-LLM open-source-first                   |
+| [#68](https://github.com/Modern-Ash/agorix/issues/68)   | AI literacy, seguridad infantil y evidencia de aprendizaje |
+| [#110](https://github.com/Modern-Ash/agorix/issues/110) | UI, curriculum y Learning Companion multilingües           |
+| [#36](https://github.com/Modern-Ash/agorix/issues/36)   | Superficie Web/PWA tablet-first instalable                 |
+| [#38](https://github.com/Modern-Ash/agorix/issues/38)   | Agorix Studio como extensión VS Code                       |
 
 El orden de ejecución transversal está en:
 
