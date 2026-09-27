@@ -8,6 +8,15 @@ import {
   type TutorHintHistoryEntry,
   type TutorResponse,
 } from "@agorix/tutor-contract";
+import {
+  acceptProposal,
+  createProgramProposal,
+  createProposalReview,
+  createWebProposalCardView,
+  programSemanticHash,
+  rejectProposal,
+  type ProposalReview,
+} from "@agorix/proposals";
 import { runProgram, type RunResult, type WorldState } from "@agorix/runtime";
 import {
   executionStepsFromRuntimeObservations,
@@ -24,6 +33,7 @@ import {
   blockNodeId,
   codeSliceForNode,
   createEditorModel,
+  createEditorModelFromProgram,
   deleteBlockFromWorkspace,
   editNumericBlockField,
   moveBlockInWorkspace,
@@ -398,6 +408,8 @@ export function App() {
   const [lastRunResult, setLastRunResult] = useState<RunResult | undefined>();
   const [reflectionPrompt, setReflectionPrompt] = useState<string | undefined>();
   const [attempts, setAttempts] = useState(0);
+  const [proposalReview, setProposalReview] = useState<ProposalReview | undefined>();
+  const [proposalMessage, setProposalMessage] = useState<string | undefined>();
   const timerRef = useRef<number | undefined>();
 
   const mission = useMemo(() => getLocalizedFirstMission(locale), [locale]);
@@ -407,6 +419,9 @@ export function App() {
   const activeTrace = learnerTrace[frameIndex];
   const highlightedCode =
     highlightedNodeId === undefined ? "" : codeSliceForNode(model, highlightedNodeId);
+  const canonicalHash = programSemanticHash(model.program);
+  const proposalCard =
+    proposalReview === undefined ? undefined : createWebProposalCardView(proposalReview);
   const missionStep =
     status === "complete" || status === "freeplay" ? 3 : attempts > 0 || status === "retry" ? 2 : 1;
 
@@ -446,6 +461,8 @@ export function App() {
     setTutorResponse(undefined);
     setLastRunResult(undefined);
     setReflectionPrompt(undefined);
+    setProposalReview(undefined);
+    setProposalMessage(undefined);
     setStatus("idle");
   }
 
@@ -508,6 +525,8 @@ export function App() {
     setReflectionPrompt(undefined);
     setAttempts(0);
     setStatus("idle");
+    setProposalReview(undefined);
+    setProposalMessage(undefined);
     setMessage(t(locale, "resetMessage"));
   }
 
@@ -597,6 +616,55 @@ export function App() {
       setStatus("error");
       setMessage(t(locale, "runSetupError"));
     }
+  }
+
+  function previewDeterministicProposal() {
+    try {
+      const proposal = createProgramProposal({
+        id: "deterministic-move-160",
+        baseProgram: model.program,
+        source: { kind: "deterministic-scaffold", capability: "transparency-e2e" },
+        purpose: t(locale, "proposalPurpose"),
+        rationale: t(locale, "proposalRationale"),
+        affectedNodeIds: ["scripts[0]/statements[0]"],
+        operations: [
+          {
+            type: "replaceStatement",
+            nodeId: "scripts[0]/statements[0]",
+            statement: { type: "move", steps: 160 },
+          },
+        ],
+      });
+      const review = createProposalReview(model.program, proposal);
+      setProposalReview(review);
+      setProposalMessage(t(locale, "proposalPreviewReady"));
+      setHighlightedNodeId(review.proposal.affectedNodeIds[0]);
+    } catch {
+      setStatus("error");
+      setMessage(t(locale, "runSetupError"));
+    }
+  }
+
+  function rejectDeterministicProposal() {
+    if (proposalReview === undefined) {
+      return;
+    }
+    rejectProposal(model.program, proposalReview);
+    setProposalReview(undefined);
+    setProposalMessage(t(locale, "proposalRejected"));
+    setHighlightedNodeId(undefined);
+  }
+
+  function acceptDeterministicProposal() {
+    if (proposalReview === undefined) {
+      return;
+    }
+    const accepted = acceptProposal(model.program, proposalReview);
+    const nextModel = createEditorModelFromProgram(accepted.program);
+    applyProjection(nextModel);
+    setProposalReview(undefined);
+    setProposalMessage(t(locale, "proposalAccepted"));
+    setMessage(t(locale, "codeBehindBlocks"));
   }
 
   function requestHint() {
@@ -827,7 +895,12 @@ export function App() {
           </div>
         </section>
 
-        <aside className="companion-panel" aria-labelledby="companion-title">
+        <aside
+          className="companion-panel"
+          aria-labelledby="companion-title"
+          data-testid="canonical-hash"
+          data-canonical-hash={canonicalHash}
+        >
           <div className="panel-heading">
             <h2 id="companion-title">{t(locale, "proposalReview")}</h2>
             <span>
@@ -836,8 +909,13 @@ export function App() {
                 : t(locale, "hintLevel", { level: tutorResponse.hintLevel })}
             </span>
           </div>
-          <p aria-live="polite">{tutorResponse?.message ?? t(locale, "tutorIntro")}</p>
+          <p aria-live="polite">
+            {proposalMessage ?? tutorResponse?.message ?? t(locale, "tutorIntro")}
+          </p>
           <div className="tutor-actions">
+            <button type="button" onClick={previewDeterministicProposal}>
+              {t(locale, "previewProposal")}
+            </button>
             <button type="button" onClick={requestHint}>
               {t(locale, "getHint")}
             </button>
@@ -845,6 +923,32 @@ export function App() {
               {t(locale, "hintMeter", { count: hintHistory.length })}
             </span>
           </div>
+          {proposalCard === undefined ? null : (
+            <div className="proposal-card" data-testid="proposal-preview">
+              <strong>{proposalCard.title}</strong>
+              <p>{proposalCard.rationale}</p>
+              <p>
+                {t(locale, "proposalBaseHash", {
+                  hash: proposalReview?.proposal.baseProgramHash ?? "",
+                })}
+              </p>
+              <ul>
+                {proposalCard.changes.map((change) => (
+                  <li key={change.nodeId}>
+                    {change.beforeText ?? ""} → {change.afterText ?? ""}
+                  </li>
+                ))}
+              </ul>
+              <div className="tutor-actions">
+                <button type="button" onClick={rejectDeterministicProposal}>
+                  {t(locale, "rejectProposal")}
+                </button>
+                <button type="button" onClick={acceptDeterministicProposal}>
+                  {t(locale, "acceptProposal")}
+                </button>
+              </div>
+            </div>
+          )}
           {tutorResponse === undefined ? null : (
             <p className="hint-history">
               {t(locale, "hintLevelOf", { level: tutorResponse.hintLevel })}
