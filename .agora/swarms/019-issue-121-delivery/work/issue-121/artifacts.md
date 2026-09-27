@@ -1,6 +1,6 @@
 ---
 schema: "agora/artifacts/v2"
-artifact-kinds: ["intent","plan","requirements","user-stories","nfr","measurement-criteria","unit-of-work","bolt-plan","risk-register","domain-model","logical-design","implementation-plan","test-strategy","deployment-unit"]
+artifact-kinds: ["intent","plan","requirements","user-stories","nfr","measurement-criteria","unit-of-work","bolt-plan","risk-register","domain-model","logical-design","implementation-plan","test-strategy","deployment-unit","test-report"]
 ---
 
 # Artifacts
@@ -21,3 +21,4 @@ artifact-kinds: ["intent","plan","requirements","user-stories","nfr","measuremen
 | implementation-plan | .agora/ai-sdlc/handoffs/issue-121/IMPLEMENTATION_PLAN.md | none | project:ai-codex | 2026-09-27T10:42:01.806744Z |
 | test-strategy | .agora/ai-sdlc/handoffs/issue-121/TEST_STRATEGY.md | none | project:ai-codex | 2026-09-27T10:42:02.021608Z |
 | deployment-unit | .agora/ai-sdlc/handoffs/issue-121/DEPLOYMENT_UNIT.md | none | project:ai-codex | 2026-09-27T10:42:02.247993Z |
+| test-report | .agora/ai-sdlc/handoffs/issue-121/VERIFICATION_EVIDENCE.md | none | project:ai-codex | 2026-09-27T10:44:11.915787Z |
