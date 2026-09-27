@@ -25,6 +25,7 @@ Agorix teaches children to **think, build, inspect, test, debug and explain prog
 | 🧩 **Multi-LLM**            | Providers and models are replaceable adapters, not product authority.                                                      |
 | 🏠 **Open-source-first**    | Local/open models and self-hosting are preferred where practical.                                                          |
 | 🌐 **Multilingual product** | UI, curriculum and Learning Companion are designed to support multiple human languages without changing program semantics. |
+| 📱 **Grows with the learner** | Tablet/Web starts simple and touch-first; Agorix Studio progressively introduces real IDE practices. |
 
 ---
 
@@ -52,6 +53,145 @@ The objective is not:
 The objective is:
 
 > **Understand what is being built and progressively become more autonomous.**
+
+---
+
+# One platform, multiple learning surfaces
+
+Agorix is not a single editor.
+
+It is a **learning platform with multiple interaction surfaces** that share the same programming and pedagogical core.
+
+> **Agorix grows with the learner.**
+
+A child can begin with touch, Worlds, visual actions and Agorix Code, then progressively move toward Python, TypeScript, debugging, diffs, Git and AI-assisted software development without changing products or relearning the underlying semantics.
+
+```mermaid
+flowchart TB
+    A[Agorix Platform] --> W[Agorix Web and Tablet]
+    A --> S[Agorix Studio]
+    A --> X[Agorix Worlds]
+    W --> C[Shared Agorix Core]
+    S --> C
+    X --> C
+    C --> P[Canonical Program]
+    C --> R[Runtime]
+    C --> L[LanguageProjection]
+    C --> AI[Learning Companion]
+```
+
+## Agorix Web / Tablet
+
+The primary learning and creation surface is **touch-first**.
+
+The dominant visual relationship should be:
+
+```text
+World + Code
+```
+
+not:
+
+```text
+Toolbox + Panels + Chat + Stage + Code
+```
+
+The intended interaction model is:
+
+- World and Code as the two main persistent surfaces;
+- contextual **Action Palette** instead of a large permanent toolbox;
+- touch-first Run / Step / Stop / Reset;
+- AI proposals as compact cards;
+- execution evidence shown progressively;
+- tablet landscape and portrait as first-class layouts;
+- installable PWA as the primary delivery path.
+
+```mermaid
+flowchart LR
+    W[World] --> C[Code]
+    A[Action Palette] --> C
+    C --> R[Run or Step]
+    R --> E[Execution Evidence]
+    E --> W
+    AI[Contextual AI Proposal] --> C
+```
+
+## Agorix Studio
+
+**Agorix Studio** is the progressive desktop experience delivered as a VS Code extension.
+
+It should feel like a real modern IDE experience adapted for learning, not Scratch embedded inside VS Code.
+
+Its first-class surfaces include:
+
+- Mission / Project explorer;
+- textual code editor;
+- World Preview;
+- educational Execution Inspector;
+- AI proposal diff review;
+- Learning Companion integrated with code and runtime evidence.
+
+The same `ProgramProposal` may appear as a friendly card on Tablet and as a diff review in Studio, but its semantics are identical.
+
+```mermaid
+flowchart LR
+    P[ProgramProposal] --> T[Tablet Proposal Card]
+    P --> D[Studio Diff Review]
+    T --> C[Canonical Program]
+    D --> C
+```
+
+## Agorix Worlds
+
+**Agorix Worlds** provides the narrative and visual motivation:
+
+- Space;
+- Ocean;
+- Robots;
+- City;
+- future community worlds.
+
+Worlds contain themes, characters, assets and mission framing. They do **not** define a second runtime or a second programming model.
+
+## Progressive experience
+
+The interface becomes more capable as learner autonomy increases.
+
+```mermaid
+flowchart LR
+    E[Explore Tablet] --> C[Connect Web]
+    C --> T[Translate to Python]
+    T --> S[Create in Studio]
+    S --> A[Advanced debugging Git and tests]
+```
+
+This is competency-driven, not an age gate.
+
+## Visual direction
+
+Agorix should feel modern and creative without looking like a Scratch clone.
+
+The intended visual language is closer to a calm creative studio:
+
+- modern, soft surfaces;
+- subtle depth instead of heavy black borders;
+- semantic color instead of rainbow decoration;
+- large touch targets;
+- minimal permanent chrome;
+- World visuals carry most of the playful energy;
+- code remains visually important from the beginning;
+- Learning Companion appears contextually rather than as a permanently dominant chat panel;
+- the UI should remain comfortable for an older learner who has outgrown a childish aesthetic.
+
+Roadmap: [Epic #116 — Agorix Experience & Surface Architecture](https://github.com/Modern-Ash/agorix/issues/116)
+
+Key experience work:
+- [#117 Design system](https://github.com/Modern-Ash/agorix/issues/117)
+- [#118 Tablet-first Web shell](https://github.com/Modern-Ash/agorix/issues/118)
+- [#119 Agorix Worlds](https://github.com/Modern-Ash/agorix/issues/119)
+- [#120 Touch interaction model](https://github.com/Modern-Ash/agorix/issues/120)
+- [#38 Agorix Studio](https://github.com/Modern-Ash/agorix/issues/38)
+- [#121 Cross-surface compatibility](https://github.com/Modern-Ash/agorix/issues/121)
 
 ---
 
@@ -611,47 +751,76 @@ Objective execution facts support:
 
 # Product surfaces
 
-Agorix is TypeScript-first.
+Agorix is TypeScript-first, but the product is **surface-independent at the domain level**.
 
 ```mermaid
-flowchart LR
+flowchart TB
     CORE[Shared Agorix Core]
-    CORE --> WEB[Web and PWA]
-    CORE --> MOBILE[Android and iOS]
-    CORE --> VSC[VS Code extension]
+    CORE --> WEB[Agorix Web and Tablet]
+    CORE --> STUDIO[Agorix Studio VS Code]
+    CORE --> WORLDS[Agorix Worlds]
+    WEB --> PWA[Installable PWA]
+    STUDIO --> IDE[Code World Preview Execution Inspector]
 ```
 
-Current priority is the **AI-native browser learning loop**.
+### Web / Tablet
 
-Platform breadth must not outrun product and pedagogical validation.
+This is the primary learning surface. It is touch-first and optimized around **World + Code**, contextual actions and visible execution.
+
+[#36](https://github.com/Modern-Ash/agorix/issues/36) tracks the installable tablet-first Web/PWA experience.
+
+### Agorix Studio
+
+This is the advanced/progressive VS Code surface. It exposes richer code, debugging and diff workflows over the same canonical project.
+
+[#38](https://github.com/Modern-Ash/agorix/issues/38) tracks Agorix Studio.
+
+### Native mobile
+
+Native Android/iOS packaging is **conditional**, not assumed. It should only be added where it provides concrete value beyond the PWA.
+
+[#37](https://github.com/Modern-Ash/agorix/issues/37) tracks that evaluation.
+
+The invariant is:
+
+> **Surface adapters may differ. Learning semantics may not.**
 
 ---
 
 # Roadmap
 
-The AI-native re-foundation is organized into six primary epics.
+The AI-native product is coordinated through the core learning epics plus the new experience/surface architecture.
 
 ```mermaid
 flowchart TD
-    E63[63 Product and Pedagogy] --> E64[64 Transparent Programming]
+    E63[63 Product and Pedagogy] --> E116[116 Experience and Surfaces]
+    E63 --> E64[64 Transparent Programming]
     E63 --> E65[65 Multi language]
     E63 --> E66[66 Learning Companion]
     E66 --> E67[67 Multi LLM and Open Source]
     E66 --> E68[68 AI Literacy and Safety]
+    E116 --> WEB[36 Tablet Web PWA]
+    E116 --> STUDIO[38 Agorix Studio]
     E64 --> PROOF[AI native product proof]
     E65 --> PROOF
+    WEB --> PROOF
+    STUDIO --> PROOF
     E67 --> PROOF
     E68 --> PROOF
 ```
 
-| Epic                                                  | Focus                                                   |
-| ----------------------------------------------------- | ------------------------------------------------------- |
-| [#63](https://github.com/Modern-Ash/agorix/issues/63) | AI-native product and pedagogical re-foundation         |
-| [#64](https://github.com/Modern-Ash/agorix/issues/64) | Transparent programming and observable execution        |
-| [#65](https://github.com/Modern-Ash/agorix/issues/65) | Progressive multi-language code learning                |
+| Epic / Work | Focus |
+| --- | --- |
+| [#63](https://github.com/Modern-Ash/agorix/issues/63) | AI-native product and pedagogical re-foundation |
+| [#116](https://github.com/Modern-Ash/agorix/issues/116) | Tablet, Worlds and Agorix Studio experience architecture |
+| [#64](https://github.com/Modern-Ash/agorix/issues/64) | Transparent programming and observable execution |
+| [#65](https://github.com/Modern-Ash/agorix/issues/65) | Progressive multi-language code learning |
 | [#66](https://github.com/Modern-Ash/agorix/issues/66) | AI-native Learning Companion and governed collaboration |
-| [#67](https://github.com/Modern-Ash/agorix/issues/67) | Open-source-first multi-LLM provider architecture       |
-| [#68](https://github.com/Modern-Ash/agorix/issues/68) | AI literacy, child safety and learning evidence         |
+| [#67](https://github.com/Modern-Ash/agorix/issues/67) | Open-source-first multi-LLM provider architecture |
+| [#68](https://github.com/Modern-Ash/agorix/issues/68) | AI literacy, child safety and learning evidence |
+| [#110](https://github.com/Modern-Ash/agorix/issues/110) | Multilingual UI, curriculum and Learning Companion |
+| [#36](https://github.com/Modern-Ash/agorix/issues/36) | Tablet-first installable Web/PWA surface |
+| [#38](https://github.com/Modern-Ash/agorix/issues/38) | Agorix Studio VS Code extension |
 
 The cross-epic execution sequence is tracked in:
 
@@ -659,7 +828,7 @@ The cross-epic execution sequence is tracked in:
 
 Existing implementation is not being discarded.
 
-The canonical model, runtime, observations, editor, Blockly adapter, initial code generator, mission system and persistence remain the technical foundation.
+The canonical model, runtime, observations, editor, Blockly adapter, initial code generator, mission system and persistence remain the technical foundation. The current UI is an implementation input, not the final visual direction.
 
 ---
 
