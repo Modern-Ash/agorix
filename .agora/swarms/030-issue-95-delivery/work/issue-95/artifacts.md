@@ -1,6 +1,6 @@
 ---
 schema: "agora/artifacts/v2"
-artifact-kinds: ["intent","requirements","unit-of-work","plan","bolt-plan","user-stories","nfr","risk-register","measurement-criteria","domain-model","logical-design"]
+artifact-kinds: ["intent","requirements","unit-of-work","plan","bolt-plan","user-stories","nfr","risk-register","measurement-criteria","domain-model","logical-design","implementation-plan","test-strategy","deployment-unit"]
 ---
 
 # Artifacts
@@ -18,3 +18,7 @@ artifact-kinds: ["intent","requirements","unit-of-work","plan","bolt-plan","user
 | measurement-criteria | repo://.agora/ai-sdlc/handoffs/issue-95/MEASUREMENT_CRITERIA.md | 929483d9d4164dcf07f0c1b410653d9054c3f1059dca983e8a186226ec666deb | project:ai-codex | 2026-09-27T19:58:37.293117Z |
 | domain-model | repo://.agora/ai-sdlc/handoffs/issue-95/DOMAIN_MODEL.md | 95e53fc2456e2c8aa0ffb7df8ce2015e7494e200b157c28a6cf4835a645e15dc | project:ai-codex | 2026-09-27T21:10:31.332128Z |
 | logical-design | repo://.agora/ai-sdlc/handoffs/issue-95/LOGICAL_DESIGN.md | 1f8b6516e8ef4f1d6c06c76b73bf8462563bd5df37d74720aebd1f794b9f9684 | project:ai-codex | 2026-09-27T21:17:33.607158Z |
+| implementation-plan | repo://.agora/ai-sdlc/handoffs/issue-95/IMPLEMENTATION_PLAN.md | 1ff3762980b523cad5dc70866dde98e72e8412a16ee54b0e339ef3c7c159e278 | project:ai-codex | 2026-09-27T21:34:02.399617Z |
+| test-strategy | repo://.agora/ai-sdlc/handoffs/issue-95/TEST_STRATEGY.md | 576e75b340baa63be415f223682461f786ae5c348509039ea0e457b58b6f40ab | project:ai-codex | 2026-09-27T21:37:31.318117Z |
+| deployment-unit | repo://.agora/ai-sdlc/handoffs/issue-95/DEPLOYMENT_UNIT.md | adcb8860f17638f91374fb2b5ffac82fbd99e12a46d1a3eb9d07f68c3c3bba9a | project:ai-codex | 2026-09-27T21:37:33.197569Z |
+| test-strategy | repo://.agora/ai-sdlc/handoffs/issue-95/TEST_STRATEGY.md | 50d705a31233d694596c8227cdb1f383ce532c9a58b747989d64d9c1abaefec8 | project:ai-codex | 2026-09-27T21:38:07.526195Z |
