@@ -20,6 +20,12 @@ Issue #38 delivers the first Studio slice:
 
 Full Git workflows, marketplace publishing, AI-assisted SDLC and complete Web/Studio compatibility remain later work. #121 owns the full cross-surface compatibility proof after Studio can read and write the shared project contract.
 
+The compatibility proof is now specified in
+[`CROSS_SURFACE_COMPATIBILITY.md`](./CROSS_SURFACE_COMPATIBILITY.md): Studio,
+Web and Tablet share `StoredProject` as the canonical project envelope, while UI
+preferences such as panel focus, theme, projection and locale remain outside the
+semantic program hash.
+
 ## Surface model
 
 | Surface                 | First-slice role                                                       |
