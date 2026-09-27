@@ -11,7 +11,7 @@
   "scripts": {
     "lint": "eslint . --max-warnings=0",
     "format": "prettier --write .",
-    "format:check": "prettier --write README.md README.es.md && git diff -- README.md README.es.md && exit 1",
+    "format:check": "prettier --check .",
     "test": "vitest run",
     "build": "pnpm -r --if-present run build",
     "verify": "pnpm install --frozen-lockfile && pnpm lint && pnpm test && pnpm build"
