@@ -1,6 +1,13 @@
 import { projectProgram, type ProjectionResult, type TextRange } from "@agorix/code-generator";
 import { getLocalizedFirstMission } from "@agorix/curriculum";
 import type { StoredProject } from "@agorix/persistence";
+import {
+  acceptProposal as acceptSharedProposal,
+  createProposalReview as createSharedProposalReview,
+  rejectProposal as rejectSharedProposal,
+  type ProgramProposal,
+  type ProposalReview,
+} from "@agorix/proposals";
 import { validateProgram, type ProjectProgram } from "@agorix/program-model";
 import {
   createWorldState,
@@ -29,19 +36,7 @@ export interface StudioExecutionEvidence {
   readonly inspectorRows: readonly InspectorRow[];
 }
 
-export interface ProgramProposal {
-  readonly id: string;
-  readonly summary: string;
-  readonly proposedProgram: ProjectProgram;
-  readonly affectedNodeIds: readonly string[];
-}
-
-export interface ProposalReview {
-  readonly proposal: ProgramProposal;
-  readonly acceptedProjection: ProjectionResult;
-  readonly proposedProjection: ProjectionResult;
-  readonly affectedRanges: readonly TextRange[];
-}
+export type { ProgramProposal, ProposalReview } from "@agorix/proposals";
 
 export function openStoredProject(stored: StoredProject): StudioProject {
   const program = validateProgram(stored.program);
@@ -91,36 +86,21 @@ export function createProposalReview(
   acceptedProgram: ProjectProgram,
   proposal: ProgramProposal,
 ): ProposalReview {
-  const accepted = validateProgram(acceptedProgram);
-  const proposed = validateProgram(proposal.proposedProgram);
-  const proposedProjection = projectProgram(proposed);
-
-  return {
-    proposal: { ...proposal, proposedProgram: proposed },
-    acceptedProjection: projectProgram(accepted),
-    proposedProjection,
-    affectedRanges: proposal.affectedNodeIds.map((nodeId) => {
-      const range = proposedProjection.mapping[nodeId];
-      if (range === undefined) {
-        throw new RangeError(`Proposal references unmapped canonical node ${nodeId}`);
-      }
-      return range;
-    }),
-  };
+  return createSharedProposalReview(acceptedProgram, proposal);
 }
 
 export function rejectProposal(
   acceptedProgram: ProjectProgram,
-  _review: ProposalReview,
+  review: ProposalReview,
 ): ProjectProgram {
-  return validateProgram(acceptedProgram);
+  return rejectSharedProposal(acceptedProgram, review).program;
 }
 
 export function applyProposal(
-  _acceptedProgram: ProjectProgram,
+  acceptedProgram: ProjectProgram,
   review: ProposalReview,
 ): ProjectProgram {
-  return validateProgram(review.proposal.proposedProgram);
+  return acceptSharedProposal(acceptedProgram, review).program;
 }
 
 export function createStoredProjectWithProgram(
