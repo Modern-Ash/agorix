@@ -36,3 +36,5 @@
 - 2026-09-27T01:22:07.879132Z | artifact.added | kind=pull-request uri=https://github.com/Modern-Ash/agorix/pull/115 actor=project:ai-codex
 - 2026-09-27T01:22:17.830257Z | evidence.added | id=evidence-000006 type=deployment result=success revision=1 actor=project:ai-codex
 - 2026-09-27T01:23:28.037938Z | work.criterion-stage-marked | criterion=source-issue actor=project:ai-codex stage=deployed
+- 2026-09-27T01:28:32.901484Z | work.criterion-stage-marked | criterion=source-issue actor=project:product-owner stage=accepted
+- 2026-09-27T01:28:40.368735Z | work.transitioned | from=operations to=completed actor=project:product-owner
