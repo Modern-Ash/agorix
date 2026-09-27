@@ -1,5 +1,7 @@
 # Agorix
 
+**Languages:** English · [Español](README.es.md)
+
 > **Open-source, AI-native creative coding for children**
 >
 > **AI proposes. Child decides. Runtime proves. Child explains.**
@@ -22,6 +24,7 @@ Agorix teaches children to **think, build, inspect, test, debug and explain prog
 | 🌍 **Multi-language** | One canonical program can be projected as Agorix Code, Python, TypeScript and future language packs. |
 | 🧩 **Multi-LLM** | Providers and models are replaceable adapters, not product authority. |
 | 🏠 **Open-source-first** | Local/open models and self-hosting are preferred where practical. |
+| 🌐 **Multilingual product** | UI, curriculum and Learning Companion are designed to support multiple human languages without changing program semantics. |
 
 ---
 
@@ -438,6 +441,31 @@ The goal is **not** a model leaderboard.
 The goal is critical AI literacy.
 
 Roadmap: [Epic #68 — AI literacy, child safety and learning evidence](https://github.com/Modern-Ash/agorix/issues/68)
+
+---
+
+# Multilingual by design
+
+Agorix aims to reach children beyond a single spoken language.
+
+The product distinguishes two independent dimensions:
+
+```mermaid
+flowchart LR
+    L[Product locale] --> EN[English]
+    L --> ES[Spanish]
+    L --> MORE[More locales]
+    P[Programming projection] --> B[Blocks]
+    P --> A[Agorix Code]
+    P --> PY[Python]
+    P --> TS[TypeScript]
+```
+
+A learner can use a Spanish UI and Learning Companion while viewing the same canonical program as Python. Changing the product locale must never change program semantics, runtime behavior or the selected programming-language projection.
+
+English and Spanish are the initial required locales. The localization architecture should make additional languages straightforward to add.
+
+Roadmap: [#110 — Make Agorix multilingual: UI, curriculum and Learning Companion i18n/l10n](https://github.com/Modern-Ash/agorix/issues/110)
 
 ---
 
