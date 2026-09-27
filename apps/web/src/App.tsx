@@ -10,8 +10,10 @@ import {
 } from "@agorix/tutor-contract";
 import { runProgram, type RunResult, type WorldState } from "@agorix/runtime";
 import {
+  executionStepsFromRuntimeObservations,
   framesFromRuntimeObservations,
   resetStageSession,
+  type ExecutionStep,
   type ObservationFrame,
   type StageState,
 } from "@agorix/stage";
@@ -340,6 +342,7 @@ export function App() {
   const [highlightedNodeId, setHighlightedNodeId] = useState<string | undefined>();
   const [frameIndex, setFrameIndex] = useState(0);
   const [frames, setFrames] = useState<readonly ObservationFrame[]>([]);
+  const [executionSteps, setExecutionSteps] = useState<readonly ExecutionStep[]>([]);
   const [hintHistory, setHintHistory] = useState<readonly TutorHintHistoryEntry[]>([]);
   const [tutorResponse, setTutorResponse] = useState<TutorResponse | undefined>();
   const [lastRunResult, setLastRunResult] = useState<RunResult | undefined>();
@@ -349,7 +352,8 @@ export function App() {
 
   const mission = useMemo(() => getLocalizedFirstMission(locale), [locale]);
   const statements = model.workspace.scripts[0]?.statements ?? [];
-  const activeFrame = frames[frameIndex];
+  const activeFrame = executionSteps[frameIndex]?.frame ?? frames[frameIndex];
+  const activeStep = executionSteps[frameIndex];
   const highlightedCode =
     highlightedNodeId === undefined ? "" : codeSliceForNode(model, highlightedNodeId);
   const missionStep =
@@ -379,11 +383,13 @@ export function App() {
   }, [createdAt, locale, model.program]);
 
   function applyProjection(projection: EditorProjection) {
+    clearRunTimer();
     initialProjectRef.current = { ...initialProjectRef.current!, message: undefined };
     setPersistenceMessage(undefined);
     setModel((current) => mergeProjection(current, projection));
     setHighlightedNodeId(undefined);
     setFrames([]);
+    setExecutionSteps([]);
     setFrameIndex(0);
     setTutorResponse(undefined);
     setLastRunResult(undefined);
@@ -440,6 +446,7 @@ export function App() {
       stage: resetStageSession(current.stage),
     }));
     setFrames([]);
+    setExecutionSteps([]);
     setFrameIndex(0);
     setHighlightedNodeId(undefined);
     setHintHistory([]);
@@ -457,9 +464,11 @@ export function App() {
       stopAfterSteps: 24,
     });
     const nextFrames = framesFromRuntimeObservations(result.observations);
+    const nextSteps = executionStepsFromRuntimeObservations(result.observations);
     setLastRunResult(result);
     setFrames(nextFrames);
-    return { result, nextFrames };
+    setExecutionSteps(nextSteps);
+    return { result, nextFrames, nextSteps };
   }
 
   function runBlocks() {
@@ -510,17 +519,17 @@ export function App() {
       return;
     }
     try {
-      const hasReusableFrames = frames.length > 0 && lastRunResult !== undefined;
-      const prepared = hasReusableFrames ? undefined : createRuntimeFrames();
-      const result = hasReusableFrames ? lastRunResult : prepared!.result;
-      const nextFrames = hasReusableFrames ? frames : prepared!.nextFrames;
-      if (!hasReusableFrames) {
+      const hasReusableSteps = executionSteps.length > 0 && lastRunResult !== undefined;
+      const prepared = hasReusableSteps ? undefined : createRuntimeFrames();
+      const result = hasReusableSteps ? lastRunResult : prepared!.result;
+      const nextSteps = hasReusableSteps ? executionSteps : prepared!.nextSteps;
+      if (!hasReusableSteps) {
         setAttempts((current) => current + 1);
       }
-      const nextIndex = hasReusableFrames ? Math.min(frameIndex + 1, nextFrames.length - 1) : 0;
+      const nextIndex = hasReusableSteps ? Math.min(frameIndex + 1, nextSteps.length - 1) : 0;
       setFrameIndex(nextIndex);
-      setHighlightedNodeId(nextFrames[nextIndex]?.highlightedNodeId);
-      if (nextIndex >= nextFrames.length - 1) {
+      setHighlightedNodeId(nextSteps[nextIndex]?.nodeId);
+      if (nextIndex >= nextSteps.length - 1) {
         const feedback = resultFeedback(result, locale, mission);
         setStatus(feedback.completed ? "complete" : "retry");
         setMessage(feedback.message);
@@ -582,6 +591,7 @@ export function App() {
   function retryMission() {
     stopRun();
     setFrames([]);
+    setExecutionSteps([]);
     setFrameIndex(0);
     setHighlightedNodeId(undefined);
     setTutorResponse(undefined);
@@ -700,6 +710,11 @@ export function App() {
               {t(locale, "currentNode", { code: highlightedCode.trim() })}
             </p>
           ) : null}
+          {activeStep === undefined ? null : (
+            <p className="highlight-readout" data-testid="step-readout">
+              {activeStep.timing} · {activeStep.nodeId ?? "complete"}
+            </p>
+          )}
         </section>
 
         <section className="action-palette" aria-labelledby="action-palette-title">
