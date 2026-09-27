@@ -442,6 +442,7 @@ h3 {
 }
 
 .block-card {
+  touch-action: manipulation;
   display: grid;
   gap: 10px;
   padding: var(--agx-space-3);
@@ -479,6 +480,30 @@ h3 {
   padding: 8px;
   background: var(--agx-surface-panel);
   color: var(--agx-text-primary);
+}
+
+.value-editor {
+  display: grid;
+  gap: var(--agx-space-2);
+}
+
+.value-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--agx-space-2);
+  align-items: stretch;
+}
+
+.value-actions button {
+  flex: 1 1 128px;
+  min-height: 44px;
+  box-shadow: none;
+}
+
+.value-actions button[type="submit"] {
+  border-color: rgba(14, 159, 154, 0.45);
+  background: #e7f8f5;
+  font-weight: 800;
 }
 
 .block-actions button {

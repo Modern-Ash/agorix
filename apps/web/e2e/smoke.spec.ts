@@ -1,4 +1,12 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+
+async function applyMoveSteps(page: Page, value: string) {
+  await page.getByLabel("Move block").getByRole("spinbutton").fill(value);
+  await page
+    .getByRole("button", { name: /^(Apply value|Aplicar valor)$/ })
+    .first()
+    .click();
+}
 
 test("main editor shell renders persistent blocks, stage and code", async ({ page }) => {
   await page.goto("/");
@@ -18,7 +26,7 @@ test("block edits update generated code", async ({ page }) => {
 
   await page.getByRole("button", { name: "Move" }).click();
   await expect(page.getByText("sprite.move(10);")).toBeVisible();
-  await page.getByLabel("Move block").getByRole("spinbutton").fill("24");
+  await applyMoveSteps(page, "24");
   await expect(page.getByText("sprite.move(24);")).toBeVisible();
 });
 
@@ -26,7 +34,7 @@ test("block edits survive reload from canonical storage", async ({ page }) => {
   await page.goto("/");
 
   await page.getByRole("button", { name: "Move" }).click();
-  await page.getByLabel("Move block").getByRole("spinbutton").fill("24");
+  await applyMoveSteps(page, "24");
   await expect(page.getByText("sprite.move(24);")).toBeVisible();
 
   const stored = await page.evaluate(() => localStorage.getItem("agorix:default-project"));
@@ -44,7 +52,7 @@ test("locale switch localizes UI without changing canonical program", async ({ p
   await page.goto("/");
 
   await page.getByRole("button", { name: "Move" }).click();
-  await page.getByLabel("Move block").getByRole("spinbutton").fill("24");
+  await applyMoveSteps(page, "24");
   const before = await page.evaluate(() => localStorage.getItem("agorix:default-project"));
   const beforeProgram = JSON.parse(before ?? "{}").program;
 
@@ -89,11 +97,11 @@ test("first mission completes from runtime facts and shows reflection", async ({
   await page.goto("/");
 
   await page.getByRole("button", { name: "Move" }).click();
-  await page.getByLabel("Move block").getByRole("spinbutton").fill("10");
+  await applyMoveSteps(page, "10");
   await page.getByRole("button", { name: "Run" }).click();
   await expect(page.getByText("stopped short")).toBeVisible({ timeout: 5000 });
 
-  await page.getByLabel("Move block").getByRole("spinbutton").fill("160");
+  await applyMoveSteps(page, "160");
   await page.getByRole("button", { name: "Run" }).click();
   await expect(page.getByText("Mission complete: your sprite reached the goal.")).toBeVisible({
     timeout: 5000,
@@ -108,7 +116,7 @@ test("mission retry keeps work, code, and unlocks non-blocking free play", async
   await page.goto("/");
 
   await page.getByRole("button", { name: "Move" }).click();
-  await page.getByLabel("Move block").getByRole("spinbutton").fill("10");
+  await applyMoveSteps(page, "10");
   await page.getByRole("button", { name: "Run" }).click();
   await expect(page.getByText("stopped short")).toBeVisible({ timeout: 5000 });
   await expect(page.getByText("Attempts: 1")).toBeVisible();
@@ -118,7 +126,7 @@ test("mission retry keeps work, code, and unlocks non-blocking free play", async
   await expect(page.getByLabel("Move block").getByRole("spinbutton")).toHaveValue("10");
   await expect(page.getByText("sprite.move(10);")).toBeVisible();
 
-  await page.getByLabel("Move block").getByRole("spinbutton").fill("160");
+  await applyMoveSteps(page, "160");
   await page.getByRole("button", { name: "Run" }).click();
   await expect(page.getByText("Mission complete: your sprite reached the goal.")).toBeVisible({
     timeout: 5000,
@@ -202,7 +210,7 @@ test("orientation change preserves canonical program and visible code", async ({
   await page.goto("/");
 
   await page.getByRole("button", { name: "Move" }).click();
-  await page.getByLabel("Move block").getByRole("spinbutton").fill("24");
+  await applyMoveSteps(page, "24");
   await expect(page.getByText("sprite.move(24);")).toBeVisible();
 
   await page.setViewportSize({ width: 1180, height: 820 });
@@ -212,4 +220,56 @@ test("orientation change preserves canonical program and visible code", async ({
   await expect(page.getByText("sprite.move(24);")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Stage" })).toBeInViewport();
   await expect(page.getByRole("heading", { name: "Code", exact: true })).toBeInViewport();
+});
+
+test("touch/no-drag path completes the First Mission", async ({ page }) => {
+  await page.setViewportSize({ width: 820, height: 1180 });
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Move" }).click();
+  await applyMoveSteps(page, "160");
+  await expect(page.getByText("sprite.move(160);")).toBeVisible();
+
+  await page.getByRole("button", { name: "Run" }).click();
+  await expect(page.getByText("Mission complete: your sprite reached the goal.")).toBeVisible({
+    timeout: 5000,
+  });
+});
+
+test("explicit reorder controls update generated code without drag", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Move" }).click();
+  await page.getByRole("button", { name: "Turn" }).click();
+  await expect(page.getByText("sprite.move(10);")).toBeVisible();
+  await expect(page.getByText("sprite.turn(90);")).toBeVisible();
+
+  await page.getByLabel("Move block").getByRole("button", { name: "Down" }).click();
+
+  const code = await page.locator(".code-surface").innerText();
+  expect(code.indexOf("sprite.turn(90);")).toBeLessThan(code.indexOf("sprite.move(10);"));
+});
+
+test("virtual keyboard numeric edit keeps apply and cancel controls visible", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Move" }).click();
+  await page.getByLabel("Move block").getByRole("spinbutton").focus();
+
+  await expect(page.getByRole("button", { name: "Apply value" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Cancel edit" })).toBeVisible();
+});
+
+test("Spanish touch edit path keeps action palette and numeric commit usable", async ({ page }) => {
+  await page.setViewportSize({ width: 820, height: 1180 });
+  await page.goto("/");
+
+  await page.getByLabel("Product language").selectOption("es");
+  await page.getByRole("button", { name: "Mover" }).click();
+  await page.getByLabel("Bloque Mover").getByRole("spinbutton").fill("160");
+  await page.getByRole("button", { name: "Aplicar valor" }).click();
+
+  await expect(page.getByText("sprite.move(160);")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Paleta de acciones" })).toBeVisible();
 });
