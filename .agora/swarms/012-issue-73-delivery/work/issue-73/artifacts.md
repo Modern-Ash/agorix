@@ -1,6 +1,6 @@
 ---
 schema: "agora/artifacts/v2"
-artifact-kinds: ["intent","plan","requirements","user-stories","nfr","measurement-criteria","unit-of-work","bolt-plan","risk-register","domain-model","logical-design","implementation-plan","test-strategy","deployment-unit","operational-readiness","rollback-procedure"]
+artifact-kinds: ["intent","plan","requirements","user-stories","nfr","measurement-criteria","unit-of-work","bolt-plan","risk-register","domain-model","logical-design","implementation-plan","test-strategy","deployment-unit","operational-readiness","rollback-procedure","pull-request"]
 ---
 
 # Artifacts
@@ -23,3 +23,4 @@ artifact-kinds: ["intent","plan","requirements","user-stories","nfr","measuremen
 | deployment-unit | .agora/ai-sdlc/handoffs/issue-73/DEPLOYMENT_UNIT.md | none | project:ai-codex | 2026-09-27T01:50:52.195022Z |
 | operational-readiness | .agora/ai-sdlc/handoffs/issue-73/OPERATIONAL_READINESS.md | none | project:ai-codex | 2026-09-27T01:52:53.150287Z |
 | rollback-procedure | .agora/ai-sdlc/handoffs/issue-73/ROLLBACK_PROCEDURE.md | none | project:ai-codex | 2026-09-27T01:52:53.415657Z |
+| pull-request | https://github.com/Modern-Ash/agorix/pull/125 | none | project:ai-codex | 2026-09-27T01:54:33.239694Z |
