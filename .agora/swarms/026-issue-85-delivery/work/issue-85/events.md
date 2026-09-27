@@ -26,3 +26,4 @@
 - 2026-09-27T14:01:55.351719Z | work.criterion-stage-marked | criterion=source-issue actor=project:ai-codex stage=designed
 - 2026-09-27T14:01:55.670098Z | work.criterion-stage-marked | criterion=source-issue actor=project:ai-codex stage=built
 - 2026-09-27T14:01:55.955704Z | work.criterion-stage-marked | criterion=source-issue actor=project:ai-codex stage=verified
+- 2026-09-27T14:04:58.757558Z | evidence.added | id=evidence-000004 type=typecheck result=success revision=1 actor=project:ai-codex

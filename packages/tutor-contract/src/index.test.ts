@@ -366,6 +366,9 @@ describe("LearningCompanion contract", () => {
     });
 
     expect(builder.capability).toBe("builder");
+    if (builder.capability !== "builder") {
+      throw new Error("expected builder capability");
+    }
     expect(builder.payload.kind).toBe("program-proposal");
     expect(builder.payload.reviewState).toBe("proposed");
     expect(builder.payload.proposal.source).toEqual({
@@ -385,6 +388,9 @@ describe("LearningCompanion contract", () => {
     });
 
     expect(debuggerResponse.capability).toBe("debugger");
+    if (debuggerResponse.capability !== "debugger") {
+      throw new Error("expected debugger capability");
+    }
     expect(debuggerResponse.payload.kind).toBe("evidence-grounded-debug");
     expect(debuggerResponse.payload.facts[0]).toMatchObject({
       id: "runtime-observation-0",
