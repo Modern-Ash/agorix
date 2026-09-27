@@ -1,0 +1,44 @@
+{
+  "name": "@agorix/vscode-extension",
+  "displayName": "Agorix Studio",
+  "description": "VS Code learning and creation surface for Agorix projects.",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "main": "./dist/extension.js",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "activationEvents": [
+    "onCommand:agorixStudio.openProject",
+    "onCommand:agorixStudio.showEvidence"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "agorixStudio.openProject",
+        "title": "Agorix Studio: Open Project"
+      },
+      {
+        "command": "agorixStudio.showEvidence",
+        "title": "Agorix Studio: Show Execution Evidence"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run --config vitest.config.ts"
+  },
+  "dependencies": {
+    "@agorix/code-generator": "workspace:*",
+    "@agorix/curriculum": "workspace:*",
+    "@agorix/persistence": "workspace:*",
+    "@agorix/program-model": "workspace:*",
+    "@agorix/runtime": "workspace:*",
+    "@agorix/stage": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vitest": "^4.1.11"
+  }
+}
