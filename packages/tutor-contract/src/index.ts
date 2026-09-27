@@ -388,3 +388,5 @@ function assertPlainObject(
 function fail(path: string, message: string): never {
   throw new TutorContractValidationError(path, message);
 }
+
+export * from "./learning-companion.js";

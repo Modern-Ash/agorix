@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { SCHEMA_VERSION, type ProjectProgram } from "@agorix/program-model";
 import { runProgram } from "@agorix/runtime";
@@ -5,14 +6,27 @@ import {
   PACKAGE_NAME,
   TUTOR_REQUEST_SCHEMA_VERSION,
   TUTOR_RESPONSE_SCHEMA_VERSION,
+  LEARNING_COMPANION_REQUEST_SCHEMA_VERSION,
+  LEARNING_COMPANION_RESPONSE_SCHEMA_VERSION,
+  LearningCompanionContractValidationError,
   TutorContractValidationError,
+  assertLearningCompanionProviderContract,
   assertTutorProviderContract,
+  createDeterministicLearningCompanionResponse,
   createDeterministicTutorResponse,
+  createLearningCompanionRequest,
+  createLearningCompanionRequestFromTutorRequest,
+  createLearningCompanionResponse,
   createTutorRequest,
   createTutorResponse,
+  createTutorResponseFromLearningCompanionResponse,
+  parseLearningCompanionResponse,
   parseTutorResponse,
+  validateLearningCompanionRequest,
+  validateLearningCompanionResponse,
   validateTutorRequest,
   validateTutorResponse,
+  type LearningCompanionCapability,
   type TutorRequest,
   type TutorResponse,
 } from "./index.js";
@@ -243,5 +257,185 @@ describe("TutorResponse", () => {
     expect(() =>
       assertTutorProviderContract("fake-local", () => ({ message: "missing schema" })),
     ).toThrow(TutorContractValidationError);
+  });
+});
+
+const learningCompanionRequest = createLearningCompanionRequest({
+  capability: "coach",
+  mission: {
+    id: "first-mission.reach-goal",
+    version: 1,
+    concepts: ["sequence", "events"],
+    learningObjective: "move the sprite toward the goal",
+  },
+  program,
+  selectedNodeIds: ["scripts[0]/statements[0]"],
+  runtime: {
+    outcome: result.outcome,
+    stepsUsed: result.stepsUsed,
+    finalWorld: result.world,
+    observations: result.observations,
+  },
+  runtimeFacts: [
+    {
+      id: "runtime-observation-0",
+      observationIndex: 0,
+      nodeId: "scripts[0]/statements[0]",
+      fact: "Runtime observed the move statement before the sprite stopped short of the goal.",
+    },
+  ],
+  scaffoldHistory: [{ capability: "coach", level: 1, concept: "sequence" }],
+  learnerIntent: "I want to reach the goal.",
+  reading: { locale: "en-US", readingLevel: "middle-grade" },
+});
+
+const learningCompanionResponse = createLearningCompanionResponse({
+  capability: "coach",
+  message: "What should happen first when you run this program?",
+  nodeIds: ["scripts[0]/statements[0]"],
+  concepts: ["sequence"],
+  metadata: {
+    capability: "coach",
+    scaffoldLevel: 1,
+    provenance: "deterministic-fake",
+    uncertainty: "low",
+  },
+  payload: {
+    kind: "question",
+    question: "What should happen first when you run this program?",
+  },
+});
+
+describe("LearningCompanion contract", () => {
+  it("creates a provider-neutral request with no required child PII", () => {
+    const minimal = createLearningCompanionRequest({
+      capability: "coach",
+      mission: {
+        id: "first-mission.reach-goal",
+        version: 1,
+        concepts: ["sequence"],
+        learningObjective: "sequence one movement",
+      },
+      program,
+      selectedNodeIds: [],
+      runtimeFacts: [],
+      scaffoldHistory: [],
+    });
+
+    expect(minimal.schema).toBe(LEARNING_COMPANION_REQUEST_SCHEMA_VERSION);
+    expect(JSON.stringify(minimal)).not.toMatch(/email|school|address|name|age|location/i);
+    expect(validateLearningCompanionRequest(minimal)).toEqual(minimal);
+  });
+
+  it("migrates existing tutor hint behavior into coach capability without provider coupling", () => {
+    const migrated = createLearningCompanionRequestFromTutorRequest(request);
+    const coach = createDeterministicLearningCompanionResponse(migrated);
+    const legacy = createTutorResponseFromLearningCompanionResponse(coach);
+
+    expect(migrated.capability).toBe("coach");
+    expect(coach.schema).toBe(LEARNING_COMPANION_RESPONSE_SCHEMA_VERSION);
+    expect(coach.capability).toBe("coach");
+    expect(coach.payload.kind).toBe("question");
+    expect(legacy.schema).toBe(TUTOR_RESPONSE_SCHEMA_VERSION);
+    expect(legacy.message).toBe(coach.message);
+    expect(JSON.stringify(coach)).not.toMatch(/openai|anthropic|ollama|apiKey|thread/i);
+  });
+
+  it("provides deterministic fake output for every required capability", () => {
+    const capabilities: readonly LearningCompanionCapability[] = [
+      "coach",
+      "builder",
+      "debugger",
+      "explainer",
+      "challenger",
+      "reflector",
+    ];
+
+    const responses = capabilities.map((capability) =>
+      createDeterministicLearningCompanionResponse({ ...learningCompanionRequest, capability }),
+    );
+
+    expect(responses.map((item) => item.capability)).toEqual(capabilities);
+    responses.forEach((item) => expect(validateLearningCompanionResponse(item)).toEqual(item));
+  });
+
+  it("keeps builder output as a reviewable proposal instead of accepted canonical state", () => {
+    const builder = createDeterministicLearningCompanionResponse({
+      ...learningCompanionRequest,
+      capability: "builder",
+    });
+
+    expect(builder.capability).toBe("builder");
+    expect(builder.payload.kind).toBe("program-proposal");
+    expect(builder.payload.reviewState).toBe("proposed");
+    expect(builder.payload.proposal.source).toEqual({
+      kind: "learning-companion",
+      capability: "builder",
+    });
+    expect(builder.payload).not.toHaveProperty("acceptedProgram");
+    expect(builder.payload).not.toHaveProperty("program");
+    expect(builder).not.toHaveProperty("mutation");
+    expect(program.scripts[0]?.statements).toHaveLength(1);
+  });
+
+  it("keeps debugger runtime facts separate from model suggestions", () => {
+    const debuggerResponse = createDeterministicLearningCompanionResponse({
+      ...learningCompanionRequest,
+      capability: "debugger",
+    });
+
+    expect(debuggerResponse.capability).toBe("debugger");
+    expect(debuggerResponse.payload.kind).toBe("evidence-grounded-debug");
+    expect(debuggerResponse.payload.facts[0]).toMatchObject({
+      id: "runtime-observation-0",
+      nodeId: "scripts[0]/statements[0]",
+    });
+    expect(debuggerResponse.payload.suggestions[0]).toContain("run again");
+  });
+
+  it("fails closed for malformed and provider-specific Learning Companion output", () => {
+    expect(() =>
+      parseLearningCompanionResponse({ ...learningCompanionResponse, openAiRunId: "run-1" }),
+    ).toThrow(LearningCompanionContractValidationError);
+    expect(() =>
+      parseLearningCompanionResponse({
+        ...learningCompanionResponse,
+        metadata: { ...learningCompanionResponse.metadata, capability: "builder" },
+      }),
+    ).toThrow(LearningCompanionContractValidationError);
+    expect(() =>
+      parseLearningCompanionResponse({
+        ...learningCompanionResponse,
+        payload: { kind: "question", question: "" },
+      }),
+    ).toThrow(LearningCompanionContractValidationError);
+  });
+
+  it("uses the same conformance assertion for local and remote-style providers", () => {
+    const local = assertLearningCompanionProviderContract(
+      "fake-local",
+      () => learningCompanionResponse,
+    );
+    const remote = assertLearningCompanionProviderContract("remote-open-compatible", () => ({
+      ...learningCompanionResponse,
+      metadata: { ...learningCompanionResponse.metadata, provenance: "remote-provider" },
+    }));
+
+    expect(local.capability).toBe("coach");
+    expect(remote.metadata.provenance).toBe("remote-provider");
+  });
+
+  it("keeps the contract package free of provider SDK dependencies", () => {
+    const packageJson = JSON.parse(
+      readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+    ) as { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
+    const dependencyNames = Object.keys({
+      ...(packageJson.dependencies ?? {}),
+      ...(packageJson.devDependencies ?? {}),
+    });
+
+    expect(dependencyNames).not.toEqual(
+      expect.arrayContaining(["openai", "@anthropic-ai/sdk", "ollama"]),
+    );
   });
 });
