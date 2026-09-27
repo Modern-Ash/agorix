@@ -178,37 +178,37 @@ Re-evaluate them after #91 proves the complete AI-native First Mission. They mus
 
 ## Legacy and new issue reconciliation
 
-| Issue(s) | Disposition | Rationale |
-| --- | --- | --- |
-| #1 | preserve | Historical product foundation retained as context. |
-| #2 | preserve / extend | Canonical program and runtime remain foundational; later transparency/runtime evidence work extends them. |
-| #3 | preserve / extend | Visual editor and block/code bridge remain foundational; code visibility and proposal boundaries extend them. |
-| #4 | preserve / extend | First guided mission remains the POC mission; AI-native loop and evidence gates extend it. |
-| #5 | supersede | Optional AI Tutor epic is replaced by #66, #67 and #68. |
-| #8 | supersede / preserve context | Older learner journey is superseded by #69 while useful layout constraints remain context. |
-| #9 | preserve / extend | Child-facing content should align with #69/#70 progression and #68 AI literacy. |
-| #10 | preserve / extend | Accessibility/interaction requirements remain valid and must support visible code/proposal surfaces. |
-| #11-#16 | preserve | Repository, program model, validation, runtime, observations/reset and text projection remain the technical base. |
-| #17-#21 | preserve / extend | Blockly, blocks, stage/editor/persistence remain required; #64-#66 extend their transparency and AI-native behavior. |
-| #22-#24 | preserve / extend | Mission/progress/reflection remain required; #70/#102 refine learning evidence. |
-| #25-#27 | extend / supersede naming | Existing tutor contracts and adapters are migrated into the LearningCompanion and provider-neutral architecture. |
-| #28 | preserve | Versioned persistence remains required. |
-| #29 | preserve | CI remains foundational. |
-| #30 | extend | Security baseline must align with AI-output validation and privacy threat model. |
-| #31 | supersede | Old learner-journey E2E is replaced by #78, #91 and #104. |
-| #32 | preserve | Agora AI-SDLC bootstrap remains repository governance foundation. |
-| #33-#35 | preserve / defer to Wave 5 | Evidence, provenance and final demo remain required after the AI-native slice is demonstrable. |
-| #36-#38 | defer | PWA, Capacitor and VS Code proofs are deferred until the core web vertical slice is stable. |
-| #64 | extend | Transparency epic becomes a core product gate. |
-| #65 | extend | Multi-language work is staged after LanguageProjection contracts. |
-| #66 | extend | Learning companion replaces optional tutor mental model. |
-| #67 | extend | Provider-neutral/local-open architecture becomes roadmap requirement. |
-| #68 | extend | AI literacy and child safety become learning outcomes and E2E gates. |
-| #69-#72 | preserve | Wave 0 source-of-truth sequence. |
-| #73 | defer until decision | License/governance must be explicit before claiming open-source governance completion. |
-| #74-#104 | preserve | AI-native backlog implementing #64-#68. |
-| #106 | retire after #71 | Temporary execution map is reconciled into this document. |
-| #110 | preserve / stage | Multilingual product/i18n work proceeds after #69 and must align with #71/#72. |
+| Issue(s) | Disposition                  | Rationale                                                                                                            |
+| -------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| #1       | preserve                     | Historical product foundation retained as context.                                                                   |
+| #2       | preserve / extend            | Canonical program and runtime remain foundational; later transparency/runtime evidence work extends them.            |
+| #3       | preserve / extend            | Visual editor and block/code bridge remain foundational; code visibility and proposal boundaries extend them.        |
+| #4       | preserve / extend            | First guided mission remains the POC mission; AI-native loop and evidence gates extend it.                           |
+| #5       | supersede                    | Optional AI Tutor epic is replaced by #66, #67 and #68.                                                              |
+| #8       | supersede / preserve context | Older learner journey is superseded by #69 while useful layout constraints remain context.                           |
+| #9       | preserve / extend            | Child-facing content should align with #69/#70 progression and #68 AI literacy.                                      |
+| #10      | preserve / extend            | Accessibility/interaction requirements remain valid and must support visible code/proposal surfaces.                 |
+| #11-#16  | preserve                     | Repository, program model, validation, runtime, observations/reset and text projection remain the technical base.    |
+| #17-#21  | preserve / extend            | Blockly, blocks, stage/editor/persistence remain required; #64-#66 extend their transparency and AI-native behavior. |
+| #22-#24  | preserve / extend            | Mission/progress/reflection remain required; #70/#102 refine learning evidence.                                      |
+| #25-#27  | extend / supersede naming    | Existing tutor contracts and adapters are migrated into the LearningCompanion and provider-neutral architecture.     |
+| #28      | preserve                     | Versioned persistence remains required.                                                                              |
+| #29      | preserve                     | CI remains foundational.                                                                                             |
+| #30      | extend                       | Security baseline must align with AI-output validation and privacy threat model.                                     |
+| #31      | supersede                    | Old learner-journey E2E is replaced by #78, #91 and #104.                                                            |
+| #32      | preserve                     | Agora AI-SDLC bootstrap remains repository governance foundation.                                                    |
+| #33-#35  | preserve / defer to Wave 5   | Evidence, provenance and final demo remain required after the AI-native slice is demonstrable.                       |
+| #36-#38  | defer                        | PWA, Capacitor and VS Code proofs are deferred until the core web vertical slice is stable.                          |
+| #64      | extend                       | Transparency epic becomes a core product gate.                                                                       |
+| #65      | extend                       | Multi-language work is staged after LanguageProjection contracts.                                                    |
+| #66      | extend                       | Learning companion replaces optional tutor mental model.                                                             |
+| #67      | extend                       | Provider-neutral/local-open architecture becomes roadmap requirement.                                                |
+| #68      | extend                       | AI literacy and child safety become learning outcomes and E2E gates.                                                 |
+| #69-#72  | preserve                     | Wave 0 source-of-truth sequence.                                                                                     |
+| #73      | defer until decision         | License/governance must be explicit before claiming open-source governance completion.                               |
+| #74-#104 | preserve                     | AI-native backlog implementing #64-#68.                                                                              |
+| #106     | retire after #71             | Temporary execution map is reconciled into this document.                                                            |
+| #110     | preserve / stage             | Multilingual product/i18n work proceeds after #69 and must align with #71/#72.                                       |
 
 ## Agora Flow execution
 

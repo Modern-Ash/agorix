@@ -22,14 +22,14 @@ Each stage combines three dimensions:
 
 ## Stage overview
 
-| Stage | Learner capability | Primary surface | AI responsibility |
-| --- | --- | --- | --- |
-| Explore | Make simple behavior happen and notice code exists | Blocks + Agorix Code | Ask simple questions and point to visible surfaces |
-| Connect | Predict and explain correspondence between blocks, code and runtime behavior | Blocks + code correspondence | Guide observation and evidence comparison |
-| Translate | Compare Agorix Code with another textual form such as Python | Blocks + Agorix Code + Python projection | Propose analogies and highlight differences |
-| Collaborate | Evaluate bounded AI proposals before accepting changes | Proposal + accepted program + runtime evidence | Offer bounded proposals and invite critique |
-| Create | Author larger parts in text with AI support while keeping runtime proof central | Textual code + tests/runtime | Coach planning, review and debugging rather than complete work |
-| Critique | Compare alternatives, models or approaches and justify choices | Multi-alternative review | Surface trade-offs; learner decides and defends evidence |
+| Stage       | Learner capability                                                              | Primary surface                                | AI responsibility                                              |
+| ----------- | ------------------------------------------------------------------------------- | ---------------------------------------------- | -------------------------------------------------------------- |
+| Explore     | Make simple behavior happen and notice code exists                              | Blocks + Agorix Code                           | Ask simple questions and point to visible surfaces             |
+| Connect     | Predict and explain correspondence between blocks, code and runtime behavior    | Blocks + code correspondence                   | Guide observation and evidence comparison                      |
+| Translate   | Compare Agorix Code with another textual form such as Python                    | Blocks + Agorix Code + Python projection       | Propose analogies and highlight differences                    |
+| Collaborate | Evaluate bounded AI proposals before accepting changes                          | Proposal + accepted program + runtime evidence | Offer bounded proposals and invite critique                    |
+| Create      | Author larger parts in text with AI support while keeping runtime proof central | Textual code + tests/runtime                   | Coach planning, review and debugging rather than complete work |
+| Critique    | Compare alternatives, models or approaches and justify choices                  | Multi-alternative review                       | Surface trade-offs; learner decides and defends evidence       |
 
 ## Stage 1: Explore
 
