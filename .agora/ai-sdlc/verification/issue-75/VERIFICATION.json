@@ -1,0 +1,115 @@
+{
+  "acceptance_coverage": [
+    {
+      "candidate_test_paths": [
+        "packages/proposals/src/index.test.ts"
+      ],
+      "criterion": "proposal cannot mutate program before explicit acceptance",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [],
+      "criterion": "reject preserves exact canonical hash/state",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [
+        "packages/proposals/src/index.test.ts"
+      ],
+      "criterion": "accepted proposal passes canonical validator",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [],
+      "criterion": "diff is derived from structured state, not only model prose",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [
+        "extensions/vscode/src/crossSurfaceCompatibility.test.ts",
+        "extensions/vscode/src/studioCore.test.ts",
+        "packages/block-editor/src/index.test.ts"
+      ],
+      "criterion": "affected code/block mapping can be highlighted",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [],
+      "criterion": "malformed provider response is safely rejected",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [
+        "packages/proposals/src/index.test.ts"
+      ],
+      "criterion": "tests cover accept/reject/modify/invalid/stale proposal",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [
+        "packages/proposals/src/index.test.ts"
+      ],
+      "criterion": "stale proposal against changed base state cannot apply silently.",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [
+        "extensions/vscode/src/studioCore.test.ts",
+        "packages/proposals/src/index.test.ts"
+      ],
+      "criterion": "same proposal fixture can render on Web and Studio",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [],
+      "criterion": "accept/reject results produce identical canonical semantics",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [],
+      "criterion": "tablet actions are touch accessible",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [
+        "extensions/vscode/src/studioCore.test.ts"
+      ],
+      "criterion": "Studio diff does not become an independent source of truth.",
+      "mechanically_satisfied": false
+    }
+  ],
+  "all_executed_commands_passed": true,
+  "commands": [
+    {
+      "allowed": true,
+      "argv": [
+        "pnpm",
+        "build"
+      ],
+      "command": "pnpm build",
+      "elapsed_seconds": 5.801,
+      "exit_code": 0,
+      "status": "passed",
+      "stderr": "",
+      "stdout": "WARN\u2009 Unsupported engine: wanted: {\"node\":\">=22 <23\"} (current: {\"node\":\"v20.19.0\",\"pnpm\":\"9.15.9\"})\n\n> agorix@0.0.0 build /home/faguero/dev-agora/.agorix-main-issue75\n> pnpm -r --if-present run build\n\n.                                        | \u2009WARN\u2009 Unsupported engine: wanted: {\"node\":\">=22 <23\"} (current: {\"node\":\"v20.19.0\",\"pnpm\":\"9.15.9\"})\nScope: 13 of 14 workspace projects\npackages/platform-contract build$ tsc -p tsconfig.json\npackages/program-model build$ tsc -p tsconfig.json\npackages/platform-contract build: Done\npackages/program-model build: Done\npackages/persistence build$ tsc -p tsconfig.json\npackages/code-generator build$ tsc -p tsconfig.json\npackages/code-generator build: Done\npackages/persistence build: Done\npackages/block-editor build$ tsc -p tsconfig.json\npackages/proposals build$ tsc -p tsconfig.json\npackages/runtime build$ tsc -p tsconfig.json\npackages/runtime build: Done\npackages/proposals build: Done\npackages/block-editor build: Done\npackages/curriculum build$ tsc -p tsconfig.json\npackages/stage build$ tsc -p tsconfig.json\npackages/stage build: Done\npackages/curriculum build: Done\nextensions/vscode build$ tsc -p tsconfig.json\npackages/tutor-contract build$ tsc -p tsconfig.json\npackages/tutor-contract build: Done\nextensions/vscode build: Done\napps/tutor-api build$ tsc -p tsconfig.json\napps/web build$ tsc -p tsconfig.json && vite build\napps/tutor-api build: Done\napps/web build: vite v7.3.6 building client environment for production...\napps/web build: transforming...\napps/web build: \u2713 51 modules transformed.\napps/web build: rendering chunks...\napps/web build: computing gzip size...\napps/web build: dist/index.html                   0.39 kB \u2502 gzip:  0.26 kB\napps/web build: dist/assets/index-CbIdeNIi.css   10.67 kB \u2502 gzip:  2.97 kB\napps/web build: dist/assets/index-BSg_Sedn.js   196.02 kB \u2502 gzip: 62.09 kB\napps/web build: \u2713 built in 568ms\napps/web build: Done"
+    },
+    {
+      "allowed": true,
+      "argv": [
+        "pnpm",
+        "test"
+      ],
+      "command": "pnpm test",
+      "elapsed_seconds": 1.372,
+      "exit_code": 0,
+      "status": "passed",
+      "stderr": "",
+      "stdout": "WARN\u2009 Unsupported engine: wanted: {\"node\":\">=22 <23\"} (current: {\"node\":\"v20.19.0\",\"pnpm\":\"9.15.9\"})\n\n> agorix@0.0.0 test /home/faguero/dev-agora/.agorix-main-issue75\n> vitest run\n\n\n RUN  v4.1.11 /home/faguero/dev-agora/.agorix-main-issue75\n\n\n Test Files  18 passed (18)\n      Tests  163 passed (163)\n   Start at  08:15:28\n   Duration  741ms (transform 2.97s, setup 0ms, import 3.69s, tests 219ms, environment 2ms)"
+    }
+  ],
+  "executed": true,
+  "head": "3d9acbd894ccf384265890dbbc028b3a653948e8",
+  "report_path": "/home/faguero/dev-agora/.agorix-main-issue75/.agora/ai-sdlc/verification/issue-75/VERIFICATION.json",
+  "schema": "agora-ai-sdlc/verification-report/v1",
+  "work": "issue-75"
+}

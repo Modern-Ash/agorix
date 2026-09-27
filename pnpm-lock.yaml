@@ -53,6 +53,9 @@ importers:
       '@agorix/program-model':
         specifier: workspace:*
         version: link:../../packages/program-model
+      '@agorix/proposals':
+        specifier: workspace:*
+        version: link:../../packages/proposals
       '@agorix/runtime':
         specifier: workspace:*
         version: link:../../packages/runtime
@@ -99,6 +102,9 @@ importers:
       '@agorix/program-model':
         specifier: workspace:*
         version: link:../../packages/program-model
+      '@agorix/proposals':
+        specifier: workspace:*
+        version: link:../../packages/proposals
       '@agorix/runtime':
         specifier: workspace:*
         version: link:../../packages/runtime
@@ -146,6 +152,18 @@ importers:
   packages/platform-contract: {}
 
   packages/program-model: {}
+
+  packages/proposals:
+    dependencies:
+      '@agorix/code-generator':
+        specifier: workspace:*
+        version: link:../code-generator
+      '@agorix/persistence':
+        specifier: workspace:*
+        version: link:../persistence
+      '@agorix/program-model':
+        specifier: workspace:*
+        version: link:../program-model
 
   packages/runtime:
     dependencies:

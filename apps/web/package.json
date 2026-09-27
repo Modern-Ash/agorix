@@ -15,6 +15,7 @@
     "@agorix/curriculum": "workspace:*",
     "@agorix/persistence": "workspace:*",
     "@agorix/program-model": "workspace:*",
+    "@agorix/proposals": "workspace:*",
     "@agorix/runtime": "workspace:*",
     "@agorix/stage": "workspace:*",
     "@agorix/tutor-contract": "workspace:*",

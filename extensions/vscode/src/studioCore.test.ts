@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { SCHEMA_VERSION, type ProjectProgram } from "@agorix/program-model";
 import { ProjectStore, type BrowserStorageAdapter, type StoredProject } from "@agorix/persistence";
+import { createProgramProposal } from "@agorix/proposals";
 import {
   applyProposal,
   createExecutionEvidence,
@@ -109,12 +110,24 @@ describe("Agorix Studio first slice", () => {
         },
       ],
     };
-    const review = createProposalReview(webCreatedProject.program, {
-      id: "proposal-turn-after-goal",
-      summary: "Add a turn after reaching the beacon.",
-      proposedProgram,
-      affectedNodeIds: ["scripts[0]/statements[1]"],
-    });
+    const review = createProposalReview(
+      webCreatedProject.program,
+      createProgramProposal({
+        id: "proposal-turn-after-goal",
+        baseProgram: webCreatedProject.program,
+        source: { kind: "studio", capability: "diff-review" },
+        purpose: "Add a turn after reaching the beacon.",
+        rationale: "This suggestion may help the learner inspect direction after movement.",
+        affectedNodeIds: ["scripts[0]/statements[1]"],
+        operations: [
+          {
+            type: "appendStatement",
+            scriptIndex: 0,
+            statement: { type: "turn", degrees: 90 },
+          },
+        ],
+      }),
+    );
 
     const rejected = rejectProposal(webCreatedProject.program, review);
     const applied = applyProposal(webCreatedProject.program, review);
