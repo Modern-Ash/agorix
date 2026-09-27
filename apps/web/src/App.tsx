@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import type { ProjectMetadata } from "@agorix/persistence";
 import { POC_TOOLBOX, type BlockNode } from "@agorix/block-editor";
 import { createMissionRunFeedback, getLocalizedFirstMission } from "@agorix/curriculum";
@@ -218,6 +218,101 @@ function StageView({
         </g>
       </svg>
     </section>
+  );
+}
+
+function ProgramBlockCard({
+  block,
+  index,
+  total,
+  selected,
+  locale,
+  onSelect,
+  onCommitValue,
+  onMove,
+  onDelete,
+}: {
+  block: BlockNode;
+  index: number;
+  total: number;
+  selected: boolean;
+  locale: Locale;
+  onSelect: () => void;
+  onCommitValue: (value: number) => void;
+  onMove: (direction: -1 | 1) => void;
+  onDelete: () => void;
+}) {
+  const field = numericFieldFor(block);
+  const currentValue = field === undefined ? undefined : blockValue(block, field);
+  const [draftValue, setDraftValue] = useState(() =>
+    currentValue === undefined ? "" : String(currentValue),
+  );
+
+  useEffect(() => {
+    if (currentValue !== undefined) {
+      setDraftValue(String(currentValue));
+    }
+  }, [currentValue]);
+
+  function submitValue(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const parsed = Number(draftValue);
+    if (!Number.isFinite(parsed)) {
+      setDraftValue(currentValue === undefined ? "" : String(currentValue));
+      return;
+    }
+    onCommitValue(parsed);
+  }
+
+  function cancelValue() {
+    setDraftValue(currentValue === undefined ? "" : String(currentValue));
+  }
+
+  return (
+    <article
+      className={selected ? "block-card active" : "block-card"}
+      aria-label={t(locale, "blockLabel", { name: displayNameFor(block, locale) })}
+      data-interaction-model="touch-first no-drag-required keyboard-reorder"
+    >
+      <button type="button" className="block-title" onClick={onSelect}>
+        {displayNameFor(block, locale)}
+      </button>
+      {field === undefined ? (
+        <span>{t(locale, "touchingGoal")}</span>
+      ) : (
+        <form className="value-editor" onSubmit={submitValue}>
+          <label>
+            <span>{fieldLabelFor(field, locale)}</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              value={draftValue}
+              onChange={(event) => setDraftValue(event.currentTarget.value)}
+            />
+          </label>
+          <div className="value-actions">
+            <button type="submit">{t(locale, "applyValue")}</button>
+            <button type="button" onClick={cancelValue}>
+              {t(locale, "cancelEdit")}
+            </button>
+          </div>
+        </form>
+      )}
+      {block.type === "control_if" ? (
+        <p className="block-note">{t(locale, "blockNoteIf")}</p>
+      ) : null}
+      <div className="block-actions" aria-label={t(locale, "cardActions")}>
+        <button type="button" onClick={() => onMove(-1)} disabled={index === 0}>
+          {t(locale, "up")}
+        </button>
+        <button type="button" onClick={() => onMove(1)} disabled={index === total - 1}>
+          {t(locale, "down")}
+        </button>
+        <button type="button" onClick={onDelete}>
+          {t(locale, "delete")}
+        </button>
+      </div>
+    </article>
   );
 }
 
@@ -640,59 +735,20 @@ export function App() {
               <p className="empty-state">{t(locale, "addMoveBlock")}</p>
             ) : null}
             {statements.map((block, index) => {
-              const field = numericFieldFor(block);
               const nodeId = blockNodeId(index);
-              const selected = highlightedNodeId === nodeId;
               return (
-                <article
+                <ProgramBlockCard
                   key={block.id}
-                  className={selected ? "block-card active" : "block-card"}
-                  aria-label={t(locale, "blockLabel", { name: displayNameFor(block, locale) })}
-                >
-                  <button
-                    type="button"
-                    className="block-title"
-                    onClick={() => setHighlightedNodeId(nodeId)}
-                  >
-                    {displayNameFor(block, locale)}
-                  </button>
-                  {field === undefined ? (
-                    <span>{t(locale, "touchingGoal")}</span>
-                  ) : (
-                    <label>
-                      <span>{fieldLabelFor(field, locale)}</span>
-                      <input
-                        type="number"
-                        value={blockValue(block, field)}
-                        onChange={(event) =>
-                          editBlock(index, block, Number(event.currentTarget.value))
-                        }
-                      />
-                    </label>
-                  )}
-                  {block.type === "control_if" ? (
-                    <p className="block-note">{t(locale, "blockNoteIf")}</p>
-                  ) : null}
-                  <div className="block-actions">
-                    <button
-                      type="button"
-                      onClick={() => moveBlock(index, -1)}
-                      disabled={index === 0}
-                    >
-                      {t(locale, "up")}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => moveBlock(index, 1)}
-                      disabled={index === statements.length - 1}
-                    >
-                      {t(locale, "down")}
-                    </button>
-                    <button type="button" onClick={() => deleteBlock(index)}>
-                      {t(locale, "delete")}
-                    </button>
-                  </div>
-                </article>
+                  block={block}
+                  index={index}
+                  total={statements.length}
+                  selected={highlightedNodeId === nodeId}
+                  locale={locale}
+                  onSelect={() => setHighlightedNodeId(nodeId)}
+                  onCommitValue={(value) => editBlock(index, block, value)}
+                  onMove={(direction) => moveBlock(index, direction)}
+                  onDelete={() => deleteBlock(index)}
+                />
               );
             })}
           </div>
