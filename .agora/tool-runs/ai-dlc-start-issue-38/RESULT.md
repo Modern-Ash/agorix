@@ -1,0 +1,17 @@
+---
+schema: "agora/tool-result/v1"
+run: "ai-dlc-start-issue-38"
+status: "completed"
+exit-code: 0
+result-kind: "work-item"
+---
+
+# Tool result ai-dlc-start-issue-38
+
+## Standard output
+
+    {"assignees":[],"body":"## Parent\n\n#116\n\n## Status\n\n**ACTIVE PRODUCT SURFACE.**\n\nThis is no longer a deferred portability proof. Agorix Studio is the advanced/progressive desktop surface of the Agorix platform.\n\n## Product role\n\nAgorix Studio is a VS Code extension that grows with the learner into real software-development practices.\n\nIt reuses the same:\n- Canonical Program;\n- Runtime;\n- Curriculum;\n- LanguageProjection;\n- Learning Companion;\n- ProgramProposal;\n- project format;\nas Web/Tablet.\n\n## UX direction\n\nStudio should feel like a modern IDE extension, not Scratch embedded inside VS Code.\n\nPrimary surfaces:\n\n### Activity Bar / Side Bar\n- Missions;\n- Worlds;\n- Projects;\n- Learning Companion;\n- Progress.\n\n### Editor\n- textual code first;\n- Agorix Code / Python / TypeScript projections;\n- canonical node highlighting;\n- no independent source-of-truth fork.\n\n### World Preview\n- Webview rendering the same mission/world state;\n- Run / Step / Reset;\n- visual execution feedback.\n\n### Execution Inspector\nEducational debugger-like surface:\n- current canonical instruction;\n- iteration;\n- state before/after;\n- execution trace;\n- mission evidence.\n\n### AI proposal review\nUse native/IDE-friendly diff review where appropriate:\n- proposed change;\n- affected code;\n- Accept;\n- Edit;\n- Reject.\n\nSame ProgramProposal semantics as tablet cards.\n\n## Progressive capability\n\nStudio should support later learner stages:\n- reading/editing real code;\n- debugging;\n- comparing projections;\n- Git concepts;\n- diffs;\n- tests;\n- issues;\n- later AI-assisted SDLC.\n\nDo not require all advanced capabilities in the first slice.\n\n## First-slice requirements\n\n- extension activates on Agorix workspace;\n- opens shared canonical project;\n- shows mission/progress;\n- renders selected textual projection;\n- provides World Preview;\n- provides Run / Step / Reset;\n- shows execution evidence;\n- renders Learning Companion interaction;\n- can review a structured ProgramProposal without silent mutation.\n\n## Dependencies\n\n- #65 LanguageProjection;\n- #74 cross-surface UX contract;\n- #85 LearningCompanion;\n- #117 design system;\n- #121 cross-surface compatibility;\n- stable project format.\n\n## Constraints\n\n- no second canonical model;\n- no duplicated runtime semantics;\n- no provider-specific workflow;\n- no direct LLM mutation;\n- VS Code API imports isolated to extension/adapters;\n- Studio may work without a remote AI provider.\n\n## Acceptance\n\n- [ ] extension builds/packages;\n- [ ] opens same project semantics as Web;\n- [ ] active node maps correctly to editor range;\n- [ ] Step updates code + World Preview + inspector consistently;\n- [ ] ProgramProposal can be inspected/rejected/applied explicitly;\n- [ ] no silent mutation;\n- [ ] Web-created fixture opens in Studio;\n- [ ] Studio-modified canonical fixture reopens in Web via #121;\n- [ ] visual language follows #117.","createdAt":"2026-09-21T21:53:28Z","labels":[],"milestone":null,"number":38,"state":"OPEN","stateReason":"","title":"Build Agorix Studio — VS Code learning and creation environment","updatedAt":"2026-09-27T01:29:24Z","url":"https://github.com/Modern-Ash/agorix/issues/38"}
+
+## Standard error
+
+    (empty)

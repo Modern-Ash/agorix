@@ -1,0 +1,96 @@
+{
+  "acceptance_coverage": [
+    {
+      "candidate_test_paths": [
+        "packages/block-editor/src/index.test.ts",
+        "packages/curriculum/src/index.test.ts",
+        "packages/runtime/src/index.test.ts",
+        "packages/stage/src/index.test.ts",
+        "packages/tutor-contract/src/index.test.ts",
+        "extensions/vscode/src/studioCore.test.ts"
+      ],
+      "criterion": "extension builds/packages",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [],
+      "criterion": "opens same project semantics as Web",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [
+        "packages/block-editor/src/index.test.ts"
+      ],
+      "criterion": "active node maps correctly to editor range",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [
+        "extensions/vscode/src/studioCore.test.ts"
+      ],
+      "criterion": "Step updates code + World Preview + inspector consistently",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [],
+      "criterion": "ProgramProposal can be inspected/rejected/applied explicitly",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [],
+      "criterion": "no silent mutation",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [
+        "extensions/vscode/src/studioCore.test.ts"
+      ],
+      "criterion": "Web-created fixture opens in Studio",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [],
+      "criterion": "Studio-modified canonical fixture reopens in Web via #121",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [],
+      "criterion": "visual language follows #117.",
+      "mechanically_satisfied": false
+    }
+  ],
+  "all_executed_commands_passed": true,
+  "commands": [
+    {
+      "allowed": true,
+      "argv": [
+        "pnpm",
+        "build"
+      ],
+      "command": "pnpm build",
+      "elapsed_seconds": 5.631,
+      "exit_code": 0,
+      "status": "passed",
+      "stderr": "",
+      "stdout": "WARN\u2009 Unsupported engine: wanted: {\"node\":\">=22 <23\"} (current: {\"node\":\"v20.19.0\",\"pnpm\":\"9.15.9\"})\n\n> agorix@0.0.0 build /home/faguero/dev-agora/.agorix-main-issue38\n> pnpm -r --if-present run build\n\n.                                        | \u2009WARN\u2009 Unsupported engine: wanted: {\"node\":\">=22 <23\"} (current: {\"node\":\"v20.19.0\",\"pnpm\":\"9.15.9\"})\nScope: 12 of 13 workspace projects\npackages/platform-contract build$ tsc -p tsconfig.json\npackages/program-model build$ tsc -p tsconfig.json\npackages/platform-contract build: Done\npackages/program-model build: Done\npackages/code-generator build$ tsc -p tsconfig.json\npackages/persistence build$ tsc -p tsconfig.json\npackages/code-generator build: Done\npackages/persistence build: Done\npackages/block-editor build$ tsc -p tsconfig.json\npackages/runtime build$ tsc -p tsconfig.json\npackages/runtime build: Done\npackages/block-editor build: Done\npackages/curriculum build$ tsc -p tsconfig.json\npackages/stage build$ tsc -p tsconfig.json\npackages/stage build: Done\npackages/curriculum build: Done\nextensions/vscode build$ tsc -p tsconfig.json\npackages/tutor-contract build$ tsc -p tsconfig.json\npackages/tutor-contract build: Done\nextensions/vscode build: Done\napps/tutor-api build$ tsc -p tsconfig.json\napps/web build$ tsc -p tsconfig.json && vite build\napps/tutor-api build: Done\napps/web build: vite v7.3.6 building client environment for production...\napps/web build: transforming...\napps/web build: \u2713 50 modules transformed.\napps/web build: rendering chunks...\napps/web build: computing gzip size...\napps/web build: dist/index.html                   0.39 kB \u2502 gzip:  0.26 kB\napps/web build: dist/assets/index-CbIdeNIi.css   10.67 kB \u2502 gzip:  2.97 kB\napps/web build: dist/assets/index-BSg_Sedn.js   196.02 kB \u2502 gzip: 62.09 kB\napps/web build: \u2713 built in 590ms\napps/web build: Done"
+    },
+    {
+      "allowed": true,
+      "argv": [
+        "pnpm",
+        "test"
+      ],
+      "command": "pnpm test",
+      "elapsed_seconds": 1.098,
+      "exit_code": 0,
+      "status": "passed",
+      "stderr": "",
+      "stdout": "WARN\u2009 Unsupported engine: wanted: {\"node\":\">=22 <23\"} (current: {\"node\":\"v20.19.0\",\"pnpm\":\"9.15.9\"})\n\n> agorix@0.0.0 test /home/faguero/dev-agora/.agorix-main-issue38\n> vitest run\n\n\n RUN  v4.1.11 /home/faguero/dev-agora/.agorix-main-issue38\n\n\n Test Files  16 passed (16)\n      Tests  146 passed (146)\n   Start at  07:26:39\n   Duration  574ms (transform 2.11s, setup 0ms, import 2.76s, tests 146ms, environment 1ms)"
+    }
+  ],
+  "executed": true,
+  "head": "85295977bd9db08cf15a7c461de21dcda4b9f6b1",
+  "report_path": "/home/faguero/dev-agora/.agorix-main-issue38/.agora/ai-sdlc/verification/issue-38/VERIFICATION.json",
+  "schema": "agora-ai-sdlc/verification-report/v1",
+  "work": "issue-38"
+}
