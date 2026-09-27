@@ -14,18 +14,18 @@ It is **not** “Scratch plus a chatbot”, and it is not a code generator that 
 
 Agorix teaches children to **think, build, inspect, test, debug and explain programs while collaborating with AI**.
 
-| Principle                   | What it means                                                                                                              |
-| --------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| 🧠 **Pedagogy first**       | AI exists to improve learning, not merely to finish code faster.                                                           |
-| 👧 **Child authorship**     | AI can propose; the learner decides what becomes part of the program.                                                      |
-| 👀 **Code always visible**  | Blocks and textual code are synchronized views of the same program.                                                        |
-| ▶️ **Runtime proves**       | Program behavior is established by deterministic execution, not by LLM confidence.                                         |
-| 🔎 **Nothing hidden**       | Proposals, changes, execution and state transitions must be inspectable.                                                   |
-| 🌍 **Multi-language**       | One canonical program can be projected as Agorix Code, Python, TypeScript and future language packs.                       |
-| 🧩 **Multi-LLM**            | Providers and models are replaceable adapters, not product authority.                                                      |
-| 🏠 **Open-source-first**    | Local/open models and self-hosting are preferred where practical.                                                          |
-| 🌐 **Multilingual product** | UI, curriculum and Learning Companion are designed to support multiple human languages without changing program semantics. |
-| 📱 **Grows with the learner** | Tablet/Web starts simple and touch-first; Agorix Studio progressively introduces real IDE practices. |
+| Principle                     | What it means                                                                                                              |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| 🧠 **Pedagogy first**         | AI exists to improve learning, not merely to finish code faster.                                                           |
+| 👧 **Child authorship**       | AI can propose; the learner decides what becomes part of the program.                                                      |
+| 👀 **Code always visible**    | Blocks and textual code are synchronized views of the same program.                                                        |
+| ▶️ **Runtime proves**         | Program behavior is established by deterministic execution, not by LLM confidence.                                         |
+| 🔎 **Nothing hidden**         | Proposals, changes, execution and state transitions must be inspectable.                                                   |
+| 🌍 **Multi-language**         | One canonical program can be projected as Agorix Code, Python, TypeScript and future language packs.                       |
+| 🧩 **Multi-LLM**              | Providers and models are replaceable adapters, not product authority.                                                      |
+| 🏠 **Open-source-first**      | Local/open models and self-hosting are preferred where practical.                                                          |
+| 🌐 **Multilingual product**   | UI, curriculum and Learning Companion are designed to support multiple human languages without changing program semantics. |
+| 📱 **Grows with the learner** | Tablet/Web starts simple and touch-first; Agorix Studio progressively introduces real IDE practices.                       |
 
 ---
 
@@ -809,18 +809,18 @@ flowchart TD
     E68 --> PROOF
 ```
 
-| Epic / Work | Focus |
-| --- | --- |
-| [#63](https://github.com/Modern-Ash/agorix/issues/63) | AI-native product and pedagogical re-foundation |
+| Epic / Work                                             | Focus                                                    |
+| ------------------------------------------------------- | -------------------------------------------------------- |
+| [#63](https://github.com/Modern-Ash/agorix/issues/63)   | AI-native product and pedagogical re-foundation          |
 | [#116](https://github.com/Modern-Ash/agorix/issues/116) | Tablet, Worlds and Agorix Studio experience architecture |
-| [#64](https://github.com/Modern-Ash/agorix/issues/64) | Transparent programming and observable execution |
-| [#65](https://github.com/Modern-Ash/agorix/issues/65) | Progressive multi-language code learning |
-| [#66](https://github.com/Modern-Ash/agorix/issues/66) | AI-native Learning Companion and governed collaboration |
-| [#67](https://github.com/Modern-Ash/agorix/issues/67) | Open-source-first multi-LLM provider architecture |
-| [#68](https://github.com/Modern-Ash/agorix/issues/68) | AI literacy, child safety and learning evidence |
-| [#110](https://github.com/Modern-Ash/agorix/issues/110) | Multilingual UI, curriculum and Learning Companion |
-| [#36](https://github.com/Modern-Ash/agorix/issues/36) | Tablet-first installable Web/PWA surface |
-| [#38](https://github.com/Modern-Ash/agorix/issues/38) | Agorix Studio VS Code extension |
+| [#64](https://github.com/Modern-Ash/agorix/issues/64)   | Transparent programming and observable execution         |
+| [#65](https://github.com/Modern-Ash/agorix/issues/65)   | Progressive multi-language code learning                 |
+| [#66](https://github.com/Modern-Ash/agorix/issues/66)   | AI-native Learning Companion and governed collaboration  |
+| [#67](https://github.com/Modern-Ash/agorix/issues/67)   | Open-source-first multi-LLM provider architecture        |
+| [#68](https://github.com/Modern-Ash/agorix/issues/68)   | AI literacy, child safety and learning evidence          |
+| [#110](https://github.com/Modern-Ash/agorix/issues/110) | Multilingual UI, curriculum and Learning Companion       |
+| [#36](https://github.com/Modern-Ash/agorix/issues/36)   | Tablet-first installable Web/PWA surface                 |
+| [#38](https://github.com/Modern-Ash/agorix/issues/38)   | Agorix Studio VS Code extension                          |
 
 The cross-epic execution sequence is tracked in:
 
