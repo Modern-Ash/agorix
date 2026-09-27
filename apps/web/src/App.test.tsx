@@ -27,7 +27,7 @@ describe("main editor shell", () => {
 
     expect(html).toContain("Agorix First Mission");
     expect(html).toContain("Mission: Get your sprite to the goal.");
-    expect(html).toContain("Blocks");
+    expect(html).toContain("Action palette");
     expect(html).toContain("When you press Run");
     expect(html).toContain("Stage");
     expect(html).toContain("Code");
@@ -43,13 +43,14 @@ describe("main editor shell", () => {
     expect(html).toContain("Attempts: 0");
     expect(html).toContain("Run");
     expect(html).toContain("Stop");
+    expect(html).toContain("Step");
     expect(html).toContain("Reset");
   });
 
   it("starts with blocks and code visible at the same time", () => {
     const html = renderToStaticMarkup(<App />);
 
-    expect(html.indexOf("Blocks")).toBeGreaterThan(-1);
+    expect(html.indexOf("Action palette")).toBeGreaterThan(-1);
     expect(html.indexOf("This is the code behind your blocks.")).toBeGreaterThan(-1);
   });
 });

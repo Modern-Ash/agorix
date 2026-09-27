@@ -15,6 +15,8 @@ export const LOCALE_LABELS: Record<Locale, string> = {
 
 const messages = {
   en: {
+    actionPalette: "Action palette",
+    actionsContext: "Add blocks without leaving World and Code.",
     addMoveBlock: "Add a Move block to start.",
     appEyebrow: "Agorix First Mission",
     appTitle: "Build with blocks. See the code.",
@@ -60,6 +62,7 @@ const messages = {
     stage: "Stage",
     stageAria: "Sprite and goal stage",
     step: "Step",
+    stepMessage: "Stepped one runtime frame.",
     stop: "Stop",
     stopped: "Stopped",
     steps: "steps",
@@ -76,6 +79,8 @@ const messages = {
     whenRun: "When you press Run",
   },
   es: {
+    actionPalette: "Paleta de acciones",
+    actionsContext: "Agrega bloques sin dejar de ver Mundo y Código.",
     addMoveBlock: "Agrega un bloque Mover para empezar.",
     appEyebrow: "Primera misión de Agorix",
     appTitle: "Construye con bloques. Mira el código.",
@@ -122,6 +127,7 @@ const messages = {
     stage: "Escenario",
     stageAria: "Escenario con personaje y meta",
     step: "Paso",
+    stepMessage: "Avanzaste un paso de ejecución.",
     stop: "Detener",
     stopped: "Detenido",
     steps: "pasos",

@@ -150,6 +150,14 @@ function blockValue(block: BlockNode, field: "steps" | "degrees" | "count"): num
   return typeof value === "number" ? value : 0;
 }
 
+function resultFeedback(
+  result: RunResult,
+  locale: Locale,
+  mission: ReturnType<typeof getLocalizedFirstMission>,
+) {
+  return createMissionRunFeedback({ mission, result, locale });
+}
+
 function CodePanel({
   code,
   highlightedNodeId,
@@ -263,9 +271,7 @@ export function App() {
 
   useEffect(() => {
     return () => {
-      if (timerRef.current !== undefined) {
-        window.clearInterval(timerRef.current);
-      }
+      clearRunTimer();
     };
   }, []);
 
@@ -315,11 +321,15 @@ export function App() {
     applyProjection(deleteBlockFromWorkspace(model.workspace, index));
   }
 
-  function stopRun() {
+  function clearRunTimer() {
     if (timerRef.current !== undefined) {
       window.clearInterval(timerRef.current);
       timerRef.current = undefined;
     }
+  }
+
+  function stopRun() {
+    clearRunTimer();
     setStatus("stopped");
     setMessage(t(locale, "stopped"));
   }
@@ -346,6 +356,17 @@ export function App() {
     setMessage(t(locale, "resetMessage"));
   }
 
+  function createRuntimeFrames() {
+    const result = runProgram(model.program, initialWorldFor(model), {
+      collectObservations: true,
+      stopAfterSteps: 24,
+    });
+    const nextFrames = framesFromRuntimeObservations(result.observations);
+    setLastRunResult(result);
+    setFrames(nextFrames);
+    return { result, nextFrames };
+  }
+
   function runBlocks() {
     if (status === "running") {
       return;
@@ -356,27 +377,19 @@ export function App() {
       return;
     }
     try {
-      const result = runProgram(model.program, initialWorldFor(model), {
-        collectObservations: true,
-        stopAfterSteps: 24,
-      });
-      setLastRunResult(result);
+      const { result, nextFrames } = createRuntimeFrames();
       setAttempts((current) => current + 1);
-      const nextFrames = framesFromRuntimeObservations(result.observations);
-      setFrames(nextFrames);
       setFrameIndex(0);
       setStatus("running");
       setMessage(t(locale, "running"));
-      if (timerRef.current !== undefined) {
-        window.clearInterval(timerRef.current);
-      }
+      clearRunTimer();
       timerRef.current = window.setInterval(() => {
         setFrameIndex((current) => {
           const next = current + 1;
           if (next >= nextFrames.length) {
             window.clearInterval(timerRef.current);
             timerRef.current = undefined;
-            const feedback = createMissionRunFeedback({ mission, result, locale });
+            const feedback = resultFeedback(result, locale, mission);
             setStatus(feedback.completed ? "complete" : "retry");
             setMessage(feedback.message);
             setReflectionPrompt(feedback.reflectionPrompt);
@@ -388,6 +401,39 @@ export function App() {
         });
       }, 550);
       setHighlightedNodeId(nextFrames[0]?.highlightedNodeId);
+    } catch {
+      setStatus("error");
+      setMessage(t(locale, "runSetupError"));
+    }
+  }
+
+  function stepBlocks() {
+    clearRunTimer();
+    if (statements.length === 0) {
+      setStatus("error");
+      setMessage(t(locale, "emptyRunMessage"));
+      return;
+    }
+    try {
+      const hasReusableFrames = frames.length > 0 && lastRunResult !== undefined;
+      const prepared = hasReusableFrames ? undefined : createRuntimeFrames();
+      const result = hasReusableFrames ? lastRunResult : prepared!.result;
+      const nextFrames = hasReusableFrames ? frames : prepared!.nextFrames;
+      if (!hasReusableFrames) {
+        setAttempts((current) => current + 1);
+      }
+      const nextIndex = hasReusableFrames ? Math.min(frameIndex + 1, nextFrames.length - 1) : 0;
+      setFrameIndex(nextIndex);
+      setHighlightedNodeId(nextFrames[nextIndex]?.highlightedNodeId);
+      if (nextIndex >= nextFrames.length - 1) {
+        const feedback = resultFeedback(result, locale, mission);
+        setStatus(feedback.completed ? "complete" : "retry");
+        setMessage(feedback.message);
+        setReflectionPrompt(feedback.reflectionPrompt);
+        return;
+      }
+      setStatus("stopped");
+      setMessage(t(locale, "stepMessage"));
     } catch {
       setStatus("error");
       setMessage(t(locale, "runSetupError"));
@@ -480,6 +526,9 @@ export function App() {
           <button type="button" onClick={runBlocks} disabled={status === "running"}>
             {t(locale, "run")}
           </button>
+          <button type="button" onClick={stepBlocks} disabled={status === "running"}>
+            {t(locale, "step")}
+          </button>
           <button type="button" onClick={stopRun} disabled={status !== "running"}>
             {t(locale, "stop")}
           </button>
@@ -537,13 +586,36 @@ export function App() {
         </div>
       </section>
 
-      <div className="workspace-grid">
-        <aside className="toolbox" aria-labelledby="toolbox-title">
-          <h2 id="toolbox-title">{t(locale, "blocks")}</h2>
+      <div className="learning-layout">
+        <StageView frame={activeFrame} fallback={model.stage.current} locale={locale} />
+
+        <section className="code-panel" aria-labelledby="code-title">
+          <div className="panel-heading">
+            <h2 id="code-title">{t(locale, "code")}</h2>
+            <span>{t(locale, "codeBehindBlocks")}</span>
+          </div>
+          <CodePanel
+            code={model.code}
+            {...(highlightedNodeId === undefined ? {} : { highlightedNodeId })}
+            model={model}
+            locale={locale}
+          />
+          {highlightedCode ? (
+            <p className="highlight-readout">
+              {t(locale, "currentNode", { code: highlightedCode.trim() })}
+            </p>
+          ) : null}
+        </section>
+
+        <section className="action-palette" aria-labelledby="action-palette-title">
+          <div className="panel-heading">
+            <h2 id="action-palette-title">{t(locale, "actionPalette")}</h2>
+            <span>{t(locale, "actionsContext")}</span>
+          </div>
           {toolbox.map((section) => (
             <section key={section.name}>
               <h3>{sectionNameFor(section.name, locale)}</h3>
-              <div className="toolbox-list">
+              <div className="action-list">
                 {section.blocks.map((block) => (
                   <button
                     key={block.type}
@@ -556,7 +628,7 @@ export function App() {
               </div>
             </section>
           ))}
-        </aside>
+        </section>
 
         <section className="program-panel" aria-labelledby="workspace-title">
           <div className="panel-heading">
@@ -626,29 +698,9 @@ export function App() {
           </div>
         </section>
 
-        <StageView frame={activeFrame} fallback={model.stage.current} locale={locale} />
-
-        <section className="code-panel" aria-labelledby="code-title">
+        <aside className="companion-panel" aria-labelledby="companion-title">
           <div className="panel-heading">
-            <h2 id="code-title">{t(locale, "code")}</h2>
-            <span>{t(locale, "codeBehindBlocks")}</span>
-          </div>
-          <CodePanel
-            code={model.code}
-            {...(highlightedNodeId === undefined ? {} : { highlightedNodeId })}
-            model={model}
-            locale={locale}
-          />
-          {highlightedCode ? (
-            <p className="highlight-readout">
-              {t(locale, "currentNode", { code: highlightedCode.trim() })}
-            </p>
-          ) : null}
-        </section>
-
-        <aside className="tutor-panel" aria-labelledby="tutor-title">
-          <div className="panel-heading">
-            <h2 id="tutor-title">{t(locale, "proposalReview")}</h2>
+            <h2 id="companion-title">{t(locale, "proposalReview")}</h2>
             <span>
               {tutorResponse === undefined
                 ? t(locale, "tutorOffline")
