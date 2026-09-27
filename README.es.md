@@ -29,6 +29,12 @@ Agorix enseña a los chicos a **pensar, construir, inspeccionar, probar, depurar
 
 ---
 
+## Idiomas del producto
+
+Agorix ahora trata inglés y español como idiomas seleccionables del producto para el slice actual de Agorix Web. La UI, la Primera Misión y las pistas determinísticas del Learning Companion se resuelven mediante recursos sensibles al locale, mientras que el programa canónico y la semántica del runtime siguen siendo independientes del idioma. Ver [ADR 0003](docs/architecture/adr/0003-product-i18n-l10n.md) y la [guía de traducción](docs/product/TRANSLATION_GUIDE.md).
+
+---
+
 ## ¿Por qué Agorix?
 
 Un niño que aprende programación hoy todavía necesita comprender secuencias, eventos, loops, condiciones, estado, funciones y debugging.

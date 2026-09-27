@@ -25,7 +25,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -45,7 +46,8 @@ button:disabled {
 }
 
 button:focus-visible,
-input:focus-visible {
+input:focus-visible,
+select:focus-visible {
   outline: 4px solid #2f6fed;
   outline-offset: 3px;
 }
@@ -123,6 +125,24 @@ h3 {
 
 .run-controls button {
   padding: 0 16px;
+  font-weight: 800;
+}
+
+.locale-picker {
+  display: grid;
+  gap: 4px;
+  min-width: 150px;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.locale-picker select {
+  min-height: 44px;
+  border: 2px solid #18201c;
+  padding: 0 10px;
+  background: #fffdf7;
+  color: #18201c;
   font-weight: 800;
 }
 
@@ -478,7 +498,11 @@ h3 {
 
   .run-controls {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .locale-picker {
+    grid-column: 1 / -1;
   }
 
   .code-surface {

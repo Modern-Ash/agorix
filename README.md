@@ -29,6 +29,12 @@ Agorix teaches children to **think, build, inspect, test, debug and explain prog
 
 ---
 
+## Product languages
+
+Agorix now treats English and Spanish as selectable product locales for the current Web learner slice. UI copy, First Mission curriculum and deterministic Learning Companion hints resolve through locale-aware resources, while the canonical program and runtime semantics stay language-independent. See [ADR 0003](docs/architecture/adr/0003-product-i18n-l10n.md) and the [translation guide](docs/product/TRANSLATION_GUIDE.md).
+
+---
+
 ## Why Agorix?
 
 Children learning programming today still need to understand sequence, events, loops, conditions, state, functions and debugging.

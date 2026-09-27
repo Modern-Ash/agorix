@@ -34,6 +34,7 @@ export interface ProjectMetadata {
   readonly updatedAt: string;
   readonly missionProgress: number;
   readonly hintLevel: number;
+  readonly locale?: string;
 }
 
 export interface BrowserStorageAdapter {
