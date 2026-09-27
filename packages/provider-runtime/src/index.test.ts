@@ -7,6 +7,7 @@ import {
   PACKAGE_NAME,
   assertProviderRuntimeConformance,
   createFakeProviderRuntime,
+  createOllamaProviderRuntime,
   createProviderModelConfig,
   negotiateCapability,
   normalizeProviderRuntimeError,
@@ -242,5 +243,162 @@ describe("provider capability negotiation", () => {
     expect(() =>
       createProviderModelConfig({ runtimeId: "", providerId: "local", modelId: "model" }),
     ).toThrow(ProviderRuntimeContractError);
+  });
+});
+
+describe("ollama provider runtime", () => {
+  function jsonResponse(body: unknown, ok = true, status = ok ? 200 : 500): Response {
+    return new Response(JSON.stringify(body), { status });
+  }
+
+  it("uses configured endpoint and model without credentials", async () => {
+    const calls: Array<{ readonly input: string; readonly init: RequestInit | undefined }> = [];
+    const responseBody = {
+      response: JSON.stringify({
+        schema: "agorix/learning-companion-response/v1",
+        capability: "coach",
+        message: "What evidence did the runtime show?",
+        nodeIds: ["scripts[0]/statements[0]"],
+        concepts: ["sequence"],
+        metadata: {
+          capability: "coach",
+          scaffoldLevel: 1,
+          provenance: "local-provider",
+          uncertainty: "medium",
+        },
+        payload: {
+          kind: "question",
+          question: "What evidence did the runtime show?",
+        },
+      }),
+      done: true,
+    };
+    const runtime = createOllamaProviderRuntime({
+      endpoint: "http://localhost:11434/",
+      modelId: "qwen2.5-coder:7b",
+      capabilities: ["coach", "explainer"],
+      fetch: async (input, init) => {
+        calls.push({ input: String(input), init });
+        return jsonResponse(responseBody);
+      },
+    });
+
+    const result = await runtime.request(request, { timeoutMs: 2_000 });
+
+    expect(runtime.descriptor).toMatchObject({
+      providerId: "ollama",
+      modelId: "qwen2.5-coder:7b",
+      locality: "local",
+    });
+    expect(result.ok).toBe(true);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.input).toBe("http://localhost:11434/api/generate");
+    const headers = calls[0]?.init?.headers as Record<string, string>;
+    expect(headers.authorization).toBeUndefined();
+    expect(JSON.parse(String(calls[0]?.init?.body))).toMatchObject({
+      model: "qwen2.5-coder:7b",
+      stream: false,
+      format: "json",
+    });
+  });
+
+  it("reports health without requiring Ollama in deterministic tests", async () => {
+    const available = createOllamaProviderRuntime({
+      endpoint: "http://127.0.0.1:11434",
+      modelId: "local-model",
+      capabilities: ["coach"],
+      fetch: async () => jsonResponse({ models: [] }),
+    });
+    const unavailable = createOllamaProviderRuntime({
+      endpoint: "http://127.0.0.1:11434",
+      modelId: "local-model",
+      capabilities: ["coach"],
+      fetch: async () => {
+        throw new Error("connection refused");
+      },
+    });
+
+    expect(await available.health()).toMatchObject({ status: "available" });
+    expect(await unavailable.health()).toMatchObject({ status: "unavailable" });
+  });
+
+  it("fails explicitly when configured structured output is unavailable", async () => {
+    const runtime = createOllamaProviderRuntime({
+      endpoint: "http://localhost:11434",
+      modelId: "text-only-local-model",
+      capabilities: ["coach"],
+      structuredOutput: false,
+      fetch: async () => jsonResponse({ response: "{}" }),
+    });
+
+    expect(runtime.negotiate("coach")).toMatchObject({
+      supported: false,
+      missingReason: "structured-output-unavailable",
+    });
+    const result = await runtime.request(request);
+
+    expect(result.ok).toBe(false);
+    expect(result.ok ? undefined : result.error.code).toBe("unsupported-capability");
+  });
+
+  it("isolates unavailable daemon and malformed output as provider failures", async () => {
+    const unavailable = createOllamaProviderRuntime({
+      endpoint: "http://localhost:11434",
+      modelId: "missing-model",
+      capabilities: ["coach"],
+      fetch: async () => jsonResponse({ error: "model missing" }, false, 500),
+    });
+    const malformed = createOllamaProviderRuntime({
+      endpoint: "http://localhost:11434",
+      modelId: "bad-json-model",
+      capabilities: ["coach"],
+      fetch: async () => jsonResponse({ response: "not json", done: true }),
+    });
+
+    const outage = await unavailable.request(request);
+    const invalid = await malformed.request(request);
+
+    expect(outage.ok).toBe(false);
+    expect(outage.ok ? undefined : outage.error.code).toBe("provider-unavailable");
+    expect(invalid.ok).toBe(false);
+    expect(invalid.ok ? undefined : invalid.error.code).toBe("invalid-response");
+  });
+
+  it("normalizes request timeout before contacting the daemon", async () => {
+    let called = false;
+    const runtime = createOllamaProviderRuntime({
+      endpoint: "http://localhost:11434",
+      modelId: "slow-local-model",
+      capabilities: ["coach"],
+      fetch: async () => {
+        called = true;
+        return jsonResponse({ response: "{}" });
+      },
+    });
+
+    const timedOut = await runtime.request(request, { timeoutMs: 0 });
+
+    expect(called).toBe(false);
+    expect(timedOut.ok).toBe(false);
+    expect(timedOut.ok ? undefined : timedOut.error.code).toBe("timeout");
+  });
+
+  it("normalizes cancellation and unsupported capabilities", async () => {
+    const runtime = createOllamaProviderRuntime({
+      endpoint: "http://localhost:11434",
+      modelId: "coach-only-model",
+      capabilities: ["coach"],
+      fetch: async () => jsonResponse({ response: "{}" }),
+    });
+
+    const cancelled = await runtime.request(request, { cancelled: true });
+    const builder = await runtime.request(
+      createLearningCompanionRequest({ ...request, capability: "builder" }),
+    );
+
+    expect(cancelled.ok).toBe(false);
+    expect(cancelled.ok ? undefined : cancelled.error.code).toBe("cancelled");
+    expect(builder.ok).toBe(false);
+    expect(builder.ok ? undefined : builder.error.code).toBe("unsupported-capability");
   });
 });

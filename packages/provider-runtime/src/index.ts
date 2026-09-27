@@ -129,6 +129,25 @@ export interface FakeProviderRuntimeConfig {
   readonly failureMode?: "timeout" | "cancelled" | "provider-error" | "invalid-response";
 }
 
+export type ProviderRuntimeFetch = typeof fetch;
+
+export interface OllamaProviderRuntimeConfig {
+  readonly endpoint: string;
+  readonly modelId: string;
+  readonly runtimeId?: string;
+  readonly capabilities: readonly LearningCompanionCapability[];
+  readonly structuredOutput?: boolean;
+  readonly contextLimits?: ProviderRuntimeContextLimits;
+  readonly timeoutMs?: number;
+  readonly fetch?: ProviderRuntimeFetch;
+}
+
+interface OllamaGenerateResponse {
+  readonly response?: unknown;
+  readonly done?: unknown;
+  readonly error?: unknown;
+}
+
 const DEFAULT_FEATURES: ProviderRuntimeFeatureSet = {
   structuredJson: true,
   toolCalling: false,
@@ -220,6 +239,164 @@ export function createFakeProviderRuntime(
   };
 }
 
+export function createOllamaProviderRuntime(
+  config: OllamaProviderRuntimeConfig,
+): LearningCompanionProviderRuntime {
+  const descriptor = createOllamaDescriptor(config);
+  const fetchImpl = config.fetch ?? globalThis.fetch;
+  if (typeof fetchImpl !== "function") {
+    throw new ProviderRuntimeContractError("fetch", "expected fetch implementation");
+  }
+  return {
+    descriptor,
+    async health() {
+      try {
+        const response = await fetchImpl(ollamaUrl(config.endpoint, "/api/tags"), {
+          method: "GET",
+        });
+        return {
+          status: response.ok ? "available" : "unavailable",
+          checkedAt: new Date(0).toISOString(),
+          ...(response.ok
+            ? {}
+            : { message: `Ollama health check returned HTTP ${response.status}.` }),
+        };
+      } catch {
+        return {
+          status: "unavailable",
+          checkedAt: new Date(0).toISOString(),
+          message: "Ollama daemon is unavailable.",
+        };
+      }
+    },
+    negotiate(capability) {
+      return negotiateCapability(descriptor, capability);
+    },
+    async request(request, options = {}) {
+      const validated = validateLearningCompanionRequest(request);
+      const diagnostics = diagnosticsFor(descriptor, validated.capability);
+      if (options.cancelled === true) {
+        return failure(
+          diagnostics,
+          normalizedError(
+            "cancelled",
+            "Provider request was cancelled.",
+            validated.capability,
+            descriptor,
+          ),
+        );
+      }
+      const negotiation = negotiateCapability(descriptor, validated.capability);
+      if (!negotiation.supported) {
+        return failure(
+          diagnostics,
+          normalizedError(
+            "unsupported-capability",
+            negotiation.missingReason === "structured-output-unavailable"
+              ? `Capability ${validated.capability} requires structured output that ${descriptor.modelId} does not advertise.`
+              : `Capability ${validated.capability} is not supported by ${descriptor.runtimeId}.`,
+            validated.capability,
+            descriptor,
+          ),
+        );
+      }
+      const timeoutMs = options.timeoutMs ?? config.timeoutMs;
+      if (isTimeout(timeoutMs)) {
+        return failure(
+          diagnostics,
+          normalizedError(
+            "timeout",
+            "Provider request timed out.",
+            validated.capability,
+            descriptor,
+          ),
+        );
+      }
+      let didTimeout = false;
+      const controller = typeof AbortController === "undefined" ? undefined : new AbortController();
+      const timeoutHandle =
+        timeoutMs === undefined || controller === undefined
+          ? undefined
+          : setTimeout(() => {
+              didTimeout = true;
+              controller.abort();
+            }, timeoutMs);
+      try {
+        const response = await fetchImpl(ollamaUrl(config.endpoint, "/api/generate"), {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            model: config.modelId,
+            stream: false,
+            format: "json",
+            prompt: createOllamaPrompt(validated),
+          }),
+          ...(controller === undefined ? {} : { signal: controller.signal }),
+        });
+        if (!response.ok) {
+          return failure(
+            diagnostics,
+            normalizedError(
+              response.status === 404 || response.status >= 500
+                ? "provider-unavailable"
+                : "provider-error",
+              `Ollama returned HTTP ${response.status}.`,
+              validated.capability,
+              descriptor,
+            ),
+          );
+        }
+        const payload = (await response.json()) as OllamaGenerateResponse;
+        if (typeof payload.error === "string" && payload.error.length > 0) {
+          return failure(
+            diagnostics,
+            normalizedError("provider-error", payload.error, validated.capability, descriptor),
+          );
+        }
+        try {
+          const providerOutput = parseOllamaProviderOutput(payload.response);
+          return {
+            ok: true,
+            response: validateLearningCompanionResponse(
+              providerOutput as LearningCompanionResponse,
+            ),
+            diagnostics,
+          };
+        } catch {
+          return failure(
+            diagnostics,
+            normalizedError(
+              "invalid-response",
+              "Provider response failed validation.",
+              validated.capability,
+              descriptor,
+            ),
+          );
+        }
+      } catch (error) {
+        const code = didTimeout ? "timeout" : isAbortError(error) ? "cancelled" : undefined;
+        return failure(
+          diagnostics,
+          code === undefined
+            ? normalizeProviderRuntimeError(error, descriptor, validated.capability)
+            : normalizedError(
+                code,
+                code === "timeout"
+                  ? "Provider request timed out."
+                  : "Provider request was cancelled.",
+                validated.capability,
+                descriptor,
+              ),
+        );
+      } finally {
+        if (timeoutHandle !== undefined) {
+          clearTimeout(timeoutHandle);
+        }
+      }
+    },
+  };
+}
+
 export function negotiateCapability(
   descriptor: ProviderRuntimeDescriptor,
   capability: LearningCompanionCapability,
@@ -282,6 +459,48 @@ export function assertProviderRuntimeConformance(
     );
   }
   return result;
+}
+
+function createOllamaDescriptor(config: OllamaProviderRuntimeConfig): ProviderRuntimeDescriptor {
+  assertBoundedString(config.endpoint, "endpoint", 1, 300);
+  assertBoundedString(config.modelId, "modelId", 1, 120);
+  if (config.runtimeId !== undefined) {
+    assertBoundedString(config.runtimeId, "runtimeId", 1, 120);
+  }
+  if (
+    config.timeoutMs !== undefined &&
+    (!Number.isInteger(config.timeoutMs) || config.timeoutMs <= 0)
+  ) {
+    throw new ProviderRuntimeContractError("timeoutMs", "expected positive integer timeout");
+  }
+  if (config.capabilities.length === 0) {
+    throw new ProviderRuntimeContractError("capabilities", "expected at least one capability");
+  }
+  const features: ProviderRuntimeFeatureSet = {
+    structuredJson: config.structuredOutput ?? true,
+    toolCalling: false,
+    streaming: false,
+  };
+  return {
+    runtimeId: config.runtimeId ?? `ollama:${config.modelId}`,
+    providerId: "ollama",
+    modelId: config.modelId,
+    locality: "local",
+    features,
+    contextLimits: config.contextLimits ?? {},
+    capabilities: config.capabilities.map((capability) => ({
+      capability,
+      structuredOutput: features.structuredJson,
+      streaming: false,
+      toolCalling: false,
+      ...(config.contextLimits?.maxInputTokens === undefined
+        ? {}
+        : { maxInputTokens: config.contextLimits.maxInputTokens }),
+      ...(config.contextLimits?.maxOutputTokens === undefined
+        ? {}
+        : { maxOutputTokens: config.contextLimits.maxOutputTokens }),
+    })),
+  };
 }
 
 function createDescriptor(config: FakeProviderRuntimeConfig): ProviderRuntimeDescriptor {
@@ -356,6 +575,38 @@ function isProviderRuntimeError(value: unknown): value is ProviderRuntimeError {
     "message" in value &&
     "retryable" in value
   );
+}
+
+function ollamaUrl(endpoint: string, path: string): string {
+  const base = endpoint.endsWith("/") ? endpoint.slice(0, -1) : endpoint;
+  return `${base}${path}`;
+}
+
+function createOllamaPrompt(request: LearningCompanionRequest): string {
+  return [
+    "You are the Agorix Learning Companion provider adapter.",
+    "Return only one JSON object matching agorix/learning-companion-response/v1.",
+    "Do not propose canonical program mutations unless the requested capability schema permits it.",
+    JSON.stringify({
+      capability: request.capability,
+      mission: request.mission,
+      selectedNodeIds: request.selectedNodeIds,
+      runtimeFacts: request.runtimeFacts,
+      scaffoldHistory: request.scaffoldHistory,
+      learnerIntent: request.learnerIntent,
+    }),
+  ].join("\n");
+}
+
+function parseOllamaProviderOutput(value: unknown): unknown {
+  if (typeof value === "string") {
+    return JSON.parse(value) as unknown;
+  }
+  return value;
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === "AbortError";
 }
 
 function isTimeout(timeoutMs: number | undefined): boolean {
