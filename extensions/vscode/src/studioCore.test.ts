@@ -92,6 +92,12 @@ describe("Agorix Studio first slice", () => {
 
     expect(evidence.result.outcome).toBe("stopped");
     expect(evidence.previewFrames[0]?.highlightedNodeId).toBe("scripts[0]/statements[0]");
+    expect(evidence.stepSequence[0]?.nodeId).toBe("scripts[0]/statements[0]");
+    expect(evidence.stepSequence[0]?.timing).toBe("before-statement");
+    expect(evidence.stepSequence[1]?.timing).toBe("after-statement");
+    expect(evidence.stepSequence.map((step) => step.nodeId ?? "$")).toEqual(
+      evidence.previewFrames.map((frame) => frame.highlightedNodeId ?? "$"),
+    );
     expect(evidence.inspectorRows[0]?.nodeId).toBe("scripts[0]/statements[0]");
     expect(evidence.inspectorRows[0]?.worldAfter.sprite.x).toBe(212);
   });

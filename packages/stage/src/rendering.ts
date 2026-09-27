@@ -29,6 +29,25 @@ export interface ObservationFrame extends StageRenderFrame {
   readonly kind: RuntimeObservation["kind"];
 }
 
+export type ExecutionStepTiming =
+  | "before-statement"
+  | "after-statement"
+  | "enter-repeat"
+  | "complete-repeat"
+  | "evaluate-condition"
+  | "complete-condition"
+  | "complete";
+
+export interface ExecutionStep {
+  readonly index: number;
+  readonly runtimeStep: number;
+  readonly nodeId?: string;
+  readonly statementType?: RuntimeObservation["statementType"];
+  readonly timing: ExecutionStepTiming;
+  readonly frame: ObservationFrame;
+  readonly observation: RuntimeObservation;
+}
+
 function freezeStageState(state: StageState): StageState {
   const cloned = cloneStageState(state);
   Object.freeze(cloned.sprite);
@@ -86,4 +105,37 @@ export function framesFromRuntimeObservations(
     step: observation.step,
     kind: observation.kind,
   }));
+}
+
+function timingForObservation(observation: RuntimeObservation): ExecutionStepTiming {
+  if (observation.kind === "run-complete") {
+    return "complete";
+  }
+  if (observation.statementType === "repeat") {
+    return observation.kind === "statement-start" ? "enter-repeat" : "complete-repeat";
+  }
+  if (observation.statementType === "if") {
+    return observation.kind === "statement-start" ? "evaluate-condition" : "complete-condition";
+  }
+  return observation.kind === "statement-start" ? "before-statement" : "after-statement";
+}
+
+export function executionStepsFromRuntimeObservations(
+  observations: readonly RuntimeObservation[],
+): readonly ExecutionStep[] {
+  const frames = framesFromRuntimeObservations(observations);
+  return observations.map((observation, index) => {
+    const nodeId = observation.nodeId === "$" ? undefined : observation.nodeId;
+    return Object.freeze({
+      index,
+      runtimeStep: observation.step,
+      ...(nodeId === undefined ? {} : { nodeId }),
+      ...(observation.statementType === undefined
+        ? {}
+        : { statementType: observation.statementType }),
+      timing: timingForObservation(observation),
+      frame: frames[index]!,
+      observation,
+    });
+  });
 }

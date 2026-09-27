@@ -24,6 +24,8 @@ export {
   turnStage,
 } from "./model.js";
 export type {
+  ExecutionStep,
+  ExecutionStepTiming,
   ObservationFrame,
   StageRenderAdapter,
   StageRenderFrame,
@@ -33,5 +35,6 @@ export type {
 export {
   createStageRenderAdapter,
   createStageRenderFrame,
+  executionStepsFromRuntimeObservations,
   framesFromRuntimeObservations,
 } from "./rendering.js";

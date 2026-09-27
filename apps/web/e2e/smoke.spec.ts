@@ -138,6 +138,42 @@ test("mission retry keeps work, code, and unlocks non-blocking free play", async
   await expect(page.getByText("sprite.move(160);")).toBeVisible();
 });
 
+test("Step synchronizes block, code and stage without racing Run", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Move" }).click();
+  await applyMoveSteps(page, "24");
+  await page.getByRole("button", { name: "Step" }).click();
+
+  await expect(page.getByTestId("step-readout")).toContainText("before-statement");
+  await expect(page.locator(".block-card.active")).toContainText("Move");
+  await expect(page.locator(".code-surface mark")).toContainText("sprite.move(24);");
+
+  await page.getByRole("button", { name: "Step" }).click();
+  await expect(page.getByTestId("step-readout")).toContainText("after-statement");
+  await expect(page.getByText("Current node: sprite.move(24);")).toBeVisible();
+
+  await page.getByRole("button", { name: "Run" }).click();
+  await expect(page.getByRole("button", { name: "Step" })).toBeDisabled();
+});
+
+test("orientation change preserves prepared Step state", async ({ page }) => {
+  await page.setViewportSize({ width: 768, height: 1024 });
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Move" }).click();
+  await applyMoveSteps(page, "24");
+  await page.getByRole("button", { name: "Step" }).click();
+  await expect(page.getByTestId("step-readout")).toContainText("scripts[0]/statements[0]");
+
+  await page.setViewportSize({ width: 1180, height: 820 });
+  await page.evaluate(() => window.scrollTo(0, 0));
+
+  await expect(page.getByTestId("step-readout")).toContainText("scripts[0]/statements[0]");
+  await expect(page.locator(".code-surface mark")).toContainText("sprite.move(24);");
+  await expect(page.locator(".block-card.active")).toContainText("Move");
+});
+
 test("mission celebration respects reduced motion", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");

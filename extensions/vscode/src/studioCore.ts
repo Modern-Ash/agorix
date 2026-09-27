@@ -15,7 +15,12 @@ import {
   type ExecutionTraceEntry,
   type RunResult,
 } from "@agorix/runtime";
-import { framesFromRuntimeObservations, type ObservationFrame } from "@agorix/stage";
+import {
+  executionStepsFromRuntimeObservations,
+  framesFromRuntimeObservations,
+  type ExecutionStep,
+  type ObservationFrame,
+} from "@agorix/stage";
 
 export interface StudioProject {
   readonly stored: StoredProject;
@@ -33,6 +38,7 @@ export interface InspectorRow {
 export interface StudioExecutionEvidence {
   readonly result: RunResult;
   readonly previewFrames: readonly ObservationFrame[];
+  readonly stepSequence: readonly ExecutionStep[];
   readonly inspectorRows: readonly InspectorRow[];
 }
 
@@ -72,6 +78,7 @@ export function createExecutionEvidence(
   return {
     result,
     previewFrames: framesFromRuntimeObservations(result.observations),
+    stepSequence: executionStepsFromRuntimeObservations(result.observations),
     inspectorRows: result.trace.map((entry) => ({
       step: entry.step,
       nodeId: entry.nodeId,
