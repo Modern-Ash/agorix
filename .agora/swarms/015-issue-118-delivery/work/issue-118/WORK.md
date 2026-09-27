@@ -11,7 +11,7 @@ status-by: null
 status-at: null
 acceptance-criteria: {"source-issue":"Satisfy the acceptance criteria from GitHub issue #118"}
 satisfied-criteria: []
-criterion-statuses: {"source-issue":["elaborated"]}
+criterion-statuses: {"source-issue":["elaborated","designed","built","verified"]}
 required-artifacts: []
 child-work-refs: []
 budget-limits: null
@@ -25,7 +25,7 @@ Source issue: https://github.com/Modern-Ash/agorix/issues/118
 
 ## Acceptance criteria
 
-- [ ] **source-issue:** Satisfy the acceptance criteria from GitHub issue #118; stages: elaborated
+- [ ] **source-issue:** Satisfy the acceptance criteria from GitHub issue #118; stages: elaborated, designed, built, verified
 
 ## Required artifacts
 
