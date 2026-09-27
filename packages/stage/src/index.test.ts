@@ -9,6 +9,7 @@ import {
   createStageRenderAdapter,
   createStageSession,
   executionStepsFromRuntimeObservations,
+  learnerTraceFromExecutionSteps,
   createStageState,
   framesFromRuntimeObservations,
   moveStage,
@@ -222,6 +223,57 @@ describe("stage", () => {
     expect(JSON.stringify(first)).toBe(JSON.stringify(second));
     expect(first[2]?.frame.highlightedNodeId).toBe("scripts[0]/statements[0]/body[0]");
     expect(first.at(-1)?.frame.running).toBe(false);
+  });
+
+  it("creates child-readable learner traces without provider or prompt data", () => {
+    const observations: RuntimeObservation[] = [
+      {
+        kind: "statement-start",
+        step: 1,
+        nodeId: "scripts[0]/statements[0]",
+        statementType: "move",
+        world: { sprite: { x: 20, y: 0, heading: 0 }, goal: { x: 100, y: 0 } },
+      },
+      {
+        kind: "statement-end",
+        step: 1,
+        nodeId: "scripts[0]/statements[0]",
+        statementType: "move",
+        world: { sprite: { x: 30, y: 0, heading: 0 }, goal: { x: 100, y: 0 } },
+      },
+      {
+        kind: "statement-start",
+        step: 2,
+        nodeId: "scripts[0]/statements[1]",
+        statementType: "if",
+        world: { sprite: { x: 30, y: 0, heading: 0 }, goal: { x: 100, y: 0 } },
+      },
+      {
+        kind: "statement-end",
+        step: 2,
+        nodeId: "scripts[0]/statements[1]",
+        statementType: "if",
+        world: { sprite: { x: 30, y: 0, heading: 0 }, goal: { x: 100, y: 0 } },
+      },
+      {
+        kind: "run-complete",
+        step: 2,
+        nodeId: "$",
+        outcome: "completed",
+        world: { sprite: { x: 30, y: 0, heading: 0 }, goal: { x: 100, y: 0 } },
+      },
+    ];
+
+    const steps = executionStepsFromRuntimeObservations(observations);
+    const beginner = learnerTraceFromExecutionSteps(steps, "beginner");
+    const studio = learnerTraceFromExecutionSteps(steps, "studio");
+
+    expect(beginner[1]?.summary).toBe("Nova moved right; x: 20 -> 30");
+    expect(beginner[3]?.conditionResult).toBe(false);
+    expect(studio[1]?.summary).toContain("before: x=20 y=0 heading=0");
+    expect(studio[1]?.summary).toContain("after: x=30 y=0 heading=0");
+    expect(studio[1]?.nodeId).toBe(beginner[1]?.nodeId);
+    expect(JSON.stringify(beginner)).not.toMatch(/provider|prompt|stack|email|token/i);
   });
 
   it("keeps Phaser out of the stage domain package", () => {

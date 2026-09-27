@@ -1,0 +1,99 @@
+{
+  "acceptance_coverage": [
+    {
+      "candidate_test_paths": [],
+      "criterion": "trace derives solely from deterministic runtime facts",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [],
+      "criterion": "state transitions are accurate",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [
+        "extensions/vscode/src/crossSurfaceCompatibility.test.ts",
+        "extensions/vscode/src/studioCore.test.ts",
+        "packages/block-editor/src/index.test.ts"
+      ],
+      "criterion": "learner can correlate trace item to highlighted block/code",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [],
+      "criterion": "repeat iterations are understandable and not spammy",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [],
+      "criterion": "condition result is visible in a child-appropriate form",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [],
+      "criterion": "no PII or provider data enters trace",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [],
+      "criterion": "tests prove ordering and before/after values.",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [],
+      "criterion": "beginner trace avoids irrelevant engine detail",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [
+        "extensions/vscode/src/studioCore.test.ts"
+      ],
+      "criterion": "Studio inspector can expose richer state",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [],
+      "criterion": "both views correlate to the same canonical node",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [],
+      "criterion": "trace rendering is localizable via #110.",
+      "mechanically_satisfied": false
+    }
+  ],
+  "all_executed_commands_passed": true,
+  "commands": [
+    {
+      "allowed": true,
+      "argv": [
+        "pnpm",
+        "build"
+      ],
+      "command": "pnpm build",
+      "elapsed_seconds": 6.077,
+      "exit_code": 0,
+      "status": "passed",
+      "stderr": "",
+      "stdout": "WARN\u2009 Unsupported engine: wanted: {\"node\":\">=22 <23\"} (current: {\"node\":\"v20.19.0\",\"pnpm\":\"9.15.9\"})\n\n> agorix@0.0.0 build /home/faguero/dev-agora/.agorix-main-issue77\n> pnpm -r --if-present run build\n\n.                                        | \u2009WARN\u2009 Unsupported engine: wanted: {\"node\":\">=22 <23\"} (current: {\"node\":\"v20.19.0\",\"pnpm\":\"9.15.9\"})\nScope: 13 of 14 workspace projects\npackages/platform-contract build$ tsc -p tsconfig.json\npackages/program-model build$ tsc -p tsconfig.json\npackages/platform-contract build: Done\npackages/program-model build: Done\npackages/code-generator build$ tsc -p tsconfig.json\npackages/persistence build$ tsc -p tsconfig.json\npackages/code-generator build: Done\npackages/persistence build: Done\npackages/block-editor build$ tsc -p tsconfig.json\npackages/proposals build$ tsc -p tsconfig.json\npackages/runtime build$ tsc -p tsconfig.json\npackages/runtime build: Done\npackages/block-editor build: Done\npackages/proposals build: Done\npackages/curriculum build$ tsc -p tsconfig.json\npackages/stage build$ tsc -p tsconfig.json\npackages/stage build: Done\npackages/curriculum build: Done\nextensions/vscode build$ tsc -p tsconfig.json\npackages/tutor-contract build$ tsc -p tsconfig.json\npackages/tutor-contract build: Done\nextensions/vscode build: Done\napps/tutor-api build$ tsc -p tsconfig.json\napps/web build$ tsc -p tsconfig.json && vite build\napps/tutor-api build: Done\napps/web build: vite v7.3.6 building client environment for production...\napps/web build: transforming...\napps/web build: \u2713 51 modules transformed.\napps/web build: rendering chunks...\napps/web build: computing gzip size...\napps/web build: dist/index.html                   0.39 kB \u2502 gzip:  0.26 kB\napps/web build: dist/assets/index-9HwUc3Uu.css   11.23 kB \u2502 gzip:  3.07 kB\napps/web build: dist/assets/index-c-ch-vl1.js   200.41 kB \u2502 gzip: 63.41 kB\napps/web build: \u2713 built in 584ms\napps/web build: Done"
+    },
+    {
+      "allowed": true,
+      "argv": [
+        "pnpm",
+        "test"
+      ],
+      "command": "pnpm test",
+      "elapsed_seconds": 1.359,
+      "exit_code": 0,
+      "status": "passed",
+      "stderr": "",
+      "stdout": "WARN\u2009 Unsupported engine: wanted: {\"node\":\">=22 <23\"} (current: {\"node\":\"v20.19.0\",\"pnpm\":\"9.15.9\"})\n\n> agorix@0.0.0 test /home/faguero/dev-agora/.agorix-main-issue77\n> vitest run\n\n\n RUN  v4.1.11 /home/faguero/dev-agora/.agorix-main-issue77\n\n\n Test Files  18 passed (18)\n      Tests  165 passed (165)\n   Start at  08:50:44\n   Duration  770ms (transform 3.57s, setup 0ms, import 4.43s, tests 230ms, environment 2ms)"
+    }
+  ],
+  "executed": true,
+  "head": "34d27e5eeb95b81592f89aa21d4c3a2afd1ae52d",
+  "report_path": "/home/faguero/dev-agora/.agorix-main-issue77/.agora/ai-sdlc/verification/issue-77/VERIFICATION.json",
+  "schema": "agora-ai-sdlc/verification-report/v1",
+  "work": "issue-77"
+}

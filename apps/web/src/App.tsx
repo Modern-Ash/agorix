@@ -12,8 +12,10 @@ import { runProgram, type RunResult, type WorldState } from "@agorix/runtime";
 import {
   executionStepsFromRuntimeObservations,
   framesFromRuntimeObservations,
+  learnerTraceFromExecutionSteps,
   resetStageSession,
   type ExecutionStep,
+  type LearnerTraceItem,
   type ObservationFrame,
   type StageState,
 } from "@agorix/stage";
@@ -223,6 +225,53 @@ function StageView({
   );
 }
 
+function TracePanel({
+  trace,
+  activeTrace,
+  locale,
+}: {
+  trace: readonly LearnerTraceItem[];
+  activeTrace: LearnerTraceItem | undefined;
+  locale: Locale;
+}) {
+  const items = trace.slice(0, 5);
+  return (
+    <section className="trace-panel" aria-labelledby="trace-title">
+      <div className="panel-heading">
+        <h2 id="trace-title">{t(locale, "trace")}</h2>
+        <span>{t(locale, "traceSubtitle")}</span>
+      </div>
+      {items.length === 0 ? (
+        <p className="empty-state trace-empty">{t(locale, "traceEmpty")}</p>
+      ) : null}
+      <ol className="trace-list">
+        {items.map((item) => (
+          <li
+            key={`${item.index}-${item.nodeId ?? "complete"}`}
+            className={activeTrace?.index === item.index ? "trace-item active" : "trace-item"}
+          >
+            <strong>{item.title}</strong>
+            <span>{item.summary}</span>
+            <small>
+              {t(locale, "traceBefore", {
+                x: item.before.x,
+                y: item.before.y,
+                heading: item.before.heading,
+              })}{" "}
+              ·{" "}
+              {t(locale, "traceAfter", {
+                x: item.after.x,
+                y: item.after.y,
+                heading: item.after.heading,
+              })}
+            </small>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
 function ProgramBlockCard({
   block,
   index,
@@ -343,6 +392,7 @@ export function App() {
   const [frameIndex, setFrameIndex] = useState(0);
   const [frames, setFrames] = useState<readonly ObservationFrame[]>([]);
   const [executionSteps, setExecutionSteps] = useState<readonly ExecutionStep[]>([]);
+  const [learnerTrace, setLearnerTrace] = useState<readonly LearnerTraceItem[]>([]);
   const [hintHistory, setHintHistory] = useState<readonly TutorHintHistoryEntry[]>([]);
   const [tutorResponse, setTutorResponse] = useState<TutorResponse | undefined>();
   const [lastRunResult, setLastRunResult] = useState<RunResult | undefined>();
@@ -354,6 +404,7 @@ export function App() {
   const statements = model.workspace.scripts[0]?.statements ?? [];
   const activeFrame = executionSteps[frameIndex]?.frame ?? frames[frameIndex];
   const activeStep = executionSteps[frameIndex];
+  const activeTrace = learnerTrace[frameIndex];
   const highlightedCode =
     highlightedNodeId === undefined ? "" : codeSliceForNode(model, highlightedNodeId);
   const missionStep =
@@ -390,6 +441,7 @@ export function App() {
     setHighlightedNodeId(undefined);
     setFrames([]);
     setExecutionSteps([]);
+    setLearnerTrace([]);
     setFrameIndex(0);
     setTutorResponse(undefined);
     setLastRunResult(undefined);
@@ -447,6 +499,7 @@ export function App() {
     }));
     setFrames([]);
     setExecutionSteps([]);
+    setLearnerTrace([]);
     setFrameIndex(0);
     setHighlightedNodeId(undefined);
     setHintHistory([]);
@@ -465,10 +518,12 @@ export function App() {
     });
     const nextFrames = framesFromRuntimeObservations(result.observations);
     const nextSteps = executionStepsFromRuntimeObservations(result.observations);
+    const nextTrace = learnerTraceFromExecutionSteps(nextSteps, "beginner");
     setLastRunResult(result);
     setFrames(nextFrames);
     setExecutionSteps(nextSteps);
-    return { result, nextFrames, nextSteps };
+    setLearnerTrace(nextTrace);
+    return { result, nextFrames, nextSteps, nextTrace };
   }
 
   function runBlocks() {
@@ -592,6 +647,7 @@ export function App() {
     stopRun();
     setFrames([]);
     setExecutionSteps([]);
+    setLearnerTrace([]);
     setFrameIndex(0);
     setHighlightedNodeId(undefined);
     setTutorResponse(undefined);
@@ -739,6 +795,8 @@ export function App() {
             </section>
           ))}
         </section>
+
+        <TracePanel trace={learnerTrace} activeTrace={activeTrace} locale={locale} />
 
         <section className="program-panel" aria-labelledby="workspace-title">
           <div className="panel-heading">
