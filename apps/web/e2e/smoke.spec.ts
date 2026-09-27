@@ -8,6 +8,63 @@ async function applyMoveSteps(page: Page, value: string) {
     .click();
 }
 
+async function canonicalHash(page: Page) {
+  return page.getByTestId("canonical-hash").getAttribute("data-canonical-hash");
+}
+
+function visibleCode(page: Page, code: string) {
+  return page.locator(".code-surface", { hasText: code });
+}
+
+async function runTransparencyJourney(page: Page, viewport: { width: number; height: number }) {
+  await page.setViewportSize(viewport);
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Move" }).click();
+  await applyMoveSteps(page, "24");
+  await expect(visibleCode(page, "sprite.move(24);")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Code", exact: true })).toBeVisible();
+  const beforeHash = await canonicalHash(page);
+
+  await page.getByRole("button", { name: "Preview proposal" }).click();
+  await expect(page.getByTestId("proposal-preview")).toBeVisible();
+  await expect(
+    page.getByText("Proposal preview ready. Your program has not changed."),
+  ).toBeVisible();
+  await expect(visibleCode(page, "sprite.move(24);")).toBeVisible();
+  await expect(page.getByTestId("proposal-preview").getByText("sprite.move(160);")).toBeVisible();
+  expect(await canonicalHash(page)).toBe(beforeHash);
+
+  await page.getByRole("button", { name: "Reject proposal" }).click();
+  await expect(page.getByText("Proposal rejected. Your program stayed the same.")).toBeVisible();
+  await expect(visibleCode(page, "sprite.move(24);")).toBeVisible();
+  expect(await canonicalHash(page)).toBe(beforeHash);
+
+  await page.getByRole("button", { name: "Preview proposal" }).click();
+  await page.getByRole("button", { name: "Accept proposal" }).click();
+  await expect(
+    page.getByText("Proposal accepted. Blocks and code updated from canonical state."),
+  ).toBeVisible();
+  await expect(page.getByLabel("Move block").getByRole("spinbutton")).toHaveValue("160");
+  await expect(visibleCode(page, "sprite.move(160);")).toBeVisible();
+  expect(await canonicalHash(page)).not.toBe(beforeHash);
+
+  await page.getByRole("button", { name: "Step" }).click();
+  await page.getByRole("button", { name: "Step" }).click();
+  await expect(page.locator(".block-card.active")).toContainText("Move");
+  await expect(page.locator(".code-surface mark")).toContainText("sprite.move(160);");
+  await expect(page.getByText("Nova moved right; x: 52 -> 212")).toBeVisible();
+
+  await page.setViewportSize({ width: viewport.height, height: viewport.width });
+  await expect(visibleCode(page, "sprite.move(160);")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Code", exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Run" }).click();
+  await expect(page.getByText("Mission complete: your sprite reached the goal.")).toBeVisible({
+    timeout: 5000,
+  });
+}
+
 test("main editor shell renders persistent blocks, stage and code", async ({ page }) => {
   await page.goto("/");
 
@@ -27,7 +84,7 @@ test("block edits update generated code", async ({ page }) => {
   await page.getByRole("button", { name: "Move" }).click();
   await expect(page.getByText("sprite.move(10);")).toBeVisible();
   await applyMoveSteps(page, "24");
-  await expect(page.getByText("sprite.move(24);")).toBeVisible();
+  await expect(visibleCode(page, "sprite.move(24);")).toBeVisible();
 });
 
 test("block edits survive reload from canonical storage", async ({ page }) => {
@@ -35,7 +92,7 @@ test("block edits survive reload from canonical storage", async ({ page }) => {
 
   await page.getByRole("button", { name: "Move" }).click();
   await applyMoveSteps(page, "24");
-  await expect(page.getByText("sprite.move(24);")).toBeVisible();
+  await expect(visibleCode(page, "sprite.move(24);")).toBeVisible();
 
   const stored = await page.evaluate(() => localStorage.getItem("agorix:default-project"));
   expect(stored).toContain('"program"');
@@ -45,7 +102,7 @@ test("block edits survive reload from canonical storage", async ({ page }) => {
   await page.reload();
 
   await expect(page.getByLabel("Move block").getByRole("spinbutton")).toHaveValue("24");
-  await expect(page.getByText("sprite.move(24);")).toBeVisible();
+  await expect(visibleCode(page, "sprite.move(24);")).toBeVisible();
 });
 
 test("locale switch localizes UI without changing canonical program", async ({ page }) => {
@@ -109,7 +166,7 @@ test("first mission completes from runtime facts and shows reflection", async ({
   await expect(
     page.getByText("Reflection: What number made the sprite reach the goal"),
   ).toBeVisible();
-  await expect(page.getByText("sprite.move(160);")).toBeVisible();
+  await expect(visibleCode(page, "sprite.move(160);")).toBeVisible();
 });
 
 test("mission retry keeps work, code, and unlocks non-blocking free play", async ({ page }) => {
@@ -135,7 +192,7 @@ test("mission retry keeps work, code, and unlocks non-blocking free play", async
   await expect(
     page.getByText("Free play unlocked. Keep experimenting with your program."),
   ).toBeVisible();
-  await expect(page.getByText("sprite.move(160);")).toBeVisible();
+  await expect(visibleCode(page, "sprite.move(160);")).toBeVisible();
 });
 
 test("Step synchronizes block, code and stage without racing Run", async ({ page }) => {
@@ -188,6 +245,20 @@ test("Step trace explains before and after state without raw logs", async ({ pag
   await expect(movementTrace).toContainText("Before: x 52, y 128, heading 0");
   await expect(movementTrace).toContainText("After: x 76, y 128, heading 0");
   await expect(page.getByText(/provider|prompt|stack/i)).toHaveCount(0);
+});
+
+test("transparency journey preserves visible code and explicit proposal control on desktop", async ({
+  page,
+}) => {
+  await runTransparencyJourney(page, { width: 1280, height: 900 });
+});
+
+test("transparency journey is touch-safe on tablet portrait", async ({ page }) => {
+  await runTransparencyJourney(page, { width: 768, height: 1024 });
+});
+
+test("transparency journey is touch-safe on tablet landscape", async ({ page }) => {
+  await runTransparencyJourney(page, { width: 1024, height: 768 });
 });
 
 test("mission celebration respects reduced motion", async ({ page }) => {
@@ -263,13 +334,13 @@ test("orientation change preserves canonical program and visible code", async ({
 
   await page.getByRole("button", { name: "Move" }).click();
   await applyMoveSteps(page, "24");
-  await expect(page.getByText("sprite.move(24);")).toBeVisible();
+  await expect(visibleCode(page, "sprite.move(24);")).toBeVisible();
 
   await page.setViewportSize({ width: 1180, height: 820 });
   await page.evaluate(() => window.scrollTo(0, 0));
 
   await expect(page.getByLabel("Move block").getByRole("spinbutton")).toHaveValue("24");
-  await expect(page.getByText("sprite.move(24);")).toBeVisible();
+  await expect(visibleCode(page, "sprite.move(24);")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Stage" })).toBeInViewport();
   await expect(page.getByRole("heading", { name: "Code", exact: true })).toBeInViewport();
 });
@@ -280,7 +351,7 @@ test("touch/no-drag path completes the First Mission", async ({ page }) => {
 
   await page.getByRole("button", { name: "Move" }).click();
   await applyMoveSteps(page, "160");
-  await expect(page.getByText("sprite.move(160);")).toBeVisible();
+  await expect(visibleCode(page, "sprite.move(160);")).toBeVisible();
 
   await page.getByRole("button", { name: "Run" }).click();
   await expect(page.getByText("Mission complete: your sprite reached the goal.")).toBeVisible({
@@ -322,6 +393,6 @@ test("Spanish touch edit path keeps action palette and numeric commit usable", a
   await page.getByLabel("Bloque Mover").getByRole("spinbutton").fill("160");
   await page.getByRole("button", { name: "Aplicar valor" }).click();
 
-  await expect(page.getByText("sprite.move(160);")).toBeVisible();
+  await expect(visibleCode(page, "sprite.move(160);")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Paleta de acciones" })).toBeVisible();
 });

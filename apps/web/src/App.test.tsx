@@ -37,6 +37,7 @@ describe("main editor shell", () => {
     expect(html).toContain("Product language");
     expect(html).toContain("English");
     expect(html).toContain("Español");
+    expect(html).toContain("Preview proposal");
     expect(html).toContain("Get hint");
     expect(html).toContain("Hints used: 0");
     expect(html).toContain("Build");

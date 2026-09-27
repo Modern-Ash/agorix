@@ -573,6 +573,25 @@ h3 {
   min-height: 72px;
 }
 
+.proposal-card {
+  display: grid;
+  gap: var(--agx-space-2);
+  margin-top: var(--agx-space-3);
+  padding: var(--agx-space-3);
+  border: 1px solid rgba(108, 92, 231, 0.35);
+  border-radius: var(--agx-radius-sm);
+  background: rgba(108, 92, 231, 0.08);
+}
+
+.proposal-card p,
+.proposal-card ul {
+  margin-bottom: 0;
+}
+
+.proposal-card ul {
+  padding-left: 1.1rem;
+}
+
 .hint-history {
   margin-top: 10px;
 }
