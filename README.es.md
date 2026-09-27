@@ -14,17 +14,17 @@ No pretende ser “Scratch más un chatbot”, ni un generador de código que es
 
 Agorix enseña a los chicos a **pensar, construir, inspeccionar, probar, depurar y explicar programas mientras colaboran con IA**.
 
-| Principio | Qué significa |
-| --- | --- |
-| 🧠 **Pedagogía primero** | La IA existe para mejorar el aprendizaje, no sólo para terminar código más rápido. |
-| 👧 **Autoría del niño** | La IA puede proponer; el alumno decide qué pasa a formar parte del programa. |
-| 👀 **Código siempre visible** | Los bloques y el código textual son vistas sincronizadas del mismo programa. |
-| ▶️ **El runtime demuestra** | El comportamiento se establece mediante ejecución determinística, no por la confianza de un LLM. |
-| 🔎 **Nada oculto** | Las propuestas, cambios, ejecución y transiciones de estado deben poder inspeccionarse. |
-| 🌍 **Multi-lenguaje de programación** | Un mismo programa canónico puede verse como Agorix Code, Python, TypeScript y futuros language packs. |
-| 🧩 **Multi-LLM** | Proveedores y modelos son adapters reemplazables, no autoridad del producto. |
-| 🏠 **Open-source-first** | Se priorizan modelos locales/abiertos y self-hosting cuando sea razonable. |
-| 🌐 **Producto multilingüe** | UI, curriculum y Learning Companion deben soportar múltiples idiomas humanos sin cambiar la semántica del programa. |
+| Principio                             | Qué significa                                                                                                       |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| 🧠 **Pedagogía primero**              | La IA existe para mejorar el aprendizaje, no sólo para terminar código más rápido.                                  |
+| 👧 **Autoría del niño**               | La IA puede proponer; el alumno decide qué pasa a formar parte del programa.                                        |
+| 👀 **Código siempre visible**         | Los bloques y el código textual son vistas sincronizadas del mismo programa.                                        |
+| ▶️ **El runtime demuestra**           | El comportamiento se establece mediante ejecución determinística, no por la confianza de un LLM.                    |
+| 🔎 **Nada oculto**                    | Las propuestas, cambios, ejecución y transiciones de estado deben poder inspeccionarse.                             |
+| 🌍 **Multi-lenguaje de programación** | Un mismo programa canónico puede verse como Agorix Code, Python, TypeScript y futuros language packs.               |
+| 🧩 **Multi-LLM**                      | Proveedores y modelos son adapters reemplazables, no autoridad del producto.                                        |
+| 🏠 **Open-source-first**              | Se priorizan modelos locales/abiertos y self-hosting cuando sea razonable.                                          |
+| 🌐 **Producto multilingüe**           | UI, curriculum y Learning Companion deben soportar múltiples idiomas humanos sin cambiar la semántica del programa. |
 
 ---
 
@@ -225,8 +225,8 @@ y como **TypeScript**:
 
 ```typescript
 for (let i = 0; i < 4; i++) {
-    move(10);
-    turn(90);
+  move(10);
+  turn(90);
 }
 ```
 
@@ -657,13 +657,13 @@ flowchart TD
     E68 --> PROOF
 ```
 
-| Épica | Foco |
-| --- | --- |
-| [#63](https://github.com/Modern-Ash/agorix/issues/63) | Re-fundación AI-native de producto y pedagogía |
-| [#64](https://github.com/Modern-Ash/agorix/issues/64) | Programación transparente y ejecución observable |
-| [#65](https://github.com/Modern-Ash/agorix/issues/65) | Aprendizaje progresivo multi-lenguaje |
-| [#66](https://github.com/Modern-Ash/agorix/issues/66) | Learning Companion AI-native y colaboración gobernada |
-| [#67](https://github.com/Modern-Ash/agorix/issues/67) | Arquitectura multi-LLM open-source-first |
+| Épica                                                 | Foco                                                       |
+| ----------------------------------------------------- | ---------------------------------------------------------- |
+| [#63](https://github.com/Modern-Ash/agorix/issues/63) | Re-fundación AI-native de producto y pedagogía             |
+| [#64](https://github.com/Modern-Ash/agorix/issues/64) | Programación transparente y ejecución observable           |
+| [#65](https://github.com/Modern-Ash/agorix/issues/65) | Aprendizaje progresivo multi-lenguaje                      |
+| [#66](https://github.com/Modern-Ash/agorix/issues/66) | Learning Companion AI-native y colaboración gobernada      |
+| [#67](https://github.com/Modern-Ash/agorix/issues/67) | Arquitectura multi-LLM open-source-first                   |
 | [#68](https://github.com/Modern-Ash/agorix/issues/68) | AI literacy, seguridad infantil y evidencia de aprendizaje |
 
 La internacionalización del producto está seguida en [#110](https://github.com/Modern-Ash/agorix/issues/110).
