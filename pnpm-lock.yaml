@@ -130,6 +130,9 @@ importers:
 
   packages/code-generator:
     dependencies:
+      '@agorix/language-projection':
+        specifier: workspace:*
+        version: link:../language-projection
       '@agorix/program-model':
         specifier: workspace:*
         version: link:../program-model
@@ -142,6 +145,12 @@ importers:
       '@agorix/runtime':
         specifier: workspace:*
         version: link:../runtime
+
+  packages/language-projection:
+    dependencies:
+      '@agorix/program-model':
+        specifier: workspace:*
+        version: link:../program-model
 
   packages/persistence:
     dependencies:

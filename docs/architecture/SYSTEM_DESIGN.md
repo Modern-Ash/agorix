@@ -40,8 +40,8 @@ packages/
   runtime/
   stage/
   curriculum/
-  code-generator/
-  language-projection/
+  language-projection/      # shared projection contract and conformance helpers
+  code-generator/            # current TypeScript-like projection implementation
   tutor-contract/         # legacy name; evolves into LearningCompanion contract
   persistence/
   platform-contract/

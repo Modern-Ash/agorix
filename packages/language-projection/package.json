@@ -1,5 +1,5 @@
 {
-  "name": "@agorix/code-generator",
+  "name": "@agorix/language-projection",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@agorix/program-model": "workspace:*",
-    "@agorix/language-projection": "workspace:*"
+    "@agorix/program-model": "workspace:*"
   }
 }
