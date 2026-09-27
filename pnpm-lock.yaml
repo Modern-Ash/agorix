@@ -35,6 +35,9 @@ importers:
 
   apps/tutor-api:
     dependencies:
+      '@agorix/provider-runtime':
+        specifier: workspace:*
+        version: link:../../packages/provider-runtime
       '@agorix/tutor-contract':
         specifier: workspace:*
         version: link:../../packages/tutor-contract

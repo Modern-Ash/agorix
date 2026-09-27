@@ -1,175 +1,244 @@
 import {
   createDeterministicTutorResponse,
-  parseTutorResponse,
+  createLearningCompanionRequestFromTutorRequest,
+  createTutorResponseFromLearningCompanionResponse,
   validateTutorRequest,
+  type LearningCompanionCapability,
+  type LearningCompanionRequest,
   type TutorRequest,
   type TutorResponse,
 } from "@agorix/tutor-contract";
+import {
+  createFakeProviderRuntime,
+  createOpenAICompatibleProviderRuntime,
+  type LearningCompanionProviderRuntime,
+  type ProviderRuntimeDescriptor,
+  type ProviderRuntimeErrorCode,
+  type ProviderRuntimeFetch,
+} from "@agorix/provider-runtime";
 
 export const PACKAGE_NAME = "@agorix/tutor-api";
 
-export type TutorProviderKind = "fake" | "openai-compatible";
+export type TutorAdapterKind = "fake" | "openai-compatible";
 
-export interface TutorProviderConfig {
-  readonly provider: TutorProviderKind;
-  readonly model: string;
-  readonly endpoint?: string;
-  readonly apiKey?: string;
+export interface TutorAdapterConfig {
+  readonly adapter: TutorAdapterKind;
+  readonly model?: string;
+  readonly baseUrl?: string;
+  readonly authToken?: string;
+  readonly authHeaderName?: string;
   readonly timeoutMs: number;
+  readonly capabilities: readonly LearningCompanionCapability[];
   readonly includeLearnerQuestion?: boolean;
 }
 
-export interface TutorProviderDiagnostics {
-  readonly provider: TutorProviderKind;
+export interface TutorAdapterDiagnostics {
+  readonly adapter: TutorAdapterKind;
+  readonly runtimeId: string;
+  readonly providerId: string;
   readonly model: string;
-  readonly source: "provider" | "fallback";
-  readonly unavailableReason?: "not-configured" | "timeout" | "provider-error" | "invalid-response";
+  readonly source: "runtime" | "fallback";
+  readonly errorCode?: ProviderRuntimeErrorCode;
 }
 
-export interface TutorProviderResult {
+export interface TutorAdapterResult {
   readonly response: TutorResponse;
-  readonly diagnostics: TutorProviderDiagnostics;
+  readonly diagnostics: TutorAdapterDiagnostics;
 }
 
-export interface TutorProviderRuntime {
-  readonly fetch?: typeof fetch;
-  readonly setTimeout?: typeof setTimeout;
-  readonly clearTimeout?: typeof clearTimeout;
+export interface TutorAdapterDependencies {
+  readonly fetch?: ProviderRuntimeFetch;
 }
 
-const DEFAULT_ENDPOINT = "https://api.openai.com/v1/chat/completions";
 const DEFAULT_TIMEOUT_MS = 4_000;
+const FAKE_RUNTIME_ID = "tutor-api:fake";
+const FAKE_PROVIDER_ID = "fake";
+const DETERMINISTIC_MODEL_ID = "deterministic";
+const UNCONFIGURED_MODEL_ID = "unconfigured";
+const OPENAI_COMPATIBLE_PROVIDER_ID = "openai-compatible";
+const CHAT_COMPLETIONS_SUFFIX = "/chat/completions";
+const DEFAULT_CAPABILITIES: readonly LearningCompanionCapability[] = ["coach"];
+const TUTOR_CAPABILITY = "coach" as const satisfies LearningCompanionCapability;
+const DETERMINISTIC_CAPABILITIES: readonly LearningCompanionCapability[] = [TUTOR_CAPABILITY];
+const KNOWN_CAPABILITIES = [
+  "coach",
+  "builder",
+  "debugger",
+  "explainer",
+  "challenger",
+  "reflector",
+] as const satisfies readonly LearningCompanionCapability[];
+
+type MutableLearningCompanionRequest = {
+  -readonly [Key in keyof LearningCompanionRequest]: LearningCompanionRequest[Key];
+};
+
+export class TutorAdapterConfigurationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "TutorAdapterConfigurationError";
+  }
+}
 
 export function describeTutorApi(): string {
   return `tutor-api — server-side provider adapter for ${PACKAGE_NAME}`;
 }
 
-export function configFromEnv(env: Record<string, string | undefined>): TutorProviderConfig {
-  const provider = env.AGORIX_TUTOR_PROVIDER === "openai-compatible" ? "openai-compatible" : "fake";
+export function configFromEnv(env: Record<string, string | undefined>): TutorAdapterConfig {
+  const baseUrl = normalizeBaseUrl(env.AGORIX_TUTOR_BASE_URL ?? env.AGORIX_TUTOR_ENDPOINT);
+  const model = bounded(env.AGORIX_TUTOR_MODEL);
+  const authToken = bounded(env.AGORIX_TUTOR_AUTH_TOKEN ?? env.AGORIX_TUTOR_API_KEY);
+  const authHeaderName = bounded(env.AGORIX_TUTOR_AUTH_HEADER);
   return {
-    provider,
-    model: env.AGORIX_TUTOR_MODEL ?? "gpt-4o-mini",
-    endpoint: env.AGORIX_TUTOR_ENDPOINT ?? DEFAULT_ENDPOINT,
-    ...(env.AGORIX_TUTOR_API_KEY === undefined ? {} : { apiKey: env.AGORIX_TUTOR_API_KEY }),
+    adapter: readAdapter(env),
+    ...(baseUrl === undefined ? {} : { baseUrl }),
+    ...(model === undefined ? {} : { model }),
+    ...(authToken === undefined ? {} : { authToken }),
+    ...(authHeaderName === undefined ? {} : { authHeaderName }),
     timeoutMs: parseTimeout(env.AGORIX_TUTOR_TIMEOUT_MS),
+    capabilities: parseCapabilities(env.AGORIX_TUTOR_CAPABILITIES),
     includeLearnerQuestion: env.AGORIX_TUTOR_INCLUDE_LEARNER_QUESTION === "1",
   };
 }
 
+export function isTutorAdapterConfigured(config: TutorAdapterConfig): boolean {
+  if (config.adapter === "fake") {
+    return true;
+  }
+  return bounded(config.baseUrl) !== undefined && bounded(config.model) !== undefined;
+}
+
+export function createTutorAdapterRuntime(
+  config: TutorAdapterConfig,
+  dependencies: TutorAdapterDependencies = {},
+): LearningCompanionProviderRuntime {
+  if (config.capabilities.length === 0) {
+    throw new TutorAdapterConfigurationError("capabilities: expected at least one capability");
+  }
+  if (config.adapter === "fake") {
+    return createFakeProviderRuntime({
+      runtimeId: FAKE_RUNTIME_ID,
+      providerId: FAKE_PROVIDER_ID,
+      modelId: bounded(config.model) ?? DETERMINISTIC_MODEL_ID,
+      locality: "local",
+      capabilities: config.capabilities,
+    });
+  }
+  const baseUrl = bounded(config.baseUrl);
+  const modelId = bounded(config.model);
+  if (baseUrl === undefined || modelId === undefined) {
+    throw new TutorAdapterConfigurationError(
+      "baseUrl and model are required for the openai-compatible adapter",
+    );
+  }
+  const authToken = bounded(config.authToken);
+  return createOpenAICompatibleProviderRuntime({
+    baseUrl,
+    modelId,
+    capabilities: config.capabilities,
+    timeoutMs: config.timeoutMs,
+    ...(authToken === undefined ? {} : { authToken }),
+    ...(bounded(config.authHeaderName) === undefined
+      ? {}
+      : { authHeaderName: bounded(config.authHeaderName) as string }),
+    ...(dependencies.fetch === undefined ? {} : { fetch: dependencies.fetch }),
+  });
+}
+
 export async function requestTutorResponse(
   request: TutorRequest,
-  config: TutorProviderConfig,
-  runtime: TutorProviderRuntime = {},
-): Promise<TutorProviderResult> {
+  config: TutorAdapterConfig,
+  dependencies: TutorAdapterDependencies = {},
+): Promise<TutorAdapterResult> {
   const validated = validateTutorRequest(request);
-  if (config.provider === "fake") {
-    return fallback(validated, config, undefined);
-  }
-  if (config.apiKey === undefined || config.apiKey.trim() === "") {
+  if (!isTutorAdapterConfigured(config)) {
     return fallback(validated, config, "not-configured");
   }
-
-  try {
-    const providerOutput = await callOpenAiCompatibleProvider(validated, config, runtime);
-    return {
-      response: parseTutorResponse(providerOutput),
-      diagnostics: { provider: config.provider, model: config.model, source: "provider" },
-    };
-  } catch (error) {
-    return fallback(validated, config, reasonFor(error));
+  const runtime = createTutorAdapterRuntime(config, dependencies);
+  const result = await runtime.request(toCompanionRequest(validated, config), {
+    timeoutMs: config.timeoutMs,
+  });
+  if (!result.ok) {
+    return fallback(validated, config, result.error.code);
   }
-}
-
-async function callOpenAiCompatibleProvider(
-  request: TutorRequest,
-  config: TutorProviderConfig,
-  runtime: TutorProviderRuntime,
-): Promise<unknown> {
-  const fetchImpl = runtime.fetch ?? globalThis.fetch;
-  if (fetchImpl === undefined) {
-    throw new ProviderError("provider-error");
-  }
-
-  const controller = new AbortController();
-  const setTimer = runtime.setTimeout ?? globalThis.setTimeout;
-  const clearTimer = runtime.clearTimeout ?? globalThis.clearTimeout;
-  const timeout = setTimer(() => controller.abort(), config.timeoutMs);
-  try {
-    const response = await fetchImpl(config.endpoint ?? DEFAULT_ENDPOINT, {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${config.apiKey}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: config.model,
-        temperature: 0.2,
-        response_format: { type: "json_object" },
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are a child-safe coding tutor. Return only valid JSON matching agorix/tutor-response/v1.",
-          },
-          { role: "user", content: JSON.stringify(toMinimalTutorContext(request, config)) },
-        ],
-      }),
-      signal: controller.signal,
-    });
-    if (!response.ok) {
-      throw new ProviderError("provider-error");
-    }
-    const payload = (await response.json()) as OpenAiCompatibleResponse;
-    const content = payload.choices?.[0]?.message?.content;
-    if (typeof content !== "string") {
-      throw new ProviderError("invalid-response");
-    }
-    return JSON.parse(content) as unknown;
-  } catch (error) {
-    if (isAbortError(error)) {
-      throw new ProviderError("timeout");
-    }
-    throw error;
-  } finally {
-    clearTimer(timeout);
-  }
-}
-
-function toMinimalTutorContext(request: TutorRequest, config: TutorProviderConfig) {
   return {
-    schema: request.schema,
-    mission: request.mission,
-    programSummary: request.program.scripts.map((script) => ({
-      trigger: script.trigger.type,
-      statementTypes: script.statements.map((statement) => statement.type),
-    })),
-    runtime: {
-      outcome: request.runtime.outcome,
-      stepsUsed: request.runtime.stepsUsed,
-      finalWorld: request.runtime.finalWorld,
-    },
-    hintHistory: request.hintHistory,
-    reading: request.reading,
-    ...(config.includeLearnerQuestion === true && request.learnerQuestion !== undefined
-      ? { learnerQuestion: request.learnerQuestion }
-      : {}),
+    response: createTutorResponseFromLearningCompanionResponse(result.response),
+    diagnostics: { ...identityOf(runtime.descriptor, config), source: "runtime" },
   };
 }
 
-function fallback(
+function toCompanionRequest(
   request: TutorRequest,
-  config: TutorProviderConfig,
-  unavailableReason: TutorProviderDiagnostics["unavailableReason"],
-): TutorProviderResult {
+  config: TutorAdapterConfig,
+): LearningCompanionRequest {
+  const companion = createLearningCompanionRequestFromTutorRequest(request);
+  if (config.includeLearnerQuestion === true || companion.learnerIntent === undefined) {
+    return companion;
+  }
+  const projected: MutableLearningCompanionRequest = { ...companion };
+  delete projected.learnerIntent;
+  return projected;
+}
+
+async function fallback(
+  request: TutorRequest,
+  config: TutorAdapterConfig,
+  errorCode: ProviderRuntimeErrorCode,
+): Promise<TutorAdapterResult> {
+  const model = bounded(config.model);
   return {
-    response: createDeterministicTutorResponse(request),
+    response: await deterministicTutorResponse(request),
     diagnostics: {
-      provider: config.provider,
-      model: config.model,
+      adapter: config.adapter,
+      runtimeId:
+        config.adapter === "fake"
+          ? FAKE_RUNTIME_ID
+          : `${OPENAI_COMPATIBLE_PROVIDER_ID}:${model ?? UNCONFIGURED_MODEL_ID}`,
+      providerId: config.adapter === "fake" ? FAKE_PROVIDER_ID : OPENAI_COMPATIBLE_PROVIDER_ID,
+      model: model ?? (config.adapter === "fake" ? DETERMINISTIC_MODEL_ID : UNCONFIGURED_MODEL_ID),
       source: "fallback",
-      ...(unavailableReason === undefined ? {} : { unavailableReason }),
+      errorCode,
     },
   };
+}
+
+async function deterministicTutorResponse(request: TutorRequest): Promise<TutorResponse> {
+  const runtime = createFakeProviderRuntime({
+    runtimeId: FAKE_RUNTIME_ID,
+    providerId: FAKE_PROVIDER_ID,
+    modelId: DETERMINISTIC_MODEL_ID,
+    locality: "local",
+    capabilities: DETERMINISTIC_CAPABILITIES,
+  });
+  const result = await runtime.request(createLearningCompanionRequestFromTutorRequest(request));
+  return result.ok
+    ? createTutorResponseFromLearningCompanionResponse(result.response)
+    : createDeterministicTutorResponse(request);
+}
+
+function identityOf(
+  descriptor: ProviderRuntimeDescriptor,
+  config: TutorAdapterConfig,
+): Omit<TutorAdapterDiagnostics, "source" | "errorCode"> {
+  return {
+    adapter: config.adapter,
+    runtimeId: descriptor.runtimeId,
+    providerId: descriptor.providerId,
+    model: descriptor.modelId,
+  };
+}
+
+function readAdapter(env: Record<string, string | undefined>): TutorAdapterKind {
+  const value = bounded(env.AGORIX_TUTOR_ADAPTER ?? env.AGORIX_TUTOR_PROVIDER);
+  if (value === undefined) {
+    return "fake";
+  }
+  if (value === "fake" || value === OPENAI_COMPATIBLE_PROVIDER_ID) {
+    return value;
+  }
+  throw new TutorAdapterConfigurationError(
+    `AGORIX_TUTOR_ADAPTER: expected "fake" or "${OPENAI_COMPATIBLE_PROVIDER_ID}"`,
+  );
 }
 
 function parseTimeout(value: string | undefined): number {
@@ -180,33 +249,55 @@ function parseTimeout(value: string | undefined): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_TIMEOUT_MS;
 }
 
-class ProviderError extends Error {
-  readonly reason: NonNullable<TutorProviderDiagnostics["unavailableReason"]>;
-
-  constructor(reason: NonNullable<TutorProviderDiagnostics["unavailableReason"]>) {
-    super(reason);
-    this.name = "ProviderError";
-    this.reason = reason;
+function parseCapabilities(value: string | undefined): readonly LearningCompanionCapability[] {
+  if (value === undefined) {
+    return DEFAULT_CAPABILITIES;
   }
-}
-
-function reasonFor(error: unknown): NonNullable<TutorProviderDiagnostics["unavailableReason"]> {
-  if (error instanceof ProviderError) {
-    return error.reason;
+  const capabilities: LearningCompanionCapability[] = [];
+  for (const entry of value.split(",")) {
+    const candidate = entry.trim();
+    if (candidate.length === 0) {
+      continue;
+    }
+    const capability = KNOWN_CAPABILITIES.find((known) => known === candidate);
+    if (capability === undefined) {
+      throw new TutorAdapterConfigurationError(
+        `AGORIX_TUTOR_CAPABILITIES: unknown capability "${candidate}"; expected one of ${KNOWN_CAPABILITIES.join(", ")}`,
+      );
+    }
+    if (!capabilities.includes(capability)) {
+      capabilities.push(capability);
+    }
   }
-  return "invalid-response";
+  if (capabilities.length === 0) {
+    throw new TutorAdapterConfigurationError(
+      "AGORIX_TUTOR_CAPABILITIES: expected at least one capability",
+    );
+  }
+  return capabilities;
 }
 
-function isAbortError(error: unknown): boolean {
-  return error instanceof Error && error.name === "AbortError";
+function normalizeBaseUrl(value: string | undefined): string | undefined {
+  const trimmed = withoutTrailingSlash(bounded(value));
+  if (trimmed === undefined) {
+    return undefined;
+  }
+  return trimmed.endsWith(CHAT_COMPLETIONS_SUFFIX)
+    ? withoutTrailingSlash(trimmed.slice(0, -CHAT_COMPLETIONS_SUFFIX.length))
+    : trimmed;
 }
 
-interface OpenAiCompatibleResponse {
-  readonly choices?: readonly [
-    {
-      readonly message?: {
-        readonly content?: string;
-      };
-    },
-  ];
+function withoutTrailingSlash(value: string | undefined): string | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  return value.endsWith("/") ? value.slice(0, -1) : value;
+}
+
+function bounded(value: string | undefined): string | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed.length === 0 ? undefined : trimmed;
 }

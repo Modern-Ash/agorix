@@ -940,11 +940,16 @@ packages/
   code-generator/     Evolving into LanguageProjection
   curriculum/         Missions and learning content
   tutor-contract/     Evolving into LearningCompanion contract
+  provider-runtime/   Provider-neutral runtime contract and protocol adapters
   persistence/        Versioned project storage
   platform-contract/  Platform capability boundary
 ```
 
 Domain packages must remain independent from UI frameworks and provider SDKs unless they are explicitly adapter packages.
+
+Provider and model are configuration, never code: a commercial deployment is an
+optional adapter selected by environment variables, and no vendor is preferred or
+compiled in. See [docs/providers](docs/providers/OPENAI_COMPATIBLE_GATEWAY.md).
 
 ---
 

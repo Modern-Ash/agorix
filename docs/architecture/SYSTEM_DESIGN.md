@@ -165,6 +165,8 @@ Only boundary allowed to call local/open model servers, compatible gateways or c
 
 Legacy package/app name for the provider-adapter boundary. It must behave as Learning Companion infrastructure, not as product authority.
 
+It owns the server boundary only: environment parsing, adapter selection, `TutorRequest` <-> `LearningCompanion` mapping and deterministic degradation. Remote calls are delegated to `@agorix/provider-runtime` (`createOpenAICompatibleProviderRuntime`); it never builds HTTP requests, timeouts or wire formats itself, and it never names a provider. See `docs/providers/OPENAI_COMPATIBLE_GATEWAY.md` for the environment table and adapter guidance.
+
 ### persistence
 
 Versioned project storage abstraction. Web starts with browser-local persistence; other surfaces can provide adapters.

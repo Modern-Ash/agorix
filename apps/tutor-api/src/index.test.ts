@@ -1,11 +1,19 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import {
+  createLearningCompanionRequestFromTutorRequest,
+  validateTutorResponse,
+  type TutorRequest,
+} from "@agorix/tutor-contract";
+import { assertProviderRuntimeConformance } from "@agorix/provider-runtime";
 import {
   configFromEnv,
+  createTutorAdapterRuntime,
   describeTutorApi,
+  isTutorAdapterConfigured,
   requestTutorResponse,
-  type TutorProviderConfig,
+  TutorAdapterConfigurationError,
+  type TutorAdapterConfig,
 } from "./index.js";
-import type { TutorRequest } from "@agorix/tutor-contract";
 
 const request: TutorRequest = {
   schema: "agorix/tutor-request/v1",
@@ -39,169 +47,295 @@ const request: TutorRequest = {
   reading: { locale: "en-US", readingLevel: "middle-grade" },
 };
 
-const providerConfig: TutorProviderConfig = {
-  provider: "openai-compatible",
-  model: "test-model",
-  endpoint: "https://provider.example.test/chat",
-  apiKey: "secret-key",
+const providerMessage = "What evidence did the runtime show?";
+const learningCompanionJson = JSON.stringify({
+  schema: "agorix/learning-companion-response/v1",
+  capability: "coach",
+  message: providerMessage,
+  nodeIds: ["scripts[0]/statements[0]"],
+  concepts: ["sequence"],
+  metadata: {
+    capability: "coach",
+    scaffoldLevel: 2,
+    provenance: "remote-provider",
+    uncertainty: "medium",
+  },
+  payload: { kind: "question", question: providerMessage },
+});
+
+const remoteConfig: TutorAdapterConfig = {
+  adapter: "openai-compatible",
+  model: "gateway-model",
+  baseUrl: "https://gateway.example.test/v1",
+  authToken: "secret-token",
   timeoutMs: 500,
+  capabilities: ["coach"],
 };
 
-describe("tutor-api", () => {
+const fakeConfig: TutorAdapterConfig = {
+  adapter: "fake",
+  timeoutMs: 500,
+  capabilities: ["coach"],
+};
+
+function completionResponse(content: string): Response {
+  return new Response(JSON.stringify({ choices: [{ message: { content } }] }), { status: 200 });
+}
+
+function recordingFetch(
+  handler: (input: string, init: RequestInit | undefined) => Response | Promise<Response>,
+): { fetch: typeof fetch; calls: Array<{ input: string; init: RequestInit | undefined }> } {
+  const calls: Array<{ input: string; init: RequestInit | undefined }> = [];
+  const fetchImpl = async (input: unknown, init?: RequestInit): Promise<Response> => {
+    calls.push({ input: String(input), init });
+    return handler(String(input), init);
+  };
+  return { fetch: fetchImpl as typeof fetch, calls };
+}
+
+function bodyOf(call: { init: RequestInit | undefined }): Record<string, unknown> {
+  return JSON.parse(String(call.init?.body)) as Record<string, unknown>;
+}
+
+describe("tutor-api server boundary", () => {
   it("describes the server-side adapter surface", () => {
     expect(describeTutorApi()).toContain("server-side provider adapter");
   });
 
-  it("loads provider, model and timeout from environment config", () => {
-    expect(
-      configFromEnv({
-        AGORIX_TUTOR_PROVIDER: "openai-compatible",
-        AGORIX_TUTOR_MODEL: "gpt-test",
-        AGORIX_TUTOR_ENDPOINT: "https://gateway.example.test/v1/chat/completions",
-        AGORIX_TUTOR_API_KEY: "sk-test",
-        AGORIX_TUTOR_TIMEOUT_MS: "1234",
-      }),
-    ).toEqual({
-      provider: "openai-compatible",
-      model: "gpt-test",
-      endpoint: "https://gateway.example.test/v1/chat/completions",
-      apiKey: "sk-test",
-      timeoutMs: 1234,
+  it("defaults to the deterministic adapter with no commercial endpoint or model", () => {
+    expect(configFromEnv({})).toEqual({
+      adapter: "fake",
+      timeoutMs: 4_000,
+      capabilities: ["coach"],
       includeLearnerQuestion: false,
     });
   });
 
-  it("calls an OpenAI-compatible provider and validates the response before returning it", async () => {
-    let capturedBody = "";
-    const result = await requestTutorResponse(request, providerConfig, {
-      fetch: async (_url, init) => {
-        capturedBody = String(init?.body);
-        return new Response(
-          JSON.stringify({
-            choices: [
-              {
-                message: {
-                  content: JSON.stringify({
-                    schema: "agorix/tutor-response/v1",
-                    hintLevel: 1,
-                    message: "Compare the move steps with the goal distance.",
-                    nodeIds: ["scripts[0]/statements[0]"],
-                    concepts: ["movement"],
-                  }),
-                },
-              },
-            ],
-          }),
-          { status: 200 },
-        );
-      },
+  it("reads provider, model, base URL, auth, timeout and capabilities from the environment", () => {
+    expect(
+      configFromEnv({
+        AGORIX_TUTOR_ADAPTER: "openai-compatible",
+        AGORIX_TUTOR_BASE_URL: "https://gateway.example.test/v1",
+        AGORIX_TUTOR_MODEL: "gateway-model",
+        AGORIX_TUTOR_AUTH_TOKEN: "secret-token",
+        AGORIX_TUTOR_AUTH_HEADER: "x-gateway-key",
+        AGORIX_TUTOR_TIMEOUT_MS: "2500",
+        AGORIX_TUTOR_CAPABILITIES: "coach, explainer",
+        AGORIX_TUTOR_INCLUDE_LEARNER_QUESTION: "1",
+      }),
+    ).toEqual({
+      adapter: "openai-compatible",
+      baseUrl: "https://gateway.example.test/v1",
+      model: "gateway-model",
+      authToken: "secret-token",
+      authHeaderName: "x-gateway-key",
+      timeoutMs: 2_500,
+      capabilities: ["coach", "explainer"],
+      includeLearnerQuestion: true,
     });
-
-    expect(result.diagnostics).toEqual({
-      provider: "openai-compatible",
-      model: "test-model",
-      source: "provider",
-    });
-    expect(result.response.message).toContain("move steps");
-    expect(capturedBody).toContain('"model":"test-model"');
-    expect(capturedBody).not.toContain("secret-key");
-    expect(capturedBody).not.toContain("my private words");
   });
 
-  it("can include learner question only when explicitly configured", async () => {
-    let capturedBody = "";
+  it("accepts the legacy provider, endpoint and api key variables", () => {
+    expect(
+      configFromEnv({
+        AGORIX_TUTOR_PROVIDER: "openai-compatible",
+        AGORIX_TUTOR_ENDPOINT: "https://gateway.example.test/v1/chat/completions/",
+        AGORIX_TUTOR_API_KEY: "secret-token",
+        AGORIX_TUTOR_MODEL: "gateway-model",
+      }),
+    ).toMatchObject({
+      adapter: "openai-compatible",
+      baseUrl: "https://gateway.example.test/v1",
+      authToken: "secret-token",
+    });
+  });
+
+  it("rejects unknown adapters and unknown capabilities", () => {
+    expect(() => configFromEnv({ AGORIX_TUTOR_ADAPTER: "some-vendor" })).toThrow(
+      TutorAdapterConfigurationError,
+    );
+    expect(() => configFromEnv({ AGORIX_TUTOR_CAPABILITIES: "coach,telepathy" })).toThrow(
+      /unknown capability/,
+    );
+  });
+});
+
+describe("tutor-api delegation to provider-runtime", () => {
+  it("sends the mapped request to the configured compatible gateway", async () => {
+    const { fetch: fetchImpl, calls } = recordingFetch(() =>
+      completionResponse(learningCompanionJson),
+    );
+
+    const result = await requestTutorResponse(request, remoteConfig, { fetch: fetchImpl });
+
+    expect(result.response).toEqual(validateTutorResponse(result.response));
+    expect(result.response.message).toBe(providerMessage);
+    expect(result.response.hintLevel).toBe(2);
+    expect(result.diagnostics).toEqual({
+      adapter: "openai-compatible",
+      runtimeId: "openai-compatible:gateway-model",
+      providerId: "openai-compatible",
+      model: "gateway-model",
+      source: "runtime",
+    });
+    expect(calls[0]?.input).toBe("https://gateway.example.test/v1/chat/completions");
+    const headers = calls[0]?.init?.headers as Record<string, string>;
+    expect(headers.authorization).toBe("Bearer secret-token");
+    expect(bodyOf(calls[0]!)).toMatchObject({
+      model: "gateway-model",
+      response_format: { type: "json_object" },
+    });
+  });
+
+  it("keeps learner free text out of provider context unless it is opted in", async () => {
+    const excluded = recordingFetch(() => completionResponse(learningCompanionJson));
+    const included = recordingFetch(() => completionResponse(learningCompanionJson));
+
+    await requestTutorResponse(request, remoteConfig, { fetch: excluded.fetch });
     await requestTutorResponse(
       request,
-      { ...providerConfig, includeLearnerQuestion: true },
+      { ...remoteConfig, includeLearnerQuestion: true },
       {
-        fetch: async (_url, init) => {
-          capturedBody = String(init?.body);
-          return new Response(
-            JSON.stringify({
-              choices: [
-                {
-                  message: {
-                    content: JSON.stringify({
-                      schema: "agorix/tutor-response/v1",
-                      hintLevel: 1,
-                      message: "What changed after Run?",
-                      nodeIds: [],
-                      concepts: ["sequence"],
-                    }),
-                  },
-                },
-              ],
-            }),
-            { status: 200 },
-          );
-        },
+        fetch: included.fetch,
       },
     );
 
-    expect(capturedBody).toContain("my private words");
+    expect(String(excluded.calls[0]?.init?.body)).not.toContain("my private words");
+    expect(String(included.calls[0]?.init?.body)).toContain("my private words");
   });
 
-  it("falls back to deterministic fake mode when provider config has no secret", async () => {
-    const result = await requestTutorResponse(request, {
-      provider: "openai-compatible",
-      model: "test-model",
-      endpoint: "https://provider.example.test/chat",
-      timeoutMs: providerConfig.timeoutMs,
-    });
+  it("keeps the secret out of diagnostics on success and on failure", async () => {
+    const ok = recordingFetch(() => completionResponse(learningCompanionJson));
+    const failed = recordingFetch(() => new Response("nope", { status: 401 }));
 
-    expect(result.diagnostics).toMatchObject({
+    const okResult = await requestTutorResponse(request, remoteConfig, { fetch: ok.fetch });
+    const failedResult = await requestTutorResponse(request, remoteConfig, { fetch: failed.fetch });
+
+    expect(JSON.stringify(okResult.diagnostics)).not.toContain("secret-token");
+    expect(JSON.stringify(failedResult.diagnostics)).not.toContain("secret-token");
+  });
+
+  it("degrades to the deterministic response when the remote adapter is not configured", async () => {
+    const { fetch: fetchImpl, calls } = recordingFetch(() =>
+      completionResponse(learningCompanionJson),
+    );
+    const unconfigured: TutorAdapterConfig = {
+      adapter: "openai-compatible",
+      timeoutMs: 500,
+      capabilities: ["coach"],
+    };
+
+    expect(isTutorAdapterConfigured(unconfigured)).toBe(false);
+    const result = await requestTutorResponse(request, unconfigured, { fetch: fetchImpl });
+
+    expect(calls).toHaveLength(0);
+    expect(result.diagnostics).toMatchObject({ source: "fallback", errorCode: "not-configured" });
+    expect(result.response).toEqual((await requestTutorResponse(request, fakeConfig)).response);
+  });
+
+  it("normalizes gateway failures into provider-neutral error codes", async () => {
+    const cases: ReadonlyArray<{
+      readonly status: number;
+      readonly errorCode: string;
+      readonly label: string;
+    }> = [
+      { status: 401, errorCode: "authentication-failed", label: "rejects unauthenticated calls" },
+      { status: 503, errorCode: "provider-unavailable", label: "isolates provider outages" },
+      { status: 400, errorCode: "provider-error", label: "isolates rejected requests" },
+    ];
+
+    for (const testCase of cases) {
+      const { fetch: fetchImpl } = recordingFetch(
+        () => new Response("nope", { status: testCase.status }),
+      );
+      const result = await requestTutorResponse(request, remoteConfig, { fetch: fetchImpl });
+      expect(result.diagnostics, testCase.label).toMatchObject({
+        source: "fallback",
+        errorCode: testCase.errorCode,
+      });
+    }
+
+    const malformed = recordingFetch(() => completionResponse("{not json"));
+    const malformedResult = await requestTutorResponse(request, remoteConfig, {
+      fetch: malformed.fetch,
+    });
+    expect(malformedResult.diagnostics).toMatchObject({
       source: "fallback",
-      unavailableReason: "not-configured",
+      errorCode: "invalid-response",
     });
-    expect(result.response.schema).toBe("agorix/tutor-response/v1");
   });
 
-  it("falls back when provider output fails the tutor response contract", async () => {
-    const result = await requestTutorResponse(request, providerConfig, {
-      fetch: async () =>
-        new Response(
-          JSON.stringify({
-            choices: [{ message: { content: JSON.stringify({ message: "bad" }) } }],
-          }),
-          { status: 200 },
-        ),
-    });
+  it("makes an outage observably equivalent to the deterministic local adapter", async () => {
+    const { fetch: fetchImpl } = recordingFetch(() => new Response("down", { status: 503 }));
 
-    expect(result.diagnostics).toMatchObject({
+    const local = await requestTutorResponse(request, fakeConfig);
+    const degraded = await requestTutorResponse(request, remoteConfig, { fetch: fetchImpl });
+
+    expect(degraded.response).toEqual(local.response);
+    expect(degraded.response).toEqual(validateTutorResponse(degraded.response));
+    expect(local.response.message).toBe("What should happen first when you run this program?");
+    expect(local.diagnostics).toMatchObject({ adapter: "fake", source: "runtime" });
+    expect(degraded.diagnostics).toMatchObject({
+      adapter: "openai-compatible",
       source: "fallback",
-      unavailableReason: "invalid-response",
-    });
-    expect(result.response.schema).toBe("agorix/tutor-response/v1");
-  });
-
-  it("falls back on provider outage without throwing into the editor flow", async () => {
-    const result = await requestTutorResponse(request, providerConfig, {
-      fetch: async () => new Response("nope", { status: 503 }),
-    });
-
-    expect(result.diagnostics).toMatchObject({
-      source: "fallback",
-      unavailableReason: "provider-error",
     });
   });
 
-  it("aborts slow providers and falls back", async () => {
-    const result = await requestTutorResponse(
-      request,
-      { ...providerConfig, timeoutMs: 1 },
-      {
-        fetch: (_url, init) =>
+  it("normalizes a slow gateway into a timeout without leaking provider text", async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchImpl = vi.fn(
+        (_input: unknown, init?: RequestInit) =>
           new Promise<Response>((_resolve, reject) => {
             init?.signal?.addEventListener("abort", () => {
               reject(new DOMException("aborted", "AbortError"));
             });
           }),
-      },
+      );
+
+      const pending = requestTutorResponse(request, remoteConfig, {
+        fetch: fetchImpl as unknown as typeof fetch,
+      });
+      await vi.advanceTimersByTimeAsync(remoteConfig.timeoutMs);
+      const result = await pending;
+
+      expect(result.diagnostics).toMatchObject({ source: "fallback", errorCode: "timeout" });
+      expect(JSON.stringify(result.response)).not.toContain("secret-token");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("passes the deterministic adapter through the shared conformance harness", () => {
+    const runtime = createTutorAdapterRuntime(fakeConfig);
+    const result = assertProviderRuntimeConformance(
+      runtime,
+      createLearningCompanionRequestFromTutorRequest(request),
     );
 
-    expect(result.diagnostics).toMatchObject({
-      source: "fallback",
-      unavailableReason: "timeout",
+    expect(result.ok).toBe(true);
+    expect(runtime.descriptor).toMatchObject({
+      providerId: "fake",
+      modelId: "deterministic",
+      locality: "local",
+    });
+  });
+
+  it("delegates capability negotiation to provider-runtime", async () => {
+    const { fetch: fetchImpl, calls } = recordingFetch(() =>
+      completionResponse(learningCompanionJson),
+    );
+    const runtime = createTutorAdapterRuntime(
+      { ...remoteConfig, capabilities: ["explainer"] },
+      { fetch: fetchImpl },
+    );
+
+    const result = await runtime.request(createLearningCompanionRequestFromTutorRequest(request));
+
+    expect(calls).toHaveLength(0);
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "unsupported-capability" },
     });
   });
 });
