@@ -3,10 +3,13 @@ import { SCHEMA_VERSION, type ProjectProgram } from "@agorix/program-model";
 import { createWorldState, runProgram, type RunResult } from "@agorix/runtime";
 import {
   FIRST_MISSION,
+  assertFirstMissionLocaleCompleteness,
   MISSION_SCHEMA_VERSION,
   MissionValidationError,
   PACKAGE_NAME,
   createMissionRunFeedback,
+  getLocalizedFirstMission,
+  normalizeLocale,
   evaluateMission,
   validateMission,
   type MissionDefinition,
@@ -87,6 +90,38 @@ describe("First Mission", () => {
     expect(validated.concepts).toContain("movement");
     expect(validated.hintLadder).toHaveLength(5);
     expect(evaluation.completed).toBe(true);
+  });
+
+  it("provides complete English and Spanish First Mission content with deterministic fallback", () => {
+    assertFirstMissionLocaleCompleteness();
+
+    const english = getLocalizedFirstMission("en-US");
+    const spanish = getLocalizedFirstMission("es-AR");
+    const fallback = getLocalizedFirstMission("pt-BR");
+
+    expect(english.id).toBe(FIRST_MISSION.id);
+    expect(spanish.id).toBe(FIRST_MISSION.id);
+    expect(spanish.goal.title).toBe("Lleva tu personaje hasta la meta");
+    expect(spanish.hintLadder).toHaveLength(5);
+    expect(fallback.goal.title).toBe(english.goal.title);
+    expect(normalizeLocale("pt-BR")).toBe("en");
+  });
+
+  it("localizes runtime feedback without changing completion semantics", () => {
+    const result = runProgram(programFor(10), createWorldState(FIRST_MISSION.starterStage), {
+      collectObservations: true,
+    });
+
+    expect(
+      createMissionRunFeedback({ mission: getLocalizedFirstMission("es"), result, locale: "es" }),
+    ).toEqual({
+      completed: false,
+      message:
+        "Todavía falta: el personaje avanzó hacia la meta, pero se quedó corto. Prueba más pasos.",
+    });
+    expect(evaluateMission({ mission: getLocalizedFirstMission("es"), result }).completed).toBe(
+      false,
+    );
   });
 
   it("gives deterministic behavior feedback for a reasonable incorrect attempt", () => {

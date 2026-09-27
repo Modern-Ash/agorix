@@ -16,7 +16,7 @@ test("main editor shell renders persistent blocks, stage and code", async ({ pag
 test("block edits update generated code", async ({ page }) => {
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Move [N] steps" }).click();
+  await page.getByRole("button", { name: "Move" }).click();
   await expect(page.getByText("sprite.move(10);")).toBeVisible();
   await page.getByLabel("Move block").getByRole("spinbutton").fill("24");
   await expect(page.getByText("sprite.move(24);")).toBeVisible();
@@ -25,7 +25,7 @@ test("block edits update generated code", async ({ page }) => {
 test("block edits survive reload from canonical storage", async ({ page }) => {
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Move [N] steps" }).click();
+  await page.getByRole("button", { name: "Move" }).click();
   await page.getByLabel("Move block").getByRole("spinbutton").fill("24");
   await expect(page.getByText("sprite.move(24);")).toBeVisible();
 
@@ -40,10 +40,34 @@ test("block edits survive reload from canonical storage", async ({ page }) => {
   await expect(page.getByText("sprite.move(24);")).toBeVisible();
 });
 
+test("locale switch localizes UI without changing canonical program", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Move" }).click();
+  await page.getByLabel("Move block").getByRole("spinbutton").fill("24");
+  const before = await page.evaluate(() => localStorage.getItem("agorix:default-project"));
+  const beforeProgram = JSON.parse(before ?? "{}").program;
+
+  await page.getByLabel("Product language").selectOption("es");
+
+  await expect(
+    page.getByRole("heading", { name: "Construye con bloques. Mira el código." }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Ejecutar" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Código", exact: true })).toBeVisible();
+  await expect(page.getByLabel("Bloque Mover").getByRole("spinbutton")).toHaveValue("24");
+
+  const after = await page.evaluate(() => localStorage.getItem("agorix:default-project"));
+  const parsedAfter = JSON.parse(after ?? "{}");
+  expect(parsedAfter.program).toEqual(beforeProgram);
+  expect(JSON.stringify(parsedAfter.program)).not.toContain("locale");
+  expect(parsedAfter.metadata.locale).toBe("es");
+});
+
 test("offline tutor hints escalate without changing blocks", async ({ page }) => {
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Move [N] steps" }).click();
+  await page.getByRole("button", { name: "Move" }).click();
   await expect(page.getByLabel("Move block").getByRole("spinbutton")).toHaveValue("10");
 
   await page.getByRole("button", { name: "Get hint" }).click();
@@ -64,7 +88,7 @@ test("offline tutor hints escalate without changing blocks", async ({ page }) =>
 test("first mission completes from runtime facts and shows reflection", async ({ page }) => {
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Move [N] steps" }).click();
+  await page.getByRole("button", { name: "Move" }).click();
   await page.getByLabel("Move block").getByRole("spinbutton").fill("10");
   await page.getByRole("button", { name: "Run" }).click();
   await expect(page.getByText("stopped short")).toBeVisible({ timeout: 5000 });
@@ -83,7 +107,7 @@ test("first mission completes from runtime facts and shows reflection", async ({
 test("mission retry keeps work, code, and unlocks non-blocking free play", async ({ page }) => {
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Move [N] steps" }).click();
+  await page.getByRole("button", { name: "Move" }).click();
   await page.getByLabel("Move block").getByRole("spinbutton").fill("10");
   await page.getByRole("button", { name: "Run" }).click();
   await expect(page.getByText("stopped short")).toBeVisible({ timeout: 5000 });

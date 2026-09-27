@@ -14,8 +14,11 @@ import {
 export const PACKAGE_NAME = "@agorix/curriculum";
 
 export const MISSION_SCHEMA_VERSION = "agorix/mission/v1";
+export const DEFAULT_LOCALE = "en";
+export const SUPPORTED_LOCALES = ["en", "es"] as const;
 
 export type MissionSchemaVersion = typeof MISSION_SCHEMA_VERSION;
+export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
 
 export type MissionConcept = "sequence" | "events" | "movement" | "repetition" | "conditions";
 
@@ -65,6 +68,7 @@ export interface MissionDefinition {
 export interface MissionEvaluationInput {
   readonly mission: MissionDefinition;
   readonly result: RunResult;
+  readonly locale?: string;
 }
 
 export interface MissionEvaluation {
@@ -80,6 +84,22 @@ export interface MissionRunFeedback {
   readonly completed: boolean;
   readonly message: string;
   readonly reflectionPrompt?: string;
+}
+
+interface MissionLocaleContent {
+  readonly title: string;
+  readonly goal: MissionGoal;
+  readonly constraints: readonly MissionConstraint[];
+  readonly hintLadder: readonly MissionHint[];
+  readonly reflectionPrompt: string;
+}
+
+interface MissionFeedbackMessages {
+  readonly complete: string;
+  readonly nothingMoved: string;
+  readonly stoppedShort: string;
+  readonly passedGoal: string;
+  readonly adjustBlock: string;
 }
 
 export const FIRST_MISSION = Object.freeze({
@@ -126,6 +146,109 @@ export const FIRST_MISSION = Object.freeze({
   ],
   reflectionPrompt: "What number made the sprite reach the goal, and why did it work?",
 } satisfies MissionDefinition);
+
+const FIRST_MISSION_LOCALIZED_CONTENT = {
+  en: {
+    title: "Reach the Goal",
+    goal: {
+      title: "Get your sprite to the goal",
+      learnerFacing: "Use blocks to move the sprite until it reaches the goal.",
+    },
+    constraints: FIRST_MISSION.constraints,
+    hintLadder: FIRST_MISSION.hintLadder,
+    reflectionPrompt: "What number made the sprite reach the goal, and why did it work?",
+  },
+  es: {
+    title: "Alcanza la meta",
+    goal: {
+      title: "Lleva tu personaje hasta la meta",
+      learnerFacing: "Usa bloques para mover el personaje hasta que llegue a la meta.",
+    },
+    constraints: [
+      {
+        id: "poc-blocks-only",
+        description:
+          "La misión se puede resolver con el bloque Mover del POC, sin depender del tutor.",
+      },
+      {
+        id: "runtime-completion",
+        description:
+          "La finalización se evalúa con el estado del mundo en runtime, no con juicio de un LLM.",
+      },
+    ],
+    hintLadder: [
+      { level: 1, text: "¿Qué cambió en el escenario después de presionar Ejecutar?" },
+      { level: 2, text: "Un bloque Mover cambia qué tan lejos viaja el personaje." },
+      {
+        level: 3,
+        text: "Compara los pasos del bloque Mover con la distancia entre el personaje y la meta.",
+      },
+      { level: 4, text: "Prueba un bloque Mover que recorra la misma distancia que falta." },
+      { level: 5, text: "Desde este escenario inicial, Mover 160 pasos llega a la meta." },
+    ],
+    reflectionPrompt: "¿Qué número hizo que el personaje llegara a la meta y por qué funcionó?",
+  },
+} as const satisfies Record<SupportedLocale, MissionLocaleContent>;
+
+const FEEDBACK_MESSAGES = {
+  en: {
+    complete: "Mission complete: your sprite reached the goal.",
+    nothingMoved: "Nothing moved yet. Add a Move block, then press Run again.",
+    stoppedShort:
+      "Not there yet: the sprite moved toward the goal but stopped short. Try more steps.",
+    passedGoal: "The sprite passed the goal. Try fewer steps so it stops on the goal.",
+    adjustBlock:
+      "The sprite did not finish on the goal. Compare the stage with your generated code, then adjust one block.",
+  },
+  es: {
+    complete: "Misión completa: tu personaje llegó a la meta.",
+    nothingMoved: "Todavía no se movió nada. Agrega un bloque Mover y vuelve a presionar Ejecutar.",
+    stoppedShort:
+      "Todavía falta: el personaje avanzó hacia la meta, pero se quedó corto. Prueba más pasos.",
+    passedGoal: "El personaje pasó la meta. Prueba menos pasos para que se detenga sobre la meta.",
+    adjustBlock:
+      "El personaje no terminó sobre la meta. Compara el escenario con tu código generado y ajusta un bloque.",
+  },
+} as const satisfies Record<SupportedLocale, MissionFeedbackMessages>;
+
+export function normalizeLocale(locale: string | undefined): SupportedLocale {
+  if (locale === undefined) {
+    return DEFAULT_LOCALE;
+  }
+  const language = locale.toLowerCase().split(/[-_]/)[0];
+  return SUPPORTED_LOCALES.includes(language as SupportedLocale)
+    ? (language as SupportedLocale)
+    : DEFAULT_LOCALE;
+}
+
+export function getLocalizedFirstMission(
+  locale: string | undefined = DEFAULT_LOCALE,
+): MissionDefinition {
+  const content = FIRST_MISSION_LOCALIZED_CONTENT[normalizeLocale(locale)];
+  return validateMission({
+    ...FIRST_MISSION,
+    title: content.title,
+    goal: content.goal,
+    constraints: content.constraints,
+    hintLadder: content.hintLadder,
+    reflectionPrompt: content.reflectionPrompt,
+  });
+}
+
+export function assertFirstMissionLocaleCompleteness(): void {
+  const expectedLevels = FIRST_MISSION.hintLadder.map((hint) => hint.level);
+  for (const locale of SUPPORTED_LOCALES) {
+    const mission = getLocalizedFirstMission(locale);
+    if (mission.hintLadder.length !== expectedLevels.length) {
+      fail(`$.locales.${locale}.hintLadder`, "expected complete hint ladder");
+    }
+    mission.hintLadder.forEach((hint, index) => {
+      if (hint.level !== expectedLevels[index]) {
+        fail(`$.locales.${locale}.hintLadder[${index}].level`, "expected matching hint level");
+      }
+    });
+  }
+}
 
 export class MissionValidationError extends Error {
   readonly path: string;
@@ -177,10 +300,11 @@ export function evaluateMission(input: MissionEvaluationInput): MissionEvaluatio
 export function createMissionRunFeedback(input: MissionEvaluationInput): MissionRunFeedback {
   const mission = validateMission(input.mission);
   const evaluation = evaluateMission({ mission, result: input.result });
+  const messages = FEEDBACK_MESSAGES[normalizeLocale(input.locale)];
   if (evaluation.completed) {
     return {
       completed: true,
-      message: "Mission complete: your sprite reached the goal.",
+      message: messages.complete,
       reflectionPrompt: mission.reflectionPrompt,
     };
   }
@@ -191,25 +315,24 @@ export function createMissionRunFeedback(input: MissionEvaluationInput): Mission
   if (input.result.stepsUsed === 0) {
     return {
       completed: false,
-      message: "Nothing moved yet. Add a Move block, then press Run again.",
+      message: messages.nothingMoved,
     };
   }
   if (sameRow && final.sprite.x < final.goal.x) {
     return {
       completed: false,
-      message: "Not there yet: the sprite moved toward the goal but stopped short. Try more steps.",
+      message: messages.stoppedShort,
     };
   }
   if (sameRow && final.sprite.x > final.goal.x && start.sprite.x < final.goal.x) {
     return {
       completed: false,
-      message: "The sprite passed the goal. Try fewer steps so it stops on the goal.",
+      message: messages.passedGoal,
     };
   }
   return {
     completed: false,
-    message:
-      "The sprite did not finish on the goal. Compare the stage with your generated code, then adjust one block.",
+    message: messages.adjustBlock,
   };
 }
 

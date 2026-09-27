@@ -1,5 +1,5 @@
 /** Provider-neutral request/response model and pedagogical guardrails for the AI tutor. */
-import type { MissionConcept } from "@agorix/curriculum";
+import { normalizeLocale, type MissionConcept, type SupportedLocale } from "@agorix/curriculum";
 import type { ProjectProgram } from "@agorix/program-model";
 import { validateProgram } from "@agorix/program-model";
 import {
@@ -191,33 +191,61 @@ function preferredConcepts(request: TutorRequest): readonly MissionConcept[] {
 }
 
 function messageForHintLevel(level: TutorHintLevel, request: TutorRequest): string {
+  const locale = normalizeLocale(request.reading?.locale);
   const hasBlocks = request.program.scripts.some((script) => script.statements.length > 0);
   const reachedGoal =
     request.runtime.finalWorld.sprite.x === request.runtime.finalWorld.goal.x &&
     request.runtime.finalWorld.sprite.y === request.runtime.finalWorld.goal.y;
 
   if (reachedGoal) {
-    return "Your program reached the goal. What block made the sprite move there?";
+    return tutorMessages(locale).reachedGoal;
   }
 
   if (!hasBlocks) {
     return level === 1
-      ? "What should happen after you press Run? Try adding one movement block first."
-      : "Add a Move block, then run again so you can compare the sprite with the goal.";
+      ? tutorMessages(locale).emptyFirstHint
+      : tutorMessages(locale).emptyLaterHint;
   }
 
-  switch (level) {
-    case 1:
-      return "What changed on the stage after Run, and what still needs to change?";
-    case 2:
-      return "The sprite moves by the number in your Move block. Compare that number with the distance to the goal.";
-    case 3:
-      return "Look at the highlighted block. That is the first place to adjust how far the sprite travels.";
-    case 4:
-      return "Try changing the Move steps a little at a time, then run again and watch whether the sprite gets closer.";
-    case 5:
-      return "A simple solution is to move the sprite the same distance as the gap to the goal, then run and check the stage.";
+  return tutorMessages(locale).levels[level];
+}
+
+function tutorMessages(locale: SupportedLocale): {
+  readonly reachedGoal: string;
+  readonly emptyFirstHint: string;
+  readonly emptyLaterHint: string;
+  readonly levels: Record<TutorHintLevel, string>;
+} {
+  if (locale === "es") {
+    return {
+      reachedGoal:
+        "Tu programa llegó a la meta. ¿Qué bloque hizo que el personaje se moviera hasta ahí?",
+      emptyFirstHint:
+        "¿Qué debería pasar después de presionar Ejecutar? Prueba agregando primero un bloque de movimiento.",
+      emptyLaterHint:
+        "Agrega un bloque Mover y vuelve a ejecutar para comparar el personaje con la meta.",
+      levels: {
+        1: "¿Qué cambió en el escenario después de Ejecutar y qué todavía necesita cambiar?",
+        2: "El personaje se mueve según el número de tu bloque Mover. Compara ese número con la distancia hasta la meta.",
+        3: "Mira el bloque resaltado. Ese es el primer lugar para ajustar qué tan lejos viaja el personaje.",
+        4: "Prueba cambiar los pasos de Mover de a poco, vuelve a ejecutar y observa si el personaje se acerca.",
+        5: "Una solución simple es mover el personaje la misma distancia que falta hasta la meta; luego ejecuta y revisa el escenario.",
+      },
+    };
   }
+
+  return {
+    reachedGoal: "Your program reached the goal. What block made the sprite move there?",
+    emptyFirstHint: "What should happen after you press Run? Try adding one movement block first.",
+    emptyLaterHint: "Add a Move block, then run again so you can compare the sprite with the goal.",
+    levels: {
+      1: "What changed on the stage after Run, and what still needs to change?",
+      2: "The sprite moves by the number in your Move block. Compare that number with the distance to the goal.",
+      3: "Look at the highlighted block. That is the first place to adjust how far the sprite travels.",
+      4: "Try changing the Move steps a little at a time, then run again and watch whether the sprite gets closer.",
+      5: "A simple solution is to move the sprite the same distance as the gap to the goal, then run and check the stage.",
+    },
+  };
 }
 
 function assertMission(value: TutorMissionContext, path: string): void {

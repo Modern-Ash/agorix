@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ProjectMetadata } from "@agorix/persistence";
 import { POC_TOOLBOX, type BlockNode } from "@agorix/block-editor";
-import { FIRST_MISSION, createMissionRunFeedback } from "@agorix/curriculum";
+import { createMissionRunFeedback, getLocalizedFirstMission } from "@agorix/curriculum";
 import {
   createDeterministicTutorResponse,
   createTutorRequest,
@@ -35,6 +35,7 @@ import {
   type LoadedEditorProject,
   type ProjectPersistence,
 } from "./projectStorage.js";
+import { LOCALE_LABELS, t, type Locale } from "./i18n.js";
 import "./App.css";
 
 type RunStatus = "idle" | "running" | "stopped" | "complete" | "retry" | "freeplay" | "error";
@@ -54,12 +55,17 @@ function mergeProjection(model: EditorModel, projection: EditorProjection): Edit
   return { ...model, ...projection };
 }
 
-function createProjectMetadata(createdAt: string, programBlockCount: number): ProjectMetadata {
+function createProjectMetadata(
+  createdAt: string,
+  programBlockCount: number,
+  locale: Locale,
+): ProjectMetadata {
   return {
     createdAt,
     updatedAt: new Date().toISOString(),
     missionProgress: programBlockCount > 0 ? 1 : 0,
     hintLevel: 0,
+    locale,
   };
 }
 
@@ -98,18 +104,44 @@ function numericFieldFor(block: BlockNode): "steps" | "degrees" | "count" | unde
   }
 }
 
-function displayNameFor(block: BlockNode): string {
-  switch (block.type) {
+function displayNameForType(type: string, locale: Locale): string {
+  switch (type) {
     case "motion_move":
-      return "Move";
+      return t(locale, "move");
     case "motion_turn":
-      return "Turn";
+      return t(locale, "turn");
     case "control_repeat":
-      return "Repeat";
+      return t(locale, "repeat");
     case "control_if":
-      return "If touching goal";
+      return t(locale, "toolboxIfGoal");
     default:
-      return block.type;
+      return type;
+  }
+}
+
+function displayNameFor(block: BlockNode, locale: Locale): string {
+  return displayNameForType(block.type, locale);
+}
+
+function fieldLabelFor(field: "steps" | "degrees" | "count", locale: Locale): string {
+  switch (field) {
+    case "steps":
+      return t(locale, "steps");
+    case "degrees":
+      return t(locale, "degrees");
+    case "count":
+      return t(locale, "fieldCount");
+  }
+}
+
+function sectionNameFor(name: string, locale: Locale): string {
+  switch (name) {
+    case "Move":
+      return t(locale, "toolboxMove");
+    case "Repeat & Decide":
+      return t(locale, "toolboxRepeatDecide");
+    default:
+      return name;
   }
 }
 
@@ -122,17 +154,19 @@ function CodePanel({
   code,
   highlightedNodeId,
   model,
+  locale,
 }: {
   code: string;
   highlightedNodeId?: string;
   model: EditorModel;
+  locale: Locale;
 }) {
   const range = highlightedNodeId === undefined ? undefined : model.codeMapping[highlightedNodeId];
   if (range === undefined) {
     return <pre className="code-surface">{code}</pre>;
   }
   return (
-    <pre className="code-surface" aria-label="Code">
+    <pre className="code-surface" aria-label={t(locale, "codeAria")}>
       {code.slice(0, range.start)}
       <mark>{code.slice(range.start, range.end)}</mark>
       {code.slice(range.end)}
@@ -143,9 +177,11 @@ function CodePanel({
 function StageView({
   frame,
   fallback,
+  locale,
 }: {
   frame: ObservationFrame | undefined;
   fallback: StageState;
+  locale: Locale;
 }) {
   const state = frame?.state ?? fallback;
   const sprite = state.sprite;
@@ -154,16 +190,16 @@ function StageView({
   return (
     <section className="stage-panel" aria-labelledby="stage-title">
       <div className="panel-heading">
-        <h2 id="stage-title">Stage</h2>
+        <h2 id="stage-title">{t(locale, "stage")}</h2>
         <span className="status-pill">
-          {frame?.reachedGoal ? "Goal reached" : "Reach the goal"}
+          {frame?.reachedGoal ? t(locale, "evidenceGoalReached") : t(locale, "evidenceReachGoal")}
         </span>
       </div>
       <svg
         className="stage-canvas"
         viewBox={`0 0 ${viewport.width} ${viewport.height}`}
         role="img"
-        aria-label="Sprite and goal stage"
+        aria-label={t(locale, "stageAria")}
       >
         <rect width={viewport.width} height={viewport.height} rx="14" />
         <line x1="24" y1="128" x2="240" y2="128" />
@@ -188,11 +224,12 @@ export function App() {
   const [createdAt, setCreatedAt] = useState(
     () => initialProjectRef.current!.metadata?.createdAt ?? new Date().toISOString(),
   );
+  const [locale, setLocale] = useState<Locale>(() =>
+    initialProjectRef.current!.metadata?.locale === "es" ? "es" : "en",
+  );
   const [status, setStatus] = useState<RunStatus>("idle");
   const [message, setMessage] = useState(
-    () =>
-      initialProjectRef.current!.message ??
-      "Nothing happens yet — add a block to 'When you press Run' to get started.",
+    () => initialProjectRef.current!.message ?? t(locale, "emptyRunMessage"),
   );
   const [persistenceMessage, setPersistenceMessage] = useState<string | undefined>(
     () => initialProjectRef.current!.message,
@@ -207,6 +244,7 @@ export function App() {
   const [attempts, setAttempts] = useState(0);
   const timerRef = useRef<number | undefined>();
 
+  const mission = useMemo(() => getLocalizedFirstMission(locale), [locale]);
   const statements = model.workspace.scripts[0]?.statements ?? [];
   const activeFrame = frames[frameIndex];
   const highlightedCode =
@@ -219,7 +257,7 @@ export function App() {
       POC_TOOLBOX.map((section) => ({
         ...section,
         blocks: section.blocks.filter((block) => isAddable(block.type)),
-      })),
+      })).filter((section) => section.blocks.length > 0),
     [],
   );
 
@@ -235,9 +273,9 @@ export function App() {
     if (initialProjectRef.current?.message !== undefined) {
       return;
     }
-    const metadata = createProjectMetadata(createdAt, countProgramBlocks(model));
+    const metadata = createProjectMetadata(createdAt, countProgramBlocks(model), locale);
     setPersistenceMessage(saveEditorProject(persistenceRef.current, model.program, metadata));
-  }, [createdAt, model.program]);
+  }, [createdAt, locale, model.program]);
 
   function applyProjection(projection: EditorProjection) {
     initialProjectRef.current = { ...initialProjectRef.current!, message: undefined };
@@ -254,7 +292,7 @@ export function App() {
 
   function addBlock(type: AddableBlockType) {
     applyProjection(addBlockToWorkspace(model.workspace, type));
-    setMessage("Every block you add shows up here as code.");
+    setMessage(t(locale, "codeBehindBlocks"));
   }
 
   function editBlock(index: number, block: BlockNode, value: number) {
@@ -283,7 +321,7 @@ export function App() {
       timerRef.current = undefined;
     }
     setStatus("stopped");
-    setMessage("Stopped");
+    setMessage(t(locale, "stopped"));
   }
 
   function resetEditor() {
@@ -305,7 +343,7 @@ export function App() {
     setReflectionPrompt(undefined);
     setAttempts(0);
     setStatus("idle");
-    setMessage("Reset");
+    setMessage(t(locale, "resetMessage"));
   }
 
   function runBlocks() {
@@ -314,7 +352,7 @@ export function App() {
     }
     if (statements.length === 0) {
       setStatus("error");
-      setMessage("Nothing happens yet — add a block to 'When you press Run' to get started.");
+      setMessage(t(locale, "emptyRunMessage"));
       return;
     }
     try {
@@ -328,7 +366,7 @@ export function App() {
       setFrames(nextFrames);
       setFrameIndex(0);
       setStatus("running");
-      setMessage("Running…");
+      setMessage(t(locale, "running"));
       if (timerRef.current !== undefined) {
         window.clearInterval(timerRef.current);
       }
@@ -338,7 +376,7 @@ export function App() {
           if (next >= nextFrames.length) {
             window.clearInterval(timerRef.current);
             timerRef.current = undefined;
-            const feedback = createMissionRunFeedback({ mission: FIRST_MISSION, result });
+            const feedback = createMissionRunFeedback({ mission, result, locale });
             setStatus(feedback.completed ? "complete" : "retry");
             setMessage(feedback.message);
             setReflectionPrompt(feedback.reflectionPrompt);
@@ -352,7 +390,7 @@ export function App() {
       setHighlightedNodeId(nextFrames[0]?.highlightedNodeId);
     } catch {
       setStatus("error");
-      setMessage("This block setup needs a small fix before it can run.");
+      setMessage(t(locale, "runSetupError"));
     }
   }
 
@@ -367,9 +405,9 @@ export function App() {
       const response = createDeterministicTutorResponse(
         createTutorRequest({
           mission: {
-            id: FIRST_MISSION.id,
-            version: FIRST_MISSION.version,
-            concepts: FIRST_MISSION.concepts,
+            id: mission.id,
+            version: mission.version,
+            concepts: mission.concepts,
           },
           program: model.program,
           runtime: {
@@ -379,7 +417,7 @@ export function App() {
             observations: result.observations,
           },
           hintHistory,
-          reading: { locale: "en-US", readingLevel: "middle-grade" },
+          reading: { locale, readingLevel: "middle-grade" },
         }),
       );
       const nextHistory: TutorHintHistoryEntry = {
@@ -396,7 +434,7 @@ export function App() {
       }
     } catch {
       setStatus("error");
-      setMessage("The tutor needs a runnable block setup before it can help.");
+      setMessage(t(locale, "tutorError"));
     }
   }
 
@@ -409,74 +447,91 @@ export function App() {
     setLastRunResult(undefined);
     setReflectionPrompt(undefined);
     setStatus("idle");
-    setMessage("Keep your blocks and try again.");
+    setMessage(t(locale, "keepBlocksTryAgain"));
   }
 
   function continueFreePlay() {
     setStatus("freeplay");
     setReflectionPrompt(undefined);
-    setMessage("Free play unlocked. Keep experimenting with your program.");
+    setMessage(t(locale, "freePlayUnlocked"));
   }
 
   return (
     <main className={status === "complete" ? "editor-shell mission-complete" : "editor-shell"}>
       <header className="topbar">
         <div>
-          <p className="eyebrow">Agorix First Mission</p>
-          <h1>Build with blocks. See the code.</h1>
+          <p className="eyebrow">{t(locale, "appEyebrow")}</p>
+          <h1>{t(locale, "appTitle")}</h1>
         </div>
-        <div className="run-controls" aria-label="Run controls">
+        <div className="run-controls" aria-label={t(locale, "run")}>
+          <label className="locale-picker">
+            <span>{t(locale, "localeLabel")}</span>
+            <select
+              value={locale}
+              onChange={(event) => setLocale(event.currentTarget.value as Locale)}
+            >
+              {Object.entries(LOCALE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
           <button type="button" onClick={runBlocks} disabled={status === "running"}>
-            Run
+            {t(locale, "run")}
           </button>
           <button type="button" onClick={stopRun} disabled={status !== "running"}>
-            Stop
+            {t(locale, "stop")}
           </button>
           <button type="button" onClick={resetEditor}>
-            Reset
+            {t(locale, "reset")}
           </button>
         </div>
       </header>
 
       <section className="mission-strip" aria-live="polite">
         <div>
-          <h2>Mission: {FIRST_MISSION.goal.title}.</h2>
-          <p>{FIRST_MISSION.goal.learnerFacing}</p>
+          <h2>{t(locale, "missionPrefix", { title: mission.goal.title })}</h2>
+          <p>{mission.goal.learnerFacing}</p>
           <div
             className="mission-progress"
-            aria-label={`Mission progress step ${missionStep} of 3`}
+            aria-label={t(locale, "missionProgress", { step: missionStep })}
           >
-            <span className={missionStep >= 1 ? "progress-dot active" : "progress-dot"}>Build</span>
-            <span className={missionStep >= 2 ? "progress-dot active" : "progress-dot"}>Run</span>
+            <span className={missionStep >= 1 ? "progress-dot active" : "progress-dot"}>
+              {t(locale, "build")}
+            </span>
+            <span className={missionStep >= 2 ? "progress-dot active" : "progress-dot"}>
+              {t(locale, "run")}
+            </span>
             <span className={missionStep >= 3 ? "progress-dot active" : "progress-dot"}>
-              Reflect
+              {t(locale, "reflect")}
             </span>
           </div>
         </div>
         <div className="state-stack">
           <strong className={`run-state run-state-${status}`}>{message}</strong>
           <span className="attempt-readout">
-            Attempts: {attempts} · Hints: {hintHistory.length}
+            {t(locale, "attemptsHints", { attempts, hints: hintHistory.length })}
           </span>
           {persistenceMessage === undefined ? null : (
             <strong className="run-state run-state-error">{persistenceMessage}</strong>
           )}
           {reflectionPrompt === undefined ? null : (
             <div className="reflection-prompt">
-              <strong>Reflection: {reflectionPrompt}</strong>
+              <strong>{t(locale, "reflection", { prompt: reflectionPrompt })}</strong>
               <button type="button" onClick={continueFreePlay}>
-                Keep building
+                {t(locale, "keepBuilding")}
               </button>
             </div>
           )}
           {status === "retry" ? (
             <button type="button" className="secondary-action" onClick={retryMission}>
-              Try again
+              {t(locale, "runAgain")}
             </button>
           ) : null}
           {status === "complete" ? (
             <button type="button" className="secondary-action" onClick={continueFreePlay}>
-              Free play
+              {t(locale, "freePlay")}
             </button>
           ) : null}
         </div>
@@ -484,10 +539,10 @@ export function App() {
 
       <div className="workspace-grid">
         <aside className="toolbox" aria-labelledby="toolbox-title">
-          <h2 id="toolbox-title">Blocks</h2>
+          <h2 id="toolbox-title">{t(locale, "blocks")}</h2>
           {toolbox.map((section) => (
             <section key={section.name}>
-              <h3>{section.name}</h3>
+              <h3>{sectionNameFor(section.name, locale)}</h3>
               <div className="toolbox-list">
                 {section.blocks.map((block) => (
                   <button
@@ -495,7 +550,7 @@ export function App() {
                     type="button"
                     onClick={() => addBlock(block.type as AddableBlockType)}
                   >
-                    {block.label}
+                    {displayNameForType(block.type, locale)}
                   </button>
                 ))}
               </div>
@@ -505,12 +560,12 @@ export function App() {
 
         <section className="program-panel" aria-labelledby="workspace-title">
           <div className="panel-heading">
-            <h2 id="workspace-title">When you press Run</h2>
-            <span>{statements.length} blocks</span>
+            <h2 id="workspace-title">{t(locale, "whenRun")}</h2>
+            <span>{t(locale, "blockCount", { count: statements.length })}</span>
           </div>
           <div className="block-stack">
             {statements.length === 0 ? (
-              <p className="empty-state">Add a Move block to start.</p>
+              <p className="empty-state">{t(locale, "addMoveBlock")}</p>
             ) : null}
             {statements.map((block, index) => {
               const field = numericFieldFor(block);
@@ -520,20 +575,20 @@ export function App() {
                 <article
                   key={block.id}
                   className={selected ? "block-card active" : "block-card"}
-                  aria-label={`${displayNameFor(block)} block`}
+                  aria-label={t(locale, "blockLabel", { name: displayNameFor(block, locale) })}
                 >
                   <button
                     type="button"
                     className="block-title"
                     onClick={() => setHighlightedNodeId(nodeId)}
                   >
-                    {displayNameFor(block)}
+                    {displayNameFor(block, locale)}
                   </button>
                   {field === undefined ? (
-                    <span>Touching the goal?</span>
+                    <span>{t(locale, "touchingGoal")}</span>
                   ) : (
                     <label>
-                      <span>{field}</span>
+                      <span>{fieldLabelFor(field, locale)}</span>
                       <input
                         type="number"
                         value={blockValue(block, field)}
@@ -544,7 +599,7 @@ export function App() {
                     </label>
                   )}
                   {block.type === "control_if" ? (
-                    <p className="block-note">If Touching the goal?, then run inside blocks.</p>
+                    <p className="block-note">{t(locale, "blockNoteIf")}</p>
                   ) : null}
                   <div className="block-actions">
                     <button
@@ -552,17 +607,17 @@ export function App() {
                       onClick={() => moveBlock(index, -1)}
                       disabled={index === 0}
                     >
-                      Up
+                      {t(locale, "up")}
                     </button>
                     <button
                       type="button"
                       onClick={() => moveBlock(index, 1)}
                       disabled={index === statements.length - 1}
                     >
-                      Down
+                      {t(locale, "down")}
                     </button>
                     <button type="button" onClick={() => deleteBlock(index)}>
-                      Delete
+                      {t(locale, "delete")}
                     </button>
                   </div>
                 </article>
@@ -571,42 +626,48 @@ export function App() {
           </div>
         </section>
 
-        <StageView frame={activeFrame} fallback={model.stage.current} />
+        <StageView frame={activeFrame} fallback={model.stage.current} locale={locale} />
 
         <section className="code-panel" aria-labelledby="code-title">
           <div className="panel-heading">
-            <h2 id="code-title">Code</h2>
-            <span>This is the code behind your blocks.</span>
+            <h2 id="code-title">{t(locale, "code")}</h2>
+            <span>{t(locale, "codeBehindBlocks")}</span>
           </div>
           <CodePanel
             code={model.code}
             {...(highlightedNodeId === undefined ? {} : { highlightedNodeId })}
             model={model}
+            locale={locale}
           />
           {highlightedCode ? (
-            <p className="highlight-readout">Current node: {highlightedCode.trim()}</p>
+            <p className="highlight-readout">
+              {t(locale, "currentNode", { code: highlightedCode.trim() })}
+            </p>
           ) : null}
         </section>
 
         <aside className="tutor-panel" aria-labelledby="tutor-title">
           <div className="panel-heading">
-            <h2 id="tutor-title">Tutor suggestion — may not be right</h2>
+            <h2 id="tutor-title">{t(locale, "proposalReview")}</h2>
             <span>
-              {tutorResponse === undefined ? "Offline" : `Level ${tutorResponse.hintLevel}/5`}
+              {tutorResponse === undefined
+                ? t(locale, "tutorOffline")
+                : t(locale, "hintLevel", { level: tutorResponse.hintLevel })}
             </span>
           </div>
-          <p aria-live="polite">
-            {tutorResponse?.message ??
-              "Ask for a hint when you want a small nudge. The first hint will not give away the full answer."}
-          </p>
+          <p aria-live="polite">{tutorResponse?.message ?? t(locale, "tutorIntro")}</p>
           <div className="tutor-actions">
             <button type="button" onClick={requestHint}>
-              Get hint
+              {t(locale, "getHint")}
             </button>
-            <span className="hint-meter">Hints used: {hintHistory.length}</span>
+            <span className="hint-meter">
+              {t(locale, "hintMeter", { count: hintHistory.length })}
+            </span>
           </div>
           {tutorResponse === undefined ? null : (
-            <p className="hint-history">Hint level {tutorResponse.hintLevel} of 5</p>
+            <p className="hint-history">
+              {t(locale, "hintLevelOf", { level: tutorResponse.hintLevel })}
+            </p>
           )}
         </aside>
       </div>

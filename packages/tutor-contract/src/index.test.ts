@@ -129,6 +129,33 @@ describe("deterministic fake tutor", () => {
     expect(hint.nodeIds).toEqual([]);
   });
 
+  it("uses the request locale for deterministic Spanish hints while preserving structured fields", () => {
+    const hint = createDeterministicTutorResponse(
+      createTutorRequest({
+        ...request,
+        hintHistory: [],
+        reading: { locale: "es-AR", readingLevel: "middle-grade" },
+      }),
+    );
+
+    expect(hint.hintLevel).toBe(1);
+    expect(hint.message).toContain("¿Qué cambió");
+    expect(hint.nodeIds).toEqual(["scripts[0]/statements[0]"]);
+    expect(hint.concepts).toEqual(["sequence", "events"]);
+  });
+
+  it("falls back to English for unsupported locales", () => {
+    const hint = createDeterministicTutorResponse(
+      createTutorRequest({
+        ...request,
+        hintHistory: [],
+        reading: { locale: "pt-BR", readingLevel: "middle-grade" },
+      }),
+    );
+
+    expect(hint.message).toContain("What changed");
+  });
+
   it("does not mutate the program or return executable program changes", () => {
     const before = JSON.parse(JSON.stringify(program));
     const hint = createDeterministicTutorResponse(request);
