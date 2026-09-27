@@ -37,3 +37,22 @@ The adapter calls Ollama over HTTP using the platform `fetch` API or an injected
 4. Keep the deterministic fake runtime as the CI default. Real Ollama checks should be opt-in because local hardware, model size and daemon availability vary.
 
 Local models can be slow or inconsistent on smaller machines. Treat Ollama capability declarations as model-specific, and fail closed when structured output validation fails.
+
+## OpenAI-compatible gateway adapter
+
+Issue #94 adds `createOpenAICompatibleProviderRuntime` as a protocol adapter for local/open inference servers that expose OpenAI-compatible HTTP endpoints. This is not an OpenAI product dependency and does not add an OpenAI SDK.
+
+Example configuration:
+
+```ts
+import { createOpenAICompatibleProviderRuntime } from "@agorix/provider-runtime";
+
+const runtime = createOpenAICompatibleProviderRuntime({
+  baseUrl: "http://127.0.0.1:8000/v1",
+  modelId: "local-compatible-model",
+  capabilities: ["coach", "explainer"],
+  timeoutMs: 10_000,
+});
+```
+
+Protected deployments can pass `authToken`; local deployments can omit auth. Capability and structured-output support are declared by configuration because compatible gateways vary by server and model.

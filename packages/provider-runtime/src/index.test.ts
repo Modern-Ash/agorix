@@ -8,6 +8,7 @@ import {
   assertProviderRuntimeConformance,
   createFakeProviderRuntime,
   createOllamaProviderRuntime,
+  createOpenAICompatibleProviderRuntime,
   createProviderModelConfig,
   negotiateCapability,
   normalizeProviderRuntimeError,
@@ -400,5 +401,161 @@ describe("ollama provider runtime", () => {
     expect(cancelled.ok ? undefined : cancelled.error.code).toBe("cancelled");
     expect(builder.ok).toBe(false);
     expect(builder.ok ? undefined : builder.error.code).toBe("unsupported-capability");
+  });
+});
+
+describe("openai-compatible provider runtime", () => {
+  function jsonResponse(body: unknown, ok = true, status = ok ? 200 : 500): Response {
+    return new Response(JSON.stringify(body), { status });
+  }
+
+  const learningCompanionJson = JSON.stringify({
+    schema: "agorix/learning-companion-response/v1",
+    capability: "coach",
+    message: "What evidence did the runtime show?",
+    nodeIds: ["scripts[0]/statements[0]"],
+    concepts: ["sequence"],
+    metadata: {
+      capability: "coach",
+      scaffoldLevel: 1,
+      provenance: "local-provider",
+      uncertainty: "medium",
+    },
+    payload: { kind: "question", question: "What evidence did the runtime show?" },
+  });
+
+  it("uses configured base URL and model without auth for local deployments", async () => {
+    const calls: Array<{ readonly input: string; readonly init: RequestInit | undefined }> = [];
+    const runtime = createOpenAICompatibleProviderRuntime({
+      baseUrl: "http://localhost:8080/v1/",
+      modelId: "llama.cpp-local",
+      capabilities: ["coach", "explainer"],
+      fetch: async (input, init) => {
+        calls.push({ input: String(input), init });
+        return jsonResponse({ choices: [{ message: { content: learningCompanionJson } }] });
+      },
+    });
+
+    const result = await runtime.request(request);
+
+    expect(runtime.descriptor).toMatchObject({
+      providerId: "openai-compatible",
+      modelId: "llama.cpp-local",
+      locality: "local",
+    });
+    expect(result.ok).toBe(true);
+    expect(calls[0]?.input).toBe("http://localhost:8080/v1/chat/completions");
+    const headers = calls[0]?.init?.headers as Record<string, string>;
+    expect(headers.authorization).toBeUndefined();
+    expect(JSON.parse(String(calls[0]?.init?.body))).toMatchObject({
+      model: "llama.cpp-local",
+      response_format: { type: "json_object" },
+    });
+  });
+
+  it("supports optional auth for protected compatible deployments", async () => {
+    const calls: Array<{ readonly init: RequestInit | undefined }> = [];
+    const runtime = createOpenAICompatibleProviderRuntime({
+      baseUrl: "https://gateway.example.test/openai/v1",
+      modelId: "vllm-served-model",
+      capabilities: ["coach"],
+      authToken: "secret-token",
+      fetch: async (_input, init) => {
+        calls.push({ init });
+        return jsonResponse({ choices: [{ message: { content: learningCompanionJson } }] });
+      },
+    });
+
+    expect((await runtime.request(request)).ok).toBe(true);
+    expect(runtime.descriptor.locality).toBe("remote");
+    expect((calls[0]?.init?.headers as Record<string, string>).authorization).toBe(
+      "Bearer secret-token",
+    );
+  });
+
+  it("negotiates capability and structured-output support explicitly", async () => {
+    const runtime = createOpenAICompatibleProviderRuntime({
+      baseUrl: "http://localhost:8000/v1",
+      modelId: "text-compatible-model",
+      capabilities: ["coach"],
+      structuredOutput: false,
+      fetch: async () => jsonResponse({ choices: [{ message: { content: "{}" } }] }),
+    });
+
+    expect(runtime.negotiate("coach")).toMatchObject({
+      supported: false,
+      missingReason: "structured-output-unavailable",
+    });
+    const result = await runtime.request(request);
+    expect(result.ok).toBe(false);
+    expect(result.ok ? undefined : result.error.code).toBe("unsupported-capability");
+  });
+
+  it("fails closed on malformed responses and auth failures", async () => {
+    const malformed = createOpenAICompatibleProviderRuntime({
+      baseUrl: "http://localhost:8000/v1",
+      modelId: "malformed-model",
+      capabilities: ["coach"],
+      fetch: async () => jsonResponse({ choices: [{ message: { content: "not-json" } }] }),
+    });
+    const authFailure = createOpenAICompatibleProviderRuntime({
+      baseUrl: "https://gateway.example.test/v1",
+      modelId: "protected-model",
+      capabilities: ["coach"],
+      authToken: "bad-token",
+      fetch: async () => jsonResponse({ error: { message: "unauthorized" } }, false, 401),
+    });
+
+    const invalid = await malformed.request(request);
+    const denied = await authFailure.request(request);
+
+    expect(invalid.ok).toBe(false);
+    expect(invalid.ok ? undefined : invalid.error.code).toBe("invalid-response");
+    expect(denied.ok).toBe(false);
+    expect(denied.ok ? undefined : denied.error.code).toBe("authentication-failed");
+  });
+
+  it("normalizes timeout, cancellation and unsupported capability", async () => {
+    let called = false;
+    const runtime = createOpenAICompatibleProviderRuntime({
+      baseUrl: "http://localhost:8000/v1",
+      modelId: "coach-only-model",
+      capabilities: ["coach"],
+      fetch: async () => {
+        called = true;
+        return jsonResponse({ choices: [{ message: { content: learningCompanionJson } }] });
+      },
+    });
+
+    const timedOut = await runtime.request(request, { timeoutMs: 0 });
+    const cancelled = await runtime.request(request, { cancelled: true });
+    const builder = await runtime.request(
+      createLearningCompanionRequest({ ...request, capability: "builder" }),
+    );
+
+    expect(called).toBe(false);
+    expect(timedOut.ok ? undefined : timedOut.error.code).toBe("timeout");
+    expect(cancelled.ok ? undefined : cancelled.error.code).toBe("cancelled");
+    expect(builder.ok ? undefined : builder.error.code).toBe("unsupported-capability");
+  });
+
+  it("reports health for compatible deployment classes without external services", async () => {
+    const llamaCpp = createOpenAICompatibleProviderRuntime({
+      baseUrl: "http://localhost:8080/v1",
+      modelId: "llama.cpp-local",
+      capabilities: ["coach"],
+      fetch: async () => jsonResponse({ data: [] }),
+    });
+    const vllm = createOpenAICompatibleProviderRuntime({
+      baseUrl: "http://localhost:8000/v1",
+      modelId: "vllm-model",
+      capabilities: ["coach"],
+      fetch: async () => {
+        throw new Error("connection refused");
+      },
+    });
+
+    expect(await llamaCpp.health()).toMatchObject({ status: "available" });
+    expect(await vllm.health()).toMatchObject({ status: "unavailable" });
   });
 });
