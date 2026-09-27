@@ -31,6 +31,8 @@ describe("main editor shell", () => {
     expect(html).toContain("When you press Run");
     expect(html).toContain("Stage");
     expect(html).toContain("Code");
+    expect(html).toContain("Trace");
+    expect(html).toContain("Press Step to inspect what changes.");
     expect(html).toContain("Tutor suggestion");
     expect(html).toContain("Product language");
     expect(html).toContain("English");
@@ -61,6 +63,7 @@ describe("web i18n", () => {
     expect(resolveLocale("es-AR")).toBe("es");
     expect(resolveLocale("pt-BR")).toBe("en");
     expect(t("es", "run")).toBe("Ejecutar");
+    expect(t("es", "trace")).toBe("Traza");
   });
 });
 

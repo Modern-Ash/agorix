@@ -104,6 +104,7 @@ select:focus-visible {
 .mission-strip,
 .stage-panel,
 .code-panel,
+.trace-panel,
 .program-panel,
 .action-palette,
 .companion-panel {
@@ -313,7 +314,7 @@ h3 {
   grid-template-columns: minmax(360px, 1.18fr) minmax(340px, 1fr);
   grid-template-areas:
     "stage code"
-    "program action"
+    "trace action"
     "program companion";
   gap: var(--agx-space-4);
   align-items: stretch;
@@ -327,6 +328,11 @@ h3 {
 .code-panel {
   grid-area: code;
   min-height: 360px;
+  padding: var(--agx-space-4);
+}
+
+.trace-panel {
+  grid-area: trace;
   padding: var(--agx-space-4);
 }
 
@@ -532,6 +538,41 @@ h3 {
   font-weight: 800;
 }
 
+.trace-list {
+  display: grid;
+  gap: var(--agx-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.trace-item {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--agx-border-subtle);
+  border-radius: var(--agx-radius-sm);
+  background: var(--agx-surface-raised);
+}
+
+.trace-item.active {
+  border-color: var(--agx-accent-runtime);
+  box-shadow: 0 0 0 4px rgba(14, 159, 154, 0.14);
+}
+
+.trace-item span {
+  color: var(--agx-text-primary);
+}
+
+.trace-item small {
+  color: var(--agx-text-secondary);
+  line-height: 1.35;
+}
+
+.trace-empty {
+  min-height: 72px;
+}
+
 .hint-history {
   margin-top: 10px;
 }
@@ -586,6 +627,7 @@ h3 {
     grid-template-areas:
       "stage"
       "code"
+      "trace"
       "program"
       "action"
       "companion";
@@ -646,6 +688,7 @@ h3 {
     grid-template-areas:
       "stage"
       "code"
+      "trace"
       "program"
       "action"
       "companion";

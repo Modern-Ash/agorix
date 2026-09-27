@@ -98,6 +98,8 @@ describe("Agorix Studio first slice", () => {
     expect(evidence.stepSequence.map((step) => step.nodeId ?? "$")).toEqual(
       evidence.previewFrames.map((frame) => frame.highlightedNodeId ?? "$"),
     );
+    expect(evidence.learnerTrace[1]?.nodeId).toBe("scripts[0]/statements[0]");
+    expect(evidence.learnerTrace[1]?.summary).toContain("before: x=52 y=128 heading=0");
     expect(evidence.inspectorRows[0]?.nodeId).toBe("scripts[0]/statements[0]");
     expect(evidence.inspectorRows[0]?.worldAfter.sprite.x).toBe(212);
   });

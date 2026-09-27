@@ -174,6 +174,22 @@ test("orientation change preserves prepared Step state", async ({ page }) => {
   await expect(page.locator(".block-card.active")).toContainText("Move");
 });
 
+test("Step trace explains before and after state without raw logs", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Move" }).click();
+  await applyMoveSteps(page, "24");
+  await page.getByRole("button", { name: "Step" }).click();
+  await page.getByRole("button", { name: "Step" }).click();
+
+  await expect(page.getByRole("heading", { name: "Trace" })).toBeVisible();
+  const movementTrace = page.locator(".trace-item", { hasText: "Nova moved right; x: 52 -> 76" });
+  await expect(movementTrace).toBeVisible();
+  await expect(movementTrace).toContainText("Before: x 52, y 128, heading 0");
+  await expect(movementTrace).toContainText("After: x 76, y 128, heading 0");
+  await expect(page.getByText(/provider|prompt|stack/i)).toHaveCount(0);
+});
+
 test("mission celebration respects reduced motion", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");

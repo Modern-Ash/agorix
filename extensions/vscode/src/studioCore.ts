@@ -18,7 +18,9 @@ import {
 import {
   executionStepsFromRuntimeObservations,
   framesFromRuntimeObservations,
+  learnerTraceFromExecutionSteps,
   type ExecutionStep,
+  type LearnerTraceItem,
   type ObservationFrame,
 } from "@agorix/stage";
 
@@ -39,6 +41,7 @@ export interface StudioExecutionEvidence {
   readonly result: RunResult;
   readonly previewFrames: readonly ObservationFrame[];
   readonly stepSequence: readonly ExecutionStep[];
+  readonly learnerTrace: readonly LearnerTraceItem[];
   readonly inspectorRows: readonly InspectorRow[];
 }
 
@@ -75,10 +78,13 @@ export function createExecutionEvidence(
     ...(options.stopAfterSteps === undefined ? {} : { stopAfterSteps: options.stopAfterSteps }),
   });
 
+  const stepSequence = executionStepsFromRuntimeObservations(result.observations);
+
   return {
     result,
     previewFrames: framesFromRuntimeObservations(result.observations),
-    stepSequence: executionStepsFromRuntimeObservations(result.observations),
+    stepSequence,
+    learnerTrace: learnerTraceFromExecutionSteps(stepSequence, "studio"),
     inspectorRows: result.trace.map((entry) => ({
       step: entry.step,
       nodeId: entry.nodeId,

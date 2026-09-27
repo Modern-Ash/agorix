@@ -72,6 +72,11 @@ const messages = {
     toolboxIfGoal: "If touching goal",
     toolboxMove: "Move",
     toolboxRepeatDecide: "Repeat & Decide",
+    trace: "Trace",
+    traceAfter: "After: x {x}, y {y}, heading {heading}",
+    traceBefore: "Before: x {x}, y {y}, heading {heading}",
+    traceEmpty: "Press Step to inspect what changes.",
+    traceSubtitle: "What changed on the stage",
     tutorError: "The tutor needs a runnable block setup before it can help.",
     tutorIntro:
       "Ask for a hint when you want a small nudge. The first hint will not give away the full answer.",
@@ -140,6 +145,11 @@ const messages = {
     toolboxIfGoal: "Si toca la meta",
     toolboxMove: "Movimiento",
     toolboxRepeatDecide: "Repetir y decidir",
+    trace: "Traza",
+    traceAfter: "Después: x {x}, y {y}, rumbo {heading}",
+    traceBefore: "Antes: x {x}, y {y}, rumbo {heading}",
+    traceEmpty: "Presiona Paso para inspeccionar qué cambia.",
+    traceSubtitle: "Qué cambió en el escenario",
     tutorError: "El tutor necesita bloques que se puedan ejecutar antes de ayudar.",
     tutorIntro:
       "Pide una pista cuando quieras un pequeño empujón. La primera pista no revela toda la respuesta.",
