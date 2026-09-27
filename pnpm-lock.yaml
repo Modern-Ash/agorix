@@ -198,6 +198,9 @@ importers:
       '@agorix/program-model':
         specifier: workspace:*
         version: link:../program-model
+      '@agorix/proposals':
+        specifier: workspace:*
+        version: link:../proposals
       '@agorix/runtime':
         specifier: workspace:*
         version: link:../runtime
