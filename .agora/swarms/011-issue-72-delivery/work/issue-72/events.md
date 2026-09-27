@@ -35,3 +35,4 @@
 - 2026-09-27T01:20:31.324826Z | artifact.added | kind=rollback-procedure uri=.agora/ai-sdlc/handoffs/issue-72/ROLLBACK_PROCEDURE.md actor=project:ai-codex
 - 2026-09-27T01:22:07.879132Z | artifact.added | kind=pull-request uri=https://github.com/Modern-Ash/agorix/pull/115 actor=project:ai-codex
 - 2026-09-27T01:22:17.830257Z | evidence.added | id=evidence-000006 type=deployment result=success revision=1 actor=project:ai-codex
+- 2026-09-27T01:23:28.037938Z | work.criterion-stage-marked | criterion=source-issue actor=project:ai-codex stage=deployed
