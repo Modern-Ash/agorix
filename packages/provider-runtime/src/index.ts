@@ -148,6 +148,26 @@ interface OllamaGenerateResponse {
   readonly error?: unknown;
 }
 
+export interface OpenAICompatibleProviderRuntimeConfig {
+  readonly baseUrl: string;
+  readonly modelId: string;
+  readonly runtimeId?: string;
+  readonly capabilities: readonly LearningCompanionCapability[];
+  readonly structuredOutput?: boolean;
+  readonly contextLimits?: ProviderRuntimeContextLimits;
+  readonly timeoutMs?: number;
+  readonly authToken?: string;
+  readonly authHeaderName?: string;
+  readonly fetch?: ProviderRuntimeFetch;
+}
+
+interface OpenAICompatibleChatResponse {
+  readonly choices?: readonly {
+    readonly message?: { readonly content?: unknown };
+  }[];
+  readonly error?: { readonly message?: unknown; readonly code?: unknown } | string;
+}
+
 const DEFAULT_FEATURES: ProviderRuntimeFeatureSet = {
   structuredJson: true,
   toolCalling: false,
@@ -397,6 +417,175 @@ export function createOllamaProviderRuntime(
   };
 }
 
+export function createOpenAICompatibleProviderRuntime(
+  config: OpenAICompatibleProviderRuntimeConfig,
+): LearningCompanionProviderRuntime {
+  const descriptor = createOpenAICompatibleDescriptor(config);
+  const fetchImpl = config.fetch ?? globalThis.fetch;
+  if (typeof fetchImpl !== "function") {
+    throw new ProviderRuntimeContractError("fetch", "expected fetch implementation");
+  }
+  return {
+    descriptor,
+    async health() {
+      try {
+        const response = await fetchImpl(openAICompatibleUrl(config.baseUrl, "/models"), {
+          method: "GET",
+          headers: openAICompatibleHeaders(config),
+        });
+        return {
+          status: response.ok ? "available" : "unavailable",
+          checkedAt: new Date(0).toISOString(),
+          ...(response.ok
+            ? {}
+            : {
+                message: `OpenAI-compatible gateway health check returned HTTP ${response.status}.`,
+              }),
+        };
+      } catch {
+        return {
+          status: "unavailable",
+          checkedAt: new Date(0).toISOString(),
+          message: "OpenAI-compatible gateway is unavailable.",
+        };
+      }
+    },
+    negotiate(capability) {
+      return negotiateCapability(descriptor, capability);
+    },
+    async request(request, options = {}) {
+      const validated = validateLearningCompanionRequest(request);
+      const diagnostics = diagnosticsFor(descriptor, validated.capability);
+      if (options.cancelled === true) {
+        return failure(
+          diagnostics,
+          normalizedError(
+            "cancelled",
+            "Provider request was cancelled.",
+            validated.capability,
+            descriptor,
+          ),
+        );
+      }
+      const negotiation = negotiateCapability(descriptor, validated.capability);
+      if (!negotiation.supported) {
+        return failure(
+          diagnostics,
+          normalizedError(
+            "unsupported-capability",
+            negotiation.missingReason === "structured-output-unavailable"
+              ? `Capability ${validated.capability} requires structured output that ${descriptor.modelId} does not advertise.`
+              : `Capability ${validated.capability} is not supported by ${descriptor.runtimeId}.`,
+            validated.capability,
+            descriptor,
+          ),
+        );
+      }
+      const timeoutMs = options.timeoutMs ?? config.timeoutMs;
+      if (isTimeout(timeoutMs)) {
+        return failure(
+          diagnostics,
+          normalizedError(
+            "timeout",
+            "Provider request timed out.",
+            validated.capability,
+            descriptor,
+          ),
+        );
+      }
+      let didTimeout = false;
+      const controller = typeof AbortController === "undefined" ? undefined : new AbortController();
+      const timeoutHandle =
+        timeoutMs === undefined || controller === undefined
+          ? undefined
+          : setTimeout(() => {
+              didTimeout = true;
+              controller.abort();
+            }, timeoutMs);
+      try {
+        const response = await fetchImpl(openAICompatibleUrl(config.baseUrl, "/chat/completions"), {
+          method: "POST",
+          headers: openAICompatibleHeaders(config),
+          body: JSON.stringify({
+            model: config.modelId,
+            response_format: { type: "json_object" },
+            messages: [
+              {
+                role: "system",
+                content:
+                  "Return only one JSON object matching agorix/learning-companion-response/v1.",
+              },
+              { role: "user", content: createGatewayPrompt(validated) },
+            ],
+          }),
+          ...(controller === undefined ? {} : { signal: controller.signal }),
+        });
+        if (!response.ok) {
+          return failure(
+            diagnostics,
+            normalizedError(
+              response.status === 401 || response.status === 403
+                ? "authentication-failed"
+                : response.status === 404 || response.status >= 500
+                  ? "provider-unavailable"
+                  : "provider-error",
+              `OpenAI-compatible gateway returned HTTP ${response.status}.`,
+              validated.capability,
+              descriptor,
+            ),
+          );
+        }
+        const payload = (await response.json()) as OpenAICompatibleChatResponse;
+        const providerError = openAICompatibleErrorMessage(payload.error);
+        if (providerError !== undefined) {
+          return failure(
+            diagnostics,
+            normalizedError("provider-error", providerError, validated.capability, descriptor),
+          );
+        }
+        try {
+          const content = payload.choices?.[0]?.message?.content;
+          const providerOutput = parseProviderJsonContent(content);
+          return {
+            ok: true,
+            response: validateLearningCompanionResponse(
+              providerOutput as LearningCompanionResponse,
+            ),
+            diagnostics,
+          };
+        } catch {
+          return failure(
+            diagnostics,
+            normalizedError(
+              "invalid-response",
+              "Provider response failed validation.",
+              validated.capability,
+              descriptor,
+            ),
+          );
+        }
+      } catch (error) {
+        const code = didTimeout ? "timeout" : isAbortError(error) ? "cancelled" : undefined;
+        return failure(
+          diagnostics,
+          code === undefined
+            ? normalizeProviderRuntimeError(error, descriptor, validated.capability)
+            : normalizedError(
+                code,
+                code === "timeout"
+                  ? "Provider request timed out."
+                  : "Provider request was cancelled.",
+                validated.capability,
+                descriptor,
+              ),
+        );
+      } finally {
+        if (timeoutHandle !== undefined) clearTimeout(timeoutHandle);
+      }
+    },
+  };
+}
+
 export function negotiateCapability(
   descriptor: ProviderRuntimeDescriptor,
   capability: LearningCompanionCapability,
@@ -459,6 +648,52 @@ export function assertProviderRuntimeConformance(
     );
   }
   return result;
+}
+
+function createOpenAICompatibleDescriptor(
+  config: OpenAICompatibleProviderRuntimeConfig,
+): ProviderRuntimeDescriptor {
+  assertBoundedString(config.baseUrl, "baseUrl", 1, 300);
+  assertBoundedString(config.modelId, "modelId", 1, 120);
+  if (config.runtimeId !== undefined) assertBoundedString(config.runtimeId, "runtimeId", 1, 120);
+  if (config.authToken !== undefined) assertBoundedString(config.authToken, "authToken", 1, 1_000);
+  if (config.authHeaderName !== undefined) {
+    assertBoundedString(config.authHeaderName, "authHeaderName", 1, 120);
+  }
+  if (
+    config.timeoutMs !== undefined &&
+    (!Number.isInteger(config.timeoutMs) || config.timeoutMs <= 0)
+  ) {
+    throw new ProviderRuntimeContractError("timeoutMs", "expected positive integer timeout");
+  }
+  if (config.capabilities.length === 0) {
+    throw new ProviderRuntimeContractError("capabilities", "expected at least one capability");
+  }
+  const features: ProviderRuntimeFeatureSet = {
+    structuredJson: config.structuredOutput ?? true,
+    toolCalling: false,
+    streaming: false,
+  };
+  return {
+    runtimeId: config.runtimeId ?? `openai-compatible:${config.modelId}`,
+    providerId: "openai-compatible",
+    modelId: config.modelId,
+    locality: config.authToken === undefined ? "local" : "remote",
+    features,
+    contextLimits: config.contextLimits ?? {},
+    capabilities: config.capabilities.map((capability) => ({
+      capability,
+      structuredOutput: features.structuredJson,
+      streaming: false,
+      toolCalling: false,
+      ...(config.contextLimits?.maxInputTokens === undefined
+        ? {}
+        : { maxInputTokens: config.contextLimits.maxInputTokens }),
+      ...(config.contextLimits?.maxOutputTokens === undefined
+        ? {}
+        : { maxOutputTokens: config.contextLimits.maxOutputTokens }),
+    })),
+  };
 }
 
 function createOllamaDescriptor(config: OllamaProviderRuntimeConfig): ProviderRuntimeDescriptor {
@@ -575,6 +810,58 @@ function isProviderRuntimeError(value: unknown): value is ProviderRuntimeError {
     "message" in value &&
     "retryable" in value
   );
+}
+
+function openAICompatibleUrl(baseUrl: string, path: string): string {
+  const base = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
+  return `${base}${path}`;
+}
+
+function openAICompatibleHeaders(
+  config: OpenAICompatibleProviderRuntimeConfig,
+): Record<string, string> {
+  const headers: Record<string, string> = { "content-type": "application/json" };
+  if (config.authToken !== undefined) {
+    headers[config.authHeaderName ?? "authorization"] =
+      config.authHeaderName === undefined ? `Bearer ${config.authToken}` : config.authToken;
+  }
+  return headers;
+}
+
+function createGatewayPrompt(request: LearningCompanionRequest): string {
+  return [
+    "You are the Agorix Learning Companion provider adapter.",
+    "Return JSON only and preserve the requested capability.",
+    JSON.stringify({
+      capability: request.capability,
+      mission: request.mission,
+      selectedNodeIds: request.selectedNodeIds,
+      runtimeFacts: request.runtimeFacts,
+      scaffoldHistory: request.scaffoldHistory,
+      learnerIntent: request.learnerIntent,
+    }),
+  ].join("\n");
+}
+
+function openAICompatibleErrorMessage(
+  error: OpenAICompatibleChatResponse["error"],
+): string | undefined {
+  if (typeof error === "string" && error.length > 0) return error;
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    typeof error.message === "string" &&
+    error.message.length > 0
+  ) {
+    return error.message;
+  }
+  return undefined;
+}
+
+function parseProviderJsonContent(value: unknown): unknown {
+  if (typeof value !== "string")
+    throw new ProviderRuntimeContractError("response.content", "expected JSON string");
+  return JSON.parse(value) as unknown;
 }
 
 function ollamaUrl(endpoint: string, path: string): string {
