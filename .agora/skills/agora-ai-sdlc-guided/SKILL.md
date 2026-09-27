@@ -2,7 +2,6 @@
 name: agora-ai-sdlc-guided
 description: Operate Agora AI-SDLC through portable multi-agent guidance with explicit authority, progressive phase context and human-only observability.
 ---
-
 # Agora AI-SDLC Guided Delivery Skill
 
 ## Purpose and authority

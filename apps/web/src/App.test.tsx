@@ -25,11 +25,18 @@ describe("main editor shell", () => {
     const html = renderToStaticMarkup(<App />);
 
     expect(html).toContain("Agorix First Mission");
+    expect(html).toContain("Mission: Get your sprite to the goal.");
     expect(html).toContain("Blocks");
     expect(html).toContain("When you press Run");
     expect(html).toContain("Stage");
     expect(html).toContain("Code");
     expect(html).toContain("Tutor suggestion");
+    expect(html).toContain("Get hint");
+    expect(html).toContain("Hints used: 0");
+    expect(html).toContain("Build");
+    expect(html).toContain("Run");
+    expect(html).toContain("Reflect");
+    expect(html).toContain("Attempts: 0");
     expect(html).toContain("Run");
     expect(html).toContain("Stop");
     expect(html).toContain("Reset");

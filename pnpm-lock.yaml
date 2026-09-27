@@ -44,6 +44,9 @@ importers:
       '@agorix/block-editor':
         specifier: workspace:*
         version: link:../../packages/block-editor
+      '@agorix/curriculum':
+        specifier: workspace:*
+        version: link:../../packages/curriculum
       '@agorix/persistence':
         specifier: workspace:*
         version: link:../../packages/persistence
@@ -56,6 +59,9 @@ importers:
       '@agorix/stage':
         specifier: workspace:*
         version: link:../../packages/stage
+      '@agorix/tutor-contract':
+        specifier: workspace:*
+        version: link:../../packages/tutor-contract
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -94,7 +100,14 @@ importers:
         specifier: workspace:*
         version: link:../program-model
 
-  packages/curriculum: {}
+  packages/curriculum:
+    dependencies:
+      '@agorix/program-model':
+        specifier: workspace:*
+        version: link:../program-model
+      '@agorix/runtime':
+        specifier: workspace:*
+        version: link:../runtime
 
   packages/persistence:
     dependencies:
@@ -122,7 +135,17 @@ importers:
         specifier: workspace:*
         version: link:../runtime
 
-  packages/tutor-contract: {}
+  packages/tutor-contract:
+    dependencies:
+      '@agorix/curriculum':
+        specifier: workspace:*
+        version: link:../curriculum
+      '@agorix/program-model':
+        specifier: workspace:*
+        version: link:../program-model
+      '@agorix/runtime':
+        specifier: workspace:*
+        version: link:../runtime
 
 packages:
 

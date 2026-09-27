@@ -1,11 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ProjectMetadata } from "@agorix/persistence";
 import { POC_TOOLBOX, type BlockNode } from "@agorix/block-editor";
-import { runProgram } from "@agorix/runtime";
+import { FIRST_MISSION, createMissionRunFeedback } from "@agorix/curriculum";
+import {
+  createDeterministicTutorResponse,
+  createTutorRequest,
+  type TutorHintHistoryEntry,
+  type TutorResponse,
+} from "@agorix/tutor-contract";
+import { runProgram, type RunResult, type WorldState } from "@agorix/runtime";
 import {
   framesFromRuntimeObservations,
   resetStageSession,
   type ObservationFrame,
+  type StageState,
 } from "@agorix/stage";
 import {
   addBlockToWorkspace,
@@ -29,7 +37,7 @@ import {
 } from "./projectStorage.js";
 import "./App.css";
 
-type RunStatus = "idle" | "running" | "stopped" | "complete" | "error";
+type RunStatus = "idle" | "running" | "stopped" | "complete" | "retry" | "freeplay" | "error";
 
 const addableBlocks = new Set<AddableBlockType>([
   "motion_move",
@@ -57,6 +65,17 @@ function createProjectMetadata(createdAt: string, programBlockCount: number): Pr
 
 function countProgramBlocks(model: EditorModel): number {
   return model.program.scripts.reduce((total, script) => total + script.statements.length, 0);
+}
+
+function initialWorldFor(model: EditorModel): WorldState {
+  return {
+    sprite: {
+      x: model.stage.initial.sprite.x,
+      y: model.stage.initial.sprite.y,
+      heading: model.stage.initial.sprite.heading,
+    },
+    goal: { x: model.stage.initial.goal.x, y: model.stage.initial.goal.y },
+  };
 }
 
 function initialProjectFor(
@@ -121,11 +140,17 @@ function CodePanel({
   );
 }
 
-function StageView({ frame }: { frame: ObservationFrame | undefined }) {
-  const state = frame?.state;
-  const sprite = state?.sprite ?? { x: 52, y: 128, heading: 0, radius: 12 };
-  const goal = state?.goal ?? { x: 212, y: 128, radius: 14 };
-  const viewport = state?.viewport ?? { width: 264, height: 192 };
+function StageView({
+  frame,
+  fallback,
+}: {
+  frame: ObservationFrame | undefined;
+  fallback: StageState;
+}) {
+  const state = frame?.state ?? fallback;
+  const sprite = state.sprite;
+  const goal = state.goal;
+  const viewport = state.viewport;
   return (
     <section className="stage-panel" aria-labelledby="stage-title">
       <div className="panel-heading">
@@ -175,12 +200,19 @@ export function App() {
   const [highlightedNodeId, setHighlightedNodeId] = useState<string | undefined>();
   const [frameIndex, setFrameIndex] = useState(0);
   const [frames, setFrames] = useState<readonly ObservationFrame[]>([]);
+  const [hintHistory, setHintHistory] = useState<readonly TutorHintHistoryEntry[]>([]);
+  const [tutorResponse, setTutorResponse] = useState<TutorResponse | undefined>();
+  const [lastRunResult, setLastRunResult] = useState<RunResult | undefined>();
+  const [reflectionPrompt, setReflectionPrompt] = useState<string | undefined>();
+  const [attempts, setAttempts] = useState(0);
   const timerRef = useRef<number | undefined>();
 
   const statements = model.workspace.scripts[0]?.statements ?? [];
   const activeFrame = frames[frameIndex];
   const highlightedCode =
     highlightedNodeId === undefined ? "" : codeSliceForNode(model, highlightedNodeId);
+  const missionStep =
+    status === "complete" || status === "freeplay" ? 3 : attempts > 0 || status === "retry" ? 2 : 1;
 
   const toolbox = useMemo(
     () =>
@@ -214,6 +246,9 @@ export function App() {
     setHighlightedNodeId(undefined);
     setFrames([]);
     setFrameIndex(0);
+    setTutorResponse(undefined);
+    setLastRunResult(undefined);
+    setReflectionPrompt(undefined);
     setStatus("idle");
   }
 
@@ -264,6 +299,11 @@ export function App() {
     setFrames([]);
     setFrameIndex(0);
     setHighlightedNodeId(undefined);
+    setHintHistory([]);
+    setTutorResponse(undefined);
+    setLastRunResult(undefined);
+    setReflectionPrompt(undefined);
+    setAttempts(0);
     setStatus("idle");
     setMessage("Reset");
   }
@@ -278,18 +318,12 @@ export function App() {
       return;
     }
     try {
-      const result = runProgram(
-        model.program,
-        {
-          sprite: {
-            x: model.stage.initial.sprite.x,
-            y: model.stage.initial.sprite.y,
-            heading: model.stage.initial.sprite.heading,
-          },
-          goal: { x: model.stage.initial.goal.x, y: model.stage.initial.goal.y },
-        },
-        { collectObservations: true, stopAfterSteps: 24 },
-      );
+      const result = runProgram(model.program, initialWorldFor(model), {
+        collectObservations: true,
+        stopAfterSteps: 24,
+      });
+      setLastRunResult(result);
+      setAttempts((current) => current + 1);
       const nextFrames = framesFromRuntimeObservations(result.observations);
       setFrames(nextFrames);
       setFrameIndex(0);
@@ -304,13 +338,10 @@ export function App() {
           if (next >= nextFrames.length) {
             window.clearInterval(timerRef.current);
             timerRef.current = undefined;
-            setStatus("complete");
-            setMessage(
-              result.world.sprite.x === result.world.goal.x &&
-                result.world.sprite.y === result.world.goal.y
-                ? "You did it! Your sprite reached the goal."
-                : "Not there yet. Your sprite stopped before reaching the goal — try adjusting how far it moves or turns.",
-            );
+            const feedback = createMissionRunFeedback({ mission: FIRST_MISSION, result });
+            setStatus(feedback.completed ? "complete" : "retry");
+            setMessage(feedback.message);
+            setReflectionPrompt(feedback.reflectionPrompt);
             setHighlightedNodeId(undefined);
             return Math.max(nextFrames.length - 1, 0);
           }
@@ -325,8 +356,70 @@ export function App() {
     }
   }
 
+  function requestHint() {
+    try {
+      const result =
+        lastRunResult ??
+        runProgram(model.program, initialWorldFor(model), {
+          collectObservations: true,
+          stopAfterSteps: 24,
+        });
+      const response = createDeterministicTutorResponse(
+        createTutorRequest({
+          mission: {
+            id: FIRST_MISSION.id,
+            version: FIRST_MISSION.version,
+            concepts: FIRST_MISSION.concepts,
+          },
+          program: model.program,
+          runtime: {
+            outcome: result.outcome,
+            stepsUsed: result.stepsUsed,
+            finalWorld: result.world,
+            observations: result.observations,
+          },
+          hintHistory,
+          reading: { locale: "en-US", readingLevel: "middle-grade" },
+        }),
+      );
+      const nextHistory: TutorHintHistoryEntry = {
+        level: response.hintLevel,
+        ...(response.concepts[0] === undefined ? {} : { concept: response.concepts[0] }),
+        ...(response.nodeIds[0] === undefined ? {} : { nodeId: response.nodeIds[0] }),
+      };
+
+      setLastRunResult(result);
+      setTutorResponse(response);
+      setHintHistory((current) => [...current, nextHistory]);
+      if (response.nodeIds[0] !== undefined) {
+        setHighlightedNodeId(response.nodeIds[0]);
+      }
+    } catch {
+      setStatus("error");
+      setMessage("The tutor needs a runnable block setup before it can help.");
+    }
+  }
+
+  function retryMission() {
+    stopRun();
+    setFrames([]);
+    setFrameIndex(0);
+    setHighlightedNodeId(undefined);
+    setTutorResponse(undefined);
+    setLastRunResult(undefined);
+    setReflectionPrompt(undefined);
+    setStatus("idle");
+    setMessage("Keep your blocks and try again.");
+  }
+
+  function continueFreePlay() {
+    setStatus("freeplay");
+    setReflectionPrompt(undefined);
+    setMessage("Free play unlocked. Keep experimenting with your program.");
+  }
+
   return (
-    <main className="editor-shell">
+    <main className={status === "complete" ? "editor-shell mission-complete" : "editor-shell"}>
       <header className="topbar">
         <div>
           <p className="eyebrow">Agorix First Mission</p>
@@ -347,14 +440,45 @@ export function App() {
 
       <section className="mission-strip" aria-live="polite">
         <div>
-          <h2>Mission: Get your sprite to the goal.</h2>
-          <p>Use blocks to move it there.</p>
+          <h2>Mission: {FIRST_MISSION.goal.title}.</h2>
+          <p>{FIRST_MISSION.goal.learnerFacing}</p>
+          <div
+            className="mission-progress"
+            aria-label={`Mission progress step ${missionStep} of 3`}
+          >
+            <span className={missionStep >= 1 ? "progress-dot active" : "progress-dot"}>Build</span>
+            <span className={missionStep >= 2 ? "progress-dot active" : "progress-dot"}>Run</span>
+            <span className={missionStep >= 3 ? "progress-dot active" : "progress-dot"}>
+              Reflect
+            </span>
+          </div>
         </div>
         <div className="state-stack">
           <strong className={`run-state run-state-${status}`}>{message}</strong>
+          <span className="attempt-readout">
+            Attempts: {attempts} · Hints: {hintHistory.length}
+          </span>
           {persistenceMessage === undefined ? null : (
             <strong className="run-state run-state-error">{persistenceMessage}</strong>
           )}
+          {reflectionPrompt === undefined ? null : (
+            <div className="reflection-prompt">
+              <strong>Reflection: {reflectionPrompt}</strong>
+              <button type="button" onClick={continueFreePlay}>
+                Keep building
+              </button>
+            </div>
+          )}
+          {status === "retry" ? (
+            <button type="button" className="secondary-action" onClick={retryMission}>
+              Try again
+            </button>
+          ) : null}
+          {status === "complete" ? (
+            <button type="button" className="secondary-action" onClick={continueFreePlay}>
+              Free play
+            </button>
+          ) : null}
         </div>
       </section>
 
@@ -447,7 +571,7 @@ export function App() {
           </div>
         </section>
 
-        <StageView frame={activeFrame} />
+        <StageView frame={activeFrame} fallback={model.stage.current} />
 
         <section className="code-panel" aria-labelledby="code-title">
           <div className="panel-heading">
@@ -465,11 +589,25 @@ export function App() {
         </section>
 
         <aside className="tutor-panel" aria-labelledby="tutor-title">
-          <h2 id="tutor-title">Tutor suggestion — may not be right</h2>
-          <p>
-            The tutor isn't available right now. You can still finish this mission — check your code
-            against the blocks, and use Reset if you want a fresh start.
+          <div className="panel-heading">
+            <h2 id="tutor-title">Tutor suggestion — may not be right</h2>
+            <span>
+              {tutorResponse === undefined ? "Offline" : `Level ${tutorResponse.hintLevel}/5`}
+            </span>
+          </div>
+          <p aria-live="polite">
+            {tutorResponse?.message ??
+              "Ask for a hint when you want a small nudge. The first hint will not give away the full answer."}
           </p>
+          <div className="tutor-actions">
+            <button type="button" onClick={requestHint}>
+              Get hint
+            </button>
+            <span className="hint-meter">Hints used: {hintHistory.length}</span>
+          </div>
+          {tutorResponse === undefined ? null : (
+            <p className="hint-history">Hint level {tutorResponse.hintLevel} of 5</p>
+          )}
         </aside>
       </div>
     </main>

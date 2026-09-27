@@ -5,6 +5,7 @@ method: "ai-sdlc"
 status: "completed"
 branch: "feat/issue-16-text-projection"
 required-roles: ["product-owner","developer"]
+optional-roles: ["quality-reviewer"]
 assignments: {"product-owner":"project:product-owner","developer":"project:ai-runtime-2"}
 ---
 

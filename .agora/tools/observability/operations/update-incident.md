@@ -4,19 +4,8 @@ id: "update-incident"
 name: "Update an incident"
 capability: "incident.write"
 risk: "write"
-arguments:
-  [
-    "incident",
-    "update",
-    "{incident}",
-    "--status",
-    "{status}",
-    "--summary",
-    "{summary}",
-    "--output",
-    "json",
-  ]
-inputs: ["incident", "status", "summary"]
+arguments: ["incident","update","{incident}","--status","{status}","--summary","{summary}","--output","json"]
+inputs: ["incident","status","summary"]
 result-kind: "incident"
 ---
 
