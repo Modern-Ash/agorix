@@ -623,9 +623,9 @@ The project aims for:
 - community-extensible provider adapters;
 - self-hosting where practical.
 
-## Preferred license: Apache License 2.0
+## License: Apache License 2.0
 
-The preferred licensing direction is **Apache-2.0**.
+Agorix source code and repository documentation are licensed under the [Apache License 2.0](LICENSE) unless a file says otherwise.
 
 Why it fits Agorix:
 
@@ -636,11 +636,9 @@ Why it fits Agorix:
 - good fit for adapters, language packs and integrations;
 - consistent with the open ecosystem direction of the broader Agora work.
 
-**Important:** the repository is not formally Apache-2.0 until the root `LICENSE` and governance artifacts are committed.
+Governance is documented in [GOVERNANCE.md](GOVERNANCE.md), and contribution expectations are documented in [CONTRIBUTING.md](CONTRIBUTING.md).
 
-That work is tracked in [#73 — Formalize Agorix open-source license, governance and contribution model](https://github.com/Modern-Ash/agorix/issues/73).
-
-Model weights, third-party assets and external providers may have their **own licenses** and are not automatically covered by the Agorix source-code license.
+Model weights, third-party assets, datasets and external providers may have their **own licenses** and are not automatically covered by the Agorix source-code license.
 
 ---
 
@@ -982,28 +980,19 @@ It is to make the collaboration, the program and the execution **more visible**.
 
 # Contributing
 
-Agorix is being prepared as an open-source project.
+Agorix welcomes issue-driven contributions through GitHub pull requests.
 
-Contribution and governance rules are being formalized in [#73](https://github.com/Modern-Ash/agorix/issues/73).
+Start with [CONTRIBUTING.md](CONTRIBUTING.md), follow `AGENTS.md`, keep changes reviewable, add deterministic tests or checks, and do not self-merge.
 
-Until those artifacts are merged:
-
-- use GitHub issues as the work queue;
-- follow `AGENTS.md`;
-- keep changes reviewable;
-- add deterministic tests;
-- do not self-merge;
-- do not introduce vendor lock-in or hidden AI mutation paths.
+Governance and maintainer authority are described in [GOVERNANCE.md](GOVERNANCE.md).
 
 ---
 
 # License
 
-**Preferred direction: Apache License 2.0.**
+Agorix is licensed under the [Apache License 2.0](LICENSE).
 
-The repository should only be described as formally Apache-2.0 licensed after the root `LICENSE` file is committed.
-
-See [#73](https://github.com/Modern-Ash/agorix/issues/73).
+The source license does not automatically license model weights, third-party assets, datasets, hosted providers or trademarks. See [GOVERNANCE.md](GOVERNANCE.md) and [ADR 0002](docs/architecture/adr/0002-open-source-license-and-governance.md).
 
 ---
 
