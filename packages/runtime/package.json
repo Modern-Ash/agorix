@@ -11,5 +11,8 @@
   },
   "dependencies": {
     "@agorix/program-model": "workspace:*"
+  },
+  "devDependencies": {
+    "@agorix/code-generator": "workspace:*"
   }
 }

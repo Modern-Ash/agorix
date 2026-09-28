@@ -11,3 +11,13 @@ export {
   BrowserLocalStorageAdapter,
   ProjectStore,
 } from "./store.js";
+export {
+  CROSS_SURFACE_CONTRACT_VERSION,
+  FORBIDDEN_CANONICAL_UI_KEYS,
+  assertCrossSurfaceCompatibleProject,
+  assertNoUiSpecificProgramState,
+  assertSemanticallyEquivalentProjects,
+  semanticProjectHash,
+  semanticProjectSnapshot,
+  type SemanticProjectSnapshot,
+} from "./compatibility.js";

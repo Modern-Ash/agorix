@@ -5,6 +5,7 @@ method: "ai-sdlc"
 status: "completed"
 branch: "chore/issue-32-agora-bootstrap"
 required-roles: ["product-owner", "developer"]
+optional-roles: ["quality-reviewer"]
 assignments: { "product-owner": "project:product-owner", "developer": "project:ai-runtime-2" }
 ---
 

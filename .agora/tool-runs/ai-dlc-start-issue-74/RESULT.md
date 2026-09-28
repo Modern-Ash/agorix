@@ -1,0 +1,17 @@
+---
+schema: "agora/tool-result/v1"
+run: "ai-dlc-start-issue-74"
+status: "completed"
+exit-code: 0
+result-kind: "work-item"
+---
+
+# Tool result ai-dlc-start-issue-74
+
+## Standard output
+
+    {"assignees":[],"body":"## Parent\n#64\n\n## Objective\n\nTranslate “Nothing happens under the rug” into testable UX and architecture rules before implementation.\n\n## Read first\n\n- docs/product/LEARNER_JOURNEY.md after #69\n- docs/product/UX_REQUIREMENTS.md\n- docs/architecture/SYSTEM_DESIGN.md\n- docs/architecture/PROGRAMMING_MODEL.md\n- #64\n\n## Deliverables\n\nCreate:\n- `docs/product/TRANSPARENT_PROGRAMMING_UX.md`\n- ADR for observable construction/execution.\n\n## Define explicitly\n\n### Program construction\nFor every AI-originated program change define the visible sequence:\n1. intent;\n2. proposal;\n3. affected program region;\n4. human-readable explanation;\n5. diff/preview;\n6. accept / modify / reject;\n7. canonical mutation only after acceptance.\n\n### Execution\nDefine:\n- Run;\n- Step;\n- Stop;\n- Reset;\n- current instruction highlight;\n- loop/condition behavior;\n- child-readable trace;\n- state before/after where useful.\n\n### Representation\nCode must remain visible while:\n- editing blocks;\n- reviewing an AI proposal;\n- executing;\n- debugging;\n- reflecting.\n\n## Child-facing constraints\n\n- do not overload beginners with developer diagnostics;\n- distinguish “AI suggestion” from “your accepted program”;\n- avoid anthropomorphic certainty;\n- make causal relation instruction → state → visible result inspectable;\n- accessibility requirements still apply.\n\n## Acceptance\n\n- [ ] every program mutation path is documented;\n- [ ] there is no allowed silent AI mutation path;\n- [ ] Step behavior is specified;\n- [ ] code visibility requirements are explicit at normal/narrow viewports;\n- [ ] UX differentiates proposal vs accepted code vs executing instruction;\n- [ ] design can be tested with Playwright;\n- [ ] ADR states why runtime, not AI, is execution authority.\n\n## Evidence\n\nInclude wireframe-level diagrams or Mermaid flows sufficient for implementation without private design context.\n\n## Cross-surface UX architecture\n\nThis UX contract must define the same product semantics across:\n\n### Web / Tablet\n- World + Code as dominant surfaces;\n- touch-first;\n- proposal cards;\n- contextual Action Palette/bottom sheet;\n- compact child-readable execution evidence.\n\n### Agorix Studio\n- textual code first;\n- World Preview;\n- diff-based ProgramProposal review;\n- educational Execution Inspector.\n\nThe same concept may use a different affordance by surface:\n\n```text\nProgramProposal\n  -> Tablet: proposal card\n  -> Studio: diff review\n\nRuntimeObservation\n  -> Tablet: state bubble / compact trace\n  -> Studio: execution inspector\n```\n\nSurface-specific presentation MUST NOT change semantics.\n\n## Additional acceptance\n\n- [ ] UX contract covers tablet landscape and portrait;\n- [ ] UX contract covers Studio;\n- [ ] code visibility rules are explicit per surface;\n- [ ] proposal semantics are identical across surfaces;\n- [ ] touch interaction references #120;\n- [ ] design language references #117.\n","createdAt":"2026-09-26T22:58:33Z","labels":[],"milestone":null,"number":74,"state":"OPEN","stateReason":"","title":"Define transparent-construction UX contract and 'nothing under the rug' ADR","updatedAt":"2026-09-27T01:30:51Z","url":"https://github.com/Modern-Ash/agorix/issues/74"}
+
+## Standard error
+
+    (empty)

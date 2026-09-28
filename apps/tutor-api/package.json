@@ -9,6 +9,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@agorix/provider-runtime": "workspace:*",
     "@agorix/tutor-contract": "workspace:*"
   }
 }

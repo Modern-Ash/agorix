@@ -16,18 +16,19 @@ Requirements: `.agora/intents/issue-9/REQUIREMENTS.md` (R1-R6).
 - Second person, present tense: "Your sprite moves forward," not "The sprite has been
   moved."
 
-## System feedback vs. AI tutor feedback
+## System feedback vs. learning-companion feedback
 
 These must read as different voices (R3):
 
 - **System feedback** (runtime, errors, success): short, factual, plain-labeled
   ("Run", "Stopped", "Goal reached"). No personality, no first person.
-- **AI tutor feedback**: conversational but explicitly a _tool_, never a person.
-  - Do: "The tutor thinks your loop might run more times than you meant."
+- **Learning-companion feedback**: conversational but explicitly a _tool_, never a person.
+  - Do: "The companion suggests checking how many times your loop runs."
   - Don't: "I'm here to help you, buddy!" or anything implying friendship,
     feelings, or human identity.
-  - Tutor panel copy must make clear tutor suggestions can be wrong (e.g. a
-    persistent label like "Tutor suggestion — may not be right").
+  - Companion panel copy must make clear AI proposals can be wrong and require
+    learner decision (e.g. a persistent label like "AI proposal - check before
+    you use it").
 
 ## Block / toolbox labels
 
@@ -85,12 +86,11 @@ the mission's completion predicate — not a full-screen takeover that hides the
 
 Follow-up line: "Want to try changing something and running it again?"
 
-## Tutor-unavailable state
+## Learning companion unavailable state
 
-"The tutor isn't available right now. You can still finish this mission — check your
-code against the blocks, and use Reset if you want a fresh start."
+"The learning companion isn't available right now. You can still finish this mission - check your code against the blocks, and use Reset if you want a fresh start."
 
-Never imply the tutor is "away," "sleeping," or otherwise personified.
+Never imply the companion is "away," "sleeping," or otherwise personified.
 
 ## Hint ladder (PEDAGOGY.md levels 0-5)
 
@@ -107,7 +107,8 @@ Never imply the tutor is "away," "sleeping," or otherwise personified.
   failure): full step-by-step walkthrough of the working solution.
 
 All levels are framed as suggestions from a tool, not statements of fact ("Try…",
-"One idea:…", never "You must…" or "The answer is…").
+"One idea:…", never "You must…" or "The answer is…"). Any suggested program
+change is a proposal until the learner accepts, modifies or rejects it.
 
 ## Reflection prompt
 
@@ -121,7 +122,7 @@ Skip affordance: "Skip" (equally prominent, no guilt copy like "Are you sure?").
 
 - "Wrong," "bad," "failed," "incorrect" as bare labels.
 - "Error" without an explanation.
-- First-person claims of feeling, friendship or identity from the tutor ("I'm proud
+- First-person claims of feeling, friendship or identity from the companion ("I'm proud
   of you," "I'm your friend").
 - Praise disconnected from behavior ("You're so smart!") — prefer behavior-specific
   praise ("Your loop worked exactly as planned.").

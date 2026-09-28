@@ -10,6 +10,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@agorix/curriculum": "workspace:*",
+    "@agorix/proposals": "workspace:*",
     "@agorix/program-model": "workspace:*",
     "@agorix/runtime": "workspace:*"
   }
