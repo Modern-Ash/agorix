@@ -1,5 +1,9 @@
 # Child safety and privacy — POC constraints
 
+Companion documents: [WEB_SECURITY_BASELINE.md](WEB_SECURITY_BASELINE.md) turns these constraints
+into CI-enforced controls; [AI_OUTPUT_VALIDATION.md](AI_OUTPUT_VALIDATION.md) covers provider-output
+validation.
+
 ## POC data minimization
 
 The proof of concept requires no child account, real name, email, school, address, precise age, photo or public profile.

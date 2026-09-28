@@ -1,5 +1,9 @@
 # AI output validation and child-safety boundary
 
+Companion documents: [WEB_SECURITY_BASELINE.md](WEB_SECURITY_BASELINE.md) holds the CI-enforced web
+and child-safety controls; [CHILD_SAFETY_PRIVACY.md](CHILD_SAFETY_PRIVACY.md) holds the POC data
+minimization rules this boundary protects.
+
 Issue #100 adds a shared validation boundary for Learning Companion provider output before it can reach learner-facing UI, ProgramProposal workflows, or canonical program mutation paths.
 
 ## Boundary

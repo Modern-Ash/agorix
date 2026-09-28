@@ -46,6 +46,16 @@ export default tseslint.config(
     },
   },
   {
+    // Repo tooling runs in Node, not the browser.
+    files: ["scripts/**/*.mjs"],
+    languageOptions: {
+      globals: {
+        process: "readonly",
+        URL: "readonly",
+      },
+    },
+  },
+  {
     // R4: domain packages must not import UI/platform SDK packages.
     files: domainPackages.map((pkg) => `${pkg}/src/**/*.{ts,tsx}`),
     rules: {

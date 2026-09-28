@@ -127,3 +127,26 @@
 - 2026-09-27T21:48:30.712335Z | session.prepared | session=run-issue-95-delivery-issue-95-20260927t21481790556510z actor=project:ai-codex executor=project:ai-codex swarm=issue-95-delivery
 - 2026-09-27T21:48:30.714068Z | session.running | session=run-issue-95-delivery-issue-95-20260927t21481790556510z
 - 2026-09-27T23:50:23.542823Z | lifecycle-action.prepared | action=issue-100-manual-clarifications kind=work.clarify actor=project:ai-codex swarm=issue-100-delivery work=issue-100
+- 2026-09-28T12:29:01.693595Z | quickstart.completed | entrypoint=quickstart swarm=issue-30 method=scrum secure=false
+- 2026-09-28T12:31:44.407233Z | session.prepared | session=run-issue-30-web-security-baseline-20260928t12311790609504z actor=project:agent executor=project:ai-codex swarm=issue-30
+- 2026-09-28T12:31:44.409622Z | session.running | session=run-issue-30-web-security-baseline-20260928t12311790609504z
+- 2026-09-28T12:34:09.343545Z | session.completed | session=run-issue-30-web-security-baseline-20260928t12311790609504z exit-code=0
+- 2026-09-28T13:01:53.148321Z | session.prepared | session=run-issue-30-web-security-baseline-20260928t13011790611313z actor=project:agent executor=project:ai-codex swarm=issue-30
+- 2026-09-28T13:01:53.150645Z | session.running | session=run-issue-30-web-security-baseline-20260928t13011790611313z
+- 2026-09-28T13:18:00.530791Z | session.prepared | session=run-issue-30-web-security-baseline-20260928t13011790611313z-retry-20260928t13181790612280z actor=project:agent executor=project:ai-codex swarm=issue-30
+- 2026-09-28T13:18:00.533018Z | session.running | session=run-issue-30-web-security-baseline-20260928t13011790611313z-retry-20260928t13181790612280z
+- 2026-09-28T13:23:38.791189Z | tool.prepared | run=tool-20260928t13231790612618z tool=repository operation=commit actor=project:agent
+- 2026-09-28T13:23:38.794657Z | tool.running | run=tool-20260928t13231790612618z tool=repository operation=commit actor=project:agent
+- 2026-09-28T13:23:38.818672Z | tool.completed | run=tool-20260928t13231790612618z tool=repository operation=commit actor=project:agent
+- 2026-09-28T13:24:01.725302Z | session.completed | session=run-issue-30-web-security-baseline-20260928t13011790611313z-retry-20260928t13181790612280z exit-code=0
+- 2026-09-28T13:24:01.748083Z | session.prepared | session=run-issue-30-web-security-baseline-20260928t13241790612641z actor=project:agent executor=project:ai-codex swarm=issue-30
+- 2026-09-28T13:24:01.750469Z | session.running | session=run-issue-30-web-security-baseline-20260928t13241790612641z
+- 2026-09-28T13:25:12.069612Z | session.completed | session=run-issue-30-web-security-baseline-20260928t13241790612641z exit-code=0
+- 2026-09-28T13:25:12.093132Z | session.prepared | session=run-issue-30-web-security-baseline-20260928t13251790612712z actor=project:agent executor=project:ai-codex swarm=issue-30
+- 2026-09-28T13:25:12.095937Z | session.running | session=run-issue-30-web-security-baseline-20260928t13251790612712z
+- 2026-09-28T13:26:17.968153Z | session.completed | session=run-issue-30-web-security-baseline-20260928t13251790612712z exit-code=0
+- 2026-09-28T13:26:17.972590Z | run-loop.stopped | reason=no-governed-progress sessions=3 actor=project:agent swarm=issue-30 work=web-security-baseline session=run-issue-30-web-security-baseline-20260928t13251790612712z
+- 2026-09-28T13:27:22.875820Z | session.prepared | session=run-issue-30-web-security-baseline-20260928t13271790612842z actor=project:agent executor=project:ai-codex swarm=issue-30
+- 2026-09-28T13:27:22.878881Z | session.running | session=run-issue-30-web-security-baseline-20260928t13271790612842z
+- 2026-09-28T13:28:22.689181Z | session.completed | session=run-issue-30-web-security-baseline-20260928t13271790612842z exit-code=0
+- 2026-09-28T13:28:22.693852Z | run-loop.stopped | reason=human-attention sessions=1 actor=project:agent swarm=issue-30 work=web-security-baseline session=run-issue-30-web-security-baseline-20260928t13271790612842z
