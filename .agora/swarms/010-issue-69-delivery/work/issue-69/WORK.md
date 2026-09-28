@@ -1,0 +1,32 @@
+---
+schema: "agora/work/v1"
+id: "issue-69"
+swarm: "issue-69-delivery"
+title: "Deliver GitHub issue #69"
+state: "operations"
+revision: 1
+operational-status: "active"
+status-reason: null
+status-by: null
+status-at: null
+acceptance-criteria: {"source-issue":"Satisfy the acceptance criteria from GitHub issue #69"}
+satisfied-criteria: []
+criterion-statuses: {"source-issue":["elaborated","designed","built","verified"]}
+required-artifacts: []
+child-work-refs: []
+budget-limits: null
+---
+
+# Deliver GitHub issue #69
+
+## Description
+
+Source issue: https://github.com/Modern-Ash/agorix/issues/69
+
+## Acceptance criteria
+
+- [ ] **source-issue:** Satisfy the acceptance criteria from GitHub issue #69; stages: elaborated, designed, built, verified
+
+## Required artifacts
+
+- none

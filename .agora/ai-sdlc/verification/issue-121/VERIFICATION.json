@@ -1,0 +1,75 @@
+{
+  "acceptance_coverage": [
+    {
+      "candidate_test_paths": [
+        "extensions/vscode/src/studioCore.test.ts"
+      ],
+      "criterion": "Web-created project opens in Studio",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [],
+      "criterion": "Studio-created/modified canonical project opens in Web",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [],
+      "criterion": "semantic hash/equivalence preserved through round trip",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [],
+      "criterion": "unsupported newer schema fails explicitly",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [],
+      "criterion": "presentation state does not contaminate program state",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [],
+      "criterion": "locale switch remains independent",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [],
+      "criterion": "no UI-specific identifiers leak into canonical model.",
+      "mechanically_satisfied": false
+    }
+  ],
+  "all_executed_commands_passed": true,
+  "commands": [
+    {
+      "allowed": true,
+      "argv": [
+        "pnpm",
+        "build"
+      ],
+      "command": "pnpm build",
+      "elapsed_seconds": 5.275,
+      "exit_code": 0,
+      "status": "passed",
+      "stderr": "",
+      "stdout": "WARN\u2009 Unsupported engine: wanted: {\"node\":\">=22 <23\"} (current: {\"node\":\"v20.19.0\",\"pnpm\":\"9.15.9\"})\n\n> agorix@0.0.0 build /home/faguero/dev-agora/.agorix-main-issue121\n> pnpm -r --if-present run build\n\n.                                        | \u2009WARN\u2009 Unsupported engine: wanted: {\"node\":\">=22 <23\"} (current: {\"node\":\"v20.19.0\",\"pnpm\":\"9.15.9\"})\nScope: 12 of 13 workspace projects\npackages/platform-contract build$ tsc -p tsconfig.json\npackages/program-model build$ tsc -p tsconfig.json\npackages/platform-contract build: Done\npackages/program-model build: Done\npackages/code-generator build$ tsc -p tsconfig.json\npackages/persistence build$ tsc -p tsconfig.json\npackages/code-generator build: Done\npackages/persistence build: Done\npackages/block-editor build$ tsc -p tsconfig.json\npackages/runtime build$ tsc -p tsconfig.json\npackages/runtime build: Done\npackages/block-editor build: Done\npackages/curriculum build$ tsc -p tsconfig.json\npackages/stage build$ tsc -p tsconfig.json\npackages/curriculum build: Done\npackages/stage build: Done\npackages/tutor-contract build$ tsc -p tsconfig.json\nextensions/vscode build$ tsc -p tsconfig.json\npackages/tutor-contract build: Done\nextensions/vscode build: Done\napps/tutor-api build$ tsc -p tsconfig.json\napps/web build$ tsc -p tsconfig.json && vite build\napps/tutor-api build: Done\napps/web build: vite v7.3.6 building client environment for production...\napps/web build: transforming...\napps/web build: \u2713 51 modules transformed.\napps/web build: rendering chunks...\napps/web build: computing gzip size...\napps/web build: dist/index.html                   0.39 kB \u2502 gzip:  0.26 kB\napps/web build: dist/assets/index-CbIdeNIi.css   10.67 kB \u2502 gzip:  2.97 kB\napps/web build: dist/assets/index-BSg_Sedn.js   196.02 kB \u2502 gzip: 62.09 kB\napps/web build: \u2713 built in 536ms\napps/web build: Done"
+    },
+    {
+      "allowed": true,
+      "argv": [
+        "pnpm",
+        "test"
+      ],
+      "command": "pnpm test",
+      "elapsed_seconds": 1.159,
+      "exit_code": 0,
+      "status": "passed",
+      "stderr": "",
+      "stdout": "WARN\u2009 Unsupported engine: wanted: {\"node\":\">=22 <23\"} (current: {\"node\":\"v20.19.0\",\"pnpm\":\"9.15.9\"})\n\n> agorix@0.0.0 test /home/faguero/dev-agora/.agorix-main-issue121\n> vitest run\n\n\n RUN  v4.1.11 /home/faguero/dev-agora/.agorix-main-issue121\n\n\n Test Files  17 passed (17)\n      Tests  152 passed (152)\n   Start at  07:43:53\n   Duration  629ms (transform 2.51s, setup 0ms, import 3.17s, tests 153ms, environment 1ms)"
+    }
+  ],
+  "executed": true,
+  "head": "6e9d3c35efb1b4ac595092c75fefc35ccf67e7c5",
+  "report_path": "/home/faguero/dev-agora/.agorix-main-issue121/.agora/ai-sdlc/verification/issue-121/VERIFICATION.json",
+  "schema": "agora-ai-sdlc/verification-report/v1",
+  "work": "issue-121"
+}

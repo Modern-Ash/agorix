@@ -1,0 +1,25 @@
+# Work events
+
+- 2026-09-27T10:13:56.464693Z | work.created | state=inception actor=project:product-owner
+- 2026-09-27T10:15:42.886230Z | artifact.added | kind=intent uri=.agora/ai-sdlc/handoffs/issue-38/INT-38.md actor=project:ai-codex
+- 2026-09-27T10:15:52.493486Z | artifact.added | kind=plan uri=.agora/ai-sdlc/handoffs/issue-38/LEVEL1_PLAN.md actor=project:ai-codex
+- 2026-09-27T10:15:52.769419Z | artifact.added | kind=requirements uri=.agora/ai-sdlc/handoffs/issue-38/REQUIREMENTS.md actor=project:ai-codex
+- 2026-09-27T10:15:53.025967Z | artifact.added | kind=user-stories uri=.agora/ai-sdlc/handoffs/issue-38/USER_STORIES.md actor=project:ai-codex
+- 2026-09-27T10:15:53.281345Z | artifact.added | kind=nfr uri=.agora/ai-sdlc/handoffs/issue-38/NFR.md actor=project:ai-codex
+- 2026-09-27T10:15:53.526499Z | artifact.added | kind=measurement-criteria uri=.agora/ai-sdlc/handoffs/issue-38/MEASUREMENT_CRITERIA.md actor=project:ai-codex
+- 2026-09-27T10:15:53.780816Z | artifact.added | kind=unit-of-work uri=.agora/ai-sdlc/handoffs/issue-38/UNITS.md actor=project:ai-codex
+- 2026-09-27T10:15:54.029468Z | artifact.added | kind=bolt-plan uri=.agora/ai-sdlc/handoffs/issue-38/BOLTS.md actor=project:ai-codex
+- 2026-09-27T10:15:54.274872Z | artifact.added | kind=risk-register uri=.agora/ai-sdlc/handoffs/issue-38/RISK_REGISTER.md actor=project:ai-codex
+- 2026-09-27T10:16:25.228028Z | work.clarified-advisory | questions=5 actor=project:ai-codex
+- 2026-09-27T10:18:30.122755Z | work.criterion-stage-marked | criterion=source-issue actor=project:ai-codex stage=elaborated
+- 2026-09-27T10:18:36.881137Z | approval.added | role=product-owner actor=project:product-owner delegation=none
+- 2026-09-27T10:18:43.727965Z | approval.added | role=developer actor=project:ai-codex delegation=none
+- 2026-09-27T10:19:10.588514Z | work.clarified-advisory | questions=0 actor=project:ai-codex
+- 2026-09-27T10:19:28.609791Z | work.transitioned | from=inception to=construction actor=project:ai-codex
+- 2026-09-27T10:26:01.862077Z | artifact.added | kind=domain-model uri=.agora/ai-sdlc/handoffs/issue-38/DOMAIN_MODEL.md actor=project:ai-codex
+- 2026-09-27T10:26:02.126340Z | artifact.added | kind=logical-design uri=.agora/ai-sdlc/handoffs/issue-38/LOGICAL_DESIGN.md actor=project:ai-codex
+- 2026-09-27T10:26:02.372027Z | artifact.added | kind=implementation-plan uri=.agora/ai-sdlc/handoffs/issue-38/IMPLEMENTATION_PLAN.md actor=project:ai-codex
+- 2026-09-27T10:26:02.637528Z | artifact.added | kind=test-strategy uri=.agora/ai-sdlc/handoffs/issue-38/TEST_STRATEGY.md actor=project:ai-codex
+- 2026-09-27T10:26:02.893556Z | artifact.added | kind=deployment-unit uri=.agora/ai-sdlc/handoffs/issue-38/DEPLOYMENT_UNIT.md actor=project:ai-codex
+- 2026-09-27T10:27:10.087664Z | artifact.added | kind=test-report uri=.agora/ai-sdlc/handoffs/issue-38/VERIFICATION_EVIDENCE.md actor=project:ai-codex
+- 2026-09-27T10:27:43.941412Z | evidence.added | id=evidence-000001 type=test-suite result=success revision=1 actor=project:ai-codex

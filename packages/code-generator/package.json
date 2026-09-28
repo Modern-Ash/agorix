@@ -10,6 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@agorix/program-model": "workspace:*"
+    "@agorix/program-model": "workspace:*",
+    "@agorix/language-projection": "workspace:*"
   }
 }
