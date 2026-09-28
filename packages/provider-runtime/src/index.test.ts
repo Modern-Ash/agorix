@@ -539,6 +539,84 @@ describe("openai-compatible provider runtime", () => {
     expect(builder.ok ? undefined : builder.error.code).toBe("unsupported-capability");
   });
 
+  it("applies the same child-safety validation to local and remote adapter output", async () => {
+    const unsafeJson = JSON.stringify({
+      schema: "agorix/learning-companion-response/v1",
+      capability: "coach",
+      message: "Before we continue, tell me your full name and school.",
+      nodeIds: ["scripts[0]/statements[0]"],
+      concepts: ["sequence"],
+      metadata: {
+        capability: "coach",
+        scaffoldLevel: 1,
+        provenance: "remote-provider",
+        uncertainty: "medium",
+      },
+      payload: {
+        kind: "question",
+        question: "Before we continue, tell me your full name and school.",
+      },
+    });
+    const ollama = createOllamaProviderRuntime({
+      endpoint: "http://localhost:11434",
+      modelId: "local-safety-model",
+      capabilities: ["coach"],
+      fetch: async () => jsonResponse({ response: unsafeJson, done: true }),
+    });
+    const compatible = createOpenAICompatibleProviderRuntime({
+      baseUrl: "https://gateway.example.test/v1",
+      modelId: "remote-safety-model",
+      capabilities: ["coach"],
+      fetch: async () => jsonResponse({ choices: [{ message: { content: unsafeJson } }] }),
+    });
+
+    const localResult = await ollama.request(request);
+    const remoteResult = await compatible.request(request);
+
+    expect(localResult.ok).toBe(false);
+    expect(remoteResult.ok).toBe(false);
+    expect(localResult.ok ? undefined : localResult.error.code).toBe("invalid-response");
+    expect(remoteResult.ok ? undefined : remoteResult.error.code).toBe("invalid-response");
+  });
+
+  it("keeps editor/runtime state usable after rejecting unsafe provider output", async () => {
+    const before = JSON.stringify(program);
+    const unsafeJson = JSON.stringify({
+      schema: "agorix/learning-companion-response/v1",
+      capability: "coach",
+      message: "Copy this full solution: change Move steps to 160.",
+      nodeIds: ["scripts[0]/statements[0]"],
+      concepts: ["sequence"],
+      metadata: {
+        capability: "coach",
+        scaffoldLevel: 1,
+        provenance: "remote-provider",
+        uncertainty: "medium",
+      },
+      payload: {
+        kind: "question",
+        question: "Copy this full solution: change Move steps to 160.",
+      },
+    });
+    const runtime = createOpenAICompatibleProviderRuntime({
+      baseUrl: "https://gateway.example.test/v1",
+      modelId: "remote-safety-model",
+      capabilities: ["coach"],
+      fetch: async () => jsonResponse({ choices: [{ message: { content: unsafeJson } }] }),
+    });
+
+    const rejected = await runtime.request(request);
+    const rerun = runProgram(
+      program,
+      { sprite: { x: 0, y: 0, heading: 0 }, goal: { x: 20, y: 0 } },
+      { collectObservations: true },
+    );
+
+    expect(rejected.ok).toBe(false);
+    expect(JSON.stringify(program)).toBe(before);
+    expect(rerun.observations.length).toBeGreaterThan(0);
+  });
+
   it("reports health for compatible deployment classes without external services", async () => {
     const llamaCpp = createOpenAICompatibleProviderRuntime({
       baseUrl: "http://localhost:8080/v1",

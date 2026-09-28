@@ -1,7 +1,7 @@
 import {
   createDeterministicLearningCompanionResponse,
   validateLearningCompanionRequest,
-  validateLearningCompanionResponse,
+  validateLearningCompanionSafety,
   type LearningCompanionCapability,
   type LearningCompanionRequest,
   type LearningCompanionResponse,
@@ -252,7 +252,7 @@ export function createFakeProviderRuntime(
       }
       return {
         ok: true,
-        response: validateLearningCompanionResponse(response),
+        response: validateLearningCompanionSafety(validated, response),
         diagnostics,
       };
     },
@@ -377,7 +377,8 @@ export function createOllamaProviderRuntime(
           const providerOutput = parseOllamaProviderOutput(payload.response);
           return {
             ok: true,
-            response: validateLearningCompanionResponse(
+            response: validateLearningCompanionSafety(
+              validated,
               providerOutput as LearningCompanionResponse,
             ),
             diagnostics,
@@ -548,7 +549,8 @@ export function createOpenAICompatibleProviderRuntime(
           const providerOutput = parseProviderJsonContent(content);
           return {
             ok: true,
-            response: validateLearningCompanionResponse(
+            response: validateLearningCompanionSafety(
+              validated,
               providerOutput as LearningCompanionResponse,
             ),
             diagnostics,

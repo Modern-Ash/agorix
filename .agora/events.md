@@ -126,3 +126,4 @@
 - 2026-09-27T21:40:00.231637Z | session.completed | session=run-issue-95-delivery-issue-95-20260927t21341790555661z exit-code=0
 - 2026-09-27T21:48:30.712335Z | session.prepared | session=run-issue-95-delivery-issue-95-20260927t21481790556510z actor=project:ai-codex executor=project:ai-codex swarm=issue-95-delivery
 - 2026-09-27T21:48:30.714068Z | session.running | session=run-issue-95-delivery-issue-95-20260927t21481790556510z
+- 2026-09-27T23:50:23.542823Z | lifecycle-action.prepared | action=issue-100-manual-clarifications kind=work.clarify actor=project:ai-codex swarm=issue-100-delivery work=issue-100

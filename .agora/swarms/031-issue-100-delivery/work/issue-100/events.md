@@ -1,0 +1,39 @@
+# Work events
+
+- 2026-09-27T23:30:55.688417Z | work.created | state=inception actor=project:product-owner
+- 2026-09-27T23:33:12.935903Z | artifact.added | kind=intent uri=repo://.agora/ai-sdlc/handoffs/issue-100/INTENT.md actor=project:ai-codex
+- 2026-09-27T23:33:19.921997Z | artifact.added | kind=requirements uri=repo://.agora/ai-sdlc/handoffs/issue-100/REQUIREMENTS.md actor=project:ai-codex
+- 2026-09-27T23:33:25.636120Z | artifact.added | kind=unit-of-work uri=repo://.agora/ai-sdlc/handoffs/issue-100/UNIT_OF_WORK.md actor=project:ai-codex
+- 2026-09-27T23:33:33.671695Z | artifact.added | kind=plan uri=repo://.agora/ai-sdlc/handoffs/issue-100/LEVEL1_PLAN.md actor=project:ai-codex
+- 2026-09-27T23:33:39.806754Z | artifact.added | kind=bolt-plan uri=repo://.agora/ai-sdlc/handoffs/issue-100/BOLTS.md actor=project:ai-codex
+- 2026-09-27T23:33:46.045805Z | artifact.added | kind=economics uri=repo://.agora/ai-sdlc/handoffs/issue-100/ECONOMICS.md actor=project:ai-codex
+- 2026-09-27T23:33:52.176612Z | artifact.added | kind=user-stories uri=repo://.agora/ai-sdlc/handoffs/issue-100/USER_STORIES.md actor=project:ai-codex
+- 2026-09-27T23:33:58.779061Z | artifact.added | kind=nfr uri=repo://.agora/ai-sdlc/handoffs/issue-100/NFR.md actor=project:ai-codex
+- 2026-09-27T23:34:05.765180Z | artifact.added | kind=measurement-criteria uri=repo://.agora/ai-sdlc/handoffs/issue-100/MEASUREMENT_CRITERIA.md actor=project:ai-codex
+- 2026-09-27T23:34:13.435894Z | artifact.added | kind=risk-register uri=repo://.agora/ai-sdlc/handoffs/issue-100/RISK_REGISTER.md actor=project:ai-codex
+- 2026-09-27T23:34:21.787535Z | artifact.added | kind=inception-handoff uri=repo://.agora/ai-sdlc/handoffs/issue-100/INCEPTION_HANDOFF.md actor=project:ai-codex
+- 2026-09-27T23:34:28.135366Z | artifact.added | kind=clarifications uri=repo://.agora/ai-sdlc/handoffs/issue-100/CLARIFICATIONS.md actor=project:ai-codex
+- 2026-09-27T23:49:12.188223Z | work.criterion-stage-marked | criterion=source-issue actor=project:product-owner stage=elaborated
+- 2026-09-27T23:49:26.031606Z | approval.added | role=product-owner actor=project:product-owner delegation=none
+- 2026-09-27T23:51:26.304754Z | work.clarified-advisory | questions=0 actor=project:ai-codex
+- 2026-09-27T23:51:59.903033Z | approval.added | role=developer actor=project:ai-codex delegation=none
+- 2026-09-27T23:52:42.093060Z | work.transitioned | from=inception to=construction actor=project:product-owner
+- 2026-09-27T23:59:56.659523Z | artifact.added | kind=domain-model uri=repo://.agora/ai-sdlc/handoffs/issue-100/DOMAIN_MODEL.md actor=project:ai-codex
+- 2026-09-28T00:00:02.964414Z | artifact.added | kind=logical-design uri=repo://.agora/ai-sdlc/handoffs/issue-100/LOGICAL_DESIGN.md actor=project:ai-codex
+- 2026-09-28T00:00:09.371899Z | artifact.added | kind=implementation-plan uri=repo://.agora/ai-sdlc/handoffs/issue-100/IMPLEMENTATION_PLAN.md actor=project:ai-codex
+- 2026-09-28T00:00:16.651360Z | artifact.added | kind=test-strategy uri=repo://.agora/ai-sdlc/handoffs/issue-100/TEST_STRATEGY.md actor=project:ai-codex
+- 2026-09-28T00:00:29.646274Z | artifact.added | kind=verification-evidence uri=repo://.agora/ai-sdlc/handoffs/issue-100/VERIFICATION_EVIDENCE.md actor=project:ai-codex
+- 2026-09-28T00:00:29.790674Z | artifact.added | kind=security-test-matrix uri=repo://docs/safety/AI_OUTPUT_VALIDATION.md actor=project:ai-codex
+- 2026-09-28T00:00:42.763745Z | evidence.added | id=evidence-000001 type=test-suite result=success revision=1 actor=project:ai-codex
+- 2026-09-28T00:01:17.458394Z | artifact.added | kind=deployment-unit uri=repo://.agora/ai-sdlc/handoffs/issue-100/DEPLOYMENT_UNIT.md actor=project:ai-codex
+- 2026-09-28T00:03:47.136183Z | work.criterion-stage-marked | criterion=source-issue actor=project:ai-codex stage=designed
+- 2026-09-28T00:03:54.375555Z | work.criterion-stage-marked | criterion=source-issue actor=project:ai-codex stage=built
+- 2026-09-28T00:04:00.158381Z | work.criterion-stage-marked | criterion=source-issue actor=project:ai-codex stage=verified
+- 2026-09-28T00:16:29.191770Z | work.transitioned | from=construction to=operations actor=project:ai-codex
+- 2026-09-28T00:17:54.572911Z | artifact.added | kind=rollback-procedure uri=repo://.agora/ai-sdlc/handoffs/issue-100/ROLLBACK_PROCEDURE.md actor=project:ai-codex
+- 2026-09-28T00:17:55.805459Z | artifact.added | kind=operational-readiness uri=repo://.agora/ai-sdlc/handoffs/issue-100/OPERATIONAL_READINESS.md actor=project:ai-codex
+- 2026-09-28T00:18:08.405569Z | evidence.added | id=evidence-000002 type=deployment result=success revision=1 actor=project:ai-codex
+- 2026-09-28T00:18:08.770564Z | evidence.added | id=evidence-000003 type=security-scan result=success revision=1 actor=project:ai-codex
+- 2026-09-28T00:18:16.817375Z | work.criterion-stage-marked | criterion=source-issue actor=project:ai-codex stage=deployed
+- 2026-09-28T00:18:22.728823Z | work.criterion-stage-marked | criterion=source-issue actor=project:product-owner stage=accepted
+- 2026-09-28T00:27:17.698581Z | work.transitioned | from=operations to=completed actor=project:product-owner
