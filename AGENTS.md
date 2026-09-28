@@ -2,6 +2,22 @@
 
 Agorix is built under Agora AI-SDLC. GitHub issues are the executable work queue; the documents under `docs/` are the product and architecture source of truth.
 
+## Thin-host mode for VS Code skills
+
+When this process is invoked through the repo-local `agora-flow` skill in Codex or Claude, it is **not the executor**. It is only a transport/control host for Agora AI-SDLC.
+
+In thin-host mode, do **not** perform the mandatory workflow below yourself. Specifically, do not read the issue body, specs, source files, diffs, tests, logs or architecture docs; do not plan, implement, test, review, choose providers/models, reproduce gate logic, or infer lifecycle transitions.
+
+Allowed host actions are limited to:
+
+1. Invoke `aisdlc` commands for the exact Work/issue.
+2. Never pass `--agent` or `--model`; let `routing.profile=cheap-first` choose.
+3. Observe the durable result with `aisdlc observe ... --json`.
+4. Report only a compact execution/result summary or a human decision requested by Agora.
+5. Stop. Do not continue reasoning about the implementation.
+
+The executor selected by Agora remains subject to the full mandatory workflow and all product/architecture invariants below. Thin-host mode reduces duplicated model reasoning; it does not weaken authority or governance.
+
 ## Mandatory workflow
 
 1. Read the assigned issue and every referenced spec before changing code.
