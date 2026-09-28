@@ -127,3 +127,11 @@
 - 2026-09-27T21:48:30.712335Z | session.prepared | session=run-issue-95-delivery-issue-95-20260927t21481790556510z actor=project:ai-codex executor=project:ai-codex swarm=issue-95-delivery
 - 2026-09-27T21:48:30.714068Z | session.running | session=run-issue-95-delivery-issue-95-20260927t21481790556510z
 - 2026-09-27T23:50:23.542823Z | lifecycle-action.prepared | action=issue-100-manual-clarifications kind=work.clarify actor=project:ai-codex swarm=issue-100-delivery work=issue-100
+- 2026-09-28T12:29:01.693595Z | quickstart.completed | entrypoint=quickstart swarm=issue-30 method=scrum secure=false
+- 2026-09-28T12:31:44.407233Z | session.prepared | session=run-issue-30-web-security-baseline-20260928t12311790609504z actor=project:agent executor=project:ai-codex swarm=issue-30
+- 2026-09-28T12:31:44.409622Z | session.running | session=run-issue-30-web-security-baseline-20260928t12311790609504z
+- 2026-09-28T12:34:09.343545Z | session.completed | session=run-issue-30-web-security-baseline-20260928t12311790609504z exit-code=0
+- 2026-09-28T13:01:53.148321Z | session.prepared | session=run-issue-30-web-security-baseline-20260928t13011790611313z actor=project:agent executor=project:ai-codex swarm=issue-30
+- 2026-09-28T13:01:53.150645Z | session.running | session=run-issue-30-web-security-baseline-20260928t13011790611313z
+- 2026-09-28T13:18:00.530791Z | session.prepared | session=run-issue-30-web-security-baseline-20260928t13011790611313z-retry-20260928t13181790612280z actor=project:agent executor=project:ai-codex swarm=issue-30
+- 2026-09-28T13:18:00.533018Z | session.running | session=run-issue-30-web-security-baseline-20260928t13011790611313z-retry-20260928t13181790612280z

@@ -1,0 +1,23 @@
+# Work events
+
+- 2026-09-28T12:29:21.854487Z | work.created | state=specified actor=project:owner
+- 2026-09-28T12:29:58.296762Z | work.transitioned | from=specified to=planned actor=project:agent
+- 2026-09-28T12:30:07.910825Z | work.transitioned | from=planned to=implementing actor=project:agent
+- 2026-09-28T13:22:20.867719Z | artifact.added | kind=document uri=docs/safety/WEB_SECURITY_BASELINE.md actor=project:agent
+- 2026-09-28T13:22:21.167945Z | artifact.added | kind=document uri=scripts/security-baseline.mjs actor=project:agent
+- 2026-09-28T13:22:21.451889Z | artifact.added | kind=document uri=packages/runtime/src/operations.ts actor=project:agent
+- 2026-09-28T13:22:21.729293Z | artifact.added | kind=document uri=apps/web/src/securityHeaders.ts actor=project:agent
+- 2026-09-28T13:22:22.011443Z | artifact.added | kind=document uri=apps/web/src/linkPolicy.ts actor=project:agent
+- 2026-09-28T13:22:22.299338Z | artifact.added | kind=document uri=apps/web/public/_headers actor=project:agent
+- 2026-09-28T13:22:26.501186Z | evidence.added | id=evidence-000001 type=static-analysis result=success revision=1 actor=project:agent
+- 2026-09-28T13:22:33.704018Z | artifact.added | kind=code uri=scripts/security-baseline.test.mjs actor=project:agent
+- 2026-09-28T13:22:33.976839Z | artifact.added | kind=code uri=packages/runtime/src/operations.test.ts actor=project:agent
+- 2026-09-28T13:22:34.249701Z | artifact.added | kind=code uri=apps/web/src/securityHeaders.test.ts actor=project:agent
+- 2026-09-28T13:22:34.536240Z | artifact.added | kind=code uri=apps/web/src/linkPolicy.test.ts actor=project:agent
+- 2026-09-28T13:22:34.804253Z | artifact.added | kind=code uri=package.json actor=project:agent
+- 2026-09-28T13:22:35.070268Z | artifact.added | kind=code uri=.github/workflows/ci.yml actor=project:agent
+- 2026-09-28T13:22:35.328519Z | artifact.added | kind=code uri=apps/web/index.html actor=project:agent
+- 2026-09-28T13:22:35.610937Z | artifact.added | kind=code uri=apps/web/vite.config.ts actor=project:agent
+- 2026-09-28T13:22:39.185654Z | evidence.added | id=evidence-000002 type=unit-tests result=success revision=1 actor=project:agent
+- 2026-09-28T13:22:39.473134Z | evidence.added | id=evidence-000003 type=static-analysis result=success revision=1 actor=project:agent
+- 2026-09-28T13:22:39.771980Z | evidence.added | id=evidence-000004 type=build result=success revision=1 actor=project:agent

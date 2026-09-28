@@ -3,7 +3,6 @@ export const PACKAGE_NAME = "@agorix/runtime";
 
 export {
   DEFAULT_EXECUTION_BUDGET,
-  RuntimeExecutionError,
   runProgram,
   type ExecutionBoundary,
   toSanitizedTutorContext,
@@ -15,6 +14,20 @@ export {
   type RuntimeObservationKind,
   type SanitizedTutorContext,
 } from "./execute.js";
+export { RuntimeExecutionError } from "./errors.js";
+export {
+  assertAllowedRuntimeOperation,
+  assertProgramOperationsAllowed,
+  isAllowedRuntimeOperation,
+  listRuntimeOperations,
+  RUNTIME_EXPRESSION_OPERATIONS,
+  RUNTIME_OPERATIONS,
+  RUNTIME_STATEMENT_OPERATIONS,
+  RUNTIME_TRIGGER_OPERATIONS,
+  type RuntimeOperation,
+  type RuntimeOperationAllowlistIsExhaustive,
+  type RuntimeOperationKind,
+} from "./operations.js";
 export {
   cloneWorldState,
   createWorldState,
