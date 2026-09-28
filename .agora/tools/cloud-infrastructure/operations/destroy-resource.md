@@ -5,9 +5,8 @@ name: "Destroy a cloud resource"
 capability: "cloud.destroy"
 risk: "destructive"
 environment-required: true
-arguments:
-  ["resource", "destroy", "{resource}", "--environment", "{environment}", "--output", "json"]
-inputs: ["resource", "environment"]
+arguments: ["resource","destroy","{resource}","--environment","{environment}","--output","json"]
+inputs: ["resource","environment"]
 result-kind: "cloud-destruction"
 ---
 

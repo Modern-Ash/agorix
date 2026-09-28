@@ -14,8 +14,8 @@ Layout (desktop/normal viewport):
 
 - 60% blocks workspace / 40% generated code panel, side by side, with the generated code panel as the right-hand surface of the desktop layout (human-selected POC decision; D1).
 - Mission context lives in a top/header area, visible without navigating away from the editor.
-- Stage/canvas, one starter sprite, block toolbox and workspace are visible immediately (MVP.md "Editor").
-- Within the blocks workspace, the POC uses a classic arrangement: block toolbox in a left rail, stage/canvas top-center, workspace center (D4, confirmed). Narrow-width rail/toolbox refinements are implementation detail.
+- Stage/canvas, one starter sprite, and the generated-code panel are visible immediately (MVP.md "Editor").
+- **D4 superseded (issue #91, 2026-09-28):** the toolbox-left-rail arrangement below predates the AI-native pivot (#63-#73) and is replaced by "no permanent Scratch-style toolbox; World + Code are the dominant surfaces" (issue #91 AC-010/AC-011). Block composition surfaces, when reintroduced, must appear on demand rather than occupy permanent layout space. Original text kept for history: "the POC uses a classic arrangement: block toolbox in a left rail, stage/canvas top-center, workspace center (D4, confirmed)."
 - Run / Stop / Reset controls are always reachable from the main editor view.
 - Tutor/help is a contextual side panel or non-blocking overlay; exact visual treatment is an implementation detail (human-selected POC decision) but it must never cover or replace the code panel.
 
@@ -91,7 +91,7 @@ The following eight choices are human-selected product decisions D1-D8 confirmed
 - **D1** Desktop split: 60% blocks workspace / 40% generated code panel, side by side (§2).
 - **D2** Narrow viewport: vertical stack, blocks first, code band pinned below, targeting ~40% of the usable editor viewport as a responsive guideline, with a 240px minimum visible band height; blocks workspace scrolls internally; code never leaves the viewport (§2).
 - **D3** Edit-during-run stops the current run before the change takes effect; the learner re-runs to observe (§5).
-- **D4** Blocks-area layout: toolbox left rail, stage/canvas top-center, workspace center (§2).
+- **D4** Blocks-area layout: toolbox left rail, stage/canvas top-center, workspace center (§2). Superseded by issue #91 (2026-09-28) — see §2.
 - **D5** Tutor/help is a contextual side panel or non-blocking overlay; exact visual treatment is implementation detail and must never cover or replace the code panel (§2, §6).
 - **D6** Block→code highlighting is required; code→block highlighting is optional and cost-gated (§4).
 - **D7** Continuous autosave, no manual save step; exit confirmation only when persistence has failed or unsaved state can exist (Persistence and exit).

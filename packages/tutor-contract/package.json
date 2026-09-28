@@ -8,5 +8,9 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run"
+  },
+  "dependencies": {
+    "@agorix/program-model": "workspace:*",
+    "@agorix/runtime": "workspace:*"
   }
 }

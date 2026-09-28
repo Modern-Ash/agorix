@@ -4,20 +4,8 @@ id: "search-logs"
 name: "Search service logs"
 capability: "observability.read"
 risk: "read"
-arguments:
-  [
-    "logs",
-    "search",
-    "--service",
-    "{service}",
-    "--window",
-    "{window}",
-    "--query",
-    "{query}",
-    "--output",
-    "json",
-  ]
-inputs: ["service", "window", "query"]
+arguments: ["logs","search","--service","{service}","--window","{window}","--query","{query}","--output","json"]
+inputs: ["service","window","query"]
 result-kind: "log-report"
 ---
 

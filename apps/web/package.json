@@ -11,7 +11,11 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@agorix/code-generator": "workspace:*",
+    "@agorix/curriculum": "workspace:*",
     "@agorix/program-model": "workspace:*",
+    "@agorix/runtime": "workspace:*",
+    "@agorix/tutor-contract": "workspace:*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

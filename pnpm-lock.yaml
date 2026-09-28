@@ -41,9 +41,21 @@ importers:
 
   apps/web:
     dependencies:
+      '@agorix/code-generator':
+        specifier: workspace:*
+        version: link:../../packages/code-generator
+      '@agorix/curriculum':
+        specifier: workspace:*
+        version: link:../../packages/curriculum
       '@agorix/program-model':
         specifier: workspace:*
         version: link:../../packages/program-model
+      '@agorix/runtime':
+        specifier: workspace:*
+        version: link:../../packages/runtime
+      '@agorix/tutor-contract':
+        specifier: workspace:*
+        version: link:../../packages/tutor-contract
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -75,7 +87,14 @@ importers:
         specifier: workspace:*
         version: link:../program-model
 
-  packages/curriculum: {}
+  packages/curriculum:
+    dependencies:
+      '@agorix/program-model':
+        specifier: workspace:*
+        version: link:../program-model
+      '@agorix/runtime':
+        specifier: workspace:*
+        version: link:../runtime
 
   packages/persistence:
     dependencies:
@@ -87,11 +106,22 @@ importers:
 
   packages/program-model: {}
 
-  packages/runtime: {}
+  packages/runtime:
+    dependencies:
+      '@agorix/program-model':
+        specifier: workspace:*
+        version: link:../program-model
 
   packages/stage: {}
 
-  packages/tutor-contract: {}
+  packages/tutor-contract:
+    dependencies:
+      '@agorix/program-model':
+        specifier: workspace:*
+        version: link:../program-model
+      '@agorix/runtime':
+        specifier: workspace:*
+        version: link:../runtime
 
 packages:
 

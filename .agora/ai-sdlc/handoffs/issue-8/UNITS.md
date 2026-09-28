@@ -6,14 +6,8 @@ id: "UOW-008"
 work: "issue-8"
 revision: 1
 traces-to: ["INT-008"]
-criteria:
-  - "entry-no-account"
-  - "editor-ia"
-  - "blocks-code-consistency"
-  - "run-iterate"
-  - "tutor-stuck-path"
-  - "completion-persistence"
-required-sections: ["Scope", "Acceptance criteria", "Dependencies", "Bolts"]
+criteria: ["entry-no-account","editor-ia","blocks-code-consistency","run-iterate","tutor-stuck-path","completion-persistence"]
+required-sections: ["Scope","Acceptance criteria","Dependencies","Bolts"]
 ---
 
 # Unit of Work
