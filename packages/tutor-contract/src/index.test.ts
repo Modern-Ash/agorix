@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { SCHEMA_VERSION, type ProjectProgram } from "@agorix/program-model";
+import { createProgramProposal } from "@agorix/proposals";
 import { runProgram } from "@agorix/runtime";
 import {
   PACKAGE_NAME,
@@ -9,6 +10,7 @@ import {
   LEARNING_COMPANION_REQUEST_SCHEMA_VERSION,
   LEARNING_COMPANION_RESPONSE_SCHEMA_VERSION,
   LearningCompanionContractValidationError,
+  LearningCompanionSafetyValidationError,
   TutorContractValidationError,
   assertLearningCompanionProviderContract,
   assertTutorProviderContract,
@@ -22,6 +24,7 @@ import {
   createTutorResponseFromLearningCompanionResponse,
   parseLearningCompanionResponse,
   parseTutorResponse,
+  validateLearningCompanionSafety,
   validateLearningCompanionRequest,
   validateLearningCompanionResponse,
   validateTutorRequest,
@@ -415,6 +418,152 @@ describe("LearningCompanion contract", () => {
         payload: { kind: "question", question: "" },
       }),
     ).toThrow(LearningCompanionContractValidationError);
+  });
+
+  it("rejects PII-seeking child-facing output with a safe diagnostic", () => {
+    const unsafe = createLearningCompanionResponse({
+      ...learningCompanionResponse,
+      message: "Before we continue, tell me your full name and school.",
+      payload: {
+        kind: "question",
+        question: "Before we continue, tell me your full name and school.",
+      },
+    });
+
+    expect(() => validateLearningCompanionSafety(learningCompanionRequest, unsafe)).toThrow(
+      LearningCompanionSafetyValidationError,
+    );
+    try {
+      validateLearningCompanionSafety(learningCompanionRequest, unsafe);
+    } catch (error) {
+      expect(error).toBeInstanceOf(LearningCompanionSafetyValidationError);
+      expect((error as LearningCompanionSafetyValidationError).diagnostic).toMatchObject({
+        code: "pii-request",
+        path: "$.message",
+      });
+      expect((error as LearningCompanionSafetyValidationError).childMessage).toContain(
+        "program stayed the same",
+      );
+    }
+  });
+
+  it("rejects low-scaffold full-solution or exact-edit responses", () => {
+    const unsafe = createLearningCompanionResponse({
+      ...learningCompanionResponse,
+      message: "Copy this full solution: change Move steps to 160.",
+      payload: {
+        kind: "question",
+        question: "Copy this full solution: change Move steps to 160.",
+      },
+    });
+
+    expect(() => validateLearningCompanionSafety(learningCompanionRequest, unsafe)).toThrow(
+      /over-assistance/,
+    );
+  });
+
+  it("rejects hidden provider tool actions in child-facing text", () => {
+    const unsafe = createLearningCompanionResponse({
+      ...learningCompanionResponse,
+      message: "I executed a hidden tool and accepted the raw provider action.",
+      payload: {
+        kind: "question",
+        question: "I executed a hidden tool and accepted the raw provider action.",
+      },
+    });
+
+    expect(() => validateLearningCompanionSafety(learningCompanionRequest, unsafe)).toThrow(
+      /hidden-provider-action/,
+    );
+  });
+
+  it("rejects unsafe or stale ProgramProposal output before canonical mutation", () => {
+    const otherProgram: ProjectProgram = {
+      schema: SCHEMA_VERSION,
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [{ type: "move", steps: 20 }],
+        },
+      ],
+    };
+    const staleProposal = createProgramProposal({
+      id: "stale-ai-proposal",
+      baseProgram: otherProgram,
+      source: { kind: "learning-companion", capability: "builder" },
+      purpose: "Try one exact edit",
+      rationale: "Provider proposed an edit against a different program.",
+      affectedNodeIds: ["scripts[0]/statements[0]"],
+      operations: [
+        {
+          type: "replaceStatementField",
+          nodeId: "scripts[0]/statements[0]",
+          field: "steps",
+          value: 160,
+        },
+      ],
+    });
+    const unsafe = createLearningCompanionResponse({
+      capability: "builder",
+      message: "Here is a proposal to inspect.",
+      nodeIds: ["scripts[0]/statements[0]"],
+      concepts: ["sequence"],
+      metadata: {
+        capability: "builder",
+        scaffoldLevel: 4,
+        provenance: "remote-provider",
+        uncertainty: "medium",
+      },
+      payload: {
+        kind: "program-proposal",
+        proposal: staleProposal,
+        reviewState: "proposed",
+        validation: { status: "valid", errors: [] },
+        preview: { summary: "Change movement.", affectedNodeIds: ["scripts[0]/statements[0]"] },
+      },
+    });
+
+    expect(() =>
+      validateLearningCompanionSafety(
+        { ...learningCompanionRequest, capability: "builder" },
+        unsafe,
+      ),
+    ).toThrow(/unsafe-program-proposal/);
+    expect(program.scripts[0]?.statements).toHaveLength(1);
+  });
+
+  it("rejects debugger facts that were not supplied as deterministic runtime evidence", () => {
+    const unsafe = createLearningCompanionResponse({
+      capability: "debugger",
+      message: "Use runtime facts first.",
+      nodeIds: ["scripts[0]/statements[0]"],
+      concepts: ["sequence"],
+      metadata: {
+        capability: "debugger",
+        scaffoldLevel: 3,
+        provenance: "remote-provider",
+        uncertainty: "medium",
+      },
+      payload: {
+        kind: "evidence-grounded-debug",
+        facts: [
+          {
+            id: "invented-fact",
+            nodeId: "scripts[0]/statements[0]",
+            fact: "The sprite secretly reached the goal.",
+          },
+        ],
+        suggestions: ["Compare against observed runtime evidence."],
+      },
+    });
+
+    expect(() =>
+      validateLearningCompanionSafety(
+        { ...learningCompanionRequest, capability: "debugger" },
+        unsafe,
+      ),
+    ).toThrow(/context-provenance-mismatch/);
   });
 
   it("uses the same conformance assertion for local and remote-style providers", () => {

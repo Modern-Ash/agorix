@@ -1,6 +1,7 @@
 import type { MissionConcept } from "@agorix/curriculum";
 import {
   createProgramProposal,
+  createProposalReview,
   validateProgramProposal,
   type ProgramProposal,
 } from "@agorix/proposals";
@@ -162,6 +163,32 @@ export class LearningCompanionContractValidationError extends Error {
   }
 }
 
+export type LearningCompanionSafetyIssueCode =
+  | "capability-mismatch"
+  | "over-assistance"
+  | "pii-request"
+  | "unsafe-program-proposal"
+  | "hidden-provider-action"
+  | "context-provenance-mismatch";
+
+export interface LearningCompanionSafetyDiagnostic {
+  readonly code: LearningCompanionSafetyIssueCode;
+  readonly path: string;
+  readonly message: string;
+}
+
+export class LearningCompanionSafetyValidationError extends Error {
+  readonly diagnostic: LearningCompanionSafetyDiagnostic;
+  readonly childMessage: string;
+
+  constructor(diagnostic: LearningCompanionSafetyDiagnostic) {
+    super(`${diagnostic.code} ${diagnostic.path}: ${diagnostic.message}`);
+    this.name = "LearningCompanionSafetyValidationError";
+    this.diagnostic = diagnostic;
+    this.childMessage = "I couldn't use that AI suggestion safely. Your program stayed the same.";
+  }
+}
+
 const CAPABILITIES = new Set<LearningCompanionCapability>([
   "coach",
   "builder",
@@ -199,6 +226,70 @@ export function createLearningCompanionResponse(
 
 export function parseLearningCompanionResponse(providerOutput: unknown): LearningCompanionResponse {
   return validateLearningCompanionResponse(providerOutput as LearningCompanionResponse);
+}
+
+export function validateLearningCompanionSafety(
+  request: LearningCompanionRequest,
+  response: LearningCompanionResponse,
+): LearningCompanionResponse {
+  const validatedRequest = validateLearningCompanionRequest(request);
+  const validatedResponse = validateLearningCompanionResponse(response);
+
+  if (validatedResponse.capability !== validatedRequest.capability) {
+    safetyFail(
+      "capability-mismatch",
+      "$.capability",
+      "response capability must match requested capability",
+    );
+  }
+
+  const textFields = responseTextFields(validatedResponse);
+  textFields.forEach(({ path, value }) => {
+    assertNoPiiRequest(value, path);
+    assertNoHiddenProviderAction(value, path);
+    assertNoOverAssistance(value, path, validatedResponse.metadata.scaffoldLevel);
+  });
+
+  if (validatedResponse.capability === "builder") {
+    try {
+      createProposalReview(validatedRequest.program, validatedResponse.payload.proposal);
+    } catch (error) {
+      safetyFail(
+        "unsafe-program-proposal",
+        "$.payload.proposal",
+        error instanceof Error ? error.message : "program proposal failed safety validation",
+      );
+    }
+    if (validatedResponse.payload.proposal.source.kind !== "learning-companion") {
+      safetyFail(
+        "unsafe-program-proposal",
+        "$.payload.proposal.source.kind",
+        "Learning Companion proposals must use learning-companion source",
+      );
+    }
+    if (validatedResponse.payload.proposal.source.capability !== "builder") {
+      safetyFail(
+        "unsafe-program-proposal",
+        "$.payload.proposal.source.capability",
+        "builder proposals must identify builder capability",
+      );
+    }
+  }
+
+  if (validatedResponse.capability === "debugger" && validatedRequest.runtimeFacts.length > 0) {
+    const allowedFactIds = new Set(validatedRequest.runtimeFacts.map((fact) => fact.id));
+    validatedResponse.payload.facts.forEach((fact, index) => {
+      if (!allowedFactIds.has(fact.id)) {
+        safetyFail(
+          "context-provenance-mismatch",
+          `$.payload.facts[${index}].id`,
+          "debugger facts must reference supplied deterministic runtime evidence",
+        );
+      }
+    });
+  }
+
+  return validatedResponse;
 }
 
 export function assertLearningCompanionProviderContract(
@@ -652,6 +743,83 @@ function assertBuilderPreview(value: unknown): void {
   );
 }
 
+function responseTextFields(
+  response: LearningCompanionResponse,
+): readonly { readonly path: string; readonly value: string }[] {
+  const fields: Array<{ readonly path: string; readonly value: string }> = [
+    { path: "$.message", value: response.message },
+  ];
+  switch (response.capability) {
+    case "coach":
+      fields.push({ path: "$.payload.question", value: response.payload.question });
+      break;
+    case "builder":
+      fields.push(
+        { path: "$.payload.proposal.purpose", value: response.payload.proposal.purpose },
+        { path: "$.payload.proposal.rationale", value: response.payload.proposal.rationale },
+        { path: "$.payload.preview.summary", value: response.payload.preview.summary },
+      );
+      break;
+    case "debugger":
+      response.payload.suggestions.forEach((suggestion, index) =>
+        fields.push({ path: `$.payload.suggestions[${index}]`, value: suggestion }),
+      );
+      response.payload.facts.forEach((fact, index) =>
+        fields.push({ path: `$.payload.facts[${index}].fact`, value: fact.fact }),
+      );
+      break;
+    case "explainer":
+      fields.push({ path: "$.payload.explanation", value: response.payload.explanation });
+      break;
+    case "challenger":
+    case "reflector":
+      fields.push({ path: "$.payload.prompt", value: response.payload.prompt });
+      break;
+  }
+  return fields;
+}
+
+function assertNoPiiRequest(value: string, path: string): void {
+  const english =
+    /\b(?:tell me|enter|share|give me|provide|type|write|what is|where do you)\b[\s\S]{0,80}\b(?:your\s+)?(?:full\s+name|real\s+name|name|home\s+address|address|school|email|phone|contact|location)\b/i;
+  const spanish =
+    /\b(?:dime|ingresa|escribe|comparte|dame|cu[aá]l es|d[oó]nde)\b[\s\S]{0,80}\b(?:tu\s+)?(?:nombre|direcci[oó]n|escuela|colegio|correo|tel[eé]fono|contacto|ubicaci[oó]n)\b/i;
+  if (english.test(value) || spanish.test(value)) {
+    safetyFail("pii-request", path, "response asks the learner for personal data");
+  }
+}
+
+function assertNoHiddenProviderAction(value: string, path: string): void {
+  if (
+    /\b(?:tool_call|function_call|hidden\s+tool|executed\s+a\s+tool|raw\s+provider\s+action)\b/i.test(
+      value,
+    )
+  ) {
+    safetyFail("hidden-provider-action", path, "response exposes a hidden provider tool action");
+  }
+}
+
+function assertNoOverAssistance(
+  value: string,
+  path: string,
+  scaffoldLevel: LearningCompanionScaffoldLevel,
+): void {
+  if (scaffoldLevel > 2) return;
+  const asksForCopying = /\b(?:copy|paste|use\s+exactly|full\s+solution|complete\s+answer)\b/i;
+  const givesNumericEdit =
+    /\b(?:set|change|replace)\b[\s\S]{0,40}\b(?:move|steps|degrees|count)\b[\s\S]{0,40}\b\d+\b/i;
+  if (asksForCopying.test(value) || givesNumericEdit.test(value)) {
+    safetyFail(
+      "over-assistance",
+      path,
+      "low-scaffold response gives a full solution or exact edit",
+    );
+  }
+}
+
+function safetyFail(code: LearningCompanionSafetyIssueCode, path: string, message: string): never {
+  throw new LearningCompanionSafetyValidationError({ code, path, message });
+}
 function assertReading(value: TutorReadingConfig, path: string): void {
   assertPlainObject(value, path, ["locale", "readingLevel"]);
   assertBoundedString(value.locale, `${path}.locale`, 2, 35);
