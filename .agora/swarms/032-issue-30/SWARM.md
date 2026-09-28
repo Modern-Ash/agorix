@@ -2,7 +2,7 @@
 schema: "agora/swarm/v1"
 id: "issue-30"
 method: "scrum"
-status: "running"
+status: "completed"
 branch: "agora/issue-30"
 required-roles: ["product-owner","scrum-master","developer"]
 assignments: {"product-owner":"project:owner","scrum-master":"project:agent","developer":"project:agent"}

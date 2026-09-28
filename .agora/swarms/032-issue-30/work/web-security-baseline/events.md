@@ -21,3 +21,22 @@
 - 2026-09-28T13:22:39.185654Z | evidence.added | id=evidence-000002 type=unit-tests result=success revision=1 actor=project:agent
 - 2026-09-28T13:22:39.473134Z | evidence.added | id=evidence-000003 type=static-analysis result=success revision=1 actor=project:agent
 - 2026-09-28T13:22:39.771980Z | evidence.added | id=evidence-000004 type=build result=success revision=1 actor=project:agent
+- 2026-09-28T13:23:38.792165Z | tool.prepared | run=tool-20260928t13231790612618z tool=repository operation=commit actor=project:agent
+- 2026-09-28T13:23:38.795091Z | tool.running | run=tool-20260928t13231790612618z actor=project:agent
+- 2026-09-28T13:23:38.819119Z | tool.completed | run=tool-20260928t13231790612618z exit-code=0
+- 2026-09-28T13:24:54.644795Z | evidence.added | id=evidence-000005 type=static-analysis result=success revision=1 actor=project:agent
+- 2026-09-28T13:24:58.780609Z | evidence.added | id=evidence-000006 type=unit-tests result=success revision=1 actor=project:agent
+- 2026-09-28T13:24:59.044038Z | evidence.added | id=evidence-000007 type=unit-tests result=success revision=1 actor=project:agent
+- 2026-09-28T13:24:59.311578Z | evidence.added | id=evidence-000008 type=unit-tests result=success revision=1 actor=project:agent
+- 2026-09-28T13:24:59.573202Z | evidence.added | id=evidence-000009 type=unit-tests result=success revision=1 actor=project:agent
+- 2026-09-28T13:27:16.507940Z | work.transitioned | from=implementing to=reviewing actor=project:agent
+- 2026-09-28T13:27:59.552888Z | work.transitioned | from=reviewing to=verifying actor=project:agent
+- 2026-09-28T16:52:10.256039Z | work.criterion-satisfied | criterion=secret-scan actor=project:owner
+- 2026-09-28T16:52:10.545083Z | work.criterion-satisfied | criterion=runtime-allowlist actor=project:owner
+- 2026-09-28T16:52:10.827706Z | work.criterion-satisfied | criterion=no-client-secrets actor=project:owner
+- 2026-09-28T16:52:11.113614Z | work.criterion-satisfied | criterion=no-generated-code actor=project:owner
+- 2026-09-28T16:52:11.397858Z | work.criterion-satisfied | criterion=security-checklist actor=project:owner
+- 2026-09-28T16:52:11.665788Z | work.criterion-satisfied | criterion=adr-deviations actor=project:owner
+- 2026-09-28T16:52:11.928856Z | work.criterion-satisfied | criterion=cross-links actor=project:owner
+- 2026-09-28T16:52:44.836216Z | approval.added | role=product-owner actor=project:owner delegation=none
+- 2026-09-28T16:52:48.079389Z | work.transitioned | from=verifying to=completed actor=project:owner
