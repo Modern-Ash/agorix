@@ -50,6 +50,7 @@ import {
   type ProjectPersistence,
 } from "./projectStorage.js";
 import { LOCALE_LABELS, t, type Locale } from "./i18n.js";
+import { ProvenanceLabel } from "./ProvenanceLabel.js";
 import "./App.css";
 
 type RunStatus = "idle" | "running" | "stopped" | "complete" | "retry" | "freeplay" | "error";
@@ -787,7 +788,12 @@ export function App() {
           </div>
         </div>
         <div className="state-stack">
-          <strong className={`run-state run-state-${status}`}>{message}</strong>
+          <div className="run-state-row">
+            <strong className={`run-state run-state-${status}`}>{message}</strong>
+            {status === "complete" || status === "retry" || status === "stopped" ? (
+              <ProvenanceLabel kind="runtime-fact" locale={locale} />
+            ) : null}
+          </div>
           <span className="attempt-readout">
             {t(locale, "attemptsHints", { attempts, hints: hintHistory.length })}
           </span>
@@ -904,14 +910,21 @@ export function App() {
           <div className="panel-heading">
             <h2 id="companion-title">{t(locale, "proposalReview")}</h2>
             <span>
-              {tutorResponse === undefined
-                ? t(locale, "tutorOffline")
-                : t(locale, "hintLevel", { level: tutorResponse.hintLevel })}
+              {tutorResponse === undefined ? (
+                <>
+                  {t(locale, "tutorOffline")} <ProvenanceLabel kind="unavailable" locale={locale} />
+                </>
+              ) : (
+                t(locale, "hintLevel", { level: tutorResponse.hintLevel })
+              )}
             </span>
           </div>
           <p aria-live="polite">
             {proposalMessage ?? tutorResponse?.message ?? t(locale, "tutorIntro")}
           </p>
+          {proposalMessage === t(locale, "proposalAccepted") ? (
+            <ProvenanceLabel kind="accepted" locale={locale} />
+          ) : null}
           <div className="tutor-actions">
             <button type="button" onClick={previewDeterministicProposal}>
               {t(locale, "previewProposal")}
@@ -925,6 +938,7 @@ export function App() {
           </div>
           {proposalCard === undefined ? null : (
             <div className="proposal-card" data-testid="proposal-preview">
+              <ProvenanceLabel kind="suggestion" locale={locale} />
               <strong>{proposalCard.title}</strong>
               <p>{proposalCard.rationale}</p>
               <p>
