@@ -40,3 +40,23 @@
 - 2026-09-28T11:50:04.331624Z | work.criterion-stage-marked | criterion=tests actor=project:ai-runtime-2 stage=built
 - 2026-09-28T11:50:10.945607Z | work.criterion-stage-marked | criterion=tests actor=project:ai-runtime-2 stage=verified
 - 2026-09-28T11:50:30.871673Z | work.transitioned | from=construction to=operations actor=project:ai-runtime-2
+- 2026-09-29T23:09:19.022104Z | artifact.added | kind=security-scan-log uri=repo://.agora/swarms/007-persistence/work/versioned-local-persistence/ops/security-scan.log actor=project:ai-runtime-2
+- 2026-09-29T23:09:19.262802Z | artifact.added | kind=test-run-log uri=repo://.agora/swarms/007-persistence/work/versioned-local-persistence/ops/test-run.log actor=project:ai-runtime-2
+- 2026-09-29T23:09:19.500855Z | evidence.added | id=evidence-000002 type=security-scan result=success revision=1 actor=project:ai-runtime-2
+- 2026-09-29T23:09:19.745274Z | evidence.added | id=evidence-000003 type=test-suite result=success revision=1 actor=project:ai-runtime-2
+- 2026-09-29T23:10:59.504022Z | artifact.added | kind=operational-readiness uri=repo://.agora/swarms/007-persistence/work/versioned-local-persistence/ops/operational-readiness.md actor=project:ai-runtime-2
+- 2026-09-29T23:10:59.761452Z | artifact.added | kind=rollback-procedure uri=repo://.agora/swarms/007-persistence/work/versioned-local-persistence/ops/rollback-procedure.md actor=project:ai-runtime-2
+- 2026-09-29T23:11:00.016753Z | artifact.added | kind=deployment-record uri=repo://.agora/swarms/007-persistence/work/versioned-local-persistence/ops/deployment.md actor=project:ai-runtime-2
+- 2026-09-29T23:11:00.274304Z | evidence.added | id=evidence-000004 type=deployment result=success revision=1 actor=project:ai-runtime-2
+- 2026-09-29T23:11:06.245740Z | work.criterion-stage-marked | criterion=generated-code actor=project:ai-runtime-2 stage=deployed
+- 2026-09-29T23:11:06.514107Z | work.criterion-stage-marked | criterion=generated-code actor=project:product-owner stage=accepted
+- 2026-09-29T23:11:06.765191Z | work.criterion-stage-marked | criterion=safe-failure actor=project:ai-runtime-2 stage=deployed
+- 2026-09-29T23:11:07.011191Z | work.criterion-stage-marked | criterion=safe-failure actor=project:product-owner stage=accepted
+- 2026-09-29T23:11:07.258590Z | work.criterion-stage-marked | criterion=no-react actor=project:ai-runtime-2 stage=deployed
+- 2026-09-29T23:11:07.508300Z | work.criterion-stage-marked | criterion=no-react actor=project:product-owner stage=accepted
+- 2026-09-29T23:11:07.754221Z | work.criterion-stage-marked | criterion=no-pii actor=project:ai-runtime-2 stage=deployed
+- 2026-09-29T23:11:08.008791Z | work.criterion-stage-marked | criterion=no-pii actor=project:product-owner stage=accepted
+- 2026-09-29T23:11:08.250036Z | work.criterion-stage-marked | criterion=tests actor=project:ai-runtime-2 stage=deployed
+- 2026-09-29T23:11:08.489052Z | work.criterion-stage-marked | criterion=tests actor=project:product-owner stage=accepted
+- 2026-09-29T23:11:16.572056Z | approval.added | role=product-owner actor=project:product-owner delegation=none
+- 2026-09-29T23:13:17.482541Z | work.transitioned | from=operations to=completed actor=project:product-owner

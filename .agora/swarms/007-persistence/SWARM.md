@@ -2,7 +2,7 @@
 schema: "agora/swarm/v1"
 id: "persistence"
 method: "ai-sdlc"
-status: "running"
+status: "completed"
 branch: "feat/issue-28-persistence"
 required-roles: ["product-owner", "developer"]
 optional-roles: ["quality-reviewer"]
