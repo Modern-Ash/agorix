@@ -6,8 +6,9 @@ split off to [#100](https://github.com/Modern-Ash/agorix/issues/100) and
 [#103](https://github.com/Modern-Ash/agorix/issues/103) and is **not** covered here.
 
 Related safety documents: [CHILD_SAFETY_PRIVACY.md](CHILD_SAFETY_PRIVACY.md) holds the product-level
-privacy rules; [AI_OUTPUT_VALIDATION.md](AI_OUTPUT_VALIDATION.md) holds the #100/#103 output
-validation contract.
+privacy rules; [AI_OUTPUT_VALIDATION.md](AI_OUTPUT_VALIDATION.md) holds the #100 inbound output
+validation contract; [PRIVACY_THREAT_MODEL.md](PRIVACY_THREAT_MODEL.md) holds the #103 outbound
+data-flow/data-minimization threat model.
 
 ## How the baseline is enforced
 
