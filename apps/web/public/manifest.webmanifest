@@ -1,0 +1,26 @@
+{
+  "name": "Agorix",
+  "short_name": "Agorix",
+  "description": "Agorix: an open-source, AI-native programming learning environment for children.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#eef6ff",
+  "theme_color": "#06923e",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

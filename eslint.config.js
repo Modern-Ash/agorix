@@ -56,6 +56,19 @@ export default tseslint.config(
     },
   },
   {
+    // Service workers run in their own worker global scope, not Node or a page window.
+    files: ["apps/web/public/sw.js"],
+    languageOptions: {
+      globals: {
+        self: "readonly",
+        caches: "readonly",
+        fetch: "readonly",
+        URL: "readonly",
+        Response: "readonly",
+      },
+    },
+  },
+  {
     // R4: domain packages must not import UI/platform SDK packages.
     files: domainPackages.map((pkg) => `${pkg}/src/**/*.{ts,tsx}`),
     rules: {

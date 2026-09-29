@@ -396,3 +396,54 @@ test("Spanish touch edit path keeps action palette and numeric commit usable", a
   await expect(visibleCode(page, "sprite.move(160);")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Paleta de acciones" })).toBeVisible();
 });
+
+test("app is installable: manifest is linked and valid, service worker registers", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  const manifestHref = await page.locator('link[rel="manifest"]').getAttribute("href");
+  expect(manifestHref).toBe("/manifest.webmanifest");
+
+  const manifestResponse = await page.request.get("/manifest.webmanifest");
+  expect(manifestResponse.ok()).toBe(true);
+  const manifest = await manifestResponse.json();
+  expect(manifest.display).toBe("standalone");
+  expect(manifest.start_url).toBe("/");
+  expect(Array.isArray(manifest.icons)).toBe(true);
+  expect(manifest.icons.length).toBeGreaterThan(0);
+
+  await page.waitForFunction(
+    () => navigator.serviceWorker.getRegistration().then((r) => r !== undefined),
+    { timeout: 5000 },
+  );
+  const controlled = await page.evaluate(async () => {
+    const registration = await navigator.serviceWorker.ready;
+    return registration.active !== null;
+  });
+  expect(controlled).toBe(true);
+});
+
+test("app shell stays available offline after the service worker installs", async ({
+  page,
+  context,
+}) => {
+  await page.goto("/");
+  await page.evaluate(async () => {
+    await navigator.serviceWorker.ready;
+  });
+  await page.waitForLoadState("networkidle");
+  // Reload once more with the SW active so its fetch handler caches every asset this page requested.
+  await page.reload();
+  await page.waitForLoadState("networkidle");
+
+  await context.setOffline(true);
+  await page.reload();
+
+  await expect(
+    page.getByRole("heading", { name: "Build with blocks. See the code." }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Run" })).toBeVisible();
+
+  await context.setOffline(false);
+});
