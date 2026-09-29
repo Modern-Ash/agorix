@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App.js";
+import { registerServiceWorker } from "./registerServiceWorker.js";
 
 const container = document.getElementById("root");
 if (!container) {
@@ -12,3 +13,5 @@ createRoot(container).render(
     <App />
   </StrictMode>,
 );
+
+registerServiceWorker();

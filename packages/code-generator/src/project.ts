@@ -1,12 +1,19 @@
 import type { Expression, ProjectProgram, Script, Statement, Trigger } from "@agorix/program-model";
+import {
+  createUnsupportedNodeDiagnostic,
+  firstRangeMapping,
+  singleRangeMapping,
+  type LanguageProjection,
+  type LanguageProjectionDescriptor,
+  type LanguageProjectionDiagnostic,
+  type LanguageProjectionResult,
+  type NodeTextMapping as LanguageNodeTextMapping,
+  type TextRange,
+} from "@agorix/language-projection";
 
-/** Half-open character range into `ProjectionResult.code` (start inclusive, end exclusive). */
-export interface TextRange {
-  readonly start: number;
-  readonly end: number;
-}
+export type { TextRange } from "@agorix/language-projection";
 
-/** Canonical path-derived node id → text range, for UI block↔text highlighting. */
+/** Canonical path-derived node id -> text range, for UI block<->text highlighting. */
 export type NodeTextMapping = Readonly<Record<string, TextRange>>;
 
 /** Result of projecting a canonical program into educational source text. */
@@ -15,23 +22,37 @@ export interface ProjectionResult {
   readonly mapping: NodeTextMapping;
 }
 
+export const TYPESCRIPT_LIKE_PROJECTION: LanguageProjectionDescriptor = {
+  id: "typescript-like",
+  version: "1",
+  label: "TypeScript-like educational code",
+  family: "typescript",
+};
+
 /**
  * Thrown when a node's `type` is not part of the v1 schema (or was corrupted
- * before projection). Fails fast — never returns a partial result.
+ * before projection). Fails fast — never returns a partial legacy result.
  */
 export class UnsupportedNodeError extends Error {
   readonly nodeId: string;
   readonly nodeType: string;
+  readonly diagnostic: LanguageProjectionDiagnostic;
 
   constructor(nodeId: string, nodeType: string) {
+    const diagnostic = createUnsupportedNodeDiagnostic({
+      nodeId,
+      nodeType,
+      projectionId: TYPESCRIPT_LIKE_PROJECTION.id,
+    });
     super(`Unsupported node type ${JSON.stringify(nodeType)} at ${nodeId}`);
     this.name = "UnsupportedNodeError";
     this.nodeId = nodeId;
     this.nodeType = nodeType;
+    this.diagnostic = diagnostic;
   }
 }
 
-/** Deterministic number formatting for educational output (no locale, `-0` → `"0"`). */
+/** Deterministic number formatting for educational output (no locale, `-0` -> `"0"`). */
 export function formatNumber(value: number): string {
   if (Object.is(value, -0)) {
     return "0";
@@ -148,19 +169,10 @@ function projectScript(script: Script, index: number, writer: Writer): void {
   writer.mapping[scriptPath] = { start, end: writer.offset };
 }
 
-/**
- * Projects a canonical `ProjectProgram` into readable educational
- * TypeScript/JavaScript-like code with a node→text-range mapping.
- *
- * Pure: does not mutate `program`, performs no I/O. Same program structure
- * always yields byte-identical `code` and identical `mapping`.
- *
- * Format contract (deterministic): two-space indent, one statement per line,
- * trailing newline on `code`.
- *
- * @throws {UnsupportedNodeError} on the first unknown trigger/statement/expression `type`.
- */
-export function projectProgram(program: ProjectProgram): ProjectionResult {
+function projectText(program: ProjectProgram): {
+  readonly text: string;
+  readonly mapping: LanguageNodeTextMapping;
+} {
   const writer: Writer = { parts: [], offset: 0, mapping: {} };
   for (let i = 0; i < program.scripts.length; i += 1) {
     const script = program.scripts[i];
@@ -172,5 +184,41 @@ export function projectProgram(program: ProjectProgram): ProjectionResult {
     }
     projectScript(script, i, writer);
   }
-  return { code: writer.parts.join(""), mapping: writer.mapping };
+  return { text: writer.parts.join(""), mapping: singleRangeMapping(writer.mapping) };
+}
+
+export const typescriptLikeProjection: LanguageProjection = {
+  descriptor: TYPESCRIPT_LIKE_PROJECTION,
+  project(program: ProjectProgram): LanguageProjectionResult {
+    const projected = projectText(program);
+    return {
+      projection: TYPESCRIPT_LIKE_PROJECTION,
+      text: projected.text,
+      mapping: projected.mapping,
+      diagnostics: [],
+      metadata: { structuralNodeIds: Object.keys(projected.mapping) },
+    };
+  },
+};
+
+/** Projects a canonical program into the new LanguageProjection contract. */
+export function projectProgramLanguage(program: ProjectProgram): LanguageProjectionResult {
+  return typescriptLikeProjection.project(program);
+}
+
+/**
+ * Projects a canonical `ProjectProgram` into readable educational
+ * TypeScript/JavaScript-like code with a node->text-range mapping.
+ *
+ * Pure: does not mutate `program`, performs no I/O. Same program structure
+ * always yields byte-identical `code` and identical `mapping`.
+ *
+ * Format contract (deterministic): two-space indent, one statement per line,
+ * trailing newline on `code`.
+ *
+ * @throws {UnsupportedNodeError} on the first unknown trigger/statement/expression `type`.
+ */
+export function projectProgram(program: ProjectProgram): ProjectionResult {
+  const result = projectProgramLanguage(program);
+  return { code: result.text, mapping: firstRangeMapping(result.mapping) };
 }

@@ -1,6 +1,10 @@
 import type { Expression, ProjectProgram, Statement, Trigger } from "@agorix/program-model";
 import { validateProgram } from "@agorix/program-model";
 import { cloneWorldState, moveWorld, touchingGoal, turnWorld, type WorldState } from "./world.js";
+import { RuntimeExecutionError } from "./errors.js";
+import { assertAllowedRuntimeOperation, assertProgramOperationsAllowed } from "./operations.js";
+
+export { RuntimeExecutionError };
 
 export const DEFAULT_EXECUTION_BUDGET = 1_000;
 
@@ -52,18 +56,6 @@ export interface RunResult {
   readonly stepsUsed: number;
   readonly trace: readonly ExecutionTraceEntry[];
   readonly observations: readonly RuntimeObservation[];
-}
-
-export class RuntimeExecutionError extends Error {
-  readonly nodeId: string;
-  readonly nodeType: string;
-
-  constructor(nodeId: string, nodeType: string) {
-    super(`Unsupported runtime node type ${JSON.stringify(nodeType)} at ${nodeId}`);
-    this.name = "RuntimeExecutionError";
-    this.nodeId = nodeId;
-    this.nodeType = nodeType;
-  }
 }
 
 class ExecutionHalt {
@@ -129,6 +121,7 @@ function assertStatementBoundary(path: string, state: MutableRunState): void {
 }
 
 function evaluateExpression(expression: Expression, path: string, world: WorldState): boolean {
+  assertAllowedRuntimeOperation("expression", expression.type, path);
   switch (expression.type) {
     case "touchingGoal":
       return touchingGoal(world);
@@ -145,6 +138,7 @@ function evaluateExpression(expression: Expression, path: string, world: WorldSt
 
 function executeStatement(statement: Statement, path: string, state: MutableRunState): void {
   assertStatementBoundary(path, state);
+  assertAllowedRuntimeOperation("statement", statement.type, path);
   const nodeId = nodeIdFromPath(path);
   const before = cloneWorldState(state.world);
   recordObservation(state, {
@@ -215,6 +209,7 @@ function executeStatements(
 }
 
 function assertTrigger(trigger: Trigger, path: string): void {
+  assertAllowedRuntimeOperation("trigger", trigger.type, path);
   switch (trigger.type) {
     case "onStart":
       return;
@@ -231,6 +226,7 @@ export function runProgram(
   options: ExecutionOptions = {},
 ): RunResult {
   const validated = validateProgram(program);
+  assertProgramOperationsAllowed(validated);
   const state: MutableRunState = {
     world: cloneWorldState(initialWorld),
     stepsUsed: 0,

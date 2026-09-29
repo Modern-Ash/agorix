@@ -1,5 +1,10 @@
 # Child safety and privacy — POC constraints
 
+Companion documents: [WEB_SECURITY_BASELINE.md](WEB_SECURITY_BASELINE.md) turns these constraints
+into CI-enforced controls; [AI_OUTPUT_VALIDATION.md](AI_OUTPUT_VALIDATION.md) covers provider-output
+validation; [PRIVACY_THREAT_MODEL.md](PRIVACY_THREAT_MODEL.md) covers the outbound data-flow and
+data-minimization model for local vs. remote AI modes (issue #103).
+
 ## POC data minimization
 
 The proof of concept requires no child account, real name, email, school, address, precise age, photo or public profile.
@@ -22,7 +27,8 @@ Use an anonymous/local learner profile if a display name is needed.
 - minimum context only;
 - raw conversation persistence disabled by default;
 - provider request/response logs must be disabled or redacted where controllable;
-- UI must make clear that tutor suggestions can be wrong.
+- UI must make clear that tutor suggestions can be wrong;
+- local mode (fake/Ollama runtime) makes no external-network request — `localhost` only; remote mode is opt-in and routes through the server-side `apps/tutor-api`, never directly from the browser (see [PRIVACY_THREAT_MODEL.md](PRIVACY_THREAT_MODEL.md)).
 
 ## Content
 

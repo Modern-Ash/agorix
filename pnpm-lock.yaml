@@ -35,6 +35,9 @@ importers:
 
   apps/tutor-api:
     dependencies:
+      '@agorix/provider-runtime':
+        specifier: workspace:*
+        version: link:../../packages/provider-runtime
       '@agorix/tutor-contract':
         specifier: workspace:*
         version: link:../../packages/tutor-contract
@@ -44,18 +47,27 @@ importers:
       '@agorix/block-editor':
         specifier: workspace:*
         version: link:../../packages/block-editor
+      '@agorix/curriculum':
+        specifier: workspace:*
+        version: link:../../packages/curriculum
       '@agorix/persistence':
         specifier: workspace:*
         version: link:../../packages/persistence
       '@agorix/program-model':
         specifier: workspace:*
         version: link:../../packages/program-model
+      '@agorix/proposals':
+        specifier: workspace:*
+        version: link:../../packages/proposals
       '@agorix/runtime':
         specifier: workspace:*
         version: link:../../packages/runtime
       '@agorix/stage':
         specifier: workspace:*
         version: link:../../packages/stage
+      '@agorix/tutor-contract':
+        specifier: workspace:*
+        version: link:../../packages/tutor-contract
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -79,6 +91,37 @@ importers:
         specifier: ^7.1.0
         version: 7.3.6(@types/node@26.6.2)
 
+  extensions/vscode:
+    dependencies:
+      '@agorix/code-generator':
+        specifier: workspace:*
+        version: link:../../packages/code-generator
+      '@agorix/curriculum':
+        specifier: workspace:*
+        version: link:../../packages/curriculum
+      '@agorix/persistence':
+        specifier: workspace:*
+        version: link:../../packages/persistence
+      '@agorix/program-model':
+        specifier: workspace:*
+        version: link:../../packages/program-model
+      '@agorix/proposals':
+        specifier: workspace:*
+        version: link:../../packages/proposals
+      '@agorix/runtime':
+        specifier: workspace:*
+        version: link:../../packages/runtime
+      '@agorix/stage':
+        specifier: workspace:*
+        version: link:../../packages/stage
+    devDependencies:
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+      vitest:
+        specifier: ^4.1.11
+        version: 4.1.11(@types/node@26.6.2)(vite@7.3.6(@types/node@26.6.2))
+
   packages/block-editor:
     dependencies:
       '@agorix/code-generator':
@@ -90,11 +133,27 @@ importers:
 
   packages/code-generator:
     dependencies:
+      '@agorix/language-projection':
+        specifier: workspace:*
+        version: link:../language-projection
       '@agorix/program-model':
         specifier: workspace:*
         version: link:../program-model
 
-  packages/curriculum: {}
+  packages/curriculum:
+    dependencies:
+      '@agorix/program-model':
+        specifier: workspace:*
+        version: link:../program-model
+      '@agorix/runtime':
+        specifier: workspace:*
+        version: link:../runtime
+
+  packages/language-projection:
+    dependencies:
+      '@agorix/program-model':
+        specifier: workspace:*
+        version: link:../program-model
 
   packages/persistence:
     dependencies:
@@ -105,6 +164,30 @@ importers:
   packages/platform-contract: {}
 
   packages/program-model: {}
+
+  packages/proposals:
+    dependencies:
+      '@agorix/code-generator':
+        specifier: workspace:*
+        version: link:../code-generator
+      '@agorix/persistence':
+        specifier: workspace:*
+        version: link:../persistence
+      '@agorix/program-model':
+        specifier: workspace:*
+        version: link:../program-model
+
+  packages/provider-runtime:
+    dependencies:
+      '@agorix/program-model':
+        specifier: workspace:*
+        version: link:../program-model
+      '@agorix/runtime':
+        specifier: workspace:*
+        version: link:../runtime
+      '@agorix/tutor-contract':
+        specifier: workspace:*
+        version: link:../tutor-contract
 
   packages/runtime:
     dependencies:
@@ -122,7 +205,20 @@ importers:
         specifier: workspace:*
         version: link:../runtime
 
-  packages/tutor-contract: {}
+  packages/tutor-contract:
+    dependencies:
+      '@agorix/curriculum':
+        specifier: workspace:*
+        version: link:../curriculum
+      '@agorix/program-model':
+        specifier: workspace:*
+        version: link:../program-model
+      '@agorix/proposals':
+        specifier: workspace:*
+        version: link:../proposals
+      '@agorix/runtime':
+        specifier: workspace:*
+        version: link:../runtime
 
 packages:
 

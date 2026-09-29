@@ -9,26 +9,10 @@ operational-status: "active"
 status-reason: null
 status-by: null
 status-at: null
-acceptance-criteria:
-  {
-    "ci-runs": "CI runs on PR",
-    "cache-correctness": "cache cannot hide correctness failures",
-    "browser-smoke": "browser smoke can run offline",
-    "boundary-check": "package-boundary rule catches React/Blockly/Phaser/Capacitor/VS Code leaks into domain packages",
-    "ci-evidence": "CI result can be recorded as Agora evidence",
-    "root-match": "root commands and CI commands match",
-  }
+acceptance-criteria: {"ci-runs":"CI runs on PR","cache-correctness":"cache cannot hide correctness failures","browser-smoke":"browser smoke can run offline","boundary-check":"package-boundary rule catches React/Blockly/Phaser/Capacitor/VS Code leaks into domain packages","ci-evidence":"CI result can be recorded as Agora evidence","root-match":"root commands and CI commands match"}
 satisfied-criteria: ["ci-runs"]
-criterion-statuses:
-  {
-    "ci-runs": ["elaborated", "designed", "built", "verified", "deployed", "accepted"],
-    "cache-correctness": ["elaborated"],
-    "browser-smoke": ["elaborated"],
-    "boundary-check": ["elaborated"],
-    "ci-evidence": ["elaborated"],
-    "root-match": ["elaborated"],
-  }
-required-artifacts: ["domain-model", "architecture", "implementation-plan", "test-strategy"]
+criterion-statuses: {"ci-runs":["elaborated","designed","built","verified","deployed","accepted"],"cache-correctness":["elaborated"],"browser-smoke":["elaborated"],"boundary-check":["elaborated"],"ci-evidence":["elaborated"],"root-match":["elaborated"]}
+required-artifacts: ["domain-model","architecture","implementation-plan","test-strategy"]
 child-work-refs: []
 budget-limits: null
 ---

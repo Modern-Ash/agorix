@@ -4,6 +4,7 @@ import type { ProjectProgram, Script } from "@agorix/program-model";
 import { SCHEMA_VERSION } from "@agorix/program-model";
 import { describe, expect, it } from "vitest";
 import { App } from "./App.js";
+import { assertCatalogCompleteness, resolveLocale, t } from "./i18n.js";
 import {
   addBlockToWorkspace,
   blockNodeId,
@@ -25,21 +26,53 @@ describe("main editor shell", () => {
     const html = renderToStaticMarkup(<App />);
 
     expect(html).toContain("Agorix First Mission");
-    expect(html).toContain("Blocks");
+    expect(html).toContain("Mission: Get your sprite to the goal.");
+    expect(html).toContain("Action palette");
     expect(html).toContain("When you press Run");
     expect(html).toContain("Stage");
     expect(html).toContain("Code");
+    expect(html).toContain("Trace");
+    expect(html).toContain("Press Step to inspect what changes.");
     expect(html).toContain("Tutor suggestion");
+    expect(html).toContain("Product language");
+    expect(html).toContain("English");
+    expect(html).toContain("Español");
+    expect(html).toContain("Preview proposal");
+    expect(html).toContain("Get hint");
+    expect(html).toContain("Hints used: 0");
+    expect(html).toContain("Build");
+    expect(html).toContain("Run");
+    expect(html).toContain("Reflect");
+    expect(html).toContain("Attempts: 0");
     expect(html).toContain("Run");
     expect(html).toContain("Stop");
+    expect(html).toContain("Step");
     expect(html).toContain("Reset");
+  });
+
+  it("labels the tutor as unavailable before any hint has been requested (issue #99)", () => {
+    const html = renderToStaticMarkup(<App />);
+
+    expect(html).toContain('data-provenance="unavailable"');
+    expect(html).not.toContain('data-provenance="suggestion"');
+    expect(html).not.toContain('data-provenance="accepted"');
   });
 
   it("starts with blocks and code visible at the same time", () => {
     const html = renderToStaticMarkup(<App />);
 
-    expect(html.indexOf("Blocks")).toBeGreaterThan(-1);
+    expect(html.indexOf("Action palette")).toBeGreaterThan(-1);
     expect(html.indexOf("This is the code behind your blocks.")).toBeGreaterThan(-1);
+  });
+});
+
+describe("web i18n", () => {
+  it("has complete catalogs and deterministic fallback", () => {
+    expect(() => assertCatalogCompleteness()).not.toThrow();
+    expect(resolveLocale("es-AR")).toBe("es");
+    expect(resolveLocale("pt-BR")).toBe("en");
+    expect(t("es", "run")).toBe("Ejecutar");
+    expect(t("es", "trace")).toBe("Traza");
   });
 });
 
@@ -120,7 +153,7 @@ describe("editor persistence", () => {
     expect(reloaded.code).toContain("sprite.move(24);");
   });
 
-  it("stores canonical program and metadata without generated code", () => {
+  it("stores canonical program and metadata without generated code while locale stays metadata-only", () => {
     const storage = new MemoryStorage();
     const store = new ProjectStore({ storage: new WebLocalStorageAdapter(storage) });
     const persistence = { projectId: WEB_PROJECT_ID, store };
@@ -134,15 +167,23 @@ describe("editor persistence", () => {
       updatedAt: "2026-01-01T00:00:01.000Z",
       missionProgress: 1,
       hintLevel: 0,
+      locale: "es",
     });
     const raw = storage.getItem(`agorix:${WEB_PROJECT_ID}`);
     const loaded = loadEditorProject(persistence);
 
     expect(error).toBeUndefined();
     expect(raw).toContain('"program"');
+    const parsed = JSON.parse(raw ?? "{}") as { program: ProjectProgram };
+
     expect(raw).toContain('"metadata"');
+    expect(raw).toContain('"locale":"es"');
+    expect(parsed.program).toEqual(program);
+    expect(JSON.stringify(parsed.program)).not.toContain("locale");
     expect(raw).not.toContain("sprite.move");
     expect(raw).not.toContain('"code"');
+    expect(loaded.model?.program).toEqual(program);
+    expect(loaded.metadata?.locale).toBe("es");
     expect(loaded.model?.code).toContain("sprite.move(24);");
   });
 

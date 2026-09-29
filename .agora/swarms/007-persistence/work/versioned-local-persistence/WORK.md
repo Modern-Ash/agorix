@@ -10,8 +10,8 @@ status-reason: null
 status-by: null
 status-at: null
 acceptance-criteria: {"reload":"reload restores project semantics","generated-code":"generated code is regenerated from canonical state","safe-failure":"unknown future version fails safely","no-react":"persistence package has no React dependency","no-pii":"no child PII required","tests":"unit tests plus integration test with editor state"}
-satisfied-criteria: ["reload","generated-code","safe-failure","no-react","no-pii","tests"]
-criterion-statuses: {"reload":["elaborated","designed","built","verified","deployed","accepted"],"generated-code":["elaborated","designed","built","verified","deployed","accepted"],"safe-failure":["elaborated","designed","built","verified","deployed","accepted"],"no-react":["elaborated","designed","built","verified","deployed","accepted"],"no-pii":["elaborated","designed","built","verified","deployed","accepted"],"tests":["elaborated","designed","built","verified","deployed","accepted"]}
+satisfied-criteria: ["reload"]
+criterion-statuses: {"reload":["elaborated","designed","built","verified","deployed","accepted"],"generated-code":["elaborated"],"safe-failure":["elaborated"],"no-react":["elaborated"],"no-pii":["elaborated"],"tests":["elaborated"]}
 required-artifacts: ["domain-model","architecture","implementation-plan","test-strategy"]
 child-work-refs: []
 budget-limits: null

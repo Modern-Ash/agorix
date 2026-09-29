@@ -1,0 +1,78 @@
+{
+  "authority": {
+    "actor_id": "project:ai-claude",
+    "human_boundary": false,
+    "role": "developer"
+  },
+  "context": {
+    "execution_bundle": "/home/faguero/dev-agora/.agorix-agora-worktrees/issue-91/.agora/ai-sdlc/bundles/issue-91/EXECUTION_BUNDLE.json",
+    "guidance": "Run Agora Flow Construction for the current governed Work. The governed project root is exactly /home/faguero/dev-agora/.agorix-agora-worktrees/issue-91. Read .agora/ai-sdlc/bundles/issue-91/EXECUTION_BUNDLE.json first; it is the deterministic bounded execution context. Then read .agora/skills/agora-ai-sdlc-guided/references/construction.md. The governed scope is swarm=issue-91-delivery, work=issue-91. Before changing files, verify the current working directory resolves to the governed project root. Do not broaden repository inspection unless the execution bundle leaves an explicit unresolved need. Implement only the approved scope and acceptance criteria. Prepare the required Construction artifacts through the repository and register them through Agora Core when the installed contracts require registration. Run deterministic verification using aisdlc verify --run when authorized and record evidence through Core. Never fabricate criterion satisfaction, approval, evidence, or human authority. Do not transition lifecycle state and do not approve any role. Stop after the bounded Construction work and verification evidence are prepared for review. Your final response must concisely state files changed, verification performed, evidence recorded, remaining blockers, and the next human-governed decision.",
+    "purpose": "construction"
+  },
+  "digest": "sha256:3b83e357cb62d077612c2abcecbca608bbf0a8756dedeb970bcd5099b14c8107",
+  "display": "construction.execute --work issue-91",
+  "executable": true,
+  "next_transition": {
+    "arguments": [
+      {
+        "name": "work",
+        "value": "issue-91"
+      }
+    ],
+    "operation": "construction.execute"
+  },
+  "requirements": {
+    "activity_class": "construction.implementation",
+    "advisory": {
+      "accepted": [],
+      "confidence": {
+        "change_risk": 0.0142,
+        "planner_needed": 0.0238,
+        "reasoning_tier": 0.0101,
+        "security_review": 0.0008,
+        "validation_focus": 0.0136
+      },
+      "escalated": [
+        "change_risk",
+        "planner_needed",
+        "reasoning_tier",
+        "security_review",
+        "validation_focus"
+      ],
+      "model": "typed-decisions",
+      "provider": "laya"
+    },
+    "executable_by_agent": true,
+    "human_authority_required": false,
+    "planner_needed": "none",
+    "reasoning_tier": "local",
+    "required_capabilities": [
+      "workspace.read",
+      "workspace.write",
+      "shell.execute"
+    ],
+    "risk": "low",
+    "schema": "agora-ai-sdlc/execution-requirements/v1",
+    "security_review": "normal",
+    "validation_focus": [
+      "functional"
+    ]
+  },
+  "runtime": {
+    "agent": {
+      "id": "claude",
+      "integration": "claude-code"
+    },
+    "model": {
+      "id": "anthropic",
+      "model": "configured-default",
+      "provider": "anthropic"
+    }
+  },
+  "schema": "agora-ai-sdlc/execution-envelope/v1",
+  "work": {
+    "id": "issue-91",
+    "revision": "b795a1573e007e81b8c63a60d817b3fbe4b99d3ad2895129977f67a438f257c0",
+    "swarm": "issue-91-delivery"
+  }
+}

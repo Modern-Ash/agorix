@@ -1,0 +1,68 @@
+{
+  "acceptance_coverage": [
+    {
+      "candidate_test_paths": [],
+      "criterion": "adding a World does not require changing canonical program schema",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [],
+      "criterion": "mission identity remains locale-independent",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [],
+      "criterion": "world assets can be localized/themed without logic forks",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [],
+      "criterion": "same mission semantics can render across Web and Studio World Preview",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [],
+      "criterion": "initial World has accessible reduced-motion behavior",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [],
+      "criterion": "assets/license requirements are documented.",
+      "mechanically_satisfied": false
+    }
+  ],
+  "all_executed_commands_passed": true,
+  "commands": [
+    {
+      "allowed": true,
+      "argv": [
+        "pnpm",
+        "build"
+      ],
+      "command": "pnpm build",
+      "elapsed_seconds": 5.912,
+      "exit_code": 0,
+      "status": "passed",
+      "stderr": "",
+      "stdout": "WARN\u2009 Unsupported engine: wanted: {\"node\":\">=22 <23\"} (current: {\"node\":\"v20.19.0\",\"pnpm\":\"9.15.9\"})\n\n> agorix@0.0.0 build /home/faguero/dev-agora/.agorix-main-issue119\n> pnpm -r --if-present run build\n\n.                                        | \u2009WARN\u2009 Unsupported engine: wanted: {\"node\":\">=22 <23\"} (current: {\"node\":\"v20.19.0\",\"pnpm\":\"9.15.9\"})\nScope: 11 of 12 workspace projects\npackages/platform-contract build$ tsc -p tsconfig.json\npackages/program-model build$ tsc -p tsconfig.json\npackages/platform-contract build: Done\npackages/program-model build: Done\npackages/code-generator build$ tsc -p tsconfig.json\npackages/persistence build$ tsc -p tsconfig.json\npackages/code-generator build: Done\npackages/persistence build: Done\npackages/block-editor build$ tsc -p tsconfig.json\npackages/runtime build$ tsc -p tsconfig.json\npackages/runtime build: Done\npackages/block-editor build: Done\npackages/curriculum build$ tsc -p tsconfig.json\npackages/stage build$ tsc -p tsconfig.json\npackages/stage build: Done\npackages/curriculum build: Done\npackages/tutor-contract build$ tsc -p tsconfig.json\npackages/tutor-contract build: Done\napps/web build$ tsc -p tsconfig.json && vite build\napps/tutor-api build$ tsc -p tsconfig.json\napps/tutor-api build: Done\napps/web build: vite v7.3.6 building client environment for production...\napps/web build: transforming...\napps/web build: \u2713 50 modules transformed.\napps/web build: rendering chunks...\napps/web build: computing gzip size...\napps/web build: dist/index.html                   0.39 kB \u2502 gzip:  0.26 kB\napps/web build: dist/assets/index-CbIdeNIi.css   10.67 kB \u2502 gzip:  2.97 kB\napps/web build: dist/assets/index-BSg_Sedn.js   196.02 kB \u2502 gzip: 62.09 kB\napps/web build: \u2713 built in 576ms\napps/web build: Done"
+    },
+    {
+      "allowed": true,
+      "argv": [
+        "pnpm",
+        "test"
+      ],
+      "command": "pnpm test",
+      "elapsed_seconds": 1.076,
+      "exit_code": 0,
+      "status": "passed",
+      "stderr": "",
+      "stdout": "WARN\u2009 Unsupported engine: wanted: {\"node\":\">=22 <23\"} (current: {\"node\":\"v20.19.0\",\"pnpm\":\"9.15.9\"})\n\n> agorix@0.0.0 test /home/faguero/dev-agora/.agorix-main-issue119\n> vitest run\n\n\n RUN  v4.1.11 /home/faguero/dev-agora/.agorix-main-issue119\n\n\n Test Files  15 passed (15)\n      Tests  141 passed (141)\n   Start at  07:07:55\n   Duration  541ms (transform 2.34s, setup 0ms, import 2.94s, tests 135ms, environment 1ms)"
+    }
+  ],
+  "executed": true,
+  "head": "dc7cd44bb543e628f767534838be9961970eb896",
+  "report_path": "/home/faguero/dev-agora/.agorix-main-issue119/.agora/ai-sdlc/verification/issue-119/VERIFICATION.json",
+  "schema": "agora-ai-sdlc/verification-report/v1",
+  "work": "issue-119"
+}

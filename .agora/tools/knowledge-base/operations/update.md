@@ -4,9 +4,8 @@ id: "update"
 name: "Update a document"
 capability: "docs.write"
 risk: "write"
-arguments:
-  ["page", "update", "{document}", "--title", "{title}", "--body", "{body}", "--output", "json"]
-inputs: ["document", "title", "body"]
+arguments: ["page","update","{document}","--title","{title}","--body","{body}","--output","json"]
+inputs: ["document","title","body"]
 result-kind: "documentation"
 ---
 

@@ -4,8 +4,9 @@ id: "persistence"
 method: "ai-sdlc"
 status: "completed"
 branch: "feat/issue-28-persistence"
-required-roles: ["product-owner","developer"]
-assignments: {"product-owner":"project:product-owner","developer":"project:ai-runtime-2"}
+required-roles: ["product-owner", "developer"]
+optional-roles: ["quality-reviewer"]
+assignments: { "product-owner": "project:product-owner", "developer": "project:ai-runtime-2" }
 ---
 
 # Swarm persistence

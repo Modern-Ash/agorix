@@ -14,7 +14,8 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "build": "pnpm -r --if-present run build",
-    "verify": "pnpm install --frozen-lockfile && pnpm lint && pnpm test && pnpm build"
+    "security:check": "node scripts/security-baseline.mjs",
+    "verify": "pnpm install --frozen-lockfile && pnpm lint && pnpm test && pnpm build && pnpm security:check"
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",

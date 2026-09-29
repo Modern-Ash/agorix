@@ -1,0 +1,28 @@
+# Work events
+
+- 2026-09-28T20:23:06.209724Z | work.created | state=inception actor=project:product-owner
+- 2026-09-28T20:23:12.729368Z | artifact.added | kind=intent uri=repo://.agora/intents/issue-91/INTENT.md actor=project:ai-claude
+- 2026-09-28T20:23:12.732786Z | artifact.added | kind=requirements uri=repo://.agora/intents/issue-91/REQUIREMENTS.md actor=project:ai-claude
+- 2026-09-28T20:23:12.735388Z | artifact.added | kind=unit-of-work uri=repo://.agora/intents/issue-91/UNIT-OF-WORK.md actor=project:ai-claude
+- 2026-09-28T20:23:12.737993Z | work.criterion-stage-marked | criterion=source-issue actor=project:ai-claude stage=elaborated
+- 2026-09-28T20:23:12.773478Z | work.clarified-advisory | questions=0 actor=project:ai-claude
+- 2026-09-28T20:30:23.390919Z | artifact.added | kind=plan uri=repo://.agora/intents/issue-91/PLAN.md actor=project:ai-claude
+- 2026-09-28T20:30:23.658779Z | artifact.added | kind=user-stories uri=repo://.agora/intents/issue-91/USER-STORIES.md actor=project:ai-claude
+- 2026-09-28T20:30:23.933743Z | artifact.added | kind=nfr uri=repo://.agora/intents/issue-91/NFR.md actor=project:ai-claude
+- 2026-09-28T20:30:24.212182Z | artifact.added | kind=risk-register uri=repo://.agora/intents/issue-91/RISK-REGISTER.md actor=project:ai-claude
+- 2026-09-28T20:30:24.485225Z | artifact.added | kind=measurement-criteria uri=repo://.agora/intents/issue-91/MEASUREMENT-CRITERIA.md actor=project:ai-claude
+- 2026-09-28T20:30:24.759930Z | artifact.added | kind=bolt-plan uri=repo://.agora/intents/issue-91/BOLT-PLAN.md actor=project:ai-claude
+- 2026-09-28T20:31:37.928966Z | approval.added | role=product-owner actor=project:product-owner delegation=none
+- 2026-09-28T20:33:57.092509Z | approval.added | role=developer actor=project:ai-claude delegation=none
+- 2026-09-28T20:35:00.027269Z | work.transitioned | from=inception to=construction actor=project:ai-claude
+- 2026-09-28T21:26:15.599712Z | artifact.added | kind=domain-model uri=repo://.agora/intents/issue-91/DOMAIN-MODEL.md actor=project:ai-claude
+- 2026-09-28T21:26:15.869806Z | artifact.added | kind=logical-design uri=repo://.agora/intents/issue-91/LOGICAL-DESIGN.md actor=project:ai-claude
+- 2026-09-28T21:26:16.150511Z | artifact.added | kind=implementation-plan uri=repo://.agora/intents/issue-91/IMPLEMENTATION-PLAN.md actor=project:ai-claude
+- 2026-09-28T21:26:16.422798Z | artifact.added | kind=test-strategy uri=repo://.agora/intents/issue-91/TEST-STRATEGY.md actor=project:ai-claude
+- 2026-09-28T21:26:16.708221Z | artifact.added | kind=deployment-unit uri=repo://.agora/intents/issue-91/DEPLOYMENT-UNIT.md actor=project:ai-claude
+- 2026-09-28T21:26:22.066069Z | evidence.added | id=evidence-000001 type=test-suite result=success revision=1 actor=project:ai-claude
+- 2026-09-28T21:26:26.728702Z | evidence.added | id=evidence-000002 type=e2e-suite result=success revision=1 actor=project:ai-claude
+- 2026-09-28T21:26:55.554399Z | work.criterion-stage-marked | criterion=source-issue actor=project:ai-claude stage=designed
+- 2026-09-28T21:26:55.807884Z | work.criterion-stage-marked | criterion=source-issue actor=project:ai-claude stage=built
+- 2026-09-28T21:26:56.066877Z | work.criterion-stage-marked | criterion=source-issue actor=project:ai-claude stage=verified
+- 2026-09-28T21:27:04.307218Z | work.transitioned | from=construction to=operations actor=project:ai-claude
