@@ -131,6 +131,15 @@ export const PII_DOMAIN_FIELD_PATTERN =
 
 const PII_SCOPE = { include: ["packages/persistence/", "packages/platform-contract/"] };
 
+/**
+ * Issue #103: raw learner free text must never reach a logging sink. Matches
+ * a console/log-shaped call whose arguments reference the free-text fields.
+ */
+export const LEARNER_FREE_TEXT_LOG_PATTERN =
+  /\b(?:console\s*\.\s*\w+|log(?:ger)?\s*\.\s*\w+)\s*\([^)]*\b(?:learnerIntent|learnerQuestion)\b/;
+
+const LEARNER_FREE_TEXT_LOG_SCOPE = { include: FIRST_PARTY_SOURCE_GLOBS };
+
 /** Vite config is included: build-time env injection is the classic bundle leak. */
 const CLIENT_IDENTIFIER_SCOPE = { include: ["apps/web/", "apps/mobile/"] };
 /** Only code and markup that actually ship to the browser. */
@@ -429,6 +438,32 @@ function checkPiiDomainFields({ files, read }) {
   return findings;
 }
 
+function checkLearnerFreeTextLogging({ files, read }) {
+  const findings = [];
+  for (const file of files) {
+    if (!inScope(file, LEARNER_FREE_TEXT_LOG_SCOPE)) continue;
+    const content = read(file);
+    if (content === null || hasFileAllowlist(content)) continue;
+    const lines = content.split("\n");
+    for (let index = 0; index < lines.length; index += 1) {
+      const raw = lines[index] ?? "";
+      if (hasLineAllowlist(raw)) continue;
+      const line = stripAllowlist(raw);
+      if (LEARNER_FREE_TEXT_LOG_PATTERN.test(line)) {
+        findings.push(
+          finding(
+            "no-learner-free-text-logging",
+            file,
+            index + 1,
+            "raw learner free text (learnerIntent/learnerQuestion) must not reach a logging sink",
+          ),
+        );
+      }
+    }
+  }
+  return findings;
+}
+
 function checkProhibitedFeatures({ files, read }) {
   const findings = [];
   for (const file of files) {
@@ -553,6 +588,7 @@ export function runSecurityBaseline(root = process.cwd()) {
     }),
     ...checkExternalLinks({ files, read }),
     ...checkPiiDomainFields({ files, read }),
+    ...checkLearnerFreeTextLogging({ files, read }),
     ...checkProhibitedFeatures({ files, read }),
     ...checkSafetyDocs({ files, read, notes }),
   ];

@@ -259,6 +259,38 @@ describe("security baseline checker", () => {
     });
   });
 
+  describe("learner free-text logging (issue #103)", () => {
+    it.each([
+      ["apps/tutor-api/src/index.ts", 'console.log("request", learnerIntent);'],
+      ["apps/web/src/App.tsx", "console.warn(learnerQuestion);"],
+      ["packages/tutor-contract/src/learning-companion.ts", "logger.info({ learnerIntent });"],
+    ])("catches a logging call referencing raw learner free text in %s", (file, line) => {
+      write(file, `${line}\n`);
+      expect(rulesIn().inRule("no-learner-free-text-logging")).toBe(true);
+    });
+
+    it("does not flag the field being read, stripped, or typed without logging it", () => {
+      write(
+        "apps/tutor-api/src/index.ts",
+        [
+          "function toCompanionRequest(request) {",
+          "  if (config.includeLearnerQuestion === true || companion.learnerIntent === undefined) {",
+          "    return companion;",
+          "  }",
+          "  delete projected.learnerIntent;",
+          "  return projected;",
+          "}",
+        ].join("\n"),
+      );
+      expect(rulesIn().inRule("no-learner-free-text-logging")).toBe(false);
+    });
+
+    it("does not flag console calls unrelated to learner free text", () => {
+      write("apps/web/src/App.tsx", 'console.error("network failure");\n');
+      expect(rulesIn().inRule("no-learner-free-text-logging")).toBe(false);
+    });
+  });
+
   describe("prohibited POC features", () => {
     it.each([
       ["geolocation", "navigator.geolocation.getCurrentPosition(onLoc);"],
