@@ -50,6 +50,14 @@ describe("main editor shell", () => {
     expect(html).toContain("Reset");
   });
 
+  it("labels the tutor as unavailable before any hint has been requested (issue #99)", () => {
+    const html = renderToStaticMarkup(<App />);
+
+    expect(html).toContain('data-provenance="unavailable"');
+    expect(html).not.toContain('data-provenance="suggestion"');
+    expect(html).not.toContain('data-provenance="accepted"');
+  });
+
   it("starts with blocks and code visible at the same time", () => {
     const html = renderToStaticMarkup(<App />);
 

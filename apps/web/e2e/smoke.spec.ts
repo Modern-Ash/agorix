@@ -447,3 +447,32 @@ test("app shell stays available offline after the service worker installs", asyn
 
   await context.setOffline(false);
 });
+
+test("provenance is visually and textually distinguishable across suggestion, accepted and runtime-fact states (issue #99)", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  // Initial state: no AI content shown yet, tutor marked unavailable.
+  await expect(page.locator('[data-provenance="unavailable"]')).toBeVisible();
+  await expect(page.locator('[data-provenance="suggestion"]')).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Move" }).click();
+  await applyMoveSteps(page, "24");
+
+  // A proposal preview is an explicit, labeled suggestion — not yet applied.
+  await page.getByRole("button", { name: "Preview proposal" }).click();
+  const suggestion = page.locator('[data-provenance="suggestion"]');
+  await expect(suggestion).toBeVisible();
+  await expect(suggestion).toContainText("not applied yet");
+  await expect(page.locator('[data-provenance="accepted"]')).toHaveCount(0);
+
+  // Accepting it flips the label to accepted; the suggestion badge disappears with the card.
+  await page.getByRole("button", { name: "Accept proposal" }).click();
+  await expect(page.locator('[data-provenance="accepted"]')).toBeVisible();
+  await expect(page.locator('[data-provenance="suggestion"]')).toHaveCount(0);
+
+  // Running the program produces a runtime-fact label distinct from both AI states.
+  await page.getByRole("button", { name: "Run" }).click();
+  await expect(page.locator('[data-provenance="runtime-fact"]')).toBeVisible({ timeout: 5000 });
+});
