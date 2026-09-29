@@ -1,0 +1,14 @@
+ WARN  Unsupported engine: wanted: {"node":">=22 <23"} (current: {"node":"v20.19.0","pnpm":"9.15.9"})
+
+> agorix@0.0.0 test /home/faguero/dev-agora/agorix
+> vitest run
+
+
+ RUN  v4.1.11 /home/faguero/dev-agora/agorix
+
+
+ Test Files  15 passed (15)
+      Tests  110 passed (110)
+   Start at  20:09:12
+   Duration  433ms (transform 1.40s, setup 0ms, import 1.81s, tests 93ms, environment 1ms)
+
