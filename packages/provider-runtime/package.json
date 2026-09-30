@@ -10,6 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@agorix/learning-decision-plane": "workspace:*",
     "@agorix/program-model": "workspace:*",
     "@agorix/runtime": "workspace:*",
     "@agorix/tutor-contract": "workspace:*"
