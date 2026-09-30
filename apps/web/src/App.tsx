@@ -766,16 +766,6 @@ export function App() {
       clearRunTimer();
     };
   }, []);
-  useEffect(() => {
-    if (import.meta.env.MODE === "test" || import.meta.env.DEV) {
-      Object.assign(window, {
-        __agorixTest: {
-          canonicalHash: () => programSemanticHash(model.program),
-        },
-      });
-    }
-  }, [model.program]);
-
 
   useEffect(() => {
     if (initialProjectRef.current?.message !== undefined) {
