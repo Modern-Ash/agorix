@@ -22,12 +22,15 @@ export interface ProjectionResult {
   readonly mapping: NodeTextMapping;
 }
 
-export const TYPESCRIPT_LIKE_PROJECTION: LanguageProjectionDescriptor = {
-  id: "typescript-like",
+export const TYPESCRIPT_PROJECTION: LanguageProjectionDescriptor = {
+  id: "typescript",
   version: "1",
-  label: "TypeScript-like educational code",
+  label: "TypeScript",
   family: "typescript",
 };
+
+/** @deprecated Use TYPESCRIPT_PROJECTION. Kept for source compatibility. */
+export const TYPESCRIPT_LIKE_PROJECTION = TYPESCRIPT_PROJECTION;
 
 /**
  * Thrown when a node's `type` is not part of the v1 schema (or was corrupted
@@ -42,7 +45,7 @@ export class UnsupportedNodeError extends Error {
     const diagnostic = createUnsupportedNodeDiagnostic({
       nodeId,
       nodeType,
-      projectionId: TYPESCRIPT_LIKE_PROJECTION.id,
+      projectionId: TYPESCRIPT_PROJECTION.id,
     });
     super(`Unsupported node type ${JSON.stringify(nodeType)} at ${nodeId}`);
     this.name = "UnsupportedNodeError";
@@ -187,8 +190,8 @@ function projectText(program: ProjectProgram): {
   return { text: writer.parts.join(""), mapping: singleRangeMapping(writer.mapping) };
 }
 
-export const typescriptLikeProjection: LanguageProjection = {
-  descriptor: TYPESCRIPT_LIKE_PROJECTION,
+export const typescriptProjection: LanguageProjection = {
+  descriptor: TYPESCRIPT_PROJECTION,
   project(program: ProjectProgram): LanguageProjectionResult {
     const projected = projectText(program);
     return {
@@ -202,8 +205,11 @@ export const typescriptLikeProjection: LanguageProjection = {
 };
 
 /** Projects a canonical program into the new LanguageProjection contract. */
+/** @deprecated Use typescriptProjection. Kept for source compatibility. */
+export const typescriptLikeProjection = typescriptProjection;
+
 export function projectProgramLanguage(program: ProjectProgram): LanguageProjectionResult {
-  return typescriptLikeProjection.project(program);
+  return typescriptProjection.project(program);
 }
 
 /**

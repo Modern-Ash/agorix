@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import { PACKAGE_NAME } from "./index.js";
 import {
   TYPESCRIPT_LIKE_PROJECTION,
+  TYPESCRIPT_PROJECTION,
   UnsupportedNodeError,
   formatNumber,
   projectProgram,
   projectProgramLanguage,
   typescriptLikeProjection,
+  typescriptProjection,
   type ProjectionResult,
 } from "./project.js";
 import { assertLanguageProjectionConformance } from "@agorix/language-projection";
@@ -218,7 +220,10 @@ describe("projectProgram", () => {
     const legacy = projectProgram(FULL_COVERAGE_PROGRAM);
     const language = projectProgramLanguage(FULL_COVERAGE_PROGRAM);
 
-    expect(language.projection).toEqual(TYPESCRIPT_LIKE_PROJECTION);
+    expect(language.projection).toEqual(TYPESCRIPT_PROJECTION);
+    expect(language.projection.id).toBe("typescript");
+    expect(TYPESCRIPT_LIKE_PROJECTION).toBe(TYPESCRIPT_PROJECTION);
+    expect(typescriptLikeProjection).toBe(typescriptProjection);
     expect(language.text).toBe(legacy.code);
     expect(language.diagnostics).toEqual([]);
     for (const [nodeId, range] of Object.entries(legacy.mapping)) {
@@ -239,7 +244,7 @@ describe("projectProgram", () => {
     } as unknown as ProjectProgram;
 
     expect(() =>
-      assertLanguageProjectionConformance(typescriptLikeProjection, {
+      assertLanguageProjectionConformance(typescriptProjection, {
         name: "typescript-like full coverage",
         program: FULL_COVERAGE_PROGRAM,
         requiredNodeIds: ["scripts[0]", "scripts[0]/trigger", "scripts[0]/statements[0]"],
@@ -260,5 +265,14 @@ describe("projectProgram", () => {
     expect(result.code.match(/whenStarted/g)?.length).toBe(2);
     expect(result.code).toContain("});\n\nwhenStarted");
     expectValidRanges(result);
+  });
+});
+
+describe("TypeScript LanguageProjection registry", () => {
+  it("is selectable by the official typescript id", async () => {
+    const { createLanguageProjectionRegistry } = await import("@agorix/language-projection");
+    const registry = createLanguageProjectionRegistry([typescriptProjection]);
+    expect(registry.require("typescript")).toBe(typescriptProjection);
+    expect(registry.list().map((entry) => entry.id)).toContain("typescript");
   });
 });
