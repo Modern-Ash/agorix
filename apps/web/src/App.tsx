@@ -61,6 +61,11 @@ import {
 import { LOCALE_LABELS, t, type Locale, type MessageKey } from "./i18n.js";
 import { ProvenanceLabel } from "./ProvenanceLabel.js";
 import {
+  CODE_PROJECTION_IDS,
+  projectCodeSurface,
+  type CodeProjectionId,
+} from "./codeSurface.js";
+import {
   decideStaticWebLearningRoute,
   type WebLearningDecisionDiagnostics,
 } from "./learningDecision.js";
@@ -186,27 +191,96 @@ function resultFeedback(
   return createMissionRunFeedback({ mission, result, locale });
 }
 
-function CodePanel({
+function CodeText({
   code,
+  mapping,
   highlightedNodeId,
-  model,
-  locale,
 }: {
   code: string;
+  mapping: Readonly<Record<string, { readonly start: number; readonly end: number }>>;
   highlightedNodeId?: string;
-  model: EditorModel;
-  locale: Locale;
 }) {
-  const range = highlightedNodeId === undefined ? undefined : model.codeMapping[highlightedNodeId];
-  if (range === undefined) {
-    return <pre className="code-surface">{code}</pre>;
-  }
+  const range = highlightedNodeId === undefined ? undefined : mapping[highlightedNodeId];
+  if (range === undefined) return <pre className="code-surface">{code}</pre>;
   return (
-    <pre className="code-surface" aria-label={t(locale, "codeAria")}>
+    <pre className="code-surface">
       {code.slice(0, range.start)}
       <mark>{code.slice(range.start, range.end)}</mark>
       {code.slice(range.end)}
     </pre>
+  );
+}
+
+function CodePanel({
+  program,
+  highlightedNodeId,
+  locale,
+}: {
+  program: ProjectProgram;
+  highlightedNodeId?: string;
+  locale: Locale;
+}) {
+  const [projectionId, setProjectionId] = useState<CodeProjectionId>("agorix-code");
+  const [comparisonId, setComparisonId] = useState<CodeProjectionId | undefined>();
+  const primary = projectCodeSurface(program, projectionId);
+  const comparison =
+    comparisonId === undefined ? undefined : projectCodeSurface(program, comparisonId);
+
+  return (
+    <section className="code-panel" aria-labelledby="code-title">
+      <div className="panel-heading">
+        <h2 id="code-title">{t(locale, "code")}</h2>
+      </div>
+      <div className="code-projection-controls">
+        <label>
+          <span>Code projection</span>
+          <select
+            aria-label="Code projection"
+            value={projectionId}
+            onChange={(event) => setProjectionId(event.currentTarget.value as CodeProjectionId)}
+          >
+            {CODE_PROJECTION_IDS.map((id) => (
+              <option key={id} value={id}>
+                {projectCodeSurface(program, id).label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span>Compare with</span>
+          <select
+            aria-label="Compare code projection"
+            value={comparisonId ?? ""}
+            onChange={(event) =>
+              setComparisonId(
+                event.currentTarget.value === ""
+                  ? undefined
+                  : (event.currentTarget.value as CodeProjectionId),
+              )
+            }
+          >
+            <option value="">None</option>
+            {CODE_PROJECTION_IDS.filter((id) => id !== projectionId).map((id) => (
+              <option key={id} value={id}>
+                {projectCodeSurface(program, id).label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <div className={comparison === undefined ? "code-projections" : "code-projections comparing"}>
+        <div data-code-projection={primary.id}>
+          <strong>{primary.label}</strong>
+          <CodeText code={primary.code} mapping={primary.mapping} highlightedNodeId={highlightedNodeId} />
+        </div>
+        {comparison === undefined ? null : (
+          <div data-code-projection={comparison.id}>
+            <strong>{comparison.label}</strong>
+            <CodeText code={comparison.code} mapping={comparison.mapping} highlightedNodeId={highlightedNodeId} />
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -1092,9 +1166,8 @@ export function App() {
             <span>{t(locale, "codeBehindBlocks")}</span>
           </div>
           <CodePanel
-            code={model.code}
-            {...(highlightedNodeId === undefined ? {} : { highlightedNodeId })}
-            model={model}
+            program={model.program}
+            highlightedNodeId={highlightedNodeId}
             locale={locale}
           />
           {highlightedCode ? (
