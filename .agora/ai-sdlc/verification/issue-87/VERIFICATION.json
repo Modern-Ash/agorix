@@ -1,0 +1,88 @@
+{
+  "acceptance_coverage": [
+    {
+      "candidate_test_paths": [
+        "packages/proposals/src/index.test.ts",
+        "scripts/security-baseline.test.mjs"
+      ],
+      "criterion": "stale proposal cannot apply to changed base",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [
+        "packages/runtime/src/operations.test.ts"
+      ],
+      "criterion": "unknown operation rejected",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [],
+      "criterion": "resulting program must validate",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [],
+      "criterion": "deterministic diff generated independently from model prose",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [
+        "packages/proposals/src/index.test.ts"
+      ],
+      "criterion": "proposal can be serialized/audited without PII",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [
+        "packages/provider-runtime/src/index.test.ts",
+        "packages/provider-runtime/src/selection.test.ts"
+      ],
+      "criterion": "no provider SDK types leak into protocol",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [],
+      "criterion": "tests cover insert/change/remove/stale/invalid",
+      "mechanically_satisfied": false
+    },
+    {
+      "candidate_test_paths": [],
+      "criterion": "integrates with UI boundary from #75.",
+      "mechanically_satisfied": false
+    }
+  ],
+  "all_executed_commands_passed": true,
+  "commands": [
+    {
+      "allowed": true,
+      "argv": [
+        "pnpm",
+        "build"
+      ],
+      "command": "pnpm build",
+      "elapsed_seconds": 7.258,
+      "exit_code": 0,
+      "status": "passed",
+      "stderr": "",
+      "stdout": "WARN\u2009 Unsupported engine: wanted: {\"node\":\">=22 <23\"} (current: {\"node\":\"v20.19.0\",\"pnpm\":\"9.15.9\"})\n\n> agorix@0.0.0 build /home/faguero/dev-agora/.agorix-agora-worktrees/issue-87\n> pnpm -r --if-present run build\n\n.                                        | \u2009WARN\u2009 Unsupported engine: wanted: {\"node\":\">=22 <23\"} (current: {\"node\":\"v20.19.0\",\"pnpm\":\"9.15.9\"})\nScope: 16 of 17 workspace projects\npackages/platform-contract build$ tsc -p tsconfig.json\npackages/program-model build$ tsc -p tsconfig.json\npackages/platform-contract build: Done\npackages/program-model build: Done\npackages/language-projection build$ tsc -p tsconfig.json\npackages/persistence build$ tsc -p tsconfig.json\npackages/language-projection build: Done\npackages/persistence build: Done\npackages/code-generator build$ tsc -p tsconfig.json\npackages/code-generator build: Done\npackages/proposals build$ tsc -p tsconfig.json\npackages/runtime build$ tsc -p tsconfig.json\npackages/block-editor build$ tsc -p tsconfig.json\npackages/runtime build: Done\npackages/proposals build: Done\npackages/block-editor build: Done\npackages/curriculum build$ tsc -p tsconfig.json\npackages/stage build$ tsc -p tsconfig.json\npackages/curriculum build: Done\npackages/stage build: Done\nextensions/vscode build$ tsc -p tsconfig.json\npackages/learning-evidence build$ tsc -p tsconfig.json\npackages/tutor-contract build$ tsc -p tsconfig.json\npackages/learning-evidence build: Done\nextensions/vscode build: Done\npackages/tutor-contract build: Done\napps/web build$ tsc -p tsconfig.json && vite build\npackages/provider-runtime build$ tsc -p tsconfig.json\npackages/provider-runtime build: Done\napps/web build: vite v7.3.6 building client environment for production...\napps/web build: transforming...\napps/web build: \u2713 59 modules transformed.\napps/web build: rendering chunks...\napps/web build: computing gzip size...\napps/web build: dist/index.html                   1.54 kB \u2502 gzip:  0.72 kB\napps/web build: dist/assets/index-5xI9AYi7.css   11.99 kB \u2502 gzip:  3.27 kB\napps/web build: dist/assets/index-D6WwY3qa.js   214.01 kB \u2502 gzip: 67.51 kB\napps/web build: \u2713 built in 569ms\napps/web build: Done\napps/tutor-api build$ tsc -p tsconfig.json\napps/tutor-api build: Done"
+    },
+    {
+      "allowed": true,
+      "argv": [
+        "pnpm",
+        "test"
+      ],
+      "command": "pnpm test",
+      "elapsed_seconds": 1.485,
+      "exit_code": 0,
+      "status": "passed",
+      "stderr": "",
+      "stdout": "WARN\u2009 Unsupported engine: wanted: {\"node\":\">=22 <23\"} (current: {\"node\":\"v20.19.0\",\"pnpm\":\"9.15.9\"})\n\n> agorix@0.0.0 test /home/faguero/dev-agora/.agorix-agora-worktrees/issue-87\n> vitest run\n\n\n RUN  v4.1.11 /home/faguero/dev-agora/.agorix-agora-worktrees/issue-87\n\n\n Test Files  30 passed (30)\n      Tests  488 passed (488)\n   Start at  09:06:15\n   Duration  969ms (transform 5.77s, setup 0ms, import 7.24s, tests 460ms, environment 2ms)"
+    }
+  ],
+  "executed": true,
+  "head": "385c7119bded2aa3a5c9a2a792306314d2cd5e43",
+  "report_path": "/home/faguero/dev-agora/.agorix-agora-worktrees/issue-87/.agora/ai-sdlc/verification/issue-87/VERIFICATION.json",
+  "schema": "agora-ai-sdlc/verification-report/v1",
+  "work": "issue-87"
+}
