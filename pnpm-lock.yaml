@@ -50,6 +50,9 @@ importers:
       '@agorix/curriculum':
         specifier: workspace:*
         version: link:../../packages/curriculum
+      '@agorix/learning-decision-plane':
+        specifier: workspace:*
+        version: link:../../packages/learning-decision-plane
       '@agorix/persistence':
         specifier: workspace:*
         version: link:../../packages/persistence
