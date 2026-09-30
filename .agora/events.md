@@ -159,3 +159,24 @@
 - 2026-09-30T00:42:19.748555Z | session.prepared | session=ai-sdlc-guided-issue-102-operations actor=project:product-owner executor=project:product-owner swarm=issue-102-delivery
 - 2026-09-30T00:42:19.750400Z | session.running | session=ai-sdlc-guided-issue-102-operations
 - 2026-09-30T00:49:47.930608Z | session.completed | session=ai-sdlc-guided-issue-102-operations exit-code=0
+- 2026-09-30T12:25:17.297386Z | session.prepared | session=ai-sdlc-guided-issue-86-construction actor=project:ai-opencode executor=project:ai-opencode swarm=issue-86-delivery
+- 2026-09-30T12:25:17.299335Z | session.running | session=ai-sdlc-guided-issue-86-construction
+- 2026-09-30T12:35:17.307652Z | session.failed | session=ai-sdlc-guided-issue-86-construction exit-code=124
+- 2026-09-30T13:06:24.358637Z | session.prepared | session=ai-sdlc-guided-issue-86-construction-2 actor=project:ai-opencode executor=project:ai-opencode swarm=issue-86-delivery
+- 2026-09-30T13:06:24.361021Z | session.running | session=ai-sdlc-guided-issue-86-construction-2
+- 2026-09-30T13:06:28.716202Z | session.failed | session=ai-sdlc-guided-issue-86-construction-2 exit-code=70
+- 2026-09-30T13:07:02.484547Z | session.prepared | session=ai-sdlc-guided-issue-86-construction-3 actor=project:ai-opencode executor=project:ai-opencode swarm=issue-86-delivery
+- 2026-09-30T13:07:02.486184Z | session.running | session=ai-sdlc-guided-issue-86-construction-3
+- 2026-09-30T13:17:02.497896Z | session.failed | session=ai-sdlc-guided-issue-86-construction-3 exit-code=124
+- 2026-09-30T13:17:33.946992Z | session.prepared | session=ai-sdlc-guided-issue-86-construction-4 actor=project:ai-opencode executor=project:ai-opencode swarm=issue-86-delivery
+- 2026-09-30T13:17:33.948869Z | session.running | session=ai-sdlc-guided-issue-86-construction-4
+- 2026-09-30T13:18:35.964062Z | session.completed | session=ai-sdlc-guided-issue-86-construction-4 exit-code=0
+- 2026-09-30T13:23:05.955371Z | session.prepared | session=ai-sdlc-guided-issue-86-construction-5 actor=project:ai-opencode executor=project:ai-opencode swarm=issue-86-delivery
+- 2026-09-30T13:23:05.957427Z | session.running | session=ai-sdlc-guided-issue-86-construction-5
+- 2026-09-30T13:23:43.467248Z | session.completed | session=ai-sdlc-guided-issue-86-construction-5 exit-code=0
+- 2026-09-30T13:24:32.669705Z | session.prepared | session=ai-sdlc-guided-issue-86-construction-6 actor=project:ai-opencode executor=project:ai-opencode swarm=issue-86-delivery
+- 2026-09-30T13:24:32.671967Z | session.running | session=ai-sdlc-guided-issue-86-construction-6
+- 2026-09-30T13:24:36.600420Z | session.failed | session=ai-sdlc-guided-issue-86-construction-6 exit-code=1
+- 2026-09-30T13:24:53.156468Z | session.prepared | session=ai-sdlc-guided-issue-86-construction-7 actor=project:ai-opencode executor=project:ai-opencode swarm=issue-86-delivery
+- 2026-09-30T13:24:53.158865Z | session.running | session=ai-sdlc-guided-issue-86-construction-7
+- 2026-09-30T13:25:46.837854Z | session.completed | session=ai-sdlc-guided-issue-86-construction-7 exit-code=0

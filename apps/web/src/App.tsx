@@ -1,10 +1,18 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import type { ProjectMetadata } from "@agorix/persistence";
+import type { ProjectProgram } from "@agorix/program-model";
 import { POC_TOOLBOX, type BlockNode } from "@agorix/block-editor";
 import { createMissionRunFeedback, getLocalizedFirstMission } from "@agorix/curriculum";
 import {
+  acceptIntentPlan,
+  createDeterministicIntentPlan,
   createDeterministicTutorResponse,
+  createIntentPlanRequest,
   createTutorRequest,
+  editIntentPlanStep,
+  rejectIntentPlan,
+  type IntentPlan,
+  type IntentPlanResponse,
   type TutorHintHistoryEntry,
   type TutorResponse,
 } from "@agorix/tutor-contract";
@@ -49,7 +57,7 @@ import {
   type LoadedEditorProject,
   type ProjectPersistence,
 } from "./projectStorage.js";
-import { LOCALE_LABELS, t, type Locale } from "./i18n.js";
+import { LOCALE_LABELS, t, type Locale, type MessageKey } from "./i18n.js";
 import { ProvenanceLabel } from "./ProvenanceLabel.js";
 import "./App.css";
 
@@ -376,6 +384,241 @@ function ProgramBlockCard({
       </div>
     </article>
   );
+}
+
+/**
+ * Intent-to-plan dialogue (issue #86). The learner says what should happen and
+ * decomposes it before any AI proposal exists: a clear intent becomes a plan in
+ * the learner's own words, an ambiguous one becomes one clarifying question, and
+ * the learner keeps, edits or rejects the plan. Nothing here changes the
+ * canonical program - the plan is only an intent of record until a separate,
+ * visible proposal changes blocks or code.
+ */
+function IntentDialogue({
+  locale,
+  program,
+  mission,
+  selectedNodeIds,
+}: {
+  readonly locale: Locale;
+  readonly program: ProjectProgram;
+  readonly mission: ReturnType<typeof getLocalizedFirstMission>;
+  readonly selectedNodeIds: readonly string[];
+}) {
+  const [intent, setIntent] = useState("");
+  const [response, setResponse] = useState<IntentPlanResponse | undefined>();
+  const [plan, setPlan] = useState<IntentPlan | undefined>();
+  const [message, setMessage] = useState<string | undefined>();
+  const [clarifications, setClarifications] = useState<readonly string[]>([]);
+  const [editingStepId, setEditingStepId] = useState<string | undefined>();
+  const [draftStep, setDraftStep] = useState("");
+
+  function requestPlan(nextIntent: string) {
+    const learnerIntent = nextIntent.trim();
+    if (learnerIntent.length === 0) {
+      setMessage(t(locale, "intentPlanNeedsInput"));
+      return;
+    }
+    try {
+      const next = createDeterministicIntentPlan(
+        createIntentPlanRequest({
+          learnerIntent,
+          mission: {
+            id: mission.id,
+            version: mission.version,
+            learningObjective: `${mission.title}: ${mission.goal.learnerFacing}`,
+            concepts: mission.concepts,
+          },
+          program,
+          selectedNodeIds,
+          priorClarifications: clarifications,
+          reading: { locale, readingLevel: "middle-grade" },
+        }),
+      );
+      setResponse(next);
+      setMessage(undefined);
+      setEditingStepId(undefined);
+      if (next.kind === "clarification") {
+        setPlan(undefined);
+        setClarifications((current) => [...current, next.clarification.question]);
+        return;
+      }
+      setPlan(next.plan);
+    } catch {
+      setResponse(undefined);
+      setPlan(undefined);
+      setMessage(t(locale, "tutorError"));
+    }
+  }
+
+  function keepPlan() {
+    if (plan === undefined) {
+      return;
+    }
+    try {
+      setPlan(acceptIntentPlan(program, plan).plan);
+      setMessage(t(locale, "intentPlanKept"));
+    } catch {
+      setMessage(t(locale, "tutorError"));
+    }
+  }
+
+  function rejectPlan() {
+    if (plan === undefined) {
+      return;
+    }
+    try {
+      setPlan(rejectIntentPlan(program, plan).plan);
+      setMessage(t(locale, "intentPlanRejected"));
+    } catch {
+      setMessage(t(locale, "tutorError"));
+    }
+  }
+
+  function startEditing(stepId: string, description: string) {
+    setEditingStepId(stepId);
+    setDraftStep(description);
+  }
+
+  function saveEditedStep() {
+    if (plan === undefined || editingStepId === undefined) {
+      return;
+    }
+    try {
+      const order = plan.steps.find((step) => step.id === editingStepId)?.order ?? 1;
+      setPlan(editIntentPlanStep(program, plan, editingStepId, draftStep).plan);
+      setEditingStepId(undefined);
+      setMessage(t(locale, "intentPlanEdited", { order }));
+    } catch {
+      setMessage(t(locale, "tutorError"));
+    }
+  }
+
+  const clarification = response?.kind === "clarification" ? response.clarification : undefined;
+  const concepts: string =
+    plan === undefined
+      ? ""
+      : plan.concepts.map((concept) => conceptLabel(locale, concept)).join(", ");
+
+  return (
+    <section className="intent-panel" aria-labelledby="intent-title" data-testid="intent-dialogue">
+      <div className="panel-heading">
+        <h3 id="intent-title">{t(locale, "intentTitle")}</h3>
+        {plan === undefined ? null : (
+          <span>
+            <ProvenanceLabel
+              kind={plan.status === "accepted" ? "accepted" : "suggestion"}
+              locale={locale}
+            />
+          </span>
+        )}
+      </div>
+      <form
+        className="intent-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          requestPlan(intent);
+        }}
+      >
+        <label>
+          <span>{t(locale, "intentLabel")}</span>
+          <input
+            type="text"
+            aria-label={t(locale, "intentLabel")}
+            value={intent}
+            placeholder={t(locale, "intentPlaceholder")}
+            onChange={(event) => setIntent(event.currentTarget.value)}
+          />
+        </label>
+        <button type="submit">{t(locale, "intentPlanAction")}</button>
+      </form>
+      {message === undefined ? null : (
+        <p className="intent-message" aria-live="polite">
+          {message}
+        </p>
+      )}
+      {clarification === undefined ? null : (
+        <div className="intent-clarification" data-testid="intent-clarification">
+          <strong>{clarification.question}</strong>
+          <div className="tutor-actions">
+            {clarification.options.map((option) => (
+              <button key={option} type="button" onClick={() => setIntent(option)}>
+                {option}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {plan === undefined ? null : (
+        <div className="intent-plan" data-testid="intent-plan">
+          <p className="intent-objective">
+            {t(locale, "intentObjective", { objective: plan.learningObjective })}
+          </p>
+          {concepts.length > 0 ? (
+            <p className="intent-concepts">{t(locale, "intentConcepts", { concepts })}</p>
+          ) : null}
+          <ol className="intent-steps">
+            {plan.steps.map((step) => (
+              <li key={step.id} className="intent-step">
+                <strong>
+                  {t(locale, "intentStep", { order: step.order, description: step.description })}
+                </strong>
+                <span className="intent-rationale">{step.rationale}</span>
+                {step.nodeId === undefined ? null : (
+                  <span className="intent-node">{step.nodeId}</span>
+                )}
+                {plan.status !== "proposed" ? null : editingStepId === step.id ? (
+                  <div className="intent-step-editor">
+                    <label>
+                      <span>{t(locale, "intentEditLabel", { order: step.order })}</span>
+                      <input
+                        type="text"
+                        value={draftStep}
+                        onChange={(event) => setDraftStep(event.currentTarget.value)}
+                      />
+                    </label>
+                    <button type="button" onClick={saveEditedStep}>
+                      {t(locale, "intentSaveStep")}
+                    </button>
+                    <button type="button" onClick={() => setEditingStepId(undefined)}>
+                      {t(locale, "cancelEdit")}
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => startEditing(step.id, step.description)}
+                    aria-label={t(locale, "intentEditStep", { order: step.order })}
+                  >
+                    {t(locale, "intentEditStep", { order: step.order })}
+                  </button>
+                )}
+              </li>
+            ))}
+          </ol>
+          {plan.omittedSteps > 0 ? (
+            <p className="hint-history">
+              {t(locale, "intentOmittedSteps", { count: plan.omittedSteps })}
+            </p>
+          ) : null}
+          <div className="tutor-actions">
+            {plan.status !== "proposed" ? null : (
+              <button type="button" onClick={keepPlan}>
+                {t(locale, "intentKeepPlan")}
+              </button>
+            )}
+            <button type="button" onClick={rejectPlan}>
+              {t(locale, "intentRejectPlan")}
+            </button>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function conceptLabel(locale: Locale, concept: string): string {
+  return t(locale, `intentConcept_${concept}` as MessageKey);
 }
 
 export function App() {
@@ -925,6 +1168,12 @@ export function App() {
           {proposalMessage === t(locale, "proposalAccepted") ? (
             <ProvenanceLabel kind="accepted" locale={locale} />
           ) : null}
+          <IntentDialogue
+            locale={locale}
+            program={model.program}
+            mission={mission}
+            selectedNodeIds={highlightedNodeId === undefined ? [] : [highlightedNodeId]}
+          />
           <div className="tutor-actions">
             <button type="button" onClick={previewDeterministicProposal}>
               {t(locale, "previewProposal")}
