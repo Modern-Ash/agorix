@@ -391,3 +391,4 @@ function fail(path: string, message: string): never {
 
 export * from "./learning-companion.js";
 export * from "./intent-plan.js";
+export * from "./debugger.js";
