@@ -1,6 +1,6 @@
 ---
 schema: "agora/artifacts/v2"
-artifact-kinds: ["intent","requirements","unit-of-work","plan","user-stories","nfr","risk-register","measurement-criteria","bolt-plan","domain-model","logical-design","implementation-plan","test-strategy","deployment-unit","test-report","operational-readiness","rollback-procedure"]
+artifact-kinds: ["intent","requirements","unit-of-work","plan","user-stories","nfr","risk-register","measurement-criteria","bolt-plan","domain-model","logical-design","implementation-plan","test-strategy","deployment-unit","test-report","operational-readiness","rollback-procedure","pull-request"]
 ---
 
 # Artifacts
@@ -24,3 +24,4 @@ artifact-kinds: ["intent","requirements","unit-of-work","plan","user-stories","n
 | test-report | repo://.agora/ai-sdlc/verification/issue-87/VERIFICATION.json | ba74217151f6e0e3767f1ad2d0099dc71a4dbd94faca30a277573e2667ea6e38 | project:ai-opencode | 2026-09-30T10:20:53.190919Z |
 | operational-readiness | repo://.agora/ai-sdlc/operations/issue-87/OPERATIONAL-READINESS.md | 19eef01bfea4220ef1815d02fad915c422182fe90ca09ead6b1bb2c63fb45782 | project:ai-opencode | 2026-09-30T12:08:30.077919Z |
 | rollback-procedure | repo://.agora/ai-sdlc/operations/issue-87/ROLLBACK-PROCEDURE.md | 68401b8f10756c698e45b5a97fd207be510acc4655528e826aa0b81367350180 | project:ai-opencode | 2026-09-30T12:08:30.338336Z |
+| pull-request | https://github.com/Modern-Ash/agorix/pull/158 | none | project:ai-opencode | 2026-09-30T12:15:00.398188Z |
