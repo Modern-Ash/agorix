@@ -7,6 +7,7 @@ import {
   acceptIntentPlan,
   createDeterministicIntentPlan,
   createDeterministicTutorResponse,
+  createLearningCompanionRequestFromTutorRequest,
   createIntentPlanRequest,
   createTutorRequest,
   editIntentPlanStep,
@@ -59,6 +60,10 @@ import {
 } from "./projectStorage.js";
 import { LOCALE_LABELS, t, type Locale, type MessageKey } from "./i18n.js";
 import { ProvenanceLabel } from "./ProvenanceLabel.js";
+import {
+  decideStaticWebLearningRoute,
+  type WebLearningDecisionDiagnostics,
+} from "./learningDecision.js";
 import "./App.css";
 
 type RunStatus = "idle" | "running" | "stopped" | "complete" | "retry" | "freeplay" | "error";
@@ -654,6 +659,8 @@ export function App() {
   const [attempts, setAttempts] = useState(0);
   const [proposalReview, setProposalReview] = useState<ProposalReview | undefined>();
   const [proposalMessage, setProposalMessage] = useState<string | undefined>();
+  const [learningDecision, setLearningDecision] =
+    useState<WebLearningDecisionDiagnostics | undefined>();
   const timerRef = useRef<number | undefined>();
 
   const mission = useMemo(() => getLocalizedFirstMission(locale), [locale]);
@@ -707,6 +714,7 @@ export function App() {
     setReflectionPrompt(undefined);
     setProposalReview(undefined);
     setProposalMessage(undefined);
+    setLearningDecision(undefined);
     setStatus("idle");
   }
 
@@ -919,24 +927,29 @@ export function App() {
           collectObservations: true,
           stopAfterSteps: 24,
         });
-      const response = createDeterministicTutorResponse(
-        createTutorRequest({
-          mission: {
-            id: mission.id,
-            version: mission.version,
-            concepts: mission.concepts,
-          },
-          program: model.program,
-          runtime: {
-            outcome: result.outcome,
-            stepsUsed: result.stepsUsed,
-            finalWorld: result.world,
-            observations: result.observations,
-          },
-          hintHistory,
-          reading: { locale, readingLevel: "middle-grade" },
-        }),
-      );
+      const tutorRequest = createTutorRequest({
+        mission: {
+          id: mission.id,
+          version: mission.version,
+          concepts: mission.concepts,
+        },
+        program: model.program,
+        runtime: {
+          outcome: result.outcome,
+          stepsUsed: result.stepsUsed,
+          finalWorld: result.world,
+          observations: result.observations,
+        },
+        hintHistory,
+        reading: { locale, readingLevel: "middle-grade" },
+      });
+      const companionRequest = createLearningCompanionRequestFromTutorRequest(tutorRequest);
+      const route = decideStaticWebLearningRoute(companionRequest);
+      setLearningDecision(route.diagnostics);
+      const response =
+        route.requirements.generativeNeeded === "no"
+          ? createDeterministicTutorResponse(tutorRequest)
+          : createDeterministicTutorResponse(tutorRequest);
       const nextHistory: TutorHintHistoryEntry = {
         level: response.hintLevel,
         ...(response.concepts[0] === undefined ? {} : { concept: response.concepts[0] }),
@@ -976,7 +989,13 @@ export function App() {
   }
 
   return (
-    <main className={status === "complete" ? "editor-shell mission-complete" : "editor-shell"}>
+    <main
+      className={status === "complete" ? "editor-shell mission-complete" : "editor-shell"}
+      data-learning-capability={learningDecision?.capability}
+      data-generative-needed={learningDecision?.generativeNeeded}
+      data-reasoning-tier={learningDecision?.reasoningTier}
+      data-provider-selection-bypassed={learningDecision?.providerSelectionBypassed}
+    >
       <header className="topbar">
         <div>
           <p className="eyebrow">{t(locale, "appEyebrow")}</p>

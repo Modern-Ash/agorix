@@ -11,6 +11,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@agorix/learning-decision-plane": "workspace:*",
     "@agorix/block-editor": "workspace:*",
     "@agorix/curriculum": "workspace:*",
     "@agorix/persistence": "workspace:*",
