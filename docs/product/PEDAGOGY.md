@@ -146,7 +146,18 @@ After successful execution, ask one short question such as:
 
 Reflection is part of learning evidence but must not block basic POC completion.
 
+## Learning evidence and assessment
+
+What Agorix records as evidence of understanding, as opposed to evidence of mission completion, is
+specified in [LEARNING_EVIDENCE.md](./LEARNING_EVIDENCE.md) with the executable model in
+`packages/learning-evidence`. Two rules from that model apply to this document:
+
+- completion is proven by the deterministic runtime and never implies understanding;
+- every piece of evidence carries the assistance level in effect, and understanding credit is
+  non-increasing in that level, so a metric cannot reward over-assistance.
+
 ## Explicit unresolved decisions
 
 - The exact persistence format for proposal/accept/reject events belongs to later architecture work.
 - The exact threshold for escalating from hints to structural proposals should be refined by #70's competency progression and scaffolding rubric.
+- Persisting learning evidence beyond a single attempt, and any longitudinal view of it, requires separate approval and a jurisdiction-specific privacy review.

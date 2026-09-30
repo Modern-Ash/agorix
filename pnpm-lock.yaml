@@ -155,6 +155,12 @@ importers:
         specifier: workspace:*
         version: link:../program-model
 
+  packages/learning-evidence:
+    dependencies:
+      '@agorix/curriculum':
+        specifier: workspace:*
+        version: link:../curriculum
+
   packages/persistence:
     dependencies:
       '@agorix/program-model':
