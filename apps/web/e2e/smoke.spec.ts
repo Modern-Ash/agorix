@@ -536,3 +536,62 @@ test("AI-literacy journey predicts, tests, challenges and corrects an imperfect 
     ),
   ).toBeVisible();
 });
+
+
+test.describe("MVP release happy paths", () => {
+  test("happy path: learner builds, runs, completes and reflects", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: "Move" }).click();
+    await applyMoveSteps(page, "160");
+    await expect(visibleCode(page, "sprite.move(160);")).toBeVisible();
+    await page.getByRole("button", { name: "Run" }).click();
+    await expect(page.getByText("Mission complete: your sprite reached the goal.")).toBeVisible({
+      timeout: 5000,
+    });
+    await expect(page.getByText(/Reflection:/)).toBeVisible();
+  });
+
+  test("happy path: one canonical program switches and compares code projections", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: "Move" }).click();
+    await applyMoveSteps(page, "24");
+    const before = await canonicalHash(page);
+
+    await page.getByLabel("Code projection").selectOption("agorix-code");
+    await expect(visibleCode(page, "move 24")).toBeVisible();
+    expect(await canonicalHash(page)).toBe(before);
+
+    await page.getByLabel("Compare code projection").selectOption("python");
+    await expect(visibleCode(page, "move(24)")).toBeVisible();
+    expect(await canonicalHash(page)).toBe(before);
+
+    await page.getByLabel("Code projection").selectOption("typescript");
+    await expect(visibleCode(page, "sprite.move(24);")).toBeVisible();
+    expect(await canonicalHash(page)).toBe(before);
+  });
+
+  test("happy path: deterministic Learning Decision Plane bypasses provider work", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: "Move" }).click();
+    await page.getByRole("button", { name: "Run" }).click();
+    await page.getByRole("button", { name: "Get hint" }).click();
+
+    const shell = page.locator("main.editor-shell");
+    await expect(shell).toHaveAttribute("data-learning-capability", "coach");
+    await expect(shell).toHaveAttribute("data-provider-selection-bypassed", /true|false/);
+    await expect(page.getByText("Hint level 1 of 5")).toBeVisible();
+  });
+});
+
+
+
+  await page.getByRole("button", { name: "Run Laya integration" }).click();
+  const output = page.locator("output");
+  await expect(output).toHaveAttribute("data-source", "laya-system1");
+  await expect(output).toHaveAttribute("data-capability", "explainer");
+  await expect(output).toHaveAttribute("data-generative-needed", "yes");
+  await expect(output).toHaveAttribute("data-reasoning-tier", "local");
+  await expect(output).toHaveAttribute("data-provider-bypassed", "false");
+  await expect(output).toHaveAttribute("data-accepted", /generativeNeeded|reasoningTier/);
+  await expect(output).toHaveAttribute("data-abstained", "");
+});
