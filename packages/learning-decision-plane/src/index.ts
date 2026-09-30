@@ -10,7 +10,13 @@ export type GenerativeNeed = "no" | "yes";
 export type ClarificationNeed = "no" | "yes";
 export type SolutionAllowance = "none" | "partial" | "complete";
 export type RuntimeEvidenceNeed = "no" | "yes";
-export type LearningContextNeed = "none" | "program" | "mission" | "runtime" | "history" | "bounded";
+export type LearningContextNeed =
+  | "none"
+  | "program"
+  | "mission"
+  | "runtime"
+  | "history"
+  | "bounded";
 export type LearningReasoningTier = "deterministic" | "local" | "remote";
 export type DecisionSource = "system0" | "system1" | "fallback";
 
@@ -72,7 +78,8 @@ export function stateFromLearningCompanionRequest(
     capability: request.capability,
     scaffoldLevel: highest,
     scaffoldHistoryLength: request.scaffoldHistory.length,
-    hasLearnerIntent: request.learnerIntent !== undefined && request.learnerIntent.trim().length > 0,
+    hasLearnerIntent:
+      request.learnerIntent !== undefined && request.learnerIntent.trim().length > 0,
     hasRuntime: request.runtime !== undefined,
     runtimeFactCount: request.runtimeFacts.length,
     selectedNodeCount: request.selectedNodeIds.length,
@@ -129,7 +136,12 @@ export function projectLearningRequirements(
   advisory: LearningDecisionSet = {},
 ): LearningRequirements {
   const system0 = resolveLearningSystem0(state);
-  const generativeNeeded = pick(system0.generativeNeeded, advisory.generativeNeeded, "yes", "fallback");
+  const generativeNeeded = pick(
+    system0.generativeNeeded,
+    advisory.generativeNeeded,
+    "yes",
+    "fallback",
+  );
   const clarificationNeeded = pick(
     system0.clarificationNeeded,
     advisory.clarificationNeeded,
@@ -228,7 +240,14 @@ function minimumAssistance(
       value: Math.min(advisory.value, maximum) as LearningCompanionScaffoldLevel,
     };
   }
-  return floor ?? { value: maximum, source: "fallback", confidence: 1, reason: "current-scaffold-floor" };
+  return (
+    floor ?? {
+      value: maximum,
+      source: "fallback",
+      confidence: 1,
+      reason: "current-scaffold-floor",
+    }
+  );
 }
 
 function minimumSolutionAllowance(
@@ -245,5 +264,10 @@ function minimumSolutionAllowance(
   if (advisory !== undefined && advisory.confidence >= 0.9) {
     return advisory;
   }
-  return { value: "none", source: "fallback", confidence: 1, reason: "safe-solution-fallback" };
+  return {
+    value: "none",
+    source: "fallback",
+    confidence: 1,
+    reason: "safe-solution-fallback",
+  };
 }
