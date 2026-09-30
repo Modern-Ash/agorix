@@ -582,3 +582,19 @@ test.describe("MVP release happy paths", () => {
     await expect(page.getByText("Hint level 1 of 5")).toBeVisible();
   });
 });
+
+
+test("integration: Laya adapter System-1 and LearningRequirements cooperate in browser", async ({
+  page,
+}) => {
+  await page.goto("/?decision-plane-test=1");
+  await page.getByRole("button", { name: "Run Laya integration" }).click();
+  const output = page.locator("output");
+  await expect(output).toHaveAttribute("data-source", "laya-system1");
+  await expect(output).toHaveAttribute("data-capability", "explainer");
+  await expect(output).toHaveAttribute("data-generative-needed", "yes");
+  await expect(output).toHaveAttribute("data-reasoning-tier", "local");
+  await expect(output).toHaveAttribute("data-provider-bypassed", "false");
+  await expect(output).toHaveAttribute("data-accepted", /generativeNeeded|reasoningTier/);
+  await expect(output).toHaveAttribute("data-abstained", "");
+});
