@@ -155,6 +155,12 @@ importers:
         specifier: workspace:*
         version: link:../program-model
 
+  packages/learning-decision-plane:
+    dependencies:
+      '@agorix/tutor-contract':
+        specifier: workspace:*
+        version: link:../tutor-contract
+
   packages/learning-evidence:
     dependencies:
       '@agorix/curriculum':
