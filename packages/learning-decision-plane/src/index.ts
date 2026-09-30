@@ -225,7 +225,12 @@ function pick<T extends string | number>(
   if (advisory !== undefined && advisory.confidence >= 0.9) {
     return advisory;
   }
-  return { value: fallback, source: fallbackSource, confidence: 1, reason: "safe-fallback" };
+  return {
+    value: fallback,
+    source: fallbackSource,
+    confidence: 1,
+    reason: "safe-fallback",
+  };
 }
 
 function minimumAssistance(
