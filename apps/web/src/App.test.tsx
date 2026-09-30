@@ -224,3 +224,31 @@ describe("editor persistence", () => {
     expect(storage.getItem(`agorix:${WEB_PROJECT_ID}`)).toBe("not-json");
   });
 });
+
+describe("intent-to-plan dialogue (issue #86)", () => {
+  it("offers the learner an intent field before any AI proposal exists", () => {
+    const html = renderToStaticMarkup(<App />);
+
+    expect(html).toContain("Plan your idea first");
+    expect(html).toContain('aria-label="What should happen?"');
+    expect(html).toContain("Show my plan");
+    expect(html).not.toContain('data-testid="intent-plan"');
+    expect(html).not.toContain('data-testid="intent-clarification"');
+  });
+
+  it("keeps the intent dialogue in the same catalog as the rest of the product", () => {
+    expect(() => assertCatalogCompleteness()).not.toThrow();
+    expect(t("es", "intentTitle")).toBe("Primero planea tu idea");
+    expect(t("es", "intentPlanAction")).toBe("Ver mi plan");
+    expect(t("es", "intentRejectPlan")).toBe("Rechazar plan");
+  });
+
+  it("shows no provider or credential surface next to the intent field", () => {
+    const html = renderToStaticMarkup(<App />).toLowerCase();
+
+    expect(html).not.toContain("api key");
+    expect(html).not.toContain("api_key");
+    expect(html).not.toContain("base url");
+    expect(html).not.toContain("bearer");
+  });
+});

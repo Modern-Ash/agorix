@@ -245,7 +245,7 @@ export function validateLearningCompanionSafety(
 
   const textFields = responseTextFields(validatedResponse);
   textFields.forEach(({ path, value }) => {
-    assertNoPiiRequest(value, path);
+    assertNoPersonalDataRequest(value, path);
     assertNoHiddenProviderAction(value, path);
     assertNoOverAssistance(value, path, validatedResponse.metadata.scaffoldLevel);
   });
@@ -779,7 +779,11 @@ function responseTextFields(
   return fields;
 }
 
-function assertNoPiiRequest(value: string, path: string): void {
+/**
+ * Child-safety guard reused across learner-facing companion surfaces: no
+ * companion text may ask the learner for personal data (docs/safety).
+ */
+export function assertNoPersonalDataRequest(value: string, path: string): void {
   const english =
     /\b(?:tell me|enter|share|give me|provide|type|write|what is|where do you)\b[\s\S]{0,80}\b(?:your\s+)?(?:full\s+name|real\s+name|name|home\s+address|address|school|email|phone|contact|location)\b/i;
   const spanish =
@@ -789,7 +793,8 @@ function assertNoPiiRequest(value: string, path: string): void {
   }
 }
 
-function assertNoHiddenProviderAction(value: string, path: string): void {
+/** Nothing under the rug: companion text may not expose hidden provider actions. */
+export function assertNoHiddenProviderAction(value: string, path: string): void {
   if (
     /\b(?:tool_call|function_call|hidden\s+tool|executed\s+a\s+tool|raw\s+provider\s+action)\b/i.test(
       value,

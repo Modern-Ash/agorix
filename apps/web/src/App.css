@@ -793,3 +793,95 @@ h3 {
   gap: 0.5rem;
   flex-wrap: wrap;
 }
+
+/* Intent-to-plan dialogue (issue #86): the learner decomposes intent before any
+   AI proposal exists. Learner decisions stay in reach with touch-sized targets
+   and the plan is visibly separate from the block program. */
+.intent-panel {
+  display: grid;
+  gap: var(--agx-space-2);
+  margin-bottom: var(--agx-space-4);
+  padding: var(--agx-space-3);
+  border: 1px solid rgba(108, 92, 231, 0.28);
+  border-radius: var(--agx-radius-sm);
+  background: rgba(108, 92, 231, 0.06);
+}
+
+.intent-panel h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.intent-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--agx-space-2);
+  align-items: end;
+}
+
+.intent-form label,
+.intent-step-editor label {
+  display: grid;
+  gap: var(--agx-space-1);
+  flex: 1 1 12rem;
+  font-size: 0.85rem;
+}
+
+.intent-form input,
+.intent-step-editor input {
+  min-height: 44px;
+  padding: 0 var(--agx-space-2);
+  border: 1px solid var(--agx-border-strong);
+  border-radius: var(--agx-radius-xs);
+  font: inherit;
+}
+
+.intent-form button,
+.intent-step-editor button,
+.intent-step button,
+.intent-clarification button {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid rgba(108, 92, 231, 0.4);
+  border-radius: var(--agx-radius-sm);
+  background: var(--agx-surface-raised);
+  font-weight: 700;
+}
+
+.intent-message,
+.intent-rationale,
+.intent-node {
+  margin: 0;
+  color: var(--agx-text-secondary);
+  font-size: 0.85rem;
+}
+
+.intent-clarification,
+.intent-plan {
+  display: grid;
+  gap: var(--agx-space-2);
+  padding: var(--agx-space-2);
+  border-radius: var(--agx-radius-xs);
+  background: var(--agx-surface-raised);
+}
+
+.intent-steps {
+  display: grid;
+  gap: var(--agx-space-2);
+  margin: 0;
+  padding-left: var(--agx-space-4);
+}
+
+.intent-step {
+  display: grid;
+  gap: var(--agx-space-1);
+  justify-items: start;
+}
+
+.intent-step-editor {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--agx-space-2);
+  align-items: end;
+  width: 100%;
+}
