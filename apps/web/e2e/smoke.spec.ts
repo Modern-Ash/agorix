@@ -584,10 +584,7 @@ test.describe("MVP release happy paths", () => {
 });
 
 
-test("integration: Laya adapter System-1 and LearningRequirements cooperate in browser", async ({
-  page,
-}) => {
-  await page.goto("/?decision-plane-test=1");
+
   await page.getByRole("button", { name: "Run Laya integration" }).click();
   const output = page.locator("output");
   await expect(output).toHaveAttribute("data-source", "laya-system1");
