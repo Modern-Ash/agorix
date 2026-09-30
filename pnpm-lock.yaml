@@ -125,6 +125,15 @@ importers:
         specifier: ^4.1.11
         version: 4.1.11(@types/node@26.6.2)(vite@7.3.6(@types/node@26.6.2))
 
+  packages/agorix-code:
+    dependencies:
+      '@agorix/language-projection':
+        specifier: workspace:*
+        version: link:../language-projection
+      '@agorix/program-model':
+        specifier: workspace:*
+        version: link:../program-model
+
   packages/block-editor:
     dependencies:
       '@agorix/code-generator':
