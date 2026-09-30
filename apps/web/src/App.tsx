@@ -220,7 +220,7 @@ function CodePanel({
   highlightedNodeId: string | undefined;
   locale: Locale;
 }) {
-  const [projectionId, setProjectionId] = useState<CodeProjectionId>("agorix-code");
+  const [projectionId, setProjectionId] = useState<CodeProjectionId>("typescript");
   const [comparisonId, setComparisonId] = useState<CodeProjectionId | undefined>();
   const primary = projectCodeSurface(program, projectionId);
   const comparison =
