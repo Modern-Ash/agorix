@@ -278,3 +278,4 @@ function minimumSolutionAllowance(
 }
 
 export * from "./system1.js";
+export * from "./laya.js";
