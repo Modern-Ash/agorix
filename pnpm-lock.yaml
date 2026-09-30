@@ -179,6 +179,15 @@ importers:
         specifier: workspace:*
         version: link:../program-model
 
+  packages/language-pack-lua:
+    dependencies:
+      '@agorix/language-projection':
+        specifier: workspace:*
+        version: link:../language-projection
+      '@agorix/program-model':
+        specifier: workspace:*
+        version: link:../program-model
+
   packages/learning-decision-plane:
     dependencies:
       '@agorix/tutor-contract':
