@@ -150,3 +150,12 @@
 - 2026-09-28T13:27:22.878881Z | session.running | session=run-issue-30-web-security-baseline-20260928t13271790612842z
 - 2026-09-28T13:28:22.689181Z | session.completed | session=run-issue-30-web-security-baseline-20260928t13271790612842z exit-code=0
 - 2026-09-28T13:28:22.693852Z | run-loop.stopped | reason=human-attention sessions=1 actor=project:agent swarm=issue-30 work=web-security-baseline session=run-issue-30-web-security-baseline-20260928t13271790612842z
+- 2026-09-29T23:37:56.830250Z | session.prepared | session=ai-sdlc-guided-issue-102-construction actor=project:ai-opencode executor=project:ai-opencode swarm=issue-102-delivery
+- 2026-09-29T23:37:56.832322Z | session.running | session=ai-sdlc-guided-issue-102-construction
+- 2026-09-29T23:47:56.847931Z | session.failed | session=ai-sdlc-guided-issue-102-construction exit-code=124
+- 2026-09-30T00:20:22.971930Z | session.prepared | session=ai-sdlc-guided-issue-102-construction-2 actor=project:ai-opencode executor=project:ai-opencode swarm=issue-102-delivery
+- 2026-09-30T00:20:22.973815Z | session.running | session=ai-sdlc-guided-issue-102-construction-2
+- 2026-09-30T00:30:22.881348Z | session.completed | session=ai-sdlc-guided-issue-102-construction-2 exit-code=0
+- 2026-09-30T00:42:19.748555Z | session.prepared | session=ai-sdlc-guided-issue-102-operations actor=project:product-owner executor=project:product-owner swarm=issue-102-delivery
+- 2026-09-30T00:42:19.750400Z | session.running | session=ai-sdlc-guided-issue-102-operations
+- 2026-09-30T00:49:47.930608Z | session.completed | session=ai-sdlc-guided-issue-102-operations exit-code=0
