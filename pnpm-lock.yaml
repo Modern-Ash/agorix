@@ -191,6 +191,9 @@ importers:
 
   packages/provider-runtime:
     dependencies:
+      '@agorix/learning-decision-plane':
+        specifier: workspace:*
+        version: link:../learning-decision-plane
       '@agorix/program-model':
         specifier: workspace:*
         version: link:../program-model

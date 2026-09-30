@@ -8,6 +8,7 @@
  * `negotiateCapability` already keeps capability matching pure and
  * synchronous in `index.ts`.
  */
+import type { LearningRequirements } from "@agorix/learning-decision-plane";
 import type { LearningCompanionCapability } from "@agorix/tutor-contract";
 import {
   negotiateCapability,
@@ -119,6 +120,63 @@ export function selectProviderRuntime(
     status: "unavailable",
     reason: anyCapable ? "all-unavailable" : "no-compatible-provider",
     attempts,
+  };
+}
+
+
+export type LearningProviderRouteReason =
+  | "deterministic"
+  | "selected"
+  | ProviderUnavailableReason;
+
+export interface LearningProviderRoute {
+  readonly status: "deterministic" | "selected" | "unavailable";
+  readonly reason: LearningProviderRouteReason;
+  readonly selection?: ProviderSelectionOutcome;
+  readonly providerSelectionBypassed: boolean;
+  readonly providerRequestAllowed: boolean;
+}
+
+/**
+ * Applies pedagogical LearningRequirements before provider selection.
+ * Provider runtime remains responsible only for capability/locality/health matching.
+ */
+export function routeLearningRequirements(
+  requirements: LearningRequirements,
+  runtimes: readonly LearningCompanionProviderRuntime[],
+  health: ReadonlyMap<string, ProviderRuntimeHealthStatus>,
+  preferredOrder: readonly string[],
+): LearningProviderRoute {
+  if (requirements.generativeNeeded === "no" || requirements.reasoningTier === "deterministic") {
+    return {
+      status: "deterministic",
+      reason: "deterministic",
+      providerSelectionBypassed: true,
+      providerRequestAllowed: false,
+    };
+  }
+
+  const selection = selectProviderRuntime(runtimes, health, {
+    capability: requirements.learningCapability,
+    preferredOrder,
+    allowRemote: requirements.reasoningTier === "remote",
+  });
+
+  if (selection.status === "selected") {
+    return {
+      status: "selected",
+      reason: "selected",
+      selection,
+      providerSelectionBypassed: false,
+      providerRequestAllowed: true,
+    };
+  }
+  return {
+    status: "unavailable",
+    reason: selection.reason,
+    selection,
+    providerSelectionBypassed: false,
+    providerRequestAllowed: false,
   };
 }
 

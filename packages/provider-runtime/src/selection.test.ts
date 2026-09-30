@@ -7,6 +7,7 @@ import {
 import {
   checkProviderRuntimeHealth,
   describeProviderUnavailableForLearner,
+  routeLearningRequirements,
   selectProviderRuntime,
   type ProviderSelectionConfig,
 } from "./selection.js";
@@ -192,5 +193,105 @@ describe("describeProviderUnavailableForLearner", () => {
 
   it("defaults to English for an unrecognized locale", () => {
     expect(describeProviderUnavailableForLearner("offline-mode", "fr")).toContain("turned off");
+  });
+});
+
+
+describe("routeLearningRequirements", () => {
+  function requirements(
+    overrides: Partial<import("@agorix/learning-decision-plane").LearningRequirements> = {},
+  ): import("@agorix/learning-decision-plane").LearningRequirements {
+    return {
+      schema: "agorix/learning-requirements/v1",
+      generativeNeeded: "yes",
+      clarificationNeeded: "no",
+      assistanceLevel: 1,
+      learningCapability: "coach",
+      solutionAllowance: "none",
+      runtimeEvidenceNeeded: "no",
+      contextNeed: "bounded",
+      reasoningTier: "local",
+      provenance: {
+        generativeNeeded: "fallback",
+        clarificationNeeded: "fallback",
+        assistanceLevel: "fallback",
+        learningCapability: "system0",
+        solutionAllowance: "system0",
+        runtimeEvidenceNeeded: "system0",
+        contextNeed: "fallback",
+        reasoningTier: "fallback",
+      },
+      ...overrides,
+    };
+  }
+
+  it("bypasses provider selection entirely when generative assistance is not needed", () => {
+    const route = routeLearningRequirements(
+      requirements({ generativeNeeded: "no", reasoningTier: "deterministic" }),
+      [runtime("primary")],
+      new Map(),
+      ["primary"],
+    );
+    expect(route.status).toBe("deterministic");
+    expect(route.providerSelectionBypassed).toBe(true);
+    expect(route.providerRequestAllowed).toBe(false);
+    expect(route.selection).toBeUndefined();
+  });
+
+  it("local reasoning cannot fall back to a remote runtime", () => {
+    const route = routeLearningRequirements(
+      requirements({ reasoningTier: "local" }),
+      [runtime("remote", { locality: "remote" })],
+      new Map(),
+      ["remote"],
+    );
+    expect(route.status).toBe("unavailable");
+    expect(route.providerRequestAllowed).toBe(false);
+    expect(route.selection?.status).toBe("unavailable");
+  });
+
+  it("remote reasoning permits the existing ordered fallback selector", () => {
+    const route = routeLearningRequirements(
+      requirements({ reasoningTier: "remote" }),
+      [
+        runtime("primary", { locality: "remote", health: "unavailable" }),
+        runtime("fallback", { locality: "remote" }),
+      ],
+      new Map([["primary", "unavailable"]]),
+      ["primary", "fallback"],
+    );
+    expect(route.status).toBe("selected");
+    expect(route.providerRequestAllowed).toBe(true);
+    if (route.selection?.status === "selected") {
+      expect(route.selection.descriptor.runtimeId).toBe("fallback");
+    }
+  });
+
+  it("uses LearningRequirements capability instead of a caller-selected provider capability", () => {
+    const route = routeLearningRequirements(
+      requirements({ learningCapability: "debugger", reasoningTier: "local" }),
+      [
+        runtime("coach-only"),
+        runtime("debugger", { capabilities: ["debugger"] }),
+      ],
+      new Map(),
+      ["coach-only", "debugger"],
+    );
+    expect(route.status).toBe("selected");
+    if (route.selection?.status === "selected") {
+      expect(route.selection.descriptor.runtimeId).toBe("debugger");
+    }
+  });
+
+  it("degrades safely when no compatible runtime exists", () => {
+    const route = routeLearningRequirements(
+      requirements({ learningCapability: "debugger" }),
+      [runtime("coach-only")],
+      new Map(),
+      ["coach-only"],
+    );
+    expect(route.status).toBe("unavailable");
+    expect(route.providerRequestAllowed).toBe(false);
+    expect(route.reason).toBe("no-compatible-provider");
   });
 });
