@@ -22,8 +22,8 @@ function request(capability: "challenger" | "reflector" | "debugger", withRuntim
             outcome: "completed" as const,
             stepsUsed: 1,
             finalWorld: {
-              sprite: { x: 0, y: 0, heading: 0, radius: 8 },
-              goal: { x: 10, y: 0, radius: 8 },
+              sprite: { x: 0, y: 0, heading: 0 },
+              goal: { x: 10, y: 0 },
             },
             observations: [],
           },
