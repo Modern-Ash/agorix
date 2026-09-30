@@ -1,0 +1,14 @@
+=== deterministic security verification: issue-87 ===
+date: 2026-09-30T12:06:02Z
+branch: ai-sdlc/issue-87
+head: 385c7119bded2aa3a5c9a2a792306314d2cd5e43
+
+$ pnpm security:check
+ WARN  Unsupported engine: wanted: {"node":">=22 <23"} (current: {"node":"v20.19.0","pnpm":"9.15.9"})
+
+> agorix@0.0.0 security:check /home/faguero/dev-agora/.agorix-agora-worktrees/issue-87
+> node scripts/security-baseline.mjs
+
+security baseline: PASS (scanned 4 built client bundle file(s); inspected 4 safety document(s); inspected 191 text file(s))
+exit=0
+

@@ -1,0 +1,1277 @@
+{
+  "available_optional": [],
+  "estimated_tokens": 247109,
+  "head": "385c7119bded2aa3a5c9a2a792306314d2cd5e43",
+  "mandatory": [
+    {
+      "digest": "sha256:f257b6390ef98a9f726d0d585a09bb56d5875a7f53af3c23d24dccdc4b7a983e",
+      "estimated_tokens": 57,
+      "id": "work-identity",
+      "kind": "governance",
+      "mandatory": true,
+      "provenance": "execution-bundle"
+    },
+    {
+      "digest": "sha256:a301a379615f4d293d053aad11ffd814229fc54abe43d4fc1932253131d1b53b",
+      "estimated_tokens": 90,
+      "id": "acceptance-criteria",
+      "kind": "requirements",
+      "mandatory": true,
+      "provenance": "execution-bundle.acceptance_criteria"
+    },
+    {
+      "digest": "sha256:8048860a2f5611606883b4ce9f0657349ac04cd6ed316fc56d26ce0ae410e15d",
+      "estimated_tokens": 74,
+      "id": "governance",
+      "kind": "governance",
+      "mandatory": true,
+      "provenance": "execution-bundle.governance"
+    },
+    {
+      "digest": "sha256:39516b4aabd0c2418a796ef13626606d9f3acc088ce5e745306e2c7c148ec842",
+      "estimated_tokens": 33,
+      "id": "risk-policy",
+      "kind": "policy",
+      "mandatory": true,
+      "provenance": "execution-bundle.risks"
+    },
+    {
+      "digest": "sha256:e75df3735f31e6f75abc85a1c7a0a92a7424734755e25664fb50b4a97e864bca",
+      "estimated_tokens": 4,
+      "id": "verification",
+      "kind": "verification",
+      "mandatory": true,
+      "provenance": "execution-bundle.verification_commands"
+    }
+  ],
+  "overflow": false,
+  "runtime_limit_tokens": null,
+  "schema": "agora-ai-sdlc/context-manifest/v1",
+  "selected_optional": [
+    {
+      "digest": "sha256:fd15adde7c7a92c4c9926c111111c267d28de32aa1959ce64e6fdbfe35ecfade",
+      "estimated_tokens": 492,
+      "id": ".claude/skills/agora-flow/SKILL.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:.claude/skills/agora-flow/SKILL.md"
+    },
+    {
+      "digest": "sha256:fd15adde7c7a92c4c9926c111111c267d28de32aa1959ce64e6fdbfe35ecfade",
+      "estimated_tokens": 492,
+      "id": ".codex/skills/agora-flow/SKILL.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:.codex/skills/agora-flow/SKILL.md"
+    },
+    {
+      "digest": "sha256:0c6f649152089986e890dd618e00d5c54924f8c86a375dc89320422f9d156357",
+      "estimated_tokens": 783,
+      "id": ".github/workflows/ci.yml",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:.github/workflows/ci.yml"
+    },
+    {
+      "digest": "sha256:b971da7522bdd909d8a5f5337037f5607300f196bc0420fe099323042cca2ca5",
+      "estimated_tokens": 22,
+      "id": ".gitignore",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:.gitignore"
+    },
+    {
+      "digest": "sha256:61885ed83d0d922a1d5dc1233523e10ef7fe6236827d5fcfd3a08d601e2ea5f5",
+      "estimated_tokens": 1318,
+      "id": "AGENTS.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:AGENTS.md"
+    },
+    {
+      "digest": "sha256:6062d070f03e2a396b541e23316f9cb51fdab38626f592b08855e0d121a3eac2",
+      "estimated_tokens": 509,
+      "id": "CONTRIBUTING.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:CONTRIBUTING.md"
+    },
+    {
+      "digest": "sha256:8671f6520d217ee9d9d2d1539d3a56fab3687f99f8484d2ea8db27b36803ef3f",
+      "estimated_tokens": 528,
+      "id": "GOVERNANCE.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:GOVERNANCE.md"
+    },
+    {
+      "digest": "sha256:29f7977e7401953ce27cfc33ccdcbdfc586de9aac32e48f3ef5227c3646c4bdc",
+      "estimated_tokens": 2827,
+      "id": "LICENSE",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:LICENSE"
+    },
+    {
+      "digest": "sha256:8ce5b3822039ac338deda6f6095ebe628bea66f5a20cc8273b1be2ac09922b39",
+      "estimated_tokens": 8149,
+      "id": "README.es.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:README.es.md"
+    },
+    {
+      "digest": "sha256:5f21d344c6c17c1772f61c40007db911b4ba962e058fe39c34e862a208b002b1",
+      "estimated_tokens": 7688,
+      "id": "README.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:README.md"
+    },
+    {
+      "digest": "sha256:b68273eea04967a585f15dae4b4083bad7dd04be00bd886bd3e9f422d0aea469",
+      "estimated_tokens": 81,
+      "id": "apps/tutor-api/package.json",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:apps/tutor-api/package.json"
+    },
+    {
+      "digest": "sha256:a65601a988ef87b0f4792cca99c7c5497edc01307db1fd7dfcc7e3d1d659198f",
+      "estimated_tokens": 3072,
+      "id": "apps/tutor-api/src/index.test.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:apps/tutor-api/src/index.test.ts"
+    },
+    {
+      "digest": "sha256:af74f79ae8dd1b599dc61b631c3fecc8a1e0a706f0198dc2a26cba007009d685",
+      "estimated_tokens": 2562,
+      "id": "apps/tutor-api/src/index.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:apps/tutor-api/src/index.ts"
+    },
+    {
+      "digest": "sha256:47aed6b18560428b6f9b1058bef38883d62f6f6143eab5ec61711476cbe4100c",
+      "estimated_tokens": 5170,
+      "id": "apps/web/e2e/smoke.spec.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:apps/web/e2e/smoke.spec.ts"
+    },
+    {
+      "digest": "sha256:afd0d150b38d1adc63db8182d30cf2634e9d0bd86dd3e0a917c1582de4cb2686",
+      "estimated_tokens": 361,
+      "id": "apps/web/index.html",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:apps/web/index.html"
+    },
+    {
+      "digest": "sha256:acdd9370f9574357fb05e1f634a7f5991cbebb8bc41f206fd3d9f7af5c715546",
+      "estimated_tokens": 216,
+      "id": "apps/web/package.json",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:apps/web/package.json"
+    },
+    {
+      "digest": "sha256:841e6060a6cd760f478469fbc9c6d4b4e3bb1e1bede68536ab2bd90ed7998271",
+      "estimated_tokens": 252,
+      "id": "apps/web/public/_headers",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:apps/web/public/_headers"
+    },
+    {
+      "digest": "sha256:aec9dea00bdb4c188f9e7dcb7946aa2b9749e87293dacf5c071a378ad31d89db",
+      "estimated_tokens": 64,
+      "id": "apps/web/public/icons/icon.svg",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:apps/web/public/icons/icon.svg"
+    },
+    {
+      "digest": "sha256:595f73132d593cc7c14c320cb1e0d8b1fd91ca2b86ac5a832f13b5ea30bb8f91",
+      "estimated_tokens": 145,
+      "id": "apps/web/public/manifest.webmanifest",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:apps/web/public/manifest.webmanifest"
+    },
+    {
+      "digest": "sha256:e0c62193241d6c98510d537d53acf1dcce39f6bba8c706ce330bc3ec8901784d",
+      "estimated_tokens": 408,
+      "id": "apps/web/public/sw.js",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:apps/web/public/sw.js"
+    },
+    {
+      "digest": "sha256:7f0ad4b5214e38b3a8c5042623bb8945f6fb70fb8c6694ccc188bb28a7fc1131",
+      "estimated_tokens": 3733,
+      "id": "apps/web/src/App.css",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:apps/web/src/App.css"
+    },
+    {
+      "digest": "sha256:1b46d75c4745afe2634d06e9ae44bc92ed6248b5328e37354fb69f5b6ceb0c15",
+      "estimated_tokens": 2022,
+      "id": "apps/web/src/App.test.tsx",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:apps/web/src/App.test.tsx"
+    },
+    {
+      "digest": "sha256:6bc031251057d59b78714336ca8cbeb7f844316de1b6bb30ceccc1181572b2d6",
+      "estimated_tokens": 8203,
+      "id": "apps/web/src/App.tsx",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:apps/web/src/App.tsx"
+    },
+    {
+      "digest": "sha256:ea53f7c04abd3662e7ba3aaadfd163b1bd93d3b2bd67846a41e75b87842322e1",
+      "estimated_tokens": 597,
+      "id": "apps/web/src/ProvenanceLabel.test.tsx",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:apps/web/src/ProvenanceLabel.test.tsx"
+    },
+    {
+      "digest": "sha256:a115801a9b5d4adadf4c4bf1e4aaf9b9d1529358134fe00f91ca8447e36f7984",
+      "estimated_tokens": 471,
+      "id": "apps/web/src/ProvenanceLabel.tsx",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:apps/web/src/ProvenanceLabel.tsx"
+    },
+    {
+      "digest": "sha256:fdebc56acefcb65d0cd264ea0f79b45c4ba3a15fa6dbbe9ee03a9a7dbd266078",
+      "estimated_tokens": 1041,
+      "id": "apps/web/src/editorModel.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:apps/web/src/editorModel.ts"
+    },
+    {
+      "digest": "sha256:3ff2f56b7de02d025f9e2e26000503acac61ad7b769750f4f4ed58ae01455021",
+      "estimated_tokens": 2111,
+      "id": "apps/web/src/i18n.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:apps/web/src/i18n.ts"
+    },
+    {
+      "digest": "sha256:68da394278cfc8c6d592e1b96f9780731685722b0fde084f50882a57dd1314e3",
+      "estimated_tokens": 756,
+      "id": "apps/web/src/linkPolicy.test.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:apps/web/src/linkPolicy.test.ts"
+    },
+    {
+      "digest": "sha256:02bc15518be72465ef3023b3daa3f99e335628ecb37a463b5acf78b31e7ee366",
+      "estimated_tokens": 893,
+      "id": "apps/web/src/linkPolicy.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:apps/web/src/linkPolicy.ts"
+    },
+    {
+      "digest": "sha256:1c5539794429bab76cc88f84ed074bdecad5a9c44f7b32d99329b60077611882",
+      "estimated_tokens": 101,
+      "id": "apps/web/src/main.tsx",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:apps/web/src/main.tsx"
+    },
+    {
+      "digest": "sha256:b06a687e70881d517706d8b90b13131a7657f8be15eb72a4fc47fb2170337289",
+      "estimated_tokens": 457,
+      "id": "apps/web/src/manifest.test.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:apps/web/src/manifest.test.ts"
+    },
+    {
+      "digest": "sha256:45ec731acdd46a17691efcac5cb89acc183dbc1025fda08e54123487076d43db",
+      "estimated_tokens": 863,
+      "id": "apps/web/src/projectStorage.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:apps/web/src/projectStorage.ts"
+    },
+    {
+      "digest": "sha256:9e91630be7f582598b1cf8f396c9d15574071a3f3ae58b6f1e32390d873c4339",
+      "estimated_tokens": 120,
+      "id": "apps/web/src/registerServiceWorker.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:apps/web/src/registerServiceWorker.ts"
+    },
+    {
+      "digest": "sha256:1072352a44e67b5fd62f11c2f6742a95d1c2f4f6c7b4a2655395e20dadd535df",
+      "estimated_tokens": 1256,
+      "id": "apps/web/src/securityHeaders.test.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:apps/web/src/securityHeaders.test.ts"
+    },
+    {
+      "digest": "sha256:a75378a71b132bc0609f8c956ecabb34e1061e4b2494553c524b1fc893ed4e06",
+      "estimated_tokens": 1092,
+      "id": "apps/web/src/securityHeaders.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:apps/web/src/securityHeaders.ts"
+    },
+    {
+      "digest": "sha256:6358efa73abd98d05bfd0bb6226686ec52027568b41d3751bddd3fe1687346a2",
+      "estimated_tokens": 138,
+      "id": "apps/web/vite.config.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:apps/web/vite.config.ts"
+    },
+    {
+      "digest": "sha256:f2ab489657ff566ce2d54d1cc72ba910af6493a7538191cd722cffc5577e69a0",
+      "estimated_tokens": 162,
+      "id": "docs/architecture/AI_TUTOR.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:docs/architecture/AI_TUTOR.md"
+    },
+    {
+      "digest": "sha256:76c16ab977b9e95e134298d700808f40cacc5443d9e13aad860539ba8f8f2079",
+      "estimated_tokens": 1004,
+      "id": "docs/architecture/LEARNING_COMPANION.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:docs/architecture/LEARNING_COMPANION.md"
+    },
+    {
+      "digest": "sha256:89d451a3a118fa3b5ea37b43dc14fa2764bad032d3514506414bf2e19b5a9263",
+      "estimated_tokens": 2017,
+      "id": "docs/architecture/SYSTEM_DESIGN.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:docs/architecture/SYSTEM_DESIGN.md"
+    },
+    {
+      "digest": "sha256:38a874403a6c521a93fd200a464d7b742075c2fce32af1b047d06a1d868566d6",
+      "estimated_tokens": 397,
+      "id": "docs/architecture/adr/0001-language-projection-contract.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:docs/architecture/adr/0001-language-projection-contract.md"
+    },
+    {
+      "digest": "sha256:9c877cef3997157534f8c06a886391d387249a6428456b540152d9c47ce46e4e",
+      "estimated_tokens": 572,
+      "id": "docs/architecture/adr/0001-phaser-stage-renderer.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:docs/architecture/adr/0001-phaser-stage-renderer.md"
+    },
+    {
+      "digest": "sha256:350afd34c46221bcd6761914b48f8135ecd9ae7586b5cd61c85941df6f14e136",
+      "estimated_tokens": 552,
+      "id": "docs/architecture/adr/0002-open-source-license-and-governance.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:docs/architecture/adr/0002-open-source-license-and-governance.md"
+    },
+    {
+      "digest": "sha256:d75415059913b5d324e03a8bc0547d5ca23f6a7d6403c359b8005730a4b1500a",
+      "estimated_tokens": 588,
+      "id": "docs/architecture/adr/0003-product-i18n-l10n.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:docs/architecture/adr/0003-product-i18n-l10n.md"
+    },
+    {
+      "digest": "sha256:07776945984e72b327f9580746b689ad2fece3777163bf6771793fa1732a8eaf",
+      "estimated_tokens": 386,
+      "id": "docs/architecture/adr/0004-learning-companion-contract.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:docs/architecture/adr/0004-learning-companion-contract.md"
+    },
+    {
+      "digest": "sha256:9711304d434cf017209c3e5b1f7ad70a3460f004fa71356d92336082adbac8a7",
+      "estimated_tokens": 841,
+      "id": "docs/architecture/adr/0004-runtime-authority-and-observable-execution.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:docs/architecture/adr/0004-runtime-authority-and-observable-execution.md"
+    },
+    {
+      "digest": "sha256:f707a8ca33d75d2c508ec5bfc07f777b32eaad6e18544e55cd66e923b21f0a91",
+      "estimated_tokens": 732,
+      "id": "docs/architecture/adr/0005-provider-runtime-contract.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:docs/architecture/adr/0005-provider-runtime-contract.md"
+    },
+    {
+      "digest": "sha256:90fbb53bff23e397ae66015e977f32696078c9bb758c0eb3f5a88a9a3773e45f",
+      "estimated_tokens": 3228,
+      "id": "docs/delivery/IMPLEMENTATION_ORDER.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:docs/delivery/IMPLEMENTATION_ORDER.md"
+    },
+    {
+      "digest": "sha256:4aca052b7c9ee4af395af251c6bdca24c26f327e3205fbf8a72575a680fee0d9",
+      "estimated_tokens": 980,
+      "id": "docs/delivery/POC_PLAN.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:docs/delivery/POC_PLAN.md"
+    },
+    {
+      "digest": "sha256:0dde7bb5fb6476d04dd59fec9f959ef298ccb4cf5ad995a9837b0428f39119b4",
+      "estimated_tokens": 918,
+      "id": "docs/product/AGORIX_STUDIO.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:docs/product/AGORIX_STUDIO.md"
+    },
+    {
+      "digest": "sha256:fe19c7a4037f620d69dc610f2bf74a9e69d9dd64d36e198a7d2d2267af3cd46f",
+      "estimated_tokens": 844,
+      "id": "docs/product/COMPETITIVE_PRINCIPLES.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:docs/product/COMPETITIVE_PRINCIPLES.md"
+    },
+    {
+      "digest": "sha256:2124fb8481d8d16009bd39b415cf5c49299bf97f1c9ef8f9fa527f1e07786192",
+      "estimated_tokens": 1630,
+      "id": "docs/product/CONTENT_GUIDE.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:docs/product/CONTENT_GUIDE.md"
+    },
+    {
+      "digest": "sha256:e82410ee5950af80029bbcc8f533104caae8ea996a463d282a61b9dfc4989434",
+      "estimated_tokens": 694,
+      "id": "docs/product/CROSS_SURFACE_COMPATIBILITY.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:docs/product/CROSS_SURFACE_COMPATIBILITY.md"
+    },
+    {
+      "digest": "sha256:e8821c3d2c32d2bd43dcc1ebb231f042c3d4ba1c540abb0c70c9d3f3172fd75b",
+      "estimated_tokens": 5116,
+      "id": "docs/product/DESIGN_SYSTEM.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:docs/product/DESIGN_SYSTEM.md"
+    },
+    {
+      "digest": "sha256:1c5ee3ef2927939310b8dcb2d68cedc9bee2bfcd2152d4e09d49edfd46035966",
+      "estimated_tokens": 1017,
+      "id": "docs/product/INTERACTION_MODEL.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:docs/product/INTERACTION_MODEL.md"
+    },
+    {
+      "digest": "sha256:db295a5244c694561aae58e3c77def9019146ebe8924574ff0c3556e89adde53",
+      "estimated_tokens": 2146,
+      "id": "docs/product/LEARNER_JOURNEY.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:docs/product/LEARNER_JOURNEY.md"
+    },
+    {
+      "digest": "sha256:5ba1356d6d9af3c1f15d79e60b58fb411363dab73da7a0e9cbb2f470837779db",
+      "estimated_tokens": 3535,
+      "id": "docs/product/LEARNING_EVIDENCE.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:docs/product/LEARNING_EVIDENCE.md"
+    },
+    {
+      "digest": "sha256:185cde5d401e05635caed5dfa8a966d780472197625c7f03d29e6153b84dcd53",
+      "estimated_tokens": 2973,
+      "id": "docs/product/LEARNING_PROGRESSION.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:docs/product/LEARNING_PROGRESSION.md"
+    },
+    {
+      "digest": "sha256:d676ec75be91fb3f36ab2e45761ac2e044834e7791df84ab21c1367a6fe09e9f",
+      "estimated_tokens": 1465,
+      "id": "docs/product/MVP.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:docs/product/MVP.md"
+    },
+    {
+      "digest": "sha256:d75d4f47c0a69c167f4f53063f45769eb1d4a8a16329c6f909622628b05e4897",
+      "estimated_tokens": 1690,
+      "id": "docs/product/PEDAGOGY.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:docs/product/PEDAGOGY.md"
+    },
+    {
+      "digest": "sha256:26692d3eae2a040fad298e6fe81c67ee870a77cf1c9aa3e25609353d954f7f55",
+      "estimated_tokens": 1227,
+      "id": "docs/product/PRODUCT_INTENT.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:docs/product/PRODUCT_INTENT.md"
+    },
+    {
+      "digest": "sha256:306ea99b64accae417c0dbaa440fb6f919f83819fbd7ddde83fe3cae23b1b84f",
+      "estimated_tokens": 393,
+      "id": "docs/product/TRANSLATION_GUIDE.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:docs/product/TRANSLATION_GUIDE.md"
+    },
+    {
+      "digest": "sha256:82427b9bfe94cf5853e3e48d06b45c7c67c23ca2fd68ea42306a5a72816de5b8",
+      "estimated_tokens": 3426,
+      "id": "docs/product/TRANSPARENT_PROGRAMMING_UX.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:docs/product/TRANSPARENT_PROGRAMMING_UX.md"
+    },
+    {
+      "digest": "sha256:052c2f3b21e6ed31a35d1fa4323c675d629af391e229ad61294364ceb3def17c",
+      "estimated_tokens": 2591,
+      "id": "docs/product/WORLDS.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:docs/product/WORLDS.md"
+    },
+    {
+      "digest": "sha256:e1680f182d040890362cecfb3a955ac9a3efb4f101bf0549cf6bb6ba74ae6363",
+      "estimated_tokens": 341,
+      "id": "docs/providers/OLLAMA.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:docs/providers/OLLAMA.md"
+    },
+    {
+      "digest": "sha256:b8ceb0420fe8a0472777d4c5319f7b79d7e51890faae08244127405e2fc01bb9",
+      "estimated_tokens": 840,
+      "id": "docs/providers/OPENAI_COMPATIBLE_GATEWAY.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:docs/providers/OPENAI_COMPATIBLE_GATEWAY.md"
+    },
+    {
+      "digest": "sha256:3232f90560d53cbc8a92bf36e883c4a7d7edb44725ee4268f53424fac36e16c2",
+      "estimated_tokens": 882,
+      "id": "docs/safety/AI_OUTPUT_VALIDATION.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:docs/safety/AI_OUTPUT_VALIDATION.md"
+    },
+    {
+      "digest": "sha256:f2dfc49d5e84413915fe279658b1992d1e4f142a598403dc2cb120dac5908270",
+      "estimated_tokens": 493,
+      "id": "docs/safety/CHILD_SAFETY_PRIVACY.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:docs/safety/CHILD_SAFETY_PRIVACY.md"
+    },
+    {
+      "digest": "sha256:a7fa5d80bcd09ac5b833cbea090bd826a95106a11ece4bec6d6eb0f7bda31a99",
+      "estimated_tokens": 3008,
+      "id": "docs/safety/PRIVACY_THREAT_MODEL.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:docs/safety/PRIVACY_THREAT_MODEL.md"
+    },
+    {
+      "digest": "sha256:0cacca3da73b2e94078b61dbd4eb7d3e1c395130084caa7ef20ba1918408736a",
+      "estimated_tokens": 1981,
+      "id": "docs/safety/WEB_SECURITY_BASELINE.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:docs/safety/WEB_SECURITY_BASELINE.md"
+    },
+    {
+      "digest": "sha256:e11e4f7c60d918a7165cb00c997dbf2e33f8a52b4c86839e35d69bc64ee35c33",
+      "estimated_tokens": 510,
+      "id": "eslint.config.js",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:eslint.config.js"
+    },
+    {
+      "digest": "sha256:281e1bab83d961cb8d9076748fcb13477d215dd18ae7377eebf57bebe173fced",
+      "estimated_tokens": 118,
+      "id": "extensions/vscode/README.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:extensions/vscode/README.md"
+    },
+    {
+      "digest": "sha256:a6cb0df0d43de5445ca91f93411632ce0a0cd5b5a40c508167382535774a6915",
+      "estimated_tokens": 296,
+      "id": "extensions/vscode/package.json",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:extensions/vscode/package.json"
+    },
+    {
+      "digest": "sha256:4b4c8eadb6d95c05dd3a1c528c772f0aa35b15bddf1dcbe682e6876f26023cd7",
+      "estimated_tokens": 1438,
+      "id": "extensions/vscode/src/crossSurfaceCompatibility.test.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:extensions/vscode/src/crossSurfaceCompatibility.test.ts"
+    },
+    {
+      "digest": "sha256:ed2fffa58fb87d9cf47482c8cf41957b6f9582290ceb96ac352f20bc3ddfe309",
+      "estimated_tokens": 150,
+      "id": "extensions/vscode/src/extension.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:extensions/vscode/src/extension.ts"
+    },
+    {
+      "digest": "sha256:146d190734adb3c905c24671e790867476011fff7a62850762064024d0dce98d",
+      "estimated_tokens": 1453,
+      "id": "extensions/vscode/src/studioCore.test.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:extensions/vscode/src/studioCore.test.ts"
+    },
+    {
+      "digest": "sha256:2154cfd4baa752b5f0f821e4f18b8bdc12798dd1d1ff46490598824ff38aded5",
+      "estimated_tokens": 1025,
+      "id": "extensions/vscode/src/studioCore.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:extensions/vscode/src/studioCore.ts"
+    },
+    {
+      "digest": "sha256:1655d51df055dc27bb6657224ea18241ef09f0bdf2667d352d3d879d916d7cfe",
+      "estimated_tokens": 111,
+      "id": "extensions/vscode/src/vscode-shim.d.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:extensions/vscode/src/vscode-shim.d.ts"
+    },
+    {
+      "digest": "sha256:b1df01c7b3ffbfde2f65f433286f600e3ff181d47db39bce8337daea3c30a2c7",
+      "estimated_tokens": 37,
+      "id": "extensions/vscode/tsconfig.json",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:extensions/vscode/tsconfig.json"
+    },
+    {
+      "digest": "sha256:2d2b3e540d26067235ffe99346e45159f5fac686b2e4e433d21a47cab4dafa48",
+      "estimated_tokens": 36,
+      "id": "extensions/vscode/vitest.config.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:extensions/vscode/vitest.config.ts"
+    },
+    {
+      "digest": "sha256:397fedb889007a4fe2342ff28b5fed0ae19531dfd9e46a410686dde641837810",
+      "estimated_tokens": 209,
+      "id": "package.json",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:package.json"
+    },
+    {
+      "digest": "sha256:a5cd14eb05d70eb73beaf75bb5d6f1d509a723d78ca4efa37e0c9b50938c7794",
+      "estimated_tokens": 88,
+      "id": "packages/block-editor/package.json",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/block-editor/package.json"
+    },
+    {
+      "digest": "sha256:22b03a94f764c6cf620b2338b6926347b5ec188e4869d29528383f8351c61d35",
+      "estimated_tokens": 2835,
+      "id": "packages/block-editor/src/adapter.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/block-editor/src/adapter.ts"
+    },
+    {
+      "digest": "sha256:e9311be0149da5e78eb028fb1326d45ea0886aa25710b471e3ac0ba74003d40a",
+      "estimated_tokens": 1648,
+      "id": "packages/block-editor/src/changes.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/block-editor/src/changes.ts"
+    },
+    {
+      "digest": "sha256:08bc8674609144c74cc0eb04ef6d07d024968ca4b0d3b440db4bd2132968e636",
+      "estimated_tokens": 3135,
+      "id": "packages/block-editor/src/index.test.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/block-editor/src/index.test.ts"
+    },
+    {
+      "digest": "sha256:6c44086e96a68a911673423ee4c4b68f4100d8373c1556537bc312ed21679004",
+      "estimated_tokens": 269,
+      "id": "packages/block-editor/src/index.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/block-editor/src/index.ts"
+    },
+    {
+      "digest": "sha256:5db2d4b0937cb42713c6aef0627bb4809bda9886df9bcbc375659ef505dec29d",
+      "estimated_tokens": 954,
+      "id": "packages/block-editor/src/vocabulary.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/block-editor/src/vocabulary.ts"
+    },
+    {
+      "digest": "sha256:1b38cbd714f1e1f7f619d3c7c25cac339aea7ec7e2406fa796391da65a3da44f",
+      "estimated_tokens": 90,
+      "id": "packages/code-generator/package.json",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/code-generator/package.json"
+    },
+    {
+      "digest": "sha256:207890e6823850db7079ed62b615df385949e29e2dcc1c9e7ffb140b3eaf0bcc",
+      "estimated_tokens": 488,
+      "id": "packages/code-generator/src/fixtures.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/code-generator/src/fixtures.ts"
+    },
+    {
+      "digest": "sha256:d3ff4e8a00e80933746a5509d930f48d80d96da99bf3e1871793744ec5eb29f6",
+      "estimated_tokens": 106,
+      "id": "packages/code-generator/src/index.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/code-generator/src/index.ts"
+    },
+    {
+      "digest": "sha256:efb9623656d81d271d379dbe4deee17154f3d3dc17a95a4234446fdc90fb211c",
+      "estimated_tokens": 2160,
+      "id": "packages/code-generator/src/project.test.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/code-generator/src/project.test.ts"
+    },
+    {
+      "digest": "sha256:3fd047ea4e11ff7344fd5af1375e2a5a09949036a6a9dedc84a0e9b600e982ab",
+      "estimated_tokens": 1811,
+      "id": "packages/code-generator/src/project.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/code-generator/src/project.ts"
+    },
+    {
+      "digest": "sha256:77040671a64343233f23c5087973fe39f48d300f38b7df46ffdcdc4030ba9fbe",
+      "estimated_tokens": 86,
+      "id": "packages/curriculum/package.json",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/curriculum/package.json"
+    },
+    {
+      "digest": "sha256:6b7a21d57cb0ea8809f6929e2322a551655caad182260f2731ce0104f25e07b8",
+      "estimated_tokens": 1842,
+      "id": "packages/curriculum/src/index.test.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/curriculum/src/index.test.ts"
+    },
+    {
+      "digest": "sha256:44ae5036ac302d50562f7dd7e9b1af58cfdbe359aaf20ad37043390301706a92",
+      "estimated_tokens": 3689,
+      "id": "packages/curriculum/src/index.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/curriculum/src/index.ts"
+    },
+    {
+      "digest": "sha256:4af5f7f105da6246e2c18b9e35ee3cd3a743d5a9f6a3da1ea8c0b0ff0c054ee1",
+      "estimated_tokens": 96,
+      "id": "packages/language-projection/README.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/language-projection/README.md"
+    },
+    {
+      "digest": "sha256:71f3514fa33adaa279676cc2a2420669a3e725b479c4bc30ac81e4178f8bd64d",
+      "estimated_tokens": 78,
+      "id": "packages/language-projection/package.json",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/language-projection/package.json"
+    },
+    {
+      "digest": "sha256:ad5a20bba6326c3de7b7f84b547c9efbb60dc1a1bf1a966bd3cb0c6ad5c4c4ec",
+      "estimated_tokens": 730,
+      "id": "packages/language-projection/src/conformance.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/language-projection/src/conformance.ts"
+    },
+    {
+      "digest": "sha256:fbf5bcbe3ab8c117b3d1ff54195a32815f023aac72ceba8f5aae065e1d2bc446",
+      "estimated_tokens": 1364,
+      "id": "packages/language-projection/src/index.test.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/language-projection/src/index.test.ts"
+    },
+    {
+      "digest": "sha256:18ed3872204723cadb9a8ec039cac6e5b61d9a0b27410091429473e4d4bdeb49",
+      "estimated_tokens": 1280,
+      "id": "packages/language-projection/src/index.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/language-projection/src/index.ts"
+    },
+    {
+      "digest": "sha256:1a9f0873fec04475a675b9b11b9402a9eca94c930c65a199019538b9f521b861",
+      "estimated_tokens": 35,
+      "id": "packages/language-projection/tsconfig.json",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/language-projection/tsconfig.json"
+    },
+    {
+      "digest": "sha256:5a807bccd155d90ae374339545b86780a8511899fcf3e4ce2c256fa3939d63b1",
+      "estimated_tokens": 831,
+      "id": "packages/learning-evidence/README.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/learning-evidence/README.md"
+    },
+    {
+      "digest": "sha256:85ca31cb7f01ae01bdbe7c3f82b425fff5dc912f697978ace44b4b064f689f18",
+      "estimated_tokens": 84,
+      "id": "packages/learning-evidence/package.json",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/learning-evidence/package.json"
+    },
+    {
+      "digest": "sha256:8919c144aee5d92b4be66b934b16906213ce692e87349ff8d8e55bcee9312a79",
+      "estimated_tokens": 4616,
+      "id": "packages/learning-evidence/src/assessment.test.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/learning-evidence/src/assessment.test.ts"
+    },
+    {
+      "digest": "sha256:f89cf739fb9393ed2f8fdda1ce68d859afce87b081622a18360e54f309a635d0",
+      "estimated_tokens": 5238,
+      "id": "packages/learning-evidence/src/assessment.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/learning-evidence/src/assessment.ts"
+    },
+    {
+      "digest": "sha256:3ba71ec315cd9ec54c7869b2d03c66bf1b8b171777ccb7560ee88ab30c8bd5bf",
+      "estimated_tokens": 1319,
+      "id": "packages/learning-evidence/src/competencies.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/learning-evidence/src/competencies.ts"
+    },
+    {
+      "digest": "sha256:ceb70e34e741ddc537fa48cad1b1ea0e90da0059ebb72ce95a307c83b0cb9c23",
+      "estimated_tokens": 1056,
+      "id": "packages/learning-evidence/src/documentation.test.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/learning-evidence/src/documentation.test.ts"
+    },
+    {
+      "digest": "sha256:c3deebdc548c4173c58ecb0b6a8506269dfaf4c37f6a60047c05d99281ab69fc",
+      "estimated_tokens": 1379,
+      "id": "packages/learning-evidence/src/evidence.test.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/learning-evidence/src/evidence.test.ts"
+    },
+    {
+      "digest": "sha256:00a4b67e8bf0b5252e544549c94735d684b5d626ac9f66ed84d00643d033afe2",
+      "estimated_tokens": 4991,
+      "id": "packages/learning-evidence/src/evidence.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/learning-evidence/src/evidence.ts"
+    },
+    {
+      "digest": "sha256:ec496eff0036e9ed9dad7f1e0cb2789fdbf870dd13d90aa1c27e968f2d7eb923",
+      "estimated_tokens": 416,
+      "id": "packages/learning-evidence/src/index.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/learning-evidence/src/index.ts"
+    },
+    {
+      "digest": "sha256:08d4be7d80fbb392ed51fd94b0998d7aa6ab1f45494eda50801253ec2e584823",
+      "estimated_tokens": 916,
+      "id": "packages/learning-evidence/src/synthetic-report.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/learning-evidence/src/synthetic-report.ts"
+    },
+    {
+      "digest": "sha256:1a9f0873fec04475a675b9b11b9402a9eca94c930c65a199019538b9f521b861",
+      "estimated_tokens": 35,
+      "id": "packages/learning-evidence/tsconfig.json",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/learning-evidence/tsconfig.json"
+    },
+    {
+      "digest": "sha256:2d2b3e540d26067235ffe99346e45159f5fac686b2e4e433d21a47cab4dafa48",
+      "estimated_tokens": 36,
+      "id": "packages/learning-evidence/vitest.config.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/learning-evidence/vitest.config.ts"
+    },
+    {
+      "digest": "sha256:897468314c50ddb0b55f6e860df56cd5e3cc73eb5a713f70dae5c3d2131180d6",
+      "estimated_tokens": 963,
+      "id": "packages/persistence/src/compatibility.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/persistence/src/compatibility.ts"
+    },
+    {
+      "digest": "sha256:0e1a46020126811a01b865588c0765567f6ade19b61198b8364f77d6219e1807",
+      "estimated_tokens": 162,
+      "id": "packages/persistence/src/index.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/persistence/src/index.ts"
+    },
+    {
+      "digest": "sha256:b63da45c897a39f19f55947e43d4c0c93dc97f81446f5eafe8d2a96288e7dbce",
+      "estimated_tokens": 1202,
+      "id": "packages/persistence/src/store.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/persistence/src/store.ts"
+    },
+    {
+      "digest": "sha256:dbfed21b2ceab04db7c43b8464559acd5231d4c579fc241a773f78f9f174f813",
+      "estimated_tokens": 104,
+      "id": "packages/proposals/package.json",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/proposals/package.json"
+    },
+    {
+      "digest": "sha256:8bda7f98e5ad0783ece71f815526ea6e18ad50a0a9e598e13ee38c241452b7ae",
+      "estimated_tokens": 3323,
+      "id": "packages/proposals/src/index.test.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/proposals/src/index.test.ts"
+    },
+    {
+      "digest": "sha256:c418b7600e1979bac090773b6cf7e7a1fb605017b9c46d608e8768f0fd04fd9e",
+      "estimated_tokens": 4395,
+      "id": "packages/proposals/src/index.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/proposals/src/index.ts"
+    },
+    {
+      "digest": "sha256:1a9f0873fec04475a675b9b11b9402a9eca94c930c65a199019538b9f521b861",
+      "estimated_tokens": 35,
+      "id": "packages/proposals/tsconfig.json",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/proposals/tsconfig.json"
+    },
+    {
+      "digest": "sha256:2d2b3e540d26067235ffe99346e45159f5fac686b2e4e433d21a47cab4dafa48",
+      "estimated_tokens": 36,
+      "id": "packages/proposals/vitest.config.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/proposals/vitest.config.ts"
+    },
+    {
+      "digest": "sha256:cf1d8ca881c7d9db210eda1b9427847cbd3b48d6f53c767875144143be5d9ed7",
+      "estimated_tokens": 738,
+      "id": "packages/provider-runtime/README.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/provider-runtime/README.md"
+    },
+    {
+      "digest": "sha256:5ebc61cf7599ad59d3e6f0881918d96258306baaccd440177e6cffe84e2b8bbc",
+      "estimated_tokens": 98,
+      "id": "packages/provider-runtime/package.json",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/provider-runtime/package.json"
+    },
+    {
+      "digest": "sha256:2f0bca2055f61e8f107b9d53bc226fc25c10501ed5bc157a04029391a435d9b9",
+      "estimated_tokens": 5691,
+      "id": "packages/provider-runtime/src/index.test.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/provider-runtime/src/index.test.ts"
+    },
+    {
+      "digest": "sha256:f6b9a245ebecd166f084e487186aa6835e6362ea36ea12a9876b3c88127f6dbe",
+      "estimated_tokens": 7688,
+      "id": "packages/provider-runtime/src/index.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/provider-runtime/src/index.ts"
+    },
+    {
+      "digest": "sha256:1ccbcd59ed6f21230d221a4c7bab2ed85aab7622a2b948c0d69a5c061135b155",
+      "estimated_tokens": 1816,
+      "id": "packages/provider-runtime/src/selection.test.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/provider-runtime/src/selection.test.ts"
+    },
+    {
+      "digest": "sha256:42fe7dea938273e9d1572f0f70e78c581f20a7af772b005e485cfd18b0f7ecf9",
+      "estimated_tokens": 1706,
+      "id": "packages/provider-runtime/src/selection.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/provider-runtime/src/selection.ts"
+    },
+    {
+      "digest": "sha256:1a9f0873fec04475a675b9b11b9402a9eca94c930c65a199019538b9f521b861",
+      "estimated_tokens": 35,
+      "id": "packages/provider-runtime/tsconfig.json",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/provider-runtime/tsconfig.json"
+    },
+    {
+      "digest": "sha256:b72fb6bf93aae163fc7a6cb261affa1b77a1ae18612819de4e29a079e86ac966",
+      "estimated_tokens": 93,
+      "id": "packages/runtime/package.json",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/runtime/package.json"
+    },
+    {
+      "digest": "sha256:ac2e3cd22bca52802ed52c256f0215963b2ae0cc96217431478c58dccbdbd086",
+      "estimated_tokens": 101,
+      "id": "packages/runtime/src/errors.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/runtime/src/errors.ts"
+    },
+    {
+      "digest": "sha256:a8cd9abf8c4ce69cacafdc37d65df696a675880e8649f203f303bb48265a97c0",
+      "estimated_tokens": 2099,
+      "id": "packages/runtime/src/execute.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/runtime/src/execute.ts"
+    },
+    {
+      "digest": "sha256:14619cd31be939750bae488d5f92206a6f59248e61d71b9fad09cb9b7fad7b87",
+      "estimated_tokens": 2311,
+      "id": "packages/runtime/src/index.test.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/runtime/src/index.test.ts"
+    },
+    {
+      "digest": "sha256:af9fc233696b22ef668ecdc9262cc73673216c7a4064b5ee236fb0b5de04c7d5",
+      "estimated_tokens": 281,
+      "id": "packages/runtime/src/index.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/runtime/src/index.ts"
+    },
+    {
+      "digest": "sha256:8c4e2a9d46d8c756d560ae44c59d9eb355b19515e923230616f66d2bbca2a953",
+      "estimated_tokens": 1887,
+      "id": "packages/runtime/src/operations.test.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/runtime/src/operations.test.ts"
+    },
+    {
+      "digest": "sha256:d5483fa102f20991655df602987cd5423c30f81831a15bf308d6fc7370e7f617",
+      "estimated_tokens": 1209,
+      "id": "packages/runtime/src/operations.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/runtime/src/operations.ts"
+    },
+    {
+      "digest": "sha256:8619e27179f69f71dbbc98b5bede6c0a533d3da95d4167b6375f304b5a6bdec6",
+      "estimated_tokens": 647,
+      "id": "packages/runtime/src/world.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/runtime/src/world.ts"
+    },
+    {
+      "digest": "sha256:4b9ba8cab7726b510be3a449168ec446b208a28924cc45e03d1502ef575b5f7f",
+      "estimated_tokens": 80,
+      "id": "packages/stage/package.json",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/stage/package.json"
+    },
+    {
+      "digest": "sha256:678236c4a818385bfbdf3dd63dfa531d4ac4c93686bdc023cf65332e2875aec7",
+      "estimated_tokens": 2406,
+      "id": "packages/stage/src/index.test.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/stage/src/index.test.ts"
+    },
+    {
+      "digest": "sha256:4539f66d33b8cb8f551ac7ed5faef76566751baaf84ad4692b406d8add0b13fe",
+      "estimated_tokens": 249,
+      "id": "packages/stage/src/index.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/stage/src/index.ts"
+    },
+    {
+      "digest": "sha256:2fc0a653fbe0968e10220c3a5602ad469fba2b8f0f0fc868752c74121dd35bdb",
+      "estimated_tokens": 1182,
+      "id": "packages/stage/src/model.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/stage/src/model.ts"
+    },
+    {
+      "digest": "sha256:c732ec19d0899ac42a9e36646e7b6c3a0afc7403de2f8cefcd5768c8faded232",
+      "estimated_tokens": 2262,
+      "id": "packages/stage/src/rendering.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/stage/src/rendering.ts"
+    },
+    {
+      "digest": "sha256:2d2b3e540d26067235ffe99346e45159f5fac686b2e4e433d21a47cab4dafa48",
+      "estimated_tokens": 36,
+      "id": "packages/stage/vitest.config.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/stage/vitest.config.ts"
+    },
+    {
+      "digest": "sha256:b3aad36ad1902c09e21a90e5fc499f4676c56880f6f3103513077265b9aa5b37",
+      "estimated_tokens": 363,
+      "id": "packages/tutor-contract/README.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/tutor-contract/README.md"
+    },
+    {
+      "digest": "sha256:a57e858a1c1983c060f824a7ceac098edb1de488a4fe6d688f8717f6306740aa",
+      "estimated_tokens": 107,
+      "id": "packages/tutor-contract/package.json",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/tutor-contract/package.json"
+    },
+    {
+      "digest": "sha256:cc23f1cf53648a2f88b31e0268b0ffd8c6c79f9832026d1405c10d2d17502217",
+      "estimated_tokens": 5082,
+      "id": "packages/tutor-contract/src/index.test.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/tutor-contract/src/index.test.ts"
+    },
+    {
+      "digest": "sha256:c2934724300e02a5883d70045a1d2325b213e352bc43bd8f5749135989c443d8",
+      "estimated_tokens": 3581,
+      "id": "packages/tutor-contract/src/index.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/tutor-contract/src/index.ts"
+    },
+    {
+      "digest": "sha256:81f77b1d9df0690be32031999adf66573bdb20d67cf231c21adb32cd22154909",
+      "estimated_tokens": 8040,
+      "id": "packages/tutor-contract/src/learning-companion.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:packages/tutor-contract/src/learning-companion.ts"
+    },
+    {
+      "digest": "sha256:8e05adf5f39abab957926fd9a9c7957caeca34557d8973e06ebcfc7d36454106",
+      "estimated_tokens": 20432,
+      "id": "pnpm-lock.yaml",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:pnpm-lock.yaml"
+    },
+    {
+      "digest": "sha256:898bf7298e617e3de6860160bfdaf8230e35d3cdb420641c8281169e18222b00",
+      "estimated_tokens": 15,
+      "id": "pnpm-workspace.yaml",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:pnpm-workspace.yaml"
+    },
+    {
+      "digest": "sha256:73afd79d776a98a7018f1eae867deaf44bd7f419ac4bcee547f30a7cde896ad4",
+      "estimated_tokens": 5118,
+      "id": "scripts/security-baseline.mjs",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:scripts/security-baseline.mjs"
+    },
+    {
+      "digest": "sha256:33c730ecf9c5416980aa1cf3fbd0f66fd6e18e2f565431827116f2089e004914",
+      "estimated_tokens": 4378,
+      "id": "scripts/security-baseline.test.mjs",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:scripts/security-baseline.test.mjs"
+    },
+    {
+      "digest": "sha256:93a049e4ed6d31f289cfef7377fc305155c42a862c9c8747fa8df6db5b3c87e2",
+      "estimated_tokens": 40,
+      "id": "scripts/vitest.config.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:scripts/vitest.config.ts"
+    },
+    {
+      "digest": "sha256:d27605d0da643cf6016b6fd47abf432c84c0b45ceb75a47f695567292e7f9b7b",
+      "estimated_tokens": 114,
+      "id": "vitest.config.ts",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:vitest.config.ts"
+    },
+    {
+      "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "estimated_tokens": 0,
+      "id": "agora/activity.md",
+      "kind": "repository-file",
+      "mandatory": false,
+      "provenance": "repository:agora/activity.md"
+    }
+  ],
+  "work": "issue-87"
+}

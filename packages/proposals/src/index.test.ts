@@ -27,6 +27,34 @@ const acceptedProgram: ProjectProgram = {
   ],
 };
 
+const twoStepProgram: ProjectProgram = {
+  schema: SCHEMA_VERSION,
+  scripts: [
+    {
+      id: "main",
+      trigger: { type: "onStart" },
+      statements: [
+        { type: "move", steps: 160 },
+        { type: "turn", degrees: 90 },
+      ],
+    },
+  ],
+};
+
+const nestedProgram: ProjectProgram = {
+  schema: SCHEMA_VERSION,
+  scripts: [
+    {
+      id: "main",
+      trigger: { type: "onStart" },
+      statements: [
+        { type: "repeat", count: 2, body: [{ type: "move", steps: 40 }] },
+        { type: "move", steps: 160 },
+      ],
+    },
+  ],
+};
+
 function turnProposal(): ProgramProposal {
   return createProgramProposal({
     id: "proposal-turn-after-move",
@@ -42,6 +70,36 @@ function turnProposal(): ProgramProposal {
         statement: { type: "turn", degrees: 90 },
       },
     ],
+  });
+}
+
+function changeProposal(): ProgramProposal {
+  return createProgramProposal({
+    id: "proposal-change-move",
+    baseProgram: acceptedProgram,
+    source: { kind: "learning-companion", capability: "program-proposal" },
+    purpose: "Change the move distance.",
+    rationale: "The sprite is still far from the beacon after the first run.",
+    affectedNodeIds: ["scripts[0]/statements[0]"],
+    operations: [
+      {
+        type: "replaceStatement",
+        nodeId: "scripts[0]/statements[0]",
+        statement: { type: "move", steps: 220 },
+      },
+    ],
+  });
+}
+
+function removeProposal(): ProgramProposal {
+  return createProgramProposal({
+    id: "proposal-remove-turn",
+    baseProgram: twoStepProgram,
+    source: { kind: "learning-companion", capability: "program-proposal" },
+    purpose: "Remove the extra turn.",
+    rationale: "A single move already reaches the beacon.",
+    affectedNodeIds: ["scripts[0]/statements[1]"],
+    operations: [{ type: "removeStatement", nodeId: "scripts[0]/statements[1]" }],
   });
 }
 
@@ -185,6 +243,140 @@ describe("proposal package", () => {
     const serialized = JSON.stringify(accepted.audit);
 
     expect(JSON.parse(serialized)).toEqual(accepted.audit);
+    expect(serialized).not.toMatch(/email|school|address|name|age|openAi|anthropic|thread/i);
+  });
+
+  it("covers insert, change and remove with deterministic diff kinds", () => {
+    const inserted = createProposalReview(acceptedProgram, turnProposal());
+    const changed = createProposalReview(acceptedProgram, changeProposal());
+    const removed = createProposalReview(twoStepProgram, removeProposal());
+
+    expect(inserted.diff.map((entry) => entry.kind)).toEqual(["added"]);
+    expect(changed.diff).toEqual([
+      {
+        nodeId: "scripts[0]/statements[0]",
+        kind: "changed",
+        beforeText: "  sprite.move(160);\n",
+        afterText: "  sprite.move(220);\n",
+      },
+    ]);
+    expect(removed.diff).toEqual([
+      {
+        nodeId: "scripts[0]/statements[1]",
+        kind: "removed",
+        beforeText: "  sprite.turn(90);\n",
+      },
+    ]);
+  });
+
+  it("accept commits exactly the previewed candidate for change and remove", () => {
+    const changed = createProposalReview(acceptedProgram, changeProposal());
+    const removed = createProposalReview(twoStepProgram, removeProposal());
+
+    expect(acceptProposal(acceptedProgram, changed).program).toEqual(changed.candidateProgram);
+    expect(acceptProposal(twoStepProgram, removed).program).toEqual(removed.candidateProgram);
+    expect(acceptProposal(twoStepProgram, removed).program.scripts[0]?.statements).toEqual([
+      { type: "move", steps: 160 },
+    ]);
+  });
+
+  it("derives the same diff and candidate regardless of model prose or review order", () => {
+    const proposal = changeProposal();
+    const terseProse = createProgramProposal({
+      id: proposal.id,
+      baseProgram: acceptedProgram,
+      source: proposal.source,
+      purpose: "tune the move",
+      rationale: "r",
+      affectedNodeIds: proposal.affectedNodeIds,
+      operations: proposal.operations,
+    });
+
+    const first = createProposalReview(acceptedProgram, proposal);
+    const second = createProposalReview(acceptedProgram, terseProse);
+    const third = createProposalReview(acceptedProgram, proposal);
+
+    expect(second.proposal.purpose).not.toBe(first.proposal.purpose);
+    expect(second.diff).toEqual(first.diff);
+    expect(second.proposedProjection.code).toBe(first.proposedProjection.code);
+    expect(second.candidateProgram).toEqual(first.candidateProgram);
+    expect(JSON.stringify(third.diff)).toBe(JSON.stringify(first.diff));
+    expect(programSemanticHash(third.candidateProgram)).toBe(
+      programSemanticHash(first.candidateProgram),
+    );
+  });
+
+  it("rejects unexpected and provider-specific fields inside operations", () => {
+    const providerField = {
+      ...turnProposal(),
+      operations: [
+        {
+          type: "appendStatement",
+          scriptIndex: 0,
+          statement: { type: "turn", degrees: 90 },
+          openAiThreadId: "thread-1",
+        },
+      ],
+    } as unknown as ProgramProposal;
+    const codePayload = {
+      ...turnProposal(),
+      operations: [
+        {
+          type: "replaceStatement",
+          nodeId: "scripts[0]/statements[0]",
+          statement: { type: "move", steps: 160 },
+          source: "alert(1)",
+        },
+      ],
+    } as unknown as ProgramProposal;
+
+    expect(() => parseProgramProposal(providerField)).toThrow(/INVALID_PROPOSAL/);
+    expect(() => parseProgramProposal(codePayload)).toThrow(/INVALID_PROPOSAL/);
+  });
+
+  it("applies nested statement paths and fails closed on unsupported paths", () => {
+    const nestedChange = createProgramProposal({
+      id: "proposal-nested-repeat",
+      baseProgram: nestedProgram,
+      source: { kind: "deterministic-scaffold" },
+      purpose: "Lengthen the repeated move.",
+      rationale: "The repeat stops short of the beacon.",
+      affectedNodeIds: ["scripts[0]/statements[0]/body[0]"],
+      operations: [
+        {
+          type: "replaceStatementField",
+          nodeId: "scripts[0]/statements[0]/body[0]",
+          field: "steps",
+          value: 60,
+        },
+      ],
+    });
+    const unsupportedPath = createProgramProposal({
+      id: "proposal-unsupported-path",
+      baseProgram: nestedProgram,
+      source: { kind: "deterministic-scaffold" },
+      purpose: "Target a segment the program does not have.",
+      rationale: "The protocol must fail closed.",
+      affectedNodeIds: ["scripts[0]/statements[0]/else[0]"],
+      operations: [{ type: "removeStatement", nodeId: "scripts[0]/statements[0]/else[0]" }],
+    });
+
+    expect(createProposalReview(nestedProgram, nestedChange).diff).toEqual([
+      {
+        nodeId: "scripts[0]/statements[0]/body[0]",
+        kind: "changed",
+        beforeText: "    sprite.move(40);\n",
+        afterText: "    sprite.move(60);\n",
+      },
+    ]);
+    expect(() => createProposalReview(nestedProgram, unsupportedPath)).toThrow(/UNSUPPORTED_PATH/);
+  });
+
+  it("round-trips the proposal itself through JSON without PII or provider identity", () => {
+    const proposal = changeProposal();
+    const serialized = JSON.stringify(proposal);
+
+    expect(parseProgramProposal(JSON.parse(serialized))).toEqual(proposal);
     expect(serialized).not.toMatch(/email|school|address|name|age|openAi|anthropic|thread/i);
   });
 });

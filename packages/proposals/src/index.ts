@@ -445,6 +445,7 @@ function assertOperation(operation: ProposalOperation, path: string): void {
   assertPlainObject(operation, path);
   switch (operation.type) {
     case "appendStatement":
+      assertAllowedKeys(operation, path, ["type", "scriptIndex", "statement"]);
       assertNonNegativeInteger(operation.scriptIndex, `${path}.scriptIndex`);
       validateProgram({
         schema: "agorix/program/v1",
@@ -452,6 +453,7 @@ function assertOperation(operation: ProposalOperation, path: string): void {
       });
       return;
     case "replaceStatement":
+      assertAllowedKeys(operation, path, ["type", "nodeId", "statement"]);
       assertBoundedString(operation.nodeId, `${path}.nodeId`, 1, 160);
       validateProgram({
         schema: "agorix/program/v1",
@@ -459,9 +461,11 @@ function assertOperation(operation: ProposalOperation, path: string): void {
       });
       return;
     case "removeStatement":
+      assertAllowedKeys(operation, path, ["type", "nodeId"]);
       assertBoundedString(operation.nodeId, `${path}.nodeId`, 1, 160);
       return;
     case "replaceStatementField":
+      assertAllowedKeys(operation, path, ["type", "nodeId", "field", "value"]);
       assertBoundedString(operation.nodeId, `${path}.nodeId`, 1, 160);
       if (!["steps", "degrees", "count"].includes(operation.field)) {
         fail("INVALID_PROPOSAL", `${path}.field`, "expected supported field");
@@ -488,6 +492,18 @@ function assertPlainObject(
       if (!allowedKeys.includes(key)) {
         fail("INVALID_PROPOSAL", `${path}.${key}`, "unexpected field");
       }
+    }
+  }
+}
+
+function assertAllowedKeys(
+  value: Record<string, unknown>,
+  path: string,
+  allowedKeys: readonly string[],
+): void {
+  for (const key of Object.keys(value)) {
+    if (!allowedKeys.includes(key)) {
+      fail("INVALID_PROPOSAL", `${path}.${key}`, "unexpected field");
     }
   }
 }
