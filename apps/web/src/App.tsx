@@ -1308,6 +1308,9 @@ export function App() {
             <button type="button" onClick={previewDeterministicProposal}>
               {t(locale, "previewProposal")}
             </button>
+            <button type="button" onClick={previewImperfectAiProposal}>
+              {t(locale, "aiLiteracyActivity")}
+            </button>
             <button type="button" onClick={requestHint}>
               {t(locale, "getHint")}
             </button>
@@ -1332,11 +1335,27 @@ export function App() {
                   </li>
                 ))}
               </ul>
+              {aiLiteracyActivity ? (
+                <div className="ai-literacy-evaluation">
+                  <button type="button" onClick={recordAiPrediction}>
+                    {t(locale, "aiLiteracyPredict")}
+                  </button>
+                  {aiPredictionRecorded ? (
+                    <span data-testid="ai-prediction-recorded">
+                      {t(locale, "aiLiteracyPredictionRecorded")}
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
               <div className="tutor-actions">
                 <button type="button" onClick={rejectDeterministicProposal}>
                   {t(locale, "rejectProposal")}
                 </button>
-                <button type="button" onClick={acceptDeterministicProposal}>
+                <button
+                  type="button"
+                  onClick={acceptDeterministicProposal}
+                  disabled={aiLiteracyActivity && !aiPredictionRecorded}
+                >
                   {t(locale, "acceptProposal")}
                 </button>
               </div>
