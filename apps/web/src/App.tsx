@@ -735,6 +735,8 @@ export function App() {
   const [proposalMessage, setProposalMessage] = useState<string | undefined>();
   const [learningDecision, setLearningDecision] =
     useState<WebLearningDecisionDiagnostics | undefined>();
+  const [aiLiteracyActivity, setAiLiteracyActivity] = useState(false);
+  const [aiPredictionRecorded, setAiPredictionRecorded] = useState(false);
   const timerRef = useRef<number | undefined>();
 
   const mission = useMemo(() => getLocalizedFirstMission(locale), [locale]);
@@ -853,6 +855,8 @@ export function App() {
     setStatus("idle");
     setProposalReview(undefined);
     setProposalMessage(undefined);
+    setAiLiteracyActivity(false);
+    setAiPredictionRecorded(false);
     setMessage(t(locale, "resetMessage"));
   }
 
@@ -969,6 +973,40 @@ export function App() {
       setStatus("error");
       setMessage(t(locale, "runSetupError"));
     }
+  }
+
+  function previewImperfectAiProposal() {
+    try {
+      const proposal = createProgramProposal({
+        id: "ai-literacy-imperfect-move-120",
+        baseProgram: model.program,
+        source: { kind: "learning-companion", capability: "program-proposal" },
+        purpose: t(locale, "proposalPurpose"),
+        rationale: t(locale, "aiLiteracyRationale"),
+        affectedNodeIds: ["scripts[0]/statements[0]"],
+        operations: [
+          {
+            type: "replaceStatement",
+            nodeId: "scripts[0]/statements[0]",
+            statement: { type: "move", steps: 120 },
+          },
+        ],
+      });
+      const review = createProposalReview(model.program, proposal);
+      setAiLiteracyActivity(true);
+      setAiPredictionRecorded(false);
+      setProposalReview(review);
+      setProposalMessage(t(locale, "proposalPreviewReady"));
+      setHighlightedNodeId(review.proposal.affectedNodeIds[0]);
+    } catch {
+      setStatus("error");
+      setMessage(t(locale, "runSetupError"));
+    }
+  }
+
+  function recordAiPrediction() {
+    setAiPredictionRecorded(true);
+    setProposalMessage(t(locale, "aiLiteracyPredictionRecorded"));
   }
 
   function rejectDeterministicProposal() {
