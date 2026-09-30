@@ -53,9 +53,12 @@ describe("Learning Decision Plane System-0", () => {
   });
 
   it("does not allow a complete builder solution without deterministic permission", () => {
-    const requirements = projectLearningRequirements(state({ capability: "builder", scaffoldLevel: 2 }), {
-      solutionAllowance: system1<SolutionAllowance>("complete"),
-    });
+    const requirements = projectLearningRequirements(
+      state({ capability: "builder", scaffoldLevel: 2 }),
+      {
+        solutionAllowance: system1<SolutionAllowance>("complete"),
+      },
+    );
     expect(requirements.solutionAllowance).toBe("partial");
     expect(requirements.provenance.solutionAllowance).toBe("system0");
   });
