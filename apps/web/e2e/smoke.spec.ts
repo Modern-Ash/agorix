@@ -476,3 +476,63 @@ test("provenance is visually and textually distinguishable across suggestion, ac
   await page.getByRole("button", { name: "Run" }).click();
   await expect(page.locator('[data-provenance="runtime-fact"]')).toBeVisible({ timeout: 5000 });
 });
+
+
+test("AI-literacy journey predicts, tests, challenges and corrects an imperfect suggestion", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  // Establish learner-owned program state before any AI suggestion.
+  await page.getByRole("button", { name: "Move" }).click();
+  await applyMoveSteps(page, "24");
+  const learnerHash = await canonicalHash(page);
+
+  // Deterministic AI fixture proposes a plausible but wrong value.
+  await page.getByRole("button", { name: "Try an AI suggestion" }).click();
+  const proposal = page.getByTestId("proposal-preview");
+  await expect(proposal).toBeVisible();
+  await expect(proposal.getByText("AI suggestion — not applied yet")).toBeVisible();
+  await expect(proposal.getByText("sprite.move(120);")).toBeVisible();
+  expect(await canonicalHash(page)).toBe(learnerHash);
+
+  // Passive acceptance is impossible: the learner must make an evaluative prediction.
+  const accept = page.getByRole("button", { name: "Accept proposal" });
+  await expect(accept).toBeDisabled();
+  await page.getByRole("button", { name: "I predict this will reach the goal" }).click();
+  await expect(page.getByTestId("ai-prediction-recorded")).toBeVisible();
+  await expect(accept).toBeEnabled();
+
+  // Acceptance changes canonical state, but does not mark the suggestion as runtime truth.
+  await accept.click();
+  await expect(visibleCode(page, "sprite.move(120);")).toBeVisible();
+  expect(await canonicalHash(page)).not.toBe(learnerHash);
+
+  // Deterministic runtime disproves the prediction.
+  await page.getByRole("button", { name: "Run" }).click();
+  await expect(page.getByText("stopped short")).toBeVisible({ timeout: 5000 });
+  await expect(page.getByText("Runtime result — actually happened")).toBeVisible();
+
+  // Runtime evidence is inspectable; debugger/hint must reason from the run, not invent a fact.
+  await page.getByRole("button", { name: "Step" }).click();
+  await page.getByRole("button", { name: "Step" }).click();
+  await expect(page.getByRole("heading", { name: "Trace" })).toBeVisible();
+  await expect(page.locator(".trace-item")).toHaveCount(1);
+  await page.getByRole("button", { name: "Get hint" }).click();
+  await expect(page.getByText("Hint level 1 of 5")).toBeVisible();
+
+  // Learner corrects the accepted program explicitly.
+  await applyMoveSteps(page, "160");
+  await expect(visibleCode(page, "sprite.move(160);")).toBeVisible();
+  await page.getByRole("button", { name: "Run" }).click();
+  await expect(page.getByText("Mission complete: your sprite reached the goal.")).toBeVisible({
+    timeout: 5000,
+  });
+
+  // Reflection makes the AI-literacy objective explicit.
+  await expect(
+    page.getByText(
+      "Reflection: What was wrong with the original AI suggestion, and what evidence proved it?",
+    ),
+  ).toBeVisible();
+});

@@ -735,6 +735,8 @@ export function App() {
   const [proposalMessage, setProposalMessage] = useState<string | undefined>();
   const [learningDecision, setLearningDecision] =
     useState<WebLearningDecisionDiagnostics | undefined>();
+  const [aiLiteracyActivity, setAiLiteracyActivity] = useState(false);
+  const [aiPredictionRecorded, setAiPredictionRecorded] = useState(false);
   const timerRef = useRef<number | undefined>();
 
   const mission = useMemo(() => getLocalizedFirstMission(locale), [locale]);
@@ -853,6 +855,8 @@ export function App() {
     setStatus("idle");
     setProposalReview(undefined);
     setProposalMessage(undefined);
+    setAiLiteracyActivity(false);
+    setAiPredictionRecorded(false);
     setMessage(t(locale, "resetMessage"));
   }
 
@@ -969,6 +973,40 @@ export function App() {
       setStatus("error");
       setMessage(t(locale, "runSetupError"));
     }
+  }
+
+  function previewImperfectAiProposal() {
+    try {
+      const proposal = createProgramProposal({
+        id: "ai-literacy-imperfect-move-120",
+        baseProgram: model.program,
+        source: { kind: "learning-companion", capability: "program-proposal" },
+        purpose: t(locale, "proposalPurpose"),
+        rationale: t(locale, "aiLiteracyRationale"),
+        affectedNodeIds: ["scripts[0]/statements[0]"],
+        operations: [
+          {
+            type: "replaceStatement",
+            nodeId: "scripts[0]/statements[0]",
+            statement: { type: "move", steps: 120 },
+          },
+        ],
+      });
+      const review = createProposalReview(model.program, proposal);
+      setAiLiteracyActivity(true);
+      setAiPredictionRecorded(false);
+      setProposalReview(review);
+      setProposalMessage(t(locale, "proposalPreviewReady"));
+      setHighlightedNodeId(review.proposal.affectedNodeIds[0]);
+    } catch {
+      setStatus("error");
+      setMessage(t(locale, "runSetupError"));
+    }
+  }
+
+  function recordAiPrediction() {
+    setAiPredictionRecorded(true);
+    setProposalMessage(t(locale, "aiLiteracyPredictionRecorded"));
   }
 
   function rejectDeterministicProposal() {
@@ -1138,7 +1176,14 @@ export function App() {
           )}
           {reflectionPrompt === undefined ? null : (
             <div className="reflection-prompt">
-              <strong>{t(locale, "reflection", { prompt: reflectionPrompt })}</strong>
+              <strong>
+                {t(locale, "reflection", {
+                  prompt:
+                    aiLiteracyActivity && status === "complete"
+                      ? t(locale, "aiLiteracyReflection")
+                      : reflectionPrompt,
+                })}
+              </strong>
               <button type="button" onClick={continueFreePlay}>
                 {t(locale, "keepBuilding")}
               </button>
@@ -1270,6 +1315,9 @@ export function App() {
             <button type="button" onClick={previewDeterministicProposal}>
               {t(locale, "previewProposal")}
             </button>
+            <button type="button" onClick={previewImperfectAiProposal}>
+              {t(locale, "aiLiteracyActivity")}
+            </button>
             <button type="button" onClick={requestHint}>
               {t(locale, "getHint")}
             </button>
@@ -1294,11 +1342,27 @@ export function App() {
                   </li>
                 ))}
               </ul>
+              {aiLiteracyActivity ? (
+                <div className="ai-literacy-evaluation">
+                  <button type="button" onClick={recordAiPrediction}>
+                    {t(locale, "aiLiteracyPredict")}
+                  </button>
+                  {aiPredictionRecorded ? (
+                    <span data-testid="ai-prediction-recorded">
+                      {t(locale, "aiLiteracyPredictionRecorded")}
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
               <div className="tutor-actions">
                 <button type="button" onClick={rejectDeterministicProposal}>
                   {t(locale, "rejectProposal")}
                 </button>
-                <button type="button" onClick={acceptDeterministicProposal}>
+                <button
+                  type="button"
+                  onClick={acceptDeterministicProposal}
+                  disabled={aiLiteracyActivity && !aiPredictionRecorded}
+                >
                   {t(locale, "acceptProposal")}
                 </button>
               </div>
