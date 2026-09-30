@@ -12,6 +12,10 @@
   },
   "dependencies": {
     "@agorix/learning-decision-plane": "workspace:*",
+    "@agorix/agorix-code": "workspace:*",
+    "@agorix/code-generator": "workspace:*",
+    "@agorix/language-projection": "workspace:*",
+    "@agorix/python-projection": "workspace:*",
     "@agorix/block-editor": "workspace:*",
     "@agorix/curriculum": "workspace:*",
     "@agorix/persistence": "workspace:*",
