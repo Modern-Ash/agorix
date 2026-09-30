@@ -17,6 +17,11 @@ const messages = {
   en: {
     actionPalette: "Action palette",
     acceptProposal: "Accept proposal",
+    aiLiteracyActivity: "Try an AI suggestion",
+    aiLiteracyPredict: "I predict this will reach the goal",
+    aiLiteracyPredictionRecorded: "Prediction recorded. Now test the suggestion with Run.",
+    aiLiteracyReflection: "What was wrong with the original AI suggestion, and what evidence proved it?",
+    aiLiteracyRationale: "This AI fixture suggests 120 steps. It sounds plausible, but you should test it.",
     previewProposal: "Preview proposal",
     proposalAccepted: "Proposal accepted. Blocks and code updated from canonical state.",
     proposalBaseHash: "Base hash: {hash}",
@@ -124,6 +129,11 @@ const messages = {
   es: {
     actionPalette: "Paleta de acciones",
     acceptProposal: "Aceptar propuesta",
+    aiLiteracyActivity: "Probar una sugerencia de IA",
+    aiLiteracyPredict: "Predigo que esto llegará a la meta",
+    aiLiteracyPredictionRecorded: "Predicción registrada. Ahora prueba la sugerencia con Ejecutar.",
+    aiLiteracyReflection: "¿Qué tenía de incorrecto la sugerencia original de IA y qué evidencia lo demostró?",
+    aiLiteracyRationale: "Este ejemplo de IA sugiere 120 pasos. Suena posible, pero debes probarlo.",
     previewProposal: "Previsualizar propuesta",
     proposalAccepted: "Propuesta aceptada. Bloques y código actualizados desde el estado canónico.",
     proposalBaseHash: "Hash base: {hash}",
