@@ -104,3 +104,23 @@ describe("Learning Decision Plane System-0", () => {
     expect(requirements.provenance.learningCapability).toBe("system0");
   });
 });
+
+describe("debugger generation gate", () => {
+  it("stays deterministic until runtime evidence exists", () => {
+    const requirements = projectLearningRequirements(
+      state({ capability: "debugger", hasRuntime: false, runtimeFactCount: 0 }),
+    );
+    expect(requirements.generativeNeeded).toBe("no");
+    expect(requirements.reasoningTier).toBe("deterministic");
+    expect(requirements.runtimeEvidenceNeeded).toBe("yes");
+  });
+
+  it("allows System-1 to decide generative need once runtime facts exist", () => {
+    const requirements = projectLearningRequirements(
+      state({ capability: "debugger", hasRuntime: true, runtimeFactCount: 2 }),
+      { generativeNeeded: system1("yes") },
+    );
+    expect(requirements.generativeNeeded).toBe("yes");
+    expect(requirements.contextNeed).toBe("runtime");
+  });
+});
