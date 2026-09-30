@@ -201,6 +201,15 @@ importers:
         specifier: workspace:*
         version: link:../program-model
 
+  packages/python-projection:
+    dependencies:
+      '@agorix/language-projection':
+        specifier: workspace:*
+        version: link:../language-projection
+      '@agorix/program-model':
+        specifier: workspace:*
+        version: link:../program-model
+
   packages/provider-runtime:
     dependencies:
       '@agorix/learning-decision-plane':
