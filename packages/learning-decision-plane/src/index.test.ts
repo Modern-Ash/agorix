@@ -124,3 +124,27 @@ describe("debugger generation gate", () => {
     expect(requirements.contextNeed).toBe("runtime");
   });
 });
+
+describe("role-aware deterministic decisions", () => {
+  it("does not require a generative model for a basic challenger prediction", () => {
+    const requirements = projectLearningRequirements(state({ capability: "challenger" }));
+    expect(requirements.generativeNeeded).toBe("no");
+    expect(requirements.reasoningTier).toBe("deterministic");
+    expect(requirements.contextNeed).toBe("program");
+  });
+
+  it("uses deterministic runtime-grounded reflection when evidence exists", () => {
+    const requirements = projectLearningRequirements(
+      state({ capability: "reflector", hasRuntime: true, runtimeFactCount: 2 }),
+    );
+    expect(requirements.generativeNeeded).toBe("no");
+    expect(requirements.reasoningTier).toBe("deterministic");
+    expect(requirements.contextNeed).toBe("runtime");
+  });
+
+  it("keeps explainer program-grounded while leaving generative need unresolved", () => {
+    const requirements = projectLearningRequirements(state({ capability: "explainer" }));
+    expect(requirements.contextNeed).toBe("program");
+    expect(requirements.generativeNeeded).toBe("yes");
+  });
+});
