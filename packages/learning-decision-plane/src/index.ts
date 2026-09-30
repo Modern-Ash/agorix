@@ -131,6 +131,19 @@ export function resolveLearningSystem0(state: LearningDecisionState): LearningDe
     );
   }
 
+  if (state.capability === "challenger") {
+    answers.generativeNeeded ??= answer("no", "prediction-prompt-has-deterministic-fixture");
+    answers.reasoningTier ??= answer("deterministic", "prediction-prompt-has-deterministic-fixture");
+    answers.contextNeed ??= answer("program", "prediction-is-program-grounded");
+  }
+  if (state.capability === "reflector" && state.hasRuntime && state.runtimeFactCount > 0) {
+    answers.generativeNeeded ??= answer("no", "reflection-prompt-has-deterministic-runtime-fixture");
+    answers.reasoningTier ??= answer("deterministic", "reflection-prompt-has-deterministic-runtime-fixture");
+  }
+  if (state.capability === "explainer") {
+    answers.contextNeed ??= answer("program", "explanation-is-program-grounded");
+  }
+
   answers.learningCapability = answer(state.capability, "requested-capability-is-an-upper-bound");
   return answers;
 }
