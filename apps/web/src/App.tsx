@@ -1176,7 +1176,14 @@ export function App() {
           )}
           {reflectionPrompt === undefined ? null : (
             <div className="reflection-prompt">
-              <strong>{t(locale, "reflection", { prompt: reflectionPrompt })}</strong>
+              <strong>
+                {t(locale, "reflection", {
+                  prompt:
+                    aiLiteracyActivity && status === "complete"
+                      ? t(locale, "aiLiteracyReflection")
+                      : reflectionPrompt,
+                })}
+              </strong>
               <button type="button" onClick={continueFreePlay}>
                 {t(locale, "keepBuilding")}
               </button>
