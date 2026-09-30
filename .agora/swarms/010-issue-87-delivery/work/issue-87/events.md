@@ -1,0 +1,32 @@
+# Work events
+
+- 2026-09-30T10:15:18.472521Z | work.created | state=inception actor=project:product-owner
+- 2026-09-30T10:15:19.122679Z | artifact.added | kind=intent uri=repo://.agora/intents/issue-87/INTENT.md actor=project:ai-opencode
+- 2026-09-30T10:15:19.124991Z | artifact.added | kind=requirements uri=repo://.agora/intents/issue-87/REQUIREMENTS.md actor=project:ai-opencode
+- 2026-09-30T10:15:19.127344Z | artifact.added | kind=unit-of-work uri=repo://.agora/intents/issue-87/UNIT-OF-WORK.md actor=project:ai-opencode
+- 2026-09-30T10:15:19.129796Z | work.criterion-stage-marked | criterion=source-issue actor=project:ai-opencode stage=elaborated
+- 2026-09-30T10:15:19.153822Z | work.clarified-advisory | questions=0 actor=project:ai-opencode
+- 2026-09-30T10:16:49.414108Z | artifact.added | kind=plan uri=repo://.agora/ai-sdlc/handoffs/issue-87/plan.md actor=project:ai-opencode
+- 2026-09-30T10:16:49.673944Z | artifact.added | kind=user-stories uri=repo://.agora/ai-sdlc/handoffs/issue-87/user-stories.md actor=project:ai-opencode
+- 2026-09-30T10:16:49.956224Z | artifact.added | kind=nfr uri=repo://.agora/ai-sdlc/handoffs/issue-87/nfr.md actor=project:ai-opencode
+- 2026-09-30T10:16:50.228681Z | artifact.added | kind=risk-register uri=repo://.agora/ai-sdlc/handoffs/issue-87/risk-register.md actor=project:ai-opencode
+- 2026-09-30T10:16:50.505295Z | artifact.added | kind=measurement-criteria uri=repo://.agora/ai-sdlc/handoffs/issue-87/measurement-criteria.md actor=project:ai-opencode
+- 2026-09-30T10:16:50.784503Z | artifact.added | kind=bolt-plan uri=repo://.agora/ai-sdlc/handoffs/issue-87/bolt-plan.md actor=project:ai-opencode
+- 2026-09-30T10:17:52.254416Z | approval.added | role=product-owner actor=project:product-owner delegation=none
+- 2026-09-30T10:17:53.125802Z | approval.added | role=developer actor=project:ai-opencode delegation=none
+- 2026-09-30T10:17:53.891500Z | work.transitioned | from=inception to=construction actor=project:ai-opencode
+- 2026-09-30T10:18:10.295764Z | artifact.added | kind=domain-model uri=repo://.agora/ai-sdlc/construction/issue-87/DOMAIN-MODEL.md actor=project:ai-opencode
+- 2026-09-30T10:18:10.299420Z | artifact.added | kind=logical-design uri=repo://.agora/ai-sdlc/construction/issue-87/LOGICAL-DESIGN.md actor=project:ai-opencode
+- 2026-09-30T10:18:10.302139Z | artifact.added | kind=implementation-plan uri=repo://.agora/ai-sdlc/construction/issue-87/IMPLEMENTATION-PLAN.md actor=project:ai-opencode
+- 2026-09-30T10:18:10.304825Z | artifact.added | kind=test-strategy uri=repo://.agora/ai-sdlc/construction/issue-87/TEST-STRATEGY.md actor=project:ai-opencode
+- 2026-09-30T10:18:10.307844Z | artifact.added | kind=deployment-unit uri=repo://.agora/ai-sdlc/construction/issue-87/DEPLOYMENT-UNIT.md actor=project:ai-opencode
+- 2026-09-30T10:18:10.312762Z | work.criterion-stage-marked | criterion=source-issue actor=project:ai-opencode stage=designed
+- 2026-09-30T10:20:43.592481Z | work.criterion-stage-marked | criterion=source-issue actor=project:ai-opencode stage=built
+- 2026-09-30T10:20:53.190980Z | artifact.added | kind=test-report uri=repo://.agora/ai-sdlc/verification/issue-87/VERIFICATION.json actor=project:ai-opencode
+- 2026-09-30T10:20:53.194433Z | evidence.added | id=evidence-000001 type=test-suite result=success revision=1 actor=project:ai-opencode
+- 2026-09-30T10:20:53.198075Z | work.criterion-stage-marked | criterion=source-issue actor=project:ai-opencode stage=verified
+- 2026-09-30T10:21:53.067238Z | work.transitioned | from=construction to=operations actor=project:ai-opencode
+- 2026-09-30T12:08:30.077993Z | artifact.added | kind=operational-readiness uri=repo://.agora/ai-sdlc/operations/issue-87/OPERATIONAL-READINESS.md actor=project:ai-opencode
+- 2026-09-30T12:08:30.338408Z | artifact.added | kind=rollback-procedure uri=repo://.agora/ai-sdlc/operations/issue-87/ROLLBACK-PROCEDURE.md actor=project:ai-opencode
+- 2026-09-30T12:08:47.668010Z | evidence.added | id=evidence-000002 type=deployment result=success revision=1 actor=project:ai-opencode
+- 2026-09-30T12:08:47.931988Z | evidence.added | id=evidence-000003 type=security-scan result=success revision=1 actor=project:ai-opencode
