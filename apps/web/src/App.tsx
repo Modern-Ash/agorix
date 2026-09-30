@@ -198,7 +198,7 @@ function CodeText({
 }: {
   code: string;
   mapping: Readonly<Record<string, { readonly start: number; readonly end: number }>>;
-  highlightedNodeId?: string;
+  highlightedNodeId: string | undefined;
 }) {
   const range = highlightedNodeId === undefined ? undefined : mapping[highlightedNodeId];
   if (range === undefined) return <pre className="code-surface">{code}</pre>;
@@ -217,7 +217,7 @@ function CodePanel({
   locale,
 }: {
   program: ProjectProgram;
-  highlightedNodeId?: string;
+  highlightedNodeId: string | undefined;
   locale: Locale;
 }) {
   const [projectionId, setProjectionId] = useState<CodeProjectionId>("agorix-code");
