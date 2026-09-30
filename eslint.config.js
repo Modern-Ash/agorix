@@ -12,6 +12,7 @@ const domainPackages = [
   "packages/tutor-contract",
   "packages/persistence",
   "packages/platform-contract",
+  "packages/learning-evidence",
 ];
 
 const forbiddenDomainImports = [

@@ -943,6 +943,7 @@ packages/
   provider-runtime/   Provider-neutral runtime contract and protocol adapters
   persistence/        Versioned project storage
   platform-contract/  Platform capability boundary
+  learning-evidence/  Privacy-preserving evidence and mission assessment model
 ```
 
 Domain packages must remain independent from UI frameworks and provider SDKs unless they are explicitly adapter packages.
