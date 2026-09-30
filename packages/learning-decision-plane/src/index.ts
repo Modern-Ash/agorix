@@ -99,6 +99,10 @@ export function resolveLearningSystem0(state: LearningDecisionState): LearningDe
   if (state.capability === "debugger") {
     answers.runtimeEvidenceNeeded = answer("yes", "debugger-must-be-evidence-grounded");
     answers.contextNeed = answer("runtime", "debugger-uses-runtime-evidence");
+    if (!state.hasRuntime || state.runtimeFactCount === 0) {
+      answers.generativeNeeded = answer("no", "debugger-needs-runtime-evidence-before-generation");
+      answers.reasoningTier = answer("deterministic", "debugger-needs-runtime-evidence-before-generation");
+    }
   } else {
     answers.runtimeEvidenceNeeded = answer("no", "non-debugger-capability");
   }
