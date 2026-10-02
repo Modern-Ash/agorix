@@ -26,6 +26,7 @@ import {
   type TutorHintHistoryEntry,
   type TutorResponse,
 } from "@agorix/tutor-contract";
+import { decideProactiveSuggestion } from "@agorix/learning-decision-plane";
 import {
   acceptProposal,
   createProgramProposal,
@@ -1325,6 +1326,7 @@ export function App() {
   const [proposalReview, setProposalReview] = useState<ProposalReview | undefined>();
   const [proposalMessage, setProposalMessage] = useState<string | undefined>();
   const [dismissedRepeatHash, setDismissedRepeatHash] = useState<string | undefined>();
+  const [repeatDeclines, setRepeatDeclines] = useState(0);
   const [learningDecision, setLearningDecision] = useState<
     WebLearningDecisionDiagnostics | undefined
   >();
@@ -1361,13 +1363,17 @@ export function App() {
     [model.program, locale],
   );
   const repeatReviewActive = proposalReview?.proposal.source.capability === "repeat-pattern";
-  const repeatOffer =
-    repeatProposal !== undefined &&
-    proposalReview === undefined &&
-    status !== "running" &&
-    dismissedRepeatHash !== canonicalHash
-      ? repeatProposal
-      : undefined;
+  const repeatDecision =
+    repeatProposal === undefined || proposalReview !== undefined
+      ? undefined
+      : decideProactiveSuggestion({
+          kind: "repeat-pattern",
+          occurrences: detectRepeatPattern(model.program)?.count ?? 0,
+          running: status === "running",
+          declinedForCurrentProgram: dismissedRepeatHash === canonicalHash,
+          declinedCount: repeatDeclines,
+        });
+  const repeatOffer = repeatDecision?.action === "offer" ? repeatProposal : undefined;
   const missionStep =
     status === "complete" || status === "freeplay" ? 3 : attempts > 0 || status === "retry" ? 2 : 1;
   const layaSignal =
@@ -1655,11 +1661,13 @@ export function App() {
       return;
     }
     setDismissedRepeatHash(canonicalHash);
+    setRepeatDeclines((count) => count + 1);
     setHighlightedNodeId(repeatOffer.affectedNodeIds[0]);
   }
 
   function declineRepeatSuggestion() {
     setDismissedRepeatHash(canonicalHash);
+    setRepeatDeclines((count) => count + 1);
   }
 
   function rejectDeterministicProposal() {
@@ -1669,6 +1677,7 @@ export function App() {
     rejectProposal(model.program, proposalReview);
     if (repeatReviewActive) {
       setDismissedRepeatHash(canonicalHash);
+      setRepeatDeclines((count) => count + 1);
     }
     setProposalReview(undefined);
     setProposalMessage(t(locale, "proposalRejected"));
@@ -2456,6 +2465,8 @@ export function App() {
             count: detectRepeatPattern(model.program)?.count ?? 0,
           })}
           data-testid="repeat-suggestion"
+          data-decision={repeatDecision?.action ?? "offer"}
+          data-decision-reason={repeatDecision?.reason ?? "repeated-steps-detected"}
         >
           <ProvenanceLabel kind="suggestion" locale={locale} />
           {repeatReviewActive && proposalCard !== undefined ? (

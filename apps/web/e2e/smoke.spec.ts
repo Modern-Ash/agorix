@@ -811,6 +811,18 @@ test.describe("contextual repeat suggestion", () => {
     expect(await canonicalHash(page)).toBe(before);
   });
 
+  test("System-0 goes quiet after the learner declines twice", async ({ page }) => {
+    await buildRepetitiveProgram(page);
+    const suggestion = page.getByTestId("repeat-suggestion");
+    await expect(suggestion).toHaveAttribute("data-decision", "offer");
+    await page.getByRole("button", { name: "No thanks" }).click();
+    await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+    await expect(suggestion).toBeVisible();
+    await page.getByRole("button", { name: "No thanks" }).click();
+    await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+    await expect(suggestion).toHaveCount(0);
+  });
+
   test("accept mutates the canonical program into a repeat and still runs", async ({ page }) => {
     await buildRepetitiveProgram(page);
     const before = await canonicalHash(page);
