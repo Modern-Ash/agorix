@@ -284,6 +284,10 @@ test("transparency journey preserves visible code and explicit proposal control 
   await runTransparencyJourney(page, { width: 1280, height: 900 });
 });
 
+test("transparency journey works on large tablet 1366x1024", async ({ page }) => {
+  await runTransparencyJourney(page, { width: 1366, height: 1024 });
+});
+
 test("transparency journey is touch-safe on tablet portrait", async ({ page }) => {
   await runTransparencyJourney(page, { width: 768, height: 1024 });
 });
@@ -840,4 +844,30 @@ test("Step card advances with Next and shows learner-facing evidence", async ({ 
   await card.getByRole("button", { name: "Next" }).click();
   await expect(card).toContainText("Step 2 of");
   await expect(card).toContainText("Before:");
+});
+
+test("debugging journey: wrong program, runtime evidence, hint, correction, success", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+  const canonicalBefore = await canonicalHash(page);
+
+  // Runtime, not AI language, shows the program is wrong.
+  await page.getByRole("button", { name: "Run", exact: true }).click();
+  await expect(page.getByText("stopped short")).toBeVisible({ timeout: 5000 });
+  await expect(page.getByLabel("Runtime result — actually happened").first()).toBeVisible();
+
+  // A hint explains without changing the program.
+  await page.getByRole("button", { name: "Get hint" }).click();
+  await expect(page.getByText("Hint level 1 of 5")).toBeVisible();
+  expect(await canonicalHash(page)).toBe(canonicalBefore);
+
+  // Learner corrects it and the runtime proves the fix.
+  await applyMoveSteps(page, "160");
+  expect(await canonicalHash(page)).not.toBe(canonicalBefore);
+  await page.getByRole("button", { name: "Run", exact: true }).click();
+  await expect(page.getByText("Mission complete: your sprite reached the goal.")).toBeVisible({
+    timeout: 5000,
+  });
 });
