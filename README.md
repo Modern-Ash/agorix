@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/agorix-logo.svg" alt="Agorix — Code · Create · With AI" width="520" />
+</p>
+
 # Agorix
 
 **Languages:** English · [Español](README.es.md)
