@@ -8,8 +8,15 @@
  * dependency (issue #96's offline mode governs AI-only behavior, not the
  * app shell itself).
  */
-const CACHE_NAME = "agorix-shell-v1";
-const APP_SHELL = ["/", "/manifest.webmanifest", "/icons/icon.svg"];
+const CACHE_NAME = "agorix-shell-v4";
+const APP_SHELL = [
+  "/",
+  "/manifest.webmanifest",
+  "/icons/agorix-mark.v2.svg",
+  "/favicon.v2.svg",
+  "/brand/agorix-logo.v2.svg",
+  "/brand/agorix-logo-header.v2.svg",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

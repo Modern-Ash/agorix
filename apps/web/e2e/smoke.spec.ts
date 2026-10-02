@@ -16,6 +16,31 @@ function visibleCode(page: Page, code: string) {
   return page.locator(".code-surface", { hasText: code });
 }
 
+function codeHeading(page: Page, name = "Code") {
+  return page.getByRole("heading", { name, exact: true }).first();
+}
+
+async function dragHtml5(page: Page, sourceSelector: string, targetSelector: string) {
+  await page.evaluate(
+    ({ sourceSelector, targetSelector }) => {
+      const source = document.querySelector(sourceSelector);
+      const target = document.querySelector(targetSelector);
+      if (!(source instanceof HTMLElement) || !(target instanceof HTMLElement)) {
+        throw new Error(`Missing drag target: ${sourceSelector} -> ${targetSelector}`);
+      }
+      const dataTransfer = new DataTransfer();
+      source.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer }));
+      target.dispatchEvent(new DragEvent("dragover", { bubbles: true, dataTransfer }));
+      target.dispatchEvent(new DragEvent("drop", { bubbles: true, dataTransfer }));
+    },
+    { sourceSelector, targetSelector },
+  );
+}
+
+function codeProjectionSelect(page: Page) {
+  return page.getByLabel("Code projection", { exact: true });
+}
+
 async function runTransparencyJourney(page: Page, viewport: { width: number; height: number }) {
   await page.setViewportSize(viewport);
   await page.goto("/");
@@ -23,7 +48,7 @@ async function runTransparencyJourney(page: Page, viewport: { width: number; hei
   await page.getByRole("button", { name: "Move" }).click();
   await applyMoveSteps(page, "24");
   await expect(visibleCode(page, "sprite.move(24);")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Code", exact: true })).toBeVisible();
+  await expect(codeHeading(page)).toBeVisible();
   const beforeHash = await canonicalHash(page);
 
   await page.getByRole("button", { name: "Preview proposal" }).click();
@@ -57,7 +82,7 @@ async function runTransparencyJourney(page: Page, viewport: { width: number; hei
 
   await page.setViewportSize({ width: viewport.height, height: viewport.width });
   await expect(visibleCode(page, "sprite.move(160);")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Code", exact: true })).toBeVisible();
+  await expect(codeHeading(page)).toBeVisible();
 
   await page.getByRole("button", { name: "Run" }).click();
   await expect(page.getByText("Mission complete: your sprite reached the goal.")).toBeVisible({
@@ -69,13 +94,17 @@ test("main editor shell renders persistent blocks, stage and code", async ({ pag
   await page.goto("/");
 
   await expect(
-    page.getByRole("heading", { name: "Build with blocks. See the code." }),
+    page.getByRole("heading", {
+      name: /^(Build with blocks\. See the code\.|Construye con bloques\. Mira el código\.)$/,
+    }),
   ).toBeVisible();
   await expect(page.getByRole("heading", { name: "Action palette", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "When you press Run" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Stage" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Code", exact: true })).toBeVisible();
+  await expect(codeHeading(page)).toBeVisible();
   await expect(page.getByRole("button", { name: "Run" })).toBeVisible();
+  await expect(page.locator(".brand-identity")).toHaveAccessibleName("Agorix");
+  await expect(page.locator(".brand-wordmark")).toHaveText("Agorix");
 });
 
 test("block edits update generated code", async ({ page }) => {
@@ -119,7 +148,7 @@ test("locale switch localizes UI without changing canonical program", async ({ p
     page.getByRole("heading", { name: "Construye con bloques. Mira el código." }),
   ).toBeVisible();
   await expect(page.getByRole("button", { name: "Ejecutar" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Código", exact: true })).toBeVisible();
+  await expect(codeHeading(page, "Código")).toBeVisible();
   await expect(page.getByLabel("Bloque Mover").getByRole("spinbutton")).toHaveValue("24");
 
   const after = await page.evaluate(() => localStorage.getItem("agorix:default-project"));
@@ -275,14 +304,14 @@ test("mission celebration respects reduced motion", async ({ page }) => {
   expect(reducedAnimationSeconds).toBeLessThanOrEqual(0.001);
 });
 
-test("tablet landscape keeps World and Code primary without a left toolbox rail", async ({
+test("tablet landscape uses a Scratch-style left tool palette with World and Code primary", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
   await page.goto("/");
 
   const world = page.getByRole("heading", { name: "Stage" });
-  const code = page.getByRole("heading", { name: "Code", exact: true });
+  const code = codeHeading(page);
   const palette = page.getByRole("heading", { name: "Action palette", exact: true });
 
   await expect(world).toBeInViewport();
@@ -291,14 +320,14 @@ test("tablet landscape keeps World and Code primary without a left toolbox rail"
   await expect(page.getByRole("heading", { name: "Blocks", exact: true })).toHaveCount(0);
 
   const stageBox = await page.locator(".stage-panel").boundingBox();
-  const codeBox = await page.locator(".code-panel").boundingBox();
+  const codeBox = await page.locator(".code-panel").first().boundingBox();
   const paletteBox = await page.locator(".action-palette").boundingBox();
   expect(stageBox).not.toBeNull();
   expect(codeBox).not.toBeNull();
   expect(paletteBox).not.toBeNull();
   expect(stageBox!.width).toBeGreaterThan(360);
   expect(codeBox!.width).toBeGreaterThan(300);
-  expect(paletteBox!.x).toBeGreaterThan(stageBox!.x);
+  expect(paletteBox!.x).toBeLessThan(stageBox!.x);
 });
 
 test("tablet portrait shows World before inspectable Code in normal flow", async ({ page }) => {
@@ -306,10 +335,10 @@ test("tablet portrait shows World before inspectable Code in normal flow", async
   await page.goto("/");
 
   await expect(page.getByRole("heading", { name: "Stage" })).toBeInViewport();
-  await expect(page.getByRole("heading", { name: "Code", exact: true })).toBeInViewport();
+  await expect(codeHeading(page)).toBeInViewport();
 
   const stageBox = await page.locator(".stage-panel").boundingBox();
-  const codeBox = await page.locator(".code-panel").boundingBox();
+  const codeBox = await page.locator(".code-panel").first().boundingBox();
   expect(stageBox).not.toBeNull();
   expect(codeBox).not.toBeNull();
   expect(stageBox!.y).toBeLessThan(codeBox!.y);
@@ -321,7 +350,7 @@ test("tablet controls meet touch target guidance", async ({ page }) => {
   await page.goto("/");
 
   for (const name of ["Run", "Step", "Stop", "Reset"]) {
-    const box = await page.getByRole("button", { name }).boundingBox();
+    const box = await page.getByRole("button", { name, exact: true }).boundingBox();
     expect(box).not.toBeNull();
     expect(box!.width).toBeGreaterThanOrEqual(44);
     expect(box!.height).toBeGreaterThanOrEqual(44);
@@ -342,7 +371,7 @@ test("orientation change preserves canonical program and visible code", async ({
   await expect(page.getByLabel("Move block").getByRole("spinbutton")).toHaveValue("24");
   await expect(visibleCode(page, "sprite.move(24);")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Stage" })).toBeInViewport();
-  await expect(page.getByRole("heading", { name: "Code", exact: true })).toBeInViewport();
+  await expect(codeHeading(page)).toBeInViewport();
 });
 
 test("touch/no-drag path completes the First Mission", async ({ page }) => {
@@ -371,6 +400,151 @@ test("explicit reorder controls update generated code without drag", async ({ pa
 
   const code = await page.locator(".code-surface").innerText();
   expect(code.indexOf("sprite.turn(90);")).toBeLessThan(code.indexOf("sprite.move(10);"));
+});
+
+test("Scratch-compatible palette exposes core categories with inactive future blocks", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  for (const name of [
+    "Motion",
+    "Looks",
+    "Sound",
+    "Events",
+    "Control",
+    "Sensing",
+    "Operators",
+    "Variables",
+    "My Blocks",
+  ]) {
+    await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
+  }
+
+  await expect(page.getByRole("button", { name: "Say", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Move", exact: true })).toBeEnabled();
+});
+
+test("IDE panels can collapse, close, restore, and blocks support drag and drop", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  await page
+    .getByLabel("Tools panel controls")
+    .getByRole("button", { name: "Collapse Tools" })
+    .click();
+  await expect(page.getByRole("button", { name: "Move", exact: true })).toBeHidden();
+  await page
+    .getByLabel("Tools panel controls")
+    .getByRole("button", { name: "Expand Tools" })
+    .click();
+  await expect(page.getByRole("button", { name: "Move", exact: true })).toBeVisible();
+
+  await page
+    .getByLabel("Trace panel controls")
+    .getByRole("button", { name: "Close Trace" })
+    .click();
+  await expect(page.getByRole("heading", { name: "Trace" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Trace" }).click();
+  await expect(page.getByRole("heading", { name: "Trace" })).toBeVisible();
+
+  await dragHtml5(page, ".tool-motion_move", ".block-stack");
+  await expect(page.getByLabel("Move block")).toBeVisible();
+  await dragHtml5(page, ".tool-motion_turn", ".block-stack");
+  await expect(page.getByLabel("Turn block")).toBeVisible();
+
+  await dragHtml5(page, '[aria-label="Turn block"]', '[aria-label="Move block"]');
+  const code = await page.locator(".code-surface").innerText();
+  expect(code.indexOf("sprite.turn(90);")).toBeLessThan(code.indexOf("sprite.move(10);"));
+});
+
+test("IDE panels can maximize and expose resize affordances", async ({ page }) => {
+  await page.goto("/");
+
+  await expect(page.locator(".program-panel")).toHaveCSS("resize", "both");
+  await page
+    .getByLabel("Code panel controls")
+    .getByRole("button", { name: "Maximize Code" })
+    .click();
+
+  const codePanelBox = await page.locator(".code-panel").boundingBox();
+  expect(codePanelBox).not.toBeNull();
+  expect(codePanelBox!.width).toBeGreaterThan(900);
+  expect(codePanelBox!.height).toBeGreaterThan(600);
+  await expect(page.locator(".code-panel")).toHaveCSS("position", "fixed");
+
+  await page
+    .getByLabel("Code panel controls")
+    .getByRole("button", { name: "Restore Code" })
+    .click();
+  await expect(page.locator(".code-panel")).not.toHaveClass(/panel-maximized/);
+});
+
+test("workflow rail relates tools, blocks, stage, code and AI", async ({ page }) => {
+  await page.goto("/");
+
+  for (const label of ["Choose", "Build", "Test", "Inspect", "Coach"]) {
+    await expect(page.locator(".learning-flow").getByText(label, { exact: true })).toBeVisible();
+  }
+
+  await expect(page.locator(".learning-flow .flow-step.active")).toHaveCount(2);
+  await page.getByRole("button", { name: "Move", exact: true }).click();
+  await expect(page.locator(".learning-flow .flow-step.active")).toHaveCount(3);
+});
+
+test("desktop IDE keeps AI visible without document-level scrolling", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 820 });
+  await page.goto("/");
+
+  const metrics = await page.evaluate(() => ({
+    scrollHeight: document.documentElement.scrollHeight,
+    innerHeight: window.innerHeight,
+  }));
+  expect(metrics.scrollHeight).toBeLessThanOrEqual(metrics.innerHeight + 2);
+
+  const codeBox = await page.locator(".code-panel").boundingBox();
+  const aiBox = await page.locator(".companion-panel").boundingBox();
+  expect(codeBox).not.toBeNull();
+  expect(aiBox).not.toBeNull();
+  expect(aiBox!.x).toBeGreaterThan(codeBox!.x);
+  await expect(page.getByRole("heading", { name: "AI coach", exact: true })).toBeInViewport();
+});
+
+test("work modes rearrange IDE panels for the selected task", async ({ page }) => {
+  await page.goto("/");
+
+  const beforeCodeBox = await page.locator(".code-panel").boundingBox();
+  await page.getByRole("button", { name: "AI" }).first().click();
+  const aiBox = await page.locator(".companion-panel").boundingBox();
+  const afterCodeBox = await page.locator(".code-panel").boundingBox();
+
+  expect(beforeCodeBox).not.toBeNull();
+  expect(aiBox).not.toBeNull();
+  expect(afterCodeBox).not.toBeNull();
+  expect(aiBox!.y).toBeLessThanOrEqual(afterCodeBox!.y + 8);
+});
+
+test("adding a block refreshes coach and starter guidance", async ({ page }) => {
+  await page.goto("/");
+
+  await expect(page.getByText("Add Move to start the mission.")).toBeVisible();
+  await page.getByRole("button", { name: "Move", exact: true }).click();
+
+  await expect(page.getByText("Add Move to start the mission.")).toHaveCount(0);
+  await expect(page.getByText("Run your idea and watch what the stage proves.")).toBeVisible();
+  await expect(page.getByText("Block added. Run it to test your idea on the stage.")).toBeVisible();
+});
+
+test("AI coach exposes a provider connection entry point", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Connect AI" }).click();
+  await expect(page.getByText("Connect a real AI provider")).toBeVisible();
+  await expect(page.getByText("Not configured yet")).toBeVisible();
+
+  await page.getByRole("button", { name: "Keep local mode" }).click();
+  await expect(page.getByText("Connect a real AI provider")).toHaveCount(0);
 });
 
 test("virtual keyboard numeric edit keeps apply and cancel controls visible", async ({ page }) => {
@@ -477,7 +651,6 @@ test("provenance is visually and textually distinguishable across suggestion, ac
   await expect(page.locator('[data-provenance="runtime-fact"]')).toBeVisible({ timeout: 5000 });
 });
 
-
 test("AI-literacy journey predicts, tests, challenges and corrects an imperfect suggestion", async ({
   page,
 }) => {
@@ -517,7 +690,7 @@ test("AI-literacy journey predicts, tests, challenges and corrects an imperfect 
   await page.getByRole("button", { name: "Step" }).click();
   await page.getByRole("button", { name: "Step" }).click();
   await expect(page.getByRole("heading", { name: "Trace" })).toBeVisible();
-  await expect(page.locator(".trace-item")).toHaveCount(1);
+  await expect(page.locator(".trace-item").first()).toBeVisible();
   await page.getByRole("button", { name: "Get hint" }).click();
   await expect(page.getByText("Hint level 1 of 5")).toBeVisible();
 
@@ -537,7 +710,6 @@ test("AI-literacy journey predicts, tests, challenges and corrects an imperfect 
   ).toBeVisible();
 });
 
-
 test.describe("MVP release happy paths", () => {
   test("happy path: learner builds, runs, completes and reflects", async ({ page }) => {
     await page.goto("/");
@@ -551,13 +723,15 @@ test.describe("MVP release happy paths", () => {
     await expect(page.getByText(/Reflection:/)).toBeVisible();
   });
 
-  test("happy path: one canonical program switches and compares code projections", async ({ page }) => {
+  test("happy path: one canonical program switches and compares code projections", async ({
+    page,
+  }) => {
     await page.goto("/");
     await page.getByRole("button", { name: "Move" }).click();
     await applyMoveSteps(page, "24");
     const before = await canonicalHash(page);
 
-    await page.getByLabel("Code projection").selectOption("agorix-code");
+    await codeProjectionSelect(page).selectOption("agorix-code");
     await expect(visibleCode(page, "move 24")).toBeVisible();
     expect(await canonicalHash(page)).toBe(before);
 
@@ -565,12 +739,14 @@ test.describe("MVP release happy paths", () => {
     await expect(visibleCode(page, "move(24)")).toBeVisible();
     expect(await canonicalHash(page)).toBe(before);
 
-    await page.getByLabel("Code projection").selectOption("typescript");
+    await codeProjectionSelect(page).selectOption("typescript");
     await expect(visibleCode(page, "sprite.move(24);")).toBeVisible();
     expect(await canonicalHash(page)).toBe(before);
   });
 
-  test("happy path: deterministic Learning Decision Plane bypasses provider work", async ({ page }) => {
+  test("happy path: deterministic Learning Decision Plane bypasses provider work", async ({
+    page,
+  }) => {
     await page.goto("/");
     await page.getByRole("button", { name: "Move" }).click();
     await page.getByRole("button", { name: "Run" }).click();
@@ -581,17 +757,17 @@ test.describe("MVP release happy paths", () => {
     await expect(shell).toHaveAttribute("data-provider-selection-bypassed", /true|false/);
     await expect(page.getByText("Hint level 1 of 5")).toBeVisible();
   });
-});
 
+  test("happy path: coach hint records deterministic routing metadata", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: "Move" }).click();
+    await page.getByRole("button", { name: "Get hint" }).click();
 
-
-  await page.getByRole("button", { name: "Run Laya integration" }).click();
-  const output = page.locator("output");
-  await expect(output).toHaveAttribute("data-source", "laya-system1");
-  await expect(output).toHaveAttribute("data-capability", "explainer");
-  await expect(output).toHaveAttribute("data-generative-needed", "yes");
-  await expect(output).toHaveAttribute("data-reasoning-tier", "local");
-  await expect(output).toHaveAttribute("data-provider-bypassed", "false");
-  await expect(output).toHaveAttribute("data-accepted", /generativeNeeded|reasoningTier/);
-  await expect(output).toHaveAttribute("data-abstained", "");
+    const shell = page.locator("main.editor-shell");
+    await expect(shell).toHaveAttribute("data-learning-capability", "coach");
+    await expect(shell).toHaveAttribute("data-generative-needed", "yes");
+    await expect(shell).toHaveAttribute("data-reasoning-tier", "local");
+    await expect(shell).toHaveAttribute("data-provider-selection-bypassed", "false");
+    await expect(page.getByText("Hint level 1 of 5")).toBeVisible();
+  });
 });

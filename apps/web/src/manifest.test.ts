@@ -3,6 +3,11 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const manifestPath = fileURLToPath(new URL("../public/manifest.webmanifest", import.meta.url));
+const faviconPath = fileURLToPath(new URL("../public/favicon.v2.svg", import.meta.url));
+const brandLogoPath = fileURLToPath(new URL("../public/brand/agorix-logo.v2.svg", import.meta.url));
+const headerLogoPath = fileURLToPath(
+  new URL("../public/brand/agorix-logo-header.v2.svg", import.meta.url),
+);
 
 interface WebAppManifest {
   readonly name: string;
@@ -41,10 +46,17 @@ describe("web app manifest (issue #36, AC-001: PWA installability)", () => {
     expect(
       manifest.icons.some((icon) => (icon as { purpose?: string }).purpose === "maskable"),
     ).toBe(true);
+    expect(manifest.icons.some((icon) => icon.src === "/icons/agorix-mark.v2.svg")).toBe(true);
     for (const icon of manifest.icons) {
       expect(icon.src.startsWith("/")).toBe(true);
       expect(icon.type.length).toBeGreaterThan(0);
     }
+  });
+
+  it("uses the brand assets for app logo and favicon paths", () => {
+    expect(readFileSync(faviconPath, "utf-8")).toContain("<svg");
+    expect(readFileSync(brandLogoPath, "utf-8")).toContain("CODE · CREATE · WITH AI");
+    expect(readFileSync(headerLogoPath, "utf-8")).toContain("#FFFFFF");
   });
 
   it("is valid JSON with no trailing content", () => {

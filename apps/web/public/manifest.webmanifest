@@ -11,13 +11,13 @@
   "lang": "en",
   "icons": [
     {
-      "src": "/icons/icon.svg",
+      "src": "/icons/agorix-mark.v2.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon.svg",
+      "src": "/icons/agorix-mark.v2.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "maskable"
