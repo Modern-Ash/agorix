@@ -1,4 +1,13 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type DragEvent as ReactDragEvent,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import type { ProjectMetadata } from "@agorix/persistence";
 import type { ProjectProgram } from "@agorix/program-model";
 import { POC_TOOLBOX, type BlockNode } from "@agorix/block-editor";
@@ -60,11 +69,7 @@ import {
 } from "./projectStorage.js";
 import { LOCALE_LABELS, t, type Locale, type MessageKey } from "./i18n.js";
 import { ProvenanceLabel } from "./ProvenanceLabel.js";
-import {
-  CODE_PROJECTION_IDS,
-  projectCodeSurface,
-  type CodeProjectionId,
-} from "./codeSurface.js";
+import { CODE_PROJECTION_IDS, projectCodeSurface, type CodeProjectionId } from "./codeSurface.js";
 import {
   decideStaticWebLearningRoute,
   type WebLearningDecisionDiagnostics,
@@ -72,6 +77,119 @@ import {
 import "./App.css";
 
 type RunStatus = "idle" | "running" | "stopped" | "complete" | "retry" | "freeplay" | "error";
+
+type PanelId = "action" | "program" | "stage" | "code" | "trace" | "companion";
+type PanelArea = PanelId;
+type WorkMode = "blocks" | "code" | "ai";
+
+const PANEL_AREAS: readonly PanelArea[] = [
+  "action",
+  "program",
+  "stage",
+  "code",
+  "trace",
+  "companion",
+];
+
+const PANEL_LABELS: Record<PanelId, string> = {
+  action: "Tools",
+  program: "Blocks",
+  stage: "Preview",
+  code: "Code",
+  trace: "Trace",
+  companion: "AI",
+};
+
+const DEFAULT_PANEL_AREAS: Record<PanelId, PanelArea> = {
+  action: "action",
+  program: "program",
+  stage: "stage",
+  code: "code",
+  trace: "trace",
+  companion: "companion",
+};
+
+const MODE_PANEL_AREAS: Record<WorkMode, Record<PanelId, PanelArea>> = {
+  blocks: {
+    action: "action",
+    program: "program",
+    stage: "stage",
+    code: "code",
+    trace: "trace",
+    companion: "companion",
+  },
+  code: {
+    action: "trace",
+    program: "program",
+    stage: "stage",
+    code: "code",
+    trace: "action",
+    companion: "companion",
+  },
+  ai: {
+    action: "trace",
+    program: "program",
+    stage: "stage",
+    code: "code",
+    trace: "action",
+    companion: "companion",
+  },
+};
+
+const BLOCK_DRAG_TYPE = "application/x-agorix-block-type";
+const WORKSPACE_DRAG_TYPE = "application/x-agorix-workspace-index";
+
+type PanelChromeProps = {
+  readonly className: string;
+  readonly style: CSSProperties;
+};
+
+function PanelControls({
+  panel,
+  collapsed,
+  maximized,
+  onToggle,
+  onClose,
+  onMaximize,
+  onMove,
+}: {
+  readonly panel: PanelId;
+  readonly collapsed: boolean;
+  readonly maximized: boolean;
+  readonly onToggle: () => void;
+  readonly onClose: () => void;
+  readonly onMaximize: () => void;
+  readonly onMove: (direction: -1 | 1) => void;
+}) {
+  const label = PANEL_LABELS[panel];
+  return (
+    <div className="panel-controls" aria-label={`${label} panel controls`}>
+      <button type="button" onClick={() => onMove(-1)} aria-label={`Shift ${label} panel left`}>
+        <span aria-hidden="true">‹</span>
+      </button>
+      <button type="button" onClick={() => onMove(1)} aria-label={`Shift ${label} panel right`}>
+        <span aria-hidden="true">›</span>
+      </button>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-label={collapsed ? `Expand ${label}` : `Collapse ${label}`}
+      >
+        <span aria-hidden="true">{collapsed ? "+" : "−"}</span>
+      </button>
+      <button
+        type="button"
+        onClick={onMaximize}
+        aria-label={maximized ? `Restore ${label}` : `Maximize ${label}`}
+      >
+        <span aria-hidden="true">{maximized ? "▣" : "□"}</span>
+      </button>
+      <button type="button" onClick={onClose} aria-label={`Close ${label}`}>
+        <span aria-hidden="true">×</span>
+      </button>
+    </div>
+  );
+}
 
 const addableBlocks = new Set<AddableBlockType>([
   "motion_move",
@@ -178,6 +296,391 @@ function sectionNameFor(name: string, locale: Locale): string {
   }
 }
 
+function blockPurposeFor(type: string, locale: Locale): string {
+  switch (type) {
+    case "motion_move":
+      return t(locale, "toolPurposeMove");
+    case "motion_turn":
+      return t(locale, "toolPurposeTurn");
+    case "control_repeat":
+      return t(locale, "toolPurposeRepeat");
+    case "control_if":
+      return t(locale, "toolPurposeIfGoal");
+    default:
+      return type;
+  }
+}
+
+function blockGlyphFor(type: string): string {
+  switch (type) {
+    case "motion_move":
+      return "GO";
+    case "motion_turn":
+      return "90";
+    case "control_repeat":
+      return "xN";
+    case "control_if":
+      return "IF";
+    default:
+      return "<>";
+  }
+}
+
+type PaletteBlock = {
+  readonly id: string;
+  readonly label: string;
+  readonly detail: string;
+  readonly glyph: string;
+  readonly type?: AddableBlockType;
+  readonly enabled: boolean;
+};
+
+type PaletteCategory = {
+  readonly id: string;
+  readonly label: string;
+  readonly tone: string;
+  readonly blocks: readonly PaletteBlock[];
+};
+
+function scratchPaletteFor(locale: Locale): readonly PaletteCategory[] {
+  const es = locale === "es";
+  return [
+    {
+      id: "motion",
+      label: es ? "Movimiento" : "Motion",
+      tone: "motion",
+      blocks: [
+        {
+          id: "motion_move",
+          label: es ? "Mover" : "Move",
+          detail: es ? "Avanza pasos" : "Move steps",
+          glyph: "GO",
+          type: "motion_move",
+          enabled: true,
+        },
+        {
+          id: "motion_turn",
+          label: es ? "Girar" : "Turn",
+          detail: es ? "Cambia direccion" : "Change direction",
+          glyph: "90",
+          type: "motion_turn",
+          enabled: true,
+        },
+        {
+          id: "motion_goto",
+          label: es ? "Ir a x/y" : "Go to x/y",
+          detail: es ? "Posiciona" : "Set position",
+          glyph: "xy",
+          enabled: false,
+        },
+        {
+          id: "motion_glide",
+          label: es ? "Deslizar" : "Glide",
+          detail: es ? "Anima movimiento" : "Animate motion",
+          glyph: "~",
+          enabled: false,
+        },
+        {
+          id: "motion_point",
+          label: es ? "Apuntar" : "Point",
+          detail: es ? "Orienta sprite" : "Aim sprite",
+          glyph: "↗",
+          enabled: false,
+        },
+      ],
+    },
+    {
+      id: "looks",
+      label: es ? "Apariencia" : "Looks",
+      tone: "looks",
+      blocks: [
+        {
+          id: "looks_say",
+          label: es ? "Decir" : "Say",
+          detail: es ? "Burbuja de texto" : "Speech bubble",
+          glyph: '"',
+          enabled: false,
+        },
+        {
+          id: "looks_think",
+          label: es ? "Pensar" : "Think",
+          detail: es ? "Idea visible" : "Thought bubble",
+          glyph: "…",
+          enabled: false,
+        },
+        {
+          id: "looks_show",
+          label: es ? "Mostrar" : "Show",
+          detail: es ? "Aparece" : "Become visible",
+          glyph: "👁",
+          enabled: false,
+        },
+        {
+          id: "looks_hide",
+          label: es ? "Ocultar" : "Hide",
+          detail: es ? "Desaparece" : "Become hidden",
+          glyph: "—",
+          enabled: false,
+        },
+        {
+          id: "looks_costume",
+          label: es ? "Disfraz" : "Costume",
+          detail: es ? "Cambia look" : "Change look",
+          glyph: "◐",
+          enabled: false,
+        },
+      ],
+    },
+    {
+      id: "sound",
+      label: es ? "Sonido" : "Sound",
+      tone: "sound",
+      blocks: [
+        {
+          id: "sound_start",
+          label: es ? "Iniciar sonido" : "Start sound",
+          detail: es ? "No espera" : "Do not wait",
+          glyph: "♪",
+          enabled: false,
+        },
+        {
+          id: "sound_play",
+          label: es ? "Tocar hasta fin" : "Play until done",
+          detail: es ? "Espera final" : "Wait to finish",
+          glyph: "▶",
+          enabled: false,
+        },
+        {
+          id: "sound_stop",
+          label: es ? "Detener sonidos" : "Stop sounds",
+          detail: es ? "Silencio" : "Silence",
+          glyph: "■",
+          enabled: false,
+        },
+        {
+          id: "sound_volume",
+          label: es ? "Volumen" : "Volume",
+          detail: es ? "Sube o baja" : "Louder or softer",
+          glyph: "%",
+          enabled: false,
+        },
+      ],
+    },
+    {
+      id: "events",
+      label: es ? "Eventos" : "Events",
+      tone: "events",
+      blocks: [
+        {
+          id: "event_flag",
+          label: es ? "Bandera verde" : "Green flag",
+          detail: es ? "Empieza script" : "Start script",
+          glyph: "⚑",
+          enabled: false,
+        },
+        {
+          id: "event_key",
+          label: es ? "Tecla presionada" : "Key pressed",
+          detail: es ? "Entrada" : "Input",
+          glyph: "⌨",
+          enabled: false,
+        },
+        {
+          id: "event_click",
+          label: es ? "Al hacer click" : "When clicked",
+          detail: es ? "Sprite click" : "Sprite click",
+          glyph: "↙",
+          enabled: false,
+        },
+        {
+          id: "event_broadcast",
+          label: es ? "Enviar mensaje" : "Broadcast",
+          detail: es ? "Comunica" : "Send message",
+          glyph: "📣",
+          enabled: false,
+        },
+      ],
+    },
+    {
+      id: "control",
+      label: es ? "Control" : "Control",
+      tone: "control",
+      blocks: [
+        {
+          id: "control_repeat",
+          label: es ? "Repetir" : "Repeat",
+          detail: es ? "Patron" : "Loop pattern",
+          glyph: "xN",
+          type: "control_repeat",
+          enabled: true,
+        },
+        {
+          id: "control_if",
+          label: es ? "Si toca la meta" : "If touching goal",
+          detail: es ? "Decision" : "Decision",
+          glyph: "IF",
+          type: "control_if",
+          enabled: true,
+        },
+        {
+          id: "control_wait",
+          label: es ? "Esperar" : "Wait",
+          detail: es ? "Pausa" : "Pause",
+          glyph: "⏱",
+          enabled: false,
+        },
+        {
+          id: "control_forever",
+          label: es ? "Por siempre" : "Forever",
+          detail: es ? "Loop infinito" : "Endless loop",
+          glyph: "∞",
+          enabled: false,
+        },
+        {
+          id: "control_stop",
+          label: es ? "Bloque detener" : "Stop script block",
+          detail: es ? "Corta script" : "Stop script",
+          glyph: "×",
+          enabled: false,
+        },
+      ],
+    },
+    {
+      id: "sensing",
+      label: es ? "Sensores" : "Sensing",
+      tone: "sensing",
+      blocks: [
+        {
+          id: "sensing_touching",
+          label: es ? "Tocando?" : "Touching?",
+          detail: es ? "Detecta choque" : "Detect collision",
+          glyph: "?",
+          enabled: false,
+        },
+        {
+          id: "sensing_key",
+          label: es ? "Tecla?" : "Key?",
+          detail: es ? "Entrada teclado" : "Keyboard input",
+          glyph: "⌨",
+          enabled: false,
+        },
+        {
+          id: "sensing_mouse",
+          label: es ? "Mouse x/y" : "Mouse x/y",
+          detail: es ? "Posicion" : "Pointer position",
+          glyph: "xy",
+          enabled: false,
+        },
+        {
+          id: "sensing_ask",
+          label: es ? "Preguntar" : "Ask",
+          detail: es ? "Pregunta al usuario" : "Ask learner",
+          glyph: "?",
+          enabled: false,
+        },
+      ],
+    },
+    {
+      id: "operators",
+      label: es ? "Operadores" : "Operators",
+      tone: "operators",
+      blocks: [
+        {
+          id: "op_add",
+          label: "+ - × ÷",
+          detail: es ? "Matematica" : "Math",
+          glyph: "+",
+          enabled: false,
+        },
+        {
+          id: "op_random",
+          label: es ? "Azar" : "Random",
+          detail: es ? "Numero al azar" : "Random number",
+          glyph: "#",
+          enabled: false,
+        },
+        {
+          id: "op_compare",
+          label: "= < >",
+          detail: es ? "Compara" : "Compare",
+          glyph: "=",
+          enabled: false,
+        },
+        {
+          id: "op_logic",
+          label: es ? "y / o / no" : "and / or / not",
+          detail: es ? "Logica" : "Logic",
+          glyph: "&&",
+          enabled: false,
+        },
+        {
+          id: "op_join",
+          label: es ? "Unir texto" : "Join text",
+          detail: es ? "Combina" : "Combine",
+          glyph: "ab",
+          enabled: false,
+        },
+      ],
+    },
+    {
+      id: "variables",
+      label: es ? "Variables" : "Variables",
+      tone: "variables",
+      blocks: [
+        {
+          id: "var_make",
+          label: es ? "Crear variable" : "Make variable",
+          detail: es ? "Guarda datos" : "Store data",
+          glyph: "v",
+          enabled: false,
+        },
+        {
+          id: "var_set",
+          label: es ? "Fijar variable" : "Set variable",
+          detail: es ? "Asigna valor" : "Assign value",
+          glyph: "=",
+          enabled: false,
+        },
+        {
+          id: "var_change",
+          label: es ? "Cambiar variable" : "Change variable",
+          detail: es ? "Suma/resta" : "Add or subtract",
+          glyph: "+=",
+          enabled: false,
+        },
+        {
+          id: "var_show",
+          label: es ? "Mostrar variable" : "Show variable",
+          detail: es ? "Ver dato" : "See data",
+          glyph: "👁",
+          enabled: false,
+        },
+      ],
+    },
+    {
+      id: "my-blocks",
+      label: es ? "Mis bloques" : "My Blocks",
+      tone: "myblocks",
+      blocks: [
+        {
+          id: "my_make",
+          label: es ? "Crear bloque" : "Make a block",
+          detail: es ? "Abstrae idea" : "Name an idea",
+          glyph: "fn",
+          enabled: false,
+        },
+        {
+          id: "my_define",
+          label: es ? "Definir bloque" : "Define block",
+          detail: es ? "Receta propia" : "Custom recipe",
+          glyph: "{}",
+          enabled: false,
+        },
+      ],
+    },
+  ];
+}
+
 function blockValue(block: BlockNode, field: "steps" | "degrees" | "count"): number {
   const value = block.fields?.[field];
   return typeof value === "number" ? value : 0;
@@ -215,10 +718,14 @@ function CodePanel({
   program,
   highlightedNodeId,
   locale,
+  panelControls,
+  panelProps,
 }: {
   program: ProjectProgram;
   highlightedNodeId: string | undefined;
   locale: Locale;
+  panelControls?: ReactNode;
+  panelProps?: PanelChromeProps;
 }) {
   const [projectionId, setProjectionId] = useState<CodeProjectionId>("typescript");
   const [comparisonId, setComparisonId] = useState<CodeProjectionId | undefined>();
@@ -227,10 +734,7 @@ function CodePanel({
     comparisonId === undefined ? undefined : projectCodeSurface(program, comparisonId);
 
   return (
-    <section className="code-panel" aria-labelledby="code-title">
-      <div className="panel-heading">
-        <h2 id="code-title">{t(locale, "code")}</h2>
-      </div>
+    <div className="code-panel-content">
       <div className="code-projection-controls">
         <label>
           <span>Code projection</span>
@@ -271,16 +775,24 @@ function CodePanel({
       <div className={comparison === undefined ? "code-projections" : "code-projections comparing"}>
         <div data-code-projection={primary.id}>
           <strong>{primary.label}</strong>
-          <CodeText code={primary.code} mapping={primary.mapping} highlightedNodeId={highlightedNodeId} />
+          <CodeText
+            code={primary.code}
+            mapping={primary.mapping}
+            highlightedNodeId={highlightedNodeId}
+          />
         </div>
         {comparison === undefined ? null : (
           <div data-code-projection={comparison.id}>
             <strong>{comparison.label}</strong>
-            <CodeText code={comparison.code} mapping={comparison.mapping} highlightedNodeId={highlightedNodeId} />
+            <CodeText
+              code={comparison.code}
+              mapping={comparison.mapping}
+              highlightedNodeId={highlightedNodeId}
+            />
           </div>
         )}
       </div>
-    </section>
+    </div>
   );
 }
 
@@ -288,22 +800,31 @@ function StageView({
   frame,
   fallback,
   locale,
+  panelControls,
+  panelProps,
 }: {
   frame: ObservationFrame | undefined;
   fallback: StageState;
   locale: Locale;
+  panelControls?: ReactNode;
+  panelProps?: PanelChromeProps;
 }) {
   const state = frame?.state ?? fallback;
   const sprite = state.sprite;
   const goal = state.goal;
   const viewport = state.viewport;
   return (
-    <section className="stage-panel" aria-labelledby="stage-title">
+    <section
+      className={panelProps?.className ?? "stage-panel"}
+      style={panelProps?.style}
+      aria-labelledby="stage-title"
+    >
       <div className="panel-heading">
         <h2 id="stage-title">{t(locale, "stage")}</h2>
         <span className="status-pill">
           {frame?.reachedGoal ? t(locale, "evidenceGoalReached") : t(locale, "evidenceReachGoal")}
         </span>
+        {panelControls}
       </div>
       <svg
         className="stage-canvas"
@@ -327,17 +848,26 @@ function TracePanel({
   trace,
   activeTrace,
   locale,
+  panelControls,
+  panelProps,
 }: {
   trace: readonly LearnerTraceItem[];
   activeTrace: LearnerTraceItem | undefined;
   locale: Locale;
+  panelControls?: ReactNode;
+  panelProps?: PanelChromeProps;
 }) {
   const items = trace.slice(0, 5);
   return (
-    <section className="trace-panel" aria-labelledby="trace-title">
+    <section
+      className={panelProps?.className ?? "trace-panel"}
+      style={panelProps?.style}
+      aria-labelledby="trace-title"
+    >
       <div className="panel-heading">
         <h2 id="trace-title">{t(locale, "trace")}</h2>
         <span>{t(locale, "traceSubtitle")}</span>
+        {panelControls}
       </div>
       {items.length === 0 ? (
         <p className="empty-state trace-empty">{t(locale, "traceEmpty")}</p>
@@ -370,6 +900,16 @@ function TracePanel({
   );
 }
 
+function blockToneFor(type: BlockNode["type"]): string {
+  if (type.startsWith("motion_")) return "motion";
+  if (type.startsWith("control_")) return "control";
+  return "logic";
+}
+
+function blockShapeFor(type: BlockNode["type"]): string {
+  return type === "control_if" ? "predicate" : "command";
+}
+
 function ProgramBlockCard({
   block,
   index,
@@ -380,6 +920,8 @@ function ProgramBlockCard({
   onCommitValue,
   onMove,
   onDelete,
+  onDragStart,
+  onDropBefore,
 }: {
   block: BlockNode;
   index: number;
@@ -390,6 +932,8 @@ function ProgramBlockCard({
   onCommitValue: (value: number) => void;
   onMove: (direction: -1 | 1) => void;
   onDelete: () => void;
+  onDragStart: (event: ReactDragEvent<HTMLElement>) => void;
+  onDropBefore: (event: ReactDragEvent<HTMLElement>) => void;
 }) {
   const field = numericFieldFor(block);
   const currentValue = field === undefined ? undefined : blockValue(block, field);
@@ -417,48 +961,93 @@ function ProgramBlockCard({
     setDraftValue(currentValue === undefined ? "" : String(currentValue));
   }
 
+  const displayName = displayNameFor(block, locale);
+  const blockTone = blockToneFor(block.type);
+  const blockShape = blockShapeFor(block.type);
+
   return (
     <article
-      className={selected ? "block-card active" : "block-card"}
-      aria-label={t(locale, "blockLabel", { name: displayNameFor(block, locale) })}
-      data-interaction-model="touch-first no-drag-required keyboard-reorder"
+      className={`block-card block-${blockTone} block-shape-${blockShape}${
+        selected ? " active" : ""
+      }`}
+      aria-label={t(locale, "blockLabel", { name: displayName })}
+      data-interaction-model="touch-first drag-drop keyboard-reorder"
+      data-block-type={block.type}
+      draggable
+      onDragStart={onDragStart}
+      onDragOver={(event) => event.preventDefault()}
+      onDrop={onDropBefore}
     >
-      <button type="button" className="block-title" onClick={onSelect}>
-        {displayNameFor(block, locale)}
-      </button>
-      {field === undefined ? (
-        <span>{t(locale, "touchingGoal")}</span>
-      ) : (
-        <form className="value-editor" onSubmit={submitValue}>
-          <label>
-            <span>{fieldLabelFor(field, locale)}</span>
-            <input
-              type="number"
-              inputMode="numeric"
-              value={draftValue}
-              onChange={(event) => setDraftValue(event.currentTarget.value)}
-            />
-          </label>
-          <div className="value-actions">
-            <button type="submit">{t(locale, "applyValue")}</button>
-            <button type="button" onClick={cancelValue}>
-              {t(locale, "cancelEdit")}
-            </button>
-          </div>
-        </form>
-      )}
+      <div className="scratch-block-main">
+        <button type="button" className="block-title" onClick={onSelect}>
+          <span className="block-grip" aria-hidden="true" />
+          <span>{displayName}</span>
+        </button>
+        {field === undefined ? (
+          <span className="block-slot block-slot-predicate">{t(locale, "touchingGoal")}</span>
+        ) : (
+          <form className="value-editor" onSubmit={submitValue}>
+            <label>
+              <span>{fieldLabelFor(field, locale)}</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                value={draftValue}
+                aria-label={`${displayName} ${fieldLabelFor(field, locale)}`}
+                onChange={(event) => setDraftValue(event.currentTarget.value)}
+              />
+            </label>
+            <div className="value-actions">
+              <button
+                type="submit"
+                aria-label={t(locale, "applyValue")}
+                title={t(locale, "applyValue")}
+              >
+                ✓
+              </button>
+              <button
+                type="button"
+                aria-label={t(locale, "cancelEdit")}
+                title={t(locale, "cancelEdit")}
+                onClick={cancelValue}
+              >
+                ↺
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
       {block.type === "control_if" ? (
         <p className="block-note">{t(locale, "blockNoteIf")}</p>
       ) : null}
       <div className="block-actions" aria-label={t(locale, "cardActions")}>
-        <button type="button" onClick={() => onMove(-1)} disabled={index === 0}>
-          {t(locale, "up")}
-        </button>
-        <button type="button" onClick={() => onMove(1)} disabled={index === total - 1}>
-          {t(locale, "down")}
-        </button>
-        <button type="button" onClick={onDelete}>
-          {t(locale, "delete")}
+        {index === 0 ? null : (
+          <button
+            type="button"
+            aria-label={t(locale, "up")}
+            title={t(locale, "up")}
+            onClick={() => onMove(-1)}
+          >
+            ↑
+          </button>
+        )}
+        {index === total - 1 ? null : (
+          <button
+            type="button"
+            aria-label={t(locale, "down")}
+            title={t(locale, "down")}
+            onClick={() => onMove(1)}
+          >
+            ↓
+          </button>
+        )}
+        <button
+          type="button"
+          aria-label={t(locale, "delete")}
+          title={t(locale, "delete")}
+          onClick={onDelete}
+        >
+          ×
         </button>
       </div>
     </article>
@@ -733,11 +1322,18 @@ export function App() {
   const [attempts, setAttempts] = useState(0);
   const [proposalReview, setProposalReview] = useState<ProposalReview | undefined>();
   const [proposalMessage, setProposalMessage] = useState<string | undefined>();
-  const [learningDecision, setLearningDecision] =
-    useState<WebLearningDecisionDiagnostics | undefined>();
+  const [learningDecision, setLearningDecision] = useState<
+    WebLearningDecisionDiagnostics | undefined
+  >();
   const [aiLiteracyActivity, setAiLiteracyActivity] = useState(false);
   const [aiPredictionRecorded, setAiPredictionRecorded] = useState(false);
   const timerRef = useRef<number | undefined>();
+  const [panelAreas, setPanelAreas] = useState<Record<PanelId, PanelArea>>(DEFAULT_PANEL_AREAS);
+  const [collapsedPanels, setCollapsedPanels] = useState<readonly PanelId[]>([]);
+  const [closedPanels, setClosedPanels] = useState<readonly PanelId[]>([]);
+  const [maximizedPanel, setMaximizedPanel] = useState<PanelId | undefined>(undefined);
+  const [aiConnectionOpen, setAiConnectionOpen] = useState(false);
+  const [workMode, setWorkMode] = useState<WorkMode>("blocks");
 
   const mission = useMemo(() => getLocalizedFirstMission(locale), [locale]);
   const statements = model.workspace.scripts[0]?.statements ?? [];
@@ -751,6 +1347,14 @@ export function App() {
     proposalReview === undefined ? undefined : createWebProposalCardView(proposalReview);
   const missionStep =
     status === "complete" || status === "freeplay" ? 3 : attempts > 0 || status === "retry" ? 2 : 1;
+  const layaSignal =
+    learningDecision === undefined
+      ? t(locale, "layaWaiting")
+      : learningDecision.reasoningTier === "deterministic"
+        ? t(locale, "layaDeterministic")
+        : learningDecision.reasoningTier === "local"
+          ? t(locale, "layaLocal")
+          : t(locale, "layaRemote");
 
   const toolbox = useMemo(
     () =>
@@ -760,6 +1364,7 @@ export function App() {
       })).filter((section) => section.blocks.length > 0),
     [],
   );
+  const scratchPalette = useMemo(() => scratchPaletteFor(locale), [locale]);
 
   useEffect(() => {
     return () => {
@@ -796,7 +1401,7 @@ export function App() {
 
   function addBlock(type: AddableBlockType) {
     applyProjection(addBlockToWorkspace(model.workspace, type));
-    setMessage(t(locale, "codeBehindBlocks"));
+    setMessage(t(locale, "blockAddedMessage"));
   }
 
   function editBlock(index: number, block: BlockNode, value: number) {
@@ -805,6 +1410,7 @@ export function App() {
       return;
     }
     applyProjection(editNumericBlockField(model.workspace, index, field, value));
+    setMessage(t(locale, "programUpdatedMessage"));
   }
 
   function moveBlock(index: number, direction: -1 | 1) {
@@ -813,10 +1419,12 @@ export function App() {
       return;
     }
     applyProjection(moveBlockInWorkspace(model.workspace, index, nextIndex));
+    setMessage(t(locale, "programUpdatedMessage"));
   }
 
   function deleteBlock(index: number) {
     applyProjection(deleteBlockFromWorkspace(model.workspace, index));
+    setMessage(t(locale, "programUpdatedMessage"));
   }
 
   function clearRunTimer() {
@@ -1100,6 +1708,130 @@ export function App() {
     setMessage(t(locale, "freePlayUnlocked"));
   }
 
+  function moveBlockToIndex(fromIndex: number, toIndex: number) {
+    if (fromIndex === toIndex || fromIndex < 0 || fromIndex >= statements.length) {
+      return;
+    }
+    const clamped = Math.max(0, Math.min(toIndex, statements.length - 1));
+    applyProjection(moveBlockInWorkspace(model.workspace, fromIndex, clamped));
+  }
+
+  function togglePanel(panel: PanelId) {
+    setCollapsedPanels((current) =>
+      current.includes(panel) ? current.filter((item) => item !== panel) : [...current, panel],
+    );
+  }
+
+  function closePanel(panel: PanelId) {
+    setClosedPanels((current) => (current.includes(panel) ? current : [...current, panel]));
+    setMaximizedPanel((current) => (current === panel ? undefined : current));
+  }
+
+  function restorePanel(panel: PanelId) {
+    setClosedPanels((current) => current.filter((item) => item !== panel));
+    setCollapsedPanels((current) => current.filter((item) => item !== panel));
+  }
+
+  function toggleMaximizedPanel(panel: PanelId) {
+    setCollapsedPanels((current) => current.filter((item) => item !== panel));
+    setClosedPanels((current) => current.filter((item) => item !== panel));
+    setMaximizedPanel((current) => (current === panel ? undefined : panel));
+  }
+
+  function focusPanels(mode: WorkMode) {
+    setWorkMode(mode);
+    setPanelAreas(MODE_PANEL_AREAS[mode]);
+    const needed: Record<WorkMode, readonly PanelId[]> = {
+      blocks: ["action", "program", "stage"],
+      code: ["program", "code", "stage"],
+      ai: ["companion", "stage", "code"],
+    };
+    setClosedPanels((current) => current.filter((panel) => !needed[mode].includes(panel)));
+    setCollapsedPanels((current) => current.filter((panel) => !needed[mode].includes(panel)));
+  }
+
+  function workModeHint(): string {
+    switch (workMode) {
+      case "code":
+        return t(locale, "modeCodeHint");
+      case "ai":
+        return t(locale, "modeAiHint");
+      default:
+        return t(locale, "modeBlocksHint");
+    }
+  }
+
+  function movePanel(panel: PanelId, direction: -1 | 1) {
+    setPanelAreas((current) => {
+      const currentArea = current[panel];
+      const currentIndex = PANEL_AREAS.indexOf(currentArea);
+      const nextArea =
+        PANEL_AREAS[(currentIndex + direction + PANEL_AREAS.length) % PANEL_AREAS.length];
+      const occupyingPanel = (Object.keys(current) as PanelId[]).find(
+        (candidate) => candidate !== panel && current[candidate] === nextArea,
+      );
+      return {
+        ...current,
+        [panel]: nextArea,
+        ...(occupyingPanel === undefined ? {} : { [occupyingPanel]: currentArea }),
+      };
+    });
+  }
+
+  function panelControls(panel: PanelId) {
+    return (
+      <PanelControls
+        panel={panel}
+        collapsed={collapsedPanels.includes(panel)}
+        maximized={maximizedPanel === panel}
+        onToggle={() => togglePanel(panel)}
+        onClose={() => closePanel(panel)}
+        onMaximize={() => toggleMaximizedPanel(panel)}
+        onMove={(direction) => movePanel(panel, direction)}
+      />
+    );
+  }
+
+  function panelProps(panel: PanelId, baseClassName: string): PanelChromeProps {
+    const isCollapsed = collapsedPanels.includes(panel);
+    const isMaximized = maximizedPanel === panel;
+    return {
+      className: `${baseClassName} resizable-panel${isCollapsed ? " panel-collapsed" : ""}${
+        isMaximized ? " panel-maximized" : ""
+      }`,
+      style: { gridArea: panelAreas[panel] },
+    };
+  }
+
+  function dragTool(event: ReactDragEvent<HTMLElement>, type: AddableBlockType) {
+    event.dataTransfer.setData(BLOCK_DRAG_TYPE, type);
+    event.dataTransfer.effectAllowed = "copy";
+  }
+
+  function dragWorkspaceBlock(event: ReactDragEvent<HTMLElement>, index: number) {
+    event.dataTransfer.setData(WORKSPACE_DRAG_TYPE, String(index));
+    event.dataTransfer.effectAllowed = "move";
+  }
+
+  function dropIntoWorkspace(event: ReactDragEvent<HTMLElement>, targetIndex = statements.length) {
+    event.preventDefault();
+    const type = event.dataTransfer.getData(BLOCK_DRAG_TYPE);
+    if (isAddable(type)) {
+      applyProjection(addBlockToWorkspace(model.workspace, type));
+      setMessage(t(locale, "blockAddedMessage"));
+      return;
+    }
+    const source = Number(event.dataTransfer.getData(WORKSPACE_DRAG_TYPE));
+    if (Number.isInteger(source)) {
+      moveBlockToIndex(
+        source,
+        targetIndex >= statements.length ? statements.length - 1 : targetIndex,
+      );
+    }
+  }
+
+  const closedPanelIds = PANEL_AREAS.filter((panel) => closedPanels.includes(panel));
+
   return (
     <main
       className={status === "complete" ? "editor-shell mission-complete" : "editor-shell"}
@@ -1109,9 +1841,22 @@ export function App() {
       data-provider-selection-bypassed={learningDecision?.providerSelectionBypassed}
     >
       <header className="topbar">
-        <div>
-          <p className="eyebrow">{t(locale, "appEyebrow")}</p>
-          <h1>{t(locale, "appTitle")}</h1>
+        <div className="brand-lockup">
+          <div className="brand-identity" aria-label="Agorix">
+            <span className="brand-mark" aria-hidden="true">
+              <span className="brand-chevron" />
+              <span className="brand-block" />
+            </span>
+            <span className="brand-nameplate">
+              <span className="brand-wordmark">Agorix</span>
+              <span className="brand-tagline">Code · Create · AI</span>
+            </span>
+          </div>
+          <div className="topbar-copy">
+            <p className="eyebrow">{t(locale, "appEyebrow")}</p>
+            <h1>{t(locale, "appTitle")}</h1>
+            <p className="topbar-subtitle">{t(locale, "appSubtitle")}</p>
+          </div>
         </div>
         <div className="run-controls" aria-label={t(locale, "run")}>
           <label className="locale-picker">
@@ -1142,6 +1887,37 @@ export function App() {
         </div>
       </header>
 
+      <nav className="work-mode-switcher" aria-label={t(locale, "workModeLabel")}>
+        <button
+          type="button"
+          className={workMode === "blocks" ? "active" : ""}
+          aria-pressed={workMode === "blocks"}
+          onClick={() => focusPanels("blocks")}
+        >
+          <strong>{t(locale, "modeBlocks")}</strong>
+          <span>{t(locale, "modeBlocksHint")}</span>
+        </button>
+        <button
+          type="button"
+          className={workMode === "code" ? "active" : ""}
+          aria-pressed={workMode === "code"}
+          onClick={() => focusPanels("code")}
+        >
+          <strong>{t(locale, "modeCode")}</strong>
+          <span>{t(locale, "modeCodeHint")}</span>
+        </button>
+        <button
+          type="button"
+          className={workMode === "ai" ? "active" : ""}
+          aria-pressed={workMode === "ai"}
+          onClick={() => focusPanels("ai")}
+        >
+          <strong>{t(locale, "modeAi")}</strong>
+          <span>{t(locale, "modeAiHint")}</span>
+        </button>
+        <p>{workModeHint()}</p>
+      </nav>
+
       <section className="mission-strip" aria-live="polite">
         <div>
           <h2>{t(locale, "missionPrefix", { title: mission.goal.title })}</h2>
@@ -1160,6 +1936,20 @@ export function App() {
               {t(locale, "reflect")}
             </span>
           </div>
+          <div className="philosophy-rail" aria-label={t(locale, "appSubtitle")}>
+            <article>
+              <strong>{t(locale, "philosophyBuildTitle")}</strong>
+              <span>{t(locale, "philosophyBuildBody")}</span>
+            </article>
+            <article>
+              <strong>{t(locale, "philosophyProofTitle")}</strong>
+              <span>{t(locale, "philosophyProofBody")}</span>
+            </article>
+            <article>
+              <strong>{t(locale, "philosophyAiTitle")}</strong>
+              <span>{t(locale, "philosophyAiBody")}</span>
+            </article>
+          </div>
         </div>
         <div className="state-stack">
           <div className="run-state-row">
@@ -1171,6 +1961,27 @@ export function App() {
           <span className="attempt-readout">
             {t(locale, "attemptsHints", { attempts, hints: hintHistory.length })}
           </span>
+          {statements.length === 0 ? (
+            <section className="starter-roadmap" aria-label={t(locale, "startHere")}>
+              <div>
+                <h3>{t(locale, "startHere")}</h3>
+                <p>{t(locale, "startPrompt")}</p>
+              </div>
+              <button
+                type="button"
+                className="primary-start"
+                aria-label={t(locale, "startActionLabel")}
+                onClick={() => addBlock("motion_move")}
+              >
+                {t(locale, "startAddMove")}
+              </button>
+              <ol>
+                <li>{t(locale, "startAddMove")}</li>
+                <li>{t(locale, "startRun")}</li>
+                <li>{t(locale, "startReflectShort")}</li>
+              </ol>
+            </section>
+          ) : null}
           {persistenceMessage === undefined ? null : (
             <strong className="run-state run-state-error">{persistenceMessage}</strong>
           )}
@@ -1202,178 +2013,393 @@ export function App() {
         </div>
       </section>
 
-      <div className="learning-layout">
-        <StageView frame={activeFrame} fallback={model.stage.current} locale={locale} />
-
-        <section className="code-panel" aria-labelledby="code-title">
-          <div className="panel-heading">
-            <h2 id="code-title">{t(locale, "code")}</h2>
-            <span>{t(locale, "codeBehindBlocks")}</span>
-          </div>
-          <CodePanel
-            program={model.program}
-            highlightedNodeId={highlightedNodeId}
-            locale={locale}
-          />
-          {highlightedCode ? (
-            <p className="highlight-readout">
-              {t(locale, "currentNode", { code: highlightedCode.trim() })}
-            </p>
-          ) : null}
-          {activeStep === undefined ? null : (
-            <p className="highlight-readout" data-testid="step-readout">
-              {activeStep.timing} · {activeStep.nodeId ?? "complete"}
-            </p>
-          )}
-        </section>
-
-        <section className="action-palette" aria-labelledby="action-palette-title">
-          <div className="panel-heading">
-            <h2 id="action-palette-title">{t(locale, "actionPalette")}</h2>
-            <span>{t(locale, "actionsContext")}</span>
-          </div>
-          {toolbox.map((section) => (
-            <section key={section.name}>
-              <h3>{sectionNameFor(section.name, locale)}</h3>
-              <div className="action-list">
-                {section.blocks.map((block) => (
-                  <button
-                    key={block.type}
-                    type="button"
-                    onClick={() => addBlock(block.type as AddableBlockType)}
-                  >
-                    {displayNameForType(block.type, locale)}
-                  </button>
-                ))}
-              </div>
-            </section>
-          ))}
-        </section>
-
-        <TracePanel trace={learnerTrace} activeTrace={activeTrace} locale={locale} />
-
-        <section className="program-panel" aria-labelledby="workspace-title">
-          <div className="panel-heading">
-            <h2 id="workspace-title">{t(locale, "whenRun")}</h2>
-            <span>{t(locale, "blockCount", { count: statements.length })}</span>
-          </div>
-          <div className="block-stack">
-            {statements.length === 0 ? (
-              <p className="empty-state">{t(locale, "addMoveBlock")}</p>
-            ) : null}
-            {statements.map((block, index) => {
-              const nodeId = blockNodeId(index);
-              return (
-                <ProgramBlockCard
-                  key={block.id}
-                  block={block}
-                  index={index}
-                  total={statements.length}
-                  selected={highlightedNodeId === nodeId}
-                  locale={locale}
-                  onSelect={() => setHighlightedNodeId(nodeId)}
-                  onCommitValue={(value) => editBlock(index, block, value)}
-                  onMove={(direction) => moveBlock(index, direction)}
-                  onDelete={() => deleteBlock(index)}
-                />
-              );
-            })}
-          </div>
-        </section>
-
-        <aside
-          className="companion-panel"
-          aria-labelledby="companion-title"
-          data-testid="canonical-hash"
-          data-canonical-hash={canonicalHash}
+      <section className="learning-flow" aria-label={t(locale, "appSubtitle")}>
+        <article className="flow-step active">
+          <strong>{t(locale, "flowTools")}</strong>
+          <span>{t(locale, "flowToolsBody")}</span>
+        </article>
+        <article className={statements.length > 0 ? "flow-step active" : "flow-step"}>
+          <strong>{t(locale, "flowBlocks")}</strong>
+          <span>{t(locale, "flowBlocksBody")}</span>
+        </article>
+        <article className={attempts > 0 || status !== "idle" ? "flow-step active" : "flow-step"}>
+          <strong>{t(locale, "flowStage")}</strong>
+          <span>{t(locale, "flowStageBody")}</span>
+        </article>
+        <article className="flow-step active">
+          <strong>{t(locale, "flowCode")}</strong>
+          <span>{t(locale, "flowCodeBody")}</span>
+        </article>
+        <article
+          className={
+            hintHistory.length > 0 || learningDecision !== undefined
+              ? "flow-step active"
+              : "flow-step"
+          }
         >
-          <div className="panel-heading">
-            <h2 id="companion-title">{t(locale, "proposalReview")}</h2>
-            <span>
-              {tutorResponse === undefined ? (
-                <>
-                  {t(locale, "tutorOffline")} <ProvenanceLabel kind="unavailable" locale={locale} />
-                </>
-              ) : (
-                t(locale, "hintLevel", { level: tutorResponse.hintLevel })
-              )}
-            </span>
-          </div>
-          <p aria-live="polite">
-            {proposalMessage ?? tutorResponse?.message ?? t(locale, "tutorIntro")}
-          </p>
-          {proposalMessage === t(locale, "proposalAccepted") ? (
-            <ProvenanceLabel kind="accepted" locale={locale} />
-          ) : null}
-          <IntentDialogue
+          <strong>{t(locale, "flowAi")}</strong>
+          <span>{t(locale, "flowAiBody")}</span>
+        </article>
+      </section>
+
+      {closedPanelIds.length > 0 ? (
+        <div className="panel-dock" aria-label="Closed panels">
+          {closedPanelIds.map((panel) => (
+            <button key={panel} type="button" onClick={() => restorePanel(panel)}>
+              {PANEL_LABELS[panel]}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="learning-layout">
+        {closedPanels.includes("stage") ? null : (
+          <StageView
+            frame={activeFrame}
+            fallback={model.stage.current}
             locale={locale}
-            program={model.program}
-            mission={mission}
-            selectedNodeIds={highlightedNodeId === undefined ? [] : [highlightedNodeId]}
+            panelControls={panelControls("stage")}
+            panelProps={panelProps("stage", "stage-panel")}
           />
-          <div className="tutor-actions">
-            <button type="button" onClick={previewDeterministicProposal}>
-              {t(locale, "previewProposal")}
-            </button>
-            <button type="button" onClick={previewImperfectAiProposal}>
-              {t(locale, "aiLiteracyActivity")}
-            </button>
-            <button type="button" onClick={requestHint}>
-              {t(locale, "getHint")}
-            </button>
-            <span className="hint-meter">
-              {t(locale, "hintMeter", { count: hintHistory.length })}
-            </span>
-          </div>
-          {proposalCard === undefined ? null : (
-            <div className="proposal-card" data-testid="proposal-preview">
-              <ProvenanceLabel kind="suggestion" locale={locale} />
-              <strong>{proposalCard.title}</strong>
-              <p>{proposalCard.rationale}</p>
-              <p>
-                {t(locale, "proposalBaseHash", {
-                  hash: proposalReview?.proposal.baseProgramHash ?? "",
-                })}
+        )}
+
+        {closedPanels.includes("code") ? null : (
+          <section
+            className={panelProps("code", "code-panel").className}
+            style={panelProps("code", "code-panel").style}
+            aria-labelledby="code-title"
+          >
+            <div className="panel-heading">
+              <h2 id="code-title">{t(locale, "code")}</h2>
+              <span>{t(locale, "codeBehindBlocks")}</span>
+              {panelControls("code")}
+            </div>
+            <CodePanel
+              program={model.program}
+              highlightedNodeId={highlightedNodeId}
+              locale={locale}
+            />
+            {highlightedCode ? (
+              <p className="highlight-readout">
+                {t(locale, "currentNode", { code: highlightedCode.trim() })}
               </p>
-              <ul>
-                {proposalCard.changes.map((change) => (
-                  <li key={change.nodeId}>
-                    {change.beforeText ?? ""} → {change.afterText ?? ""}
-                  </li>
-                ))}
-              </ul>
-              {aiLiteracyActivity ? (
-                <div className="ai-literacy-evaluation">
-                  <button type="button" onClick={recordAiPrediction}>
-                    {t(locale, "aiLiteracyPredict")}
-                  </button>
-                  {aiPredictionRecorded ? (
-                    <span data-testid="ai-prediction-recorded">
-                      {t(locale, "aiLiteracyPredictionRecorded")}
-                    </span>
-                  ) : null}
+            ) : null}
+            {activeStep === undefined ? null : (
+              <p className="highlight-readout" data-testid="step-readout">
+                {activeStep.timing} · {activeStep.nodeId ?? "complete"}
+              </p>
+            )}
+          </section>
+        )}
+
+        {closedPanels.includes("action") ? null : (
+          <section
+            className={panelProps("action", "action-palette").className}
+            style={panelProps("action", "action-palette").style}
+            aria-labelledby="action-palette-title"
+          >
+            <div className="panel-heading">
+              <h2 id="action-palette-title">{t(locale, "actionPalette")}</h2>
+              <span>{t(locale, "actionsContext")}</span>
+              {panelControls("action")}
+            </div>
+            <p className="toolbox-intro">{t(locale, "toolboxIntro")}</p>
+            <div className="scratch-category-strip" aria-label="Scratch categories">
+              <span className="cat-motion">{t(locale, "toolCategoryMotion")}</span>
+              <span className="cat-loops">{t(locale, "toolCategoryLoops")}</span>
+              <span className="cat-logic">{t(locale, "toolCategoryLogic")}</span>
+              <span className="cat-ai">{t(locale, "toolCategoryAi")}</span>
+            </div>
+            {scratchPalette.map((section) => (
+              <section key={section.id} className={`scratch-category category-${section.tone}`}>
+                <h3>{section.label}</h3>
+                <div className="action-list">
+                  {section.blocks.map((block) => (
+                    <button
+                      key={block.id}
+                      type="button"
+                      className={`tool-button tool-${block.id}${block.enabled ? "" : " tool-disabled"}`}
+                      aria-label={block.label}
+                      draggable={block.enabled}
+                      disabled={!block.enabled}
+                      data-category={section.tone}
+                      onDragStart={(event) => {
+                        if (block.type !== undefined) dragTool(event, block.type);
+                      }}
+                      onClick={() => {
+                        if (block.type !== undefined) addBlock(block.type);
+                      }}
+                    >
+                      <span className="tool-glyph" aria-hidden="true">
+                        {block.glyph}
+                      </span>
+                      <span className="tool-copy">
+                        <strong>{block.label}</strong>
+                        <small aria-hidden="true">{block.detail}</small>
+                      </span>
+                    </button>
+                  ))}
                 </div>
-              ) : null}
-              <div className="tutor-actions">
-                <button type="button" onClick={rejectDeterministicProposal}>
-                  {t(locale, "rejectProposal")}
+              </section>
+            ))}
+            <section className="ai-tool-shelf" aria-label={t(locale, "aiToolShelf")}>
+              <h3>{t(locale, "aiToolShelf")}</h3>
+              <div className="action-list ai-action-list">
+                <button type="button" aria-label="Use AI hint tool" onClick={requestHint}>
+                  <span className="tool-glyph" aria-hidden="true">
+                    AI
+                  </span>
+                  <span className="tool-copy">
+                    <strong>{t(locale, "aiToolHint")}</strong>
+                    <small aria-hidden="true">{t(locale, "modeAiHint")}</small>
+                  </span>
                 </button>
                 <button
                   type="button"
-                  onClick={acceptDeterministicProposal}
-                  disabled={aiLiteracyActivity && !aiPredictionRecorded}
+                  aria-label="Use AI challenge tool"
+                  onClick={previewImperfectAiProposal}
                 >
-                  {t(locale, "acceptProposal")}
+                  <span className="tool-glyph" aria-hidden="true">
+                    ?
+                  </span>
+                  <span className="tool-copy">
+                    <strong>{t(locale, "aiToolChallenge")}</strong>
+                    <small aria-hidden="true">{t(locale, "philosophyAiBody")}</small>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  aria-label="Use AI explain tool"
+                  onClick={() => focusPanels("ai")}
+                >
+                  <span className="tool-glyph" aria-hidden="true">
+                    fx
+                  </span>
+                  <span className="tool-copy">
+                    <strong>{t(locale, "aiToolExplain")}</strong>
+                    <small aria-hidden="true">{t(locale, "modeCodeHint")}</small>
+                  </span>
                 </button>
               </div>
+            </section>
+          </section>
+        )}
+
+        {closedPanels.includes("trace") ? null : (
+          <TracePanel
+            trace={learnerTrace}
+            activeTrace={activeTrace}
+            locale={locale}
+            panelControls={panelControls("trace")}
+            panelProps={panelProps("trace", "trace-panel")}
+          />
+        )}
+
+        {closedPanels.includes("program") ? null : (
+          <section
+            className={panelProps("program", "program-panel").className}
+            style={panelProps("program", "program-panel").style}
+            aria-labelledby="workspace-title"
+          >
+            <div className="panel-heading">
+              <h2 id="workspace-title">{t(locale, "whenRun")}</h2>
+              <span>{t(locale, "blockCount", { count: statements.length })}</span>
+              {panelControls("program")}
             </div>
-          )}
-          {tutorResponse === undefined ? null : (
-            <p className="hint-history">
-              {t(locale, "hintLevelOf", { level: tutorResponse.hintLevel })}
+            <div
+              className="block-stack"
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => dropIntoWorkspace(event)}
+            >
+              {statements.length === 0 ? (
+                <div className="empty-state empty-start-card">
+                  <strong>{t(locale, "emptyStateTitle")}</strong>
+                  <span>{t(locale, "emptyStateBody")}</span>
+                  <button
+                    type="button"
+                    aria-label={t(locale, "startActionLabel")}
+                    onClick={() => addBlock("motion_move")}
+                  >
+                    {t(locale, "startAddMove")}
+                  </button>
+                </div>
+              ) : null}
+              {statements.map((block, index) => {
+                const nodeId = blockNodeId(index);
+                return (
+                  <ProgramBlockCard
+                    key={block.id}
+                    block={block}
+                    index={index}
+                    total={statements.length}
+                    selected={highlightedNodeId === nodeId}
+                    locale={locale}
+                    onSelect={() => setHighlightedNodeId(nodeId)}
+                    onCommitValue={(value) => editBlock(index, block, value)}
+                    onMove={(direction) => moveBlock(index, direction)}
+                    onDelete={() => deleteBlock(index)}
+                    onDragStart={(event) => dragWorkspaceBlock(event, index)}
+                    onDropBefore={(event) => dropIntoWorkspace(event, index)}
+                  />
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {closedPanels.includes("companion") ? null : (
+          <aside
+            className={panelProps("companion", "companion-panel").className}
+            style={panelProps("companion", "companion-panel").style}
+            aria-labelledby="companion-title"
+            data-testid="canonical-hash"
+            data-canonical-hash={canonicalHash}
+          >
+            <div className="panel-heading">
+              <h2 id="companion-title">{t(locale, "proposalReview")}</h2>
+              <span>
+                {tutorResponse === undefined ? (
+                  <>
+                    {t(locale, "tutorOffline")}{" "}
+                    <ProvenanceLabel kind="unavailable" locale={locale} />
+                  </>
+                ) : (
+                  t(locale, "hintLevel", { level: tutorResponse.hintLevel })
+                )}
+              </span>
+              {panelControls("companion")}
+            </div>
+            <div className="ai-guide" aria-hidden="true">
+              <span className="ai-guide-orbit" />
+              <span className="ai-guide-avatar">
+                <span />
+                <span />
+                <i />
+              </span>
+            </div>
+            <div className="ai-coach-card">
+              <div className="ai-coach-card-header">
+                <strong>{t(locale, "aiCoachMode")}</strong>
+                <button
+                  type="button"
+                  className="ai-connect-button"
+                  aria-expanded={aiConnectionOpen}
+                  onClick={() => setAiConnectionOpen((current) => !current)}
+                >
+                  {t(locale, "aiConnectAction")}
+                </button>
+              </div>
+              <span>{t(locale, "aiCoachBody")}</span>
+              <small>{t(locale, "aiCoachStatus")}</small>
+              <div className="laya-signal" aria-label={t(locale, "layaSignal")}>
+                <strong>{t(locale, "layaSignal")}</strong>
+                <span>{layaSignal}</span>
+              </div>
+              {aiConnectionOpen ? (
+                <section className="ai-connect-panel" aria-label={t(locale, "aiConnectTitle")}>
+                  <strong>{t(locale, "aiConnectTitle")}</strong>
+                  <p>{t(locale, "aiConnectBody")}</p>
+                  <dl>
+                    <div>
+                      <dt>{t(locale, "aiConnectProvider")}</dt>
+                      <dd>{t(locale, "aiConnectProviderValue")}</dd>
+                    </div>
+                  </dl>
+                  <span>{t(locale, "aiConnectConfigHint")}</span>
+                  <button type="button" onClick={() => setAiConnectionOpen(false)}>
+                    {t(locale, "aiConnectClose")}
+                  </button>
+                </section>
+              ) : null}
+            </div>
+            <div className="coach-nudge" aria-live="polite">
+              <strong>{t(locale, "aiNextMove")}</strong>
+              <span>
+                {statements.length === 0
+                  ? t(locale, "aiNextAddMove")
+                  : status === "idle" || status === "freeplay"
+                    ? t(locale, "aiNextRun")
+                    : status === "retry"
+                      ? t(locale, "aiNextRetry")
+                      : t(locale, "aiNextReflect")}
+              </span>
+            </div>
+            <p aria-live="polite">
+              {proposalMessage ?? tutorResponse?.message ?? t(locale, "tutorIntro")}
             </p>
-          )}
-        </aside>
+            {proposalMessage === t(locale, "proposalAccepted") ? (
+              <ProvenanceLabel kind="accepted" locale={locale} />
+            ) : null}
+            <IntentDialogue
+              locale={locale}
+              program={model.program}
+              mission={mission}
+              selectedNodeIds={highlightedNodeId === undefined ? [] : [highlightedNodeId]}
+            />
+            <div className="tutor-actions">
+              <button type="button" onClick={previewDeterministicProposal}>
+                {t(locale, "previewProposal")}
+              </button>
+              <button type="button" onClick={previewImperfectAiProposal}>
+                {t(locale, "aiLiteracyActivity")}
+              </button>
+              <button type="button" onClick={requestHint}>
+                {t(locale, "getHint")}
+              </button>
+              <span className="hint-meter">
+                {t(locale, "hintMeter", { count: hintHistory.length })}
+              </span>
+            </div>
+            {proposalCard === undefined ? null : (
+              <div className="proposal-card" data-testid="proposal-preview">
+                <ProvenanceLabel kind="suggestion" locale={locale} />
+                <strong>{proposalCard.title}</strong>
+                <p>{proposalCard.rationale}</p>
+                <p>
+                  {t(locale, "proposalBaseHash", {
+                    hash: proposalReview?.proposal.baseProgramHash ?? "",
+                  })}
+                </p>
+                <ul>
+                  {proposalCard.changes.map((change) => (
+                    <li key={change.nodeId}>
+                      {change.beforeText ?? ""} → {change.afterText ?? ""}
+                    </li>
+                  ))}
+                </ul>
+                {aiLiteracyActivity ? (
+                  <div className="ai-literacy-evaluation">
+                    <button type="button" onClick={recordAiPrediction}>
+                      {t(locale, "aiLiteracyPredict")}
+                    </button>
+                    {aiPredictionRecorded ? (
+                      <span data-testid="ai-prediction-recorded">
+                        {t(locale, "aiLiteracyPredictionRecorded")}
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
+                <div className="tutor-actions">
+                  <button type="button" onClick={rejectDeterministicProposal}>
+                    {t(locale, "rejectProposal")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={acceptDeterministicProposal}
+                    disabled={aiLiteracyActivity && !aiPredictionRecorded}
+                  >
+                    {t(locale, "acceptProposal")}
+                  </button>
+                </div>
+              </div>
+            )}
+            {tutorResponse === undefined ? null : (
+              <p className="hint-history">
+                {t(locale, "hintLevelOf", { level: tutorResponse.hintLevel })}
+              </p>
+            )}
+          </aside>
+        )}
       </div>
     </main>
   );

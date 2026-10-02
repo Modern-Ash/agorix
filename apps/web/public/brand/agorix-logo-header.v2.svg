@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 220" role="img" aria-labelledby="title desc">
+  <title id="title">Agorix</title>
+  <desc id="desc">Agorix logo combining a code cursor with a modular construction block.</desc>
+  <defs>
+    <linearGradient id="block" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8B5CF6"/>
+      <stop offset="1" stop-color="#22D3EE"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(28 46)">
+    <path d="M12 18 62 68 12 118" fill="none" stroke="#EAF2FF" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M94 35h44v18h18v44h-18v18H94z" fill="url(#block)"/>
+  </g>
+  <text x="230" y="128" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="88" font-weight="800" letter-spacing="-4" fill="#FFFFFF">Agorix</text>
+  <circle cx="528" cy="69" r="7" fill="#22D3EE"/>
+  <text x="234" y="171" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="17" font-weight="700" letter-spacing="5" fill="#B8C7DD">CODE · CREATE · WITH AI</text>
+</svg>
