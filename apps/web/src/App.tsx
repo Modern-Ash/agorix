@@ -1364,7 +1364,14 @@ export function App() {
       })).filter((section) => section.blocks.length > 0),
     [],
   );
-  const scratchPalette = useMemo(() => scratchPaletteFor(locale), [locale]);
+  // Only offer what works today; unimplemented blocks stay in the catalog but are not shown.
+  const scratchPalette = useMemo(
+    () =>
+      scratchPaletteFor(locale)
+        .map((section) => ({ ...section, blocks: section.blocks.filter((block) => block.enabled) }))
+        .filter((section) => section.blocks.length > 0),
+    [locale],
+  );
 
   useEffect(() => {
     return () => {
@@ -1914,20 +1921,6 @@ export function App() {
               {t(locale, "reflect")}
             </span>
           </div>
-          <div className="philosophy-rail" aria-label={t(locale, "appSubtitle")}>
-            <article>
-              <strong>{t(locale, "philosophyBuildTitle")}</strong>
-              <span>{t(locale, "philosophyBuildBody")}</span>
-            </article>
-            <article>
-              <strong>{t(locale, "philosophyProofTitle")}</strong>
-              <span>{t(locale, "philosophyProofBody")}</span>
-            </article>
-            <article>
-              <strong>{t(locale, "philosophyAiTitle")}</strong>
-              <span>{t(locale, "philosophyAiBody")}</span>
-            </article>
-          </div>
         </div>
         <div className="state-stack">
           <div className="run-state-row">
@@ -2082,12 +2075,6 @@ export function App() {
               {panelControls("action")}
             </div>
             <p className="toolbox-intro">{t(locale, "toolboxIntro")}</p>
-            <div className="scratch-category-strip" aria-label="Scratch categories">
-              <span className="cat-motion">{t(locale, "toolCategoryMotion")}</span>
-              <span className="cat-loops">{t(locale, "toolCategoryLoops")}</span>
-              <span className="cat-logic">{t(locale, "toolCategoryLogic")}</span>
-              <span className="cat-ai">{t(locale, "toolCategoryAi")}</span>
-            </div>
             {scratchPalette.map((section) => (
               <section key={section.id} className={`scratch-category category-${section.tone}`}>
                 <h3>{section.label}</h3>

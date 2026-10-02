@@ -402,26 +402,25 @@ test("explicit reorder controls update generated code without drag", async ({ pa
   expect(code.indexOf("sprite.turn(90);")).toBeLessThan(code.indexOf("sprite.move(10);"));
 });
 
-test("Scratch-compatible palette exposes core categories with inactive future blocks", async ({
-  page,
-}) => {
+test("palette shows only implemented actions, in familiar categories", async ({ page }) => {
   await page.goto("/");
 
+  for (const name of ["Motion", "Control"]) {
+    await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
+  }
   for (const name of [
-    "Motion",
     "Looks",
     "Sound",
     "Events",
-    "Control",
     "Sensing",
     "Operators",
     "Variables",
     "My Blocks",
   ]) {
-    await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name, exact: true })).toHaveCount(0);
   }
-
-  await expect(page.getByRole("button", { name: "Say", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Say", exact: true })).toHaveCount(0);
+  await expect(page.locator(".action-palette button:disabled")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Move", exact: true })).toBeEnabled();
 });
 
