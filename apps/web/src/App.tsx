@@ -875,6 +875,41 @@ function TracePanel({
   );
 }
 
+function StepCard({
+  item,
+  position,
+  total,
+  canAdvance,
+  onNext,
+  locale,
+}: {
+  item: LearnerTraceItem;
+  position: number;
+  total: number;
+  canAdvance: boolean;
+  onNext: () => void;
+  locale: Locale;
+}) {
+  return (
+    <section className="step-card" data-testid="step-card" aria-live="polite">
+      <ProvenanceLabel kind="runtime-fact" locale={locale} />
+      <strong>{t(locale, "stepCardTitle", { n: position, total })}</strong>
+      <p>
+        {item.title} — {item.summary}
+      </p>
+      <p className="step-card-states">
+        {t(locale, "traceBefore", { ...item.before })} ·{" "}
+        {t(locale, "traceAfter", { ...item.after })}
+      </p>
+      {canAdvance ? (
+        <button type="button" onClick={onNext}>
+          {t(locale, "stepCardNext")}
+        </button>
+      ) : null}
+    </section>
+  );
+}
+
 function blockToneFor(type: BlockNode["type"]): string {
   if (type.startsWith("motion_")) return "motion";
   if (type.startsWith("control_")) return "control";
@@ -1298,6 +1333,7 @@ export function App() {
   const [proposalReview, setProposalReview] = useState<ProposalReview | undefined>();
   const [proposalMessage, setProposalMessage] = useState<string | undefined>();
   const [dismissedRepeatHash, setDismissedRepeatHash] = useState<string | undefined>();
+  const [stepping, setStepping] = useState(false);
   const [repeatDeclines, setRepeatDeclines] = useState(0);
   const [learningDecision, setLearningDecision] = useState<
     WebLearningDecisionDiagnostics | undefined
@@ -1307,7 +1343,7 @@ export function App() {
   const timerRef = useRef<number | undefined>();
   const [panelAreas, setPanelAreas] = useState<Record<PanelId, PanelArea>>(DEFAULT_PANEL_AREAS);
   const [collapsedPanels, setCollapsedPanels] = useState<readonly PanelId[]>([]);
-  const [closedPanels, setClosedPanels] = useState<readonly PanelId[]>([]);
+  const [closedPanels, setClosedPanels] = useState<readonly PanelId[]>(["trace"]);
   const [maximizedPanel, setMaximizedPanel] = useState<PanelId | undefined>(undefined);
   const [aiConnectionOpen, setAiConnectionOpen] = useState(false);
 
@@ -1494,6 +1530,7 @@ export function App() {
     if (status === "running") {
       return;
     }
+    setStepping(false);
     if (statements.length === 0) {
       setStatus("error");
       setMessage(t(locale, "emptyRunMessage"));
@@ -1532,6 +1569,7 @@ export function App() {
 
   function stepBlocks() {
     clearRunTimer();
+    setStepping(true);
     if (statements.length === 0) {
       setStatus("error");
       setMessage(t(locale, "emptyRunMessage"));
@@ -2362,6 +2400,16 @@ export function App() {
           </aside>
         )}
       </div>
+      {!stepping || activeTrace === undefined ? null : (
+        <StepCard
+          item={activeTrace}
+          position={frameIndex + 1}
+          total={learnerTrace.length}
+          canAdvance={status === "stopped"}
+          onNext={stepBlocks}
+          locale={locale}
+        />
+      )}
       {repeatOffer === undefined && !(repeatReviewActive && proposalCard !== undefined) ? null : (
         <section
           className="contextual-suggestion"

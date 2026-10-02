@@ -268,11 +268,13 @@ test("Step trace explains before and after state without raw logs", async ({ pag
   await page.getByRole("button", { name: "Step" }).click();
   await page.getByRole("button", { name: "Step" }).click();
 
-  await expect(page.getByRole("heading", { name: "Trace" })).toBeVisible();
-  const movementTrace = page.locator(".trace-item", { hasText: "Nova moved right; x: 52 -> 76" });
-  await expect(movementTrace).toBeVisible();
-  await expect(movementTrace).toContainText("Before: x 52, y 128, heading 0");
-  await expect(movementTrace).toContainText("After: x 76, y 128, heading 0");
+  const card = page.getByTestId("step-card");
+  await expect(card).toBeVisible();
+  await expect(card).toContainText("Step 2 of");
+  await expect(card).toContainText("Nova moved right; x: 52 -> 76");
+  await expect(card).toContainText("Before: x 52, y 128, heading 0");
+  await expect(card).toContainText("After: x 76, y 128, heading 0");
+  await expect(page.getByRole("heading", { name: "Trace" })).toHaveCount(0);
   await expect(page.getByText(/provider|prompt|stack/i)).toHaveCount(0);
 });
 
@@ -440,10 +442,6 @@ test("IDE panels can collapse, close, restore, and blocks support drag and drop"
     .click();
   await expect(page.getByRole("button", { name: "Move", exact: true })).toBeVisible();
 
-  await page
-    .getByLabel("Trace panel controls")
-    .getByRole("button", { name: "Close Trace" })
-    .click();
   await expect(page.getByRole("heading", { name: "Trace" })).toHaveCount(0);
   await page.getByRole("button", { name: "Trace" }).click();
   await expect(page.getByRole("heading", { name: "Trace" })).toBeVisible();
@@ -684,8 +682,7 @@ test("AI-literacy journey predicts, tests, challenges and corrects an imperfect 
   // Runtime evidence is inspectable; debugger/hint must reason from the run, not invent a fact.
   await page.getByRole("button", { name: "Step" }).click();
   await page.getByRole("button", { name: "Step" }).click();
-  await expect(page.getByRole("heading", { name: "Trace" })).toBeVisible();
-  await expect(page.locator(".trace-item").first()).toBeVisible();
+  await expect(page.getByTestId("step-card")).toBeVisible();
   await page.getByRole("button", { name: "Get hint" }).click();
   await expect(page.getByText("Hint level 1 of 5")).toBeVisible();
 
@@ -831,4 +828,16 @@ test.describe("contextual repeat suggestion", () => {
     await page.getByRole("button", { name: "Run", exact: true }).click();
     await expect(page.locator(".run-state")).toBeVisible();
   });
+});
+
+test("Step card advances with Next and shows learner-facing evidence", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByTestId("step-card")).toHaveCount(0);
+  await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+  await page.getByRole("button", { name: "Step", exact: true }).click();
+  const card = page.getByTestId("step-card");
+  await expect(card).toContainText("Step 1 of");
+  await card.getByRole("button", { name: "Next" }).click();
+  await expect(card).toContainText("Step 2 of");
+  await expect(card).toContainText("Before:");
 });
