@@ -2244,58 +2244,11 @@ button:hover:not(:disabled) {
 }
 
 /* Native Scratch + AI layer: modes, category strip, and snap-like blocks. */
-.work-mode-switcher {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(220px, 0.8fr);
-  gap: 8px;
-  align-items: stretch;
-  margin: 8px 0;
-  padding: 8px;
-  border: 1px solid rgba(15, 23, 42, 0.16);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.82);
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
-}
 
-.work-mode-switcher button {
-  display: grid;
-  gap: 2px;
-  justify-items: start;
-  min-height: 56px;
-  padding: 8px 10px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: #ffffff;
-  text-align: left;
-  box-shadow: none;
-}
 
-.work-mode-switcher button.active,
-.work-mode-switcher button[aria-pressed="true"] {
-  border-color: rgba(99, 91, 255, 0.44);
-  background: linear-gradient(135deg, #ede9fe, #ffffff);
-  box-shadow: inset 4px 0 0 #635bff;
-}
 
-.work-mode-switcher strong {
-  color: #0f172a;
-  font-size: 0.9rem;
-}
 
-.work-mode-switcher span,
-.work-mode-switcher p {
-  margin: 0;
-  color: #526171;
-  font-size: 0.78rem;
-  line-height: 1.25;
-}
 
-.work-mode-switcher p {
-  align-self: center;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: rgba(15, 23, 42, 0.06);
-  font-weight: 800;
-}
 
 .scratch-category-strip {
   display: grid;
@@ -2420,31 +2373,12 @@ button:hover:not(:disabled) {
 }
 
 @media (max-width: 980px) {
-  .work-mode-switcher {
-    grid-template-columns: 1fr;
-  }
 
-  .work-mode-switcher button {
-    min-height: 48px;
-  }
 }
 
 @media (min-width: 901px) and (max-width: 1120px) {
-  .work-mode-switcher {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    padding: 6px;
-    gap: 6px;
-  }
 
-  .work-mode-switcher button {
-    min-height: 38px;
-    padding: 6px 8px;
-  }
 
-  .work-mode-switcher button span,
-  .work-mode-switcher p {
-    display: none;
-  }
 }
 
 @media (orientation: landscape) and (min-width: 901px) and (max-width: 1120px) {
@@ -2480,19 +2414,9 @@ button:hover:not(:disabled) {
 }
 
 @media (orientation: portrait) and (min-width: 720px) and (max-width: 900px) {
-  .work-mode-switcher {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    padding: 6px;
-    gap: 6px;
-  }
 
-  .work-mode-switcher button {
-    min-height: 38px;
-    padding: 6px 8px;
-  }
 
-  .work-mode-switcher button span,
-  .work-mode-switcher p,
+
   .topbar-subtitle,
   .philosophy-rail span,
   .starter-roadmap p,
@@ -3346,22 +3270,8 @@ button:hover:not(:disabled) {
     min-height: 44px;
   }
 
-  .work-mode-switcher {
-    flex: 0 0 auto;
-    grid-template-columns: repeat(3, minmax(150px, 1fr)) minmax(220px, 0.8fr);
-    margin: 6px 0;
-    padding: 6px;
-  }
 
-  .work-mode-switcher button {
-    min-height: 42px;
-    padding: 6px 8px;
-  }
 
-  .work-mode-switcher button span,
-  .work-mode-switcher p {
-    display: none;
-  }
 
   .mission-strip {
     flex: 0 0 auto;

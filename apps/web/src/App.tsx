@@ -83,7 +83,6 @@ type RunStatus = "idle" | "running" | "stopped" | "complete" | "retry" | "freepl
 
 type PanelId = "action" | "program" | "stage" | "code" | "trace" | "companion";
 type PanelArea = PanelId;
-type WorkMode = "blocks" | "code" | "ai";
 
 const PANEL_AREAS: readonly PanelArea[] = [
   "action",
@@ -110,33 +109,6 @@ const DEFAULT_PANEL_AREAS: Record<PanelId, PanelArea> = {
   code: "code",
   trace: "trace",
   companion: "companion",
-};
-
-const MODE_PANEL_AREAS: Record<WorkMode, Record<PanelId, PanelArea>> = {
-  blocks: {
-    action: "action",
-    program: "program",
-    stage: "stage",
-    code: "code",
-    trace: "trace",
-    companion: "companion",
-  },
-  code: {
-    action: "trace",
-    program: "program",
-    stage: "stage",
-    code: "code",
-    trace: "action",
-    companion: "companion",
-  },
-  ai: {
-    action: "trace",
-    program: "program",
-    stage: "stage",
-    code: "code",
-    trace: "action",
-    companion: "companion",
-  },
 };
 
 const BLOCK_DRAG_TYPE = "application/x-agorix-block-type";
@@ -1338,7 +1310,6 @@ export function App() {
   const [closedPanels, setClosedPanels] = useState<readonly PanelId[]>([]);
   const [maximizedPanel, setMaximizedPanel] = useState<PanelId | undefined>(undefined);
   const [aiConnectionOpen, setAiConnectionOpen] = useState(false);
-  const [workMode, setWorkMode] = useState<WorkMode>("blocks");
 
   const mission = useMemo(() => getLocalizedFirstMission(locale), [locale]);
   const statements = model.workspace.scripts[0]?.statements ?? [];
@@ -1795,27 +1766,8 @@ export function App() {
     setMaximizedPanel((current) => (current === panel ? undefined : panel));
   }
 
-  function focusPanels(mode: WorkMode) {
-    setWorkMode(mode);
-    setPanelAreas(MODE_PANEL_AREAS[mode]);
-    const needed: Record<WorkMode, readonly PanelId[]> = {
-      blocks: ["action", "program", "stage"],
-      code: ["program", "code", "stage"],
-      ai: ["companion", "stage", "code"],
-    };
-    setClosedPanels((current) => current.filter((panel) => !needed[mode].includes(panel)));
-    setCollapsedPanels((current) => current.filter((panel) => !needed[mode].includes(panel)));
-  }
-
-  function workModeHint(): string {
-    switch (workMode) {
-      case "code":
-        return t(locale, "modeCodeHint");
-      case "ai":
-        return t(locale, "modeAiHint");
-      default:
-        return t(locale, "modeBlocksHint");
-    }
+  function revealCompanion() {
+    restorePanel("companion");
   }
 
   function movePanel(panel: PanelId, direction: -1 | 1) {
@@ -1943,37 +1895,6 @@ export function App() {
           </button>
         </div>
       </header>
-
-      <nav className="work-mode-switcher" aria-label={t(locale, "workModeLabel")}>
-        <button
-          type="button"
-          className={workMode === "blocks" ? "active" : ""}
-          aria-pressed={workMode === "blocks"}
-          onClick={() => focusPanels("blocks")}
-        >
-          <strong>{t(locale, "modeBlocks")}</strong>
-          <span>{t(locale, "modeBlocksHint")}</span>
-        </button>
-        <button
-          type="button"
-          className={workMode === "code" ? "active" : ""}
-          aria-pressed={workMode === "code"}
-          onClick={() => focusPanels("code")}
-        >
-          <strong>{t(locale, "modeCode")}</strong>
-          <span>{t(locale, "modeCodeHint")}</span>
-        </button>
-        <button
-          type="button"
-          className={workMode === "ai" ? "active" : ""}
-          aria-pressed={workMode === "ai"}
-          onClick={() => focusPanels("ai")}
-        >
-          <strong>{t(locale, "modeAi")}</strong>
-          <span>{t(locale, "modeAiHint")}</span>
-        </button>
-        <p>{workModeHint()}</p>
-      </nav>
 
       <section className="mission-strip" aria-live="polite">
         <div>
@@ -2224,11 +2145,7 @@ export function App() {
                     <small aria-hidden="true">{t(locale, "philosophyAiBody")}</small>
                   </span>
                 </button>
-                <button
-                  type="button"
-                  aria-label="Use AI explain tool"
-                  onClick={() => focusPanels("ai")}
-                >
+                <button type="button" aria-label="Use AI explain tool" onClick={revealCompanion}>
                   <span className="tool-glyph" aria-hidden="true">
                     fx
                   </span>

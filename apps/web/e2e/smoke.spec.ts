@@ -511,18 +511,14 @@ test("desktop IDE keeps AI visible without document-level scrolling", async ({ p
   await expect(page.getByRole("heading", { name: "AI coach", exact: true })).toBeInViewport();
 });
 
-test("work modes rearrange IDE panels for the selected task", async ({ page }) => {
+test("Explain tool reveals the AI companion without a mode switch", async ({ page }) => {
   await page.goto("/");
 
-  const beforeCodeBox = await page.locator(".code-panel").boundingBox();
-  await page.getByRole("button", { name: "AI" }).first().click();
-  const aiBox = await page.locator(".companion-panel").boundingBox();
-  const afterCodeBox = await page.locator(".code-panel").boundingBox();
-
-  expect(beforeCodeBox).not.toBeNull();
-  expect(aiBox).not.toBeNull();
-  expect(afterCodeBox).not.toBeNull();
-  expect(aiBox!.y).toBeLessThanOrEqual(afterCodeBox!.y + 8);
+  await expect(page.getByRole("navigation", { name: /Work mode/ })).toHaveCount(0);
+  await page.getByRole("button", { name: "Close AI" }).click();
+  await expect(page.locator(".companion-panel")).toHaveCount(0);
+  await page.getByRole("button", { name: "Use AI explain tool" }).click();
+  await expect(page.locator(".companion-panel")).toBeVisible();
 });
 
 test("adding a block refreshes coach and starter guidance", async ({ page }) => {
