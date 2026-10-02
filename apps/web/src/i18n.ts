@@ -24,6 +24,14 @@ const messages = {
       "What was wrong with the original AI suggestion, and what evidence proved it?",
     aiLiteracyRationale:
       "This AI fixture suggests 120 steps. It sounds plausible, but you should test it.",
+    repeatSuggestionTitle: "I see you repeated something {count} times.",
+    repeatSuggestionBody: "Want to explore another way to write it?",
+    repeatSuggestionTry: "Try it",
+    repeatSuggestionChange: "I'll change it",
+    repeatSuggestionNo: "No thanks",
+    repeatSuggestionPurpose: "Write the repeated steps once with repeat",
+    repeatSuggestionRationale:
+      "The same steps appear {count} times in a row. A repeat block does the same thing in fewer blocks.",
     previewProposal: "Preview proposal",
     proposalAccepted: "Proposal accepted. Blocks and code updated from canonical state.",
     proposalBaseHash: "Base hash: {hash}",
@@ -209,6 +217,14 @@ const messages = {
       "¿Qué tenía de incorrecto la sugerencia original de IA y qué evidencia lo demostró?",
     aiLiteracyRationale:
       "Este ejemplo de IA sugiere 120 pasos. Suena posible, pero debes probarlo.",
+    repeatSuggestionTitle: "Veo que repetiste algo {count} veces.",
+    repeatSuggestionBody: "¿Querés explorar otra forma de escribirlo?",
+    repeatSuggestionTry: "Probar",
+    repeatSuggestionChange: "Lo cambio yo",
+    repeatSuggestionNo: "No, gracias",
+    repeatSuggestionPurpose: "Escribir una sola vez los pasos repetidos con repetir",
+    repeatSuggestionRationale:
+      "Los mismos pasos aparecen {count} veces seguidas. Un bloque repetir hace lo mismo con menos bloques.",
     previewProposal: "Previsualizar propuesta",
     proposalAccepted: "Propuesta aceptada. Bloques y código actualizados desde el estado canónico.",
     proposalBaseHash: "Hash base: {hash}",

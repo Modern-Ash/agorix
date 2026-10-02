@@ -30,6 +30,8 @@ import {
   acceptProposal,
   createProgramProposal,
   createProposalReview,
+  createRepeatPatternProposal,
+  detectRepeatPattern,
   createWebProposalCardView,
   programSemanticHash,
   rejectProposal,
@@ -1322,6 +1324,7 @@ export function App() {
   const [attempts, setAttempts] = useState(0);
   const [proposalReview, setProposalReview] = useState<ProposalReview | undefined>();
   const [proposalMessage, setProposalMessage] = useState<string | undefined>();
+  const [dismissedRepeatHash, setDismissedRepeatHash] = useState<string | undefined>();
   const [learningDecision, setLearningDecision] = useState<
     WebLearningDecisionDiagnostics | undefined
   >();
@@ -1345,6 +1348,26 @@ export function App() {
   const canonicalHash = programSemanticHash(model.program);
   const proposalCard =
     proposalReview === undefined ? undefined : createWebProposalCardView(proposalReview);
+  const repeatProposal = useMemo(
+    () =>
+      createRepeatPatternProposal({
+        id: "repeat-pattern",
+        baseProgram: model.program,
+        purpose: t(locale, "repeatSuggestionPurpose"),
+        rationale: t(locale, "repeatSuggestionRationale", {
+          count: detectRepeatPattern(model.program)?.count ?? 0,
+        }),
+      }),
+    [model.program, locale],
+  );
+  const repeatReviewActive = proposalReview?.proposal.source.capability === "repeat-pattern";
+  const repeatOffer =
+    repeatProposal !== undefined &&
+    proposalReview === undefined &&
+    status !== "running" &&
+    dismissedRepeatHash !== canonicalHash
+      ? repeatProposal
+      : undefined;
   const missionStep =
     status === "complete" || status === "freeplay" ? 3 : attempts > 0 || status === "retry" ? 2 : 1;
   const layaSignal =
@@ -1617,11 +1640,36 @@ export function App() {
     setProposalMessage(t(locale, "aiLiteracyPredictionRecorded"));
   }
 
+  function tryRepeatSuggestion() {
+    if (repeatOffer === undefined) {
+      return;
+    }
+    const review = createProposalReview(model.program, repeatOffer);
+    setProposalReview(review);
+    setProposalMessage(t(locale, "proposalPreviewReady"));
+    setHighlightedNodeId(review.proposal.affectedNodeIds[0]);
+  }
+
+  function changeRepeatSuggestion() {
+    if (repeatOffer === undefined) {
+      return;
+    }
+    setDismissedRepeatHash(canonicalHash);
+    setHighlightedNodeId(repeatOffer.affectedNodeIds[0]);
+  }
+
+  function declineRepeatSuggestion() {
+    setDismissedRepeatHash(canonicalHash);
+  }
+
   function rejectDeterministicProposal() {
     if (proposalReview === undefined) {
       return;
     }
     rejectProposal(model.program, proposalReview);
+    if (repeatReviewActive) {
+      setDismissedRepeatHash(canonicalHash);
+    }
     setProposalReview(undefined);
     setProposalMessage(t(locale, "proposalRejected"));
     setHighlightedNodeId(undefined);
@@ -2350,7 +2398,7 @@ export function App() {
                 {t(locale, "hintMeter", { count: hintHistory.length })}
               </span>
             </div>
-            {proposalCard === undefined ? null : (
+            {proposalCard === undefined || repeatReviewActive ? null : (
               <div className="proposal-card" data-testid="proposal-preview">
                 <ProvenanceLabel kind="suggestion" locale={locale} />
                 <strong>{proposalCard.title}</strong>
@@ -2401,6 +2449,58 @@ export function App() {
           </aside>
         )}
       </div>
+      {repeatOffer === undefined && !(repeatReviewActive && proposalCard !== undefined) ? null : (
+        <section
+          className="contextual-suggestion"
+          aria-label={t(locale, "repeatSuggestionTitle", {
+            count: detectRepeatPattern(model.program)?.count ?? 0,
+          })}
+          data-testid="repeat-suggestion"
+        >
+          <ProvenanceLabel kind="suggestion" locale={locale} />
+          {repeatReviewActive && proposalCard !== undefined ? (
+            <div data-testid="proposal-preview">
+              <strong>{proposalCard.title}</strong>
+              <p>{proposalCard.rationale}</p>
+              <ul>
+                {proposalCard.changes.map((change) => (
+                  <li key={change.nodeId}>
+                    {change.beforeText ?? ""} → {change.afterText ?? ""}
+                  </li>
+                ))}
+              </ul>
+              <div className="tutor-actions">
+                <button type="button" onClick={rejectDeterministicProposal}>
+                  {t(locale, "rejectProposal")}
+                </button>
+                <button type="button" onClick={acceptDeterministicProposal}>
+                  {t(locale, "acceptProposal")}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <strong>
+                {t(locale, "repeatSuggestionTitle", {
+                  count: detectRepeatPattern(model.program)?.count ?? 0,
+                })}
+              </strong>
+              <p>{t(locale, "repeatSuggestionBody")}</p>
+              <div className="tutor-actions">
+                <button type="button" onClick={tryRepeatSuggestion}>
+                  {t(locale, "repeatSuggestionTry")}
+                </button>
+                <button type="button" onClick={changeRepeatSuggestion}>
+                  {t(locale, "repeatSuggestionChange")}
+                </button>
+                <button type="button" onClick={declineRepeatSuggestion}>
+                  {t(locale, "repeatSuggestionNo")}
+                </button>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
     </main>
   );
 }

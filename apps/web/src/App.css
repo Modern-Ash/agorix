@@ -3577,3 +3577,20 @@ button:hover:not(:disabled) {
     padding-left: 12px;
   }
 }
+
+.contextual-suggestion {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  margin: 0.75rem 1rem;
+  padding: 0.75rem 1rem;
+  border: 2px solid #8b5cf6;
+  border-radius: 12px;
+  background: #f5f3ff;
+  color: #1f1a33;
+}
+
+.contextual-suggestion button {
+  min-height: 44px;
+}

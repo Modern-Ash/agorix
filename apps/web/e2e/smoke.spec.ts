@@ -489,7 +489,7 @@ test("workflow rail relates tools, blocks, stage, code and AI", async ({ page })
   }
 
   await expect(page.locator(".learning-flow .flow-step.active")).toHaveCount(2);
-  await page.getByRole("button", { name: "Move", exact: true }).click();
+  await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
   await expect(page.locator(".learning-flow .flow-step.active")).toHaveCount(3);
 });
 
@@ -529,7 +529,7 @@ test("adding a block refreshes coach and starter guidance", async ({ page }) => 
   await page.goto("/");
 
   await expect(page.getByText("Add Move to start the mission.")).toBeVisible();
-  await page.getByRole("button", { name: "Move", exact: true }).click();
+  await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
 
   await expect(page.getByText("Add Move to start the mission.")).toHaveCount(0);
   await expect(page.getByText("Run your idea and watch what the stage proves.")).toBeVisible();
@@ -769,5 +769,59 @@ test.describe("MVP release happy paths", () => {
     await expect(shell).toHaveAttribute("data-reasoning-tier", "local");
     await expect(shell).toHaveAttribute("data-provider-selection-bypassed", "false");
     await expect(page.getByText("Hint level 1 of 5")).toBeVisible();
+  });
+});
+
+async function buildRepetitiveProgram(page: Page) {
+  await page.goto("/");
+  for (let i = 0; i < 3; i += 1) {
+    await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+    await page.locator(".action-palette").getByLabel("Turn", { exact: true }).click();
+  }
+}
+
+test.describe("contextual repeat suggestion", () => {
+  test("no suggestion appears for a non-repetitive program", async ({ page }) => {
+    await page.goto("/");
+    await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+    await page.locator(".action-palette").getByLabel("Turn", { exact: true }).click();
+    await expect(page.getByTestId("repeat-suggestion")).toHaveCount(0);
+  });
+
+  test("reject leaves the canonical program unchanged and stays quiet", async ({ page }) => {
+    await buildRepetitiveProgram(page);
+    const before = await canonicalHash(page);
+    await expect(page.getByTestId("repeat-suggestion")).toBeVisible();
+    await page.getByRole("button", { name: "Try it" }).click();
+    await expect(page.getByTestId("proposal-preview")).toBeVisible();
+    expect(await canonicalHash(page)).toBe(before);
+    await page
+      .getByTestId("repeat-suggestion")
+      .getByRole("button", { name: /Reject/ })
+      .click();
+    expect(await canonicalHash(page)).toBe(before);
+    await expect(page.getByTestId("repeat-suggestion")).toHaveCount(0);
+  });
+
+  test("declining with No thanks keeps the program and hides the offer", async ({ page }) => {
+    await buildRepetitiveProgram(page);
+    const before = await canonicalHash(page);
+    await page.getByRole("button", { name: "No thanks" }).click();
+    await expect(page.getByTestId("repeat-suggestion")).toHaveCount(0);
+    expect(await canonicalHash(page)).toBe(before);
+  });
+
+  test("accept mutates the canonical program into a repeat and still runs", async ({ page }) => {
+    await buildRepetitiveProgram(page);
+    const before = await canonicalHash(page);
+    await page.getByRole("button", { name: "Try it" }).click();
+    await page
+      .getByTestId("repeat-suggestion")
+      .getByRole("button", { name: /Accept/ })
+      .click();
+    expect(await canonicalHash(page)).not.toBe(before);
+    await expect(page.locator(".code-surface")).toContainText("repeat");
+    await page.getByRole("button", { name: "Run", exact: true }).click();
+    await expect(page.locator(".run-state")).toBeVisible();
   });
 });
