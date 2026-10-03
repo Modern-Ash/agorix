@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import {
   applyProposal,
+  createExecutionViewState,
   createNavigationSections,
   createExecutionEvidence,
   createStoredProjectWithProgram,
@@ -12,6 +13,10 @@ import {
   projectionRangeForNode,
   serializeStoredProject,
   suggestRepeat,
+  type StudioExecutionEvidence,
+  type StudioExecutionStatus,
+  type StudioExecutionViewState,
+  type StudioInspectorStep,
   type StudioProject,
   type StudioProjectionDocument,
   type StudioProjectionId,
@@ -24,8 +29,13 @@ interface OpenProject {
 
 let current: OpenProject | undefined;
 let currentProjectionId: StudioProjectionId = "typescript";
+let executionEvidence: StudioExecutionEvidence | undefined;
+let executionFrameIndex = 0;
+let executionStatus: StudioExecutionStatus = "idle";
+let worldPreviewPanel: vscode.WebviewPanel | undefined;
 
 const PROJECTION_SCHEME = "agorix-studio";
+const WORLD_PREVIEW_VIEW_TYPE = "agorixStudio.worldPreview";
 
 class StudioTreeItem extends vscode.TreeItem {
   constructor(
@@ -81,6 +91,39 @@ class StudioTreeProvider implements vscode.TreeDataProvider<StudioTreeItem> {
   }
 }
 
+class ExecutionInspectorItem extends vscode.TreeItem {
+  constructor(readonly step: StudioInspectorStep) {
+    super(`Step ${step.runtimeStep}: ${step.statementType ?? step.timing}`);
+    this.description = step.nodeId ?? "run";
+    this.contextValue = "agorixRuntimeFact";
+    this.tooltip = `${step.provenance}\n${step.summary}\nbefore (${step.before.x}, ${step.before.y}) heading ${step.before.heading}\nafter (${step.after.x}, ${step.after.y}) heading ${step.after.heading}`;
+    this.command = {
+      command: "agorixStudio.selectExecutionStep",
+      title: "Select Execution Step",
+      arguments: [step.index],
+    };
+  }
+}
+
+class ExecutionInspectorProvider implements vscode.TreeDataProvider<ExecutionInspectorItem> {
+  readonly #changed = new vscode.EventEmitter<ExecutionInspectorItem | undefined | null | void>();
+  readonly onDidChangeTreeData = this.#changed.event;
+
+  refresh(): void {
+    this.#changed.fire();
+  }
+
+  getTreeItem(element: ExecutionInspectorItem): vscode.TreeItem {
+    return element;
+  }
+
+  getChildren(): ExecutionInspectorItem[] {
+    return (currentExecutionView()?.inspectorSteps ?? []).map(
+      (step) => new ExecutionInspectorItem(step),
+    );
+  }
+}
+
 class ProjectionDocumentProvider implements vscode.TextDocumentContentProvider {
   readonly #changed = new vscode.EventEmitter<vscode.Uri>();
   readonly onDidChange = this.#changed.event;
@@ -115,6 +158,9 @@ async function openProject(target?: unknown): Promise<void> {
   try {
     const raw = new TextDecoder().decode(await vscode.workspace.fs.readFile(uri));
     current = { uri, project: parseStoredProject(raw) };
+    executionEvidence = undefined;
+    executionFrameIndex = 0;
+    executionStatus = "idle";
   } catch (error) {
     // Do not await: a toast resolves only when dismissed and would hang the command.
     void vscode.window.showErrorMessage(
@@ -133,12 +179,102 @@ function requireProject(): OpenProject | undefined {
   return current;
 }
 
+function computeExecution(): StudioExecutionEvidence | undefined {
+  const open = requireProject();
+  if (open === undefined) {
+    return undefined;
+  }
+  executionEvidence ??= createExecutionEvidence(open.project.stored);
+  return executionEvidence;
+}
+
+function currentExecutionView(): StudioExecutionViewState | undefined {
+  return executionEvidence === undefined
+    ? undefined
+    : createExecutionViewState(executionEvidence, executionFrameIndex, executionStatus);
+}
+
+function setExecution(
+  evidence: StudioExecutionEvidence,
+  frameIndex: number,
+  status: StudioExecutionStatus,
+): StudioExecutionViewState {
+  executionEvidence = evidence;
+  executionStatus = status;
+  const view = createExecutionViewState(evidence, frameIndex, status);
+  executionFrameIndex = view.selectedFrameIndex;
+  refreshExecutionViews();
+  return view;
+}
+
+function resetExecution(): StudioExecutionViewState | undefined {
+  const evidence = computeExecution();
+  return evidence === undefined ? undefined : setExecution(evidence, 0, "idle");
+}
+
+function runExecution(): StudioExecutionViewState | undefined {
+  const open = requireProject();
+  if (open === undefined) {
+    return undefined;
+  }
+  const evidence = createExecutionEvidence(open.project.stored);
+  return setExecution(evidence, evidence.previewFrames.length - 1, "completed");
+}
+
+function stepExecution(): StudioExecutionViewState | undefined {
+  const evidence = computeExecution();
+  if (evidence === undefined) {
+    return undefined;
+  }
+  const nextFrame = Math.min(
+    executionFrameIndex + 1,
+    Math.max(0, evidence.previewFrames.length - 1),
+  );
+  const status = nextFrame >= evidence.previewFrames.length - 1 ? "completed" : "running";
+  return setExecution(evidence, nextFrame, status);
+}
+
+function stopExecution(): StudioExecutionViewState | undefined {
+  const open = requireProject();
+  if (open === undefined) {
+    return undefined;
+  }
+  const currentFrame = currentExecutionView()?.currentFrame;
+  const stoppedAt = currentFrame?.step ?? 0;
+  const evidence = createExecutionEvidence(open.project.stored, { stopAfterSteps: stoppedAt });
+  return setExecution(evidence, evidence.previewFrames.length - 1, "stopped");
+}
+
+async function selectExecutionStep(
+  target?: unknown,
+): Promise<StudioExecutionViewState | undefined> {
+  const stepIndex =
+    typeof target === "number"
+      ? target
+      : target instanceof ExecutionInspectorItem
+        ? target.step.index
+        : 0;
+  const evidence = computeExecution();
+  if (evidence === undefined) {
+    return undefined;
+  }
+  const step = createExecutionViewState(evidence, stepIndex, executionStatus).inspectorSteps[
+    stepIndex
+  ];
+  const view = setExecution(evidence, step?.frameIndex ?? stepIndex, executionStatus);
+  if (step?.nodeId !== undefined) {
+    await revealCanonicalNode(step.nodeId);
+  }
+  return view;
+}
+
 function showEvidence(output: vscode.OutputChannel): string | undefined {
   const open = requireProject();
   if (open === undefined) {
     return undefined;
   }
   const evidence = createExecutionEvidence(open.project.stored);
+  setExecution(evidence, evidence.previewFrames.length - 1, "completed");
   const report = formatInspectorReport(evidence);
   output.clear();
   output.appendLine(report);
@@ -209,6 +345,184 @@ async function switchProjection(): Promise<void> {
   }
 }
 
+function openWorldPreview(): StudioExecutionViewState | undefined {
+  const view = currentExecutionView() ?? resetExecution();
+  if (view === undefined) {
+    return undefined;
+  }
+  if (worldPreviewPanel === undefined) {
+    worldPreviewPanel = vscode.window.createWebviewPanel(
+      WORLD_PREVIEW_VIEW_TYPE,
+      "Agorix World Preview",
+      vscode.ViewColumn.Beside,
+      {
+        enableScripts: true,
+        localResourceRoots: [],
+        retainContextWhenHidden: true,
+      },
+    );
+    worldPreviewPanel.onDidDispose(() => {
+      worldPreviewPanel = undefined;
+    });
+  }
+  updateWorldPreview(view);
+  worldPreviewPanel.reveal(vscode.ViewColumn.Beside, true);
+  return view;
+}
+
+function updateWorldPreview(view = currentExecutionView()): void {
+  if (worldPreviewPanel === undefined || view === undefined) {
+    return;
+  }
+  const nonce = nonceForWebview();
+  worldPreviewPanel.webview.html = worldPreviewHtml(
+    nonce,
+    worldPreviewPanel.webview.cspSource,
+    view,
+  );
+  void worldPreviewPanel.webview.postMessage({ type: "agorix-frame", view });
+}
+
+function nonceForWebview(): string {
+  return Array.from({ length: 16 }, () => Math.floor(Math.random() * 36).toString(36)).join("");
+}
+
+function escapedJson(value: unknown): string {
+  return JSON.stringify(value).replace(/</g, "\\u003c");
+}
+
+function worldPreviewHtml(
+  nonce: string,
+  cspSource: string,
+  view: StudioExecutionViewState,
+): string {
+  const data = escapedJson(view);
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${cspSource} data:; style-src 'nonce-${nonce}'; script-src 'nonce-${nonce}';">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agorix World Preview</title>
+  <style nonce="${nonce}">
+    :root {
+      color-scheme: light dark;
+      --goal: var(--vscode-testing-iconPassed, #2e7d32);
+      --sprite: var(--vscode-editorWarning-foreground, #c77700);
+      --trail: var(--vscode-focusBorder, #007acc);
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--vscode-editor-background);
+      color: var(--vscode-editor-foreground);
+      font-family: var(--vscode-font-family);
+    }
+    main {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      min-height: 100vh;
+    }
+    header,
+    footer {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--vscode-panel-border);
+    }
+    footer {
+      border-top: 1px solid var(--vscode-panel-border);
+      border-bottom: 0;
+      color: var(--vscode-descriptionForeground);
+    }
+    .world {
+      position: relative;
+      width: min(92vmin, 760px);
+      aspect-ratio: 1;
+      place-self: center;
+      border: 1px solid var(--vscode-panel-border);
+      background:
+        linear-gradient(var(--vscode-editorWidget-border, rgba(127,127,127,.18)) 1px, transparent 1px),
+        linear-gradient(90deg, var(--vscode-editorWidget-border, rgba(127,127,127,.18)) 1px, transparent 1px),
+        var(--vscode-editor-background);
+      background-size: 12.5% 12.5%;
+    }
+    .goal,
+    .sprite {
+      position: absolute;
+      width: 9%;
+      height: 9%;
+      translate: -50% 50%;
+      border: 2px solid currentColor;
+      box-sizing: border-box;
+    }
+    .goal {
+      color: var(--goal);
+      border-radius: 50%;
+      background: color-mix(in srgb, var(--goal), transparent 76%);
+    }
+    .sprite {
+      color: var(--sprite);
+      background: color-mix(in srgb, var(--sprite), transparent 64%);
+      clip-path: polygon(50% 0, 100% 100%, 50% 78%, 0 100%);
+      transition: left 180ms ease, bottom 180ms ease, rotate 180ms ease;
+    }
+    .node {
+      color: var(--vscode-textLink-foreground);
+      font-family: var(--vscode-editor-font-family);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .sprite {
+        transition: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <strong id="status"></strong>
+      <span id="step"></span>
+      <span class="node" id="node"></span>
+    </header>
+    <section class="world" aria-label="Agorix shared runtime world preview">
+      <div class="goal" id="goal" aria-label="goal"></div>
+      <div class="sprite" id="sprite" aria-label="sprite"></div>
+    </section>
+    <footer id="provenance">Rendered from @agorix/stage frames produced by the canonical runtime.</footer>
+  </main>
+  <script nonce="${nonce}">
+    const initialView = ${data};
+    const vscode = acquireVsCodeApi();
+    const status = document.getElementById("status");
+    const step = document.getElementById("step");
+    const node = document.getElementById("node");
+    const goal = document.getElementById("goal");
+    const sprite = document.getElementById("sprite");
+    function place(element, point, viewport) {
+      const x = (point.x / viewport.width) * 100;
+      const y = (point.y / viewport.height) * 100;
+      element.style.left = x + "%";
+      element.style.bottom = y + "%";
+    }
+    function render(view) {
+      const frame = view.currentFrame || view.previewFrames[0];
+      if (!frame) return;
+      status.textContent = view.status.toUpperCase() + " ";
+      step.textContent = "frame " + (view.selectedFrameIndex + 1) + "/" + view.previewFrames.length;
+      node.textContent = frame.highlightedNodeId ? " · " + frame.highlightedNodeId : " · run";
+      place(goal, frame.state.goal, frame.state.viewport);
+      place(sprite, frame.state.sprite, frame.state.viewport);
+      sprite.style.rotate = (-frame.state.sprite.heading) + "deg";
+      vscode.setState({ selectedFrameIndex: view.selectedFrameIndex });
+    }
+    render(initialView);
+    window.addEventListener("message", (event) => {
+      if (event.data && event.data.type === "agorix-frame") render(event.data.view);
+    });
+  </script>
+</body>
+</html>`;
+}
+
 async function revealCanonicalNode(nodeId?: unknown): Promise<void> {
   const projection = currentProjection();
   if (projection === undefined) {
@@ -277,6 +591,10 @@ async function suggestRepeatCommand(): Promise<void> {
     new TextEncoder().encode(serializeStoredProject(stored)),
   );
   current = { uri: open.uri, project: parseStoredProject(serializeStoredProject(stored)) };
+  executionEvidence = undefined;
+  executionFrameIndex = 0;
+  executionStatus = "idle";
+  refreshExecutionViews();
   await vscode.window.showInformationMessage("Applied. Run Show Execution Evidence to check it.");
 }
 
@@ -309,6 +627,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const output = vscode.window.createOutputChannel("Agorix Studio");
   context.subscriptions.push(output);
   const projectionProvider = new ProjectionDocumentProvider();
+  const inspectorProvider = new ExecutionInspectorProvider();
   const treeProviders = [
     new StudioTreeProvider("projects"),
     new StudioTreeProvider("missions"),
@@ -323,6 +642,10 @@ export function activate(context: vscode.ExtensionContext): void {
     projectionProvider.refresh(projectionUri(currentProjectionId));
   }
   refreshStudioViews = refreshViews;
+  refreshExecutionViews = () => {
+    inspectorProvider.refresh();
+    updateWorldPreview();
+  };
   try {
     context.subscriptions.push(
       vscode.workspace.registerTextDocumentContentProvider(PROJECTION_SCHEME, projectionProvider),
@@ -331,6 +654,9 @@ export function activate(context: vscode.ExtensionContext): void {
           treeDataProvider: provider,
         }),
       ),
+      vscode.window.createTreeView("agorixStudio.inspector", {
+        treeDataProvider: inspectorProvider,
+      }),
       vscode.commands.registerCommand(
         "agorixStudio.openProject",
         guarded(output, "Open Project", openProject),
@@ -346,6 +672,21 @@ export function activate(context: vscode.ExtensionContext): void {
       vscode.commands.registerCommand(
         "agorixStudio.revealCanonicalNode",
         guarded(output, "Reveal Canonical Node", revealCanonicalNode),
+      ),
+      vscode.commands.registerCommand(
+        "agorixStudio.openWorldPreview",
+        guarded(output, "Open World Preview", openWorldPreview),
+      ),
+      vscode.commands.registerCommand("agorixStudio.run", guarded(output, "Run", runExecution)),
+      vscode.commands.registerCommand("agorixStudio.step", guarded(output, "Step", stepExecution)),
+      vscode.commands.registerCommand(
+        "agorixStudio.reset",
+        guarded(output, "Reset", resetExecution),
+      ),
+      vscode.commands.registerCommand("agorixStudio.stop", guarded(output, "Stop", stopExecution)),
+      vscode.commands.registerCommand(
+        "agorixStudio.selectExecutionStep",
+        guarded(output, "Select Execution Step", selectExecutionStep),
       ),
       vscode.commands.registerCommand(
         "agorixStudio.showEvidence",
@@ -365,6 +706,9 @@ export function activate(context: vscode.ExtensionContext): void {
 
 export function deactivate(): void {
   current = undefined;
+  executionEvidence = undefined;
+  worldPreviewPanel = undefined;
 }
 
 let refreshStudioViews: () => void = () => undefined;
+let refreshExecutionViews: () => void = () => undefined;
