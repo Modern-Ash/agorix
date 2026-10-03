@@ -515,6 +515,99 @@ test("IDE panels can collapse, close, restore, and blocks support drag and drop"
   expect(code.indexOf("sprite.turn(90);")).toBeLessThan(code.indexOf("sprite.move(10);"));
 });
 
+test("palette drag supports nested drop and one-step undo", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Repeat" }).click();
+  const repeatOnly = await canonicalHash(page);
+  await dragHtml5(page, ".tool-motion_move", ".nested-block-stack");
+
+  await expect(
+    page.locator('[data-canonical-node-id="scripts[0]/statements[0]/body[0]"]'),
+  ).toContainText("Move");
+  await expect(page.locator(".code-surface")).toContainText("repeat(3");
+  await expect(page.locator(".code-surface")).toContainText("sprite.move(10);");
+  expect(await canonicalHash(page)).not.toBe(repeatOnly);
+
+  await page.getByRole("button", { name: "Undo program edit" }).click();
+  expect(await canonicalHash(page)).toBe(repeatOnly);
+  await expect(
+    page.locator('[data-canonical-node-id="scripts[0]/statements[0]/body[0]"]'),
+  ).toHaveCount(0);
+});
+
+test("cancelled and invalid drops leave canonical state unchanged", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Move" }).click();
+  const before = await canonicalHash(page);
+
+  await page.evaluate(() => {
+    const source = document.querySelector(".tool-motion_turn");
+    if (!(source instanceof HTMLElement)) throw new Error("Missing source");
+    const dataTransfer = new DataTransfer();
+    source.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer }));
+    source.dispatchEvent(new DragEvent("dragend", { bubbles: true, dataTransfer }));
+  });
+  expect(await canonicalHash(page)).toBe(before);
+
+  await page.evaluate(() => {
+    const target = document.querySelector(".block-stack");
+    if (!(target instanceof HTMLElement)) throw new Error("Missing target");
+    const dataTransfer = new DataTransfer();
+    dataTransfer.setData("application/x-agorix-block-type", "looks_say");
+    target.dispatchEvent(new DragEvent("dragover", { bubbles: true, dataTransfer }));
+    target.dispatchEvent(new DragEvent("drop", { bubbles: true, dataTransfer }));
+  });
+  expect(await canonicalHash(page)).toBe(before);
+  await expect(page.getByLabel("Move block")).toHaveCount(1);
+});
+
+test("nested blocks can move out and duplicate as undoable subtrees", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Repeat" }).click();
+  await dragHtml5(page, ".tool-motion_move", ".nested-block-stack");
+  const nestedHash = await canonicalHash(page);
+
+  await page
+    .locator('[data-canonical-node-id="scripts[0]/statements[0]"]')
+    .getByRole("button", { name: "Duplicate" })
+    .first()
+    .click();
+  const duplicatedHash = await canonicalHash(page);
+  expect(duplicatedHash).not.toBe(nestedHash);
+  expect((await page.locator(".code-surface").innerText()).match(/repeat\(3/g)?.length).toBe(2);
+
+  await page.getByRole("button", { name: "Undo program edit" }).click();
+  expect(await canonicalHash(page)).toBe(nestedHash);
+  expect((await page.locator(".code-surface").innerText()).match(/repeat\(3/g)?.length).toBe(1);
+
+  await page.getByRole("button", { name: "Redo program edit" }).click();
+  expect(await canonicalHash(page)).toBe(duplicatedHash);
+  expect((await page.locator(".code-surface").innerText()).match(/repeat\(3/g)?.length).toBe(2);
+
+  await page.getByRole("button", { name: "Undo program edit" }).click();
+  await page.getByLabel("Move block").getByRole("button", { name: "Outdent" }).click();
+  await expect(page.locator('[data-canonical-node-id="scripts[0]/statements[1]"]')).toContainText(
+    "Move",
+  );
+});
+
+test("non-drag nesting keeps projections synchronized", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Repeat" }).click();
+  await page.getByRole("button", { name: "Move" }).click();
+  await page.getByLabel("Move block").getByRole("button", { name: "Nest" }).click();
+
+  await expect(
+    page.locator('[data-canonical-node-id="scripts[0]/statements[0]/body[0]"]'),
+  ).toContainText("Move");
+  await expect(page.locator(".code-surface")).toContainText("repeat(3");
+  await expect(page.locator(".code-surface")).toContainText("sprite.move(10);");
+});
+
 test("IDE panels can maximize and expose resize affordances", async ({ page }) => {
   await page.goto("/");
 
@@ -849,6 +942,21 @@ test.describe("contextual repeat suggestion", () => {
     await expect(page.getByTestId("repeat-suggestion")).toHaveCount(0);
   });
 
+  test("suggestion is anchored to inspectable affected blocks", async ({ page }) => {
+    await buildRepetitiveProgram(page);
+
+    const affected = page.locator(".block-card.suggestion-affected");
+    await expect(page.getByTestId("repeat-suggestion")).toBeVisible();
+    await expect(affected.first()).toHaveAttribute("data-canonical-node-id", /scripts\[0\]/);
+
+    await affected.first().getByRole("button").first().click();
+    await expect(affected.first()).toHaveAttribute("data-block-state", "selected");
+
+    await page.getByRole("button", { name: "Try it" }).click();
+    await expect(page.getByTestId("proposal-preview")).toBeVisible();
+    await expect(affected.first()).toHaveClass(/suggestion-affected/);
+  });
+
   test("reject leaves the canonical program unchanged and stays quiet", async ({ page }) => {
     await buildRepetitiveProgram(page);
     const before = await canonicalHash(page);
@@ -993,6 +1101,86 @@ test("worlds are localized in Spanish", async ({ page }) => {
   await page.getByLabel("Mundo").selectOption("ocean.reef");
   await expect(page.getByTestId("world-narrative")).toContainText("submarino");
 });
+
+test("Step keeps the active block, code and World in sync", async ({ page }) => {
+  await page.goto("/");
+  await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+  await applyMoveSteps(page, "160");
+
+  const sprite = page.getByTestId("stage-sprite");
+  const startX = await sprite.getAttribute("data-x");
+  await page.getByRole("button", { name: "Step", exact: true }).click();
+  const feedback = page.getByTestId("stage-feedback");
+  await expect(page.locator(".stage-panel")).toHaveAttribute("data-stage-phase", "stepping");
+  await expect(feedback).toContainText(/Step 1 of/);
+  await expect(page.getByTestId("stage-active-block")).toContainText("sprite.move(160);");
+  await expect(page.locator(".code-surface mark")).toBeVisible();
+  await page.getByRole("button", { name: "Step", exact: true }).click();
+  await expect(feedback).toContainText(/Step 2 of/);
+  await expect(sprite).not.toHaveAttribute("data-x", startX ?? "");
+});
+
+test("World shows success and retry feedback with runtime-observed labelling", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("World").selectOption("ocean.reef");
+  await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+  await applyMoveSteps(page, "20");
+  await page.getByRole("button", { name: "Run", exact: true }).click();
+  const feedback = page.getByTestId("stage-feedback");
+  await expect(feedback).toContainText("The submarine stopped before the marker.", {
+    timeout: 8000,
+  });
+  await expect(feedback).toContainText("Not there yet");
+  await expect(feedback.locator('[data-fact-source="runtime"]')).toBeVisible();
+
+  await applyMoveSteps(page, "160");
+  await page.getByRole("button", { name: "Run", exact: true }).click();
+  await expect(feedback).toContainText("The submarine reached the marker.", { timeout: 8000 });
+  await expect(feedback).toContainText("Goal reached");
+  await expect(page.locator(".goal-ring")).toBeVisible();
+});
+
+test("World identity is visible and Stop is reflected in the World", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByTestId("world-identity")).toContainText("Agorix World");
+  await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+  await applyMoveSteps(page, "160");
+  await page.getByRole("button", { name: "Run", exact: true }).click();
+  await expect(page.locator(".stage-panel")).toHaveAttribute("data-stage-phase", "running");
+  await page.getByRole("button", { name: "Stop", exact: true }).click();
+  await expect(page.locator(".stage-panel")).toHaveAttribute("data-stage-phase", "stopped");
+  await expect(page.getByTestId("stage-feedback")).toContainText("Stopped");
+});
+
+test("reduced motion turns off glide and pulse while feedback stays visible", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  await expect(page.locator(".stage-panel")).toHaveAttribute("data-reduced-motion", "true");
+  await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+  await applyMoveSteps(page, "160");
+  await page.getByRole("button", { name: "Run", exact: true }).click();
+  await expect(page.getByTestId("stage-feedback")).toContainText("Goal reached", {
+    timeout: 8000,
+  });
+  await expect(page.getByTestId("stage-sprite")).toHaveCSS("transition-property", "none");
+  await expect(page.locator(".stage-canvas .goal")).toHaveAttribute("data-pulse", "false");
+});
+
+for (const viewport of [
+  { name: "tablet", width: 1024, height: 768 },
+  { name: "desktop", width: 1440, height: 900 },
+]) {
+  test(`World stays prominent with feedback at ${viewport.name} size`, async ({ page }) => {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await page.goto("/");
+    await expect(page.getByRole("heading", { name: "Stage" })).toBeInViewport();
+    await expect(page.getByTestId("stage-feedback")).toBeVisible();
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth > window.innerWidth + 1,
+    );
+    expect(overflow).toBe(false);
+  });
+}
 
 test.describe("AI available from the start", () => {
   test("companion is ready and offers a first step on an empty project", async ({ page }) => {

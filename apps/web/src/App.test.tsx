@@ -7,11 +7,15 @@ import { App, ProgramBlockCard } from "./App.js";
 import { assertCatalogCompleteness, resolveLocale, t } from "./i18n.js";
 import {
   addBlockToWorkspace,
+  addBlockToWorkspaceAt,
   blockNodeId,
+  blockNodeIdForPath,
   codeSliceForNode,
   createEditorModel,
   createEditorModelFromProgram,
+  duplicateBlockInWorkspace,
   editNumericBlockField,
+  moveBlockInWorkspaceByPath,
   resetWorkspace,
 } from "./editorModel.js";
 import {
@@ -73,26 +77,92 @@ describe("main editor shell", () => {
     const html = renderToStaticMarkup(
       <ProgramBlockCard
         block={{ id: "move-1", type: "motion_move", fields: { steps: 12 } }}
-        index={0}
-        total={1}
+        path={[0]}
+        siblingIndex={0}
+        siblingTotal={1}
+        depth={0}
         selected={true}
+        suggestionAffected={false}
         canonicalNodeId="scripts[0]/statements[0]"
         locale="en"
         onSelect={() => undefined}
         onCommitValue={() => undefined}
         onMove={() => undefined}
+        onNest={() => undefined}
+        onOutdent={() => undefined}
         onDelete={() => undefined}
+        onDuplicate={() => undefined}
         onDragStart={() => undefined}
         onDropBefore={() => undefined}
+        onDropAfter={() => undefined}
+        onDropInside={() => undefined}
       />,
     );
 
-    expect(html).toContain('class="block-node block-motion block-shape-command active"');
+    expect(html).toContain('class="block-node block-card block-motion block-shape-command active"');
     expect(html).toContain('data-block-state="selected"');
     expect(html).toContain('data-canonical-node-id="scripts[0]/statements[0]"');
     expect(html).toContain('aria-label="Move steps"');
     expect(html).toContain('value="12"');
     expect(html).not.toContain("<form");
+  });
+});
+
+describe("input parity semantics (issue #201)", () => {
+  function renderCard(locale: "en" | "es", index: number, total: number, depth: number) {
+    return renderToStaticMarkup(
+      <ProgramBlockCard
+        block={{ id: "move-1", type: "motion_move", fields: { steps: 12 } }}
+        path={depth === 0 ? [index] : [0, index]}
+        siblingIndex={index}
+        siblingTotal={total}
+        depth={depth}
+        selected={false}
+        suggestionAffected={false}
+        canonicalNodeId="scripts[0]/statements[0]"
+        locale={locale}
+        onSelect={() => undefined}
+        onCommitValue={() => undefined}
+        onMove={() => undefined}
+        onNest={() => undefined}
+        onOutdent={() => undefined}
+        onDelete={() => undefined}
+        onDuplicate={() => undefined}
+        onDragStart={() => undefined}
+        onDropBefore={() => undefined}
+        onDropAfter={() => undefined}
+        onDropInside={() => undefined}
+      />,
+    );
+  }
+
+  it("describes position, nesting level and keyboard shortcuts to assistive tech", () => {
+    const html = renderCard("en", 1, 3, 1);
+    expect(html).toContain("Position 2 of 3, nesting level 2.");
+    expect(html).toContain("aria-describedby");
+    expect(html).toContain("workspace-keyboard-hint");
+    expect(html).toContain('aria-keyshortcuts="Alt+ArrowUp');
+    expect(html).toContain('role="group"');
+  });
+
+  it("localizes position semantics", () => {
+    expect(renderCard("es", 0, 2, 0)).toContain("Posición 1 de 2, nivel de anidación 1.");
+  });
+
+  it("hides drag-only snap targets from the accessibility tree and keeps action buttons", () => {
+    const html = renderCard("en", 1, 3, 1);
+    expect(html).not.toContain("Drop before");
+    expect(html).toContain('class="snap-target snap-before" aria-hidden="true"');
+    for (const name of ["Up", "Down", "Nest", "Outdent", "Duplicate", "Delete"]) {
+      expect(html).toContain(`aria-label="${name}"`);
+    }
+  });
+
+  it("renders a polite status announcer and keyboard hint in the editor shell", () => {
+    const html = renderToStaticMarkup(<App />);
+    expect(html).toContain('data-testid="editor-announcer"');
+    expect(html).toContain('role="status"');
+    expect(html).toContain('id="workspace-keyboard-hint"');
   });
 });
 
@@ -132,6 +202,40 @@ describe("editor model", () => {
 
     expect(added.workspace.scripts[0]?.statements).toHaveLength(1);
     expect(reset.workspace.scripts[0]?.statements).toEqual([]);
+  });
+
+  it("adds, moves and outdents blocks through nested canonical paths", () => {
+    const initial = createEditorModel();
+    const repeat = addBlockToWorkspace(initial.workspace, "control_repeat");
+    const nested = addBlockToWorkspaceAt(repeat.workspace, "motion_move", [0], 0);
+    const outdented = moveBlockInWorkspaceByPath(nested.workspace, [0, 0], [], 1);
+
+    expect(nested.program.scripts[0]?.statements).toEqual([
+      { type: "repeat", count: 3, body: [{ type: "move", steps: 10 }] },
+    ]);
+    expect(blockNodeIdForPath(nested.workspace, [0, 0])).toBe("scripts[0]/statements[0]/body[0]");
+    expect(outdented.program.scripts[0]?.statements).toEqual([
+      { type: "repeat", count: 3, body: [] },
+      { type: "move", steps: 10 },
+    ]);
+  });
+
+  it("duplicates a container subtree with fresh visual ids and synchronized code", () => {
+    const initial = createEditorModel();
+    const repeat = addBlockToWorkspace(initial.workspace, "control_repeat");
+    const nested = addBlockToWorkspaceAt(repeat.workspace, "motion_turn", [0], 0);
+    const duplicated = duplicateBlockInWorkspace(nested.workspace, [0]);
+    const ids = JSON.stringify(duplicated.workspace);
+
+    expect(duplicated.program.scripts[0]?.statements).toEqual([
+      { type: "repeat", count: 3, body: [{ type: "turn", degrees: 90 }] },
+      { type: "repeat", count: 3, body: [{ type: "turn", degrees: 90 }] },
+    ]);
+    expect(ids).toContain(":copy");
+    expect(new Set(ids.match(/workspace:[^"]+/g) ?? []).size).toBe(
+      (ids.match(/workspace:[^"]+/g) ?? []).length,
+    );
+    expect(duplicated.code).toContain("repeat(3");
   });
 });
 
