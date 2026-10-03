@@ -17,13 +17,19 @@ interface OpenProject {
 
 let current: OpenProject | undefined;
 
-async function openProject(): Promise<void> {
-  const [uri] =
-    (await vscode.window.showOpenDialog({
-      canSelectMany: false,
-      filters: { "Agorix project": ["json"] },
-      openLabel: "Open Agorix project",
-    })) ?? [];
+/**
+ * Opens a stored project. An explicit `uri` argument (command palette callers,
+ * Explorer context, integration tests) skips the file picker.
+ */
+async function openProject(target?: unknown): Promise<void> {
+  const uri =
+    target instanceof vscode.Uri
+      ? target
+      : ((await vscode.window.showOpenDialog({
+          canSelectMany: false,
+          filters: { "Agorix project": ["json"] },
+          openLabel: "Open Agorix project",
+        })) ?? [])[0];
   if (uri === undefined) {
     return;
   }
@@ -31,7 +37,8 @@ async function openProject(): Promise<void> {
     const raw = new TextDecoder().decode(await vscode.workspace.fs.readFile(uri));
     current = { uri, project: parseStoredProject(raw) };
   } catch (error) {
-    await vscode.window.showErrorMessage(
+    // Do not await: a toast resolves only when dismissed and would hang the command.
+    void vscode.window.showErrorMessage(
       `Agorix Studio could not open this project: ${error instanceof Error ? error.message : "unknown error"}`,
     );
     return;
@@ -50,14 +57,16 @@ function requireProject(): OpenProject | undefined {
   return current;
 }
 
-function showEvidence(output: vscode.OutputChannel): void {
+function showEvidence(output: vscode.OutputChannel): string | undefined {
   const open = requireProject();
   if (open === undefined) {
-    return;
+    return undefined;
   }
+  const report = formatInspectorReport(createExecutionEvidence(open.project.stored));
   output.clear();
-  output.appendLine(formatInspectorReport(createExecutionEvidence(open.project.stored)));
+  output.appendLine(report);
   output.show(true);
+  return report;
 }
 
 async function suggestRepeatCommand(): Promise<void> {
@@ -104,14 +113,54 @@ async function suggestRepeatCommand(): Promise<void> {
   await vscode.window.showInformationMessage("Applied. Run Show Execution Evidence to check it.");
 }
 
+/** Runs a command body and surfaces any failure to the learner instead of failing silently. */
+function guarded<Args extends unknown[], Result>(
+  output: vscode.OutputChannel,
+  name: string,
+  body: (...args: Args) => Result | Promise<Result>,
+): (...args: Args) => Promise<Result | undefined> {
+  return async (...args) => {
+    try {
+      return await body(...args);
+    } catch (error) {
+      reportFailure(output, `${name} failed`, error);
+      return undefined;
+    }
+  };
+}
+
+function reportFailure(output: vscode.OutputChannel, summary: string, error: unknown): void {
+  const detail = error instanceof Error ? error.message : String(error);
+  output.appendLine(`[error] ${summary}: ${detail}`);
+  if (error instanceof Error && error.stack !== undefined) {
+    output.appendLine(error.stack);
+  }
+  void vscode.window.showErrorMessage(`Agorix Studio: ${summary}. ${detail}`);
+}
+
 export function activate(context: vscode.ExtensionContext): void {
   const output = vscode.window.createOutputChannel("Agorix Studio");
-  context.subscriptions.push(
-    output,
-    vscode.commands.registerCommand("agorixStudio.openProject", openProject),
-    vscode.commands.registerCommand("agorixStudio.showEvidence", () => showEvidence(output)),
-    vscode.commands.registerCommand("agorixStudio.suggestRepeat", suggestRepeatCommand),
-  );
+  context.subscriptions.push(output);
+  try {
+    context.subscriptions.push(
+      vscode.commands.registerCommand(
+        "agorixStudio.openProject",
+        guarded(output, "Open Project", openProject),
+      ),
+      vscode.commands.registerCommand(
+        "agorixStudio.showEvidence",
+        guarded(output, "Show Execution Evidence", () => showEvidence(output)),
+      ),
+      vscode.commands.registerCommand(
+        "agorixStudio.suggestRepeat",
+        guarded(output, "Suggest repeat", suggestRepeatCommand),
+      ),
+    );
+  } catch (error) {
+    reportFailure(output, "activation failed", error);
+    output.show(true);
+    throw error;
+  }
 }
 
 export function deactivate(): void {

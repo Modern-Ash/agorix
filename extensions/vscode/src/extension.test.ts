@@ -8,14 +8,19 @@ const files = new Map<string, Uint8Array>();
 const shown: string[] = [];
 const diffs: unknown[][] = [];
 const output: string[] = [];
+let failRegistration = false;
 let choice: string | undefined;
 let picked: { fsPath: string } | undefined;
 
 vi.mock("vscode", () => {
   const uri = (fsPath: string) => ({ fsPath, toString: () => fsPath });
   return {
+    Uri: class {},
     commands: {
       registerCommand: (name: string, handler: Handler) => {
+        if (failRegistration) {
+          throw new Error("registration refused");
+        }
         handlers.set(name, handler);
         return { dispose() {} };
       },
@@ -99,10 +104,11 @@ describe("Studio extension wiring", () => {
     diffs.length = 0;
     output.length = 0;
     choice = undefined;
+    failRegistration = false;
     picked = undefined;
     vi.resetModules();
     const extension = await import("./extension.js");
-    extension.activate({ subscriptions: [] });
+    extension.activate({ subscriptions: [] } as never);
   });
 
   it("registers the three commands", () => {
@@ -162,5 +168,29 @@ describe("Studio extension wiring", () => {
     await handlers.get("agorixStudio.suggestRepeat")!();
     expect(shown.at(-1)).toContain("No suggestion");
     expect(diffs).toHaveLength(0);
+  });
+
+  it("surfaces a command failure to the learner and the output channel", async () => {
+    await openFile("/p/a.json", repeated);
+    shown.length = 0;
+    // Corrupt the open file so the Apply write-back path throws.
+    choice = "Apply";
+    files.delete("/p/a.json");
+    const vscode = await import("vscode");
+    vi.spyOn(vscode.workspace.fs, "writeFile").mockRejectedValueOnce(new Error("disk full"));
+    await handlers.get("agorixStudio.suggestRepeat")!();
+    expect(shown.some((m) => m.includes("Suggest repeat failed") && m.includes("disk full"))).toBe(
+      true,
+    );
+  });
+
+  it("surfaces an activation failure and rethrows it", async () => {
+    handlers.clear();
+    failRegistration = true;
+    const extension = await import("./extension.js");
+    expect(() => extension.activate({ subscriptions: [] } as never)).toThrow(
+      "registration refused",
+    );
+    expect(shown.some((m) => m.includes("activation failed"))).toBe(true);
   });
 });
