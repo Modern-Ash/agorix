@@ -37,8 +37,6 @@ describe("main editor shell", () => {
     expect(html).toContain("TypeScript");
     expect(html).toContain('aria-label="Compare code projection"');
     expect(html).toContain("Trace");
-    expect(html).toContain("Press Step to inspect what changes.");
-    expect(html).toContain("Tutor suggestion");
     expect(html).toContain("Product language");
     expect(html).toContain("English");
     expect(html).toContain("Español");

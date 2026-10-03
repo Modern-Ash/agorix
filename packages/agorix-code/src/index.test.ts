@@ -5,18 +5,20 @@ import { agorixCodeProjection, projectAgorixCode } from "./index.js";
 
 const program: ProjectProgram = {
   schema: SCHEMA_VERSION,
-  scripts: [{
-    id: "main",
-    trigger: { type: "onStart" },
-    statements: [
-      { type: "move", steps: 10 },
-      { type: "turn", degrees: 90 },
-      { type: "repeat", count: 2, body: [{ type: "move", steps: 5 }] },
-      { type: "if", condition: { type: "touchingGoal" }, then: [{ type: "turn", degrees: 45 }] },
-      { type: "if", condition: { type: "booleanLiteral", value: true }, then: [] },
-      { type: "if", condition: { type: "numericLiteral", value: 1 }, then: [] },
-    ],
-  }],
+  scripts: [
+    {
+      id: "main",
+      trigger: { type: "onStart" },
+      statements: [
+        { type: "move", steps: 10 },
+        { type: "turn", degrees: 90 },
+        { type: "repeat", count: 2, body: [{ type: "move", steps: 5 }] },
+        { type: "if", condition: { type: "touchingGoal" }, then: [{ type: "turn", degrees: 45 }] },
+        { type: "if", condition: { type: "booleanLiteral", value: true }, then: [] },
+        { type: "if", condition: { type: "numericLiteral", value: 1 }, then: [] },
+      ],
+    },
+  ],
 };
 
 describe("Agorix Code projection", () => {

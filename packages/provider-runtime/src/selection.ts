@@ -123,11 +123,7 @@ export function selectProviderRuntime(
   };
 }
 
-
-export type LearningProviderRouteReason =
-  | "deterministic"
-  | "selected"
-  | ProviderUnavailableReason;
+export type LearningProviderRouteReason = "deterministic" | "selected" | ProviderUnavailableReason;
 
 export interface LearningProviderRoute {
   readonly status: "deterministic" | "selected" | "unavailable";

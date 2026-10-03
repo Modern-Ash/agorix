@@ -13,9 +13,7 @@ export interface WebLearningDecisionDiagnostics {
   readonly source: "system0-or-fallback";
 }
 
-export function decideStaticWebLearningRoute(
-  request: LearningCompanionRequest,
-): {
+export function decideStaticWebLearningRoute(request: LearningCompanionRequest): {
   readonly requirements: LearningRequirements;
   readonly diagnostics: WebLearningDecisionDiagnostics;
 } {

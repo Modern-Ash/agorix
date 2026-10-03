@@ -42,7 +42,8 @@ export class LanguagePackRegistry {
 
   require(id: string): LanguagePack {
     const pack = this.#packs.get(id);
-    if (pack === undefined) throw new Error("language pack " + JSON.stringify(id) + " is not registered");
+    if (pack === undefined)
+      throw new Error("language pack " + JSON.stringify(id) + " is not registered");
     return pack;
   }
 
@@ -58,7 +59,9 @@ export class LanguagePackRegistry {
   }
 }
 
-export function createLanguagePackRegistry(packs: readonly LanguagePack[] = []): LanguagePackRegistry {
+export function createLanguagePackRegistry(
+  packs: readonly LanguagePack[] = [],
+): LanguagePackRegistry {
   const registry = new LanguagePackRegistry();
   packs.forEach((pack) => registry.register(pack));
   return registry;

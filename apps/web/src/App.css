@@ -2245,11 +2245,6 @@ button:hover:not(:disabled) {
 
 /* Native Scratch + AI layer: modes, category strip, and snap-like blocks. */
 
-
-
-
-
-
 .scratch-category-strip {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2373,12 +2368,9 @@ button:hover:not(:disabled) {
 }
 
 @media (max-width: 980px) {
-
 }
 
 @media (min-width: 901px) and (max-width: 1120px) {
-
-
 }
 
 @media (orientation: landscape) and (min-width: 901px) and (max-width: 1120px) {
@@ -2414,9 +2406,6 @@ button:hover:not(:disabled) {
 }
 
 @media (orientation: portrait) and (min-width: 720px) and (max-width: 900px) {
-
-
-
   .topbar-subtitle,
   .philosophy-rail span,
   .starter-roadmap p,
@@ -3269,9 +3258,6 @@ button:hover:not(:disabled) {
   .run-controls button {
     min-height: 44px;
   }
-
-
-
 
   .mission-strip {
     flex: 0 0 auto;

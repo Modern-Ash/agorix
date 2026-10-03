@@ -30,16 +30,16 @@ Learner-facing labels can explain the stable keywords in the selected product lo
 
 ## Current canonical coverage
 
-| Canonical construct | Agorix Code |
-| --- | --- |
-| onStart | `when start` |
-| move | `move 10` |
-| turn | `turn 90` |
-| repeat | `repeat 4 times` + indented body |
-| if | `if <condition>` + indented body |
-| touchingGoal | `touching goal` |
-| booleanLiteral | `true` / `false` |
-| numericLiteral | number literal |
+| Canonical construct | Agorix Code                      |
+| ------------------- | -------------------------------- |
+| onStart             | `when start`                     |
+| move                | `move 10`                        |
+| turn                | `turn 90`                        |
+| repeat              | `repeat 4 times` + indented body |
+| if                  | `if <condition>` + indented body |
+| touchingGoal        | `touching goal`                  |
+| booleanLiteral      | `true` / `false`                 |
+| numericLiteral      | number literal                   |
 
 No semantic operation exists only in blocks.
 

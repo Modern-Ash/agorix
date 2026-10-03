@@ -20,11 +20,13 @@ describe("Laya release integration", () => {
       },
       program: {
         schema: "agorix/program/v1",
-        scripts: [{
-          id: "main",
-          trigger: { type: "onStart" },
-          statements: [{ type: "move", steps: 24 }],
-        }],
+        scripts: [
+          {
+            id: "main",
+            trigger: { type: "onStart" },
+            statements: [{ type: "move", steps: 24 }],
+          },
+        ],
       },
       selectedNodeIds: ["scripts[0]/statements[0]"],
       runtimeFacts: [],
@@ -83,7 +85,10 @@ describe("Laya release integration", () => {
     const request = createLearningCompanionRequest({
       capability: "coach",
       mission: { id: "first", version: 1, concepts: ["movement"], learningObjective: "Move" },
-      program: { schema: "agorix/program/v1", scripts: [{ id: "main", trigger: { type: "onStart" }, statements: [] }] },
+      program: {
+        schema: "agorix/program/v1",
+        scripts: [{ id: "main", trigger: { type: "onStart" }, statements: [] }],
+      },
       selectedNodeIds: [],
       runtimeFacts: [],
       scaffoldHistory: [],

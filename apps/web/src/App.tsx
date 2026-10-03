@@ -10,7 +10,7 @@ import {
 } from "react";
 import type { ProjectMetadata } from "@agorix/persistence";
 import type { ProjectProgram } from "@agorix/program-model";
-import { POC_TOOLBOX, type BlockNode } from "@agorix/block-editor";
+import type { BlockNode } from "@agorix/block-editor";
 import {
   DEFAULT_WORLD_ID,
   WORLDS,
@@ -266,47 +266,6 @@ function fieldLabelFor(field: "steps" | "degrees" | "count", locale: Locale): st
       return t(locale, "degrees");
     case "count":
       return t(locale, "fieldCount");
-  }
-}
-
-function sectionNameFor(name: string, locale: Locale): string {
-  switch (name) {
-    case "Move":
-      return t(locale, "toolboxMove");
-    case "Repeat & Decide":
-      return t(locale, "toolboxRepeatDecide");
-    default:
-      return name;
-  }
-}
-
-function blockPurposeFor(type: string, locale: Locale): string {
-  switch (type) {
-    case "motion_move":
-      return t(locale, "toolPurposeMove");
-    case "motion_turn":
-      return t(locale, "toolPurposeTurn");
-    case "control_repeat":
-      return t(locale, "toolPurposeRepeat");
-    case "control_if":
-      return t(locale, "toolPurposeIfGoal");
-    default:
-      return type;
-  }
-}
-
-function blockGlyphFor(type: string): string {
-  switch (type) {
-    case "motion_move":
-      return "GO";
-    case "motion_turn":
-      return "90";
-    case "control_repeat":
-      return "xN";
-    case "control_if":
-      return "IF";
-    default:
-      return "<>";
   }
 }
 
@@ -701,15 +660,9 @@ function CodeText({
 function CodePanel({
   program,
   highlightedNodeId,
-  locale,
-  panelControls,
-  panelProps,
 }: {
   program: ProjectProgram;
   highlightedNodeId: string | undefined;
-  locale: Locale;
-  panelControls?: ReactNode;
-  panelProps?: PanelChromeProps;
 }) {
   const [projectionId, setProjectionId] = useState<CodeProjectionId>("typescript");
   const [comparisonId, setComparisonId] = useState<CodeProjectionId | undefined>();
@@ -1443,14 +1396,6 @@ export function App() {
           ? t(locale, "layaLocal")
           : t(locale, "layaRemote");
 
-  const toolbox = useMemo(
-    () =>
-      POC_TOOLBOX.map((section) => ({
-        ...section,
-        blocks: section.blocks.filter((block) => isAddable(block.type)),
-      })).filter((section) => section.blocks.length > 0),
-    [],
-  );
   // Only offer what works today; unimplemented blocks stay in the catalog but are not shown.
   const scratchPalette = useMemo(
     () =>
@@ -2148,11 +2093,7 @@ export function App() {
               <span>{t(locale, "codeBehindBlocks")}</span>
               {panelControls("code")}
             </div>
-            <CodePanel
-              program={model.program}
-              highlightedNodeId={highlightedNodeId}
-              locale={locale}
-            />
+            <CodePanel program={model.program} highlightedNodeId={highlightedNodeId} />
             {highlightedCode ? (
               <p className="highlight-readout">
                 {t(locale, "currentNode", { code: highlightedCode.trim() })}

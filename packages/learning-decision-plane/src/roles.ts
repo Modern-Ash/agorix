@@ -11,12 +11,48 @@ export interface LearningRoleProfile {
 }
 
 const PROFILES: Readonly<Record<LearningCompanionCapability, LearningRoleProfile>> = {
-  coach: { capability: "coach", defaultContext: "bounded", solutionAllowance: "none", requiredPrompt: "none", deterministicWhen: "never" },
-  builder: { capability: "builder", defaultContext: "program", solutionAllowance: "partial", requiredPrompt: "prediction", deterministicWhen: "never" },
-  debugger: { capability: "debugger", defaultContext: "runtime", solutionAllowance: "none", requiredPrompt: "none", deterministicWhen: "no-runtime" },
-  explainer: { capability: "explainer", defaultContext: "program", solutionAllowance: "none", requiredPrompt: "none", deterministicWhen: "never" },
-  challenger: { capability: "challenger", defaultContext: "program", solutionAllowance: "none", requiredPrompt: "prediction", deterministicWhen: "always" },
-  reflector: { capability: "reflector", defaultContext: "runtime", solutionAllowance: "none", requiredPrompt: "reflection", deterministicWhen: "runtime-available" },
+  coach: {
+    capability: "coach",
+    defaultContext: "bounded",
+    solutionAllowance: "none",
+    requiredPrompt: "none",
+    deterministicWhen: "never",
+  },
+  builder: {
+    capability: "builder",
+    defaultContext: "program",
+    solutionAllowance: "partial",
+    requiredPrompt: "prediction",
+    deterministicWhen: "never",
+  },
+  debugger: {
+    capability: "debugger",
+    defaultContext: "runtime",
+    solutionAllowance: "none",
+    requiredPrompt: "none",
+    deterministicWhen: "no-runtime",
+  },
+  explainer: {
+    capability: "explainer",
+    defaultContext: "program",
+    solutionAllowance: "none",
+    requiredPrompt: "none",
+    deterministicWhen: "never",
+  },
+  challenger: {
+    capability: "challenger",
+    defaultContext: "program",
+    solutionAllowance: "none",
+    requiredPrompt: "prediction",
+    deterministicWhen: "always",
+  },
+  reflector: {
+    capability: "reflector",
+    defaultContext: "runtime",
+    solutionAllowance: "none",
+    requiredPrompt: "reflection",
+    deterministicWhen: "runtime-available",
+  },
 };
 
 export function learningRoleProfile(capability: LearningCompanionCapability): LearningRoleProfile {
@@ -26,7 +62,9 @@ export function learningRoleProfile(capability: LearningCompanionCapability): Le
 export function roleCanUseDeterministicFixture(request: LearningCompanionRequest): boolean {
   const mode = PROFILES[request.capability].deterministicWhen;
   if (mode === "always") return true;
-  if (mode === "no-runtime") return request.runtime === undefined || request.runtimeFacts.length === 0;
-  if (mode === "runtime-available") return request.runtime !== undefined && request.runtimeFacts.length > 0;
+  if (mode === "no-runtime")
+    return request.runtime === undefined || request.runtimeFacts.length === 0;
+  if (mode === "runtime-available")
+    return request.runtime !== undefined && request.runtimeFacts.length > 0;
   return false;
 }
