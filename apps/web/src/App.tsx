@@ -21,6 +21,7 @@ import {
   redoCanonicalTransaction,
   undoCanonicalTransaction,
   type BlockNode,
+  type BlockWorkspaceSnapshot,
   type EditorHistory,
 } from "@agorix/block-editor";
 import {
@@ -1151,6 +1152,47 @@ export function ProgramBlockCard({
   }
 
   const displayName = displayNameFor(block, locale);
+  const positionId = `block-pos-${path.join("-")}`;
+  const positionText = t(locale, "blockPosition", {
+    position: siblingIndex + 1,
+    total: siblingTotal,
+    level: depth + 1,
+  });
+
+  function handleFaceKeyDown(event: ReactKeyboardEvent<HTMLButtonElement>) {
+    const key = event.key;
+    if (event.altKey && key === "ArrowUp") {
+      event.preventDefault();
+      if (siblingIndex > 0) onMove(-1);
+    } else if (event.altKey && key === "ArrowDown") {
+      event.preventDefault();
+      if (siblingIndex < siblingTotal - 1) onMove(1);
+    } else if (event.altKey && key === "ArrowRight") {
+      event.preventDefault();
+      if (siblingIndex > 0) onNest();
+    } else if (event.altKey && key === "ArrowLeft") {
+      event.preventDefault();
+      if (depth > 0) onOutdent();
+    } else if (key === "Delete") {
+      event.preventDefault();
+      onDelete();
+    } else if ((event.ctrlKey || event.metaKey) && key.toLowerCase() === "d") {
+      event.preventDefault();
+      onDuplicate();
+    } else if (!event.altKey && (key === "ArrowUp" || key === "ArrowDown")) {
+      const faces = Array.from(
+        event.currentTarget
+          .closest(".block-stack")
+          ?.querySelectorAll<HTMLButtonElement>(".block-face") ?? [],
+      );
+      const next = faces[faces.indexOf(event.currentTarget) + (key === "ArrowUp" ? -1 : 1)];
+      if (next !== undefined) {
+        event.preventDefault();
+        next.focus();
+      }
+    }
+  }
+
   const blockTone = blockToneFor(block.type);
   const blockShape = blockShapeFor(block.type);
   const hasStatementContainer = canContainStatements(block);
@@ -1168,6 +1210,7 @@ export function ProgramBlockCard({
       data-block-shape={blockShape}
       data-canonical-node-id={canonicalNodeId}
       data-statement-path={path.join(".")}
+      aria-describedby={positionId}
       draggable
       onDragStart={onDragStart}
       onDragOver={autoScrollWorkspaceOnDrag}
@@ -1178,7 +1221,7 @@ export function ProgramBlockCard({
     >
       <div
         className="snap-target snap-before"
-        aria-label={t(locale, "dropBeforeBlock", { name: displayName })}
+        aria-hidden="true"
         onDragOver={autoScrollWorkspaceOnDrag}
         onDrop={(event) => {
           event.stopPropagation();
@@ -1186,10 +1229,20 @@ export function ProgramBlockCard({
         }}
       />
       <div className="scratch-block-main">
-        <button type="button" className="block-title block-face" onClick={onSelect}>
+        <button
+          type="button"
+          className="block-title block-face"
+          aria-describedby={`${positionId} workspace-keyboard-hint`}
+          aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown Alt+ArrowLeft Alt+ArrowRight Delete Control+D Meta+D"
+          onClick={onSelect}
+          onKeyDown={handleFaceKeyDown}
+        >
           <span className="block-grip" aria-hidden="true" />
           <span className="block-label">{displayName}</span>
         </button>
+        <span id={positionId} className="visually-hidden">
+          {positionText}
+        </span>
         {field === undefined ? (
           <span className="block-slot block-slot-predicate">{t(locale, "touchingGoal")}</span>
         ) : (
@@ -1200,13 +1253,21 @@ export function ProgramBlockCard({
               value={draftValue}
               aria-label={`${displayName} ${fieldLabelFor(field, locale)}`}
               onBlur={commitDraftValue}
+              onFocus={(event) => {
+                // Keep the focused value and its block context above a virtual keyboard.
+                event.currentTarget.scrollIntoView?.({ block: "nearest" });
+              }}
               onChange={(event) => setDraftValue(event.currentTarget.value)}
               onKeyDown={handleValueKeyDown}
             />
             <span>{fieldLabelFor(field, locale)}</span>
           </label>
         )}
-        <div className="block-actions block-inline-controls" aria-label={t(locale, "cardActions")}>
+        <div
+          className="block-actions block-inline-controls"
+          role="group"
+          aria-label={t(locale, "cardActions")}
+        >
           {siblingIndex === 0 ? null : (
             <button
               type="button"
@@ -1280,12 +1341,14 @@ export function ProgramBlockCard({
           }}
         >
           {children}
-          <div className="snap-target snap-inside">{t(locale, "dropInside")}</div>
+          <div className="snap-target snap-inside" aria-hidden="true">
+            {t(locale, "dropInside")}
+          </div>
         </div>
       ) : null}
       <div
         className="snap-target snap-after"
-        aria-label={t(locale, "dropAfterBlock", { name: displayName })}
+        aria-hidden="true"
         onDragOver={autoScrollWorkspaceOnDrag}
         onDrop={(event) => {
           event.stopPropagation();
@@ -1557,6 +1620,10 @@ export function App() {
     () => initialProjectRef.current!.message,
   );
   const [highlightedNodeId, setHighlightedNodeId] = useState<string | undefined>();
+  const [announcement, setAnnouncement] = useState("");
+  const [pendingFocus, setPendingFocus] = useState<
+    { readonly path: StatementPath } | { readonly fallback: true } | undefined
+  >();
   const [frameIndex, setFrameIndex] = useState(0);
   const [frames, setFrames] = useState<readonly ObservationFrame[]>([]);
   const [executionSteps, setExecutionSteps] = useState<readonly ExecutionStep[]>([]);
@@ -1584,6 +1651,18 @@ export function App() {
   const [maximizedPanel, setMaximizedPanel] = useState<PanelId | undefined>(undefined);
   const [aiConnectionOpen, setAiConnectionOpen] = useState(false);
   const [activeDragKind, setActiveDragKind] = useState<"palette" | "workspace" | undefined>();
+
+  useEffect(() => {
+    if (pendingFocus === undefined) return;
+    const target =
+      "path" in pendingFocus
+        ? document.querySelector<HTMLElement>(
+            `[data-statement-path="${pendingFocus.path.join(".")}"] > .scratch-block-main > .block-face`,
+          )
+        : document.querySelector<HTMLElement>(".action-palette .tool-button:not(:disabled)");
+    target?.focus();
+    setPendingFocus(undefined);
+  }, [pendingFocus, model]);
 
   const mission = useMemo(() => getLocalizedFirstMission(locale), [locale]);
   const statements = model.workspace.scripts[0]?.statements ?? [];
@@ -1812,9 +1891,60 @@ export function App() {
     }
   }
 
+  function blockAtStatementPath(
+    workspace: BlockWorkspaceSnapshot,
+    path: StatementPath,
+  ): BlockNode | undefined {
+    return statementListAtPath(workspace, parentContainerPath(path))[indexInContainer(path)];
+  }
+
+  function parentLabel(workspace: BlockWorkspaceSnapshot, path: StatementPath): string {
+    const parentPath = parentContainerPath(path);
+    const parent =
+      parentPath.length === 0 ? undefined : blockAtStatementPath(workspace, parentPath);
+    return parent === undefined ? t(locale, "whenRun") : displayNameFor(parent, locale);
+  }
+
+  function announceAt(
+    kind: "announceAdded" | "announceMoved" | "announceDuplicated",
+    workspace: BlockWorkspaceSnapshot,
+    path: StatementPath,
+  ) {
+    const block = blockAtStatementPath(workspace, path);
+    setAnnouncement(
+      t(locale, kind, {
+        name: block === undefined ? "" : displayNameFor(block, locale),
+        position: indexInContainer(path) + 1,
+        total: statementListAtPath(workspace, parentContainerPath(path)).length,
+      }),
+    );
+    setPendingFocus({ path });
+  }
+
+  function findPathById(
+    workspace: BlockWorkspaceSnapshot,
+    id: string,
+    container: StatementPath = [],
+  ): StatementPath | undefined {
+    const list = statementListAtPath(workspace, container);
+    for (const [index, block] of list.entries()) {
+      const path = [...container, index];
+      if (block.id === id) return path;
+      if (canContainStatements(block)) {
+        const found = findPathById(workspace, id, path);
+        if (found !== undefined) return found;
+      }
+    }
+    return undefined;
+  }
+
   function addBlock(type: AddableBlockType) {
-    if (commitProjection("add block", addBlockToWorkspace(model.workspace, type))) {
+    const projection = addBlockToWorkspace(model.workspace, type);
+    if (commitProjection("add block", projection)) {
       setMessage(t(locale, "blockAddedMessage"));
+      announceAt("announceAdded", projection.workspace, [
+        model.workspace.scripts[0]?.statements.length ?? 0,
+      ]);
     }
   }
 
@@ -1830,6 +1960,13 @@ export function App() {
       )
     ) {
       setMessage(t(locale, "programUpdatedMessage"));
+      setAnnouncement(
+        t(locale, "announceEdited", {
+          name: displayNameFor(block, locale),
+          field: fieldLabelFor(field, locale),
+          value,
+        }),
+      );
     }
   }
 
@@ -1841,25 +1978,45 @@ export function App() {
     if (nextIndex < 0 || nextIndex >= siblings.length) {
       return;
     }
-    if (
-      commitProjection(
-        "move block",
-        moveBlockInWorkspaceByPath(model.workspace, path, containerPath, nextIndex),
-      )
-    ) {
+    const projection = moveBlockInWorkspaceByPath(model.workspace, path, containerPath, nextIndex);
+    if (commitProjection("move block", projection)) {
       setMessage(t(locale, "programUpdatedMessage"));
+      announceAt("announceMoved", projection.workspace, [...containerPath, nextIndex]);
     }
   }
 
   function deleteBlockAt(path: StatementPath) {
-    if (commitProjection("delete block", deleteBlockFromWorkspaceAt(model.workspace, path))) {
+    const block = blockAtStatementPath(model.workspace, path);
+    const projection = deleteBlockFromWorkspaceAt(model.workspace, path);
+    if (commitProjection("delete block", projection)) {
       setMessage(t(locale, "programUpdatedMessage"));
+      const containerPath = parentContainerPath(path);
+      const remaining = statementListAtPath(projection.workspace, containerPath).length;
+      setAnnouncement(
+        t(locale, "announceDeleted", {
+          name: block === undefined ? "" : displayNameFor(block, locale),
+          total: statementListAtPath(projection.workspace, []).length,
+        }),
+      );
+      const index = indexInContainer(path);
+      if (remaining > 0) {
+        setPendingFocus({ path: [...containerPath, Math.min(index, remaining - 1)] });
+      } else if (containerPath.length > 0) {
+        setPendingFocus({ path: containerPath });
+      } else {
+        setPendingFocus({ fallback: true });
+      }
     }
   }
 
   function duplicateBlockAt(path: StatementPath) {
-    if (commitProjection("duplicate block", duplicateBlockInWorkspace(model.workspace, path))) {
+    const projection = duplicateBlockInWorkspace(model.workspace, path);
+    if (commitProjection("duplicate block", projection)) {
       setMessage(t(locale, "programUpdatedMessage"));
+      announceAt("announceDuplicated", projection.workspace, [
+        ...parentContainerPath(path),
+        indexInContainer(path) + 1,
+      ]);
     }
   }
 
@@ -1873,13 +2030,18 @@ export function App() {
     }
     const targetContainerPath = [...containerPath, index - 1];
     const targetIndex = statementListAtPath(model.workspace, targetContainerPath).length;
-    if (
-      commitProjection(
-        "nest block",
-        moveBlockInWorkspaceByPath(model.workspace, path, targetContainerPath, targetIndex),
-      )
-    ) {
+    const projection = moveBlockInWorkspaceByPath(
+      model.workspace,
+      path,
+      targetContainerPath,
+      targetIndex,
+    );
+    if (commitProjection("nest block", projection)) {
       setMessage(t(locale, "programUpdatedMessage"));
+      announceStructure("announceNested", projection.workspace, [
+        ...targetContainerPath,
+        targetIndex,
+      ]);
     }
   }
 
@@ -1890,14 +2052,50 @@ export function App() {
     const parentPath = parentContainerPath(path);
     const grandParentPath = parentContainerPath(parentPath);
     const parentIndex = indexInContainer(parentPath);
-    if (
-      commitProjection(
-        "outdent block",
-        moveBlockInWorkspaceByPath(model.workspace, path, grandParentPath, parentIndex + 1),
-      )
-    ) {
+    const projection = moveBlockInWorkspaceByPath(
+      model.workspace,
+      path,
+      grandParentPath,
+      parentIndex + 1,
+    );
+    if (commitProjection("outdent block", projection)) {
       setMessage(t(locale, "programUpdatedMessage"));
+      announceStructure("announceOutdented", projection.workspace, [
+        ...grandParentPath,
+        parentIndex + 1,
+      ]);
     }
+  }
+
+  function announceStructure(
+    kind: "announceNested" | "announceOutdented",
+    workspace: BlockWorkspaceSnapshot,
+    path: StatementPath,
+  ) {
+    const block = blockAtStatementPath(workspace, path);
+    const parent =
+      kind === "announceNested" ? parentLabel(workspace, path) : parentLabelBefore(path);
+    setAnnouncement(
+      t(locale, kind, {
+        name: block === undefined ? "" : displayNameFor(block, locale),
+        parent,
+        position: indexInContainer(path) + 1,
+        total: statementListAtPath(workspace, parentContainerPath(path)).length,
+      }),
+    );
+    setPendingFocus({ path });
+  }
+
+  function parentLabelBefore(newPath: StatementPath): string {
+    // The block left the container just before its new sibling position; name the container it left.
+    const left = model.workspace;
+    const siblingBefore = blockAtStatementPath(left, [
+      ...parentContainerPath(newPath),
+      indexInContainer(newPath) - 1,
+    ]);
+    return siblingBefore === undefined
+      ? t(locale, "whenRun")
+      : displayNameFor(siblingBefore, locale);
   }
 
   function clearRunTimer() {
@@ -2290,25 +2488,32 @@ export function App() {
     clearDragState();
     const type = event.dataTransfer.getData(BLOCK_DRAG_TYPE);
     if (isAddable(type)) {
-      if (
-        commitProjection(
-          "add block",
-          addBlockToWorkspaceAt(model.workspace, type, targetContainerPath, targetIndex),
-        )
-      ) {
+      const projection = addBlockToWorkspaceAt(
+        model.workspace,
+        type,
+        targetContainerPath,
+        targetIndex,
+      );
+      if (commitProjection("add block", projection)) {
         setMessage(t(locale, "blockAddedMessage"));
+        announceAt("announceAdded", projection.workspace, [...targetContainerPath, targetIndex]);
       }
       return;
     }
     const source = pathFromDragData(event.dataTransfer.getData(WORKSPACE_DRAG_TYPE));
     if (source !== undefined) {
-      if (
-        commitProjection(
-          "move block",
-          moveBlockInWorkspaceByPath(model.workspace, source, targetContainerPath, targetIndex),
-        )
-      ) {
+      const movedId = blockAtStatementPath(model.workspace, source)?.id;
+      const projection = moveBlockInWorkspaceByPath(
+        model.workspace,
+        source,
+        targetContainerPath,
+        targetIndex,
+      );
+      if (commitProjection("move block", projection)) {
         setMessage(t(locale, "programUpdatedMessage"));
+        const landed =
+          movedId === undefined ? undefined : findPathById(projection.workspace, movedId);
+        if (landed !== undefined) announceAt("announceMoved", projection.workspace, landed);
       }
     }
   }
@@ -2453,6 +2658,18 @@ export function App() {
         </div>
       </header>
 
+      <div
+        className="visually-hidden"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        data-testid="editor-announcer"
+      >
+        {announcement}
+      </div>
+      <p id="workspace-keyboard-hint" className="visually-hidden">
+        {t(locale, "blockKeyboardHint")}
+      </p>
       <section className="mission-strip" aria-live="polite">
         <div>
           <h2>{t(locale, "missionPrefix", { title: mission.goal.title })}</h2>
