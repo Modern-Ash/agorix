@@ -12,7 +12,6 @@ import type { ProjectMetadata } from "@agorix/persistence";
 import type { ProjectProgram } from "@agorix/program-model";
 import type { BlockNode } from "@agorix/block-editor";
 import {
-  DEFAULT_WORLD_ID,
   WORLDS,
   createMissionRunFeedback,
   getLocalizedFirstMission,
@@ -35,11 +34,18 @@ import {
   type TutorHintHistoryEntry,
   type TutorResponse,
 } from "@agorix/tutor-contract";
-import { decideProactiveSuggestion } from "@agorix/learning-decision-plane";
+import {
+  decideProactiveSuggestion,
+  decideProactiveWithLaya,
+  type LayaBatchTransport,
+  type ProactiveDecision,
+  type ProactiveSignal,
+} from "@agorix/learning-decision-plane";
 import {
   acceptProposal,
   createProgramProposal,
   createProposalReview,
+  createFirstStepProposal,
   createRepeatPatternProposal,
   detectRepeatPattern,
   createWebProposalCardView,
@@ -79,6 +85,7 @@ import {
   type LoadedEditorProject,
   type ProjectPersistence,
 } from "./projectStorage.js";
+import { loadPresentationPrefs, savePresentationPrefs } from "./presentationPrefs.js";
 import { LOCALE_LABELS, t, type Locale, type MessageKey } from "./i18n.js";
 import { ProvenanceLabel } from "./ProvenanceLabel.js";
 import { CODE_PROJECTION_IDS, projectCodeSurface, type CodeProjectionId } from "./codeSurface.js";
@@ -741,6 +748,38 @@ const WORLD_GLYPHS: Record<WorldPalette, { sprite: string; goal: string }> = {
   city: { sprite: "🛴", goal: "📦" },
 };
 
+/**
+ * Optional Laya bridge installed by the host page (`globalThis.agorixLaya`).
+ * Without it System-0 alone decides, so the app never depends on Laya.
+ */
+function layaBridge(): LayaBatchTransport | undefined {
+  return (globalThis as { agorixLaya?: LayaBatchTransport }).agorixLaya;
+}
+
+/** System-0 decides synchronously; if a Laya bridge exists it may veto an offer. */
+function useProactiveDecision(signal: ProactiveSignal | undefined): ProactiveDecision | undefined {
+  const bridge = layaBridge();
+  const base = signal === undefined ? undefined : decideProactiveSuggestion(signal);
+  const key = JSON.stringify(signal ?? null);
+  const [resolved, setResolved] = useState<
+    { readonly key: string; readonly decision: ProactiveDecision } | undefined
+  >();
+  useEffect(() => {
+    if (signal === undefined || bridge === undefined || base?.action !== "offer") {
+      return undefined;
+    }
+    let cancelled = false;
+    void decideProactiveWithLaya(signal, bridge).then((decision) => {
+      if (!cancelled) setResolved({ key, decision });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [key, bridge]);
+  if (base === undefined || bridge === undefined || base.action === "silence") return base;
+  return resolved?.key === key ? resolved.decision : undefined;
+}
+
 function StageView({
   frame,
   fallback,
@@ -1334,9 +1373,12 @@ export function App() {
   const [proposalReview, setProposalReview] = useState<ProposalReview | undefined>();
   const [proposalMessage, setProposalMessage] = useState<string | undefined>();
   const [dismissedRepeatHash, setDismissedRepeatHash] = useState<string | undefined>();
-  const [worldId, setWorldId] = useState<string>(DEFAULT_WORLD_ID);
+  const [worldId, setWorldId] = useState<string>(() => loadPresentationPrefs().worldId);
   const [stepping, setStepping] = useState(false);
-  const [repeatDeclines, setRepeatDeclines] = useState(0);
+  const [firstStepDeclined, setFirstStepDeclined] = useState(false);
+  const [repeatDeclines, setRepeatDeclines] = useState(
+    () => loadPresentationPrefs().repeatDeclines,
+  );
   const [learningDecision, setLearningDecision] = useState<
     WebLearningDecisionDiagnostics | undefined
   >();
@@ -1359,6 +1401,9 @@ export function App() {
   const canonicalHash = programSemanticHash(model.program);
   const proposalCard =
     proposalReview === undefined ? undefined : createWebProposalCardView(proposalReview);
+  useEffect(() => {
+    savePresentationPrefs({ worldId, repeatDeclines });
+  }, [worldId, repeatDeclines]);
   const world = getWorld(worldId);
   const worldText = worldCopy(world, locale);
   const repeatProposal = useMemo(
@@ -1374,16 +1419,40 @@ export function App() {
     [model.program, locale],
   );
   const repeatReviewActive = proposalReview?.proposal.source.capability === "repeat-pattern";
-  const repeatDecision =
+  const repeatDecision = useProactiveDecision(
     repeatProposal === undefined || proposalReview !== undefined
       ? undefined
-      : decideProactiveSuggestion({
+      : {
           kind: "repeat-pattern",
           occurrences: detectRepeatPattern(model.program)?.count ?? 0,
           running: status === "running",
           declinedForCurrentProgram: dismissedRepeatHash === canonicalHash,
           declinedCount: repeatDeclines,
-        });
+        },
+  );
+  const firstStepProposal = useMemo(
+    () =>
+      createFirstStepProposal({
+        id: "first-step",
+        baseProgram: model.program,
+        purpose: t(locale, "firstStepPurpose"),
+        rationale: t(locale, "firstStepRationale"),
+      }),
+    [model.program, locale],
+  );
+  const firstStepDecision = useProactiveDecision(
+    firstStepProposal === undefined || proposalReview !== undefined
+      ? undefined
+      : {
+          kind: "first-step",
+          occurrences: statements.length,
+          running: status === "running",
+          declinedForCurrentProgram: firstStepDeclined,
+          declinedCount: 0,
+        },
+  );
+  const firstStepOffer = firstStepDecision?.action === "offer" ? firstStepProposal : undefined;
+  const firstStepReviewActive = proposalReview?.proposal.source.capability === "first-step";
   const repeatOffer = repeatDecision?.action === "offer" ? repeatProposal : undefined;
   const missionStep =
     status === "complete" || status === "freeplay" ? 3 : attempts > 0 || status === "retry" ? 2 : 1;
@@ -1631,6 +1700,16 @@ export function App() {
     setProposalMessage(t(locale, "aiLiteracyPredictionRecorded"));
   }
 
+  function tryFirstStep() {
+    if (firstStepOffer === undefined) {
+      return;
+    }
+    const review = createProposalReview(model.program, firstStepOffer);
+    setProposalReview(review);
+    setProposalMessage(t(locale, "proposalPreviewReady"));
+    setHighlightedNodeId(review.proposal.affectedNodeIds[0]);
+  }
+
   function tryRepeatSuggestion() {
     if (repeatOffer === undefined) {
       return;
@@ -1663,6 +1742,9 @@ export function App() {
     if (repeatReviewActive) {
       setDismissedRepeatHash(canonicalHash);
       setRepeatDeclines((count) => count + 1);
+    }
+    if (firstStepReviewActive) {
+      setFirstStepDeclined(true);
     }
     setProposalReview(undefined);
     setProposalMessage(t(locale, "proposalRejected"));
@@ -2236,14 +2318,9 @@ export function App() {
             <div className="panel-heading">
               <h2 id="companion-title">{t(locale, "proposalReview")}</h2>
               <span>
-                {tutorResponse === undefined ? (
-                  <>
-                    {t(locale, "tutorOffline")}{" "}
-                    <ProvenanceLabel kind="unavailable" locale={locale} />
-                  </>
-                ) : (
-                  t(locale, "hintLevel", { level: tutorResponse.hintLevel })
-                )}
+                {tutorResponse === undefined
+                  ? t(locale, "aiCoachStatus")
+                  : t(locale, "hintLevel", { level: tutorResponse.hintLevel })}
               </span>
               {panelControls("companion")}
             </div>
@@ -2314,6 +2391,24 @@ export function App() {
               mission={mission}
               selectedNodeIds={highlightedNodeId === undefined ? [] : [highlightedNodeId]}
             />
+            {firstStepOffer === undefined ? null : (
+              <div
+                className="ai-welcome"
+                data-testid="ai-welcome"
+                data-decision={firstStepDecision?.action}
+              >
+                <strong>{t(locale, "firstStepTitle")}</strong>
+                <p>{t(locale, "firstStepBody")}</p>
+                <div className="tutor-actions">
+                  <button type="button" onClick={tryFirstStep}>
+                    {t(locale, "firstStepTry")}
+                  </button>
+                  <button type="button" onClick={() => setFirstStepDeclined(true)}>
+                    {t(locale, "firstStepNo")}
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="tutor-actions">
               <button type="button" onClick={previewImperfectAiProposal}>
                 {t(locale, "aiLiteracyActivity")}

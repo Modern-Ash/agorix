@@ -1525,47 +1525,6 @@ button:hover:not(:disabled) {
   line-height: 1.35;
 }
 
-.philosophy-rail {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--agx-space-2);
-  margin-top: var(--agx-space-3);
-}
-
-.philosophy-rail article {
-  display: grid;
-  gap: 4px;
-  min-height: 78px;
-  padding: 10px;
-  border: 1px solid rgba(38, 74, 104, 0.12);
-  border-radius: var(--agx-radius-md);
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.38);
-}
-
-.philosophy-rail article:nth-child(1) {
-  box-shadow: inset 4px 0 0 #ffb020;
-}
-
-.philosophy-rail article:nth-child(2) {
-  box-shadow: inset 4px 0 0 #2f80ed;
-}
-
-.philosophy-rail article:nth-child(3) {
-  box-shadow: inset 4px 0 0 #635bff;
-}
-
-.philosophy-rail strong {
-  color: #13202f;
-  font-size: 0.82rem;
-}
-
-.philosophy-rail span {
-  color: #526171;
-  font-size: 0.78rem;
-  line-height: 1.35;
-}
-
 .toolbox-intro {
   margin: 0 0 var(--agx-space-3);
   color: #2430a4;
@@ -1691,30 +1650,7 @@ button:hover:not(:disabled) {
   line-height: 1.4;
 }
 
-@media (max-width: 900px) {
-  .philosophy-rail {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .philosophy-rail article {
-    min-height: 48px;
-    padding: 8px;
-  }
-
-  .philosophy-rail span {
-    display: none;
-  }
-}
-
 @media (max-width: 760px) {
-  .philosophy-rail {
-    grid-template-columns: 1fr;
-  }
-
-  .philosophy-rail span {
-    display: inline;
-  }
-
   .action-list {
     grid-template-columns: 1fr;
   }
@@ -1852,15 +1788,6 @@ button:hover:not(:disabled) {
 
 .mission-strip p {
   line-height: 1.3;
-}
-
-.philosophy-rail {
-  margin-top: 8px;
-}
-
-.philosophy-rail article {
-  min-height: 54px;
-  padding: 8px;
 }
 
 .starter-roadmap {
@@ -2024,8 +1951,7 @@ button:hover:not(:disabled) {
   }
 
   .topbar-subtitle,
-  .tool-copy small,
-  .philosophy-rail span {
+  .tool-copy small {
     display: none;
   }
 
@@ -2243,26 +2169,6 @@ button:hover:not(:disabled) {
   }
 }
 
-/* Native Scratch + AI layer: modes, category strip, and snap-like blocks. */
-
-.scratch-category-strip {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-  margin-bottom: 10px;
-}
-
-.scratch-category-strip span {
-  display: grid;
-  place-items: center;
-  min-height: 30px;
-  border-radius: 999px;
-  color: #ffffff;
-  font-size: 0.75rem;
-  font-weight: 950;
-  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.14);
-}
-
 .cat-motion {
   background: #2f80ed;
 }
@@ -2367,12 +2273,6 @@ button:hover:not(:disabled) {
   box-shadow: inset 0 0 0 2px rgba(99, 91, 255, 0.08);
 }
 
-@media (max-width: 980px) {
-}
-
-@media (min-width: 901px) and (max-width: 1120px) {
-}
-
 @media (orientation: landscape) and (min-width: 901px) and (max-width: 1120px) {
   .mission-strip {
     grid-template-columns: minmax(0, 1fr) minmax(260px, 0.62fr);
@@ -2380,7 +2280,6 @@ button:hover:not(:disabled) {
   }
 
   .mission-strip p,
-  .philosophy-rail,
   .starter-roadmap p,
   .starter-roadmap ol {
     display: none;
@@ -2407,7 +2306,6 @@ button:hover:not(:disabled) {
 
 @media (orientation: portrait) and (min-width: 720px) and (max-width: 900px) {
   .topbar-subtitle,
-  .philosophy-rail span,
   .starter-roadmap p,
   .starter-roadmap ol {
     display: none;
@@ -2416,10 +2314,6 @@ button:hover:not(:disabled) {
   .mission-strip {
     margin: 6px 0;
     padding: 8px;
-  }
-
-  .philosophy-rail article {
-    min-height: 38px;
   }
 }
 
@@ -2511,14 +2405,6 @@ button:hover:not(:disabled) {
 
   .action-palette .tool-button {
     min-height: 58px;
-  }
-
-  .scratch-category-strip {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    padding-bottom: 6px;
-    background: #f8fafc;
   }
 }
 
@@ -3267,7 +3153,6 @@ button:hover:not(:disabled) {
   }
 
   .mission-strip p,
-  .philosophy-rail,
   .starter-roadmap p,
   .starter-roadmap ol {
     display: none;
@@ -3586,4 +3471,23 @@ button:hover:not(:disabled) {
   .stage-canvas .sprite {
     animation: none;
   }
+}
+
+.ai-welcome {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0.5rem 0;
+  padding: 0.75rem;
+  border: 2px solid #8b5cf6;
+  border-radius: 12px;
+  background: #f5f3ff;
+  color: #1f1a33;
+}
+
+.ai-welcome p {
+  margin: 0;
+}
+
+.ai-welcome button {
+  min-height: 44px;
 }

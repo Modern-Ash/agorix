@@ -626,7 +626,10 @@ test("provenance is visually and textually distinguishable across suggestion, ac
   await page.goto("/");
 
   // Initial state: no AI content shown yet, tutor marked unavailable.
-  await expect(page.locator('[data-provenance="unavailable"]')).toBeVisible();
+  await expect(page.locator('[data-provenance="unavailable"]')).toHaveCount(0);
+  await expect(
+    page.locator(".companion-panel").getByText("Local coach ready").first(),
+  ).toBeVisible();
   await expect(page.locator('[data-provenance="suggestion"]')).toHaveCount(0);
 
   for (let i = 0; i < 3; i += 1) {
@@ -909,4 +912,108 @@ test("worlds are localized in Spanish", async ({ page }) => {
   await page.getByLabel("Product language").selectOption("es");
   await page.getByLabel("Mundo").selectOption("ocean.reef");
   await expect(page.getByTestId("world-narrative")).toContainText("submarino");
+});
+
+test.describe("AI available from the start", () => {
+  test("companion is ready and offers a first step on an empty project", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.locator('[data-provenance="unavailable"]')).toHaveCount(0);
+    const welcome = page.getByTestId("ai-welcome");
+    await expect(welcome).toBeVisible();
+    await expect(welcome).toHaveAttribute("data-decision", "offer");
+  });
+
+  test("first step is a proposal: inspect, reject leaves the program empty", async ({ page }) => {
+    await page.goto("/");
+    const before = await canonicalHash(page);
+    await page.getByRole("button", { name: "Show me a first step" }).click();
+    await expect(page.getByTestId("proposal-preview")).toBeVisible();
+    expect(await canonicalHash(page)).toBe(before);
+    await page.getByRole("button", { name: "Reject proposal" }).click();
+    expect(await canonicalHash(page)).toBe(before);
+    await expect(page.getByTestId("ai-welcome")).toHaveCount(0);
+  });
+
+  test("accepting the first step adds a Move block through the canonical program", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const before = await canonicalHash(page);
+    await page.getByRole("button", { name: "Show me a first step" }).click();
+    await page.getByRole("button", { name: "Accept proposal" }).click();
+    expect(await canonicalHash(page)).not.toBe(before);
+    await expect(page.getByLabel("Move block")).toBeVisible();
+    await expect(visibleCode(page, "sprite.move(10);")).toBeVisible();
+    await expect(page.getByTestId("ai-welcome")).toHaveCount(0);
+  });
+
+  test("the offer goes away on its own once the learner starts building", async ({ page }) => {
+    await page.goto("/");
+    await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+    await expect(page.getByTestId("ai-welcome")).toHaveCount(0);
+  });
+
+  test("a Laya bridge can veto the offer", async ({ page }) => {
+    await page.addInitScript(() => {
+      const w = globalThis as unknown as { agorixLaya: unknown; layaCalls: number };
+      w.layaCalls = 0;
+      w.agorixLaya = {
+        decideMany: async () => {
+          w.layaCalls += 1;
+          return [{ id: "proactiveAction", value: "silence", confidence: 0.99 }];
+        },
+      };
+    });
+    await page.goto("/");
+    await page.waitForFunction(
+      () => (globalThis as unknown as { layaCalls: number }).layaCalls > 0,
+    );
+    await expect(page.getByTestId("ai-welcome")).toHaveCount(0);
+  });
+
+  test("a Laya bridge cannot force an offer System-0 refused", async ({ page }) => {
+    await page.addInitScript(() => {
+      (globalThis as unknown as { agorixLaya: unknown }).agorixLaya = {
+        decideMany: async () => [{ id: "proactiveAction", value: "offer", confidence: 1 }],
+      };
+    });
+    await page.goto("/");
+    await expect(page.getByTestId("ai-welcome")).toBeVisible();
+    await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+    await expect(page.getByTestId("ai-welcome")).toHaveCount(0);
+  });
+});
+
+test.describe("presentation preferences", () => {
+  test("chosen world survives reload without touching the canonical program", async ({ page }) => {
+    await page.goto("/");
+    await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+    const hash = await canonicalHash(page);
+    await page.getByLabel("World").selectOption("city.crossing");
+    await page.reload();
+    await expect(page.locator(".stage-panel")).toHaveAttribute("data-world", "city.crossing");
+    expect(await canonicalHash(page)).toBe(hash);
+  });
+
+  test("declining twice keeps the AI quiet after a reload", async ({ page }) => {
+    await page.goto("/");
+    for (let round = 0; round < 2; round += 1) {
+      for (let i = 0; i < 3; i += 1) {
+        await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+        await page.locator(".action-palette").getByLabel("Turn", { exact: true }).click();
+      }
+      for (let extra = 0; extra < round; extra += 1) {
+        // A different program each round, so "declined this program" doesn't mask the counter.
+        await page.locator(".action-palette").getByLabel("Turn", { exact: true }).click();
+      }
+      await page.getByRole("button", { name: "No thanks" }).click();
+      await page.getByRole("button", { name: "Reset" }).click();
+    }
+    await page.reload();
+    for (let i = 0; i < 3; i += 1) {
+      await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+      await page.locator(".action-palette").getByLabel("Turn", { exact: true }).click();
+    }
+    await expect(page.getByTestId("repeat-suggestion")).toHaveCount(0);
+  });
 });
