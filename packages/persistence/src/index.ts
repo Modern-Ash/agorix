@@ -21,3 +21,20 @@ export {
   semanticProjectSnapshot,
   type SemanticProjectSnapshot,
 } from "./compatibility.js";
+export {
+  AGORIX_PROJECT_EXTENSION,
+  AGORIX_PROJECT_FORMAT,
+  AGORIX_PROJECT_FORMAT_VERSION,
+  AGORIX_PROJECT_MAX_BYTES,
+  AGORIX_PROJECT_MEDIA_TYPE,
+  FORBIDDEN_PORTABLE_PROJECT_KEYS,
+  parseAgorixProject,
+  sanitizeAgorixFilename,
+  serializeAgorixProject,
+  validateAgorixProjectEnvelope,
+  validatePortableStoredProject,
+  type AgorixProjectEnvelopeV1,
+  type AgorixProjectSource,
+  type ParseAgorixProjectOptions,
+  type SerializeAgorixProjectOptions,
+} from "./portable.js";

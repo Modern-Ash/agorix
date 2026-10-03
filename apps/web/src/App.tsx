@@ -5,12 +5,24 @@ import {
   useState,
   type CSSProperties,
   type DragEvent as ReactDragEvent,
-  type FormEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from "react";
-import type { ProjectMetadata } from "@agorix/persistence";
+import {
+  parseAgorixProject,
+  sanitizeAgorixFilename,
+  serializeAgorixProject,
+  type ProjectMetadata,
+} from "@agorix/persistence";
 import type { ProjectProgram } from "@agorix/program-model";
-import type { BlockNode } from "@agorix/block-editor";
+import {
+  createEditorHistory,
+  recordCanonicalTransaction,
+  redoCanonicalTransaction,
+  undoCanonicalTransaction,
+  type BlockNode,
+  type EditorHistory,
+} from "@agorix/block-editor";
 import {
   WORLDS,
   createMissionRunFeedback,
@@ -960,11 +972,12 @@ function blockShapeFor(type: BlockNode["type"]): string {
   return type === "control_if" ? "predicate" : "command";
 }
 
-function ProgramBlockCard({
+export function ProgramBlockCard({
   block,
   index,
   total,
   selected,
+  canonicalNodeId,
   locale,
   onSelect,
   onCommitValue,
@@ -977,6 +990,7 @@ function ProgramBlockCard({
   index: number;
   total: number;
   selected: boolean;
+  canonicalNodeId: string;
   locale: Locale;
   onSelect: () => void;
   onCommitValue: (value: number) => void;
@@ -997,18 +1011,25 @@ function ProgramBlockCard({
     }
   }, [currentValue]);
 
-  function submitValue(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function commitDraftValue() {
+    if (field === undefined) return;
     const parsed = Number(draftValue);
     if (!Number.isFinite(parsed)) {
       setDraftValue(currentValue === undefined ? "" : String(currentValue));
       return;
     }
+    if (parsed === currentValue) return;
     onCommitValue(parsed);
   }
 
-  function cancelValue() {
-    setDraftValue(currentValue === undefined ? "" : String(currentValue));
+  function handleValueKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Enter") {
+      event.currentTarget.blur();
+    }
+    if (event.key === "Escape") {
+      setDraftValue(currentValue === undefined ? "" : String(currentValue));
+      event.currentTarget.blur();
+    }
   }
 
   const displayName = displayNameFor(block, locale);
@@ -1017,60 +1038,46 @@ function ProgramBlockCard({
 
   return (
     <article
-      className={`block-card block-${blockTone} block-shape-${blockShape}${
+      className={`block-node block-${blockTone} block-shape-${blockShape}${
         selected ? " active" : ""
       }`}
       aria-label={t(locale, "blockLabel", { name: displayName })}
       data-interaction-model="touch-first drag-drop keyboard-reorder"
       data-block-type={block.type}
+      data-block-state={selected ? "selected" : "idle"}
+      data-block-shape={blockShape}
+      data-canonical-node-id={canonicalNodeId}
       draggable
       onDragStart={onDragStart}
       onDragOver={(event) => event.preventDefault()}
       onDrop={onDropBefore}
     >
-      <div className="scratch-block-main">
-        <button type="button" className="block-title" onClick={onSelect}>
+      <div className="block-geometry">
+        <button type="button" className="block-face" onClick={onSelect}>
           <span className="block-grip" aria-hidden="true" />
-          <span>{displayName}</span>
+          <span className="block-label">{displayName}</span>
         </button>
         {field === undefined ? (
           <span className="block-slot block-slot-predicate">{t(locale, "touchingGoal")}</span>
         ) : (
-          <form className="value-editor" onSubmit={submitValue}>
-            <label>
-              <span>{fieldLabelFor(field, locale)}</span>
-              <input
-                type="number"
-                inputMode="numeric"
-                value={draftValue}
-                aria-label={`${displayName} ${fieldLabelFor(field, locale)}`}
-                onChange={(event) => setDraftValue(event.currentTarget.value)}
-              />
-            </label>
-            <div className="value-actions">
-              <button
-                type="submit"
-                aria-label={t(locale, "applyValue")}
-                title={t(locale, "applyValue")}
-              >
-                ✓
-              </button>
-              <button
-                type="button"
-                aria-label={t(locale, "cancelEdit")}
-                title={t(locale, "cancelEdit")}
-                onClick={cancelValue}
-              >
-                ↺
-              </button>
-            </div>
-          </form>
+          <label className="block-inline-value">
+            <input
+              type="number"
+              inputMode="numeric"
+              value={draftValue}
+              aria-label={`${displayName} ${fieldLabelFor(field, locale)}`}
+              onBlur={commitDraftValue}
+              onChange={(event) => setDraftValue(event.currentTarget.value)}
+              onKeyDown={handleValueKeyDown}
+            />
+            <span>{fieldLabelFor(field, locale)}</span>
+          </label>
         )}
       </div>
       {block.type === "control_if" ? (
         <p className="block-note">{t(locale, "blockNoteIf")}</p>
       ) : null}
-      <div className="block-actions" aria-label={t(locale, "cardActions")}>
+      <div className="block-inline-controls" aria-label={t(locale, "cardActions")}>
         {index === 0 ? null : (
           <button
             type="button"
@@ -1341,12 +1348,16 @@ function conceptLabel(locale: Locale, concept: string): string {
 
 export function App() {
   const persistenceRef = useRef<ProjectPersistence | undefined>(createBrowserProjectPersistence());
+  const importInputRef = useRef<HTMLInputElement | null>(null);
   const initialProjectRef = useRef<ReturnType<typeof initialProjectFor>>();
   if (initialProjectRef.current === undefined) {
     initialProjectRef.current = initialProjectFor(persistenceRef.current);
   }
 
   const [model, setModel] = useState<EditorModel>(() => initialProjectRef.current!.model);
+  const [history, setHistory] = useState<EditorHistory>(() =>
+    createEditorHistory(initialProjectRef.current!.model.program),
+  );
   const [createdAt, setCreatedAt] = useState(
     () => initialProjectRef.current!.metadata?.createdAt ?? new Date().toISOString(),
   );
@@ -1488,11 +1499,39 @@ export function App() {
     setPersistenceMessage(saveEditorProject(persistenceRef.current, model.program, metadata));
   }, [createdAt, locale, model.program]);
 
-  function applyProjection(projection: EditorProjection) {
+  useEffect(() => {
+    function handleHistoryShortcut(event: KeyboardEvent) {
+      const target = event.target;
+      const tagName = target instanceof HTMLElement ? target.tagName : "";
+      const nativeEditable =
+        target instanceof HTMLElement &&
+        (target.isContentEditable || tagName === "INPUT" || tagName === "TEXTAREA");
+      if (nativeEditable || (!event.metaKey && !event.ctrlKey) || event.altKey) {
+        return;
+      }
+      const key = event.key.toLowerCase();
+      if (key !== "z" && key !== "y") {
+        return;
+      }
+      event.preventDefault();
+      if (key === "z" && event.shiftKey) {
+        redoEditor();
+        return;
+      }
+      if (key === "z") {
+        undoEditor();
+        return;
+      }
+      redoEditor();
+    }
+    window.addEventListener("keydown", handleHistoryShortcut);
+    return () => window.removeEventListener("keydown", handleHistoryShortcut);
+  });
+
+  function resetEphemeralEditorState() {
     clearRunTimer();
     initialProjectRef.current = { ...initialProjectRef.current!, message: undefined };
     setPersistenceMessage(undefined);
-    setModel((current) => mergeProjection(current, projection));
     setHighlightedNodeId(undefined);
     setFrames([]);
     setExecutionSteps([]);
@@ -1507,9 +1546,113 @@ export function App() {
     setStatus("idle");
   }
 
+  function applyProjection(projection: EditorProjection) {
+    resetEphemeralEditorState();
+    setModel((current) => mergeProjection(current, projection));
+  }
+
+  function commitProjection(label: string, projection: EditorProjection): boolean {
+    const result = recordCanonicalTransaction(history, { label, after: projection.program });
+    if (!result.applied) {
+      return false;
+    }
+    setHistory(result.history);
+    applyProjection(projection);
+    return true;
+  }
+
+  function restoreHistory(nextHistory: EditorHistory, program: ProjectProgram) {
+    resetEphemeralEditorState();
+    setHistory(nextHistory);
+    const restored = createEditorModelFromProgram(program);
+    setModel((current) => ({ ...current, ...restored }));
+  }
+
+  function replaceCurrentProject(program: ProjectProgram, metadata: ProjectMetadata) {
+    resetEphemeralEditorState();
+    const restored = createEditorModelFromProgram(program);
+    setHistory(createEditorHistory(restored.program));
+    setModel((current) => ({ ...current, ...restored, stage: resetStageSession(current.stage) }));
+    setCreatedAt(metadata.createdAt);
+    if (metadata.locale === "en" || metadata.locale === "es") {
+      setLocale(metadata.locale);
+    }
+    setFrames([]);
+    setExecutionSteps([]);
+    setLearnerTrace([]);
+    setFrameIndex(0);
+    setHighlightedNodeId(undefined);
+    setHintHistory([]);
+    setTutorResponse(undefined);
+    setLastRunResult(undefined);
+    setReflectionPrompt(undefined);
+    setAttempts(0);
+    setStatus("idle");
+    setProposalReview(undefined);
+    setProposalMessage(undefined);
+    setAiLiteracyActivity(false);
+    setAiPredictionRecorded(false);
+  }
+
+  function undoEditor() {
+    const restored = undoCanonicalTransaction(history);
+    if (restored.history === history) {
+      return;
+    }
+    restoreHistory(restored.history, restored.program);
+    setMessage(t(locale, "programUpdatedMessage"));
+  }
+
+  function redoEditor() {
+    const restored = redoCanonicalTransaction(history);
+    if (restored.history === history) {
+      return;
+    }
+    restoreHistory(restored.history, restored.program);
+    setMessage(t(locale, "programUpdatedMessage"));
+  }
+
+  function exportProject() {
+    const metadata = createProjectMetadata(createdAt, countProgramBlocks(model), locale);
+    const json = serializeAgorixProject({
+      schemaVersion: model.program.schema,
+      program: model.program,
+      metadata,
+    });
+    const blob = new Blob([json], { type: "application/vnd.agorix.project+json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url; // agora-allowlist: local Blob download generated from validated .agorix serializer, not outbound navigation
+    anchor.download = sanitizeAgorixFilename("agorix-first-mission");
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+    setMessage(t(locale, "projectExported"));
+  }
+
+  async function importProjectFile(file: File) {
+    try {
+      if (statements.length > 0 && !window.confirm(t(locale, "importReplaceConfirm"))) {
+        return;
+      }
+      const envelope = parseAgorixProject(await file.text());
+      replaceCurrentProject(envelope.project.program, envelope.project.metadata);
+      setMessage(t(locale, "projectImported"));
+    } catch {
+      setStatus("error");
+      setMessage(t(locale, "projectImportFailed"));
+    } finally {
+      if (importInputRef.current !== null) {
+        importInputRef.current.value = "";
+      }
+    }
+  }
+
   function addBlock(type: AddableBlockType) {
-    applyProjection(addBlockToWorkspace(model.workspace, type));
-    setMessage(t(locale, "blockAddedMessage"));
+    if (commitProjection("add block", addBlockToWorkspace(model.workspace, type))) {
+      setMessage(t(locale, "blockAddedMessage"));
+    }
   }
 
   function editBlock(index: number, block: BlockNode, value: number) {
@@ -1517,8 +1660,14 @@ export function App() {
     if (field === undefined) {
       return;
     }
-    applyProjection(editNumericBlockField(model.workspace, index, field, value));
-    setMessage(t(locale, "programUpdatedMessage"));
+    if (
+      commitProjection(
+        "edit numeric block field",
+        editNumericBlockField(model.workspace, index, field, value),
+      )
+    ) {
+      setMessage(t(locale, "programUpdatedMessage"));
+    }
   }
 
   function moveBlock(index: number, direction: -1 | 1) {
@@ -1526,13 +1675,15 @@ export function App() {
     if (nextIndex < 0 || nextIndex >= statements.length) {
       return;
     }
-    applyProjection(moveBlockInWorkspace(model.workspace, index, nextIndex));
-    setMessage(t(locale, "programUpdatedMessage"));
+    if (commitProjection("move block", moveBlockInWorkspace(model.workspace, index, nextIndex))) {
+      setMessage(t(locale, "programUpdatedMessage"));
+    }
   }
 
   function deleteBlock(index: number) {
-    applyProjection(deleteBlockFromWorkspace(model.workspace, index));
-    setMessage(t(locale, "programUpdatedMessage"));
+    if (commitProjection("delete block", deleteBlockFromWorkspace(model.workspace, index))) {
+      setMessage(t(locale, "programUpdatedMessage"));
+    }
   }
 
   function clearRunTimer() {
@@ -1554,6 +1705,11 @@ export function App() {
     initialProjectRef.current = { ...initialProjectRef.current!, message: undefined };
     setPersistenceMessage(undefined);
     setCreatedAt(new Date().toISOString());
+    const result = recordCanonicalTransaction(history, {
+      label: "reset workspace",
+      after: projection.program,
+    });
+    setHistory(result.applied ? result.history : createEditorHistory(projection.program));
     setModel((current) => ({
       ...mergeProjection(current, projection),
       stage: resetStageSession(current.stage),
@@ -1757,7 +1913,7 @@ export function App() {
     }
     const accepted = acceptProposal(model.program, proposalReview);
     const nextModel = createEditorModelFromProgram(accepted.program);
-    applyProjection(nextModel);
+    commitProjection("accept program proposal", nextModel);
     setProposalReview(undefined);
     setProposalMessage(t(locale, "proposalAccepted"));
     setMessage(t(locale, "codeBehindBlocks"));
@@ -1837,7 +1993,7 @@ export function App() {
       return;
     }
     const clamped = Math.max(0, Math.min(toIndex, statements.length - 1));
-    applyProjection(moveBlockInWorkspace(model.workspace, fromIndex, clamped));
+    commitProjection("move block", moveBlockInWorkspace(model.workspace, fromIndex, clamped));
   }
 
   function togglePanel(panel: PanelId) {
@@ -1922,8 +2078,9 @@ export function App() {
     event.preventDefault();
     const type = event.dataTransfer.getData(BLOCK_DRAG_TYPE);
     if (isAddable(type)) {
-      applyProjection(addBlockToWorkspace(model.workspace, type));
-      setMessage(t(locale, "blockAddedMessage"));
+      if (commitProjection("add block", addBlockToWorkspace(model.workspace, type))) {
+        setMessage(t(locale, "blockAddedMessage"));
+      }
       return;
     }
     const source = Number(event.dataTransfer.getData(WORKSPACE_DRAG_TYPE));
@@ -1980,6 +2137,43 @@ export function App() {
           <button type="button" onClick={runBlocks} disabled={status === "running"}>
             {t(locale, "run")}
           </button>
+          <button
+            type="button"
+            onClick={undoEditor}
+            disabled={!history.canUndo}
+            aria-label="Undo program edit"
+            title="Undo"
+          >
+            Undo
+          </button>
+          <button
+            type="button"
+            onClick={redoEditor}
+            disabled={!history.canRedo}
+            aria-label="Redo program edit"
+            title="Redo"
+          >
+            Redo
+          </button>
+          <button type="button" onClick={exportProject}>
+            {t(locale, "exportProject")}
+          </button>
+          <button type="button" onClick={() => importInputRef.current?.click()}>
+            {t(locale, "importProject")}
+          </button>
+          <input
+            ref={importInputRef}
+            className="file-action-input"
+            type="file"
+            accept=".agorix,application/vnd.agorix.project+json,application/json"
+            aria-label={t(locale, "importProjectFile")}
+            onChange={(event) => {
+              const file = event.currentTarget.files?.[0];
+              if (file !== undefined) {
+                void importProjectFile(file);
+              }
+            }}
+          />
           <button type="button" onClick={stepBlocks} disabled={status === "running"}>
             {t(locale, "step")}
           </button>
@@ -2293,6 +2487,7 @@ export function App() {
                     index={index}
                     total={statements.length}
                     selected={highlightedNodeId === nodeId}
+                    canonicalNodeId={nodeId}
                     locale={locale}
                     onSelect={() => setHighlightedNodeId(nodeId)}
                     onCommitValue={(value) => editBlock(index, block, value)}

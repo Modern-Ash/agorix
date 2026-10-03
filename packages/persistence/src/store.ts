@@ -6,6 +6,10 @@ export const PACKAGE_NAME = "@agorix/persistence";
 export type PersistenceErrorCode =
   | "STORAGE_UNAVAILABLE"
   | "CORRUPTED_DATA"
+  | "FILE_TOO_LARGE"
+  | "FORMAT_MISMATCH"
+  | "UNSUPPORTED_FORMAT"
+  | "FORBIDDEN_FIELD"
   | "SCHEMA_MISMATCH"
   | "UNKNOWN_VERSION"
   | "MIGRATION_FAILED"
