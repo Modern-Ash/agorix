@@ -3524,3 +3524,80 @@ button:hover:not(:disabled) {
   justify-self: start;
   min-height: 44px;
 }
+
+.world-narrative {
+  font-style: italic;
+}
+
+.world-picker {
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.world-picker select {
+  min-height: 44px;
+}
+
+.world-glyph {
+  pointer-events: none;
+}
+
+.stage-panel[data-world="ocean"] .stage-canvas rect {
+  fill: #b6e3f4;
+}
+.stage-panel[data-world="ocean"] .stage-canvas line {
+  stroke: #2b7a9b;
+}
+.stage-panel[data-world="ocean"] .stage-canvas .goal {
+  fill: #ff9e80;
+}
+.stage-panel[data-world="ocean"] .stage-canvas .sprite {
+  fill: #1d6fa5;
+}
+
+.stage-panel[data-world="robots"] .stage-canvas rect {
+  fill: #e4e7eb;
+}
+.stage-panel[data-world="robots"] .stage-canvas line {
+  stroke: #6b7280;
+}
+.stage-panel[data-world="robots"] .stage-canvas .goal {
+  fill: #fcd34d;
+}
+.stage-panel[data-world="robots"] .stage-canvas .sprite {
+  fill: #64748b;
+}
+
+.stage-panel[data-world="city"] .stage-canvas rect {
+  fill: #fde8c8;
+}
+.stage-panel[data-world="city"] .stage-canvas line {
+  stroke: #92400e;
+}
+.stage-panel[data-world="city"] .stage-canvas .goal {
+  fill: #86efac;
+}
+.stage-panel[data-world="city"] .stage-canvas .sprite {
+  fill: #f97316;
+}
+
+.stage-panel[data-world="space"] .stage-canvas rect {
+  fill: #1e1b4b;
+}
+.stage-panel[data-world="space"] .stage-canvas line {
+  stroke: #a5b4fc;
+}
+.stage-panel[data-world="space"] .stage-canvas .goal {
+  fill: #fde68a;
+}
+.stage-panel[data-world="space"] .stage-canvas .sprite {
+  fill: #818cf8;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage-canvas .goal,
+  .stage-canvas .sprite {
+    animation: none;
+  }
+}

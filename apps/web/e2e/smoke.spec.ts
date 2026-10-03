@@ -871,3 +871,39 @@ test("debugging journey: wrong program, runtime evidence, hint, correction, succ
     timeout: 5000,
   });
 });
+
+test("worlds reframe the mission without changing the program or runtime result", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+  await applyMoveSteps(page, "160");
+  const hash = await canonicalHash(page);
+
+  await expect(page.getByTestId("world-narrative")).toContainText("explorer");
+  for (const [id, text] of [
+    ["ocean.reef", "submarine"],
+    ["robots.workshop", "robot"],
+    ["city.crossing", "scooter"],
+    ["space.trailhead", "explorer"],
+  ] as const) {
+    await page.getByLabel("World").selectOption(id);
+    await expect(page.getByTestId("world-narrative")).toContainText(text);
+    await expect(page.locator(".stage-panel")).toHaveAttribute("data-world", id);
+    expect(await canonicalHash(page)).toBe(hash);
+  }
+
+  await page.getByLabel("World").selectOption("ocean.reef");
+  await page.getByRole("button", { name: "Run", exact: true }).click();
+  await expect(page.getByText("Mission complete: your sprite reached the goal.")).toBeVisible({
+    timeout: 5000,
+  });
+  expect(await canonicalHash(page)).toBe(hash);
+});
+
+test("worlds are localized in Spanish", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("Product language").selectOption("es");
+  await page.getByLabel("Mundo").selectOption("ocean.reef");
+  await expect(page.getByTestId("world-narrative")).toContainText("submarino");
+});

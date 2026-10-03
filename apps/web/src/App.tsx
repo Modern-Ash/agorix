@@ -11,7 +11,16 @@ import {
 import type { ProjectMetadata } from "@agorix/persistence";
 import type { ProjectProgram } from "@agorix/program-model";
 import { POC_TOOLBOX, type BlockNode } from "@agorix/block-editor";
-import { createMissionRunFeedback, getLocalizedFirstMission } from "@agorix/curriculum";
+import {
+  DEFAULT_WORLD_ID,
+  WORLDS,
+  createMissionRunFeedback,
+  getLocalizedFirstMission,
+  getWorld,
+  worldCopy,
+  type WorldDefinition,
+  type WorldPalette,
+} from "@agorix/curriculum";
 import {
   acceptIntentPlan,
   createDeterministicIntentPlan,
@@ -771,13 +780,23 @@ function CodePanel({
   );
 }
 
+// Presentation only: glyphs per world palette. Colors live in App.css under [data-world].
+const WORLD_GLYPHS: Record<WorldPalette, { sprite: string; goal: string }> = {
+  space: { sprite: "🚀", goal: "🌎" },
+  ocean: { sprite: "🐙", goal: "🪸" },
+  robots: { sprite: "🤖", goal: "🔋" },
+  city: { sprite: "🛴", goal: "📦" },
+};
+
 function StageView({
   frame,
   fallback,
   locale,
+  world,
   panelControls,
   panelProps,
 }: {
+  world: WorldDefinition;
   frame: ObservationFrame | undefined;
   fallback: StageState;
   locale: Locale;
@@ -788,11 +807,14 @@ function StageView({
   const sprite = state.sprite;
   const goal = state.goal;
   const viewport = state.viewport;
+  const copy = worldCopy(world, locale);
+  const glyphs = WORLD_GLYPHS[world.visualStyle.palette];
   return (
     <section
       className={panelProps?.className ?? "stage-panel"}
       style={panelProps?.style}
       aria-labelledby="stage-title"
+      data-world={world.id}
     >
       <div className="panel-heading">
         <h2 id="stage-title">{t(locale, "stage")}</h2>
@@ -809,11 +831,37 @@ function StageView({
       >
         <rect width={viewport.width} height={viewport.height} rx="14" />
         <line x1="24" y1="128" x2="240" y2="128" />
-        <circle className="goal" cx={goal.x} cy={goal.y} r={goal.radius} />
+        <circle className="goal" cx={goal.x} cy={goal.y} r={goal.radius}>
+          <title>{copy.goalAlt}</title>
+        </circle>
+        <text
+          className="world-glyph"
+          x={goal.x}
+          y={goal.y}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fontSize={goal.radius * 1.6}
+          aria-hidden="true"
+        >
+          {glyphs.goal}
+        </text>
         <g transform={`translate(${sprite.x} ${sprite.y}) rotate(${sprite.heading})`}>
-          <circle className="sprite" r={sprite.radius} />
+          <circle className="sprite" r={sprite.radius}>
+            <title>{copy.spriteAlt}</title>
+          </circle>
           <path d="M 4 0 L 16 -6 L 16 6 Z" />
         </g>
+        <text
+          className="world-glyph"
+          x={sprite.x}
+          y={sprite.y}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fontSize={sprite.radius * 1.5}
+          aria-hidden="true"
+        >
+          {glyphs.sprite}
+        </text>
       </svg>
     </section>
   );
@@ -1333,6 +1381,7 @@ export function App() {
   const [proposalReview, setProposalReview] = useState<ProposalReview | undefined>();
   const [proposalMessage, setProposalMessage] = useState<string | undefined>();
   const [dismissedRepeatHash, setDismissedRepeatHash] = useState<string | undefined>();
+  const [worldId, setWorldId] = useState<string>(DEFAULT_WORLD_ID);
   const [stepping, setStepping] = useState(false);
   const [repeatDeclines, setRepeatDeclines] = useState(0);
   const [learningDecision, setLearningDecision] = useState<
@@ -1357,6 +1406,8 @@ export function App() {
   const canonicalHash = programSemanticHash(model.program);
   const proposalCard =
     proposalReview === undefined ? undefined : createWebProposalCardView(proposalReview);
+  const world = getWorld(worldId);
+  const worldText = worldCopy(world, locale);
   const repeatProposal = useMemo(
     () =>
       createRepeatPatternProposal({
@@ -1945,6 +1996,19 @@ export function App() {
         <div>
           <h2>{t(locale, "missionPrefix", { title: mission.goal.title })}</h2>
           <p>{mission.goal.learnerFacing}</p>
+          <p className="world-narrative" data-testid="world-narrative">
+            {worldText.narrative}
+          </p>
+          <label className="world-picker">
+            <span>{t(locale, "worldLabel")}</span>
+            <select value={worldId} onChange={(event) => setWorldId(event.currentTarget.value)}>
+              {WORLDS.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {worldCopy(option, locale).title}
+                </option>
+              ))}
+            </select>
+          </label>
           <div
             className="mission-progress"
             aria-label={t(locale, "missionProgress", { step: missionStep })}
@@ -2064,6 +2128,7 @@ export function App() {
       <div className="learning-layout">
         {closedPanels.includes("stage") ? null : (
           <StageView
+            world={world}
             frame={activeFrame}
             fallback={model.stage.current}
             locale={locale}
