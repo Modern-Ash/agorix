@@ -17,7 +17,12 @@ import {
   stateFromLearningCompanionRequest,
   type LearningRequirements,
 } from "@agorix/learning-decision-plane";
-import type { StoredProject } from "@agorix/persistence";
+import {
+  parseAgorixProject,
+  semanticProjectHash,
+  serializeAgorixProject,
+  type StoredProject,
+} from "@agorix/persistence";
 import { pythonProjection } from "@agorix/python-projection";
 import {
   acceptProposal as acceptSharedProposal,
@@ -64,6 +69,7 @@ export interface StudioProject {
 }
 
 export type StudioProjectionId = "typescript" | "agorix-code" | "python";
+export type StudioProjectPersistenceKind = "stored-json" | "portable-agorix";
 
 export interface StudioProjectionDocument {
   readonly id: StudioProjectionId;
@@ -77,7 +83,7 @@ export interface StudioProjectionDocument {
 }
 
 export interface StudioNavigationSection {
-  readonly id: "projects" | "missions" | "progress" | "worlds" | "companion";
+  readonly id: "projects" | "missions" | "progress" | "worlds" | "companion" | "developer";
   readonly label: string;
   readonly items: readonly StudioNavigationItem[];
 }
@@ -169,6 +175,69 @@ export interface StudioProposalDecision {
   readonly audit: ProposalAuditEvent;
 }
 
+export interface StudioProjectSnapshot {
+  readonly schema: "agorix/studio-project-snapshot/v1";
+  readonly semanticHash: string;
+  readonly statementCount: number;
+  readonly missionProgress: number;
+  readonly locale: string;
+  readonly revision?: string;
+}
+
+export interface StudioValidationReport {
+  readonly schema: "agorix/studio-validation-report/v1";
+  readonly semanticHash: string;
+  readonly outcome: RunResult["outcome"];
+  readonly stepsUsed: number;
+  readonly statementCount: number;
+  readonly diagnostics: readonly string[];
+}
+
+export interface StudioDeveloperContext {
+  readonly schema: "agorix/studio-developer-context/v1";
+  readonly project: StudioProjectSnapshot;
+  readonly validationCommand: "agorixStudio.validateProject";
+  readonly checkCommand: "agorixStudio.runChecks";
+  readonly scmCommand: "vscode.scm";
+  readonly evidenceCommand: "agorixStudio.showEvidence";
+  readonly authority: "canonical-project";
+}
+
+export interface StudioRemoteProjectReference {
+  readonly id: string;
+  readonly title: string;
+  readonly revision: string;
+  readonly updatedAt?: string;
+}
+
+export interface StudioRemoteProjectPayload {
+  readonly id: string;
+  readonly title: string;
+  readonly revision: string;
+  readonly project: StoredProject;
+}
+
+export interface StudioRemoteSaveRequest {
+  readonly id: string;
+  readonly expectedRevision: string;
+  readonly project: StoredProject;
+}
+
+export interface StudioRemoteSaveSuccess {
+  readonly status: "saved";
+  readonly revision: string;
+  readonly project: StoredProject;
+}
+
+export interface StudioRemoteConflict {
+  readonly status: "conflict";
+  readonly expectedRevision: string;
+  readonly actualRevision: string;
+  readonly latest?: StoredProject;
+}
+
+export type StudioRemoteSaveResult = StudioRemoteSaveSuccess | StudioRemoteConflict;
+
 export type { ProgramProposal, ProposalReview } from "@agorix/proposals";
 
 const PROJECTIONS: Record<
@@ -213,6 +282,24 @@ export function openStoredProject(stored: StoredProject): StudioProject {
 
 export function parseStoredProject(raw: string): StudioProject {
   return openStoredProject(JSON.parse(raw) as StoredProject);
+}
+
+export function parseProjectFile(raw: string | Uint8Array, filename = ""): StudioProject {
+  if (filename.toLowerCase().endsWith(".agorix")) {
+    return openStoredProject(parseAgorixProject(raw).project);
+  }
+  return parseStoredProject(typeof raw === "string" ? raw : new TextDecoder().decode(raw));
+}
+
+export function serializeProjectFile(
+  stored: StoredProject,
+  filename = "",
+  options: { readonly exportedAt?: string } = {},
+): string {
+  if (filename.toLowerCase().endsWith(".agorix")) {
+    return serializeAgorixProject(stored, options);
+  }
+  return serializeStoredProject(stored);
 }
 
 export function rangeForNode(project: StudioProject, nodeId: string): TextRange {
@@ -276,6 +363,17 @@ export function createNavigationSections(
       { id: "progress", label: "Progress", items: [] },
       { id: "worlds", label: "Worlds", items: [] },
       { id: "companion", label: "Learning Companion", items: [] },
+      {
+        id: "developer",
+        label: "Developer",
+        items: [
+          {
+            id: "open-scm",
+            label: "Open VS Code Source Control",
+            command: "agorixStudio.openScm",
+          },
+        ],
+      },
     ];
   }
   const mission = getLocalizedFirstMission(project.stored.metadata.locale);
@@ -366,6 +464,40 @@ export function createNavigationSections(
           description: "Evidence-grounded prompt",
           command: "agorixStudio.companionReflect",
           contextValue: "agorixCompanion",
+        },
+      ],
+    },
+    {
+      id: "developer",
+      label: "Developer",
+      items: [
+        {
+          id: "validate-project",
+          label: "Validate current Agorix project",
+          description: "Shared runtime and mission checks",
+          command: "agorixStudio.validateProject",
+          contextValue: "agorixDeveloperTask",
+        },
+        {
+          id: "run-checks",
+          label: "Run Agorix workspace checks",
+          description: "Native VS Code task entry point",
+          command: "agorixStudio.runChecks",
+          contextValue: "agorixDeveloperTask",
+        },
+        {
+          id: "open-scm",
+          label: "Open VS Code Source Control",
+          description: "Uses VS Code SCM and Git extensions",
+          command: "agorixStudio.openScm",
+          contextValue: "agorixDeveloperTask",
+        },
+        {
+          id: "developer-context",
+          label: "Show task context",
+          description: currentProgramHash(project.stored.program),
+          command: "agorixStudio.showDeveloperContext",
+          contextValue: "agorixDeveloperTask",
         },
       ],
     },
@@ -591,6 +723,56 @@ export function createStoredProjectWithProgram(
         0,
       ),
     },
+  };
+}
+
+export function createProjectSnapshot(
+  stored: StoredProject,
+  options: { readonly revision?: string } = {},
+): StudioProjectSnapshot {
+  const program = validateProgram(stored.program);
+  return {
+    schema: "agorix/studio-project-snapshot/v1",
+    semanticHash: semanticProjectHash(stored),
+    statementCount: program.scripts.reduce((count, script) => count + script.statements.length, 0),
+    missionProgress: stored.metadata.missionProgress,
+    locale: stored.metadata.locale ?? "en",
+    ...(options.revision === undefined ? {} : { revision: options.revision }),
+  };
+}
+
+export function createValidationReport(stored: StoredProject): StudioValidationReport {
+  const project = openStoredProject(stored);
+  const projectionDiagnostics = listStudioProjections().flatMap(
+    (descriptor) =>
+      openProjectionDocument(project, descriptor.id as StudioProjectionId).diagnostics,
+  );
+  const evidence = createExecutionEvidence(stored);
+  return {
+    schema: "agorix/studio-validation-report/v1",
+    semanticHash: semanticProjectHash(stored),
+    outcome: evidence.result.outcome,
+    stepsUsed: evidence.result.stepsUsed,
+    statementCount: project.stored.program.scripts.reduce(
+      (count, script) => count + script.statements.length,
+      0,
+    ),
+    diagnostics: projectionDiagnostics,
+  };
+}
+
+export function createDeveloperContext(
+  stored: StoredProject,
+  options: { readonly revision?: string } = {},
+): StudioDeveloperContext {
+  return {
+    schema: "agorix/studio-developer-context/v1",
+    project: createProjectSnapshot(stored, options),
+    validationCommand: "agorixStudio.validateProject",
+    checkCommand: "agorixStudio.runChecks",
+    scmCommand: "vscode.scm",
+    evidenceCommand: "agorixStudio.showEvidence",
+    authority: "canonical-project",
   };
 }
 
