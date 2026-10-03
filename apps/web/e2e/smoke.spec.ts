@@ -1,11 +1,23 @@
 import { expect, test, type Page } from "@playwright/test";
 
+test.beforeEach(async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(async () => {
+    localStorage.clear();
+    for (const registration of await navigator.serviceWorker.getRegistrations()) {
+      await registration.unregister();
+    }
+    for (const key of await caches.keys()) {
+      await caches.delete(key);
+    }
+  });
+  await page.reload();
+});
+
 async function applyMoveSteps(page: Page, value: string) {
-  await page.getByLabel("Move block").getByRole("spinbutton").fill(value);
-  await page
-    .getByRole("button", { name: /^(Apply value|Aplicar valor)$/ })
-    .first()
-    .click();
+  const input = page.getByLabel(/^(Move|Mover) block|^Bloque Mover$/).getByRole("spinbutton");
+  await input.fill(value);
+  await input.press("Enter");
 }
 
 async function canonicalHash(page: Page) {
@@ -135,6 +147,48 @@ test("block edits survive reload from canonical storage", async ({ page }) => {
   await expect(visibleCode(page, "sprite.move(24);")).toBeVisible();
 });
 
+test("Undo and Redo restore exact canonical block edits", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Move" }).click();
+  const afterAdd = await canonicalHash(page);
+  await applyMoveSteps(page, "24");
+  const afterEdit = await canonicalHash(page);
+
+  expect(afterEdit).not.toBe(afterAdd);
+  await page.getByRole("button", { name: "Undo program edit" }).click();
+  expect(await canonicalHash(page)).toBe(afterAdd);
+  await expect(visibleCode(page, "sprite.move(10);")).toBeVisible();
+
+  await page.getByRole("button", { name: "Redo program edit" }).click();
+  expect(await canonicalHash(page)).toBe(afterEdit);
+  await expect(visibleCode(page, "sprite.move(24);")).toBeVisible();
+});
+
+test("anonymous project exports and imports as a portable .agorix file", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Move" }).click();
+  await applyMoveSteps(page, "24");
+  const exportedHash = await canonicalHash(page);
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export" }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe("agorix-first-mission.agorix");
+  const downloadPath = await download.path();
+  expect(downloadPath).not.toBeNull();
+
+  await page.getByRole("button", { name: "Reset" }).click();
+  await expect(visibleCode(page, "sprite.move(24);")).toHaveCount(0);
+  await page.getByLabel("Import Agorix project file").setInputFiles(downloadPath!);
+
+  await expect(visibleCode(page, "sprite.move(24);")).toBeVisible();
+  expect(await canonicalHash(page)).toBe(exportedHash);
+  await expect(
+    page.getByText("Project imported. Blocks and code loaded from the file."),
+  ).toBeVisible();
+});
+
 test("locale switch localizes UI without changing canonical program", async ({ page }) => {
   await page.goto("/");
 
@@ -233,7 +287,7 @@ test("Step synchronizes block, code and stage without racing Run", async ({ page
   await page.getByRole("button", { name: "Step" }).click();
 
   await expect(page.getByTestId("step-readout")).toContainText("before-statement");
-  await expect(page.locator(".block-card.active")).toContainText("Move");
+  await expect(page.locator(".block-node.active")).toContainText("Move");
   await expect(page.locator(".code-surface mark")).toContainText("sprite.move(24);");
 
   await page.getByRole("button", { name: "Step" }).click();
@@ -258,7 +312,7 @@ test("orientation change preserves prepared Step state", async ({ page }) => {
 
   await expect(page.getByTestId("step-readout")).toContainText("scripts[0]/statements[0]");
   await expect(page.locator(".code-surface mark")).toContainText("sprite.move(24);");
-  await expect(page.locator(".block-card.active")).toContainText("Move");
+  await expect(page.locator(".block-node.active")).toContainText("Move");
 });
 
 test("Step trace explains before and after state without raw logs", async ({ page }) => {
@@ -545,15 +599,20 @@ test("AI coach exposes a provider connection entry point", async ({ page }) => {
   await expect(page.getByText("Connect a real AI provider")).toHaveCount(0);
 });
 
-test("virtual keyboard numeric edit keeps apply and cancel controls visible", async ({ page }) => {
+test("virtual keyboard numeric edit keeps inline value usable without form ceremony", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
 
   await page.getByRole("button", { name: "Move" }).click();
-  await page.getByLabel("Move block").getByRole("spinbutton").focus();
+  const input = page.getByLabel("Move block").getByRole("spinbutton");
+  await input.fill("42");
+  await input.press("Enter");
 
-  await expect(page.getByRole("button", { name: "Apply value" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Cancel edit" })).toBeVisible();
+  await expect(visibleCode(page, "sprite.move(42);")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Apply value" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Cancel edit" })).toHaveCount(0);
 });
 
 test("Spanish touch edit path keeps action palette and numeric commit usable", async ({ page }) => {
@@ -563,7 +622,7 @@ test("Spanish touch edit path keeps action palette and numeric commit usable", a
   await page.getByLabel("Product language").selectOption("es");
   await page.getByRole("button", { name: "Mover" }).click();
   await page.getByLabel("Bloque Mover").getByRole("spinbutton").fill("160");
-  await page.getByRole("button", { name: "Aplicar valor" }).click();
+  await page.getByLabel("Bloque Mover").getByRole("spinbutton").press("Enter");
 
   await expect(visibleCode(page, "sprite.move(160);")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Paleta de acciones" })).toBeVisible();
@@ -834,6 +893,27 @@ test.describe("contextual repeat suggestion", () => {
     await expect(page.locator(".code-surface")).toContainText("repeat");
     await page.getByRole("button", { name: "Run", exact: true }).click();
     await expect(page.locator(".run-state")).toBeVisible();
+  });
+
+  test("accepted repeat proposal is one Undo/Redo transaction", async ({ page }) => {
+    await buildRepetitiveProgram(page);
+    const before = await canonicalHash(page);
+    await page.getByRole("button", { name: "Try it" }).click();
+    await page
+      .getByTestId("repeat-suggestion")
+      .getByRole("button", { name: /Accept/ })
+      .click();
+    const accepted = await canonicalHash(page);
+    expect(accepted).not.toBe(before);
+    await expect(page.locator(".code-surface")).toContainText("repeat");
+
+    await page.getByRole("button", { name: "Undo program edit" }).click();
+    expect(await canonicalHash(page)).toBe(before);
+    await expect(page.locator(".code-surface")).not.toContainText("repeat");
+
+    await page.getByRole("button", { name: "Redo program edit" }).click();
+    expect(await canonicalHash(page)).toBe(accepted);
+    await expect(page.locator(".code-surface")).toContainText("repeat");
   });
 });
 

@@ -1,0 +1,32 @@
+{
+  "format": "agorix-project",
+  "formatVersion": "1",
+  "exportedAt": "2026-01-02T03:04:05.000Z",
+  "project": {
+    "schemaVersion": "agorix/program/v1",
+    "program": {
+      "schema": "agorix/program/v1",
+      "scripts": [
+        {
+          "id": "main",
+          "trigger": {
+            "type": "onStart"
+          },
+          "statements": [
+            {
+              "type": "move",
+              "steps": 3
+            }
+          ]
+        }
+      ]
+    },
+    "metadata": {
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-02T00:00:00.000Z",
+      "missionProgress": 0,
+      "hintLevel": 0,
+      "locale": "es-AR"
+    }
+  }
+}

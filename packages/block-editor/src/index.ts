@@ -26,6 +26,20 @@ export type {
 } from "./changes.js";
 export { applyWorkspaceChange, projectWorkspace } from "./changes.js";
 export type {
+  CanonicalTransaction,
+  EditorHistory,
+  EditorHistorySnapshot,
+  RestoreResult,
+  TransactionResult,
+} from "./history.js";
+export {
+  DEFAULT_HISTORY_LIMIT,
+  createEditorHistory,
+  recordCanonicalTransaction,
+  redoCanonicalTransaction,
+  undoCanonicalTransaction,
+} from "./history.js";
+export type {
   BlockPlacement,
   ToolboxBlockDefinition,
   ToolboxSection,

@@ -3,7 +3,7 @@ import { ProjectStore } from "@agorix/persistence";
 import type { ProjectProgram, Script } from "@agorix/program-model";
 import { SCHEMA_VERSION } from "@agorix/program-model";
 import { describe, expect, it } from "vitest";
-import { App } from "./App.js";
+import { App, ProgramBlockCard } from "./App.js";
 import { assertCatalogCompleteness, resolveLocale, t } from "./i18n.js";
 import {
   addBlockToWorkspace,
@@ -65,6 +65,32 @@ describe("main editor shell", () => {
 
     expect(html.indexOf("Action palette")).toBeGreaterThan(-1);
     expect(html.indexOf("This is the code behind your blocks.")).toBeGreaterThan(-1);
+  });
+
+  it("renders compact visual blocks with inline values and canonical node mapping", () => {
+    const html = renderToStaticMarkup(
+      <ProgramBlockCard
+        block={{ id: "move-1", type: "motion_move", fields: { steps: 12 } }}
+        index={0}
+        total={1}
+        selected={true}
+        canonicalNodeId="scripts[0]/statements[0]"
+        locale="en"
+        onSelect={() => undefined}
+        onCommitValue={() => undefined}
+        onMove={() => undefined}
+        onDelete={() => undefined}
+        onDragStart={() => undefined}
+        onDropBefore={() => undefined}
+      />,
+    );
+
+    expect(html).toContain('class="block-node block-motion block-shape-command active"');
+    expect(html).toContain('data-block-state="selected"');
+    expect(html).toContain('data-canonical-node-id="scripts[0]/statements[0]"');
+    expect(html).toContain('aria-label="Move steps"');
+    expect(html).toContain('value="12"');
+    expect(html).not.toContain("<form");
   });
 });
 
