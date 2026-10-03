@@ -35,6 +35,7 @@ export default tseslint.config(
       "**/dist/**",
       "**/node_modules/**",
       "**/.turbo/**",
+      "**/.vscode-test/**",
       ".venv/**",
       ".agora/**",
       "ai-sdlc/**",
@@ -55,6 +56,21 @@ export default tseslint.config(
         URL: "readonly",
       },
     },
+  },
+  {
+    // VS Code extension host harness: CommonJS scripts that run in Node / the extension host.
+    files: ["extensions/vscode/test/**/*.cjs", "extensions/vscode/scripts/**/*.mjs"],
+    languageOptions: {
+      globals: {
+        process: "readonly",
+        console: "readonly",
+        __dirname: "readonly",
+        require: "readonly",
+        module: "writable",
+        setTimeout: "readonly",
+      },
+    },
+    rules: { "@typescript-eslint/no-require-imports": "off" },
   },
   {
     // Service workers run in their own worker global scope, not Node or a page window.
