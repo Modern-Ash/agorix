@@ -108,12 +108,18 @@ importers:
 
   extensions/vscode:
     dependencies:
+      '@agorix/agorix-code':
+        specifier: workspace:*
+        version: link:../../packages/agorix-code
       '@agorix/code-generator':
         specifier: workspace:*
         version: link:../../packages/code-generator
       '@agorix/curriculum':
         specifier: workspace:*
         version: link:../../packages/curriculum
+      '@agorix/language-projection':
+        specifier: workspace:*
+        version: link:../../packages/language-projection
       '@agorix/persistence':
         specifier: workspace:*
         version: link:../../packages/persistence
@@ -123,6 +129,9 @@ importers:
       '@agorix/proposals':
         specifier: workspace:*
         version: link:../../packages/proposals
+      '@agorix/python-projection':
+        specifier: workspace:*
+        version: link:../../packages/python-projection
       '@agorix/runtime':
         specifier: workspace:*
         version: link:../../packages/runtime

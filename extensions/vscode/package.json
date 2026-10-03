@@ -32,12 +32,72 @@
   "engines": {
     "vscode": "^1.95.0"
   },
-  "activationEvents": [],
+  "activationEvents": [
+    "onCommand:agorixStudio.openProject",
+    "onCommand:agorixStudio.openProjection",
+    "onCommand:agorixStudio.switchProjection",
+    "onCommand:agorixStudio.revealCanonicalNode",
+    "onCommand:agorixStudio.showEvidence",
+    "onCommand:agorixStudio.suggestRepeat",
+    "onView:agorixStudio.projects",
+    "onView:agorixStudio.missions",
+    "onView:agorixStudio.progress",
+    "onView:agorixStudio.worlds",
+    "onView:agorixStudio.companion"
+  ],
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "agorixStudio",
+          "title": "Agorix Studio",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "agorixStudio": [
+        {
+          "id": "agorixStudio.projects",
+          "name": "Projects"
+        },
+        {
+          "id": "agorixStudio.missions",
+          "name": "Missions"
+        },
+        {
+          "id": "agorixStudio.progress",
+          "name": "Progress"
+        },
+        {
+          "id": "agorixStudio.worlds",
+          "name": "Worlds"
+        },
+        {
+          "id": "agorixStudio.companion",
+          "name": "Learning Companion"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "agorixStudio.openProject",
         "title": "Open Project",
+        "category": "Agorix Studio"
+      },
+      {
+        "command": "agorixStudio.openProjection",
+        "title": "Open Current Projection",
+        "category": "Agorix Studio"
+      },
+      {
+        "command": "agorixStudio.switchProjection",
+        "title": "Switch Projection",
+        "category": "Agorix Studio"
+      },
+      {
+        "command": "agorixStudio.revealCanonicalNode",
+        "title": "Reveal Canonical Node",
         "category": "Agorix Studio"
       },
       {
@@ -50,7 +110,38 @@
         "title": "Suggest repeat",
         "category": "Agorix Studio"
       }
-    ]
+    ],
+    "menus": {
+      "view/item/context": [
+        {
+          "command": "agorixStudio.openProject",
+          "when": "viewItem == agorixProject",
+          "group": "navigation"
+        },
+        {
+          "command": "agorixStudio.showEvidence",
+          "when": "viewItem == agorixProgress",
+          "group": "navigation"
+        },
+        {
+          "command": "agorixStudio.suggestRepeat",
+          "when": "viewItem == agorixCompanion",
+          "group": "navigation"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "agorixStudio.switchProjection",
+          "when": "resourceScheme == agorix-studio",
+          "group": "navigation"
+        },
+        {
+          "command": "agorixStudio.revealCanonicalNode",
+          "when": "resourceScheme == agorix-studio",
+          "group": "navigation"
+        }
+      ]
+    }
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
@@ -61,11 +152,14 @@
     "package": "pnpm build && vsce package --no-dependencies --out dist/agorix-studio.vsix"
   },
   "dependencies": {
+    "@agorix/agorix-code": "workspace:*",
     "@agorix/code-generator": "workspace:*",
     "@agorix/curriculum": "workspace:*",
+    "@agorix/language-projection": "workspace:*",
     "@agorix/persistence": "workspace:*",
     "@agorix/program-model": "workspace:*",
     "@agorix/proposals": "workspace:*",
+    "@agorix/python-projection": "workspace:*",
     "@agorix/runtime": "workspace:*",
     "@agorix/stage": "workspace:*"
   },

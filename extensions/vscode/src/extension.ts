@@ -1,13 +1,20 @@
 import * as vscode from "vscode";
 import {
   applyProposal,
+  createNavigationSections,
   createExecutionEvidence,
   createStoredProjectWithProgram,
   formatInspectorReport,
+  isStudioProjectionId,
+  listStudioProjections,
+  openProjectionDocument,
   parseStoredProject,
+  projectionRangeForNode,
   serializeStoredProject,
   suggestRepeat,
   type StudioProject,
+  type StudioProjectionDocument,
+  type StudioProjectionId,
 } from "./studioCore.js";
 
 interface OpenProject {
@@ -16,6 +23,78 @@ interface OpenProject {
 }
 
 let current: OpenProject | undefined;
+let currentProjectionId: StudioProjectionId = "typescript";
+
+const PROJECTION_SCHEME = "agorix-studio";
+
+class StudioTreeItem extends vscode.TreeItem {
+  constructor(
+    readonly sectionId: string,
+    readonly itemId: string,
+    label: string,
+    description: string | undefined,
+    command: string | undefined,
+    contextValue: string | undefined,
+  ) {
+    super(label, vscode.TreeItemCollapsibleState.None);
+    if (description !== undefined) {
+      this.description = description;
+    }
+    if (contextValue !== undefined) {
+      this.contextValue = contextValue;
+    }
+    if (command !== undefined) {
+      this.command = { command, title: label };
+    }
+  }
+}
+
+class StudioTreeProvider implements vscode.TreeDataProvider<StudioTreeItem> {
+  readonly #changed = new vscode.EventEmitter<StudioTreeItem | undefined | null | void>();
+  readonly onDidChangeTreeData = this.#changed.event;
+
+  constructor(readonly sectionId: ReturnType<typeof createNavigationSections>[number]["id"]) {}
+
+  refresh(): void {
+    this.#changed.fire();
+  }
+
+  getTreeItem(element: StudioTreeItem): vscode.TreeItem {
+    return element;
+  }
+
+  getChildren(): StudioTreeItem[] {
+    const section = createNavigationSections(current?.project).find(
+      (candidate) => candidate.id === this.sectionId,
+    );
+    return (section?.items ?? []).map(
+      (item) =>
+        new StudioTreeItem(
+          this.sectionId,
+          item.id,
+          item.label,
+          item.description,
+          item.command,
+          item.contextValue,
+        ),
+    );
+  }
+}
+
+class ProjectionDocumentProvider implements vscode.TextDocumentContentProvider {
+  readonly #changed = new vscode.EventEmitter<vscode.Uri>();
+  readonly onDidChange = this.#changed.event;
+
+  provideTextDocumentContent(uri: vscode.Uri): string {
+    const id = projectionIdFromUri(uri);
+    const project = requireProject();
+    return project === undefined ? "" : openProjectionDocument(project.project, id).text;
+  }
+
+  refresh(uri: vscode.Uri): void {
+    this.#changed.fire(uri);
+  }
+}
 
 /**
  * Opens a stored project. An explicit `uri` argument (command palette callers,
@@ -43,11 +122,8 @@ async function openProject(target?: unknown): Promise<void> {
     );
     return;
   }
-  const document = await vscode.workspace.openTextDocument({
-    content: current.project.projection.code,
-    language: "javascript",
-  });
-  await vscode.window.showTextDocument(document);
+  refreshStudioViews();
+  await openProjection(currentProjectionId);
 }
 
 function requireProject(): OpenProject | undefined {
@@ -62,11 +138,102 @@ function showEvidence(output: vscode.OutputChannel): string | undefined {
   if (open === undefined) {
     return undefined;
   }
-  const report = formatInspectorReport(createExecutionEvidence(open.project.stored));
+  const evidence = createExecutionEvidence(open.project.stored);
+  const report = formatInspectorReport(evidence);
   output.clear();
   output.appendLine(report);
   output.show(true);
+  const firstNode = evidence.stepSequence.find((step) => step.nodeId !== undefined)?.nodeId;
+  if (firstNode !== undefined) {
+    void revealCanonicalNode(firstNode);
+  }
   return report;
+}
+
+function currentProjection(): StudioProjectionDocument | undefined {
+  const open = requireProject();
+  return open === undefined ? undefined : openProjectionDocument(open.project, currentProjectionId);
+}
+
+function projectionUri(id: StudioProjectionId): vscode.Uri {
+  const projectName =
+    current?.uri.fsPath
+      .split(/[\\/]/)
+      .pop()
+      ?.replace(/[^A-Za-z0-9_.-]/g, "-") ?? "project";
+  return vscode.Uri.parse(`${PROJECTION_SCHEME}:/${projectName}.${id}`);
+}
+
+function projectionIdFromUri(uri: vscode.Uri): StudioProjectionId {
+  const match = uri.path.match(/\.([A-Za-z0-9-]+)$/);
+  const id = match?.[1] ?? currentProjectionId;
+  return isStudioProjectionId(id) ? id : currentProjectionId;
+}
+
+async function openProjection(target?: unknown): Promise<void> {
+  const open = requireProject();
+  if (open === undefined) {
+    return;
+  }
+  const id =
+    typeof target === "string" && isStudioProjectionId(target)
+      ? target
+      : target instanceof StudioTreeItem && isStudioProjectionId(target.itemId)
+        ? target.itemId
+        : typeof target === "object" &&
+            target !== null &&
+            "id" in target &&
+            typeof target.id === "string" &&
+            isStudioProjectionId(target.id)
+          ? target.id
+          : currentProjectionId;
+  currentProjectionId = id;
+  const projection = openProjectionDocument(open.project, id);
+  const document = await vscode.workspace.openTextDocument(projectionUri(id));
+  await vscode.window.showTextDocument(document, { preview: false });
+  await vscode.languages.setTextDocumentLanguage(document, projection.languageId);
+  void vscode.window.showInformationMessage(projection.readOnlyReason);
+}
+
+async function switchProjection(): Promise<void> {
+  const picked = await vscode.window.showQuickPick(
+    listStudioProjections().map((projection) => ({
+      label: projection.label,
+      description: projection.id,
+      id: projection.id,
+    })),
+    { title: "Agorix projection" },
+  );
+  if (picked !== undefined && isStudioProjectionId(picked.id)) {
+    await openProjection(picked.id);
+  }
+}
+
+async function revealCanonicalNode(nodeId?: unknown): Promise<void> {
+  const projection = currentProjection();
+  if (projection === undefined) {
+    return;
+  }
+  const id = typeof nodeId === "string" ? nodeId : "scripts[0]/statements[0]";
+  const range = projectionRangeForNode(projection, id);
+  const document = await vscode.workspace.openTextDocument(projectionUri(projection.id));
+  const editor = await vscode.window.showTextDocument(document, { preview: false });
+  const vscodeRange = textRangeToVsCodeRange(projection.text, range);
+  editor.selection = new vscode.Selection(vscodeRange.start, vscodeRange.end);
+  editor.revealRange(vscodeRange, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+}
+
+function textRangeToVsCodeRange(
+  text: string,
+  range: { readonly start: number; readonly end: number },
+): vscode.Range {
+  return new vscode.Range(offsetToPosition(text, range.start), offsetToPosition(text, range.end));
+}
+
+function offsetToPosition(text: string, offset: number): vscode.Position {
+  const before = text.slice(0, offset);
+  const lines = before.split("\n");
+  return new vscode.Position(lines.length - 1, lines.at(-1)?.length ?? 0);
 }
 
 async function suggestRepeatCommand(): Promise<void> {
@@ -141,11 +308,44 @@ function reportFailure(output: vscode.OutputChannel, summary: string, error: unk
 export function activate(context: vscode.ExtensionContext): void {
   const output = vscode.window.createOutputChannel("Agorix Studio");
   context.subscriptions.push(output);
+  const projectionProvider = new ProjectionDocumentProvider();
+  const treeProviders = [
+    new StudioTreeProvider("projects"),
+    new StudioTreeProvider("missions"),
+    new StudioTreeProvider("progress"),
+    new StudioTreeProvider("worlds"),
+    new StudioTreeProvider("companion"),
+  ];
+  function refreshViews(): void {
+    for (const provider of treeProviders) {
+      provider.refresh();
+    }
+    projectionProvider.refresh(projectionUri(currentProjectionId));
+  }
+  refreshStudioViews = refreshViews;
   try {
     context.subscriptions.push(
+      vscode.workspace.registerTextDocumentContentProvider(PROJECTION_SCHEME, projectionProvider),
+      ...treeProviders.map((provider) =>
+        vscode.window.createTreeView(`agorixStudio.${provider.sectionId}`, {
+          treeDataProvider: provider,
+        }),
+      ),
       vscode.commands.registerCommand(
         "agorixStudio.openProject",
         guarded(output, "Open Project", openProject),
+      ),
+      vscode.commands.registerCommand(
+        "agorixStudio.openProjection",
+        guarded(output, "Open Projection", openProjection),
+      ),
+      vscode.commands.registerCommand(
+        "agorixStudio.switchProjection",
+        guarded(output, "Switch Projection", switchProjection),
+      ),
+      vscode.commands.registerCommand(
+        "agorixStudio.revealCanonicalNode",
+        guarded(output, "Reveal Canonical Node", revealCanonicalNode),
       ),
       vscode.commands.registerCommand(
         "agorixStudio.showEvidence",
@@ -166,3 +366,5 @@ export function activate(context: vscode.ExtensionContext): void {
 export function deactivate(): void {
   current = undefined;
 }
+
+let refreshStudioViews: () => void = () => undefined;

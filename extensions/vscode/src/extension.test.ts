@@ -8,14 +8,62 @@ const files = new Map<string, Uint8Array>();
 const shown: string[] = [];
 const diffs: unknown[][] = [];
 const output: string[] = [];
+const treeViews: string[] = [];
+const providers = new Map<string, { provideTextDocumentContent(uri: unknown): string }>();
+const revealed: unknown[] = [];
 let failRegistration = false;
 let choice: string | undefined;
 let picked: { fsPath: string } | undefined;
+let quickPick: { id: string; label: string } | undefined;
 
 vi.mock("vscode", () => {
-  const uri = (fsPath: string) => ({ fsPath, toString: () => fsPath });
+  const uri = (fsPath: string) => ({
+    fsPath,
+    path: fsPath.replace(/^[^:]+:/, ""),
+    scheme: fsPath.includes(":") ? fsPath.split(":")[0] : "file",
+    toString: () => fsPath,
+  });
+  class Uri {
+    static parse(value: string) {
+      return uri(value);
+    }
+  }
+  class TreeItem {
+    description?: string | boolean;
+    contextValue?: string;
+    command?: unknown;
+    constructor(
+      public label: string,
+      public collapsibleState?: unknown,
+    ) {}
+  }
+  class EventEmitter<T = unknown> {
+    event = vi.fn();
+    fire = vi.fn((_value?: T) => undefined);
+    dispose() {}
+  }
+  class Position {
+    constructor(
+      public line: number,
+      public character: number,
+    ) {}
+  }
+  class Range {
+    constructor(
+      public start: Position,
+      public end: Position,
+    ) {}
+  }
+  class Selection extends Range {}
   return {
-    Uri: class {},
+    Uri,
+    TreeItem,
+    TreeItemCollapsibleState: { None: 0 },
+    EventEmitter,
+    Position,
+    Range,
+    Selection,
+    TextEditorRevealType: { InCenterIfOutsideViewport: 2 },
     commands: {
       registerCommand: (name: string, handler: Handler) => {
         if (failRegistration) {
@@ -38,11 +86,19 @@ vi.mock("vscode", () => {
         shown.push(message);
         return undefined;
       },
+      showQuickPick: async () => quickPick,
       showErrorMessage: async (message: string) => {
         shown.push(message);
         return undefined;
       },
-      showTextDocument: async () => undefined,
+      showTextDocument: async () => ({
+        selection: undefined,
+        revealRange: (range: unknown) => revealed.push(range),
+      }),
+      createTreeView: (id: string) => {
+        treeViews.push(id);
+        return { dispose() {} };
+      },
       createOutputChannel: () => ({
         clear: () => (output.length = 0),
         appendLine: (line: string) => output.push(line),
@@ -51,10 +107,22 @@ vi.mock("vscode", () => {
       }),
     },
     workspace: {
-      openTextDocument: async ({ content }: { content: string }) => ({
-        uri: uri(`untitled:${content.length}`),
-        content,
-      }),
+      registerTextDocumentContentProvider: (
+        scheme: string,
+        provider: { provideTextDocumentContent(uri: unknown): string },
+      ) => {
+        providers.set(scheme, provider);
+        return { dispose() {} };
+      },
+      openTextDocument: async (target: { content?: string; toString?: () => string }) => {
+        if ("content" in target && target.content !== undefined) {
+          return { uri: uri(`untitled:${target.content.length}`), content: target.content };
+        }
+        return {
+          uri: target,
+          content: providers.get("agorix-studio")?.provideTextDocumentContent(target) ?? "",
+        };
+      },
       fs: {
         readFile: async (target: { fsPath: string }) =>
           files.get(target.fsPath) ?? new Uint8Array(),
@@ -62,6 +130,9 @@ vi.mock("vscode", () => {
           files.set(target.fsPath, content);
         },
       },
+    },
+    languages: {
+      setTextDocumentLanguage: async (document: unknown) => document,
     },
     __uri: uri,
   };
@@ -103,7 +174,11 @@ describe("Studio extension wiring", () => {
     shown.length = 0;
     diffs.length = 0;
     output.length = 0;
+    treeViews.length = 0;
+    providers.clear();
+    revealed.length = 0;
     choice = undefined;
+    quickPick = undefined;
     failRegistration = false;
     picked = undefined;
     vi.resetModules();
@@ -111,11 +186,22 @@ describe("Studio extension wiring", () => {
     extension.activate({ subscriptions: [] } as never);
   });
 
-  it("registers the three commands", () => {
+  it("registers commands, virtual projection provider and native Activity Bar views", () => {
     expect([...handlers.keys()].sort()).toEqual([
       "agorixStudio.openProject",
+      "agorixStudio.openProjection",
+      "agorixStudio.revealCanonicalNode",
       "agorixStudio.showEvidence",
       "agorixStudio.suggestRepeat",
+      "agorixStudio.switchProjection",
+    ]);
+    expect([...providers.keys()]).toEqual(["agorix-studio"]);
+    expect(treeViews.sort()).toEqual([
+      "agorixStudio.companion",
+      "agorixStudio.missions",
+      "agorixStudio.progress",
+      "agorixStudio.projects",
+      "agorixStudio.worlds",
     ]);
   });
 
@@ -135,6 +221,20 @@ describe("Studio extension wiring", () => {
     await handlers.get("agorixStudio.showEvidence")!();
     expect(output[0]).toContain("Outcome:");
     expect(output.some((line) => line.includes("Step 1"))).toBe(true);
+    expect(revealed).toHaveLength(1);
+  });
+
+  it("opens and switches read-only projection documents without rewriting the project", async () => {
+    await openFile("/p/a.json", repeated);
+    const before = new TextDecoder().decode(files.get("/p/a.json"));
+
+    await handlers.get("agorixStudio.openProjection")!("agorix-code");
+    expect(shown.at(-1)).toMatch(/Read-only/i);
+
+    quickPick = { id: "python", label: "Python" };
+    await handlers.get("agorixStudio.switchProjection")!();
+    expect(shown.at(-1)).toMatch(/Read-only Python projection/i);
+    expect(new TextDecoder().decode(files.get("/p/a.json"))).toBe(before);
   });
 
   it("shows a diff and does not write the file unless the learner applies", async () => {

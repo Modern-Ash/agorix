@@ -35,8 +35,11 @@ const tests = [
       const all = await vscode.commands.getCommands(true);
       for (const id of [
         "agorixStudio.openProject",
+        "agorixStudio.openProjection",
+        "agorixStudio.revealCanonicalNode",
         "agorixStudio.showEvidence",
         "agorixStudio.suggestRepeat",
+        "agorixStudio.switchProjection",
       ]) {
         assert.ok(all.includes(id), `${id} is registered`);
       }
@@ -44,8 +47,11 @@ const tests = [
       const contributed = manifest.contributes.commands.map((c) => c.command).sort();
       assert.deepEqual(contributed, [
         "agorixStudio.openProject",
+        "agorixStudio.openProjection",
+        "agorixStudio.revealCanonicalNode",
         "agorixStudio.showEvidence",
         "agorixStudio.suggestRepeat",
+        "agorixStudio.switchProjection",
       ]);
     },
   ],
@@ -58,9 +64,27 @@ const tests = [
       );
       const editor = await waitFor("projection editor", () => vscode.window.activeTextEditor);
       const text = editor.document.getText();
-      assert.equal(editor.document.languageId, "javascript");
+      assert.equal(editor.document.uri.scheme, "agorix-studio");
+      assert.equal(editor.document.languageId, "typescript");
       assert.match(text, /move/, "projection contains the move statements");
       assert.match(text, /turn/, "projection contains the turn statements");
+    },
+  ],
+  [
+    "projection switching opens Python without changing the project file",
+    async () => {
+      const file = fixture("repeat.agorix.json").fsPath;
+      const before = fs.readFileSync(file, "utf8");
+      await vscode.commands.executeCommand("agorixStudio.openProjection", "python");
+      const editor = await waitFor(
+        "python projection editor",
+        () =>
+          vscode.window.activeTextEditor?.document.languageId === "python" &&
+          vscode.window.activeTextEditor,
+      );
+      assert.match(editor.document.getText(), /move\(/);
+      assert.match(editor.document.getText(), /turn\(/);
+      assert.equal(fs.readFileSync(file, "utf8"), before, "projection switch is read-only");
     },
   ],
   [
