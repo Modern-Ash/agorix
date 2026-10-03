@@ -7,10 +7,13 @@ import {
   createExecutionEvidence,
   createProposalReview,
   createStoredProjectWithProgram,
+  formatInspectorReport,
   openStoredProject,
   parseStoredProject,
   rangeForNode,
   rejectProposal,
+  serializeStoredProject,
+  suggestRepeat,
 } from "./studioCore.js";
 
 class MemoryStorage implements BrowserStorageAdapter {
@@ -169,5 +172,55 @@ describe("Agorix Studio first slice", () => {
 
     expect(loaded.program).toEqual(proposedProgram);
     expect(openStoredProject(loaded).projection.code).toContain("sprite.turn(90);");
+  });
+
+  it("suggests repeat for a repeated program and leaves the stored project unchanged", () => {
+    const repeated: StoredProject = {
+      ...webCreatedProject,
+      program: {
+        ...webCreatedProject.program,
+        scripts: [
+          {
+            id: "main",
+            trigger: { type: "onStart" },
+            statements: [1, 2, 3].flatMap(() => [
+              { type: "move" as const, steps: 20 },
+              { type: "turn" as const, degrees: 90 },
+            ]),
+          },
+        ],
+      },
+    };
+    const project = openStoredProject(repeated);
+    const suggestion = suggestRepeat(project);
+
+    expect(suggestion?.diff.proposedCode).toContain("repeat");
+    expect(suggestion?.diff.acceptedCode).toBe(project.projection.code);
+    expect(rejectProposal(repeated.program, suggestion!.review)).toEqual(repeated.program);
+
+    const applied = applyProposal(repeated.program, suggestion!.review);
+    const reopened = parseStoredProject(
+      serializeStoredProject(createStoredProjectWithProgram(repeated, applied)),
+    );
+    expect(reopened.stored.program.scripts[0]?.statements).toEqual([
+      {
+        type: "repeat",
+        count: 3,
+        body: [
+          { type: "move", steps: 20 },
+          { type: "turn", degrees: 90 },
+        ],
+      },
+    ]);
+  });
+
+  it("makes no suggestion when nothing repeats", () => {
+    expect(suggestRepeat(openStoredProject(webCreatedProject))).toBeUndefined();
+  });
+
+  it("formats the execution inspector as learner-readable lines", () => {
+    const report = formatInspectorReport(createExecutionEvidence(webCreatedProject));
+    expect(report).toContain("Outcome:");
+    expect(report).toContain("Step 1  scripts[0]/statements[0]  move");
   });
 });

@@ -10,8 +10,17 @@ import {
 } from "react";
 import type { ProjectMetadata } from "@agorix/persistence";
 import type { ProjectProgram } from "@agorix/program-model";
-import { POC_TOOLBOX, type BlockNode } from "@agorix/block-editor";
-import { createMissionRunFeedback, getLocalizedFirstMission } from "@agorix/curriculum";
+import type { BlockNode } from "@agorix/block-editor";
+import {
+  DEFAULT_WORLD_ID,
+  WORLDS,
+  createMissionRunFeedback,
+  getLocalizedFirstMission,
+  getWorld,
+  worldCopy,
+  type WorldDefinition,
+  type WorldPalette,
+} from "@agorix/curriculum";
 import {
   acceptIntentPlan,
   createDeterministicIntentPlan,
@@ -26,10 +35,13 @@ import {
   type TutorHintHistoryEntry,
   type TutorResponse,
 } from "@agorix/tutor-contract";
+import { decideProactiveSuggestion } from "@agorix/learning-decision-plane";
 import {
   acceptProposal,
   createProgramProposal,
   createProposalReview,
+  createRepeatPatternProposal,
+  detectRepeatPattern,
   createWebProposalCardView,
   programSemanticHash,
   rejectProposal,
@@ -80,7 +92,6 @@ type RunStatus = "idle" | "running" | "stopped" | "complete" | "retry" | "freepl
 
 type PanelId = "action" | "program" | "stage" | "code" | "trace" | "companion";
 type PanelArea = PanelId;
-type WorkMode = "blocks" | "code" | "ai";
 
 const PANEL_AREAS: readonly PanelArea[] = [
   "action",
@@ -107,33 +118,6 @@ const DEFAULT_PANEL_AREAS: Record<PanelId, PanelArea> = {
   code: "code",
   trace: "trace",
   companion: "companion",
-};
-
-const MODE_PANEL_AREAS: Record<WorkMode, Record<PanelId, PanelArea>> = {
-  blocks: {
-    action: "action",
-    program: "program",
-    stage: "stage",
-    code: "code",
-    trace: "trace",
-    companion: "companion",
-  },
-  code: {
-    action: "trace",
-    program: "program",
-    stage: "stage",
-    code: "code",
-    trace: "action",
-    companion: "companion",
-  },
-  ai: {
-    action: "trace",
-    program: "program",
-    stage: "stage",
-    code: "code",
-    trace: "action",
-    companion: "companion",
-  },
 };
 
 const BLOCK_DRAG_TYPE = "application/x-agorix-block-type";
@@ -282,47 +266,6 @@ function fieldLabelFor(field: "steps" | "degrees" | "count", locale: Locale): st
       return t(locale, "degrees");
     case "count":
       return t(locale, "fieldCount");
-  }
-}
-
-function sectionNameFor(name: string, locale: Locale): string {
-  switch (name) {
-    case "Move":
-      return t(locale, "toolboxMove");
-    case "Repeat & Decide":
-      return t(locale, "toolboxRepeatDecide");
-    default:
-      return name;
-  }
-}
-
-function blockPurposeFor(type: string, locale: Locale): string {
-  switch (type) {
-    case "motion_move":
-      return t(locale, "toolPurposeMove");
-    case "motion_turn":
-      return t(locale, "toolPurposeTurn");
-    case "control_repeat":
-      return t(locale, "toolPurposeRepeat");
-    case "control_if":
-      return t(locale, "toolPurposeIfGoal");
-    default:
-      return type;
-  }
-}
-
-function blockGlyphFor(type: string): string {
-  switch (type) {
-    case "motion_move":
-      return "GO";
-    case "motion_turn":
-      return "90";
-    case "control_repeat":
-      return "xN";
-    case "control_if":
-      return "IF";
-    default:
-      return "<>";
   }
 }
 
@@ -717,15 +660,9 @@ function CodeText({
 function CodePanel({
   program,
   highlightedNodeId,
-  locale,
-  panelControls,
-  panelProps,
 }: {
   program: ProjectProgram;
   highlightedNodeId: string | undefined;
-  locale: Locale;
-  panelControls?: ReactNode;
-  panelProps?: PanelChromeProps;
 }) {
   const [projectionId, setProjectionId] = useState<CodeProjectionId>("typescript");
   const [comparisonId, setComparisonId] = useState<CodeProjectionId | undefined>();
@@ -796,13 +733,23 @@ function CodePanel({
   );
 }
 
+// Presentation only: glyphs per world palette. Colors live in App.css under [data-world].
+const WORLD_GLYPHS: Record<WorldPalette, { sprite: string; goal: string }> = {
+  space: { sprite: "🚀", goal: "🌎" },
+  ocean: { sprite: "🐙", goal: "🪸" },
+  robots: { sprite: "🤖", goal: "🔋" },
+  city: { sprite: "🛴", goal: "📦" },
+};
+
 function StageView({
   frame,
   fallback,
   locale,
+  world,
   panelControls,
   panelProps,
 }: {
+  world: WorldDefinition;
   frame: ObservationFrame | undefined;
   fallback: StageState;
   locale: Locale;
@@ -813,11 +760,14 @@ function StageView({
   const sprite = state.sprite;
   const goal = state.goal;
   const viewport = state.viewport;
+  const copy = worldCopy(world, locale);
+  const glyphs = WORLD_GLYPHS[world.visualStyle.palette];
   return (
     <section
       className={panelProps?.className ?? "stage-panel"}
       style={panelProps?.style}
       aria-labelledby="stage-title"
+      data-world={world.id}
     >
       <div className="panel-heading">
         <h2 id="stage-title">{t(locale, "stage")}</h2>
@@ -834,11 +784,37 @@ function StageView({
       >
         <rect width={viewport.width} height={viewport.height} rx="14" />
         <line x1="24" y1="128" x2="240" y2="128" />
-        <circle className="goal" cx={goal.x} cy={goal.y} r={goal.radius} />
+        <circle className="goal" cx={goal.x} cy={goal.y} r={goal.radius}>
+          <title>{copy.goalAlt}</title>
+        </circle>
+        <text
+          className="world-glyph"
+          x={goal.x}
+          y={goal.y}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fontSize={goal.radius * 1.6}
+          aria-hidden="true"
+        >
+          {glyphs.goal}
+        </text>
         <g transform={`translate(${sprite.x} ${sprite.y}) rotate(${sprite.heading})`}>
-          <circle className="sprite" r={sprite.radius} />
+          <circle className="sprite" r={sprite.radius}>
+            <title>{copy.spriteAlt}</title>
+          </circle>
           <path d="M 4 0 L 16 -6 L 16 6 Z" />
         </g>
+        <text
+          className="world-glyph"
+          x={sprite.x}
+          y={sprite.y}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fontSize={sprite.radius * 1.5}
+          aria-hidden="true"
+        >
+          {glyphs.sprite}
+        </text>
       </svg>
     </section>
   );
@@ -896,6 +872,41 @@ function TracePanel({
           </li>
         ))}
       </ol>
+    </section>
+  );
+}
+
+function StepCard({
+  item,
+  position,
+  total,
+  canAdvance,
+  onNext,
+  locale,
+}: {
+  item: LearnerTraceItem;
+  position: number;
+  total: number;
+  canAdvance: boolean;
+  onNext: () => void;
+  locale: Locale;
+}) {
+  return (
+    <section className="step-card" data-testid="step-card" aria-live="polite">
+      <ProvenanceLabel kind="runtime-fact" locale={locale} />
+      <strong>{t(locale, "stepCardTitle", { n: position, total })}</strong>
+      <p>
+        {item.title} — {item.summary}
+      </p>
+      <p className="step-card-states">
+        {t(locale, "traceBefore", { ...item.before })} ·{" "}
+        {t(locale, "traceAfter", { ...item.after })}
+      </p>
+      {canAdvance ? (
+        <button type="button" onClick={onNext}>
+          {t(locale, "stepCardNext")}
+        </button>
+      ) : null}
     </section>
   );
 }
@@ -1322,6 +1333,10 @@ export function App() {
   const [attempts, setAttempts] = useState(0);
   const [proposalReview, setProposalReview] = useState<ProposalReview | undefined>();
   const [proposalMessage, setProposalMessage] = useState<string | undefined>();
+  const [dismissedRepeatHash, setDismissedRepeatHash] = useState<string | undefined>();
+  const [worldId, setWorldId] = useState<string>(DEFAULT_WORLD_ID);
+  const [stepping, setStepping] = useState(false);
+  const [repeatDeclines, setRepeatDeclines] = useState(0);
   const [learningDecision, setLearningDecision] = useState<
     WebLearningDecisionDiagnostics | undefined
   >();
@@ -1330,10 +1345,9 @@ export function App() {
   const timerRef = useRef<number | undefined>();
   const [panelAreas, setPanelAreas] = useState<Record<PanelId, PanelArea>>(DEFAULT_PANEL_AREAS);
   const [collapsedPanels, setCollapsedPanels] = useState<readonly PanelId[]>([]);
-  const [closedPanels, setClosedPanels] = useState<readonly PanelId[]>([]);
+  const [closedPanels, setClosedPanels] = useState<readonly PanelId[]>(["trace"]);
   const [maximizedPanel, setMaximizedPanel] = useState<PanelId | undefined>(undefined);
   const [aiConnectionOpen, setAiConnectionOpen] = useState(false);
-  const [workMode, setWorkMode] = useState<WorkMode>("blocks");
 
   const mission = useMemo(() => getLocalizedFirstMission(locale), [locale]);
   const statements = model.workspace.scripts[0]?.statements ?? [];
@@ -1345,6 +1359,32 @@ export function App() {
   const canonicalHash = programSemanticHash(model.program);
   const proposalCard =
     proposalReview === undefined ? undefined : createWebProposalCardView(proposalReview);
+  const world = getWorld(worldId);
+  const worldText = worldCopy(world, locale);
+  const repeatProposal = useMemo(
+    () =>
+      createRepeatPatternProposal({
+        id: "repeat-pattern",
+        baseProgram: model.program,
+        purpose: t(locale, "repeatSuggestionPurpose"),
+        rationale: t(locale, "repeatSuggestionRationale", {
+          count: detectRepeatPattern(model.program)?.count ?? 0,
+        }),
+      }),
+    [model.program, locale],
+  );
+  const repeatReviewActive = proposalReview?.proposal.source.capability === "repeat-pattern";
+  const repeatDecision =
+    repeatProposal === undefined || proposalReview !== undefined
+      ? undefined
+      : decideProactiveSuggestion({
+          kind: "repeat-pattern",
+          occurrences: detectRepeatPattern(model.program)?.count ?? 0,
+          running: status === "running",
+          declinedForCurrentProgram: dismissedRepeatHash === canonicalHash,
+          declinedCount: repeatDeclines,
+        });
+  const repeatOffer = repeatDecision?.action === "offer" ? repeatProposal : undefined;
   const missionStep =
     status === "complete" || status === "freeplay" ? 3 : attempts > 0 || status === "retry" ? 2 : 1;
   const layaSignal =
@@ -1356,15 +1396,14 @@ export function App() {
           ? t(locale, "layaLocal")
           : t(locale, "layaRemote");
 
-  const toolbox = useMemo(
+  // Only offer what works today; unimplemented blocks stay in the catalog but are not shown.
+  const scratchPalette = useMemo(
     () =>
-      POC_TOOLBOX.map((section) => ({
-        ...section,
-        blocks: section.blocks.filter((block) => isAddable(block.type)),
-      })).filter((section) => section.blocks.length > 0),
-    [],
+      scratchPaletteFor(locale)
+        .map((section) => ({ ...section, blocks: section.blocks.filter((block) => block.enabled) }))
+        .filter((section) => section.blocks.length > 0),
+    [locale],
   );
-  const scratchPalette = useMemo(() => scratchPaletteFor(locale), [locale]);
 
   useEffect(() => {
     return () => {
@@ -1487,6 +1526,7 @@ export function App() {
     if (status === "running") {
       return;
     }
+    setStepping(false);
     if (statements.length === 0) {
       setStatus("error");
       setMessage(t(locale, "emptyRunMessage"));
@@ -1525,6 +1565,7 @@ export function App() {
 
   function stepBlocks() {
     clearRunTimer();
+    setStepping(true);
     if (statements.length === 0) {
       setStatus("error");
       setMessage(t(locale, "emptyRunMessage"));
@@ -1617,11 +1658,39 @@ export function App() {
     setProposalMessage(t(locale, "aiLiteracyPredictionRecorded"));
   }
 
+  function tryRepeatSuggestion() {
+    if (repeatOffer === undefined) {
+      return;
+    }
+    const review = createProposalReview(model.program, repeatOffer);
+    setProposalReview(review);
+    setProposalMessage(t(locale, "proposalPreviewReady"));
+    setHighlightedNodeId(review.proposal.affectedNodeIds[0]);
+  }
+
+  function changeRepeatSuggestion() {
+    if (repeatOffer === undefined) {
+      return;
+    }
+    setDismissedRepeatHash(canonicalHash);
+    setRepeatDeclines((count) => count + 1);
+    setHighlightedNodeId(repeatOffer.affectedNodeIds[0]);
+  }
+
+  function declineRepeatSuggestion() {
+    setDismissedRepeatHash(canonicalHash);
+    setRepeatDeclines((count) => count + 1);
+  }
+
   function rejectDeterministicProposal() {
     if (proposalReview === undefined) {
       return;
     }
     rejectProposal(model.program, proposalReview);
+    if (repeatReviewActive) {
+      setDismissedRepeatHash(canonicalHash);
+      setRepeatDeclines((count) => count + 1);
+    }
     setProposalReview(undefined);
     setProposalMessage(t(locale, "proposalRejected"));
     setHighlightedNodeId(undefined);
@@ -1738,27 +1807,8 @@ export function App() {
     setMaximizedPanel((current) => (current === panel ? undefined : panel));
   }
 
-  function focusPanels(mode: WorkMode) {
-    setWorkMode(mode);
-    setPanelAreas(MODE_PANEL_AREAS[mode]);
-    const needed: Record<WorkMode, readonly PanelId[]> = {
-      blocks: ["action", "program", "stage"],
-      code: ["program", "code", "stage"],
-      ai: ["companion", "stage", "code"],
-    };
-    setClosedPanels((current) => current.filter((panel) => !needed[mode].includes(panel)));
-    setCollapsedPanels((current) => current.filter((panel) => !needed[mode].includes(panel)));
-  }
-
-  function workModeHint(): string {
-    switch (workMode) {
-      case "code":
-        return t(locale, "modeCodeHint");
-      case "ai":
-        return t(locale, "modeAiHint");
-      default:
-        return t(locale, "modeBlocksHint");
-    }
+  function revealCompanion() {
+    restorePanel("companion");
   }
 
   function movePanel(panel: PanelId, direction: -1 | 1) {
@@ -1887,41 +1937,23 @@ export function App() {
         </div>
       </header>
 
-      <nav className="work-mode-switcher" aria-label={t(locale, "workModeLabel")}>
-        <button
-          type="button"
-          className={workMode === "blocks" ? "active" : ""}
-          aria-pressed={workMode === "blocks"}
-          onClick={() => focusPanels("blocks")}
-        >
-          <strong>{t(locale, "modeBlocks")}</strong>
-          <span>{t(locale, "modeBlocksHint")}</span>
-        </button>
-        <button
-          type="button"
-          className={workMode === "code" ? "active" : ""}
-          aria-pressed={workMode === "code"}
-          onClick={() => focusPanels("code")}
-        >
-          <strong>{t(locale, "modeCode")}</strong>
-          <span>{t(locale, "modeCodeHint")}</span>
-        </button>
-        <button
-          type="button"
-          className={workMode === "ai" ? "active" : ""}
-          aria-pressed={workMode === "ai"}
-          onClick={() => focusPanels("ai")}
-        >
-          <strong>{t(locale, "modeAi")}</strong>
-          <span>{t(locale, "modeAiHint")}</span>
-        </button>
-        <p>{workModeHint()}</p>
-      </nav>
-
       <section className="mission-strip" aria-live="polite">
         <div>
           <h2>{t(locale, "missionPrefix", { title: mission.goal.title })}</h2>
           <p>{mission.goal.learnerFacing}</p>
+          <p className="world-narrative" data-testid="world-narrative">
+            {worldText.narrative}
+          </p>
+          <label className="world-picker">
+            <span>{t(locale, "worldLabel")}</span>
+            <select value={worldId} onChange={(event) => setWorldId(event.currentTarget.value)}>
+              {WORLDS.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {worldCopy(option, locale).title}
+                </option>
+              ))}
+            </select>
+          </label>
           <div
             className="mission-progress"
             aria-label={t(locale, "missionProgress", { step: missionStep })}
@@ -1935,20 +1967,6 @@ export function App() {
             <span className={missionStep >= 3 ? "progress-dot active" : "progress-dot"}>
               {t(locale, "reflect")}
             </span>
-          </div>
-          <div className="philosophy-rail" aria-label={t(locale, "appSubtitle")}>
-            <article>
-              <strong>{t(locale, "philosophyBuildTitle")}</strong>
-              <span>{t(locale, "philosophyBuildBody")}</span>
-            </article>
-            <article>
-              <strong>{t(locale, "philosophyProofTitle")}</strong>
-              <span>{t(locale, "philosophyProofBody")}</span>
-            </article>
-            <article>
-              <strong>{t(locale, "philosophyAiTitle")}</strong>
-              <span>{t(locale, "philosophyAiBody")}</span>
-            </article>
           </div>
         </div>
         <div className="state-stack">
@@ -2055,6 +2073,7 @@ export function App() {
       <div className="learning-layout">
         {closedPanels.includes("stage") ? null : (
           <StageView
+            world={world}
             frame={activeFrame}
             fallback={model.stage.current}
             locale={locale}
@@ -2074,11 +2093,7 @@ export function App() {
               <span>{t(locale, "codeBehindBlocks")}</span>
               {panelControls("code")}
             </div>
-            <CodePanel
-              program={model.program}
-              highlightedNodeId={highlightedNodeId}
-              locale={locale}
-            />
+            <CodePanel program={model.program} highlightedNodeId={highlightedNodeId} />
             {highlightedCode ? (
               <p className="highlight-readout">
                 {t(locale, "currentNode", { code: highlightedCode.trim() })}
@@ -2104,12 +2119,6 @@ export function App() {
               {panelControls("action")}
             </div>
             <p className="toolbox-intro">{t(locale, "toolboxIntro")}</p>
-            <div className="scratch-category-strip" aria-label="Scratch categories">
-              <span className="cat-motion">{t(locale, "toolCategoryMotion")}</span>
-              <span className="cat-loops">{t(locale, "toolCategoryLoops")}</span>
-              <span className="cat-logic">{t(locale, "toolCategoryLogic")}</span>
-              <span className="cat-ai">{t(locale, "toolCategoryAi")}</span>
-            </div>
             {scratchPalette.map((section) => (
               <section key={section.id} className={`scratch-category category-${section.tone}`}>
                 <h3>{section.label}</h3>
@@ -2167,11 +2176,7 @@ export function App() {
                     <small aria-hidden="true">{t(locale, "philosophyAiBody")}</small>
                   </span>
                 </button>
-                <button
-                  type="button"
-                  aria-label="Use AI explain tool"
-                  onClick={() => focusPanels("ai")}
-                >
+                <button type="button" aria-label="Use AI explain tool" onClick={revealCompanion}>
                   <span className="tool-glyph" aria-hidden="true">
                     fx
                   </span>
@@ -2350,7 +2355,7 @@ export function App() {
                 {t(locale, "hintMeter", { count: hintHistory.length })}
               </span>
             </div>
-            {proposalCard === undefined ? null : (
+            {proposalCard === undefined || repeatReviewActive ? null : (
               <div className="proposal-card" data-testid="proposal-preview">
                 <ProvenanceLabel kind="suggestion" locale={locale} />
                 <strong>{proposalCard.title}</strong>
@@ -2401,6 +2406,70 @@ export function App() {
           </aside>
         )}
       </div>
+      {!stepping || activeTrace === undefined ? null : (
+        <StepCard
+          item={activeTrace}
+          position={frameIndex + 1}
+          total={learnerTrace.length}
+          canAdvance={status === "stopped"}
+          onNext={stepBlocks}
+          locale={locale}
+        />
+      )}
+      {repeatOffer === undefined && !(repeatReviewActive && proposalCard !== undefined) ? null : (
+        <section
+          className="contextual-suggestion"
+          aria-label={t(locale, "repeatSuggestionTitle", {
+            count: detectRepeatPattern(model.program)?.count ?? 0,
+          })}
+          data-testid="repeat-suggestion"
+          data-decision={repeatDecision?.action ?? "offer"}
+          data-decision-reason={repeatDecision?.reason ?? "repeated-steps-detected"}
+        >
+          <ProvenanceLabel kind="suggestion" locale={locale} />
+          {repeatReviewActive && proposalCard !== undefined ? (
+            <div data-testid="proposal-preview">
+              <strong>{proposalCard.title}</strong>
+              <p>{proposalCard.rationale}</p>
+              <ul>
+                {proposalCard.changes.map((change) => (
+                  <li key={change.nodeId}>
+                    {change.beforeText ?? ""} → {change.afterText ?? ""}
+                  </li>
+                ))}
+              </ul>
+              <div className="tutor-actions">
+                <button type="button" onClick={rejectDeterministicProposal}>
+                  {t(locale, "rejectProposal")}
+                </button>
+                <button type="button" onClick={acceptDeterministicProposal}>
+                  {t(locale, "acceptProposal")}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <strong>
+                {t(locale, "repeatSuggestionTitle", {
+                  count: detectRepeatPattern(model.program)?.count ?? 0,
+                })}
+              </strong>
+              <p>{t(locale, "repeatSuggestionBody")}</p>
+              <div className="tutor-actions">
+                <button type="button" onClick={tryRepeatSuggestion}>
+                  {t(locale, "repeatSuggestionTry")}
+                </button>
+                <button type="button" onClick={changeRepeatSuggestion}>
+                  {t(locale, "repeatSuggestionChange")}
+                </button>
+                <button type="button" onClick={declineRepeatSuggestion}>
+                  {t(locale, "repeatSuggestionNo")}
+                </button>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
     </main>
   );
 }

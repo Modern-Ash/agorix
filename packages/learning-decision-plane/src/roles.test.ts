@@ -3,12 +3,35 @@ import { learningRoleProfile, roleCanUseDeterministicFixture } from "./roles.js"
 import type { LearningCompanionRequest } from "@agorix/tutor-contract";
 
 function request(capability: LearningCompanionRequest["capability"]): LearningCompanionRequest {
-  return { schema: "agorix/learning-companion-request/v1", capability, mission: { id: "m", version: 1, concepts: ["movement"], learningObjective: "Understand movement" }, program: { schema: "agorix/program/v1", scripts: [{ id: "main", trigger: { type: "onStart" }, statements: [] }] }, selectedNodeIds: ["n1"], runtimeFacts: [], scaffoldHistory: [] };
+  return {
+    schema: "agorix/learning-companion-request/v1",
+    capability,
+    mission: {
+      id: "m",
+      version: 1,
+      concepts: ["movement"],
+      learningObjective: "Understand movement",
+    },
+    program: {
+      schema: "agorix/program/v1",
+      scripts: [{ id: "main", trigger: { type: "onStart" }, statements: [] }],
+    },
+    selectedNodeIds: ["n1"],
+    runtimeFacts: [],
+    scaffoldHistory: [],
+  };
 }
 
 describe("learning role profiles", () => {
   it("keeps every role provider-neutral and auditable by capability", () => {
-    for (const capability of ["coach", "builder", "debugger", "explainer", "challenger", "reflector"] as const) {
+    for (const capability of [
+      "coach",
+      "builder",
+      "debugger",
+      "explainer",
+      "challenger",
+      "reflector",
+    ] as const) {
       expect(learningRoleProfile(capability).capability).toBe(capability);
     }
   });

@@ -440,3 +440,4 @@ function assertHintLadder(hints: readonly MissionHint[]): void {
     assertNonEmptyString(hint.text, `$.hintLadder[${index}].text`);
   });
 }
+export * from "./worlds.js";

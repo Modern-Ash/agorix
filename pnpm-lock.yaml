@@ -44,24 +44,21 @@ importers:
 
   apps/web:
     dependencies:
-      '@agorix/block-editor':
-        specifier: workspace:*
-        version: link:../../packages/block-editor
-      '@agorix/curriculum':
-        specifier: workspace:*
-        version: link:../../packages/curriculum
       '@agorix/agorix-code':
         specifier: workspace:*
         version: link:../../packages/agorix-code
+      '@agorix/block-editor':
+        specifier: workspace:*
+        version: link:../../packages/block-editor
       '@agorix/code-generator':
         specifier: workspace:*
         version: link:../../packages/code-generator
+      '@agorix/curriculum':
+        specifier: workspace:*
+        version: link:../../packages/curriculum
       '@agorix/language-projection':
         specifier: workspace:*
         version: link:../../packages/language-projection
-      '@agorix/python-projection':
-        specifier: workspace:*
-        version: link:../../packages/python-projection
       '@agorix/learning-decision-plane':
         specifier: workspace:*
         version: link:../../packages/learning-decision-plane
@@ -74,6 +71,9 @@ importers:
       '@agorix/proposals':
         specifier: workspace:*
         version: link:../../packages/proposals
+      '@agorix/python-projection':
+        specifier: workspace:*
+        version: link:../../packages/python-projection
       '@agorix/runtime':
         specifier: workspace:*
         version: link:../../packages/runtime
@@ -173,17 +173,17 @@ importers:
         specifier: workspace:*
         version: link:../runtime
 
-  packages/language-projection:
-    dependencies:
-      '@agorix/program-model':
-        specifier: workspace:*
-        version: link:../program-model
-
   packages/language-pack-lua:
     dependencies:
       '@agorix/language-projection':
         specifier: workspace:*
         version: link:../language-projection
+      '@agorix/program-model':
+        specifier: workspace:*
+        version: link:../program-model
+
+  packages/language-projection:
+    dependencies:
       '@agorix/program-model':
         specifier: workspace:*
         version: link:../program-model
@@ -221,15 +221,10 @@ importers:
       '@agorix/program-model':
         specifier: workspace:*
         version: link:../program-model
-
-  packages/python-projection:
-    dependencies:
-      '@agorix/language-projection':
+    devDependencies:
+      '@agorix/runtime':
         specifier: workspace:*
-        version: link:../language-projection
-      '@agorix/program-model':
-        specifier: workspace:*
-        version: link:../program-model
+        version: link:../runtime
 
   packages/provider-runtime:
     dependencies:
@@ -245,6 +240,15 @@ importers:
       '@agorix/tutor-contract':
         specifier: workspace:*
         version: link:../tutor-contract
+
+  packages/python-projection:
+    dependencies:
+      '@agorix/language-projection':
+        specifier: workspace:*
+        version: link:../language-projection
+      '@agorix/program-model':
+        specifier: workspace:*
+        version: link:../program-model
 
   packages/runtime:
     dependencies:

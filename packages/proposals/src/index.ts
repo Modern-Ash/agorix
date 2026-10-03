@@ -1,6 +1,7 @@
 import { projectProgram, type ProjectionResult, type TextRange } from "@agorix/code-generator";
 import { semanticProjectHash } from "@agorix/persistence";
 import { validateProgram, type ProjectProgram, type Statement } from "@agorix/program-model";
+import { detectRepeatPattern } from "./repeatPattern.js";
 
 export const PACKAGE_NAME = "@agorix/proposals";
 export const PROGRAM_PROPOSAL_SCHEMA_VERSION = "agorix/program-proposal/v1";
@@ -529,4 +530,52 @@ function assertNonNegativeInteger(value: unknown, path: string): void {
 
 function fail(code: ProposalErrorCode, path: string, message: string): never {
   throw new ProposalValidationError(code, path, message);
+}
+
+export {
+  MAX_REPEAT_PATTERN_PERIOD,
+  MIN_REPEAT_PATTERN_COUNT,
+  detectRepeatPattern,
+  type RepeatPattern,
+} from "./repeatPattern.js";
+
+/**
+ * Offers to express a statement written out several times as one `repeat`.
+ * Returns undefined when no pattern exists. The result is only a proposal:
+ * the base program stays unchanged until the learner accepts it.
+ */
+export function createRepeatPatternProposal(input: {
+  readonly id: string;
+  readonly baseProgram: ProjectProgram;
+  readonly purpose: string;
+  readonly rationale: string;
+}): ProgramProposal | undefined {
+  const pattern = detectRepeatPattern(input.baseProgram);
+  if (pattern === undefined) {
+    return undefined;
+  }
+  const nodeId = (index: number) => `scripts[${pattern.scriptIndex}]/statements[${index}]`;
+  const covered = pattern.period * pattern.count;
+  const removals: ProposalOperation[] = Array.from({ length: covered - 1 }, () => ({
+    type: "removeStatement",
+    nodeId: nodeId(pattern.startIndex + 1),
+  }));
+  return createProgramProposal({
+    id: input.id,
+    baseProgram: input.baseProgram,
+    source: { kind: "deterministic-scaffold", capability: "repeat-pattern" },
+    purpose: input.purpose,
+    rationale: input.rationale,
+    affectedNodeIds: Array.from({ length: covered }, (_, offset) =>
+      nodeId(pattern.startIndex + offset),
+    ),
+    operations: [
+      {
+        type: "replaceStatement",
+        nodeId: nodeId(pattern.startIndex),
+        statement: { type: "repeat", count: pattern.count, body: pattern.body },
+      },
+      ...removals,
+    ],
+  });
 }

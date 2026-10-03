@@ -2244,58 +2244,6 @@ button:hover:not(:disabled) {
 }
 
 /* Native Scratch + AI layer: modes, category strip, and snap-like blocks. */
-.work-mode-switcher {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(220px, 0.8fr);
-  gap: 8px;
-  align-items: stretch;
-  margin: 8px 0;
-  padding: 8px;
-  border: 1px solid rgba(15, 23, 42, 0.16);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.82);
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
-}
-
-.work-mode-switcher button {
-  display: grid;
-  gap: 2px;
-  justify-items: start;
-  min-height: 56px;
-  padding: 8px 10px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: #ffffff;
-  text-align: left;
-  box-shadow: none;
-}
-
-.work-mode-switcher button.active,
-.work-mode-switcher button[aria-pressed="true"] {
-  border-color: rgba(99, 91, 255, 0.44);
-  background: linear-gradient(135deg, #ede9fe, #ffffff);
-  box-shadow: inset 4px 0 0 #635bff;
-}
-
-.work-mode-switcher strong {
-  color: #0f172a;
-  font-size: 0.9rem;
-}
-
-.work-mode-switcher span,
-.work-mode-switcher p {
-  margin: 0;
-  color: #526171;
-  font-size: 0.78rem;
-  line-height: 1.25;
-}
-
-.work-mode-switcher p {
-  align-self: center;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: rgba(15, 23, 42, 0.06);
-  font-weight: 800;
-}
 
 .scratch-category-strip {
   display: grid;
@@ -2420,31 +2368,9 @@ button:hover:not(:disabled) {
 }
 
 @media (max-width: 980px) {
-  .work-mode-switcher {
-    grid-template-columns: 1fr;
-  }
-
-  .work-mode-switcher button {
-    min-height: 48px;
-  }
 }
 
 @media (min-width: 901px) and (max-width: 1120px) {
-  .work-mode-switcher {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    padding: 6px;
-    gap: 6px;
-  }
-
-  .work-mode-switcher button {
-    min-height: 38px;
-    padding: 6px 8px;
-  }
-
-  .work-mode-switcher button span,
-  .work-mode-switcher p {
-    display: none;
-  }
 }
 
 @media (orientation: landscape) and (min-width: 901px) and (max-width: 1120px) {
@@ -2480,19 +2406,6 @@ button:hover:not(:disabled) {
 }
 
 @media (orientation: portrait) and (min-width: 720px) and (max-width: 900px) {
-  .work-mode-switcher {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    padding: 6px;
-    gap: 6px;
-  }
-
-  .work-mode-switcher button {
-    min-height: 38px;
-    padding: 6px 8px;
-  }
-
-  .work-mode-switcher button span,
-  .work-mode-switcher p,
   .topbar-subtitle,
   .philosophy-rail span,
   .starter-roadmap p,
@@ -3346,23 +3259,6 @@ button:hover:not(:disabled) {
     min-height: 44px;
   }
 
-  .work-mode-switcher {
-    flex: 0 0 auto;
-    grid-template-columns: repeat(3, minmax(150px, 1fr)) minmax(220px, 0.8fr);
-    margin: 6px 0;
-    padding: 6px;
-  }
-
-  .work-mode-switcher button {
-    min-height: 42px;
-    padding: 6px 8px;
-  }
-
-  .work-mode-switcher button span,
-  .work-mode-switcher p {
-    display: none;
-  }
-
   .mission-strip {
     flex: 0 0 auto;
     grid-template-columns: minmax(0, 1fr) minmax(360px, 0.72fr);
@@ -3575,5 +3471,119 @@ button:hover:not(:disabled) {
 
   .topbar-copy {
     padding-left: 12px;
+  }
+}
+
+.contextual-suggestion {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  margin: 0.75rem 1rem;
+  padding: 0.75rem 1rem;
+  border: 2px solid #8b5cf6;
+  border-radius: 12px;
+  background: #f5f3ff;
+  color: #1f1a33;
+}
+
+.contextual-suggestion button {
+  min-height: 44px;
+}
+
+.step-card {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0.75rem 1rem;
+  padding: 0.75rem 1rem;
+  border: 2px solid #0ea5e9;
+  border-radius: 12px;
+  background: #f0f9ff;
+  color: #0f172a;
+}
+
+.step-card p {
+  margin: 0;
+}
+
+.step-card button {
+  justify-self: start;
+  min-height: 44px;
+}
+
+.world-narrative {
+  font-style: italic;
+}
+
+.world-picker {
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.world-picker select {
+  min-height: 44px;
+}
+
+.world-glyph {
+  pointer-events: none;
+}
+
+.stage-panel[data-world="ocean"] .stage-canvas rect {
+  fill: #b6e3f4;
+}
+.stage-panel[data-world="ocean"] .stage-canvas line {
+  stroke: #2b7a9b;
+}
+.stage-panel[data-world="ocean"] .stage-canvas .goal {
+  fill: #ff9e80;
+}
+.stage-panel[data-world="ocean"] .stage-canvas .sprite {
+  fill: #1d6fa5;
+}
+
+.stage-panel[data-world="robots"] .stage-canvas rect {
+  fill: #e4e7eb;
+}
+.stage-panel[data-world="robots"] .stage-canvas line {
+  stroke: #6b7280;
+}
+.stage-panel[data-world="robots"] .stage-canvas .goal {
+  fill: #fcd34d;
+}
+.stage-panel[data-world="robots"] .stage-canvas .sprite {
+  fill: #64748b;
+}
+
+.stage-panel[data-world="city"] .stage-canvas rect {
+  fill: #fde8c8;
+}
+.stage-panel[data-world="city"] .stage-canvas line {
+  stroke: #92400e;
+}
+.stage-panel[data-world="city"] .stage-canvas .goal {
+  fill: #86efac;
+}
+.stage-panel[data-world="city"] .stage-canvas .sprite {
+  fill: #f97316;
+}
+
+.stage-panel[data-world="space"] .stage-canvas rect {
+  fill: #1e1b4b;
+}
+.stage-panel[data-world="space"] .stage-canvas line {
+  stroke: #a5b4fc;
+}
+.stage-panel[data-world="space"] .stage-canvas .goal {
+  fill: #fde68a;
+}
+.stage-panel[data-world="space"] .stage-canvas .sprite {
+  fill: #818cf8;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage-canvas .goal,
+  .stage-canvas .sprite {
+    animation: none;
   }
 }

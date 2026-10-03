@@ -268,11 +268,13 @@ test("Step trace explains before and after state without raw logs", async ({ pag
   await page.getByRole("button", { name: "Step" }).click();
   await page.getByRole("button", { name: "Step" }).click();
 
-  await expect(page.getByRole("heading", { name: "Trace" })).toBeVisible();
-  const movementTrace = page.locator(".trace-item", { hasText: "Nova moved right; x: 52 -> 76" });
-  await expect(movementTrace).toBeVisible();
-  await expect(movementTrace).toContainText("Before: x 52, y 128, heading 0");
-  await expect(movementTrace).toContainText("After: x 76, y 128, heading 0");
+  const card = page.getByTestId("step-card");
+  await expect(card).toBeVisible();
+  await expect(card).toContainText("Step 2 of");
+  await expect(card).toContainText("Nova moved right; x: 52 -> 76");
+  await expect(card).toContainText("Before: x 52, y 128, heading 0");
+  await expect(card).toContainText("After: x 76, y 128, heading 0");
+  await expect(page.getByRole("heading", { name: "Trace" })).toHaveCount(0);
   await expect(page.getByText(/provider|prompt|stack/i)).toHaveCount(0);
 });
 
@@ -280,6 +282,10 @@ test("transparency journey preserves visible code and explicit proposal control 
   page,
 }) => {
   await runTransparencyJourney(page, { width: 1280, height: 900 });
+});
+
+test("transparency journey works on large tablet 1366x1024", async ({ page }) => {
+  await runTransparencyJourney(page, { width: 1366, height: 1024 });
 });
 
 test("transparency journey is touch-safe on tablet portrait", async ({ page }) => {
@@ -402,26 +408,25 @@ test("explicit reorder controls update generated code without drag", async ({ pa
   expect(code.indexOf("sprite.turn(90);")).toBeLessThan(code.indexOf("sprite.move(10);"));
 });
 
-test("Scratch-compatible palette exposes core categories with inactive future blocks", async ({
-  page,
-}) => {
+test("palette shows only implemented actions, in familiar categories", async ({ page }) => {
   await page.goto("/");
 
+  for (const name of ["Motion", "Control"]) {
+    await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
+  }
   for (const name of [
-    "Motion",
     "Looks",
     "Sound",
     "Events",
-    "Control",
     "Sensing",
     "Operators",
     "Variables",
     "My Blocks",
   ]) {
-    await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name, exact: true })).toHaveCount(0);
   }
-
-  await expect(page.getByRole("button", { name: "Say", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Say", exact: true })).toHaveCount(0);
+  await expect(page.locator(".action-palette button:disabled")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Move", exact: true })).toBeEnabled();
 });
 
@@ -441,10 +446,6 @@ test("IDE panels can collapse, close, restore, and blocks support drag and drop"
     .click();
   await expect(page.getByRole("button", { name: "Move", exact: true })).toBeVisible();
 
-  await page
-    .getByLabel("Trace panel controls")
-    .getByRole("button", { name: "Close Trace" })
-    .click();
   await expect(page.getByRole("heading", { name: "Trace" })).toHaveCount(0);
   await page.getByRole("button", { name: "Trace" }).click();
   await expect(page.getByRole("heading", { name: "Trace" })).toBeVisible();
@@ -489,7 +490,7 @@ test("workflow rail relates tools, blocks, stage, code and AI", async ({ page })
   }
 
   await expect(page.locator(".learning-flow .flow-step.active")).toHaveCount(2);
-  await page.getByRole("button", { name: "Move", exact: true }).click();
+  await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
   await expect(page.locator(".learning-flow .flow-step.active")).toHaveCount(3);
 });
 
@@ -511,25 +512,21 @@ test("desktop IDE keeps AI visible without document-level scrolling", async ({ p
   await expect(page.getByRole("heading", { name: "AI coach", exact: true })).toBeInViewport();
 });
 
-test("work modes rearrange IDE panels for the selected task", async ({ page }) => {
+test("Explain tool reveals the AI companion without a mode switch", async ({ page }) => {
   await page.goto("/");
 
-  const beforeCodeBox = await page.locator(".code-panel").boundingBox();
-  await page.getByRole("button", { name: "AI" }).first().click();
-  const aiBox = await page.locator(".companion-panel").boundingBox();
-  const afterCodeBox = await page.locator(".code-panel").boundingBox();
-
-  expect(beforeCodeBox).not.toBeNull();
-  expect(aiBox).not.toBeNull();
-  expect(afterCodeBox).not.toBeNull();
-  expect(aiBox!.y).toBeLessThanOrEqual(afterCodeBox!.y + 8);
+  await expect(page.getByRole("navigation", { name: /Work mode/ })).toHaveCount(0);
+  await page.getByRole("button", { name: "Close AI" }).click();
+  await expect(page.locator(".companion-panel")).toHaveCount(0);
+  await page.getByRole("button", { name: "Use AI explain tool" }).click();
+  await expect(page.locator(".companion-panel")).toBeVisible();
 });
 
 test("adding a block refreshes coach and starter guidance", async ({ page }) => {
   await page.goto("/");
 
   await expect(page.getByText("Add Move to start the mission.")).toBeVisible();
-  await page.getByRole("button", { name: "Move", exact: true }).click();
+  await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
 
   await expect(page.getByText("Add Move to start the mission.")).toHaveCount(0);
   await expect(page.getByText("Run your idea and watch what the stage proves.")).toBeVisible();
@@ -689,8 +686,7 @@ test("AI-literacy journey predicts, tests, challenges and corrects an imperfect 
   // Runtime evidence is inspectable; debugger/hint must reason from the run, not invent a fact.
   await page.getByRole("button", { name: "Step" }).click();
   await page.getByRole("button", { name: "Step" }).click();
-  await expect(page.getByRole("heading", { name: "Trace" })).toBeVisible();
-  await expect(page.locator(".trace-item").first()).toBeVisible();
+  await expect(page.getByTestId("step-card")).toBeVisible();
   await page.getByRole("button", { name: "Get hint" }).click();
   await expect(page.getByText("Hint level 1 of 5")).toBeVisible();
 
@@ -770,4 +766,144 @@ test.describe("MVP release happy paths", () => {
     await expect(shell).toHaveAttribute("data-provider-selection-bypassed", "false");
     await expect(page.getByText("Hint level 1 of 5")).toBeVisible();
   });
+});
+
+async function buildRepetitiveProgram(page: Page) {
+  await page.goto("/");
+  for (let i = 0; i < 3; i += 1) {
+    await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+    await page.locator(".action-palette").getByLabel("Turn", { exact: true }).click();
+  }
+}
+
+test.describe("contextual repeat suggestion", () => {
+  test("no suggestion appears for a non-repetitive program", async ({ page }) => {
+    await page.goto("/");
+    await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+    await page.locator(".action-palette").getByLabel("Turn", { exact: true }).click();
+    await expect(page.getByTestId("repeat-suggestion")).toHaveCount(0);
+  });
+
+  test("reject leaves the canonical program unchanged and stays quiet", async ({ page }) => {
+    await buildRepetitiveProgram(page);
+    const before = await canonicalHash(page);
+    await expect(page.getByTestId("repeat-suggestion")).toBeVisible();
+    await page.getByRole("button", { name: "Try it" }).click();
+    await expect(page.getByTestId("proposal-preview")).toBeVisible();
+    expect(await canonicalHash(page)).toBe(before);
+    await page
+      .getByTestId("repeat-suggestion")
+      .getByRole("button", { name: /Reject/ })
+      .click();
+    expect(await canonicalHash(page)).toBe(before);
+    await expect(page.getByTestId("repeat-suggestion")).toHaveCount(0);
+  });
+
+  test("declining with No thanks keeps the program and hides the offer", async ({ page }) => {
+    await buildRepetitiveProgram(page);
+    const before = await canonicalHash(page);
+    await page.getByRole("button", { name: "No thanks" }).click();
+    await expect(page.getByTestId("repeat-suggestion")).toHaveCount(0);
+    expect(await canonicalHash(page)).toBe(before);
+  });
+
+  test("System-0 goes quiet after the learner declines twice", async ({ page }) => {
+    await buildRepetitiveProgram(page);
+    const suggestion = page.getByTestId("repeat-suggestion");
+    await expect(suggestion).toHaveAttribute("data-decision", "offer");
+    await page.getByRole("button", { name: "No thanks" }).click();
+    await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+    await expect(suggestion).toBeVisible();
+    await page.getByRole("button", { name: "No thanks" }).click();
+    await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+    await expect(suggestion).toHaveCount(0);
+  });
+
+  test("accept mutates the canonical program into a repeat and still runs", async ({ page }) => {
+    await buildRepetitiveProgram(page);
+    const before = await canonicalHash(page);
+    await page.getByRole("button", { name: "Try it" }).click();
+    await page
+      .getByTestId("repeat-suggestion")
+      .getByRole("button", { name: /Accept/ })
+      .click();
+    expect(await canonicalHash(page)).not.toBe(before);
+    await expect(page.locator(".code-surface")).toContainText("repeat");
+    await page.getByRole("button", { name: "Run", exact: true }).click();
+    await expect(page.locator(".run-state")).toBeVisible();
+  });
+});
+
+test("Step card advances with Next and shows learner-facing evidence", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByTestId("step-card")).toHaveCount(0);
+  await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+  await page.getByRole("button", { name: "Step", exact: true }).click();
+  const card = page.getByTestId("step-card");
+  await expect(card).toContainText("Step 1 of");
+  await card.getByRole("button", { name: "Next" }).click();
+  await expect(card).toContainText("Step 2 of");
+  await expect(card).toContainText("Before:");
+});
+
+test("debugging journey: wrong program, runtime evidence, hint, correction, success", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+  const canonicalBefore = await canonicalHash(page);
+
+  // Runtime, not AI language, shows the program is wrong.
+  await page.getByRole("button", { name: "Run", exact: true }).click();
+  await expect(page.getByText("stopped short")).toBeVisible({ timeout: 5000 });
+  await expect(page.getByLabel("Runtime result — actually happened").first()).toBeVisible();
+
+  // A hint explains without changing the program.
+  await page.getByRole("button", { name: "Get hint" }).click();
+  await expect(page.getByText("Hint level 1 of 5")).toBeVisible();
+  expect(await canonicalHash(page)).toBe(canonicalBefore);
+
+  // Learner corrects it and the runtime proves the fix.
+  await applyMoveSteps(page, "160");
+  expect(await canonicalHash(page)).not.toBe(canonicalBefore);
+  await page.getByRole("button", { name: "Run", exact: true }).click();
+  await expect(page.getByText("Mission complete: your sprite reached the goal.")).toBeVisible({
+    timeout: 5000,
+  });
+});
+
+test("worlds reframe the mission without changing the program or runtime result", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+  await applyMoveSteps(page, "160");
+  const hash = await canonicalHash(page);
+
+  await expect(page.getByTestId("world-narrative")).toContainText("explorer");
+  for (const [id, text] of [
+    ["ocean.reef", "submarine"],
+    ["robots.workshop", "robot"],
+    ["city.crossing", "scooter"],
+    ["space.trailhead", "explorer"],
+  ] as const) {
+    await page.getByLabel("World").selectOption(id);
+    await expect(page.getByTestId("world-narrative")).toContainText(text);
+    await expect(page.locator(".stage-panel")).toHaveAttribute("data-world", id);
+    expect(await canonicalHash(page)).toBe(hash);
+  }
+
+  await page.getByLabel("World").selectOption("ocean.reef");
+  await page.getByRole("button", { name: "Run", exact: true }).click();
+  await expect(page.getByText("Mission complete: your sprite reached the goal.")).toBeVisible({
+    timeout: 5000,
+  });
+  expect(await canonicalHash(page)).toBe(hash);
+});
+
+test("worlds are localized in Spanish", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("Product language").selectOption("es");
+  await page.getByLabel("Mundo").selectOption("ocean.reef");
+  await expect(page.getByTestId("world-narrative")).toContainText("submarino");
 });

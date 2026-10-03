@@ -4,6 +4,9 @@ import type { StoredProject } from "@agorix/persistence";
 import {
   acceptProposal as acceptSharedProposal,
   createProposalReview as createSharedProposalReview,
+  createRepeatPatternProposal,
+  createStudioProposalDiffView,
+  type StudioProposalDiffView,
   rejectProposal as rejectSharedProposal,
   type ProgramProposal,
   type ProposalReview,
@@ -131,4 +134,45 @@ export function createStoredProjectWithProgram(
       ),
     },
   };
+}
+
+export interface StudioSuggestion {
+  readonly review: ProposalReview;
+  readonly diff: StudioProposalDiffView;
+}
+
+/**
+ * Same deterministic repeat suggestion as Web. Nothing changes until the
+ * learner applies it; rejecting leaves the stored project untouched.
+ */
+export function suggestRepeat(project: StudioProject): StudioSuggestion | undefined {
+  const proposal = createRepeatPatternProposal({
+    id: "repeat-pattern",
+    baseProgram: project.stored.program,
+    purpose: "Write the repeated steps once with repeat",
+    rationale:
+      "The same steps appear several times in a row. A repeat does the same with less code.",
+  });
+  if (proposal === undefined) {
+    return undefined;
+  }
+  const review = createProposalReview(project.stored.program, proposal);
+  return { review, diff: createStudioProposalDiffView(review) };
+}
+
+export function formatInspectorReport(evidence: StudioExecutionEvidence): string {
+  const point = (world: InspectorRow["worldBefore"]) =>
+    `(${world.sprite.x}, ${world.sprite.y}) heading ${world.sprite.heading}`;
+  const rows = evidence.inspectorRows.map(
+    (row) =>
+      `Step ${row.step}  ${row.nodeId}  ${row.statementType}: ${point(row.worldBefore)} -> ${point(row.worldAfter)}`,
+  );
+  return [
+    `Outcome: ${evidence.result.outcome} after ${evidence.result.stepsUsed} steps`,
+    ...rows,
+  ].join("\n");
+}
+
+export function serializeStoredProject(stored: StoredProject): string {
+  return `${JSON.stringify(stored, null, 2)}\n`;
 }

@@ -4,21 +4,21 @@ Evidence snapshot: 2026-09-30.
 
 ## Product acceptance chain
 
-| Product invariant / capability | Primary issue evidence | Status |
-| --- | --- | --- |
-| AI-native product/pedagogy | #63 / #69–#73 | complete |
-| Transparent proposal authority | #64 / #74–#78 / #87 | complete |
-| Deterministic runtime evidence | #76–#78 / #88 | complete |
-| First Mission learner loop | #91 | complete |
-| AI-literacy wrong-suggestion journey | #104 | complete |
-| Learning Companion | #66 / #85–#90 | complete |
-| System-0 + Laya Decision Plane | #160–#162 / #171 | complete |
-| Provider-neutral routing/conformance | #67 / #92–#97 | complete |
-| Multi-language projection | #65 / #79–#84 | complete |
-| Web/Tablet/PWA | #36 / #117–#120 | complete |
-| Agorix Studio first slice | #38 | complete |
-| Web/Studio semantic compatibility | #121 | complete |
-| Safety/privacy | #30 / #99–#103 | complete |
+| Product invariant / capability       | Primary issue evidence | Status   |
+| ------------------------------------ | ---------------------- | -------- |
+| AI-native product/pedagogy           | #63 / #69–#73          | complete |
+| Transparent proposal authority       | #64 / #74–#78 / #87    | complete |
+| Deterministic runtime evidence       | #76–#78 / #88          | complete |
+| First Mission learner loop           | #91                    | complete |
+| AI-literacy wrong-suggestion journey | #104                   | complete |
+| Learning Companion                   | #66 / #85–#90          | complete |
+| System-0 + Laya Decision Plane       | #160–#162 / #171       | complete |
+| Provider-neutral routing/conformance | #67 / #92–#97          | complete |
+| Multi-language projection            | #65 / #79–#84          | complete |
+| Web/Tablet/PWA                       | #36 / #117–#120        | complete |
+| Agorix Studio first slice            | #38                    | complete |
+| Web/Studio semantic compatibility    | #121                   | complete |
+| Safety/privacy                       | #30 / #99–#103         | complete |
 
 ## North-star evidence
 

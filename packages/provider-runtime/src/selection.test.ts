@@ -196,7 +196,6 @@ describe("describeProviderUnavailableForLearner", () => {
   });
 });
 
-
 describe("routeLearningRequirements", () => {
   function requirements(
     overrides: Partial<import("@agorix/learning-decision-plane").LearningRequirements> = {},
@@ -270,10 +269,7 @@ describe("routeLearningRequirements", () => {
   it("uses LearningRequirements capability instead of a caller-selected provider capability", () => {
     const route = routeLearningRequirements(
       requirements({ learningCapability: "debugger", reasoningTier: "local" }),
-      [
-        runtime("coach-only"),
-        runtime("debugger", { capabilities: ["debugger"] }),
-      ],
+      [runtime("coach-only"), runtime("debugger", { capabilities: ["debugger"] })],
       new Map(),
       ["coach-only", "debugger"],
     );

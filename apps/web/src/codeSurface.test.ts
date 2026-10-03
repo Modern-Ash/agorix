@@ -5,11 +5,13 @@ import { projectCodeComparison, projectCodeSurface } from "./codeSurface.js";
 
 const program: ProjectProgram = {
   schema: SCHEMA_VERSION,
-  scripts: [{
-    id: "main",
-    trigger: { type: "onStart" },
-    statements: [{ type: "repeat", count: 2, body: [{ type: "move", steps: 10 }] }],
-  }],
+  scripts: [
+    {
+      id: "main",
+      trigger: { type: "onStart" },
+      statements: [{ type: "repeat", count: 2, body: [{ type: "move", steps: 10 }] }],
+    },
+  ],
 };
 
 describe("Code Surface", () => {

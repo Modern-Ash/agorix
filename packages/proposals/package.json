@@ -13,5 +13,8 @@
     "@agorix/code-generator": "workspace:*",
     "@agorix/persistence": "workspace:*",
     "@agorix/program-model": "workspace:*"
+  },
+  "devDependencies": {
+    "@agorix/runtime": "workspace:*"
   }
 }

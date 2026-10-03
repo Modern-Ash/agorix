@@ -6,7 +6,12 @@ import {
   type NodeTextMapping,
   type TextRange,
 } from "@agorix/language-projection";
-import { validateProgram, type Expression, type ProjectProgram, type Statement } from "@agorix/program-model";
+import {
+  validateProgram,
+  type Expression,
+  type ProjectProgram,
+  type Statement,
+} from "@agorix/program-model";
 
 export const AGORIX_CODE_PROJECTION = {
   id: "agorix-code",
@@ -65,7 +70,8 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
     }
     case "if": {
       const start = writer.text.length;
-      writer.text += indent + "if " + expressionText(writer, statement.condition, nodeId + "/condition") + "\n";
+      writer.text +=
+        indent + "if " + expressionText(writer, statement.condition, nodeId + "/condition") + "\n";
       statement.then.forEach((child, index) =>
         writeStatement(writer, child, nodeId + "/then[" + index + "]", depth + 1),
       );
