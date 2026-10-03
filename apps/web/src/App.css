@@ -3587,3 +3587,22 @@ button:hover:not(:disabled) {
     animation: none;
   }
 }
+
+.ai-welcome {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0.5rem 0;
+  padding: 0.75rem;
+  border: 2px solid #8b5cf6;
+  border-radius: 12px;
+  background: #f5f3ff;
+  color: #1f1a33;
+}
+
+.ai-welcome p {
+  margin: 0;
+}
+
+.ai-welcome button {
+  min-height: 44px;
+}

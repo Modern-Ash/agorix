@@ -52,10 +52,12 @@ describe("main editor shell", () => {
     expect(html).toContain("Reset");
   });
 
-  it("labels the tutor as unavailable before any hint has been requested (issue #99)", () => {
+  it("shows the coach ready from the start, with no suggestion applied (issue #99)", () => {
     const html = renderToStaticMarkup(<App />);
 
-    expect(html).toContain('data-provenance="unavailable"');
+    expect(html).toContain("Local coach ready");
+    expect(html).toContain('data-testid="ai-welcome"');
+    expect(html).not.toContain('data-provenance="unavailable"');
     expect(html).not.toContain('data-provenance="suggestion"');
     expect(html).not.toContain('data-provenance="accepted"');
   });
