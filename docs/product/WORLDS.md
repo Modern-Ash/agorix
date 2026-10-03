@@ -217,6 +217,15 @@ Generated assets must record the tool/provider, prompt summary, date, editor and
 steps that materially affect the output. Do not include child personal data, school identifiers or
 private prompts in asset metadata.
 
+## Execution feedback (issue #202)
+
+- Run, Stop and Step state is shown inside the World (`data-stage-phase`, a feedback strip and an
+  observed path trail); Step names the active block and moves the World to the same runtime frame.
+- Success and retry feedback are rendered in the World with shape plus text (`★` / `↻`), World
+  copy and a runtime-fact label. They derive only from runtime observations and run status.
+- Switching Worlds changes presentation only; the same program yields the same runtime outcome.
+- Asset inventory and licensing: `docs/assets/WORLD_ASSETS.md`.
+
 ## Acceptance trace
 
 | #119 acceptance criterion                                             | Worlds architecture answer                                                                                              |

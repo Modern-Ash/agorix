@@ -3816,5 +3816,134 @@ button:hover:not(:disabled) {
 @media (pointer: coarse) {
   .tool-button {
     min-height: 52px;
+
+/* Worlds polish (issue #202): identity, execution feedback, motion. */
+.world-identity {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  align-items: center;
+  margin: 0 0 0.5rem;
+}
+
+.world-badge {
+  display: inline-flex;
+  gap: 0.25rem;
+  align-items: center;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  border: 2px solid currentColor;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.world-route {
+  font-size: 0.9rem;
+  opacity: 0.85;
+}
+
+.stage-panel[data-world="space"] .world-identity strong,
+.stage-panel[data-world="space"] .world-badge {
+  color: #3730a3;
+}
+.stage-panel[data-world="ocean"] .world-badge,
+.stage-panel[data-world="ocean"] .world-identity strong {
+  color: #0b5d8a;
+}
+.stage-panel[data-world="robots"] .world-badge,
+.stage-panel[data-world="robots"] .world-identity strong {
+  color: #374151;
+}
+.stage-panel[data-world="city"] .world-badge,
+.stage-panel[data-world="city"] .world-identity strong {
+  color: #9a3412;
+}
+
+.world-trail {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-dasharray: 6 4;
+  stroke-linecap: round;
+  opacity: 0.7;
+  color: #fff;
+  pointer-events: none;
+}
+
+.stage-canvas .goal-ring {
+  fill: none;
+  stroke: #16a34a;
+  stroke-width: 4;
+  stroke-dasharray: 3 3;
+}
+
+.stage-canvas .goal[data-pulse="true"] {
+  animation: world-goal-pulse 1.2s ease-in-out 3;
+}
+
+@keyframes world-goal-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.world-feedback {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.75rem;
+  align-items: center;
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+  border: 2px solid #94a3b8;
+  background: #f8fafc;
+  min-height: 44px;
+}
+
+.world-feedback-running,
+.world-feedback-stepping {
+  border-style: dashed;
+  border-color: #2563eb;
+}
+
+.world-feedback-success {
+  border-color: #16a34a;
+  background: #e4f7ea;
+}
+
+.world-feedback-retry {
+  border-color: #b45309;
+  background: #fff3d6;
+}
+
+.world-feedback-error {
+  border-color: #b91c1c;
+  background: #fde8e8;
+}
+
+.world-fact-tag {
+  font-weight: 600;
+}
+
+.world-active-block {
+  flex-basis: 100%;
+  overflow-wrap: anywhere;
+}
+
+.stage-panel[data-reduced-motion="true"] .stage-canvas .goal,
+.stage-panel[data-reduced-motion="true"] .sprite-group {
+  animation: none;
+  transition: none;
+}
+
+@media (min-width: 720px) and (max-width: 1180px) {
+  .world-feedback {
+    font-size: 1.05rem;
+  }
+  .world-picker select,
+  .world-feedback {
+    min-height: 48px;
   }
 }
