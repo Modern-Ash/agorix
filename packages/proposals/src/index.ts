@@ -579,3 +579,30 @@ export function createRepeatPatternProposal(input: {
     ],
   });
 }
+
+/**
+ * A small first step for an empty program. It is a proposal like any other:
+ * the learner inspects it and accepts, changes or rejects it.
+ */
+export function createFirstStepProposal(input: {
+  readonly id: string;
+  readonly baseProgram: ProjectProgram;
+  readonly purpose: string;
+  readonly rationale: string;
+}): ProgramProposal | undefined {
+  const script = input.baseProgram.scripts[0];
+  if (script === undefined || script.statements.length > 0) {
+    return undefined;
+  }
+  return createProgramProposal({
+    id: input.id,
+    baseProgram: input.baseProgram,
+    source: { kind: "deterministic-scaffold", capability: "first-step" },
+    purpose: input.purpose,
+    rationale: input.rationale,
+    affectedNodeIds: ["scripts[0]/statements[0]"],
+    operations: [
+      { type: "appendStatement", scriptIndex: 0, statement: { type: "move", steps: 10 } },
+    ],
+  });
+}

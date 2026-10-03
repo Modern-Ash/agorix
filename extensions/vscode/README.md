@@ -14,4 +14,4 @@ See `docs/product/AGORIX_STUDIO.md` for the product architecture.
 | `Agorix Studio: Show Execution Evidence` | Runs the shared runtime and prints the Execution Inspector (step, node, before/after world) to an Output channel.              |
 | `Agorix Studio: Suggest repeat`          | Same deterministic suggestion as Web: shows a diff of the projection, then Apply or Reject. The file is only written on Apply. |
 
-The commands are thin: all semantics live in `src/studioCore.ts`. The VS Code wiring in `src/extension.ts` has not been exercised inside a running VS Code yet; only `studioCore` is covered by tests.
+The commands are thin: all semantics live in `src/studioCore.ts`. `src/extension.test.ts` drives the commands against a simulated `vscode` module (open, evidence, diff, Apply/Reject, file write-back, error paths). It has not been run inside a real VS Code window; do that with F5 in the extension host before publishing.
