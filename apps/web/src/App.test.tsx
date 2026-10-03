@@ -106,6 +106,64 @@ describe("main editor shell", () => {
   });
 });
 
+describe("input parity semantics (issue #201)", () => {
+  function renderCard(locale: "en" | "es", index: number, total: number, depth: number) {
+    return renderToStaticMarkup(
+      <ProgramBlockCard
+        block={{ id: "move-1", type: "motion_move", fields: { steps: 12 } }}
+        path={depth === 0 ? [index] : [0, index]}
+        siblingIndex={index}
+        siblingTotal={total}
+        depth={depth}
+        selected={false}
+        suggestionAffected={false}
+        canonicalNodeId="scripts[0]/statements[0]"
+        locale={locale}
+        onSelect={() => undefined}
+        onCommitValue={() => undefined}
+        onMove={() => undefined}
+        onNest={() => undefined}
+        onOutdent={() => undefined}
+        onDelete={() => undefined}
+        onDuplicate={() => undefined}
+        onDragStart={() => undefined}
+        onDropBefore={() => undefined}
+        onDropAfter={() => undefined}
+        onDropInside={() => undefined}
+      />,
+    );
+  }
+
+  it("describes position, nesting level and keyboard shortcuts to assistive tech", () => {
+    const html = renderCard("en", 1, 3, 1);
+    expect(html).toContain("Position 2 of 3, nesting level 2.");
+    expect(html).toContain("aria-describedby");
+    expect(html).toContain("workspace-keyboard-hint");
+    expect(html).toContain('aria-keyshortcuts="Alt+ArrowUp');
+    expect(html).toContain('role="group"');
+  });
+
+  it("localizes position semantics", () => {
+    expect(renderCard("es", 0, 2, 0)).toContain("Posición 1 de 2, nivel de anidación 1.");
+  });
+
+  it("hides drag-only snap targets from the accessibility tree and keeps action buttons", () => {
+    const html = renderCard("en", 1, 3, 1);
+    expect(html).not.toContain("Drop before");
+    expect(html).toContain('class="snap-target snap-before" aria-hidden="true"');
+    for (const name of ["Up", "Down", "Nest", "Outdent", "Duplicate", "Delete"]) {
+      expect(html).toContain(`aria-label="${name}"`);
+    }
+  });
+
+  it("renders a polite status announcer and keyboard hint in the editor shell", () => {
+    const html = renderToStaticMarkup(<App />);
+    expect(html).toContain('data-testid="editor-announcer"');
+    expect(html).toContain('role="status"');
+    expect(html).toContain('id="workspace-keyboard-hint"');
+  });
+});
+
 describe("web i18n", () => {
   it("has complete catalogs and deterministic fallback", () => {
     expect(() => assertCatalogCompleteness()).not.toThrow();

@@ -3764,3 +3764,57 @@ button:hover:not(:disabled) {
     animation: none;
   }
 }
+
+/* Issue #201: input parity. Explicit controls are 44px touch targets, never
+   hover-only, and the visually-hidden helper carries screen-reader context. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.block-card .block-actions {
+  opacity: 1;
+  flex-wrap: wrap;
+}
+
+.block-card .block-actions button,
+.block-card .block-actions button:not(:disabled) {
+  min-width: 44px;
+  min-height: 44px;
+  width: 44px;
+  height: 44px;
+}
+
+.block-card .block-face,
+.block-card .block-inline-value input {
+  min-height: 44px;
+}
+
+.block-card .block-inline-value input {
+  min-width: 64px;
+}
+
+.block-face:focus-visible,
+.block-card .block-actions button:focus-visible,
+.block-card input:focus-visible {
+  outline: 3px solid #1d4ed8;
+  outline-offset: 2px;
+}
+
+.block-card {
+  scroll-margin-block: 96px;
+}
+
+@media (pointer: coarse) {
+  .tool-button {
+    min-height: 52px;
+  }
+}
