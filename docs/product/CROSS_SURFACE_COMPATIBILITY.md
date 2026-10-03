@@ -19,6 +19,11 @@ The semantic snapshot used for cross-surface comparison is versioned as
 `agorix/cross-surface/v1`. Its hash includes schema version, canonical program
 and learner progression. It excludes presentation state.
 
+Account identity, session identity and project ownership are separate
+platform-level envelopes. A private authenticated surface may wrap the same
+`StoredProject` in an `OwnedProjectDescriptor`, but that descriptor is not part
+of the canonical project and does not participate in the semantic hash.
+
 ## Allowed presentation differences
 
 These may differ between Web, Tablet and Studio:
@@ -41,8 +46,15 @@ compatibility guard rejects keys such as `selectedPanel`, `editorSplitSize`,
 `theme`, `studioFileFocus`, `tabletOrientation`, `blocklyId`, `selectedNodeId`
 and `vscodeUri` when they appear under `program`.
 
+Identity, session and ownership identifiers are rejected by the same guard.
+Keys such as `accountId`, `ownerAccountId`, `sessionId`, `username`, `alias`,
+`email`, `recoveryContact`, `projectId`, `revision` and
+`serverProjectRevision` belong to account/session/ownership contracts or
+deployment-specific storage, not `ProjectProgram`.
+
 Surfaces that need those values must persist them in surface-specific preference
-storage or a clearly separated presentation envelope, not in `ProjectProgram`.
+storage, a clearly separated presentation envelope, or a platform ownership
+envelope, not in `ProjectProgram`.
 
 ## Serialization and migration policy
 
@@ -53,6 +65,8 @@ All surfaces write the same `StoredProject` JSON shape. Loading rules are:
 - unsupported newer or unknown versions fail with `UNKNOWN_VERSION`;
 - corrupted JSON fails with `CORRUPTED_DATA`;
 - UI-specific state in canonical program state fails with `SCHEMA_MISMATCH`.
+- identity, session or ownership state in canonical program state fails with
+  `SCHEMA_MISMATCH`.
 
 Silent coercion is not allowed. A surface must show a recoverable load failure
 instead of mutating a project it cannot understand.
@@ -67,3 +81,7 @@ Compatibility tests must cover:
 - unsupported future schema fails explicitly;
 - presentation state and locale switches do not affect semantic equivalence;
 - UI-specific identifiers do not leak into the canonical model.
+- Web and Studio ownership envelopes can differ while the canonical project
+  remains semantically equivalent.
+- identity, session and project-ownership identifiers do not leak into the
+  canonical model.

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { SCHEMA_VERSION, type ProjectProgram } from "@agorix/program-model";
 import {
+  createOwnedProjectDescriptor,
+  createOwnedProjectEnvelope,
+} from "@agorix/platform-contract";
+import {
   PersistenceError,
   ProjectStore,
   assertNoUiSpecificProgramState,
@@ -170,6 +174,39 @@ describe("cross-surface project compatibility", () => {
     );
   });
 
+  it("keeps Web and Studio ownership envelopes outside semantic equivalence", () => {
+    const webEnvelope = createOwnedProjectEnvelope(
+      webCreatedProject,
+      createOwnedProjectDescriptor({
+        projectId: "proj_web_01",
+        ownerAccountId: "acct_web",
+        title: "Web Maze",
+        revision: "rev_web_01",
+        createdAt: baseMetadata.createdAt,
+        updatedAt: baseMetadata.updatedAt,
+      }),
+    );
+    const studioEnvelope = createOwnedProjectEnvelope(
+      openStoredProject(webEnvelope.project).stored,
+      createOwnedProjectDescriptor({
+        projectId: "proj_studio_01",
+        ownerAccountId: "acct_studio",
+        title: "Studio Maze",
+        revision: "rev_studio_42",
+        createdAt: baseMetadata.createdAt,
+        updatedAt: "2026-09-27T00:01:00.000Z",
+      }),
+    );
+
+    expect(webEnvelope.descriptor).not.toEqual(studioEnvelope.descriptor);
+    expect(semanticProjectHash(webEnvelope.project)).toBe(
+      semanticProjectHash(studioEnvelope.project),
+    );
+    expect(JSON.stringify(studioEnvelope.project.program)).not.toMatch(
+      /accountId|ownerAccountId|projectId|revision|sessionId/,
+    );
+  });
+
   it("rejects UI-specific identifiers inside the canonical program", () => {
     const pollutedProgram = {
       ...webProgram,
@@ -183,5 +220,20 @@ describe("cross-surface project compatibility", () => {
 
     expect(() => assertNoUiSpecificProgramState(pollutedProgram)).toThrow(/selectedPanel/);
     expect(JSON.stringify(webProgram)).not.toMatch(/selectedPanel|editorSplitSize|vscodeUri/);
+  });
+
+  it("rejects identity and ownership identifiers inside the canonical program", () => {
+    const pollutedProgram = {
+      ...webProgram,
+      scripts: [
+        {
+          ...webProgram.scripts[0],
+          ownerAccountId: "acct_01",
+        },
+      ],
+    } as unknown as ProjectProgram;
+
+    expect(() => assertNoUiSpecificProgramState(pollutedProgram)).toThrow(/ownerAccountId/);
+    expect(JSON.stringify(webProgram)).not.toMatch(/accountId|ownerAccountId|sessionId/);
   });
 });

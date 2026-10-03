@@ -242,6 +242,14 @@ describe("security baseline checker", () => {
       expect(rulesIn().inRule("no-pii-domain-fields")).toBe(true);
     });
 
+    it("allows provider-neutral identity contracts outside canonical persistence", () => {
+      write(
+        "packages/platform-contract/src/index.ts",
+        "export interface AccountIdentity {\n  readonly accountId: string;\n  readonly alias: string;\n}\n",
+      );
+      expect(rulesIn().inRule("no-pii-domain-fields")).toBe(false);
+    });
+
     it("allows the POC metadata field set", () => {
       write(
         "packages/persistence/src/store.ts",

@@ -62,9 +62,13 @@ allowlist entry and its test are the release gate.
 
 ### 5. No POC account or PII domain fields (`no-pii-domain-fields`)
 
-`packages/persistence/` and `packages/platform-contract/` must not declare account, contact, school,
-address, birth-date, precise-location or credential fields. Project metadata (`createdAt`,
-`updatedAt`, `missionProgress`, `hintLevel`, `locale`) stays allowed.
+Canonical persistence contracts must not declare account, contact, school, address, birth-date,
+precise-location or credential fields. Project metadata (`createdAt`, `updatedAt`,
+`missionProgress`, `hintLevel`, `locale`) stays allowed.
+
+Provider-neutral account, session and ownership descriptors may be defined in
+`packages/platform-contract/`, but they must remain outside `ProjectProgram` and outside portable
+canonical project persistence.
 
 ### 6. No prohibited POC features (`no-prohibited-features`)
 

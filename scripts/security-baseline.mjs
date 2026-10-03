@@ -424,18 +424,24 @@ function checkPiiDomainFields({ files, read }) {
       PII_DOMAIN_FIELD_PATTERN.lastIndex = 0;
       const match = PII_DOMAIN_FIELD_PATTERN.exec(line);
       if (match) {
+        const field = match[0].replace(/\??\s*:$/, "");
+        if (isAllowedPlatformContractIdentityField(file, field)) continue;
         findings.push(
           finding(
             "no-pii-domain-fields",
             file,
             index + 1,
-            `POC domain field "${match[0].replace(/[?:]+$/, "")}" is not allowed in the canonical/persistence contracts`,
+            `POC domain field "${field}" is not allowed in the canonical/persistence contracts`,
           ),
         );
       }
     }
   }
   return findings;
+}
+
+function isAllowedPlatformContractIdentityField(file, field) {
+  return file.startsWith("packages/platform-contract/") && field === "accountId";
 }
 
 function checkLearnerFreeTextLogging({ files, read }) {
