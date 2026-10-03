@@ -9,8 +9,13 @@ const shown: string[] = [];
 const diffs: unknown[][] = [];
 const output: string[] = [];
 const treeViews: string[] = [];
+const treeProviders = new Map<string, { getChildren(): unknown[] }>();
 const providers = new Map<string, { provideTextDocumentContent(uri: unknown): string }>();
 const revealed: unknown[] = [];
+const webviewPanels: Array<{
+  readonly messages: unknown[];
+  html: string;
+}> = [];
 let failRegistration = false;
 let choice: string | undefined;
 let picked: { fsPath: string } | undefined;
@@ -64,6 +69,7 @@ vi.mock("vscode", () => {
     Range,
     Selection,
     TextEditorRevealType: { InCenterIfOutsideViewport: 2 },
+    ViewColumn: { Beside: 2 },
     commands: {
       registerCommand: (name: string, handler: Handler) => {
         if (failRegistration) {
@@ -95,9 +101,35 @@ vi.mock("vscode", () => {
         selection: undefined,
         revealRange: (range: unknown) => revealed.push(range),
       }),
-      createTreeView: (id: string) => {
+      createTreeView: (id: string, options: { treeDataProvider: { getChildren(): unknown[] } }) => {
         treeViews.push(id);
+        treeProviders.set(id, options.treeDataProvider);
         return { dispose() {} };
+      },
+      createWebviewPanel: () => {
+        const panel = {
+          messages: [] as unknown[],
+          html: "",
+        };
+        webviewPanels.push(panel);
+        return {
+          webview: {
+            cspSource: "vscode-webview:",
+            get html() {
+              return panel.html;
+            },
+            set html(value: string) {
+              panel.html = value;
+            },
+            postMessage: async (message: unknown) => {
+              panel.messages.push(message);
+              return true;
+            },
+          },
+          reveal: vi.fn(),
+          onDidDispose: vi.fn(),
+          dispose: vi.fn(),
+        };
       },
       createOutputChannel: () => ({
         clear: () => (output.length = 0),
@@ -175,8 +207,10 @@ describe("Studio extension wiring", () => {
     diffs.length = 0;
     output.length = 0;
     treeViews.length = 0;
+    treeProviders.clear();
     providers.clear();
     revealed.length = 0;
+    webviewPanels.length = 0;
     choice = undefined;
     quickPick = undefined;
     failRegistration = false;
@@ -187,17 +221,26 @@ describe("Studio extension wiring", () => {
   });
 
   it("registers commands, virtual projection provider and native Activity Bar views", () => {
-    expect([...handlers.keys()].sort()).toEqual([
-      "agorixStudio.openProject",
-      "agorixStudio.openProjection",
-      "agorixStudio.revealCanonicalNode",
-      "agorixStudio.showEvidence",
-      "agorixStudio.suggestRepeat",
-      "agorixStudio.switchProjection",
-    ]);
+    expect([...handlers.keys()].sort()).toEqual(
+      [
+        "agorixStudio.openProject",
+        "agorixStudio.openProjection",
+        "agorixStudio.openWorldPreview",
+        "agorixStudio.revealCanonicalNode",
+        "agorixStudio.reset",
+        "agorixStudio.run",
+        "agorixStudio.selectExecutionStep",
+        "agorixStudio.showEvidence",
+        "agorixStudio.suggestRepeat",
+        "agorixStudio.step",
+        "agorixStudio.stop",
+        "agorixStudio.switchProjection",
+      ].sort(),
+    );
     expect([...providers.keys()]).toEqual(["agorix-studio"]);
     expect(treeViews.sort()).toEqual([
       "agorixStudio.companion",
+      "agorixStudio.inspector",
       "agorixStudio.missions",
       "agorixStudio.progress",
       "agorixStudio.projects",
@@ -222,6 +265,46 @@ describe("Studio extension wiring", () => {
     expect(output[0]).toContain("Outcome:");
     expect(output.some((line) => line.includes("Step 1"))).toBe(true);
     expect(revealed).toHaveLength(1);
+  });
+
+  it("drives World Preview and Execution Inspector from one runtime session", async () => {
+    await openFile("/p/a.json", repeated);
+
+    const reset = await handlers.get("agorixStudio.reset")!();
+    expect(reset).toMatchObject({ status: "idle", selectedFrameIndex: 0 });
+
+    const stepped = await handlers.get("agorixStudio.step")!();
+    expect(stepped).toMatchObject({ status: "running", selectedFrameIndex: 1 });
+
+    const preview = await handlers.get("agorixStudio.openWorldPreview")!();
+    expect(preview).toMatchObject({ selectedFrameIndex: 1 });
+    expect(webviewPanels).toHaveLength(1);
+    expect(webviewPanels[0]?.html).toContain("Content-Security-Policy");
+    expect(webviewPanels[0]?.html).toContain("canonical runtime");
+    expect(webviewPanels[0]?.messages.at(-1)).toMatchObject({
+      type: "agorix-frame",
+      view: { selectedFrameIndex: 1 },
+    });
+
+    const inspectorRows = treeProviders.get("agorixStudio.inspector")?.getChildren() ?? [];
+    expect(inspectorRows.length).toBeGreaterThan(0);
+    expect(JSON.stringify(inspectorRows[0])).toContain("runtime fact");
+
+    const selected = await handlers.get("agorixStudio.selectExecutionStep")!(1);
+    expect(selected).toMatchObject({ selectedFrameIndex: 1 });
+    expect(revealed.length).toBeGreaterThan(0);
+  });
+
+  it("runs and stops through coherent execution controls", async () => {
+    await openFile("/p/a.json", repeated);
+
+    const run = await handlers.get("agorixStudio.run")!();
+    expect(run).toMatchObject({ status: "completed", outcome: "completed" });
+
+    await handlers.get("agorixStudio.reset")!();
+    await handlers.get("agorixStudio.step")!();
+    const stop = await handlers.get("agorixStudio.stop")!();
+    expect(stop).toMatchObject({ status: "stopped", outcome: "stopped" });
   });
 
   it("opens and switches read-only projection documents without rewriting the project", async () => {

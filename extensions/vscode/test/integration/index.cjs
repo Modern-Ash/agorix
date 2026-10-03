@@ -36,23 +36,38 @@ const tests = [
       for (const id of [
         "agorixStudio.openProject",
         "agorixStudio.openProjection",
+        "agorixStudio.openWorldPreview",
         "agorixStudio.revealCanonicalNode",
+        "agorixStudio.reset",
+        "agorixStudio.run",
+        "agorixStudio.selectExecutionStep",
         "agorixStudio.showEvidence",
         "agorixStudio.suggestRepeat",
+        "agorixStudio.step",
+        "agorixStudio.stop",
         "agorixStudio.switchProjection",
       ]) {
         assert.ok(all.includes(id), `${id} is registered`);
       }
       const manifest = vscode.extensions.getExtension(EXTENSION_ID).packageJSON;
       const contributed = manifest.contributes.commands.map((c) => c.command).sort();
-      assert.deepEqual(contributed, [
-        "agorixStudio.openProject",
-        "agorixStudio.openProjection",
-        "agorixStudio.revealCanonicalNode",
-        "agorixStudio.showEvidence",
-        "agorixStudio.suggestRepeat",
-        "agorixStudio.switchProjection",
-      ]);
+      assert.deepEqual(
+        contributed,
+        [
+          "agorixStudio.openProject",
+          "agorixStudio.openProjection",
+          "agorixStudio.openWorldPreview",
+          "agorixStudio.revealCanonicalNode",
+          "agorixStudio.reset",
+          "agorixStudio.run",
+          "agorixStudio.selectExecutionStep",
+          "agorixStudio.showEvidence",
+          "agorixStudio.suggestRepeat",
+          "agorixStudio.step",
+          "agorixStudio.stop",
+          "agorixStudio.switchProjection",
+        ].sort(),
+      );
     },
   ],
   [
@@ -85,6 +100,42 @@ const tests = [
       assert.match(editor.document.getText(), /move\(/);
       assert.match(editor.document.getText(), /turn\(/);
       assert.equal(fs.readFileSync(file, "utf8"), before, "projection switch is read-only");
+    },
+  ],
+  [
+    "World Preview and Execution Inspector commands share the runtime session",
+    async () => {
+      const reset = await vscode.commands.executeCommand("agorixStudio.reset");
+      assert.equal(reset.status, "idle");
+      assert.equal(reset.selectedFrameIndex, 0);
+      assert.ok(reset.inspectorSteps.every((step) => step.provenance === "runtime fact"));
+
+      const step = await vscode.commands.executeCommand("agorixStudio.step");
+      assert.equal(step.status, "running");
+      assert.equal(step.currentFrame.highlightedNodeId, "scripts[0]/statements[0]");
+
+      const preview = await vscode.commands.executeCommand("agorixStudio.openWorldPreview");
+      assert.equal(preview.selectedFrameIndex, step.selectedFrameIndex);
+      assert.equal(preview.currentFrame.highlightedNodeId, step.currentFrame.highlightedNodeId);
+
+      const selected = await vscode.commands.executeCommand("agorixStudio.selectExecutionStep", 1);
+      assert.equal(selected.selectedFrameIndex, 1);
+      assert.equal(selected.inspectorSteps[1].nodeId, "scripts[0]/statements[0]");
+    },
+  ],
+  [
+    "Run and Stop controls report coherent execution state",
+    async () => {
+      const run = await vscode.commands.executeCommand("agorixStudio.run");
+      assert.equal(run.status, "completed");
+      assert.equal(run.outcome, "completed");
+
+      await vscode.commands.executeCommand("agorixStudio.reset");
+      await vscode.commands.executeCommand("agorixStudio.step");
+      const stopped = await vscode.commands.executeCommand("agorixStudio.stop");
+      assert.equal(stopped.status, "stopped");
+      assert.equal(stopped.outcome, "stopped");
+      assert.ok(stopped.previewFrames.length > 0);
     },
   ],
   [

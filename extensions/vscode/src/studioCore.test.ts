@@ -5,6 +5,7 @@ import { createProgramProposal } from "@agorix/proposals";
 import {
   applyProposal,
   createExecutionEvidence,
+  createExecutionViewState,
   createProposalReview,
   createStoredProjectWithProgram,
   formatInspectorReport,
@@ -157,6 +158,37 @@ describe("Agorix Studio first slice", () => {
     expect(evidence.learnerTrace[1]?.summary).toContain("before: x=52 y=128 heading=0");
     expect(evidence.inspectorRows[0]?.nodeId).toBe("scripts[0]/statements[0]");
     expect(evidence.inspectorRows[0]?.worldAfter.sprite.x).toBe(212);
+  });
+
+  it("creates one shared execution view state for preview frames and inspector rows", () => {
+    const evidence = createExecutionEvidence({
+      ...webCreatedProject,
+      program: {
+        ...webCreatedProject.program,
+        scripts: [
+          {
+            id: "main",
+            trigger: { type: "onStart" },
+            statements: [
+              { type: "move", steps: 160 },
+              { type: "turn", degrees: 90 },
+            ],
+          },
+        ],
+      },
+    });
+
+    const view = createExecutionViewState(evidence, 1, "running");
+
+    expect(view.status).toBe("running");
+    expect(view.currentFrame).toBe(view.previewFrames[1]);
+    expect(view.inspectorSteps[1]).toMatchObject({
+      frameIndex: 1,
+      nodeId: "scripts[0]/statements[0]",
+      provenance: "runtime fact",
+    });
+    expect(view.inspectorSteps.every((step) => step.provenance === "runtime fact")).toBe(true);
+    expect(view.inspectorSteps[1]?.summary).toContain("before:");
   });
 
   it("requires explicit proposal application and keeps reject non-mutating", () => {

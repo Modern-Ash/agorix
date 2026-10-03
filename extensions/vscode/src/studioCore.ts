@@ -87,6 +87,32 @@ export interface StudioExecutionEvidence {
   readonly inspectorRows: readonly InspectorRow[];
 }
 
+export type StudioExecutionStatus = "idle" | "running" | "stopped" | "completed";
+
+export interface StudioInspectorStep {
+  readonly index: number;
+  readonly frameIndex: number;
+  readonly runtimeStep: number;
+  readonly nodeId?: string;
+  readonly statementType?: ExecutionTraceEntry["statementType"];
+  readonly timing: ExecutionStep["timing"];
+  readonly before: LearnerTraceItem["before"];
+  readonly after: LearnerTraceItem["after"];
+  readonly summary: string;
+  readonly outcome?: StudioExecutionEvidence["result"]["outcome"];
+  readonly provenance: "runtime fact";
+}
+
+export interface StudioExecutionViewState {
+  readonly status: StudioExecutionStatus;
+  readonly selectedFrameIndex: number;
+  readonly currentFrame?: ObservationFrame;
+  readonly outcome: StudioExecutionEvidence["result"]["outcome"];
+  readonly stepsUsed: number;
+  readonly previewFrames: readonly ObservationFrame[];
+  readonly inspectorSteps: readonly StudioInspectorStep[];
+}
+
 export type { ProgramProposal, ProposalReview } from "@agorix/proposals";
 
 const PROJECTIONS: Record<
@@ -294,6 +320,49 @@ export function createExecutionEvidence(
       worldBefore: entry.worldBefore,
       worldAfter: entry.worldAfter,
     })),
+  };
+}
+
+export function createExecutionViewState(
+  evidence: StudioExecutionEvidence,
+  selectedFrameIndex: number,
+  status: StudioExecutionStatus,
+): StudioExecutionViewState {
+  const clampedFrameIndex = Math.max(
+    0,
+    Math.min(selectedFrameIndex, Math.max(0, evidence.previewFrames.length - 1)),
+  );
+  return {
+    status,
+    selectedFrameIndex: clampedFrameIndex,
+    ...(evidence.previewFrames[clampedFrameIndex] === undefined
+      ? {}
+      : { currentFrame: evidence.previewFrames[clampedFrameIndex] }),
+    outcome: evidence.result.outcome,
+    stepsUsed: evidence.result.stepsUsed,
+    previewFrames: evidence.previewFrames,
+    inspectorSteps: evidence.stepSequence.map((step, index) => {
+      const trace = evidence.learnerTrace[index];
+      const before = trace?.before ?? {
+        x: step.frame.state.sprite.x,
+        y: step.frame.state.sprite.y,
+        heading: step.frame.state.sprite.heading,
+      };
+      const after = trace?.after ?? before;
+      return {
+        index,
+        frameIndex: index,
+        runtimeStep: step.runtimeStep,
+        ...(step.nodeId === undefined ? {} : { nodeId: step.nodeId }),
+        ...(step.statementType === undefined ? {} : { statementType: step.statementType }),
+        timing: step.timing,
+        before,
+        after,
+        summary: trace?.summary ?? "Runtime observation",
+        ...(trace?.outcome === undefined ? {} : { outcome: trace.outcome }),
+        provenance: "runtime fact",
+      };
+    }),
   };
 }
 
