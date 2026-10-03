@@ -3816,6 +3816,8 @@ button:hover:not(:disabled) {
 @media (pointer: coarse) {
   .tool-button {
     min-height: 52px;
+  }
+}
 
 /* Worlds polish (issue #202): identity, execution feedback, motion. */
 .world-identity {
