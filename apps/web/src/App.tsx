@@ -941,6 +941,21 @@ function blockShapeFor(type: BlockNode["type"]): string {
   return type === "control_if" ? "predicate" : "command";
 }
 
+function autoScrollWorkspaceOnDrag(event: ReactDragEvent<HTMLElement>) {
+  event.preventDefault();
+  const scroller = event.currentTarget.closest(".program-panel");
+  if (!(scroller instanceof HTMLElement)) {
+    return;
+  }
+  const box = scroller.getBoundingClientRect();
+  const edgeSize = Math.min(96, box.height / 4);
+  if (event.clientY < box.top + edgeSize) {
+    scroller.scrollBy({ top: -18, behavior: "auto" });
+  } else if (event.clientY > box.bottom - edgeSize) {
+    scroller.scrollBy({ top: 18, behavior: "auto" });
+  }
+}
+
 export function ProgramBlockCard({
   block,
   path,
@@ -1039,14 +1054,20 @@ export function ProgramBlockCard({
       data-statement-path={path.join(".")}
       draggable
       onDragStart={onDragStart}
-      onDragOver={(event) => event.preventDefault()}
-      onDrop={onDropBefore}
+      onDragOver={autoScrollWorkspaceOnDrag}
+      onDrop={(event) => {
+        event.stopPropagation();
+        onDropBefore(event);
+      }}
     >
       <div
         className="snap-target snap-before"
         aria-label={t(locale, "dropBeforeBlock", { name: displayName })}
-        onDragOver={(event) => event.preventDefault()}
-        onDrop={onDropBefore}
+        onDragOver={autoScrollWorkspaceOnDrag}
+        onDrop={(event) => {
+          event.stopPropagation();
+          onDropBefore(event);
+        }}
       />
       <div className="scratch-block-main">
         <button type="button" className="block-title block-face" onClick={onSelect}>
@@ -1136,8 +1157,11 @@ export function ProgramBlockCard({
           className="nested-block-stack"
           data-container-path={path.join(".")}
           aria-label={t(locale, "nestedBlocks")}
-          onDragOver={(event) => event.preventDefault()}
-          onDrop={onDropInside}
+          onDragOver={autoScrollWorkspaceOnDrag}
+          onDrop={(event) => {
+            event.stopPropagation();
+            onDropInside(event);
+          }}
         >
           {children}
           <div className="snap-target snap-inside">{t(locale, "dropInside")}</div>
@@ -1146,8 +1170,11 @@ export function ProgramBlockCard({
       <div
         className="snap-target snap-after"
         aria-label={t(locale, "dropAfterBlock", { name: displayName })}
-        onDragOver={(event) => event.preventDefault()}
-        onDrop={onDropAfter}
+        onDragOver={autoScrollWorkspaceOnDrag}
+        onDrop={(event) => {
+          event.stopPropagation();
+          onDropAfter(event);
+        }}
       />
     </article>
   );
@@ -2580,7 +2607,7 @@ export function App() {
             </div>
             <div
               className="block-stack"
-              onDragOver={(event) => event.preventDefault()}
+              onDragOver={autoScrollWorkspaceOnDrag}
               onDrop={(event) => dropIntoWorkspace(event)}
               onDragEnd={clearDragState}
               data-drop-state={activeDragKind === undefined ? "idle" : "ready"}
