@@ -72,17 +72,25 @@ import {
 } from "@agorix/stage";
 import {
   addBlockToWorkspace,
-  blockNodeId,
+  addBlockToWorkspaceAt,
+  blockNodeIdForPath,
+  canContainStatements,
+  childContainerPathFor,
   codeSliceForNode,
   createEditorModel,
   createEditorModelFromProgram,
-  deleteBlockFromWorkspace,
-  editNumericBlockField,
-  moveBlockInWorkspace,
+  deleteBlockFromWorkspaceAt,
+  duplicateBlockInWorkspace,
+  editNumericBlockFieldAt,
+  indexInContainer,
+  moveBlockInWorkspaceByPath,
+  parentContainerPath,
   resetWorkspace,
+  statementListAtPath,
   type AddableBlockType,
   type EditorModel,
   type EditorProjection,
+  type StatementPath,
 } from "./editorModel.js";
 import {
   createBrowserProjectPersistence,
@@ -935,30 +943,48 @@ function blockShapeFor(type: BlockNode["type"]): string {
 
 export function ProgramBlockCard({
   block,
-  index,
-  total,
+  path,
+  siblingIndex,
+  siblingTotal,
+  depth,
   selected,
+  suggestionAffected,
   canonicalNodeId,
   locale,
+  children,
   onSelect,
   onCommitValue,
   onMove,
+  onNest,
+  onOutdent,
   onDelete,
+  onDuplicate,
   onDragStart,
   onDropBefore,
+  onDropAfter,
+  onDropInside,
 }: {
   block: BlockNode;
-  index: number;
-  total: number;
+  path: StatementPath;
+  siblingIndex: number;
+  siblingTotal: number;
+  depth: number;
   selected: boolean;
+  suggestionAffected: boolean;
   canonicalNodeId: string;
   locale: Locale;
+  children?: ReactNode;
   onSelect: () => void;
   onCommitValue: (value: number) => void;
   onMove: (direction: -1 | 1) => void;
+  onNest: () => void;
+  onOutdent: () => void;
   onDelete: () => void;
+  onDuplicate: () => void;
   onDragStart: (event: ReactDragEvent<HTMLElement>) => void;
   onDropBefore: (event: ReactDragEvent<HTMLElement>) => void;
+  onDropAfter: (event: ReactDragEvent<HTMLElement>) => void;
+  onDropInside: (event: ReactDragEvent<HTMLElement>) => void;
 }) {
   const field = numericFieldFor(block);
   const currentValue = field === undefined ? undefined : blockValue(block, field);
@@ -996,32 +1022,41 @@ export function ProgramBlockCard({
   const displayName = displayNameFor(block, locale);
   const blockTone = blockToneFor(block.type);
   const blockShape = blockShapeFor(block.type);
+  const hasStatementContainer = canContainStatements(block);
 
   return (
     <article
-      className={`block-node block-${blockTone} block-shape-${blockShape}${
+      className={`block-node block-card block-${blockTone} block-shape-${blockShape}${
         selected ? " active" : ""
-      }`}
+      }${suggestionAffected ? " suggestion-affected" : ""}`}
+      style={{ marginLeft: `${depth * 22}px` }}
       aria-label={t(locale, "blockLabel", { name: displayName })}
       data-interaction-model="touch-first drag-drop keyboard-reorder"
       data-block-type={block.type}
-      data-block-state={selected ? "selected" : "idle"}
+      data-block-state={selected ? "selected" : suggestionAffected ? "suggested" : "idle"}
       data-block-shape={blockShape}
       data-canonical-node-id={canonicalNodeId}
+      data-statement-path={path.join(".")}
       draggable
       onDragStart={onDragStart}
       onDragOver={(event) => event.preventDefault()}
       onDrop={onDropBefore}
     >
-      <div className="block-geometry">
-        <button type="button" className="block-face" onClick={onSelect}>
+      <div
+        className="snap-target snap-before"
+        aria-label={t(locale, "dropBeforeBlock", { name: displayName })}
+        onDragOver={(event) => event.preventDefault()}
+        onDrop={onDropBefore}
+      />
+      <div className="scratch-block-main">
+        <button type="button" className="block-title block-face" onClick={onSelect}>
           <span className="block-grip" aria-hidden="true" />
           <span className="block-label">{displayName}</span>
         </button>
         {field === undefined ? (
           <span className="block-slot block-slot-predicate">{t(locale, "touchingGoal")}</span>
         ) : (
-          <label className="block-inline-value">
+          <label className="value-editor block-inline-value">
             <input
               type="number"
               inputMode="numeric"
@@ -1034,40 +1069,86 @@ export function ProgramBlockCard({
             <span>{fieldLabelFor(field, locale)}</span>
           </label>
         )}
+        <div className="block-actions block-inline-controls" aria-label={t(locale, "cardActions")}>
+          {siblingIndex === 0 ? null : (
+            <button
+              type="button"
+              aria-label={t(locale, "up")}
+              title={t(locale, "up")}
+              onClick={() => onMove(-1)}
+            >
+              ↑
+            </button>
+          )}
+          {siblingIndex === siblingTotal - 1 ? null : (
+            <button
+              type="button"
+              aria-label={t(locale, "down")}
+              title={t(locale, "down")}
+              onClick={() => onMove(1)}
+            >
+              ↓
+            </button>
+          )}
+          {siblingIndex === 0 ? null : (
+            <button
+              type="button"
+              aria-label={t(locale, "nestBlock")}
+              title={t(locale, "nestBlock")}
+              onClick={onNest}
+            >
+              ↳
+            </button>
+          )}
+          {depth === 0 ? null : (
+            <button
+              type="button"
+              aria-label={t(locale, "outdentBlock")}
+              title={t(locale, "outdentBlock")}
+              onClick={onOutdent}
+            >
+              ↰
+            </button>
+          )}
+          <button
+            type="button"
+            aria-label={t(locale, "duplicateBlock")}
+            title={t(locale, "duplicateBlock")}
+            onClick={onDuplicate}
+          >
+            ⧉
+          </button>
+          <button
+            type="button"
+            aria-label={t(locale, "delete")}
+            title={t(locale, "delete")}
+            onClick={onDelete}
+          >
+            ×
+          </button>
+        </div>
       </div>
       {block.type === "control_if" ? (
         <p className="block-note">{t(locale, "blockNoteIf")}</p>
       ) : null}
-      <div className="block-inline-controls" aria-label={t(locale, "cardActions")}>
-        {index === 0 ? null : (
-          <button
-            type="button"
-            aria-label={t(locale, "up")}
-            title={t(locale, "up")}
-            onClick={() => onMove(-1)}
-          >
-            ↑
-          </button>
-        )}
-        {index === total - 1 ? null : (
-          <button
-            type="button"
-            aria-label={t(locale, "down")}
-            title={t(locale, "down")}
-            onClick={() => onMove(1)}
-          >
-            ↓
-          </button>
-        )}
-        <button
-          type="button"
-          aria-label={t(locale, "delete")}
-          title={t(locale, "delete")}
-          onClick={onDelete}
+      {hasStatementContainer ? (
+        <div
+          className="nested-block-stack"
+          data-container-path={path.join(".")}
+          aria-label={t(locale, "nestedBlocks")}
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={onDropInside}
         >
-          ×
-        </button>
-      </div>
+          {children}
+          <div className="snap-target snap-inside">{t(locale, "dropInside")}</div>
+        </div>
+      ) : null}
+      <div
+        className="snap-target snap-after"
+        aria-label={t(locale, "dropAfterBlock", { name: displayName })}
+        onDragOver={(event) => event.preventDefault()}
+        onDrop={onDropAfter}
+      />
     </article>
   );
 }
@@ -1359,6 +1440,7 @@ export function App() {
   const [closedPanels, setClosedPanels] = useState<readonly PanelId[]>(["trace"]);
   const [maximizedPanel, setMaximizedPanel] = useState<PanelId | undefined>(undefined);
   const [aiConnectionOpen, setAiConnectionOpen] = useState(false);
+  const [activeDragKind, setActiveDragKind] = useState<"palette" | "workspace" | undefined>();
 
   const mission = useMemo(() => getLocalizedFirstMission(locale), [locale]);
   const statements = model.workspace.scripts[0]?.statements ?? [];
@@ -1586,7 +1668,7 @@ export function App() {
     }
   }
 
-  function editBlock(index: number, block: BlockNode, value: number) {
+  function editBlockAt(path: StatementPath, block: BlockNode, value: number) {
     const field = numericFieldFor(block);
     if (field === undefined) {
       return;
@@ -1594,25 +1676,76 @@ export function App() {
     if (
       commitProjection(
         "edit numeric block field",
-        editNumericBlockField(model.workspace, index, field, value),
+        editNumericBlockFieldAt(model.workspace, path, field, value),
       )
     ) {
       setMessage(t(locale, "programUpdatedMessage"));
     }
   }
 
-  function moveBlock(index: number, direction: -1 | 1) {
+  function moveBlockAt(path: StatementPath, direction: -1 | 1) {
+    const containerPath = parentContainerPath(path);
+    const siblings = statementListAtPath(model.workspace, containerPath);
+    const index = indexInContainer(path);
     const nextIndex = index + direction;
-    if (nextIndex < 0 || nextIndex >= statements.length) {
+    if (nextIndex < 0 || nextIndex >= siblings.length) {
       return;
     }
-    if (commitProjection("move block", moveBlockInWorkspace(model.workspace, index, nextIndex))) {
+    if (
+      commitProjection(
+        "move block",
+        moveBlockInWorkspaceByPath(model.workspace, path, containerPath, nextIndex),
+      )
+    ) {
       setMessage(t(locale, "programUpdatedMessage"));
     }
   }
 
-  function deleteBlock(index: number) {
-    if (commitProjection("delete block", deleteBlockFromWorkspace(model.workspace, index))) {
+  function deleteBlockAt(path: StatementPath) {
+    if (commitProjection("delete block", deleteBlockFromWorkspaceAt(model.workspace, path))) {
+      setMessage(t(locale, "programUpdatedMessage"));
+    }
+  }
+
+  function duplicateBlockAt(path: StatementPath) {
+    if (commitProjection("duplicate block", duplicateBlockInWorkspace(model.workspace, path))) {
+      setMessage(t(locale, "programUpdatedMessage"));
+    }
+  }
+
+  function nestBlockAt(path: StatementPath) {
+    const containerPath = parentContainerPath(path);
+    const siblings = statementListAtPath(model.workspace, containerPath);
+    const index = indexInContainer(path);
+    const previous = siblings[index - 1];
+    if (previous === undefined || !canContainStatements(previous)) {
+      return;
+    }
+    const targetContainerPath = [...containerPath, index - 1];
+    const targetIndex = statementListAtPath(model.workspace, targetContainerPath).length;
+    if (
+      commitProjection(
+        "nest block",
+        moveBlockInWorkspaceByPath(model.workspace, path, targetContainerPath, targetIndex),
+      )
+    ) {
+      setMessage(t(locale, "programUpdatedMessage"));
+    }
+  }
+
+  function outdentBlockAt(path: StatementPath) {
+    if (path.length < 2) {
+      return;
+    }
+    const parentPath = parentContainerPath(path);
+    const grandParentPath = parentContainerPath(parentPath);
+    const parentIndex = indexInContainer(parentPath);
+    if (
+      commitProjection(
+        "outdent block",
+        moveBlockInWorkspaceByPath(model.workspace, path, grandParentPath, parentIndex + 1),
+      )
+    ) {
       setMessage(t(locale, "programUpdatedMessage"));
     }
   }
@@ -1906,14 +2039,6 @@ export function App() {
     setMessage(t(locale, "freePlayUnlocked"));
   }
 
-  function moveBlockToIndex(fromIndex: number, toIndex: number) {
-    if (fromIndex === toIndex || fromIndex < 0 || fromIndex >= statements.length) {
-      return;
-    }
-    const clamped = Math.max(0, Math.min(toIndex, statements.length - 1));
-    commitProjection("move block", moveBlockInWorkspace(model.workspace, fromIndex, clamped));
-  }
-
   function togglePanel(panel: PanelId) {
     setCollapsedPanels((current) =>
       current.includes(panel) ? current.filter((item) => item !== panel) : [...current, panel],
@@ -1985,29 +2110,102 @@ export function App() {
   function dragTool(event: ReactDragEvent<HTMLElement>, type: AddableBlockType) {
     event.dataTransfer.setData(BLOCK_DRAG_TYPE, type);
     event.dataTransfer.effectAllowed = "copy";
+    setActiveDragKind("palette");
   }
 
-  function dragWorkspaceBlock(event: ReactDragEvent<HTMLElement>, index: number) {
-    event.dataTransfer.setData(WORKSPACE_DRAG_TYPE, String(index));
+  function dragWorkspaceBlock(event: ReactDragEvent<HTMLElement>, path: StatementPath) {
+    event.dataTransfer.setData(WORKSPACE_DRAG_TYPE, path.join("."));
     event.dataTransfer.effectAllowed = "move";
+    setActiveDragKind("workspace");
   }
 
-  function dropIntoWorkspace(event: ReactDragEvent<HTMLElement>, targetIndex = statements.length) {
+  function clearDragState() {
+    setActiveDragKind(undefined);
+  }
+
+  function pathFromDragData(value: string): StatementPath | undefined {
+    if (value.trim() === "") {
+      return undefined;
+    }
+    const path = value.split(".").map((segment) => Number(segment));
+    return path.every((segment) => Number.isInteger(segment) && segment >= 0) ? path : undefined;
+  }
+
+  function dropIntoWorkspace(
+    event: ReactDragEvent<HTMLElement>,
+    targetContainerPath: StatementPath = [],
+    targetIndex = statementListAtPath(model.workspace, targetContainerPath).length,
+  ) {
     event.preventDefault();
+    clearDragState();
     const type = event.dataTransfer.getData(BLOCK_DRAG_TYPE);
     if (isAddable(type)) {
-      if (commitProjection("add block", addBlockToWorkspace(model.workspace, type))) {
+      if (
+        commitProjection(
+          "add block",
+          addBlockToWorkspaceAt(model.workspace, type, targetContainerPath, targetIndex),
+        )
+      ) {
         setMessage(t(locale, "blockAddedMessage"));
       }
       return;
     }
-    const source = Number(event.dataTransfer.getData(WORKSPACE_DRAG_TYPE));
-    if (Number.isInteger(source)) {
-      moveBlockToIndex(
-        source,
-        targetIndex >= statements.length ? statements.length - 1 : targetIndex,
-      );
+    const source = pathFromDragData(event.dataTransfer.getData(WORKSPACE_DRAG_TYPE));
+    if (source !== undefined) {
+      if (
+        commitProjection(
+          "move block",
+          moveBlockInWorkspaceByPath(model.workspace, source, targetContainerPath, targetIndex),
+        )
+      ) {
+        setMessage(t(locale, "programUpdatedMessage"));
+      }
     }
+  }
+
+  const contextualAffectedNodeIds =
+    proposalReview?.proposal.affectedNodeIds ?? repeatOffer?.affectedNodeIds ?? [];
+
+  function renderWorkspaceBlocks(containerPath: StatementPath = [], depth = 0): ReactNode {
+    const blocks = statementListAtPath(model.workspace, containerPath);
+    return blocks.map((block, index) => {
+      const path = [...containerPath, index];
+      const nodeId = blockNodeIdForPath(model.workspace, path);
+      const childPath = childContainerPathFor(path);
+      return (
+        <ProgramBlockCard
+          key={block.id}
+          block={block}
+          path={path}
+          siblingIndex={index}
+          siblingTotal={blocks.length}
+          depth={depth}
+          selected={highlightedNodeId === nodeId}
+          suggestionAffected={contextualAffectedNodeIds.includes(nodeId)}
+          canonicalNodeId={nodeId}
+          locale={locale}
+          onSelect={() => setHighlightedNodeId(nodeId)}
+          onCommitValue={(value) => editBlockAt(path, block, value)}
+          onMove={(direction) => moveBlockAt(path, direction)}
+          onNest={() => nestBlockAt(path)}
+          onOutdent={() => outdentBlockAt(path)}
+          onDelete={() => deleteBlockAt(path)}
+          onDuplicate={() => duplicateBlockAt(path)}
+          onDragStart={(event) => dragWorkspaceBlock(event, path)}
+          onDropBefore={(event) => dropIntoWorkspace(event, containerPath, index)}
+          onDropAfter={(event) => dropIntoWorkspace(event, containerPath, index + 1)}
+          onDropInside={(event) =>
+            dropIntoWorkspace(
+              event,
+              childPath,
+              statementListAtPath(model.workspace, childPath).length,
+            )
+          }
+        >
+          {canContainStatements(block) ? renderWorkspaceBlocks(childPath, depth + 1) : null}
+        </ProgramBlockCard>
+      );
+    });
   }
 
   const closedPanelIds = PANEL_AREAS.filter((panel) => closedPanels.includes(panel));
@@ -2015,6 +2213,7 @@ export function App() {
   return (
     <main
       className={status === "complete" ? "editor-shell mission-complete" : "editor-shell"}
+      data-drag-kind={activeDragKind ?? "none"}
       data-learning-capability={learningDecision?.capability}
       data-generative-needed={learningDecision?.generativeNeeded}
       data-reasoning-tier={learningDecision?.reasoningTier}
@@ -2302,6 +2501,7 @@ export function App() {
                       onDragStart={(event) => {
                         if (block.type !== undefined) dragTool(event, block.type);
                       }}
+                      onDragEnd={clearDragState}
                       onClick={() => {
                         if (block.type !== undefined) addBlock(block.type);
                       }}
@@ -2382,6 +2582,8 @@ export function App() {
               className="block-stack"
               onDragOver={(event) => event.preventDefault()}
               onDrop={(event) => dropIntoWorkspace(event)}
+              onDragEnd={clearDragState}
+              data-drop-state={activeDragKind === undefined ? "idle" : "ready"}
             >
               {statements.length === 0 ? (
                 <div className="empty-state empty-start-card">
@@ -2396,26 +2598,7 @@ export function App() {
                   </button>
                 </div>
               ) : null}
-              {statements.map((block, index) => {
-                const nodeId = blockNodeId(index);
-                return (
-                  <ProgramBlockCard
-                    key={block.id}
-                    block={block}
-                    index={index}
-                    total={statements.length}
-                    selected={highlightedNodeId === nodeId}
-                    canonicalNodeId={nodeId}
-                    locale={locale}
-                    onSelect={() => setHighlightedNodeId(nodeId)}
-                    onCommitValue={(value) => editBlock(index, block, value)}
-                    onMove={(direction) => moveBlock(index, direction)}
-                    onDelete={() => deleteBlock(index)}
-                    onDragStart={(event) => dragWorkspaceBlock(event, index)}
-                    onDropBefore={(event) => dropIntoWorkspace(event, index)}
-                  />
-                );
-              })}
+              {renderWorkspaceBlocks()}
             </div>
           </section>
         )}

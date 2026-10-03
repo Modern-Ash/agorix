@@ -7,11 +7,15 @@ import { App, ProgramBlockCard } from "./App.js";
 import { assertCatalogCompleteness, resolveLocale, t } from "./i18n.js";
 import {
   addBlockToWorkspace,
+  addBlockToWorkspaceAt,
   blockNodeId,
+  blockNodeIdForPath,
   codeSliceForNode,
   createEditorModel,
   createEditorModelFromProgram,
+  duplicateBlockInWorkspace,
   editNumericBlockField,
+  moveBlockInWorkspaceByPath,
   resetWorkspace,
 } from "./editorModel.js";
 import {
@@ -71,21 +75,29 @@ describe("main editor shell", () => {
     const html = renderToStaticMarkup(
       <ProgramBlockCard
         block={{ id: "move-1", type: "motion_move", fields: { steps: 12 } }}
-        index={0}
-        total={1}
+        path={[0]}
+        siblingIndex={0}
+        siblingTotal={1}
+        depth={0}
         selected={true}
+        suggestionAffected={false}
         canonicalNodeId="scripts[0]/statements[0]"
         locale="en"
         onSelect={() => undefined}
         onCommitValue={() => undefined}
         onMove={() => undefined}
+        onNest={() => undefined}
+        onOutdent={() => undefined}
         onDelete={() => undefined}
+        onDuplicate={() => undefined}
         onDragStart={() => undefined}
         onDropBefore={() => undefined}
+        onDropAfter={() => undefined}
+        onDropInside={() => undefined}
       />,
     );
 
-    expect(html).toContain('class="block-node block-motion block-shape-command active"');
+    expect(html).toContain('class="block-node block-card block-motion block-shape-command active"');
     expect(html).toContain('data-block-state="selected"');
     expect(html).toContain('data-canonical-node-id="scripts[0]/statements[0]"');
     expect(html).toContain('aria-label="Move steps"');
@@ -130,6 +142,40 @@ describe("editor model", () => {
 
     expect(added.workspace.scripts[0]?.statements).toHaveLength(1);
     expect(reset.workspace.scripts[0]?.statements).toEqual([]);
+  });
+
+  it("adds, moves and outdents blocks through nested canonical paths", () => {
+    const initial = createEditorModel();
+    const repeat = addBlockToWorkspace(initial.workspace, "control_repeat");
+    const nested = addBlockToWorkspaceAt(repeat.workspace, "motion_move", [0], 0);
+    const outdented = moveBlockInWorkspaceByPath(nested.workspace, [0, 0], [], 1);
+
+    expect(nested.program.scripts[0]?.statements).toEqual([
+      { type: "repeat", count: 3, body: [{ type: "move", steps: 10 }] },
+    ]);
+    expect(blockNodeIdForPath(nested.workspace, [0, 0])).toBe("scripts[0]/statements[0]/body[0]");
+    expect(outdented.program.scripts[0]?.statements).toEqual([
+      { type: "repeat", count: 3, body: [] },
+      { type: "move", steps: 10 },
+    ]);
+  });
+
+  it("duplicates a container subtree with fresh visual ids and synchronized code", () => {
+    const initial = createEditorModel();
+    const repeat = addBlockToWorkspace(initial.workspace, "control_repeat");
+    const nested = addBlockToWorkspaceAt(repeat.workspace, "motion_turn", [0], 0);
+    const duplicated = duplicateBlockInWorkspace(nested.workspace, [0]);
+    const ids = JSON.stringify(duplicated.workspace);
+
+    expect(duplicated.program.scripts[0]?.statements).toEqual([
+      { type: "repeat", count: 3, body: [{ type: "turn", degrees: 90 }] },
+      { type: "repeat", count: 3, body: [{ type: "turn", degrees: 90 }] },
+    ]);
+    expect(ids).toContain(":copy");
+    expect(new Set(ids.match(/workspace:[^"]+/g) ?? []).size).toBe(
+      (ids.match(/workspace:[^"]+/g) ?? []).length,
+    );
+    expect(duplicated.code).toContain("repeat(3");
   });
 });
 
