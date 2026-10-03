@@ -8,11 +8,16 @@ import {
   createProposalReview,
   createStoredProjectWithProgram,
   formatInspectorReport,
+  createNavigationSections,
+  listStudioProjections,
   openStoredProject,
+  openProjectionDocument,
   parseStoredProject,
+  projectionRangeForNode,
   rangeForNode,
   rejectProposal,
   serializeStoredProject,
+  semanticHash,
   suggestRepeat,
 } from "./studioCore.js";
 
@@ -71,6 +76,53 @@ describe("Agorix Studio first slice", () => {
     const range = rangeForNode(project, "scripts[0]/statements[0]");
 
     expect(project.projection.code.slice(range.start, range.end)).toBe("  sprite.move(160);\n");
+  });
+
+  it("opens TypeScript, Agorix Code and Python as read-only semantic projections", () => {
+    const project = openStoredProject(webCreatedProject);
+    const beforeHash = semanticHash(project.stored.program);
+    const descriptors = listStudioProjections().map((projection) => projection.id);
+    const projectionIds = ["typescript", "agorix-code", "python"] as const;
+
+    expect(descriptors).toEqual(projectionIds);
+    for (const id of projectionIds) {
+      const document = openProjectionDocument(project, id);
+      const range = projectionRangeForNode(document, "scripts[0]/statements[0]");
+      expect(document.semanticHash).toBe(beforeHash);
+      expect(document.readOnlyReason).toMatch(/Read-only/i);
+      expect(document.text.slice(range.start, range.end)).toMatch(/160/);
+    }
+
+    expect(openProjectionDocument(project, "typescript").text).toContain("sprite.move(160);");
+    expect(openProjectionDocument(project, "agorix-code").text).toContain("move 160");
+    expect(openProjectionDocument(project, "python").text).toContain("move(160)");
+    expect(project.stored.program).toEqual(webCreatedProject.program);
+  });
+
+  it("derives native Studio navigation from the canonical project without a duplicate model", () => {
+    const sections = createNavigationSections(openStoredProject(webCreatedProject));
+
+    expect(sections.map((section) => section.id)).toEqual([
+      "projects",
+      "missions",
+      "progress",
+      "worlds",
+      "companion",
+    ]);
+    expect(sections.find((section) => section.id === "projects")?.items[0]).toMatchObject({
+      label: "Current local project",
+      command: "agorixStudio.openProject",
+      contextValue: "agorixProject",
+    });
+    expect(sections.find((section) => section.id === "missions")?.items[0]?.id).toBe(
+      "first-mission.reach-goal",
+    );
+    expect(
+      sections.find((section) => section.id === "worlds")?.items.map((item) => item.id),
+    ).toEqual(["space.trailhead", "ocean.reef", "robots.workshop", "city.crossing"]);
+    expect(sections.find((section) => section.id === "progress")?.items[0]?.command).toBe(
+      "agorixStudio.showEvidence",
+    );
   });
 
   it("keeps Step evidence, World Preview frames and inspector rows in sync", () => {
