@@ -6,6 +6,14 @@ Agorix Studio is the VS Code surface for learners who are ready to work closer t
 
 Studio is not Scratch embedded in VS Code. It is an IDE-native learning surface that keeps the accepted program, code projection, runtime evidence and proposal review distinct.
 
+## Release gate
+
+Studio's product release gate is
+[`STUDIO_RELEASE_GATE.md`](./STUDIO_RELEASE_GATE.md). It records the Web/Studio
+capability parity matrix, required journeys, automated evidence and intentional
+UX differences for issue #214. #204 should close only after that gate and the
+listed CI evidence stay green.
+
 ## First slice
 
 Issue #38 delivers the first Studio slice:
@@ -20,7 +28,7 @@ Issue #38 delivers the first Studio slice:
 
 Full Git workflows, marketplace publishing, AI-assisted SDLC and complete Web/Studio compatibility remain later work. #121 owns the full cross-surface compatibility proof after Studio can read and write the shared project contract.
 
-The compatibility proof is now specified in
+The compatibility proof is specified in
 [`CROSS_SURFACE_COMPATIBILITY.md`](./CROSS_SURFACE_COMPATIBILITY.md): Studio,
 Web and Tablet share `StoredProject` as the canonical project envelope, while UI
 preferences such as panel focus, theme, projection and locale remain outside the
