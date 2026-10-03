@@ -226,20 +226,32 @@ describe("Studio extension wiring", () => {
         "agorixStudio.openProject",
         "agorixStudio.openProjection",
         "agorixStudio.openWorldPreview",
+        "agorixStudio.applyProposal",
+        "agorixStudio.companionBuild",
+        "agorixStudio.companionChallenge",
+        "agorixStudio.companionDebug",
+        "agorixStudio.companionExplain",
+        "agorixStudio.companionReflect",
+        "agorixStudio.redoProposal",
+        "agorixStudio.rejectProposal",
         "agorixStudio.revealCanonicalNode",
+        "agorixStudio.revealProposalAffectedNode",
         "agorixStudio.reset",
         "agorixStudio.run",
         "agorixStudio.selectExecutionStep",
         "agorixStudio.showEvidence",
+        "agorixStudio.suggestFirstStep",
         "agorixStudio.suggestRepeat",
         "agorixStudio.step",
         "agorixStudio.stop",
         "agorixStudio.switchProjection",
+        "agorixStudio.undoProposal",
       ].sort(),
     );
     expect([...providers.keys()]).toEqual(["agorix-studio"]);
     expect(treeViews.sort()).toEqual([
       "agorixStudio.companion",
+      "agorixStudio.companionHistory",
       "agorixStudio.inspector",
       "agorixStudio.missions",
       "agorixStudio.progress",
@@ -295,6 +307,23 @@ describe("Studio extension wiring", () => {
     expect(revealed.length).toBeGreaterThan(0);
   });
 
+  it("records contextual Companion responses with deterministic routing diagnostics", async () => {
+    await openFile("/p/a.json", repeated);
+    await handlers.get("agorixStudio.run")!();
+
+    const turn = await handlers.get("agorixStudio.companionDebug")!();
+
+    expect(turn).toMatchObject({
+      action: "debug",
+      diagnostics: { providerSelection: "bypassed" },
+      response: { capability: "debugger" },
+    });
+    const rows = treeProviders.get("agorixStudio.companionHistory")?.getChildren() ?? [];
+    expect(rows).toHaveLength(1);
+    expect(JSON.stringify(rows[0])).toContain("bypassed");
+    expect(JSON.stringify(rows[0])).toContain("runtime facts");
+  });
+
   it("runs and stops through coherent execution controls", async () => {
     await openFile("/p/a.json", repeated);
 
@@ -344,6 +373,22 @@ describe("Studio extension wiring", () => {
         ],
       },
     ]);
+
+    await handlers.get("agorixStudio.undoProposal")!();
+    const undone = JSON.parse(new TextDecoder().decode(files.get("/p/a.json")));
+    expect(undone.program.scripts[0].statements).toHaveLength(6);
+
+    await handlers.get("agorixStudio.redoProposal")!();
+    const redone = JSON.parse(new TextDecoder().decode(files.get("/p/a.json")));
+    expect(redone.program.scripts[0].statements).toEqual(written.program.scripts[0].statements);
+  });
+
+  it("reviews first-step proposal through the generic apply flow", async () => {
+    await openFile("/p/empty.json", stored([]));
+    choice = "Apply";
+    await handlers.get("agorixStudio.suggestFirstStep")!();
+    const written = JSON.parse(new TextDecoder().decode(files.get("/p/empty.json")));
+    expect(written.program.scripts[0].statements).toEqual([{ type: "move", steps: 10 }]);
   });
 
   it("says so when nothing repeats", async () => {

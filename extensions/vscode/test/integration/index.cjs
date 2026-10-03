@@ -37,15 +37,26 @@ const tests = [
         "agorixStudio.openProject",
         "agorixStudio.openProjection",
         "agorixStudio.openWorldPreview",
+        "agorixStudio.applyProposal",
+        "agorixStudio.companionBuild",
+        "agorixStudio.companionChallenge",
+        "agorixStudio.companionDebug",
+        "agorixStudio.companionExplain",
+        "agorixStudio.companionReflect",
+        "agorixStudio.redoProposal",
+        "agorixStudio.rejectProposal",
         "agorixStudio.revealCanonicalNode",
+        "agorixStudio.revealProposalAffectedNode",
         "agorixStudio.reset",
         "agorixStudio.run",
         "agorixStudio.selectExecutionStep",
         "agorixStudio.showEvidence",
+        "agorixStudio.suggestFirstStep",
         "agorixStudio.suggestRepeat",
         "agorixStudio.step",
         "agorixStudio.stop",
         "agorixStudio.switchProjection",
+        "agorixStudio.undoProposal",
       ]) {
         assert.ok(all.includes(id), `${id} is registered`);
       }
@@ -57,15 +68,26 @@ const tests = [
           "agorixStudio.openProject",
           "agorixStudio.openProjection",
           "agorixStudio.openWorldPreview",
+          "agorixStudio.applyProposal",
+          "agorixStudio.companionBuild",
+          "agorixStudio.companionChallenge",
+          "agorixStudio.companionDebug",
+          "agorixStudio.companionExplain",
+          "agorixStudio.companionReflect",
+          "agorixStudio.redoProposal",
+          "agorixStudio.rejectProposal",
           "agorixStudio.revealCanonicalNode",
+          "agorixStudio.revealProposalAffectedNode",
           "agorixStudio.reset",
           "agorixStudio.run",
           "agorixStudio.selectExecutionStep",
           "agorixStudio.showEvidence",
+          "agorixStudio.suggestFirstStep",
           "agorixStudio.suggestRepeat",
           "agorixStudio.step",
           "agorixStudio.stop",
           "agorixStudio.switchProjection",
+          "agorixStudio.undoProposal",
         ].sort(),
       );
     },
@@ -124,6 +146,19 @@ const tests = [
     },
   ],
   [
+    "Companion debug uses deterministic runtime facts without mutating the project",
+    async () => {
+      const file = fixture("repeat.agorix.json").fsPath;
+      const before = fs.readFileSync(file, "utf8");
+      const turn = await vscode.commands.executeCommand("agorixStudio.companionDebug");
+      assert.equal(turn.action, "debug");
+      assert.equal(turn.diagnostics.providerSelection, "bypassed");
+      assert.equal(turn.response.capability, "debugger");
+      assert.ok(turn.diagnostics.runtimeFactCount > 0);
+      assert.equal(fs.readFileSync(file, "utf8"), before, "companion response is read-only");
+    },
+  ],
+  [
     "Run and Stop controls report coherent execution state",
     async () => {
       const run = await vscode.commands.executeCommand("agorixStudio.run");
@@ -159,7 +194,7 @@ const tests = [
           .flatMap((group) => group.tabs)
           .find((t) => t.input instanceof vscode.TabInputTextDiff),
       );
-      assert.match(tab.label, /Agorix suggestion/);
+      assert.match(tab.label, /Agorix proposal/);
       const [original, modified] = [tab.input.original, tab.input.modified];
       const [a, b] = await Promise.all([
         vscode.workspace.openTextDocument(original),
