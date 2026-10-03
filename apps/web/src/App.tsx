@@ -1597,33 +1597,6 @@ export function App() {
     }
   }
 
-  function previewDeterministicProposal() {
-    try {
-      const proposal = createProgramProposal({
-        id: "deterministic-move-160",
-        baseProgram: model.program,
-        source: { kind: "deterministic-scaffold", capability: "transparency-e2e" },
-        purpose: t(locale, "proposalPurpose"),
-        rationale: t(locale, "proposalRationale"),
-        affectedNodeIds: ["scripts[0]/statements[0]"],
-        operations: [
-          {
-            type: "replaceStatement",
-            nodeId: "scripts[0]/statements[0]",
-            statement: { type: "move", steps: 160 },
-          },
-        ],
-      });
-      const review = createProposalReview(model.program, proposal);
-      setProposalReview(review);
-      setProposalMessage(t(locale, "proposalPreviewReady"));
-      setHighlightedNodeId(review.proposal.affectedNodeIds[0]);
-    } catch {
-      setStatus("error");
-      setMessage(t(locale, "runSetupError"));
-    }
-  }
-
   function previewImperfectAiProposal() {
     try {
       const proposal = createProgramProposal({
@@ -2342,9 +2315,6 @@ export function App() {
               selectedNodeIds={highlightedNodeId === undefined ? [] : [highlightedNodeId]}
             />
             <div className="tutor-actions">
-              <button type="button" onClick={previewDeterministicProposal}>
-                {t(locale, "previewProposal")}
-              </button>
               <button type="button" onClick={previewImperfectAiProposal}>
                 {t(locale, "aiLiteracyActivity")}
               </button>

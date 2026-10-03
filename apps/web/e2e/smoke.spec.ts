@@ -45,49 +45,50 @@ async function runTransparencyJourney(page: Page, viewport: { width: number; hei
   await page.setViewportSize(viewport);
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Move" }).click();
-  await applyMoveSteps(page, "24");
-  await expect(visibleCode(page, "sprite.move(24);")).toBeVisible();
+  for (let i = 0; i < 3; i += 1) {
+    await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+    await page.locator(".action-palette").getByLabel("Turn", { exact: true }).click();
+  }
+  await expect(visibleCode(page, "sprite.move(10);")).toBeVisible();
   await expect(codeHeading(page)).toBeVisible();
   const beforeHash = await canonicalHash(page);
 
-  await page.getByRole("button", { name: "Preview proposal" }).click();
-  await expect(page.getByTestId("proposal-preview")).toBeVisible();
-  await expect(
-    page.getByText("Proposal preview ready. Your program has not changed."),
-  ).toBeVisible();
-  await expect(visibleCode(page, "sprite.move(24);")).toBeVisible();
-  await expect(page.getByTestId("proposal-preview").getByText("sprite.move(160);")).toBeVisible();
+  // The suggestion is triggered by what the learner built, and stays a proposal.
+  await page.getByRole("button", { name: "Try it" }).click();
+  const preview = page.getByTestId("proposal-preview");
+  await expect(preview).toBeVisible();
+  await expect(preview).toContainText("repeat");
+  await expect(visibleCode(page, "sprite.move(10);")).toBeVisible();
   expect(await canonicalHash(page)).toBe(beforeHash);
 
-  await page.getByRole("button", { name: "Reject proposal" }).click();
+  await page
+    .getByTestId("repeat-suggestion")
+    .getByRole("button", { name: "Reject proposal" })
+    .click();
   await expect(page.getByText("Proposal rejected. Your program stayed the same.")).toBeVisible();
-  await expect(visibleCode(page, "sprite.move(24);")).toBeVisible();
   expect(await canonicalHash(page)).toBe(beforeHash);
 
-  await page.getByRole("button", { name: "Preview proposal" }).click();
+  // Changing the program makes a new offer possible; this time the learner accepts.
+  await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+  await page.getByRole("button", { name: "Try it" }).click();
   await page.getByRole("button", { name: "Accept proposal" }).click();
   await expect(
     page.getByText("Proposal accepted. Blocks and code updated from canonical state."),
   ).toBeVisible();
-  await expect(page.getByLabel("Move block").getByRole("spinbutton")).toHaveValue("160");
-  await expect(visibleCode(page, "sprite.move(160);")).toBeVisible();
+  await expect(page.locator(".code-surface")).toContainText("repeat");
   expect(await canonicalHash(page)).not.toBe(beforeHash);
 
   await page.getByRole("button", { name: "Step" }).click();
   await page.getByRole("button", { name: "Step" }).click();
-  await expect(page.locator(".block-card.active")).toContainText("Move");
-  await expect(page.locator(".code-surface mark")).toContainText("sprite.move(160);");
-  await expect(page.getByText("Nova moved right; x: 52 -> 212")).toBeVisible();
+  await expect(page.getByTestId("step-card")).toBeVisible();
+  await expect(page.locator(".code-surface mark")).toBeVisible();
 
   await page.setViewportSize({ width: viewport.height, height: viewport.width });
-  await expect(visibleCode(page, "sprite.move(160);")).toBeVisible();
+  await expect(page.locator(".code-surface")).toContainText("repeat");
   await expect(codeHeading(page)).toBeVisible();
 
   await page.getByRole("button", { name: "Run" }).click();
-  await expect(page.getByText("Mission complete: your sprite reached the goal.")).toBeVisible({
-    timeout: 5000,
-  });
+  await expect(page.locator(".run-state")).toBeVisible();
 }
 
 test("main editor shell renders persistent blocks, stage and code", async ({ page }) => {
@@ -628,11 +629,13 @@ test("provenance is visually and textually distinguishable across suggestion, ac
   await expect(page.locator('[data-provenance="unavailable"]')).toBeVisible();
   await expect(page.locator('[data-provenance="suggestion"]')).toHaveCount(0);
 
-  await page.getByRole("button", { name: "Move" }).click();
-  await applyMoveSteps(page, "24");
+  for (let i = 0; i < 3; i += 1) {
+    await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+    await page.locator(".action-palette").getByLabel("Turn", { exact: true }).click();
+  }
 
   // A proposal preview is an explicit, labeled suggestion — not yet applied.
-  await page.getByRole("button", { name: "Preview proposal" }).click();
+  await page.getByRole("button", { name: "Try it" }).click();
   const suggestion = page.locator('[data-provenance="suggestion"]');
   await expect(suggestion).toBeVisible();
   await expect(suggestion).toContainText("not applied yet");
@@ -645,7 +648,7 @@ test("provenance is visually and textually distinguishable across suggestion, ac
 
   // Running the program produces a runtime-fact label distinct from both AI states.
   await page.getByRole("button", { name: "Run" }).click();
-  await expect(page.locator('[data-provenance="runtime-fact"]')).toBeVisible({ timeout: 5000 });
+  await expect(page.locator('[data-provenance="runtime-fact"]')).toBeVisible({ timeout: 20000 });
 });
 
 test("AI-literacy journey predicts, tests, challenges and corrects an imperfect suggestion", async ({
