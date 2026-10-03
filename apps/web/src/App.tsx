@@ -1553,7 +1553,7 @@ export function App() {
     const blob = new Blob([json], { type: "application/vnd.agorix.project+json" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
-    anchor.href = url;
+    anchor.href = url; // agora-allowlist: local Blob download generated from validated .agorix serializer, not outbound navigation
     anchor.download = sanitizeAgorixFilename("agorix-first-mission");
     document.body.append(anchor);
     anchor.click();
