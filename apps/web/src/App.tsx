@@ -12,7 +12,6 @@ import type { ProjectMetadata } from "@agorix/persistence";
 import type { ProjectProgram } from "@agorix/program-model";
 import type { BlockNode } from "@agorix/block-editor";
 import {
-  DEFAULT_WORLD_ID,
   WORLDS,
   createMissionRunFeedback,
   getLocalizedFirstMission,
@@ -86,6 +85,7 @@ import {
   type LoadedEditorProject,
   type ProjectPersistence,
 } from "./projectStorage.js";
+import { loadPresentationPrefs, savePresentationPrefs } from "./presentationPrefs.js";
 import { LOCALE_LABELS, t, type Locale, type MessageKey } from "./i18n.js";
 import { ProvenanceLabel } from "./ProvenanceLabel.js";
 import { CODE_PROJECTION_IDS, projectCodeSurface, type CodeProjectionId } from "./codeSurface.js";
@@ -1373,10 +1373,12 @@ export function App() {
   const [proposalReview, setProposalReview] = useState<ProposalReview | undefined>();
   const [proposalMessage, setProposalMessage] = useState<string | undefined>();
   const [dismissedRepeatHash, setDismissedRepeatHash] = useState<string | undefined>();
-  const [worldId, setWorldId] = useState<string>(DEFAULT_WORLD_ID);
+  const [worldId, setWorldId] = useState<string>(() => loadPresentationPrefs().worldId);
   const [stepping, setStepping] = useState(false);
   const [firstStepDeclined, setFirstStepDeclined] = useState(false);
-  const [repeatDeclines, setRepeatDeclines] = useState(0);
+  const [repeatDeclines, setRepeatDeclines] = useState(
+    () => loadPresentationPrefs().repeatDeclines,
+  );
   const [learningDecision, setLearningDecision] = useState<
     WebLearningDecisionDiagnostics | undefined
   >();
@@ -1399,6 +1401,9 @@ export function App() {
   const canonicalHash = programSemanticHash(model.program);
   const proposalCard =
     proposalReview === undefined ? undefined : createWebProposalCardView(proposalReview);
+  useEffect(() => {
+    savePresentationPrefs({ worldId, repeatDeclines });
+  }, [worldId, repeatDeclines]);
   const world = getWorld(worldId);
   const worldText = worldCopy(world, locale);
   const repeatProposal = useMemo(

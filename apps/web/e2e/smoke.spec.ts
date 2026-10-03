@@ -983,3 +983,37 @@ test.describe("AI available from the start", () => {
     await expect(page.getByTestId("ai-welcome")).toHaveCount(0);
   });
 });
+
+test.describe("presentation preferences", () => {
+  test("chosen world survives reload without touching the canonical program", async ({ page }) => {
+    await page.goto("/");
+    await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+    const hash = await canonicalHash(page);
+    await page.getByLabel("World").selectOption("city.crossing");
+    await page.reload();
+    await expect(page.locator(".stage-panel")).toHaveAttribute("data-world", "city.crossing");
+    expect(await canonicalHash(page)).toBe(hash);
+  });
+
+  test("declining twice keeps the AI quiet after a reload", async ({ page }) => {
+    await page.goto("/");
+    for (let round = 0; round < 2; round += 1) {
+      for (let i = 0; i < 3; i += 1) {
+        await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+        await page.locator(".action-palette").getByLabel("Turn", { exact: true }).click();
+      }
+      for (let extra = 0; extra < round; extra += 1) {
+        // A different program each round, so "declined this program" doesn't mask the counter.
+        await page.locator(".action-palette").getByLabel("Turn", { exact: true }).click();
+      }
+      await page.getByRole("button", { name: "No thanks" }).click();
+      await page.getByRole("button", { name: "Reset" }).click();
+    }
+    await page.reload();
+    for (let i = 0; i < 3; i += 1) {
+      await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+      await page.locator(".action-palette").getByLabel("Turn", { exact: true }).click();
+    }
+    await expect(page.getByTestId("repeat-suggestion")).toHaveCount(0);
+  });
+});
