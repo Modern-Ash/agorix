@@ -61,13 +61,16 @@ import {
 } from "@agorix/proposals";
 import { runProgram, type RunResult, type WorldState } from "@agorix/runtime";
 import {
+  deriveStageFeedback,
   executionStepsFromRuntimeObservations,
   framesFromRuntimeObservations,
   learnerTraceFromExecutionSteps,
   resetStageSession,
+  resolveStageMotion,
   type ExecutionStep,
   type LearnerTraceItem,
   type ObservationFrame,
+  type StageFeedback,
   type StageState,
 } from "@agorix/stage";
 import {
@@ -761,11 +764,50 @@ const WORLD_GLYPHS: Record<WorldPalette, { sprite: string; goal: string }> = {
   city: { sprite: "🛴", goal: "📦" },
 };
 
-function StageView({
+const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
+
+export function usePrefersReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(() =>
+    typeof window !== "undefined" && typeof window.matchMedia === "function"
+      ? window.matchMedia(REDUCED_MOTION_QUERY).matches
+      : false,
+  );
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const query = window.matchMedia(REDUCED_MOTION_QUERY);
+    const onChange = (event: MediaQueryListEvent) => setReduced(event.matches);
+    query.addEventListener("change", onChange);
+    return () => query.removeEventListener("change", onChange);
+  }, []);
+  return reduced;
+}
+
+function stagePhaseText(locale: Locale, feedback: StageFeedback): string {
+  switch (feedback.phase) {
+    case "running":
+      return t(locale, "stagePhaseRunning");
+    case "stepping":
+      return t(locale, "stagePhaseStepping", {
+        n: feedback.position ?? 0,
+        total: feedback.total,
+      });
+    case "stopped":
+      return t(locale, "stagePhaseStopped");
+    case "error":
+      return t(locale, "stagePhaseError");
+    default:
+      return t(locale, "stagePhaseIdle");
+  }
+}
+
+export function StageView({
   frame,
   fallback,
   locale,
   world,
+  feedback,
+  activeCode,
+  reducedMotion,
   panelControls,
   panelProps,
 }: {
@@ -773,6 +815,9 @@ function StageView({
   frame: ObservationFrame | undefined;
   fallback: StageState;
   locale: Locale;
+  feedback: StageFeedback;
+  activeCode?: string;
+  reducedMotion: boolean;
   panelControls?: ReactNode;
   panelProps?: PanelChromeProps;
 }) {
@@ -782,19 +827,33 @@ function StageView({
   const viewport = state.viewport;
   const copy = worldCopy(world, locale);
   const glyphs = WORLD_GLYPHS[world.visualStyle.palette];
+  const motion = resolveStageMotion(reducedMotion);
+  const settled = feedback.phase === "success" || feedback.phase === "retry";
+  const trailPoints = feedback.trail.map((point) => `${point.x},${point.y}`).join(" ");
   return (
     <section
       className={panelProps?.className ?? "stage-panel"}
       style={panelProps?.style}
       aria-labelledby="stage-title"
       data-world={world.id}
+      data-stage-phase={feedback.phase}
+      data-reduced-motion={reducedMotion ? "true" : "false"}
     >
       <div className="panel-heading">
         <h2 id="stage-title">{t(locale, "stage")}</h2>
         <span className="status-pill">
-          {frame?.reachedGoal ? t(locale, "evidenceGoalReached") : t(locale, "evidenceReachGoal")}
+          {feedback.reachedGoal ? t(locale, "evidenceGoalReached") : t(locale, "evidenceReachGoal")}
         </span>
         {panelControls}
+      </div>
+      <div className="world-identity" data-testid="world-identity">
+        <span className="world-badge">
+          <span aria-hidden="true">{glyphs.sprite}</span> {t(locale, "stageWorldBadge")}
+        </span>
+        <strong>{copy.title}</strong>
+        <span className="world-route">
+          {t(locale, "stageRoute", { sprite: copy.spriteName, goal: copy.goalName })}
+        </span>
       </div>
       <svg
         className="stage-canvas"
@@ -804,9 +863,29 @@ function StageView({
       >
         <rect width={viewport.width} height={viewport.height} rx="14" />
         <line x1="24" y1="128" x2="240" y2="128" />
-        <circle className="goal" cx={goal.x} cy={goal.y} r={goal.radius}>
+        {feedback.trail.length > 1 ? (
+          <polyline className="world-trail" points={trailPoints} data-testid="world-trail">
+            <title>{t(locale, "stageTrailAria")}</title>
+          </polyline>
+        ) : null}
+        <circle
+          className={feedback.reachedGoal ? "goal goal-reached" : "goal"}
+          cx={goal.x}
+          cy={goal.y}
+          r={goal.radius}
+          data-pulse={feedback.reachedGoal && motion.pulseGoal ? "true" : "false"}
+        >
           <title>{copy.goalAlt}</title>
         </circle>
+        {feedback.reachedGoal ? (
+          <circle
+            className="goal-ring"
+            cx={goal.x}
+            cy={goal.y}
+            r={goal.radius + 6}
+            aria-hidden="true"
+          />
+        ) : null}
         <text
           className="world-glyph"
           x={goal.x}
@@ -818,24 +897,61 @@ function StageView({
         >
           {glyphs.goal}
         </text>
-        <g transform={`translate(${sprite.x} ${sprite.y}) rotate(${sprite.heading})`}>
-          <circle className="sprite" r={sprite.radius}>
-            <title>{copy.spriteAlt}</title>
-          </circle>
-          <path d="M 4 0 L 16 -6 L 16 6 Z" />
-        </g>
-        <text
-          className="world-glyph"
-          x={sprite.x}
-          y={sprite.y}
-          textAnchor="middle"
-          dominantBaseline="central"
-          fontSize={sprite.radius * 1.5}
-          aria-hidden="true"
+        <g
+          className="sprite-group"
+          data-testid="stage-sprite"
+          data-x={sprite.x}
+          data-y={sprite.y}
+          data-heading={sprite.heading}
+          style={{
+            transform: `translate(${sprite.x}px, ${sprite.y}px)`,
+            transition: motion.glideMs === 0 ? "none" : `transform ${motion.glideMs}ms ease-out`,
+          }}
         >
-          {glyphs.sprite}
-        </text>
+          <g transform={`rotate(${sprite.heading})`}>
+            <circle className="sprite" r={sprite.radius}>
+              <title>{copy.spriteAlt}</title>
+            </circle>
+            <path d="M 4 0 L 16 -6 L 16 6 Z" />
+          </g>
+          <text
+            className="world-glyph"
+            textAnchor="middle"
+            dominantBaseline="central"
+            fontSize={sprite.radius * 1.5}
+            aria-hidden="true"
+          >
+            {glyphs.sprite}
+          </text>
+        </g>
       </svg>
+      <div
+        className={`world-feedback world-feedback-${feedback.phase}`}
+        data-testid="stage-feedback"
+        data-feedback-phase={feedback.phase}
+      >
+        {settled ? (
+          <>
+            <strong className="world-feedback-mark">
+              <span aria-hidden="true">{feedback.phase === "success" ? "★" : "↻"}</span>{" "}
+              {t(locale, feedback.phase === "success" ? "stageSuccessMark" : "stageRetryMark")}
+            </strong>
+            <span>
+              {feedback.phase === "success" ? copy.reachedFeedback : copy.stoppedShortFeedback}
+            </span>
+            <small className="world-fact-tag" data-fact-source="runtime">
+              <span aria-hidden="true">▶</span> {t(locale, "stageObservedByRuntime")}
+            </small>
+          </>
+        ) : (
+          <span>{stagePhaseText(locale, feedback)}</span>
+        )}
+        {feedback.activeNodeId !== undefined && activeCode ? (
+          <code className="world-active-block" data-testid="stage-active-block">
+            {t(locale, "stageActiveBlock", { code: activeCode })}
+          </code>
+        ) : null}
+      </div>
     </section>
   );
 }
@@ -1479,6 +1595,13 @@ export function App() {
   const canonicalHash = programSemanticHash(model.program);
   const proposalCard =
     proposalReview === undefined ? undefined : createWebProposalCardView(proposalReview);
+  const reducedMotion = usePrefersReducedMotion();
+  const stageFeedback = deriveStageFeedback({
+    frames: executionSteps.length > 0 ? executionSteps.map((step) => step.frame) : frames,
+    index: frameIndex,
+    status,
+    stepping,
+  });
   const world = getWorld(worldId);
   const worldText = worldCopy(world, locale);
   const repeatProposal = useMemo(
@@ -2470,6 +2593,9 @@ export function App() {
             frame={activeFrame}
             fallback={model.stage.current}
             locale={locale}
+            feedback={stageFeedback}
+            activeCode={highlightedCode.trim()}
+            reducedMotion={reducedMotion}
             panelControls={panelControls("stage")}
             panelProps={panelProps("stage", "stage-panel")}
           />

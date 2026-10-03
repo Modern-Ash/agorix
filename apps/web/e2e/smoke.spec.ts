@@ -1098,3 +1098,83 @@ test("worlds are localized in Spanish", async ({ page }) => {
   await page.getByLabel("Mundo").selectOption("ocean.reef");
   await expect(page.getByTestId("world-narrative")).toContainText("submarino");
 });
+
+test("Step keeps the active block, code and World in sync", async ({ page }) => {
+  await page.goto("/");
+  await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+  await applyMoveSteps(page, "160");
+
+  const sprite = page.getByTestId("stage-sprite");
+  const startX = await sprite.getAttribute("data-x");
+  await page.getByRole("button", { name: "Step", exact: true }).click();
+  const feedback = page.getByTestId("stage-feedback");
+  await expect(page.locator(".stage-panel")).toHaveAttribute("data-stage-phase", "stepping");
+  await expect(feedback).toContainText(/Step 1 of/);
+  await expect(page.getByTestId("stage-active-block")).toContainText("sprite.move(160);");
+  await expect(page.locator(".code-surface mark")).toBeVisible();
+  await page.getByRole("button", { name: "Step", exact: true }).click();
+  await expect(feedback).toContainText(/Step 2 of/);
+  await expect(sprite).not.toHaveAttribute("data-x", startX ?? "");
+});
+
+test("World shows success and retry feedback with runtime-observed labelling", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("World").selectOption("ocean.reef");
+  await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+  await applyMoveSteps(page, "20");
+  await page.getByRole("button", { name: "Run", exact: true }).click();
+  const feedback = page.getByTestId("stage-feedback");
+  await expect(feedback).toContainText("The submarine stopped before the marker.", {
+    timeout: 8000,
+  });
+  await expect(feedback).toContainText("Not there yet");
+  await expect(feedback.locator('[data-fact-source="runtime"]')).toBeVisible();
+
+  await applyMoveSteps(page, "160");
+  await page.getByRole("button", { name: "Run", exact: true }).click();
+  await expect(feedback).toContainText("The submarine reached the marker.", { timeout: 8000 });
+  await expect(feedback).toContainText("Goal reached");
+  await expect(page.locator(".goal-ring")).toBeVisible();
+});
+
+test("World identity is visible and Stop is reflected in the World", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByTestId("world-identity")).toContainText("Agorix World");
+  await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+  await applyMoveSteps(page, "160");
+  await page.getByRole("button", { name: "Run", exact: true }).click();
+  await expect(page.locator(".stage-panel")).toHaveAttribute("data-stage-phase", "running");
+  await page.getByRole("button", { name: "Stop", exact: true }).click();
+  await expect(page.locator(".stage-panel")).toHaveAttribute("data-stage-phase", "stopped");
+  await expect(page.getByTestId("stage-feedback")).toContainText("Stopped");
+});
+
+test("reduced motion turns off glide and pulse while feedback stays visible", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  await expect(page.locator(".stage-panel")).toHaveAttribute("data-reduced-motion", "true");
+  await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+  await applyMoveSteps(page, "160");
+  await page.getByRole("button", { name: "Run", exact: true }).click();
+  await expect(page.getByTestId("stage-feedback")).toContainText("Goal reached", {
+    timeout: 8000,
+  });
+  await expect(page.getByTestId("stage-sprite")).toHaveCSS("transition-property", "none");
+  await expect(page.locator(".stage-canvas .goal")).toHaveAttribute("data-pulse", "false");
+});
+
+for (const viewport of [
+  { name: "tablet", width: 1024, height: 768 },
+  { name: "desktop", width: 1440, height: 900 },
+]) {
+  test(`World stays prominent with feedback at ${viewport.name} size`, async ({ page }) => {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await page.goto("/");
+    await expect(page.getByRole("heading", { name: "Stage" })).toBeInViewport();
+    await expect(page.getByTestId("stage-feedback")).toBeVisible();
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth > window.innerWidth + 1,
+    );
+    expect(overflow).toBe(false);
+  });
+}

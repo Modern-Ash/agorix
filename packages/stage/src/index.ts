@@ -42,3 +42,11 @@ export {
   framesFromRuntimeObservations,
   learnerTraceFromExecutionSteps,
 } from "./rendering.js";
+export type {
+  StageFeedback,
+  StageFeedbackInput,
+  StageMotionPolicy,
+  StagePhase,
+  StageRunStatus,
+} from "./feedback.js";
+export { deriveStageFeedback, resolveStageMotion } from "./feedback.js";
