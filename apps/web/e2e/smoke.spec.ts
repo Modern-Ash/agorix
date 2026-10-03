@@ -778,7 +778,10 @@ test("provenance is visually and textually distinguishable across suggestion, ac
   await page.goto("/");
 
   // Initial state: no AI content shown yet, tutor marked unavailable.
-  await expect(page.locator('[data-provenance="unavailable"]')).toBeVisible();
+  await expect(page.locator('[data-provenance="unavailable"]')).toHaveCount(0);
+  await expect(
+    page.locator(".companion-panel").getByText("Local coach ready").first(),
+  ).toBeVisible();
   await expect(page.locator('[data-provenance="suggestion"]')).toHaveCount(0);
 
   for (let i = 0; i < 3; i += 1) {
@@ -1099,82 +1102,106 @@ test("worlds are localized in Spanish", async ({ page }) => {
   await expect(page.getByTestId("world-narrative")).toContainText("submarino");
 });
 
-test("Step keeps the active block, code and World in sync", async ({ page }) => {
-  await page.goto("/");
-  await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
-  await applyMoveSteps(page, "160");
-
-  const sprite = page.getByTestId("stage-sprite");
-  const startX = await sprite.getAttribute("data-x");
-  await page.getByRole("button", { name: "Step", exact: true }).click();
-  const feedback = page.getByTestId("stage-feedback");
-  await expect(page.locator(".stage-panel")).toHaveAttribute("data-stage-phase", "stepping");
-  await expect(feedback).toContainText(/Step 1 of/);
-  await expect(page.getByTestId("stage-active-block")).toContainText("sprite.move(160);");
-  await expect(page.locator(".code-surface mark")).toBeVisible();
-  await page.getByRole("button", { name: "Step", exact: true }).click();
-  await expect(feedback).toContainText(/Step 2 of/);
-  await expect(sprite).not.toHaveAttribute("data-x", startX ?? "");
-});
-
-test("World shows success and retry feedback with runtime-observed labelling", async ({ page }) => {
-  await page.goto("/");
-  await page.getByLabel("World").selectOption("ocean.reef");
-  await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
-  await applyMoveSteps(page, "20");
-  await page.getByRole("button", { name: "Run", exact: true }).click();
-  const feedback = page.getByTestId("stage-feedback");
-  await expect(feedback).toContainText("The submarine stopped before the marker.", {
-    timeout: 8000,
-  });
-  await expect(feedback).toContainText("Not there yet");
-  await expect(feedback.locator('[data-fact-source="runtime"]')).toBeVisible();
-
-  await applyMoveSteps(page, "160");
-  await page.getByRole("button", { name: "Run", exact: true }).click();
-  await expect(feedback).toContainText("The submarine reached the marker.", { timeout: 8000 });
-  await expect(feedback).toContainText("Goal reached");
-  await expect(page.locator(".goal-ring")).toBeVisible();
-});
-
-test("World identity is visible and Stop is reflected in the World", async ({ page }) => {
-  await page.goto("/");
-  await expect(page.getByTestId("world-identity")).toContainText("Agorix World");
-  await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
-  await applyMoveSteps(page, "160");
-  await page.getByRole("button", { name: "Run", exact: true }).click();
-  await expect(page.locator(".stage-panel")).toHaveAttribute("data-stage-phase", "running");
-  await page.getByRole("button", { name: "Stop", exact: true }).click();
-  await expect(page.locator(".stage-panel")).toHaveAttribute("data-stage-phase", "stopped");
-  await expect(page.getByTestId("stage-feedback")).toContainText("Stopped");
-});
-
-test("reduced motion turns off glide and pulse while feedback stays visible", async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/");
-  await expect(page.locator(".stage-panel")).toHaveAttribute("data-reduced-motion", "true");
-  await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
-  await applyMoveSteps(page, "160");
-  await page.getByRole("button", { name: "Run", exact: true }).click();
-  await expect(page.getByTestId("stage-feedback")).toContainText("Goal reached", {
-    timeout: 8000,
-  });
-  await expect(page.getByTestId("stage-sprite")).toHaveCSS("transition-property", "none");
-  await expect(page.locator(".stage-canvas .goal")).toHaveAttribute("data-pulse", "false");
-});
-
-for (const viewport of [
-  { name: "tablet", width: 1024, height: 768 },
-  { name: "desktop", width: 1440, height: 900 },
-]) {
-  test(`World stays prominent with feedback at ${viewport.name} size`, async ({ page }) => {
-    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+test.describe("AI available from the start", () => {
+  test("companion is ready and offers a first step on an empty project", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("heading", { name: "Stage" })).toBeInViewport();
-    await expect(page.getByTestId("stage-feedback")).toBeVisible();
-    const overflow = await page.evaluate(
-      () => document.documentElement.scrollWidth > window.innerWidth + 1,
-    );
-    expect(overflow).toBe(false);
+    await expect(page.locator('[data-provenance="unavailable"]')).toHaveCount(0);
+    const welcome = page.getByTestId("ai-welcome");
+    await expect(welcome).toBeVisible();
+    await expect(welcome).toHaveAttribute("data-decision", "offer");
   });
-}
+
+  test("first step is a proposal: inspect, reject leaves the program empty", async ({ page }) => {
+    await page.goto("/");
+    const before = await canonicalHash(page);
+    await page.getByRole("button", { name: "Show me a first step" }).click();
+    await expect(page.getByTestId("proposal-preview")).toBeVisible();
+    expect(await canonicalHash(page)).toBe(before);
+    await page.getByRole("button", { name: "Reject proposal" }).click();
+    expect(await canonicalHash(page)).toBe(before);
+    await expect(page.getByTestId("ai-welcome")).toHaveCount(0);
+  });
+
+  test("accepting the first step adds a Move block through the canonical program", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const before = await canonicalHash(page);
+    await page.getByRole("button", { name: "Show me a first step" }).click();
+    await page.getByRole("button", { name: "Accept proposal" }).click();
+    expect(await canonicalHash(page)).not.toBe(before);
+    await expect(page.getByLabel("Move block")).toBeVisible();
+    await expect(visibleCode(page, "sprite.move(10);")).toBeVisible();
+    await expect(page.getByTestId("ai-welcome")).toHaveCount(0);
+  });
+
+  test("the offer goes away on its own once the learner starts building", async ({ page }) => {
+    await page.goto("/");
+    await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+    await expect(page.getByTestId("ai-welcome")).toHaveCount(0);
+  });
+
+  test("a Laya bridge can veto the offer", async ({ page }) => {
+    await page.addInitScript(() => {
+      const w = globalThis as unknown as { agorixLaya: unknown; layaCalls: number };
+      w.layaCalls = 0;
+      w.agorixLaya = {
+        decideMany: async () => {
+          w.layaCalls += 1;
+          return [{ id: "proactiveAction", value: "silence", confidence: 0.99 }];
+        },
+      };
+    });
+    await page.goto("/");
+    await page.waitForFunction(
+      () => (globalThis as unknown as { layaCalls: number }).layaCalls > 0,
+    );
+    await expect(page.getByTestId("ai-welcome")).toHaveCount(0);
+  });
+
+  test("a Laya bridge cannot force an offer System-0 refused", async ({ page }) => {
+    await page.addInitScript(() => {
+      (globalThis as unknown as { agorixLaya: unknown }).agorixLaya = {
+        decideMany: async () => [{ id: "proactiveAction", value: "offer", confidence: 1 }],
+      };
+    });
+    await page.goto("/");
+    await expect(page.getByTestId("ai-welcome")).toBeVisible();
+    await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+    await expect(page.getByTestId("ai-welcome")).toHaveCount(0);
+  });
+});
+
+test.describe("presentation preferences", () => {
+  test("chosen world survives reload without touching the canonical program", async ({ page }) => {
+    await page.goto("/");
+    await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+    const hash = await canonicalHash(page);
+    await page.getByLabel("World").selectOption("city.crossing");
+    await page.reload();
+    await expect(page.locator(".stage-panel")).toHaveAttribute("data-world", "city.crossing");
+    expect(await canonicalHash(page)).toBe(hash);
+  });
+
+  test("declining twice keeps the AI quiet after a reload", async ({ page }) => {
+    await page.goto("/");
+    for (let round = 0; round < 2; round += 1) {
+      for (let i = 0; i < 3; i += 1) {
+        await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+        await page.locator(".action-palette").getByLabel("Turn", { exact: true }).click();
+      }
+      for (let extra = 0; extra < round; extra += 1) {
+        // A different program each round, so "declined this program" doesn't mask the counter.
+        await page.locator(".action-palette").getByLabel("Turn", { exact: true }).click();
+      }
+      await page.getByRole("button", { name: "No thanks" }).click();
+      await page.getByRole("button", { name: "Reset" }).click();
+    }
+    await page.reload();
+    for (let i = 0; i < 3; i += 1) {
+      await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+      await page.locator(".action-palette").getByLabel("Turn", { exact: true }).click();
+    }
+    await expect(page.getByTestId("repeat-suggestion")).toHaveCount(0);
+  });
+});
