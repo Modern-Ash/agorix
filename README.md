@@ -132,6 +132,8 @@ flowchart LR
 
 It should feel like a real modern IDE experience adapted for learning, not Scratch embedded inside VS Code.
 
+Install and developer instructions (VSIX packaging, F5 launch, Extension Host tests, supported VS Code range): [extensions/vscode/README.md](extensions/vscode/README.md).
+
 Its first-class surfaces include:
 
 - Mission / Project explorer;

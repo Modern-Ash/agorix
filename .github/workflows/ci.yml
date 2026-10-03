@@ -96,6 +96,34 @@ jobs:
       - run: pnpm --filter @agorix/web exec playwright install --with-deps
       - run: pnpm --filter @agorix/web test:e2e
 
+  vscode-extension-smoke:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Minimum supported (engines.vscode) and latest stable.
+        vscode: ["1.95.0", "stable"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter agorix-studio package
+      - name: Extension Host integration tests (development folder)
+        run: xvfb-run -a pnpm --filter agorix-studio test:integration
+        env:
+          VSCODE_VERSION: ${{ matrix.vscode }}
+      - name: Install VSIX into a clean profile and smoke test it
+        run: xvfb-run -a pnpm --filter agorix-studio test:vsix
+        env:
+          VSCODE_VERSION: ${{ matrix.vscode }}
+      - uses: actions/upload-artifact@v4
+        if: matrix.vscode == 'stable'
+        with:
+          name: agorix-studio-vsix
+          path: extensions/vscode/dist/agorix-studio.vsix
+
   dependency-scan:
     runs-on: ubuntu-latest
     steps:

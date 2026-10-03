@@ -1,0 +1,29 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Agorix Studio: Extension Development Host",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/extensions/vscode",
+        "${workspaceFolder}/extensions/vscode/test/integration/fixtures"
+      ],
+      "outFiles": ["${workspaceFolder}/extensions/vscode/dist/**/*.cjs"],
+      "preLaunchTask": "agorix-studio: build"
+    },
+    {
+      "name": "Agorix Studio: Integration Tests",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/extensions/vscode",
+        "--extensionTestsPath=${workspaceFolder}/extensions/vscode/test/integration/index.cjs",
+        "--disable-extensions",
+        "${workspaceFolder}/extensions/vscode/test/integration/fixtures"
+      ],
+      "outFiles": ["${workspaceFolder}/extensions/vscode/dist/**/*.cjs"],
+      "preLaunchTask": "agorix-studio: build"
+    }
+  ]
+}

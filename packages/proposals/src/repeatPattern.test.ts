@@ -4,6 +4,7 @@ import { runProgram } from "@agorix/runtime";
 import {
   acceptProposal,
   createProposalReview,
+  createFirstStepProposal,
   createRepeatPatternProposal,
   detectRepeatPattern,
   programSemanticHash,
@@ -73,5 +74,20 @@ describe("createRepeatPatternProposal", () => {
     const before = runProgram(base, world, {});
     const after = runProgram(accepted, world, {});
     expect(after.world).toEqual(before.world);
+  });
+});
+
+describe("createFirstStepProposal", () => {
+  it("proposes one Move for an empty program and leaves it unchanged until accepted", () => {
+    const empty = program();
+    const hash = programSemanticHash(empty);
+    const proposal = createFirstStepProposal({ ...text, baseProgram: empty })!;
+    const review = createProposalReview(empty, proposal);
+    expect(programSemanticHash(empty)).toBe(hash);
+    expect(acceptProposal(empty, review).program.scripts[0]?.statements).toEqual([move(10)]);
+  });
+
+  it("makes no proposal once the learner has started", () => {
+    expect(createFirstStepProposal({ ...text, baseProgram: program(move(5)) })).toBeUndefined();
   });
 });
