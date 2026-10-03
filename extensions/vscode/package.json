@@ -34,6 +34,12 @@
   },
   "activationEvents": [
     "onCommand:agorixStudio.openProject",
+    "onCommand:agorixStudio.exportAgorix",
+    "onCommand:agorixStudio.signIn",
+    "onCommand:agorixStudio.signOut",
+    "onCommand:agorixStudio.listRemoteProjects",
+    "onCommand:agorixStudio.openRemoteProject",
+    "onCommand:agorixStudio.saveRemoteProject",
     "onCommand:agorixStudio.openProjection",
     "onCommand:agorixStudio.switchProjection",
     "onCommand:agorixStudio.revealCanonicalNode",
@@ -55,6 +61,10 @@
     "onCommand:agorixStudio.undoProposal",
     "onCommand:agorixStudio.redoProposal",
     "onCommand:agorixStudio.showEvidence",
+    "onCommand:agorixStudio.validateProject",
+    "onCommand:agorixStudio.runChecks",
+    "onCommand:agorixStudio.showDeveloperContext",
+    "onCommand:agorixStudio.openScm",
     "onCommand:agorixStudio.suggestRepeat",
     "onView:agorixStudio.projects",
     "onView:agorixStudio.missions",
@@ -62,9 +72,20 @@
     "onView:agorixStudio.worlds",
     "onView:agorixStudio.inspector",
     "onView:agorixStudio.companion",
-    "onView:agorixStudio.companionHistory"
+    "onView:agorixStudio.companionHistory",
+    "onView:agorixStudio.developer"
   ],
   "contributes": {
+    "configuration": {
+      "title": "Agorix Studio",
+      "properties": {
+        "agorixStudio.serverUrl": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Optional Agorix project server URL. Account tokens are stored in VS Code SecretStorage, never in settings."
+        }
+      }
+    },
     "viewsContainers": {
       "activitybar": [
         {
@@ -103,6 +124,10 @@
         {
           "id": "agorixStudio.companionHistory",
           "name": "Companion Responses"
+        },
+        {
+          "id": "agorixStudio.developer",
+          "name": "Developer"
         }
       ]
     },
@@ -110,6 +135,36 @@
       {
         "command": "agorixStudio.openProject",
         "title": "Open Project",
+        "category": "Agorix Studio"
+      },
+      {
+        "command": "agorixStudio.exportAgorix",
+        "title": "Export Portable .agorix Project",
+        "category": "Agorix Studio"
+      },
+      {
+        "command": "agorixStudio.signIn",
+        "title": "Sign In With Account Token",
+        "category": "Agorix Studio"
+      },
+      {
+        "command": "agorixStudio.signOut",
+        "title": "Sign Out",
+        "category": "Agorix Studio"
+      },
+      {
+        "command": "agorixStudio.listRemoteProjects",
+        "title": "List Account Projects",
+        "category": "Agorix Studio"
+      },
+      {
+        "command": "agorixStudio.openRemoteProject",
+        "title": "Open Account Project",
+        "category": "Agorix Studio"
+      },
+      {
+        "command": "agorixStudio.saveRemoteProject",
+        "title": "Save Account Project",
         "category": "Agorix Studio"
       },
       {
@@ -218,6 +273,26 @@
         "category": "Agorix Studio"
       },
       {
+        "command": "agorixStudio.validateProject",
+        "title": "Validate Project",
+        "category": "Agorix Studio"
+      },
+      {
+        "command": "agorixStudio.runChecks",
+        "title": "Run Agorix Checks",
+        "category": "Agorix Studio"
+      },
+      {
+        "command": "agorixStudio.showDeveloperContext",
+        "title": "Show Developer Context",
+        "category": "Agorix Studio"
+      },
+      {
+        "command": "agorixStudio.openScm",
+        "title": "Open Source Control",
+        "category": "Agorix Studio"
+      },
+      {
         "command": "agorixStudio.suggestRepeat",
         "title": "Suggest repeat",
         "category": "Agorix Studio"
@@ -227,6 +302,16 @@
       "view/item/context": [
         {
           "command": "agorixStudio.openProject",
+          "when": "viewItem == agorixProject",
+          "group": "navigation"
+        },
+        {
+          "command": "agorixStudio.exportAgorix",
+          "when": "viewItem == agorixProject",
+          "group": "navigation"
+        },
+        {
+          "command": "agorixStudio.saveRemoteProject",
           "when": "viewItem == agorixProject",
           "group": "navigation"
         },
@@ -259,9 +344,39 @@
           "command": "agorixStudio.selectExecutionStep",
           "when": "viewItem == agorixRuntimeFact",
           "group": "navigation"
+        },
+        {
+          "command": "agorixStudio.validateProject",
+          "when": "viewItem == agorixDeveloperTask",
+          "group": "navigation"
+        },
+        {
+          "command": "agorixStudio.openScm",
+          "when": "viewItem == agorixDeveloperTask",
+          "group": "navigation"
         }
       ],
       "view/title": [
+        {
+          "command": "agorixStudio.openProject",
+          "when": "view == agorixStudio.projects",
+          "group": "navigation"
+        },
+        {
+          "command": "agorixStudio.openRemoteProject",
+          "when": "view == agorixStudio.projects",
+          "group": "navigation"
+        },
+        {
+          "command": "agorixStudio.exportAgorix",
+          "when": "view == agorixStudio.projects",
+          "group": "navigation"
+        },
+        {
+          "command": "agorixStudio.saveRemoteProject",
+          "when": "view == agorixStudio.projects",
+          "group": "navigation"
+        },
         {
           "command": "agorixStudio.openWorldPreview",
           "when": "view == agorixStudio.inspector || view == agorixStudio.progress",
@@ -321,6 +436,21 @@
           "command": "agorixStudio.redoProposal",
           "when": "view == agorixStudio.companionHistory",
           "group": "navigation"
+        },
+        {
+          "command": "agorixStudio.validateProject",
+          "when": "view == agorixStudio.developer",
+          "group": "navigation"
+        },
+        {
+          "command": "agorixStudio.runChecks",
+          "when": "view == agorixStudio.developer",
+          "group": "navigation"
+        },
+        {
+          "command": "agorixStudio.openScm",
+          "when": "view == agorixStudio.developer",
+          "group": "navigation"
         }
       ],
       "editor/title": [
@@ -356,6 +486,11 @@
         },
         {
           "command": "agorixStudio.undoProposal",
+          "when": "resourceScheme == agorix-studio",
+          "group": "navigation"
+        },
+        {
+          "command": "agorixStudio.validateProject",
           "when": "resourceScheme == agorix-studio",
           "group": "navigation"
         }

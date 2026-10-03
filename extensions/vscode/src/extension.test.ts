@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SCHEMA_VERSION } from "@agorix/program-model";
+import { serializeAgorixProject } from "@agorix/persistence";
 
 type Handler = (...args: unknown[]) => unknown;
 
@@ -12,6 +13,9 @@ const treeViews: string[] = [];
 const treeProviders = new Map<string, { getChildren(): unknown[] }>();
 const providers = new Map<string, { provideTextDocumentContent(uri: unknown): string }>();
 const revealed: unknown[] = [];
+const executedTasks: unknown[] = [];
+const commandCalls: unknown[][] = [];
+const secrets = new Map<string, string>();
 const webviewPanels: Array<{
   readonly messages: unknown[];
   html: string;
@@ -19,7 +23,10 @@ const webviewPanels: Array<{
 let failRegistration = false;
 let choice: string | undefined;
 let picked: { fsPath: string } | undefined;
-let quickPick: { id: string; label: string } | undefined;
+let savePicked: { fsPath: string } | undefined;
+let quickPick: Record<string, unknown> | undefined;
+let inputBox: string | undefined;
+let serverUrl = "";
 
 vi.mock("vscode", () => {
   const uri = (fsPath: string) => ({
@@ -30,6 +37,9 @@ vi.mock("vscode", () => {
   });
   class Uri {
     static parse(value: string) {
+      return uri(value);
+    }
+    static file(value: string) {
       return uri(value);
     }
   }
@@ -60,6 +70,20 @@ vi.mock("vscode", () => {
     ) {}
   }
   class Selection extends Range {}
+  class ShellExecution {
+    constructor(public commandLine: string) {}
+  }
+  class Task {
+    problemMatchers: unknown[] = [];
+    constructor(
+      public definition: unknown,
+      public scope: unknown,
+      public name: string,
+      public source: string,
+      public execution: ShellExecution,
+      public problemMatchersInput: unknown[],
+    ) {}
+  }
   return {
     Uri,
     TreeItem,
@@ -68,6 +92,8 @@ vi.mock("vscode", () => {
     Position,
     Range,
     Selection,
+    ShellExecution,
+    Task,
     TextEditorRevealType: { InCenterIfOutsideViewport: 2 },
     ViewColumn: { Beside: 2 },
     commands: {
@@ -79,18 +105,21 @@ vi.mock("vscode", () => {
         return { dispose() {} };
       },
       executeCommand: async (...args: unknown[]) => {
+        commandCalls.push(args);
         diffs.push(args);
       },
     },
     window: {
       showOpenDialog: async () => (picked === undefined ? undefined : [picked]),
-      showInformationMessage: async (message: string) => {
+      showSaveDialog: async () => savePicked,
+      showInputBox: async () => inputBox,
+      showInformationMessage: async (message: string, ...items: string[]) => {
         shown.push(message);
-        return choice;
+        return items.includes(choice ?? "") ? choice : undefined;
       },
-      showWarningMessage: async (message: string) => {
+      showWarningMessage: async (message: string, ...items: string[]) => {
         shown.push(message);
-        return undefined;
+        return items.includes(choice ?? "") ? choice : undefined;
       },
       showQuickPick: async () => quickPick,
       showErrorMessage: async (message: string) => {
@@ -139,6 +168,10 @@ vi.mock("vscode", () => {
       }),
     },
     workspace: {
+      workspaceFolders: [{ uri: uri("/workspace"), name: "workspace", index: 0 }],
+      getConfiguration: () => ({
+        get: (_key: string, defaultValue: string) => serverUrl || defaultValue,
+      }),
       registerTextDocumentContentProvider: (
         scheme: string,
         provider: { provideTextDocumentContent(uri: unknown): string },
@@ -161,6 +194,11 @@ vi.mock("vscode", () => {
         writeFile: async (target: { fsPath: string }, content: Uint8Array) => {
           files.set(target.fsPath, content);
         },
+      },
+    },
+    tasks: {
+      executeTask: async (task: unknown) => {
+        executedTasks.push(task);
       },
     },
     languages: {
@@ -186,6 +224,9 @@ const stored = (statements: unknown[]) =>
     },
   });
 
+const parseStored = (raw: string) =>
+  JSON.parse(raw) as Parameters<typeof serializeAgorixProject>[0];
+
 const repeated = stored(
   [1, 2, 3].flatMap(() => [
     { type: "move", steps: 20 },
@@ -210,14 +251,32 @@ describe("Studio extension wiring", () => {
     treeProviders.clear();
     providers.clear();
     revealed.length = 0;
+    executedTasks.length = 0;
+    commandCalls.length = 0;
+    secrets.clear();
     webviewPanels.length = 0;
     choice = undefined;
     quickPick = undefined;
+    savePicked = undefined;
+    inputBox = undefined;
+    serverUrl = "";
     failRegistration = false;
     picked = undefined;
+    vi.stubGlobal("fetch", undefined);
     vi.resetModules();
     const extension = await import("./extension.js");
-    extension.activate({ subscriptions: [] } as never);
+    extension.activate({
+      subscriptions: [],
+      secrets: {
+        get: async (key: string) => secrets.get(key),
+        store: async (key: string, value: string) => {
+          secrets.set(key, value);
+        },
+        delete: async (key: string) => {
+          secrets.delete(key);
+        },
+      },
+    } as never);
   });
 
   it("registers commands, virtual projection provider and native Activity Bar views", () => {
@@ -226,32 +285,43 @@ describe("Studio extension wiring", () => {
         "agorixStudio.openProject",
         "agorixStudio.openProjection",
         "agorixStudio.openWorldPreview",
+        "agorixStudio.exportAgorix",
         "agorixStudio.applyProposal",
         "agorixStudio.companionBuild",
         "agorixStudio.companionChallenge",
         "agorixStudio.companionDebug",
         "agorixStudio.companionExplain",
         "agorixStudio.companionReflect",
+        "agorixStudio.listRemoteProjects",
+        "agorixStudio.openRemoteProject",
+        "agorixStudio.openScm",
         "agorixStudio.redoProposal",
         "agorixStudio.rejectProposal",
         "agorixStudio.revealCanonicalNode",
         "agorixStudio.revealProposalAffectedNode",
         "agorixStudio.reset",
         "agorixStudio.run",
+        "agorixStudio.runChecks",
+        "agorixStudio.saveRemoteProject",
         "agorixStudio.selectExecutionStep",
         "agorixStudio.showEvidence",
+        "agorixStudio.showDeveloperContext",
+        "agorixStudio.signIn",
+        "agorixStudio.signOut",
         "agorixStudio.suggestFirstStep",
         "agorixStudio.suggestRepeat",
         "agorixStudio.step",
         "agorixStudio.stop",
         "agorixStudio.switchProjection",
         "agorixStudio.undoProposal",
+        "agorixStudio.validateProject",
       ].sort(),
     );
     expect([...providers.keys()]).toEqual(["agorix-studio"]);
     expect(treeViews.sort()).toEqual([
       "agorixStudio.companion",
       "agorixStudio.companionHistory",
+      "agorixStudio.developer",
       "agorixStudio.inspector",
       "agorixStudio.missions",
       "agorixStudio.progress",
@@ -347,6 +417,84 @@ describe("Studio extension wiring", () => {
     await handlers.get("agorixStudio.switchProjection")!();
     expect(shown.at(-1)).toMatch(/Read-only Python projection/i);
     expect(new TextDecoder().decode(files.get("/p/a.json"))).toBe(before);
+  });
+
+  it("opens and exports portable .agorix files without leaking account state", async () => {
+    const portable = serializeAgorixProject(parseStored(stored([{ type: "move", steps: 8 }])), {
+      exportedAt: "2026-01-02T00:00:00.000Z",
+    });
+    await openFile("/p/a.agorix", portable);
+    savePicked = { fsPath: "/p/exported.agorix" };
+
+    await handlers.get("agorixStudio.exportAgorix")!();
+
+    const exported = JSON.parse(new TextDecoder().decode(files.get("/p/exported.agorix")));
+    expect(exported.format).toBe("agorix-project");
+    expect(exported.project.program.scripts[0].statements).toEqual([{ type: "move", steps: 8 }]);
+    expect(JSON.stringify(exported)).not.toMatch(/token|revision|history|account/i);
+  });
+
+  it("validates the project and exposes native developer workflow entry points", async () => {
+    await openFile("/p/a.json", repeated);
+
+    const report = await handlers.get("agorixStudio.validateProject")!();
+    const context = await handlers.get("agorixStudio.showDeveloperContext")!();
+    await handlers.get("agorixStudio.runChecks")!();
+    await handlers.get("agorixStudio.openScm")!();
+
+    expect(JSON.parse(String(report))).toMatchObject({
+      schema: "agorix/studio-validation-report/v1",
+      outcome: "completed",
+    });
+    expect(JSON.parse(String(context))).toMatchObject({
+      schema: "agorix/studio-developer-context/v1",
+      authority: "canonical-project",
+      scmCommand: "vscode.scm",
+    });
+    expect(executedTasks[0]).toMatchObject({ name: "agorix: verify", source: "agorix" });
+    expect(commandCalls.some((call) => call[0] === "workbench.view.scm")).toBe(true);
+  });
+
+  it("stores account tokens in SecretStorage and handles revision conflicts explicitly", async () => {
+    inputBox = "secret-token";
+    await handlers.get("agorixStudio.signIn")!();
+    expect(secrets.get("agorixStudio.accountToken")).toBe("secret-token");
+
+    serverUrl = "https://studio.example";
+    const remoteProject = JSON.parse(stored([{ type: "move", steps: 5 }]));
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      expect(init?.headers).toMatchObject({ Authorization: "Bearer secret-token" });
+      if (url.endsWith("/projects") && init?.method === undefined) {
+        return new Response(JSON.stringify([{ id: "p1", title: "First", revision: "r1" }]));
+      }
+      if (url.endsWith("/projects/p1") && init?.method === undefined) {
+        return new Response(
+          JSON.stringify({ id: "p1", title: "First", revision: "r1", project: remoteProject }),
+        );
+      }
+      return new Response(
+        JSON.stringify({
+          status: "conflict",
+          expectedRevision: "r1",
+          actualRevision: "r2",
+          latest: remoteProject,
+        }),
+        { status: 409 },
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    quickPick = { project: { id: "p1", title: "First", revision: "r1" } };
+    choice = "Cancel";
+
+    await handlers.get("agorixStudio.openRemoteProject")!();
+    const result = await handlers.get("agorixStudio.saveRemoteProject")!();
+
+    expect(result).toMatchObject({ status: "conflict", actualRevision: "r2" });
+    expect(shown.some((message) => message.includes("Server has revision r2"))).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+
+    await handlers.get("agorixStudio.signOut")!();
+    expect(secrets.has("agorixStudio.accountToken")).toBe(false);
   });
 
   it("shows a diff and does not write the file unless the learner applies", async () => {

@@ -6,19 +6,23 @@ import {
   applyProposal,
   applyProposalSession,
   createCompanionTurn,
+  createDeveloperContext,
   createExecutionEvidence,
   createExecutionViewState,
   createProposalReview,
   createStoredProjectWithProgram,
+  createValidationReport,
   formatInspectorReport,
   createNavigationSections,
   listStudioProjections,
   openStoredProject,
   openProjectionDocument,
+  parseProjectFile,
   parseStoredProject,
   projectionRangeForNode,
   rangeForNode,
   rejectProposal,
+  serializeProjectFile,
   serializeStoredProject,
   semanticHash,
   suggestFirstStep,
@@ -75,6 +79,20 @@ describe("Agorix Studio first slice", () => {
     expect(project.stored.metadata.locale).toBe("en");
   });
 
+  it("round-trips portable .agorix files without identity, revision or history state", () => {
+    const raw = serializeProjectFile(webCreatedProject, "first-mission.agorix", {
+      exportedAt: "2026-01-02T00:00:00.000Z",
+    });
+    const envelope = JSON.parse(raw);
+    const reopened = parseProjectFile(raw, "first-mission.agorix");
+
+    expect(envelope.format).toBe("agorix-project");
+    expect(reopened.stored.program).toEqual(webCreatedProject.program);
+    expect(JSON.stringify(envelope)).not.toMatch(
+      /account|token|password|revision|undoStack|redoStack|history/i,
+    );
+  });
+
   it("maps an active canonical node to the editor projection range", () => {
     const project = openStoredProject(webCreatedProject);
     const range = rangeForNode(project, "scripts[0]/statements[0]");
@@ -112,6 +130,7 @@ describe("Agorix Studio first slice", () => {
       "progress",
       "worlds",
       "companion",
+      "developer",
     ]);
     expect(sections.find((section) => section.id === "projects")?.items[0]).toMatchObject({
       label: "Current local project",
@@ -127,6 +146,33 @@ describe("Agorix Studio first slice", () => {
     expect(sections.find((section) => section.id === "progress")?.items[0]?.command).toBe(
       "agorixStudio.showEvidence",
     );
+    expect(
+      sections.find((section) => section.id === "developer")?.items.map((item) => item.command),
+    ).toEqual([
+      "agorixStudio.validateProject",
+      "agorixStudio.runChecks",
+      "agorixStudio.openScm",
+      "agorixStudio.showDeveloperContext",
+    ]);
+  });
+
+  it("creates validation and developer context from the canonical project authority", () => {
+    const report = createValidationReport(webCreatedProject);
+    const context = createDeveloperContext(webCreatedProject, { revision: "server-r3" });
+
+    expect(report).toMatchObject({
+      schema: "agorix/studio-validation-report/v1",
+      outcome: "completed",
+      statementCount: 1,
+    });
+    expect(context).toMatchObject({
+      schema: "agorix/studio-developer-context/v1",
+      validationCommand: "agorixStudio.validateProject",
+      checkCommand: "agorixStudio.runChecks",
+      scmCommand: "vscode.scm",
+      authority: "canonical-project",
+      project: { revision: "server-r3", statementCount: 1 },
+    });
   });
 
   it("keeps Step evidence, World Preview frames and inspector rows in sync", () => {

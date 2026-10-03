@@ -8,17 +8,25 @@ See `docs/product/AGORIX_STUDIO.md` for the product architecture.
 
 ## Commands
 
-| Command                                  | What it does                                                                                                                   |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `Agorix Studio: Open Project`            | Opens a stored Agorix project (`StoredProject` JSON) and shows its code projection in an editor.                               |
-| `Agorix Studio: Show Execution Evidence` | Runs the shared runtime and prints the Execution Inspector (step, node, before/after world) to an Output channel.              |
-| `Agorix Studio: Suggest repeat`          | Same deterministic suggestion as Web: shows a diff of the projection, then Apply or Reject. The file is only written on Apply. |
+| Command                                          | What it does                                                                                                                   |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| `Agorix Studio: Open Project`                    | Opens a portable `.agorix` file or legacy stored-project JSON and shows its code projection in an editor.                      |
+| `Agorix Studio: Export Portable .agorix Project` | Writes a portable `.agorix` envelope without account, revision, token, undo/redo, or history state.                            |
+| `Agorix Studio: Open Account Project`            | Opens an authenticated server project when `agorixStudio.serverUrl` is configured and a token is stored in SecretStorage.      |
+| `Agorix Studio: Save Account Project`            | Saves with the expected server revision and offers reload/export/cancel on conflict; it never silently overwrites newer data.  |
+| `Agorix Studio: Show Execution Evidence`         | Runs the shared runtime and prints the Execution Inspector (step, node, before/after world) to an Output channel.              |
+| `Agorix Studio: Validate Project`                | Runs shared canonical validation/runtime checks and writes a JSON report to the Output channel.                                |
+| `Agorix Studio: Run Agorix Checks`               | Starts a native VS Code task for `pnpm verify` instead of embedding a second test runner.                                      |
+| `Agorix Studio: Open Source Control`             | Opens the built-in VS Code SCM view; Studio does not implement a parallel Git client.                                          |
+| `Agorix Studio: Suggest repeat`                  | Same deterministic suggestion as Web: shows a diff of the projection, then Apply or Reject. The file is only written on Apply. |
 
 The commands are thin: all semantics live in `src/studioCore.ts`. `src/extension.test.ts` drives the commands against a simulated `vscode` module (open, evidence, diff, Apply/Reject, file write-back, error paths).
 
 Every command failure (invalid project, runtime error, write failure) is shown as an error message and logged with its stack to the `Agorix Studio` Output channel. Activation failures are surfaced the same way and re-thrown, so VS Code also lists them under Developer: Show Running Extensions.
 
-For automation, `Open Project` accepts a `Uri` argument (skips the file picker) and `Show Execution Evidence` returns the report string.
+For automation, `Open Project` accepts a `Uri` argument (skips the file picker), `Show Execution Evidence` returns the report string, and `Validate Project` / `Show Developer Context` return JSON strings.
+
+Account integration is optional. Tokens are saved only through VS Code `SecretStorage`; server URL is the only account-related setting. Remote project id/revision is kept in Studio session state and excluded from canonical program semantics and portable `.agorix` files.
 
 ## Supported VS Code versions
 
@@ -34,7 +42,7 @@ pnpm --filter agorix-studio package          # builds dist/agorix-studio.vsix
 code --install-extension extensions/vscode/dist/agorix-studio.vsix
 ```
 
-Then run `Agorix Studio: Open Project` and pick a stored project JSON, for example `extensions/vscode/test/integration/fixtures/repeat.agorix.json`.
+Then run `Agorix Studio: Open Project` and pick a stored project JSON or `.agorix` file, for example `extensions/vscode/test/integration/fixtures/repeat.agorix.json`.
 
 ## Develop
 
@@ -44,11 +52,11 @@ Then run `Agorix Studio: Open Project` and pick a stored project JSON, for examp
 
 ### Tests
 
-| Command                                        | What it covers                                                                                                                                       |
-| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm --filter agorix-studio test`             | Unit tests: `studioCore`, cross-surface compatibility and command wiring against a simulated `vscode` module.                                        |
-| `pnpm --filter agorix-studio test:integration` | Real Extension Host (downloads VS Code via `@vscode/test-electron`): activation, commands, Open Project, projection editor, evidence, proposal diff. |
-| `pnpm --filter agorix-studio test:vsix`        | Installs the packaged VSIX into a clean `--user-data-dir`/`--extensions-dir` and runs the same suite against it.                                     |
+| Command                                        | What it covers                                                                                                                                                   |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm --filter agorix-studio test`             | Unit tests: `studioCore`, cross-surface compatibility and command wiring against a simulated `vscode` module.                                                    |
+| `pnpm --filter agorix-studio test:integration` | Real Extension Host (downloads VS Code via `@vscode/test-electron`): activation, commands, Open Project, projection editor, evidence, validation, proposal diff. |
+| `pnpm --filter agorix-studio test:vsix`        | Installs the packaged VSIX into a clean `--user-data-dir`/`--extensions-dir` and runs the same suite against it.                                                 |
 
 Set `VSCODE_VERSION` (for example `1.95.0`) to pick the VS Code build. On a headless Linux machine wrap the commands in `xvfb-run -a`. If you launch from inside a VS Code terminal, `ELECTRON_RUN_AS_NODE` is cleared by the harness. The `Agorix Studio: Integration Tests` launch config runs the suite from F5.
 

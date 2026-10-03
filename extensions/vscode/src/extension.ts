@@ -1,18 +1,21 @@
 import * as vscode from "vscode";
 import {
   applyProposalSession,
+  createDeveloperContext,
   createExecutionViewState,
   createNavigationSections,
   createExecutionEvidence,
   createCompanionTurn,
   createStoredProjectWithProgram,
+  createValidationReport,
   formatInspectorReport,
   isStudioProjectionId,
   listStudioProjections,
   openProjectionDocument,
-  parseStoredProject,
+  parseProjectFile,
   projectionRangeForNode,
   rejectProposalSession,
+  serializeProjectFile,
   serializeStoredProject,
   suggestFirstStep,
   suggestRepeat,
@@ -26,11 +29,31 @@ import {
   type StudioProject,
   type StudioProjectionDocument,
   type StudioProjectionId,
+  type StudioRemoteProjectPayload,
+  type StudioRemoteProjectReference,
+  type StudioRemoteSaveResult,
 } from "./studioCore.js";
 
 interface OpenProject {
   readonly uri: vscode.Uri;
   readonly project: StudioProject;
+  readonly remote?: OpenRemoteProject;
+}
+
+interface OpenRemoteProject {
+  readonly id: string;
+  readonly title: string;
+  readonly revision: string;
+}
+
+interface StudioRemoteClient {
+  listProjects(): Promise<StudioRemoteProjectReference[]>;
+  getProject(id: string): Promise<StudioRemoteProjectPayload>;
+  saveProject(request: {
+    readonly id: string;
+    readonly expectedRevision: string;
+    readonly project: StudioProject["stored"];
+  }): Promise<StudioRemoteSaveResult>;
 }
 
 let current: OpenProject | undefined;
@@ -45,7 +68,9 @@ const undoStack: StoredSnapshot[] = [];
 const redoStack: StoredSnapshot[] = [];
 
 const PROJECTION_SCHEME = "agorix-studio";
+const REMOTE_SCHEME = "agorix-remote";
 const WORLD_PREVIEW_VIEW_TYPE = "agorixStudio.worldPreview";
+const SECRET_TOKEN_KEY = "agorixStudio.accountToken";
 
 interface StoredSnapshot {
   readonly uri: vscode.Uri;
@@ -204,22 +229,16 @@ async function openProject(target?: unknown): Promise<void> {
       ? target
       : ((await vscode.window.showOpenDialog({
           canSelectMany: false,
-          filters: { "Agorix project": ["json"] },
+          filters: { "Agorix project": ["agorix", "json"] },
           openLabel: "Open Agorix project",
         })) ?? [])[0];
   if (uri === undefined) {
     return;
   }
   try {
-    const raw = new TextDecoder().decode(await vscode.workspace.fs.readFile(uri));
-    current = { uri, project: parseStoredProject(raw) };
-    executionEvidence = undefined;
-    executionFrameIndex = 0;
-    executionStatus = "idle";
-    activeProposal = undefined;
-    companionTurns.length = 0;
-    undoStack.length = 0;
-    redoStack.length = 0;
+    const raw = await vscode.workspace.fs.readFile(uri);
+    current = { uri, project: parseProjectFile(raw, uri.fsPath) };
+    resetProjectSessionState();
   } catch (error) {
     // Do not await: a toast resolves only when dismissed and would hang the command.
     void vscode.window.showErrorMessage(
@@ -230,6 +249,16 @@ async function openProject(target?: unknown): Promise<void> {
   refreshStudioViews();
   refreshCompanionViews();
   await openProjection(currentProjectionId);
+}
+
+function resetProjectSessionState(): void {
+  executionEvidence = undefined;
+  executionFrameIndex = 0;
+  executionStatus = "idle";
+  activeProposal = undefined;
+  companionTurns.length = 0;
+  undoStack.length = 0;
+  redoStack.length = 0;
 }
 
 function requireProject(): OpenProject | undefined {
@@ -757,16 +786,29 @@ async function writeCurrentProject(
   if (open === undefined) {
     return;
   }
-  const raw = serializeStoredProject(stored);
-  await vscode.workspace.fs.writeFile(open.uri, new TextEncoder().encode(raw));
-  current = { uri: open.uri, project: parseStoredProject(raw) };
+  const raw = serializeProjectFile(stored, open.uri.fsPath);
+  if (open.uri.scheme !== REMOTE_SCHEME) {
+    await vscode.workspace.fs.writeFile(open.uri, new TextEncoder().encode(raw));
+  }
+  current = {
+    uri: open.uri,
+    project: parseProjectFile(raw, open.uri.fsPath),
+    ...(open.remote === undefined ? {} : { remote: open.remote }),
+  };
   afterCanonicalProgramChange();
   await openProjection(currentProjectionId);
 }
 
 async function restoreSnapshot(snapshot: StoredSnapshot): Promise<void> {
-  await vscode.workspace.fs.writeFile(snapshot.uri, new TextEncoder().encode(snapshot.raw));
-  current = { uri: snapshot.uri, project: parseStoredProject(snapshot.raw) };
+  const remote = current?.remote;
+  if (snapshot.uri.scheme !== REMOTE_SCHEME) {
+    await vscode.workspace.fs.writeFile(snapshot.uri, new TextEncoder().encode(snapshot.raw));
+  }
+  current = {
+    uri: snapshot.uri,
+    project: parseProjectFile(snapshot.raw, snapshot.uri.fsPath),
+    ...(remote === undefined ? {} : { remote }),
+  };
   afterCanonicalProgramChange();
   await openProjection(currentProjectionId);
 }
@@ -791,6 +833,270 @@ async function suggestRepeatCommand(): Promise<void> {
     return;
   }
   await reviewProposalSession(suggestion.session);
+}
+
+async function exportAgorixProject(): Promise<vscode.Uri | undefined> {
+  const open = requireProject();
+  if (open === undefined) {
+    return undefined;
+  }
+  const uri = await vscode.window.showSaveDialog({
+    filters: { "Agorix portable project": ["agorix"] },
+    saveLabel: "Export Agorix project",
+    defaultUri: vscode.Uri.file("agorix-project.agorix"),
+  });
+  if (uri === undefined) {
+    return undefined;
+  }
+  const raw = serializeProjectFile(open.project.stored, ".agorix");
+  await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(raw));
+  void vscode.window.showInformationMessage("Exported portable .agorix project.");
+  return uri;
+}
+
+function validateProjectCommand(output: vscode.OutputChannel): string | undefined {
+  const open = requireProject();
+  if (open === undefined) {
+    return undefined;
+  }
+  const report = createValidationReport(open.project.stored);
+  const text = JSON.stringify(report, null, 2);
+  output.clear();
+  output.appendLine(text);
+  output.show(true);
+  void vscode.window.showInformationMessage(
+    `Agorix validation ${report.outcome}; ${report.diagnostics.length} projection diagnostics.`,
+  );
+  return text;
+}
+
+async function runChecksCommand(): Promise<vscode.Task | undefined> {
+  const folder = vscode.workspace.workspaceFolders?.[0];
+  if (folder === undefined) {
+    await vscode.commands.executeCommand("workbench.action.tasks.runTask");
+    return undefined;
+  }
+  const task = new vscode.Task(
+    { type: "shell", task: "agorix-verify" },
+    folder,
+    "agorix: verify",
+    "agorix",
+    new vscode.ShellExecution("pnpm verify"),
+    [],
+  );
+  task.problemMatchers = [];
+  await vscode.tasks.executeTask(task);
+  return task;
+}
+
+async function showDeveloperContext(output: vscode.OutputChannel): Promise<string | undefined> {
+  const open = requireProject();
+  if (open === undefined) {
+    return undefined;
+  }
+  const context = createDeveloperContext(open.project.stored, {
+    ...(open.remote === undefined ? {} : { revision: open.remote.revision }),
+  });
+  const text = JSON.stringify(context, null, 2);
+  output.clear();
+  output.appendLine(text);
+  output.show(true);
+  return text;
+}
+
+async function openScm(): Promise<void> {
+  await vscode.commands.executeCommand("workbench.view.scm");
+}
+
+async function signIn(context: vscode.ExtensionContext): Promise<void> {
+  const token = await vscode.window.showInputBox({
+    title: "Agorix account token",
+    password: true,
+    ignoreFocusOut: true,
+    prompt: "Paste an Agorix API token. It will be stored in VS Code SecretStorage.",
+  });
+  if (token === undefined) {
+    return;
+  }
+  await context.secrets.store(SECRET_TOKEN_KEY, token);
+  void vscode.window.showInformationMessage(
+    "Agorix account token stored in VS Code SecretStorage.",
+  );
+}
+
+async function signOut(context: vscode.ExtensionContext): Promise<void> {
+  await context.secrets.delete(SECRET_TOKEN_KEY);
+  if (current?.remote !== undefined) {
+    current = undefined;
+    resetProjectSessionState();
+    refreshStudioViews();
+    refreshExecutionViews();
+    refreshCompanionViews();
+  }
+  void vscode.window.showInformationMessage("Signed out of Agorix Studio.");
+}
+
+async function listRemoteProjects(
+  context: vscode.ExtensionContext,
+): Promise<StudioRemoteProjectReference[]> {
+  const client = await createRemoteClient(context);
+  if (client === undefined) {
+    return [];
+  }
+  const projects = await client.listProjects();
+  return projects;
+}
+
+async function openRemoteProject(context: vscode.ExtensionContext): Promise<void> {
+  const client = await createRemoteClient(context);
+  if (client === undefined) {
+    return;
+  }
+  const projects = await client.listProjects();
+  const picked = await vscode.window.showQuickPick(
+    projects.map((project) => ({
+      label: project.title,
+      description: project.revision,
+      project,
+    })),
+    { title: "Agorix projects" },
+  );
+  if (picked === undefined) {
+    return;
+  }
+  const remote = await client.getProject(picked.project.id);
+  current = {
+    uri: vscode.Uri.parse(`${REMOTE_SCHEME}:/${encodeURIComponent(remote.id)}.agorix`),
+    project: openRemotePayload(remote),
+    remote: {
+      id: remote.id,
+      title: remote.title,
+      revision: remote.revision,
+    },
+  };
+  resetProjectSessionState();
+  refreshStudioViews();
+  refreshCompanionViews();
+  await openProjection(currentProjectionId);
+}
+
+async function saveRemoteProject(
+  context: vscode.ExtensionContext,
+): Promise<StudioRemoteSaveResult | undefined> {
+  const open = requireProject();
+  if (open === undefined) {
+    return undefined;
+  }
+  if (open.remote === undefined) {
+    void vscode.window.showWarningMessage(
+      "Open an authenticated Agorix project before saving to server.",
+    );
+    return undefined;
+  }
+  const client = await createRemoteClient(context);
+  if (client === undefined) {
+    return undefined;
+  }
+  const result = await client.saveProject({
+    id: open.remote.id,
+    expectedRevision: open.remote.revision,
+    project: open.project.stored,
+  });
+  if (result.status === "saved") {
+    current = {
+      ...open,
+      project: openRemotePayload({
+        id: open.remote.id,
+        title: open.remote.title,
+        revision: result.revision,
+        project: result.project,
+      }),
+      remote: { ...open.remote, revision: result.revision },
+    };
+    refreshStudioViews();
+    void vscode.window.showInformationMessage(
+      `Saved ${open.remote.title} at revision ${result.revision}.`,
+    );
+    return result;
+  }
+  const choice = await vscode.window.showWarningMessage(
+    `Server has revision ${result.actualRevision}; local expected ${result.expectedRevision}.`,
+    "Reload Latest",
+    "Export Copy",
+    "Cancel",
+  );
+  if (choice === "Reload Latest" && result.latest !== undefined) {
+    current = {
+      ...open,
+      project: openRemotePayload({
+        id: open.remote.id,
+        title: open.remote.title,
+        revision: result.actualRevision,
+        project: result.latest,
+      }),
+      remote: { ...open.remote, revision: result.actualRevision },
+    };
+    resetProjectSessionState();
+    refreshStudioViews();
+    await openProjection(currentProjectionId);
+  } else if (choice === "Export Copy") {
+    await exportAgorixProject();
+  }
+  return result;
+}
+
+function openRemotePayload(payload: StudioRemoteProjectPayload): StudioProject {
+  return parseProjectFile(serializeStoredProject(payload.project), `${payload.id}.json`);
+}
+
+async function createRemoteClient(
+  context: vscode.ExtensionContext,
+): Promise<StudioRemoteClient | undefined> {
+  const serverUrl = vscode.workspace
+    .getConfiguration("agorixStudio")
+    .get<string>("serverUrl", "")
+    .trim()
+    .replace(/\/+$/, "");
+  if (serverUrl.length === 0) {
+    void vscode.window.showWarningMessage(
+      "Configure agorixStudio.serverUrl before using accounts.",
+    );
+    return undefined;
+  }
+  const token = await context.secrets.get(SECRET_TOKEN_KEY);
+  if (token === undefined || token.length === 0) {
+    void vscode.window.showWarningMessage("Sign in to Agorix Studio before using server projects.");
+    return undefined;
+  }
+  const request = async <T>(path: string, init: RequestInit = {}): Promise<T> => {
+    const response = await fetch(`${serverUrl}${path}`, {
+      ...init,
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        ...init.headers,
+      },
+    });
+    const text = await response.text();
+    const json = text.length === 0 ? undefined : JSON.parse(text);
+    if (!response.ok && response.status !== 409) {
+      throw new Error(`server ${response.status}: ${response.statusText}`);
+    }
+    return json as T;
+  };
+  return {
+    listProjects: () => request<StudioRemoteProjectReference[]>("/projects"),
+    getProject: (id) => request<StudioRemoteProjectPayload>(`/projects/${encodeURIComponent(id)}`),
+    saveProject: (saveRequest) =>
+      request<StudioRemoteSaveResult>(`/projects/${encodeURIComponent(saveRequest.id)}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          expectedRevision: saveRequest.expectedRevision,
+          project: saveRequest.project,
+        }),
+      }),
+  };
 }
 
 /** Runs a command body and surfaces any failure to the learner instead of failing silently. */
@@ -830,6 +1136,7 @@ export function activate(context: vscode.ExtensionContext): void {
     new StudioTreeProvider("progress"),
     new StudioTreeProvider("worlds"),
     new StudioTreeProvider("companion"),
+    new StudioTreeProvider("developer"),
   ];
   function refreshViews(): void {
     for (const provider of treeProviders) {
@@ -862,6 +1169,30 @@ export function activate(context: vscode.ExtensionContext): void {
       vscode.commands.registerCommand(
         "agorixStudio.openProject",
         guarded(output, "Open Project", openProject),
+      ),
+      vscode.commands.registerCommand(
+        "agorixStudio.exportAgorix",
+        guarded(output, "Export Agorix Project", exportAgorixProject),
+      ),
+      vscode.commands.registerCommand(
+        "agorixStudio.signIn",
+        guarded(output, "Sign In", () => signIn(context)),
+      ),
+      vscode.commands.registerCommand(
+        "agorixStudio.signOut",
+        guarded(output, "Sign Out", () => signOut(context)),
+      ),
+      vscode.commands.registerCommand(
+        "agorixStudio.listRemoteProjects",
+        guarded(output, "List Remote Projects", () => listRemoteProjects(context)),
+      ),
+      vscode.commands.registerCommand(
+        "agorixStudio.openRemoteProject",
+        guarded(output, "Open Remote Project", () => openRemoteProject(context)),
+      ),
+      vscode.commands.registerCommand(
+        "agorixStudio.saveRemoteProject",
+        guarded(output, "Save Remote Project", () => saveRemoteProject(context)),
       ),
       vscode.commands.registerCommand(
         "agorixStudio.openProjection",
@@ -938,6 +1269,19 @@ export function activate(context: vscode.ExtensionContext): void {
         "agorixStudio.showEvidence",
         guarded(output, "Show Execution Evidence", () => showEvidence(output)),
       ),
+      vscode.commands.registerCommand(
+        "agorixStudio.validateProject",
+        guarded(output, "Validate Project", () => validateProjectCommand(output)),
+      ),
+      vscode.commands.registerCommand(
+        "agorixStudio.runChecks",
+        guarded(output, "Run Checks", runChecksCommand),
+      ),
+      vscode.commands.registerCommand(
+        "agorixStudio.showDeveloperContext",
+        guarded(output, "Show Developer Context", () => showDeveloperContext(output)),
+      ),
+      vscode.commands.registerCommand("agorixStudio.openScm", guarded(output, "Open SCM", openScm)),
       vscode.commands.registerCommand(
         "agorixStudio.suggestRepeat",
         guarded(output, "Suggest repeat", suggestRepeatCommand),

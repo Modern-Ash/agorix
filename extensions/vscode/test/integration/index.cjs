@@ -37,26 +37,36 @@ const tests = [
         "agorixStudio.openProject",
         "agorixStudio.openProjection",
         "agorixStudio.openWorldPreview",
+        "agorixStudio.exportAgorix",
         "agorixStudio.applyProposal",
         "agorixStudio.companionBuild",
         "agorixStudio.companionChallenge",
         "agorixStudio.companionDebug",
         "agorixStudio.companionExplain",
         "agorixStudio.companionReflect",
+        "agorixStudio.listRemoteProjects",
+        "agorixStudio.openRemoteProject",
+        "agorixStudio.openScm",
         "agorixStudio.redoProposal",
         "agorixStudio.rejectProposal",
         "agorixStudio.revealCanonicalNode",
         "agorixStudio.revealProposalAffectedNode",
         "agorixStudio.reset",
         "agorixStudio.run",
+        "agorixStudio.runChecks",
+        "agorixStudio.saveRemoteProject",
         "agorixStudio.selectExecutionStep",
         "agorixStudio.showEvidence",
+        "agorixStudio.showDeveloperContext",
+        "agorixStudio.signIn",
+        "agorixStudio.signOut",
         "agorixStudio.suggestFirstStep",
         "agorixStudio.suggestRepeat",
         "agorixStudio.step",
         "agorixStudio.stop",
         "agorixStudio.switchProjection",
         "agorixStudio.undoProposal",
+        "agorixStudio.validateProject",
       ]) {
         assert.ok(all.includes(id), `${id} is registered`);
       }
@@ -68,26 +78,36 @@ const tests = [
           "agorixStudio.openProject",
           "agorixStudio.openProjection",
           "agorixStudio.openWorldPreview",
+          "agorixStudio.exportAgorix",
           "agorixStudio.applyProposal",
           "agorixStudio.companionBuild",
           "agorixStudio.companionChallenge",
           "agorixStudio.companionDebug",
           "agorixStudio.companionExplain",
           "agorixStudio.companionReflect",
+          "agorixStudio.listRemoteProjects",
+          "agorixStudio.openRemoteProject",
+          "agorixStudio.openScm",
           "agorixStudio.redoProposal",
           "agorixStudio.rejectProposal",
           "agorixStudio.revealCanonicalNode",
           "agorixStudio.revealProposalAffectedNode",
           "agorixStudio.reset",
           "agorixStudio.run",
+          "agorixStudio.runChecks",
+          "agorixStudio.saveRemoteProject",
           "agorixStudio.selectExecutionStep",
           "agorixStudio.showEvidence",
+          "agorixStudio.showDeveloperContext",
+          "agorixStudio.signIn",
+          "agorixStudio.signOut",
           "agorixStudio.suggestFirstStep",
           "agorixStudio.suggestRepeat",
           "agorixStudio.step",
           "agorixStudio.stop",
           "agorixStudio.switchProjection",
           "agorixStudio.undoProposal",
+          "agorixStudio.validateProject",
         ].sort(),
       );
     },
@@ -143,6 +163,20 @@ const tests = [
       const selected = await vscode.commands.executeCommand("agorixStudio.selectExecutionStep", 1);
       assert.equal(selected.selectedFrameIndex, 1);
       assert.equal(selected.inspectorSteps[1].nodeId, "scripts[0]/statements[0]");
+    },
+  ],
+  [
+    "Validate Project and Developer Context expose canonical task metadata",
+    async () => {
+      const reportText = await vscode.commands.executeCommand("agorixStudio.validateProject");
+      const contextText = await vscode.commands.executeCommand("agorixStudio.showDeveloperContext");
+      const report = JSON.parse(reportText);
+      const context = JSON.parse(contextText);
+      assert.equal(report.schema, "agorix/studio-validation-report/v1");
+      assert.equal(report.outcome, "completed");
+      assert.equal(context.schema, "agorix/studio-developer-context/v1");
+      assert.equal(context.authority, "canonical-project");
+      assert.equal(context.scmCommand, "vscode.scm");
     },
   ],
   [
