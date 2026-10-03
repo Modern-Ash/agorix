@@ -2730,6 +2730,59 @@ button:hover:not(:disabled) {
     0 14px 28px rgba(15, 23, 42, 0.2);
 }
 
+.block-card.suggestion-affected {
+  box-shadow:
+    0 0 0 4px rgba(139, 92, 246, 0.28),
+    inset 0 -4px 0 rgba(0, 0, 0, 0.18),
+    0 14px 28px rgba(15, 23, 42, 0.2);
+}
+
+.snap-target {
+  width: min(100%, 760px);
+  min-height: 10px;
+  border-radius: 999px;
+  opacity: 0;
+}
+
+[data-drag-kind="palette"] .snap-target,
+[data-drag-kind="workspace"] .snap-target,
+.block-stack[data-drop-state="ready"]::after {
+  opacity: 1;
+}
+
+[data-drag-kind="palette"] .snap-target,
+[data-drag-kind="workspace"] .snap-target {
+  border: 2px dashed rgba(14, 159, 154, 0.62);
+  background: rgba(14, 159, 154, 0.14);
+}
+
+.snap-before {
+  margin: -3px 0 5px;
+}
+
+.snap-after {
+  margin: 5px 0 -3px;
+}
+
+.nested-block-stack {
+  display: grid;
+  gap: 0;
+  min-width: min(100%, 340px);
+  margin: 4px 0 2px 28px;
+  padding: 10px 8px 14px 16px;
+  border-left: 4px solid rgba(255, 255, 255, 0.58);
+  border-radius: 0 0 8px 8px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.nested-block-stack:empty,
+.nested-block-stack .snap-inside {
+  min-height: 34px;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
 .block-motion {
   --block-color: #4c97ff;
   --block-color-dark: #3373cc;

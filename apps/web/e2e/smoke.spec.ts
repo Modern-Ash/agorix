@@ -515,6 +515,99 @@ test("IDE panels can collapse, close, restore, and blocks support drag and drop"
   expect(code.indexOf("sprite.turn(90);")).toBeLessThan(code.indexOf("sprite.move(10);"));
 });
 
+test("palette drag supports nested drop and one-step undo", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Repeat" }).click();
+  const repeatOnly = await canonicalHash(page);
+  await dragHtml5(page, ".tool-motion_move", ".nested-block-stack");
+
+  await expect(
+    page.locator('[data-canonical-node-id="scripts[0]/statements[0]/body[0]"]'),
+  ).toContainText("Move");
+  await expect(page.locator(".code-surface")).toContainText("repeat(3");
+  await expect(page.locator(".code-surface")).toContainText("sprite.move(10);");
+  expect(await canonicalHash(page)).not.toBe(repeatOnly);
+
+  await page.getByRole("button", { name: "Undo program edit" }).click();
+  expect(await canonicalHash(page)).toBe(repeatOnly);
+  await expect(
+    page.locator('[data-canonical-node-id="scripts[0]/statements[0]/body[0]"]'),
+  ).toHaveCount(0);
+});
+
+test("cancelled and invalid drops leave canonical state unchanged", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Move" }).click();
+  const before = await canonicalHash(page);
+
+  await page.evaluate(() => {
+    const source = document.querySelector(".tool-motion_turn");
+    if (!(source instanceof HTMLElement)) throw new Error("Missing source");
+    const dataTransfer = new DataTransfer();
+    source.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer }));
+    source.dispatchEvent(new DragEvent("dragend", { bubbles: true, dataTransfer }));
+  });
+  expect(await canonicalHash(page)).toBe(before);
+
+  await page.evaluate(() => {
+    const target = document.querySelector(".block-stack");
+    if (!(target instanceof HTMLElement)) throw new Error("Missing target");
+    const dataTransfer = new DataTransfer();
+    dataTransfer.setData("application/x-agorix-block-type", "looks_say");
+    target.dispatchEvent(new DragEvent("dragover", { bubbles: true, dataTransfer }));
+    target.dispatchEvent(new DragEvent("drop", { bubbles: true, dataTransfer }));
+  });
+  expect(await canonicalHash(page)).toBe(before);
+  await expect(page.getByLabel("Move block")).toHaveCount(1);
+});
+
+test("nested blocks can move out and duplicate as undoable subtrees", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Repeat" }).click();
+  await dragHtml5(page, ".tool-motion_move", ".nested-block-stack");
+  const nestedHash = await canonicalHash(page);
+
+  await page
+    .locator('[data-canonical-node-id="scripts[0]/statements[0]"]')
+    .getByRole("button", { name: "Duplicate" })
+    .first()
+    .click();
+  const duplicatedHash = await canonicalHash(page);
+  expect(duplicatedHash).not.toBe(nestedHash);
+  expect((await page.locator(".code-surface").innerText()).match(/repeat\(3/g)?.length).toBe(2);
+
+  await page.getByRole("button", { name: "Undo program edit" }).click();
+  expect(await canonicalHash(page)).toBe(nestedHash);
+  expect((await page.locator(".code-surface").innerText()).match(/repeat\(3/g)?.length).toBe(1);
+
+  await page.getByRole("button", { name: "Redo program edit" }).click();
+  expect(await canonicalHash(page)).toBe(duplicatedHash);
+  expect((await page.locator(".code-surface").innerText()).match(/repeat\(3/g)?.length).toBe(2);
+
+  await page.getByRole("button", { name: "Undo program edit" }).click();
+  await page.getByLabel("Move block").getByRole("button", { name: "Outdent" }).click();
+  await expect(page.locator('[data-canonical-node-id="scripts[0]/statements[1]"]')).toContainText(
+    "Move",
+  );
+});
+
+test("non-drag nesting keeps projections synchronized", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Repeat" }).click();
+  await page.getByRole("button", { name: "Move" }).click();
+  await page.getByLabel("Move block").getByRole("button", { name: "Nest" }).click();
+
+  await expect(
+    page.locator('[data-canonical-node-id="scripts[0]/statements[0]/body[0]"]'),
+  ).toContainText("Move");
+  await expect(page.locator(".code-surface")).toContainText("repeat(3");
+  await expect(page.locator(".code-surface")).toContainText("sprite.move(10);");
+});
+
 test("IDE panels can maximize and expose resize affordances", async ({ page }) => {
   await page.goto("/");
 
@@ -844,6 +937,21 @@ test.describe("contextual repeat suggestion", () => {
     await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
     await page.locator(".action-palette").getByLabel("Turn", { exact: true }).click();
     await expect(page.getByTestId("repeat-suggestion")).toHaveCount(0);
+  });
+
+  test("suggestion is anchored to inspectable affected blocks", async ({ page }) => {
+    await buildRepetitiveProgram(page);
+
+    const affected = page.locator(".block-card.suggestion-affected");
+    await expect(page.getByTestId("repeat-suggestion")).toBeVisible();
+    await expect(affected.first()).toHaveAttribute("data-canonical-node-id", /scripts\[0\]/);
+
+    await affected.first().getByRole("button").first().click();
+    await expect(affected.first()).toHaveAttribute("data-block-state", "selected");
+
+    await page.getByRole("button", { name: "Try it" }).click();
+    await expect(page.getByTestId("proposal-preview")).toBeVisible();
+    await expect(affected.first()).toHaveClass(/suggestion-affected/);
   });
 
   test("reject leaves the canonical program unchanged and stays quiet", async ({ page }) => {
