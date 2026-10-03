@@ -13,6 +13,8 @@ export {
 } from "./store.js";
 export {
   CROSS_SURFACE_CONTRACT_VERSION,
+  FORBIDDEN_CANONICAL_IDENTITY_KEYS,
+  FORBIDDEN_CANONICAL_PROGRAM_KEYS,
   FORBIDDEN_CANONICAL_UI_KEYS,
   assertCrossSurfaceCompatibleProject,
   assertNoUiSpecificProgramState,

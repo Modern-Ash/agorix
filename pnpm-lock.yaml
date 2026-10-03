@@ -126,6 +126,9 @@ importers:
       '@agorix/persistence':
         specifier: workspace:*
         version: link:../../packages/persistence
+      '@agorix/platform-contract':
+        specifier: workspace:*
+        version: link:../../packages/platform-contract
       '@agorix/program-model':
         specifier: workspace:*
         version: link:../../packages/program-model

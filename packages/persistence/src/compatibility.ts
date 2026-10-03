@@ -15,6 +15,24 @@ export const FORBIDDEN_CANONICAL_UI_KEYS = [
   "vscodeUri",
 ] as const;
 
+export const FORBIDDEN_CANONICAL_IDENTITY_KEYS = [
+  "accountId",
+  "ownerAccountId",
+  "sessionId",
+  "username",
+  "alias",
+  "email",
+  "recoveryContact",
+  "projectId",
+  "revision",
+  "serverProjectRevision",
+] as const;
+
+export const FORBIDDEN_CANONICAL_PROGRAM_KEYS = [
+  ...FORBIDDEN_CANONICAL_UI_KEYS,
+  ...FORBIDDEN_CANONICAL_IDENTITY_KEYS,
+] as const;
+
 export interface SemanticProjectSnapshot {
   readonly contractVersion: typeof CROSS_SURFACE_CONTRACT_VERSION;
   readonly schemaVersion: string;
@@ -69,7 +87,7 @@ export function assertNoUiSpecificProgramState(program: ProjectProgram): void {
     throw new PersistenceError(
       "SCHEMA_MISMATCH",
       "canonical-program",
-      `UI-specific key "${violation.key}" is not allowed in canonical program state at ${violation.path}`,
+      `Surface, identity or ownership key "${violation.key}" is not allowed in canonical program state at ${violation.path}`,
     );
   }
 }
@@ -90,7 +108,7 @@ function findForbiddenKey(value: unknown, path = "$"): { key: string; path: stri
   }
 
   for (const [key, nestedValue] of Object.entries(value)) {
-    if ((FORBIDDEN_CANONICAL_UI_KEYS as readonly string[]).includes(key)) {
+    if ((FORBIDDEN_CANONICAL_PROGRAM_KEYS as readonly string[]).includes(key)) {
       return { key, path: `${path}.${key}` };
     }
     const nested = findForbiddenKey(nestedValue, `${path}.${key}`);

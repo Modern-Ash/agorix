@@ -511,6 +511,7 @@
     "@agorix/curriculum": "workspace:*",
     "@agorix/language-projection": "workspace:*",
     "@agorix/learning-decision-plane": "workspace:*",
+    "@agorix/platform-contract": "workspace:*",
     "@agorix/persistence": "workspace:*",
     "@agorix/program-model": "workspace:*",
     "@agorix/proposals": "workspace:*",
