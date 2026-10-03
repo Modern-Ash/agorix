@@ -120,6 +120,9 @@ importers:
       '@agorix/language-projection':
         specifier: workspace:*
         version: link:../../packages/language-projection
+      '@agorix/learning-decision-plane':
+        specifier: workspace:*
+        version: link:../../packages/learning-decision-plane
       '@agorix/persistence':
         specifier: workspace:*
         version: link:../../packages/persistence
@@ -138,6 +141,9 @@ importers:
       '@agorix/stage':
         specifier: workspace:*
         version: link:../../packages/stage
+      '@agorix/tutor-contract':
+        specifier: workspace:*
+        version: link:../../packages/tutor-contract
     devDependencies:
       '@types/vscode':
         specifier: 1.95.0

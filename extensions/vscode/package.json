@@ -43,6 +43,17 @@
     "onCommand:agorixStudio.reset",
     "onCommand:agorixStudio.stop",
     "onCommand:agorixStudio.selectExecutionStep",
+    "onCommand:agorixStudio.companionExplain",
+    "onCommand:agorixStudio.companionChallenge",
+    "onCommand:agorixStudio.companionDebug",
+    "onCommand:agorixStudio.companionReflect",
+    "onCommand:agorixStudio.companionBuild",
+    "onCommand:agorixStudio.suggestFirstStep",
+    "onCommand:agorixStudio.applyProposal",
+    "onCommand:agorixStudio.rejectProposal",
+    "onCommand:agorixStudio.revealProposalAffectedNode",
+    "onCommand:agorixStudio.undoProposal",
+    "onCommand:agorixStudio.redoProposal",
     "onCommand:agorixStudio.showEvidence",
     "onCommand:agorixStudio.suggestRepeat",
     "onView:agorixStudio.projects",
@@ -50,7 +61,8 @@
     "onView:agorixStudio.progress",
     "onView:agorixStudio.worlds",
     "onView:agorixStudio.inspector",
-    "onView:agorixStudio.companion"
+    "onView:agorixStudio.companion",
+    "onView:agorixStudio.companionHistory"
   ],
   "contributes": {
     "viewsContainers": {
@@ -87,6 +99,10 @@
         {
           "id": "agorixStudio.companion",
           "name": "Learning Companion"
+        },
+        {
+          "id": "agorixStudio.companionHistory",
+          "name": "Companion Responses"
         }
       ]
     },
@@ -142,6 +158,61 @@
         "category": "Agorix Studio"
       },
       {
+        "command": "agorixStudio.companionExplain",
+        "title": "Explain Selection",
+        "category": "Agorix Studio"
+      },
+      {
+        "command": "agorixStudio.companionChallenge",
+        "title": "Challenge Prediction",
+        "category": "Agorix Studio"
+      },
+      {
+        "command": "agorixStudio.companionDebug",
+        "title": "Debug With Evidence",
+        "category": "Agorix Studio"
+      },
+      {
+        "command": "agorixStudio.companionReflect",
+        "title": "Reflect On Run",
+        "category": "Agorix Studio"
+      },
+      {
+        "command": "agorixStudio.companionBuild",
+        "title": "Build Proposal",
+        "category": "Agorix Studio"
+      },
+      {
+        "command": "agorixStudio.suggestFirstStep",
+        "title": "Suggest First Step",
+        "category": "Agorix Studio"
+      },
+      {
+        "command": "agorixStudio.applyProposal",
+        "title": "Apply Proposal",
+        "category": "Agorix Studio"
+      },
+      {
+        "command": "agorixStudio.rejectProposal",
+        "title": "Reject Proposal",
+        "category": "Agorix Studio"
+      },
+      {
+        "command": "agorixStudio.revealProposalAffectedNode",
+        "title": "Reveal Proposal Affected Node",
+        "category": "Agorix Studio"
+      },
+      {
+        "command": "agorixStudio.undoProposal",
+        "title": "Undo Proposal",
+        "category": "Agorix Studio"
+      },
+      {
+        "command": "agorixStudio.redoProposal",
+        "title": "Redo Proposal",
+        "category": "Agorix Studio"
+      },
+      {
         "command": "agorixStudio.showEvidence",
         "title": "Show Execution Evidence",
         "category": "Agorix Studio"
@@ -167,6 +238,21 @@
         {
           "command": "agorixStudio.suggestRepeat",
           "when": "viewItem == agorixCompanion",
+          "group": "navigation"
+        },
+        {
+          "command": "agorixStudio.companionExplain",
+          "when": "viewItem == agorixCompanion || viewItem == agorixCompanionTurn",
+          "group": "navigation"
+        },
+        {
+          "command": "agorixStudio.companionDebug",
+          "when": "viewItem == agorixCompanion || viewItem == agorixCompanionTurn",
+          "group": "navigation"
+        },
+        {
+          "command": "agorixStudio.revealProposalAffectedNode",
+          "when": "viewItem == agorixProposal",
           "group": "navigation"
         },
         {
@@ -200,6 +286,41 @@
           "command": "agorixStudio.stop",
           "when": "view == agorixStudio.inspector || view == agorixStudio.progress",
           "group": "navigation"
+        },
+        {
+          "command": "agorixStudio.companionExplain",
+          "when": "view == agorixStudio.companion || view == agorixStudio.companionHistory",
+          "group": "navigation"
+        },
+        {
+          "command": "agorixStudio.companionChallenge",
+          "when": "view == agorixStudio.companion || view == agorixStudio.companionHistory",
+          "group": "navigation"
+        },
+        {
+          "command": "agorixStudio.companionDebug",
+          "when": "view == agorixStudio.companion || view == agorixStudio.companionHistory",
+          "group": "navigation"
+        },
+        {
+          "command": "agorixStudio.companionReflect",
+          "when": "view == agorixStudio.companion || view == agorixStudio.companionHistory",
+          "group": "navigation"
+        },
+        {
+          "command": "agorixStudio.companionBuild",
+          "when": "view == agorixStudio.companion || view == agorixStudio.companionHistory",
+          "group": "navigation"
+        },
+        {
+          "command": "agorixStudio.undoProposal",
+          "when": "view == agorixStudio.companionHistory",
+          "group": "navigation"
+        },
+        {
+          "command": "agorixStudio.redoProposal",
+          "when": "view == agorixStudio.companionHistory",
+          "group": "navigation"
         }
       ],
       "editor/title": [
@@ -222,6 +343,21 @@
           "command": "agorixStudio.step",
           "when": "resourceScheme == agorix-studio",
           "group": "navigation"
+        },
+        {
+          "command": "agorixStudio.companionExplain",
+          "when": "resourceScheme == agorix-studio",
+          "group": "navigation"
+        },
+        {
+          "command": "agorixStudio.companionDebug",
+          "when": "resourceScheme == agorix-studio",
+          "group": "navigation"
+        },
+        {
+          "command": "agorixStudio.undoProposal",
+          "when": "resourceScheme == agorix-studio",
+          "group": "navigation"
         }
       ]
     }
@@ -239,12 +375,14 @@
     "@agorix/code-generator": "workspace:*",
     "@agorix/curriculum": "workspace:*",
     "@agorix/language-projection": "workspace:*",
+    "@agorix/learning-decision-plane": "workspace:*",
     "@agorix/persistence": "workspace:*",
     "@agorix/program-model": "workspace:*",
     "@agorix/proposals": "workspace:*",
     "@agorix/python-projection": "workspace:*",
     "@agorix/runtime": "workspace:*",
-    "@agorix/stage": "workspace:*"
+    "@agorix/stage": "workspace:*",
+    "@agorix/tutor-contract": "workspace:*"
   },
   "devDependencies": {
     "@types/vscode": "1.95.0",

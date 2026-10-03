@@ -4,6 +4,8 @@ import { ProjectStore, type BrowserStorageAdapter, type StoredProject } from "@a
 import { createProgramProposal } from "@agorix/proposals";
 import {
   applyProposal,
+  applyProposalSession,
+  createCompanionTurn,
   createExecutionEvidence,
   createExecutionViewState,
   createProposalReview,
@@ -19,6 +21,7 @@ import {
   rejectProposal,
   serializeStoredProject,
   semanticHash,
+  suggestFirstStep,
   suggestRepeat,
 } from "./studioCore.js";
 
@@ -231,6 +234,54 @@ describe("Agorix Studio first slice", () => {
     expect(applied).toEqual(proposedProgram);
     expect(review.acceptedProjection.code).not.toContain("sprite.turn(90);");
     expect(review.proposedProjection.code).toContain("sprite.turn(90);");
+  });
+
+  it("creates contextual Companion turns from selected code and runtime evidence without provider authority", () => {
+    const project = openStoredProject(webCreatedProject);
+    const evidence = createExecutionEvidence(webCreatedProject);
+    const turn = createCompanionTurn(project, "debug", {
+      selectedNodeIds: ["scripts[0]/statements[0]"],
+      evidence,
+    });
+
+    expect(turn.request.capability).toBe("debugger");
+    expect(turn.request.selectedNodeIds).toEqual(["scripts[0]/statements[0]"]);
+    expect(turn.diagnostics.providerSelection).toBe("bypassed");
+    expect(turn.diagnostics.runtimeFactCount).toBeGreaterThan(0);
+    expect(turn.response.capability).toBe("debugger");
+    if (turn.response.capability !== "debugger") throw new Error("expected debugger response");
+    expect(turn.response.payload.facts[0]?.fact).toContain("moved from");
+    expect(project.stored.program).toEqual(webCreatedProject.program);
+  });
+
+  it("uses a generic proposal session for first-step and fails stale proposals closed", () => {
+    const emptyProject = openStoredProject({
+      ...webCreatedProject,
+      metadata: { ...webCreatedProject.metadata, missionProgress: 0 },
+      program: {
+        ...webCreatedProject.program,
+        scripts: [{ id: "main", trigger: { type: "onStart" }, statements: [] }],
+      },
+    });
+    const suggestion = suggestFirstStep(emptyProject);
+
+    expect(suggestion?.session.purpose).toContain("visible movement");
+    expect(suggestion?.session.diff.proposedCode).toContain("sprite.move(10);");
+
+    const accepted = applyProposalSession(emptyProject.stored.program, suggestion!.session);
+    expect(accepted.program.scripts[0]?.statements).toEqual([{ type: "move", steps: 10 }]);
+
+    const staleProgram: ProjectProgram = {
+      ...emptyProject.stored.program,
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [{ type: "turn", degrees: 90 }],
+        },
+      ],
+    };
+    expect(() => applyProposalSession(staleProgram, suggestion!.session)).toThrow(/STALE_PROPOSAL/);
   });
 
   it("produces a Studio-modified fixture that #121 can reopen in Web", () => {

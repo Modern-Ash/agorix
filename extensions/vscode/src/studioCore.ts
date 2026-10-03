@@ -11,15 +11,24 @@ import {
   type LanguageProjection,
   type LanguageProjectionDescriptor,
 } from "@agorix/language-projection";
+import {
+  projectLearningRequirements,
+  roleCanUseDeterministicFixture,
+  stateFromLearningCompanionRequest,
+  type LearningRequirements,
+} from "@agorix/learning-decision-plane";
 import type { StoredProject } from "@agorix/persistence";
 import { pythonProjection } from "@agorix/python-projection";
 import {
   acceptProposal as acceptSharedProposal,
+  createFirstStepProposal,
   createProposalReview as createSharedProposalReview,
   createRepeatPatternProposal,
   createStudioProposalDiffView,
+  programSemanticHash,
   type StudioProposalDiffView,
   rejectProposal as rejectSharedProposal,
+  type ProposalAuditEvent,
   type ProgramProposal,
   type ProposalReview,
 } from "@agorix/proposals";
@@ -38,6 +47,16 @@ import {
   type LearnerTraceItem,
   type ObservationFrame,
 } from "@agorix/stage";
+import {
+  createDeterministicLearningCompanionResponse,
+  createLearningCompanionRequest,
+  validateLearningCompanionSafety,
+  type LearningCompanionCapability,
+  type LearningCompanionRequest,
+  type LearningCompanionResponse,
+  type LearningCompanionRuntimeFact,
+  type LearningCompanionScaffoldLevel,
+} from "@agorix/tutor-contract";
 
 export interface StudioProject {
   readonly stored: StoredProject;
@@ -111,6 +130,43 @@ export interface StudioExecutionViewState {
   readonly stepsUsed: number;
   readonly previewFrames: readonly ObservationFrame[];
   readonly inspectorSteps: readonly StudioInspectorStep[];
+}
+
+export type StudioCompanionAction = "explain" | "challenge" | "debug" | "reflect" | "build";
+
+export interface StudioCompanionDiagnostics {
+  readonly providerSelection: "bypassed" | "not-configured";
+  readonly decisionSource: "system0" | "system1" | "fallback";
+  readonly reasoningTier: LearningRequirements["reasoningTier"];
+  readonly contextNeed: LearningRequirements["contextNeed"];
+  readonly generativeNeeded: LearningRequirements["generativeNeeded"];
+  readonly runtimeFactCount: number;
+}
+
+export interface StudioCompanionTurn {
+  readonly action: StudioCompanionAction;
+  readonly request: LearningCompanionRequest;
+  readonly requirements: LearningRequirements;
+  readonly response: LearningCompanionResponse;
+  readonly message: string;
+  readonly selectedNodeIds: readonly string[];
+  readonly diagnostics: StudioCompanionDiagnostics;
+  readonly proposal?: StudioProposalSession;
+}
+
+export interface StudioProposalSession {
+  readonly review: ProposalReview;
+  readonly diff: StudioProposalDiffView;
+  readonly baseProgramHash: string;
+  readonly purpose: string;
+  readonly rationale: string;
+  readonly source: ProgramProposal["source"];
+  readonly affectedNodeIds: readonly string[];
+}
+
+export interface StudioProposalDecision {
+  readonly program: ProjectProgram;
+  readonly audit: ProposalAuditEvent;
 }
 
 export type { ProgramProposal, ProposalReview } from "@agorix/proposals";
@@ -290,6 +346,27 @@ export function createNavigationSections(
           command: "agorixStudio.suggestRepeat",
           contextValue: "agorixCompanion",
         },
+        {
+          id: "explain-selection",
+          label: "Explain current selection",
+          description: "Bounded code and evidence context",
+          command: "agorixStudio.companionExplain",
+          contextValue: "agorixCompanion",
+        },
+        {
+          id: "debug-evidence",
+          label: "Debug with runtime facts",
+          description: "Runtime facts only",
+          command: "agorixStudio.companionDebug",
+          contextValue: "agorixCompanion",
+        },
+        {
+          id: "reflect-run",
+          label: "Reflect on the run",
+          description: "Evidence-grounded prompt",
+          command: "agorixStudio.companionReflect",
+          contextValue: "agorixCompanion",
+        },
       ],
     },
   ];
@@ -366,11 +443,106 @@ export function createExecutionViewState(
   };
 }
 
+export function createCompanionTurn(
+  project: StudioProject,
+  action: StudioCompanionAction,
+  options: {
+    readonly selectedNodeIds?: readonly string[];
+    readonly learnerIntent?: string;
+    readonly evidence?: StudioExecutionEvidence;
+  } = {},
+): StudioCompanionTurn {
+  const capability = companionCapability(action);
+  const mission = getLocalizedFirstMission(project.stored.metadata.locale);
+  const evidence = options.evidence ?? createExecutionEvidence(project.stored);
+  const runtimeFacts = runtimeFactsFromEvidence(evidence);
+  const request = createLearningCompanionRequest({
+    capability,
+    mission: {
+      id: mission.id,
+      version: mission.version,
+      concepts: mission.concepts,
+      learningObjective: mission.goal.learnerFacing,
+    },
+    program: project.stored.program,
+    selectedNodeIds: options.selectedNodeIds ?? selectedNodeIdsFromEvidence(evidence),
+    runtime: {
+      outcome: evidence.result.outcome,
+      stepsUsed: evidence.result.stepsUsed,
+      finalWorld: evidence.result.world,
+      observations: evidence.result.observations,
+    },
+    runtimeFacts,
+    scaffoldHistory: [
+      {
+        capability,
+        level: Math.min(project.stored.metadata.hintLevel, 5) as LearningCompanionScaffoldLevel,
+      },
+    ],
+    ...(options.learnerIntent === undefined || options.learnerIntent.trim().length === 0
+      ? {}
+      : { learnerIntent: options.learnerIntent }),
+    reading: { locale: project.stored.metadata.locale ?? "en" },
+  });
+  const state = stateFromLearningCompanionRequest(request, {
+    offline: true,
+    explicitStrongerHelpRequested: action === "build",
+  });
+  const requirements = projectLearningRequirements(state);
+  const deterministic =
+    requirements.generativeNeeded === "no" || roleCanUseDeterministicFixture(request);
+  const response = validateLearningCompanionSafety(
+    request,
+    createDeterministicLearningCompanionResponse(request),
+  );
+  const proposal =
+    response.capability === "builder" && response.payload.validation.status === "valid"
+      ? createProposalSession(project, response.payload.proposal)
+      : undefined;
+  return {
+    action,
+    request,
+    requirements,
+    response,
+    message: response.message,
+    selectedNodeIds: request.selectedNodeIds,
+    diagnostics: {
+      providerSelection: deterministic ? "bypassed" : "not-configured",
+      decisionSource: requirements.provenance.generativeNeeded,
+      reasoningTier: requirements.reasoningTier,
+      contextNeed: requirements.contextNeed,
+      generativeNeeded: requirements.generativeNeeded,
+      runtimeFactCount: runtimeFacts.length,
+    },
+    ...(proposal === undefined ? {} : { proposal }),
+  };
+}
+
 export function createProposalReview(
   acceptedProgram: ProjectProgram,
   proposal: ProgramProposal,
 ): ProposalReview {
   return createSharedProposalReview(acceptedProgram, proposal);
+}
+
+export function createProposalSession(
+  project: StudioProject,
+  proposal: ProgramProposal,
+): StudioProposalSession {
+  const review = createProposalReview(project.stored.program, proposal);
+  return {
+    review,
+    diff: createStudioProposalDiffView(review),
+    baseProgramHash: proposal.baseProgramHash,
+    purpose: proposal.purpose,
+    rationale: proposal.rationale,
+    source: proposal.source,
+    affectedNodeIds: proposal.affectedNodeIds,
+  };
+}
+
+export function assertProposalFresh(program: ProjectProgram, session: StudioProposalSession): void {
+  createProposalReview(program, session.review.proposal);
 }
 
 export function rejectProposal(
@@ -380,11 +552,29 @@ export function rejectProposal(
   return rejectSharedProposal(acceptedProgram, review).program;
 }
 
+export function rejectProposalSession(
+  acceptedProgram: ProjectProgram,
+  session: StudioProposalSession,
+): StudioProposalDecision {
+  return rejectSharedProposal(acceptedProgram, session.review);
+}
+
 export function applyProposal(
   acceptedProgram: ProjectProgram,
   review: ProposalReview,
 ): ProjectProgram {
   return acceptSharedProposal(acceptedProgram, review).program;
+}
+
+export function applyProposalSession(
+  acceptedProgram: ProjectProgram,
+  session: StudioProposalSession,
+): StudioProposalDecision {
+  return acceptSharedProposal(acceptedProgram, session.review);
+}
+
+export function currentProgramHash(program: ProjectProgram): string {
+  return programSemanticHash(program);
 }
 
 export function createStoredProjectWithProgram(
@@ -405,6 +595,7 @@ export function createStoredProjectWithProgram(
 }
 
 export interface StudioSuggestion {
+  readonly session: StudioProposalSession;
   readonly review: ProposalReview;
   readonly diff: StudioProposalDiffView;
 }
@@ -424,8 +615,22 @@ export function suggestRepeat(project: StudioProject): StudioSuggestion | undefi
   if (proposal === undefined) {
     return undefined;
   }
-  const review = createProposalReview(project.stored.program, proposal);
-  return { review, diff: createStudioProposalDiffView(review) };
+  const session = createProposalSession(project, proposal);
+  return { session, review: session.review, diff: session.diff };
+}
+
+export function suggestFirstStep(project: StudioProject): StudioSuggestion | undefined {
+  const proposal = createFirstStepProposal({
+    id: "first-step",
+    baseProgram: project.stored.program,
+    purpose: "Try one visible movement step",
+    rationale: "A single Move block is a safe first proposal to inspect before changing the file.",
+  });
+  if (proposal === undefined) {
+    return undefined;
+  }
+  const session = createProposalSession(project, proposal);
+  return { session, review: session.review, diff: session.diff };
 }
 
 export function formatInspectorReport(evidence: StudioExecutionEvidence): string {
@@ -443,4 +648,35 @@ export function formatInspectorReport(evidence: StudioExecutionEvidence): string
 
 export function serializeStoredProject(stored: StoredProject): string {
   return `${JSON.stringify(stored, null, 2)}\n`;
+}
+
+function companionCapability(action: StudioCompanionAction): LearningCompanionCapability {
+  switch (action) {
+    case "explain":
+      return "explainer";
+    case "challenge":
+      return "challenger";
+    case "debug":
+      return "debugger";
+    case "reflect":
+      return "reflector";
+    case "build":
+      return "builder";
+  }
+}
+
+function selectedNodeIdsFromEvidence(evidence: StudioExecutionEvidence): readonly string[] {
+  const node = evidence.stepSequence.find((step) => step.nodeId !== undefined)?.nodeId;
+  return node === undefined ? [] : [node];
+}
+
+function runtimeFactsFromEvidence(
+  evidence: StudioExecutionEvidence,
+): readonly LearningCompanionRuntimeFact[] {
+  return evidence.inspectorRows.map((row, index) => ({
+    id: `runtime-step-${row.step}`,
+    observationIndex: index,
+    nodeId: row.nodeId,
+    fact: `${row.statementType} moved from (${row.worldBefore.sprite.x}, ${row.worldBefore.sprite.y}) heading ${row.worldBefore.sprite.heading} to (${row.worldAfter.sprite.x}, ${row.worldAfter.sprite.y}) heading ${row.worldAfter.sprite.heading}`,
+  }));
 }

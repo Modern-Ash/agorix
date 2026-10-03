@@ -1,9 +1,10 @@
 import * as vscode from "vscode";
 import {
-  applyProposal,
+  applyProposalSession,
   createExecutionViewState,
   createNavigationSections,
   createExecutionEvidence,
+  createCompanionTurn,
   createStoredProjectWithProgram,
   formatInspectorReport,
   isStudioProjectionId,
@@ -11,12 +12,17 @@ import {
   openProjectionDocument,
   parseStoredProject,
   projectionRangeForNode,
+  rejectProposalSession,
   serializeStoredProject,
+  suggestFirstStep,
   suggestRepeat,
+  type StudioCompanionAction,
+  type StudioCompanionTurn,
   type StudioExecutionEvidence,
   type StudioExecutionStatus,
   type StudioExecutionViewState,
   type StudioInspectorStep,
+  type StudioProposalSession,
   type StudioProject,
   type StudioProjectionDocument,
   type StudioProjectionId,
@@ -33,9 +39,18 @@ let executionEvidence: StudioExecutionEvidence | undefined;
 let executionFrameIndex = 0;
 let executionStatus: StudioExecutionStatus = "idle";
 let worldPreviewPanel: vscode.WebviewPanel | undefined;
+let activeProposal: StudioProposalSession | undefined;
+const companionTurns: StudioCompanionTurn[] = [];
+const undoStack: StoredSnapshot[] = [];
+const redoStack: StoredSnapshot[] = [];
 
 const PROJECTION_SCHEME = "agorix-studio";
 const WORLD_PREVIEW_VIEW_TYPE = "agorixStudio.worldPreview";
+
+interface StoredSnapshot {
+  readonly uri: vscode.Uri;
+  readonly raw: string;
+}
 
 class StudioTreeItem extends vscode.TreeItem {
   constructor(
@@ -124,6 +139,46 @@ class ExecutionInspectorProvider implements vscode.TreeDataProvider<ExecutionIns
   }
 }
 
+class CompanionHistoryItem extends vscode.TreeItem {
+  constructor(readonly turn: StudioCompanionTurn) {
+    super(`${turn.action}: ${turn.message}`);
+    this.description = `${turn.diagnostics.providerSelection} · ${turn.diagnostics.reasoningTier}`;
+    this.contextValue = turn.proposal === undefined ? "agorixCompanionTurn" : "agorixProposal";
+    this.tooltip = [
+      turn.message,
+      `provider: ${turn.diagnostics.providerSelection}`,
+      `decision: ${turn.diagnostics.decisionSource}`,
+      `context: ${turn.diagnostics.contextNeed}`,
+      `runtime facts: ${turn.diagnostics.runtimeFactCount}`,
+      turn.proposal === undefined ? "no proposal" : `proposal: ${turn.proposal.purpose}`,
+    ].join("\n");
+    if (turn.selectedNodeIds[0] !== undefined) {
+      this.command = {
+        command: "agorixStudio.revealCanonicalNode",
+        title: "Reveal Companion Context",
+        arguments: [turn.selectedNodeIds[0]],
+      };
+    }
+  }
+}
+
+class CompanionHistoryProvider implements vscode.TreeDataProvider<CompanionHistoryItem> {
+  readonly #changed = new vscode.EventEmitter<CompanionHistoryItem | undefined | null | void>();
+  readonly onDidChangeTreeData = this.#changed.event;
+
+  refresh(): void {
+    this.#changed.fire();
+  }
+
+  getTreeItem(element: CompanionHistoryItem): vscode.TreeItem {
+    return element;
+  }
+
+  getChildren(): CompanionHistoryItem[] {
+    return companionTurns.map((turn) => new CompanionHistoryItem(turn));
+  }
+}
+
 class ProjectionDocumentProvider implements vscode.TextDocumentContentProvider {
   readonly #changed = new vscode.EventEmitter<vscode.Uri>();
   readonly onDidChange = this.#changed.event;
@@ -161,6 +216,10 @@ async function openProject(target?: unknown): Promise<void> {
     executionEvidence = undefined;
     executionFrameIndex = 0;
     executionStatus = "idle";
+    activeProposal = undefined;
+    companionTurns.length = 0;
+    undoStack.length = 0;
+    redoStack.length = 0;
   } catch (error) {
     // Do not await: a toast resolves only when dismissed and would hang the command.
     void vscode.window.showErrorMessage(
@@ -169,6 +228,7 @@ async function openProject(target?: unknown): Promise<void> {
     return;
   }
   refreshStudioViews();
+  refreshCompanionViews();
   await openProjection(currentProjectionId);
 }
 
@@ -550,6 +610,176 @@ function offsetToPosition(text: string, offset: number): vscode.Position {
   return new vscode.Position(lines.length - 1, lines.at(-1)?.length ?? 0);
 }
 
+async function companionCommand(
+  action: StudioCompanionAction,
+): Promise<StudioCompanionTurn | undefined> {
+  const open = requireProject();
+  if (open === undefined) {
+    return undefined;
+  }
+  const selected = currentExecutionView()?.currentFrame?.highlightedNodeId;
+  const turn = createCompanionTurn(open.project, action, {
+    ...(selected === undefined ? {} : { selectedNodeIds: [selected] }),
+    ...(executionEvidence === undefined ? {} : { evidence: executionEvidence }),
+  });
+  companionTurns.unshift(turn);
+  refreshCompanionViews();
+  if (turn.selectedNodeIds[0] !== undefined) {
+    await revealCanonicalNode(turn.selectedNodeIds[0]);
+  }
+  if (turn.proposal !== undefined) {
+    await reviewProposalSession(turn.proposal);
+  } else {
+    void vscode.window.showInformationMessage(turn.message);
+  }
+  return turn;
+}
+
+async function suggestFirstStepCommand(): Promise<void> {
+  const open = requireProject();
+  if (open === undefined) {
+    return;
+  }
+  const suggestion = suggestFirstStep(open.project);
+  if (suggestion === undefined) {
+    await vscode.window.showInformationMessage(
+      "First-step proposal is only available for an empty script.",
+    );
+    return;
+  }
+  await reviewProposalSession(suggestion.session);
+}
+
+async function reviewProposalSession(session: StudioProposalSession): Promise<void> {
+  const open = requireProject();
+  if (open === undefined) {
+    return;
+  }
+  activeProposal = session;
+  refreshCompanionViews();
+  const [before, after] = await Promise.all([
+    vscode.workspace.openTextDocument({
+      content: session.diff.acceptedCode,
+      language: "javascript",
+    }),
+    vscode.workspace.openTextDocument({
+      content: session.diff.proposedCode,
+      language: "javascript",
+    }),
+  ]);
+  await vscode.commands.executeCommand(
+    "vscode.diff",
+    before.uri,
+    after.uri,
+    `Agorix proposal: ${session.purpose}`,
+  );
+  if (session.affectedNodeIds[0] !== undefined) {
+    await revealIfPresent(session.affectedNodeIds[0]);
+  }
+  const choice = await vscode.window.showInformationMessage(
+    `${session.purpose}. ${session.rationale}`,
+    "Apply",
+    "Reject",
+  );
+  if (choice === "Apply") {
+    await applyActiveProposal();
+  } else if (choice === "Reject") {
+    rejectActiveProposal();
+  }
+}
+
+async function revealProposalAffectedNode(): Promise<void> {
+  if (activeProposal?.affectedNodeIds[0] !== undefined) {
+    await revealIfPresent(activeProposal.affectedNodeIds[0]);
+  }
+}
+
+async function revealIfPresent(nodeId: string): Promise<void> {
+  try {
+    await revealCanonicalNode(nodeId);
+  } catch (error) {
+    if (!(error instanceof RangeError)) {
+      throw error;
+    }
+  }
+}
+
+async function applyActiveProposal(): Promise<void> {
+  const open = requireProject();
+  if (open === undefined || activeProposal === undefined) {
+    return;
+  }
+  const previousRaw = serializeStoredProject(open.project.stored);
+  const decision = applyProposalSession(open.project.stored.program, activeProposal);
+  const stored = createStoredProjectWithProgram(open.project.stored, decision.program);
+  await writeCurrentProject(stored);
+  undoStack.push({ uri: open.uri, raw: previousRaw });
+  redoStack.length = 0;
+  activeProposal = undefined;
+  await vscode.window.showInformationMessage("Applied proposal. Use Undo Proposal to restore it.");
+}
+
+function rejectActiveProposal(): void {
+  const open = requireProject();
+  if (open === undefined || activeProposal === undefined) {
+    return;
+  }
+  rejectProposalSession(open.project.stored.program, activeProposal);
+  activeProposal = undefined;
+  refreshCompanionViews();
+  void vscode.window.showInformationMessage("Rejected proposal. Project unchanged.");
+}
+
+async function undoProposal(): Promise<void> {
+  const open = requireProject();
+  const previous = undoStack.pop();
+  if (open === undefined || previous === undefined) {
+    return;
+  }
+  redoStack.push({ uri: open.uri, raw: serializeStoredProject(open.project.stored) });
+  await restoreSnapshot(previous);
+}
+
+async function redoProposal(): Promise<void> {
+  const open = requireProject();
+  const next = redoStack.pop();
+  if (open === undefined || next === undefined) {
+    return;
+  }
+  undoStack.push({ uri: open.uri, raw: serializeStoredProject(open.project.stored) });
+  await restoreSnapshot(next);
+}
+
+async function writeCurrentProject(
+  stored: ReturnType<typeof createStoredProjectWithProgram>,
+): Promise<void> {
+  const open = requireProject();
+  if (open === undefined) {
+    return;
+  }
+  const raw = serializeStoredProject(stored);
+  await vscode.workspace.fs.writeFile(open.uri, new TextEncoder().encode(raw));
+  current = { uri: open.uri, project: parseStoredProject(raw) };
+  afterCanonicalProgramChange();
+  await openProjection(currentProjectionId);
+}
+
+async function restoreSnapshot(snapshot: StoredSnapshot): Promise<void> {
+  await vscode.workspace.fs.writeFile(snapshot.uri, new TextEncoder().encode(snapshot.raw));
+  current = { uri: snapshot.uri, project: parseStoredProject(snapshot.raw) };
+  afterCanonicalProgramChange();
+  await openProjection(currentProjectionId);
+}
+
+function afterCanonicalProgramChange(): void {
+  executionEvidence = undefined;
+  executionFrameIndex = 0;
+  executionStatus = "idle";
+  refreshStudioViews();
+  refreshExecutionViews();
+  refreshCompanionViews();
+}
+
 async function suggestRepeatCommand(): Promise<void> {
   const open = requireProject();
   if (open === undefined) {
@@ -560,42 +790,7 @@ async function suggestRepeatCommand(): Promise<void> {
     await vscode.window.showInformationMessage("Nothing repeated here. No suggestion.");
     return;
   }
-  const [before, after] = await Promise.all([
-    vscode.workspace.openTextDocument({
-      content: suggestion.diff.acceptedCode,
-      language: "javascript",
-    }),
-    vscode.workspace.openTextDocument({
-      content: suggestion.diff.proposedCode,
-      language: "javascript",
-    }),
-  ]);
-  await vscode.commands.executeCommand(
-    "vscode.diff",
-    before.uri,
-    after.uri,
-    "Agorix suggestion: use repeat",
-  );
-  const choice = await vscode.window.showInformationMessage(
-    "Suggestion: write the repeated steps once with repeat. Your project is unchanged until you apply it.",
-    "Apply",
-    "Reject",
-  );
-  if (choice !== "Apply") {
-    return;
-  }
-  const program = applyProposal(open.project.stored.program, suggestion.review);
-  const stored = createStoredProjectWithProgram(open.project.stored, program);
-  await vscode.workspace.fs.writeFile(
-    open.uri,
-    new TextEncoder().encode(serializeStoredProject(stored)),
-  );
-  current = { uri: open.uri, project: parseStoredProject(serializeStoredProject(stored)) };
-  executionEvidence = undefined;
-  executionFrameIndex = 0;
-  executionStatus = "idle";
-  refreshExecutionViews();
-  await vscode.window.showInformationMessage("Applied. Run Show Execution Evidence to check it.");
+  await reviewProposalSession(suggestion.session);
 }
 
 /** Runs a command body and surfaces any failure to the learner instead of failing silently. */
@@ -628,6 +823,7 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(output);
   const projectionProvider = new ProjectionDocumentProvider();
   const inspectorProvider = new ExecutionInspectorProvider();
+  const companionProvider = new CompanionHistoryProvider();
   const treeProviders = [
     new StudioTreeProvider("projects"),
     new StudioTreeProvider("missions"),
@@ -646,6 +842,9 @@ export function activate(context: vscode.ExtensionContext): void {
     inspectorProvider.refresh();
     updateWorldPreview();
   };
+  refreshCompanionViews = () => {
+    companionProvider.refresh();
+  };
   try {
     context.subscriptions.push(
       vscode.workspace.registerTextDocumentContentProvider(PROJECTION_SCHEME, projectionProvider),
@@ -656,6 +855,9 @@ export function activate(context: vscode.ExtensionContext): void {
       ),
       vscode.window.createTreeView("agorixStudio.inspector", {
         treeDataProvider: inspectorProvider,
+      }),
+      vscode.window.createTreeView("agorixStudio.companionHistory", {
+        treeDataProvider: companionProvider,
       }),
       vscode.commands.registerCommand(
         "agorixStudio.openProject",
@@ -689,6 +891,50 @@ export function activate(context: vscode.ExtensionContext): void {
         guarded(output, "Select Execution Step", selectExecutionStep),
       ),
       vscode.commands.registerCommand(
+        "agorixStudio.companionExplain",
+        guarded(output, "Explain", () => companionCommand("explain")),
+      ),
+      vscode.commands.registerCommand(
+        "agorixStudio.companionChallenge",
+        guarded(output, "Challenge", () => companionCommand("challenge")),
+      ),
+      vscode.commands.registerCommand(
+        "agorixStudio.companionDebug",
+        guarded(output, "Debug", () => companionCommand("debug")),
+      ),
+      vscode.commands.registerCommand(
+        "agorixStudio.companionReflect",
+        guarded(output, "Reflect", () => companionCommand("reflect")),
+      ),
+      vscode.commands.registerCommand(
+        "agorixStudio.companionBuild",
+        guarded(output, "Build", () => companionCommand("build")),
+      ),
+      vscode.commands.registerCommand(
+        "agorixStudio.suggestFirstStep",
+        guarded(output, "Suggest first step", suggestFirstStepCommand),
+      ),
+      vscode.commands.registerCommand(
+        "agorixStudio.applyProposal",
+        guarded(output, "Apply Proposal", applyActiveProposal),
+      ),
+      vscode.commands.registerCommand(
+        "agorixStudio.rejectProposal",
+        guarded(output, "Reject Proposal", rejectActiveProposal),
+      ),
+      vscode.commands.registerCommand(
+        "agorixStudio.revealProposalAffectedNode",
+        guarded(output, "Reveal Proposal Affected Node", revealProposalAffectedNode),
+      ),
+      vscode.commands.registerCommand(
+        "agorixStudio.undoProposal",
+        guarded(output, "Undo Proposal", undoProposal),
+      ),
+      vscode.commands.registerCommand(
+        "agorixStudio.redoProposal",
+        guarded(output, "Redo Proposal", redoProposal),
+      ),
+      vscode.commands.registerCommand(
         "agorixStudio.showEvidence",
         guarded(output, "Show Execution Evidence", () => showEvidence(output)),
       ),
@@ -708,7 +954,12 @@ export function deactivate(): void {
   current = undefined;
   executionEvidence = undefined;
   worldPreviewPanel = undefined;
+  activeProposal = undefined;
+  companionTurns.length = 0;
+  undoStack.length = 0;
+  redoStack.length = 0;
 }
 
 let refreshStudioViews: () => void = () => undefined;
 let refreshExecutionViews: () => void = () => undefined;
+let refreshCompanionViews: () => void = () => undefined;
