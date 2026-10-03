@@ -2119,7 +2119,11 @@ button:hover:not(:disabled) {
 
 @media (min-width: 980px) and (max-width: 1120px) {
   .learning-layout {
-    grid-template-columns: 208px minmax(340px, 1fr) minmax(356px, 0.92fr);
+    grid-template-columns: 208px minmax(370px, 1fr) minmax(320px, 0.86fr);
+    grid-template-areas:
+      "action stage code"
+      "action program code"
+      "action trace companion";
     gap: 10px;
   }
 
@@ -2130,11 +2134,24 @@ button:hover:not(:disabled) {
   }
 
   .program-panel {
-    min-height: 480px;
+    min-height: 420px;
+  }
+
+  .stage-panel {
+    min-height: 220px;
   }
 
   .stage-canvas {
-    min-height: 220px;
+    min-height: 176px;
+  }
+
+  .code-panel {
+    min-height: 280px;
+  }
+
+  .code-surface {
+    min-height: 190px;
+    max-height: 34vh;
   }
 }
 
