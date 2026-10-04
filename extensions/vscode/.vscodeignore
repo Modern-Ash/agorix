@@ -5,3 +5,4 @@
 !media/icon.png
 !media/icon.svg
 !dist/extension.cjs
+!dist/workbench.js

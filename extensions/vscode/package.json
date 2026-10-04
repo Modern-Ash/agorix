@@ -45,6 +45,7 @@
     "onCommand:agorixStudio.switchProjection",
     "onCommand:agorixStudio.revealCanonicalNode",
     "onCommand:agorixStudio.openWorldPreview",
+    "onCommand:agorixStudio.openWorkbench",
     "onCommand:agorixStudio.run",
     "onCommand:agorixStudio.step",
     "onCommand:agorixStudio.reset",
@@ -240,6 +241,11 @@
       {
         "command": "agorixStudio.openWorldPreview",
         "title": "Open World Preview",
+        "category": "Agorix Studio"
+      },
+      {
+        "command": "agorixStudio.openWorkbench",
+        "title": "Open Workbench",
         "category": "Agorix Studio"
       },
       {
@@ -455,6 +461,11 @@
         {
           "command": "agorixStudio.openWorldPreview",
           "when": "view == agorixStudio.inspector || view == agorixStudio.progress",
+          "group": "navigation"
+        },
+        {
+          "command": "agorixStudio.openWorkbench",
+          "when": "view == agorixStudio.projects",
           "group": "navigation"
         },
         {

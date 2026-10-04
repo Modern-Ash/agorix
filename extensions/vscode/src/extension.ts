@@ -37,6 +37,8 @@ import {
   type StudioRemoteSaveResult,
   type StudioStarterId,
 } from "./studioCore.js";
+import { openWorkbenchPanel, refreshWorkbench, disposeWorkbench } from "./host/workbenchPanel.js";
+import type { HostPort } from "./host/workbenchHost.js";
 import {
   createStudioProviderClient,
   normalizeStudioProviderSettings,
@@ -381,6 +383,7 @@ function resetProjectSessionState(): void {
   companionTurns.length = 0;
   undoStack.length = 0;
   redoStack.length = 0;
+  refreshWorkbench();
 }
 
 function updateStudioContext(): void {
@@ -943,6 +946,28 @@ async function restoreSnapshot(snapshot: StoredSnapshot): Promise<void> {
   await openProjection(currentProjectionId);
 }
 
+function workbenchPort(): HostPort {
+  return {
+    getProgram: () => current?.project.stored.program,
+    commit: async (program) => {
+      const open = requireProject();
+      if (open === undefined) {
+        return;
+      }
+      const previousRaw = serializeStoredProject(open.project.stored);
+      await writeCurrentProject(createStoredProjectWithProgram(open.project.stored, program));
+      undoStack.push({ uri: open.uri, raw: previousRaw });
+      redoStack.length = 0;
+    },
+    openProposalReview: async () => {
+      if (activeProposal !== undefined) {
+        await reviewProposalSession(activeProposal);
+      }
+    },
+    reveal: (nodeId) => revealCanonicalNode(nodeId),
+  };
+}
+
 function afterCanonicalProgramChange(): void {
   executionEvidence = undefined;
   executionFrameIndex = 0;
@@ -950,6 +975,7 @@ function afterCanonicalProgramChange(): void {
   refreshStudioViews();
   refreshExecutionViews();
   refreshCompanionViews();
+  refreshWorkbench();
 }
 
 async function suggestRepeatCommand(): Promise<void> {
@@ -1499,6 +1525,16 @@ export function activate(context: vscode.ExtensionContext): void {
         guarded(output, "Run Checks", runChecksCommand),
       ),
       vscode.commands.registerCommand(
+        "agorixStudio.openWorkbench",
+        guarded(output, "Open Workbench", async () => {
+          if (requireProject() === undefined) {
+            return;
+          }
+          openWorkbenchPanel(context, workbenchPort());
+          refreshWorkbench();
+        }),
+      ),
+      vscode.commands.registerCommand(
         "agorixStudio.showDeveloperContext",
         guarded(output, "Show Developer Context", () => showDeveloperContext(output)),
       ),
@@ -1519,6 +1555,7 @@ export function activate(context: vscode.ExtensionContext): void {
 }
 
 export function deactivate(): void {
+  disposeWorkbench();
   current = undefined;
   executionEvidence = undefined;
   worldPreviewPanel = undefined;
