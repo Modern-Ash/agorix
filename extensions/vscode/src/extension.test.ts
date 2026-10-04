@@ -282,6 +282,8 @@ describe("Studio extension wiring", () => {
     const extension = await import("./extension.js");
     extension.activate({
       subscriptions: [],
+      extensionUri: (await import("vscode")).Uri.file("/extension"),
+      asAbsolutePath: (relativePath: string) => `/extension/${relativePath}`,
       secrets: {
         get: async (key: string) => secrets.get(key),
         store: async (key: string, value: string) => {
