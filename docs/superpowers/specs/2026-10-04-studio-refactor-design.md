@@ -27,33 +27,33 @@ Existing packages stay as the core: `program-model`, `language-projection`, `run
 
 Two new platform-neutral packages (no DOM, no `vscode` imports):
 
-| Package | Responsibility |
-| --- | --- |
-| `agent-workflow` | State machine of the Director/Auditor loop: intent -> plan -> tasks -> proposal -> predict -> run -> compare -> explain. Sessions, supervised and bounded-autonomy modes, visible proactive rules. Decisions still go through System 0, LAYA, `routeLearningRequirements`. |
-| `interaction-core` | `DragIntent` (typed sources and targets), `AgentAnchor`, selection, keyboard parity, command and undo/redo, all as pure intents. |
+| Package            | Responsibility                                                                                                                                                                                                                                                             |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `agent-workflow`   | State machine of the Director/Auditor loop: intent -> plan -> tasks -> proposal -> predict -> run -> compare -> explain. Sessions, supervised and bounded-autonomy modes, visible proactive rules. Decisions still go through System 0, LAYA, `routeLearningRequirements`. |
+| `interaction-core` | `DragIntent` (typed sources and targets), `AgentAnchor`, selection, keyboard parity, command and undo/redo, all as pure intents.                                                                                                                                           |
 
 UIs emit intents; the host turns them into canonical transactions (#191). A UI never mutates the program directly. A typed, versioned `studio-protocol` carries host <-> UI messages.
 
 ### D3. Two experiences on the core
 
-| | Web: Scratch native to AI | Studio: Kiro-style |
-| --- | --- | --- |
-| Stages served | Explore, Connect, Translate (reaches Collaborate) | Collaborate, Create, Critique |
-| Center | large touch blocks, stage, single screen | Mission Spec, canvas, code, diff, evidence |
-| Agent | Agorix Agent character beside the stage; suggestions as draggable ghost blocks | structured agent panel: plan, tasks, proposals with diff, predictions; free text is secondary |
-| Drag and drop | palette -> script, reorder, block -> agent | the same, plus evidence -> node, code <-> canvas |
-| Density | minimal, playful | high, progressive by learner stage |
+|               | Web: Scratch native to AI                                                      | Studio: Kiro-style                                                                            |
+| ------------- | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| Stages served | Explore, Connect, Translate (reaches Collaborate)                              | Collaborate, Create, Critique                                                                 |
+| Center        | large touch blocks, stage, single screen                                       | Mission Spec, canvas, code, diff, evidence                                                    |
+| Agent         | Agorix Agent character beside the stage; suggestions as draggable ghost blocks | structured agent panel: plan, tasks, proposals with diff, predictions; free text is secondary |
+| Drag and drop | palette -> script, reorder, block -> agent                                     | the same, plus evidence -> node, code <-> canvas                                              |
+| Density       | minimal, playful                                                               | high, progressive by learner stage                                                            |
 
 Every drag has a keyboard and button equivalent (`INPUT_PARITY_MATRIX`). No drop applies an AI proposal implicitly.
 
 ### D4. Kiro concepts translated for children
 
-| Kiro | Agorix |
-| --- | --- |
-| Specs | **Mission Spec**: learner states intent, agent helps turn it into an editable plan and task list; each task is built, predicted, run and explained. |
-| Steering | **Agent agreements**: visible settings for how much help the agent gives; drive `scaffold` and `solutionAllowance`. No hidden files. |
-| Hooks | **Visible proactive rules** (`runtime-error`, `stalled`, `repeated-error`, `repeat-pattern`, `first-step`) as toggleable cards; silence is the default; decline caps and cooldowns remain. |
-| Supervised/autopilot | Always supervised with diff. Autonomy exists only inside an approved task and still yields a reviewable `ProgramProposal`. |
+| Kiro                 | Agorix                                                                                                                                                                                     |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Specs                | **Mission Spec**: learner states intent, agent helps turn it into an editable plan and task list; each task is built, predicted, run and explained.                                        |
+| Steering             | **Agent agreements**: visible settings for how much help the agent gives; drive `scaffold` and `solutionAllowance`. No hidden files.                                                       |
+| Hooks                | **Visible proactive rules** (`runtime-error`, `stalled`, `repeated-error`, `repeat-pattern`, `first-step`) as toggleable cards; silence is the default; decline caps and cooldowns remain. |
+| Supervised/autopilot | Always supervised with diff. Autonomy exists only inside an approved task and still yields a reviewable `ProgramProposal`.                                                                 |
 
 ### D5. Agent everywhere
 

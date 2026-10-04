@@ -197,6 +197,8 @@ importers:
         specifier: ^4.1.11
         version: 4.1.11(@types/node@26.6.2)(vite@7.3.6(@types/node@26.6.2))
 
+  packages/agent-workflow: {}
+
   packages/agorix-code:
     dependencies:
       '@agorix/language-projection':
@@ -238,6 +240,12 @@ importers:
       '@agorix/runtime':
         specifier: workspace:*
         version: link:../runtime
+
+  packages/interaction-core:
+    dependencies:
+      '@agorix/block-editor':
+        specifier: workspace:*
+        version: link:../block-editor
 
   packages/language-pack-lua:
     dependencies:
@@ -340,6 +348,15 @@ importers:
       '@agorix/runtime':
         specifier: workspace:*
         version: link:../runtime
+
+  packages/studio-protocol:
+    dependencies:
+      '@agorix/agent-workflow':
+        specifier: workspace:*
+        version: link:../agent-workflow
+      '@agorix/interaction-core':
+        specifier: workspace:*
+        version: link:../interaction-core
 
   packages/tutor-contract:
     dependencies:

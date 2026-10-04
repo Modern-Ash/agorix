@@ -37,29 +37,31 @@
 
 ## File structure
 
-| Path | Responsibility |
-| --- | --- |
-| `docs/FOUNDATIONS.md` | Philosophical-pedagogical charter |
-| `docs/product/PUBLIC_BENEFIT.md` | Free-for-institutions commitment and its design requirements |
-| `docs/architecture/adr/0007-shared-core-and-two-experiences.md` | ADR amending 0006 |
-| `packages/interaction-core/src/anchors.ts` | `AgentAnchorRef` validation |
-| `packages/interaction-core/src/intents.ts` | `Intent`, `DragSource`, `DropTarget`, `resolveDrop`, `intentToChange` |
-| `packages/interaction-core/src/keyboard.ts` | `keyboardIntent` |
-| `packages/interaction-core/src/index.ts` | public exports |
-| `packages/agent-workflow/src/loop.ts` | Director/Auditor state machine |
-| `packages/agent-workflow/src/assistance.ts` | ladder, agreements, offer gating |
-| `packages/agent-workflow/src/index.ts` | public exports |
-| `packages/studio-protocol/src/index.ts` | versioned host/UI messages and parsers |
+| Path                                                            | Responsibility                                                        |
+| --------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `docs/FOUNDATIONS.md`                                           | Philosophical-pedagogical charter                                     |
+| `docs/product/PUBLIC_BENEFIT.md`                                | Free-for-institutions commitment and its design requirements          |
+| `docs/architecture/adr/0007-shared-core-and-two-experiences.md` | ADR amending 0006                                                     |
+| `packages/interaction-core/src/anchors.ts`                      | `AgentAnchorRef` validation                                           |
+| `packages/interaction-core/src/intents.ts`                      | `Intent`, `DragSource`, `DropTarget`, `resolveDrop`, `intentToChange` |
+| `packages/interaction-core/src/keyboard.ts`                     | `keyboardIntent`                                                      |
+| `packages/interaction-core/src/index.ts`                        | public exports                                                        |
+| `packages/agent-workflow/src/loop.ts`                           | Director/Auditor state machine                                        |
+| `packages/agent-workflow/src/assistance.ts`                     | ladder, agreements, offer gating                                      |
+| `packages/agent-workflow/src/index.ts`                          | public exports                                                        |
+| `packages/studio-protocol/src/index.ts`                         | versioned host/UI messages and parsers                                |
 
 ---
 
 ### Task 1: Foundational charter
 
 **Files:**
+
 - Create: `docs/FOUNDATIONS.md`
 - Modify: `README.md` (add one link line near the other doc links), `docs/product/PRODUCT_INTENT.md` (add a "Foundations" pointer under Vision), `AGENTS.md` (add `docs/FOUNDATIONS.md` to the required reading in "Mandatory workflow" step 1)
 
 **Interfaces:**
+
 - Consumes: none.
 - Produces: `docs/FOUNDATIONS.md` as the highest-ranking doc; later docs link to it.
 
@@ -95,28 +97,28 @@ Children now grow up with AI that can write programs for them. If it does, they 
 
 ## Lineage
 
-| Source | What Agorix takes from it |
-| --- | --- |
-| Papert, constructionism | People learn best by building something they care about and can share. Basis of "the learner creates". |
-| Resnick, four Ps (projects, passion, peers, play) and the creative learning spiral (imagine, create, play, share, reflect) | Basis of the Web experience: a Scratch native to AI. |
-| Vygotsky, Wood, Bruner and Ross, scaffolding and the zone of proximal development | Basis of the hint ladder (levels 0-5) and gradual release of responsibility. |
-| Sentance, PRIMM (predict, run, investigate, modify, make) | Basis of "predict before run" and reading code before writing it; maps to the Director/Auditor loop. |
-| UNESCO, AI Competency Framework for Students | Four dimensions (human-centred mindset, ethics of AI, AI techniques and applications, AI system design) and three levels (understand, apply, create). |
-| OECD and European Commission, AI Literacy Framework for primary and secondary education | Four domains: engaging with, creating with, managing and designing AI. (Record the verified edition and URL here.) |
-| AI4K12, five big ideas | Perception, representation and reasoning, learning, natural interaction, societal impact. |
+| Source                                                                                                                     | What Agorix takes from it                                                                                                                             |
+| -------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Papert, constructionism                                                                                                    | People learn best by building something they care about and can share. Basis of "the learner creates".                                                |
+| Resnick, four Ps (projects, passion, peers, play) and the creative learning spiral (imagine, create, play, share, reflect) | Basis of the Web experience: a Scratch native to AI.                                                                                                  |
+| Vygotsky, Wood, Bruner and Ross, scaffolding and the zone of proximal development                                          | Basis of the hint ladder (levels 0-5) and gradual release of responsibility.                                                                          |
+| Sentance, PRIMM (predict, run, investigate, modify, make)                                                                  | Basis of "predict before run" and reading code before writing it; maps to the Director/Auditor loop.                                                  |
+| UNESCO, AI Competency Framework for Students                                                                               | Four dimensions (human-centred mindset, ethics of AI, AI techniques and applications, AI system design) and three levels (understand, apply, create). |
+| OECD and European Commission, AI Literacy Framework for primary and secondary education                                    | Four domains: engaging with, creating with, managing and designing AI. (Record the verified edition and URL here.)                                    |
+| AI4K12, five big ideas                                                                                                     | Perception, representation and reasoning, learning, natural interaction, societal impact.                                                             |
 
 Agorix's own contribution is **authorship plus evidence**: a visible boundary between proposal, accepted program and executed result, enforced by the product rather than taught as advice.
 
 ## Mapping the progression
 
-| Agorix stage | PRIMM | UNESCO level | OECD-EC domain |
-| --- | --- | --- | --- |
-| Explore | Predict, Run | Understand | Engaging with AI |
-| Connect | Investigate | Understand | Engaging with AI |
-| Translate | Investigate, Modify | Apply | Creating with AI |
-| Collaborate | Modify | Apply | Creating with AI, Managing AI |
-| Create | Make | Create | Creating with AI, Managing AI |
-| Critique | Make | Create | Managing AI, Designing AI |
+| Agorix stage | PRIMM               | UNESCO level | OECD-EC domain                |
+| ------------ | ------------------- | ------------ | ----------------------------- |
+| Explore      | Predict, Run        | Understand   | Engaging with AI              |
+| Connect      | Investigate         | Understand   | Engaging with AI              |
+| Translate    | Investigate, Modify | Apply        | Creating with AI              |
+| Collaborate  | Modify              | Apply        | Creating with AI, Managing AI |
+| Create       | Make                | Create       | Creating with AI, Managing AI |
+| Critique     | Make                | Create       | Managing AI, Designing AI     |
 
 This mapping is a starting hypothesis to validate with educators, not a certification claim.
 
@@ -163,9 +165,11 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ### Task 2: Public benefit commitment
 
 **Files:**
+
 - Create: `docs/product/PUBLIC_BENEFIT.md`
 
 **Interfaces:**
+
 - Consumes: `docs/FOUNDATIONS.md`.
 - Produces: the requirements list ADR 0007 cites.
 
@@ -187,15 +191,15 @@ The hosted service is a commitment of intent, bounded by funding. It does not ch
 
 ## What this requires of the product
 
-| Requirement | Consequence |
-| --- | --- |
-| Near-zero AI cost | Deterministic (System 0) and local tiers first; LAYA decides whether a model is needed; per-session budget degrades to deterministic answers. |
-| Offline and local-first | Projects, runtime, missions and deterministic help work without a network. |
-| No mandatory account | A learner or class can start with no sign-up. Accounts are optional sync. |
-| Modest devices | Core surfaces run on low-end hardware; no feature requires a GPU or a large local model. |
-| Languages and accessibility | i18n and keyboard/screen-reader paths are release conditions, not extras. |
-| Educator evidence without PII | Exportable, aggregate or pseudonymous evidence for teachers; never names, emails, free text or raw model output. |
-| Self-hostable | An institution can run Agorix on its own infrastructure with no provider credentials. |
+| Requirement                   | Consequence                                                                                                                                   |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Near-zero AI cost             | Deterministic (System 0) and local tiers first; LAYA decides whether a model is needed; per-session budget degrades to deterministic answers. |
+| Offline and local-first       | Projects, runtime, missions and deterministic help work without a network.                                                                    |
+| No mandatory account          | A learner or class can start with no sign-up. Accounts are optional sync.                                                                     |
+| Modest devices                | Core surfaces run on low-end hardware; no feature requires a GPU or a large local model.                                                      |
+| Languages and accessibility   | i18n and keyboard/screen-reader paths are release conditions, not extras.                                                                     |
+| Educator evidence without PII | Exportable, aggregate or pseudonymous evidence for teachers; never names, emails, free text or raw model output.                              |
+| Self-hostable                 | An institution can run Agorix on its own infrastructure with no provider credentials.                                                         |
 
 ## Educator tooling boundary
 
@@ -226,10 +230,12 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ### Task 3: ADR 0007 and gate/intent amendments
 
 **Files:**
+
 - Create: `docs/architecture/adr/0007-shared-core-and-two-experiences.md`
 - Modify: `docs/product/STUDIO_RELEASE_GATE.md` (the "Canonical program" row, "Studio UX"/"Intentional difference" cells), `docs/product/PRODUCT_INTENT.md` (non-goals line), `docs/architecture/adr/0006-studio-agent-and-canvas.md` (Status line)
 
 **Interfaces:**
+
 - Consumes: Tasks 1-2 docs.
 - Produces: the decision record the three packages cite.
 
@@ -286,9 +292,11 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ### Task 4: `interaction-core` scaffold and anchors
 
 **Files:**
+
 - Create: `packages/interaction-core/package.json`, `packages/interaction-core/tsconfig.json`, `packages/interaction-core/vitest.config.ts`, `packages/interaction-core/src/anchors.ts`, `packages/interaction-core/src/anchors.test.ts`, `packages/interaction-core/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: none.
 - Produces: `ANCHOR_KINDS`, `AnchorKind`, `AgentAnchorRef { kind; id }`, `createAnchorRef(kind, id)` (throws `RangeError`), `parseAnchorRef(value: unknown): AgentAnchorRef | undefined`, `PACKAGE_NAME`.
 
@@ -446,7 +454,13 @@ export function parseAnchorRef(value: unknown): AgentAnchorRef | undefined {
 export const PACKAGE_NAME = "@agorix/interaction-core";
 
 export type { AgentAnchorRef, AnchorKind } from "./anchors.js";
-export { ANCHOR_KINDS, createAnchorRef, isAnchorKind, isSafeId, parseAnchorRef } from "./anchors.js";
+export {
+  ANCHOR_KINDS,
+  createAnchorRef,
+  isAnchorKind,
+  isSafeId,
+  parseAnchorRef,
+} from "./anchors.js";
 ```
 
 - [ ] **Step 5: Run test to verify it passes**
@@ -468,10 +482,12 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ### Task 5: Drag intents, drop resolution and keyboard parity
 
 **Files:**
+
 - Create: `packages/interaction-core/src/intents.ts`, `packages/interaction-core/src/intents.test.ts`, `packages/interaction-core/src/keyboard.ts`, `packages/interaction-core/src/keyboard.test.ts`
 - Modify: `packages/interaction-core/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `parseAnchorRef`, `createAnchorRef`, `isSafeId` from Task 4; from `@agorix/block-editor`: `BlockType`, `StatementContainerPath`, `StatementLocation`, `WorkspaceChange`, `createDefaultBlock`, `createStarterWorkspace`, `applyWorkspaceChange`, `BlockEditorAdapterError`.
 - Produces:
   - `type AgentVerb = "explain" | "debug" | "challenge"`
@@ -644,7 +660,9 @@ const newId = () => `block:kb_${(counter += 1)}`;
 
 function seeded() {
   let workspace = createStarterWorkspace();
-  for (const [index, blockType] of (["motion_move", "motion_turn", "motion_move"] as const).entries()) {
+  for (const [index, blockType] of (
+    ["motion_move", "motion_turn", "motion_move"] as const
+  ).entries()) {
     const change = intentToChange(
       { type: "insertBlock", blockType, to: { container: script, index } },
       newId,
@@ -895,14 +913,14 @@ Replace `packages/interaction-core/src/index.ts` with:
 export const PACKAGE_NAME = "@agorix/interaction-core";
 
 export type { AgentAnchorRef, AnchorKind } from "./anchors.js";
-export { ANCHOR_KINDS, createAnchorRef, isAnchorKind, isSafeId, parseAnchorRef } from "./anchors.js";
-export type {
-  AgentVerb,
-  DragSource,
-  DropTarget,
-  InsertionPoint,
-  Intent,
-} from "./intents.js";
+export {
+  ANCHOR_KINDS,
+  createAnchorRef,
+  isAnchorKind,
+  isSafeId,
+  parseAnchorRef,
+} from "./anchors.js";
+export type { AgentVerb, DragSource, DropTarget, InsertionPoint, Intent } from "./intents.js";
 export { intentToChange, resolveDrop } from "./intents.js";
 export type { FocusedBlock, KeyChord } from "./keyboard.js";
 export { keyboardIntent } from "./keyboard.js";
@@ -930,9 +948,11 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ### Task 6: `agent-workflow` Director/Auditor state machine
 
 **Files:**
+
 - Create: `packages/agent-workflow/package.json`, `packages/agent-workflow/tsconfig.json`, `packages/agent-workflow/vitest.config.ts`, `packages/agent-workflow/src/loop.ts`, `packages/agent-workflow/src/loop.test.ts`, `packages/agent-workflow/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: none (pure).
 - Produces:
   - `type WorkflowStage = "intent" | "plan" | "proposal" | "predict" | "run" | "compare" | "explain" | "done"`
@@ -954,7 +974,13 @@ Same three config files as Task 4 with name `@agorix/agent-workflow`, no `depend
 
 ```ts
 import { describe, expect, it } from "vitest";
-import { advance, createWorkflow, nextAgentAction, type WorkflowEvent, type WorkflowState } from "./loop.js";
+import {
+  advance,
+  createWorkflow,
+  nextAgentAction,
+  type WorkflowEvent,
+  type WorkflowState,
+} from "./loop.js";
 
 function run(state: WorkflowState, events: WorkflowEvent[]): WorkflowState {
   let current = state;
@@ -1020,7 +1046,10 @@ describe("director/auditor loop", () => {
       ok: false,
       error: "INVALID_TRANSITION",
     });
-    const atProposal = run(fresh, [{ type: "intentStated" }, { type: "planAccepted", taskCount: 1 }]);
+    const atProposal = run(fresh, [
+      { type: "intentStated" },
+      { type: "planAccepted", taskCount: 1 },
+    ]);
     expect(advance(atProposal, { type: "predictionMade" }).ok).toBe(false);
     expect(advance(atProposal, { type: "runObserved", completed: true }).ok).toBe(false);
   });
@@ -1063,14 +1092,7 @@ Expected: FAIL (`./loop.js` not found).
 
 ```ts
 export type WorkflowStage =
-  | "intent"
-  | "plan"
-  | "proposal"
-  | "predict"
-  | "run"
-  | "compare"
-  | "explain"
-  | "done";
+  "intent" | "plan" | "proposal" | "predict" | "run" | "compare" | "explain" | "done";
 
 export type WorkflowMode = "supervised" | "bounded";
 
@@ -1254,10 +1276,12 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ### Task 7: Assistance ladder and agent agreements
 
 **Files:**
+
 - Create: `packages/agent-workflow/src/assistance.ts`, `packages/agent-workflow/src/assistance.test.ts`
 - Modify: `packages/agent-workflow/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: none.
 - Produces:
   - `type AssistanceLevel = 0 | 1 | 2 | 3 | 4 | 5`
@@ -1311,7 +1335,13 @@ describe("agent agreements", () => {
   it("gives no help and no offers when AI is disabled", () => {
     const off = { ...DEFAULT_AGREEMENTS, aiEnabled: false };
     expect(effectiveAssistance(off, 5)).toBe(0);
-    for (const signal of ["runtime-error", "stalled", "repeated-error", "repeat-pattern", "first-step"] as const) {
+    for (const signal of [
+      "runtime-error",
+      "stalled",
+      "repeated-error",
+      "repeat-pattern",
+      "first-step",
+    ] as const) {
       expect(canOffer(off, signal)).toBe(false);
     }
   });
@@ -1347,11 +1377,7 @@ import type { WorkflowMode } from "./loop.js";
 export type AssistanceLevel = 0 | 1 | 2 | 3 | 4 | 5;
 
 export type OfferableSignal =
-  | "runtime-error"
-  | "stalled"
-  | "repeated-error"
-  | "repeat-pattern"
-  | "first-step";
+  "runtime-error" | "stalled" | "repeated-error" | "repeat-pattern" | "first-step";
 
 /** Visible, learner-controlled settings for how the agent behaves. No hidden configuration. */
 export interface AgentAgreements {
@@ -1450,9 +1476,11 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ### Task 8: `studio-protocol`
 
 **Files:**
+
 - Create: `packages/studio-protocol/package.json`, `packages/studio-protocol/tsconfig.json`, `packages/studio-protocol/vitest.config.ts`, `packages/studio-protocol/src/index.ts`, `packages/studio-protocol/src/index.test.ts`
 
 **Interfaces:**
+
 - Consumes: from `@agorix/interaction-core`: `Intent`, `parseAnchorRef`, `isSafeId`, `ANCHOR_KINDS`; from `@agorix/agent-workflow`: `WorkflowState`, `AgentAgreements`, `OfferableSignal`, `AssistanceLevel`.
 - Produces:
   - `STUDIO_PROTOCOL_VERSION = "agorix/studio-protocol/v1"`
@@ -1471,11 +1499,7 @@ Configs as in Task 4, name `@agorix/studio-protocol`, dependencies `@agorix/inte
 ```ts
 import { describe, expect, it } from "vitest";
 import { DEFAULT_AGREEMENTS, createWorkflow } from "@agorix/agent-workflow";
-import {
-  STUDIO_PROTOCOL_VERSION,
-  parseHostMessage,
-  parseUiMessage,
-} from "./index.js";
+import { STUDIO_PROTOCOL_VERSION, parseHostMessage, parseUiMessage } from "./index.js";
 
 const schema = STUDIO_PROTOCOL_VERSION;
 const script = { kind: "script", scriptIndex: 0 } as const;
@@ -1494,7 +1518,12 @@ describe("ui messages", () => {
       intent,
     });
     expect(
-      parseUiMessage({ schema, type: "decideProposal", proposalId: "prop:1", decision: "rejected" }),
+      parseUiMessage({
+        schema,
+        type: "decideProposal",
+        proposalId: "prop:1",
+        decision: "rejected",
+      }),
     ).toEqual({ schema, type: "decideProposal", proposalId: "prop:1", decision: "rejected" });
     expect(
       parseUiMessage({ schema, type: "agreementsChanged", agreements: DEFAULT_AGREEMENTS }),
@@ -1520,7 +1549,9 @@ describe("ui messages", () => {
 
   it("drops extra keys including __proto__", () => {
     const parsed = parseUiMessage(
-      JSON.parse('{"schema":"agorix/studio-protocol/v1","type":"ready","__proto__":{"x":1},"extra":1}'),
+      JSON.parse(
+        '{"schema":"agorix/studio-protocol/v1","type":"ready","__proto__":{"x":1},"extra":1}',
+      ),
     );
     expect(parsed).toEqual({ schema, type: "ready" });
   });
@@ -1546,7 +1577,9 @@ describe("host messages", () => {
   });
 
   it("rejects malformed host messages", () => {
-    expect(parseHostMessage({ schema, type: "workflow", state: { stage: "nope" } })).toBeUndefined();
+    expect(
+      parseHostMessage({ schema, type: "workflow", state: { stage: "nope" } }),
+    ).toBeUndefined();
     expect(parseHostMessage({ schema, type: "programHash", hash: "has space" })).toBeUndefined();
     expect(parseHostMessage({ schema: "x", type: "agentUnavailable" })).toBeUndefined();
   });
@@ -1706,7 +1739,9 @@ function parseIntent(value: unknown): Intent | undefined {
         : { type: "askAgent", verb, about };
     }
     case "revealNode":
-      return isSafeId(value["nodeId"]) ? { type: "revealNode", nodeId: value["nodeId"] } : undefined;
+      return isSafeId(value["nodeId"])
+        ? { type: "revealNode", nodeId: value["nodeId"] }
+        : undefined;
     case "highlightNodes": {
       const ids = value["nodeIds"];
       return Array.isArray(ids) && ids.length > 0 && ids.length <= 16 && ids.every(isSafeId)
@@ -1800,12 +1835,19 @@ export function parseUiMessage(value: unknown): UiMessage | undefined {
     }
     case "agreementsChanged": {
       const agreements = parseAgreements(value["agreements"]);
-      return agreements === undefined ? undefined : { schema, type: "agreementsChanged", agreements };
+      return agreements === undefined
+        ? undefined
+        : { schema, type: "agreementsChanged", agreements };
     }
     case "decideProposal": {
       const decision = value["decision"];
       return isSafeId(value["proposalId"]) && (DECISIONS as readonly unknown[]).includes(decision)
-        ? { schema, type: "decideProposal", proposalId: value["proposalId"], decision: decision as Decision }
+        ? {
+            schema,
+            type: "decideProposal",
+            proposalId: value["proposalId"],
+            decision: decision as Decision,
+          }
         : undefined;
     }
     default:
@@ -1824,7 +1866,9 @@ export function parseHostMessage(value: unknown): HostMessage | undefined {
       return state === undefined ? undefined : { schema, type: "workflow", state };
     }
     case "programHash":
-      return isSafeId(value["hash"]) ? { schema, type: "programHash", hash: value["hash"] } : undefined;
+      return isSafeId(value["hash"])
+        ? { schema, type: "programHash", hash: value["hash"] }
+        : undefined;
     case "agentUnavailable":
       return { schema, type: "agentUnavailable" };
     default:

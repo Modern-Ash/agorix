@@ -13,15 +13,15 @@ The hosted service is a commitment of intent, bounded by funding. It does not ch
 
 ## What this requires of the product
 
-| Requirement                  | Consequence                                                                                                                                          |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Near-zero AI cost            | Deterministic (System 0) and local tiers first; LAYA decides whether a model is needed; per-session budget degrades to deterministic answers.        |
-| Offline and local-first      | Projects, runtime, missions and deterministic help work without a network.                                                                           |
-| No mandatory account         | A learner or class can start with no sign-up. Accounts are optional sync.                                                                            |
-| Modest devices               | Core surfaces run on low-end hardware; no feature requires a GPU or a large local model.                                                             |
-| Languages and accessibility  | i18n and keyboard/screen-reader paths are release conditions, not extras.                                                                            |
-| Educator evidence without PII | Exportable, aggregate or pseudonymous evidence for teachers; never names, emails, free text or raw model output.                                    |
-| Self-hostable                | An institution can run Agorix on its own infrastructure with no provider credentials.                                                                |
+| Requirement                   | Consequence                                                                                                                                   |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Near-zero AI cost             | Deterministic (System 0) and local tiers first; LAYA decides whether a model is needed; per-session budget degrades to deterministic answers. |
+| Offline and local-first       | Projects, runtime, missions and deterministic help work without a network.                                                                    |
+| No mandatory account          | A learner or class can start with no sign-up. Accounts are optional sync.                                                                     |
+| Modest devices                | Core surfaces run on low-end hardware; no feature requires a GPU or a large local model.                                                      |
+| Languages and accessibility   | i18n and keyboard/screen-reader paths are release conditions, not extras.                                                                     |
+| Educator evidence without PII | Exportable, aggregate or pseudonymous evidence for teachers; never names, emails, free text or raw model output.                              |
+| Self-hostable                 | An institution can run Agorix on its own infrastructure with no provider credentials.                                                         |
 
 ## Educator tooling boundary
 
