@@ -77,7 +77,7 @@ The agent stays silent when:
 - the evidence is too weak (for example `PROACTIVE_MIN_OCCURRENCES` not met);
 - AI is disabled or the session budget is exhausted.
 
-Signals covered at Web today: `repeat-pattern`, `first-step`. Studio adds `runtime-error`, `stalled` and `repeated-error` (issue #245). An offer says what the agent can do (explain, debug, challenge, propose); it carries no generated content until the learner accepts.
+Signals covered at Web today: `repeat-pattern`, `first-step`. Studio adds `runtime-error`, `stalled` and `repeated-error` (issue #245), with per-session and per-program decline memory, ignore decay and cooldowns. An offer says what the agent can do (explain, debug, challenge, propose); it carries no generated content until the learner accepts.
 
 ## Cost architecture (LAYA)
 
