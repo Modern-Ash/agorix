@@ -195,6 +195,8 @@ The intended visual language is closer to a calm creative studio:
 - Learning Companion appears contextually rather than as a permanently dominant chat panel;
 - the UI should remain comfortable for an older learner who has outgrown a childish aesthetic.
 
+Foundations: [`docs/FOUNDATIONS.md`](docs/FOUNDATIONS.md)
+
 Roadmap: [Epic #116 — Agorix Experience & Surface Architecture](https://github.com/Modern-Ash/agorix/issues/116)
 
 Key experience work:

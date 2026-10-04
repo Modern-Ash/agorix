@@ -2,6 +2,8 @@
 
 ## Vision
 
+The philosophical charter is [`../FOUNDATIONS.md`](../FOUNDATIONS.md).
+
 Agorix is an open-source, AI-native programming learning environment for children. It combines creative block programming, continuously visible textual code, deterministic runtime evidence and a transparent learning companion so children can build programs in the era of AI without giving up authorship.
 
 The north star is:
@@ -72,7 +74,7 @@ The learner completes the mission "reach the goal" using event plus movement/con
 ## Non-goals for POC
 
 - public social network;
-- classroom administration;
+- classroom administration and surveillance (educator evidence export without PII is allowed, see ADR 0007);
 - payments/subscriptions;
 - native mobile apps;
 - multiplayer;

@@ -20,7 +20,7 @@ The executor selected by Agora remains subject to the full mandatory workflow an
 
 ## Mandatory workflow
 
-1. Read the assigned issue and every referenced spec before changing code.
+1. Read the assigned issue and every referenced spec before changing code. Read `docs/FOUNDATIONS.md` for product philosophy.
 2. Do not expand scope silently. Open or request a clarification when a product/architecture decision is not covered.
 3. Produce the artifacts requested by the issue before or together with implementation.
 4. Keep changes small enough to review independently.
