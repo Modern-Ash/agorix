@@ -12,6 +12,7 @@
  *  8  Step -> block/code/World synchronized ................... this file
  *  9  orientation change (no drift) ........................... input-parity.spec.ts + this file
  *  10 AI unavailable -> core visual programming works ......... this file
+ *  11 ghost proposal, agent toggle, predict-before-run ........ this file
  *
  * Authority boundary: the canonical program hash is the only program authority.
  * AI proposals must not move it until the learner accepts; reject leaves it unchanged.
@@ -276,4 +277,39 @@ test.describe("journey 10: AI unavailable", () => {
       timeout: 5000,
     });
   });
+});
+
+test("journey 11: ghost proposal, agent toggle and prediction never move the hash", async ({
+  page,
+}) => {
+  await buildRepetitiveProgram(page);
+  const before = await canonicalHash(page);
+
+  // Ghost preview: the proposal is visible in the program and the hash does not move.
+  await page.getByRole("button", { name: "Try it" }).click();
+  await expect(page.locator(".ghost-added, .ghost-removed, .ghost-changed").first()).toBeVisible();
+  expect(await canonicalHash(page)).toBe(before);
+  await page
+    .getByTestId("repeat-suggestion")
+    .getByRole("button", { name: /Reject/ })
+    .click();
+  await expect(page.locator(".ghost-added, .ghost-removed, .ghost-changed")).toHaveCount(0);
+  expect(await canonicalHash(page)).toBe(before);
+
+  // Agent off: offers and the intent dialogue go away, editing and Run still work.
+  await page.getByLabel("Agent helps").uncheck();
+  await expect(page.getByTestId("repeat-suggestion")).toHaveCount(0);
+  await tool(page, "Move").click();
+  await run(page).click();
+  await expect(page.getByTestId("canonical-hash")).toBeVisible();
+  await page.getByLabel("Agent helps").check();
+
+  // Prediction is optional and compared with the runtime result without touching the hash.
+  const beforeRun = await canonicalHash(page);
+  await page.getByRole("button", { name: "Yes", exact: true }).click();
+  await run(page).click();
+  await expect(page.getByTestId("prediction-comparison")).toContainText("runtime fact", {
+    timeout: 15_000,
+  });
+  expect(await canonicalHash(page)).toBe(beforeRun);
 });
