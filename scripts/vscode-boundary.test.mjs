@@ -3,7 +3,7 @@
  * Only extensions/vscode may import the `vscode` module. This covers every
  * packages/* workspace (not only the lint-listed domain packages) and their manifests.
  */
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -24,8 +24,10 @@ function sourceFiles(dir) {
 const VSCODE_IMPORT = /(?:from\s+|import\s*\(\s*|require\s*\(\s*|import\s+)["']vscode["']/;
 
 describe("shared packages are VS Code-independent", () => {
-  const packages = readdirSync(packagesDir).filter((name) =>
-    statSync(join(packagesDir, name)).isDirectory(),
+  const packages = readdirSync(packagesDir).filter(
+    (name) =>
+      statSync(join(packagesDir, name)).isDirectory() &&
+      existsSync(join(packagesDir, name, "package.json")),
   );
 
   it("finds the shared packages", () => {
