@@ -1,0 +1,19 @@
+{
+  "name": "@agorix/project-api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@agorix/auth-service": "workspace:*",
+    "@agorix/persistence": "workspace:*",
+    "@agorix/platform-contract": "workspace:*",
+    "@agorix/program-model": "workspace:*",
+    "@agorix/project-repository": "workspace:*"
+  }
+}
