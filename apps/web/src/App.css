@@ -4141,3 +4141,30 @@ button:hover:not(:disabled) {
     animation: none;
   }
 }
+
+/* Predict-before-run: neutral tone, no success or failure styling. */
+.prediction-chip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0;
+  padding: 6px 10px;
+  border: 1px solid var(--line, #c9c9d4);
+  border-radius: 8px;
+}
+.prediction-chip legend {
+  padding: 0 6px;
+  font-size: 0.9em;
+}
+.prediction-chip button {
+  min-width: 44px;
+  min-height: 44px;
+}
+.prediction-chip button[aria-pressed="true"] {
+  outline: 2px solid var(--focus, #2f6fed);
+  outline-offset: 1px;
+}
+.prediction-comparison {
+  margin: 8px 0;
+}

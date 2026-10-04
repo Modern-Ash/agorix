@@ -67,7 +67,8 @@ import {
   rejectProposal,
   type ProposalReview,
 } from "@agorix/proposals";
-import { runProgram, type RunResult, type WorldState } from "@agorix/runtime";
+import { runProgram, touchingGoal, type RunResult, type WorldState } from "@agorix/runtime";
+import type { PredictionAnswer } from "@agorix/agent-workflow";
 import {
   deriveStageFeedback,
   executionStepsFromRuntimeObservations,
@@ -115,6 +116,7 @@ import {
 } from "./projectStorage.js";
 import { loadPresentationPrefs, savePresentationPrefs } from "./presentationPrefs.js";
 import { LOCALE_LABELS, t, type Locale, type MessageKey } from "./i18n.js";
+import { PredictionChip, PredictionComparison } from "./PredictionChip.js";
 import { AgentCompanion, companionMood } from "./AgentCompanion.js";
 import { GhostAddedBlocks } from "./GhostBlocks.js";
 import { ghostMarksFor, type GhostMarkKind } from "./ghostMarks.js";
@@ -1723,6 +1725,8 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
   const [worldId, setWorldId] = useState<string>(() => loadPresentationPrefs().worldId);
   const [stepping, setStepping] = useState(false);
   const [firstStepDeclined, setFirstStepDeclined] = useState(false);
+  const [prediction, setPrediction] = useState<PredictionAnswer | undefined>();
+  const [observedGoal, setObservedGoal] = useState<boolean | undefined>();
   const [agentEnabled, setAgentEnabled] = useState<boolean>(
     () => loadPresentationPrefs().agentEnabled,
   );
@@ -1971,6 +1975,8 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     setTutorResponse(undefined);
     setLastRunResult(undefined);
     setReflectionPrompt(undefined);
+    setPrediction(undefined);
+    setObservedGoal(undefined);
     setProposalReview(undefined);
     setProposalMessage(undefined);
     setLearningDecision(undefined);
@@ -2353,6 +2359,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
       return;
     }
     setStepping(false);
+    setObservedGoal(undefined);
     if (statements.length === 0) {
       setStatus("error");
       setMessage(t(locale, "emptyRunMessage"));
@@ -2372,6 +2379,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
             window.clearInterval(timerRef.current);
             timerRef.current = undefined;
             const feedback = resultFeedback(result, locale, mission);
+            setObservedGoal(touchingGoal(result.world));
             setStatus(feedback.completed ? "complete" : "retry");
             setMessage(feedback.message);
             setReflectionPrompt(feedback.reflectionPrompt);
@@ -2410,6 +2418,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
       setHighlightedNodeId(nextSteps[nextIndex]?.nodeId);
       if (nextIndex >= nextSteps.length - 1) {
         const feedback = resultFeedback(result, locale, mission);
+        setObservedGoal(touchingGoal(result.world));
         setStatus(feedback.completed ? "complete" : "retry");
         setMessage(feedback.message);
         setReflectionPrompt(feedback.reflectionPrompt);
@@ -2955,6 +2964,12 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
                 <li>{t(locale, "startReflectShort")}</li>
               </ol>
             </section>
+          ) : null}
+          {agentEnabled && statements.length > 0 && status !== "running" ? (
+            <PredictionChip locale={locale} answer={prediction} onAnswer={setPrediction} />
+          ) : null}
+          {agentEnabled && (status === "complete" || status === "retry") ? (
+            <PredictionComparison locale={locale} answer={prediction} reachedGoal={observedGoal} />
           ) : null}
           {persistenceMessage === undefined ? null : (
             <strong className="run-state run-state-error">{persistenceMessage}</strong>
