@@ -245,6 +245,28 @@ const tests = [
     },
   ],
   [
+    "Studio shell contributes icon-first views and toolbar actions in the real host",
+    async () => {
+      const manifest = vscode.extensions.getExtension(EXTENSION_ID).packageJSON;
+      const commands = new Map(manifest.contributes.commands.map((c) => [c.command, c]));
+      for (const id of ["run", "step", "stop", "reset", "switchProjection"]) {
+        assert.match(commands.get(`agorixStudio.${id}`).icon, /^\$\(/, `${id} has a codicon`);
+        const inEditorTitle = manifest.contributes.menus["editor/title"].some(
+          (m) => m.command === `agorixStudio.${id}` && /^navigation@/.test(m.group),
+        );
+        assert.ok(inEditorTitle, `${id} is an editor-title icon action`);
+      }
+      const names = manifest.contributes.views.agorixStudio.map((v) => v.name);
+      for (const name of ["Projects", "Missions", "Progress", "Worlds", "Inspector"]) {
+        assert.ok(names.includes(name), `view ${name}`);
+      }
+      // The execution status context key drives Run/Stop visibility; it must be settable.
+      await vscode.commands.executeCommand("agorixStudio.reset");
+      await vscode.commands.executeCommand("agorixStudio.step");
+      await vscode.commands.executeCommand("agorixStudio.reset");
+    },
+  ],
+  [
     "Show Execution Evidence returns the runtime inspector report",
     async () => {
       const report = await vscode.commands.executeCommand("agorixStudio.showEvidence");
