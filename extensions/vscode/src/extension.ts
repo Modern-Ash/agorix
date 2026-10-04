@@ -187,8 +187,12 @@ class ExecutionInspectorProvider implements vscode.TreeDataProvider<ExecutionIns
 }
 
 class CompanionHistoryItem extends vscode.TreeItem {
-  constructor(readonly turn: StudioCompanionTurn) {
+  constructor(
+    readonly turn: StudioCompanionTurn,
+    agentIcon: vscode.Uri,
+  ) {
     super(`${turn.action}: ${turn.message}`);
+    this.iconPath = agentIcon;
     this.description = `${turn.diagnostics.providerSelection} · ${turn.diagnostics.reasoningTier}`;
     this.contextValue = turn.proposal === undefined ? "agorixCompanionTurn" : "agorixProposal";
     this.tooltip = [
@@ -211,6 +215,8 @@ class CompanionHistoryItem extends vscode.TreeItem {
 
 class CompanionHistoryProvider implements vscode.TreeDataProvider<CompanionHistoryItem> {
   readonly #changed = new vscode.EventEmitter<CompanionHistoryItem | undefined | null | void>();
+
+  constructor(private readonly agentIcon: vscode.Uri) {}
   readonly onDidChangeTreeData = this.#changed.event;
 
   refresh(): void {
@@ -222,7 +228,7 @@ class CompanionHistoryProvider implements vscode.TreeDataProvider<CompanionHisto
   }
 
   getChildren(): CompanionHistoryItem[] {
-    return companionTurns.map((turn) => new CompanionHistoryItem(turn));
+    return companionTurns.map((turn) => new CompanionHistoryItem(turn, this.agentIcon));
   }
 }
 
@@ -1323,7 +1329,9 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(agentStatusItem);
   const projectionProvider = new ProjectionDocumentProvider();
   const inspectorProvider = new ExecutionInspectorProvider();
-  const companionProvider = new CompanionHistoryProvider();
+  const companionProvider = new CompanionHistoryProvider(
+    vscode.Uri.joinPath(context.extensionUri, "media", "agorix-agent-active.svg"),
+  );
   const treeProviders = [
     new StudioTreeProvider("projects"),
     new StudioTreeProvider("missions"),
