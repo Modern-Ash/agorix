@@ -69,3 +69,10 @@ Familiar gestures never bypass these semantics: no gesture applies an AI proposa
 - Virtual keyboard: numeric edit Apply/Cancel remain in the same card as the focused field.
 - EN/ES: labels are localized and tested.
 - Automated coverage: Playwright covers the key paths.
+
+## Ghost blocks, companion and prediction (Web)
+
+- **Ghost blocks.** While a proposal is under review, blocks it would change or remove are outlined with a dashed, provisional style and described to screen readers; blocks it would add appear as dashed "Suggestion" rows after the program. Ghosts are not draggable, not focusable and never a drop target. Accept and Reject stay on the proposal card, so no gesture applies a proposal.
+- **Agorix Agent companion.** The agent rests by default. It shows a short bubble only while an existing System-0 offer or a proposal review is active, announced once through a polite status region. A visible "Agent helps" toggle (stored in presentation preferences, never in the project) turns off offers, the intent dialogue and the AI suggestion activity. Editing, Run, Step and hints keep working.
+- **Predict before Run.** When the agent is on and the program is not empty, a skippable chip asks "Will the character reach the goal?". Running without answering is a valid skip. After the run, the answer is compared with the runtime result (`touchingGoal`) in a neutral message; the comparison never scores the learner and never changes the program.
+- **Drop slots.** Drop slots are numbered before the dragged block leaves its list; the move is indexed after removal. `finalMoveIndex` translates one into the other, so dropping a block on the slot next to itself is a no-op and matches Studio.

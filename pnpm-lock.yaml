@@ -62,6 +62,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@agorix/agent-workflow':
+        specifier: workspace:*
+        version: link:../../packages/agent-workflow
       '@agorix/agorix-code':
         specifier: workspace:*
         version: link:../../packages/agorix-code
@@ -77,6 +80,9 @@ importers:
       '@agorix/curriculum':
         specifier: workspace:*
         version: link:../../packages/curriculum
+      '@agorix/interaction-core':
+        specifier: workspace:*
+        version: link:../../packages/interaction-core
       '@agorix/language-projection':
         specifier: workspace:*
         version: link:../../packages/language-projection

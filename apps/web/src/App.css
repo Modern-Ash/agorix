@@ -4077,3 +4077,94 @@ button:hover:not(:disabled) {
     animation: none;
   }
 }
+
+/* Ghost previews of AI proposals: provisional (dashed), never success-styled. */
+.block-card.ghost-changed,
+.block-card.ghost-removed,
+.block-card.ghost-added {
+  border-style: dashed;
+  outline: 2px dashed var(--provisional, #6b4fbb);
+  outline-offset: 2px;
+}
+.block-card.ghost-removed code,
+.block-card.ghost-removed .block-title {
+  text-decoration: line-through;
+}
+.ghost-added-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+/* Agorix Agent companion: resting by default, a bubble only while an offer or review is active. */
+.agent-companion {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 4px 12px;
+  margin: 0 0 12px;
+}
+.agent-companion img {
+  grid-row: span 2;
+  width: 56px;
+  height: 56px;
+}
+.agent-companion[data-mood="offering"] img {
+  animation: agent-nudge 900ms ease-out 1;
+}
+.agent-companion .agent-toggle {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+.agent-companion .agent-bubble {
+  grid-column: 1 / -1;
+  margin: 0;
+  min-height: 1.2em;
+  padding: 0;
+  color: var(--provisional, #6b4fbb);
+}
+@keyframes agent-nudge {
+  0% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-6px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .agent-companion[data-mood="offering"] img {
+    animation: none;
+  }
+}
+
+/* Predict-before-run: neutral tone, no success or failure styling. */
+.prediction-chip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0;
+  padding: 6px 10px;
+  border: 1px solid var(--line, #c9c9d4);
+  border-radius: 8px;
+}
+.prediction-chip legend {
+  padding: 0 6px;
+  font-size: 0.9em;
+}
+.prediction-chip button {
+  min-width: 44px;
+  min-height: 44px;
+}
+.prediction-chip button[aria-pressed="true"] {
+  outline: 2px solid var(--focus, #2f6fed);
+  outline-offset: 1px;
+}
+.prediction-comparison {
+  margin: 8px 0;
+}

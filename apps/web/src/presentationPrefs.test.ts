@@ -23,8 +23,15 @@ describe("presentation prefs", () => {
 
   it("round-trips world and declines", () => {
     const storage = memoryStorage();
-    savePresentationPrefs({ worldId: "ocean.reef", repeatDeclines: 2 }, storage);
-    expect(loadPresentationPrefs(storage)).toEqual({ worldId: "ocean.reef", repeatDeclines: 2 });
+    savePresentationPrefs(
+      { worldId: "ocean.reef", repeatDeclines: 2, agentEnabled: false },
+      storage,
+    );
+    expect(loadPresentationPrefs(storage)).toEqual({
+      worldId: "ocean.reef",
+      repeatDeclines: 2,
+      agentEnabled: false,
+    });
   });
 
   it("ignores unknown worlds, bad numbers and corrupt JSON", () => {
@@ -43,5 +50,17 @@ describe("presentation prefs", () => {
       },
     } as unknown as Storage;
     expect(() => savePresentationPrefs(DEFAULT_PRESENTATION_PREFS, failing)).not.toThrow();
+  });
+
+  it("falls back to an enabled agent for missing or invalid values", () => {
+    expect(loadPresentationPrefs(memoryStorage("{}")).agentEnabled).toBe(true);
+    expect(loadPresentationPrefs(memoryStorage('{"agentEnabled":"yes"}')).agentEnabled).toBe(true);
+    expect(loadPresentationPrefs(memoryStorage('{"agentEnabled":false}')).agentEnabled).toBe(false);
+    const throwing = {
+      getItem: () => {
+        throw new Error("blocked");
+      },
+    } as unknown as Storage;
+    expect(loadPresentationPrefs(throwing).agentEnabled).toBe(true);
   });
 });
