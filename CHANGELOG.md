@@ -1,6 +1,8 @@
 # Agorix 0.1.0
 
-First public beta release of Agorix: an AI-native creative coding platform with a Scratch-familiar Web experience and a professional VS Code Studio surface over the same canonical project model.
+First public beta release of Agorix: an AI-native creative coding platform with a
+Scratch-familiar Web experience and a professional VS Code Studio surface over
+the same canonical project model.
 
 ## Highlights
 
@@ -24,12 +26,15 @@ VS Code-native, code-first experience for advanced learners/developers. Uses the
 ## Persistence
 
 Authenticated projects support durable server storage through provider-neutral repository contracts:
-- PostgreSQL, including managed PostgreSQL deployments such as Supabase-compatible hosting.
+- PostgreSQL, including managed PostgreSQL deployments such as
+  Supabase-compatible hosting.
 - SQLite for suitable single-instance/self-hosted deployments with persistent storage.
 
 ## AI authority
 
-AI suggestions are provisional. They do not mutate accepted code until the learner explicitly applies them. Deterministic runtime evidence remains the behavioral authority.
+AI suggestions are provisional. They do not mutate accepted code until the
+learner explicitly applies them. Deterministic runtime evidence remains the
+behavioral authority.
 
 ## License
 
