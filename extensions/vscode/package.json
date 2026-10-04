@@ -67,6 +67,9 @@
     "onCommand:agorixStudio.showDeveloperContext",
     "onCommand:agorixStudio.openScm",
     "onCommand:agorixStudio.suggestRepeat",
+    "onCommand:agorixStudio.clearAgentCredential",
+    "onCommand:agorixStudio.setAgentCredential",
+    "onCommand:agorixStudio.checkAgentHealth",
     "onView:agorixStudio.projects",
     "onView:agorixStudio.missions",
     "onView:agorixStudio.progress",
@@ -84,6 +87,45 @@
           "type": "string",
           "default": "",
           "markdownDescription": "Optional Agorix project server URL. Account tokens are stored in VS Code SecretStorage, never in settings."
+        },
+        "agorixStudio.agent.enabled": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Allow Studio to ask the Learning Companion for help. Editing and running never depend on it."
+        },
+        "agorixStudio.agent.endpoint": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Tutor API / adapter boundary endpoint (for example `http://127.0.0.1:8787`). Studio never talks to a model provider directly. Never put credentials here."
+        },
+        "agorixStudio.agent.remoteEndpoint": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Optional remote tutor API endpoint. Ignored unless `agorixStudio.agent.allowRemote` is on. Never put credentials here."
+        },
+        "agorixStudio.agent.preferLocal": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Try local (loopback) endpoints before remote ones."
+        },
+        "agorixStudio.agent.allowRemote": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Explicit opt-in to contact a non-local endpoint. Off by default. Credentials, when a deployment needs them, are stored in VS Code SecretStorage via the `Set Agent Credential` command, never in settings."
+        },
+        "agorixStudio.agent.healthTimeoutMs": {
+          "type": "integer",
+          "default": 1500,
+          "minimum": 100,
+          "maximum": 120000,
+          "markdownDescription": "Timeout for the availability probe, in milliseconds."
+        },
+        "agorixStudio.agent.requestTimeoutMs": {
+          "type": "integer",
+          "default": 8000,
+          "minimum": 100,
+          "maximum": 120000,
+          "markdownDescription": "Timeout for a Learning Companion request, in milliseconds."
         }
       }
     },
@@ -349,8 +391,22 @@
       {
         "command": "agorixStudio.suggestRepeat",
         "title": "Suggest repeat",
-        "category": "Agorix Studio",
-        "icon": "$(repeat)"
+        "category": "Agorix Studio"
+      },
+      {
+        "command": "agorixStudio.checkAgentHealth",
+        "title": "Check Agent Availability",
+        "category": "Agorix Studio"
+      },
+      {
+        "command": "agorixStudio.setAgentCredential",
+        "title": "Set Agent Credential",
+        "category": "Agorix Studio"
+      },
+      {
+        "command": "agorixStudio.clearAgentCredential",
+        "title": "Clear Agent Credential",
+        "category": "Agorix Studio"
       }
     ],
     "menus": {
@@ -593,10 +649,11 @@
     "@agorix/curriculum": "workspace:*",
     "@agorix/language-projection": "workspace:*",
     "@agorix/learning-decision-plane": "workspace:*",
-    "@agorix/platform-contract": "workspace:*",
     "@agorix/persistence": "workspace:*",
+    "@agorix/platform-contract": "workspace:*",
     "@agorix/program-model": "workspace:*",
     "@agorix/proposals": "workspace:*",
+    "@agorix/provider-runtime": "workspace:*",
     "@agorix/python-projection": "workspace:*",
     "@agorix/runtime": "workspace:*",
     "@agorix/stage": "workspace:*",

@@ -77,6 +77,9 @@ const tests = [
       assert.deepEqual(
         contributed,
         [
+          "agorixStudio.checkAgentHealth",
+          "agorixStudio.setAgentCredential",
+          "agorixStudio.clearAgentCredential",
           "agorixStudio.openProject",
           "agorixStudio.openProjection",
           "agorixStudio.openWorldPreview",
