@@ -1,5 +1,11 @@
 import * as vscode from "vscode";
 import {
+  applyWorkspaceChange,
+  programToWorkspace,
+  projectWorkspace,
+  type WorkspaceChange,
+} from "@agorix/block-editor";
+import {
   applyProposalSession,
   createDeveloperContext,
   createExecutionViewState,
@@ -19,6 +25,7 @@ import {
   rejectProposalSession,
   serializeProjectFile,
   serializeStoredProject,
+  semanticHash,
   suggestFirstStep,
   suggestRepeat,
   STUDIO_STARTER_OPTIONS,
@@ -48,6 +55,13 @@ import {
 } from "./studioProvider.js";
 import { createNonce } from "./webview/framework.js";
 import { onValidatedMessage } from "./webview/host.js";
+import {
+  createStudioCanvasViewState,
+  renderStudioCanvas,
+  studioCanvasInboundSchemas,
+  type StudioCanvasInbound,
+  type StudioCanvasViewState,
+} from "./webview/canvasEditor.js";
 import { renderWorldPreview, worldPreviewInboundSchemas } from "./webview/worldPreview.js";
 
 interface OpenProject {
@@ -78,6 +92,8 @@ let executionEvidence: StudioExecutionEvidence | undefined;
 let executionFrameIndex = 0;
 let executionStatus: StudioExecutionStatus = "idle";
 let worldPreviewPanel: vscode.WebviewPanel | undefined;
+let canvasPanel: vscode.WebviewPanel | undefined;
+let selectedCanvasNodeIds: readonly string[] = [];
 let activeProposal: StudioProposalSession | undefined;
 const companionTurns: StudioCompanionTurn[] = [];
 const undoStack: StoredSnapshot[] = [];
@@ -86,6 +102,7 @@ const redoStack: StoredSnapshot[] = [];
 const PROJECTION_SCHEME = "agorix-studio";
 const REMOTE_SCHEME = "agorix-remote";
 const WORLD_PREVIEW_VIEW_TYPE = "agorixStudio.worldPreview";
+const CANVAS_EDITOR_VIEW_TYPE = "agorixStudio.canvasEditor";
 const SECRET_TOKEN_KEY = "agorixStudio.accountToken";
 const SECRET_AGENT_CREDENTIAL_KEY = "agorixStudio.agentCredential";
 
@@ -666,6 +683,119 @@ function updateWorldPreview(view = currentExecutionView(), rerender = true): voi
   void worldPreviewPanel.webview.postMessage({ type: "agorix-frame", view });
 }
 
+function currentCanvasView(): StudioCanvasViewState | undefined {
+  const open = requireProject();
+  if (open === undefined) {
+    return undefined;
+  }
+  const workspace = programToWorkspace(open.project.stored.program).workspace;
+  const update = projectWorkspace(workspace);
+  return createStudioCanvasViewState(update, {
+    semanticHash: semanticHash(open.project.stored.program),
+    selectedNodeIds: selectedCanvasNodeIds,
+    canUndo: undoStack.length > 0,
+    canRedo: redoStack.length > 0,
+  });
+}
+
+function openCanvasEditor(): StudioCanvasViewState | undefined {
+  const view = currentCanvasView();
+  if (view === undefined) {
+    return undefined;
+  }
+  if (canvasPanel === undefined) {
+    canvasPanel = vscode.window.createWebviewPanel(
+      CANVAS_EDITOR_VIEW_TYPE,
+      "Agorix Canvas Editor",
+      vscode.ViewColumn.Beside,
+      {
+        enableScripts: true,
+        localResourceRoots: [],
+        retainContextWhenHidden: true,
+      },
+    );
+    const panel = canvasPanel;
+    const intake = onValidatedMessage(panel.webview, {
+      schemas: studioCanvasInboundSchemas,
+      onMessage: handleCanvasMessage,
+    });
+    panel.onDidDispose(() => {
+      intake.dispose();
+      canvasPanel = undefined;
+    });
+  }
+  updateCanvasEditor(view);
+  canvasPanel.reveal(vscode.ViewColumn.Beside, true);
+  void openProjection(currentProjectionId);
+  return view;
+}
+
+function updateCanvasEditor(view = currentCanvasView(), rerender = true): void {
+  if (canvasPanel === undefined || view === undefined) {
+    return;
+  }
+  if (rerender) {
+    canvasPanel.webview.html = renderStudioCanvas(
+      view,
+      createNonce(),
+      canvasPanel.webview.cspSource,
+    );
+  }
+  void canvasPanel.webview.postMessage({ type: "agorix-canvas-state", view });
+}
+
+async function handleCanvasMessage(message: StudioCanvasInbound): Promise<void> {
+  if (message.type === "agorix-canvas-ready") {
+    updateCanvasEditor(undefined, false);
+    return;
+  }
+  if (message.type === "agorix-canvas-select") {
+    selectedCanvasNodeIds = [message.nodeId];
+    updateCanvasEditor();
+    await revealCanonicalNode(message.nodeId);
+    return;
+  }
+  if (message.type === "agorix-canvas-undo") {
+    await undoProposal();
+    updateCanvasEditor();
+    return;
+  }
+  if (message.type === "agorix-canvas-redo") {
+    await redoProposal();
+    updateCanvasEditor();
+    return;
+  }
+  await applyCanvasChange(message.baseHash, message.change);
+}
+
+async function applyCanvasChange(baseHash: string, change: WorkspaceChange): Promise<void> {
+  const open = requireProject();
+  if (open === undefined) {
+    return;
+  }
+  const beforeHash = semanticHash(open.project.stored.program);
+  if (baseHash !== beforeHash) {
+    void vscode.window.showWarningMessage("Canvas is stale. Reloading from the canonical project.");
+    updateCanvasEditor();
+    return;
+  }
+  const previousRaw = serializeProjectFile(open.project.stored, open.uri.fsPath);
+  try {
+    const workspace = programToWorkspace(open.project.stored.program).workspace;
+    const update = applyWorkspaceChange(workspace, change);
+    const stored = createStoredProjectWithProgram(open.project.stored, update.program);
+    undoStack.push({ uri: open.uri, raw: previousRaw });
+    redoStack.length = 0;
+    await writeCurrentProject(stored);
+    updateCanvasEditor();
+  } catch (error) {
+    void vscode.window.showWarningMessage(
+      `Canvas edit rejected: ${error instanceof Error ? error.message : "invalid change"}`,
+    );
+    updateCanvasEditor();
+  }
+}
+
 async function revealCanonicalNode(nodeId?: unknown): Promise<void> {
   const projection = currentProjection();
   if (projection === undefined) {
@@ -874,6 +1004,7 @@ function afterCanonicalProgramChange(): void {
   refreshStudioViews();
   refreshExecutionViews();
   refreshCompanionViews();
+  updateCanvasEditor();
 }
 
 async function suggestRepeatCommand(): Promise<void> {
@@ -1352,6 +1483,10 @@ export function activate(context: vscode.ExtensionContext): void {
         guarded(output, "Reveal Canonical Node", revealCanonicalNode),
       ),
       vscode.commands.registerCommand(
+        "agorixStudio.openCanvasEditor",
+        guarded(output, "Open Canvas Editor", openCanvasEditor),
+      ),
+      vscode.commands.registerCommand(
         "agorixStudio.openWorldPreview",
         guarded(output, "Open World Preview", openWorldPreview),
       ),
@@ -1446,6 +1581,8 @@ export function deactivate(): void {
   current = undefined;
   executionEvidence = undefined;
   worldPreviewPanel = undefined;
+  canvasPanel = undefined;
+  selectedCanvasNodeIds = [];
   activeProposal = undefined;
   companionTurns.length = 0;
   undoStack.length = 0;

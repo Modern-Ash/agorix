@@ -44,6 +44,7 @@
     "onCommand:agorixStudio.openProjection",
     "onCommand:agorixStudio.switchProjection",
     "onCommand:agorixStudio.revealCanonicalNode",
+    "onCommand:agorixStudio.openCanvasEditor",
     "onCommand:agorixStudio.openWorldPreview",
     "onCommand:agorixStudio.run",
     "onCommand:agorixStudio.step",
@@ -255,6 +256,12 @@
         "title": "Reveal Canonical Node",
         "category": "Agorix Studio",
         "icon": "$(target)"
+      },
+      {
+        "command": "agorixStudio.openCanvasEditor",
+        "title": "Open Canvas Editor",
+        "category": "Agorix Studio",
+        "icon": "$(layout)"
       },
       {
         "command": "agorixStudio.openWorldPreview",
@@ -473,6 +480,11 @@
       ],
       "view/title": [
         {
+          "command": "agorixStudio.openCanvasEditor",
+          "when": "view == agorixStudio.worlds || view == agorixStudio.projects",
+          "group": "navigation@0"
+        },
+        {
           "command": "agorixStudio.createProject",
           "when": "view == agorixStudio.projects",
           "group": "navigation"
@@ -575,6 +587,10 @@
       ],
       "editor/title": [
         {
+          "command": "agorixStudio.openCanvasEditor",
+          "group": "navigation@0"
+        },
+        {
           "command": "agorixStudio.run",
           "when": "resourceScheme == agorix-studio && agorixStudio.executionStatus != running",
           "group": "navigation@1"
@@ -649,6 +665,7 @@
   },
   "dependencies": {
     "@agorix/agorix-code": "workspace:*",
+    "@agorix/block-editor": "workspace:*",
     "@agorix/code-generator": "workspace:*",
     "@agorix/curriculum": "workspace:*",
     "@agorix/language-projection": "workspace:*",

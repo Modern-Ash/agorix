@@ -322,6 +322,7 @@ describe("Studio extension wiring", () => {
         "agorixStudio.clearAgentCredential",
         "agorixStudio.setAgentCredential",
         "agorixStudio.openProject",
+        "agorixStudio.openCanvasEditor",
         "agorixStudio.openProjection",
         "agorixStudio.openWorldPreview",
         "agorixStudio.exportAgorix",
@@ -482,6 +483,81 @@ describe("Studio extension wiring", () => {
 
     const selected = await handlers.get("agorixStudio.selectExecutionStep")!(1);
     expect(selected).toMatchObject({ selectedFrameIndex: 1 });
+    expect(revealed.length).toBeGreaterThan(0);
+  });
+
+  it("edits canonical programs through the canvas with stale rejection and undo/redo", async () => {
+    await openFile("/p/canvas.json", stored([]));
+
+    const opened = (await handlers.get("agorixStudio.openCanvasEditor")!()) as {
+      readonly semanticHash: string;
+      readonly canUndo: boolean;
+    };
+    expect(opened).toMatchObject({ semanticHash: expect.any(String), canUndo: false });
+    expect(webviewPanels).toHaveLength(1);
+    expect(webviewPanels[0]?.html).toContain("Agorix Canvas Editor");
+    expect(webviewPanels[0]?.html).toContain("Generated read-only code projection");
+
+    const receive = webviewPanels[0]?.receive;
+    const before = new TextDecoder().decode(files.get("/p/canvas.json"));
+    receive?.({
+      type: "agorix-canvas-apply",
+      baseHash: "stale-hash",
+      change: {
+        type: "addBlock",
+        container: { kind: "script", scriptIndex: 0 },
+        index: 0,
+        block: { id: "move-1", type: "motion_move", fields: { steps: 7 } },
+      },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(new TextDecoder().decode(files.get("/p/canvas.json"))).toBe(before);
+    expect(shown.some((message) => message.includes("Canvas is stale"))).toBe(true);
+
+    receive?.({
+      type: "agorix-canvas-apply",
+      baseHash: opened.semanticHash,
+      change: {
+        type: "addBlock",
+        container: { kind: "script", scriptIndex: 0 },
+        index: 0,
+        block: { id: "goal-1", type: "sensing_touching_goal" },
+      },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(new TextDecoder().decode(files.get("/p/canvas.json"))).toBe(before);
+    expect(shown.some((message) => message.includes("Canvas edit rejected"))).toBe(true);
+
+    receive?.({
+      type: "agorix-canvas-apply",
+      baseHash: opened.semanticHash,
+      change: {
+        type: "addBlock",
+        container: { kind: "script", scriptIndex: 0 },
+        index: 0,
+        block: { id: "move-1", type: "motion_move", fields: { steps: 7 } },
+      },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    let saved = JSON.parse(new TextDecoder().decode(files.get("/p/canvas.json")));
+    expect(saved.program.scripts[0].statements).toEqual([{ type: "move", steps: 7 }]);
+    expect(webviewPanels[0]?.messages.at(-1)).toMatchObject({
+      type: "agorix-canvas-state",
+      view: { canUndo: true, canRedo: false },
+    });
+
+    receive?.({ type: "agorix-canvas-undo" });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    saved = JSON.parse(new TextDecoder().decode(files.get("/p/canvas.json")));
+    expect(saved.program.scripts[0].statements).toEqual([]);
+
+    receive?.({ type: "agorix-canvas-redo" });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    saved = JSON.parse(new TextDecoder().decode(files.get("/p/canvas.json")));
+    expect(saved.program.scripts[0].statements).toEqual([{ type: "move", steps: 7 }]);
+
+    receive?.({ type: "agorix-canvas-select", nodeId: "scripts[0]/statements[0]" });
+    await new Promise((resolve) => setTimeout(resolve, 0));
     expect(revealed.length).toBeGreaterThan(0);
   });
 
