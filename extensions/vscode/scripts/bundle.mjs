@@ -14,3 +14,16 @@ await build({
   sourcemap: true,
   logLevel: "info",
 });
+
+// Webview bundle for the Workbench (browser IIFE, loaded through a nonce-protected script tag).
+await build({
+  entryPoints: ["webview/main.tsx"],
+  outfile: "dist/workbench.js",
+  bundle: true,
+  platform: "browser",
+  format: "iife",
+  target: "es2022",
+  jsx: "automatic",
+  define: { "process.env.NODE_ENV": '"production"' },
+  logLevel: "info",
+});

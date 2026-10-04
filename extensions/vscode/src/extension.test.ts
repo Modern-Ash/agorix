@@ -18,6 +18,7 @@ const commandCalls: unknown[][] = [];
 const secrets = new Map<string, string>();
 const webviewPanels: Array<{
   readonly messages: unknown[];
+  readonly reveal: ReturnType<typeof vi.fn>;
   receive(message: unknown): void;
   html: string;
 }> = [];
@@ -43,6 +44,9 @@ vi.mock("vscode", () => {
     }
     static file(value: string) {
       return uri(value);
+    }
+    static joinPath(base: { fsPath: string }, ...paths: string[]) {
+      return uri([base.fsPath.replace(/\/$/, ""), ...paths].join("/"));
     }
   }
   class TreeItem {
@@ -144,16 +148,18 @@ vi.mock("vscode", () => {
         return { dispose() {} };
       },
       createWebviewPanel: () => {
-        let receiver: Handler | undefined;
+        let receive: ((message: unknown) => void) | undefined;
         const panel = {
           messages: [] as unknown[],
-          receive: (message: unknown) => receiver?.(message),
+          reveal: vi.fn(),
+          receive: (message: unknown) => receive?.(message),
           html: "",
         };
         webviewPanels.push(panel);
         return {
           webview: {
             cspSource: "vscode-webview:",
+            asWebviewUri: (target: { fsPath: string }) => uri(`vscode-webview:${target.fsPath}`),
             get html() {
               return panel.html;
             },
@@ -164,12 +170,12 @@ vi.mock("vscode", () => {
               panel.messages.push(message);
               return true;
             },
-            onDidReceiveMessage: (handler: Handler) => {
-              receiver = handler;
+            onDidReceiveMessage: (listener: (message: unknown) => void) => {
+              receive = listener;
               return { dispose() {} };
             },
           },
-          reveal: vi.fn(),
+          reveal: panel.reveal,
           onDidDispose: vi.fn(),
           dispose: vi.fn(),
         };
@@ -248,6 +254,10 @@ const stored = (statements: unknown[]) =>
 const parseStored = (raw: string) =>
   JSON.parse(raw) as Parameters<typeof serializeAgorixProject>[0];
 
+const flushWorkbench = async () => {
+  await new Promise((resolve) => setTimeout(resolve, 0));
+};
+
 const repeated = stored(
   [1, 2, 3].flatMap(() => [
     { type: "move", steps: 20 },
@@ -313,6 +323,7 @@ describe("Studio extension wiring", () => {
         "agorixStudio.openProject",
         "agorixStudio.openProjection",
         "agorixStudio.openWorldPreview",
+        "agorixStudio.openWorkbench",
         "agorixStudio.exportAgorix",
         "agorixStudio.applyProposal",
         "agorixStudio.companionBuild",
@@ -362,6 +373,34 @@ describe("Studio extension wiring", () => {
     await handlers.get("agorixStudio.showEvidence")!();
     await handlers.get("agorixStudio.suggestRepeat")!();
     expect(shown).toEqual(["Open an Agorix project first.", "Open an Agorix project first."]);
+  });
+
+  it("opens one Workbench beside the current project and ignores malformed messages", async () => {
+    await handlers.get("agorixStudio.openWorkbench")!();
+    expect(shown.at(-1)).toContain("Open an Agorix project first");
+    expect(webviewPanels).toHaveLength(0);
+
+    await openFile("/p/workbench.json", stored([]));
+    await handlers.get("agorixStudio.openWorkbench")!();
+    await handlers.get("agorixStudio.openWorkbench")!();
+
+    expect(webviewPanels).toHaveLength(1);
+    expect(webviewPanels[0]?.reveal).toHaveBeenCalledTimes(1);
+    expect(webviewPanels[0]?.html).toContain("Content-Security-Policy");
+    expect(webviewPanels[0]?.html).toContain("Agorix Workbench");
+    expect(webviewPanels[0]?.messages.at(-1)).toMatchObject({ type: "workspace" });
+
+    const before = new TextDecoder().decode(files.get("/p/workbench.json"));
+    expect(() => webviewPanels[0]?.receive({})).not.toThrow();
+    expect(() => webviewPanels[0]?.receive("x")).not.toThrow();
+    expect(() =>
+      webviewPanels[0]?.receive({
+        schema: "agorix/studio-protocol/v1",
+        type: "intent",
+        intent: { type: "revealNode", nodeId: "/etc/passwd" },
+      }),
+    ).not.toThrow();
+    expect(new TextDecoder().decode(files.get("/p/workbench.json"))).toBe(before);
   });
 
   it("shows clean-install project actions before a project is open", () => {
@@ -624,6 +663,55 @@ describe("Studio extension wiring", () => {
     expect(redone.program.scripts[0].statements).toEqual(written.program.scripts[0].statements);
   });
 
+  it("writes Workbench edits through the proposal undo stack and clears redo", async () => {
+    await openFile("/p/workbench-edit.json", stored([]));
+    const original = new TextDecoder().decode(files.get("/p/workbench-edit.json"));
+    await handlers.get("agorixStudio.openWorkbench")!();
+
+    webviewPanels[0]?.receive({
+      schema: "agorix/studio-protocol/v1",
+      type: "intent",
+      intent: {
+        type: "insertBlock",
+        blockType: "motion_move",
+        to: { container: { kind: "script", scriptIndex: 0 }, index: 0 },
+      },
+    });
+    await flushWorkbench();
+
+    const edited = JSON.parse(new TextDecoder().decode(files.get("/p/workbench-edit.json")));
+    expect(edited.program.scripts[0].statements).toEqual([{ type: "move", steps: 10 }]);
+
+    await handlers.get("agorixStudio.undoProposal")!();
+    expect(JSON.parse(new TextDecoder().decode(files.get("/p/workbench-edit.json")))).toEqual(
+      JSON.parse(original),
+    );
+
+    await handlers.get("agorixStudio.redoProposal")!();
+    expect(JSON.parse(new TextDecoder().decode(files.get("/p/workbench-edit.json")))).toMatchObject(
+      {
+        program: { scripts: [{ statements: [{ type: "move", steps: 10 }] }] },
+      },
+    );
+
+    webviewPanels[0]?.receive({
+      schema: "agorix/studio-protocol/v1",
+      type: "intent",
+      intent: {
+        type: "insertBlock",
+        blockType: "motion_turn",
+        to: { container: { kind: "script", scriptIndex: 0 }, index: 1 },
+      },
+    });
+    await flushWorkbench();
+    await handlers.get("agorixStudio.redoProposal")!();
+    const afterNewEdit = JSON.parse(new TextDecoder().decode(files.get("/p/workbench-edit.json")));
+    expect(afterNewEdit.program.scripts[0].statements).toEqual([
+      { type: "move", steps: 10 },
+      { type: "turn", degrees: 90 },
+    ]);
+  });
+
   it("reviews first-step proposal through the generic apply flow", async () => {
     await openFile("/p/empty.json", stored([]));
     choice = "Apply";
@@ -657,9 +745,9 @@ describe("Studio extension wiring", () => {
     handlers.clear();
     failRegistration = true;
     const extension = await import("./extension.js");
-    expect(() => extension.activate({ subscriptions: [] } as never)).toThrow(
-      "registration refused",
-    );
+    expect(() =>
+      extension.activate({ subscriptions: [], asAbsolutePath: (p: string) => p } as never),
+    ).toThrow("registration refused");
     expect(shown.some((m) => m.includes("activation failed"))).toBe(true);
   });
 });

@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted for epic #242 (issue #243).
+Accepted for epic #242 (issue #243). Amended by [ADR 0007](./0007-shared-core-and-two-experiences.md).
 
 ## Context
 

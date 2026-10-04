@@ -45,6 +45,7 @@
     "onCommand:agorixStudio.switchProjection",
     "onCommand:agorixStudio.revealCanonicalNode",
     "onCommand:agorixStudio.openWorldPreview",
+    "onCommand:agorixStudio.openWorkbench",
     "onCommand:agorixStudio.run",
     "onCommand:agorixStudio.step",
     "onCommand:agorixStudio.reset",
@@ -240,6 +241,11 @@
       {
         "command": "agorixStudio.openWorldPreview",
         "title": "Open Mundo Agorix",
+        "category": "Agorix Studio"
+      },
+      {
+        "command": "agorixStudio.openWorkbench",
+        "title": "Open Workbench",
         "category": "Agorix Studio"
       },
       {
@@ -458,6 +464,11 @@
           "group": "navigation"
         },
         {
+          "command": "agorixStudio.openWorkbench",
+          "when": "view == agorixStudio.projects",
+          "group": "navigation"
+        },
+        {
           "command": "agorixStudio.run",
           "when": "view == agorixStudio.inspector || view == agorixStudio.progress",
           "group": "navigation"
@@ -581,16 +592,19 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "build": "tsc --noEmit -p tsconfig.json && node scripts/bundle.mjs",
+    "build": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p webview/tsconfig.json && node scripts/bundle.mjs",
     "test": "vitest run --config vitest.config.ts",
     "test:integration": "node test/integration/run.cjs",
     "test:vsix": "node test/integration/vsix.cjs",
     "package": "pnpm build && vsce package --no-dependencies --out dist/agorix-studio.vsix"
   },
   "dependencies": {
+    "@agorix/agent-workflow": "workspace:*",
     "@agorix/agorix-code": "workspace:*",
+    "@agorix/block-editor": "workspace:*",
     "@agorix/code-generator": "workspace:*",
     "@agorix/curriculum": "workspace:*",
+    "@agorix/interaction-core": "workspace:*",
     "@agorix/language-projection": "workspace:*",
     "@agorix/learning-decision-plane": "workspace:*",
     "@agorix/persistence": "workspace:*",
@@ -601,6 +615,8 @@
     "@agorix/python-projection": "workspace:*",
     "@agorix/runtime": "workspace:*",
     "@agorix/stage": "workspace:*",
+    "@agorix/studio-protocol": "workspace:*",
+    "@agorix/studio-ui": "workspace:*",
     "@agorix/tutor-contract": "workspace:*"
   },
   "devDependencies": {
