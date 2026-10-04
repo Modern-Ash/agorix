@@ -2,7 +2,7 @@
 
 Agorix Studio is the progressive VS Code surface for Agorix projects. It reuses shared `packages/*` contracts instead of creating a second programming model.
 
-The first slice keeps VS Code API imports isolated in `src/extension.ts`; project semantics, projection mapping, execution evidence and proposal review are implemented in pure modules with deterministic tests.
+The extension keeps VS Code API imports inside `extensions/vscode` adapters. `src/extension.ts` wires activation, while `src/host/`, `src/commands/` and `src/store/` hold webview hosts, command registration and session state; project semantics, projection mapping, execution evidence and proposal review remain in pure modules with deterministic tests.
 
 See `docs/product/AGORIX_STUDIO.md` for the product architecture and
 `docs/product/STUDIO_RELEASE_GATE.md` for the Web/Studio parity matrix,

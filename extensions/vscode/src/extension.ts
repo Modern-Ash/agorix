@@ -37,7 +37,26 @@ import {
   type StudioRemoteSaveResult,
   type StudioStarterId,
 } from "./studioCore.js";
+import { reportFailure } from "./commands/guarded.js";
+import { registerStudioCommands } from "./commands/register.js";
+import {
+  PROJECTION_SCHEME,
+  REMOTE_SCHEME,
+  SECRET_AGENT_CREDENTIAL_KEY,
+  SECRET_TOKEN_KEY,
+  clearProjectSession,
+  clearStudioSession,
+  createStudioSessionState,
+  type OpenProject,
+  type StudioRemoteClient,
+  type StoredSnapshot,
+} from "./store/session.js";
 import { openWorkbenchPanel, refreshWorkbench, disposeWorkbench } from "./host/workbenchPanel.js";
+import {
+  openWorldPreviewPanel,
+  refreshWorldPreview,
+  disposeWorldPreview,
+} from "./host/worldPreviewPanel.js";
 import type { HostPort } from "./host/workbenchHost.js";
 import {
   createStudioProviderClient,
@@ -46,49 +65,7 @@ import {
   type StudioProviderClient,
 } from "./studioProvider.js";
 
-interface OpenProject {
-  readonly uri: vscode.Uri;
-  readonly project: StudioProject;
-  readonly remote?: OpenRemoteProject;
-}
-
-interface OpenRemoteProject {
-  readonly id: string;
-  readonly title: string;
-  readonly revision: string;
-}
-
-interface StudioRemoteClient {
-  listProjects(): Promise<StudioRemoteProjectReference[]>;
-  getProject(id: string): Promise<StudioRemoteProjectPayload>;
-  saveProject(request: {
-    readonly id: string;
-    readonly expectedRevision: string;
-    readonly project: StudioProject["stored"];
-  }): Promise<StudioRemoteSaveResult>;
-}
-
-let current: OpenProject | undefined;
-let currentProjectionId: StudioProjectionId = "typescript";
-let executionEvidence: StudioExecutionEvidence | undefined;
-let executionFrameIndex = 0;
-let executionStatus: StudioExecutionStatus = "idle";
-let worldPreviewPanel: vscode.WebviewPanel | undefined;
-let activeProposal: StudioProposalSession | undefined;
-const companionTurns: StudioCompanionTurn[] = [];
-const undoStack: StoredSnapshot[] = [];
-const redoStack: StoredSnapshot[] = [];
-
-const PROJECTION_SCHEME = "agorix-studio";
-const REMOTE_SCHEME = "agorix-remote";
-const WORLD_PREVIEW_VIEW_TYPE = "agorixStudio.worldPreview";
-const SECRET_TOKEN_KEY = "agorixStudio.accountToken";
-const SECRET_AGENT_CREDENTIAL_KEY = "agorixStudio.agentCredential";
-
-interface StoredSnapshot {
-  readonly uri: vscode.Uri;
-  readonly raw: string;
-}
+const session = createStudioSessionState();
 
 interface IdQuickPickItem<Id extends string> extends vscode.QuickPickItem {
   readonly id: Id;
@@ -138,7 +115,7 @@ class StudioTreeProvider implements vscode.TreeDataProvider<StudioTreeItem> {
   }
 
   getChildren(): StudioTreeItem[] {
-    const section = createNavigationSections(current?.project).find(
+    const section = createNavigationSections(session.current?.project).find(
       (candidate) => candidate.id === this.sectionId,
     );
     return (section?.items ?? []).map(
@@ -230,7 +207,7 @@ class CompanionHistoryProvider implements vscode.TreeDataProvider<CompanionHisto
   }
 
   getChildren(): CompanionHistoryItem[] {
-    return companionTurns.map((turn) => new CompanionHistoryItem(turn, this.agentIcon));
+    return session.companionTurns.map((turn) => new CompanionHistoryItem(turn, this.agentIcon));
   }
 }
 
@@ -267,7 +244,7 @@ async function openProject(target?: unknown): Promise<void> {
   }
   try {
     const raw = await vscode.workspace.fs.readFile(uri);
-    current = { uri, project: parseProjectFile(raw, uri.fsPath) };
+    session.current = { uri, project: parseProjectFile(raw, uri.fsPath) };
     resetProjectSessionState();
   } catch (error) {
     // Do not await: a toast resolves only when dismissed and would hang the command.
@@ -279,7 +256,7 @@ async function openProject(target?: unknown): Promise<void> {
   refreshStudioViews();
   refreshCompanionViews();
   updateStudioContext();
-  await openProjection(currentProjectionId);
+  await openProjection(session.currentProjectionId);
 }
 
 async function createProject(target?: unknown): Promise<vscode.Uri | undefined> {
@@ -294,13 +271,13 @@ async function createProject(target?: unknown): Promise<vscode.Uri | undefined> 
   });
   const raw = serializeProjectFile(stored, picked.uri.fsPath);
   await vscode.workspace.fs.writeFile(picked.uri, new TextEncoder().encode(raw));
-  current = { uri: picked.uri, project: parseProjectFile(raw, picked.uri.fsPath) };
+  session.current = { uri: picked.uri, project: parseProjectFile(raw, picked.uri.fsPath) };
   resetProjectSessionState();
   refreshStudioViews();
   refreshExecutionViews();
   refreshCompanionViews();
   updateStudioContext();
-  await openProjection(currentProjectionId);
+  await openProjection(session.currentProjectionId);
   void vscode.window.showInformationMessage(`Created Agorix project: ${picked.uri.fsPath}`);
   return picked.uri;
 }
@@ -376,13 +353,7 @@ function isCreateProjectCommandOptions(value: unknown): value is CreateProjectCo
 }
 
 function resetProjectSessionState(): void {
-  executionEvidence = undefined;
-  executionFrameIndex = 0;
-  executionStatus = "idle";
-  activeProposal = undefined;
-  companionTurns.length = 0;
-  undoStack.length = 0;
-  redoStack.length = 0;
+  clearProjectSession(session);
   refreshWorkbench();
 }
 
@@ -390,15 +361,15 @@ function updateStudioContext(): void {
   void vscode.commands.executeCommand(
     "setContext",
     "agorixStudio.hasProject",
-    current !== undefined,
+    session.current !== undefined,
   );
 }
 
 function requireProject(): OpenProject | undefined {
-  if (current === undefined) {
+  if (session.current === undefined) {
     void vscode.window.showWarningMessage("Open an Agorix project first.");
   }
-  return current;
+  return session.current;
 }
 
 function computeExecution(): StudioExecutionEvidence | undefined {
@@ -406,14 +377,18 @@ function computeExecution(): StudioExecutionEvidence | undefined {
   if (open === undefined) {
     return undefined;
   }
-  executionEvidence ??= createExecutionEvidence(open.project.stored);
-  return executionEvidence;
+  session.executionEvidence ??= createExecutionEvidence(open.project.stored);
+  return session.executionEvidence;
 }
 
 function currentExecutionView(): StudioExecutionViewState | undefined {
-  return executionEvidence === undefined
+  return session.executionEvidence === undefined
     ? undefined
-    : createExecutionViewState(executionEvidence, executionFrameIndex, executionStatus);
+    : createExecutionViewState(
+        session.executionEvidence,
+        session.executionFrameIndex,
+        session.executionStatus,
+      );
 }
 
 function setExecution(
@@ -421,10 +396,10 @@ function setExecution(
   frameIndex: number,
   status: StudioExecutionStatus,
 ): StudioExecutionViewState {
-  executionEvidence = evidence;
-  executionStatus = status;
+  session.executionEvidence = evidence;
+  session.executionStatus = status;
   const view = createExecutionViewState(evidence, frameIndex, status);
-  executionFrameIndex = view.selectedFrameIndex;
+  session.executionFrameIndex = view.selectedFrameIndex;
   refreshExecutionViews();
   return view;
 }
@@ -449,7 +424,7 @@ function stepExecution(): StudioExecutionViewState | undefined {
     return undefined;
   }
   const nextFrame = Math.min(
-    executionFrameIndex + 1,
+    session.executionFrameIndex + 1,
     Math.max(0, evidence.previewFrames.length - 1),
   );
   const status = nextFrame >= evidence.previewFrames.length - 1 ? "completed" : "running";
@@ -480,10 +455,9 @@ async function selectExecutionStep(
   if (evidence === undefined) {
     return undefined;
   }
-  const step = createExecutionViewState(evidence, stepIndex, executionStatus).inspectorSteps[
-    stepIndex
-  ];
-  const view = setExecution(evidence, step?.frameIndex ?? stepIndex, executionStatus);
+  const step = createExecutionViewState(evidence, stepIndex, session.executionStatus)
+    .inspectorSteps[stepIndex];
+  const view = setExecution(evidence, step?.frameIndex ?? stepIndex, session.executionStatus);
   if (step?.nodeId !== undefined) {
     await revealCanonicalNode(step.nodeId);
   }
@@ -510,12 +484,14 @@ function showEvidence(output: vscode.OutputChannel): string | undefined {
 
 function currentProjection(): StudioProjectionDocument | undefined {
   const open = requireProject();
-  return open === undefined ? undefined : openProjectionDocument(open.project, currentProjectionId);
+  return open === undefined
+    ? undefined
+    : openProjectionDocument(open.project, session.currentProjectionId);
 }
 
 function projectionUri(id: StudioProjectionId): vscode.Uri {
   const projectName =
-    current?.uri.fsPath
+    session.current?.uri.fsPath
       .split(/[\\/]/)
       .pop()
       ?.replace(/[^A-Za-z0-9_.-]/g, "-") ?? "project";
@@ -524,8 +500,8 @@ function projectionUri(id: StudioProjectionId): vscode.Uri {
 
 function projectionIdFromUri(uri: vscode.Uri): StudioProjectionId {
   const match = uri.path.match(/\.([A-Za-z0-9-]+)$/);
-  const id = match?.[1] ?? currentProjectionId;
-  return isStudioProjectionId(id) ? id : currentProjectionId;
+  const id = match?.[1] ?? session.currentProjectionId;
+  return isStudioProjectionId(id) ? id : session.currentProjectionId;
 }
 
 async function openProjection(target?: unknown): Promise<void> {
@@ -544,8 +520,8 @@ async function openProjection(target?: unknown): Promise<void> {
             typeof target.id === "string" &&
             isStudioProjectionId(target.id)
           ? target.id
-          : currentProjectionId;
-  currentProjectionId = id;
+          : session.currentProjectionId;
+  session.currentProjectionId = id;
   const projection = openProjectionDocument(open.project, id);
   const document = await vscode.workspace.openTextDocument(projectionUri(id));
   await vscode.window.showTextDocument(document, { preview: false });
@@ -572,177 +548,8 @@ function openWorldPreview(): StudioExecutionViewState | undefined {
   if (view === undefined) {
     return undefined;
   }
-  if (worldPreviewPanel === undefined) {
-    worldPreviewPanel = vscode.window.createWebviewPanel(
-      WORLD_PREVIEW_VIEW_TYPE,
-      "Agorix World Preview",
-      vscode.ViewColumn.Beside,
-      {
-        enableScripts: true,
-        localResourceRoots: [],
-        retainContextWhenHidden: true,
-      },
-    );
-    worldPreviewPanel.onDidDispose(() => {
-      worldPreviewPanel = undefined;
-    });
-  }
-  updateWorldPreview(view);
-  worldPreviewPanel.reveal(vscode.ViewColumn.Beside, true);
+  openWorldPreviewPanel(view);
   return view;
-}
-
-function updateWorldPreview(view = currentExecutionView()): void {
-  if (worldPreviewPanel === undefined || view === undefined) {
-    return;
-  }
-  const nonce = nonceForWebview();
-  worldPreviewPanel.webview.html = worldPreviewHtml(
-    nonce,
-    worldPreviewPanel.webview.cspSource,
-    view,
-  );
-  void worldPreviewPanel.webview.postMessage({ type: "agorix-frame", view });
-}
-
-function nonceForWebview(): string {
-  return Array.from({ length: 16 }, () => Math.floor(Math.random() * 36).toString(36)).join("");
-}
-
-function escapedJson(value: unknown): string {
-  return JSON.stringify(value).replace(/</g, "\\u003c");
-}
-
-function worldPreviewHtml(
-  nonce: string,
-  cspSource: string,
-  view: StudioExecutionViewState,
-): string {
-  const data = escapedJson(view);
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${cspSource} data:; style-src 'nonce-${nonce}'; script-src 'nonce-${nonce}';">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Agorix World Preview</title>
-  <style nonce="${nonce}">
-    :root {
-      color-scheme: light dark;
-      --goal: var(--vscode-testing-iconPassed, #2e7d32);
-      --sprite: var(--vscode-editorWarning-foreground, #c77700);
-      --trail: var(--vscode-focusBorder, #007acc);
-    }
-    body {
-      margin: 0;
-      min-height: 100vh;
-      background: var(--vscode-editor-background);
-      color: var(--vscode-editor-foreground);
-      font-family: var(--vscode-font-family);
-    }
-    main {
-      display: grid;
-      grid-template-rows: auto 1fr auto;
-      min-height: 100vh;
-    }
-    header,
-    footer {
-      padding: 10px 14px;
-      border-bottom: 1px solid var(--vscode-panel-border);
-    }
-    footer {
-      border-top: 1px solid var(--vscode-panel-border);
-      border-bottom: 0;
-      color: var(--vscode-descriptionForeground);
-    }
-    .world {
-      position: relative;
-      width: min(92vmin, 760px);
-      aspect-ratio: 1;
-      place-self: center;
-      border: 1px solid var(--vscode-panel-border);
-      background:
-        linear-gradient(var(--vscode-editorWidget-border, rgba(127,127,127,.18)) 1px, transparent 1px),
-        linear-gradient(90deg, var(--vscode-editorWidget-border, rgba(127,127,127,.18)) 1px, transparent 1px),
-        var(--vscode-editor-background);
-      background-size: 12.5% 12.5%;
-    }
-    .goal,
-    .sprite {
-      position: absolute;
-      width: 9%;
-      height: 9%;
-      translate: -50% 50%;
-      border: 2px solid currentColor;
-      box-sizing: border-box;
-    }
-    .goal {
-      color: var(--goal);
-      border-radius: 50%;
-      background: color-mix(in srgb, var(--goal), transparent 76%);
-    }
-    .sprite {
-      color: var(--sprite);
-      background: color-mix(in srgb, var(--sprite), transparent 64%);
-      clip-path: polygon(50% 0, 100% 100%, 50% 78%, 0 100%);
-      transition: left 180ms ease, bottom 180ms ease, rotate 180ms ease;
-    }
-    .node {
-      color: var(--vscode-textLink-foreground);
-      font-family: var(--vscode-editor-font-family);
-    }
-    @media (prefers-reduced-motion: reduce) {
-      .sprite {
-        transition: none;
-      }
-    }
-  </style>
-</head>
-<body>
-  <main>
-    <header>
-      <strong id="status"></strong>
-      <span id="step"></span>
-      <span class="node" id="node"></span>
-    </header>
-    <section class="world" aria-label="Agorix shared runtime world preview">
-      <div class="goal" id="goal" aria-label="goal"></div>
-      <div class="sprite" id="sprite" aria-label="sprite"></div>
-    </section>
-    <footer id="provenance">Rendered from @agorix/stage frames produced by the canonical runtime.</footer>
-  </main>
-  <script nonce="${nonce}">
-    const initialView = ${data};
-    const vscode = acquireVsCodeApi();
-    const status = document.getElementById("status");
-    const step = document.getElementById("step");
-    const node = document.getElementById("node");
-    const goal = document.getElementById("goal");
-    const sprite = document.getElementById("sprite");
-    function place(element, point, viewport) {
-      const x = (point.x / viewport.width) * 100;
-      const y = (point.y / viewport.height) * 100;
-      element.style.left = x + "%";
-      element.style.bottom = y + "%";
-    }
-    function render(view) {
-      const frame = view.currentFrame || view.previewFrames[0];
-      if (!frame) return;
-      status.textContent = view.status.toUpperCase() + " ";
-      step.textContent = "frame " + (view.selectedFrameIndex + 1) + "/" + view.previewFrames.length;
-      node.textContent = frame.highlightedNodeId ? " · " + frame.highlightedNodeId : " · run";
-      place(goal, frame.state.goal, frame.state.viewport);
-      place(sprite, frame.state.sprite, frame.state.viewport);
-      sprite.style.rotate = (-frame.state.sprite.heading) + "deg";
-      vscode.setState({ selectedFrameIndex: view.selectedFrameIndex });
-    }
-    render(initialView);
-    window.addEventListener("message", (event) => {
-      if (event.data && event.data.type === "agorix-frame") render(event.data.view);
-    });
-  </script>
-</body>
-</html>`;
 }
 
 async function revealCanonicalNode(nodeId?: unknown): Promise<void> {
@@ -782,9 +589,9 @@ async function companionCommand(
   const selected = currentExecutionView()?.currentFrame?.highlightedNodeId;
   const turn = createCompanionTurn(open.project, action, {
     ...(selected === undefined ? {} : { selectedNodeIds: [selected] }),
-    ...(executionEvidence === undefined ? {} : { evidence: executionEvidence }),
+    ...(session.executionEvidence === undefined ? {} : { evidence: session.executionEvidence }),
   });
-  companionTurns.unshift(turn);
+  session.companionTurns.unshift(turn);
   refreshCompanionViews();
   if (turn.selectedNodeIds[0] !== undefined) {
     await revealCanonicalNode(turn.selectedNodeIds[0]);
@@ -812,20 +619,20 @@ async function suggestFirstStepCommand(): Promise<void> {
   await reviewProposalSession(suggestion.session);
 }
 
-async function reviewProposalSession(session: StudioProposalSession): Promise<void> {
+async function reviewProposalSession(proposalSession: StudioProposalSession): Promise<void> {
   const open = requireProject();
   if (open === undefined) {
     return;
   }
-  activeProposal = session;
+  session.activeProposal = proposalSession;
   refreshCompanionViews();
   const [before, after] = await Promise.all([
     vscode.workspace.openTextDocument({
-      content: session.diff.acceptedCode,
+      content: proposalSession.diff.acceptedCode,
       language: "javascript",
     }),
     vscode.workspace.openTextDocument({
-      content: session.diff.proposedCode,
+      content: proposalSession.diff.proposedCode,
       language: "javascript",
     }),
   ]);
@@ -833,13 +640,13 @@ async function reviewProposalSession(session: StudioProposalSession): Promise<vo
     "vscode.diff",
     before.uri,
     after.uri,
-    `Agorix proposal: ${session.purpose}`,
+    `Agorix proposal: ${proposalSession.purpose}`,
   );
-  if (session.affectedNodeIds[0] !== undefined) {
-    await revealIfPresent(session.affectedNodeIds[0]);
+  if (proposalSession.affectedNodeIds[0] !== undefined) {
+    await revealIfPresent(proposalSession.affectedNodeIds[0]);
   }
   const choice = await vscode.window.showInformationMessage(
-    `${session.purpose}. ${session.rationale}`,
+    `${proposalSession.purpose}. ${proposalSession.rationale}`,
     "Apply",
     "Reject",
   );
@@ -851,8 +658,8 @@ async function reviewProposalSession(session: StudioProposalSession): Promise<vo
 }
 
 async function revealProposalAffectedNode(): Promise<void> {
-  if (activeProposal?.affectedNodeIds[0] !== undefined) {
-    await revealIfPresent(activeProposal.affectedNodeIds[0]);
+  if (session.activeProposal?.affectedNodeIds[0] !== undefined) {
+    await revealIfPresent(session.activeProposal.affectedNodeIds[0]);
   }
 }
 
@@ -868,47 +675,47 @@ async function revealIfPresent(nodeId: string): Promise<void> {
 
 async function applyActiveProposal(): Promise<void> {
   const open = requireProject();
-  if (open === undefined || activeProposal === undefined) {
+  if (open === undefined || session.activeProposal === undefined) {
     return;
   }
   const previousRaw = serializeStoredProject(open.project.stored);
-  const decision = applyProposalSession(open.project.stored.program, activeProposal);
+  const decision = applyProposalSession(open.project.stored.program, session.activeProposal);
   const stored = createStoredProjectWithProgram(open.project.stored, decision.program);
   await writeCurrentProject(stored);
-  undoStack.push({ uri: open.uri, raw: previousRaw });
-  redoStack.length = 0;
-  activeProposal = undefined;
+  session.undoStack.push({ uri: open.uri, raw: previousRaw });
+  session.redoStack.length = 0;
+  session.activeProposal = undefined;
   await vscode.window.showInformationMessage("Applied proposal. Use Undo Proposal to restore it.");
 }
 
 function rejectActiveProposal(): void {
   const open = requireProject();
-  if (open === undefined || activeProposal === undefined) {
+  if (open === undefined || session.activeProposal === undefined) {
     return;
   }
-  rejectProposalSession(open.project.stored.program, activeProposal);
-  activeProposal = undefined;
+  rejectProposalSession(open.project.stored.program, session.activeProposal);
+  session.activeProposal = undefined;
   refreshCompanionViews();
   void vscode.window.showInformationMessage("Rejected proposal. Project unchanged.");
 }
 
 async function undoProposal(): Promise<void> {
   const open = requireProject();
-  const previous = undoStack.pop();
+  const previous = session.undoStack.pop();
   if (open === undefined || previous === undefined) {
     return;
   }
-  redoStack.push({ uri: open.uri, raw: serializeStoredProject(open.project.stored) });
+  session.redoStack.push({ uri: open.uri, raw: serializeStoredProject(open.project.stored) });
   await restoreSnapshot(previous);
 }
 
 async function redoProposal(): Promise<void> {
   const open = requireProject();
-  const next = redoStack.pop();
+  const next = session.redoStack.pop();
   if (open === undefined || next === undefined) {
     return;
   }
-  undoStack.push({ uri: open.uri, raw: serializeStoredProject(open.project.stored) });
+  session.undoStack.push({ uri: open.uri, raw: serializeStoredProject(open.project.stored) });
   await restoreSnapshot(next);
 }
 
@@ -923,32 +730,32 @@ async function writeCurrentProject(
   if (open.uri.scheme !== REMOTE_SCHEME) {
     await vscode.workspace.fs.writeFile(open.uri, new TextEncoder().encode(raw));
   }
-  current = {
+  session.current = {
     uri: open.uri,
     project: parseProjectFile(raw, open.uri.fsPath),
     ...(open.remote === undefined ? {} : { remote: open.remote }),
   };
   afterCanonicalProgramChange();
-  await openProjection(currentProjectionId);
+  await openProjection(session.currentProjectionId);
 }
 
 async function restoreSnapshot(snapshot: StoredSnapshot): Promise<void> {
-  const remote = current?.remote;
+  const remote = session.current?.remote;
   if (snapshot.uri.scheme !== REMOTE_SCHEME) {
     await vscode.workspace.fs.writeFile(snapshot.uri, new TextEncoder().encode(snapshot.raw));
   }
-  current = {
+  session.current = {
     uri: snapshot.uri,
     project: parseProjectFile(snapshot.raw, snapshot.uri.fsPath),
     ...(remote === undefined ? {} : { remote }),
   };
   afterCanonicalProgramChange();
-  await openProjection(currentProjectionId);
+  await openProjection(session.currentProjectionId);
 }
 
 function workbenchPort(): HostPort {
   return {
-    getProgram: () => current?.project.stored.program,
+    getProgram: () => session.current?.project.stored.program,
     commit: async (program) => {
       const open = requireProject();
       if (open === undefined) {
@@ -956,12 +763,12 @@ function workbenchPort(): HostPort {
       }
       const previousRaw = serializeStoredProject(open.project.stored);
       await writeCurrentProject(createStoredProjectWithProgram(open.project.stored, program));
-      undoStack.push({ uri: open.uri, raw: previousRaw });
-      redoStack.length = 0;
+      session.undoStack.push({ uri: open.uri, raw: previousRaw });
+      session.redoStack.length = 0;
     },
     openProposalReview: async () => {
-      if (activeProposal !== undefined) {
-        await reviewProposalSession(activeProposal);
+      if (session.activeProposal !== undefined) {
+        await reviewProposalSession(session.activeProposal);
       }
     },
     reveal: (nodeId) => revealCanonicalNode(nodeId),
@@ -969,9 +776,9 @@ function workbenchPort(): HostPort {
 }
 
 function afterCanonicalProgramChange(): void {
-  executionEvidence = undefined;
-  executionFrameIndex = 0;
-  executionStatus = "idle";
+  session.executionEvidence = undefined;
+  session.executionFrameIndex = 0;
+  session.executionStatus = "idle";
   refreshStudioViews();
   refreshExecutionViews();
   refreshCompanionViews();
@@ -1147,8 +954,8 @@ async function clearAgentCredential(context: vscode.ExtensionContext): Promise<v
 
 async function signOut(context: vscode.ExtensionContext): Promise<void> {
   await context.secrets.delete(SECRET_TOKEN_KEY);
-  if (current?.remote !== undefined) {
-    current = undefined;
+  if (session.current?.remote !== undefined) {
+    session.current = undefined;
     resetProjectSessionState();
     refreshStudioViews();
     refreshExecutionViews();
@@ -1187,7 +994,7 @@ async function openRemoteProject(context: vscode.ExtensionContext): Promise<void
     return;
   }
   const remote = await client.getProject(picked.project.id);
-  current = {
+  session.current = {
     uri: vscode.Uri.parse(`${REMOTE_SCHEME}:/${encodeURIComponent(remote.id)}.agorix`),
     project: openRemotePayload(remote),
     remote: {
@@ -1200,7 +1007,7 @@ async function openRemoteProject(context: vscode.ExtensionContext): Promise<void
   refreshStudioViews();
   refreshCompanionViews();
   updateStudioContext();
-  await openProjection(currentProjectionId);
+  await openProjection(session.currentProjectionId);
 }
 
 async function saveRemoteProject(
@@ -1226,7 +1033,7 @@ async function saveRemoteProject(
     project: open.project.stored,
   });
   if (result.status === "saved") {
-    current = {
+    session.current = {
       ...open,
       project: openRemotePayload({
         id: open.remote.id,
@@ -1249,7 +1056,7 @@ async function saveRemoteProject(
     "Cancel",
   );
   if (choice === "Reload Latest" && result.latest !== undefined) {
-    current = {
+    session.current = {
       ...open,
       project: openRemotePayload({
         id: open.remote.id,
@@ -1261,7 +1068,7 @@ async function saveRemoteProject(
     };
     resetProjectSessionState();
     refreshStudioViews();
-    await openProjection(currentProjectionId);
+    await openProjection(session.currentProjectionId);
   } else if (choice === "Export Copy") {
     await exportAgorixProject();
   }
@@ -1322,31 +1129,6 @@ async function createRemoteClient(
   };
 }
 
-/** Runs a command body and surfaces any failure to the learner instead of failing silently. */
-function guarded<Args extends unknown[], Result>(
-  output: vscode.OutputChannel,
-  name: string,
-  body: (...args: Args) => Result | Promise<Result>,
-): (...args: Args) => Promise<Result | undefined> {
-  return async (...args) => {
-    try {
-      return await body(...args);
-    } catch (error) {
-      reportFailure(output, `${name} failed`, error);
-      return undefined;
-    }
-  };
-}
-
-function reportFailure(output: vscode.OutputChannel, summary: string, error: unknown): void {
-  const detail = error instanceof Error ? error.message : String(error);
-  output.appendLine(`[error] ${summary}: ${detail}`);
-  if (error instanceof Error && error.stack !== undefined) {
-    output.appendLine(error.stack);
-  }
-  void vscode.window.showErrorMessage(`Agorix Studio: ${summary}. ${detail}`);
-}
-
 export function activate(context: vscode.ExtensionContext): void {
   const output = vscode.window.createOutputChannel("Agorix Studio");
   context.subscriptions.push(output);
@@ -1370,12 +1152,12 @@ export function activate(context: vscode.ExtensionContext): void {
     for (const provider of treeProviders) {
       provider.refresh();
     }
-    projectionProvider.refresh(projectionUri(currentProjectionId));
+    projectionProvider.refresh(projectionUri(session.currentProjectionId));
   }
   refreshStudioViews = refreshViews;
   refreshExecutionViews = () => {
     inspectorProvider.refresh();
-    updateWorldPreview();
+    refreshWorldPreview(currentExecutionView());
   };
   refreshCompanionViews = () => {
     companionProvider.refresh();
@@ -1394,155 +1176,55 @@ export function activate(context: vscode.ExtensionContext): void {
       vscode.window.createTreeView("agorixStudio.companionHistory", {
         treeDataProvider: companionProvider,
       }),
-      vscode.commands.registerCommand(
-        "agorixStudio.createProject",
-        guarded(output, "Create Project", createProject),
-      ),
-      vscode.commands.registerCommand(
-        "agorixStudio.openProject",
-        guarded(output, "Open Project", openProject),
-      ),
-      vscode.commands.registerCommand(
-        "agorixStudio.exportAgorix",
-        guarded(output, "Export Agorix Project", exportAgorixProject),
-      ),
-      vscode.commands.registerCommand(
-        "agorixStudio.checkAgentHealth",
-        guarded(output, "Check Agent Availability", async () => {
+      ...registerStudioCommands(output, {
+        createProject,
+        openProject,
+        exportAgorixProject,
+        checkAgentHealth: async () => {
           const status = await refreshAgentStatus(context, agentStatusItem);
           void vscode.window.showInformationMessage(status.message);
-        }),
-      ),
-      vscode.commands.registerCommand(
-        "agorixStudio.setAgentCredential",
-        guarded(output, "Set Agent Credential", () => setAgentCredential(context)),
-      ),
-      vscode.commands.registerCommand(
-        "agorixStudio.clearAgentCredential",
-        guarded(output, "Clear Agent Credential", () => clearAgentCredential(context)),
-      ),
-      vscode.commands.registerCommand(
-        "agorixStudio.signIn",
-        guarded(output, "Sign In", () => signIn(context)),
-      ),
-      vscode.commands.registerCommand(
-        "agorixStudio.signOut",
-        guarded(output, "Sign Out", () => signOut(context)),
-      ),
-      vscode.commands.registerCommand(
-        "agorixStudio.listRemoteProjects",
-        guarded(output, "List Remote Projects", () => listRemoteProjects(context)),
-      ),
-      vscode.commands.registerCommand(
-        "agorixStudio.openRemoteProject",
-        guarded(output, "Open Remote Project", () => openRemoteProject(context)),
-      ),
-      vscode.commands.registerCommand(
-        "agorixStudio.saveRemoteProject",
-        guarded(output, "Save Remote Project", () => saveRemoteProject(context)),
-      ),
-      vscode.commands.registerCommand(
-        "agorixStudio.openProjection",
-        guarded(output, "Open Projection", openProjection),
-      ),
-      vscode.commands.registerCommand(
-        "agorixStudio.switchProjection",
-        guarded(output, "Switch Projection", switchProjection),
-      ),
-      vscode.commands.registerCommand(
-        "agorixStudio.revealCanonicalNode",
-        guarded(output, "Reveal Canonical Node", revealCanonicalNode),
-      ),
-      vscode.commands.registerCommand(
-        "agorixStudio.openWorldPreview",
-        guarded(output, "Open World Preview", openWorldPreview),
-      ),
-      vscode.commands.registerCommand("agorixStudio.run", guarded(output, "Run", runExecution)),
-      vscode.commands.registerCommand("agorixStudio.step", guarded(output, "Step", stepExecution)),
-      vscode.commands.registerCommand(
-        "agorixStudio.reset",
-        guarded(output, "Reset", resetExecution),
-      ),
-      vscode.commands.registerCommand("agorixStudio.stop", guarded(output, "Stop", stopExecution)),
-      vscode.commands.registerCommand(
-        "agorixStudio.selectExecutionStep",
-        guarded(output, "Select Execution Step", selectExecutionStep),
-      ),
-      vscode.commands.registerCommand(
-        "agorixStudio.companionExplain",
-        guarded(output, "Explain", () => companionCommand("explain")),
-      ),
-      vscode.commands.registerCommand(
-        "agorixStudio.companionChallenge",
-        guarded(output, "Challenge", () => companionCommand("challenge")),
-      ),
-      vscode.commands.registerCommand(
-        "agorixStudio.companionDebug",
-        guarded(output, "Debug", () => companionCommand("debug")),
-      ),
-      vscode.commands.registerCommand(
-        "agorixStudio.companionReflect",
-        guarded(output, "Reflect", () => companionCommand("reflect")),
-      ),
-      vscode.commands.registerCommand(
-        "agorixStudio.companionBuild",
-        guarded(output, "Build", () => companionCommand("build")),
-      ),
-      vscode.commands.registerCommand(
-        "agorixStudio.suggestFirstStep",
-        guarded(output, "Suggest first step", suggestFirstStepCommand),
-      ),
-      vscode.commands.registerCommand(
-        "agorixStudio.applyProposal",
-        guarded(output, "Apply Proposal", applyActiveProposal),
-      ),
-      vscode.commands.registerCommand(
-        "agorixStudio.rejectProposal",
-        guarded(output, "Reject Proposal", rejectActiveProposal),
-      ),
-      vscode.commands.registerCommand(
-        "agorixStudio.revealProposalAffectedNode",
-        guarded(output, "Reveal Proposal Affected Node", revealProposalAffectedNode),
-      ),
-      vscode.commands.registerCommand(
-        "agorixStudio.undoProposal",
-        guarded(output, "Undo Proposal", undoProposal),
-      ),
-      vscode.commands.registerCommand(
-        "agorixStudio.redoProposal",
-        guarded(output, "Redo Proposal", redoProposal),
-      ),
-      vscode.commands.registerCommand(
-        "agorixStudio.showEvidence",
-        guarded(output, "Show Execution Evidence", () => showEvidence(output)),
-      ),
-      vscode.commands.registerCommand(
-        "agorixStudio.validateProject",
-        guarded(output, "Validate Project", () => validateProjectCommand(output)),
-      ),
-      vscode.commands.registerCommand(
-        "agorixStudio.runChecks",
-        guarded(output, "Run Checks", runChecksCommand),
-      ),
-      vscode.commands.registerCommand(
-        "agorixStudio.openWorkbench",
-        guarded(output, "Open Workbench", async () => {
+        },
+        setAgentCredential: () => setAgentCredential(context),
+        clearAgentCredential: () => clearAgentCredential(context),
+        signIn: () => signIn(context),
+        signOut: () => signOut(context),
+        listRemoteProjects: () => listRemoteProjects(context),
+        openRemoteProject: () => openRemoteProject(context),
+        saveRemoteProject: () => saveRemoteProject(context),
+        openProjection,
+        switchProjection,
+        revealCanonicalNode,
+        openWorldPreview,
+        runExecution,
+        stepExecution,
+        resetExecution,
+        stopExecution,
+        selectExecutionStep,
+        companionExplain: () => companionCommand("explain"),
+        companionChallenge: () => companionCommand("challenge"),
+        companionDebug: () => companionCommand("debug"),
+        companionReflect: () => companionCommand("reflect"),
+        companionBuild: () => companionCommand("build"),
+        suggestFirstStep: suggestFirstStepCommand,
+        applyProposal: applyActiveProposal,
+        rejectProposal: rejectActiveProposal,
+        revealProposalAffectedNode,
+        undoProposal,
+        redoProposal,
+        showEvidence: () => showEvidence(output),
+        validateProject: () => validateProjectCommand(output),
+        runChecks: runChecksCommand,
+        openWorkbench: async () => {
           if (requireProject() === undefined) {
             return;
           }
           openWorkbenchPanel(context, workbenchPort());
           refreshWorkbench();
-        }),
-      ),
-      vscode.commands.registerCommand(
-        "agorixStudio.showDeveloperContext",
-        guarded(output, "Show Developer Context", () => showDeveloperContext(output)),
-      ),
-      vscode.commands.registerCommand("agorixStudio.openScm", guarded(output, "Open SCM", openScm)),
-      vscode.commands.registerCommand(
-        "agorixStudio.suggestRepeat",
-        guarded(output, "Suggest repeat", suggestRepeatCommand),
-      ),
+        },
+        showDeveloperContext: () => showDeveloperContext(output),
+        openScm,
+        suggestRepeat: suggestRepeatCommand,
+      }),
     );
     updateStudioContext();
     // Fire and forget: a slow or failing provider must never delay activation or editing.
@@ -1556,13 +1238,8 @@ export function activate(context: vscode.ExtensionContext): void {
 
 export function deactivate(): void {
   disposeWorkbench();
-  current = undefined;
-  executionEvidence = undefined;
-  worldPreviewPanel = undefined;
-  activeProposal = undefined;
-  companionTurns.length = 0;
-  undoStack.length = 0;
-  redoStack.length = 0;
+  disposeWorldPreview();
+  clearStudioSession(session);
 }
 
 let refreshStudioViews: () => void = () => undefined;
