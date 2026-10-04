@@ -632,9 +632,9 @@ describe("Studio extension wiring", () => {
     handlers.clear();
     failRegistration = true;
     const extension = await import("./extension.js");
-    expect(() => extension.activate({ subscriptions: [] } as never)).toThrow(
-      "registration refused",
-    );
+    expect(() =>
+      extension.activate({ subscriptions: [], asAbsolutePath: (p: string) => p } as never),
+    ).toThrow("registration refused");
     expect(shown.some((m) => m.includes("activation failed"))).toBe(true);
   });
 });
