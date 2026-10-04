@@ -55,6 +55,7 @@ import {
   type StudioRemoteClient,
   type StoredSnapshot,
 } from "./store/session.js";
+import { homedir } from "node:os";
 import { openWorkbenchPanel, refreshWorkbench, disposeWorkbench } from "./host/workbenchPanel.js";
 import {
   openWorldPreviewPanel,
@@ -306,6 +307,7 @@ async function openProject(target?: unknown): Promise<void> {
   refreshCompanionViews();
   updateStudioContext();
   await openProjection(session.currentProjectionId);
+  await revealStudioPanels();
 }
 
 async function createProject(target?: unknown): Promise<vscode.Uri | undefined> {
@@ -327,8 +329,15 @@ async function createProject(target?: unknown): Promise<vscode.Uri | undefined> 
   refreshCompanionViews();
   updateStudioContext();
   await openProjection(session.currentProjectionId);
+  await revealStudioPanels();
   void vscode.window.showInformationMessage(`Created Agorix project: ${picked.uri.fsPath}`);
   return picked.uri;
+}
+
+/** Shows Mundo Agorix beside the editor and focuses the Learning Companion view. */
+async function revealStudioPanels(): Promise<void> {
+  openWorldPreview();
+  await vscode.commands.executeCommand("agorixStudio.companion.focus");
 }
 
 async function promptForCreateProjectOptions(): Promise<CreateProjectCommandOptions | undefined> {
@@ -374,10 +383,8 @@ async function promptForCreateProjectOptions(): Promise<CreateProjectCommandOpti
 
   const filename = defaultStudioProjectFilename(name);
   const workspace = vscode.workspace.workspaceFolders?.[0];
-  const defaultUri =
-    workspace === undefined
-      ? vscode.Uri.file(filename)
-      : vscode.Uri.file(`${workspace.uri.fsPath.replace(/[\\/]$/, "")}/${filename}`);
+  const baseDir = workspace === undefined ? homedir() : workspace.uri.fsPath;
+  const defaultUri = vscode.Uri.file(`${baseDir.replace(/[\\/]$/, "")}/${filename}`);
   const uri = await vscode.window.showSaveDialog({
     filters: { "Agorix portable project": ["agorix"] },
     saveLabel: "Create Agorix project",

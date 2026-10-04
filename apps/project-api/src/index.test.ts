@@ -114,6 +114,53 @@ describe("project api", () => {
     expect(res.headers["cache-control"]).toBe("no-store");
   });
 
+  it("authorizes with explicit register, sign-in and sign-out routes", async () => {
+    const { api } = setup();
+    const register = await api.handle({
+      method: "POST",
+      url: "/v1/auth/register",
+      headers: { origin: ORIGIN, [CSRF_HEADER_NAME]: "1", "content-type": "application/json" },
+      body: JSON.stringify({ username: "Dana", password: PASSWORD }),
+    });
+    expect(register.status).toBe(201);
+    expect(rec(register).account.alias).toBe("Dana");
+    expect(JSON.stringify(register.body)).not.toMatch(/password|token|session/i);
+
+    const signed = await api.handle({
+      method: "POST",
+      url: "/v1/auth/sign-in",
+      headers: { origin: ORIGIN, [CSRF_HEADER_NAME]: "1", "content-type": "application/json" },
+      body: JSON.stringify({ username: "dana", password: PASSWORD }),
+    });
+    expect(signed.status).toBe(200);
+    const cookie = signed.headers["set-cookie"]!;
+    expect(cookie).toContain(SESSION_COOKIE_NAME);
+    expect(JSON.stringify(signed.body)).not.toMatch(/accountId|token|password/i);
+
+    const session = await api.handle({
+      method: "GET",
+      url: "/v1/session",
+      headers: { cookie },
+    });
+    expect(session.status).toBe(200);
+
+    const currentCookie = session.headers["set-cookie"] ?? cookie;
+    const signedOut = await api.handle({
+      method: "POST",
+      url: "/v1/auth/sign-out",
+      headers: { cookie: currentCookie, origin: ORIGIN, [CSRF_HEADER_NAME]: "1" },
+    });
+    expect(signedOut.status).toBe(204);
+    expect(signedOut.headers["set-cookie"]).toContain("Max-Age=0");
+
+    const after = await api.handle({
+      method: "GET",
+      url: "/v1/session",
+      headers: { cookie: currentCookie },
+    });
+    expect(after.status).toBe(401);
+  });
+
   it("supports owner CRUD, rename, duplicate and delete", async () => {
     const { client } = setup();
     const a = await client("alice");
@@ -390,6 +437,15 @@ describe("project api", () => {
     const a = await client("alice");
     const api = createProjectApi({
       auth: {
+        register: async () => {
+          throw new Error("db down secret-detail");
+        },
+        signIn: async () => {
+          throw new Error("db down secret-detail");
+        },
+        signOut: async () => {
+          throw new Error("db down secret-detail");
+        },
         resolveSession: async () => {
           throw new Error("db down secret-detail");
         },

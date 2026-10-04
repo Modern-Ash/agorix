@@ -279,6 +279,8 @@ const repeated = stored(
   ]),
 );
 
+const workbenchPanel = () => webviewPanels.find((panel) => panel.html.includes("Agorix Workbench"));
+
 async function openFile(path: string, content: string) {
   files.set(path, new TextEncoder().encode(content));
   picked = { fsPath: path };
@@ -392,29 +394,35 @@ describe("Studio extension wiring", () => {
   it("opens one Workbench beside the current project and ignores malformed messages", async () => {
     await handlers.get("agorixStudio.openWorkbench")!();
     expect(shown.at(-1)).toContain("Open an Agorix project first");
-    expect(webviewPanels).toHaveLength(0);
+    expect(workbenchPanel()).toBeUndefined();
 
     await openFile("/p/workbench.json", stored([]));
     await handlers.get("agorixStudio.openWorkbench")!();
     await handlers.get("agorixStudio.openWorkbench")!();
 
-    expect(webviewPanels).toHaveLength(1);
-    expect(webviewPanels[0]?.reveal).toHaveBeenCalledTimes(1);
-    expect(webviewPanels[0]?.html).toContain("Content-Security-Policy");
-    expect(webviewPanels[0]?.html).toContain("Agorix Workbench");
-    expect(webviewPanels[0]?.messages.at(-1)).toMatchObject({ type: "workspace" });
+    expect(webviewPanels.filter((p) => p.html.includes("Agorix Workbench"))).toHaveLength(1);
+    expect(workbenchPanel()?.reveal).toHaveBeenCalledTimes(1);
+    expect(workbenchPanel()?.html).toContain("Content-Security-Policy");
+    expect(workbenchPanel()?.html).toContain("Agorix Workbench");
+    expect(workbenchPanel()?.messages.at(-1)).toMatchObject({ type: "workspace" });
 
     const before = new TextDecoder().decode(files.get("/p/workbench.json"));
-    expect(() => webviewPanels[0]?.receive({})).not.toThrow();
-    expect(() => webviewPanels[0]?.receive("x")).not.toThrow();
+    expect(() => workbenchPanel()?.receive({})).not.toThrow();
+    expect(() => workbenchPanel()?.receive("x")).not.toThrow();
     expect(() =>
-      webviewPanels[0]?.receive({
+      workbenchPanel()?.receive({
         schema: "agorix/studio-protocol/v1",
         type: "intent",
         intent: { type: "revealNode", nodeId: "/etc/passwd" },
       }),
     ).not.toThrow();
     expect(new TextDecoder().decode(files.get("/p/workbench.json"))).toBe(before);
+  });
+
+  it("reveals Mundo Agorix and the Companion when a project is opened", async () => {
+    await openFile("/p/reveal.json", stored([]));
+    expect(webviewPanels.some((panel) => panel.html.includes("Mundo Agorix"))).toBe(true);
+    expect(commandCalls).toContainEqual(["agorixStudio.companion.focus"]);
   });
 
   it("shows clean-install project actions before a project is open", () => {
@@ -686,7 +694,7 @@ describe("Studio extension wiring", () => {
     const original = new TextDecoder().decode(files.get("/p/workbench-edit.json"));
     await handlers.get("agorixStudio.openWorkbench")!();
 
-    webviewPanels[0]?.receive({
+    workbenchPanel()?.receive({
       schema: "agorix/studio-protocol/v1",
       type: "intent",
       intent: {
@@ -712,7 +720,7 @@ describe("Studio extension wiring", () => {
       },
     );
 
-    webviewPanels[0]?.receive({
+    workbenchPanel()?.receive({
       schema: "agorix/studio-protocol/v1",
       type: "intent",
       intent: {
@@ -735,28 +743,28 @@ describe("Studio extension wiring", () => {
     const original = new TextDecoder().decode(files.get("/p/agent.json"));
     await handlers.get("agorixStudio.openWorkbench")!();
     const schema = "agorix/studio-protocol/v1";
-    const types = () => webviewPanels[0]?.messages.map((m) => (m as { type: string }).type) ?? [];
-    webviewPanels[0]?.receive({ schema, type: "ready" });
+    const types = () => workbenchPanel()?.messages.map((m) => (m as { type: string }).type) ?? [];
+    workbenchPanel()?.receive({ schema, type: "ready" });
     await flushWorkbench();
     expect(types()).toEqual(expect.arrayContaining(["workspace", "agreements", "workflow"]));
 
-    webviewPanels[0]?.receive({ schema, type: "stateIntent", text: "make it move" });
+    workbenchPanel()?.receive({ schema, type: "stateIntent", text: "make it move" });
     await flushWorkbench();
-    expect(webviewPanels[0]?.messages.at(-1)).toMatchObject({ type: "plan" });
-    webviewPanels[0]?.receive({ schema, type: "stateIntent", text: "x".repeat(200) });
+    expect(workbenchPanel()?.messages.at(-1)).toMatchObject({ type: "plan" });
+    workbenchPanel()?.receive({ schema, type: "stateIntent", text: "x".repeat(200) });
     await flushWorkbench();
     expect(new TextDecoder().decode(files.get("/p/agent.json"))).toBe(original);
 
-    webviewPanels[0]?.receive({ schema, type: "acceptPlan" });
-    webviewPanels[0]?.receive({ schema, type: "requestProposal" });
+    workbenchPanel()?.receive({ schema, type: "acceptPlan" });
+    workbenchPanel()?.receive({ schema, type: "requestProposal" });
     await flushWorkbench();
-    const proposal = webviewPanels[0]?.messages.find(
+    const proposal = workbenchPanel()?.messages.find(
       (m) => (m as { type: string }).type === "proposal",
     );
     expect(proposal).toBeDefined();
     expect(new TextDecoder().decode(files.get("/p/agent.json"))).toBe(original);
 
-    webviewPanels[0]?.receive({
+    workbenchPanel()?.receive({
       schema,
       type: "decideProposal",
       proposalId: (proposal as { proposalId: string }).proposalId,
@@ -765,9 +773,9 @@ describe("Studio extension wiring", () => {
     await flushWorkbench();
     expect(new TextDecoder().decode(files.get("/p/agent.json"))).toBe(original);
 
-    webviewPanels[0]?.receive({ schema, type: "requestProposal" });
+    workbenchPanel()?.receive({ schema, type: "requestProposal" });
     await flushWorkbench();
-    webviewPanels[0]?.receive({
+    workbenchPanel()?.receive({
       schema,
       type: "decideProposal",
       proposalId: (proposal as { proposalId: string }).proposalId,
