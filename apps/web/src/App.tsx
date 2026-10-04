@@ -67,7 +67,8 @@ import {
   rejectProposal,
   type ProposalReview,
 } from "@agorix/proposals";
-import { runProgram, type RunResult, type WorldState } from "@agorix/runtime";
+import { runProgram, touchingGoal, type RunResult, type WorldState } from "@agorix/runtime";
+import type { PredictionAnswer } from "@agorix/agent-workflow";
 import {
   deriveStageFeedback,
   executionStepsFromRuntimeObservations,
@@ -94,6 +95,7 @@ import {
   duplicateBlockInWorkspace,
   editNumericBlockFieldAt,
   indexInContainer,
+  finalMoveIndex,
   moveBlockInWorkspaceByPath,
   parentContainerPath,
   resetWorkspace,
@@ -114,6 +116,10 @@ import {
 } from "./projectStorage.js";
 import { loadPresentationPrefs, savePresentationPrefs } from "./presentationPrefs.js";
 import { LOCALE_LABELS, t, type Locale, type MessageKey } from "./i18n.js";
+import { PredictionChip, PredictionComparison } from "./PredictionChip.js";
+import { AgentCompanion, companionMood } from "./AgentCompanion.js";
+import { GhostAddedBlocks } from "./GhostBlocks.js";
+import { ghostMarksFor, type GhostMarkKind } from "./ghostMarks.js";
 import { ProvenanceLabel } from "./ProvenanceLabel.js";
 import { AccountUi, useWorkspace } from "./accounts/AccountUi.js";
 import type { AccountBackend, ProjectDto } from "./accounts/clients.js";
@@ -1135,6 +1141,7 @@ export function ProgramBlockCard({
   depth,
   selected,
   suggestionAffected,
+  ghost,
   canonicalNodeId,
   locale,
   children,
@@ -1157,6 +1164,7 @@ export function ProgramBlockCard({
   depth: number;
   selected: boolean;
   suggestionAffected: boolean;
+  ghost?: GhostMarkKind | undefined;
   canonicalNodeId: string;
   locale: Locale;
   children?: ReactNode;
@@ -1255,7 +1263,14 @@ export function ProgramBlockCard({
     <article
       className={`block-node block-card block-${blockTone} block-shape-${blockShape}${
         selected ? " active" : ""
-      }${suggestionAffected ? " suggestion-affected" : ""}`}
+      }${suggestionAffected ? " suggestion-affected" : ""}${
+        ghost === undefined ? "" : ` ghost-${ghost}`
+      }`}
+      aria-description={
+        ghost === undefined
+          ? undefined
+          : t(locale, ghost === "removed" ? "ghostWouldRemove" : "ghostWouldChange")
+      }
       style={{ marginLeft: `${depth * 22}px` }}
       aria-label={t(locale, "blockLabel", { name: displayName })}
       data-interaction-model="touch-first drag-drop keyboard-reorder"
@@ -1710,6 +1725,11 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
   const [worldId, setWorldId] = useState<string>(() => loadPresentationPrefs().worldId);
   const [stepping, setStepping] = useState(false);
   const [firstStepDeclined, setFirstStepDeclined] = useState(false);
+  const [prediction, setPrediction] = useState<PredictionAnswer | undefined>();
+  const [observedGoal, setObservedGoal] = useState<boolean | undefined>();
+  const [agentEnabled, setAgentEnabled] = useState<boolean>(
+    () => loadPresentationPrefs().agentEnabled,
+  );
   const [repeatDeclines, setRepeatDeclines] = useState(
     () => loadPresentationPrefs().repeatDeclines,
   );
@@ -1749,8 +1769,8 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
   const proposalCard =
     proposalReview === undefined ? undefined : createWebProposalCardView(proposalReview);
   useEffect(() => {
-    savePresentationPrefs({ worldId, repeatDeclines });
-  }, [worldId, repeatDeclines]);
+    savePresentationPrefs({ worldId, repeatDeclines, agentEnabled });
+  }, [worldId, repeatDeclines, agentEnabled]);
   const reducedMotion = usePrefersReducedMotion();
   const stageFeedback = deriveStageFeedback({
     frames: executionSteps.length > 0 ? executionSteps.map((step) => step.frame) : frames,
@@ -1805,9 +1825,11 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
           declinedCount: 0,
         },
   );
-  const firstStepOffer = firstStepDecision?.action === "offer" ? firstStepProposal : undefined;
+  const firstStepOffer =
+    agentEnabled && firstStepDecision?.action === "offer" ? firstStepProposal : undefined;
   const firstStepReviewActive = proposalReview?.proposal.source.capability === "first-step";
-  const repeatOffer = repeatDecision?.action === "offer" ? repeatProposal : undefined;
+  const repeatOffer =
+    agentEnabled && repeatDecision?.action === "offer" ? repeatProposal : undefined;
   const missionStep =
     status === "complete" || status === "freeplay" ? 3 : attempts > 0 || status === "retry" ? 2 : 1;
   const layaSignal =
@@ -1953,6 +1975,8 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     setTutorResponse(undefined);
     setLastRunResult(undefined);
     setReflectionPrompt(undefined);
+    setPrediction(undefined);
+    setObservedGoal(undefined);
     setProposalReview(undefined);
     setProposalMessage(undefined);
     setLearningDecision(undefined);
@@ -2335,6 +2359,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
       return;
     }
     setStepping(false);
+    setObservedGoal(undefined);
     if (statements.length === 0) {
       setStatus("error");
       setMessage(t(locale, "emptyRunMessage"));
@@ -2354,6 +2379,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
             window.clearInterval(timerRef.current);
             timerRef.current = undefined;
             const feedback = resultFeedback(result, locale, mission);
+            setObservedGoal(touchingGoal(result.world));
             setStatus(feedback.completed ? "complete" : "retry");
             setMessage(feedback.message);
             setReflectionPrompt(feedback.reflectionPrompt);
@@ -2392,6 +2418,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
       setHighlightedNodeId(nextSteps[nextIndex]?.nodeId);
       if (nextIndex >= nextSteps.length - 1) {
         const feedback = resultFeedback(result, locale, mission);
+        setObservedGoal(touchingGoal(result.world));
         setStatus(feedback.completed ? "complete" : "retry");
         setMessage(feedback.message);
         setReflectionPrompt(feedback.reflectionPrompt);
@@ -2437,6 +2464,15 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
   function recordAiPrediction() {
     setAiPredictionRecorded(true);
     setProposalMessage(t(locale, "aiLiteracyPredictionRecorded"));
+  }
+
+  function toggleAgent(next: boolean) {
+    setAgentEnabled(next);
+    if (!next) {
+      setProposalReview(undefined);
+      setProposalMessage(undefined);
+      setHighlightedNodeId(undefined);
+    }
   }
 
   function tryFirstStep() {
@@ -2691,7 +2727,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
         model.workspace,
         source,
         targetContainerPath,
-        targetIndex,
+        finalMoveIndex(source, targetContainerPath, targetIndex),
       );
       if (commitProjection("move block", projection)) {
         setMessage(t(locale, "programUpdatedMessage"));
@@ -2702,6 +2738,10 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     }
   }
 
+  const ghostMarks = useMemo(
+    () => ghostMarksFor(proposalReview, model.workspace),
+    [proposalReview, model.workspace],
+  );
   const contextualAffectedNodeIds =
     proposalReview?.proposal.affectedNodeIds ?? repeatOffer?.affectedNodeIds ?? [];
 
@@ -2721,6 +2761,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
           depth={depth}
           selected={highlightedNodeId === nodeId}
           suggestionAffected={contextualAffectedNodeIds.includes(nodeId)}
+          ghost={ghostMarks.byPath.get(path.join("."))}
           canonicalNodeId={nodeId}
           locale={locale}
           onSelect={() => setHighlightedNodeId(nodeId)}
@@ -2923,6 +2964,12 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
                 <li>{t(locale, "startReflectShort")}</li>
               </ol>
             </section>
+          ) : null}
+          {agentEnabled && statements.length > 0 && status !== "running" ? (
+            <PredictionChip locale={locale} answer={prediction} onAnswer={setPrediction} />
+          ) : null}
+          {agentEnabled && (status === "complete" || status === "retry") ? (
+            <PredictionComparison locale={locale} answer={prediction} reachedGoal={observedGoal} />
           ) : null}
           {persistenceMessage === undefined ? null : (
             <strong className="run-state run-state-error">{persistenceMessage}</strong>
@@ -3160,6 +3207,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
                 </div>
               ) : null}
               {renderWorkspaceBlocks()}
+              <GhostAddedBlocks texts={ghostMarks.added} locale={locale} />
             </div>
           </section>
         )}
@@ -3181,9 +3229,27 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
               </span>
               {panelControls("companion")}
             </div>
-            <div className="ai-guide" aria-hidden="true">
-              <img className="agorix-agent-active" src="/brand/agorix-agent-active.svg" alt="" />
-            </div>
+            <AgentCompanion
+              locale={locale}
+              enabled={agentEnabled}
+              mood={companionMood({
+                enabled: agentEnabled,
+                hasOffer: firstStepOffer !== undefined || repeatOffer !== undefined,
+                reviewing: proposalReview !== undefined,
+              })}
+              message={
+                proposalReview !== undefined
+                  ? proposalMessage
+                  : firstStepOffer !== undefined
+                    ? t(locale, "firstStepTitle")
+                    : repeatOffer !== undefined
+                      ? t(locale, "repeatSuggestionTitle", {
+                          count: detectRepeatPattern(model.program)?.count ?? 0,
+                        })
+                      : undefined
+              }
+              onToggle={toggleAgent}
+            />
             <div className="ai-coach-card">
               <div className="ai-coach-card-header">
                 <strong>{t(locale, "aiCoachMode")}</strong>
@@ -3237,12 +3303,14 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
             {proposalMessage === t(locale, "proposalAccepted") ? (
               <ProvenanceLabel kind="accepted" locale={locale} />
             ) : null}
-            <IntentDialogue
-              locale={locale}
-              program={model.program}
-              mission={mission}
-              selectedNodeIds={highlightedNodeId === undefined ? [] : [highlightedNodeId]}
-            />
+            {agentEnabled ? (
+              <IntentDialogue
+                locale={locale}
+                program={model.program}
+                mission={mission}
+                selectedNodeIds={highlightedNodeId === undefined ? [] : [highlightedNodeId]}
+              />
+            ) : null}
             {firstStepOffer === undefined ? null : (
               <div
                 className="ai-welcome"
@@ -3262,9 +3330,11 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
               </div>
             )}
             <div className="tutor-actions">
-              <button type="button" onClick={previewImperfectAiProposal}>
-                {t(locale, "aiLiteracyActivity")}
-              </button>
+              {agentEnabled ? (
+                <button type="button" onClick={previewImperfectAiProposal}>
+                  {t(locale, "aiLiteracyActivity")}
+                </button>
+              ) : null}
               <button type="button" onClick={requestHint}>
                 {t(locale, "getHint")}
               </button>
