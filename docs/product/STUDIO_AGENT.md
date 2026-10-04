@@ -146,4 +146,17 @@ Implemented in the Workbench (Plan D, deterministic System-0 scaffolds only, no 
 - visible agent agreements (agent on/off, supervised or bounded mode, help level ceiling);
 - non-PII `AgentEvent`s held in memory for the session.
 
-Not yet implemented: provider-backed proposals, the modify decision, alternatives, proactive offers and CodeLens, evidence export, Mission Spec editing and density levels.
+## Ambient presence slice
+
+Implemented in the VS Code host (issue #250, no provider calls before acceptance):
+
+- quiet-by-default status indicator with available, working, off and budget-capped states;
+- quick-pick offers that expose actions, not generated content;
+- CodeLens and code actions on the selected projection nodes and the node implicated by runtime failure;
+- System-0 proactive policy connected to Studio signals for first step, repeated patterns, runtime errors, stalls and repeated errors;
+- optional LAYA veto transport that can only make the agent quieter;
+- per-session memory for declined and ignored offers, plus budget and agent-agreement checks.
+
+The value is practical: learners get context-aware help where they are working, while the product preserves attention, trust and token economy. The next slice should connect accepted ambient actions to Workbench anchors, non-PII evidence export and the full LAYA/provider routing path.
+
+Not yet implemented: provider-backed proposals, the modify decision, alternatives, evidence export, Mission Spec editing and density levels.
