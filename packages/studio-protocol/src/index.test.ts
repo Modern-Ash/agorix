@@ -106,4 +106,91 @@ describe("studio-protocol", () => {
     expect(parseHostMessage({ schema, type: "error", code: "INVALID_CHANGE" })).toBeDefined();
     expect(parseHostMessage({ schema, type: "error", code: "x" })).toBeUndefined();
   });
+
+  it("round-trips and bounds the agent loop messages", () => {
+    const ok = [
+      { schema, type: "stateIntent", text: "make it move" },
+      { schema, type: "acceptPlan" },
+      { schema, type: "requestProposal" },
+      { schema, type: "predict", answer: "yes" },
+      { schema, type: "skipPrediction" },
+      { schema, type: "run" },
+      { schema, type: "continue" },
+      { schema, type: "explain", concept: "sequence" },
+      { schema, type: "skipExplain" },
+    ];
+    for (const message of ok) {
+      expect(parseUiMessage(message)).toEqual(message);
+    }
+    for (const bad of [
+      { schema, type: "stateIntent", text: "" },
+      { schema, type: "stateIntent", text: "a".repeat(141) },
+      { schema, type: "stateIntent", text: 4 },
+      { schema, type: "predict", answer: "maybe" },
+      { schema, type: "explain", concept: "magic" },
+    ]) {
+      expect(parseUiMessage(bad)).toBeUndefined();
+    }
+    const hostOk = [
+      {
+        schema,
+        type: "plan",
+        tasks: [{ id: "first-step", title: "Try one visible movement step" }],
+      },
+      {
+        schema,
+        type: "proposal",
+        proposalId: "first-step",
+        purpose: "p",
+        rationale: "r",
+        changes: [
+          { kind: "added", afterText: "move(10)" },
+          { kind: "changed", blockId: "block:a" },
+        ],
+      },
+      { schema, type: "proposalCleared" },
+      { schema, type: "prediction", questionId: "reaches-goal", options: ["yes", "no"] },
+      {
+        schema,
+        type: "comparison",
+        predicted: "skipped",
+        reachedGoal: false,
+        result: "skipped",
+        stepsUsed: 3,
+      },
+      { schema, type: "explainPrompt", options: ["sequence", "repetition"] },
+      { schema, type: "explainFeedback", result: "other" },
+      { schema, type: "agreements", agreements: DEFAULT_AGREEMENTS },
+      { schema, type: "error", code: "STALE_PROPOSAL" },
+    ];
+    for (const message of hostOk) {
+      expect(parseHostMessage(message)).toEqual(message);
+    }
+    const proposal = {
+      schema,
+      type: "proposal",
+      proposalId: "p",
+      purpose: "p",
+      rationale: "r",
+      changes: [],
+    };
+    for (const bad of [
+      { ...proposal, changes: Array.from({ length: 51 }, () => ({ kind: "added" })) },
+      { ...proposal, purpose: "x".repeat(301) },
+      { ...proposal, proposalId: "/etc/passwd" },
+      { schema, type: "plan", tasks: [{ id: "nope", title: "t" }] },
+      {
+        schema,
+        type: "comparison",
+        predicted: "yes",
+        reachedGoal: true,
+        result: "matched",
+        stepsUsed: -1,
+      },
+      { schema, type: "prediction", questionId: "reaches-goal", options: [] },
+    ]) {
+      expect(parseHostMessage(bad)).toBeUndefined();
+    }
+    expect(parseHostMessage({ ...proposal, extra: 1 })).not.toHaveProperty("extra");
+  });
 });
