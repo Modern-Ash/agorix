@@ -309,3 +309,4 @@ export * from "./builder-policy.js";
 export * from "./proactive.js";
 export * from "./studio-signals.js";
 export * from "./studio-context.js";
+export * from "./studio-pipeline.js";

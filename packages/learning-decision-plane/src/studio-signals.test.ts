@@ -78,14 +78,15 @@ describe("studio context builder", () => {
   });
 
   it("copies only whitelisted fields", () => {
-    const ctx = buildStudioContext({
+    const untrusted = {
       ...base,
       userName: "Ana",
       email: "ana@example.com",
       accountId: "acct-9",
       sessionId: "s-1",
       filePath: "/home/faguero/proj/a.agorix",
-    });
+    };
+    const ctx = buildStudioContext(untrusted);
     const json = JSON.stringify(ctx);
     for (const leak of ["Ana", "ana@", "acct-9", "s-1", "/home", "secret", "message", "path"]) {
       expect(json).not.toContain(leak);
