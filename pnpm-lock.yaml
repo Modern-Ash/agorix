@@ -33,6 +33,24 @@ importers:
         specifier: ^4.1.11
         version: 4.1.11(@types/node@26.6.2)(vite@7.3.6(@types/node@26.6.2))
 
+  apps/project-api:
+    dependencies:
+      '@agorix/auth-service':
+        specifier: workspace:*
+        version: link:../../packages/auth-service
+      '@agorix/persistence':
+        specifier: workspace:*
+        version: link:../../packages/persistence
+      '@agorix/platform-contract':
+        specifier: workspace:*
+        version: link:../../packages/platform-contract
+      '@agorix/program-model':
+        specifier: workspace:*
+        version: link:../../packages/program-model
+      '@agorix/project-repository':
+        specifier: workspace:*
+        version: link:../../packages/project-repository
+
   apps/tutor-api:
     dependencies:
       '@agorix/provider-runtime':

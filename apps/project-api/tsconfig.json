@@ -1,0 +1,22 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"],
+    "paths": {
+      "@agorix/auth-service": ["../../packages/auth-service/src/index.ts"],
+      "@agorix/persistence": ["../../packages/persistence/src/index.ts"],
+      "@agorix/platform-contract": ["../../packages/platform-contract/src/index.ts"],
+      "@agorix/program-model": ["../../packages/program-model/src/index.ts"],
+      "@agorix/project-repository": ["../../packages/project-repository/src/index.ts"]
+    }
+  },
+  "include": [
+    "src",
+    "../../packages/auth-service/src",
+    "../../packages/persistence/src",
+    "../../packages/platform-contract/src",
+    "../../packages/program-model/src",
+    "../../packages/project-repository/src"
+  ]
+}
