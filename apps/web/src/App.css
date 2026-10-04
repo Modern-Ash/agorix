@@ -4045,7 +4045,6 @@ button:hover:not(:disabled) {
   text-decoration: underline;
 }
 
-
 /* Agorix Agent: brand-derived activity indicator for contextual AI surfaces. */
 .ai-guide {
   display: grid;
