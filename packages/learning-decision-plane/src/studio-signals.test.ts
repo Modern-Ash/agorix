@@ -79,7 +79,7 @@ describe("studio context builder", () => {
   });
 
   it("copies only whitelisted fields", () => {
-    const ctx = buildStudioContext({
+    const untrusted = {
       ...base,
       userName: "Ana",
       email: "ana@example.com",
