@@ -36,6 +36,7 @@ const tests = [
       const all = await vscode.commands.getCommands(true);
       for (const id of [
         "agorixStudio.openProject",
+        "agorixStudio.openCanvasEditor",
         "agorixStudio.openProjection",
         "agorixStudio.openWorldPreview",
         "agorixStudio.exportAgorix",
@@ -81,6 +82,7 @@ const tests = [
           "agorixStudio.setAgentCredential",
           "agorixStudio.clearAgentCredential",
           "agorixStudio.openProject",
+          "agorixStudio.openCanvasEditor",
           "agorixStudio.openProjection",
           "agorixStudio.openWorldPreview",
           "agorixStudio.exportAgorix",

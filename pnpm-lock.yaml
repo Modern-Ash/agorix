@@ -138,6 +138,9 @@ importers:
       '@agorix/agorix-code':
         specifier: workspace:*
         version: link:../../packages/agorix-code
+      '@agorix/block-editor':
+        specifier: workspace:*
+        version: link:../../packages/block-editor
       '@agorix/code-generator':
         specifier: workspace:*
         version: link:../../packages/code-generator

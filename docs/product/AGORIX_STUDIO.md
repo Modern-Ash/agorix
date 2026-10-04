@@ -90,6 +90,19 @@ Studio follows the #117 design system in an IDE-density form:
 - World Preview carries visual motivation without taking over product chrome;
 - runtime evidence stays adjacent to code/debugging context.
 
+## Canvas editor slice
+
+The Studio canvas editor is an IDE-native visual projection of the canonical program. It renders from
+`@agorix/block-editor` workspace projection data and writes only through canonical workspace
+transactions that validate back to `ProjectProgram`. The generated code projection remains visible
+beside the canvas, and World Preview / Execution Inspector continue to derive from the accepted
+program rather than canvas-local state.
+
+POC accessibility limit: the canvas exposes keyboard-focusable block buttons and toolbar actions, but
+it does not yet implement a full spatial keyboard reordering model or screen-reader equivalent for
+all future drag/drop gestures. Those gaps must stay documented until a later accessibility slice
+adds parity controls.
+
 ## #121 handoff
 
 This slice provides deterministic fixture semantics:
