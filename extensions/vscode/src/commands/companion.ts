@@ -20,7 +20,10 @@ export interface StudioCompanionCommandPort {
 }
 
 export interface StudioCompanionCommandHandlers {
-  companionCommand(action: StudioCompanionAction): Promise<StudioCompanionTurn | undefined>;
+  companionCommand(
+    action: StudioCompanionAction,
+    nodeId?: unknown,
+  ): Promise<StudioCompanionTurn | undefined>;
 }
 
 export function createStudioCompanionCommandHandlers(
@@ -28,12 +31,16 @@ export function createStudioCompanionCommandHandlers(
 ): StudioCompanionCommandHandlers {
   const companionCommand = async (
     action: StudioCompanionAction,
+    nodeId?: unknown,
   ): Promise<StudioCompanionTurn | undefined> => {
     const open = port.requireProject();
     if (open === undefined) {
       return undefined;
     }
-    const selected = port.currentExecutionView()?.currentFrame?.highlightedNodeId;
+    const selected =
+      typeof nodeId === "string"
+        ? nodeId
+        : port.currentExecutionView()?.currentFrame?.highlightedNodeId;
     const evidence = port.getExecutionEvidence();
     const turn = createCompanionTurn(open.project, action, {
       ...(selected === undefined ? {} : { selectedNodeIds: [selected] }),

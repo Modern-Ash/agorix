@@ -20,6 +20,7 @@ export interface StudioExecutionCommandPort {
   setStatus(status: StudioExecutionStatus): void;
   refreshExecutionViews(): void;
   revealCanonicalNode(nodeId: string): Promise<void>;
+  didRunExecution?(view: StudioExecutionViewState): void;
 }
 
 export interface StudioExecutionCommandHandlers {
@@ -62,6 +63,7 @@ export function createStudioExecutionCommandHandlers(
     const view = createExecutionViewState(evidence, frameIndex, status);
     port.setFrameIndex(view.selectedFrameIndex);
     port.refreshExecutionViews();
+    port.didRunExecution?.(view);
     return view;
   };
 

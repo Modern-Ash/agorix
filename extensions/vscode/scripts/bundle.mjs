@@ -1,7 +1,17 @@
 // Bundles the extension and every workspace package it uses into one CommonJS file.
 // Workspace packages ship TypeScript sources and the extension host cannot resolve
 // pnpm workspace links inside a VSIX, so the VSIX must carry a self-contained bundle.
+import { URL } from "node:url";
 import { build } from "esbuild";
+
+const workspaceAlias = {
+  name: "workspace-alias",
+  setup(build) {
+    build.onResolve({ filter: /^@agorix\/agent-workflow$/ }, () => ({
+      path: new URL("../../../packages/agent-workflow/src/index.ts", import.meta.url).pathname,
+    }));
+  },
+};
 
 await build({
   entryPoints: ["src/extension.ts"],
@@ -25,5 +35,6 @@ await build({
   target: "es2022",
   jsx: "automatic",
   define: { "process.env.NODE_ENV": '"production"' },
+  plugins: [workspaceAlias],
   logLevel: "info",
 });

@@ -425,6 +425,26 @@ export function projectionRangeForNode(
   return range;
 }
 
+export function nodeIdsForProjectionLines(
+  document: StudioProjectionDocument,
+  startLine: number,
+  endLine: number,
+): readonly string[] {
+  const start = Math.min(startLine, endLine);
+  const end = Math.max(startLine, endLine);
+  return Object.entries(document.mapping)
+    .filter(([, range]) => {
+      const rangeStart = offsetToLine(document.text, range.start);
+      const rangeEnd = offsetToLine(document.text, Math.max(range.start, range.end - 1));
+      return rangeStart <= end && rangeEnd >= start;
+    })
+    .map(([nodeId]) => nodeId);
+}
+
+export function countProgramStatements(program: ProjectProgram): number {
+  return countTopLevelStatements(validateProgram(program));
+}
+
 export function semanticHash(program: ProjectProgram): string {
   return JSON.stringify(validateProgram(program));
 }
@@ -909,6 +929,10 @@ function blankProgram(): ProjectProgram {
 
 function countTopLevelStatements(program: ProjectProgram): number {
   return program.scripts.reduce((count, script) => count + script.statements.length, 0);
+}
+
+function offsetToLine(text: string, offset: number): number {
+  return text.slice(0, Math.max(0, offset)).split("\n").length - 1;
 }
 
 export function createProjectSnapshot(

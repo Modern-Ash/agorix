@@ -22,7 +22,21 @@ import {
 } from "./store/lifecycle.js";
 import { disposeWorkbench } from "./host/workbenchPanel.js";
 import { disposeWorldPreview } from "./host/worldPreviewPanel.js";
+import { createAgentPort } from "./host/agentPort.js";
 import { registerStudioViews } from "./views/register.js";
+import { AmbientController } from "./ambient/ambientController.js";
+import { registerAmbientLenses } from "./ambient/lenses.js";
+import { createHttpLayaTransport } from "./ambient/layaTransport.js";
+import { StudioSignalAdapter } from "./studioSignals.js";
+import {
+  countProgramStatements,
+  nodeIdsForProjectionLines,
+  openProjectionDocument,
+  semanticHash,
+  suggestRepeat,
+  type StudioCompanionAction,
+} from "./studioCore.js";
+import { canOffer } from "@agorix/agent-workflow";
 
 const session = createStudioSessionState();
 
@@ -44,12 +58,20 @@ export function activate(context: vscode.ExtensionContext): void {
   let refreshStudioViews: () => void = () => undefined;
   let refreshExecutionViews: () => void = () => undefined;
   let refreshCompanionViews: () => void = () => undefined;
+  const signalAdapterRef: { current?: StudioSignalAdapter } = {};
   const afterCanonicalProgramChange = (): void => {
     applyCanonicalProgramChange(session, {
       refreshStudioViews,
       refreshExecutionViews,
       refreshCompanionViews,
     });
+    const current = session.current?.project;
+    if (current !== undefined) {
+      signalAdapterRef.current?.programShape({
+        statementCount: countProgramStatements(current.stored.program),
+        repeatOccurrences: suggestRepeat(current) === undefined ? 0 : 3,
+      });
+    }
   };
 
   const output = vscode.window.createOutputChannel("Agorix Studio");
@@ -81,6 +103,18 @@ export function activate(context: vscode.ExtensionContext): void {
     },
     refreshExecutionViews: () => refreshExecutionViews(),
     revealCanonicalNode: (nodeId) => projectionCommands.revealCanonicalNode(nodeId),
+    didRunExecution: (view) => {
+      const failedNode =
+        view.currentFrame?.highlightedNodeId ??
+        [...view.inspectorSteps].reverse().find((step) => step.nodeId !== undefined)?.nodeId;
+      signalAdapterRef.current?.runResult({
+        ok: view.outcome !== "budget-exceeded",
+        code: view.outcome,
+        ...(view.outcome === "budget-exceeded" && failedNode !== undefined
+          ? { nodeId: failedNode }
+          : {}),
+      });
+    },
   });
   const proposalCommands = createStudioProposalCommandHandlers({
     requireProject,
@@ -109,6 +143,65 @@ export function activate(context: vscode.ExtensionContext): void {
     revealCanonicalNode: (nodeId) => projectionCommands.revealCanonicalNode(nodeId),
     reviewProposalSession: proposalCommands.reviewProposalSession,
   });
+  const ambientStatusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, -1);
+  const aiEnabled = (): boolean =>
+    vscode.workspace.getConfiguration("agorixStudio.agent").get("enabled", true) &&
+    session.agentAgreements.aiEnabled;
+  const agentConfig = () => vscode.workspace.getConfiguration("agorixStudio.agent");
+  const ambientBudgetLimit = (): number | undefined => {
+    const value = agentConfig().get("ambientBudgetRequests", 20);
+    return typeof value === "number" && Number.isInteger(value) ? Math.max(0, value) : 20;
+  };
+  const budgetRemaining = (): number | undefined => {
+    const limit = ambientBudgetLimit();
+    return limit === undefined ? undefined : Math.max(0, limit - session.ambientOffersUsed);
+  };
+  const layaTransport = createHttpLayaTransport({
+    endpoint: agentConfig().get("layaEndpoint", ""),
+    allowRemote: agentConfig().get("allowRemote", false),
+    timeoutMs: agentConfig().get("healthTimeoutMs", 1500),
+    fetch: (input, init) => fetch(input, init),
+  });
+  const ambientController = new AmbientController({
+    statusBarItem: ambientStatusItem,
+    programId: () =>
+      session.current === undefined
+        ? undefined
+        : semanticHash(session.current.project.stored.program),
+    executionStatus: () => session.executionStatus,
+    aiEnabled,
+    canOfferSignal: (kind) =>
+      kind === "runtime-error" ||
+      kind === "stalled" ||
+      kind === "repeated-error" ||
+      kind === "repeat-pattern" ||
+      kind === "first-step"
+        ? canOffer(session.agentAgreements, kind)
+        : true,
+    budgetRemaining,
+    recordOffer: () => {
+      session.ambientOffersUsed += 1;
+      const remaining = budgetRemaining();
+      session.ambientBudgetCapped = remaining !== undefined && remaining <= 0;
+    },
+    runCompanionAction: async (action) => {
+      const companionAction: StudioCompanionAction = action === "propose" ? "build" : action;
+      await companionCommands.companionCommand(companionAction);
+    },
+    ...(layaTransport === undefined ? {} : { layaTransport }),
+  });
+  const signalAdapter = new StudioSignalAdapter({
+    onSignal: (signal) => void ambientController.handleSignal(signal),
+    isStudioDocument: (document) => document.uri.scheme === "agorix-studio",
+    nodeIdsForLines: (startLine, endLine) => {
+      const current = session.current?.project;
+      if (current === undefined) return [];
+      const projection = openProjectionDocument(current, session.currentProjectionId);
+      return nodeIdsForProjectionLines(projection, startLine, endLine);
+    },
+  });
+  signalAdapterRef.current = signalAdapter;
+  context.subscriptions.push(ambientController, signalAdapter);
   const surfaceCommands = createStudioSurfaceCommandHandlers({
     context,
     requireProject,
@@ -119,7 +212,38 @@ export function activate(context: vscode.ExtensionContext): void {
     getActiveProposal: () => session.activeProposal,
     reviewProposalSession: proposalCommands.reviewProposalSession,
     revealCanonicalNode: (nodeId) => projectionCommands.revealCanonicalNode(nodeId),
+    updateAgentAgreements: (agreements) => {
+      session.agentAgreements = agreements;
+      if (!aiEnabled()) {
+        ambientController.clear();
+      }
+    },
+    agentPort: () =>
+      createAgentPort({
+        getProject: () => session.current?.project,
+        getActiveProposal: () => session.activeProposal,
+        setActiveProposal: (proposal) => {
+          session.activeProposal = proposal;
+          refreshCompanionViews();
+        },
+        applyActiveProposal: proposalCommands.applyActiveProposal,
+        rejectActiveProposal: proposalCommands.rejectActiveProposal,
+        runAndGetResult: () => {
+          const view = executionCommands.runExecution();
+          const world =
+            view?.currentFrame?.state ??
+            view?.previewFrames[Math.max(0, (view?.previewFrames.length ?? 1) - 1)]?.state;
+          return view === undefined || world === undefined
+            ? undefined
+            : { world, stepsUsed: view.stepsUsed };
+        },
+        events: session.agentEvents,
+      }),
   });
+  const revealProjectSurfaces = (): void => {
+    surfaceCommands.openWorldPreview();
+    void vscode.commands.executeCommand("agorixStudio.companion.focus");
+  };
   const projectCommands = createStudioProjectCommandHandlers({
     getCurrentProjectionId: () => session.currentProjectionId,
     setCurrentProject: (project) => {
@@ -130,6 +254,7 @@ export function activate(context: vscode.ExtensionContext): void {
     refreshExecutionViews: () => refreshExecutionViews(),
     refreshCompanionViews: () => refreshCompanionViews(),
     updateStudioContext,
+    afterProjectOpened: revealProjectSurfaces,
     requireProject,
     openProjection: projectionCommands.openProjection,
   });
@@ -188,11 +313,11 @@ export function activate(context: vscode.ExtensionContext): void {
         resetExecution: executionCommands.resetExecution,
         stopExecution: executionCommands.stopExecution,
         selectExecutionStep: executionCommands.selectExecutionStep,
-        companionExplain: () => companionCommands.companionCommand("explain"),
-        companionChallenge: () => companionCommands.companionCommand("challenge"),
-        companionDebug: () => companionCommands.companionCommand("debug"),
-        companionReflect: () => companionCommands.companionCommand("reflect"),
-        companionBuild: () => companionCommands.companionCommand("build"),
+        companionExplain: (nodeId) => companionCommands.companionCommand("explain", nodeId),
+        companionChallenge: (nodeId) => companionCommands.companionCommand("challenge", nodeId),
+        companionDebug: (nodeId) => companionCommands.companionCommand("debug", nodeId),
+        companionReflect: (nodeId) => companionCommands.companionCommand("reflect", nodeId),
+        companionBuild: (nodeId) => companionCommands.companionCommand("build", nodeId),
         suggestFirstStep: proposalCommands.suggestFirstStepCommand,
         applyProposal: proposalCommands.applyActiveProposal,
         rejectProposal: proposalCommands.rejectActiveProposal,
@@ -206,6 +331,20 @@ export function activate(context: vscode.ExtensionContext): void {
         showDeveloperContext: () => developerCommands.showDeveloperContext(output),
         openScm: developerCommands.openScm,
         suggestRepeat: proposalCommands.suggestRepeatCommand,
+      }),
+      vscode.commands.registerCommand("agorixStudio.ambientOffer", () =>
+        ambientController.showOffer(),
+      ),
+      ...registerAmbientLenses({
+        getProjection: (document) => {
+          const current = session.current?.project;
+          if (current === undefined || document.uri.scheme !== "agorix-studio") return undefined;
+          return openProjectionDocument(
+            current,
+            projectionCommands.projectionIdFromUri(document.uri),
+          );
+        },
+        getExecutionView: () => executionCommands.currentExecutionView(),
       }),
     );
     updateStudioContext();

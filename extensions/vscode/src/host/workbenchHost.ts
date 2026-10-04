@@ -7,12 +7,14 @@ import { intentToChange } from "@agorix/interaction-core";
 import { ProgramValidationError, type ProjectProgram } from "@agorix/program-model";
 import { programSemanticHash } from "@agorix/proposals";
 import { STUDIO_PROTOCOL_VERSION, type HostMessage, type UiMessage } from "@agorix/studio-protocol";
+import type { AgentAgreements } from "@agorix/agent-workflow";
 
 export interface HostPort {
   getProgram(): ProjectProgram | undefined;
   commit(program: ProjectProgram, label: string): Promise<void>;
   openProposalReview(proposalId: string): Promise<void>;
   reveal(nodeId: string): Promise<void>;
+  updateAgreements(agreements: AgentAgreements): void;
 }
 
 export interface WorkbenchHost {
@@ -82,6 +84,9 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
         }
         return snapshot();
       }
+      case "agreementsChanged":
+        port.updateAgreements(message.agreements);
+        return [];
       default:
         // Agent-loop and proposal messages are handled by the agent host.
         return [];

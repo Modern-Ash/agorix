@@ -2,9 +2,11 @@ import * as vscode from "vscode";
 import {
   createNavigationSections,
   openProjectionDocument,
+  STUDIO_STATE_THEME_COLORS,
   type StudioCompanionTurn,
   type StudioExecutionViewState,
   type StudioInspectorStep,
+  type StudioNavigationItem,
   type StudioProject,
   type StudioProjectionId,
 } from "../studioCore.js";
@@ -15,6 +17,8 @@ export class StudioTreeItem extends vscode.TreeItem {
     readonly itemId: string,
     label: string,
     description: string | undefined,
+    icon: string | undefined,
+    state: StudioNavigationItem["state"] | undefined,
     command: string | undefined,
     contextValue: string | undefined,
   ) {
@@ -24,6 +28,10 @@ export class StudioTreeItem extends vscode.TreeItem {
     }
     if (contextValue !== undefined) {
       this.contextValue = contextValue;
+    }
+    const themeIcon = iconFor(icon, state);
+    if (themeIcon !== undefined) {
+      this.iconPath = themeIcon;
     }
     if (command !== undefined) {
       this.command = { command, title: label };
@@ -59,6 +67,8 @@ export class StudioTreeProvider implements vscode.TreeDataProvider<StudioTreeIte
           item.id,
           item.label,
           item.description,
+          item.icon,
+          item.state,
           item.command,
           item.contextValue,
         ),
@@ -108,9 +118,10 @@ export class CompanionHistoryItem extends vscode.TreeItem {
     readonly turn: StudioCompanionTurn,
     agentIcon: vscode.Uri,
   ) {
-    super(`${turn.action}: ${turn.message}`);
+    super(shortActionLabel(turn.action));
     this.iconPath = agentIcon;
-    this.description = `${turn.diagnostics.providerSelection} · ${turn.diagnostics.reasoningTier}`;
+    this.description = `${turn.diagnostics.providerSelection} · ${turn.diagnostics.runtimeFactCount} facts`;
+    this.accessibilityInformation = { label: `${turn.action}: ${turn.message}` };
     this.contextValue = turn.proposal === undefined ? "agorixCompanionTurn" : "agorixProposal";
     this.tooltip = [
       turn.message,
@@ -149,6 +160,32 @@ export class CompanionHistoryProvider implements vscode.TreeDataProvider<Compani
 
   getChildren(): CompanionHistoryItem[] {
     return this.getTurns().map((turn) => new CompanionHistoryItem(turn, this.agentIcon));
+  }
+}
+
+function iconFor(
+  icon: string | undefined,
+  state: StudioNavigationItem["state"] | undefined,
+): vscode.ThemeIcon | undefined {
+  if (icon === undefined) return undefined;
+  const color = state === undefined ? undefined : STUDIO_STATE_THEME_COLORS[state];
+  return color === undefined
+    ? new vscode.ThemeIcon(icon)
+    : new vscode.ThemeIcon(icon, new vscode.ThemeColor(color));
+}
+
+function shortActionLabel(action: StudioCompanionTurn["action"]): string {
+  switch (action) {
+    case "explain":
+      return "Explain";
+    case "challenge":
+      return "Challenge";
+    case "debug":
+      return "Debug";
+    case "reflect":
+      return "Reflect";
+    case "build":
+      return "Proposal";
   }
 }
 

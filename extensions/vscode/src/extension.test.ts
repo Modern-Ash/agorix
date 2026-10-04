@@ -12,6 +12,8 @@ const output: string[] = [];
 const treeViews: string[] = [];
 const treeProviders = new Map<string, { getChildren(): unknown[] }>();
 const providers = new Map<string, { provideTextDocumentContent(uri: unknown): string }>();
+const lensProviders: unknown[] = [];
+const actionProviders: unknown[] = [];
 const revealed: unknown[] = [];
 const executedTasks: unknown[] = [];
 const commandCalls: unknown[][] = [];
@@ -70,6 +72,19 @@ vi.mock("vscode", () => {
       public color?: ThemeColor,
     ) {}
   }
+  class CodeLens {
+    constructor(
+      public range: unknown,
+      public command?: unknown,
+    ) {}
+  }
+  class CodeAction {
+    command?: unknown;
+    constructor(
+      public title: string,
+      public kind?: unknown,
+    ) {}
+  }
   class EventEmitter<T = unknown> {
     event = vi.fn();
     fire = vi.fn((_value?: T) => undefined);
@@ -107,6 +122,9 @@ vi.mock("vscode", () => {
     TreeItem,
     ThemeColor,
     ThemeIcon,
+    CodeLens,
+    CodeAction,
+    CodeActionKind: { QuickFix: "quickfix" },
     TreeItemCollapsibleState: { None: 0, Collapsed: 1 },
     EventEmitter,
     Position,
@@ -136,6 +154,7 @@ vi.mock("vscode", () => {
       language: "en-US",
     },
     window: {
+      visibleTextEditors: [],
       showOpenDialog: async () => (picked === undefined ? undefined : [picked]),
       showSaveDialog: async () => savePicked,
       showInputBox: async () => inputBox,
@@ -244,6 +263,14 @@ vi.mock("vscode", () => {
     },
     languages: {
       setTextDocumentLanguage: async (document: unknown) => document,
+      registerCodeLensProvider: (_selector: unknown, provider: unknown) => {
+        lensProviders.push(provider);
+        return { dispose() {} };
+      },
+      registerCodeActionsProvider: (_selector: unknown, provider: unknown) => {
+        actionProviders.push(provider);
+        return { dispose() {} };
+      },
     },
     __uri: uri,
   };
@@ -297,6 +324,8 @@ describe("Studio extension wiring", () => {
     treeViews.length = 0;
     treeProviders.clear();
     providers.clear();
+    lensProviders.length = 0;
+    actionProviders.length = 0;
     revealed.length = 0;
     executedTasks.length = 0;
     commandCalls.length = 0;
@@ -342,6 +371,7 @@ describe("Studio extension wiring", () => {
         "agorixStudio.openWorkbench",
         "agorixStudio.exportAgorix",
         "agorixStudio.applyProposal",
+        "agorixStudio.ambientOffer",
         "agorixStudio.companionBuild",
         "agorixStudio.companionChallenge",
         "agorixStudio.companionDebug",
@@ -373,6 +403,8 @@ describe("Studio extension wiring", () => {
       ].sort(),
     );
     expect([...providers.keys()]).toEqual(["agorix-studio"]);
+    expect(lensProviders).toHaveLength(1);
+    expect(actionProviders).toHaveLength(1);
     expect(treeViews.sort()).toEqual([
       "agorixStudio.companion",
       "agorixStudio.companionHistory",

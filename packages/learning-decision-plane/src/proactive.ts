@@ -120,6 +120,12 @@ function studioEvidenceTooWeak(signal: ProactiveSignal): boolean {
  * Pure and deterministic, so it works offline and never selects a provider.
  */
 export function decideProactiveSuggestion(signal: ProactiveSignal): ProactiveDecision {
+  const studioContext =
+    signal.typing !== undefined ||
+    signal.aiEnabled !== undefined ||
+    signal.sinceLastDecline !== undefined ||
+    signal.sinceLastOffer !== undefined ||
+    signal.ignoredCount !== undefined;
   const silence = (reason: ProactiveSilenceReason): ProactiveDecision => ({
     action: "silence",
     reason,
@@ -172,6 +178,24 @@ export function decideProactiveSuggestion(signal: ProactiveSignal): ProactiveDec
       generativeNeeded: "no",
       source: "system0",
       actions: STUDIO_ACTIONS[signal.kind],
+    };
+  }
+  if (studioContext && signal.kind === "first-step") {
+    return {
+      action: "offer",
+      reason: "empty-program",
+      generativeNeeded: "no",
+      source: "system0",
+      actions: ["propose"],
+    };
+  }
+  if (studioContext && signal.kind === "repeat-pattern") {
+    return {
+      action: "offer",
+      reason: "repeated-steps-detected",
+      generativeNeeded: "no",
+      source: "system0",
+      actions: ["propose", "challenge"],
     };
   }
   return {
@@ -284,7 +308,15 @@ export function proactiveSignalFromStudio(
   signal: StudioSignal,
   ctx: StudioProactiveContext,
 ): ProactiveSignal | undefined {
-  if (!isStudioKind(signal.kind as ProactiveSignalKind)) return undefined;
+  if (
+    signal.kind !== "runtime-error" &&
+    signal.kind !== "stalled" &&
+    signal.kind !== "repeated-error" &&
+    signal.kind !== "repeat-pattern" &&
+    signal.kind !== "first-step"
+  ) {
+    return undefined;
+  }
   const { memory } = ctx;
   const since = (at: number | undefined): number | undefined =>
     at === undefined ? undefined : Math.max(0, signal.sequence - at);

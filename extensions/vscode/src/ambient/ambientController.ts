@@ -1,0 +1,163 @@
+import * as vscode from "vscode";
+import {
+  EMPTY_PROACTIVE_MEMORY,
+  decideProactiveWithLaya,
+  proactiveSignalFromStudio,
+  recordProactiveOutcome,
+  type LayaBatchTransport,
+  type ProactiveDecision,
+  type ProactiveMemory,
+  type ProactiveOfferAction,
+  type StudioSignal,
+} from "@agorix/learning-decision-plane";
+import { ambientIndicatorView, type AmbientIndicatorState } from "./indicator.js";
+import type { StudioExecutionStatus } from "../studioCore.js";
+
+export interface AmbientControllerOptions {
+  readonly statusBarItem: vscode.StatusBarItem;
+  readonly programId: () => string | undefined;
+  readonly executionStatus: () => StudioExecutionStatus;
+  readonly aiEnabled: () => boolean;
+  readonly canOfferSignal: (kind: StudioSignal["kind"]) => boolean;
+  readonly budgetRemaining: () => number | undefined;
+  readonly recordOffer: () => void;
+  readonly runCompanionAction: (action: ProactiveOfferAction) => Promise<unknown>;
+  readonly layaTransport?: LayaBatchTransport;
+}
+
+interface ActiveOffer {
+  readonly signal: StudioSignal;
+  readonly decision: ProactiveDecision;
+}
+
+const PICK_BY_ACTION: Record<ProactiveOfferAction, { label: string; description: string }> = {
+  explain: { label: "$(comment) Explain", description: "Explain the current evidence" },
+  debug: { label: "$(debug-alt) Debug", description: "Debug with runtime facts" },
+  challenge: { label: "$(beaker) Challenge", description: "Ask for a prediction" },
+  propose: { label: "$(lightbulb) Propose", description: "Suggest a small next change" },
+};
+
+export class AmbientController implements vscode.Disposable {
+  readonly #statusBarItem: vscode.StatusBarItem;
+  readonly #opts: AmbientControllerOptions;
+  #memory: ProactiveMemory = EMPTY_PROACTIVE_MEMORY;
+  #offer: ActiveOffer | undefined;
+  #disposed = false;
+
+  constructor(options: AmbientControllerOptions) {
+    this.#opts = options;
+    this.#statusBarItem = options.statusBarItem;
+    this.#render("quiet");
+  }
+
+  async handleSignal(signal: StudioSignal): Promise<void> {
+    if (this.#disposed) return;
+    if (!this.#opts.aiEnabled()) {
+      this.#offer = undefined;
+      this.#render("off");
+      return;
+    }
+    const budgetRemaining = this.#opts.budgetRemaining();
+    if (budgetRemaining !== undefined && budgetRemaining <= 0) {
+      this.#offer = undefined;
+      this.#render("budget-capped");
+      return;
+    }
+    if (this.#offer !== undefined) {
+      this.#memory = recordProactiveOutcome(
+        this.#memory,
+        this.#opts.programId() ?? "no-project",
+        "ignored",
+        signal.sequence,
+      );
+      this.#offer = undefined;
+    }
+    const programId = this.#opts.programId();
+    if (programId === undefined) {
+      this.#render("quiet");
+      return;
+    }
+    if (!this.#opts.canOfferSignal(signal.kind)) {
+      this.#render("quiet");
+      return;
+    }
+    const proactive = proactiveSignalFromStudio(signal, {
+      programId,
+      running: this.#opts.executionStatus() === "running",
+      typing: signal.kind === "selection-changed",
+      aiEnabled: this.#opts.aiEnabled(),
+      memory: this.#memory,
+    });
+    if (proactive === undefined) {
+      this.#render("quiet");
+      return;
+    }
+    const decision = await decideProactiveWithLaya(proactive, this.#opts.layaTransport);
+    if (decision.action === "offer") {
+      this.#offer = { signal, decision };
+      this.#memory = recordProactiveOutcome(this.#memory, programId, "offered", signal.sequence);
+      this.#opts.recordOffer();
+      this.#render("available", decision);
+      return;
+    }
+    this.#render("quiet");
+  }
+
+  async showOffer(): Promise<void> {
+    const offer = this.#offer;
+    const programId = this.#opts.programId();
+    if (offer === undefined || programId === undefined) return;
+    const actions = offer.decision.actions ?? ["explain"];
+    const picks = [
+      ...actions.map((action) => ({ ...PICK_BY_ACTION[action], action })),
+      { label: "Not now", description: "Keep working without help", action: "decline" as const },
+    ];
+    const picked = await vscode.window.showQuickPick(picks, { title: "Learning Companion" });
+    if (picked === undefined || picked.action === "decline") {
+      this.#memory = recordProactiveOutcome(
+        this.#memory,
+        programId,
+        "declined",
+        offer.signal.sequence,
+      );
+      this.#offer = undefined;
+      this.#render("quiet");
+      return;
+    }
+    this.#memory = recordProactiveOutcome(
+      this.#memory,
+      programId,
+      "accepted",
+      offer.signal.sequence,
+    );
+    this.#offer = undefined;
+    this.#render("working");
+    try {
+      await this.#opts.runCompanionAction(picked.action);
+    } finally {
+      this.#render("quiet");
+    }
+  }
+
+  clear(): void {
+    this.#offer = undefined;
+    this.#memory = EMPTY_PROACTIVE_MEMORY;
+    this.#render(this.#opts.aiEnabled() ? "quiet" : "off");
+  }
+
+  dispose(): void {
+    this.#disposed = true;
+    this.#statusBarItem.dispose();
+  }
+
+  #render(state: AmbientIndicatorState, offer?: ProactiveDecision): void {
+    const view = ambientIndicatorView({
+      state,
+      ...(offer === undefined ? {} : { offer: { reason: offer.reason, source: offer.source } }),
+    });
+    this.#statusBarItem.text = view.text;
+    this.#statusBarItem.tooltip = view.tooltip;
+    this.#statusBarItem.command = view.command;
+    this.#statusBarItem.show();
+  }
+}

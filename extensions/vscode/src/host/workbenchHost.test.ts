@@ -3,6 +3,7 @@ import { applyWorkspaceChange, programToWorkspace } from "@agorix/block-editor";
 import type { ProjectProgram } from "@agorix/program-model";
 import { programSemanticHash } from "@agorix/proposals";
 import { STUDIO_PROTOCOL_VERSION as schema } from "@agorix/studio-protocol";
+import { DEFAULT_AGREEMENTS } from "@agorix/agent-workflow";
 import { createWorkbenchHost, type HostPort } from "./workbenchHost.js";
 
 const script = { kind: "script", scriptIndex: 0 } as const;
@@ -31,6 +32,7 @@ function setup(initial: ProjectProgram | null = base) {
     },
     openProposalReview: vi.fn(async () => undefined),
     reveal: vi.fn(async () => undefined),
+    updateAgreements: vi.fn(),
   };
   let n = 0;
   const host = createWorkbenchHost(port, () => `block:wb_${(n += 1)}`);
@@ -133,5 +135,17 @@ describe("workbenchHost", () => {
       }),
     ).toEqual([]);
     expect(labels).toHaveLength(0);
+  });
+
+  it("stores Workbench agent agreements through the host port", async () => {
+    const { host, port } = setup();
+    const agreements = {
+      ...DEFAULT_AGREEMENTS,
+      aiEnabled: false,
+      proactive: { ...DEFAULT_AGREEMENTS.proactive, stalled: false },
+    };
+
+    expect(await host.handle({ schema, type: "agreementsChanged", agreements })).toEqual([]);
+    expect(port.updateAgreements).toHaveBeenCalledWith(agreements);
   });
 });

@@ -51,10 +51,22 @@ export class StudioSignalAdapter implements vscode.Disposable {
       idleAfterMs: options.idleAfterMs ?? DEFAULTS.idleAfterMs,
       repeatedErrorThreshold: options.repeatedErrorThreshold ?? DEFAULTS.repeatedErrorThreshold,
     };
-    this.#disposables.push(
-      vscode.window.onDidChangeTextEditorSelection((event) => this.#onSelection(event)),
-      vscode.workspace.onDidChangeTextDocument((event) => this.#onEdit(event)),
-    );
+    const windowEvents = vscode.window as typeof vscode.window & {
+      onDidChangeTextEditorSelection?: typeof vscode.window.onDidChangeTextEditorSelection;
+    };
+    const workspaceEvents = vscode.workspace as typeof vscode.workspace & {
+      onDidChangeTextDocument?: typeof vscode.workspace.onDidChangeTextDocument;
+    };
+    if (windowEvents.onDidChangeTextEditorSelection !== undefined) {
+      this.#disposables.push(
+        windowEvents.onDidChangeTextEditorSelection((event) => this.#onSelection(event)),
+      );
+    }
+    if (workspaceEvents.onDidChangeTextDocument !== undefined) {
+      this.#disposables.push(
+        workspaceEvents.onDidChangeTextDocument((event) => this.#onEdit(event)),
+      );
+    }
     this.#armIdle();
   }
 
