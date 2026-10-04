@@ -295,6 +295,24 @@ importers:
         specifier: workspace:*
         version: link:../program-model
 
+  packages/release-gate:
+    dependencies:
+      '@agorix/auth-service':
+        specifier: workspace:*
+        version: link:../auth-service
+      '@agorix/block-editor':
+        specifier: workspace:*
+        version: link:../block-editor
+      '@agorix/persistence':
+        specifier: workspace:*
+        version: link:../persistence
+      '@agorix/program-model':
+        specifier: workspace:*
+        version: link:../program-model
+      '@agorix/project-repository':
+        specifier: workspace:*
+        version: link:../project-repository
+
   packages/runtime:
     dependencies:
       '@agorix/program-model':
