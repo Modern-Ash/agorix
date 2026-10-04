@@ -16,6 +16,18 @@ The AI-native agent, the Director/Auditor pedagogy and the canvas projection are
 - Run, Step, Stop and Reset are icon actions in the editor title and in the execution views' titles; Run/Stop/Reset visibility follows the `agorixStudio.executionStatus` context key. The projection switch is an editor-title icon.
 - `extensions/vscode/src/webview/framework.ts` is the shared webview framework for the World Preview and later palette and proposal visuals: nonce-only strict CSP, shared styles built on VS Code theme tokens (light, dark and high-contrast via `vscode-high-contrast*`, `forced-colors`, `prefers-reduced-motion`), a validated message protocol in both directions (`validateMessage`, allowlisted outbound types), and landmark/label/live-region conventions. New webviews must use it and must not add inline handlers, remote origins or hard-coded colors.
 
+## Ambient Companion presence (issue #250)
+
+The ambient presence slice makes the Studio Agent visible without making it loud:
+
+- `extension.ts` is now a thin activation entry point; command, session, view and runtime wiring live in focused modules under `extensions/vscode/src`.
+- The Companion status indicator defaults to a quiet icon, offers help through a quick pick and uses explicit off, working and budget-capped states.
+- CodeLens and code actions are scoped to the current selection or failing node, with short icon-first actions for explain, debug, challenge, propose and reflect.
+- Studio signals flow through System 0 and optional LAYA veto before any offer appears; no provider call happens until the learner accepts an action.
+- Declines, ignores, cooldowns, AI agreements and the session ambient-request budget all bias toward silence and economy.
+
+This slice is infrastructure for the Studio direction, not the final experience: the next work should measure offer quality, anchor suggestions on the Workbench canvas, export non-PII evidence and route accepted generative actions through the full LAYA/provider budget pipeline.
+
 ## Release gate
 
 Studio's product release gate is
@@ -52,6 +64,7 @@ semantic program hash.
 | Editor                  | Textual projection first, with canonical node range mapping.                                                                                 |
 | Workbench               | Canvas projection of the canonical program with an icon-first palette, drag and drop and keyboard equivalents; opens beside the code editor. |
 | Agent column            | Director/Auditor loop beside the canvas; proposals appear as ghost blocks.                                                                   |
+| Ambient Companion       | Quiet status indicator, selected-node actions and proactive offers governed by System 0/LAYA before any provider call.                       |
 | World Preview           | Webview-friendly frame data rendered from mission/runtime/world state.                                                                       |
 | Execution Inspector     | Current node, statement type and before/after world state.                                                                                   |
 | AI proposal review      | Inspect, reject or explicitly apply structured proposals.                                                                                    |

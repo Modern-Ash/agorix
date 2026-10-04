@@ -20,21 +20,22 @@ North star: AI proposes. Child decides. Runtime proves. Child explains. Nothing 
 
 ## What is on `main` (verified)
 
-| Area                                  | Where                                                                                                                                                         | Notes                                                 |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| Foundations, public benefit, ADR 0007 | `docs/FOUNDATIONS.md`, `docs/product/PUBLIC_BENEFIT.md`, `docs/architecture/adr/0007-*`                                                                       | OECD-EC edition is unverified in FOUNDATIONS          |
-| Headless core                         | `packages/interaction-core`, `packages/agent-workflow`, `packages/studio-protocol`                                                                            | pure, no DOM or vscode                                |
-| Shared UI                             | `packages/studio-ui`                                                                                                                                          | palette, canvas, agent column, ghost blocks, reducers |
-| Studio host                           | `extensions/vscode/src/host/*` (`workbenchHost`, `agentHost`, `agentPort`, `workbenchPanel`, `worldPreviewPanel`), `store/session.ts`, `commands/register.ts` | `extension.ts` is still about 1200 lines              |
-| Studio shell                          | `extensions/vscode/src/webview/framework.ts` (+ `worldPreview.ts`, `host.ts`)                                                                                 | icon-first views, validated webview messages          |
-| Web                                   | `apps/web/src/ghostMarks.ts`, `AgentCompanion.tsx`, `PredictionChip.tsx`, `crossSurfaceParity.test.ts`                                                        | PR #274                                               |
-| Plans                                 | `docs/superpowers/plans/` (A core, B workbench, D agent, C web)                                                                                               | all executed                                          |
+| Area                                  | Where                                                                                                      | Notes                                                 |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| Foundations, public benefit, ADR 0007 | `docs/FOUNDATIONS.md`, `docs/product/PUBLIC_BENEFIT.md`, `docs/architecture/adr/0007-*`                    | OECD-EC edition is unverified in FOUNDATIONS          |
+| Headless core                         | `packages/interaction-core`, `packages/agent-workflow`, `packages/studio-protocol`                         | pure, no DOM or vscode                                |
+| Shared UI                             | `packages/studio-ui`                                                                                       | palette, canvas, agent column, ghost blocks, reducers |
+| Studio host                           | `extensions/vscode/src/{commands,store,views,host,ambient}` plus `studioRuntime.ts`                        | `extension.ts` is now a thin re-export                |
+| Studio shell                          | `extensions/vscode/src/webview/framework.ts` (+ `worldPreview.ts`, `host.ts`)                              | icon-first views, validated webview messages          |
+| Ambient Companion presence            | `extensions/vscode/src/ambient/*`, `studioSignals.ts`, `packages/learning-decision-plane/src/proactive.ts` | System-0/LAYA offers, CodeLens and status indicator   |
+| Web                                   | `apps/web/src/ghostMarks.ts`, `AgentCompanion.tsx`, `PredictionChip.tsx`, `crossSurfaceParity.test.ts`     | PR #274                                               |
+| Plans                                 | `docs/superpowers/plans/` (A core, B workbench, D agent, C web)                                            | all executed                                          |
 
-Merged PRs: #270 (A), #271 (B), #272 (B2 split), #273 (D), #274 (C), #275 (stranded shell).
+Merged PRs: #270 (A), #271 (B), #272 (B2 split), #273 (D), #274 (C), #275 (stranded shell), #276 (Mundo Agorix), #277 (ambient Companion presence).
 
 ## In flight
 
-- **New PR from branch `fix/mundo-agorix-canvas`** (this branch): supersedes #269. It ports what #269 had that was not duplicated: project-api auth routes (register, sign-in, sign-out), "Mundo Agorix" branding, auto-reveal of Mundo Agorix and the Companion on project open or create, and the home-directory fallback for the create-project save dialog. After it merges, close #269 with a pointer to it.
+- None from this handoff. The previously listed `fix/mundo-agorix-canvas` and `refactor/studio-plan-b2` work landed in #276 and #277.
 
 ## Pending work, in suggested order
 
@@ -42,7 +43,7 @@ Each item lists where to start. All of it must keep the invariants in `AGENTS.md
 
 ### Studio agent and canvas (epic #242)
 
-1. **Ambient presence, #250.** CodeLens, code actions, a status indicator and icon-first Companion views. Offers must come from System-0 or LAYA, never a provider; silence is the default. Reuse `StudioSignalAdapter` and the System-0 policy in `packages/learning-decision-plane` (`studio-signals`, `proactive`).
+1. **Ambient presence follow-up.** #277 landed CodeLens, code actions, status indicator and System-0/LAYA offers. Next value: tune signal thresholds with evidence, export non-PII offer shown/accepted/dismissed counts, and anchor accepted offers on the Workbench canvas.
 2. **Real behavior for the agent drop zones.** `askAgent` intents currently answer `agentUnavailable`. Wire Explain, Debug and Challenge to the deterministic companion turns (`createCompanionTurn` in `studioCore.ts`) through `agentHost`.
 3. **Live synchronization, #255.** Canvas, code, World Preview and Execution Inspector selection and highlight must follow each other. Anchors exist in `interaction-core` (`AgentAnchorRef`).
 4. **Proposals on the canvas, #256 to #258.** Per-node accept, reject and modify (the `modified` decision is ignored today), side-by-side alternatives with trade-offs judged by runtime evidence (#257), and node-anchored proactive hints (#258). Keyboard and screen-reader review path.
@@ -76,9 +77,8 @@ Each item lists where to start. All of it must keep the invariants in `AGENTS.md
 
 ### Housekeeping
 
-- Close PR #269 after the replacement merges.
 - Remove finished worktrees under `/home/faguero/dev-agora/.agorix-agora-worktrees/`: `studio-refactor-spec`, `studio-workbench-plan`, `studio-agent-plan`, `web-scratch-plan`, `land-stranded`, `mundo-canvas`. Leave the older `issue-*` ones, they belong to Agora AI-SDLC.
-- Keep GitHub issues current: #244, #245 are closed; #252 closes with #275; #248, #249, #253, #254, #256 carry status comments; #242 has a status comment. Update them as work lands.
+- Keep GitHub issues current: #244, #245 and #250 are closed; #252 closed with #275; #248, #249, #253, #254, #256 carry status comments; #242 has a status comment. Update them as work lands.
 - The owner has an untracked `agorix-first-mission222.agorix` in the main checkout; leave it.
 
 ## Conventions and gotchas
