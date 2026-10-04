@@ -1330,7 +1330,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const projectionProvider = new ProjectionDocumentProvider();
   const inspectorProvider = new ExecutionInspectorProvider();
   const companionProvider = new CompanionHistoryProvider(
-    vscode.Uri.joinPath(context.extensionUri, "media", "agorix-agent-active.svg"),
+    vscode.Uri.file(context.asAbsolutePath("media/agorix-agent-active.svg")),
   );
   const treeProviders = [
     new StudioTreeProvider("projects"),
