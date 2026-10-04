@@ -1,5 +1,6 @@
 import {
   ProjectStore,
+  type StoredProject,
   type ProjectMetadata,
   type BrowserStorageAdapter,
   type PersistenceErrorCode,
@@ -117,4 +118,32 @@ function persistenceErrorCode(error: unknown): PersistenceErrorCode | undefined 
   }
   const code = error.code;
   return typeof code === "string" ? (code as PersistenceErrorCode) : undefined;
+}
+
+/**
+ * The anonymous local project as a stored project, or undefined when none is worth offering:
+ * missing, unreadable, or an untouched starter (no blocks), which has nothing to import.
+ */
+export function readLocalStoredProject(
+  persistence: ProjectPersistence | undefined,
+): StoredProject | undefined {
+  if (persistence === undefined || !persistence.store.has(persistence.projectId)) {
+    return undefined;
+  }
+  try {
+    const stored = persistence.store.load(persistence.projectId);
+    const blocks = stored.program.scripts.reduce((n, script) => n + script.statements.length, 0);
+    return blocks > 0 ? stored : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Explicit learner action only: removes the anonymous local project from this device. */
+export function removeLocalStoredProject(persistence: ProjectPersistence | undefined): void {
+  try {
+    persistence?.store.remove(persistence.projectId);
+  } catch {
+    // Removal failing leaves the copy in place, which is the safe outcome.
+  }
 }

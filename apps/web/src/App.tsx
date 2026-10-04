@@ -11,6 +11,7 @@ import {
 import {
   parseAgorixProject,
   sanitizeAgorixFilename,
+  semanticProjectHash,
   serializeAgorixProject,
   type ProjectMetadata,
 } from "@agorix/persistence";
@@ -105,6 +106,8 @@ import {
 import {
   createBrowserProjectPersistence,
   loadEditorProject,
+  readLocalStoredProject,
+  removeLocalStoredProject,
   saveEditorProject,
   type LoadedEditorProject,
   type ProjectPersistence,
@@ -112,6 +115,10 @@ import {
 import { loadPresentationPrefs, savePresentationPrefs } from "./presentationPrefs.js";
 import { LOCALE_LABELS, t, type Locale, type MessageKey } from "./i18n.js";
 import { ProvenanceLabel } from "./ProvenanceLabel.js";
+import { AccountUi, useWorkspace } from "./accounts/AccountUi.js";
+import type { AccountBackend, ProjectDto } from "./accounts/clients.js";
+import { createHttpBackend } from "./accounts/httpClient.js";
+import { WorkspaceController } from "./accounts/workspace.js";
 import { CODE_PROJECTION_IDS, projectCodeSurface, type CodeProjectionId } from "./codeSurface.js";
 import {
   decideStaticWebLearningRoute,
@@ -248,6 +255,14 @@ function initialWorldFor(model: EditorModel): WorldState {
     },
     goal: { x: model.stage.initial.goal.x, y: model.stage.initial.goal.y },
   };
+}
+
+function safeLocalStorage(): Storage | undefined {
+  try {
+    return window.localStorage;
+  } catch {
+    return undefined;
+  }
 }
 
 function initialProjectFor(
@@ -1633,8 +1648,25 @@ function conceptLabel(locale: Locale, concept: string): string {
   return t(locale, `intentConcept_${concept}` as MessageKey);
 }
 
-export function App() {
+export function App({ accountBackend }: { readonly accountBackend?: AccountBackend } = {}) {
   const persistenceRef = useRef<ProjectPersistence | undefined>(createBrowserProjectPersistence());
+  // True while the editor holds a private account project. Then the anonymous local namespace
+  // (`agorix:default-project`) must not be written, and sign-out must drop the content.
+  const showingRemoteRef = useRef(false);
+  const awaitBaselineRef = useRef(false);
+  const baselineHashRef = useRef<string | undefined>();
+  const revertRef = useRef<() => void>(() => undefined);
+  const workspaceRef = useRef<WorkspaceController>();
+  if (workspaceRef.current === undefined) {
+    workspaceRef.current = new WorkspaceController({
+      backend: accountBackend ?? createHttpBackend(),
+      storage: typeof window === "undefined" ? undefined : safeLocalStorage(),
+      readLocalProject: () => readLocalStoredProject(persistenceRef.current),
+      onAccountContentCleared: () => revertRef.current(),
+    });
+  }
+  const workspace = workspaceRef.current;
+  const workspaceState = useWorkspace(workspace);
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const initialProjectRef = useRef<ReturnType<typeof initialProjectFor>>();
   if (initialProjectRef.current === undefined) {
@@ -1803,12 +1835,82 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (initialProjectRef.current?.message !== undefined) {
+    if (initialProjectRef.current?.message !== undefined || showingRemoteRef.current) {
       return;
     }
     const metadata = createProjectMetadata(createdAt, countProgramBlocks(model), locale);
     setPersistenceMessage(saveEditorProject(persistenceRef.current, model.program, metadata));
   }, [createdAt, locale, model.program]);
+
+  useEffect(() => {
+    void workspace.init();
+    const retry = () => workspace.retrySave();
+    window.addEventListener("online", retry);
+    return () => window.removeEventListener("online", retry);
+  }, [workspace]);
+
+  // Debounced private autosave. Only canonical program + metadata is sent: undo/redo history,
+  // proposals and previews never leave the editor.
+  useEffect(() => {
+    if (!showingRemoteRef.current || workspaceState.active === undefined) {
+      return;
+    }
+    const stored = {
+      schemaVersion: model.program.schema,
+      program: model.program,
+      metadata: createProjectMetadata(createdAt, countProgramBlocks(model), locale),
+    };
+    const hash = semanticProjectHash(stored);
+    if (awaitBaselineRef.current) {
+      awaitBaselineRef.current = false;
+      baselineHashRef.current = hash;
+      return;
+    }
+    if (baselineHashRef.current === hash) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      baselineHashRef.current = hash;
+      workspace.queueSave(stored);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [createdAt, locale, model.program, workspace, workspaceState.active?.projectId]);
+
+  function loadAccountProject(dto: ProjectDto) {
+    showingRemoteRef.current = true;
+    awaitBaselineRef.current = true;
+    baselineHashRef.current = undefined;
+    replaceCurrentProject(dto.storedProject.program, dto.storedProject.metadata);
+    setPersistenceMessage(undefined);
+    setMessage(t(locale, "projectImported"));
+  }
+
+  revertRef.current = () => {
+    if (!showingRemoteRef.current) {
+      return;
+    }
+    showingRemoteRef.current = false;
+    baselineHashRef.current = undefined;
+    const local = loadEditorProject(persistenceRef.current);
+    if (local.model !== undefined && local.metadata !== undefined) {
+      replaceCurrentProject(local.model.program, local.metadata);
+    } else {
+      replaceCurrentProject(
+        createEditorModel().program,
+        createProjectMetadata(new Date().toISOString(), 0, locale),
+      );
+    }
+    setMessage(t(locale, "emptyRunMessage"));
+  };
+
+  function createStarterProject() {
+    const program = createEditorModel().program;
+    return {
+      schemaVersion: program.schema,
+      program,
+      metadata: createProjectMetadata(new Date().toISOString(), 0, locale),
+    };
+  }
 
   useEffect(() => {
     function handleHistoryShortcut(event: KeyboardEvent) {
@@ -2688,6 +2790,13 @@ export function App() {
               ))}
             </select>
           </label>
+          <AccountUi
+            controller={workspace}
+            locale={locale}
+            createStarterProject={createStarterProject}
+            onProjectLoaded={loadAccountProject}
+            onRemoveLocalProject={() => removeLocalStoredProject(persistenceRef.current)}
+          />
           <button type="button" onClick={runBlocks} disabled={status === "running"}>
             {t(locale, "run")}
           </button>

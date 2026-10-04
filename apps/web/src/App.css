@@ -3853,3 +3853,194 @@ button:hover:not(:disabled) {
 .ai-welcome button {
   min-height: 44px;
 }
+
+/* Accounts and My Projects (issue #190). Touch targets stay at the 44px design-system minimum. */
+.agx-account-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--agx-space-2);
+}
+
+.agx-alias {
+  color: var(--agx-text-secondary);
+  font-size: 0.9rem;
+}
+
+.agx-save-row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--agx-space-2);
+}
+
+.agx-save-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--agx-space-3);
+  border: 1px solid var(--agx-border-strong);
+  border-radius: var(--agx-radius-sm);
+  background: var(--agx-surface-raised);
+  font-size: 0.9rem;
+}
+
+.agx-save-saved {
+  border-color: var(--agx-success);
+}
+
+.agx-save-saving,
+.agx-save-offline {
+  border-color: var(--agx-warning);
+}
+
+.agx-save-conflict,
+.agx-save-session-expired {
+  border-color: var(--agx-error);
+}
+
+.agx-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(23, 32, 29, 0.55);
+}
+
+.agx-dialog {
+  width: min(640px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  padding: var(--agx-space-4, 16px) var(--agx-space-5, 24px);
+  border: 1px solid var(--agx-border-strong);
+  border-radius: var(--agx-radius-md, 12px);
+  background: var(--agx-surface-panel);
+  color: var(--agx-text-primary);
+  box-shadow: var(--agx-shadow-2, 0 12px 40px rgba(0, 0, 0, 0.3));
+}
+
+.agx-dialog:focus {
+  outline: none;
+}
+
+.agx-dialog-title {
+  margin: 0 0 var(--agx-space-2);
+}
+
+.agx-dialog-copy,
+.agx-hint {
+  color: var(--agx-text-secondary);
+  margin: var(--agx-space-1) 0 var(--agx-space-3);
+}
+
+.agx-form,
+.agx-field {
+  display: grid;
+  gap: var(--agx-space-2);
+}
+
+.agx-field input {
+  min-height: 44px;
+  padding: 0 var(--agx-space-3);
+  border: 1px solid var(--agx-border-strong);
+  border-radius: var(--agx-radius-sm);
+  background: var(--agx-surface-panel);
+  color: var(--agx-text-primary);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.agx-password-row {
+  display: flex;
+  gap: var(--agx-space-2);
+}
+
+.agx-password-row input {
+  flex: 1;
+}
+
+.agx-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--agx-space-2);
+  margin-top: var(--agx-space-3);
+}
+
+.agx-actions-stack {
+  flex-direction: column;
+}
+
+.agx-primary {
+  border-color: var(--agx-focus);
+  font-weight: 600;
+}
+
+.agx-danger {
+  border-color: var(--agx-error);
+  color: var(--agx-error);
+}
+
+.agx-link {
+  min-height: 44px;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--agx-focus);
+  text-decoration: underline;
+}
+
+.agx-error {
+  color: var(--agx-error);
+  min-height: 1.2em;
+}
+
+.agx-project-list {
+  display: grid;
+  gap: var(--agx-space-3);
+  margin: var(--agx-space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.agx-project-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--agx-space-3);
+  padding: var(--agx-space-3);
+  border: 1px solid var(--agx-border-subtle);
+  border-radius: var(--agx-radius-sm);
+  background: var(--agx-surface-raised);
+}
+
+.agx-project-title {
+  margin: 0;
+  font-size: 1.05rem;
+  overflow-wrap: anywhere;
+}
+
+.agx-project-meta .agx-hint {
+  margin: 0;
+}
+
+.agx-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--agx-space-2);
+}
+
+.agx-empty {
+  padding: var(--agx-space-4, 16px);
+  border: 1px dashed var(--agx-border-strong);
+  border-radius: var(--agx-radius-sm);
+  text-align: center;
+}
+
+.agx-icon-button[aria-pressed="true"] {
+  border-color: var(--agx-focus);
+  background: var(--agx-surface-panel);
+  text-decoration: underline;
+}

@@ -88,3 +88,24 @@ before parsing (`maxBodyBytes`, default project max plus 16 KiB).
 
 The optional `log` hook receives only `{ route, status, errorCode? }`. Cookies, tokens, titles,
 project ids and payloads are never passed to it.
+
+## Web client (issue #190)
+
+`apps/web/src/accounts` is the Web UX over this API: an injected `AccountClient`/`ProjectApiClient`
+(typed errors: unauthenticated, session-expired, not-found, validation, revision-conflict,
+transient), a framework-free `WorkspaceController` (session, My Projects, autosave states, conflict
+recovery, explicit local import) and the dialogs. Notes for a real server:
+
+- Account routes are not part of `agorix/project-api/v1`. The client calls
+  `POST /__dev/auth/{register,login,logout}` (`{ username, password }`); a real deployment must
+  provide its own routes behind the same `AccountClient` seam. If `GET /v1/session` is not answered by
+  an Agorix API the UI hides all account entry points and stays anonymous/local.
+- `apps/web/src/dev/devBackend.ts` hosts `createProjectApi` + `AuthService` + in-memory repositories
+  inside the Vite dev/preview server (`AGORIX_DEV_BACKEND=1`, set by Playwright). It is for dev and
+  e2e only, is not part of the build output, loses state on restart and makes no production security
+  claim. A concrete HTTP server with real account routes remains to be built.
+- Requests are serialized client-side because sessions rotate on every authenticated call.
+- The service worker never caches `/v1/*` or `/__dev/*`, so account data is not replayed offline or
+  across accounts. Unsynced edits are kept in one account-scoped device draft (`agorix:account-draft`),
+  cleared on sign-out or when a different account signs in. `agorix:default-project` is never written
+  while an account project is open.
