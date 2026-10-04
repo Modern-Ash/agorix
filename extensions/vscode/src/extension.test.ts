@@ -19,6 +19,7 @@ const secrets = new Map<string, string>();
 const webviewPanels: Array<{
   readonly messages: unknown[];
   html: string;
+  receive?: ((message: unknown) => void) | undefined;
 }> = [];
 let failRegistration = false;
 let choice: string | undefined;
@@ -47,10 +48,22 @@ vi.mock("vscode", () => {
   class TreeItem {
     description?: string | boolean;
     contextValue?: string;
+    iconPath?: unknown;
+    tooltip?: unknown;
+    id?: string;
     command?: unknown;
     constructor(
       public label: string,
       public collapsibleState?: unknown,
+    ) {}
+  }
+  class ThemeColor {
+    constructor(public id: string) {}
+  }
+  class ThemeIcon {
+    constructor(
+      public id: string,
+      public color?: ThemeColor,
     ) {}
   }
   class EventEmitter<T = unknown> {
@@ -88,7 +101,9 @@ vi.mock("vscode", () => {
   return {
     Uri,
     TreeItem,
-    TreeItemCollapsibleState: { None: 0 },
+    ThemeColor,
+    ThemeIcon,
+    TreeItemCollapsibleState: { None: 0, Collapsed: 1 },
     EventEmitter,
     Position,
     Range,
@@ -146,11 +161,16 @@ vi.mock("vscode", () => {
         const panel = {
           messages: [] as unknown[],
           html: "",
+          receive: undefined as ((message: unknown) => void) | undefined,
         };
         webviewPanels.push(panel);
         return {
           webview: {
             cspSource: "vscode-webview:",
+            onDidReceiveMessage: (handler: (message: unknown) => void) => {
+              panel.receive = handler;
+              return { dispose() {} };
+            },
             get html() {
               return panel.html;
             },
@@ -361,6 +381,7 @@ describe("Studio extension wiring", () => {
     expect(JSON.stringify(rows)).toContain("Create New Project");
     expect(JSON.stringify(rows)).toContain("Open local .agorix project");
     expect(JSON.stringify(rows)).toContain("Open account project");
+    expect(rows.every((row) => (row as { iconPath?: unknown }).iconPath !== undefined)).toBe(true);
     expect(commandCalls).toContainEqual(["setContext", "agorixStudio.hasProject", false]);
   });
 
@@ -433,6 +454,27 @@ describe("Studio extension wiring", () => {
       type: "agorix-frame",
       view: { selectedFrameIndex: 1 },
     });
+
+    const html = webviewPanels[0]?.html ?? "";
+    expect(html).not.toMatch(/unsafe-inline|unsafe-eval/);
+    expect(html).toMatch(/script-src 'nonce-[A-Za-z0-9_-]{16,}'/);
+
+    // Webview -> host messages are validated: malformed input is dropped, valid input handled.
+    const receive = webviewPanels[0]?.receive;
+    expect(receive).toBeDefined();
+    const before = webviewPanels[0]?.messages.length ?? 0;
+    receive?.({ type: "agorix-ready" });
+    await Promise.resolve();
+    expect(webviewPanels[0]?.messages.length).toBe(before + 1);
+    receive?.({ type: "agorix-reveal-node", nodeId: "<script>alert(1)</script>" });
+    receive?.({ type: "not-a-message" });
+    receive?.("string");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(revealed).toHaveLength(0);
+    receive?.({ type: "agorix-reveal-node", nodeId: "scripts[0]/statements[0]" });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(revealed.length).toBeGreaterThan(0);
+    revealed.length = 0;
 
     const inspectorRows = treeProviders.get("agorixStudio.inspector")?.getChildren() ?? [];
     expect(inspectorRows.length).toBeGreaterThan(0);

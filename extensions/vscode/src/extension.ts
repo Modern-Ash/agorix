@@ -26,7 +26,10 @@ import {
   type StudioCompanionTurn,
   type StudioExecutionEvidence,
   type StudioExecutionStatus,
+  STUDIO_STATE_THEME_COLORS,
   type StudioExecutionViewState,
+  type StudioItemState,
+  type StudioNavigationItem,
   type StudioInspectorStep,
   type StudioProposalSession,
   type StudioProject,
@@ -43,6 +46,9 @@ import {
   type StudioAgentStatus,
   type StudioProviderClient,
 } from "./studioProvider.js";
+import { createNonce } from "./webview/framework.js";
+import { onValidatedMessage } from "./webview/host.js";
+import { renderWorldPreview, worldPreviewInboundSchemas } from "./webview/worldPreview.js";
 
 interface OpenProject {
   readonly uri: vscode.Uri;
@@ -99,24 +105,50 @@ interface CreateProjectCommandOptions {
   readonly uri: vscode.Uri;
 }
 
+function themeIcon(
+  icon: string | undefined,
+  state: StudioItemState | undefined,
+): vscode.ThemeIcon | undefined {
+  if (icon === undefined) {
+    return undefined;
+  }
+  const color = state === undefined ? undefined : STUDIO_STATE_THEME_COLORS[state];
+  return color === undefined
+    ? new vscode.ThemeIcon(icon)
+    : new vscode.ThemeIcon(icon, new vscode.ThemeColor(color));
+}
+
 class StudioTreeItem extends vscode.TreeItem {
+  readonly children: readonly StudioNavigationItem[];
+  readonly itemId: string;
   constructor(
     readonly sectionId: string,
-    readonly itemId: string,
-    label: string,
-    description: string | undefined,
-    command: string | undefined,
-    contextValue: string | undefined,
+    readonly item: StudioNavigationItem,
   ) {
-    super(label, vscode.TreeItemCollapsibleState.None);
-    if (description !== undefined) {
-      this.description = description;
+    super(
+      item.label,
+      item.children === undefined || item.children.length === 0
+        ? vscode.TreeItemCollapsibleState.None
+        : vscode.TreeItemCollapsibleState.Collapsed,
+    );
+    this.id = `${sectionId}/${item.id}`;
+    this.children = item.children ?? [];
+    this.itemId = item.id;
+    if (item.description !== undefined) {
+      this.description = item.description;
     }
-    if (contextValue !== undefined) {
-      this.contextValue = contextValue;
+    if (item.tooltip !== undefined) {
+      this.tooltip = item.tooltip;
     }
-    if (command !== undefined) {
-      this.command = { command, title: label };
+    const icon = themeIcon(item.icon, item.state);
+    if (icon !== undefined) {
+      this.iconPath = icon;
+    }
+    if (item.contextValue !== undefined) {
+      this.contextValue = item.contextValue;
+    }
+    if (item.command !== undefined) {
+      this.command = { command: item.command, title: item.label };
     }
   }
 }
@@ -124,40 +156,49 @@ class StudioTreeItem extends vscode.TreeItem {
 class StudioTreeProvider implements vscode.TreeDataProvider<StudioTreeItem> {
   readonly #changed = new vscode.EventEmitter<StudioTreeItem | undefined | null | void>();
   readonly onDidChangeTreeData = this.#changed.event;
+  view: vscode.TreeView<StudioTreeItem> | undefined;
 
   constructor(readonly sectionId: ReturnType<typeof createNavigationSections>[number]["id"]) {}
 
   refresh(): void {
     this.#changed.fire();
+    if (this.view !== undefined) {
+      const section = this.section();
+      // Count/state beside the view title: glanceable without opening the view.
+      this.view.description = section?.items.length === 0 ? "" : (section?.summary ?? "");
+    }
+  }
+
+  private section() {
+    return createNavigationSections(current?.project).find(
+      (candidate) => candidate.id === this.sectionId,
+    );
   }
 
   getTreeItem(element: StudioTreeItem): vscode.TreeItem {
     return element;
   }
 
-  getChildren(): StudioTreeItem[] {
-    const section = createNavigationSections(current?.project).find(
-      (candidate) => candidate.id === this.sectionId,
-    );
-    return (section?.items ?? []).map(
-      (item) =>
-        new StudioTreeItem(
-          this.sectionId,
-          item.id,
-          item.label,
-          item.description,
-          item.command,
-          item.contextValue,
-        ),
-    );
+  getChildren(element?: StudioTreeItem): StudioTreeItem[] {
+    const items = element === undefined ? (this.section()?.items ?? []) : element.children;
+    return items.map((item) => new StudioTreeItem(this.sectionId, item));
   }
 }
+
+const INSPECTOR_STEP_ICONS: Readonly<Record<string, string>> = {
+  "before-statement": "debug-stackframe-dot",
+  "after-statement": "pass",
+};
 
 class ExecutionInspectorItem extends vscode.TreeItem {
   constructor(readonly step: StudioInspectorStep) {
     super(`Step ${step.runtimeStep}: ${step.statementType ?? step.timing}`);
     this.description = step.nodeId ?? "run";
     this.contextValue = "agorixRuntimeFact";
+    this.iconPath = new vscode.ThemeIcon(
+      INSPECTOR_STEP_ICONS[step.timing] ?? "circle-outline",
+      new vscode.ThemeColor("charts.blue"),
+    );
     this.tooltip = `${step.provenance}\n${step.summary}\nbefore (${step.before.x}, ${step.before.y}) heading ${step.before.heading}\nafter (${step.after.x}, ${step.after.y}) heading ${step.after.heading}`;
     this.command = {
       command: "agorixStudio.selectExecutionStep",
@@ -170,9 +211,17 @@ class ExecutionInspectorItem extends vscode.TreeItem {
 class ExecutionInspectorProvider implements vscode.TreeDataProvider<ExecutionInspectorItem> {
   readonly #changed = new vscode.EventEmitter<ExecutionInspectorItem | undefined | null | void>();
   readonly onDidChangeTreeData = this.#changed.event;
+  view: vscode.TreeView<ExecutionInspectorItem> | undefined;
 
   refresh(): void {
     this.#changed.fire();
+    if (this.view !== undefined) {
+      const state = currentExecutionView();
+      this.view.description =
+        state === undefined
+          ? ""
+          : `${state.status} · ${state.selectedFrameIndex + 1}/${state.previewFrames.length}`;
+    }
   }
 
   getTreeItem(element: ExecutionInspectorItem): vscode.TreeItem {
@@ -385,6 +434,14 @@ function updateStudioContext(): void {
   );
 }
 
+function updateExecutionContext(): void {
+  void vscode.commands.executeCommand(
+    "setContext",
+    "agorixStudio.executionStatus",
+    executionStatus,
+  );
+}
+
 function requireProject(): OpenProject | undefined {
   if (current === undefined) {
     void vscode.window.showWarningMessage("Open an Agorix project first.");
@@ -574,7 +631,19 @@ function openWorldPreview(): StudioExecutionViewState | undefined {
         retainContextWhenHidden: true,
       },
     );
-    worldPreviewPanel.onDidDispose(() => {
+    const panel = worldPreviewPanel;
+    const intake = onValidatedMessage(panel.webview, {
+      schemas: worldPreviewInboundSchemas,
+      onMessage: async (message) => {
+        if (message.type === "agorix-ready") {
+          updateWorldPreview(undefined, false);
+        } else {
+          await revealCanonicalNode(message.nodeId);
+        }
+      },
+    });
+    panel.onDidDispose(() => {
+      intake.dispose();
       worldPreviewPanel = undefined;
     });
   }
@@ -583,157 +652,18 @@ function openWorldPreview(): StudioExecutionViewState | undefined {
   return view;
 }
 
-function updateWorldPreview(view = currentExecutionView()): void {
+function updateWorldPreview(view = currentExecutionView(), rerender = true): void {
   if (worldPreviewPanel === undefined || view === undefined) {
     return;
   }
-  const nonce = nonceForWebview();
-  worldPreviewPanel.webview.html = worldPreviewHtml(
-    nonce,
-    worldPreviewPanel.webview.cspSource,
-    view,
-  );
+  if (rerender) {
+    worldPreviewPanel.webview.html = renderWorldPreview(
+      view,
+      createNonce(),
+      worldPreviewPanel.webview.cspSource,
+    );
+  }
   void worldPreviewPanel.webview.postMessage({ type: "agorix-frame", view });
-}
-
-function nonceForWebview(): string {
-  return Array.from({ length: 16 }, () => Math.floor(Math.random() * 36).toString(36)).join("");
-}
-
-function escapedJson(value: unknown): string {
-  return JSON.stringify(value).replace(/</g, "\\u003c");
-}
-
-function worldPreviewHtml(
-  nonce: string,
-  cspSource: string,
-  view: StudioExecutionViewState,
-): string {
-  const data = escapedJson(view);
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${cspSource} data:; style-src 'nonce-${nonce}'; script-src 'nonce-${nonce}';">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Agorix World Preview</title>
-  <style nonce="${nonce}">
-    :root {
-      color-scheme: light dark;
-      --goal: var(--vscode-testing-iconPassed, #2e7d32);
-      --sprite: var(--vscode-editorWarning-foreground, #c77700);
-      --trail: var(--vscode-focusBorder, #007acc);
-    }
-    body {
-      margin: 0;
-      min-height: 100vh;
-      background: var(--vscode-editor-background);
-      color: var(--vscode-editor-foreground);
-      font-family: var(--vscode-font-family);
-    }
-    main {
-      display: grid;
-      grid-template-rows: auto 1fr auto;
-      min-height: 100vh;
-    }
-    header,
-    footer {
-      padding: 10px 14px;
-      border-bottom: 1px solid var(--vscode-panel-border);
-    }
-    footer {
-      border-top: 1px solid var(--vscode-panel-border);
-      border-bottom: 0;
-      color: var(--vscode-descriptionForeground);
-    }
-    .world {
-      position: relative;
-      width: min(92vmin, 760px);
-      aspect-ratio: 1;
-      place-self: center;
-      border: 1px solid var(--vscode-panel-border);
-      background:
-        linear-gradient(var(--vscode-editorWidget-border, rgba(127,127,127,.18)) 1px, transparent 1px),
-        linear-gradient(90deg, var(--vscode-editorWidget-border, rgba(127,127,127,.18)) 1px, transparent 1px),
-        var(--vscode-editor-background);
-      background-size: 12.5% 12.5%;
-    }
-    .goal,
-    .sprite {
-      position: absolute;
-      width: 9%;
-      height: 9%;
-      translate: -50% 50%;
-      border: 2px solid currentColor;
-      box-sizing: border-box;
-    }
-    .goal {
-      color: var(--goal);
-      border-radius: 50%;
-      background: color-mix(in srgb, var(--goal), transparent 76%);
-    }
-    .sprite {
-      color: var(--sprite);
-      background: color-mix(in srgb, var(--sprite), transparent 64%);
-      clip-path: polygon(50% 0, 100% 100%, 50% 78%, 0 100%);
-      transition: left 180ms ease, bottom 180ms ease, rotate 180ms ease;
-    }
-    .node {
-      color: var(--vscode-textLink-foreground);
-      font-family: var(--vscode-editor-font-family);
-    }
-    @media (prefers-reduced-motion: reduce) {
-      .sprite {
-        transition: none;
-      }
-    }
-  </style>
-</head>
-<body>
-  <main>
-    <header>
-      <strong id="status"></strong>
-      <span id="step"></span>
-      <span class="node" id="node"></span>
-    </header>
-    <section class="world" aria-label="Agorix shared runtime world preview">
-      <div class="goal" id="goal" aria-label="goal"></div>
-      <div class="sprite" id="sprite" aria-label="sprite"></div>
-    </section>
-    <footer id="provenance">Rendered from @agorix/stage frames produced by the canonical runtime.</footer>
-  </main>
-  <script nonce="${nonce}">
-    const initialView = ${data};
-    const vscode = acquireVsCodeApi();
-    const status = document.getElementById("status");
-    const step = document.getElementById("step");
-    const node = document.getElementById("node");
-    const goal = document.getElementById("goal");
-    const sprite = document.getElementById("sprite");
-    function place(element, point, viewport) {
-      const x = (point.x / viewport.width) * 100;
-      const y = (point.y / viewport.height) * 100;
-      element.style.left = x + "%";
-      element.style.bottom = y + "%";
-    }
-    function render(view) {
-      const frame = view.currentFrame || view.previewFrames[0];
-      if (!frame) return;
-      status.textContent = view.status.toUpperCase() + " ";
-      step.textContent = "frame " + (view.selectedFrameIndex + 1) + "/" + view.previewFrames.length;
-      node.textContent = frame.highlightedNodeId ? " · " + frame.highlightedNodeId : " · run";
-      place(goal, frame.state.goal, frame.state.viewport);
-      place(sprite, frame.state.sprite, frame.state.viewport);
-      sprite.style.rotate = (-frame.state.sprite.heading) + "deg";
-      vscode.setState({ selectedFrameIndex: view.selectedFrameIndex });
-    }
-    render(initialView);
-    window.addEventListener("message", (event) => {
-      if (event.data && event.data.type === "agorix-frame") render(event.data.view);
-    });
-  </script>
-</body>
-</html>`;
 }
 
 async function revealCanonicalNode(nodeId?: unknown): Promise<void> {
@@ -1340,6 +1270,7 @@ export function activate(context: vscode.ExtensionContext): void {
   }
   refreshStudioViews = refreshViews;
   refreshExecutionViews = () => {
+    updateExecutionContext();
     inspectorProvider.refresh();
     updateWorldPreview();
   };
@@ -1349,14 +1280,15 @@ export function activate(context: vscode.ExtensionContext): void {
   try {
     context.subscriptions.push(
       vscode.workspace.registerTextDocumentContentProvider(PROJECTION_SCHEME, projectionProvider),
-      ...treeProviders.map((provider) =>
-        vscode.window.createTreeView(`agorixStudio.${provider.sectionId}`, {
+      ...treeProviders.map((provider) => {
+        provider.view = vscode.window.createTreeView(`agorixStudio.${provider.sectionId}`, {
           treeDataProvider: provider,
-        }),
-      ),
-      vscode.window.createTreeView("agorixStudio.inspector", {
-        treeDataProvider: inspectorProvider,
+        });
+        return provider.view;
       }),
+      (inspectorProvider.view = vscode.window.createTreeView("agorixStudio.inspector", {
+        treeDataProvider: inspectorProvider,
+      })),
       vscode.window.createTreeView("agorixStudio.companionHistory", {
         treeDataProvider: companionProvider,
       }),
