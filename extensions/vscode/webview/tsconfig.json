@@ -3,7 +3,10 @@
   "compilerOptions": {
     "noEmit": true,
     "jsx": "react-jsx",
-    "lib": ["ES2022", "DOM"]
+    "lib": ["ES2022", "DOM"],
+    "paths": {
+      "@agorix/agent-workflow": ["../../../packages/agent-workflow/src/index.ts"]
+    }
   },
   "include": ["./**/*.tsx"]
 }

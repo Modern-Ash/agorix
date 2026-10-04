@@ -1,5 +1,6 @@
 import type { AgentEvent } from "@agorix/agent-workflow";
 import type * as vscode from "vscode";
+import { DEFAULT_AGREEMENTS, type AgentAgreements } from "@agorix/agent-workflow";
 import type {
   StudioCompanionTurn,
   StudioExecutionEvidence,
@@ -51,6 +52,9 @@ export interface StudioSessionState {
   executionFrameIndex: number;
   executionStatus: StudioExecutionStatus;
   activeProposal: StudioProposalSession | undefined;
+  agentAgreements: AgentAgreements;
+  ambientOffersUsed: number;
+  ambientBudgetCapped: boolean;
   readonly companionTurns: StudioCompanionTurn[];
   readonly agentEvents: AgentEvent[];
   readonly undoStack: StoredSnapshot[];
@@ -65,6 +69,9 @@ export function createStudioSessionState(): StudioSessionState {
     executionFrameIndex: 0,
     executionStatus: "idle",
     activeProposal: undefined,
+    agentAgreements: DEFAULT_AGREEMENTS,
+    ambientOffersUsed: 0,
+    ambientBudgetCapped: false,
     companionTurns: [],
     agentEvents: [],
     undoStack: [],
@@ -77,6 +84,9 @@ export function clearProjectSession(state: StudioSessionState): void {
   state.executionFrameIndex = 0;
   state.executionStatus = "idle";
   state.activeProposal = undefined;
+  state.agentAgreements = DEFAULT_AGREEMENTS;
+  state.ambientOffersUsed = 0;
+  state.ambientBudgetCapped = false;
   state.companionTurns.length = 0;
   state.agentEvents.length = 0;
   state.undoStack.length = 0;

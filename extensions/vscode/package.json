@@ -58,6 +58,7 @@
     "onCommand:agorixStudio.companionBuild",
     "onCommand:agorixStudio.suggestFirstStep",
     "onCommand:agorixStudio.applyProposal",
+    "onCommand:agorixStudio.ambientOffer",
     "onCommand:agorixStudio.rejectProposal",
     "onCommand:agorixStudio.revealProposalAffectedNode",
     "onCommand:agorixStudio.undoProposal",
@@ -127,6 +128,18 @@
           "minimum": 100,
           "maximum": 120000,
           "markdownDescription": "Timeout for a Learning Companion request, in milliseconds."
+        },
+        "agorixStudio.agent.layaEndpoint": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Optional local LAYA decision endpoint. Studio calls `POST /decideMany` only for cheap proactive veto decisions. Remote endpoints require `agorixStudio.agent.allowRemote`."
+        },
+        "agorixStudio.agent.ambientBudgetRequests": {
+          "type": "integer",
+          "default": 20,
+          "minimum": 0,
+          "maximum": 1000,
+          "markdownDescription": "Maximum ambient proactive offers per Studio session. Editing, running and explicit Companion commands are unaffected."
         }
       }
     },
@@ -400,6 +413,12 @@
         "title": "Suggest repeat",
         "category": "Agorix Studio",
         "icon": "$(sync)"
+      },
+      {
+        "command": "agorixStudio.ambientOffer",
+        "title": "Open Ambient Companion Offer",
+        "category": "Agorix Studio",
+        "icon": "$(sparkle)"
       },
       {
         "command": "agorixStudio.checkAgentHealth",
