@@ -42,31 +42,33 @@
 
 ## File structure
 
-| Path | Responsibility |
-| --- | --- |
-| `packages/studio-protocol/src/index.ts` (modify) | Add `workspace` and `error` host messages and a strict workspace parser |
-| `packages/studio-ui/src/blockView.ts` | Pure: workspace -> render rows (blocks and drop slots with container paths) |
-| `packages/studio-ui/src/bridge.ts` | `HostBridge` type |
-| `packages/studio-ui/src/Palette.tsx` | Icon-first draggable palette with button equivalents |
-| `packages/studio-ui/src/Canvas.tsx` | Block list, drop slots, keyboard handling, agent drop zones |
-| `packages/studio-ui/src/Workbench.tsx` | State, layout, aria-live status |
-| `packages/studio-ui/src/styles.ts` | Workbench CSS string using VS Code theme variables |
-| `packages/studio-ui/src/index.ts` | exports incl. `mountWorkbench` |
-| `extensions/vscode/src/host/workbenchHost.ts` | Pure host: `HostPort`, intent handling, snapshot |
-| `extensions/vscode/src/host/workbenchPanel.ts` | vscode adapter: panel, CSP html, message wiring |
-| `extensions/vscode/webview/main.tsx` | Webview entry (`acquireVsCodeApi`, mount) |
-| `extensions/vscode/webview/tsconfig.json` | DOM+JSX typecheck for the webview entry |
-| `extensions/vscode/scripts/bundle.mjs` (modify) | Second bundle `media/workbench.js` |
-| `extensions/vscode/src/extension.ts` (modify) | Inject `HostPort`, `openWorkbench` command, refresh on change |
+| Path                                             | Responsibility                                                              |
+| ------------------------------------------------ | --------------------------------------------------------------------------- |
+| `packages/studio-protocol/src/index.ts` (modify) | Add `workspace` and `error` host messages and a strict workspace parser     |
+| `packages/studio-ui/src/blockView.ts`            | Pure: workspace -> render rows (blocks and drop slots with container paths) |
+| `packages/studio-ui/src/bridge.ts`               | `HostBridge` type                                                           |
+| `packages/studio-ui/src/Palette.tsx`             | Icon-first draggable palette with button equivalents                        |
+| `packages/studio-ui/src/Canvas.tsx`              | Block list, drop slots, keyboard handling, agent drop zones                 |
+| `packages/studio-ui/src/Workbench.tsx`           | State, layout, aria-live status                                             |
+| `packages/studio-ui/src/styles.ts`               | Workbench CSS string using VS Code theme variables                          |
+| `packages/studio-ui/src/index.ts`                | exports incl. `mountWorkbench`                                              |
+| `extensions/vscode/src/host/workbenchHost.ts`    | Pure host: `HostPort`, intent handling, snapshot                            |
+| `extensions/vscode/src/host/workbenchPanel.ts`   | vscode adapter: panel, CSP html, message wiring                             |
+| `extensions/vscode/webview/main.tsx`             | Webview entry (`acquireVsCodeApi`, mount)                                   |
+| `extensions/vscode/webview/tsconfig.json`        | DOM+JSX typecheck for the webview entry                                     |
+| `extensions/vscode/scripts/bundle.mjs` (modify)  | Second bundle `media/workbench.js`                                          |
+| `extensions/vscode/src/extension.ts` (modify)    | Inject `HostPort`, `openWorkbench` command, refresh on change               |
 
 ---
 
 ### Task 1: Protocol: workspace and error host messages
 
 **Files:**
+
 - Modify: `packages/studio-protocol/src/index.ts`, `packages/studio-protocol/src/index.test.ts`, `packages/studio-protocol/package.json` (add `@agorix/block-editor` dependency)
 
 **Interfaces:**
+
 - Consumes: `BlockWorkspaceSnapshot`, `BlockNode`, `BlockScript` from `@agorix/block-editor`.
 - Produces: `HostMessage` gains `{schema; type:"workspace"; workspace: BlockWorkspaceSnapshot; programHash: string}` and `{schema; type:"error"; code: "INVALID_CHANGE" | "INVALID_PROGRAM"}`; `parseHostMessage` validates them strictly (script count <= 64, nesting depth <= 16, known block types, safe field values).
 
@@ -84,7 +86,11 @@ const MAX_SCRIPTS = 64;
 const MAX_DEPTH = 16;
 const MAX_NODES = 2000;
 
-function parseBlock(value: unknown, depth: number, budget: { nodes: number }): BlockNode | undefined {
+function parseBlock(
+  value: unknown,
+  depth: number,
+  budget: { nodes: number },
+): BlockNode | undefined {
   if (!isObject(value) || depth > MAX_DEPTH || (budget.nodes -= 1) < 0) {
     return undefined;
   }
@@ -95,7 +101,12 @@ function parseBlock(value: unknown, depth: number, budget: { nodes: number }): B
   if (!(BLOCK_TYPES as readonly unknown[]).includes(type)) {
     return undefined;
   }
-  const out: { id: string; type: BlockType; fields?: Record<string, unknown>; inputs?: BlockNode["inputs"] } = {
+  const out: {
+    id: string;
+    type: BlockType;
+    fields?: Record<string, unknown>;
+    inputs?: BlockNode["inputs"];
+  } = {
     id,
     type: type as BlockType,
   };
@@ -141,7 +152,11 @@ function parseBlock(value: unknown, depth: number, budget: { nodes: number }): B
   return out;
 }
 
-function parseBlockList(value: unknown, depth: number, budget: { nodes: number }): BlockNode[] | undefined {
+function parseBlockList(
+  value: unknown,
+  depth: number,
+  budget: { nodes: number },
+): BlockNode[] | undefined {
   if (!Array.isArray(value)) {
     return undefined;
   }
@@ -157,7 +172,11 @@ function parseBlockList(value: unknown, depth: number, budget: { nodes: number }
 }
 
 function parseWorkspace(value: unknown): BlockWorkspaceSnapshot | undefined {
-  if (!isObject(value) || !Array.isArray(value["scripts"]) || value["scripts"].length > MAX_SCRIPTS) {
+  if (
+    !isObject(value) ||
+    !Array.isArray(value["scripts"]) ||
+    value["scripts"].length > MAX_SCRIPTS
+  ) {
     return undefined;
   }
   const budget = { nodes: MAX_NODES };
@@ -220,9 +239,11 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ### Task 2: `studio-ui` block view model
 
 **Files:**
+
 - Create: `packages/studio-ui/package.json`, `tsconfig.json`, `vitest.config.ts`, `src/blockView.ts`, `src/blockView.test.ts`, `src/bridge.ts`, `src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `BlockNode`, `BlockWorkspaceSnapshot`, `StatementContainerPath`, `StatementLocation`, `getBlockDefinition` from `@agorix/block-editor`; `InsertionPoint` from `@agorix/interaction-core`.
 - Produces:
   - `type RenderRow = { kind: "script"; scriptIndex: number } | { kind: "slot"; slot: InsertionPoint; depth: number } | { kind: "block"; block: RenderBlock; depth: number }`
@@ -324,9 +345,23 @@ function pushList(
     });
     const childPath = [...path, index];
     if (node.type === "control_repeat") {
-      pushList(rows, node.inputs?.body ?? [], { kind: "repeatBody", scriptIndex, statementPath: childPath }, scriptIndex, childPath, depth + 1);
+      pushList(
+        rows,
+        node.inputs?.body ?? [],
+        { kind: "repeatBody", scriptIndex, statementPath: childPath },
+        scriptIndex,
+        childPath,
+        depth + 1,
+      );
     } else if (node.type === "control_if") {
-      pushList(rows, node.inputs?.then ?? [], { kind: "ifThen", scriptIndex, statementPath: childPath }, scriptIndex, childPath, depth + 1);
+      pushList(
+        rows,
+        node.inputs?.then ?? [],
+        { kind: "ifThen", scriptIndex, statementPath: childPath },
+        scriptIndex,
+        childPath,
+        depth + 1,
+      );
     }
     rows.push({ kind: "slot", slot: { container, index: index + 1 }, depth });
   });
@@ -376,10 +411,12 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ### Task 3: `studio-ui` components
 
 **Files:**
+
 - Create: `packages/studio-ui/src/Palette.tsx`, `Canvas.tsx`, `Workbench.tsx`, `styles.ts`, `mount.tsx`, `src/components.test.tsx`
 - Modify: `packages/studio-ui/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `toRows`, `HostBridge` (Task 2); `resolveDrop`, `keyboardIntent`, `DragSource`, `DropTarget`, `AgentVerb`, `Intent` from `@agorix/interaction-core`; `POC_TOOLBOX` from `@agorix/block-editor`; `parseHostMessage`-typed `HostMessage`.
 - Produces: `Workbench({ bridge })` component, `mountWorkbench(root: HTMLElement, bridge: HostBridge): () => void`, `WORKBENCH_CSS: string`.
 
@@ -423,10 +460,12 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ### Task 4: Pure `workbenchHost`
 
 **Files:**
+
 - Create: `extensions/vscode/src/host/workbenchHost.ts`, `extensions/vscode/src/host/workbenchHost.test.ts`
 - Modify: `extensions/vscode/package.json` (add dependencies `@agorix/block-editor`, `@agorix/interaction-core`, `@agorix/studio-protocol`, `@agorix/studio-ui`, `@agorix/agent-workflow` as `workspace:*`)
 
 **Interfaces:**
+
 - Consumes: `applyWorkspaceChange`, `programToWorkspace`, `BlockEditorAdapterError` (`@agorix/block-editor`); `intentToChange`, `Intent` (`@agorix/interaction-core`); `STUDIO_PROTOCOL_VERSION`, `UiMessage`, `HostMessage` (`@agorix/studio-protocol`); `programSemanticHash` (`@agorix/proposals`); `ProgramValidationError`, `ProjectProgram` (`@agorix/program-model`).
 - Produces:
 
@@ -569,10 +608,12 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ### Task 5: Webview panel, bundle and wiring
 
 **Files:**
+
 - Create: `extensions/vscode/src/host/workbenchPanel.ts`, `extensions/vscode/webview/main.tsx`, `extensions/vscode/webview/tsconfig.json`
 - Modify: `extensions/vscode/scripts/bundle.mjs`, `extensions/vscode/.vscodeignore`, `extensions/vscode/package.json` (command, activation event, build script), `extensions/vscode/src/extension.ts`, `extensions/vscode/src/extension.test.ts`, `extensions/vscode/media/` (generated bundle is git-ignored)
 
 **Interfaces:**
+
 - Consumes: `createWorkbenchHost`, `HostPort` (Task 4); `parseUiMessage` (`@agorix/studio-protocol`); `mountWorkbench`, `WORKBENCH_CSS` (`@agorix/studio-ui`).
 - Produces: command `agorixStudio.openWorkbench`; `openWorkbenchPanel(context, port): void` and `refreshWorkbench(): void` exported from `workbenchPanel.ts`.
 
@@ -672,11 +713,16 @@ export function openWorkbenchPanel(context: vscode.ExtensionContext, port: HostP
     return;
   }
   const mediaRoot = vscode.Uri.file(context.asAbsolutePath("media"));
-  panel = vscode.window.createWebviewPanel(VIEW_TYPE, "Agorix Workbench", vscode.ViewColumn.Beside, {
-    enableScripts: true,
-    localResourceRoots: [mediaRoot],
-    retainContextWhenHidden: true,
-  });
+  panel = vscode.window.createWebviewPanel(
+    VIEW_TYPE,
+    "Agorix Workbench",
+    vscode.ViewColumn.Beside,
+    {
+      enableScripts: true,
+      localResourceRoots: [mediaRoot],
+      retainContextWhenHidden: true,
+    },
+  );
   host = createWorkbenchHost(port, () => `block:wb_${(blockCounter += 1)}`);
   const scriptUri = panel.webview.asWebviewUri(vscode.Uri.joinPath(mediaRoot, "workbench.js"));
   panel.webview.html = workbenchHtml(nonce(), panel.webview.cspSource, scriptUri.toString());
@@ -766,9 +812,11 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ### Task 6: Docs and release gate evidence
 
 **Files:**
+
 - Modify: `docs/product/AGORIX_STUDIO.md`, `docs/product/STUDIO_RELEASE_GATE.md`
 
 **Interfaces:**
+
 - Consumes: Tasks 1-5.
 - Produces: documentation of the new surface.
 
