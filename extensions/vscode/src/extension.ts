@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import {} from "@agorix/block-editor";
 import {
   applyProposalSession,
   createDeveloperContext,
@@ -26,7 +27,10 @@ import {
   type StudioCompanionTurn,
   type StudioExecutionEvidence,
   type StudioExecutionStatus,
+  STUDIO_STATE_THEME_COLORS,
   type StudioExecutionViewState,
+  type StudioItemState,
+  type StudioNavigationItem,
   type StudioInspectorStep,
   type StudioProposalSession,
   type StudioProject,
@@ -80,24 +84,50 @@ interface CreateProjectCommandOptions {
   readonly uri: vscode.Uri;
 }
 
+function themeIcon(
+  icon: string | undefined,
+  state: StudioItemState | undefined,
+): vscode.ThemeIcon | undefined {
+  if (icon === undefined) {
+    return undefined;
+  }
+  const color = state === undefined ? undefined : STUDIO_STATE_THEME_COLORS[state];
+  return color === undefined
+    ? new vscode.ThemeIcon(icon)
+    : new vscode.ThemeIcon(icon, new vscode.ThemeColor(color));
+}
+
 class StudioTreeItem extends vscode.TreeItem {
+  readonly children: readonly StudioNavigationItem[];
+  readonly itemId: string;
   constructor(
     readonly sectionId: string,
-    readonly itemId: string,
-    label: string,
-    description: string | undefined,
-    command: string | undefined,
-    contextValue: string | undefined,
+    readonly item: StudioNavigationItem,
   ) {
-    super(label, vscode.TreeItemCollapsibleState.None);
-    if (description !== undefined) {
-      this.description = description;
+    super(
+      item.label,
+      item.children === undefined || item.children.length === 0
+        ? vscode.TreeItemCollapsibleState.None
+        : vscode.TreeItemCollapsibleState.Collapsed,
+    );
+    this.id = `${sectionId}/${item.id}`;
+    this.children = item.children ?? [];
+    this.itemId = item.id;
+    if (item.description !== undefined) {
+      this.description = item.description;
     }
-    if (contextValue !== undefined) {
-      this.contextValue = contextValue;
+    if (item.tooltip !== undefined) {
+      this.tooltip = item.tooltip;
     }
-    if (command !== undefined) {
-      this.command = { command, title: label };
+    const icon = themeIcon(item.icon, item.state);
+    if (icon !== undefined) {
+      this.iconPath = icon;
+    }
+    if (item.contextValue !== undefined) {
+      this.contextValue = item.contextValue;
+    }
+    if (item.command !== undefined) {
+      this.command = { command: item.command, title: item.label };
     }
   }
 }
@@ -105,40 +135,49 @@ class StudioTreeItem extends vscode.TreeItem {
 class StudioTreeProvider implements vscode.TreeDataProvider<StudioTreeItem> {
   readonly #changed = new vscode.EventEmitter<StudioTreeItem | undefined | null | void>();
   readonly onDidChangeTreeData = this.#changed.event;
+  view: vscode.TreeView<StudioTreeItem> | undefined;
 
   constructor(readonly sectionId: ReturnType<typeof createNavigationSections>[number]["id"]) {}
 
   refresh(): void {
     this.#changed.fire();
+    if (this.view !== undefined) {
+      const section = this.section();
+      // Count/state beside the view title: glanceable without opening the view.
+      this.view.description = section?.items.length === 0 ? "" : (section?.summary ?? "");
+    }
+  }
+
+  private section() {
+    return createNavigationSections(session.current?.project).find(
+      (candidate) => candidate.id === this.sectionId,
+    );
   }
 
   getTreeItem(element: StudioTreeItem): vscode.TreeItem {
     return element;
   }
 
-  getChildren(): StudioTreeItem[] {
-    const section = createNavigationSections(session.current?.project).find(
-      (candidate) => candidate.id === this.sectionId,
-    );
-    return (section?.items ?? []).map(
-      (item) =>
-        new StudioTreeItem(
-          this.sectionId,
-          item.id,
-          item.label,
-          item.description,
-          item.command,
-          item.contextValue,
-        ),
-    );
+  getChildren(element?: StudioTreeItem): StudioTreeItem[] {
+    const items = element === undefined ? (this.section()?.items ?? []) : element.children;
+    return items.map((item) => new StudioTreeItem(this.sectionId, item));
   }
 }
+
+const INSPECTOR_STEP_ICONS: Readonly<Record<string, string>> = {
+  "before-statement": "debug-stackframe-dot",
+  "after-statement": "pass",
+};
 
 class ExecutionInspectorItem extends vscode.TreeItem {
   constructor(readonly step: StudioInspectorStep) {
     super(`Step ${step.runtimeStep}: ${step.statementType ?? step.timing}`);
     this.description = step.nodeId ?? "run";
     this.contextValue = "agorixRuntimeFact";
+    this.iconPath = new vscode.ThemeIcon(
+      INSPECTOR_STEP_ICONS[step.timing] ?? "circle-outline",
+      new vscode.ThemeColor("charts.blue"),
+    );
     this.tooltip = `${step.provenance}\n${step.summary}\nbefore (${step.before.x}, ${step.before.y}) heading ${step.before.heading}\nafter (${step.after.x}, ${step.after.y}) heading ${step.after.heading}`;
     this.command = {
       command: "agorixStudio.selectExecutionStep",
@@ -151,9 +190,17 @@ class ExecutionInspectorItem extends vscode.TreeItem {
 class ExecutionInspectorProvider implements vscode.TreeDataProvider<ExecutionInspectorItem> {
   readonly #changed = new vscode.EventEmitter<ExecutionInspectorItem | undefined | null | void>();
   readonly onDidChangeTreeData = this.#changed.event;
+  view: vscode.TreeView<ExecutionInspectorItem> | undefined;
 
   refresh(): void {
     this.#changed.fire();
+    if (this.view !== undefined) {
+      const state = currentExecutionView();
+      this.view.description =
+        state === undefined
+          ? ""
+          : `${state.status} · ${state.selectedFrameIndex + 1}/${state.previewFrames.length}`;
+    }
   }
 
   getTreeItem(element: ExecutionInspectorItem): vscode.TreeItem {
@@ -367,6 +414,14 @@ function updateStudioContext(): void {
   );
 }
 
+function updateExecutionContext(): void {
+  void vscode.commands.executeCommand(
+    "setContext",
+    "agorixStudio.executionStatus",
+    session.executionStatus,
+  );
+}
+
 function requireProject(): OpenProject | undefined {
   if (session.current === undefined) {
     void vscode.window.showWarningMessage("Open an Agorix project first.");
@@ -550,7 +605,7 @@ function openWorldPreview(): StudioExecutionViewState | undefined {
   if (view === undefined) {
     return undefined;
   }
-  openWorldPreviewPanel(view);
+  openWorldPreviewPanel(view, (nodeId) => revealCanonicalNode(nodeId));
   return view;
 }
 
@@ -1179,6 +1234,7 @@ export function activate(context: vscode.ExtensionContext): void {
   }
   refreshStudioViews = refreshViews;
   refreshExecutionViews = () => {
+    updateExecutionContext();
     inspectorProvider.refresh();
     refreshWorldPreview(currentExecutionView());
   };
@@ -1188,14 +1244,15 @@ export function activate(context: vscode.ExtensionContext): void {
   try {
     context.subscriptions.push(
       vscode.workspace.registerTextDocumentContentProvider(PROJECTION_SCHEME, projectionProvider),
-      ...treeProviders.map((provider) =>
-        vscode.window.createTreeView(`agorixStudio.${provider.sectionId}`, {
+      ...treeProviders.map((provider) => {
+        provider.view = vscode.window.createTreeView(`agorixStudio.${provider.sectionId}`, {
           treeDataProvider: provider,
-        }),
-      ),
-      vscode.window.createTreeView("agorixStudio.inspector", {
-        treeDataProvider: inspectorProvider,
+        });
+        return provider.view;
       }),
+      (inspectorProvider.view = vscode.window.createTreeView("agorixStudio.inspector", {
+        treeDataProvider: inspectorProvider,
+      })),
       vscode.window.createTreeView("agorixStudio.companionHistory", {
         treeDataProvider: companionProvider,
       }),
