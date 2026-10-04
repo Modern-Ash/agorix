@@ -65,6 +65,9 @@ importers:
       '@agorix/agorix-code':
         specifier: workspace:*
         version: link:../../packages/agorix-code
+      '@agorix/auth-service':
+        specifier: workspace:*
+        version: link:../../packages/auth-service
       '@agorix/block-editor':
         specifier: workspace:*
         version: link:../../packages/block-editor
@@ -86,6 +89,12 @@ importers:
       '@agorix/program-model':
         specifier: workspace:*
         version: link:../../packages/program-model
+      '@agorix/project-api':
+        specifier: workspace:*
+        version: link:../project-api
+      '@agorix/project-repository':
+        specifier: workspace:*
+        version: link:../../packages/project-repository
       '@agorix/proposals':
         specifier: workspace:*
         version: link:../../packages/proposals

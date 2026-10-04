@@ -8,7 +8,7 @@
  * dependency (issue #96's offline mode governs AI-only behavior, not the
  * app shell itself).
  */
-const CACHE_NAME = "agorix-shell-v4";
+const CACHE_NAME = "agorix-shell-v5";
 const APP_SHELL = [
   "/",
   "/manifest.webmanifest",
@@ -44,6 +44,11 @@ self.addEventListener("fetch", (event) => {
   }
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) {
+    return;
+  }
+  // Account/project API responses are private and per-account: never cached or replayed
+  // offline (issue #190 cache isolation). Only the static app shell is cacheable.
+  if (url.pathname.startsWith("/v1/") || url.pathname.startsWith("/__dev/")) {
     return;
   }
   event.respondWith(
