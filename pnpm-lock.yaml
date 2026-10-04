@@ -378,6 +378,9 @@ importers:
 
   packages/studio-ui:
     dependencies:
+      '@agorix/agent-workflow':
+        specifier: workspace:*
+        version: link:../agent-workflow
       '@agorix/block-editor':
         specifier: workspace:*
         version: link:../block-editor
