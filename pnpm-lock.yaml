@@ -135,15 +135,24 @@ importers:
 
   extensions/vscode:
     dependencies:
+      '@agorix/agent-workflow':
+        specifier: workspace:*
+        version: link:../../packages/agent-workflow
       '@agorix/agorix-code':
         specifier: workspace:*
         version: link:../../packages/agorix-code
+      '@agorix/block-editor':
+        specifier: workspace:*
+        version: link:../../packages/block-editor
       '@agorix/code-generator':
         specifier: workspace:*
         version: link:../../packages/code-generator
       '@agorix/curriculum':
         specifier: workspace:*
         version: link:../../packages/curriculum
+      '@agorix/interaction-core':
+        specifier: workspace:*
+        version: link:../../packages/interaction-core
       '@agorix/language-projection':
         specifier: workspace:*
         version: link:../../packages/language-projection
@@ -174,6 +183,12 @@ importers:
       '@agorix/stage':
         specifier: workspace:*
         version: link:../../packages/stage
+      '@agorix/studio-protocol':
+        specifier: workspace:*
+        version: link:../../packages/studio-protocol
+      '@agorix/studio-ui':
+        specifier: workspace:*
+        version: link:../../packages/studio-ui
       '@agorix/tutor-contract':
         specifier: workspace:*
         version: link:../../packages/tutor-contract
