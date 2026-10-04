@@ -176,6 +176,12 @@ importers:
         specifier: workspace:*
         version: link:../program-model
 
+  packages/auth-service:
+    dependencies:
+      '@agorix/platform-contract':
+        specifier: workspace:*
+        version: link:../platform-contract
+
   packages/block-editor:
     dependencies:
       '@agorix/code-generator':
@@ -239,6 +245,15 @@ importers:
   packages/platform-contract: {}
 
   packages/program-model: {}
+
+  packages/project-repository:
+    dependencies:
+      '@agorix/persistence':
+        specifier: workspace:*
+        version: link:../persistence
+      '@agorix/program-model':
+        specifier: workspace:*
+        version: link:../program-model
 
   packages/proposals:
     dependencies:
