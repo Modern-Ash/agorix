@@ -3,6 +3,7 @@
 const assert = require("node:assert/strict");
 const path = require("node:path");
 const fs = require("node:fs");
+const os = require("node:os");
 const vscode = require("vscode");
 
 const EXTENSION_ID = "modern-ash.agorix-studio";
@@ -44,6 +45,7 @@ const tests = [
         "agorixStudio.companionDebug",
         "agorixStudio.companionExplain",
         "agorixStudio.companionReflect",
+        "agorixStudio.createProject",
         "agorixStudio.listRemoteProjects",
         "agorixStudio.openRemoteProject",
         "agorixStudio.openScm",
@@ -85,6 +87,7 @@ const tests = [
           "agorixStudio.companionDebug",
           "agorixStudio.companionExplain",
           "agorixStudio.companionReflect",
+          "agorixStudio.createProject",
           "agorixStudio.listRemoteProjects",
           "agorixStudio.openRemoteProject",
           "agorixStudio.openScm",
@@ -110,6 +113,40 @@ const tests = [
           "agorixStudio.validateProject",
         ].sort(),
       );
+    },
+  ],
+  [
+    "Create New Project writes a canonical .agorix file and opens it",
+    async () => {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), "agorix-studio-create-"));
+      const file = path.join(dir, "fresh-first-mission.agorix");
+      const uri = vscode.Uri.file(file);
+
+      const created = await vscode.commands.executeCommand("agorixStudio.createProject", {
+        name: "Fresh First Mission",
+        starter: "first-mission",
+        locale: "en",
+        uri,
+      });
+
+      assert.equal(created.fsPath, file);
+      const raw = fs.readFileSync(file, "utf8");
+      const envelope = JSON.parse(raw);
+      assert.equal(envelope.format, "agorix-project");
+      assert.equal(envelope.project.schemaVersion, "agorix/program/v1");
+      assert.equal(envelope.project.metadata.locale, "en");
+
+      const editor = await waitFor(
+        "created project projection",
+        () => vscode.window.activeTextEditor,
+      );
+      assert.equal(editor.document.uri.scheme, "agorix-studio");
+      assert.match(editor.document.getText(), /whenStarted/);
+
+      const run = await vscode.commands.executeCommand("agorixStudio.run");
+      const step = await vscode.commands.executeCommand("agorixStudio.step");
+      assert.equal(run.status, "completed");
+      assert.equal(step.status, "completed");
     },
   ],
   [

@@ -16,6 +16,7 @@ import {
   type StoredProject,
 } from "@agorix/persistence";
 import {
+  createStudioStarterProject,
   createStoredProjectWithProgram,
   openStoredProject,
   parseStoredProject,
@@ -118,6 +119,21 @@ describe("cross-surface project compatibility", () => {
       "sprite.turn(90);",
     );
     expect(semanticProjectHash(reopenedInWeb)).toBe(semanticProjectHash(studioSaved));
+  });
+
+  it("reopens a Studio-created local starter in Web with the same semantic hash", () => {
+    const studioCreated = createStudioStarterProject({
+      starter: "first-mission",
+      locale: "en",
+      now: baseMetadata.createdAt,
+    });
+
+    const reopenedInWeb = saveAndLoadFromWebStore("studio-created", studioCreated);
+
+    expect(semanticProjectHash(reopenedInWeb)).toBe(semanticProjectHash(studioCreated));
+    expect(openStoredProject(reopenedInWeb).projection.code).toBe(
+      openStoredProject(studioCreated).projection.code,
+    );
   });
 
   it("preserves semantic equivalence through a Web to Studio to Web round trip", () => {

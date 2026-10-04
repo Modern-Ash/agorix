@@ -32,6 +32,7 @@ const requiredCapabilities = [
 ] as const;
 
 const requiredJourneys = [
+  "Clean install -> Create New Project -> Run/Step -> Export .agorix",
   "Open/import project -> choose projection -> Run/Step -> World + Inspector",
   "Contextual AI help from evidence",
   "Proposal -> diff -> Reject unchanged",
@@ -44,6 +45,7 @@ const requiredJourneys = [
 ] as const;
 
 const requiredCommands = [
+  "agorixStudio.createProject",
   "agorixStudio.openProject",
   "agorixStudio.openProjection",
   "agorixStudio.switchProjection",

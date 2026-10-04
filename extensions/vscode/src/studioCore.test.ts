@@ -10,9 +10,11 @@ import {
   createExecutionEvidence,
   createExecutionViewState,
   createProposalReview,
+  createStudioStarterProject,
   createStoredProjectWithProgram,
   createValidationReport,
   formatInspectorReport,
+  defaultStudioProjectFilename,
   createNavigationSections,
   listStudioProjections,
   openStoredProject,
@@ -93,6 +95,49 @@ describe("Agorix Studio first slice", () => {
     );
   });
 
+  it("creates blank and First Mission starters as canonical stored projects", () => {
+    const blank = createStudioStarterProject({
+      starter: "blank",
+      locale: "es-AR",
+      now: "2026-10-03T12:00:00.000Z",
+    });
+    const firstMission = createStudioStarterProject({
+      starter: "first-mission",
+      locale: "en-US",
+      now: "2026-10-03T12:00:00.000Z",
+    });
+
+    expect(blank.schemaVersion).toBe(SCHEMA_VERSION);
+    expect(blank.metadata).toMatchObject({
+      createdAt: "2026-10-03T12:00:00.000Z",
+      updatedAt: "2026-10-03T12:00:00.000Z",
+      missionProgress: 0,
+      hintLevel: 0,
+      locale: "es",
+    });
+    expect(blank.program.scripts[0]?.statements).toEqual([]);
+    expect(firstMission.metadata.locale).toBe("en");
+    expect(openStoredProject(firstMission).projection.code).toContain("whenStarted");
+    expect(createExecutionEvidence(firstMission).previewFrames.length).toBeGreaterThan(0);
+  });
+
+  it("sanitizes project names and round-trips Studio-created .agorix files", () => {
+    const filename = defaultStudioProjectFilename("  My First Mission!!!.agorix ");
+    const created = createStudioStarterProject({
+      starter: "first-mission",
+      locale: "en",
+      now: "2026-10-03T12:00:00.000Z",
+    });
+    const raw = serializeProjectFile(created, filename, {
+      exportedAt: "2026-10-03T12:00:00.000Z",
+    });
+    const reopened = parseProjectFile(raw, filename);
+
+    expect(filename).toBe("my-first-mission.agorix");
+    expect(reopened.stored).toEqual(created);
+    expect(semanticHash(reopened.stored.program)).toBe(semanticHash(created.program));
+  });
+
   it("maps an active canonical node to the editor projection range", () => {
     const project = openStoredProject(webCreatedProject);
     const range = rangeForNode(project, "scripts[0]/statements[0]");
@@ -132,7 +177,21 @@ describe("Agorix Studio first slice", () => {
       "companion",
       "developer",
     ]);
-    expect(sections.find((section) => section.id === "projects")?.items[0]).toMatchObject({
+    expect(sections.find((section) => section.id === "projects")?.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          label: "Create New Project",
+          command: "agorixStudio.createProject",
+          contextValue: "agorixProject",
+        }),
+        expect.objectContaining({
+          label: "Current local project",
+          command: "agorixStudio.openProject",
+          contextValue: "agorixProject",
+        }),
+      ]),
+    );
+    expect(sections.find((section) => section.id === "projects")?.items[1]).toMatchObject({
       label: "Current local project",
       command: "agorixStudio.openProject",
       contextValue: "agorixProject",

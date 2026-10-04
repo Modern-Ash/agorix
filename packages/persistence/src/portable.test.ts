@@ -187,6 +187,7 @@ describe(".agorix portable project v1", () => {
 
   it("sanitizes friendly download names and prevents path traversal", () => {
     expect(sanitizeAgorixFilename("../My Space Project!!.agorix")).toBe("my-space-project.agorix");
+    expect(sanitizeAgorixFilename("  My Space Project.agorix  ")).toBe("my-space-project.agorix");
     expect(sanitizeAgorixFilename("")).toBe("agorix-project.agorix");
   });
 });

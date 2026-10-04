@@ -5,7 +5,12 @@ import {
   type ProjectionResult,
   type TextRange,
 } from "@agorix/code-generator";
-import { getLocalizedFirstMission, worldCopy, worldsForMission } from "@agorix/curriculum";
+import {
+  getLocalizedFirstMission,
+  normalizeLocale,
+  worldCopy,
+  worldsForMission,
+} from "@agorix/curriculum";
 import {
   firstRangeMapping,
   type LanguageProjection,
@@ -19,6 +24,7 @@ import {
 } from "@agorix/learning-decision-plane";
 import {
   parseAgorixProject,
+  sanitizeAgorixFilename,
   semanticProjectHash,
   serializeAgorixProject,
   type StoredProject,
@@ -37,7 +43,7 @@ import {
   type ProgramProposal,
   type ProposalReview,
 } from "@agorix/proposals";
-import { validateProgram, type ProjectProgram } from "@agorix/program-model";
+import { SCHEMA_VERSION, validateProgram, type ProjectProgram } from "@agorix/program-model";
 import {
   createWorldState,
   runProgram,
@@ -70,6 +76,13 @@ export interface StudioProject {
 
 export type StudioProjectionId = "typescript" | "agorix-code" | "python";
 export type StudioProjectPersistenceKind = "stored-json" | "portable-agorix";
+export type StudioStarterId = "blank" | "first-mission";
+
+export interface StudioStarterOption {
+  readonly id: StudioStarterId;
+  readonly label: string;
+  readonly description: string;
+}
 
 export interface StudioProjectionDocument {
   readonly id: StudioProjectionId;
@@ -268,6 +281,19 @@ const PROJECTIONS: Record<
   },
 };
 
+export const STUDIO_STARTER_OPTIONS: readonly StudioStarterOption[] = [
+  {
+    id: "blank",
+    label: "Blank project",
+    description: "Start with an empty canonical program.",
+  },
+  {
+    id: "first-mission",
+    label: "First Mission",
+    description: "Open the shared Reach the Goal starter.",
+  },
+] as const;
+
 export function listStudioProjections(): readonly LanguageProjectionDescriptor[] {
   return Object.values(PROJECTIONS).map(({ projection }) => projection.descriptor);
 }
@@ -277,6 +303,35 @@ export function openStoredProject(stored: StoredProject): StudioProject {
   return {
     stored: { ...stored, program },
     projection: projectProgram(program),
+  };
+}
+
+export function defaultStudioProjectFilename(projectName: string): string {
+  return sanitizeAgorixFilename(projectName);
+}
+
+export function createStudioStarterProject(options: {
+  readonly starter: StudioStarterId;
+  readonly locale?: string;
+  readonly now?: string;
+}): StoredProject {
+  const locale = normalizeLocale(options.locale);
+  const createdAt = options.now ?? new Date().toISOString();
+  const program =
+    options.starter === "first-mission"
+      ? getLocalizedFirstMission(locale).starterProject
+      : blankProgram();
+  const validated = validateProgram(program);
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    program: validated,
+    metadata: {
+      createdAt,
+      updatedAt: createdAt,
+      missionProgress: countTopLevelStatements(validated),
+      hintLevel: 0,
+      locale,
+    },
   };
 }
 
@@ -356,7 +411,18 @@ export function createNavigationSections(
         id: "projects",
         label: "Projects",
         items: [
+          {
+            id: "create",
+            label: "Create New Project",
+            description: "Local .agorix file",
+            command: "agorixStudio.createProject",
+          },
           { id: "open", label: "Open local .agorix project", command: "agorixStudio.openProject" },
+          {
+            id: "open-remote",
+            label: "Open account project",
+            command: "agorixStudio.openRemoteProject",
+          },
         ],
       },
       { id: "missions", label: "Missions", items: [] },
@@ -386,6 +452,13 @@ export function createNavigationSections(
       id: "projects",
       label: "Projects",
       items: [
+        {
+          id: "new-project",
+          label: "Create New Project",
+          description: "Start another local .agorix file",
+          command: "agorixStudio.createProject",
+          contextValue: "agorixProject",
+        },
         {
           id: "current-project",
           label: "Current local project",
@@ -724,6 +797,23 @@ export function createStoredProjectWithProgram(
       ),
     },
   };
+}
+
+function blankProgram(): ProjectProgram {
+  return {
+    schema: SCHEMA_VERSION,
+    scripts: [
+      {
+        id: "main",
+        trigger: { type: "onStart" },
+        statements: [],
+      },
+    ],
+  };
+}
+
+function countTopLevelStatements(program: ProjectProgram): number {
+  return program.scripts.reduce((count, script) => count + script.statements.length, 0);
 }
 
 export function createProjectSnapshot(
