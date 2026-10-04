@@ -135,15 +135,24 @@ importers:
 
   extensions/vscode:
     dependencies:
+      '@agorix/agent-workflow':
+        specifier: workspace:*
+        version: link:../../packages/agent-workflow
       '@agorix/agorix-code':
         specifier: workspace:*
         version: link:../../packages/agorix-code
+      '@agorix/block-editor':
+        specifier: workspace:*
+        version: link:../../packages/block-editor
       '@agorix/code-generator':
         specifier: workspace:*
         version: link:../../packages/code-generator
       '@agorix/curriculum':
         specifier: workspace:*
         version: link:../../packages/curriculum
+      '@agorix/interaction-core':
+        specifier: workspace:*
+        version: link:../../packages/interaction-core
       '@agorix/language-projection':
         specifier: workspace:*
         version: link:../../packages/language-projection
@@ -174,6 +183,12 @@ importers:
       '@agorix/stage':
         specifier: workspace:*
         version: link:../../packages/stage
+      '@agorix/studio-protocol':
+        specifier: workspace:*
+        version: link:../../packages/studio-protocol
+      '@agorix/studio-ui':
+        specifier: workspace:*
+        version: link:../../packages/studio-ui
       '@agorix/tutor-contract':
         specifier: workspace:*
         version: link:../../packages/tutor-contract
@@ -354,9 +369,37 @@ importers:
       '@agorix/agent-workflow':
         specifier: workspace:*
         version: link:../agent-workflow
+      '@agorix/block-editor':
+        specifier: workspace:*
+        version: link:../block-editor
       '@agorix/interaction-core':
         specifier: workspace:*
         version: link:../interaction-core
+
+  packages/studio-ui:
+    dependencies:
+      '@agorix/block-editor':
+        specifier: workspace:*
+        version: link:../block-editor
+      '@agorix/interaction-core':
+        specifier: workspace:*
+        version: link:../interaction-core
+      '@agorix/studio-protocol':
+        specifier: workspace:*
+        version: link:../studio-protocol
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+    devDependencies:
+      '@types/react':
+        specifier: ^18.3.12
+        version: 18.3.31
+      '@types/react-dom':
+        specifier: ^18.3.1
+        version: 18.3.7(@types/react@18.3.31)
 
   packages/tutor-contract:
     dependencies:

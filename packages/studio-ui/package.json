@@ -1,5 +1,5 @@
 {
-  "name": "@agorix/studio-protocol",
+  "name": "@agorix/studio-ui",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -10,8 +10,14 @@
     "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
-    "@agorix/agent-workflow": "workspace:*",
+    "@agorix/block-editor": "workspace:*",
     "@agorix/interaction-core": "workspace:*",
-    "@agorix/block-editor": "workspace:*"
+    "@agorix/studio-protocol": "workspace:*",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1"
   }
 }

@@ -6,6 +6,12 @@ import type {
   WorkflowStage,
   WorkflowState,
 } from "@agorix/agent-workflow";
+import type {
+  BlockNode,
+  BlockScript,
+  BlockType,
+  BlockWorkspaceSnapshot,
+} from "@agorix/block-editor";
 import { isSafeId, parseAnchorRef, type Intent } from "@agorix/interaction-core";
 
 /** Versioned host <-> UI messages. UIs send intents; the host owns canonical mutation. */
@@ -33,7 +39,18 @@ export type UiMessage =
 export type HostMessage =
   | { readonly schema: Schema; readonly type: "workflow"; readonly state: WorkflowState }
   | { readonly schema: Schema; readonly type: "programHash"; readonly hash: string }
-  | { readonly schema: Schema; readonly type: "agentUnavailable" };
+  | { readonly schema: Schema; readonly type: "agentUnavailable" }
+  | {
+      readonly schema: Schema;
+      readonly type: "workspace";
+      readonly workspace: BlockWorkspaceSnapshot;
+      readonly programHash: string;
+    }
+  | {
+      readonly schema: Schema;
+      readonly type: "error";
+      readonly code: "INVALID_CHANGE" | "INVALID_PROGRAM";
+    };
 
 const DECISIONS: readonly Decision[] = ["accepted", "rejected", "modified"];
 const STAGES: readonly WorkflowStage[] = [
@@ -221,6 +238,123 @@ function parseWorkflowState(value: unknown): WorkflowState | undefined {
   };
 }
 
+const HASH_PATTERN = /^[A-Za-z0-9:_-]{1,128}$/;
+const MAX_SCRIPTS = 64;
+const MAX_DEPTH = 16;
+const MAX_NODES = 2000;
+
+function parseBlock(
+  value: unknown,
+  depth: number,
+  budget: { nodes: number },
+): BlockNode | undefined {
+  budget.nodes -= 1;
+  if (!isObject(value) || depth > MAX_DEPTH || budget.nodes < 0) {
+    return undefined;
+  }
+  const { id, type } = value;
+  if (typeof id !== "string" || id.length === 0 || id.length > 128) {
+    return undefined;
+  }
+  if (!(BLOCK_TYPES as readonly unknown[]).includes(type)) {
+    return undefined;
+  }
+  const out: {
+    id: string;
+    type: BlockType;
+    fields?: Record<string, unknown>;
+    inputs?: { body?: BlockNode[]; then?: BlockNode[]; condition?: BlockNode };
+  } = { id, type: type as BlockType };
+  const fields = value["fields"];
+  if (fields !== undefined) {
+    if (!isObject(fields)) {
+      return undefined;
+    }
+    const safe: Record<string, unknown> = {};
+    for (const [key, field] of Object.entries(fields)) {
+      if (typeof field !== "number" && typeof field !== "boolean" && typeof field !== "string") {
+        return undefined;
+      }
+      safe[key] = field;
+    }
+    out.fields = safe;
+  }
+  const inputs = value["inputs"];
+  if (inputs !== undefined) {
+    if (!isObject(inputs)) {
+      return undefined;
+    }
+    const parsed: { body?: BlockNode[]; then?: BlockNode[]; condition?: BlockNode } = {};
+    for (const key of ["body", "then"] as const) {
+      if (inputs[key] !== undefined) {
+        const blocks = parseBlockList(inputs[key], depth + 1, budget);
+        if (blocks === undefined) {
+          return undefined;
+        }
+        parsed[key] = blocks;
+      }
+    }
+    if (inputs["condition"] !== undefined) {
+      const condition = parseBlock(inputs["condition"], depth + 1, budget);
+      if (condition === undefined) {
+        return undefined;
+      }
+      parsed.condition = condition;
+    }
+    out.inputs = parsed;
+  }
+  return out;
+}
+
+function parseBlockList(
+  value: unknown,
+  depth: number,
+  budget: { nodes: number },
+): BlockNode[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  const blocks: BlockNode[] = [];
+  for (const item of value) {
+    const block = parseBlock(item, depth, budget);
+    if (block === undefined) {
+      return undefined;
+    }
+    blocks.push(block);
+  }
+  return blocks;
+}
+
+function parseWorkspace(value: unknown): BlockWorkspaceSnapshot | undefined {
+  if (
+    !isObject(value) ||
+    !Array.isArray(value["scripts"]) ||
+    value["scripts"].length > MAX_SCRIPTS
+  ) {
+    return undefined;
+  }
+  const budget = { nodes: MAX_NODES };
+  const scripts: BlockScript[] = [];
+  for (const raw of value["scripts"] as unknown[]) {
+    if (!isObject(raw) || typeof raw["id"] !== "string") {
+      return undefined;
+    }
+    const trigger = parseBlock(raw["trigger"], 0, budget);
+    const statements = parseBlockList(raw["statements"], 0, budget);
+    if (trigger === undefined || statements === undefined) {
+      return undefined;
+    }
+    const programId = raw["programId"];
+    scripts.push({
+      id: raw["id"],
+      ...(typeof programId === "string" ? { programId } : {}),
+      trigger,
+      statements,
+    });
+  }
+  return { scripts };
+}
+
 export function parseUiMessage(value: unknown): UiMessage | undefined {
   if (!isObject(value) || value["schema"] !== STUDIO_PROTOCOL_VERSION) {
     return undefined;
@@ -271,6 +405,17 @@ export function parseHostMessage(value: unknown): HostMessage | undefined {
         : undefined;
     case "agentUnavailable":
       return { schema, type: "agentUnavailable" };
+    case "workspace": {
+      const workspace = parseWorkspace(value["workspace"]);
+      const hash = value["programHash"];
+      return workspace !== undefined && typeof hash === "string" && HASH_PATTERN.test(hash)
+        ? { schema, type: "workspace", workspace, programHash: hash }
+        : undefined;
+    }
+    case "error":
+      return value["code"] === "INVALID_CHANGE" || value["code"] === "INVALID_PROGRAM"
+        ? { schema, type: "error", code: value["code"] }
+        : undefined;
     default:
       return undefined;
   }
