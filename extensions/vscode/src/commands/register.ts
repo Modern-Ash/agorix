@@ -105,7 +105,7 @@ export function registerStudioCommands(
     },
     {
       id: "agorixStudio.openWorldPreview",
-      label: "Open World Preview",
+      label: "Open Mundo Agorix",
       body: handlers.openWorldPreview,
     },
     { id: "agorixStudio.run", label: "Run", body: handlers.runExecution },

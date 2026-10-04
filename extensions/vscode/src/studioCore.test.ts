@@ -234,7 +234,7 @@ describe("Agorix Studio first slice", () => {
     });
   });
 
-  it("keeps Step evidence, World Preview frames and inspector rows in sync", () => {
+  it("keeps Step evidence, Mundo Agorix frames and inspector rows in sync", () => {
     const steppedProject: StoredProject = {
       ...webCreatedProject,
       program: {

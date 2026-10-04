@@ -8,7 +8,7 @@ const WORLD_PREVIEW_VIEW_TYPE = "agorixStudio.worldPreview";
 let worldPreviewPanel: vscode.WebviewPanel | undefined;
 let latestView: StudioExecutionViewState | undefined;
 
-/** Opens (or reveals) the World Preview. Webview messages are validated by the shared framework. */
+/** Opens (or reveals) Mundo Agorix, the World Preview. Webview messages are validated by the shared framework. */
 export function openWorldPreviewPanel(
   view: StudioExecutionViewState,
   revealNode: (nodeId: string) => unknown,
@@ -17,7 +17,7 @@ export function openWorldPreviewPanel(
   if (worldPreviewPanel === undefined) {
     worldPreviewPanel = vscode.window.createWebviewPanel(
       WORLD_PREVIEW_VIEW_TYPE,
-      "Agorix World Preview",
+      "Mundo Agorix",
       vscode.ViewColumn.Beside,
       {
         enableScripts: true,

@@ -92,7 +92,7 @@ export function renderWorldPreview(
   cspSource: string,
 ): string {
   return renderWebviewDocument({
-    title: "Agorix World Preview",
+    title: "Mundo Agorix",
     nonce,
     cspSource,
     styles: STYLES,

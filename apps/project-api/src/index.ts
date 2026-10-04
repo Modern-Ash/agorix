@@ -33,7 +33,8 @@ export type ProjectApiErrorCode =
   | "VALIDATION"
   | "REVISION_CONFLICT"
   | "CSRF_REJECTED"
-  | "TRANSIENT";
+  | "TRANSIENT"
+  | "RATE_LIMITED";
 
 export interface ProjectApiErrorBody {
   readonly error: {
@@ -74,7 +75,7 @@ export interface ApiLogEvent {
 }
 
 export interface ProjectApiOptions {
-  readonly auth: Pick<AuthService, "resolveSession">;
+  readonly auth: Pick<AuthService, "register" | "signIn" | "signOut" | "resolveSession">;
   readonly projects: ProjectRepository;
   /** Allowed `Origin` values for mutating requests. Requests with a foreign Origin are rejected. */
   readonly allowedOrigins?: readonly string[];
@@ -134,6 +135,24 @@ export function createProjectApi(options: ProjectApiOptions): ProjectApi {
   const repo = options.projects;
 
   const routes: Route[] = [
+    {
+      name: "auth.register",
+      method: "POST",
+      pattern: /^\/v1\/auth\/register$/,
+      handler: async () => ({ status: 404, body: null }),
+    },
+    {
+      name: "auth.signIn",
+      method: "POST",
+      pattern: /^\/v1\/auth\/sign-in$/,
+      handler: async () => ({ status: 404, body: null }),
+    },
+    {
+      name: "auth.signOut",
+      method: "POST",
+      pattern: /^\/v1\/auth\/sign-out$/,
+      handler: async () => ({ status: 404, body: null }),
+    },
     {
       name: "session.get",
       method: "GET",
@@ -312,6 +331,45 @@ export function createProjectApi(options: ProjectApiOptions): ProjectApi {
         assertCsrf(request, allowedOrigins);
       }
 
+      if (url.pathname === "/v1/auth/register" && method === "POST") {
+        const body = readBody(request, maxBodyBytes, ["username", "password"]);
+        const registered = await options.auth.register({
+          username: requireString(body, "username"),
+          password: requireString(body, "password"),
+        });
+        options.log?.({ route: routeName, status: 201 });
+        return respond(
+          201,
+          { account: { alias: registered.account.alias.original } },
+          extraHeaders,
+        );
+      }
+
+      if (url.pathname === "/v1/auth/sign-in" && method === "POST") {
+        const body = readBody(request, maxBodyBytes, ["username", "password"]);
+        const signed = await options.auth.signIn({
+          username: requireString(body, "username"),
+          password: requireString(body, "password"),
+        });
+        extraHeaders = {
+          "set-cookie": sessionCookie(
+            signed.sessionToken,
+            signed.session.expiresAt,
+            options.secureCookies === true,
+          ),
+        };
+        options.log?.({ route: routeName, status: 200 });
+        return respond(
+          200,
+          {
+            contractVersion: PROJECT_API_CONTRACT_VERSION,
+            account: { alias: signed.account.alias.original },
+            session: { expiresAt: signed.session.expiresAt },
+          },
+          extraHeaders,
+        );
+      }
+
       const token = readSessionCookie(request.headers["cookie"]);
       if (token === undefined) {
         throw new ApiError(401, "UNAUTHENTICATED", "Authentication required");
@@ -329,6 +387,17 @@ export function createProjectApi(options: ProjectApiOptions): ProjectApi {
 
       authedOwner = resolved.account.accountId;
       const match = route.pattern.exec(url.pathname);
+      if (url.pathname === "/v1/auth/sign-out" && method === "POST") {
+        await options.auth.signOut(resolved.sessionToken);
+        options.log?.({ route: routeName, status: 204 });
+        return respond(204, null, {
+          "set-cookie": sessionCookie(
+            "",
+            new Date(0).toISOString(),
+            options.secureCookies === true,
+          ),
+        });
+      }
       const idemRaw = request.headers[IDEMPOTENCY_HEADER_NAME];
       if (idemRaw !== undefined && !IDEMPOTENCY_KEY_PATTERN.test(idemRaw)) {
         throw new ApiError(
@@ -442,6 +511,21 @@ async function toApiError(
 ): Promise<ApiError> {
   if (error instanceof ApiError) {
     return error;
+  }
+  if (error instanceof AuthPublicError) {
+    switch (error.code) {
+      case "INVALID_CREDENTIALS":
+        return new ApiError(401, "UNAUTHENTICATED", "Invalid username or password");
+      case "SESSION_EXPIRED":
+        return new ApiError(401, "SESSION_EXPIRED", "Session expired; sign in again");
+      case "RATE_LIMITED":
+        return new ApiError(429, "RATE_LIMITED", "Too many attempts", true);
+      case "PASSWORD_POLICY_VIOLATION":
+      case "USERNAME_TAKEN":
+        return new ApiError(400, "VALIDATION", error.message, false, error.code);
+      default:
+        return new ApiError(503, "TRANSIENT", "Temporarily unavailable", true);
+    }
   }
   if (error instanceof ProjectRepositoryError) {
     switch (error.code) {

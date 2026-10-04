@@ -259,7 +259,7 @@
       },
       {
         "command": "agorixStudio.openWorldPreview",
-        "title": "Open World Preview",
+        "title": "Open Mundo Agorix",
         "category": "Agorix Studio",
         "icon": "$(globe)"
       },
