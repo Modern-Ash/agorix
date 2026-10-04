@@ -18,6 +18,7 @@ const commandCalls: unknown[][] = [];
 const secrets = new Map<string, string>();
 const webviewPanels: Array<{
   readonly messages: unknown[];
+  receive(message: unknown): void;
   html: string;
 }> = [];
 let failRegistration = false;
@@ -142,8 +143,10 @@ vi.mock("vscode", () => {
         return { dispose() {} };
       },
       createWebviewPanel: () => {
+        let receiver: Handler | undefined;
         const panel = {
           messages: [] as unknown[],
+          receive: (message: unknown) => receiver?.(message),
           html: "",
         };
         webviewPanels.push(panel);
@@ -159,6 +162,10 @@ vi.mock("vscode", () => {
             postMessage: async (message: unknown) => {
               panel.messages.push(message);
               return true;
+            },
+            onDidReceiveMessage: (handler: Handler) => {
+              receiver = handler;
+              return { dispose() {} };
             },
           },
           reveal: vi.fn(),
@@ -404,7 +411,7 @@ describe("Studio extension wiring", () => {
     expect(revealed).toHaveLength(1);
   });
 
-  it("drives World Preview and Execution Inspector from one runtime session", async () => {
+  it("drives Mundo Agorix and Execution Inspector from one runtime session", async () => {
     await openFile("/p/a.json", repeated);
 
     const reset = await handlers.get("agorixStudio.reset")!();
@@ -417,7 +424,10 @@ describe("Studio extension wiring", () => {
     expect(preview).toMatchObject({ selectedFrameIndex: 1 });
     expect(webviewPanels).toHaveLength(1);
     expect(webviewPanels[0]?.html).toContain("Content-Security-Policy");
-    expect(webviewPanels[0]?.html).toContain("canonical runtime");
+    expect(webviewPanels[0]?.html).toContain("Mundo Agorix");
+    expect(webviewPanels[0]?.html).toContain('aria-label="Canvas"');
+    expect(webviewPanels[0]?.html).toContain('data-block-type="motion_move"');
+    expect(webviewPanels[0]?.html).toContain("agorix-canvas-add");
     expect(webviewPanels[0]?.messages.at(-1)).toMatchObject({
       type: "agorix-frame",
       view: { selectedFrameIndex: 1 },
@@ -430,6 +440,21 @@ describe("Studio extension wiring", () => {
     const selected = await handlers.get("agorixStudio.selectExecutionStep")!(1);
     expect(selected).toMatchObject({ selectedFrameIndex: 1 });
     expect(revealed.length).toBeGreaterThan(0);
+
+    const beforeCanvasSelect = revealed.length;
+    webviewPanels[0]?.receive({ type: "agorix-canvas-select", index: 0 });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(revealed.length).toBe(beforeCanvasSelect);
+
+    webviewPanels[0]?.receive({ type: "agorix-canvas-add", blockType: "motion_turn", index: 0 });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const added = JSON.parse(new TextDecoder().decode(files.get("/p/a.json")));
+    expect(added.program.scripts[0].statements[0]).toEqual({ type: "turn", degrees: 90 });
+
+    webviewPanels[0]?.receive({ type: "agorix-canvas-move", fromIndex: 0, toIndex: 2 });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const moved = JSON.parse(new TextDecoder().decode(files.get("/p/a.json")));
+    expect(moved.program.scripts[0].statements[2]).toEqual({ type: "turn", degrees: 90 });
   });
 
   it("records contextual Companion responses with deterministic routing diagnostics", async () => {

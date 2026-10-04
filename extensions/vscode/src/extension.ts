@@ -1,3 +1,4 @@
+import { homedir } from "node:os";
 import * as vscode from "vscode";
 import {
   applyProposalSession,
@@ -37,6 +38,7 @@ import {
   type StudioRemoteSaveResult,
   type StudioStarterId,
 } from "./studioCore.js";
+import type { ProjectProgram, Statement } from "@agorix/program-model";
 
 interface OpenProject {
   readonly uri: vscode.Uri;
@@ -265,6 +267,7 @@ async function openProject(target?: unknown): Promise<void> {
   refreshCompanionViews();
   updateStudioContext();
   await openProjection(currentProjectionId);
+  await revealStudioPanels();
 }
 
 async function createProject(target?: unknown): Promise<vscode.Uri | undefined> {
@@ -286,6 +289,7 @@ async function createProject(target?: unknown): Promise<vscode.Uri | undefined> 
   refreshCompanionViews();
   updateStudioContext();
   await openProjection(currentProjectionId);
+  await revealStudioPanels();
   void vscode.window.showInformationMessage(`Created Agorix project: ${picked.uri.fsPath}`);
   return picked.uri;
 }
@@ -333,10 +337,8 @@ async function promptForCreateProjectOptions(): Promise<CreateProjectCommandOpti
 
   const filename = defaultStudioProjectFilename(name);
   const workspace = vscode.workspace.workspaceFolders?.[0];
-  const defaultUri =
-    workspace === undefined
-      ? vscode.Uri.file(filename)
-      : vscode.Uri.file(`${workspace.uri.fsPath.replace(/[\\/]$/, "")}/${filename}`);
+  const baseDir = workspace === undefined ? homedir() : workspace.uri.fsPath;
+  const defaultUri = vscode.Uri.file(`${baseDir.replace(/[\\/]$/, "")}/${filename}`);
   const uri = await vscode.window.showSaveDialog({
     filters: { "Agorix portable project": ["agorix"] },
     saveLabel: "Create Agorix project",
@@ -368,6 +370,14 @@ function resetProjectSessionState(): void {
   companionTurns.length = 0;
   undoStack.length = 0;
   redoStack.length = 0;
+}
+
+let extensionUri: vscode.Uri | undefined;
+
+/** Shows the render panel beside the editor and focuses the Learning Companion (chat) view. */
+async function revealStudioPanels(): Promise<void> {
+  openWorldPreview();
+  await vscode.commands.executeCommand("agorixStudio.companion.focus");
 }
 
 function updateStudioContext(): void {
@@ -559,7 +569,7 @@ function openWorldPreview(): StudioExecutionViewState | undefined {
   if (worldPreviewPanel === undefined) {
     worldPreviewPanel = vscode.window.createWebviewPanel(
       WORLD_PREVIEW_VIEW_TYPE,
-      "Agorix World Preview",
+      "Mundo Agorix",
       vscode.ViewColumn.Beside,
       {
         enableScripts: true,
@@ -567,8 +577,14 @@ function openWorldPreview(): StudioExecutionViewState | undefined {
         retainContextWhenHidden: true,
       },
     );
+    if (extensionUri !== undefined) {
+      worldPreviewPanel.iconPath = vscode.Uri.joinPath(extensionUri, "media", "icon.svg");
+    }
     worldPreviewPanel.onDidDispose(() => {
       worldPreviewPanel = undefined;
+    });
+    worldPreviewPanel.webview.onDidReceiveMessage((message: unknown) => {
+      void handleWorldCanvasMessage(message);
     });
   }
   updateWorldPreview(view);
@@ -585,6 +601,7 @@ function updateWorldPreview(view = currentExecutionView()): void {
     nonce,
     worldPreviewPanel.webview.cspSource,
     view,
+    current?.project.stored.program,
   );
   void worldPreviewPanel.webview.postMessage({ type: "agorix-frame", view });
 }
@@ -597,19 +614,59 @@ function escapedJson(value: unknown): string {
   return JSON.stringify(value).replace(/</g, "\\u003c");
 }
 
+type CanvasBlockType = "motion_move" | "motion_turn" | "control_repeat";
+
+type WorldCanvasMessage =
+  | {
+      readonly type: "agorix-canvas-add";
+      readonly blockType: CanvasBlockType;
+      readonly index: number;
+    }
+  | { readonly type: "agorix-canvas-move"; readonly fromIndex: number; readonly toIndex: number }
+  | { readonly type: "agorix-canvas-select"; readonly index: number };
+
+function isWorldCanvasMessage(value: unknown): value is WorldCanvasMessage {
+  if (typeof value !== "object" || value === null || !("type" in value)) {
+    return false;
+  }
+  if (value.type === "agorix-canvas-add") {
+    return (
+      "blockType" in value &&
+      (value.blockType === "motion_move" ||
+        value.blockType === "motion_turn" ||
+        value.blockType === "control_repeat") &&
+      "index" in value &&
+      typeof value.index === "number"
+    );
+  }
+  if (value.type === "agorix-canvas-move") {
+    return (
+      "fromIndex" in value &&
+      typeof value.fromIndex === "number" &&
+      "toIndex" in value &&
+      typeof value.toIndex === "number"
+    );
+  }
+  return (
+    value.type === "agorix-canvas-select" && "index" in value && typeof value.index === "number"
+  );
+}
+
 function worldPreviewHtml(
   nonce: string,
   cspSource: string,
   view: StudioExecutionViewState,
+  program: ProjectProgram | undefined,
 ): string {
   const data = escapedJson(view);
+  const canvasData = escapedJson(canvasBlocksForProgram(program));
   return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${cspSource} data:; style-src 'nonce-${nonce}'; script-src 'nonce-${nonce}';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Agorix World Preview</title>
+  <title>Mundo Agorix</title>
   <style nonce="${nonce}">
     :root {
       color-scheme: light dark;
@@ -634,6 +691,14 @@ function worldPreviewHtml(
       padding: 10px 14px;
       border-bottom: 1px solid var(--vscode-panel-border);
     }
+    header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .logo {
+      flex: none;
+    }
     footer {
       border-top: 1px solid var(--vscode-panel-border);
       border-bottom: 0;
@@ -650,6 +715,12 @@ function worldPreviewHtml(
         linear-gradient(90deg, var(--vscode-editorWidget-border, rgba(127,127,127,.18)) 1px, transparent 1px),
         var(--vscode-editor-background);
       background-size: 12.5% 12.5%;
+      outline: 2px solid transparent;
+      outline-offset: 3px;
+      transition: outline-color 120ms ease;
+    }
+    .world.drop-target {
+      outline-color: var(--vscode-focusBorder, #007acc);
     }
     .goal,
     .sprite {
@@ -675,6 +746,56 @@ function worldPreviewHtml(
       color: var(--vscode-textLink-foreground);
       font-family: var(--vscode-editor-font-family);
     }
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(180px, 240px) minmax(280px, 1fr);
+      gap: 12px;
+      padding: 12px;
+      min-height: 0;
+    }
+    .canvas {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 10px;
+      min-height: 0;
+    }
+    .palette {
+      display: grid;
+      gap: 8px;
+    }
+    .tool,
+    .block {
+      border: 1px solid var(--vscode-panel-border);
+      background: var(--vscode-button-secondaryBackground, rgba(127,127,127,.12));
+      color: var(--vscode-button-secondaryForeground, inherit);
+      border-radius: 6px;
+      padding: 8px 10px;
+      cursor: grab;
+      text-align: left;
+      user-select: none;
+    }
+    .tool:focus-visible,
+    .block:focus-visible {
+      outline: 2px solid var(--vscode-focusBorder, #007acc);
+      outline-offset: 2px;
+    }
+    .block-list {
+      display: grid;
+      align-content: start;
+      gap: 6px;
+      min-height: 160px;
+      border: 1px dashed var(--vscode-panel-border);
+      padding: 8px;
+    }
+    .block-list.drop-target,
+    .block.drop-target {
+      border-color: var(--vscode-focusBorder, #007acc);
+      background: color-mix(in srgb, var(--vscode-focusBorder, #007acc), transparent 82%);
+    }
+    .block.selected {
+      border-color: var(--vscode-textLink-foreground);
+      box-shadow: inset 3px 0 0 var(--vscode-textLink-foreground);
+    }
     @media (prefers-reduced-motion: reduce) {
       .sprite {
         transition: none;
@@ -685,24 +806,40 @@ function worldPreviewHtml(
 <body>
   <main>
     <header>
+      <svg class="logo" viewBox="0 0 512 512" width="20" height="20" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#F8FAFC"/><path d="M101 146 211 256 101 366" fill="none" stroke="#081A3A" stroke-width="56" stroke-linecap="round" stroke-linejoin="round"/><path d="M260 176h104v42h42v104h-42v42H260z" fill="#8B5CF6"/><circle cx="373" cy="139" r="18" fill="#8B5CF6"/></svg>
       <strong id="status"></strong>
       <span id="step"></span>
       <span class="node" id="node"></span>
     </header>
-    <section class="world" aria-label="Agorix shared runtime world preview">
-      <div class="goal" id="goal" aria-label="goal"></div>
-      <div class="sprite" id="sprite" aria-label="sprite"></div>
+    <section class="workspace" aria-label="Agorix interactive canvas and world">
+      <aside class="canvas" aria-label="Canvas">
+        <div class="palette" aria-label="Tools">
+          <button class="tool" draggable="true" data-block-type="motion_move">Move</button>
+          <button class="tool" draggable="true" data-block-type="motion_turn">Turn</button>
+          <button class="tool" draggable="true" data-block-type="control_repeat">Repeat</button>
+        </div>
+        <div class="block-list" id="blockList" aria-label="Program blocks"></div>
+      </aside>
+      <section class="world" aria-label="Mundo Agorix shared runtime canvas">
+        <div class="goal" id="goal" aria-label="goal"></div>
+        <div class="sprite" id="sprite" draggable="true" aria-label="sprite"></div>
+      </section>
     </section>
-    <footer id="provenance">Rendered from @agorix/stage frames produced by the canonical runtime.</footer>
+    <footer id="provenance">Mundo Agorix renders @agorix/stage frames from the canonical runtime. Drag highlighted nodes between Canvas and Mundo to inspect them.</footer>
   </main>
   <script nonce="${nonce}">
     const initialView = ${data};
+    const initialBlocks = ${canvasData};
     const vscode = acquireVsCodeApi();
     const status = document.getElementById("status");
     const step = document.getElementById("step");
     const node = document.getElementById("node");
     const goal = document.getElementById("goal");
     const sprite = document.getElementById("sprite");
+    const world = document.querySelector(".world");
+    const blockList = document.getElementById("blockList");
+    let selectedBlockIndex = -1;
+    let draggableNodeId = "scripts[0]/statements[0]";
     function place(element, point, viewport) {
       const x = (point.x / viewport.width) * 100;
       const y = (point.y / viewport.height) * 100;
@@ -714,19 +851,198 @@ function worldPreviewHtml(
       if (!frame) return;
       status.textContent = view.status.toUpperCase() + " ";
       step.textContent = "frame " + (view.selectedFrameIndex + 1) + "/" + view.previewFrames.length;
+      draggableNodeId = frame.highlightedNodeId || "scripts[0]/statements[0]";
       node.textContent = frame.highlightedNodeId ? " · " + frame.highlightedNodeId : " · run";
       place(goal, frame.state.goal, frame.state.viewport);
       place(sprite, frame.state.sprite, frame.state.viewport);
       sprite.style.rotate = (-frame.state.sprite.heading) + "deg";
       vscode.setState({ selectedFrameIndex: view.selectedFrameIndex });
     }
+    function setDragData(event, payload) {
+      event.dataTransfer.effectAllowed = "copyMove";
+      event.dataTransfer.setData("application/x-agorix-canvas", JSON.stringify(payload));
+      if (payload.kind === "existing") event.dataTransfer.setData("text/plain", String(payload.index));
+    }
+    function dragPayload(event) {
+      const raw = event.dataTransfer.getData("application/x-agorix-canvas");
+      if (!raw) return undefined;
+      try { return JSON.parse(raw); } catch { return undefined; }
+    }
+    function postDrop(payload, index) {
+      if (!payload) return;
+      if (payload.kind === "tool") {
+        vscode.postMessage({ type: "agorix-canvas-add", blockType: payload.blockType, index });
+      } else if (payload.kind === "existing") {
+        vscode.postMessage({ type: "agorix-canvas-move", fromIndex: payload.index, toIndex: index });
+      }
+    }
+    function renderCanvas(blocks) {
+      blockList.textContent = "";
+      if (blocks.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "block";
+        empty.textContent = "Drop Move, Turn or Repeat here";
+        blockList.append(empty);
+      }
+      blocks.forEach((block, index) => {
+        const item = document.createElement("button");
+        item.type = "button";
+        item.className = "block" + (index === selectedBlockIndex ? " selected" : "");
+        item.draggable = true;
+        item.dataset.index = String(index);
+        item.textContent = block.label;
+        item.addEventListener("click", () => {
+          selectedBlockIndex = index;
+          renderCanvas(blocks);
+          vscode.postMessage({ type: "agorix-canvas-select", index });
+        });
+        item.addEventListener("dragstart", (event) => setDragData(event, { kind: "existing", index }));
+        item.addEventListener("dragover", (event) => {
+          event.preventDefault();
+          item.classList.add("drop-target");
+        });
+        item.addEventListener("dragleave", () => item.classList.remove("drop-target"));
+        item.addEventListener("drop", (event) => {
+          event.preventDefault();
+          item.classList.remove("drop-target");
+          postDrop(dragPayload(event), index);
+        });
+        blockList.append(item);
+      });
+    }
+    document.querySelectorAll(".tool[data-block-type]").forEach((tool) => {
+      tool.addEventListener("dragstart", (event) => setDragData(event, { kind: "tool", blockType: tool.dataset.blockType }));
+      tool.addEventListener("click", () => {
+        vscode.postMessage({ type: "agorix-canvas-add", blockType: tool.dataset.blockType, index: initialBlocks.length });
+      });
+    });
+    blockList.addEventListener("dragover", (event) => {
+      event.preventDefault();
+      blockList.classList.add("drop-target");
+    });
+    blockList.addEventListener("dragleave", () => blockList.classList.remove("drop-target"));
+    blockList.addEventListener("drop", (event) => {
+      event.preventDefault();
+      blockList.classList.remove("drop-target");
+      postDrop(dragPayload(event), initialBlocks.length);
+    });
+    renderCanvas(initialBlocks);
     render(initialView);
+    function nodeIdFromDrop(event) {
+      const plain = event.dataTransfer.getData("text/plain");
+      const trimmed = plain.trim();
+      const plainNodeId = trimmed.startsWith("scripts[0]/statements[") ? trimmed : "";
+      return event.dataTransfer.getData("application/x-agorix-node-id") || plainNodeId || draggableNodeId;
+    }
+    sprite.addEventListener("dragstart", (event) => {
+      event.dataTransfer.effectAllowed = "copyMove";
+      event.dataTransfer.setData("application/x-agorix-node-id", draggableNodeId);
+      event.dataTransfer.setData("text/plain", draggableNodeId);
+    });
+    world.addEventListener("dragover", (event) => {
+      event.preventDefault();
+      world.classList.add("drop-target");
+      event.dataTransfer.dropEffect = "copy";
+    });
+    world.addEventListener("dragleave", () => world.classList.remove("drop-target"));
+    world.addEventListener("drop", (event) => {
+      event.preventDefault();
+      world.classList.remove("drop-target");
+      const dropped = nodeIdFromDrop(event);
+      const prefix = "scripts[0]/statements[";
+      if (dropped.startsWith(prefix) && dropped.endsWith("]")) {
+        vscode.postMessage({
+          type: "agorix-canvas-select",
+          index: Number(dropped.slice(prefix.length, -1)),
+        });
+      }
+    });
     window.addEventListener("message", (event) => {
       if (event.data && event.data.type === "agorix-frame") render(event.data.view);
     });
   </script>
 </body>
 </html>`;
+}
+
+function canvasBlocksForProgram(
+  program: ProjectProgram | undefined,
+): readonly { readonly label: string }[] {
+  const statements = program?.scripts[0]?.statements ?? [];
+  return statements.map((statement) => {
+    switch (statement.type) {
+      case "move":
+        return { label: "Move " + statement.steps };
+      case "turn":
+        return { label: "Turn " + statement.degrees };
+      case "repeat":
+        return { label: "Repeat " + statement.count };
+      case "if":
+        return { label: "If touching goal" };
+    }
+  });
+}
+
+function statementForCanvasBlock(type: CanvasBlockType): Statement {
+  switch (type) {
+    case "motion_move":
+      return { type: "move", steps: 10 };
+    case "motion_turn":
+      return { type: "turn", degrees: 90 };
+    case "control_repeat":
+      return { type: "repeat", count: 3, body: [] };
+  }
+}
+
+function programWithTopLevelStatements(
+  program: ProjectProgram,
+  statements: readonly Statement[],
+): ProjectProgram {
+  const [first, ...rest] = program.scripts;
+  const script = first ?? { id: "main", trigger: { type: "onStart" as const }, statements: [] };
+  return { ...program, scripts: [{ ...script, statements }, ...rest] };
+}
+
+function clampCanvasIndex(index: number, length: number): number {
+  return Math.max(0, Math.min(length, Math.trunc(index)));
+}
+
+async function handleWorldCanvasMessage(message: unknown): Promise<void> {
+  if (!isWorldCanvasMessage(message)) {
+    return;
+  }
+  if (message.type === "agorix-canvas-select") {
+    return;
+  }
+  const open = requireProject();
+  if (open === undefined) {
+    return;
+  }
+  const previousRaw = serializeStoredProject(open.project.stored);
+  const statements = [...(open.project.stored.program.scripts[0]?.statements ?? [])];
+  if (message.type === "agorix-canvas-add") {
+    statements.splice(
+      clampCanvasIndex(message.index, statements.length),
+      0,
+      statementForCanvasBlock(message.blockType),
+    );
+  } else {
+    const from = clampCanvasIndex(message.fromIndex, Math.max(0, statements.length - 1));
+    const [moved] = statements.splice(from, 1);
+    if (moved === undefined) {
+      return;
+    }
+    statements.splice(clampCanvasIndex(message.toIndex, statements.length), 0, moved);
+  }
+  undoStack.push({ uri: open.uri, raw: previousRaw });
+  redoStack.length = 0;
+  const stored = createStoredProjectWithProgram(
+    open.project.stored,
+    programWithTopLevelStatements(open.project.stored.program, statements),
+  );
+  await writeCurrentProject(stored, { openProjection: false });
+  resetExecution();
+  updateWorldPreview();
 }
 
 async function revealCanonicalNode(nodeId?: unknown): Promise<void> {
@@ -898,6 +1214,7 @@ async function redoProposal(): Promise<void> {
 
 async function writeCurrentProject(
   stored: ReturnType<typeof createStoredProjectWithProgram>,
+  options: { readonly openProjection?: boolean } = {},
 ): Promise<void> {
   const open = requireProject();
   if (open === undefined) {
@@ -913,7 +1230,9 @@ async function writeCurrentProject(
     ...(open.remote === undefined ? {} : { remote: open.remote }),
   };
   afterCanonicalProgramChange();
-  await openProjection(currentProjectionId);
+  if (options.openProjection !== false) {
+    await openProjection(currentProjectionId);
+  }
 }
 
 async function restoreSnapshot(snapshot: StoredSnapshot): Promise<void> {
@@ -960,7 +1279,7 @@ async function exportAgorixProject(): Promise<vscode.Uri | undefined> {
   const uri = await vscode.window.showSaveDialog({
     filters: { "Agorix portable project": ["agorix"] },
     saveLabel: "Export Agorix project",
-    defaultUri: vscode.Uri.file("agorix-project.agorix"),
+    defaultUri: vscode.Uri.file(`${homedir()}/agorix-project.agorix`),
   });
   if (uri === undefined) {
     return undefined;
@@ -1244,6 +1563,7 @@ function reportFailure(output: vscode.OutputChannel, summary: string, error: unk
 }
 
 export function activate(context: vscode.ExtensionContext): void {
+  extensionUri = context.extensionUri;
   const output = vscode.window.createOutputChannel("Agorix Studio");
   context.subscriptions.push(output);
   const projectionProvider = new ProjectionDocumentProvider();
@@ -1331,7 +1651,7 @@ export function activate(context: vscode.ExtensionContext): void {
       ),
       vscode.commands.registerCommand(
         "agorixStudio.openWorldPreview",
-        guarded(output, "Open World Preview", openWorldPreview),
+        guarded(output, "Open Mundo Agorix", openWorldPreview),
       ),
       vscode.commands.registerCommand("agorixStudio.run", guarded(output, "Run", runExecution)),
       vscode.commands.registerCommand("agorixStudio.step", guarded(output, "Step", stepExecution)),
