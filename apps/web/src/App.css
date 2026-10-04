@@ -4044,3 +4044,36 @@ button:hover:not(:disabled) {
   background: var(--agx-surface-panel);
   text-decoration: underline;
 }
+
+/* Agorix Agent: brand-derived activity indicator for contextual AI surfaces. */
+.ai-guide {
+  display: grid;
+  place-items: center;
+  min-height: 112px;
+}
+
+.agorix-agent-active {
+  width: clamp(76px, 22%, 132px);
+  height: auto;
+  filter: drop-shadow(0 10px 24px rgba(108, 92, 231, 0.22));
+  animation: agorix-agent-active-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes agorix-agent-active-pulse {
+  0%,
+  100% {
+    transform: scale(0.98);
+    opacity: 0.92;
+  }
+
+  50% {
+    transform: scale(1.03);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agorix-agent-active {
+    animation: none;
+  }
+}

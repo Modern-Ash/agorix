@@ -3182,12 +3182,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
               {panelControls("companion")}
             </div>
             <div className="ai-guide" aria-hidden="true">
-              <span className="ai-guide-orbit" />
-              <span className="ai-guide-avatar">
-                <span />
-                <span />
-                <i />
-              </span>
+              <img className="agorix-agent-active" src="/brand/agorix-agent-active.svg" alt="" />
             </div>
             <div className="ai-coach-card">
               <div className="ai-coach-card-header">
