@@ -694,6 +694,60 @@ describe("Studio extension wiring", () => {
     ]);
   });
 
+  it("drives the agent loop on the Workbench with learner decisions only", async () => {
+    await openFile("/p/agent.json", stored([]));
+    const original = new TextDecoder().decode(files.get("/p/agent.json"));
+    await handlers.get("agorixStudio.openWorkbench")!();
+    const schema = "agorix/studio-protocol/v1";
+    const types = () => webviewPanels[0]?.messages.map((m) => (m as { type: string }).type) ?? [];
+    webviewPanels[0]?.receive({ schema, type: "ready" });
+    await flushWorkbench();
+    expect(types()).toEqual(expect.arrayContaining(["workspace", "agreements", "workflow"]));
+
+    webviewPanels[0]?.receive({ schema, type: "stateIntent", text: "make it move" });
+    await flushWorkbench();
+    expect(webviewPanels[0]?.messages.at(-1)).toMatchObject({ type: "plan" });
+    webviewPanels[0]?.receive({ schema, type: "stateIntent", text: "x".repeat(200) });
+    await flushWorkbench();
+    expect(new TextDecoder().decode(files.get("/p/agent.json"))).toBe(original);
+
+    webviewPanels[0]?.receive({ schema, type: "acceptPlan" });
+    webviewPanels[0]?.receive({ schema, type: "requestProposal" });
+    await flushWorkbench();
+    const proposal = webviewPanels[0]?.messages.find(
+      (m) => (m as { type: string }).type === "proposal",
+    );
+    expect(proposal).toBeDefined();
+    expect(new TextDecoder().decode(files.get("/p/agent.json"))).toBe(original);
+
+    webviewPanels[0]?.receive({
+      schema,
+      type: "decideProposal",
+      proposalId: (proposal as { proposalId: string }).proposalId,
+      decision: "rejected",
+    });
+    await flushWorkbench();
+    expect(new TextDecoder().decode(files.get("/p/agent.json"))).toBe(original);
+
+    webviewPanels[0]?.receive({ schema, type: "requestProposal" });
+    await flushWorkbench();
+    webviewPanels[0]?.receive({
+      schema,
+      type: "decideProposal",
+      proposalId: (proposal as { proposalId: string }).proposalId,
+      decision: "accepted",
+    });
+    await flushWorkbench();
+    const applied = JSON.parse(new TextDecoder().decode(files.get("/p/agent.json")));
+    expect(applied.program.scripts[0].statements.length).toBeGreaterThan(0);
+    expect(types()).toContain("prediction");
+
+    await handlers.get("agorixStudio.undoProposal")!();
+    expect(JSON.parse(new TextDecoder().decode(files.get("/p/agent.json")))).toEqual(
+      JSON.parse(original),
+    );
+  });
+
   it("reviews first-step proposal through the generic apply flow", async () => {
     await openFile("/p/empty.json", stored([]));
     choice = "Apply";
