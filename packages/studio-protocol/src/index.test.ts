@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { createStarterWorkspace } from "@agorix/block-editor";
 import { DEFAULT_AGREEMENTS, createWorkflow } from "@agorix/agent-workflow";
 import { STUDIO_PROTOCOL_VERSION as schema, parseHostMessage, parseUiMessage } from "./index.js";
 
@@ -61,5 +62,48 @@ describe("studio-protocol", () => {
       parseHostMessage({ schema, type: "workflow", state: { stage: "nope" } }),
     ).toBeUndefined();
     expect(parseHostMessage({ schema, type: "programHash", hash: "has space" })).toBeUndefined();
+  });
+
+  it("validates workspace and error host messages", () => {
+    const workspace = createStarterWorkspace();
+    expect(
+      parseHostMessage({ schema, type: "workspace", workspace, programHash: "abc123" }),
+    ).toEqual({
+      schema,
+      type: "workspace",
+      workspace,
+      programHash: "abc123",
+    });
+    const bad = (w: unknown, h = "abc") =>
+      parseHostMessage({ schema, type: "workspace", workspace: w, programHash: h });
+    expect(
+      bad({ scripts: [{ id: "s", trigger: { id: "t", type: "nope" }, statements: [] }] }),
+    ).toBeUndefined();
+    expect(
+      bad({ scripts: Array.from({ length: 65 }, () => workspace.scripts[0]) }),
+    ).toBeUndefined();
+    expect(bad(workspace, "has space")).toBeUndefined();
+    let nested: unknown = [];
+    for (let i = 0; i < 20; i += 1) {
+      nested = [{ id: `r${i}`, type: "control_repeat", inputs: { body: nested } }];
+    }
+    expect(
+      bad({
+        scripts: [{ id: "s", trigger: { id: "t", type: "event_on_start" }, statements: nested }],
+      }),
+    ).toBeUndefined();
+    expect(
+      bad({
+        scripts: [
+          {
+            id: "s",
+            trigger: { id: "t", type: "event_on_start" },
+            statements: [{ id: "m", type: "motion_move", fields: { steps: {} } }],
+          },
+        ],
+      }),
+    ).toBeUndefined();
+    expect(parseHostMessage({ schema, type: "error", code: "INVALID_CHANGE" })).toBeDefined();
+    expect(parseHostMessage({ schema, type: "error", code: "x" })).toBeUndefined();
   });
 });

@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@agorix/agent-workflow": "workspace:*",
-    "@agorix/interaction-core": "workspace:*"
+    "@agorix/interaction-core": "workspace:*",
+    "@agorix/block-editor": "workspace:*"
   }
 }
