@@ -6,8 +6,10 @@ import {
   createNavigationSections,
   createExecutionEvidence,
   createCompanionTurn,
+  createStudioStarterProject,
   createStoredProjectWithProgram,
   createValidationReport,
+  defaultStudioProjectFilename,
   formatInspectorReport,
   isStudioProjectionId,
   listStudioProjections,
@@ -19,6 +21,7 @@ import {
   serializeStoredProject,
   suggestFirstStep,
   suggestRepeat,
+  STUDIO_STARTER_OPTIONS,
   type StudioCompanionAction,
   type StudioCompanionTurn,
   type StudioExecutionEvidence,
@@ -32,6 +35,7 @@ import {
   type StudioRemoteProjectPayload,
   type StudioRemoteProjectReference,
   type StudioRemoteSaveResult,
+  type StudioStarterId,
 } from "./studioCore.js";
 
 interface OpenProject {
@@ -75,6 +79,17 @@ const SECRET_TOKEN_KEY = "agorixStudio.accountToken";
 interface StoredSnapshot {
   readonly uri: vscode.Uri;
   readonly raw: string;
+}
+
+interface IdQuickPickItem<Id extends string> extends vscode.QuickPickItem {
+  readonly id: Id;
+}
+
+interface CreateProjectCommandOptions {
+  readonly name: string;
+  readonly starter: StudioStarterId;
+  readonly locale: "en" | "es";
+  readonly uri: vscode.Uri;
 }
 
 class StudioTreeItem extends vscode.TreeItem {
@@ -248,7 +263,101 @@ async function openProject(target?: unknown): Promise<void> {
   }
   refreshStudioViews();
   refreshCompanionViews();
+  updateStudioContext();
   await openProjection(currentProjectionId);
+}
+
+async function createProject(target?: unknown): Promise<vscode.Uri | undefined> {
+  const picked = isCreateProjectCommandOptions(target)
+    ? target
+    : await promptForCreateProjectOptions();
+  if (picked === undefined) return undefined;
+
+  const stored = createStudioStarterProject({
+    starter: picked.starter,
+    locale: picked.locale,
+  });
+  const raw = serializeProjectFile(stored, picked.uri.fsPath);
+  await vscode.workspace.fs.writeFile(picked.uri, new TextEncoder().encode(raw));
+  current = { uri: picked.uri, project: parseProjectFile(raw, picked.uri.fsPath) };
+  resetProjectSessionState();
+  refreshStudioViews();
+  refreshExecutionViews();
+  refreshCompanionViews();
+  updateStudioContext();
+  await openProjection(currentProjectionId);
+  void vscode.window.showInformationMessage(`Created Agorix project: ${picked.uri.fsPath}`);
+  return picked.uri;
+}
+
+async function promptForCreateProjectOptions(): Promise<CreateProjectCommandOptions | undefined> {
+  const name = await vscode.window.showInputBox({
+    title: "Agorix project name",
+    prompt: "Choose a name for the local .agorix project.",
+    value: "Agorix first mission",
+    ignoreFocusOut: true,
+    validateInput: (value) =>
+      value.trim().length === 0 ? "Enter a project name before creating a file." : undefined,
+  });
+  if (name === undefined) {
+    return undefined;
+  }
+
+  const starterItems: IdQuickPickItem<StudioStarterId>[] = STUDIO_STARTER_OPTIONS.map((option) => ({
+    label: option.label,
+    description: option.description,
+    id: option.id,
+  }));
+  const starter = await vscode.window.showQuickPick(starterItems, { title: "Agorix starter" });
+  if (starter === undefined) {
+    return undefined;
+  }
+
+  const vscodeLocale = vscode.env.language.toLowerCase();
+  const localeItems: IdQuickPickItem<"en" | "es">[] = [
+    {
+      label: "English",
+      id: "en",
+      ...(vscodeLocale.startsWith("en") ? { description: "VS Code locale" } : {}),
+    },
+    {
+      label: "Español",
+      id: "es",
+      ...(vscodeLocale.startsWith("es") ? { description: "VS Code locale" } : {}),
+    },
+  ];
+  const locale = await vscode.window.showQuickPick(localeItems, { title: "Agorix language" });
+  if (locale === undefined) {
+    return undefined;
+  }
+
+  const filename = defaultStudioProjectFilename(name);
+  const workspace = vscode.workspace.workspaceFolders?.[0];
+  const defaultUri =
+    workspace === undefined
+      ? vscode.Uri.file(filename)
+      : vscode.Uri.file(`${workspace.uri.fsPath.replace(/[\\/]$/, "")}/${filename}`);
+  const uri = await vscode.window.showSaveDialog({
+    filters: { "Agorix portable project": ["agorix"] },
+    saveLabel: "Create Agorix project",
+    defaultUri,
+  });
+  return uri === undefined ? undefined : { name, starter: starter.id, locale: locale.id, uri };
+}
+
+function isCreateProjectCommandOptions(value: unknown): value is CreateProjectCommandOptions {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "name" in value &&
+    typeof value.name === "string" &&
+    "starter" in value &&
+    (value.starter === "blank" || value.starter === "first-mission") &&
+    "locale" in value &&
+    (value.locale === "en" || value.locale === "es") &&
+    "uri" in value &&
+    value.uri instanceof vscode.Uri
+  );
 }
 
 function resetProjectSessionState(): void {
@@ -259,6 +368,14 @@ function resetProjectSessionState(): void {
   companionTurns.length = 0;
   undoStack.length = 0;
   redoStack.length = 0;
+}
+
+function updateStudioContext(): void {
+  void vscode.commands.executeCommand(
+    "setContext",
+    "agorixStudio.hasProject",
+    current !== undefined,
+  );
 }
 
 function requireProject(): OpenProject | undefined {
@@ -932,6 +1049,7 @@ async function signOut(context: vscode.ExtensionContext): Promise<void> {
     refreshStudioViews();
     refreshExecutionViews();
     refreshCompanionViews();
+    updateStudioContext();
   }
   void vscode.window.showInformationMessage("Signed out of Agorix Studio.");
 }
@@ -977,6 +1095,7 @@ async function openRemoteProject(context: vscode.ExtensionContext): Promise<void
   resetProjectSessionState();
   refreshStudioViews();
   refreshCompanionViews();
+  updateStudioContext();
   await openProjection(currentProjectionId);
 }
 
@@ -1167,6 +1286,10 @@ export function activate(context: vscode.ExtensionContext): void {
         treeDataProvider: companionProvider,
       }),
       vscode.commands.registerCommand(
+        "agorixStudio.createProject",
+        guarded(output, "Create Project", createProject),
+      ),
+      vscode.commands.registerCommand(
         "agorixStudio.openProject",
         guarded(output, "Open Project", openProject),
       ),
@@ -1287,6 +1410,7 @@ export function activate(context: vscode.ExtensionContext): void {
         guarded(output, "Suggest repeat", suggestRepeatCommand),
       ),
     );
+    updateStudioContext();
   } catch (error) {
     reportFailure(output, "activation failed", error);
     output.show(true);

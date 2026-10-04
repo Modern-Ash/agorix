@@ -25,6 +25,7 @@ let choice: string | undefined;
 let picked: { fsPath: string } | undefined;
 let savePicked: { fsPath: string } | undefined;
 let quickPick: Record<string, unknown> | undefined;
+let quickPicks: Array<Record<string, unknown> | undefined> = [];
 let inputBox: string | undefined;
 let serverUrl = "";
 
@@ -106,8 +107,13 @@ vi.mock("vscode", () => {
       },
       executeCommand: async (...args: unknown[]) => {
         commandCalls.push(args);
-        diffs.push(args);
+        if (args[0] === "vscode.diff") {
+          diffs.push(args);
+        }
       },
+    },
+    env: {
+      language: "en-US",
     },
     window: {
       showOpenDialog: async () => (picked === undefined ? undefined : [picked]),
@@ -121,7 +127,7 @@ vi.mock("vscode", () => {
         shown.push(message);
         return items.includes(choice ?? "") ? choice : undefined;
       },
-      showQuickPick: async () => quickPick,
+      showQuickPick: async () => (quickPicks.length > 0 ? quickPicks.shift() : quickPick),
       showErrorMessage: async (message: string) => {
         shown.push(message);
         return undefined;
@@ -257,6 +263,7 @@ describe("Studio extension wiring", () => {
     webviewPanels.length = 0;
     choice = undefined;
     quickPick = undefined;
+    quickPicks = [];
     savePicked = undefined;
     inputBox = undefined;
     serverUrl = "";
@@ -282,6 +289,7 @@ describe("Studio extension wiring", () => {
   it("registers commands, virtual projection provider and native Activity Bar views", () => {
     expect([...handlers.keys()].sort()).toEqual(
       [
+        "agorixStudio.createProject",
         "agorixStudio.openProject",
         "agorixStudio.openProjection",
         "agorixStudio.openWorldPreview",
@@ -334,6 +342,53 @@ describe("Studio extension wiring", () => {
     await handlers.get("agorixStudio.showEvidence")!();
     await handlers.get("agorixStudio.suggestRepeat")!();
     expect(shown).toEqual(["Open an Agorix project first.", "Open an Agorix project first."]);
+  });
+
+  it("shows clean-install project actions before a project is open", () => {
+    const rows = treeProviders.get("agorixStudio.projects")?.getChildren() ?? [];
+
+    expect(JSON.stringify(rows)).toContain("Create New Project");
+    expect(JSON.stringify(rows)).toContain("Open local .agorix project");
+    expect(JSON.stringify(rows)).toContain("Open account project");
+    expect(commandCalls).toContainEqual(["setContext", "agorixStudio.hasProject", false]);
+  });
+
+  it("creates a local First Mission .agorix project and opens it immediately", async () => {
+    inputBox = "My First Mission!";
+    quickPicks = [
+      { id: "first-mission", label: "First Mission" },
+      { id: "en", label: "English" },
+    ];
+    savePicked = { fsPath: "/workspace/my-first-mission.agorix" };
+
+    const uri = await handlers.get("agorixStudio.createProject")!();
+    const raw = new TextDecoder().decode(files.get("/workspace/my-first-mission.agorix"));
+    const envelope = JSON.parse(raw);
+
+    expect(uri).toMatchObject({ fsPath: "/workspace/my-first-mission.agorix" });
+    expect(envelope.format).toBe("agorix-project");
+    expect(envelope.project.schemaVersion).toBe(SCHEMA_VERSION);
+    expect(envelope.project.metadata.locale).toBe("en");
+    expect(envelope.project.program.scripts[0].statements).toEqual([]);
+    expect(commandCalls).toContainEqual(["setContext", "agorixStudio.hasProject", true]);
+    expect(shown.at(-1)).toContain("Created Agorix project");
+
+    const run = await handlers.get("agorixStudio.run")!();
+    const step = await handlers.get("agorixStudio.step")!();
+    expect(run).toMatchObject({ status: "completed" });
+    expect(step).toMatchObject({ status: "completed" });
+  });
+
+  it("cancels local project creation without writing partial files", async () => {
+    inputBox = "Cancelled";
+    quickPicks = [{ id: "blank", label: "Blank project" }];
+    savePicked = undefined;
+
+    const created = await handlers.get("agorixStudio.createProject")!();
+
+    expect(created).toBeUndefined();
+    expect(files.size).toBe(0);
+    expect(commandCalls).not.toContainEqual(["setContext", "agorixStudio.hasProject", true]);
   });
 
   it("reports an invalid project file instead of crashing", async () => {

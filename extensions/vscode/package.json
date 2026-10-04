@@ -33,6 +33,7 @@
     "vscode": "^1.95.0"
   },
   "activationEvents": [
+    "onCommand:agorixStudio.createProject",
     "onCommand:agorixStudio.openProject",
     "onCommand:agorixStudio.exportAgorix",
     "onCommand:agorixStudio.signIn",
@@ -103,35 +104,47 @@
         },
         {
           "id": "agorixStudio.missions",
-          "name": "Missions"
+          "name": "Missions",
+          "when": "agorixStudio.hasProject"
         },
         {
           "id": "agorixStudio.progress",
-          "name": "Progress"
+          "name": "Progress",
+          "when": "agorixStudio.hasProject"
         },
         {
           "id": "agorixStudio.worlds",
-          "name": "Worlds"
+          "name": "Worlds",
+          "when": "agorixStudio.hasProject"
         },
         {
           "id": "agorixStudio.inspector",
-          "name": "Execution Inspector"
+          "name": "Execution Inspector",
+          "when": "agorixStudio.hasProject"
         },
         {
           "id": "agorixStudio.companion",
-          "name": "Learning Companion"
+          "name": "Learning Companion",
+          "when": "agorixStudio.hasProject"
         },
         {
           "id": "agorixStudio.companionHistory",
-          "name": "Companion Responses"
+          "name": "Companion Responses",
+          "when": "agorixStudio.hasProject"
         },
         {
           "id": "agorixStudio.developer",
-          "name": "Developer"
+          "name": "Developer",
+          "when": "agorixStudio.hasProject"
         }
       ]
     },
     "commands": [
+      {
+        "command": "agorixStudio.createProject",
+        "title": "Create New Project",
+        "category": "Agorix Studio"
+      },
       {
         "command": "agorixStudio.openProject",
         "title": "Open Project",
@@ -358,6 +371,11 @@
       ],
       "view/title": [
         {
+          "command": "agorixStudio.createProject",
+          "when": "view == agorixStudio.projects",
+          "group": "navigation"
+        },
+        {
           "command": "agorixStudio.openProject",
           "when": "view == agorixStudio.projects",
           "group": "navigation"
@@ -495,7 +513,14 @@
           "group": "navigation"
         }
       ]
-    }
+    },
+    "viewsWelcome": [
+      {
+        "view": "agorixStudio.projects",
+        "contents": "Agorix Studio\n\nStart coding with Agorix.\n\n[Create New Project](command:agorixStudio.createProject)\n[Open .agorix Project](command:agorixStudio.openProject)\n[Open Account Project](command:agorixStudio.openRemoteProject)\n\nYou can work locally without an account.\n\nAgorix can suggest, explain and debug from your program and runtime evidence. Changes are never applied without your approval.",
+        "when": "!agorixStudio.hasProject"
+      }
+    ]
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",

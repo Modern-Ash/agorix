@@ -157,9 +157,8 @@ export function validatePortableStoredProject(input: unknown): StoredProject {
 }
 
 export function sanitizeAgorixFilename(name: string): string {
-  const withoutExtension = name.replace(/\.agorix$/i, "");
+  const withoutExtension = name.trim().replace(/\.agorix$/i, "");
   const slug = withoutExtension
-    .trim()
     .toLowerCase()
     .replace(/['"]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
