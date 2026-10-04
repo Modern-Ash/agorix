@@ -8,3 +8,6 @@ export { Palette } from "./Palette.js";
 export { Workbench, statusFor } from "./Workbench.js";
 export { mountWorkbench } from "./mount.js";
 export { WORKBENCH_CSS } from "./styles.js";
+export type { AgentUiState } from "./agentUi.js";
+export { initialAgentUi, reduceAgentUi } from "./agentUi.js";
+export { AgentPanel } from "./AgentPanel.js";

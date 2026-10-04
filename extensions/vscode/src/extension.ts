@@ -58,6 +58,8 @@ import {
   disposeWorldPreview,
 } from "./host/worldPreviewPanel.js";
 import type { HostPort } from "./host/workbenchHost.js";
+import { createAgentPort } from "./host/agentPort.js";
+import type { AgentPort } from "./host/agentHost.js";
 import {
   createStudioProviderClient,
   normalizeStudioProviderSettings,
@@ -753,6 +755,27 @@ async function restoreSnapshot(snapshot: StoredSnapshot): Promise<void> {
   await openProjection(session.currentProjectionId);
 }
 
+function agentPortFor(): AgentPort {
+  return createAgentPort({
+    getProject: () => session.current?.project,
+    getActiveProposal: () => session.activeProposal,
+    setActiveProposal: (next) => {
+      session.activeProposal = next;
+      refreshCompanionViews();
+    },
+    applyActiveProposal,
+    rejectActiveProposal,
+    runAndGetResult: () => {
+      runExecution();
+      const result = session.executionEvidence?.result;
+      return result === undefined
+        ? undefined
+        : { world: result.world, stepsUsed: result.stepsUsed };
+    },
+    events: session.agentEvents,
+  });
+}
+
 function workbenchPort(): HostPort {
   return {
     getProgram: () => session.current?.project.stored.program,
@@ -1218,7 +1241,7 @@ export function activate(context: vscode.ExtensionContext): void {
           if (requireProject() === undefined) {
             return;
           }
-          openWorkbenchPanel(context, workbenchPort());
+          openWorkbenchPanel(context, workbenchPort(), agentPortFor());
           refreshWorkbench();
         },
         showDeveloperContext: () => showDeveloperContext(output),

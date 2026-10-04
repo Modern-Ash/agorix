@@ -10,6 +10,7 @@
     "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
+    "@agorix/agent-workflow": "workspace:*",
     "@agorix/block-editor": "workspace:*",
     "@agorix/interaction-core": "workspace:*",
     "@agorix/studio-protocol": "workspace:*",

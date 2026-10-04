@@ -7,6 +7,7 @@ import {
   type DropTarget,
   type Intent,
 } from "@agorix/interaction-core";
+import type { GhostChange } from "@agorix/studio-protocol";
 import { dropPointFor, toRows } from "./blockView.js";
 import { chordFromEvent, dragPayload, parseDragPayload } from "./drag.js";
 
@@ -79,13 +80,20 @@ export function AgentZone({
   );
 }
 
+function ghostKind(ghosts: readonly GhostChange[] | undefined, blockId: string) {
+  return ghosts?.find((ghost) => ghost.blockId === blockId)?.kind;
+}
+
 export function Canvas({
   workspace,
   onIntent,
+  ghosts,
 }: {
   readonly workspace: BlockWorkspaceSnapshot;
   readonly onIntent: (intent: Intent) => void;
+  readonly ghosts?: readonly GhostChange[] | undefined;
 }) {
+  const addedGhosts = (ghosts ?? []).filter((ghost) => ghost.kind === "added");
   return (
     <section className="canvas" aria-label="Program">
       {toRows(workspace).map((row, key) => {
@@ -118,7 +126,20 @@ export function Canvas({
             draggable
             aria-label={block.label}
             aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown Delete"
-            className={`block depth-${Math.min(row.depth, 4)}`}
+            className={`block depth-${Math.min(row.depth, 4)}${
+              ghostKind(ghosts, block.id) === "removed"
+                ? " ghost-removed"
+                : ghostKind(ghosts, block.id) === undefined
+                  ? ""
+                  : " ghost-changed"
+            }`}
+            aria-description={
+              ghostKind(ghosts, block.id) === "removed"
+                ? "Suggestion would remove this block"
+                : ghostKind(ghosts, block.id) === undefined
+                  ? undefined
+                  : "Suggestion would change this block"
+            }
             onDragStart={(event) => {
               event.dataTransfer.setData(
                 DRAG_TYPE,
@@ -162,6 +183,16 @@ export function Canvas({
           </div>
         );
       })}
+      {addedGhosts.map((ghost, index) => (
+        <div
+          key={`ghost-${index}`}
+          className="block ghost-added depth-0"
+          aria-label={`Suggested: ${ghost.afterText ?? "new block"}`}
+        >
+          <span className="ghost-badge">Suggestion</span>
+          <span className="label">{ghost.afterText ?? "new block"}</span>
+        </div>
+      ))}
     </section>
   );
 }

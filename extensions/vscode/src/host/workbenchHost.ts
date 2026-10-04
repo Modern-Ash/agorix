@@ -82,8 +82,8 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
         }
         return snapshot();
       }
-      case "decideProposal":
-      case "agreementsChanged":
+      default:
+        // Agent-loop and proposal messages are handled by the agent host.
         return [];
     }
   }

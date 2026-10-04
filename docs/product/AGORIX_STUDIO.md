@@ -45,6 +45,7 @@ semantic program hash.
 | Activity Bar / Side Bar | Mission, project and progress entry points.                                                                                                  |
 | Editor                  | Textual projection first, with canonical node range mapping.                                                                                 |
 | Workbench               | Canvas projection of the canonical program with an icon-first palette, drag and drop and keyboard equivalents; opens beside the code editor. |
+| Agent column            | Director/Auditor loop beside the canvas; proposals appear as ghost blocks.                                                                   |
 | World Preview           | Webview-friendly frame data rendered from mission/runtime/world state.                                                                       |
 | Execution Inspector     | Current node, statement type and before/after world state.                                                                                   |
 | AI proposal review      | Inspect, reject or explicitly apply structured proposals.                                                                                    |

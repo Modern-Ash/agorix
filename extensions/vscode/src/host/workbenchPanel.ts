@@ -2,11 +2,13 @@ import { randomBytes } from "node:crypto";
 import * as vscode from "vscode";
 import { parseUiMessage, type HostMessage } from "@agorix/studio-protocol";
 import { workbenchHtml } from "./workbenchHtml.js";
+import { createAgentHost, type AgentHost, type AgentPort } from "./agentHost.js";
 import { createWorkbenchHost, type HostPort, type WorkbenchHost } from "./workbenchHost.js";
 
 const VIEW_TYPE = "agorixStudio.workbench";
 let panel: vscode.WebviewPanel | undefined;
 let host: WorkbenchHost | undefined;
+let agent: AgentHost | undefined;
 let blockCounter = 0;
 
 async function send(messages: readonly HostMessage[]): Promise<void> {
@@ -15,7 +17,11 @@ async function send(messages: readonly HostMessage[]): Promise<void> {
   }
 }
 
-export function openWorkbenchPanel(context: vscode.ExtensionContext, port: HostPort): void {
+export function openWorkbenchPanel(
+  context: vscode.ExtensionContext,
+  port: HostPort,
+  agentPort: AgentPort,
+): void {
   if (panel !== undefined) {
     panel.reveal(vscode.ViewColumn.Beside, true);
     return;
@@ -32,6 +38,7 @@ export function openWorkbenchPanel(context: vscode.ExtensionContext, port: HostP
     },
   );
   host = createWorkbenchHost(port, () => `block:wb_${(blockCounter += 1)}`);
+  agent = createAgentHost(agentPort);
   const scriptUri = panel.webview.asWebviewUri(vscode.Uri.joinPath(distRoot, "workbench.js"));
   panel.webview.html = workbenchHtml(
     randomBytes(16).toString("hex"),
@@ -40,24 +47,36 @@ export function openWorkbenchPanel(context: vscode.ExtensionContext, port: HostP
   );
   panel.webview.onDidReceiveMessage((raw: unknown) => {
     const message = parseUiMessage(raw);
-    if (message === undefined || host === undefined) {
+    if (message === undefined || host === undefined || agent === undefined) {
       return;
     }
-    void host.handle(message).then(send, () => undefined);
+    const workbench = host;
+    const agentHost = agent;
+    void (async () => {
+      if (message.type === "ready") {
+        await send(await workbench.handle(message));
+        await send(agentHost.snapshot());
+        return;
+      }
+      await send((await agentHost.handle(message)) ?? (await workbench.handle(message)));
+    })().catch(() => undefined);
   });
   panel.onDidDispose(() => {
     panel = undefined;
     host = undefined;
+    agent = undefined;
   });
 }
 
 export function refreshWorkbench(): void {
-  if (host !== undefined) {
-    void send(host.snapshot());
+  if (host !== undefined && agent !== undefined) {
+    const messages = [...host.snapshot(), ...agent.onProgramChanged()];
+    void send(messages);
   }
 }
 
 export function disposeWorkbench(): void {
   panel = undefined;
   host = undefined;
+  agent = undefined;
 }

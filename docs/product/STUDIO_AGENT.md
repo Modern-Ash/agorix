@@ -135,3 +135,15 @@ The Studio canvas is an IDE-native **projection** of the canonical program, comp
 ## Work breakdown
 
 Epic #242. Foundations #243. Phase 1 agent core #244-#251. Phase 2 canvas #252-#255. Phase 3 agent on the canvas #256-#258. Release gate #259.
+
+## Workbench agent slice
+
+Implemented in the Workbench (Plan D, deterministic System-0 scaffolds only, no provider calls):
+
+- intent bar (max 140 characters, never stored or echoed) that selects among the available deterministic tasks;
+- plan, then a proposal shown as ghost blocks on the canvas with Accept and Reject;
+- predict (will the character reach the goal), run, compare with runtime evidence, explain (closed choice); prediction and explanation can always be skipped;
+- visible agent agreements (agent on/off, supervised or bounded mode, help level ceiling);
+- non-PII `AgentEvent`s held in memory for the session.
+
+Not yet implemented: provider-backed proposals, the modify decision, alternatives, proactive offers and CodeLens, evidence export, Mission Spec editing and density levels.

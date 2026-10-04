@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useReducer, useState } from "react";
 import type { BlockType, BlockWorkspaceSnapshot } from "@agorix/block-editor";
 import type { Intent } from "@agorix/interaction-core";
 import { STUDIO_PROTOCOL_VERSION, type HostMessage } from "@agorix/studio-protocol";
 import type { HostBridge } from "./bridge.js";
 import { AgentZone, Canvas } from "./Canvas.js";
 import { Palette } from "./Palette.js";
+import { AgentPanel } from "./AgentPanel.js";
+import { initialAgentUi, reduceAgentUi } from "./agentUi.js";
 
 export function statusFor(message: HostMessage): string | undefined {
   if (message.type === "error") {
@@ -21,9 +23,11 @@ export function statusFor(message: HostMessage): string | undefined {
 export function Workbench({ bridge }: { readonly bridge: HostBridge }) {
   const [workspace, setWorkspace] = useState<BlockWorkspaceSnapshot | undefined>();
   const [status, setStatus] = useState("");
+  const [agentUi, dispatchAgent] = useReducer(reduceAgentUi, undefined, initialAgentUi);
 
   useEffect(() => {
     const unsubscribe = bridge.subscribe((message) => {
+      dispatchAgent(message);
       if (message.type === "workspace") {
         setWorkspace(message.workspace);
         setStatus("Updated");
@@ -56,7 +60,7 @@ export function Workbench({ bridge }: { readonly bridge: HostBridge }) {
         {workspace === undefined ? (
           <p>Open a project to start building.</p>
         ) : (
-          <Canvas workspace={workspace} onIntent={post} />
+          <Canvas workspace={workspace} onIntent={post} ghosts={agentUi.proposal?.changes} />
         )}
         <div className="zones">
           <AgentZone verb="explain" label="Explain" onIntent={post} />
@@ -67,6 +71,7 @@ export function Workbench({ bridge }: { readonly bridge: HostBridge }) {
           {status}
         </div>
       </main>
+      <AgentPanel state={agentUi} send={(message) => bridge.post(message)} />
     </div>
   );
 }

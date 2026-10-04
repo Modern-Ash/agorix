@@ -18,3 +18,11 @@ export {
   effectiveAssistance,
   nextAssistanceLevel,
 } from "./assistance.js";
+export type { AgentTask, AgentTaskId } from "./plan.js";
+export { AGENT_TASK_IDS, MAX_INTENT_LENGTH, normalizeIntent, planTasks } from "./plan.js";
+export type { PredictionAnswer, PredictionResult } from "./predict.js";
+export { comparePrediction } from "./predict.js";
+export type { ConceptId } from "./explain.js";
+export { CONCEPT_IDS, checkExplanation, relevantConcept } from "./explain.js";
+export type { AgentEvent, AgentEventType } from "./events.js";
+export { MAX_AGENT_EVENTS } from "./events.js";

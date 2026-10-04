@@ -1,3 +1,4 @@
+import type { AgentEvent } from "@agorix/agent-workflow";
 import type * as vscode from "vscode";
 import type {
   StudioCompanionTurn,
@@ -51,6 +52,7 @@ export interface StudioSessionState {
   executionStatus: StudioExecutionStatus;
   activeProposal: StudioProposalSession | undefined;
   readonly companionTurns: StudioCompanionTurn[];
+  readonly agentEvents: AgentEvent[];
   readonly undoStack: StoredSnapshot[];
   readonly redoStack: StoredSnapshot[];
 }
@@ -64,6 +66,7 @@ export function createStudioSessionState(): StudioSessionState {
     executionStatus: "idle",
     activeProposal: undefined,
     companionTurns: [],
+    agentEvents: [],
     undoStack: [],
     redoStack: [],
   };
@@ -75,6 +78,7 @@ export function clearProjectSession(state: StudioSessionState): void {
   state.executionStatus = "idle";
   state.activeProposal = undefined;
   state.companionTurns.length = 0;
+  state.agentEvents.length = 0;
   state.undoStack.length = 0;
   state.redoStack.length = 0;
 }
