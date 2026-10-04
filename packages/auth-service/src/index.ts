@@ -209,7 +209,7 @@ export class AuthService {
 
     const createdAt = this.nowIso();
     const account = createAccountIdentity({
-      accountId: this.randomToken(16),
+      accountId: this.randomIdentifier(16),
       alias: input.username,
       status: "active",
       createdAt,
@@ -314,7 +314,7 @@ export class AuthService {
     const createdAt = this.nowIso();
     const expiresAt = existing?.expiresAt ?? this.futureIso(this.policy.session.absoluteTtlMs);
     return createSessionIdentity({
-      sessionId: this.randomToken(16),
+      sessionId: this.randomIdentifier(16),
       accountId,
       createdAt,
       expiresAt,
@@ -368,6 +368,11 @@ export class AuthService {
 
   private randomToken(byteLength: number): string {
     return Buffer.from(this.random.bytes(byteLength)).toString("base64url");
+  }
+
+  /** Opaque ids must start alphanumeric to be valid repository identifiers; base64url may not. */
+  private randomIdentifier(byteLength: number): string {
+    return Buffer.from(this.random.bytes(byteLength)).toString("hex");
   }
 }
 

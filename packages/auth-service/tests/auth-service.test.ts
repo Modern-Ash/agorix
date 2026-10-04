@@ -269,4 +269,13 @@ describe("AuthService", () => {
       code: "SESSION_EXPIRED",
     });
   });
+  it("issues account ids that start alphanumeric even when random bytes encode to - or _", async () => {
+    const service = new AuthService({
+      accounts: new InMemoryAccountRepository(),
+      sessions: new InMemorySessionRepository(),
+      random: { bytes: (length) => new Uint8Array(length).fill(0xff) },
+    });
+    const { account } = await service.register({ username: "Ada", password: "correct horse" });
+    expect(account.accountId).toMatch(/^[A-Za-z0-9][A-Za-z0-9._:-]{1,127}$/);
+  });
 });
