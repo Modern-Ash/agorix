@@ -368,3 +368,18 @@ function cloneBlockTreeWithFreshIds(
   }
   return clone(block);
 }
+
+/**
+ * Drop slots are numbered before the dragged block leaves its list, while a move is indexed
+ * after removal. Translates a slot into the final index for a move within the same container.
+ */
+export function finalMoveIndex(
+  fromPath: StatementPath,
+  toContainerPath: StatementPath,
+  slotIndex: number,
+): number {
+  const sameContainer =
+    parentContainerPath(fromPath).length === toContainerPath.length &&
+    parentContainerPath(fromPath).every((segment, i) => segment === toContainerPath[i]);
+  return sameContainer && slotIndex > indexInContainer(fromPath) ? slotIndex - 1 : slotIndex;
+}

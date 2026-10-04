@@ -94,6 +94,7 @@ import {
   duplicateBlockInWorkspace,
   editNumericBlockFieldAt,
   indexInContainer,
+  finalMoveIndex,
   moveBlockInWorkspaceByPath,
   parentContainerPath,
   resetWorkspace,
@@ -2691,7 +2692,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
         model.workspace,
         source,
         targetContainerPath,
-        targetIndex,
+        finalMoveIndex(source, targetContainerPath, targetIndex),
       );
       if (commitProjection("move block", projection)) {
         setMessage(t(locale, "programUpdatedMessage"));
