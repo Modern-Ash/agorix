@@ -6,6 +6,10 @@ Agorix Studio is the VS Code surface for learners who are ready to work closer t
 
 Studio is not Scratch embedded in VS Code. It is an IDE-native learning surface that keeps the accepted program, code projection, runtime evidence and proposal review distinct.
 
+## Studio Agent and canvas
+
+The AI-native agent, the Director/Auditor pedagogy and the canvas projection are specified in [`STUDIO_AGENT.md`](./STUDIO_AGENT.md) and [ADR 0006](../architecture/adr/0006-studio-agent-and-canvas.md) (epic #242).
+
 ## Release gate
 
 Studio's product release gate is
