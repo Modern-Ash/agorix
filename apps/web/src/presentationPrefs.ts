@@ -8,12 +8,15 @@ export interface PresentationPrefs {
   readonly worldId: string;
   /** Repeat suggestions the learner declined; System-0 goes quiet at 2. */
   readonly repeatDeclines: number;
+  /** Learner agreement: may the agent make offers and open the intent dialogue. */
+  readonly agentEnabled: boolean;
 }
 
 export const PRESENTATION_PREFS_KEY = "agorix:presentation";
 export const DEFAULT_PRESENTATION_PREFS: PresentationPrefs = {
   worldId: DEFAULT_WORLD_ID,
   repeatDeclines: 0,
+  agentEnabled: true,
 };
 
 const MAX_DECLINES = 10;
@@ -41,7 +44,11 @@ export function loadPresentationPrefs(
       typeof parsed.repeatDeclines === "number" && Number.isFinite(parsed.repeatDeclines)
         ? Math.min(MAX_DECLINES, Math.max(0, Math.trunc(parsed.repeatDeclines)))
         : 0;
-    return { worldId, repeatDeclines: declines };
+    const agentEnabled =
+      typeof parsed.agentEnabled === "boolean"
+        ? parsed.agentEnabled
+        : DEFAULT_PRESENTATION_PREFS.agentEnabled;
+    return { worldId, repeatDeclines: declines, agentEnabled };
   } catch {
     return DEFAULT_PRESENTATION_PREFS;
   }

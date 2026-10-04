@@ -115,6 +115,7 @@ import {
 } from "./projectStorage.js";
 import { loadPresentationPrefs, savePresentationPrefs } from "./presentationPrefs.js";
 import { LOCALE_LABELS, t, type Locale, type MessageKey } from "./i18n.js";
+import { AgentCompanion, companionMood } from "./AgentCompanion.js";
 import { GhostAddedBlocks } from "./GhostBlocks.js";
 import { ghostMarksFor, type GhostMarkKind } from "./ghostMarks.js";
 import { ProvenanceLabel } from "./ProvenanceLabel.js";
@@ -1722,6 +1723,9 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
   const [worldId, setWorldId] = useState<string>(() => loadPresentationPrefs().worldId);
   const [stepping, setStepping] = useState(false);
   const [firstStepDeclined, setFirstStepDeclined] = useState(false);
+  const [agentEnabled, setAgentEnabled] = useState<boolean>(
+    () => loadPresentationPrefs().agentEnabled,
+  );
   const [repeatDeclines, setRepeatDeclines] = useState(
     () => loadPresentationPrefs().repeatDeclines,
   );
@@ -1761,8 +1765,8 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
   const proposalCard =
     proposalReview === undefined ? undefined : createWebProposalCardView(proposalReview);
   useEffect(() => {
-    savePresentationPrefs({ worldId, repeatDeclines });
-  }, [worldId, repeatDeclines]);
+    savePresentationPrefs({ worldId, repeatDeclines, agentEnabled });
+  }, [worldId, repeatDeclines, agentEnabled]);
   const reducedMotion = usePrefersReducedMotion();
   const stageFeedback = deriveStageFeedback({
     frames: executionSteps.length > 0 ? executionSteps.map((step) => step.frame) : frames,
@@ -1817,9 +1821,11 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
           declinedCount: 0,
         },
   );
-  const firstStepOffer = firstStepDecision?.action === "offer" ? firstStepProposal : undefined;
+  const firstStepOffer =
+    agentEnabled && firstStepDecision?.action === "offer" ? firstStepProposal : undefined;
   const firstStepReviewActive = proposalReview?.proposal.source.capability === "first-step";
-  const repeatOffer = repeatDecision?.action === "offer" ? repeatProposal : undefined;
+  const repeatOffer =
+    agentEnabled && repeatDecision?.action === "offer" ? repeatProposal : undefined;
   const missionStep =
     status === "complete" || status === "freeplay" ? 3 : attempts > 0 || status === "retry" ? 2 : 1;
   const layaSignal =
@@ -2449,6 +2455,15 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
   function recordAiPrediction() {
     setAiPredictionRecorded(true);
     setProposalMessage(t(locale, "aiLiteracyPredictionRecorded"));
+  }
+
+  function toggleAgent(next: boolean) {
+    setAgentEnabled(next);
+    if (!next) {
+      setProposalReview(undefined);
+      setProposalMessage(undefined);
+      setHighlightedNodeId(undefined);
+    }
   }
 
   function tryFirstStep() {
@@ -3199,9 +3214,27 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
               </span>
               {panelControls("companion")}
             </div>
-            <div className="ai-guide" aria-hidden="true">
-              <img className="agorix-agent-active" src="/brand/agorix-agent-active.svg" alt="" />
-            </div>
+            <AgentCompanion
+              locale={locale}
+              enabled={agentEnabled}
+              mood={companionMood({
+                enabled: agentEnabled,
+                hasOffer: firstStepOffer !== undefined || repeatOffer !== undefined,
+                reviewing: proposalReview !== undefined,
+              })}
+              message={
+                proposalReview !== undefined
+                  ? proposalMessage
+                  : firstStepOffer !== undefined
+                    ? t(locale, "firstStepTitle")
+                    : repeatOffer !== undefined
+                      ? t(locale, "repeatSuggestionTitle", {
+                          count: detectRepeatPattern(model.program)?.count ?? 0,
+                        })
+                      : undefined
+              }
+              onToggle={toggleAgent}
+            />
             <div className="ai-coach-card">
               <div className="ai-coach-card-header">
                 <strong>{t(locale, "aiCoachMode")}</strong>
@@ -3255,12 +3288,14 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
             {proposalMessage === t(locale, "proposalAccepted") ? (
               <ProvenanceLabel kind="accepted" locale={locale} />
             ) : null}
-            <IntentDialogue
-              locale={locale}
-              program={model.program}
-              mission={mission}
-              selectedNodeIds={highlightedNodeId === undefined ? [] : [highlightedNodeId]}
-            />
+            {agentEnabled ? (
+              <IntentDialogue
+                locale={locale}
+                program={model.program}
+                mission={mission}
+                selectedNodeIds={highlightedNodeId === undefined ? [] : [highlightedNodeId]}
+              />
+            ) : null}
             {firstStepOffer === undefined ? null : (
               <div
                 className="ai-welcome"
@@ -3280,9 +3315,11 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
               </div>
             )}
             <div className="tutor-actions">
-              <button type="button" onClick={previewImperfectAiProposal}>
-                {t(locale, "aiLiteracyActivity")}
-              </button>
+              {agentEnabled ? (
+                <button type="button" onClick={previewImperfectAiProposal}>
+                  {t(locale, "aiLiteracyActivity")}
+                </button>
+              ) : null}
               <button type="button" onClick={requestHint}>
                 {t(locale, "getHint")}
               </button>

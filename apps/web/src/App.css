@@ -4096,3 +4096,48 @@ button:hover:not(:disabled) {
   gap: 6px;
   margin-top: 6px;
 }
+
+/* Agorix Agent companion: resting by default, a bubble only while an offer or review is active. */
+.agent-companion {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 4px 12px;
+  margin: 0 0 12px;
+}
+.agent-companion img {
+  grid-row: span 2;
+  width: 56px;
+  height: 56px;
+}
+.agent-companion[data-mood="offering"] img {
+  animation: agent-nudge 900ms ease-out 1;
+}
+.agent-companion .agent-toggle {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+.agent-companion .agent-bubble {
+  grid-column: 1 / -1;
+  margin: 0;
+  min-height: 1.2em;
+  padding: 0;
+  color: var(--provisional, #6b4fbb);
+}
+@keyframes agent-nudge {
+  0% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-6px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .agent-companion[data-mood="offering"] img {
+    animation: none;
+  }
+}
