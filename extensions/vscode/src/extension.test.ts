@@ -19,7 +19,7 @@ const secrets = new Map<string, string>();
 const webviewPanels: Array<{
   readonly messages: unknown[];
   html: string;
-  receive?: (message: unknown) => void;
+  receive?: ((message: unknown) => void) | undefined;
 }> = [];
 let failRegistration = false;
 let choice: string | undefined;
