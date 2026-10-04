@@ -98,15 +98,46 @@ export interface StudioProjectionDocument {
 export interface StudioNavigationSection {
   readonly id: "projects" | "missions" | "progress" | "worlds" | "companion" | "developer";
   readonly label: string;
+  /** Codicon id (without `$(...)`). */
+  readonly icon: string;
+  /** Short count/state shown beside the view title. Never a sentence. */
+  readonly summary?: string;
   readonly items: readonly StudioNavigationItem[];
 }
 
+/** Visual state of a row. `ai` is the AI-provisional treatment, never success styling. */
+export type StudioItemState = "ok" | "warn" | "error" | "info" | "running" | "idle" | "ai";
+
+/**
+ * Theme color ids per state. Only VS Code theme tokens are used, so light, dark and
+ * high-contrast themes resolve them natively. `ai` uses a distinct purple, never the
+ * success color, so provisional AI output is not mistaken for proven behavior.
+ */
+export const STUDIO_STATE_THEME_COLORS: Readonly<Record<StudioItemState, string | undefined>> = {
+  ok: "testing.iconPassed",
+  warn: "list.warningForeground",
+  error: "list.errorForeground",
+  info: "textLink.foreground",
+  running: "charts.blue",
+  idle: undefined,
+  ai: "charts.purple",
+};
+
 export interface StudioNavigationItem {
   readonly id: string;
+  /** Short noun or verb. Long text belongs in `tooltip` (progressive disclosure). */
   readonly label: string;
+  /** Codicon id (without `$(...)`). */
+  readonly icon?: string;
+  readonly state?: StudioItemState;
+  /** Count or state, a few words at most. */
   readonly description?: string;
+  /** Detail revealed on hover. */
+  readonly tooltip?: string;
   readonly command?: string;
   readonly contextValue?: string;
+  /** Collapsed by default; revealed on expand. */
+  readonly children?: readonly StudioNavigationItem[];
 }
 
 export interface InspectorRow {
@@ -405,41 +436,95 @@ export function isStudioProjectionId(value: string): value is StudioProjectionId
 export function createNavigationSections(
   project: StudioProject | undefined,
 ): readonly StudioNavigationSection[] {
+  const developer: StudioNavigationSection = {
+    id: "developer",
+    label: "Developer",
+    icon: "tools",
+    items:
+      project === undefined
+        ? [
+            {
+              id: "open-scm",
+              label: "Source Control",
+              icon: "source-control",
+              tooltip: "Open VS Code Source Control",
+              command: "agorixStudio.openScm",
+            },
+          ]
+        : [
+            {
+              id: "validate-project",
+              label: "Validate",
+              icon: "check-all",
+              description: "runtime + mission",
+              tooltip:
+                "Validate the current Agorix project with the shared runtime and mission checks",
+              command: "agorixStudio.validateProject",
+              contextValue: "agorixDeveloperTask",
+            },
+            {
+              id: "run-checks",
+              label: "Checks",
+              icon: "checklist",
+              description: "task",
+              tooltip: "Run Agorix workspace checks as a native VS Code task",
+              command: "agorixStudio.runChecks",
+              contextValue: "agorixDeveloperTask",
+            },
+            {
+              id: "open-scm",
+              label: "Source Control",
+              icon: "source-control",
+              tooltip: "Open VS Code Source Control (uses the Git extension)",
+              command: "agorixStudio.openScm",
+              contextValue: "agorixDeveloperTask",
+            },
+            {
+              id: "developer-context",
+              label: "Task context",
+              icon: "symbol-key",
+              description: currentProgramHash(project.stored.program),
+              tooltip: "Show the developer task context for the canonical program",
+              command: "agorixStudio.showDeveloperContext",
+              contextValue: "agorixDeveloperTask",
+            },
+          ],
+  };
   if (project === undefined) {
     return [
       {
         id: "projects",
         label: "Projects",
+        icon: "folder",
+        summary: "none open",
         items: [
           {
             id: "create",
             label: "Create New Project",
-            description: "Local .agorix file",
+            icon: "new-file",
+            description: "local",
+            tooltip: "Create a local .agorix file",
             command: "agorixStudio.createProject",
           },
-          { id: "open", label: "Open local .agorix project", command: "agorixStudio.openProject" },
+          {
+            id: "open",
+            label: "Open local .agorix project",
+            icon: "folder-opened",
+            command: "agorixStudio.openProject",
+          },
           {
             id: "open-remote",
             label: "Open account project",
+            icon: "cloud-download",
             command: "agorixStudio.openRemoteProject",
           },
         ],
       },
-      { id: "missions", label: "Missions", items: [] },
-      { id: "progress", label: "Progress", items: [] },
-      { id: "worlds", label: "Worlds", items: [] },
-      { id: "companion", label: "Learning Companion", items: [] },
-      {
-        id: "developer",
-        label: "Developer",
-        items: [
-          {
-            id: "open-scm",
-            label: "Open VS Code Source Control",
-            command: "agorixStudio.openScm",
-          },
-        ],
-      },
+      { id: "missions", label: "Missions", icon: "target", items: [] },
+      { id: "progress", label: "Progress", icon: "graph", items: [] },
+      { id: "worlds", label: "Worlds", icon: "globe", items: [] },
+      { id: "companion", label: "Learning Companion", icon: "sparkle", items: [] },
+      developer,
     ];
   }
   const mission = getLocalizedFirstMission(project.stored.metadata.locale);
@@ -447,22 +532,30 @@ export function createNavigationSections(
     (count, script) => count + script.statements.length,
     0,
   );
+  const worlds = worldsForMission(mission.id, mission.version);
+  const hints = project.stored.metadata.hintLevel;
   return [
     {
       id: "projects",
       label: "Projects",
+      icon: "folder",
+      summary: "1 open",
       items: [
         {
           id: "new-project",
           label: "Create New Project",
-          description: "Start another local .agorix file",
+          icon: "new-file",
+          tooltip: "Start another local .agorix file",
           command: "agorixStudio.createProject",
           contextValue: "agorixProject",
         },
         {
           id: "current-project",
           label: "Current local project",
-          description: `saved locally · ${statementCount} blocks`,
+          icon: "file-code",
+          state: "ok",
+          description: `saved · ${statementCount} ${statementCount === 1 ? "block" : "blocks"}`,
+          tooltip: "Saved locally. Select to open another .agorix project.",
           command: "agorixStudio.openProject",
           contextValue: "agorixProject",
         },
@@ -471,11 +564,15 @@ export function createNavigationSections(
     {
       id: "missions",
       label: "Missions",
+      icon: "target",
+      summary: "1",
       items: [
         {
           id: mission.id,
           label: mission.title,
-          description: mission.goal.learnerFacing,
+          icon: "target",
+          state: "info",
+          tooltip: mission.goal.learnerFacing,
           contextValue: "agorixMission",
         },
       ],
@@ -483,25 +580,42 @@ export function createNavigationSections(
     {
       id: "progress",
       label: "Progress",
+      icon: "graph",
+      summary: `${statementCount}`,
       items: [
         {
           id: "mission-progress",
-          label: `${project.stored.metadata.missionProgress} blocks in canonical project`,
-          description: `hints used: ${project.stored.metadata.hintLevel}`,
+          label: `${statementCount} ${statementCount === 1 ? "block" : "blocks"}`,
+          icon: "symbol-event",
+          state: statementCount > 0 ? "ok" : "idle",
+          tooltip: "Blocks in the canonical project. Select to show execution evidence.",
           command: "agorixStudio.showEvidence",
           contextValue: "agorixProgress",
+          children: [
+            {
+              id: "hints-used",
+              label: "Hints",
+              icon: "lightbulb",
+              state: hints > 0 ? "warn" : "idle",
+              description: `${hints}`,
+              tooltip: `Hint level used: ${hints}`,
+            },
+          ],
         },
       ],
     },
     {
       id: "worlds",
       label: "Worlds",
-      items: worldsForMission(mission.id, mission.version).map((world) => {
+      icon: "globe",
+      summary: `${worlds.length}`,
+      items: worlds.map((world) => {
         const copy = worldCopy(world, project.stored.metadata.locale);
         return {
           id: world.id,
           label: copy.title,
-          description: copy.narrative,
+          icon: "globe",
+          tooltip: copy.narrative,
           contextValue: "agorixWorld",
         };
       }),
@@ -509,71 +623,52 @@ export function createNavigationSections(
     {
       id: "companion",
       label: "Learning Companion",
+      icon: "sparkle",
+      summary: "ready",
       items: [
         {
           id: "repeat-suggestion",
-          label: "Suggest repeat when a pattern is proven",
-          description: "Deterministic ProgramProposal only",
+          label: "Suggest repeat",
+          icon: "repeat",
+          state: "ai",
+          description: "proposal",
+          tooltip: "Suggest repeat when a pattern is proven. Deterministic ProgramProposal only.",
           command: "agorixStudio.suggestRepeat",
           contextValue: "agorixCompanion",
         },
         {
           id: "explain-selection",
-          label: "Explain current selection",
-          description: "Bounded code and evidence context",
+          label: "Explain",
+          icon: "comment-discussion",
+          state: "ai",
+          description: "selection",
+          tooltip: "Explain the current selection using bounded code and evidence context.",
           command: "agorixStudio.companionExplain",
           contextValue: "agorixCompanion",
         },
         {
           id: "debug-evidence",
-          label: "Debug with runtime facts",
-          description: "Runtime facts only",
+          label: "Debug",
+          icon: "bug",
+          state: "ai",
+          description: "runtime facts",
+          tooltip: "Debug with runtime facts only.",
           command: "agorixStudio.companionDebug",
           contextValue: "agorixCompanion",
         },
         {
           id: "reflect-run",
-          label: "Reflect on the run",
-          description: "Evidence-grounded prompt",
+          label: "Reflect",
+          icon: "mirror",
+          state: "ai",
+          description: "last run",
+          tooltip: "Reflect on the run with an evidence-grounded prompt.",
           command: "agorixStudio.companionReflect",
           contextValue: "agorixCompanion",
         },
       ],
     },
-    {
-      id: "developer",
-      label: "Developer",
-      items: [
-        {
-          id: "validate-project",
-          label: "Validate current Agorix project",
-          description: "Shared runtime and mission checks",
-          command: "agorixStudio.validateProject",
-          contextValue: "agorixDeveloperTask",
-        },
-        {
-          id: "run-checks",
-          label: "Run Agorix workspace checks",
-          description: "Native VS Code task entry point",
-          command: "agorixStudio.runChecks",
-          contextValue: "agorixDeveloperTask",
-        },
-        {
-          id: "open-scm",
-          label: "Open VS Code Source Control",
-          description: "Uses VS Code SCM and Git extensions",
-          command: "agorixStudio.openScm",
-          contextValue: "agorixDeveloperTask",
-        },
-        {
-          id: "developer-context",
-          label: "Show task context",
-          description: currentProgramHash(project.stored.program),
-          command: "agorixStudio.showDeveloperContext",
-          contextValue: "agorixDeveloperTask",
-        },
-      ],
-    },
+    developer,
   ];
 }
 

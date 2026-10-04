@@ -143,42 +143,50 @@
       "agorixStudio": [
         {
           "id": "agorixStudio.projects",
-          "name": "Projects"
+          "name": "Projects",
+          "icon": "$(folder)"
         },
         {
           "id": "agorixStudio.missions",
           "name": "Missions",
-          "when": "agorixStudio.hasProject"
+          "when": "agorixStudio.hasProject",
+          "icon": "$(target)"
         },
         {
           "id": "agorixStudio.progress",
           "name": "Progress",
-          "when": "agorixStudio.hasProject"
+          "when": "agorixStudio.hasProject",
+          "icon": "$(graph)"
         },
         {
           "id": "agorixStudio.worlds",
           "name": "Worlds",
-          "when": "agorixStudio.hasProject"
+          "when": "agorixStudio.hasProject",
+          "icon": "$(globe)"
         },
         {
           "id": "agorixStudio.inspector",
-          "name": "Execution Inspector",
-          "when": "agorixStudio.hasProject"
+          "name": "Inspector",
+          "when": "agorixStudio.hasProject",
+          "icon": "$(debug-alt)"
         },
         {
           "id": "agorixStudio.companion",
           "name": "Learning Companion",
-          "when": "agorixStudio.hasProject"
+          "when": "agorixStudio.hasProject",
+          "icon": "$(sparkle)"
         },
         {
           "id": "agorixStudio.companionHistory",
           "name": "Companion Responses",
-          "when": "agorixStudio.hasProject"
+          "when": "agorixStudio.hasProject",
+          "icon": "$(history)"
         },
         {
           "id": "agorixStudio.developer",
           "name": "Developer",
-          "when": "agorixStudio.hasProject"
+          "when": "agorixStudio.hasProject",
+          "icon": "$(tools)"
         }
       ]
     },
@@ -186,192 +194,230 @@
       {
         "command": "agorixStudio.createProject",
         "title": "Create New Project",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(new-file)"
       },
       {
         "command": "agorixStudio.openProject",
         "title": "Open Project",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(folder-opened)"
       },
       {
         "command": "agorixStudio.exportAgorix",
         "title": "Export Portable .agorix Project",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(export)"
       },
       {
         "command": "agorixStudio.signIn",
         "title": "Sign In With Account Token",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(account)"
       },
       {
         "command": "agorixStudio.signOut",
         "title": "Sign Out",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(sign-out)"
       },
       {
         "command": "agorixStudio.listRemoteProjects",
         "title": "List Account Projects",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(cloud)"
       },
       {
         "command": "agorixStudio.openRemoteProject",
         "title": "Open Account Project",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(cloud-download)"
       },
       {
         "command": "agorixStudio.saveRemoteProject",
         "title": "Save Account Project",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(cloud-upload)"
       },
       {
         "command": "agorixStudio.openProjection",
         "title": "Open Current Projection",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(go-to-file)"
       },
       {
         "command": "agorixStudio.switchProjection",
         "title": "Switch Projection",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(symbol-namespace)"
       },
       {
         "command": "agorixStudio.revealCanonicalNode",
         "title": "Reveal Canonical Node",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(target)"
       },
       {
         "command": "agorixStudio.openWorldPreview",
         "title": "Open World Preview",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(globe)"
       },
       {
         "command": "agorixStudio.openWorkbench",
         "title": "Open Workbench",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(layout)"
       },
       {
         "command": "agorixStudio.run",
         "title": "Run",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(play)"
       },
       {
         "command": "agorixStudio.step",
         "title": "Step",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(debug-step-over)"
       },
       {
         "command": "agorixStudio.reset",
         "title": "Reset",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(debug-restart)"
       },
       {
         "command": "agorixStudio.stop",
         "title": "Stop",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(debug-stop)"
       },
       {
         "command": "agorixStudio.selectExecutionStep",
         "title": "Select Execution Step",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(debug-stackframe-dot)"
       },
       {
         "command": "agorixStudio.companionExplain",
         "title": "Explain Selection",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(comment-discussion)"
       },
       {
         "command": "agorixStudio.companionChallenge",
         "title": "Challenge Prediction",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(question)"
       },
       {
         "command": "agorixStudio.companionDebug",
         "title": "Debug With Evidence",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(bug)"
       },
       {
         "command": "agorixStudio.companionReflect",
         "title": "Reflect On Run",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(mirror)"
       },
       {
         "command": "agorixStudio.companionBuild",
         "title": "Build Proposal",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(sparkle)"
       },
       {
         "command": "agorixStudio.suggestFirstStep",
         "title": "Suggest First Step",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(lightbulb)"
       },
       {
         "command": "agorixStudio.applyProposal",
         "title": "Apply Proposal",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(check)"
       },
       {
         "command": "agorixStudio.rejectProposal",
         "title": "Reject Proposal",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(close)"
       },
       {
         "command": "agorixStudio.revealProposalAffectedNode",
         "title": "Reveal Proposal Affected Node",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(target)"
       },
       {
         "command": "agorixStudio.undoProposal",
         "title": "Undo Proposal",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(discard)"
       },
       {
         "command": "agorixStudio.redoProposal",
         "title": "Redo Proposal",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(redo)"
       },
       {
         "command": "agorixStudio.showEvidence",
         "title": "Show Execution Evidence",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(output)"
       },
       {
         "command": "agorixStudio.validateProject",
         "title": "Validate Project",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(check-all)"
       },
       {
         "command": "agorixStudio.runChecks",
         "title": "Run Agorix Checks",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(checklist)"
       },
       {
         "command": "agorixStudio.showDeveloperContext",
         "title": "Show Developer Context",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(symbol-key)"
       },
       {
         "command": "agorixStudio.openScm",
         "title": "Open Source Control",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(source-control)"
       },
       {
         "command": "agorixStudio.suggestRepeat",
         "title": "Suggest repeat",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(sync)"
       },
       {
         "command": "agorixStudio.checkAgentHealth",
         "title": "Check Agent Availability",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(heart)"
       },
       {
         "command": "agorixStudio.setAgentCredential",
         "title": "Set Agent Credential",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(key)"
       },
       {
         "command": "agorixStudio.clearAgentCredential",
         "title": "Clear Agent Credential",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(trash)"
       }
     ],
     "menus": {
@@ -379,57 +425,57 @@
         {
           "command": "agorixStudio.openProject",
           "when": "viewItem == agorixProject",
-          "group": "navigation"
+          "group": "inline"
         },
         {
           "command": "agorixStudio.exportAgorix",
           "when": "viewItem == agorixProject",
-          "group": "navigation"
+          "group": "inline"
         },
         {
           "command": "agorixStudio.saveRemoteProject",
           "when": "viewItem == agorixProject",
-          "group": "navigation"
+          "group": "inline"
         },
         {
           "command": "agorixStudio.showEvidence",
           "when": "viewItem == agorixProgress",
-          "group": "navigation"
+          "group": "inline"
         },
         {
           "command": "agorixStudio.suggestRepeat",
           "when": "viewItem == agorixCompanion",
-          "group": "navigation"
+          "group": "inline"
         },
         {
           "command": "agorixStudio.companionExplain",
           "when": "viewItem == agorixCompanion || viewItem == agorixCompanionTurn",
-          "group": "navigation"
+          "group": "inline"
         },
         {
           "command": "agorixStudio.companionDebug",
           "when": "viewItem == agorixCompanion || viewItem == agorixCompanionTurn",
-          "group": "navigation"
+          "group": "inline"
         },
         {
           "command": "agorixStudio.revealProposalAffectedNode",
           "when": "viewItem == agorixProposal",
-          "group": "navigation"
+          "group": "inline"
         },
         {
           "command": "agorixStudio.selectExecutionStep",
           "when": "viewItem == agorixRuntimeFact",
-          "group": "navigation"
+          "group": "inline"
         },
         {
           "command": "agorixStudio.validateProject",
           "when": "viewItem == agorixDeveloperTask",
-          "group": "navigation"
+          "group": "inline"
         },
         {
           "command": "agorixStudio.openScm",
           "when": "viewItem == agorixDeveloperTask",
-          "group": "navigation"
+          "group": "inline"
         }
       ],
       "view/title": [
@@ -459,33 +505,8 @@
           "group": "navigation"
         },
         {
-          "command": "agorixStudio.openWorldPreview",
-          "when": "view == agorixStudio.inspector || view == agorixStudio.progress",
-          "group": "navigation"
-        },
-        {
           "command": "agorixStudio.openWorkbench",
           "when": "view == agorixStudio.projects",
-          "group": "navigation"
-        },
-        {
-          "command": "agorixStudio.run",
-          "when": "view == agorixStudio.inspector || view == agorixStudio.progress",
-          "group": "navigation"
-        },
-        {
-          "command": "agorixStudio.step",
-          "when": "view == agorixStudio.inspector || view == agorixStudio.progress",
-          "group": "navigation"
-        },
-        {
-          "command": "agorixStudio.reset",
-          "when": "view == agorixStudio.inspector || view == agorixStudio.progress",
-          "group": "navigation"
-        },
-        {
-          "command": "agorixStudio.stop",
-          "when": "view == agorixStudio.inspector || view == agorixStudio.progress",
           "group": "navigation"
         },
         {
@@ -537,48 +558,88 @@
           "command": "agorixStudio.openScm",
           "when": "view == agorixStudio.developer",
           "group": "navigation"
+        },
+        {
+          "command": "agorixStudio.run",
+          "when": "(view == agorixStudio.inspector || view == agorixStudio.progress || view == agorixStudio.worlds || view == agorixStudio.missions) && agorixStudio.executionStatus != running",
+          "group": "navigation@1"
+        },
+        {
+          "command": "agorixStudio.step",
+          "when": "(view == agorixStudio.inspector || view == agorixStudio.progress || view == agorixStudio.worlds || view == agorixStudio.missions) && agorixStudio.executionStatus != completed",
+          "group": "navigation@2"
+        },
+        {
+          "command": "agorixStudio.stop",
+          "when": "(view == agorixStudio.inspector || view == agorixStudio.progress || view == agorixStudio.worlds || view == agorixStudio.missions) && agorixStudio.executionStatus == running",
+          "group": "navigation@3"
+        },
+        {
+          "command": "agorixStudio.reset",
+          "when": "(view == agorixStudio.inspector || view == agorixStudio.progress || view == agorixStudio.worlds || view == agorixStudio.missions) && agorixStudio.executionStatus != idle",
+          "group": "navigation@4"
+        },
+        {
+          "command": "agorixStudio.openWorldPreview",
+          "when": "view == agorixStudio.inspector || view == agorixStudio.progress || view == agorixStudio.worlds || view == agorixStudio.missions",
+          "group": "navigation@5"
         }
       ],
       "editor/title": [
         {
-          "command": "agorixStudio.switchProjection",
-          "when": "resourceScheme == agorix-studio",
-          "group": "navigation"
+          "command": "agorixStudio.run",
+          "when": "resourceScheme == agorix-studio && agorixStudio.executionStatus != running",
+          "group": "navigation@1"
         },
         {
-          "command": "agorixStudio.revealCanonicalNode",
+          "command": "agorixStudio.step",
+          "when": "resourceScheme == agorix-studio && agorixStudio.executionStatus != completed",
+          "group": "navigation@2"
+        },
+        {
+          "command": "agorixStudio.stop",
+          "when": "resourceScheme == agorix-studio && agorixStudio.executionStatus == running",
+          "group": "navigation@3"
+        },
+        {
+          "command": "agorixStudio.reset",
+          "when": "resourceScheme == agorix-studio && agorixStudio.executionStatus != idle",
+          "group": "navigation@4"
+        },
+        {
+          "command": "agorixStudio.switchProjection",
           "when": "resourceScheme == agorix-studio",
-          "group": "navigation"
+          "group": "navigation@5"
         },
         {
           "command": "agorixStudio.openWorldPreview",
           "when": "resourceScheme == agorix-studio",
-          "group": "navigation"
-        },
-        {
-          "command": "agorixStudio.step",
-          "when": "resourceScheme == agorix-studio",
-          "group": "navigation"
+          "group": "navigation@6"
         },
         {
           "command": "agorixStudio.companionExplain",
           "when": "resourceScheme == agorix-studio",
-          "group": "navigation"
+          "group": "navigation@7"
+        },
+        {
+          "command": "agorixStudio.revealCanonicalNode",
+          "when": "resourceScheme == agorix-studio",
+          "group": "1_studio@1"
         },
         {
           "command": "agorixStudio.companionDebug",
           "when": "resourceScheme == agorix-studio",
-          "group": "navigation"
+          "group": "1_studio@2"
         },
         {
           "command": "agorixStudio.undoProposal",
           "when": "resourceScheme == agorix-studio",
-          "group": "navigation"
+          "group": "1_studio@3"
         },
         {
           "command": "agorixStudio.validateProject",
           "when": "resourceScheme == agorix-studio",
-          "group": "navigation"
+          "group": "1_studio@4"
         }
       ]
     },

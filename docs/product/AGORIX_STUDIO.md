@@ -10,6 +10,12 @@ Studio is not Scratch embedded in VS Code. It is an IDE-native learning surface 
 
 The AI-native agent, the Director/Auditor pedagogy and the canvas projection are specified in [`STUDIO_AGENT.md`](./STUDIO_AGENT.md) and [ADR 0006](../architecture/adr/0006-studio-agent-and-canvas.md) (epic #242).
 
+## Studio shell and webview framework (issue #252)
+
+- Side bar views (Projects, Missions, Progress, Worlds, Inspector) are icon-first: short labels, a count or state in the row description and view title, detail in tooltips, and collapsed children for progressive disclosure. State colors are VS Code theme tokens only (`STUDIO_STATE_THEME_COLORS`); AI-provisional rows use the `ai` state, never the success color.
+- Run, Step, Stop and Reset are icon actions in the editor title and in the execution views' titles; Run/Stop/Reset visibility follows the `agorixStudio.executionStatus` context key. The projection switch is an editor-title icon.
+- `extensions/vscode/src/webview/framework.ts` is the shared webview framework for the World Preview and later palette and proposal visuals: nonce-only strict CSP, shared styles built on VS Code theme tokens (light, dark and high-contrast via `vscode-high-contrast*`, `forced-colors`, `prefers-reduced-motion`), a validated message protocol in both directions (`validateMessage`, allowlisted outbound types), and landmark/label/live-region conventions. New webviews must use it and must not add inline handlers, remote origins or hard-coded colors.
+
 ## Release gate
 
 Studio's product release gate is
@@ -85,6 +91,12 @@ Studio follows the #117 design system in an IDE-density form:
 - proposal UI uses AI/provisional treatment, never success styling;
 - World Preview carries visual motivation without taking over product chrome;
 - runtime evidence stays adjacent to code/debugging context.
+
+## Canvas
+
+Studio has one canvas: the Workbench (see the surface table). It is an IDE-native projection of the canonical program (ADR 0006, ADR 0007) rendered from `@agorix/block-editor` workspace data; edits are intents applied through canonical transactions and never canvas-local state. A separate "canvas editor" webview was merged on a stacked branch and not landed, because it duplicated the Workbench; its history stays in git (#267).
+
+POC accessibility limit: the canvas exposes keyboard-focusable block buttons and keyboard equivalents for move and delete, but it does not yet implement a full spatial keyboard model or a screen-reader equivalent for all drag gestures. Those gaps stay documented until a later accessibility slice adds parity controls.
 
 ## #121 handoff
 
