@@ -307,3 +307,5 @@ export * from "./scaffolding.js";
 export * from "./roles.js";
 export * from "./builder-policy.js";
 export * from "./proactive.js";
+export * from "./studio-signals.js";
+export * from "./studio-context.js";
