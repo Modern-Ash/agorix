@@ -115,6 +115,8 @@ import {
 } from "./projectStorage.js";
 import { loadPresentationPrefs, savePresentationPrefs } from "./presentationPrefs.js";
 import { LOCALE_LABELS, t, type Locale, type MessageKey } from "./i18n.js";
+import { GhostAddedBlocks } from "./GhostBlocks.js";
+import { ghostMarksFor, type GhostMarkKind } from "./ghostMarks.js";
 import { ProvenanceLabel } from "./ProvenanceLabel.js";
 import { AccountUi, useWorkspace } from "./accounts/AccountUi.js";
 import type { AccountBackend, ProjectDto } from "./accounts/clients.js";
@@ -1136,6 +1138,7 @@ export function ProgramBlockCard({
   depth,
   selected,
   suggestionAffected,
+  ghost,
   canonicalNodeId,
   locale,
   children,
@@ -1158,6 +1161,7 @@ export function ProgramBlockCard({
   depth: number;
   selected: boolean;
   suggestionAffected: boolean;
+  ghost?: GhostMarkKind | undefined;
   canonicalNodeId: string;
   locale: Locale;
   children?: ReactNode;
@@ -1256,7 +1260,14 @@ export function ProgramBlockCard({
     <article
       className={`block-node block-card block-${blockTone} block-shape-${blockShape}${
         selected ? " active" : ""
-      }${suggestionAffected ? " suggestion-affected" : ""}`}
+      }${suggestionAffected ? " suggestion-affected" : ""}${
+        ghost === undefined ? "" : ` ghost-${ghost}`
+      }`}
+      aria-description={
+        ghost === undefined
+          ? undefined
+          : t(locale, ghost === "removed" ? "ghostWouldRemove" : "ghostWouldChange")
+      }
       style={{ marginLeft: `${depth * 22}px` }}
       aria-label={t(locale, "blockLabel", { name: displayName })}
       data-interaction-model="touch-first drag-drop keyboard-reorder"
@@ -2703,6 +2714,10 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     }
   }
 
+  const ghostMarks = useMemo(
+    () => ghostMarksFor(proposalReview, model.workspace),
+    [proposalReview, model.workspace],
+  );
   const contextualAffectedNodeIds =
     proposalReview?.proposal.affectedNodeIds ?? repeatOffer?.affectedNodeIds ?? [];
 
@@ -2722,6 +2737,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
           depth={depth}
           selected={highlightedNodeId === nodeId}
           suggestionAffected={contextualAffectedNodeIds.includes(nodeId)}
+          ghost={ghostMarks.byPath.get(path.join("."))}
           canonicalNodeId={nodeId}
           locale={locale}
           onSelect={() => setHighlightedNodeId(nodeId)}
@@ -3161,6 +3177,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
                 </div>
               ) : null}
               {renderWorkspaceBlocks()}
+              <GhostAddedBlocks texts={ghostMarks.added} locale={locale} />
             </div>
           </section>
         )}

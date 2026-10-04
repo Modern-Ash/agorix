@@ -20,6 +20,9 @@ const messages = {
     aiLiteracyActivity: "Try an AI suggestion",
     aiLiteracyPredict: "I predict this will reach the goal",
     aiLiteracyPredictionRecorded: "Prediction recorded. Now test the suggestion with Run.",
+    ghostSuggested: "Suggested: {text}",
+    ghostWouldChange: "This suggestion would change this block",
+    ghostWouldRemove: "This suggestion would remove this block",
     aiLiteracyReflection:
       "What was wrong with the original AI suggestion, and what evidence proved it?",
     aiLiteracyRationale:
@@ -233,6 +236,9 @@ const messages = {
     aiLiteracyActivity: "Probar una sugerencia de IA",
     aiLiteracyPredict: "Predigo que esto llegará a la meta",
     aiLiteracyPredictionRecorded: "Predicción registrada. Ahora prueba la sugerencia con Ejecutar.",
+    ghostSuggested: "Sugerido: {text}",
+    ghostWouldChange: "Esta sugerencia cambiaría este bloque",
+    ghostWouldRemove: "Esta sugerencia quitaría este bloque",
     aiLiteracyReflection:
       "¿Qué tenía de incorrecto la sugerencia original de IA y qué evidencia lo demostró?",
     aiLiteracyRationale:

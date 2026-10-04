@@ -4077,3 +4077,22 @@ button:hover:not(:disabled) {
     animation: none;
   }
 }
+
+/* Ghost previews of AI proposals: provisional (dashed), never success-styled. */
+.block-card.ghost-changed,
+.block-card.ghost-removed,
+.block-card.ghost-added {
+  border-style: dashed;
+  outline: 2px dashed var(--provisional, #6b4fbb);
+  outline-offset: 2px;
+}
+.block-card.ghost-removed code,
+.block-card.ghost-removed .block-title {
+  text-decoration: line-through;
+}
+.ghost-added-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
