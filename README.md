@@ -686,6 +686,11 @@ A commercial model may perform better for a particular task.
 
 That does not make its vendor part of the Agorix domain model.
 
+Self-hosting modes for schools and families are documented in
+[docs/deployment/SELF_HOSTING.md](docs/deployment/SELF_HOSTING.md), including
+the static zero-key demo, local Laya/System-1, local Ollama or compatible
+gateway inference, and optional remote provider configuration.
+
 Roadmap: [Epic #67 — Open-source-first multi-LLM provider architecture](https://github.com/Modern-Ash/agorix/issues/67)
 
 ---
