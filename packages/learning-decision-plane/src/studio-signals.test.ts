@@ -8,6 +8,7 @@ import {
   createStudioSignal,
   sanitizeLearnerText,
 } from "./index.js";
+import type { StudioContextInput } from "./studio-context.js";
 
 describe("studio signals", () => {
   it("covers every kind, versioned and JSON round-trippable", () => {
@@ -85,7 +86,7 @@ describe("studio context builder", () => {
       accountId: "acct-9",
       sessionId: "s-1",
       filePath: "/home/faguero/proj/a.agorix",
-    });
+    } as unknown as StudioContextInput);
     const json = JSON.stringify(ctx);
     for (const leak of ["Ana", "ana@", "acct-9", "s-1", "/home", "secret", "message", "path"]) {
       expect(json).not.toContain(leak);
