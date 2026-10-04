@@ -38,7 +38,12 @@ import {
   type StudioRemoteSaveResult,
   type StudioStarterId,
 } from "./studioCore.js";
-import type { ProjectProgram, Statement } from "@agorix/program-model";
+import {
+  createStudioProviderClient,
+  normalizeStudioProviderSettings,
+  type StudioAgentStatus,
+  type StudioProviderClient,
+} from "./studioProvider.js";
 
 interface OpenProject {
   readonly uri: vscode.Uri;
@@ -77,6 +82,7 @@ const PROJECTION_SCHEME = "agorix-studio";
 const REMOTE_SCHEME = "agorix-remote";
 const WORLD_PREVIEW_VIEW_TYPE = "agorixStudio.worldPreview";
 const SECRET_TOKEN_KEY = "agorixStudio.accountToken";
+const SECRET_AGENT_CREDENTIAL_KEY = "agorixStudio.agentCredential";
 
 interface StoredSnapshot {
   readonly uri: vscode.Uri;
@@ -182,8 +188,12 @@ class ExecutionInspectorProvider implements vscode.TreeDataProvider<ExecutionIns
 }
 
 class CompanionHistoryItem extends vscode.TreeItem {
-  constructor(readonly turn: StudioCompanionTurn) {
+  constructor(
+    readonly turn: StudioCompanionTurn,
+    agentIcon: vscode.Uri,
+  ) {
     super(`${turn.action}: ${turn.message}`);
+    this.iconPath = agentIcon;
     this.description = `${turn.diagnostics.providerSelection} · ${turn.diagnostics.reasoningTier}`;
     this.contextValue = turn.proposal === undefined ? "agorixCompanionTurn" : "agorixProposal";
     this.tooltip = [
@@ -206,6 +216,8 @@ class CompanionHistoryItem extends vscode.TreeItem {
 
 class CompanionHistoryProvider implements vscode.TreeDataProvider<CompanionHistoryItem> {
   readonly #changed = new vscode.EventEmitter<CompanionHistoryItem | undefined | null | void>();
+
+  constructor(private readonly agentIcon: vscode.Uri) {}
   readonly onDidChangeTreeData = this.#changed.event;
 
   refresh(): void {
@@ -217,7 +229,7 @@ class CompanionHistoryProvider implements vscode.TreeDataProvider<CompanionHisto
   }
 
   getChildren(): CompanionHistoryItem[] {
-    return companionTurns.map((turn) => new CompanionHistoryItem(turn));
+    return companionTurns.map((turn) => new CompanionHistoryItem(turn, this.agentIcon));
   }
 }
 
@@ -1360,6 +1372,71 @@ async function signIn(context: vscode.ExtensionContext): Promise<void> {
   );
 }
 
+/**
+ * Builds the Studio provider client from settings. The credential (only when a deployment
+ * needs one) is read from SecretStorage at call time and is never logged or put in settings.
+ */
+export function createAgentClient(context: vscode.ExtensionContext): StudioProviderClient {
+  const config = vscode.workspace.getConfiguration("agorixStudio.agent");
+  const read = (key: string, fallback: unknown): unknown => config.get(key, fallback);
+  const settings = normalizeStudioProviderSettings({
+    enabled: read("enabled", true),
+    endpoint: read("endpoint", ""),
+    remoteEndpoint: read("remoteEndpoint", ""),
+    preferLocal: read("preferLocal", true),
+    allowRemote: read("allowRemote", false),
+    healthTimeoutMs: read("healthTimeoutMs", 1500),
+    requestTimeoutMs: read("requestTimeoutMs", 8000),
+  });
+  return createStudioProviderClient({
+    settings,
+    fetch: (input, init) => fetch(input, init),
+    getCredential: () => context.secrets.get(SECRET_AGENT_CREDENTIAL_KEY),
+    locale: vscode.env.language,
+  });
+}
+
+function agentStatusText(status: StudioAgentStatus): string {
+  const label = { available: "ready", unavailable: "unavailable", disabled: "off" }[status.state];
+  return `$(sparkle) Agent: ${label}`;
+}
+
+/** Probes the boundary and updates the status item. Never throws, never blocks editing. */
+async function refreshAgentStatus(
+  context: vscode.ExtensionContext,
+  item: vscode.StatusBarItem,
+): Promise<StudioAgentStatus> {
+  let status: StudioAgentStatus;
+  try {
+    status = await createAgentClient(context).probe();
+  } catch {
+    status = { state: "unavailable", message: "AI help is unavailable right now." };
+  }
+  item.text = agentStatusText(status);
+  item.tooltip = status.message;
+  item.show();
+  return status;
+}
+
+async function setAgentCredential(context: vscode.ExtensionContext): Promise<void> {
+  const value = await vscode.window.showInputBox({
+    title: "Agent deployment credential",
+    password: true,
+    ignoreFocusOut: true,
+    prompt: "Only needed if your tutor API deployment requires one. Stored in SecretStorage.",
+  });
+  if (value === undefined || value.length === 0) {
+    return;
+  }
+  await context.secrets.store(SECRET_AGENT_CREDENTIAL_KEY, value);
+  void vscode.window.showInformationMessage("Agent credential stored in VS Code SecretStorage.");
+}
+
+async function clearAgentCredential(context: vscode.ExtensionContext): Promise<void> {
+  await context.secrets.delete(SECRET_AGENT_CREDENTIAL_KEY);
+  void vscode.window.showInformationMessage("Agent credential removed.");
+}
+
 async function signOut(context: vscode.ExtensionContext): Promise<void> {
   await context.secrets.delete(SECRET_TOKEN_KEY);
   if (current?.remote !== undefined) {
@@ -1566,9 +1643,14 @@ export function activate(context: vscode.ExtensionContext): void {
   extensionUri = context.extensionUri;
   const output = vscode.window.createOutputChannel("Agorix Studio");
   context.subscriptions.push(output);
+  const agentStatusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0);
+  agentStatusItem.command = "agorixStudio.checkAgentHealth";
+  context.subscriptions.push(agentStatusItem);
   const projectionProvider = new ProjectionDocumentProvider();
   const inspectorProvider = new ExecutionInspectorProvider();
-  const companionProvider = new CompanionHistoryProvider();
+  const companionProvider = new CompanionHistoryProvider(
+    vscode.Uri.file(context.asAbsolutePath("media/agorix-agent-active.svg")),
+  );
   const treeProviders = [
     new StudioTreeProvider("projects"),
     new StudioTreeProvider("missions"),
@@ -1616,6 +1698,21 @@ export function activate(context: vscode.ExtensionContext): void {
       vscode.commands.registerCommand(
         "agorixStudio.exportAgorix",
         guarded(output, "Export Agorix Project", exportAgorixProject),
+      ),
+      vscode.commands.registerCommand(
+        "agorixStudio.checkAgentHealth",
+        guarded(output, "Check Agent Availability", async () => {
+          const status = await refreshAgentStatus(context, agentStatusItem);
+          void vscode.window.showInformationMessage(status.message);
+        }),
+      ),
+      vscode.commands.registerCommand(
+        "agorixStudio.setAgentCredential",
+        guarded(output, "Set Agent Credential", () => setAgentCredential(context)),
+      ),
+      vscode.commands.registerCommand(
+        "agorixStudio.clearAgentCredential",
+        guarded(output, "Clear Agent Credential", () => clearAgentCredential(context)),
       ),
       vscode.commands.registerCommand(
         "agorixStudio.signIn",
@@ -1731,6 +1828,8 @@ export function activate(context: vscode.ExtensionContext): void {
       ),
     );
     updateStudioContext();
+    // Fire and forget: a slow or failing provider must never delay activation or editing.
+    void refreshAgentStatus(context, agentStatusItem);
   } catch (error) {
     reportFailure(output, "activation failed", error);
     output.show(true);

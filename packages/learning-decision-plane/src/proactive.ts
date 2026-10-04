@@ -1,6 +1,11 @@
 import type { LayaBatchTransport } from "./laya.js";
+import type { StudioSignal } from "./studio-signals.js";
 
-export type ProactiveSignalKind = "repeat-pattern" | "first-step";
+export type ProactiveSignalKind =
+  "repeat-pattern" | "first-step" | "runtime-error" | "stalled" | "repeated-error";
+
+/** Kinds introduced for Studio; Web behaviour for the original two is unchanged. */
+export const STUDIO_PROACTIVE_KINDS = ["runtime-error", "stalled", "repeated-error"] as const;
 
 export interface ProactiveSignal {
   readonly kind: ProactiveSignalKind;
@@ -12,7 +17,48 @@ export interface ProactiveSignal {
   readonly declinedForCurrentProgram: boolean;
   /** How many suggestions of this kind the learner declined this session. */
   readonly declinedCount: number;
+  /** Studio: the learner is typing or stepping right now. */
+  readonly typing?: boolean;
+  /** Studio: AI is disabled or unavailable. Undefined means enabled (Web default). */
+  readonly aiEnabled?: boolean;
+  /** Studio: error code (runtime-error evidence). Opaque token, never a message. */
+  readonly code?: string | undefined;
+  /** Studio: stalled duration in whole seconds. */
+  readonly seconds?: number | undefined;
+  /** Studio: signals elapsed since the last decline; undefined when never declined. */
+  readonly sinceLastDecline?: number | undefined;
+  /** Studio: signals elapsed since the last offer; undefined when never offered. */
+  readonly sinceLastOffer?: number | undefined;
+  /** Studio: offers shown and ignored (neither accepted nor declined) in a row. */
+  readonly ignoredCount?: number;
 }
+
+export type ProactiveOfferAction = "explain" | "debug" | "challenge" | "propose";
+
+export type ProactiveSilenceReason =
+  | "learner-is-executing"
+  | "learner-is-typing"
+  | "recently-declined"
+  | "learner-declined-this-program"
+  | "learner-repeatedly-declined"
+  | "cooldown-active"
+  | "pattern-too-weak"
+  | "learner-already-started"
+  | "evidence-too-weak"
+  | "ai-disabled";
+
+export const PROACTIVE_SILENCE_REASONS: readonly ProactiveSilenceReason[] = [
+  "learner-is-executing",
+  "learner-is-typing",
+  "recently-declined",
+  "learner-declined-this-program",
+  "learner-repeatedly-declined",
+  "cooldown-active",
+  "pattern-too-weak",
+  "learner-already-started",
+  "evidence-too-weak",
+  "ai-disabled",
+];
 
 export type ProactiveAction = "silence" | "offer";
 
@@ -23,24 +69,74 @@ export interface ProactiveDecision {
   readonly generativeNeeded: "no";
   /** Which layer produced the decision. */
   readonly source: "system0" | "laya";
+  /** Studio offers only: what the agent can do. Never content. */
+  readonly actions?: readonly ProactiveOfferAction[];
 }
 
 export const PROACTIVE_MIN_OCCURRENCES = 3;
 export const PROACTIVE_MAX_DECLINES = 2;
+/** Studio evidence thresholds. */
+export const PROACTIVE_MIN_STALL_SECONDS = 60;
+export const PROACTIVE_MIN_REPEATED_ERRORS = 2;
+/** Signals that must pass after a decline before offering again. */
+export const PROACTIVE_RECENT_DECLINE_WINDOW = 5;
+/** Base signals between offers; grows with each ignored offer (decay). */
+export const PROACTIVE_COOLDOWN_SIGNALS = 3;
+/** Every N ignored offers count as one decline toward the cap. */
+export const PROACTIVE_IGNORES_PER_DECLINE = 2;
+
+const STUDIO_ACTIONS: Record<
+  (typeof STUDIO_PROACTIVE_KINDS)[number],
+  readonly ProactiveOfferAction[]
+> = {
+  "runtime-error": ["explain", "debug"],
+  stalled: ["propose", "challenge"],
+  "repeated-error": ["debug", "explain", "challenge"],
+};
+
+export function proactiveCooldownFor(ignoredCount: number): number {
+  return PROACTIVE_COOLDOWN_SIGNALS * (1 + Math.max(0, Math.trunc(ignoredCount)));
+}
+
+function isStudioKind(kind: ProactiveSignalKind): kind is (typeof STUDIO_PROACTIVE_KINDS)[number] {
+  return (STUDIO_PROACTIVE_KINDS as readonly string[]).includes(kind);
+}
+
+function studioEvidenceTooWeak(signal: ProactiveSignal): boolean {
+  switch (signal.kind) {
+    case "runtime-error":
+      return signal.code === undefined;
+    case "stalled":
+      return (signal.seconds ?? 0) < PROACTIVE_MIN_STALL_SECONDS;
+    case "repeated-error":
+      return signal.occurrences < PROACTIVE_MIN_REPEATED_ERRORS;
+    default:
+      return false;
+  }
+}
 
 /**
  * System-0 rule for unprompted help: staying quiet is a first-class outcome.
  * Pure and deterministic, so it works offline and never selects a provider.
  */
 export function decideProactiveSuggestion(signal: ProactiveSignal): ProactiveDecision {
-  const silence = (reason: string): ProactiveDecision => ({
+  const silence = (reason: ProactiveSilenceReason): ProactiveDecision => ({
     action: "silence",
     reason,
     generativeNeeded: "no",
     source: "system0",
   });
+  if (signal.aiEnabled === false) {
+    return silence("ai-disabled");
+  }
   if (signal.running) {
     return silence("learner-is-executing");
+  }
+  if (signal.typing === true) {
+    return silence("learner-is-typing");
+  }
+  if (isStudioKind(signal.kind) && studioEvidenceTooWeak(signal)) {
+    return silence("evidence-too-weak");
   }
   if (signal.kind === "repeat-pattern" && signal.occurrences < PROACTIVE_MIN_OCCURRENCES) {
     return silence("pattern-too-weak");
@@ -51,8 +147,32 @@ export function decideProactiveSuggestion(signal: ProactiveSignal): ProactiveDec
   if (signal.declinedForCurrentProgram) {
     return silence("learner-declined-this-program");
   }
-  if (signal.declinedCount >= PROACTIVE_MAX_DECLINES) {
+  if (
+    signal.sinceLastDecline !== undefined &&
+    signal.sinceLastDecline < PROACTIVE_RECENT_DECLINE_WINDOW
+  ) {
+    return silence("recently-declined");
+  }
+  const ignored = Math.max(0, Math.trunc(signal.ignoredCount ?? 0));
+  const effectiveDeclines =
+    signal.declinedCount + Math.floor(ignored / PROACTIVE_IGNORES_PER_DECLINE);
+  if (effectiveDeclines >= PROACTIVE_MAX_DECLINES) {
     return silence("learner-repeatedly-declined");
+  }
+  if (
+    signal.sinceLastOffer !== undefined &&
+    signal.sinceLastOffer < proactiveCooldownFor(ignored)
+  ) {
+    return silence("cooldown-active");
+  }
+  if (isStudioKind(signal.kind)) {
+    return {
+      action: "offer",
+      reason: `${signal.kind}-detected`,
+      generativeNeeded: "no",
+      source: "system0",
+      actions: STUDIO_ACTIONS[signal.kind],
+    };
   }
   return {
     action: "offer",
@@ -98,4 +218,92 @@ export async function decideProactiveWithLaya(
     // Laya is optional; System-0 stays authoritative.
   }
   return base;
+}
+
+/** Decline/ignore memory. Pure data; the host stores it per session. */
+export interface ProactiveProgramMemory {
+  readonly declines: number;
+  readonly lastDeclineSequence?: number;
+}
+
+export interface ProactiveMemory {
+  readonly sessionDeclines: number;
+  readonly ignoredInRow: number;
+  readonly lastDeclineSequence?: number;
+  readonly lastOfferSequence?: number;
+  readonly programs: Readonly<Record<string, ProactiveProgramMemory>>;
+}
+
+export type ProactiveOutcome = "offered" | "declined" | "ignored" | "accepted";
+
+export const EMPTY_PROACTIVE_MEMORY: ProactiveMemory = {
+  sessionDeclines: 0,
+  ignoredInRow: 0,
+  programs: {},
+};
+
+export function recordProactiveOutcome(
+  memory: ProactiveMemory,
+  programId: string,
+  outcome: ProactiveOutcome,
+  sequence: number,
+): ProactiveMemory {
+  switch (outcome) {
+    case "offered":
+      return { ...memory, lastOfferSequence: sequence };
+    case "ignored":
+      return { ...memory, ignoredInRow: memory.ignoredInRow + 1 };
+    case "accepted":
+      return { ...memory, ignoredInRow: 0 };
+    case "declined": {
+      const prior = memory.programs[programId];
+      return {
+        ...memory,
+        sessionDeclines: memory.sessionDeclines + 1,
+        ignoredInRow: 0,
+        lastDeclineSequence: sequence,
+        programs: {
+          ...memory.programs,
+          [programId]: { declines: (prior?.declines ?? 0) + 1, lastDeclineSequence: sequence },
+        },
+      };
+    }
+  }
+}
+
+export interface StudioProactiveContext {
+  readonly programId: string;
+  readonly running: boolean;
+  readonly typing: boolean;
+  readonly aiEnabled: boolean;
+  readonly memory: ProactiveMemory;
+}
+
+/** Map a Studio signal plus host state into a ProactiveSignal. Undefined for non-proactive kinds. */
+export function proactiveSignalFromStudio(
+  signal: StudioSignal,
+  ctx: StudioProactiveContext,
+): ProactiveSignal | undefined {
+  if (!isStudioKind(signal.kind as ProactiveSignalKind)) return undefined;
+  const { memory } = ctx;
+  const since = (at: number | undefined): number | undefined =>
+    at === undefined ? undefined : Math.max(0, signal.sequence - at);
+  return {
+    kind: signal.kind as ProactiveSignalKind,
+    occurrences: signal.occurrences ?? 0,
+    running: ctx.running,
+    typing: ctx.typing,
+    aiEnabled: ctx.aiEnabled,
+    declinedForCurrentProgram: (memory.programs[ctx.programId]?.declines ?? 0) > 0,
+    declinedCount: memory.sessionDeclines,
+    ...(signal.code !== undefined ? { code: signal.code } : {}),
+    ...(signal.seconds !== undefined ? { seconds: signal.seconds } : {}),
+    ...(since(memory.lastDeclineSequence) !== undefined
+      ? { sinceLastDecline: since(memory.lastDeclineSequence) }
+      : {}),
+    ...(since(memory.lastOfferSequence) !== undefined
+      ? { sinceLastOffer: since(memory.lastOfferSequence) }
+      : {}),
+    ignoredCount: memory.ignoredInRow,
+  };
 }

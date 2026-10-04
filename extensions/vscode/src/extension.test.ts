@@ -98,6 +98,7 @@ vi.mock("vscode", () => {
     Task,
     TextEditorRevealType: { InCenterIfOutsideViewport: 2 },
     ViewColumn: { Beside: 2 },
+    StatusBarAlignment: { Left: 1 },
     commands: {
       registerCommand: (name: string, handler: Handler) => {
         if (failRegistration) {
@@ -173,6 +174,13 @@ vi.mock("vscode", () => {
           dispose: vi.fn(),
         };
       },
+      createStatusBarItem: () => ({
+        text: "",
+        tooltip: "",
+        command: undefined as unknown,
+        show() {},
+        dispose() {},
+      }),
       createOutputChannel: () => ({
         clear: () => (output.length = 0),
         appendLine: (line: string) => output.push(line),
@@ -281,6 +289,8 @@ describe("Studio extension wiring", () => {
     const extension = await import("./extension.js");
     extension.activate({
       subscriptions: [],
+      extensionUri: (await import("vscode")).Uri.file("/extension"),
+      asAbsolutePath: (relativePath: string) => `/extension/${relativePath}`,
       secrets: {
         get: async (key: string) => secrets.get(key),
         store: async (key: string, value: string) => {
@@ -297,6 +307,9 @@ describe("Studio extension wiring", () => {
     expect([...handlers.keys()].sort()).toEqual(
       [
         "agorixStudio.createProject",
+        "agorixStudio.checkAgentHealth",
+        "agorixStudio.clearAgentCredential",
+        "agorixStudio.setAgentCredential",
         "agorixStudio.openProject",
         "agorixStudio.openProjection",
         "agorixStudio.openWorldPreview",

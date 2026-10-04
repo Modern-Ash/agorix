@@ -90,3 +90,7 @@ automation and human acceptance:
 - `pnpm --filter agorix-studio package`;
 - CI `browser-smoke`;
 - CI `vscode-extension-smoke`.
+
+## Studio Agent gate
+
+The agent and canvas have their own release gate, tracked in #259 under epic #242. See [`STUDIO_AGENT.md`](./STUDIO_AGENT.md).
