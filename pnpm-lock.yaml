@@ -162,6 +162,9 @@ importers:
       '@agorix/proposals':
         specifier: workspace:*
         version: link:../../packages/proposals
+      '@agorix/provider-runtime':
+        specifier: workspace:*
+        version: link:../../packages/provider-runtime
       '@agorix/python-projection':
         specifier: workspace:*
         version: link:../../packages/python-projection
