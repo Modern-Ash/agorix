@@ -391,22 +391,26 @@
       {
         "command": "agorixStudio.suggestRepeat",
         "title": "Suggest repeat",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(sync)"
       },
       {
         "command": "agorixStudio.checkAgentHealth",
         "title": "Check Agent Availability",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(heart)"
       },
       {
         "command": "agorixStudio.setAgentCredential",
         "title": "Set Agent Credential",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(key)"
       },
       {
         "command": "agorixStudio.clearAgentCredential",
         "title": "Clear Agent Credential",
-        "category": "Agorix Studio"
+        "category": "Agorix Studio",
+        "icon": "$(trash)"
       }
     ],
     "menus": {

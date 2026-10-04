@@ -46,6 +46,9 @@ import {
   type StudioAgentStatus,
   type StudioProviderClient,
 } from "./studioProvider.js";
+import { createNonce } from "./webview/framework.js";
+import { onValidatedMessage } from "./webview/host.js";
+import { renderWorldPreview, worldPreviewInboundSchemas } from "./webview/worldPreview.js";
 
 interface OpenProject {
   readonly uri: vscode.Uri;
