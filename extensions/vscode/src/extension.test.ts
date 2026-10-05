@@ -10,6 +10,7 @@ const shown: string[] = [];
 const diffs: unknown[][] = [];
 const output: string[] = [];
 const treeViews: string[] = [];
+const selectionListeners: Array<(event: unknown) => void> = [];
 const treeProviders = new Map<string, { getChildren(): unknown[] }>();
 const providers = new Map<string, { provideTextDocumentContent(uri: unknown): string }>();
 const lensProviders: unknown[] = [];
@@ -186,7 +187,10 @@ vi.mock("vscode", () => {
         return { dispose() {}, reveal: async () => undefined };
       },
       createTextEditorDecorationType: () => ({ dispose() {} }),
-      onDidChangeTextEditorSelection: () => ({ dispose() {} }),
+      onDidChangeTextEditorSelection: (listener: (event: unknown) => void) => {
+        selectionListeners.push(listener);
+        return { dispose() {} };
+      },
       createWebviewPanel: () => {
         let receive: ((message: unknown) => void) | undefined;
         const panel = {
@@ -329,6 +333,7 @@ describe("Studio extension wiring", () => {
     diffs.length = 0;
     output.length = 0;
     treeViews.length = 0;
+    selectionListeners.length = 0;
     treeProviders.clear();
     providers.clear();
     lensProviders.length = 0;
@@ -525,6 +530,53 @@ describe("Studio extension wiring", () => {
     expect(output[0]).toContain("Outcome:");
     expect(output.some((line) => line.includes("Step 1"))).toBe(true);
     expect(revealed).toHaveLength(1);
+  });
+
+  it("keeps canvas, code, preview and inspector in sync through the shared hub", async () => {
+    await openFile("/p/sync.json", repeated);
+    await handlers.get("agorixStudio.openWorkbench")!();
+    await handlers.get("agorixStudio.openWorldPreview")!();
+    const workbench = workbenchPanel()!;
+    const preview = webviewPanels.find((panel) => panel.html.includes("Mundo Agorix"))!;
+    const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+    const schema = "agorix/studio-protocol/v1";
+    workbench.receive({ schema, type: "ready" });
+    await tick();
+    const snapshot = workbench.messages.find(
+      (message) => (message as { type: string }).type === "workspace",
+    ) as { workspace: { scripts: Array<{ statements: Array<{ id: string }> }> } };
+    const blockId = snapshot.workspace.scripts[0]!.statements[0]!.id;
+
+    // Canvas selection reaches code, World Preview and back to the canvas.
+    workbench.receive({ schema, type: "intent", intent: { type: "revealNode", nodeId: blockId } });
+    await tick();
+    expect(revealed.length).toBeGreaterThan(0);
+    expect(preview.messages.at(-1)).toMatchObject({
+      type: "agorix-sync",
+      selectedNodeId: "scripts[0]/statements[0]",
+    });
+    expect(workbench.messages.at(-1)).toMatchObject({ type: "sync", selectedBlockId: blockId });
+
+    // Running marks the executing block on the canvas.
+    await handlers.get("agorixStudio.step")!();
+    await tick();
+    const executing = workbench.messages
+      .filter((message) => (message as { type: string }).type === "sync")
+      .at(-1) as { executingBlockId?: string };
+    expect(executing.executingBlockId).toBeDefined();
+
+    // A code-editor selection is debounced and broadcast to the canvas.
+    const before = workbench.messages.length;
+    for (const line of [3, 4, 5]) {
+      for (const listener of selectionListeners) {
+        listener({
+          textEditor: { document: { uri: { scheme: "agorix-studio" } } },
+          selections: [{ active: { line }, start: { line }, end: { line } }],
+        });
+      }
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+    expect(workbench.messages.length).toBeGreaterThan(before);
   });
 
   it("drives World Preview and Execution Inspector from one runtime session", async () => {
