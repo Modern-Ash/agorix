@@ -27,6 +27,10 @@ import { isSafeId, parseAnchorRef, type Intent } from "@agorix/interaction-core"
 export const STUDIO_PROTOCOL_VERSION = "agorix/studio-protocol/v1";
 export const PACKAGE_NAME = "@agorix/studio-protocol";
 
+/** Help shown instead of a proposal when the learner's assistance ceiling is below 4. */
+export type HelpShown = "none" | "question" | "concept" | "pointer";
+const HELP_SHOWN: readonly HelpShown[] = ["none", "question", "concept", "pointer"];
+
 export type ChangeRefusalReason = PlacementReason | "WOULD_BREAK_PROGRAM" | "UNKNOWN";
 const REFUSAL_REASONS: readonly ChangeRefusalReason[] = [
   "NOT_A_CONTAINER",
@@ -193,6 +197,16 @@ export type HostMessage =
     }
   | { readonly schema: Schema; readonly type: "agreements"; readonly agreements: AgentAgreements }
   | { readonly schema: Schema; readonly type: "ambientHint"; readonly hint?: AmbientHintView }
+  | {
+      readonly schema: Schema;
+      readonly type: "help";
+      readonly kind: HelpShown;
+      readonly ceiling: number;
+      readonly taskId: AgentTaskId;
+      readonly concept?: ConceptId;
+      /** Blocks the learner is pointed to (ceiling 3). */
+      readonly blockIds?: readonly string[];
+    }
   | {
       readonly schema: Schema;
       readonly type: "sync";
@@ -939,6 +953,33 @@ export function parseHostMessage(value: unknown): HostMessage | undefined {
         (REFUSAL_REASONS as readonly unknown[]).includes(reason)
         ? { schema, type: "error", code: "INVALID_CHANGE", reason: reason as ChangeRefusalReason }
         : undefined;
+    }
+    case "help": {
+      const ceiling = value["ceiling"];
+      const blockIds = value["blockIds"];
+      if (
+        !(HELP_SHOWN as readonly unknown[]).includes(value["kind"]) ||
+        typeof ceiling !== "number" ||
+        !Number.isInteger(ceiling) ||
+        ceiling < 0 ||
+        ceiling > 5 ||
+        !(AGENT_TASK_IDS as readonly unknown[]).includes(value["taskId"]) ||
+        (value["concept"] !== undefined &&
+          !(CONCEPT_IDS as readonly unknown[]).includes(value["concept"])) ||
+        (blockIds !== undefined &&
+          (!Array.isArray(blockIds) || blockIds.length > 50 || !blockIds.every(isSafeId)))
+      ) {
+        return undefined;
+      }
+      return {
+        schema,
+        type: "help",
+        kind: value["kind"] as HelpShown,
+        ceiling,
+        taskId: value["taskId"] as AgentTaskId,
+        ...(value["concept"] === undefined ? {} : { concept: value["concept"] as ConceptId }),
+        ...(blockIds === undefined ? {} : { blockIds: [...blockIds] as string[] }),
+      };
     }
     case "sync": {
       const out: { selectedBlockId?: string; executingBlockId?: string; failedBlockId?: string } =

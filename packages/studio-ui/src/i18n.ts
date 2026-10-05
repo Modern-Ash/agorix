@@ -83,6 +83,20 @@ export const COPY = {
     usePlan: "Use this plan",
     noPlan: "I can't suggest anything right now. Try changing the program first.",
     showSuggestion: "Show me a suggestion",
+    helpQuestion: (task: string) =>
+      task === "repeat-pattern"
+        ? "Do you see steps that repeat? How could you say them only once?"
+        : "What is the first thing you want the character to do?",
+    helpConcept: (concept: string) =>
+      concept === "repetition"
+        ? "Repeat runs the same blocks again and again, so you write them once."
+        : "A sequence runs blocks one after another, in order.",
+    helpPointer: "Look at the blocks marked below. Could they be written in another way?",
+    helpPointerEmpty: "Look at your script. What block could go first?",
+    helpNone: "Suggestions are off at your help level.",
+    helpLookHere: "Look here",
+    helpCeilingNote: (ceiling: number) =>
+      `Your help level is ${ceiling}. Raise it in the agent agreements to see suggestions.`,
     suggestionPanel: "Suggestion",
     aiSuggestion: "AI suggestion (not in your program yet)",
     builtInSuggestion: "Built-in suggestion (not in your program yet)",
@@ -215,6 +229,20 @@ export const COPY = {
     usePlan: "Usar este plan",
     noPlan: "No puedo sugerir nada ahora. Proba cambiar el programa primero.",
     showSuggestion: "Mostrar una sugerencia",
+    helpQuestion: (task: string) =>
+      task === "repeat-pattern"
+        ? "¿Ves pasos que se repiten? ¿Cómo podrías decirlos una sola vez?"
+        : "¿Qué es lo primero que querés que haga el personaje?",
+    helpConcept: (concept: string) =>
+      concept === "repetition"
+        ? "Repetir ejecuta los mismos bloques una y otra vez, así los escribís una sola vez."
+        : "Una secuencia ejecuta los bloques uno tras otro, en orden.",
+    helpPointer: "Mirá los bloques marcados. ¿Se podrían escribir de otra manera?",
+    helpPointerEmpty: "Mirá tu script. ¿Qué bloque podría ir primero?",
+    helpNone: "Las sugerencias están apagadas en tu nivel de ayuda.",
+    helpLookHere: "Mirá acá",
+    helpCeilingNote: (ceiling: number) =>
+      `Tu nivel de ayuda es ${ceiling}. Subilo en los acuerdos del agente para ver sugerencias.`,
     suggestionPanel: "Sugerencia",
     aiSuggestion: "Sugerencia de IA (todavia no esta en tu programa)",
     builtInSuggestion: "Sugerencia integrada (todavia no esta en tu programa)",

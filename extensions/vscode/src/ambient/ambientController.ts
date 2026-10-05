@@ -20,6 +20,8 @@ export interface AmbientControllerOptions {
   readonly executionStatus: () => StudioExecutionStatus;
   readonly aiEnabled: () => boolean;
   readonly canOfferSignal: (kind: StudioSignal["kind"]) => boolean;
+  /** The learner's assistance ceiling decides which actions an offer may carry (ADR 0008). */
+  readonly allowAction?: (action: ProactiveOfferAction) => boolean;
   readonly budgetRemaining: () => number | undefined;
   readonly recordOffer: (outcome: "shown" | "accepted" | "dismissed" | "ignored") => void;
   readonly runCompanionAction: (action: ProactiveOfferAction) => Promise<unknown>;
@@ -106,7 +108,8 @@ export class AmbientController implements vscode.Disposable {
             studioSignal: signal,
             programHash: programId,
           });
-    if (decision.action === "offer") {
+    const allowed = this.#allowedActions(decision);
+    if (decision.action === "offer" && allowed.length > 0) {
       this.#offer = { signal, decision };
       this.#memory = recordProactiveOutcome(this.#memory, programId, "offered", signal.sequence);
       this.#opts.recordOffer("shown");
@@ -118,11 +121,18 @@ export class AmbientController implements vscode.Disposable {
     this.#render("quiet");
   }
 
+  #allowedActions(decision: ProactiveDecision): readonly ProactiveOfferAction[] {
+    const actions = decision.actions ?? ["explain"];
+    const allow = this.#opts.allowAction;
+    return allow === undefined ? actions : actions.filter((action) => allow(action));
+  }
+
   async showOffer(): Promise<void> {
     const offer = this.#offer;
     const programId = this.#opts.programId();
     if (offer === undefined || programId === undefined) return;
-    const actions = offer.decision.actions ?? ["explain"];
+    const actions = this.#allowedActions(offer.decision);
+    if (actions.length === 0) return;
     const picks = [
       ...actions.map((action) => ({ ...PICK_BY_ACTION[action], action })),
       { label: "Not now", description: "Keep working without help", action: "decline" as const },

@@ -33,3 +33,12 @@ export type { ConceptId } from "./explain.js";
 export { CONCEPT_IDS, checkExplanation, relevantConcept } from "./explain.js";
 export type { AgentEvent, AgentEventType } from "./events.js";
 export { MAX_AGENT_EVENTS } from "./events.js";
+
+export type { CompanionActionName, HelpKind } from "./help.js";
+export {
+  COMPANION_ACTION_HELP,
+  HELP_KIND_LEVEL,
+  canShowHelp,
+  canUseCompanionAction,
+  highestHelpKind,
+} from "./help.js";

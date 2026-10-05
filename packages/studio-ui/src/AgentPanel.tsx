@@ -346,6 +346,22 @@ export function AgentPanel({
           {copy.showSuggestion}
         </button>
       )}
+      {state.help !== undefined && state.proposal === undefined && (
+        <aside className="help" role="status" aria-label={copy.showSuggestion}>
+          <p>
+            {state.help.kind === "question"
+              ? copy.helpQuestion(state.help.taskId)
+              : state.help.kind === "concept"
+                ? copy.helpConcept(state.help.concept ?? "sequence")
+                : state.help.kind === "pointer"
+                  ? state.help.blockIds === undefined
+                    ? copy.helpPointerEmpty
+                    : copy.helpPointer
+                  : copy.helpNone}
+          </p>
+          <p className="ghost-badge">{copy.helpCeilingNote(state.help.ceiling)}</p>
+        </aside>
+      )}
       {stage === "proposal" && state.proposal !== undefined && (
         <section className="suggestion" aria-label={copy.suggestion}>
           <p className="ghost-badge">

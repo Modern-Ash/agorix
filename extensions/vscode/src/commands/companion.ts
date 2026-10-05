@@ -1,4 +1,6 @@
 import * as vscode from "vscode";
+import type { AgentAgreements } from "@agorix/agent-workflow";
+import { canDoCompanionAction, ceilingMessage } from "../assistance.js";
 import {
   createCompanionTurn,
   type StudioCompanionAction,
@@ -16,6 +18,7 @@ export interface StudioCompanionCommandPort {
   getExecutionEvidence(): StudioExecutionEvidence | undefined;
   companionTurns(): StudioCompanionTurn[];
   refreshCompanionViews(): void;
+  agentAgreements(): AgentAgreements;
   revealCanonicalNode(nodeId: string): Promise<void>;
   reviewProposalSession(proposal: StudioProposalSession): Promise<void>;
   /** Asks for a provider-backed build proposal; absent means built-in only. */
@@ -38,6 +41,10 @@ export function createStudioCompanionCommandHandlers(
   ): Promise<StudioCompanionTurn | undefined> => {
     const open = port.requireProject();
     if (open === undefined) {
+      return undefined;
+    }
+    if (!canDoCompanionAction(port.agentAgreements(), action)) {
+      void vscode.window.showInformationMessage(ceilingMessage(port.agentAgreements()));
       return undefined;
     }
     const selected =

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { DEFAULT_AGREEMENTS, createWorkflow, advance } from "@agorix/agent-workflow";
 import { programToWorkspace } from "@agorix/block-editor";
-import { STUDIO_PROTOCOL_VERSION as schema } from "@agorix/studio-protocol";
+import { STUDIO_PROTOCOL_VERSION as schema, type HostMessage } from "@agorix/studio-protocol";
 import { AgentPanel } from "./AgentPanel.js";
 import { Canvas } from "./Canvas.js";
 import {
@@ -449,5 +449,47 @@ describe("proposal origin ui", () => {
     expect(builtIn).toContain("Built-in suggestion (not in your program yet)");
     expect(builtIn).toContain("AI help isn&#x27;t available right now.");
     expect(html(withOrigin())).toContain("Suggestion (AI, not in your program yet)");
+  });
+});
+
+describe("help below the proposal level", () => {
+  const withHelp = (help: Omit<Extract<HostMessage, { type: "help" }>, "schema" | "type">) =>
+    reduceAgentUi(stageState("proposal"), { schema, type: "help", ...help });
+  const html = (state: AgentUiState, locale: "en" | "es" = "en") =>
+    renderToStaticMarkup(<AgentPanel state={state} send={() => undefined} locale={locale} />);
+
+  it("shows the question, the concept, the pointer or the off message with the level note", () => {
+    expect(html(withHelp({ kind: "question", ceiling: 1, taskId: "first-step" }))).toContain(
+      "What is the first thing you want the character to do?",
+    );
+    expect(
+      html(
+        withHelp({ kind: "concept", ceiling: 2, taskId: "repeat-pattern", concept: "repetition" }),
+      ),
+    ).toContain("Repeat runs the same blocks again and again");
+    expect(
+      html(withHelp({ kind: "pointer", ceiling: 3, taskId: "repeat-pattern", blockIds: ["b1"] })),
+    ).toContain("Look at the blocks marked below");
+    expect(html(withHelp({ kind: "pointer", ceiling: 3, taskId: "first-step" }))).toContain(
+      "Look at your script",
+    );
+    const off = html(withHelp({ kind: "none", ceiling: 0, taskId: "first-step" }));
+    expect(off).toContain("Suggestions are off at your help level.");
+    expect(off).toContain("Your help level is 0.");
+  });
+
+  it("speaks Spanish and clears when a proposal arrives", () => {
+    const state = withHelp({ kind: "question", ceiling: 1, taskId: "repeat-pattern" });
+    expect(html(state, "es")).toContain("¿Ves pasos que se repiten?");
+    expect(html(state, "es")).toContain("Tu nivel de ayuda es 1.");
+    const proposed = reduceAgentUi(state, {
+      schema,
+      type: "proposal",
+      proposalId: "p",
+      purpose: "p",
+      rationale: "r",
+      changes: [],
+    });
+    expect(proposed.help).toBeUndefined();
   });
 });

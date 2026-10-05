@@ -7,7 +7,10 @@ import {
   createWorkflow,
   effectiveAssistance,
   needsClarification,
+  canShowHelp,
+  highestHelpKind,
   planTasks,
+  relevantConcept,
   taskForId,
   type AgentAgreements,
   type AgentEvent,
@@ -58,6 +61,8 @@ export type AgentIntentPlanResult =
 
 export interface AgentPort {
   availableTasks(): AgentTaskId[];
+  /** Block ids to point the learner to for a task, without making a proposal. */
+  pointerFor(task: AgentTaskId): string[];
   /** Optional structured intent planner; callers fall back to keyword planning when absent. */
   planIntent?(
     intent: string,
@@ -108,6 +113,20 @@ export function createAgentHost(port: AgentPort): AgentHost {
   const wf = (): HostMessage => ({ schema, type: "workflow", state: workflow });
   const agreementsMsg = (): HostMessage => ({ schema, type: "agreements", agreements });
   const cleared = (): HostMessage => ({ schema, type: "proposalCleared" });
+  const helpMsg = (taskId: AgentTaskId): HostMessage => {
+    const shown = highestHelpKind(agreements);
+    const kind = shown === undefined || shown === "proposal" ? "none" : shown;
+    const blockIds = kind === "pointer" ? port.pointerFor(taskId) : [];
+    return {
+      schema,
+      type: "help",
+      kind,
+      ceiling: agreements.assistanceCeiling,
+      taskId,
+      ...(kind === "concept" ? { concept: relevantConcept(taskId) } : {}),
+      ...(blockIds.length > 0 ? { blockIds } : {}),
+    };
+  };
   const planMsg = (): HostMessage => ({ schema, type: "plan", tasks });
   const clarifyMsg = (options: readonly AgentTask[]): HostMessage => ({
     schema,
@@ -184,6 +203,10 @@ export function createAgentHost(port: AgentPort): AgentHost {
       requesting
     ) {
       return [];
+    }
+    if (!canShowHelp(agreements, "proposal")) {
+      // Below level 4 the agent may not propose (ADR 0008): it gives the most help the ceiling allows.
+      return [helpMsg(task.id)];
     }
     step({ type: "proposalRequested" });
     const started = epoch;

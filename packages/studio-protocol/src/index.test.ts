@@ -439,3 +439,17 @@ describe("advanced proposal messages", () => {
     ).toBeUndefined();
   });
 });
+
+describe("help message", () => {
+  const help = { schema, type: "help", kind: "pointer", ceiling: 3, taskId: "repeat-pattern" };
+  it("parses help with optional concept and block ids and rejects bad input", () => {
+    expect(parseHostMessage(help)).toEqual(help);
+    const full = { ...help, concept: "repetition", blockIds: ["block:a"] };
+    expect(parseHostMessage(full)).toEqual(full);
+    expect(parseHostMessage({ ...help, kind: "proposal" })).toBeUndefined();
+    expect(parseHostMessage({ ...help, ceiling: 9 })).toBeUndefined();
+    expect(parseHostMessage({ ...help, taskId: "free text" })).toBeUndefined();
+    expect(parseHostMessage({ ...help, concept: "magic" })).toBeUndefined();
+    expect(parseHostMessage({ ...help, blockIds: ["<x>"] })).toBeUndefined();
+  });
+});

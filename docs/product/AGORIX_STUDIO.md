@@ -60,6 +60,10 @@ A host-side `SyncHub` (`extensions/vscode/src/sync/syncHub.ts`) holds one select
 - Budget: `agorixStudio.agent.proposalBudgetRequests` (default 10 per session). Telemetry holds enums and numbers only; learner text never reaches it.
 - Educator evidence export is local and user-initiated (`agorixStudio.exportEducatorEvidence`). It summarizes one session with counts only: proposal decisions, predictions, explanations, ambient offers, settings and deterministic runtime completion. It writes JSON plus a Markdown summary to files the user chooses and contains no names, emails, paths, learner text or raw model output.
 
+## Assistance ceiling
+
+The "help level up to N" agreement (default 4) limits what the agent may show, on every agent surface (ADR 0008). 0 shows nothing; 1 diagnostic questions; 2 adds concept reminders; 3 adds pointing to the relevant blocks; 4 adds bounded proposals, AI or built-in; 5 adds no new kind (a complete explanation needs an explicit request after repeated failure). Below 4, "Show me a suggestion" gives the most help the level allows and a line saying the level can be raised; the Companion actions (challenge and reflect need 1, explain 2, debug 3, build 4), the built-in "Suggest first step / repeat" commands, ambient offers and the CodeLens actions that need more are hidden or declined with the same sentence. The Workbench agreements now reach the session too, so the level, the AI toggle and the mode apply to ambient offers and commands, not only to the Workbench loop.
+
 ## Release gate
 
 Studio's product release gate is

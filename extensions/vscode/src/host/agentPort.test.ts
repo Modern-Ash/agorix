@@ -401,3 +401,13 @@ describe("agentPort provider-backed proposals", () => {
     expect(view.origin).toBe("built-in");
   });
 });
+
+describe("agentPort pointers", () => {
+  it("points to the blocks a repeat suggestion would change, and to none for an empty script", () => {
+    const repeat = setup(repeated).port.pointerFor("repeat-pattern");
+    expect(repeat.length).toBe(6);
+    expect(new Set(repeat).size).toBe(6);
+    expect(setup([]).port.pointerFor("first-step")).toEqual([]);
+    expect(setup([]).port.pointerFor("repeat-pattern")).toEqual([]);
+  });
+});

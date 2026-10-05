@@ -79,7 +79,10 @@ export function editOperation(
 
 export type ComparisonData = Extract<HostMessage, { type: "comparison" }>;
 
+export type HelpData = Extract<HostMessage, { type: "help" }>;
+
 export interface AgentUiState {
+  readonly help?: HelpData;
   readonly workflow?: WorkflowState;
   readonly agreements: AgentAgreements;
   readonly tasks?: readonly AgentTask[];
@@ -124,6 +127,7 @@ export function reduceAgentUi(state: AgentUiState, message: HostMessage): AgentU
           next,
           "tasks",
           "clarify",
+          "help",
           "proposal",
           "prediction",
           "comparison",
@@ -142,7 +146,7 @@ export function reduceAgentUi(state: AgentUiState, message: HostMessage): AgentU
       return { ...without(state, "notice", "tasks"), clarify: message.options };
     case "proposal":
       return {
-        ...without(state, "notice", "selectionEvidence"),
+        ...without(state, "notice", "selectionEvidence", "help"),
         proposal: {
           proposalId: message.proposalId,
           purpose: message.purpose,
@@ -159,6 +163,8 @@ export function reduceAgentUi(state: AgentUiState, message: HostMessage): AgentU
       return state.proposal?.proposalId === message.proposalId
         ? { ...state, selectionEvidence: message.result }
         : state;
+    case "help":
+      return { ...without(state, "notice"), help: message };
     case "proposalCleared":
       return without(state, "proposal", "prediction", "selectionEvidence");
     case "prediction":

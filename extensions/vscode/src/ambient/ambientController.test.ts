@@ -8,10 +8,14 @@ import {
 import { AmbientController } from "./ambientController.js";
 
 let quickPick: unknown;
+let shownPicks: Array<{ action: string }> = [];
 
 vi.mock("vscode", () => ({
   window: {
-    showQuickPick: async () => quickPick,
+    showQuickPick: async (picks: Array<{ action: string }>) => {
+      shownPicks = picks;
+      return quickPick;
+    },
   },
 }));
 
@@ -30,6 +34,7 @@ function controller(
     readonly budget?: number;
     readonly proactivePipeline?: StudioPipeline;
     readonly canOffer?: boolean;
+    readonly allowAction?: (action: string) => boolean;
   } = {},
 ) {
   const item = statusItem();
@@ -44,6 +49,9 @@ function controller(
     executionStatus: () => "idle",
     aiEnabled: () => true,
     canOfferSignal: () => options.canOffer ?? true,
+    ...(options.allowAction === undefined
+      ? {}
+      : { allowAction: options.allowAction as (action: never) => boolean }),
     budgetRemaining: () =>
       options.budget === undefined ? undefined : Math.max(0, options.budget - offers),
     recordOffer: (outcome) => {
@@ -141,5 +149,28 @@ describe("AmbientController", () => {
     expect(item.text).toContain("$(warning)");
     expect(item.command).toBeUndefined();
     expect(offers()).toBe(0);
+  });
+});
+
+describe("AmbientController assistance ceiling", () => {
+  beforeEach(() => {
+    quickPick = undefined;
+    shownPicks = [];
+  });
+
+  it("offers only the actions the ceiling allows", async () => {
+    const { c } = controller({ allowAction: (action) => action === "debug" });
+    await c.handleSignal(createStudioSignal("runtime-error", 1, { code: "E_LOOP" })!);
+    await c.showOffer();
+    expect(shownPicks.map((pick) => pick.action)).toEqual(["debug", "decline"]);
+  });
+
+  it("stays quiet, and counts no offer, when nothing is allowed", async () => {
+    const { c, item, stats, showCanvasHint } = controller({ allowAction: () => false });
+    await c.handleSignal(createStudioSignal("runtime-error", 1, { code: "E_LOOP" })!);
+    expect(item.command).toBeUndefined();
+    expect(item.text).toBe("$(sparkle)");
+    expect(stats.shown).toBe(0);
+    expect(showCanvasHint).not.toHaveBeenCalled();
   });
 });

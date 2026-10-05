@@ -78,6 +78,11 @@ export function openWorkbenchPanel(
         await send(workbench.syncMessage(hub.getState()));
         return;
       }
+      if (message.type === "agreementsChanged") {
+        // The agent host owns the loop, but the session (ambient offers, Companion, commands) must
+        // see the same agreements: forward them to the session as well.
+        await workbench.handle(message);
+      }
       await send((await agentHost.handle(message)) ?? (await workbench.handle(message)));
     })().catch(() => undefined);
   });
