@@ -48,6 +48,7 @@ export function createPolicyRouter(allowRemote: boolean): StudioRouter {
 
 export function createProviderWiring(options: ProviderWiringOptions): {
   source(): ProposalSource;
+  client(): StudioProviderClient | undefined;
   ambientPipeline(): StudioPipeline;
 } {
   let key = "";
@@ -104,5 +105,6 @@ export function createProviderWiring(options: ProviderWiringOptions): {
       const { pipeline: active, client } = current();
       return createProposalSource({ pipeline: active, client });
     },
+    client: () => current().client,
   };
 }

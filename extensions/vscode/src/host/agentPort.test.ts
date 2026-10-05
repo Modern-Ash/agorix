@@ -1,15 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AgentEvent } from "@agorix/agent-workflow";
-import { createLearningCompanionResponse } from "@agorix/tutor-contract";
+import {
+  createIntentPlanResponse,
+  createLearningCompanionResponse,
+  type IntentPlanRequest,
+} from "@agorix/tutor-contract";
 import {
   createProposalSession,
   createStudioStarterProject,
   openStoredProject,
   type StudioProposalSession,
 } from "../studioCore.js";
-import { createFirstStepProposal } from "@agorix/proposals";
+import { createFirstStepProposal, programSemanticHash } from "@agorix/proposals";
 import type { ProviderProposalResult } from "../studioProposalSource.js";
-import { createAgentPort } from "./agentPort.js";
+import { createAgentPort, type AgentPortDeps } from "./agentPort.js";
 
 function projectWith(statements: unknown[]) {
   const base = createStudioStarterProject({ starter: "blank", now: "2026-01-01T00:00:00.000Z" });
@@ -22,10 +26,7 @@ function projectWith(statements: unknown[]) {
   } as never);
 }
 
-function setup(
-  statements: unknown[],
-  providerProposal?: Parameters<typeof createAgentPort>[0]["providerProposal"],
-) {
+function setup(statements: unknown[], options: Partial<AgentPortDeps> = {}) {
   let project = projectWith(statements);
   let active: StudioProposalSession | undefined;
   const events: AgentEvent[] = [];
@@ -44,7 +45,12 @@ function setup(
     },
     runAndGetResult: () => undefined,
     events,
-    ...(providerProposal === undefined ? {} : { providerProposal }),
+    ...(options.providerProposal === undefined
+      ? {}
+      : { providerProposal: options.providerProposal }),
+    ...(options.providerIntentPlan === undefined
+      ? {}
+      : { providerIntentPlan: options.providerIntentPlan }),
   });
   return {
     port,
@@ -109,6 +115,91 @@ describe("agentPort", () => {
       ctx.port.record({ type: "proposalRequested", taskId: "first-step", scaffoldLevel: 4 });
     }
     expect(ctx.events).toHaveLength(200);
+  });
+});
+
+describe("agentPort provider-backed intent planning", () => {
+  const responseFor = (
+    request: IntentPlanRequest,
+    concept: "movement" | "repetition",
+    baseProgramHash = programSemanticHash(request.program),
+  ) =>
+    createIntentPlanResponse({
+      kind: "plan",
+      message: "Plan ready.",
+      metadata: {
+        provenance: "local-provider",
+        uncertainty: "low",
+        questionsAsked: 0,
+      },
+      plan: {
+        schema: "agorix/intent-plan/v1",
+        id: "provider-plan",
+        baseProgramHash,
+        status: "proposed",
+        revision: 1,
+        learnerIntent: request.learnerIntent,
+        learningObjective: request.mission.learningObjective,
+        concepts: request.mission.concepts,
+        steps: [
+          {
+            id: "step-1",
+            order: 1,
+            description: "Provider-selected task.",
+            concept,
+            rationale: "Provider mapped intent to a mission concept.",
+          },
+        ],
+        omittedSteps: 0,
+      },
+    });
+
+  it("uses provider intent planning when the response is fresh", async () => {
+    const ctx = setup(repeated, {
+      providerIntentPlan: async (request) => responseFor(request, "repetition"),
+    });
+    const planned = await ctx.port.planIntent?.("make it shorter");
+    expect(planned).toMatchObject({
+      kind: "plan",
+      tasks: [{ id: "repeat-pattern" }],
+    });
+  });
+
+  it("maps provider clarifications to fixed task choices only", async () => {
+    const ctx = setup(repeated, {
+      providerIntentPlan: async (_request) =>
+        createIntentPlanResponse({
+          kind: "clarification",
+          message: "Which direction?",
+          metadata: {
+            provenance: "local-provider",
+            uncertainty: "medium",
+            questionsAsked: 1,
+          },
+          clarification: {
+            reason: "vague-outcome",
+            question: "Provider free text should not become a task title.",
+            options: ["provider-specific wording"],
+          },
+        }),
+    });
+    const planned = await ctx.port.planIntent?.("make it better");
+    expect(planned).toMatchObject({
+      kind: "plan",
+      tasks: [{ id: "repeat-pattern" }],
+    });
+    expect(JSON.stringify(planned)).not.toContain("provider-specific wording");
+  });
+
+  it("falls back to deterministic planning for stale provider intent plans", async () => {
+    const ctx = setup([], {
+      providerIntentPlan: async (request) => responseFor(request, "repetition", "stale-hash"),
+    });
+    const planned = await ctx.port.planIntent?.("make it move");
+    expect(planned).toMatchObject({
+      kind: "plan",
+      tasks: [{ id: "first-step" }],
+    });
   });
 });
 
@@ -227,14 +318,16 @@ describe("agentPort provider-backed proposals", () => {
     });
 
   it("makes the provider proposal primary and keeps the built-in one as an alternative", async () => {
-    const ctx = setup([], async (project): Promise<ProviderProposalResult> => {
-      const session = providerSession(project);
-      return {
-        origin: "provider",
-        session,
-        response: providerResponse(session),
-        locality: "local",
-      };
+    const ctx = setup([], {
+      providerProposal: async (project): Promise<ProviderProposalResult> => {
+        const session = providerSession(project);
+        return {
+          origin: "provider",
+          session,
+          response: providerResponse(session),
+          locality: "local",
+        };
+      },
     });
     const view = (await ctx.port.proposeFor("first-step"))!;
     expect(view.origin).toBe("provider");
@@ -250,11 +343,13 @@ describe("agentPort provider-backed proposals", () => {
   });
 
   it("falls back to the built-in proposal and carries the notice", async () => {
-    const ctx = setup([], async () => ({
-      origin: "built-in",
-      reason: "not-allowed",
-      notice: "AI help isn't available right now.",
-    }));
+    const ctx = setup([], {
+      providerProposal: async () => ({
+        origin: "built-in",
+        reason: "not-allowed",
+        notice: "AI help isn't available right now.",
+      }),
+    });
     const view = (await ctx.port.proposeFor("first-step"))!;
     expect(view.origin).toBe("built-in");
     expect(view.notice).toBe("AI help isn't available right now.");
@@ -263,15 +358,17 @@ describe("agentPort provider-backed proposals", () => {
 
   it("ignores a provider proposal whose base program is no longer current", async () => {
     const ref: { ctx?: ReturnType<typeof setup> } = {};
-    const ctx = setup([], async (project): Promise<ProviderProposalResult> => {
-      const session = providerSession(project);
-      ref.ctx?.setProject([{ type: "move", steps: 5 }]);
-      return {
-        origin: "provider",
-        session,
-        response: providerResponse(session),
-        locality: "local",
-      };
+    const ctx = setup([], {
+      providerProposal: async (project): Promise<ProviderProposalResult> => {
+        const session = providerSession(project);
+        ref.ctx?.setProject([{ type: "move", steps: 5 }]);
+        return {
+          origin: "provider",
+          session,
+          response: providerResponse(session),
+          locality: "local",
+        };
+      },
     });
     ref.ctx = ctx;
     const view = await ctx.port.proposeFor("first-step");
@@ -281,22 +378,24 @@ describe("agentPort provider-backed proposals", () => {
   });
 
   it("never lets a provider proposal reuse a built-in id", async () => {
-    const ctx = setup([], async (project): Promise<ProviderProposalResult> => {
-      const session = createProposalSession(
-        project,
-        createFirstStepProposal({
-          id: "first-step",
-          baseProgram: project.stored.program,
-          purpose: "dup",
-          rationale: "dup",
-        })!,
-      );
-      return {
-        origin: "provider",
-        session,
-        response: providerResponse(session),
-        locality: "local",
-      };
+    const ctx = setup([], {
+      providerProposal: async (project): Promise<ProviderProposalResult> => {
+        const session = createProposalSession(
+          project,
+          createFirstStepProposal({
+            id: "first-step",
+            baseProgram: project.stored.program,
+            purpose: "dup",
+            rationale: "dup",
+          })!,
+        );
+        return {
+          origin: "provider",
+          session,
+          response: providerResponse(session),
+          locality: "local",
+        };
+      },
     });
     const view = (await ctx.port.proposeFor("first-step"))!;
     expect(view.origin).toBe("built-in");

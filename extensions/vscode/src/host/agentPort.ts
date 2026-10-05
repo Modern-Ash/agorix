@@ -21,6 +21,7 @@ import { touchingGoal, type WorldState } from "@agorix/runtime";
 import {
   createDeterministicIntentPlan,
   createIntentPlanRequest,
+  type IntentPlanRequest,
   type IntentPlanResponse,
 } from "@agorix/tutor-contract";
 import {
@@ -52,6 +53,10 @@ export interface AgentPortDeps {
     project: StudioProject,
     task: ProviderProposalTask,
   ): Promise<ProviderProposalResult>;
+  /** Optional provider-backed planner; absent or unavailable means built-in only. */
+  providerIntentPlan?(
+    request: IntentPlanRequest,
+  ): IntentPlanResponse | undefined | Promise<IntentPlanResponse | undefined>;
 }
 
 const TRADEOFFS: Record<string, string> = {
@@ -87,6 +92,53 @@ function planTasksFromIntentResponse(
     }
   }
   return (chosen.size === 0 ? available : available.filter((id) => chosen.has(id))).map(taskForId);
+}
+
+function createRequestForIntent(project: StudioProject, intent: string): IntentPlanRequest {
+  const locale = normalizeLocale(project.stored.metadata.locale);
+  const mission = getLocalizedFirstMission(locale);
+  return createIntentPlanRequest({
+    learnerIntent: intent,
+    mission: {
+      id: mission.id,
+      version: mission.version,
+      concepts: mission.concepts,
+      learningObjective: mission.goal.learnerFacing,
+    },
+    program: project.stored.program,
+    selectedNodeIds: [],
+    priorClarifications: [],
+    reading: { locale },
+  });
+}
+
+function resultFromIntentResponse(
+  response: IntentPlanResponse,
+  available: readonly AgentTaskId[],
+  baseHash: string,
+) {
+  if (response.kind === "clarification") {
+    return available.length < 2
+      ? {
+          kind: "plan" as const,
+          tasks: available.map(taskForId),
+          baseHash,
+        }
+      : {
+          kind: "clarify" as const,
+          options: available.map(taskForId),
+          baseHash,
+        };
+  }
+  return {
+    kind: "plan" as const,
+    tasks: planTasksFromIntentResponse(response, available),
+    baseHash: response.plan.baseProgramHash,
+  };
+}
+
+function isPromiseLike<T>(value: T | Promise<T>): value is Promise<T> {
+  return value !== undefined && typeof (value as { then?: unknown }).then === "function";
 }
 
 function describeStatement(statement: Statement): string {
@@ -216,44 +268,41 @@ export function createAgentPort(deps: AgentPortDeps): AgentPort {
       const project = deps.getProject();
       if (project === undefined) return undefined;
       const available = availableTasksFor(project);
+      const baseHash = programSemanticHash(project.stored.program);
       if (available.length === 0) {
-        return { kind: "plan", tasks: [], baseHash: programSemanticHash(project.stored.program) };
+        return { kind: "plan", tasks: [], baseHash };
       }
-      const locale = normalizeLocale(project.stored.metadata.locale);
-      const mission = getLocalizedFirstMission(locale);
-      const response = createDeterministicIntentPlan(
-        createIntentPlanRequest({
-          learnerIntent: intent,
-          mission: {
-            id: mission.id,
-            version: mission.version,
-            concepts: mission.concepts,
-            learningObjective: mission.goal.learnerFacing,
-          },
-          program: project.stored.program,
-          selectedNodeIds: [],
-          priorClarifications: [],
-          reading: { locale },
-        }),
-      );
-      if (response.kind === "clarification") {
-        return available.length < 2
-          ? {
-              kind: "plan",
-              tasks: available.map(taskForId),
-              baseHash: programSemanticHash(project.stored.program),
-            }
-          : {
-              kind: "clarify",
-              options: available.map(taskForId),
-              baseHash: programSemanticHash(project.stored.program),
-            };
+      const request = createRequestForIntent(project, intent);
+      const deterministic = () =>
+        resultFromIntentResponse(createDeterministicIntentPlan(request), available, baseHash);
+      if (deps.providerIntentPlan === undefined) {
+        return deterministic();
       }
-      return {
-        kind: "plan",
-        tasks: planTasksFromIntentResponse(response, available),
-        baseHash: response.plan.baseProgramHash,
-      };
+      const maybeProvided = deps.providerIntentPlan(request);
+      if (!isPromiseLike(maybeProvided)) {
+        if (maybeProvided === undefined) {
+          return deterministic();
+        }
+        if (maybeProvided.kind === "plan" && maybeProvided.plan.baseProgramHash !== baseHash) {
+          return deterministic();
+        }
+        return resultFromIntentResponse(maybeProvided, available, baseHash);
+      }
+      return (async () => {
+        const provided = await maybeProvided;
+        const current = deps.getProject();
+        if (provided === undefined || current === undefined) {
+          return deterministic();
+        }
+        const currentHash = programSemanticHash(current.stored.program);
+        if (currentHash !== baseHash) {
+          return undefined;
+        }
+        if (provided.kind === "plan" && provided.plan.baseProgramHash !== currentHash) {
+          return deterministic();
+        }
+        return resultFromIntentResponse(provided, available, currentHash);
+      })();
     },
     async proposeFor(task) {
       const first = deps.getProject();

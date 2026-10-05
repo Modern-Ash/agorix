@@ -108,6 +108,7 @@ describe("Studio release gate documentation", () => {
 
   it("records the agent and canvas gate evidence for issue 259", () => {
     expect(gate).toContain("packages/tutor-contract/src/intent-plan.test.ts");
+    expect(gate).toContain("extensions/vscode/src/studioProvider.test.ts");
     expect(gate).toContain("packages/learning-decision-plane/src/proactive-pipeline.test.ts");
     expect(gate).toContain("extensions/vscode/src/ambient/ambientController.test.ts");
     expect(gate).toContain("packages/learning-evidence/src/index.test.ts");

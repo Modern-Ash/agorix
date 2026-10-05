@@ -6,7 +6,11 @@ import {
 } from "@agorix/learning-decision-plane";
 import type { LearningCompanionResponse } from "@agorix/tutor-contract";
 import { createProposalSource } from "./studioProposalSource.js";
-import type { StudioProviderClient, StudioProviderOutcome } from "./studioProvider.js";
+import type {
+  StudioIntentPlanOutcome,
+  StudioProviderClient,
+  StudioProviderOutcome,
+} from "./studioProvider.js";
 import {
   createCompanionTurn,
   createStudioStarterProject,
@@ -47,6 +51,11 @@ function setup(options: {
   const client: StudioProviderClient = {
     probe: async () => ({ state: "available", message: "" }),
     request,
+    planIntent: async (): Promise<StudioIntentPlanOutcome> => ({
+      status: "unavailable",
+      reason: "all-unavailable",
+      message: "AI help is unavailable right now.",
+    }),
   };
   const pipeline = createStudioPipeline({
     ...(options.route === undefined ? {} : { route: options.route }),
@@ -175,6 +184,11 @@ describe("proposal source", () => {
         request: async () => {
           throw new Error("boom");
         },
+        planIntent: async () => ({
+          status: "unavailable",
+          reason: "all-unavailable",
+          message: "AI help is unavailable right now.",
+        }),
       },
     });
     expect(await source.request(project(), "first-step")).toMatchObject({

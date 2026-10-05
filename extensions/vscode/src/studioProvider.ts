@@ -4,6 +4,7 @@
 //
 //   GET  {endpoint}/health      -> { "status": "available" | "degraded" | "unavailable" }
 //   POST {endpoint}/companion   -> body: LearningCompanionRequest, reply: LearningCompanionResponse
+//   POST {endpoint}/intent-plan -> body: IntentPlanRequest, reply: IntentPlanResponse
 //
 // Every response is validated (contract + safety, docs/safety/AI_OUTPUT_VALIDATION.md) before
 // it is returned, so nothing unvalidated can reach a UI. Failures never throw to callers and
@@ -22,8 +23,11 @@ import {
   type ProviderUnavailableReason,
 } from "@agorix/provider-runtime";
 import {
+  validateIntentPlanResponse,
   LearningCompanionSafetyValidationError,
   validateLearningCompanionSafety,
+  type IntentPlanRequest,
+  type IntentPlanResponse,
   type LearningCompanionCapability,
   type LearningCompanionRequest,
   type LearningCompanionResponse,
@@ -76,6 +80,18 @@ export type StudioProviderOutcome =
     }
   | { readonly status: "rejected"; readonly message: string };
 
+export type StudioIntentPlanOutcome =
+  | {
+      readonly status: "response";
+      readonly response: IntentPlanResponse;
+      readonly locality: ProviderRuntimeLocality;
+    }
+  | {
+      readonly status: "unavailable";
+      readonly reason: ProviderUnavailableReason;
+      readonly message: string;
+    };
+
 export type StudioFetch = (input: string, init: StudioFetchInit) => Promise<StudioFetchResponse>;
 
 export interface StudioFetchInit {
@@ -105,6 +121,7 @@ export interface StudioProviderClientOptions {
 export interface StudioProviderClient {
   probe(): Promise<StudioAgentStatus>;
   request(request: LearningCompanionRequest): Promise<StudioProviderOutcome>;
+  planIntent(request: IntentPlanRequest): Promise<StudioIntentPlanOutcome>;
 }
 
 const ALL_CAPABILITIES: readonly LearningCompanionCapability[] = [
@@ -296,17 +313,24 @@ export function createStudioProviderClient(
   const { settings } = options;
   const locale = options.locale ?? "en";
 
-  const runtimes = (): readonly LearningCompanionProviderRuntime[] => {
+  const runtimeEntries = (): readonly {
+    readonly endpoint: string;
+    readonly runtime: LearningCompanionProviderRuntime;
+  }[] => {
     const seen = new Set<string>();
-    const result: LearningCompanionProviderRuntime[] = [];
+    const result: Array<{
+      readonly endpoint: string;
+      readonly runtime: LearningCompanionProviderRuntime;
+    }> = [];
     [settings.endpoint, settings.remoteEndpoint].forEach((endpoint, index) => {
       const locality = endpoint === "" ? undefined : classifyEndpointLocality(endpoint);
       if (locality === undefined || seen.has(endpoint)) {
         return;
       }
       seen.add(endpoint);
-      result.push(
-        createBoundaryRuntime({
+      result.push({
+        endpoint,
+        runtime: createBoundaryRuntime({
           runtimeId: `studio-boundary:${index}`,
           endpoint,
           locality,
@@ -314,7 +338,7 @@ export function createStudioProviderClient(
           fetch: options.fetch,
           ...(options.getCredential === undefined ? {} : { getCredential: options.getCredential }),
         }),
-      );
+      });
     });
     return result;
   };
@@ -333,11 +357,40 @@ export function createStudioProviderClient(
     message: describeProviderUnavailableForLearner(reason, locale),
   });
 
+  async function callEndpoint(
+    endpoint: string,
+    path: string,
+    timeoutMs: number,
+    body: string,
+  ): Promise<StudioFetchResponse> {
+    const headers: Record<string, string> = {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    };
+    const credential = await options.getCredential?.();
+    if (credential !== undefined && credential.length > 0 && canSendCredential(endpoint)) {
+      headers.Authorization = `Bearer ${credential}`;
+    }
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      return await options.fetch(`${endpoint}${path}`, {
+        method: "POST",
+        headers,
+        body,
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   async function select(capability: LearningCompanionCapability) {
     if (!settings.enabled) {
       return { kind: "off" as const, ...unavailable("offline-mode") };
     }
-    const all = runtimes();
+    const entries = runtimeEntries();
+    const all = entries.map((entry) => entry.runtime);
     if (all.length === 0) {
       return { kind: "off" as const, ...unavailable("no-compatible-provider") };
     }
@@ -354,9 +407,15 @@ export function createStudioProviderClient(
       preferredOrder: preferredOrder(all),
       allowRemote: settings.allowRemote,
     });
-    return outcome.status === "selected"
-      ? { kind: "selected" as const, runtime: outcome.runtime }
-      : { kind: "unavailable" as const, ...unavailable(outcome.reason) };
+    if (outcome.status !== "selected") {
+      return { kind: "unavailable" as const, ...unavailable(outcome.reason) };
+    }
+    const entry = entries.find((item) => item.runtime === outcome.runtime);
+    return {
+      kind: "selected" as const,
+      runtime: outcome.runtime,
+      endpoint: entry?.endpoint ?? "",
+    };
   }
 
   return {
@@ -396,6 +455,43 @@ export function createStudioProviderClient(
         if (error instanceof LearningCompanionSafetyValidationError) {
           return { status: "rejected", message: error.childMessage };
         }
+        return { status: "unavailable", ...unavailable("all-unavailable") };
+      }
+    },
+    async planIntent(request) {
+      try {
+        const selection = await select("coach");
+        if (selection.kind !== "selected") {
+          return { status: "unavailable", reason: selection.reason, message: selection.message };
+        }
+        if (selection.endpoint.length === 0) {
+          return { status: "unavailable", ...unavailable("all-unavailable") };
+        }
+        const response = await callEndpoint(
+          selection.endpoint,
+          "/intent-plan",
+          settings.requestTimeoutMs,
+          JSON.stringify(request),
+        );
+        if (!response.ok) {
+          return { status: "unavailable", ...unavailable("all-unavailable") };
+        }
+        const text = await response.text();
+        if (text.length > MAX_RESPONSE_CHARS) {
+          return { status: "unavailable", ...unavailable("all-unavailable") };
+        }
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(text);
+        } catch {
+          return { status: "unavailable", ...unavailable("all-unavailable") };
+        }
+        return {
+          status: "response",
+          response: validateIntentPlanResponse(parsed as IntentPlanResponse),
+          locality: selection.runtime.descriptor.locality,
+        };
+      } catch {
         return { status: "unavailable", ...unavailable("all-unavailable") };
       }
     },
