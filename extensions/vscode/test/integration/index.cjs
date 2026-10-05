@@ -226,8 +226,10 @@ const tests = [
       const opened = workbenchTabs().length;
       // Reopening reveals the same panel instead of creating another one.
       await vscode.commands.executeCommand("agorixStudio.openWorkbench");
-      await sleep(300);
-      assert.equal(workbenchTabs().length, opened);
+      await waitFor(
+        "Workbench tab count to stay stable after reopen",
+        () => workbenchTabs().length === opened,
+      );
       // Live sync: running and selecting steps with the Workbench open must not throw.
       await vscode.commands.executeCommand("agorixStudio.reset");
       const step = await vscode.commands.executeCommand("agorixStudio.step");

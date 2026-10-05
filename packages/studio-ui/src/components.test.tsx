@@ -7,6 +7,7 @@ import { Workbench } from "./Workbench.js";
 import { dropPointFor, toRows } from "./blockView.js";
 import { chordFromEvent, parseDragPayload } from "./drag.js";
 import { statusFor } from "./Workbench.js";
+import { copyFor } from "./i18n.js";
 
 const program = {
   schema: "agorix/program/v1",
@@ -38,6 +39,12 @@ describe("studio-ui", () => {
     );
     expect(html).toContain('data-density="compact"');
     expect(html).toContain("Que queres crear?");
+    expect(html).toContain("Bloques");
+    expect(html).toContain("Mover [N] pasos");
+    expect(html).toContain("Abri un proyecto para empezar a construir.");
+    expect(html).toContain("Explicar");
+    expect(html).toContain("Depurar");
+    expect(html).toContain("Desafio");
     expect(html).not.toContain(' style="');
   });
 
@@ -122,6 +129,17 @@ describe("studio-ui", () => {
         reason: "NOT_A_CONTAINER",
       }),
     ).toBe("That block cannot hold other blocks. Nothing changed.");
+    expect(
+      statusFor(
+        {
+          schema: "agorix/studio-protocol/v1",
+          type: "error",
+          code: "INVALID_CHANGE",
+          reason: "NOT_A_STATEMENT",
+        },
+        copyFor("es"),
+      ),
+    ).toBe("Ese bloque no puede ir en los pasos del programa. No cambio nada.");
   });
 
   it("marks selected, running and failed blocks with text, not only color", () => {
@@ -141,6 +159,28 @@ describe("studio-ui", () => {
     expect(markup).toContain("Running");
     expect(markup).toContain('aria-current="true"');
     expect(markup).toContain("This block failed when the program ran");
+  });
+
+  it("localizes canvas chrome without changing block intent ids", () => {
+    const firstBlockId = toRows(workspace).find((row) => row.kind === "block")?.block.id;
+    expect(firstBlockId).toBeDefined();
+    const markup = renderToStaticMarkup(
+      <Canvas
+        workspace={workspace}
+        onIntent={() => undefined}
+        sync={{ executingBlockId: firstBlockId! }}
+        copy={copyFor("es")}
+      />,
+    );
+    expect(markup).toContain("Guion 1: cuando presionas Ejecutar");
+    expect(markup).toContain("Mover [N] pasos");
+    expect(markup).toContain("pasos: 3");
+    expect(markup).toContain("Ejecutando");
+    expect(markup).toContain("Subir");
+    expect(markup).toContain("Bajar");
+    expect(markup).toContain("Eliminar");
+    expect(markup).not.toContain("Script 1");
+    expect(markup).not.toContain("Running");
   });
 
   it("renders ambient hints on the canvas without proposal state", () => {
