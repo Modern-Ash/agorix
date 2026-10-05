@@ -36,6 +36,7 @@
     "onCommand:agorixStudio.createProject",
     "onCommand:agorixStudio.openProject",
     "onCommand:agorixStudio.exportAgorix",
+    "onCommand:agorixStudio.exportEducatorEvidence",
     "onCommand:agorixStudio.signIn",
     "onCommand:agorixStudio.signOut",
     "onCommand:agorixStudio.listRemoteProjects",
@@ -147,6 +148,15 @@
           "minimum": 0,
           "maximum": 1000,
           "markdownDescription": "Maximum ambient proactive offers per Studio session. Editing, running and explicit Companion commands are unaffected."
+        },
+        "agorixStudio.workbench.density": {
+          "type": "string",
+          "enum": [
+            "comfortable",
+            "compact"
+          ],
+          "default": "comfortable",
+          "markdownDescription": "Workbench UI density. Compact reduces spacing for IDE-style repeated editing while keeping controls keyboard accessible."
         }
       }
     },
@@ -228,6 +238,12 @@
         "title": "Export Portable .agorix Project",
         "category": "Agorix Studio",
         "icon": "$(export)"
+      },
+      {
+        "command": "agorixStudio.exportEducatorEvidence",
+        "title": "Export Educator Evidence",
+        "category": "Agorix Studio",
+        "icon": "$(notebook)"
       },
       {
         "command": "agorixStudio.signIn",
@@ -459,6 +475,11 @@
           "group": "inline"
         },
         {
+          "command": "agorixStudio.exportEducatorEvidence",
+          "when": "viewItem == agorixProgress",
+          "group": "inline"
+        },
+        {
           "command": "agorixStudio.saveRemoteProject",
           "when": "viewItem == agorixProject",
           "group": "inline"
@@ -523,6 +544,11 @@
         {
           "command": "agorixStudio.exportAgorix",
           "when": "view == agorixStudio.projects",
+          "group": "navigation"
+        },
+        {
+          "command": "agorixStudio.exportEducatorEvidence",
+          "when": "view == agorixStudio.progress",
           "group": "navigation"
         },
         {
@@ -683,7 +709,8 @@
     "test": "vitest run --config vitest.config.ts",
     "test:integration": "node test/integration/run.cjs",
     "test:vsix": "node test/integration/vsix.cjs",
-    "package": "pnpm build && vsce package --no-dependencies --out dist/agorix-studio.vsix"
+    "package": "pnpm build && vsce package --no-dependencies --out dist/agorix-studio.vsix",
+    "publish:open-vsx": "pnpm package && npx --yes ovsx publish dist/agorix-studio.vsix"
   },
   "dependencies": {
     "@agorix/agent-workflow": "workspace:*",
@@ -694,6 +721,7 @@
     "@agorix/interaction-core": "workspace:*",
     "@agorix/language-projection": "workspace:*",
     "@agorix/learning-decision-plane": "workspace:*",
+    "@agorix/learning-evidence": "workspace:*",
     "@agorix/persistence": "workspace:*",
     "@agorix/platform-contract": "workspace:*",
     "@agorix/program-model": "workspace:*",

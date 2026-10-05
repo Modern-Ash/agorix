@@ -3,7 +3,6 @@ import {
   CONCEPT_IDS,
   type AgentAgreements,
   type AssistanceLevel,
-  type ConceptId,
   type WorkflowMode,
   type WorkflowStage,
 } from "@agorix/agent-workflow";
@@ -15,37 +14,37 @@ import {
   type AgentUiState,
   type SelectionState,
 } from "./agentUi.js";
+import { copyFor, taskTitle, type StudioUiCopy, type StudioUiLocale } from "./i18n.js";
 
-const STAGES: readonly [WorkflowStage, string][] = [
-  ["intent", "Intent"],
-  ["plan", "Plan"],
-  ["proposal", "Proposal"],
-  ["predict", "Predict"],
-  ["run", "Run"],
-  ["compare", "Compare"],
-  ["explain", "Explain"],
-];
-
-const CONCEPT_LABELS: Record<ConceptId, string> = {
-  sequence: "Sequence",
-  repetition: "Repetition",
-  condition: "Condition",
-  event: "Event",
-};
+const STAGES = [
+  "intent",
+  "plan",
+  "proposal",
+  "predict",
+  "run",
+  "compare",
+  "explain",
+] as const satisfies readonly WorkflowStage[];
 
 type Send = (message: Omit<UiMessage, "schema"> & Record<string, unknown>) => void;
 
-function Ribbon({ stage }: { readonly stage: WorkflowStage | undefined }) {
-  const index = STAGES.findIndex(([id]) => id === stage);
+function Ribbon({
+  stage,
+  copy,
+}: {
+  readonly stage: WorkflowStage | undefined;
+  readonly copy: StudioUiCopy;
+}) {
+  const index = STAGES.findIndex((id) => id === stage);
   return (
-    <ol className="ribbon" aria-label="Agent loop">
-      {STAGES.map(([id, label], position) => (
+    <ol className="ribbon" aria-label={copy.agentLoop}>
+      {STAGES.map((id, position) => (
         <li
           key={id}
           aria-current={id === stage ? "step" : undefined}
           className={stage === "done" || (index >= 0 && position < index) ? "done" : undefined}
         >
-          {label}
+          {copy.stages[id]}
         </li>
       ))}
     </ol>
@@ -55,31 +54,33 @@ function Ribbon({ stage }: { readonly stage: WorkflowStage | undefined }) {
 function Agreements({
   agreements,
   send,
+  copy,
 }: {
   readonly agreements: AgentAgreements;
   readonly send: Send;
+  readonly copy: StudioUiCopy;
 }) {
   const change = (patch: Partial<AgentAgreements>) =>
     send({ type: "agreementsChanged", agreements: { ...agreements, ...patch } });
   return (
     <details className="agreements">
-      <summary>Agent agreements</summary>
+      <summary>{copy.agreements}</summary>
       <label>
         <input
           type="checkbox"
           checked={agreements.aiEnabled}
           onChange={(event) => change({ aiEnabled: event.target.checked })}
         />{" "}
-        Agent helps
+        {copy.agentHelps}
       </label>
       <label>
-        How it works{" "}
+        {copy.howItWorks}{" "}
         <select
           value={agreements.mode}
           onChange={(event) => change({ mode: event.target.value as WorkflowMode })}
         >
-          <option value="supervised">Ask me before each suggestion</option>
-          <option value="bounded">Suggest after I accept the plan</option>
+          <option value="supervised">{copy.supervised}</option>
+          <option value="bounded">{copy.bounded}</option>
         </select>
       </label>
       <label>
@@ -88,10 +89,10 @@ function Agreements({
           checked={agreements.requirePredictionBeforeAccept}
           onChange={(event) => change({ requirePredictionBeforeAccept: event.target.checked })}
         />{" "}
-        Predict before I accept a suggestion
+        {copy.predictBeforeAccept}
       </label>
       <label>
-        Help level up to{" "}
+        {copy.helpLevelUpTo}{" "}
         <select
           value={agreements.assistanceCeiling}
           onChange={(event) =>
@@ -109,39 +110,52 @@ function Agreements({
   );
 }
 
-function evidenceText(evidence: {
-  readonly stepsUsed: number;
-  readonly reachedGoal: boolean;
-}): string {
-  return `Run result: ${evidence.reachedGoal ? "reaches the goal" : "does not reach the goal"} (${evidence.stepsUsed} steps, runtime fact).`;
+function evidenceText(
+  evidence: {
+    readonly stepsUsed: number;
+    readonly reachedGoal: boolean;
+  },
+  copy: StudioUiCopy,
+): string {
+  return `${copy.runResult} ${evidence.reachedGoal ? copy.reachesGoal : copy.missesGoal} (${evidence.stepsUsed} ${copy.steps}, ${copy.runtimeFact}).`;
 }
 
-const REASON_TEXT = {
-  EMPTY: "Nothing is selected, so nothing would change.",
-  INVALID: "That combination would break the program, so it was not applied.",
-  STALE: "The program changed, so this suggestion is out of date.",
-} as const;
+function conceptLabel(id: string, copy: StudioUiCopy): string {
+  if (id === "sequence") return copy.sequence;
+  if (id === "repetition") return copy.repetition;
+  if (id === "condition") return copy.condition;
+  if (id === "event") return copy.event;
+  return id;
+}
 
-function Alternatives({ state, post }: { readonly state: AgentUiState; readonly post: Send }) {
+function Alternatives({
+  state,
+  post,
+  copy,
+}: {
+  readonly state: AgentUiState;
+  readonly post: Send;
+  readonly copy: StudioUiCopy;
+}) {
   const proposal = state.proposal;
   if (proposal === undefined || proposal.alternatives === undefined) return null;
   return (
-    <div className="alternatives" role="group" aria-label="Alternatives">
+    <div className="alternatives" role="group" aria-label={copy.alternatives}>
       <article className="alt current" aria-current="true">
         <h4>{proposal.purpose}</h4>
-        {proposal.evidence !== undefined && <p>{evidenceText(proposal.evidence)}</p>}
-        <p className="ghost-badge">Showing this one</p>
+        {proposal.evidence !== undefined && <p>{evidenceText(proposal.evidence, copy)}</p>}
+        <p className="ghost-badge">{copy.showingThisOne}</p>
       </article>
       {proposal.alternatives.map((alt) => (
         <article className="alt" key={alt.proposalId}>
           <h4>{alt.purpose}</h4>
           <p>{alt.tradeoff}</p>
-          <p>{evidenceText(alt.evidence)}</p>
+          <p>{evidenceText(alt.evidence, copy)}</p>
           <button
             type="button"
             onClick={() => post({ type: "chooseAlternative", proposalId: alt.proposalId })}
           >
-            Use this one instead
+            {copy.useAlternative}
           </button>
         </article>
       ))}
@@ -154,11 +168,13 @@ function Operations({
   selection,
   onSelectionChange,
   post,
+  copy,
 }: {
   readonly state: AgentUiState;
   readonly selection: SelectionState;
   readonly onSelectionChange: (next: SelectionState) => void;
   readonly post: Send;
+  readonly copy: StudioUiCopy;
 }) {
   const proposal = state.proposal;
   if (proposal?.operations === undefined || proposal.operations.length === 0) return null;
@@ -172,7 +188,7 @@ function Operations({
   };
   return (
     <fieldset className="operations">
-      <legend>Choose which changes to keep</legend>
+      <legend>{copy.chooseChanges}</legend>
       {proposal.operations.map((operation) => {
         const included = selection.include.includes(operation.index);
         const value = selection.overrides[operation.index] ?? operation.editable?.value;
@@ -194,7 +210,7 @@ function Operations({
                   type="number"
                   value={value}
                   disabled={!included}
-                  aria-label={`${operation.editable.field} for ${operation.label}`}
+                  aria-label={`${operation.editable.field} ${copy.for} ${operation.label}`}
                   onChange={(event) => {
                     const parsed = Number(event.target.value);
                     if (Number.isInteger(parsed)) {
@@ -210,8 +226,12 @@ function Operations({
       {state.selectionEvidence !== undefined && (
         <p role="status">
           {state.selectionEvidence.ok
-            ? evidenceText(state.selectionEvidence.evidence)
-            : REASON_TEXT[state.selectionEvidence.reason]}
+            ? evidenceText(state.selectionEvidence.evidence, copy)
+            : state.selectionEvidence.reason === "EMPTY"
+              ? copy.empty
+              : state.selectionEvidence.reason === "INVALID"
+                ? copy.invalid
+                : copy.stale}
         </p>
       )}
       <button
@@ -226,7 +246,7 @@ function Operations({
           })
         }
       >
-        {`Apply selected (${selection.include.length} of ${proposal.operations.length})`}
+        {`${copy.applySelected} (${selection.include.length} ${copy.of} ${proposal.operations.length})`}
       </button>
     </fieldset>
   );
@@ -237,12 +257,15 @@ export function AgentPanel({
   send,
   selection,
   onSelectionChange,
+  locale,
 }: {
   readonly state: AgentUiState;
   readonly send: (message: UiMessage) => void;
   readonly selection?: SelectionState | undefined;
   readonly onSelectionChange?: ((next: SelectionState) => void) | undefined;
+  readonly locale?: StudioUiLocale | undefined;
 }) {
+  const copy = copyFor(locale ?? "en");
   const [text, setText] = useState("");
   const post: Send = (message) =>
     send({ schema: STUDIO_PROTOCOL_VERSION, ...message } as UiMessage);
@@ -251,9 +274,9 @@ export function AgentPanel({
     state.agreements.requirePredictionBeforeAccept && state.workflow?.predicted !== true;
   const showIntent = stage === undefined || stage === "intent" || stage === "done";
   return (
-    <aside className="agent" aria-label="Agent">
-      <Agreements agreements={state.agreements} send={post} />
-      <Ribbon stage={stage} />
+    <aside className="agent" aria-label={copy.agentLabel}>
+      <Agreements agreements={state.agreements} send={post} copy={copy} />
+      <Ribbon stage={stage} copy={copy} />
       {showIntent && (
         <form
           className="intent-bar"
@@ -267,7 +290,7 @@ export function AgentPanel({
           }}
         >
           <label>
-            What do you want to make?
+            {copy.intentQuestion}
             <input
               value={text}
               maxLength={140}
@@ -276,55 +299,55 @@ export function AgentPanel({
             />
           </label>
           <button type="submit" disabled={!state.available}>
-            Ask
+            {copy.ask}
           </button>
         </form>
       )}
       {stage === "plan" && state.clarify !== undefined && (
-        <section aria-label="Question">
-          <p>What do you want to try first?</p>
+        <section aria-label={copy.question}>
+          <p>{copy.clarifyQuestion}</p>
           {state.clarify.map((task) => (
             <button
               key={task.id}
               type="button"
               onClick={() => post({ type: "answerClarification", taskId: task.id })}
             >
-              {task.title}
+              {taskTitle(task, copy)}
             </button>
           ))}
         </section>
       )}
       {stage === "plan" && state.clarify === undefined && (
-        <section aria-label="Plan">
+        <section aria-label={copy.plan}>
           {state.tasks !== undefined && state.tasks.length > 0 ? (
             <>
               <ul>
                 {state.tasks.map((task) => (
-                  <li key={task.id}>{task.title}</li>
+                  <li key={task.id}>{taskTitle(task, copy)}</li>
                 ))}
               </ul>
               <button type="button" onClick={() => post({ type: "acceptPlan" })}>
-                Use this plan
+                {copy.usePlan}
               </button>
             </>
           ) : (
-            <p>I can&apos;t suggest anything right now. Try changing the program first.</p>
+            <p>{copy.noPlan}</p>
           )}
         </section>
       )}
       {stage === "proposal" && state.proposal === undefined && (
         <button type="button" onClick={() => post({ type: "requestProposal" })}>
-          Show me a suggestion
+          {copy.showSuggestion}
         </button>
       )}
       {stage === "proposal" && state.proposal !== undefined && (
-        <section className="suggestion" aria-label="Suggestion">
+        <section className="suggestion" aria-label={copy.suggestion}>
           <p className="ghost-badge">
             {state.proposal.origin === "built-in"
-              ? "Built-in suggestion (not in your program yet)"
+              ? copy.builtInSuggestion
               : state.proposal.origin === "provider"
-                ? "AI suggestion (not in your program yet)"
-                : "Suggestion (AI, not in your program yet)"}
+                ? copy.aiSuggestion
+                : copy.unknownSuggestion}
           </p>
           {state.proposal.notice !== undefined && (
             <p className="notice" role="status">
@@ -333,28 +356,31 @@ export function AgentPanel({
           )}
           <p>{state.proposal.purpose}</p>
           <p>{state.proposal.rationale}</p>
-          <p>Dashed blocks show what would change.</p>
-          {state.proposal.evidence !== undefined && <p>{evidenceText(state.proposal.evidence)}</p>}
-          <Alternatives state={state} post={post} />
+          <p>{copy.dashedBlocks}</p>
+          {state.proposal.evidence !== undefined && (
+            <p>{evidenceText(state.proposal.evidence, copy)}</p>
+          )}
+          <Alternatives state={state} post={post} copy={copy} />
           {selection !== undefined && onSelectionChange !== undefined && (
             <Operations
               state={state}
               selection={selection}
               onSelectionChange={onSelectionChange}
               post={post}
+              copy={copy}
             />
           )}
           {needsPrediction && state.prediction !== undefined && (
-            <div aria-label="Prediction before accepting">
-              <p>Before you accept: will the character reach the goal?</p>
+            <div aria-label={copy.predictionBeforeAccept}>
+              <p>{copy.beforeAccept}</p>
               {state.prediction.includes("yes") && (
                 <button type="button" onClick={() => post({ type: "predict", answer: "yes" })}>
-                  Yes
+                  {copy.yes}
                 </button>
               )}
               {state.prediction.includes("no") && (
                 <button type="button" onClick={() => post({ type: "predict", answer: "no" })}>
-                  No
+                  {copy.no}
                 </button>
               )}
             </div>
@@ -370,7 +396,7 @@ export function AgentPanel({
               })
             }
           >
-            Accept
+            {copy.accept}
           </button>
           <button
             type="button"
@@ -382,69 +408,64 @@ export function AgentPanel({
               })
             }
           >
-            Reject
+            {copy.reject}
           </button>
         </section>
       )}
       {stage === "predict" && state.prediction !== undefined && (
-        <section aria-label="Prediction">
-          <p>Will the character reach the goal?</p>
+        <section aria-label={copy.prediction}>
+          <p>{copy.predictionQuestion}</p>
           {state.prediction.includes("yes") && (
             <button type="button" onClick={() => post({ type: "predict", answer: "yes" })}>
-              Yes
+              {copy.yes}
             </button>
           )}
           {state.prediction.includes("no") && (
             <button type="button" onClick={() => post({ type: "predict", answer: "no" })}>
-              No
+              {copy.no}
             </button>
           )}
           <button type="button" onClick={() => post({ type: "skipPrediction" })}>
-            Skip
+            {copy.skip}
           </button>
         </section>
       )}
       {stage === "run" && (
         <button type="button" onClick={() => post({ type: "run" })}>
-          Run it
+          {copy.runIt}
         </button>
       )}
       {stage === "compare" && state.comparison !== undefined && (
-        <section aria-label="Comparison">
+        <section aria-label={copy.comparison}>
           <p>
-            You predicted:{" "}
-            {state.comparison.predicted === "skipped" ? "skipped" : state.comparison.predicted}. The
-            run showed:{" "}
-            {state.comparison.reachedGoal ? "reached the goal" : "did not reach the goal"} (runtime
-            fact, {state.comparison.stepsUsed} steps).
+            {copy.predicted}{" "}
+            {state.comparison.predicted === "skipped" ? copy.skipped : state.comparison.predicted}.{" "}
+            {copy.runShowed} {state.comparison.reachedGoal ? copy.reachesGoal : copy.missesGoal} (
+            {copy.runtimeFact}, {state.comparison.stepsUsed} {copy.steps}).
           </p>
-          {state.comparison.result === "mismatched" && <p>That is a good thing to look at.</p>}
+          {state.comparison.result === "mismatched" && <p>{copy.mismatchNote}</p>}
           <button type="button" onClick={() => post({ type: "continue" })}>
-            Continue
+            {copy.continue}
           </button>
         </section>
       )}
       {stage === "explain" && state.explain !== undefined && (
-        <section aria-label="Explain">
-          <p>Which idea made this work?</p>
+        <section aria-label={copy.explain}>
+          <p>{copy.explainQuestion}</p>
           {state.explain
             .filter((id) => (CONCEPT_IDS as readonly string[]).includes(id))
             .map((id) => (
               <button key={id} type="button" onClick={() => post({ type: "explain", concept: id })}>
-                {CONCEPT_LABELS[id]}
+                {conceptLabel(id, copy)}
               </button>
             ))}
           <button type="button" onClick={() => post({ type: "skipExplain" })}>
-            Skip
+            {copy.skip}
           </button>
         </section>
       )}
       {state.feedback !== undefined && (
-        <p role="status">
-          {state.feedback === "relevant"
-            ? "That fits."
-            : "Another idea fits better, but your answer is noted."}
-        </p>
+        <p role="status">{state.feedback === "relevant" ? copy.relevant : copy.other}</p>
       )}
       <div className="status" role="status" aria-live="polite">
         {state.notice ?? ""}

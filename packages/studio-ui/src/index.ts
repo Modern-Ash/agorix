@@ -5,7 +5,7 @@ export { dropPointFor, toRows } from "./blockView.js";
 export { chordFromEvent, dragPayload, parseDragPayload } from "./drag.js";
 export { Canvas, AgentZone } from "./Canvas.js";
 export { Palette } from "./Palette.js";
-export { Workbench, statusFor } from "./Workbench.js";
+export { Workbench, statusFor, type WorkbenchDensity } from "./Workbench.js";
 export { mountWorkbench } from "./mount.js";
 export { WORKBENCH_CSS } from "./styles.js";
 export type { AgentUiState, SelectionState } from "./agentUi.js";
@@ -19,3 +19,4 @@ export {
   toggleOperation,
 } from "./agentUi.js";
 export { AgentPanel } from "./AgentPanel.js";
+export { type StudioUiLocale } from "./i18n.js";

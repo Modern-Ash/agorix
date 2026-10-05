@@ -66,6 +66,21 @@ describe("agentPort", () => {
     expect(setup(repeated).port.availableTasks()).toEqual(["repeat-pattern"]);
   });
 
+  it("plans learner intent through the provider-neutral intent-plan contract", () => {
+    expect(setup([]).port.planIntent?.("make it move")).toMatchObject({
+      kind: "plan",
+      tasks: [{ id: "first-step" }],
+    });
+    expect(setup(repeated).port.planIntent?.("repite 3 veces")).toMatchObject({
+      kind: "plan",
+      tasks: [{ id: "repeat-pattern" }],
+    });
+    expect(setup([]).port.planIntent?.("hola")).toMatchObject({
+      kind: "plan",
+      tasks: [{ id: "first-step" }],
+    });
+  });
+
   it("builds a proposal view and remembers it; repeat changes resolve to blocks", async () => {
     const empty = setup([]);
     const first = await empty.port.proposeFor("first-step");

@@ -1,7 +1,8 @@
 import { randomBytes } from "node:crypto";
 import * as vscode from "vscode";
 import { parseUiMessage, type HostMessage } from "@agorix/studio-protocol";
-import { workbenchHtml } from "./workbenchHtml.js";
+import type { ProactiveDecision, StudioSignal } from "@agorix/learning-decision-plane";
+import { workbenchHtml, type WorkbenchDensity, type WorkbenchLocale } from "./workbenchHtml.js";
 import { createAgentHost, type AgentHost, type AgentPort } from "./agentHost.js";
 import type { SyncHub } from "../sync/syncHub.js";
 import { createWorkbenchHost, type HostPort, type WorkbenchHost } from "./workbenchHost.js";
@@ -14,6 +15,13 @@ let blockCounter = 0;
 let currentHub: SyncHub | undefined;
 let unsubscribeSync: (() => void) | undefined;
 
+function configuredDensity(): WorkbenchDensity {
+  const value = vscode.workspace
+    .getConfiguration("agorixStudio")
+    .get<string>("workbench.density", "comfortable");
+  return value === "compact" ? "compact" : "comfortable";
+}
+
 async function send(messages: readonly HostMessage[]): Promise<void> {
   for (const message of messages) {
     await panel?.webview.postMessage(message);
@@ -25,6 +33,7 @@ export function openWorkbenchPanel(
   port: HostPort,
   agentPort: AgentPort,
   hub: SyncHub,
+  locale: WorkbenchLocale = "en",
 ): void {
   if (panel !== undefined) {
     panel.reveal(vscode.ViewColumn.Beside, true);
@@ -52,6 +61,8 @@ export function openWorkbenchPanel(
     randomBytes(16).toString("hex"),
     panel.webview.cspSource,
     scriptUri.toString(),
+    configuredDensity(),
+    locale,
   );
   panel.webview.onDidReceiveMessage((raw: unknown) => {
     const message = parseUiMessage(raw);
@@ -87,6 +98,21 @@ export function refreshWorkbench(): void {
       ...(currentHub === undefined ? [] : host.syncMessage(currentHub.getState())),
     ];
     void send(messages);
+  }
+}
+
+export function publishWorkbenchAmbientHint(
+  signal: StudioSignal,
+  decision: ProactiveDecision,
+): void {
+  if (host !== undefined) {
+    void send(host.ambientHint(signal, decision));
+  }
+}
+
+export function clearWorkbenchAmbientHint(): void {
+  if (host !== undefined) {
+    void send(host.clearAmbientHint());
   }
 }
 

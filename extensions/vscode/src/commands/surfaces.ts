@@ -6,6 +6,7 @@ import type { StudioExecutionViewState, StudioProposalSession } from "../studioC
 import { openWorkbenchPanel, refreshWorkbench } from "../host/workbenchPanel.js";
 import { openWorldPreviewPanel } from "../host/worldPreviewPanel.js";
 import type { AgentPort } from "../host/agentHost.js";
+import type { WorkbenchLocale } from "../host/workbenchHtml.js";
 import type { OpenProject } from "../store/session.js";
 import type { SyncHub } from "../sync/syncHub.js";
 
@@ -33,6 +34,9 @@ export interface StudioSurfaceCommandHandlers {
 export function createStudioSurfaceCommandHandlers(
   port: StudioSurfaceCommandPort,
 ): StudioSurfaceCommandHandlers {
+  const workbenchLocale = (open: OpenProject): WorkbenchLocale =>
+    open.project.stored.metadata.locale?.toLowerCase().startsWith("es") ? "es" : "en";
+
   const openWorldPreview = (): StudioExecutionViewState | undefined => {
     const view = port.currentExecutionView() ?? port.resetExecution();
     if (view === undefined) {
@@ -45,7 +49,8 @@ export function createStudioSurfaceCommandHandlers(
   };
 
   const openWorkbench = async (): Promise<void> => {
-    if (port.requireProject() === undefined) {
+    const open = port.requireProject();
+    if (open === undefined) {
       return;
     }
     openWorkbenchPanel(
@@ -73,6 +78,7 @@ export function createStudioSurfaceCommandHandlers(
       },
       port.agentPort(),
       port.hub,
+      workbenchLocale(open),
     );
     refreshWorkbench();
   };

@@ -48,9 +48,12 @@ export function createPolicyRouter(allowRemote: boolean): StudioRouter {
 
 export function createProviderWiring(options: ProviderWiringOptions): {
   source(): ProposalSource;
+  ambientPipeline(): StudioPipeline;
 } {
   let key = "";
   let pipeline: StudioPipeline | undefined;
+  let ambientKey = "";
+  let ambientPipeline: StudioPipeline | undefined;
 
   function current(): { pipeline: StudioPipeline; client: StudioProviderClient | undefined } {
     const config = vscode.workspace.getConfiguration("agorixStudio.agent");
@@ -79,6 +82,24 @@ export function createProviderWiring(options: ProviderWiringOptions): {
   }
 
   return {
+    ambientPipeline: () => {
+      const config = vscode.workspace.getConfiguration("agorixStudio.agent");
+      const next = JSON.stringify([config.get("layaEndpoint", "")]);
+      if (ambientPipeline === undefined || next !== ambientKey) {
+        ambientKey = next;
+        ambientPipeline = createStudioPipeline({
+          ...(options.layaTransport === undefined
+            ? {}
+            : { system1: createLayaLearningProvider(options.layaTransport) }),
+          route: () => ({
+            status: "deterministic",
+            reason: "ambient-pre-acceptance",
+            providerRequestAllowed: false,
+          }),
+        });
+      }
+      return ambientPipeline;
+    },
     source: () => {
       const { pipeline: active, client } = current();
       return createProposalSource({ pipeline: active, client });

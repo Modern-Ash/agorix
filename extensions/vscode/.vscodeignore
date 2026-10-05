@@ -4,5 +4,6 @@
 !LICENSE
 !media/icon.png
 !media/icon.svg
+!media/agorix-agent-active.svg
 !dist/extension.cjs
 !dist/workbench.js

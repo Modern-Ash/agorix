@@ -145,6 +145,8 @@ Implemented in the Workbench (Plan D, deterministic System-0 scaffolds only, no 
 - predict (will the character reach the goal), run, compare with runtime evidence, explain (closed choice); prediction and explanation can always be skipped;
 - visible agent agreements (agent on/off, supervised or bounded mode, help level ceiling);
 - non-PII `AgentEvent`s held in memory for the session.
+- a local educator evidence export that summarizes the current session's counts only and states that runtime completion is not a grade or proof of understanding.
+- fixed Workbench/Agent chrome in English and Spanish, selected from project locale metadata. Dynamic proposal text, notices and learner intent are not UI-translated.
 
 ## Ambient presence slice
 
@@ -155,8 +157,9 @@ Implemented in the VS Code host (issue #250, no provider calls before acceptance
 - CodeLens and code actions on the selected projection nodes and the node implicated by runtime failure;
 - System-0 proactive policy connected to Studio signals for first step, repeated patterns, runtime errors, stalls and repeated errors;
 - optional LAYA veto transport that can only make the agent quieter;
+- Workbench canvas hints anchored to the implicated block when an ambient offer has canonical-node evidence;
 - per-session memory for declined and ignored offers, plus budget and agent-agreement checks.
 
-The value is practical: learners get context-aware help where they are working, while the product preserves attention, trust and token economy. The next slice should connect accepted ambient actions to Workbench anchors, non-PII evidence export and the full LAYA/provider routing path.
+The value is practical: learners get context-aware help where they are working, while the product preserves attention, trust and token economy. The next slice should connect accepted ambient actions to the full LAYA/provider routing path.
 
-Not yet implemented: provider-backed proposals, the modify decision, alternatives, evidence export, Mission Spec editing and density levels.
+Not yet implemented: Mission Spec editing and stage-based density changes. Workbench has a manual comfortable/compact density setting.

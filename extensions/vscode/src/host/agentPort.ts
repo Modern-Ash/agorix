@@ -1,5 +1,12 @@
-import { MAX_AGENT_EVENTS, type AgentEvent, type AgentTaskId } from "@agorix/agent-workflow";
+import {
+  MAX_AGENT_EVENTS,
+  taskForId,
+  type AgentEvent,
+  type AgentTask,
+  type AgentTaskId,
+} from "@agorix/agent-workflow";
 import { programToWorkspace } from "@agorix/block-editor";
+import { getLocalizedFirstMission, normalizeLocale } from "@agorix/curriculum";
 import type { ProjectProgram, Statement } from "@agorix/program-model";
 import {
   ProposalValidationError,
@@ -11,6 +18,11 @@ import {
 } from "@agorix/proposals";
 import type { SelectionInput } from "@agorix/studio-protocol";
 import { touchingGoal, type WorldState } from "@agorix/runtime";
+import {
+  createDeterministicIntentPlan,
+  createIntentPlanRequest,
+  type IntentPlanResponse,
+} from "@agorix/tutor-contract";
 import {
   assertProposalFresh,
   createProposalSession,
@@ -49,6 +61,33 @@ const TRADEOFFS: Record<string, string> = {
   provider: "AI suggestion. Check it carefully before you accept.",
   "built-in": "Built-in suggestion, no AI involved.",
 };
+
+function availableTasksFor(project: StudioProject): AgentTaskId[] {
+  const tasks: AgentTaskId[] = [];
+  if (suggestFirstStep(project) !== undefined) tasks.push("first-step");
+  if (suggestRepeat(project) !== undefined) tasks.push("repeat-pattern");
+  return tasks;
+}
+
+function planTasksFromIntentResponse(
+  response: IntentPlanResponse,
+  available: readonly AgentTaskId[],
+): AgentTask[] {
+  if (response.kind !== "plan") return [];
+  const chosen = new Set<AgentTaskId>();
+  for (const step of response.plan.steps) {
+    if (step.concept === "repetition" && available.includes("repeat-pattern")) {
+      chosen.add("repeat-pattern");
+    }
+    if (
+      (step.concept === "movement" || step.concept === "events" || step.concept === "sequence") &&
+      available.includes("first-step")
+    ) {
+      chosen.add("first-step");
+    }
+  }
+  return (chosen.size === 0 ? available : available.filter((id) => chosen.has(id))).map(taskForId);
+}
 
 function describeStatement(statement: Statement): string {
   switch (statement.type) {
@@ -171,10 +210,50 @@ export function createAgentPort(deps: AgentPortDeps): AgentPort {
     availableTasks(): AgentTaskId[] {
       const project = deps.getProject();
       if (project === undefined) return [];
-      const tasks: AgentTaskId[] = [];
-      if (suggestFirstStep(project) !== undefined) tasks.push("first-step");
-      if (suggestRepeat(project) !== undefined) tasks.push("repeat-pattern");
-      return tasks;
+      return availableTasksFor(project);
+    },
+    planIntent(intent) {
+      const project = deps.getProject();
+      if (project === undefined) return undefined;
+      const available = availableTasksFor(project);
+      if (available.length === 0) {
+        return { kind: "plan", tasks: [], baseHash: programSemanticHash(project.stored.program) };
+      }
+      const locale = normalizeLocale(project.stored.metadata.locale);
+      const mission = getLocalizedFirstMission(locale);
+      const response = createDeterministicIntentPlan(
+        createIntentPlanRequest({
+          learnerIntent: intent,
+          mission: {
+            id: mission.id,
+            version: mission.version,
+            concepts: mission.concepts,
+            learningObjective: mission.goal.learnerFacing,
+          },
+          program: project.stored.program,
+          selectedNodeIds: [],
+          priorClarifications: [],
+          reading: { locale },
+        }),
+      );
+      if (response.kind === "clarification") {
+        return available.length < 2
+          ? {
+              kind: "plan",
+              tasks: available.map(taskForId),
+              baseHash: programSemanticHash(project.stored.program),
+            }
+          : {
+              kind: "clarify",
+              options: available.map(taskForId),
+              baseHash: programSemanticHash(project.stored.program),
+            };
+      }
+      return {
+        kind: "plan",
+        tasks: planTasksFromIntentResponse(response, available),
+        baseHash: response.plan.baseProgramHash,
+      };
     },
     async proposeFor(task) {
       const first = deps.getProject();

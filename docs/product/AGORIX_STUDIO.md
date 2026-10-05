@@ -24,6 +24,8 @@ The ambient presence slice makes the Studio Agent visible without making it loud
 - The Companion status indicator defaults to a quiet icon, offers help through a quick pick and uses explicit off, working and budget-capped states.
 - CodeLens and code actions are scoped to the current selection or failing node, with short icon-first actions for explain, debug, challenge, propose and reflect.
 - Studio signals flow through System 0 and optional LAYA veto before any offer appears; no provider call happens until the learner accepts an action.
+- Ambient offer decisions now route through the Studio decision pipeline for the same diagnostics and LAYA path used by proposals. The ambient router is deterministic before acceptance, so no provider request or generated content happens merely because a hint is shown.
+- When an ambient offer is tied to runtime evidence for a canonical node, the Workbench shows a small canvas hint on that block. Hints are cleared when the learner accepts, dismisses or the offer goes stale, and proposal review still owns the stronger ghost-block treatment.
 - Declines, ignores, cooldowns, AI agreements and the session ambient-request budget all bias toward silence and economy.
 
 This slice is infrastructure for the Studio direction, not the final experience: the next work should measure offer quality, anchor suggestions on the Workbench canvas, export non-PII evidence and route accepted generative actions through the full LAYA/provider budget pipeline.
@@ -36,6 +38,9 @@ A host-side `SyncHub` (`extensions/vscode/src/sync/syncHub.ts`) holds one select
 
 - An unclear intent (no task keyword, more than one task available) gets at most one clarifying question made of fixed task titles; the learner text is never echoed or stored.
 - A plan is anchored to the program hash it was made against. If the program changes before the plan is accepted, the plan is dropped (`STALE_PLAN`).
+- Workbench intent planning uses the provider-neutral intent-plan contract with a deterministic local planner, then maps the result back to fixed task cards.
+- Workbench density is configurable (`agorixStudio.workbench.density`: `comfortable` or `compact`) so Studio can stay readable for first use and denser for repeated IDE editing.
+- Workbench and Agent chrome read the project locale metadata and support fixed English/Spanish UI copy. Dynamic proposal text, provider notices and learner-entered intent remain source text rather than being translated by the UI.
 - Workbench edits carry the `programHash` the UI last saw; a stale edit is refused (`STALE_EDIT`) and a fresh snapshot is sent.
 - A refused placement explains why (`NOT_A_CONTAINER`, `BAD_INDEX`, `BLOCK_NOT_FOUND`, `NOT_A_STATEMENT`, `WOULD_BREAK_PROGRAM`) in the live status region.
 - Agent agreement `requirePredictionBeforeAccept` (off by default): the learner must predict before accepting an AI suggestion. It never blocks manual edits, and rejecting never needs a prediction.
@@ -53,6 +58,7 @@ A host-side `SyncHub` (`extensions/vscode/src/sync/syncHub.ts`) holds one select
 - A provider proposal is a normal `ProgramProposal`: it is reviewed, selected per operation and decided by the learner. The built-in suggestion stays available as an alternative with runtime evidence.
 - Every failure (AI off, no endpoint, route unavailable, budget spent, unavailable or rejected provider, invalid or stale proposal) degrades to the built-in proposal with a short learner notice. Editing and running never depend on a provider.
 - Budget: `agorixStudio.agent.proposalBudgetRequests` (default 10 per session). Telemetry holds enums and numbers only; learner text never reaches it.
+- Educator evidence export is local and user-initiated (`agorixStudio.exportEducatorEvidence`). It summarizes one session with counts only: proposal decisions, predictions, explanations, ambient offers, settings and deterministic runtime completion. It writes JSON plus a Markdown summary to files the user chooses and contains no names, emails, paths, learner text or raw model output.
 
 ## Release gate
 

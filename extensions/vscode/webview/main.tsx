@@ -1,4 +1,9 @@
-import { mountWorkbench, type HostBridge } from "@agorix/studio-ui";
+import {
+  mountWorkbench,
+  type HostBridge,
+  type StudioUiLocale,
+  type WorkbenchDensity,
+} from "@agorix/studio-ui";
 import { parseHostMessage } from "@agorix/studio-protocol";
 
 declare function acquireVsCodeApi(): { postMessage(message: unknown): void };
@@ -20,5 +25,10 @@ const bridge: HostBridge = {
 
 const root = document.getElementById("root");
 if (root !== null) {
-  mountWorkbench(root, bridge);
+  const density = root.dataset["density"] === "compact" ? "compact" : "comfortable";
+  const locale = root.dataset["locale"] === "es" ? "es" : "en";
+  mountWorkbench(root, bridge, {
+    density: density as WorkbenchDensity,
+    locale: locale as StudioUiLocale,
+  });
 }

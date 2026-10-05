@@ -4,6 +4,7 @@ import type { ProjectProgram } from "@agorix/program-model";
 import { programSemanticHash } from "@agorix/proposals";
 import { STUDIO_PROTOCOL_VERSION as schema } from "@agorix/studio-protocol";
 import { DEFAULT_AGREEMENTS } from "@agorix/agent-workflow";
+import { createStudioSignal } from "@agorix/learning-decision-plane";
 import { createWorkbenchHost, type HostPort } from "./workbenchHost.js";
 
 const script = { kind: "script", scriptIndex: 0 } as const;
@@ -180,6 +181,37 @@ describe("workbenchHost", () => {
 
     expect(await host.handle({ schema, type: "agreementsChanged", agreements })).toEqual([]);
     expect(port.updateAgreements).toHaveBeenCalledWith(agreements);
+  });
+
+  it("anchors ambient hints to Workbench blocks when the signal names a canonical node", () => {
+    const { host } = setup();
+    const { mapping } = programToWorkspace(base);
+    const entry = mapping.find((m) => m.kind === "statement")!;
+    const signal = createStudioSignal("runtime-error", 1, {
+      code: "E_LOOP",
+      nodeIds: [entry.nodeId],
+    })!;
+
+    expect(
+      host.ambientHint(signal, {
+        action: "offer",
+        reason: "runtime-error-detected",
+        generativeNeeded: "no",
+        source: "system0",
+        actions: ["debug", "explain"],
+      }),
+    ).toEqual([
+      {
+        schema,
+        type: "ambientHint",
+        hint: {
+          label: "Companion can debug this with runtime evidence.",
+          blockId: entry.blockId,
+          actions: ["debug", "explain"],
+        },
+      },
+    ]);
+    expect(host.clearAmbientHint()).toEqual([{ schema, type: "ambientHint" }]);
   });
 });
 

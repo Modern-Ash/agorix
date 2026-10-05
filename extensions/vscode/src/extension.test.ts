@@ -165,11 +165,11 @@ vi.mock("vscode", () => {
       showOpenDialog: async () => (picked === undefined ? undefined : [picked]),
       showSaveDialog: async () => savePicked,
       showInputBox: async () => inputBox,
-      showInformationMessage: async (message: string, ...items: string[]) => {
+      showInformationMessage: async (message: string, ...items: unknown[]) => {
         shown.push(message);
         return items.includes(choice ?? "") ? choice : undefined;
       },
-      showWarningMessage: async (message: string, ...items: string[]) => {
+      showWarningMessage: async (message: string, ...items: unknown[]) => {
         shown.push(message);
         return items.includes(choice ?? "") ? choice : undefined;
       },
@@ -385,6 +385,7 @@ describe("Studio extension wiring", () => {
         "agorixStudio.openWorldPreview",
         "agorixStudio.openWorkbench",
         "agorixStudio.exportAgorix",
+        "agorixStudio.exportEducatorEvidence",
         "agorixStudio.applyProposal",
         "agorixStudio.ambientOffer",
         "agorixStudio.companionBuild",
@@ -686,6 +687,60 @@ describe("Studio extension wiring", () => {
     expect(exported.format).toBe("agorix-project");
     expect(exported.project.program.scripts[0].statements).toEqual([{ type: "move", steps: 8 }]);
     expect(JSON.stringify(exported)).not.toMatch(/token|revision|history|account/i);
+  });
+
+  it("exports local educator evidence as counts plus a summary only after confirmation", async () => {
+    await openFile("/p/evidence.json", stored([]));
+    await handlers.get("agorixStudio.openWorkbench")!();
+    const schema = "agorix/studio-protocol/v1";
+    const receive = (message: Record<string, unknown>) =>
+      workbenchPanel()?.receive({ schema, ...message });
+    receive({ type: "ready" });
+    receive({ type: "stateIntent", text: "make it move with my email ana@school.example" });
+    receive({ type: "acceptPlan" });
+    receive({ type: "requestProposal" });
+    await flushWorkbench();
+    const proposal = (workbenchPanel()?.messages ?? [])
+      .filter((m) => (m as { type: string }).type === "proposal")
+      .at(-1) as { proposalId: string };
+    receive({ type: "decideProposal", proposalId: proposal.proposalId, decision: "rejected" });
+    await flushWorkbench();
+    await handlers.get("agorixStudio.run")!();
+
+    choice = "Export";
+    savePicked = { fsPath: "/p/educator-evidence.json" };
+    const uri = await handlers.get("agorixStudio.exportEducatorEvidence")!();
+
+    expect(uri).toMatchObject({ fsPath: "/p/educator-evidence.json" });
+    const exportedText = new TextDecoder().decode(files.get("/p/educator-evidence.json"));
+    const summary = new TextDecoder().decode(files.get("/p/educator-evidence.md"));
+    const exported = JSON.parse(exportedText);
+    expect(exported).toMatchObject({
+      schema: "agorix/educator-evidence/v1",
+      scope: "single-session",
+      mission: { id: "first-mission.reach-goal" },
+      proposals: { requested: 1, rejected: 1 },
+      completion: { completedByRuntime: true },
+    });
+    expect(summary).toContain("counts above are not a grade");
+    expect(`${exportedText}\n${summary}`).not.toMatch(
+      /ana@|school|make it move|\/p\/|evidence\.json|raw|model output/i,
+    );
+  });
+
+  it("cancels educator evidence export before writing files", async () => {
+    await openFile("/p/evidence-cancel.json", stored([]));
+    const before = new Set(files.keys());
+
+    choice = undefined;
+    savePicked = { fsPath: "/p/should-not-write.json" };
+    await handlers.get("agorixStudio.exportEducatorEvidence")!();
+    expect(new Set(files.keys())).toEqual(before);
+
+    choice = "Export";
+    savePicked = undefined;
+    await handlers.get("agorixStudio.exportEducatorEvidence")!();
+    expect(new Set(files.keys())).toEqual(before);
   });
 
   it("validates the project and exposes native developer workflow entry points", async () => {

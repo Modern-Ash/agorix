@@ -112,6 +112,12 @@ export interface GhostChange {
   readonly afterText?: string;
 }
 
+export interface AmbientHintView {
+  readonly label: string;
+  readonly blockId?: string;
+  readonly actions: readonly ("explain" | "debug" | "challenge" | "propose")[];
+}
+
 export type HostMessage =
   | { readonly schema: Schema; readonly type: "workflow"; readonly state: WorkflowState }
   | { readonly schema: Schema; readonly type: "programHash"; readonly hash: string }
@@ -186,6 +192,7 @@ export type HostMessage =
       readonly result: "relevant" | "other";
     }
   | { readonly schema: Schema; readonly type: "agreements"; readonly agreements: AgentAgreements }
+  | { readonly schema: Schema; readonly type: "ambientHint"; readonly hint?: AmbientHintView }
   | {
       readonly schema: Schema;
       readonly type: "sync";
@@ -520,6 +527,7 @@ function parseEvidence(value: unknown): EvidenceView | undefined {
 
 const OP_KINDS = ["add", "replace", "remove", "setField"] as const;
 const EDIT_FIELDS = ["steps", "degrees", "count"] as const;
+const HINT_ACTIONS = ["explain", "debug", "challenge", "propose"] as const;
 
 function parseOperations(value: unknown): OperationView[] | undefined {
   if (!Array.isArray(value) || value.length > 50) return undefined;
@@ -568,6 +576,29 @@ function parseAlternatives(value: unknown): AlternativeView[] | undefined {
     out.push({ proposalId: raw["proposalId"], purpose, tradeoff, evidence });
   }
   return out;
+}
+
+function parseAmbientHint(value: unknown): AmbientHintView | undefined {
+  if (!isObject(value)) return undefined;
+  const label = boundedString(value["label"], 1, 160);
+  const blockId =
+    value["blockId"] === undefined ? undefined : boundedString(value["blockId"], 1, 128);
+  const actions = value["actions"];
+  if (
+    label === undefined ||
+    (value["blockId"] !== undefined && blockId === undefined) ||
+    !Array.isArray(actions) ||
+    actions.length < 1 ||
+    actions.length > 4 ||
+    !actions.every((action) => (HINT_ACTIONS as readonly unknown[]).includes(action))
+  ) {
+    return undefined;
+  }
+  return {
+    label,
+    actions: [...actions] as AmbientHintView["actions"],
+    ...(blockId === undefined ? {} : { blockId }),
+  };
 }
 
 function parseSelection(value: unknown): SelectionInput | undefined {
@@ -919,6 +950,11 @@ export function parseHostMessage(value: unknown): HostMessage | undefined {
         out[key] = raw;
       }
       return { schema, type: "sync", ...out };
+    }
+    case "ambientHint": {
+      if (value["hint"] === undefined) return { schema, type: "ambientHint" };
+      const hint = parseAmbientHint(value["hint"]);
+      return hint === undefined ? undefined : { schema, type: "ambientHint", hint };
     }
     default:
       return parseAgentMessageFromHost(value, schema);

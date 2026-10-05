@@ -6,6 +6,7 @@ import {
 } from "./commands/accounts.js";
 import { createStudioCompanionCommandHandlers } from "./commands/companion.js";
 import { createStudioDeveloperCommandHandlers } from "./commands/developer.js";
+import { createStudioEvidenceExportCommandHandlers } from "./commands/evidence.js";
 import { createStudioExecutionCommandHandlers } from "./commands/execution.js";
 import { createStudioProjectionCommandHandlers } from "./commands/projections.js";
 import { createStudioProjectCommandHandlers } from "./commands/projects.js";
@@ -20,7 +21,11 @@ import {
   resetProjectSessionState as resetSessionProjectState,
   updateStudioContext as updateContextFromState,
 } from "./store/lifecycle.js";
-import { disposeWorkbench } from "./host/workbenchPanel.js";
+import {
+  clearWorkbenchAmbientHint,
+  disposeWorkbench,
+  publishWorkbenchAmbientHint,
+} from "./host/workbenchPanel.js";
 import { disposeWorldPreview, refreshWorldPreviewSync } from "./host/worldPreviewPanel.js";
 import { createSyncHub } from "./sync/syncHub.js";
 import { createProviderWiring } from "./providerWiring.js";
@@ -230,7 +235,9 @@ export function activate(context: vscode.ExtensionContext): void {
       const companionAction: StudioCompanionAction = action === "propose" ? "build" : action;
       await companionCommands.companionCommand(companionAction);
     },
-    ...(layaTransport === undefined ? {} : { layaTransport }),
+    proactivePipeline: () => providerWiring.current?.ambientPipeline(),
+    showCanvasHint: publishWorkbenchAmbientHint,
+    clearCanvasHint: clearWorkbenchAmbientHint,
   });
   const signalAdapter = new StudioSignalAdapter({
     onSignal: (signal) => void ambientController.handleSignal(signal),
@@ -314,6 +321,13 @@ export function activate(context: vscode.ExtensionContext): void {
     agentEventCount: () => session.agentEvents.length,
     ambientOfferStats: () => ({ ...session.ambientOfferStats }),
   });
+  const evidenceExportCommands = createStudioEvidenceExportCommandHandlers({
+    requireProject,
+    agentEvents: () => session.agentEvents,
+    agentAgreements: () => session.agentAgreements,
+    ambientOfferStats: () => ({ ...session.ambientOfferStats }),
+    getExecutionEvidence: () => session.executionEvidence,
+  });
   const accountCommands = createStudioAccountCommandHandlers({
     context,
     agentStatusItem,
@@ -370,6 +384,7 @@ export function activate(context: vscode.ExtensionContext): void {
         createProject: projectCommands.createProject,
         openProject: projectCommands.openProject,
         exportAgorixProject: projectCommands.exportAgorixProject,
+        exportEducatorEvidence: evidenceExportCommands.exportEducatorEvidence,
         checkAgentHealth: accountCommands.checkAgentHealth,
         setAgentCredential: accountCommands.setAgentCredential,
         clearAgentCredential: accountCommands.clearAgentCredential,

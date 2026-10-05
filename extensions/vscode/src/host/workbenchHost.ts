@@ -14,6 +14,7 @@ import {
   type UiMessage,
 } from "@agorix/studio-protocol";
 import type { AgentAgreements } from "@agorix/agent-workflow";
+import type { ProactiveDecision, StudioSignal } from "@agorix/learning-decision-plane";
 import type { SyncState } from "../sync/syncHub.js";
 
 export interface HostPort {
@@ -29,6 +30,8 @@ export interface WorkbenchHost {
   handle(message: UiMessage): Promise<HostMessage[]>;
   snapshot(): HostMessage[];
   syncMessage(state: SyncState): HostMessage[];
+  ambientHint(signal: StudioSignal, decision: ProactiveDecision): HostMessage[];
+  clearAmbientHint(): HostMessage[];
 }
 
 const schema = STUDIO_PROTOCOL_VERSION;
@@ -85,6 +88,39 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
       if (isKnownFailure(error)) return [];
       throw error;
     }
+  }
+
+  function blockForNode(nodeId: string | undefined): string | undefined {
+    if (nodeId === undefined) return undefined;
+    const program = port.getProgram();
+    if (program === undefined) return undefined;
+    try {
+      const { mapping } = programToWorkspace(program);
+      return mapping.find((entry) => entry.nodeId === nodeId)?.blockId;
+    } catch (error) {
+      if (isKnownFailure(error)) return undefined;
+      throw error;
+    }
+  }
+
+  function ambientHint(signal: StudioSignal, decision: ProactiveDecision): HostMessage[] {
+    if (decision.action !== "offer") return clearAmbientHint();
+    const blockId = blockForNode(signal.nodeIds?.[0]);
+    return [
+      {
+        schema,
+        type: "ambientHint",
+        hint: {
+          label: labelForAmbientHint(signal, decision),
+          actions: decision.actions ?? ["explain"],
+          ...(blockId === undefined ? {} : { blockId }),
+        },
+      },
+    ];
+  }
+
+  function clearAmbientHint(): HostMessage[] {
+    return [{ schema, type: "ambientHint" }];
   }
 
   function canonicalNodeId(id: string | undefined): string | undefined {
@@ -165,5 +201,14 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
     }
   }
 
-  return { handle, snapshot, syncMessage };
+  return { handle, snapshot, syncMessage, ambientHint, clearAmbientHint };
+}
+
+function labelForAmbientHint(signal: StudioSignal, decision: ProactiveDecision): string {
+  const actions = decision.actions ?? [];
+  if (actions.includes("debug")) return "Companion can debug this with runtime evidence.";
+  if (actions.includes("propose")) return "Companion can suggest a small next step.";
+  if (actions.includes("challenge")) return "Companion can ask you to predict what happens.";
+  if (signal.kind === "repeat-pattern") return "Companion noticed repeated steps.";
+  return "Companion can explain what is happening here.";
 }

@@ -114,6 +114,32 @@ describe("studio-protocol", () => {
     expect(
       parseHostMessage({ schema, type: "error", code: "INVALID_PROGRAM", reason: "BAD_INDEX" }),
     ).toBeUndefined();
+    expect(
+      parseHostMessage({
+        schema,
+        type: "ambientHint",
+        hint: {
+          label: "Companion can debug this with runtime evidence.",
+          blockId: "block:a",
+          actions: ["debug", "explain"],
+        },
+      }),
+    ).toEqual({
+      schema,
+      type: "ambientHint",
+      hint: {
+        label: "Companion can debug this with runtime evidence.",
+        blockId: "block:a",
+        actions: ["debug", "explain"],
+      },
+    });
+    expect(parseHostMessage({ schema, type: "ambientHint" })).toEqual({
+      schema,
+      type: "ambientHint",
+    });
+    expect(
+      parseHostMessage({ schema, type: "ambientHint", hint: { label: "/home/ana", actions: [] } }),
+    ).toBeUndefined();
   });
 
   it("round-trips and bounds the agent loop messages", () => {

@@ -28,7 +28,7 @@ export const STUDIO_SIGNAL_LIMITS = {
 } as const;
 
 /** Opaque, bounded identifier: never a path, never free text. */
-export const STUDIO_TOKEN_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$/;
+export const STUDIO_TOKEN_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.:/[\]-]{0,127}$/;
 
 export interface StudioSignalRange {
   readonly startLine: number;

@@ -153,6 +153,25 @@ describe("clarification ui", () => {
     expect(stale.clarify).toBeUndefined();
     expect(stale.notice).toMatch(/plan was dropped/);
   });
+
+  it("renders fixed agent chrome and deterministic task titles in Spanish", () => {
+    let ui = stageState("plan");
+    ui = reduceAgentUi(ui, { schema, type: "clarify", options });
+    const markup = renderToStaticMarkup(
+      <AgentPanel state={ui} send={() => undefined} locale="es" />,
+    );
+    expect(markup).toContain("Acuerdos del agente");
+    expect(markup).toContain("Que queres probar primero?");
+    expect(markup).toContain("Probar un paso visible de movimiento");
+    expect(markup).toContain("Escribir los pasos repetidos una vez con repetir");
+
+    const intent = renderToStaticMarkup(
+      <AgentPanel state={initialAgentUi()} send={() => undefined} locale="es" />,
+    );
+    expect(intent).toContain('aria-label="Agente"');
+    expect(intent).toContain("Que queres crear?");
+    expect(intent).toContain("Pedir");
+  });
 });
 
 describe("prediction before accept ui", () => {

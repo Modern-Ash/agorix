@@ -1,9 +1,21 @@
 import { describe, expect, it, vi } from "vitest";
 import { DEFAULT_AGREEMENTS, type AgentEvent, type AgentTaskId } from "@agorix/agent-workflow";
 import { STUDIO_PROTOCOL_VERSION as schema, type UiMessage } from "@agorix/studio-protocol";
-import { createAgentHost, type AgentHost, type AgentPort } from "./agentHost.js";
+import {
+  createAgentHost,
+  type AgentHost,
+  type AgentIntentPlanResult,
+  type AgentPort,
+} from "./agentHost.js";
 
-function setup(options: { tasks?: AgentTaskId[]; reached?: boolean; stale?: boolean } = {}) {
+function setup(
+  options: {
+    tasks?: AgentTaskId[];
+    reached?: boolean;
+    stale?: boolean;
+    planIntent?: AgentPort["planIntent"];
+  } = {},
+) {
   const state = {
     hash: "h0",
     applied: 0,
@@ -13,6 +25,7 @@ function setup(options: { tasks?: AgentTaskId[]; reached?: boolean; stale?: bool
   };
   const port: AgentPort = {
     availableTasks: () => options.tasks ?? ["first-step"],
+    ...(options.planIntent === undefined ? {} : { planIntent: options.planIntent }),
     proposeFor: async (task) => ({
       proposalId: task,
       purpose: "p",
@@ -192,6 +205,19 @@ describe("agentHost clarification and stale plans", () => {
       "workflow",
       "plan",
     ]);
+  });
+
+  it("uses a structured intent planner before the keyword fallback", async () => {
+    const planned: AgentIntentPlanResult = {
+      kind: "plan",
+      tasks: [{ id: "repeat-pattern", title: "Write the repeated steps once with repeat" }],
+      baseHash: "h0",
+    };
+    const planIntent = vi.fn(() => planned);
+    const { send } = setup({ tasks: ["first-step"], planIntent });
+    const out = await send({ type: "stateIntent", text: "make it move" });
+    expect(planIntent).toHaveBeenCalledWith("make it move");
+    expect(out?.[1]).toMatchObject({ type: "plan", tasks: planned.tasks });
   });
 
   it("refuses an answer for a task that was not offered", async () => {

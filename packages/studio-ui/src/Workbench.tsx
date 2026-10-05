@@ -5,11 +5,13 @@ import {
   STUDIO_PROTOCOL_VERSION,
   type ChangeRefusalReason,
   type HostMessage,
+  type AmbientHintView,
 } from "@agorix/studio-protocol";
 import type { HostBridge } from "./bridge.js";
 import { AgentZone, Canvas, type SyncView } from "./Canvas.js";
 import { Palette } from "./Palette.js";
 import { AgentPanel } from "./AgentPanel.js";
+import { normalizeStudioUiLocale, type StudioUiLocale } from "./i18n.js";
 import {
   canvasHints,
   fullSelection,
@@ -43,12 +45,24 @@ export function statusFor(message: HostMessage): string | undefined {
   return undefined;
 }
 
-export function Workbench({ bridge }: { readonly bridge: HostBridge }) {
+export type WorkbenchDensity = "comfortable" | "compact";
+
+export function Workbench({
+  bridge,
+  density = "comfortable",
+  locale = "en",
+}: {
+  readonly bridge: HostBridge;
+  readonly density?: WorkbenchDensity;
+  readonly locale?: StudioUiLocale;
+}) {
+  const copyLocale = normalizeStudioUiLocale(locale);
   const [workspace, setWorkspace] = useState<BlockWorkspaceSnapshot | undefined>();
   const [status, setStatus] = useState("");
   const [programHash, setProgramHash] = useState<string | undefined>();
   const [selection, setSelection] = useState<SelectionState>({ include: [], overrides: {} });
   const [sync, setSync] = useState<SyncView>({});
+  const [ambientHint, setAmbientHint] = useState<AmbientHintView | undefined>();
   const [agentUi, dispatchAgent] = useReducer(reduceAgentUi, undefined, initialAgentUi);
 
   useEffect(() => {
@@ -70,6 +84,10 @@ export function Workbench({ bridge }: { readonly bridge: HostBridge }) {
         setWorkspace(message.workspace);
         setProgramHash(message.programHash);
         setStatus("Updated");
+        return;
+      }
+      if (message.type === "ambientHint") {
+        setAmbientHint(message.hint);
         return;
       }
       const text = statusFor(message);
@@ -106,7 +124,7 @@ export function Workbench({ bridge }: { readonly bridge: HostBridge }) {
   };
 
   return (
-    <div className="workbench">
+    <div className="workbench" data-density={density}>
       <Palette onAdd={add} />
       <main>
         {workspace === undefined ? (
@@ -119,9 +137,12 @@ export function Workbench({ bridge }: { readonly bridge: HostBridge }) {
             sync={sync}
             hints={
               agentUi.proposal === undefined
-                ? undefined
+                ? ambientHint?.blockId === undefined
+                  ? undefined
+                  : { hints: { [ambientHint.blockId]: ambientHint.label }, skipped: [] }
                 : { hints: anchored.hints, skipped: anchored.skipped }
             }
+            ambientHint={agentUi.proposal === undefined ? ambientHint : undefined}
           />
         )}
         <div className="zones">
@@ -138,6 +159,7 @@ export function Workbench({ bridge }: { readonly bridge: HostBridge }) {
         send={(message) => bridge.post(message)}
         selection={selection}
         onSelectionChange={setSelection}
+        locale={copyLocale}
       />
     </div>
   );

@@ -1,0 +1,31 @@
+name: Open VSX publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type publish to release the packaged Agorix Studio VSIX to Open VSX"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  publish-open-vsx:
+    if: ${{ inputs.confirm == 'publish' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter agorix-studio package
+      - run: npx --yes ovsx publish extensions/vscode/dist/agorix-studio.vsix
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}

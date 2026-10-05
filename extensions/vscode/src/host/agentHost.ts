@@ -44,8 +44,24 @@ export type SelectionPreview =
   | { readonly ok: true; readonly evidence: EvidenceView }
   | { readonly ok: false; readonly reason: "EMPTY" | "INVALID" | "STALE" };
 
+export type AgentIntentPlanResult =
+  | {
+      readonly kind: "plan";
+      readonly tasks: readonly AgentTask[];
+      readonly baseHash?: string;
+    }
+  | {
+      readonly kind: "clarify";
+      readonly options: readonly AgentTask[];
+      readonly baseHash?: string;
+    };
+
 export interface AgentPort {
   availableTasks(): AgentTaskId[];
+  /** Optional structured intent planner; callers fall back to keyword planning when absent. */
+  planIntent?(
+    intent: string,
+  ): AgentIntentPlanResult | undefined | Promise<AgentIntentPlanResult | undefined>;
   /** Creates and remembers the pending proposal; undefined when the task no longer applies. */
   proposeFor(task: AgentTaskId): Promise<ProposalView | undefined>;
   /** Applies the pending proposal through the canonical path; "stale" when the program changed. */
@@ -69,6 +85,10 @@ export interface AgentHost {
 }
 
 const schema = STUDIO_PROTOCOL_VERSION;
+
+function isPromiseLike<T>(value: T | Promise<T>): value is Promise<T> {
+  return value !== undefined && typeof (value as { then?: unknown }).then === "function";
+}
 
 export function createAgentHost(port: AgentPort): AgentHost {
   let agreements: AgentAgreements = DEFAULT_AGREEMENTS;
@@ -280,6 +300,17 @@ export function createAgentHost(port: AgentPort): AgentHost {
         const had = resetLoop();
         step({ type: "intentStated" });
         planBaseHash = port.programHash();
+        const maybePlanned = port.planIntent?.(message.text);
+        const planned = isPromiseLike(maybePlanned) ? await maybePlanned : maybePlanned;
+        if (planned !== undefined) {
+          planBaseHash = planned.baseHash ?? planBaseHash;
+          if (planned.kind === "clarify") {
+            clarifying = [...planned.options];
+            return [...(had ? [cleared()] : []), wf(), clarifyMsg(clarifying)];
+          }
+          tasks = [...planned.tasks];
+          return [...(had ? [cleared()] : []), wf(), planMsg()];
+        }
         const available = port.availableTasks();
         if (needsClarification(message.text, available)) {
           clarifying = available.map(taskForId);

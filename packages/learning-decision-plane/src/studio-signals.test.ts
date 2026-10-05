@@ -27,6 +27,7 @@ describe("studio signals", () => {
     const signal = createStudioSignal("runtime-error", 1, {
       nodeIds: [
         "node_1",
+        "scripts[0]/statements[0]",
         "/home/kid/proj/a.agorix",
         "C:\\Users\\kid\\a",
         "kid@example.com",
@@ -39,7 +40,7 @@ describe("studio signals", () => {
       message: "free text",
     });
     const json = JSON.stringify(signal);
-    expect(signal?.nodeIds).toEqual(["node_1"]);
+    expect(signal?.nodeIds).toEqual(["node_1", "scripts[0]/statements[0]"]);
     expect(signal?.code).toBeUndefined();
     for (const leak of ["/home", "C:", "@", "acct", "free text", "Ana", "email", "message"]) {
       expect(json).not.toContain(leak);

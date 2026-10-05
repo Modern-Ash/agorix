@@ -7,6 +7,7 @@ export interface StudioCommandHandlers {
   readonly createProject: CommandBody;
   readonly openProject: CommandBody;
   readonly exportAgorixProject: CommandBody;
+  readonly exportEducatorEvidence: CommandBody;
   readonly checkAgentHealth: CommandBody;
   readonly setAgentCredential: CommandBody;
   readonly clearAgentCredential: CommandBody;
@@ -59,6 +60,11 @@ export function registerStudioCommands(
       id: "agorixStudio.exportAgorix",
       label: "Export Agorix Project",
       body: handlers.exportAgorixProject,
+    },
+    {
+      id: "agorixStudio.exportEducatorEvidence",
+      label: "Export Educator Evidence",
+      body: handlers.exportEducatorEvidence,
     },
     {
       id: "agorixStudio.checkAgentHealth",
