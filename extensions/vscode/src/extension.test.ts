@@ -720,12 +720,36 @@ describe("Studio extension wiring", () => {
       scope: "single-session",
       mission: { id: "first-mission.reach-goal" },
       proposals: { requested: 1, rejected: 1 },
-      completion: { completedByRuntime: true },
+      // The program was never changed, so it does not reach the goal even though the run finishes.
+      completion: { completedByRuntime: false },
     });
     expect(summary).toContain("counts above are not a grade");
     expect(`${exportedText}\n${summary}`).not.toMatch(
       /ana@|school|make it move|\/p\/|evidence\.json|raw|model output/i,
     );
+  });
+
+  it("does not report the goal as reached when the program only finishes running", async () => {
+    await openFile("/p/short.json", stored([{ type: "move", steps: 5 }]));
+    await handlers.get("agorixStudio.run")!();
+    choice = "Export";
+    savePicked = { fsPath: "/p/short-evidence.json" };
+    await handlers.get("agorixStudio.exportEducatorEvidence")!();
+    const exported = JSON.parse(new TextDecoder().decode(files.get("/p/short-evidence.json")));
+    expect(exported.completion).toEqual({ completedByRuntime: false });
+    expect(new TextDecoder().decode(files.get("/p/short-evidence.md"))).toContain(
+      "reached the goal when run: no",
+    );
+  });
+
+  it("reports the goal as reached when the run touches it", async () => {
+    await openFile("/p/goal.json", stored([{ type: "move", steps: 160 }]));
+    await handlers.get("agorixStudio.run")!();
+    choice = "Export";
+    savePicked = { fsPath: "/p/goal-evidence.json" };
+    await handlers.get("agorixStudio.exportEducatorEvidence")!();
+    const exported = JSON.parse(new TextDecoder().decode(files.get("/p/goal-evidence.json")));
+    expect(exported.completion).toEqual({ completedByRuntime: true });
   });
 
   it("cancels educator evidence export before writing files", async () => {
