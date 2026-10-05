@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { getLocalizedFirstMission } from "@agorix/curriculum";
 import {
   createModelComparisonActivity,
@@ -94,14 +94,16 @@ export function ModelComparison({
     COMPARISON_FIXTURES.find((item) => item.id === fixtureId) ?? COMPARISON_FIXTURES[0]!;
   const alternativeIds = fixture.alternatives.map((alternative) => alternative.id);
 
-  useEffect(() => {
+  // Reset in the handler, not an effect, so a new scenario never renders stale results.
+  function changeFixture(next: ComparisonFixture["id"]) {
+    setFixtureId(next);
     setInspected([]);
     setPredictions({});
     setActivity(undefined);
     setConclusion(undefined);
     setReflection(undefined);
     setDecision(undefined);
-  }, [fixtureId]);
+  }
 
   const stage = comparisonStage({
     alternativeIds,
@@ -148,7 +150,9 @@ export function ModelComparison({
       ? "compareNeedInspect"
       : stage === "predict"
         ? "compareNeedPredict"
-        : undefined;
+        : stage === "run"
+          ? "compareNeedRun"
+          : undefined;
 
   return (
     <section
@@ -163,7 +167,7 @@ export function ModelComparison({
         {t(locale, "compareScenario")}{" "}
         <select
           value={fixtureId}
-          onChange={(event) => setFixtureId(event.target.value as ComparisonFixture["id"])}
+          onChange={(event) => changeFixture(event.target.value as ComparisonFixture["id"])}
         >
           {COMPARISON_FIXTURES.map((item) => (
             <option key={item.id} value={item.id}>
@@ -172,6 +176,7 @@ export function ModelComparison({
           ))}
         </select>
       </label>
+      {activity === undefined ? null : <h4>{t(locale, "compareResults")}</h4>}
       <div className="comparison-cards">
         {fixture.alternatives.map((alternative) => {
           const name = t(locale, aliasKey(alternative.id));
@@ -199,7 +204,7 @@ export function ModelComparison({
               </button>
               {stage !== "inspect" && activity === undefined ? (
                 <fieldset>
-                  <legend>{t(locale, "comparePredictTitle")}</legend>
+                  <legend>{t(locale, "comparePredictFor", { name })}</legend>
                   {[true, false].map((guess) => (
                     <label key={String(guess)}>
                       <input
@@ -216,7 +221,7 @@ export function ModelComparison({
                 </fieldset>
               ) : null}
               {result === undefined ? null : (
-                <p data-testid={`result-${alternative.id}`}>
+                <p role="status" data-testid={`result-${alternative.id}`}>
                   {name}: {resultText(locale, result)}.{" "}
                   {t(locale, "compareYouPredicted", {
                     predicted: t(
@@ -285,7 +290,14 @@ export function ModelComparison({
           data-testid="comparison-feedback"
           data-evidence-backed={decision.evidenceBacked}
         >
-          {t(locale, decision.evidenceBacked ? "compareMatches" : "compareLookAgain")}{" "}
+          {t(
+            locale,
+            conclusion === "inconclusive"
+              ? "compareInconclusiveNote"
+              : decision.evidenceBacked
+                ? "compareMatches"
+                : "compareLookAgain",
+          )}{" "}
           {t(locale, "compareNoWinner")}
         </p>
       )}

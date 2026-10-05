@@ -126,3 +126,27 @@ test("changing the scenario starts the activity over", async ({ page }) => {
   await expect(panel).toHaveAttribute("data-stage", "inspect");
   await expect(panel.getByRole("button", { name: "I looked at Proposal A" })).toBeEnabled();
 });
+
+test("an inconclusive answer is saved without being called a mismatch", async ({ page }) => {
+  const panel = await openActivity(page);
+  await inspectAndPredict(page, { a: true, b: false });
+  await panel.getByRole("button", { name: /Test both/ }).click();
+  await concludeAndReflect(page, "I cannot tell yet");
+  const feedback = page.getByTestId("comparison-feedback");
+  await expect(feedback).toContainText("When you are ready, look at the results again");
+  await expect(feedback).not.toContainText("showed something different");
+});
+
+test("each prediction group names its proposal and a new scenario never shows old results", async ({
+  page,
+}) => {
+  const panel = await openActivity(page);
+  await inspectAndPredict(page, { a: true, b: false });
+  await expect(panel.getByRole("group", { name: /will Proposal A reach the goal/ })).toBeVisible();
+  await expect(panel.getByRole("group", { name: /will Proposal B reach the goal/ })).toBeVisible();
+  await panel.getByRole("button", { name: /Test both/ }).click();
+  await expect(page.getByTestId("result-proposal-a")).toBeVisible();
+  await panel.getByLabel("Practice scenario").selectOption({ label: "Both reach the goal" });
+  await expect(page.getByTestId("result-proposal-a")).toHaveCount(0);
+  await expect(panel).toHaveAttribute("data-stage", "inspect");
+});
