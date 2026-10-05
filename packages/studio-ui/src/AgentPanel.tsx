@@ -8,7 +8,13 @@ import {
   type WorkflowStage,
 } from "@agorix/agent-workflow";
 import { STUDIO_PROTOCOL_VERSION, type UiMessage } from "@agorix/studio-protocol";
-import type { AgentUiState } from "./agentUi.js";
+import {
+  editOperation,
+  selectionInput,
+  toggleOperation,
+  type AgentUiState,
+  type SelectionState,
+} from "./agentUi.js";
 
 const STAGES: readonly [WorkflowStage, string][] = [
   ["intent", "Intent"],
@@ -103,12 +109,139 @@ function Agreements({
   );
 }
 
+function evidenceText(evidence: {
+  readonly stepsUsed: number;
+  readonly reachedGoal: boolean;
+}): string {
+  return `Run result: ${evidence.reachedGoal ? "reaches the goal" : "does not reach the goal"} (${evidence.stepsUsed} steps, runtime fact).`;
+}
+
+const REASON_TEXT = {
+  EMPTY: "Nothing is selected, so nothing would change.",
+  INVALID: "That combination would break the program, so it was not applied.",
+  STALE: "The program changed, so this suggestion is out of date.",
+} as const;
+
+function Alternatives({ state, post }: { readonly state: AgentUiState; readonly post: Send }) {
+  const proposal = state.proposal;
+  if (proposal === undefined || proposal.alternatives === undefined) return null;
+  return (
+    <div className="alternatives" role="group" aria-label="Alternatives">
+      <article className="alt current" aria-current="true">
+        <h4>{proposal.purpose}</h4>
+        {proposal.evidence !== undefined && <p>{evidenceText(proposal.evidence)}</p>}
+        <p className="ghost-badge">Showing this one</p>
+      </article>
+      {proposal.alternatives.map((alt) => (
+        <article className="alt" key={alt.proposalId}>
+          <h4>{alt.purpose}</h4>
+          <p>{alt.tradeoff}</p>
+          <p>{evidenceText(alt.evidence)}</p>
+          <button
+            type="button"
+            onClick={() => post({ type: "chooseAlternative", proposalId: alt.proposalId })}
+          >
+            Use this one instead
+          </button>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function Operations({
+  state,
+  selection,
+  onSelectionChange,
+  post,
+}: {
+  readonly state: AgentUiState;
+  readonly selection: SelectionState;
+  readonly onSelectionChange: (next: SelectionState) => void;
+  readonly post: Send;
+}) {
+  const proposal = state.proposal;
+  if (proposal?.operations === undefined || proposal.operations.length === 0) return null;
+  const preview = (next: SelectionState) => {
+    onSelectionChange(next);
+    post({
+      type: "previewSelection",
+      proposalId: proposal.proposalId,
+      selection: selectionInput(next),
+    });
+  };
+  return (
+    <fieldset className="operations">
+      <legend>Choose which changes to keep</legend>
+      {proposal.operations.map((operation) => {
+        const included = selection.include.includes(operation.index);
+        const value = selection.overrides[operation.index] ?? operation.editable?.value;
+        return (
+          <div className="operation" key={operation.index}>
+            <label>
+              <input
+                type="checkbox"
+                checked={included}
+                onChange={() => preview(toggleOperation(selection, operation.index))}
+              />{" "}
+              {operation.label}
+            </label>
+            {operation.editable !== undefined && (
+              <label>
+                {" "}
+                {operation.editable.field}{" "}
+                <input
+                  type="number"
+                  value={value}
+                  disabled={!included}
+                  aria-label={`${operation.editable.field} for ${operation.label}`}
+                  onChange={(event) => {
+                    const parsed = Number(event.target.value);
+                    if (Number.isInteger(parsed)) {
+                      preview(editOperation(selection, operation.index, parsed));
+                    }
+                  }}
+                />
+              </label>
+            )}
+          </div>
+        );
+      })}
+      {state.selectionEvidence !== undefined && (
+        <p role="status">
+          {state.selectionEvidence.ok
+            ? evidenceText(state.selectionEvidence.evidence)
+            : REASON_TEXT[state.selectionEvidence.reason]}
+        </p>
+      )}
+      <button
+        type="button"
+        disabled={selection.include.length === 0}
+        onClick={() =>
+          post({
+            type: "decideProposal",
+            proposalId: proposal.proposalId,
+            decision: "modified",
+            selection: selectionInput(selection),
+          })
+        }
+      >
+        {`Apply selected (${selection.include.length} of ${proposal.operations.length})`}
+      </button>
+    </fieldset>
+  );
+}
+
 export function AgentPanel({
   state,
   send,
+  selection,
+  onSelectionChange,
 }: {
   readonly state: AgentUiState;
   readonly send: (message: UiMessage) => void;
+  readonly selection?: SelectionState | undefined;
+  readonly onSelectionChange?: ((next: SelectionState) => void) | undefined;
 }) {
   const [text, setText] = useState("");
   const post: Send = (message) =>
@@ -190,6 +323,16 @@ export function AgentPanel({
           <p>{state.proposal.purpose}</p>
           <p>{state.proposal.rationale}</p>
           <p>Dashed blocks show what would change.</p>
+          {state.proposal.evidence !== undefined && <p>{evidenceText(state.proposal.evidence)}</p>}
+          <Alternatives state={state} post={post} />
+          {selection !== undefined && onSelectionChange !== undefined && (
+            <Operations
+              state={state}
+              selection={selection}
+              onSelectionChange={onSelectionChange}
+              post={post}
+            />
+          )}
           {needsPrediction && state.prediction !== undefined && (
             <div aria-label="Prediction before accepting">
               <p>Before you accept: will the character reach the goal?</p>

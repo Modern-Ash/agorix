@@ -10,7 +10,13 @@ import type { HostBridge } from "./bridge.js";
 import { AgentZone, Canvas, type SyncView } from "./Canvas.js";
 import { Palette } from "./Palette.js";
 import { AgentPanel } from "./AgentPanel.js";
-import { initialAgentUi, reduceAgentUi } from "./agentUi.js";
+import {
+  canvasHints,
+  fullSelection,
+  initialAgentUi,
+  reduceAgentUi,
+  type SelectionState,
+} from "./agentUi.js";
 
 const REFUSAL_TEXT: Record<ChangeRefusalReason, string> = {
   NOT_A_CONTAINER: "That block cannot hold other blocks.",
@@ -41,6 +47,7 @@ export function Workbench({ bridge }: { readonly bridge: HostBridge }) {
   const [workspace, setWorkspace] = useState<BlockWorkspaceSnapshot | undefined>();
   const [status, setStatus] = useState("");
   const [programHash, setProgramHash] = useState<string | undefined>();
+  const [selection, setSelection] = useState<SelectionState>({ include: [], overrides: {} });
   const [sync, setSync] = useState<SyncView>({});
   const [agentUi, dispatchAgent] = useReducer(reduceAgentUi, undefined, initialAgentUi);
 
@@ -72,6 +79,14 @@ export function Workbench({ bridge }: { readonly bridge: HostBridge }) {
     return unsubscribe;
   }, [bridge]);
 
+  const proposalId = agentUi.proposal?.proposalId;
+  const operations = agentUi.proposal?.operations;
+  useEffect(() => {
+    // The selection restarts from "keep everything" whenever a different proposal is shown.
+    setSelection(fullSelection(operations));
+  }, [proposalId]);
+  const anchored = canvasHints(agentUi.proposal, selection);
+
   const post = (intent: Intent) =>
     bridge.post({
       schema: STUDIO_PROTOCOL_VERSION,
@@ -100,8 +115,13 @@ export function Workbench({ bridge }: { readonly bridge: HostBridge }) {
           <Canvas
             workspace={workspace}
             onIntent={post}
-            ghosts={agentUi.proposal?.changes}
+            ghosts={agentUi.proposal === undefined ? undefined : anchored.ghosts}
             sync={sync}
+            hints={
+              agentUi.proposal === undefined
+                ? undefined
+                : { hints: anchored.hints, skipped: anchored.skipped }
+            }
           />
         )}
         <div className="zones">
@@ -113,7 +133,12 @@ export function Workbench({ bridge }: { readonly bridge: HostBridge }) {
           {status}
         </div>
       </main>
-      <AgentPanel state={agentUi} send={(message) => bridge.post(message)} />
+      <AgentPanel
+        state={agentUi}
+        send={(message) => bridge.post(message)}
+        selection={selection}
+        onSelectionChange={setSelection}
+      />
     </div>
   );
 }

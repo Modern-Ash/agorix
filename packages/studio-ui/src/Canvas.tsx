@@ -84,6 +84,12 @@ function ghostKind(ghosts: readonly GhostChange[] | undefined, blockId: string) 
   return ghosts?.find((ghost) => ghost.blockId === blockId)?.kind;
 }
 
+/** Visible, anchored explanation of a suggested change on a block. */
+export interface BlockHints {
+  readonly hints: Readonly<Record<string, string>>;
+  readonly skipped: readonly string[];
+}
+
 export interface SyncView {
   readonly selectedBlockId?: string;
   readonly executingBlockId?: string;
@@ -95,11 +101,13 @@ export function Canvas({
   onIntent,
   ghosts,
   sync,
+  hints,
 }: {
   readonly workspace: BlockWorkspaceSnapshot;
   readonly onIntent: (intent: Intent) => void;
   readonly ghosts?: readonly GhostChange[] | undefined;
   readonly sync?: SyncView | undefined;
+  readonly hints?: BlockHints | undefined;
 }) {
   const addedGhosts = (ghosts ?? []).filter((ghost) => ghost.kind === "added");
   return (
@@ -123,6 +131,8 @@ export function Canvas({
           });
           if (intent !== undefined) onIntent(intent);
         };
+        const hint = hints?.hints[block.id];
+        const isSkipped = hints?.skipped.includes(block.id) === true;
         const isSel = sync?.selectedBlockId === block.id;
         const isExec = sync?.executingBlockId === block.id;
         const isFail = sync?.failedBlockId === block.id;
@@ -143,16 +153,18 @@ export function Canvas({
                 : ghostKind(ghosts, block.id) === undefined
                   ? ""
                   : " ghost-changed"
-            }${isSel ? " sel" : ""}${isExec ? " exec" : ""}${isFail ? " fail" : ""}`}
+            }${isSel ? " sel" : ""}${isExec ? " exec" : ""}${isFail ? " fail" : ""}${isSkipped ? " ghost-skipped" : ""}`}
             aria-current={isSel ? "true" : undefined}
             aria-description={
               isFail
                 ? "This block failed when the program ran"
-                : ghostKind(ghosts, block.id) === "removed"
-                  ? "Suggestion would remove this block"
-                  : ghostKind(ghosts, block.id) === undefined
-                    ? undefined
-                    : "Suggestion would change this block"
+                : hint !== undefined
+                  ? `Suggestion: ${hint}${isSkipped ? " (skipped)" : ""}`
+                  : ghostKind(ghosts, block.id) === "removed"
+                    ? "Suggestion would remove this block"
+                    : ghostKind(ghosts, block.id) === undefined
+                      ? undefined
+                      : "Suggestion would change this block"
             }
             onDragStart={(event) => {
               event.dataTransfer.setData(
@@ -177,6 +189,12 @@ export function Canvas({
               {block.label}
               {fields === "" ? "" : ` (${fields})`}
             </span>
+            {hint === undefined ? null : (
+              <span className="hint-badge">
+                {isSkipped ? "Skipped: " : "Suggested: "}
+                {hint}
+              </span>
+            )}
             {isFail ? <span className="sync-badge fail-badge">Failed here</span> : null}
             {isExec ? <span className="sync-badge">Running</span> : null}
             <button
