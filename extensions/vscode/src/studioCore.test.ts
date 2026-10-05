@@ -18,6 +18,7 @@ import {
   createNavigationSections,
   listStudioProjections,
   openStoredProject,
+  nodeIdForProjectionLine,
   openProjectionDocument,
   parseProjectFile,
   parseStoredProject,
@@ -462,5 +463,17 @@ describe("Agorix Studio first slice", () => {
     const report = formatInspectorReport(createExecutionEvidence(webCreatedProject));
     expect(report).toContain("Outcome:");
     expect(report).toContain("Step 1  scripts[0]/statements[0]  move");
+  });
+});
+
+describe("nodeIdForProjectionLine", () => {
+  it("picks the narrowest node covering a line", () => {
+    const document = {
+      text: "a\nb\nc\n",
+      mapping: { outer: { start: 0, end: 6 }, inner: { start: 2, end: 3 } },
+    } as never;
+    expect(nodeIdForProjectionLine(document, 1)).toBe("inner");
+    expect(nodeIdForProjectionLine(document, 0)).toBe("outer");
+    expect(nodeIdForProjectionLine({ text: "a", mapping: {} } as never, 0)).toBeUndefined();
   });
 });

@@ -441,6 +441,23 @@ export function nodeIdsForProjectionLines(
     .map(([nodeId]) => nodeId);
 }
 
+/** The narrowest mapped node covering a zero-based line, or undefined when none does. */
+export function nodeIdForProjectionLine(
+  document: StudioProjectionDocument,
+  line: number,
+): string | undefined {
+  let best: { id: string; size: number } | undefined;
+  for (const [id, range] of Object.entries(document.mapping)) {
+    const first = offsetToLine(document.text, range.start);
+    const last = offsetToLine(document.text, Math.max(range.start, range.end - 1));
+    const size = range.end - range.start;
+    if (first <= line && last >= line && (best === undefined || size < best.size)) {
+      best = { id, size };
+    }
+  }
+  return best?.id;
+}
+
 export function countProgramStatements(program: ProjectProgram): number {
   return countTopLevelStatements(validateProgram(program));
 }
