@@ -38,6 +38,23 @@ function fold(text: string): string {
   return text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 }
 
+/** The fixed task for an id; titles never contain learner text. */
+export function taskForId(id: AgentTaskId): AgentTask {
+  return { id, title: TITLES[id] };
+}
+
+/**
+ * True when the intent matches no task keyword and there is a real choice to make.
+ * One short question then replaces guessing; a clear intent never asks.
+ */
+export function needsClarification(intent: string, available: readonly AgentTaskId[]): boolean {
+  if (available.length < 2) {
+    return false;
+  }
+  const folded = fold(intent);
+  return !available.some((id) => KEYWORDS[id].test(folded));
+}
+
 /** Keyword hits among available tasks; with no hit, offer what the agent can do. */
 export function planTasks(intent: string, available: readonly AgentTaskId[]): AgentTask[] {
   const folded = fold(intent);

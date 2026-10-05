@@ -913,7 +913,7 @@ See:
 
 Prerequisites:
 
-- Node 22 — see `.nvmrc`;
+- Node 22.23.2 or newer within Node 22 — see `.nvmrc`;
 - pnpm 9 through Corepack.
 
 ```bash

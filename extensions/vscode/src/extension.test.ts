@@ -10,6 +10,8 @@ const shown: string[] = [];
 const diffs: unknown[][] = [];
 const output: string[] = [];
 const treeViews: string[] = [];
+const agentConfig: Record<string, unknown> = {};
+const selectionListeners: Array<(event: unknown) => void> = [];
 const treeProviders = new Map<string, { getChildren(): unknown[] }>();
 const providers = new Map<string, { provideTextDocumentContent(uri: unknown): string }>();
 const lensProviders: unknown[] = [];
@@ -121,6 +123,11 @@ vi.mock("vscode", () => {
     Uri,
     TreeItem,
     ThemeColor,
+    Disposable: {
+      from: (...items: { dispose(): void }[]) => ({
+        dispose: () => items.forEach((i) => i.dispose()),
+      }),
+    },
     ThemeIcon,
     CodeLens,
     CodeAction,
@@ -158,11 +165,11 @@ vi.mock("vscode", () => {
       showOpenDialog: async () => (picked === undefined ? undefined : [picked]),
       showSaveDialog: async () => savePicked,
       showInputBox: async () => inputBox,
-      showInformationMessage: async (message: string, ...items: string[]) => {
+      showInformationMessage: async (message: string, ...items: unknown[]) => {
         shown.push(message);
         return items.includes(choice ?? "") ? choice : undefined;
       },
-      showWarningMessage: async (message: string, ...items: string[]) => {
+      showWarningMessage: async (message: string, ...items: unknown[]) => {
         shown.push(message);
         return items.includes(choice ?? "") ? choice : undefined;
       },
@@ -178,6 +185,11 @@ vi.mock("vscode", () => {
       createTreeView: (id: string, options: { treeDataProvider: { getChildren(): unknown[] } }) => {
         treeViews.push(id);
         treeProviders.set(id, options.treeDataProvider);
+        return { dispose() {}, reveal: async () => undefined };
+      },
+      createTextEditorDecorationType: () => ({ dispose() {} }),
+      onDidChangeTextEditorSelection: (listener: (event: unknown) => void) => {
+        selectionListeners.push(listener);
         return { dispose() {} };
       },
       createWebviewPanel: () => {
@@ -230,7 +242,8 @@ vi.mock("vscode", () => {
     workspace: {
       workspaceFolders: [{ uri: uri("/workspace"), name: "workspace", index: 0 }],
       getConfiguration: () => ({
-        get: (_key: string, defaultValue: string) => serverUrl || defaultValue,
+        get: (key: string, defaultValue: string) =>
+          key in agentConfig ? agentConfig[key] : serverUrl || defaultValue,
       }),
       registerTextDocumentContentProvider: (
         scheme: string,
@@ -322,6 +335,8 @@ describe("Studio extension wiring", () => {
     diffs.length = 0;
     output.length = 0;
     treeViews.length = 0;
+    selectionListeners.length = 0;
+    for (const key of Object.keys(agentConfig)) delete agentConfig[key];
     treeProviders.clear();
     providers.clear();
     lensProviders.length = 0;
@@ -370,6 +385,7 @@ describe("Studio extension wiring", () => {
         "agorixStudio.openWorldPreview",
         "agorixStudio.openWorkbench",
         "agorixStudio.exportAgorix",
+        "agorixStudio.exportEducatorEvidence",
         "agorixStudio.applyProposal",
         "agorixStudio.ambientOffer",
         "agorixStudio.companionBuild",
@@ -436,7 +452,9 @@ describe("Studio extension wiring", () => {
     expect(workbenchPanel()?.reveal).toHaveBeenCalledTimes(1);
     expect(workbenchPanel()?.html).toContain("Content-Security-Policy");
     expect(workbenchPanel()?.html).toContain("Agorix Workbench");
-    expect(workbenchPanel()?.messages.at(-1)).toMatchObject({ type: "workspace" });
+    const sent = workbenchPanel()?.messages as { type: string }[];
+    expect(sent.some((message) => message.type === "workspace")).toBe(true);
+    expect(sent.at(-1)).toMatchObject({ type: "sync" });
 
     const before = new TextDecoder().decode(files.get("/p/workbench.json"));
     expect(() => workbenchPanel()?.receive({})).not.toThrow();
@@ -516,6 +534,53 @@ describe("Studio extension wiring", () => {
     expect(output[0]).toContain("Outcome:");
     expect(output.some((line) => line.includes("Step 1"))).toBe(true);
     expect(revealed).toHaveLength(1);
+  });
+
+  it("keeps canvas, code, preview and inspector in sync through the shared hub", async () => {
+    await openFile("/p/sync.json", repeated);
+    await handlers.get("agorixStudio.openWorkbench")!();
+    await handlers.get("agorixStudio.openWorldPreview")!();
+    const workbench = workbenchPanel()!;
+    const preview = webviewPanels.find((panel) => panel.html.includes("Mundo Agorix"))!;
+    const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+    const schema = "agorix/studio-protocol/v1";
+    workbench.receive({ schema, type: "ready" });
+    await tick();
+    const snapshot = workbench.messages.find(
+      (message) => (message as { type: string }).type === "workspace",
+    ) as { workspace: { scripts: Array<{ statements: Array<{ id: string }> }> } };
+    const blockId = snapshot.workspace.scripts[0]!.statements[0]!.id;
+
+    // Canvas selection reaches code, World Preview and back to the canvas.
+    workbench.receive({ schema, type: "intent", intent: { type: "revealNode", nodeId: blockId } });
+    await tick();
+    expect(revealed.length).toBeGreaterThan(0);
+    expect(preview.messages.at(-1)).toMatchObject({
+      type: "agorix-sync",
+      selectedNodeId: "scripts[0]/statements[0]",
+    });
+    expect(workbench.messages.at(-1)).toMatchObject({ type: "sync", selectedBlockId: blockId });
+
+    // Running marks the executing block on the canvas.
+    await handlers.get("agorixStudio.step")!();
+    await tick();
+    const executing = workbench.messages
+      .filter((message) => (message as { type: string }).type === "sync")
+      .at(-1) as { executingBlockId?: string };
+    expect(executing.executingBlockId).toBeDefined();
+
+    // A code-editor selection is debounced and broadcast to the canvas.
+    const before = workbench.messages.length;
+    for (const line of [3, 4, 5]) {
+      for (const listener of selectionListeners) {
+        listener({
+          textEditor: { document: { uri: { scheme: "agorix-studio" } } },
+          selections: [{ active: { line }, start: { line }, end: { line } }],
+        });
+      }
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+    expect(workbench.messages.length).toBeGreaterThan(before);
   });
 
   it("drives World Preview and Execution Inspector from one runtime session", async () => {
@@ -622,6 +687,60 @@ describe("Studio extension wiring", () => {
     expect(exported.format).toBe("agorix-project");
     expect(exported.project.program.scripts[0].statements).toEqual([{ type: "move", steps: 8 }]);
     expect(JSON.stringify(exported)).not.toMatch(/token|revision|history|account/i);
+  });
+
+  it("exports local educator evidence as counts plus a summary only after confirmation", async () => {
+    await openFile("/p/evidence.json", stored([]));
+    await handlers.get("agorixStudio.openWorkbench")!();
+    const schema = "agorix/studio-protocol/v1";
+    const receive = (message: Record<string, unknown>) =>
+      workbenchPanel()?.receive({ schema, ...message });
+    receive({ type: "ready" });
+    receive({ type: "stateIntent", text: "make it move with my email ana@school.example" });
+    receive({ type: "acceptPlan" });
+    receive({ type: "requestProposal" });
+    await flushWorkbench();
+    const proposal = (workbenchPanel()?.messages ?? [])
+      .filter((m) => (m as { type: string }).type === "proposal")
+      .at(-1) as { proposalId: string };
+    receive({ type: "decideProposal", proposalId: proposal.proposalId, decision: "rejected" });
+    await flushWorkbench();
+    await handlers.get("agorixStudio.run")!();
+
+    choice = "Export";
+    savePicked = { fsPath: "/p/educator-evidence.json" };
+    const uri = await handlers.get("agorixStudio.exportEducatorEvidence")!();
+
+    expect(uri).toMatchObject({ fsPath: "/p/educator-evidence.json" });
+    const exportedText = new TextDecoder().decode(files.get("/p/educator-evidence.json"));
+    const summary = new TextDecoder().decode(files.get("/p/educator-evidence.md"));
+    const exported = JSON.parse(exportedText);
+    expect(exported).toMatchObject({
+      schema: "agorix/educator-evidence/v1",
+      scope: "single-session",
+      mission: { id: "first-mission.reach-goal" },
+      proposals: { requested: 1, rejected: 1 },
+      completion: { completedByRuntime: true },
+    });
+    expect(summary).toContain("counts above are not a grade");
+    expect(`${exportedText}\n${summary}`).not.toMatch(
+      /ana@|school|make it move|\/p\/|evidence\.json|raw|model output/i,
+    );
+  });
+
+  it("cancels educator evidence export before writing files", async () => {
+    await openFile("/p/evidence-cancel.json", stored([]));
+    const before = new Set(files.keys());
+
+    choice = undefined;
+    savePicked = { fsPath: "/p/should-not-write.json" };
+    await handlers.get("agorixStudio.exportEducatorEvidence")!();
+    expect(new Set(files.keys())).toEqual(before);
+
+    choice = "Export";
+    savePicked = undefined;
+    await handlers.get("agorixStudio.exportEducatorEvidence")!();
+    expect(new Set(files.keys())).toEqual(before);
   });
 
   it("validates the project and exposes native developer workflow entry points", async () => {
@@ -822,6 +941,153 @@ describe("Studio extension wiring", () => {
     expect(JSON.parse(new TextDecoder().decode(files.get("/p/agent.json")))).toEqual(
       JSON.parse(original),
     );
+  });
+
+  it("applies a chosen alternative with an edited value as one undoable transaction", async () => {
+    await openFile("/p/alt.json", stored([]));
+    const original = new TextDecoder().decode(files.get("/p/alt.json"));
+    await handlers.get("agorixStudio.openWorkbench")!();
+    const schema = "agorix/studio-protocol/v1";
+    const receive = (message: Record<string, unknown>) =>
+      workbenchPanel()?.receive({ schema, ...message });
+    receive({ type: "ready" });
+    receive({ type: "stateIntent", text: "make it move" });
+    receive({ type: "acceptPlan" });
+    receive({ type: "requestProposal" });
+    await flushWorkbench();
+    const proposals = () =>
+      (workbenchPanel()?.messages ?? []).filter(
+        (m) => (m as { type: string }).type === "proposal",
+      ) as Array<{
+        proposalId: string;
+        operations: { index: number }[];
+        evidence: { outcome: string };
+        alternatives: { proposalId: string; tradeoff: string }[];
+      }>;
+    const first = proposals().at(-1)!;
+    expect(first.proposalId).toBe("first-step");
+    expect(first.evidence.outcome).toBe("completed");
+    expect(first.alternatives.map((a) => a.proposalId)).toEqual(["first-step-small"]);
+    expect(new TextDecoder().decode(files.get("/p/alt.json"))).toBe(original);
+
+    receive({ type: "chooseAlternative", proposalId: "first-step-small" });
+    await flushWorkbench();
+    expect(proposals().at(-1)?.proposalId).toBe("first-step-small");
+    expect(new TextDecoder().decode(files.get("/p/alt.json"))).toBe(original);
+
+    const selection = { include: [0], overrides: [{ index: 0, value: 7 }] };
+    receive({ type: "previewSelection", proposalId: "first-step-small", selection });
+    await flushWorkbench();
+    expect(workbenchPanel()?.messages.at(-1)).toMatchObject({
+      type: "selectionEvidence",
+      result: { ok: true },
+    });
+    expect(new TextDecoder().decode(files.get("/p/alt.json"))).toBe(original);
+
+    receive({
+      type: "decideProposal",
+      proposalId: "first-step-small",
+      decision: "modified",
+      selection,
+    });
+    await flushWorkbench();
+    const applied = JSON.parse(new TextDecoder().decode(files.get("/p/alt.json")));
+    expect(applied.program.scripts[0].statements).toEqual([{ type: "move", steps: 7 }]);
+
+    await handlers.get("agorixStudio.undoProposal")!();
+    expect(JSON.parse(new TextDecoder().decode(files.get("/p/alt.json")))).toEqual(
+      JSON.parse(original),
+    );
+  });
+
+  it("offers a provider-backed proposal, then degrades to built-in when the budget is spent", async () => {
+    const { createFakeProviderRuntime } = await import("@agorix/provider-runtime");
+    const fake = createFakeProviderRuntime({
+      runtimeId: "fake",
+      providerId: "fake",
+      modelId: "deterministic",
+      locality: "local",
+      capabilities: ["coach", "builder", "debugger", "explainer", "challenger", "reflector"],
+    });
+    const calls: string[] = [];
+    vi.stubGlobal("fetch", async (url: string, init: { body?: string }) => {
+      calls.push(url);
+      if (url.endsWith("/health")) {
+        return { ok: true, status: 200, text: async () => JSON.stringify({ status: "available" }) };
+      }
+      const result = await fake.request(JSON.parse(init.body ?? "{}"));
+      return {
+        ok: result.ok,
+        status: 200,
+        text: async () => JSON.stringify(result.ok ? result.response : {}),
+      };
+    });
+    try {
+      agentConfig["endpoint"] = "http://127.0.0.1:9";
+      agentConfig["proposalBudgetRequests"] = 1;
+      await openFile("/p/prov.json", stored([]));
+      const original = new TextDecoder().decode(files.get("/p/prov.json"));
+      await handlers.get("agorixStudio.openWorkbench")!();
+      const schema = "agorix/studio-protocol/v1";
+      const receive = (message: Record<string, unknown>) =>
+        workbenchPanel()?.receive({ schema, ...message });
+      const proposals = () =>
+        (workbenchPanel()?.messages ?? []).filter(
+          (m) => (m as { type: string }).type === "proposal",
+        ) as Array<{
+          proposalId: string;
+          origin?: string;
+          notice?: string;
+          alternatives?: { proposalId: string }[];
+        }>;
+      receive({ type: "ready" });
+      receive({ type: "stateIntent", text: "make it move" });
+      receive({ type: "acceptPlan" });
+      receive({ type: "requestProposal" });
+      await flushWorkbench();
+      const first = proposals().at(-1)!;
+      expect(first.origin).toBe("provider");
+      expect(first.alternatives?.map((a) => a.proposalId)).toContain("first-step");
+      expect(calls.some((url) => url.endsWith("/companion"))).toBe(true);
+      expect(new TextDecoder().decode(files.get("/p/prov.json"))).toBe(original);
+
+      receive({ type: "decideProposal", proposalId: first.proposalId, decision: "rejected" });
+      await flushWorkbench();
+      receive({ type: "requestProposal" });
+      await flushWorkbench();
+      const second = proposals().at(-1)!;
+      expect(second.origin).toBe("built-in");
+      expect(second.notice).toMatch(/limit/);
+      expect(new TextDecoder().decode(files.get("/p/prov.json"))).toBe(original);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("stays built-in when the provider call fails", async () => {
+    vi.stubGlobal("fetch", async () => {
+      throw new Error("offline");
+    });
+    try {
+      agentConfig["endpoint"] = "http://127.0.0.1:9";
+      await openFile("/p/off.json", stored([]));
+      await handlers.get("agorixStudio.openWorkbench")!();
+      const schema = "agorix/studio-protocol/v1";
+      const receive = (message: Record<string, unknown>) =>
+        workbenchPanel()?.receive({ schema, ...message });
+      receive({ type: "ready" });
+      receive({ type: "stateIntent", text: "make it move" });
+      receive({ type: "acceptPlan" });
+      receive({ type: "requestProposal" });
+      await flushWorkbench();
+      const last = (workbenchPanel()?.messages ?? [])
+        .filter((m) => (m as { type: string }).type === "proposal")
+        .at(-1) as { proposalId: string; origin?: string };
+      expect(last.proposalId).toBe("first-step");
+      expect(last.origin).toBe("built-in");
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("reviews first-step proposal through the generic apply flow", async () => {

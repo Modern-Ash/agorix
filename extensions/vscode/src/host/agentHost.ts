@@ -6,7 +6,9 @@ import {
   comparePrediction,
   createWorkflow,
   effectiveAssistance,
+  needsClarification,
   planTasks,
+  taskForId,
   type AgentAgreements,
   type AgentEvent,
   type AgentTask,
@@ -17,8 +19,12 @@ import {
 } from "@agorix/agent-workflow";
 import {
   STUDIO_PROTOCOL_VERSION,
+  type AlternativeView,
+  type EvidenceView,
   type GhostChange,
   type HostMessage,
+  type OperationView,
+  type SelectionInput,
   type UiMessage,
 } from "@agorix/studio-protocol";
 
@@ -27,15 +33,45 @@ export interface ProposalView {
   readonly purpose: string;
   readonly rationale: string;
   readonly changes: GhostChange[];
+  readonly operations?: OperationView[];
+  readonly evidence?: EvidenceView;
+  readonly alternatives?: AlternativeView[];
+  readonly origin?: "provider" | "built-in";
+  readonly notice?: string;
 }
+
+export type SelectionPreview =
+  | { readonly ok: true; readonly evidence: EvidenceView }
+  | { readonly ok: false; readonly reason: "EMPTY" | "INVALID" | "STALE" };
+
+export type AgentIntentPlanResult =
+  | {
+      readonly kind: "plan";
+      readonly tasks: readonly AgentTask[];
+      readonly baseHash?: string;
+    }
+  | {
+      readonly kind: "clarify";
+      readonly options: readonly AgentTask[];
+      readonly baseHash?: string;
+    };
 
 export interface AgentPort {
   availableTasks(): AgentTaskId[];
+  /** Optional structured intent planner; callers fall back to keyword planning when absent. */
+  planIntent?(
+    intent: string,
+  ): AgentIntentPlanResult | undefined | Promise<AgentIntentPlanResult | undefined>;
   /** Creates and remembers the pending proposal; undefined when the task no longer applies. */
-  proposeFor(task: AgentTaskId): ProposalView | undefined;
+  proposeFor(task: AgentTaskId): Promise<ProposalView | undefined>;
   /** Applies the pending proposal through the canonical path; "stale" when the program changed. */
   applyPending(): Promise<"applied" | "stale">;
   rejectPending(): void;
+  /** Makes an offered alternative the pending proposal; undefined when it is unknown. */
+  chooseAlternative(proposalId: string): ProposalView | undefined;
+  previewSelection(selection: SelectionInput): SelectionPreview;
+  /** Applies the chosen operations of the pending proposal as one transaction. */
+  applySelection(selection: SelectionInput): Promise<"applied" | "stale" | "invalid" | "empty">;
   run(): { reachedGoal: boolean; stepsUsed: number } | undefined;
   programHash(): string | undefined;
   record(event: AgentEvent): void;
@@ -50,6 +86,10 @@ export interface AgentHost {
 
 const schema = STUDIO_PROTOCOL_VERSION;
 
+function isPromiseLike<T>(value: T | Promise<T>): value is Promise<T> {
+  return value !== undefined && typeof (value as { then?: unknown }).then === "function";
+}
+
 export function createAgentHost(port: AgentPort): AgentHost {
   let agreements: AgentAgreements = DEFAULT_AGREEMENTS;
   let workflow: WorkflowState = createWorkflow(agreements.mode);
@@ -57,12 +97,22 @@ export function createAgentHost(port: AgentPort): AgentHost {
   let pending: ProposalView | undefined;
   let answer: PredictionAnswer | undefined;
   let applying = false;
+  let requesting = false;
+  // Bumped whenever the loop resets, so an answer that arrives late is discarded.
+  let epoch = 0;
+  let clarifying: AgentTask[] | undefined;
+  let planBaseHash: string | undefined;
   let lastHash: string | undefined = port.programHash();
 
   const wf = (): HostMessage => ({ schema, type: "workflow", state: workflow });
   const agreementsMsg = (): HostMessage => ({ schema, type: "agreements", agreements });
   const cleared = (): HostMessage => ({ schema, type: "proposalCleared" });
   const planMsg = (): HostMessage => ({ schema, type: "plan", tasks });
+  const clarifyMsg = (options: readonly AgentTask[]): HostMessage => ({
+    schema,
+    type: "clarify",
+    options,
+  });
   const proposalMsg = (view: ProposalView): HostMessage => ({
     schema,
     type: "proposal",
@@ -70,7 +120,20 @@ export function createAgentHost(port: AgentPort): AgentHost {
     purpose: view.purpose,
     rationale: view.rationale,
     changes: view.changes,
+    ...(view.operations === undefined ? {} : { operations: view.operations }),
+    ...(view.evidence === undefined ? {} : { evidence: view.evidence }),
+    ...(view.alternatives === undefined ? {} : { alternatives: view.alternatives }),
+    ...(view.origin === undefined ? {} : { origin: view.origin }),
+    ...(view.notice === undefined ? {} : { notice: view.notice }),
   });
+  const predictionMsg = (): HostMessage => ({
+    schema,
+    type: "prediction",
+    questionId: "reaches-goal",
+    options: ["yes", "no"],
+  });
+  // `workflow` is reassigned by step(); this defeats control-flow narrowing after guards.
+  const stageNow = () => workflow.stage;
   const level = () => effectiveAssistance(agreements, 4);
   const currentTask = (): AgentTask | undefined => tasks[workflow.taskIndex];
 
@@ -84,6 +147,7 @@ export function createAgentHost(port: AgentPort): AgentHost {
   }
 
   function resetLoop(): boolean {
+    epoch += 1;
     const hadPending = pending !== undefined;
     if (hadPending) {
       port.rejectPending();
@@ -91,36 +155,63 @@ export function createAgentHost(port: AgentPort): AgentHost {
     pending = undefined;
     workflow = createWorkflow(agreements.mode);
     tasks = [];
+    clarifying = undefined;
+    planBaseHash = undefined;
     answer = undefined;
     return hadPending;
   }
 
-  function record(type: AgentEvent["type"]): void {
+  function record(type: AgentEvent["type"], origin?: "provider" | "built-in"): void {
     const task = currentTask();
     if (task !== undefined) {
-      port.record({ type, taskId: task.id, scaffoldLevel: level() });
+      port.record({
+        type,
+        taskId: task.id,
+        scaffoldLevel: level(),
+        ...(origin === undefined ? {} : { origin }),
+      });
     }
   }
 
-  function requestProposal(): HostMessage[] {
+  async function requestProposal(): Promise<HostMessage[]> {
     const task = currentTask();
-    if (workflow.stage !== "proposal" || pending !== undefined || task === undefined) {
+    if (
+      workflow.stage !== "proposal" ||
+      pending !== undefined ||
+      task === undefined ||
+      requesting
+    ) {
       return [];
     }
     step({ type: "proposalRequested" });
-    const view = port.proposeFor(task.id);
+    const started = epoch;
+    requesting = true;
+    let view: ProposalView | undefined;
+    try {
+      view = await port.proposeFor(task.id);
+    } finally {
+      requesting = false;
+    }
+    if (epoch !== started) {
+      // The learner changed the program or the agreements while the suggestion was on its way.
+      if (view !== undefined) port.rejectPending();
+      return [];
+    }
     if (view === undefined) {
       workflow = { ...workflow, proposalRequested: false };
       return [cleared(), wf()];
     }
     pending = view;
-    record("proposalRequested");
-    return [wf(), proposalMsg(view)];
+    record("proposalRequested", view.origin);
+    return agreements.requirePredictionBeforeAccept
+      ? [wf(), proposalMsg(view), predictionMsg()]
+      : [wf(), proposalMsg(view)];
   }
 
   async function decide(
     proposalId: string,
     decision: "accepted" | "rejected" | "modified",
+    selection?: SelectionInput,
   ): Promise<HostMessage[]> {
     if (
       workflow.stage !== "proposal" ||
@@ -130,36 +221,62 @@ export function createAgentHost(port: AgentPort): AgentHost {
     ) {
       return [];
     }
-    if (decision === "modified") {
+    if (decision === "modified" && selection === undefined) {
       return [];
+    }
+    if (decision === "modified" && selection !== undefined && selection.include.length === 0) {
+      decision = "rejected";
+    }
+    if (
+      decision !== "rejected" &&
+      agreements.requirePredictionBeforeAccept &&
+      !workflow.predicted
+    ) {
+      return [{ schema, type: "error", code: "PREDICTION_REQUIRED" }];
     }
     if (decision === "rejected") {
       port.rejectPending();
+      const rejectedOrigin = pending.origin;
       pending = undefined;
-      record("proposalRejected");
+      answer = undefined;
+      record("proposalRejected", rejectedOrigin);
       step({ type: "proposalDecided", decision: "rejected" });
       return [cleared(), wf()];
     }
     applying = true;
-    let outcome: "applied" | "stale";
+    let outcome: "applied" | "stale" | "invalid" | "empty";
     try {
-      outcome = await port.applyPending();
+      outcome =
+        selection === undefined ? await port.applyPending() : await port.applySelection(selection);
     } finally {
       applying = false;
     }
+    if (outcome === "invalid" || outcome === "empty") {
+      return [
+        {
+          schema,
+          type: "selectionEvidence",
+          proposalId,
+          result: { ok: false, reason: outcome === "empty" ? "EMPTY" : "INVALID" },
+        },
+      ];
+    }
+    const decidedOrigin = pending.origin;
     pending = undefined;
     if (outcome === "stale") {
+      answer = undefined;
       step({ type: "proposalDecided", decision: "rejected" });
       return [{ schema, type: "error", code: "STALE_PROPOSAL" }, cleared(), wf()];
     }
-    record("proposalAccepted");
+    record(selection === undefined ? "proposalAccepted" : "proposalModified", decidedOrigin);
     step({ type: "proposalDecided", decision: "accepted" });
     lastHash = port.programHash();
-    return [
-      cleared(),
-      wf(),
-      { schema, type: "prediction", questionId: "reaches-goal", options: ["yes", "no"] },
-    ];
+    return stageNow() === "predict" ? [cleared(), wf(), predictionMsg()] : [cleared(), wf()];
+  }
+
+  function stalePlan(): HostMessage[] {
+    resetLoop();
+    return [{ schema, type: "error", code: "STALE_PLAN" }, wf()];
   }
 
   async function handle(message: UiMessage): Promise<HostMessage[] | undefined> {
@@ -182,20 +299,75 @@ export function createAgentHost(port: AgentPort): AgentHost {
       case "stateIntent": {
         const had = resetLoop();
         step({ type: "intentStated" });
-        tasks = planTasks(message.text, port.availableTasks());
+        planBaseHash = port.programHash();
+        const maybePlanned = port.planIntent?.(message.text);
+        const planned = isPromiseLike(maybePlanned) ? await maybePlanned : maybePlanned;
+        if (planned !== undefined) {
+          planBaseHash = planned.baseHash ?? planBaseHash;
+          if (planned.kind === "clarify") {
+            clarifying = [...planned.options];
+            return [...(had ? [cleared()] : []), wf(), clarifyMsg(clarifying)];
+          }
+          tasks = [...planned.tasks];
+          return [...(had ? [cleared()] : []), wf(), planMsg()];
+        }
+        const available = port.availableTasks();
+        if (needsClarification(message.text, available)) {
+          clarifying = available.map(taskForId);
+          return [...(had ? [cleared()] : []), wf(), clarifyMsg(clarifying)];
+        }
+        tasks = planTasks(message.text, available);
         return [...(had ? [cleared()] : []), wf(), planMsg()];
       }
+      case "answerClarification": {
+        if (clarifying === undefined || workflow.stage !== "plan") return [];
+        if (planBaseHash !== port.programHash()) return stalePlan();
+        const chosen = clarifying.find((task) => task.id === message.taskId);
+        if (chosen === undefined) return [];
+        clarifying = undefined;
+        tasks = [chosen];
+        return [wf(), planMsg()];
+      }
       case "acceptPlan": {
+        if (workflow.stage === "plan" && tasks.length > 0 && planBaseHash !== port.programHash()) {
+          return stalePlan();
+        }
         if (tasks.length === 0 || !step({ type: "planAccepted", taskCount: tasks.length })) {
           return [];
         }
-        return agreements.mode === "bounded" ? [wf(), ...requestProposal()] : [wf()];
+        return agreements.mode === "bounded" ? [wf(), ...(await requestProposal())] : [wf()];
       }
       case "requestProposal":
         return requestProposal();
       case "decideProposal":
-        return decide(message.proposalId, message.decision);
+        return decide(message.proposalId, message.decision, message.selection);
+      case "chooseAlternative": {
+        if (workflow.stage !== "proposal" || pending === undefined || applying) return [];
+        const view = port.chooseAlternative(message.proposalId);
+        if (view === undefined) return [];
+        pending = view;
+        record("alternativeChosen", view.origin);
+        return [proposalMsg(view)];
+      }
+      case "previewSelection": {
+        if (pending === undefined || message.proposalId !== pending.proposalId) return [];
+        return [
+          {
+            schema,
+            type: "selectionEvidence",
+            proposalId: pending.proposalId,
+            result: port.previewSelection(message.selection),
+          },
+        ];
+      }
       case "predict":
+        if (workflow.stage === "proposal") {
+          if (!agreements.requirePredictionBeforeAccept || !step({ type: "prePredictionMade" })) {
+            return [];
+          }
+          answer = message.answer;
+          return [wf()];
+        }
         if (!step({ type: "predictionMade" })) return [];
         answer = message.answer;
         return [wf()];
@@ -251,7 +423,8 @@ export function createAgentHost(port: AgentPort): AgentHost {
 
   function snapshot(): HostMessage[] {
     const out: HostMessage[] = [agreementsMsg(), wf()];
-    if (tasks.length > 0 && workflow.stage !== "intent") out.push(planMsg());
+    if (clarifying !== undefined && workflow.stage === "plan") out.push(clarifyMsg(clarifying));
+    else if (tasks.length > 0 && workflow.stage !== "intent") out.push(planMsg());
     if (pending !== undefined) out.push(proposalMsg(pending));
     return out;
   }
@@ -262,6 +435,9 @@ export function createAgentHost(port: AgentPort): AgentHost {
       return [];
     }
     lastHash = hash;
+    if (workflow.stage === "plan") {
+      return stalePlan();
+    }
     if (["proposal", "predict", "run", "compare"].includes(workflow.stage)) {
       const had = resetLoop();
       return had ? [cleared(), wf()] : [wf()];

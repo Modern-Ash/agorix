@@ -64,17 +64,29 @@ export type BlockEditorAdapterErrorCode =
   | "MISSING_FIELD"
   | "INVALID_FIELD_TYPE";
 
+/** Why a visual placement was refused; lets UIs explain it without parsing messages. */
+export type PlacementReason =
+  "NOT_A_CONTAINER" | "BAD_INDEX" | "BLOCK_NOT_FOUND" | "NOT_A_STATEMENT";
+
 export class BlockEditorAdapterError extends Error {
   readonly code: BlockEditorAdapterErrorCode;
   readonly path: string;
   readonly value: unknown;
+  readonly reason?: PlacementReason;
 
-  constructor(code: BlockEditorAdapterErrorCode, path: string, message: string, value: unknown) {
+  constructor(
+    code: BlockEditorAdapterErrorCode,
+    path: string,
+    message: string,
+    value: unknown,
+    reason?: PlacementReason,
+  ) {
     super(`${code} ${path}: ${message}`);
     this.name = "BlockEditorAdapterError";
     this.code = code;
     this.path = path;
     this.value = value;
+    if (reason !== undefined) this.reason = reason;
   }
 }
 

@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { programToWorkspace } from "@agorix/block-editor";
 import { Canvas } from "./Canvas.js";
 import { Palette } from "./Palette.js";
+import { Workbench } from "./Workbench.js";
 import { dropPointFor, toRows } from "./blockView.js";
 import { chordFromEvent, parseDragPayload } from "./drag.js";
 import { statusFor } from "./Workbench.js";
@@ -24,6 +25,22 @@ const workspace = programToWorkspace(program as never).workspace;
 const script = { kind: "script", scriptIndex: 0 } as const;
 
 describe("studio-ui", () => {
+  it("renders Workbench density as host-controlled data, not inline styles", () => {
+    const html = renderToStaticMarkup(
+      <Workbench
+        density="compact"
+        locale="es"
+        bridge={{
+          post: () => undefined,
+          subscribe: () => () => undefined,
+        }}
+      />,
+    );
+    expect(html).toContain('data-density="compact"');
+    expect(html).toContain("Que queres crear?");
+    expect(html).not.toContain(' style="');
+  });
+
   it("builds rows with one slot between blocks and nested bodies one level deeper", () => {
     const rows = toRows(workspace);
     expect(rows[0]).toEqual({ kind: "script", scriptIndex: 0 });
@@ -90,6 +107,91 @@ describe("studio-ui", () => {
     );
     expect(
       statusFor({ schema: "agorix/studio-protocol/v1", type: "error", code: "INVALID_CHANGE" }),
-    ).toMatch(/nothing changed/);
+    ).toMatch(/Nothing changed/);
+    expect(
+      statusFor({ schema: "agorix/studio-protocol/v1", type: "error", code: "STALE_EDIT" }),
+    ).toMatch(/changed/);
+    expect(
+      statusFor({
+        schema: "agorix/studio-protocol/v1",
+        type: "error",
+        code: "INVALID_CHANGE",
+        reason: "NOT_A_CONTAINER",
+      }),
+    ).toBe("That block cannot hold other blocks. Nothing changed.");
+  });
+
+  it("marks selected, running and failed blocks with text, not only color", () => {
+    const blocks = toRows(workspace).flatMap((row) => (row.kind === "block" ? [row.block.id] : []));
+    const markup = renderToStaticMarkup(
+      <Canvas
+        workspace={workspace}
+        onIntent={() => undefined}
+        sync={{
+          selectedBlockId: blocks[0]!,
+          executingBlockId: blocks[0]!,
+          failedBlockId: blocks[1]!,
+        }}
+      />,
+    );
+    expect(markup).toContain("Failed here");
+    expect(markup).toContain("Running");
+    expect(markup).toContain('aria-current="true"');
+    expect(markup).toContain("This block failed when the program ran");
+  });
+
+  it("renders ambient hints on the canvas without proposal state", () => {
+    const first = toRows(workspace).flatMap((row) =>
+      row.kind === "block" ? [row.block.id] : [],
+    )[0]!;
+    const anchored = renderToStaticMarkup(
+      <Canvas
+        workspace={workspace}
+        onIntent={() => undefined}
+        ambientHint={{
+          blockId: first,
+          label: "Companion can debug this with runtime evidence.",
+          actions: ["debug"],
+        }}
+      />,
+    );
+    expect(anchored).toContain("Companion can debug this with runtime evidence.");
+    expect(anchored).toContain("Companion hint");
+
+    const global = renderToStaticMarkup(
+      <Canvas
+        workspace={workspace}
+        onIntent={() => undefined}
+        ambientHint={{
+          label: "Companion can suggest a small next step.",
+          actions: ["propose"],
+        }}
+      />,
+    );
+    expect(global).toContain('role="note"');
+    expect(global).toContain("Companion can suggest a small next step.");
+  });
+
+  it("posts a revealNode intent when a block label is clicked", () => {
+    const first = toRows(workspace).flatMap((row) =>
+      row.kind === "block" ? [row.block.id] : [],
+    )[0]!;
+    const onIntent = vi.fn();
+    // Canvas has no hooks, so it can be called directly and its element tree walked.
+    const labels: Array<{ onClick: () => void }> = [];
+    const walk = (node: unknown): void => {
+      if (Array.isArray(node)) return node.forEach(walk);
+      if (typeof node !== "object" || node === null) return;
+      const props = (node as { props?: Record<string, unknown> }).props;
+      if (props === undefined) return;
+      if (props["data-testid"] === "block-label") {
+        labels.push(props as unknown as { onClick: () => void });
+      }
+      walk(props["children"]);
+    };
+    walk(Canvas({ workspace, onIntent }));
+    expect(labels.length).toBeGreaterThan(0);
+    labels[0]!.onClick();
+    expect(onIntent).toHaveBeenCalledWith({ type: "revealNode", nodeId: first });
   });
 });

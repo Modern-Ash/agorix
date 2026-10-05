@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createStudioSignal, type LayaBatchTransport } from "@agorix/learning-decision-plane";
+import {
+  createLayaLearningProvider,
+  createStudioPipeline,
+  createStudioSignal,
+  type StudioPipeline,
+} from "@agorix/learning-decision-plane";
 import { AmbientController } from "./ambientController.js";
 
 let quickPick: unknown;
@@ -23,12 +28,14 @@ function statusItem() {
 function controller(
   options: {
     readonly budget?: number;
-    readonly layaTransport?: LayaBatchTransport;
+    readonly proactivePipeline?: StudioPipeline;
     readonly canOffer?: boolean;
   } = {},
 ) {
   const item = statusItem();
   const run = vi.fn(async () => undefined);
+  const showCanvasHint = vi.fn();
+  const clearCanvasHint = vi.fn();
   let offers = 0;
   const stats = { shown: 0, accepted: 0, dismissed: 0, ignored: 0 };
   const c = new AmbientController({
@@ -46,9 +53,13 @@ function controller(
       }
     },
     runCompanionAction: run,
-    ...(options.layaTransport === undefined ? {} : { layaTransport: options.layaTransport }),
+    showCanvasHint,
+    clearCanvasHint,
+    ...(options.proactivePipeline === undefined
+      ? {}
+      : { proactivePipeline: () => options.proactivePipeline }),
   });
-  return { c, item, run, offers: () => offers, stats };
+  return { c, item, run, offers: () => offers, stats, showCanvasHint, clearCanvasHint };
 }
 
 describe("AmbientController", () => {
@@ -57,17 +68,23 @@ describe("AmbientController", () => {
   });
 
   it("offers, accepts and runs the picked action without provider work beforehand", async () => {
-    const { c, item, run, offers, stats } = controller();
+    const { c, item, run, offers, stats, showCanvasHint, clearCanvasHint } = controller();
 
-    await c.handleSignal(createStudioSignal("runtime-error", 1, { code: "E_LOOP" })!);
+    const signal = createStudioSignal("runtime-error", 1, { code: "E_LOOP" })!;
+    await c.handleSignal(signal);
     expect(item.text).toContain("Companion");
     expect(item.command).toBe("agorixStudio.ambientOffer");
     expect(run).not.toHaveBeenCalled();
     expect(offers()).toBe(1);
+    expect(showCanvasHint).toHaveBeenCalledWith(
+      signal,
+      expect.objectContaining({ action: "offer" }),
+    );
 
     quickPick = { label: "$(debug-alt) Debug", action: "debug" };
     await c.showOffer();
     expect(run).toHaveBeenCalledWith("debug");
+    expect(clearCanvasHint).toHaveBeenCalled();
     expect(item.text).toBe("$(sparkle)");
     expect(stats).toEqual({ shown: 1, accepted: 1, dismissed: 0, ignored: 0 });
   });
@@ -95,10 +112,21 @@ describe("AmbientController", () => {
   });
 
   it("uses LAYA as an optional high-confidence veto", async () => {
+    const proactivePipeline = createStudioPipeline({
+      system1: createLayaLearningProvider({
+        decideMany: async () => [
+          { id: "generativeNeeded", value: "no", confidence: 0.99 },
+          { id: "reasoningTier", value: "deterministic", confidence: 0.99 },
+        ],
+      }),
+      route: () => ({
+        status: "deterministic",
+        reason: "ambient-pre-acceptance",
+        providerRequestAllowed: false,
+      }),
+    });
     const { c, item } = controller({
-      layaTransport: {
-        decideMany: async () => [{ id: "proactiveAction", value: "silence", confidence: 0.99 }],
-      },
+      proactivePipeline,
     });
 
     await c.handleSignal(createStudioSignal("runtime-error", 1, { code: "E_LOOP" })!);

@@ -40,6 +40,7 @@ const tests = [
         "agorixStudio.openWorldPreview",
         "agorixStudio.openWorkbench",
         "agorixStudio.exportAgorix",
+        "agorixStudio.exportEducatorEvidence",
         "agorixStudio.applyProposal",
         "agorixStudio.ambientOffer",
         "agorixStudio.companionBuild",
@@ -87,6 +88,7 @@ const tests = [
           "agorixStudio.openWorldPreview",
           "agorixStudio.openWorkbench",
           "agorixStudio.exportAgorix",
+          "agorixStudio.exportEducatorEvidence",
           "agorixStudio.applyProposal",
           "agorixStudio.ambientOffer",
           "agorixStudio.companionBuild",
@@ -207,6 +209,31 @@ const tests = [
       const selected = await vscode.commands.executeCommand("agorixStudio.selectExecutionStep", 1);
       assert.equal(selected.selectedFrameIndex, 1);
       assert.equal(selected.inspectorSteps[1].nodeId, "scripts[0]/statements[0]");
+    },
+  ],
+  [
+    "Workbench opens once beside the project and survives execution commands",
+    async () => {
+      const workbenchTabs = () =>
+        vscode.window.tabGroups.all
+          .flatMap((group) => group.tabs)
+          .filter(
+            (t) => t.input instanceof vscode.TabInputWebview && t.label === "Agorix Workbench",
+          );
+      const before = workbenchTabs().length;
+      await vscode.commands.executeCommand("agorixStudio.openWorkbench");
+      await waitFor("the Workbench tab", () => workbenchTabs().length > before);
+      const opened = workbenchTabs().length;
+      // Reopening reveals the same panel instead of creating another one.
+      await vscode.commands.executeCommand("agorixStudio.openWorkbench");
+      await sleep(300);
+      assert.equal(workbenchTabs().length, opened);
+      // Live sync: running and selecting steps with the Workbench open must not throw.
+      await vscode.commands.executeCommand("agorixStudio.reset");
+      const step = await vscode.commands.executeCommand("agorixStudio.step");
+      assert.equal(step.currentFrame.highlightedNodeId, "scripts[0]/statements[0]");
+      await vscode.commands.executeCommand("agorixStudio.selectExecutionStep", 1);
+      assert.equal(workbenchTabs().length, opened);
     },
   ],
   [

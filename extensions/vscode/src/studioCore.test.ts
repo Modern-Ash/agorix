@@ -5,6 +5,7 @@ import { createProgramProposal } from "@agorix/proposals";
 import {
   applyProposal,
   applyProposalSession,
+  createCompanionRequest,
   createCompanionTurn,
   createDeveloperContext,
   createExecutionEvidence,
@@ -18,6 +19,9 @@ import {
   createNavigationSections,
   listStudioProjections,
   openStoredProject,
+  evidenceForProgram,
+  nodeIdForProjectionLine,
+  suggestFirstStepSmall,
   openProjectionDocument,
   parseProjectFile,
   parseStoredProject,
@@ -462,5 +466,60 @@ describe("Agorix Studio first slice", () => {
     const report = formatInspectorReport(createExecutionEvidence(webCreatedProject));
     expect(report).toContain("Outcome:");
     expect(report).toContain("Step 1  scripts[0]/statements[0]  move");
+  });
+});
+
+describe("nodeIdForProjectionLine", () => {
+  it("picks the narrowest node covering a line", () => {
+    const document = {
+      text: "a\nb\nc\n",
+      mapping: { outer: { start: 0, end: 6 }, inner: { start: 2, end: 3 } },
+    } as never;
+    expect(nodeIdForProjectionLine(document, 1)).toBe("inner");
+    expect(nodeIdForProjectionLine(document, 0)).toBe("outer");
+    expect(nodeIdForProjectionLine({ text: "a", mapping: {} } as never, 0)).toBeUndefined();
+  });
+});
+
+describe("proposal evidence and alternatives", () => {
+  it("offers a shorter first step whose evidence is measured by the runtime", () => {
+    const empty = openStoredProject(
+      createStudioStarterProject({ starter: "blank", locale: "en-US" }),
+    );
+    const small = suggestFirstStepSmall(empty);
+    expect(small?.session.review.proposal.id).toBe("first-step-small");
+    const evidence = evidenceForProgram(empty, small!.review.candidateProgram);
+    expect(evidence.outcome).toBe("completed");
+    expect(evidence.stepsUsed).toBeGreaterThan(0);
+    expect(typeof evidence.reachedGoal).toBe("boolean");
+    const none = evidenceForProgram(empty, empty.stored.program);
+    expect(none.stepsUsed).toBe(0);
+    expect(none.reachedGoal).toBe(false);
+  });
+});
+
+describe("provider-backed companion turns", () => {
+  it("uses a validated provider response and marks the turn as provider-backed", () => {
+    const project = openStoredProject(
+      createStudioStarterProject({ starter: "blank", locale: "en-US" }),
+    );
+    const request = createCompanionRequest(project, "build");
+    expect(request.capability).toBe("builder");
+    const deterministic = createCompanionTurn(project, "build");
+    const turn = createCompanionTurn(project, "build", {
+      providerResponse: deterministic.response,
+    });
+    expect(turn.diagnostics.providerSelection).toBe("provider");
+    expect(turn.proposal?.review.proposal.id).toBe(deterministic.proposal?.review.proposal.id);
+    expect(deterministic.diagnostics.providerSelection).not.toBe("provider");
+  });
+
+  it("rejects a provider response that fails the safety contract", () => {
+    const project = openStoredProject(
+      createStudioStarterProject({ starter: "blank", locale: "en-US" }),
+    );
+    const good = createCompanionTurn(project, "build").response;
+    const bad = { ...good, capability: "coach" } as never;
+    expect(() => createCompanionTurn(project, "build", { providerResponse: bad })).toThrow();
   });
 });

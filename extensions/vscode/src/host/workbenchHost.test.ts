@@ -4,6 +4,7 @@ import type { ProjectProgram } from "@agorix/program-model";
 import { programSemanticHash } from "@agorix/proposals";
 import { STUDIO_PROTOCOL_VERSION as schema } from "@agorix/studio-protocol";
 import { DEFAULT_AGREEMENTS } from "@agorix/agent-workflow";
+import { createStudioSignal } from "@agorix/learning-decision-plane";
 import { createWorkbenchHost, type HostPort } from "./workbenchHost.js";
 
 const script = { kind: "script", scriptIndex: 0 } as const;
@@ -103,8 +104,12 @@ describe("workbenchHost", () => {
         to: { container: script, index: 0 },
       },
     });
-    expect(bad).toEqual([{ schema, type: "error", code: "INVALID_CHANGE" }]);
-    expect(outOfRange).toEqual([{ schema, type: "error", code: "INVALID_CHANGE" }]);
+    expect(bad).toEqual([
+      { schema, type: "error", code: "INVALID_CHANGE", reason: "NOT_A_STATEMENT" },
+    ]);
+    expect(outOfRange).toEqual([
+      { schema, type: "error", code: "INVALID_CHANGE", reason: "BLOCK_NOT_FOUND" },
+    ]);
     expect(labels).toHaveLength(0);
   });
 
@@ -176,5 +181,90 @@ describe("workbenchHost", () => {
 
     expect(await host.handle({ schema, type: "agreementsChanged", agreements })).toEqual([]);
     expect(port.updateAgreements).toHaveBeenCalledWith(agreements);
+  });
+
+  it("anchors ambient hints to Workbench blocks when the signal names a canonical node", () => {
+    const { host } = setup();
+    const { mapping } = programToWorkspace(base);
+    const entry = mapping.find((m) => m.kind === "statement")!;
+    const signal = createStudioSignal("runtime-error", 1, {
+      code: "E_LOOP",
+      nodeIds: [entry.nodeId],
+    })!;
+
+    expect(
+      host.ambientHint(signal, {
+        action: "offer",
+        reason: "runtime-error-detected",
+        generativeNeeded: "no",
+        source: "system0",
+        actions: ["debug", "explain"],
+      }),
+    ).toEqual([
+      {
+        schema,
+        type: "ambientHint",
+        hint: {
+          label: "Companion can debug this with runtime evidence.",
+          blockId: entry.blockId,
+          actions: ["debug", "explain"],
+        },
+      },
+    ]);
+    expect(host.clearAmbientHint()).toEqual([{ schema, type: "ambientHint" }]);
+  });
+});
+
+describe("syncMessage", () => {
+  it("maps canonical hub ids to block ids", () => {
+    const { host } = setup();
+    const { mapping } = programToWorkspace(base);
+    const entry = mapping.find((m) => m.kind === "statement")!;
+    expect(
+      host.syncMessage({ selectedNodeId: entry.nodeId, failedNodeId: "does/not/exist" }),
+    ).toEqual([{ schema, type: "sync", selectedBlockId: entry.blockId }]);
+  });
+
+  it("returns no sync message without a program", () => {
+    const { host } = setup(null);
+    expect(host.syncMessage({ selectedNodeId: "x" })).toEqual([]);
+  });
+});
+
+describe("stale edits", () => {
+  const insert = {
+    type: "insertBlock",
+    blockType: "motion_move",
+    to: { container: script, index: 0 },
+  } as const;
+
+  it("refuses a mutating intent whose baseHash is stale and resends a snapshot", async () => {
+    const { host, labels } = setup();
+    const out = await host.handle({ schema, type: "intent", intent: insert, baseHash: "old-hash" });
+    expect(out[0]).toEqual({ schema, type: "error", code: "STALE_EDIT" });
+    expect(out[1]).toMatchObject({ type: "workspace" });
+    expect(labels).toHaveLength(0);
+  });
+
+  it("commits when the baseHash matches the current program", async () => {
+    const { host, labels } = setup();
+    await host.handle({
+      schema,
+      type: "intent",
+      intent: insert,
+      baseHash: programSemanticHash(base),
+    });
+    expect(labels).toHaveLength(1);
+  });
+
+  it("still routes non-mutating intents with a stale baseHash", async () => {
+    const { host, port } = setup();
+    await host.handle({
+      schema,
+      type: "intent",
+      intent: { type: "revealNode", nodeId: "scripts[0]/statements[0]" },
+      baseHash: "old-hash",
+    });
+    expect(port.reveal).toHaveBeenCalled();
   });
 });

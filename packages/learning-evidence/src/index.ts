@@ -71,3 +71,15 @@ export {
   SYNTHETIC_REPORTS,
   SYNTHETIC_SCORES,
 } from "./synthetic-report.js";
+
+export {
+  EDUCATOR_EXPORT_SCHEMA_VERSION,
+  EducatorExportValidationError,
+  createEducatorEvidenceExport,
+  formatEducatorSummary,
+  validateEducatorEvidenceExport,
+  type EducatorEventInput,
+  type EducatorEvidenceExport,
+  type EducatorExportInput,
+  type EducatorProposalOrigin,
+} from "./educator-export.js";

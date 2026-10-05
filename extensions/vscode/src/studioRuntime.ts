@@ -6,6 +6,7 @@ import {
 } from "./commands/accounts.js";
 import { createStudioCompanionCommandHandlers } from "./commands/companion.js";
 import { createStudioDeveloperCommandHandlers } from "./commands/developer.js";
+import { createStudioEvidenceExportCommandHandlers } from "./commands/evidence.js";
 import { createStudioExecutionCommandHandlers } from "./commands/execution.js";
 import { createStudioProjectionCommandHandlers } from "./commands/projections.js";
 import { createStudioProjectCommandHandlers } from "./commands/projects.js";
@@ -20,8 +21,16 @@ import {
   resetProjectSessionState as resetSessionProjectState,
   updateStudioContext as updateContextFromState,
 } from "./store/lifecycle.js";
-import { disposeWorkbench } from "./host/workbenchPanel.js";
-import { disposeWorldPreview } from "./host/worldPreviewPanel.js";
+import {
+  clearWorkbenchAmbientHint,
+  disposeWorkbench,
+  publishWorkbenchAmbientHint,
+} from "./host/workbenchPanel.js";
+import { disposeWorldPreview, refreshWorldPreviewSync } from "./host/worldPreviewPanel.js";
+import { createSyncHub } from "./sync/syncHub.js";
+import { createProviderWiring } from "./providerWiring.js";
+import { registerCodeSync } from "./sync/codeSync.js";
+import { programToWorkspace } from "@agorix/block-editor";
 import { createAgentPort } from "./host/agentPort.js";
 import { registerStudioViews } from "./views/register.js";
 import { AmbientController } from "./ambient/ambientController.js";
@@ -55,6 +64,13 @@ function requireProject() {
 export { createAgentClient };
 
 export function activate(context: vscode.ExtensionContext): void {
+  const hub = createSyncHub();
+  // Assigned once AI settings and the LAYA transport exist; used lazily by the hooks below.
+  const providerWiring: { current?: ReturnType<typeof createProviderWiring> } = {};
+  const selectNode = (nodeId: string): Promise<void> => {
+    hub.select(nodeId, "runtime");
+    return Promise.resolve();
+  };
   let refreshStudioViews: () => void = () => undefined;
   let refreshExecutionViews: () => void = () => undefined;
   let refreshCompanionViews: () => void = () => undefined;
@@ -65,6 +81,14 @@ export function activate(context: vscode.ExtensionContext): void {
       refreshExecutionViews,
       refreshCompanionViews,
     });
+    try {
+      const program = session.current?.project.stored.program;
+      if (program !== undefined) {
+        hub.reconcile(programToWorkspace(program).mapping.map((entry) => entry.nodeId));
+      }
+    } catch {
+      hub.reconcile([]);
+    }
     const current = session.current?.project;
     if (current !== undefined) {
       signalAdapterRef.current?.programShape({
@@ -102,11 +126,22 @@ export function activate(context: vscode.ExtensionContext): void {
       session.executionStatus = status;
     },
     refreshExecutionViews: () => refreshExecutionViews(),
-    revealCanonicalNode: (nodeId) => projectionCommands.revealCanonicalNode(nodeId),
+    revealCanonicalNode: (nodeId) => {
+      hub.select(nodeId, "inspector");
+      return Promise.resolve();
+    },
     didRunExecution: (view) => {
       const failedNode =
         view.currentFrame?.highlightedNodeId ??
         [...view.inspectorSteps].reverse().find((step) => step.nodeId !== undefined)?.nodeId;
+      const failure = view.outcome === "budget-exceeded" ? failedNode : undefined;
+      if (view.status === "idle") {
+        hub.executionReset();
+      } else if (failure !== undefined) {
+        hub.executionFailed(failure);
+      } else if (view.currentFrame?.highlightedNodeId !== undefined) {
+        hub.executionStep(view.currentFrame.highlightedNodeId);
+      }
       signalAdapterRef.current?.runResult({
         ok: view.outcome !== "budget-exceeded",
         code: view.outcome,
@@ -132,7 +167,7 @@ export function activate(context: vscode.ExtensionContext): void {
     refreshCompanionViews: () => refreshCompanionViews(),
     afterCanonicalProgramChange,
     openProjection: projectionCommands.openProjection,
-    revealCanonicalNode: (nodeId) => projectionCommands.revealCanonicalNode(nodeId),
+    revealCanonicalNode: selectNode,
   });
   const companionCommands = createStudioCompanionCommandHandlers({
     requireProject,
@@ -140,8 +175,12 @@ export function activate(context: vscode.ExtensionContext): void {
     getExecutionEvidence: () => session.executionEvidence,
     companionTurns: () => session.companionTurns,
     refreshCompanionViews: () => refreshCompanionViews(),
-    revealCanonicalNode: (nodeId) => projectionCommands.revealCanonicalNode(nodeId),
+    revealCanonicalNode: selectNode,
     reviewProposalSession: proposalCommands.reviewProposalSession,
+    providerBuild: async (project) =>
+      providerWiring.current === undefined
+        ? { origin: "built-in", reason: "no-provider" }
+        : providerWiring.current.source().request(project, "build"),
   });
   const ambientStatusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, -1);
   const aiEnabled = (): boolean =>
@@ -161,6 +200,11 @@ export function activate(context: vscode.ExtensionContext): void {
     allowRemote: agentConfig().get("allowRemote", false),
     timeoutMs: agentConfig().get("healthTimeoutMs", 1500),
     fetch: (input, init) => fetch(input, init),
+  });
+  providerWiring.current = createProviderWiring({
+    context,
+    aiEnabled,
+    layaTransport,
   });
   const ambientController = new AmbientController({
     statusBarItem: ambientStatusItem,
@@ -191,7 +235,9 @@ export function activate(context: vscode.ExtensionContext): void {
       const companionAction: StudioCompanionAction = action === "propose" ? "build" : action;
       await companionCommands.companionCommand(companionAction);
     },
-    ...(layaTransport === undefined ? {} : { layaTransport }),
+    proactivePipeline: () => providerWiring.current?.ambientPipeline(),
+    showCanvasHint: publishWorkbenchAmbientHint,
+    clearCanvasHint: clearWorkbenchAmbientHint,
   });
   const signalAdapter = new StudioSignalAdapter({
     onSignal: (signal) => void ambientController.handleSignal(signal),
@@ -207,6 +253,7 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(ambientController, signalAdapter);
   const surfaceCommands = createStudioSurfaceCommandHandlers({
     context,
+    hub,
     requireProject,
     currentExecutionView: executionCommands.currentExecutionView,
     resetExecution: executionCommands.resetExecution,
@@ -214,7 +261,7 @@ export function activate(context: vscode.ExtensionContext): void {
     commitProgram: proposalCommands.commitProgram,
     getActiveProposal: () => session.activeProposal,
     reviewProposalSession: proposalCommands.reviewProposalSession,
-    revealCanonicalNode: (nodeId) => projectionCommands.revealCanonicalNode(nodeId),
+    revealCanonicalNode: selectNode,
     askCompanion: async (action, nodeId) => {
       await companionCommands.companionCommand(action, nodeId);
     },
@@ -233,6 +280,11 @@ export function activate(context: vscode.ExtensionContext): void {
           refreshCompanionViews();
         },
         applyActiveProposal: proposalCommands.applyActiveProposal,
+        commitProgram: proposalCommands.commitProgram,
+        providerProposal: async (project, task) =>
+          providerWiring.current === undefined
+            ? { origin: "built-in", reason: "no-provider" }
+            : providerWiring.current.source().request(project, task),
         rejectActiveProposal: proposalCommands.rejectActiveProposal,
         runAndGetResult: () => {
           const view = executionCommands.runExecution();
@@ -269,6 +321,13 @@ export function activate(context: vscode.ExtensionContext): void {
     agentEventCount: () => session.agentEvents.length,
     ambientOfferStats: () => ({ ...session.ambientOfferStats }),
   });
+  const evidenceExportCommands = createStudioEvidenceExportCommandHandlers({
+    requireProject,
+    agentEvents: () => session.agentEvents,
+    agentAgreements: () => session.agentAgreements,
+    ambientOfferStats: () => ({ ...session.ambientOfferStats }),
+    getExecutionEvidence: () => session.executionEvidence,
+  });
   const accountCommands = createStudioAccountCommandHandlers({
     context,
     agentStatusItem,
@@ -299,6 +358,25 @@ export function activate(context: vscode.ExtensionContext): void {
   refreshStudioViews = registeredViews.refreshStudioViews;
   refreshExecutionViews = registeredViews.refreshExecutionViews;
   refreshCompanionViews = registeredViews.refreshCompanionViews;
+  const unsubscribeViewSync = hub.subscribe((state, source) => {
+    refreshWorldPreviewSync(state);
+    if (source !== "inspector" && state.selectedNodeId !== undefined) {
+      registeredViews.revealInspectorNode(state.selectedNodeId);
+    }
+  });
+  context.subscriptions.push(
+    { dispose: unsubscribeViewSync },
+    registerCodeSync({
+      hub,
+      currentProjection: () => {
+        const project = session.current?.project;
+        return project === undefined
+          ? undefined
+          : openProjectionDocument(project, session.currentProjectionId);
+      },
+      revealCanonicalNode: (nodeId) => projectionCommands.revealCanonicalNode(nodeId),
+    }),
+  );
   try {
     context.subscriptions.push(
       ...registeredViews.disposables,
@@ -306,6 +384,7 @@ export function activate(context: vscode.ExtensionContext): void {
         createProject: projectCommands.createProject,
         openProject: projectCommands.openProject,
         exportAgorixProject: projectCommands.exportAgorixProject,
+        exportEducatorEvidence: evidenceExportCommands.exportEducatorEvidence,
         checkAgentHealth: accountCommands.checkAgentHealth,
         setAgentCredential: accountCommands.setAgentCredential,
         clearAgentCredential: accountCommands.clearAgentCredential,

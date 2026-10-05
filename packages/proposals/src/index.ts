@@ -589,6 +589,8 @@ export function createFirstStepProposal(input: {
   readonly baseProgram: ProjectProgram;
   readonly purpose: string;
   readonly rationale: string;
+  /** Distance of the proposed move; defaults to 10. */
+  readonly steps?: number;
 }): ProgramProposal | undefined {
   const script = input.baseProgram.scripts[0];
   if (script === undefined || script.statements.length > 0) {
@@ -602,7 +604,21 @@ export function createFirstStepProposal(input: {
     rationale: input.rationale,
     affectedNodeIds: ["scripts[0]/statements[0]"],
     operations: [
-      { type: "appendStatement", scriptIndex: 0, statement: { type: "move", steps: 10 } },
+      {
+        type: "appendStatement",
+        scriptIndex: 0,
+        statement: { type: "move", steps: input.steps ?? 10 },
+      },
     ],
   });
 }
+
+export {
+  operationEditable,
+  resolveOperationTargets,
+  selectProposalOperations,
+  type EditableField,
+  type EditableValue,
+  type OperationOverride,
+  type OperationSelection,
+} from "./selection.js";

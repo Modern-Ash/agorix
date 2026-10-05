@@ -63,6 +63,7 @@ function mutableStatementsFor(
       `scripts[${container.scriptIndex}]`,
       "expected a script",
       container.scriptIndex,
+      "BLOCK_NOT_FOUND",
     );
   }
   if (container.kind === "script") {
@@ -78,6 +79,7 @@ function mutableStatementsFor(
         `statementPath[${index}]`,
         "expected a statement block",
         index,
+        "BLOCK_NOT_FOUND",
       );
     }
     if (current.type === "control_repeat") {
@@ -90,6 +92,7 @@ function mutableStatementsFor(
         current.id,
         "expected a container block",
         current.type,
+        "NOT_A_CONTAINER",
       );
     }
   }
@@ -100,6 +103,7 @@ function mutableStatementsFor(
         current?.id ?? "statementPath",
         "expected a repeat block",
         current?.type,
+        "NOT_A_CONTAINER",
       );
     }
     const mutable = current as MutableBlockNode;
@@ -112,6 +116,7 @@ function mutableStatementsFor(
       current?.id ?? "statementPath",
       "expected an if block",
       current?.type,
+      "NOT_A_CONTAINER",
     );
   }
   const mutable = current as MutableBlockNode;
@@ -126,6 +131,7 @@ function assertStatementBlock(block: BlockNode): void {
       block.id,
       "expected a statement block",
       block.type,
+      "NOT_A_STATEMENT",
     );
   }
 }
@@ -137,6 +143,7 @@ function clampInsertionIndex(index: number, length: number): number {
       "index",
       `expected an integer between 0 and ${length}`,
       index,
+      "BAD_INDEX",
     );
   }
   return index;
@@ -173,6 +180,7 @@ export function applyWorkspaceChange(
           "from.index",
           "expected a block to move",
           change.from.index,
+          "BLOCK_NOT_FOUND",
         );
       }
       const toList = mutableStatementsFor(next, change.to.container);
@@ -188,6 +196,7 @@ export function applyWorkspaceChange(
           "location.index",
           "expected a block to edit",
           change.location.index,
+          "BLOCK_NOT_FOUND",
         );
       }
       list[change.location.index] = change.block;
@@ -202,6 +211,7 @@ export function applyWorkspaceChange(
           "location.index",
           "expected a block to delete",
           change.location.index,
+          "BLOCK_NOT_FOUND",
         );
       }
       break;

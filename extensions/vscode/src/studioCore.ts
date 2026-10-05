@@ -36,6 +36,7 @@ import {
   createProposalReview as createSharedProposalReview,
   createRepeatPatternProposal,
   createStudioProposalDiffView,
+  modifyProposal as modifySharedProposal,
   programSemanticHash,
   type StudioProposalDiffView,
   rejectProposal as rejectSharedProposal,
@@ -47,6 +48,7 @@ import { SCHEMA_VERSION, validateProgram, type ProjectProgram } from "@agorix/pr
 import {
   createWorldState,
   runProgram,
+  touchingGoal,
   type ExecutionTraceEntry,
   type RunResult,
 } from "@agorix/runtime";
@@ -185,7 +187,7 @@ export interface StudioExecutionViewState {
 export type StudioCompanionAction = "explain" | "challenge" | "debug" | "reflect" | "build";
 
 export interface StudioCompanionDiagnostics {
-  readonly providerSelection: "bypassed" | "not-configured";
+  readonly providerSelection: "bypassed" | "not-configured" | "provider";
   readonly decisionSource: "system0" | "system1" | "fallback";
   readonly reasoningTier: LearningRequirements["reasoningTier"];
   readonly contextNeed: LearningRequirements["contextNeed"];
@@ -439,6 +441,23 @@ export function nodeIdsForProjectionLines(
       return rangeStart <= end && rangeEnd >= start;
     })
     .map(([nodeId]) => nodeId);
+}
+
+/** The narrowest mapped node covering a zero-based line, or undefined when none does. */
+export function nodeIdForProjectionLine(
+  document: StudioProjectionDocument,
+  line: number,
+): string | undefined {
+  let best: { id: string; size: number } | undefined;
+  for (const [id, range] of Object.entries(document.mapping)) {
+    const first = offsetToLine(document.text, range.start);
+    const last = offsetToLine(document.text, Math.max(range.start, range.end - 1));
+    const size = range.end - range.start;
+    if (first <= line && last >= line && (best === undefined || size < best.size)) {
+      best = { id, size };
+    }
+  }
+  return best?.id;
 }
 
 export function countProgramStatements(program: ProjectProgram): number {
@@ -763,20 +782,23 @@ export function createExecutionViewState(
   };
 }
 
-export function createCompanionTurn(
+export interface StudioCompanionOptions {
+  readonly selectedNodeIds?: readonly string[];
+  readonly learnerIntent?: string;
+  readonly evidence?: StudioExecutionEvidence;
+}
+
+/** The provider-neutral request for a companion action; also what a provider is asked. */
+export function createCompanionRequest(
   project: StudioProject,
   action: StudioCompanionAction,
-  options: {
-    readonly selectedNodeIds?: readonly string[];
-    readonly learnerIntent?: string;
-    readonly evidence?: StudioExecutionEvidence;
-  } = {},
-): StudioCompanionTurn {
+  options: StudioCompanionOptions = {},
+): LearningCompanionRequest {
   const capability = companionCapability(action);
   const mission = getLocalizedFirstMission(project.stored.metadata.locale);
   const evidence = options.evidence ?? createExecutionEvidence(project.stored);
   const runtimeFacts = runtimeFactsFromEvidence(evidence);
-  const request = createLearningCompanionRequest({
+  return createLearningCompanionRequest({
     capability,
     mission: {
       id: mission.id,
@@ -804,6 +826,19 @@ export function createCompanionTurn(
       : { learnerIntent: options.learnerIntent }),
     reading: { locale: project.stored.metadata.locale ?? "en" },
   });
+}
+
+export function createCompanionTurn(
+  project: StudioProject,
+  action: StudioCompanionAction,
+  options: StudioCompanionOptions & {
+    /** A response already obtained from a provider; validated here before use. */
+    readonly providerResponse?: LearningCompanionResponse;
+  } = {},
+): StudioCompanionTurn {
+  const evidence = options.evidence ?? createExecutionEvidence(project.stored);
+  const request = createCompanionRequest(project, action, { ...options, evidence });
+  const runtimeFacts = runtimeFactsFromEvidence(evidence);
   const state = stateFromLearningCompanionRequest(request, {
     offline: true,
     explicitStrongerHelpRequested: action === "build",
@@ -813,7 +848,7 @@ export function createCompanionTurn(
     requirements.generativeNeeded === "no" || roleCanUseDeterministicFixture(request);
   const response = validateLearningCompanionSafety(
     request,
-    createDeterministicLearningCompanionResponse(request),
+    options.providerResponse ?? createDeterministicLearningCompanionResponse(request),
   );
   const proposal =
     response.capability === "builder" && response.payload.validation.status === "valid"
@@ -827,7 +862,12 @@ export function createCompanionTurn(
     message: response.message,
     selectedNodeIds: request.selectedNodeIds,
     diagnostics: {
-      providerSelection: deterministic ? "bypassed" : "not-configured",
+      providerSelection:
+        options.providerResponse !== undefined
+          ? "provider"
+          : deterministic
+            ? "bypassed"
+            : "not-configured",
       decisionSource: requirements.provenance.generativeNeeded,
       reasoningTier: requirements.reasoningTier,
       contextNeed: requirements.contextNeed,
@@ -891,6 +931,35 @@ export function applyProposalSession(
   session: StudioProposalSession,
 ): StudioProposalDecision {
   return acceptSharedProposal(acceptedProgram, session.review);
+}
+
+/** A learner-edited subset of a proposal, accepted as one `modify` decision. */
+export function modifyProposalSession(
+  acceptedProgram: ProjectProgram,
+  session: StudioProposalSession,
+  learnerReviewedProgram: ProjectProgram,
+): StudioProposalDecision {
+  return modifySharedProposal(acceptedProgram, session.review, learnerReviewedProgram);
+}
+
+export interface StudioProgramEvidence {
+  readonly stepsUsed: number;
+  readonly reachedGoal: boolean;
+  readonly outcome: RunResult["outcome"];
+}
+
+/** Runs a candidate program in the deterministic runtime; the only source of proposal evidence. */
+export function evidenceForProgram(
+  project: StudioProject,
+  program: ProjectProgram,
+): StudioProgramEvidence {
+  const mission = getLocalizedFirstMission(project.stored.metadata.locale);
+  const result = runProgram(validateProgram(program), createWorldState(mission.starterStage));
+  return {
+    stepsUsed: result.stepsUsed,
+    reachedGoal: touchingGoal(result.world),
+    outcome: result.outcome,
+  };
 }
 
 export function currentProgramHash(program: ProjectProgram): string {
@@ -1002,6 +1071,22 @@ export function suggestRepeat(project: StudioProject): StudioSuggestion | undefi
     purpose: "Write the repeated steps once with repeat",
     rationale:
       "The same steps appear several times in a row. A repeat does the same with less code.",
+  });
+  if (proposal === undefined) {
+    return undefined;
+  }
+  const session = createProposalSession(project, proposal);
+  return { session, review: session.review, diff: session.diff };
+}
+
+/** A real alternative to the default first step: a shorter move. Same safety, different trade-off. */
+export function suggestFirstStepSmall(project: StudioProject): StudioSuggestion | undefined {
+  const proposal = createFirstStepProposal({
+    id: "first-step-small",
+    baseProgram: project.stored.program,
+    purpose: "Try a shorter movement step",
+    rationale: "A shorter Move block is easier to follow one step at a time.",
+    steps: 5,
   });
   if (proposal === undefined) {
     return undefined;

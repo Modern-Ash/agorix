@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import type { StudioExecutionViewState } from "../studioCore.js";
+import type { SyncState } from "../sync/syncHub.js";
 import { createNonce } from "../webview/framework.js";
 import { onValidatedMessage } from "../webview/host.js";
 import { renderWorldPreview, worldPreviewInboundSchemas } from "../webview/worldPreview.js";
@@ -11,7 +12,7 @@ let latestView: StudioExecutionViewState | undefined;
 /** Opens (or reveals) Mundo Agorix, the World Preview. Webview messages are validated by the shared framework. */
 export function openWorldPreviewPanel(
   view: StudioExecutionViewState,
-  revealNode: (nodeId: string) => unknown,
+  selectNode: (nodeId: string) => unknown,
 ): void {
   latestView = view;
   if (worldPreviewPanel === undefined) {
@@ -32,7 +33,7 @@ export function openWorldPreviewPanel(
         if (message.type === "agorix-ready") {
           refreshWorldPreview(latestView, false);
         } else {
-          await revealNode(message.nodeId);
+          await selectNode(message.nodeId);
         }
       },
     });
@@ -61,6 +62,10 @@ export function refreshWorldPreview(
     );
   }
   void worldPreviewPanel.webview.postMessage({ type: "agorix-frame", view });
+}
+
+export function refreshWorldPreviewSync(state: SyncState): void {
+  void worldPreviewPanel?.webview.postMessage({ type: "agorix-sync", ...state });
 }
 
 export function disposeWorldPreview(): void {

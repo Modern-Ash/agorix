@@ -21,6 +21,7 @@ export type WorkflowEvent =
   | { readonly type: "planAccepted"; readonly taskCount: number }
   | { readonly type: "proposalRequested" }
   | { readonly type: "proposalDecided"; readonly decision: "accepted" | "rejected" | "modified" }
+  | { readonly type: "prePredictionMade" }
   | { readonly type: "predictionMade" }
   | { readonly type: "predictionSkipped" }
   | { readonly type: "runObserved"; readonly completed: boolean }
@@ -80,15 +81,23 @@ export function advance(state: WorkflowState, event: WorkflowEvent): AdvanceResu
         return INVALID;
       }
       if (event.decision === "rejected") {
-        return ok({ ...state, proposalRequested: false, rejections: state.rejections + 1 });
+        return ok({
+          ...state,
+          proposalRequested: false,
+          predicted: false,
+          rejections: state.rejections + 1,
+        });
       }
       return ok({
         ...state,
-        stage: "predict",
+        stage: state.predicted ? "run" : "predict",
         proposalRequested: false,
-        predicted: false,
         explained: false,
       });
+    case "prePredictionMade":
+      return state.stage === "proposal" && state.proposalRequested && !state.predicted
+        ? ok({ ...state, predicted: true })
+        : INVALID;
     case "predictionMade":
     case "predictionSkipped":
       return state.stage === "predict"
@@ -115,6 +124,7 @@ export function advance(state: WorkflowState, event: WorkflowEvent): AdvanceResu
         stage: "proposal",
         taskIndex: nextIndex,
         explained,
+        predicted: false,
         completed: false,
         rejections: 0,
       });

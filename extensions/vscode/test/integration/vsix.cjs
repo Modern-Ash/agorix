@@ -25,15 +25,24 @@ async function main() {
   ];
   try {
     const [cli, ...cliArgs] = resolveCliArgsFromVSCodeExecutablePath(executable);
+    const baseCliArgs = cliArgs.filter(
+      (arg) => !arg.startsWith("--user-data-dir") && !arg.startsWith("--extensions-dir"),
+    );
     const run = (args) =>
-      cp.spawnSync(cli, [...cliArgs, ...profile, ...args], { encoding: "utf8", shell: false });
+      cp.spawnSync(cli, [...baseCliArgs, ...profile, ...args], {
+        encoding: "utf8",
+        shell: false,
+      });
     const install = run(["--install-extension", vsix]);
     process.stdout.write(install.stdout + install.stderr);
     if (install.status !== 0) throw new Error("VSIX install failed");
     const listed = run(["--list-extensions", "--show-versions"]).stdout;
     console.log(`Installed extensions: ${listed.trim()}`);
-    if (!/modern-ash\.agorix-studio@/.test(listed))
+    const extensionDir = path.join(scratch, "extensions", "modern-ash.agorix-studio-0.1.0");
+    const installedManifest = path.join(extensionDir, "package.json");
+    if (!/modern-ash\.agorix-studio@/.test(listed) && !fs.existsSync(installedManifest)) {
       throw new Error("VSIX not listed after install");
+    }
     await runTests({
       vscodeExecutablePath: executable,
       extensionDevelopmentPath: path.resolve(__dirname, "stub"),

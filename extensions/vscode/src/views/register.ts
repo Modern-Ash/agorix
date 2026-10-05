@@ -9,6 +9,7 @@ import { PROJECTION_SCHEME } from "../store/session.js";
 import { refreshWorldPreview } from "../host/worldPreviewPanel.js";
 import {
   CompanionHistoryProvider,
+  ExecutionInspectorItem,
   ExecutionInspectorProvider,
   ProjectionDocumentProvider,
   StudioTreeProvider,
@@ -30,6 +31,7 @@ export interface StudioViewRegistration {
   refreshStudioViews(): void;
   refreshExecutionViews(): void;
   refreshCompanionViews(): void;
+  revealInspectorNode(nodeId: string): void;
 }
 
 export function registerStudioViews(
@@ -53,6 +55,9 @@ export function registerStudioViews(
     new StudioTreeProvider("developer", options.getCurrentProject),
   ];
 
+  const inspectorView = vscode.window.createTreeView("agorixStudio.inspector", {
+    treeDataProvider: inspectorProvider,
+  });
   const refreshStudioViews = (): void => {
     for (const provider of treeProviders) {
       provider.refresh();
@@ -75,9 +80,7 @@ export function registerStudioViews(
           treeDataProvider: provider,
         }),
       ),
-      vscode.window.createTreeView("agorixStudio.inspector", {
-        treeDataProvider: inspectorProvider,
-      }),
+      inspectorView,
       vscode.window.createTreeView("agorixStudio.companionHistory", {
         treeDataProvider: companionProvider,
       }),
@@ -85,5 +88,11 @@ export function registerStudioViews(
     refreshStudioViews,
     refreshExecutionViews,
     refreshCompanionViews,
+    revealInspectorNode: (nodeId) => {
+      const step = options.currentExecutionView()?.inspectorSteps.find((s) => s.nodeId === nodeId);
+      if (step !== undefined) {
+        void inspectorView.reveal(new ExecutionInspectorItem(step), { select: true, focus: false });
+      }
+    },
   };
 }

@@ -1,5 +1,8 @@
 import type { LayaBatchTransport } from "./laya.js";
 import type { StudioSignal } from "./studio-signals.js";
+import { createStudioSignal } from "./studio-signals.js";
+import type { LearningDecisionState } from "./index.js";
+import type { StudioPipeline } from "./studio-pipeline.js";
 
 export type ProactiveSignalKind =
   "repeat-pattern" | "first-step" | "runtime-error" | "stalled" | "repeated-error";
@@ -242,6 +245,73 @@ export async function decideProactiveWithLaya(
     // Laya is optional; System-0 stays authoritative.
   }
   return base;
+}
+
+export interface StudioProactivePipelineOptions {
+  readonly pipeline: StudioPipeline;
+  readonly studioSignal?: StudioSignal;
+  readonly programHash?: string;
+  readonly locale?: string;
+  readonly state?: LearningDecisionState;
+}
+
+/**
+ * Routes proactive offers through the Studio decision pipeline. The proactive offer itself stays
+ * deterministic and content-free; the pipeline may only make the agent quieter before acceptance.
+ */
+export async function decideProactiveWithStudioPipeline(
+  signal: ProactiveSignal,
+  options: StudioProactivePipelineOptions,
+): Promise<ProactiveDecision> {
+  const base = decideProactiveSuggestion(signal);
+  if (base.action === "silence") return base;
+  const studioSignal =
+    options.studioSignal ??
+    createStudioSignal(signal.kind, 0, {
+      occurrences: signal.occurrences,
+      ...(signal.code === undefined ? {} : { code: signal.code }),
+      ...(signal.seconds === undefined ? {} : { seconds: signal.seconds }),
+    });
+  if (studioSignal === undefined) return base;
+  try {
+    const decision = await options.pipeline.decide({
+      signal: studioSignal,
+      state: options.state ?? stateFromProactiveSignal(signal),
+      ...(options.programHash === undefined ? {} : { programHash: options.programHash }),
+      ...(options.locale === undefined ? {} : { locale: options.locale }),
+    });
+    if (decision.degradedReason !== undefined) {
+      return {
+        ...base,
+        action: "silence",
+        reason: `studio-pipeline-${decision.degradedReason}`,
+        source: decision.source === "system1" ? "laya" : "system0",
+      };
+    }
+    if (decision.source === "system1" && decision.requirements.generativeNeeded === "no") {
+      return { ...base, action: "silence", reason: "laya-judged-not-now", source: "laya" };
+    }
+  } catch {
+    // Pipeline diagnostics are advisory; proactive System-0 remains available offline.
+  }
+  return base;
+}
+
+function stateFromProactiveSignal(signal: ProactiveSignal): LearningDecisionState {
+  const debugging = signal.kind === "runtime-error" || signal.kind === "repeated-error";
+  const builder =
+    signal.kind === "first-step" || signal.kind === "repeat-pattern" || signal.kind === "stalled";
+  return {
+    capability: debugging ? "debugger" : builder ? "builder" : "coach",
+    scaffoldLevel: 1,
+    scaffoldHistoryLength: 0,
+    hasLearnerIntent: false,
+    hasRuntime: debugging,
+    runtimeFactCount: debugging ? 1 : 0,
+    selectedNodeCount: 1,
+    offline: signal.aiEnabled === false,
+    explicitStrongerHelpRequested: false,
+  };
 }
 
 /** Decline/ignore memory. Pure data; the host stores it per session. */

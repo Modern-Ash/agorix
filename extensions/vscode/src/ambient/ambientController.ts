@@ -1,13 +1,14 @@
 import * as vscode from "vscode";
 import {
   EMPTY_PROACTIVE_MEMORY,
-  decideProactiveWithLaya,
+  decideProactiveSuggestion,
+  decideProactiveWithStudioPipeline,
   proactiveSignalFromStudio,
   recordProactiveOutcome,
-  type LayaBatchTransport,
   type ProactiveDecision,
   type ProactiveMemory,
   type ProactiveOfferAction,
+  type StudioPipeline,
   type StudioSignal,
 } from "@agorix/learning-decision-plane";
 import { ambientIndicatorView, type AmbientIndicatorState } from "./indicator.js";
@@ -22,7 +23,9 @@ export interface AmbientControllerOptions {
   readonly budgetRemaining: () => number | undefined;
   readonly recordOffer: (outcome: "shown" | "accepted" | "dismissed" | "ignored") => void;
   readonly runCompanionAction: (action: ProactiveOfferAction) => Promise<unknown>;
-  readonly layaTransport?: LayaBatchTransport;
+  readonly proactivePipeline?: () => StudioPipeline | undefined;
+  readonly showCanvasHint?: (signal: StudioSignal, decision: ProactiveDecision) => void;
+  readonly clearCanvasHint?: () => void;
 }
 
 interface ActiveOffer {
@@ -72,6 +75,7 @@ export class AmbientController implements vscode.Disposable {
       );
       this.#opts.recordOffer("ignored");
       this.#offer = undefined;
+      this.#opts.clearCanvasHint?.();
     }
     const programId = this.#opts.programId();
     if (programId === undefined) {
@@ -93,14 +97,24 @@ export class AmbientController implements vscode.Disposable {
       this.#render("quiet");
       return;
     }
-    const decision = await decideProactiveWithLaya(proactive, this.#opts.layaTransport);
+    const pipeline = this.#opts.proactivePipeline?.();
+    const decision =
+      pipeline === undefined
+        ? decideProactiveSuggestion(proactive)
+        : await decideProactiveWithStudioPipeline(proactive, {
+            pipeline,
+            studioSignal: signal,
+            programHash: programId,
+          });
     if (decision.action === "offer") {
       this.#offer = { signal, decision };
       this.#memory = recordProactiveOutcome(this.#memory, programId, "offered", signal.sequence);
       this.#opts.recordOffer("shown");
+      this.#opts.showCanvasHint?.(signal, decision);
       this.#render("available", decision);
       return;
     }
+    this.#opts.clearCanvasHint?.();
     this.#render("quiet");
   }
 
@@ -123,6 +137,7 @@ export class AmbientController implements vscode.Disposable {
         offer.signal.sequence,
       );
       this.#offer = undefined;
+      this.#opts.clearCanvasHint?.();
       this.#render("quiet");
       return;
     }
@@ -134,6 +149,7 @@ export class AmbientController implements vscode.Disposable {
       offer.signal.sequence,
     );
     this.#offer = undefined;
+    this.#opts.clearCanvasHint?.();
     this.#render("working");
     try {
       await this.#opts.runCompanionAction(picked.action);
@@ -145,6 +161,7 @@ export class AmbientController implements vscode.Disposable {
   clear(): void {
     this.#offer = undefined;
     this.#memory = EMPTY_PROACTIVE_MEMORY;
+    this.#opts.clearCanvasHint?.();
     this.#render(this.#opts.aiEnabled() ? "quiet" : "off");
   }
 

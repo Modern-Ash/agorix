@@ -323,6 +323,45 @@ describe("block-editor", () => {
     ).toThrow(BlockEditorAdapterError);
   });
 
+  it("explains why a placement is illegal with a reason", () => {
+    const reasonOf = (change: Parameters<typeof applyWorkspaceChange>[1]) => {
+      try {
+        applyWorkspaceChange(createStarterWorkspace(), change);
+      } catch (error) {
+        return error instanceof BlockEditorAdapterError ? error.reason : "not-adapter-error";
+      }
+      return "no-error";
+    };
+    const script = { kind: "script", scriptIndex: 0 } as const;
+    expect(
+      reasonOf({
+        type: "addBlock",
+        container: script,
+        index: 0,
+        block: createDefaultBlock("sensing_touching_goal", "g"),
+      }),
+    ).toBe("NOT_A_STATEMENT");
+    expect(
+      reasonOf({
+        type: "addBlock",
+        container: script,
+        index: 99,
+        block: createDefaultBlock("motion_move", "m"),
+      }),
+    ).toBe("BAD_INDEX");
+    expect(reasonOf({ type: "deleteBlock", location: { container: script, index: 5 } })).toBe(
+      "BLOCK_NOT_FOUND",
+    );
+    expect(
+      reasonOf({
+        type: "addBlock",
+        container: { kind: "repeatBody", scriptIndex: 0, statementPath: [0] },
+        index: 0,
+        block: createDefaultBlock("motion_move", "m"),
+      }),
+    ).toBe("BLOCK_NOT_FOUND");
+  });
+
   it("returns structured adapter errors for malformed workspaces", () => {
     const workspace: BlockWorkspaceSnapshot = {
       scripts: [

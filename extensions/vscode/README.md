@@ -14,6 +14,7 @@ release journeys and product acceptance gate.
 | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
 | `Agorix Studio: Open Project`                    | Opens a portable `.agorix` file or legacy stored-project JSON and shows its code projection in an editor.                      |
 | `Agorix Studio: Export Portable .agorix Project` | Writes a portable `.agorix` envelope without account, revision, token, undo/redo, or history state.                            |
+| `Agorix Studio: Export Educator Evidence`        | After explicit confirmation, writes local JSON and Markdown summaries of one session's non-PII Companion evidence counts.      |
 | `Agorix Studio: Open Account Project`            | Opens an authenticated server project when `agorixStudio.serverUrl` is configured and a token is stored in SecretStorage.      |
 | `Agorix Studio: Save Account Project`            | Saves with the expected server revision and offers reload/export/cancel on conflict; it never silently overwrites newer data.  |
 | `Agorix Studio: Show Execution Evidence`         | Runs the shared runtime and prints the Execution Inspector (step, node, before/after world) to an Output channel.              |
@@ -36,7 +37,7 @@ Account integration is optional. Tokens are saved only through VS Code `SecretSt
 
 ## Install
 
-From a VSIX (not published to the Marketplace yet):
+From a VSIX:
 
 ```sh
 pnpm install
@@ -45,6 +46,16 @@ code --install-extension extensions/vscode/dist/agorix-studio.vsix
 ```
 
 Then run `Agorix Studio: Open Project` and pick a stored project JSON or `.agorix` file, for example `extensions/vscode/test/integration/fixtures/repeat.agorix.json`.
+
+## Publish
+
+The VSIX is built as a bundled extension (`vsce package --no-dependencies`), so Open VSX publishing uses the already-packaged file:
+
+```sh
+OVSX_PAT=... pnpm --filter agorix-studio publish:open-vsx
+```
+
+The repository also has a manual `Open VSX publish` GitHub Actions workflow. It requires typing `publish` and providing the `OVSX_PAT` secret; normal CI only packages and smoke-tests the VSIX.
 
 ## Develop
 

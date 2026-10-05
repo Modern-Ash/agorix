@@ -7,7 +7,7 @@ import {
   type DropTarget,
   type Intent,
 } from "@agorix/interaction-core";
-import type { GhostChange } from "@agorix/studio-protocol";
+import type { AmbientHintView, GhostChange } from "@agorix/studio-protocol";
 import { dropPointFor, toRows } from "./blockView.js";
 import { chordFromEvent, dragPayload, parseDragPayload } from "./drag.js";
 
@@ -84,18 +84,41 @@ function ghostKind(ghosts: readonly GhostChange[] | undefined, blockId: string) 
   return ghosts?.find((ghost) => ghost.blockId === blockId)?.kind;
 }
 
+/** Visible, anchored explanation of a suggested change on a block. */
+export interface BlockHints {
+  readonly hints: Readonly<Record<string, string>>;
+  readonly skipped: readonly string[];
+}
+
+export interface SyncView {
+  readonly selectedBlockId?: string;
+  readonly executingBlockId?: string;
+  readonly failedBlockId?: string;
+}
+
 export function Canvas({
   workspace,
   onIntent,
   ghosts,
+  sync,
+  hints,
+  ambientHint,
 }: {
   readonly workspace: BlockWorkspaceSnapshot;
   readonly onIntent: (intent: Intent) => void;
   readonly ghosts?: readonly GhostChange[] | undefined;
+  readonly sync?: SyncView | undefined;
+  readonly hints?: BlockHints | undefined;
+  readonly ambientHint?: AmbientHintView | undefined;
 }) {
   const addedGhosts = (ghosts ?? []).filter((ghost) => ghost.kind === "added");
   return (
     <section className="canvas" aria-label="Program">
+      {ambientHint !== undefined && ambientHint.blockId === undefined ? (
+        <div className="ambient-hint" role="note">
+          {ambientHint.label}
+        </div>
+      ) : null}
       {toRows(workspace).map((row, key) => {
         if (row.kind === "script") {
           return (
@@ -115,6 +138,12 @@ export function Canvas({
           });
           if (intent !== undefined) onIntent(intent);
         };
+        const ambient = ambientHint?.blockId === block.id ? ambientHint.label : undefined;
+        const hint = hints?.hints[block.id] ?? ambient;
+        const isSkipped = hints?.skipped.includes(block.id) === true;
+        const isSel = sync?.selectedBlockId === block.id;
+        const isExec = sync?.executingBlockId === block.id;
+        const isFail = sync?.failedBlockId === block.id;
         const fields = Object.entries(block.fields)
           .map(([name, value]) => `${name}: ${String(value)}`)
           .join(", ");
@@ -132,13 +161,18 @@ export function Canvas({
                 : ghostKind(ghosts, block.id) === undefined
                   ? ""
                   : " ghost-changed"
-            }`}
+            }${isSel ? " sel" : ""}${isExec ? " exec" : ""}${isFail ? " fail" : ""}${isSkipped ? " ghost-skipped" : ""}`}
+            aria-current={isSel ? "true" : undefined}
             aria-description={
-              ghostKind(ghosts, block.id) === "removed"
-                ? "Suggestion would remove this block"
-                : ghostKind(ghosts, block.id) === undefined
-                  ? undefined
-                  : "Suggestion would change this block"
+              isFail
+                ? "This block failed when the program ran"
+                : hint !== undefined
+                  ? `${ambient === undefined ? "Suggestion" : "Companion hint"}: ${hint}${isSkipped ? " (skipped)" : ""}`
+                  : ghostKind(ghosts, block.id) === "removed"
+                    ? "Suggestion would remove this block"
+                    : ghostKind(ghosts, block.id) === undefined
+                      ? undefined
+                      : "Suggestion would change this block"
             }
             onDragStart={(event) => {
               event.dataTransfer.setData(
@@ -155,10 +189,22 @@ export function Canvas({
               }
             }}
           >
-            <span className="label">
+            <span
+              className="label"
+              data-testid="block-label"
+              onClick={() => onIntent({ type: "revealNode", nodeId: block.id })}
+            >
               {block.label}
               {fields === "" ? "" : ` (${fields})`}
             </span>
+            {hint === undefined ? null : (
+              <span className={ambient === undefined ? "hint-badge" : "hint-badge ambient"}>
+                {ambient === undefined ? (isSkipped ? "Skipped: " : "Suggested: ") : ""}
+                {hint}
+              </span>
+            )}
+            {isFail ? <span className="sync-badge fail-badge">Failed here</span> : null}
+            {isExec ? <span className="sync-badge">Running</span> : null}
             <button
               type="button"
               aria-label={`Move ${block.label} up`}
