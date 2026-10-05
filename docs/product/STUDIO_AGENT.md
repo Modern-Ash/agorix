@@ -376,7 +376,6 @@ No provider call occurs merely because an ambient signal was detected.
 ## Not yet implemented
 
 - Mission Spec editing.
-- Stage-based density changes.
 - Full community learning-content packaging.
 - Release evidence for the complete Zero-Cost / Offline AI Journey.
 

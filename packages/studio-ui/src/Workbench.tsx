@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useState } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import type { BlockType, BlockWorkspaceSnapshot } from "@agorix/block-editor";
 import type { Intent } from "@agorix/interaction-core";
 import {
@@ -9,6 +9,7 @@ import {
 import type { HostBridge } from "./bridge.js";
 import { AgentZone, Canvas, type SyncView } from "./Canvas.js";
 import { Palette } from "./Palette.js";
+import { densityAnnouncement } from "./density.js";
 import { AgentPanel } from "./AgentPanel.js";
 import {
   copyFor,
@@ -58,6 +59,8 @@ export function Workbench({
   const copy = copyFor(copyLocale);
   const [workspace, setWorkspace] = useState<BlockWorkspaceSnapshot | undefined>();
   const [status, setStatus] = useState("");
+  const [layout, setLayout] = useState<WorkbenchDensity>(density);
+  const layoutRef = useRef<WorkbenchDensity>(density);
   const [programHash, setProgramHash] = useState<string | undefined>();
   const [selection, setSelection] = useState<SelectionState>({ include: [], overrides: {} });
   const [sync, setSync] = useState<SyncView>({});
@@ -67,6 +70,13 @@ export function Workbench({
   useEffect(() => {
     const unsubscribe = bridge.subscribe((message) => {
       dispatchAgent(message);
+      if (message.type === "density") {
+        setLayout(message.value);
+        const note = densityAnnouncement(layoutRef.current, message, copy);
+        layoutRef.current = message.value;
+        if (note !== undefined) setStatus(note);
+        return;
+      }
       if (message.type === "sync") {
         setSync({
           ...(message.selectedBlockId === undefined
@@ -123,7 +133,7 @@ export function Workbench({
   };
 
   return (
-    <div className="workbench" data-density={density}>
+    <div className="workbench" data-density={layout}>
       <Palette onAdd={add} copy={copy} />
       <main>
         {workspace === undefined ? (

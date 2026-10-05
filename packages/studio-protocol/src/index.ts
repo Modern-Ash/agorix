@@ -27,6 +27,33 @@ import { isSafeId, parseAnchorRef, type Intent } from "@agorix/interaction-core"
 export const STUDIO_PROTOCOL_VERSION = "agorix/studio-protocol/v1";
 export const PACKAGE_NAME = "@agorix/studio-protocol";
 
+/** How the Workbench is laid out: spacing and size only; no information is ever hidden. */
+export type Density = "comfortable" | "compact";
+export type DensityPreference = Density | "auto";
+
+/** Canvas edits in one session after which `auto` becomes compact. */
+export const AUTO_DENSITY_EDITS = 8;
+
+export interface ExperienceFacts {
+  /** Successful learner edits on the canvas this session. */
+  readonly edits: number;
+  /** The program has reached the goal in the deterministic runtime at least once this session. */
+  readonly reachedGoal: boolean;
+}
+
+/**
+ * Comfortable for first use, compact once the learner has shown fluency. A pinned preference
+ * always wins. The rule uses only local, non-personal facts.
+ */
+export function resolveDensity(preference: DensityPreference, facts: ExperienceFacts): Density {
+  if (preference !== "auto") return preference;
+  return facts.reachedGoal || facts.edits >= AUTO_DENSITY_EDITS ? "compact" : "comfortable";
+}
+
+export function normalizeDensityPreference(value: unknown): DensityPreference {
+  return value === "comfortable" || value === "compact" ? value : "auto";
+}
+
 export type ChangeRefusalReason = PlacementReason | "WOULD_BREAK_PROGRAM" | "UNKNOWN";
 const REFUSAL_REASONS: readonly ChangeRefusalReason[] = [
   "NOT_A_CONTAINER",
@@ -193,6 +220,13 @@ export type HostMessage =
     }
   | { readonly schema: Schema; readonly type: "agreements"; readonly agreements: AgentAgreements }
   | { readonly schema: Schema; readonly type: "ambientHint"; readonly hint?: AmbientHintView }
+  | {
+      readonly schema: Schema;
+      readonly type: "density";
+      readonly value: Density;
+      /** "auto" when the layout changed by itself, "setting" when the learner chose it. */
+      readonly reason: "auto" | "setting";
+    }
   | {
       readonly schema: Schema;
       readonly type: "sync";
@@ -940,6 +974,11 @@ export function parseHostMessage(value: unknown): HostMessage | undefined {
         ? { schema, type: "error", code: "INVALID_CHANGE", reason: reason as ChangeRefusalReason }
         : undefined;
     }
+    case "density":
+      return (value["value"] === "comfortable" || value["value"] === "compact") &&
+        (value["reason"] === "auto" || value["reason"] === "setting")
+        ? { schema, type: "density", value: value["value"], reason: value["reason"] }
+        : undefined;
     case "sync": {
       const out: { selectedBlockId?: string; executingBlockId?: string; failedBlockId?: string } =
         {};

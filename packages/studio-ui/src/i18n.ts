@@ -24,6 +24,8 @@ export const COPY = {
     moveUp: (label: string) => `Move ${label} up`,
     moveDown: (label: string) => `Move ${label} down`,
     deleteBlock: (label: string) => `Delete ${label}`,
+    densityCompactNote:
+      "The layout is now more compact. Nothing is hidden. You can change this in the Studio settings.",
     up: "Up",
     down: "Down",
     delete: "Delete",
@@ -156,6 +158,8 @@ export const COPY = {
     moveUp: (label: string) => `Subir ${label}`,
     moveDown: (label: string) => `Bajar ${label}`,
     deleteBlock: (label: string) => `Eliminar ${label}`,
+    densityCompactNote:
+      "El diseño ahora es más compacto. No se oculta nada. Podés cambiarlo en la configuración de Studio.",
     up: "Subir",
     down: "Bajar",
     delete: "Eliminar",

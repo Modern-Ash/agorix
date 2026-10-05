@@ -152,11 +152,12 @@
         "agorixStudio.workbench.density": {
           "type": "string",
           "enum": [
+            "auto",
             "comfortable",
             "compact"
           ],
-          "default": "comfortable",
-          "markdownDescription": "Workbench UI density. Compact reduces spacing for IDE-style repeated editing while keeping controls keyboard accessible."
+          "default": "auto",
+          "markdownDescription": "Workbench UI density. `auto` starts comfortable and turns compact after a few edits or once the program reaches the goal; it only changes spacing and size and never hides anything. `compact` reduces spacing for IDE-style repeated editing while keeping controls keyboard accessible."
         }
       }
     },
