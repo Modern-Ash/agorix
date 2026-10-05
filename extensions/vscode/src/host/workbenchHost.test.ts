@@ -32,6 +32,7 @@ function setup(initial: ProjectProgram | null = base) {
     },
     openProposalReview: vi.fn(async () => undefined),
     reveal: vi.fn(async () => undefined),
+    askAgent: vi.fn(async () => undefined),
     updateAgreements: vi.fn(),
   };
   let n = 0;
@@ -123,7 +124,8 @@ describe("workbenchHost", () => {
         type: "intent",
         intent: { type: "askAgent", verb: "explain", about: { kind: "node", id: "n" } },
       }),
-    ).toEqual([{ schema, type: "agentUnavailable" }]);
+    ).toEqual([]);
+    expect(port.askAgent).toHaveBeenCalledWith("explain", "n");
     expect(
       await host.handle({ schema, type: "decideProposal", proposalId: "p", decision: "accepted" }),
     ).toEqual([]);
@@ -134,7 +136,34 @@ describe("workbenchHost", () => {
         intent: { type: "highlightNodes", nodeIds: ["n"] },
       }),
     ).toEqual([]);
+    expect(port.reveal).toHaveBeenCalledWith("n");
     expect(labels).toHaveLength(0);
+  });
+
+  it("resolves Workbench block ids to canonical node ids for agent and reveal sync", async () => {
+    const { host, port } = setup();
+    const { workspace } = programToWorkspace(base);
+    const blockId = workspace.scripts[0]?.statements[0]?.id;
+    expect(blockId).toBeDefined();
+
+    await host.handle({
+      schema,
+      type: "intent",
+      intent: { type: "revealNode", nodeId: blockId! },
+    });
+    await host.handle({
+      schema,
+      type: "intent",
+      intent: { type: "highlightNodes", nodeIds: [blockId!] },
+    });
+    await host.handle({
+      schema,
+      type: "intent",
+      intent: { type: "askAgent", verb: "debug", about: { kind: "node", id: blockId! } },
+    });
+
+    expect(port.reveal).toHaveBeenCalledWith("scripts[0]/statements[0]");
+    expect(port.askAgent).toHaveBeenCalledWith("debug", "scripts[0]/statements[0]");
   });
 
   it("stores Workbench agent agreements through the host port", async () => {

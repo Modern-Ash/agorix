@@ -4,6 +4,13 @@ import type { OpenProject } from "../store/session.js";
 
 export interface StudioDeveloperCommandPort {
   requireProject(): OpenProject | undefined;
+  agentEventCount(): number;
+  ambientOfferStats(): {
+    readonly shown: number;
+    readonly accepted: number;
+    readonly dismissed: number;
+    readonly ignored: number;
+  };
 }
 
 export interface StudioDeveloperCommandHandlers {
@@ -58,9 +65,15 @@ export function createStudioDeveloperCommandHandlers(
     if (open === undefined) {
       return undefined;
     }
-    const context = createDeveloperContext(open.project.stored, {
-      ...(open.remote === undefined ? {} : { revision: open.remote.revision }),
-    });
+    const context = {
+      ...createDeveloperContext(open.project.stored, {
+        ...(open.remote === undefined ? {} : { revision: open.remote.revision }),
+      }),
+      agentEvidence: {
+        agentEventCount: port.agentEventCount(),
+        ambientOffers: port.ambientOfferStats(),
+      },
+    };
     const text = JSON.stringify(context, null, 2);
     output.clear();
     output.appendLine(text);

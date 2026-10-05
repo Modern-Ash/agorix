@@ -1,9 +1,10 @@
 import {
   BlockEditorAdapterError,
   applyWorkspaceChange,
+  getCanonicalNodeIdForBlock,
   programToWorkspace,
 } from "@agorix/block-editor";
-import { intentToChange } from "@agorix/interaction-core";
+import { intentToChange, type AgentAnchorRef, type AgentVerb } from "@agorix/interaction-core";
 import { ProgramValidationError, type ProjectProgram } from "@agorix/program-model";
 import { programSemanticHash } from "@agorix/proposals";
 import { STUDIO_PROTOCOL_VERSION, type HostMessage, type UiMessage } from "@agorix/studio-protocol";
@@ -14,6 +15,7 @@ export interface HostPort {
   commit(program: ProjectProgram, label: string): Promise<void>;
   openProposalReview(proposalId: string): Promise<void>;
   reveal(nodeId: string): Promise<void>;
+  askAgent(verb: AgentVerb, nodeId: string | undefined): Promise<void>;
   updateAgreements(agreements: AgentAgreements): void;
 }
 
@@ -45,6 +47,23 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
     }
   }
 
+  function canonicalNodeId(id: string | undefined): string | undefined {
+    if (id === undefined) return undefined;
+    const program = port.getProgram();
+    if (program === undefined) return id;
+    try {
+      const { mapping } = programToWorkspace(program);
+      return getCanonicalNodeIdForBlock(mapping, id) ?? id;
+    } catch (error) {
+      if (isKnownFailure(error)) return id;
+      throw error;
+    }
+  }
+
+  function nodeIdForAnchor(anchor: AgentAnchorRef): string | undefined {
+    return anchor.kind === "node" ? canonicalNodeId(anchor.id) : undefined;
+  }
+
   async function handle(message: UiMessage): Promise<HostMessage[]> {
     switch (message.type) {
       case "ready":
@@ -52,7 +71,7 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
       case "intent": {
         const intent = message.intent;
         if (intent.type === "revealNode") {
-          await port.reveal(intent.nodeId);
+          await port.reveal(canonicalNodeId(intent.nodeId) ?? intent.nodeId);
           return [];
         }
         if (intent.type === "reviewProposal") {
@@ -60,7 +79,15 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
           return [];
         }
         if (intent.type === "askAgent") {
-          return [{ schema, type: "agentUnavailable" }];
+          await port.askAgent(intent.verb, nodeIdForAnchor(intent.about));
+          return [];
+        }
+        if (intent.type === "highlightNodes") {
+          const nodeId = canonicalNodeId(intent.nodeIds[0]);
+          if (nodeId !== undefined) {
+            await port.reveal(nodeId);
+          }
+          return [];
         }
         const program = port.getProgram();
         if (program === undefined) {

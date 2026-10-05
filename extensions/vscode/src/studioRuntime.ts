@@ -179,8 +179,11 @@ export function activate(context: vscode.ExtensionContext): void {
         ? canOffer(session.agentAgreements, kind)
         : true,
     budgetRemaining,
-    recordOffer: () => {
-      session.ambientOffersUsed += 1;
+    recordOffer: (outcome) => {
+      if (outcome === "shown") {
+        session.ambientOffersUsed += 1;
+      }
+      session.ambientOfferStats[outcome] += 1;
       const remaining = budgetRemaining();
       session.ambientBudgetCapped = remaining !== undefined && remaining <= 0;
     },
@@ -212,6 +215,9 @@ export function activate(context: vscode.ExtensionContext): void {
     getActiveProposal: () => session.activeProposal,
     reviewProposalSession: proposalCommands.reviewProposalSession,
     revealCanonicalNode: (nodeId) => projectionCommands.revealCanonicalNode(nodeId),
+    askCompanion: async (action, nodeId) => {
+      await companionCommands.companionCommand(action, nodeId);
+    },
     updateAgentAgreements: (agreements) => {
       session.agentAgreements = agreements;
       if (!aiEnabled()) {
@@ -258,7 +264,11 @@ export function activate(context: vscode.ExtensionContext): void {
     requireProject,
     openProjection: projectionCommands.openProjection,
   });
-  const developerCommands = createStudioDeveloperCommandHandlers({ requireProject });
+  const developerCommands = createStudioDeveloperCommandHandlers({
+    requireProject,
+    agentEventCount: () => session.agentEvents.length,
+    ambientOfferStats: () => ({ ...session.ambientOfferStats }),
+  });
   const accountCommands = createStudioAccountCommandHandlers({
     context,
     agentStatusItem,
