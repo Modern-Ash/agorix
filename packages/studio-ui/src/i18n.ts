@@ -24,6 +24,16 @@ export const COPY = {
     moveUp: (label: string) => `Move ${label} up`,
     moveDown: (label: string) => `Move ${label} down`,
     deleteBlock: (label: string) => `Delete ${label}`,
+    blockPosition: (label: string, position: number, count: number, level: number) =>
+      `${label}, ${position} of ${count}, level ${level}`,
+    keyboardHelp:
+      "Arrow keys move between blocks. Alt+Up or Alt+Down moves a block. Delete removes it. Enter shows it in the code.",
+    movedAnnouncement: (label: string, position: number, count: number) =>
+      `Moved ${label} to position ${position} of ${count}`,
+    deletedAnnouncement: (label: string) => `Deleted ${label}`,
+    addedAnnouncement: (label: string) => `Added ${label}`,
+    alreadyFirst: "Already the first block here",
+    alreadyLast: "Already the last block here",
     up: "Up",
     down: "Down",
     delete: "Delete",
@@ -156,6 +166,16 @@ export const COPY = {
     moveUp: (label: string) => `Subir ${label}`,
     moveDown: (label: string) => `Bajar ${label}`,
     deleteBlock: (label: string) => `Eliminar ${label}`,
+    blockPosition: (label: string, position: number, count: number, level: number) =>
+      `${label}, ${position} de ${count}, nivel ${level}`,
+    keyboardHelp:
+      "Las flechas se mueven entre bloques. Alt+Arriba o Alt+Abajo mueve un bloque. Suprimir lo elimina. Enter lo muestra en el código.",
+    movedAnnouncement: (label: string, position: number, count: number) =>
+      `Se movió ${label} a la posición ${position} de ${count}`,
+    deletedAnnouncement: (label: string) => `Se eliminó ${label}`,
+    addedAnnouncement: (label: string) => `Se agregó ${label}`,
+    alreadyFirst: "Ya es el primer bloque de este lugar",
+    alreadyLast: "Ya es el último bloque de este lugar",
     up: "Subir",
     down: "Bajar",
     delete: "Eliminar",

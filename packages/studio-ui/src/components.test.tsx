@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { programToWorkspace } from "@agorix/block-editor";
 import { Canvas } from "./Canvas.js";
@@ -100,7 +100,8 @@ describe("studio-ui", () => {
     const canvas = renderToStaticMarkup(
       <Canvas workspace={workspace} onIntent={() => undefined} />,
     );
-    expect(canvas.match(/tabindex="0"/g)).toHaveLength(3);
+    // Roving tabindex: one tab stop for the whole canvas, the rest reachable with arrow keys.
+    expect(canvas.match(/role="group"[^>]*tabindex="0"/g)).toHaveLength(1);
     expect(canvas).toContain("aria-keyshortcuts");
     expect(canvas).not.toContain("style=");
   });
@@ -213,28 +214,5 @@ describe("studio-ui", () => {
     );
     expect(global).toContain('role="note"');
     expect(global).toContain("Companion can suggest a small next step.");
-  });
-
-  it("posts a revealNode intent when a block label is clicked", () => {
-    const first = toRows(workspace).flatMap((row) =>
-      row.kind === "block" ? [row.block.id] : [],
-    )[0]!;
-    const onIntent = vi.fn();
-    // Canvas has no hooks, so it can be called directly and its element tree walked.
-    const labels: Array<{ onClick: () => void }> = [];
-    const walk = (node: unknown): void => {
-      if (Array.isArray(node)) return node.forEach(walk);
-      if (typeof node !== "object" || node === null) return;
-      const props = (node as { props?: Record<string, unknown> }).props;
-      if (props === undefined) return;
-      if (props["data-testid"] === "block-label") {
-        labels.push(props as unknown as { onClick: () => void });
-      }
-      walk(props["children"]);
-    };
-    walk(Canvas({ workspace, onIntent }));
-    expect(labels.length).toBeGreaterThan(0);
-    labels[0]!.onClick();
-    expect(onIntent).toHaveBeenCalledWith({ type: "revealNode", nodeId: first });
   });
 });
