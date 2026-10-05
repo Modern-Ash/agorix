@@ -476,3 +476,35 @@ describe("agentHost asynchronous suggestions", () => {
     });
   });
 });
+
+describe("agentHost evidence events", () => {
+  it("records modified decisions, alternative choices and the proposal origin", async () => {
+    const ctx = setup();
+    const view = {
+      proposalId: "alt",
+      purpose: "p",
+      rationale: "r",
+      changes: [],
+      origin: "provider" as const,
+    };
+    ctx.port.proposeFor = async () => ({ ...view, proposalId: "first-step" });
+    ctx.port.chooseAlternative = () => view;
+    ctx.port.applySelection = async () => "applied";
+    await ctx.send({ type: "stateIntent", text: "make it move" });
+    await ctx.send({ type: "acceptPlan" });
+    await ctx.send({ type: "requestProposal" });
+    await ctx.send({ type: "chooseAlternative", proposalId: "alt" });
+    await ctx.send({
+      type: "decideProposal",
+      proposalId: "alt",
+      decision: "modified",
+      selection: { include: [0] },
+    });
+    expect(ctx.state.events).toEqual([
+      expect.objectContaining({ type: "proposalRequested", origin: "provider" }),
+      expect.objectContaining({ type: "alternativeChosen", origin: "provider" }),
+      expect.objectContaining({ type: "proposalModified", origin: "provider" }),
+    ]);
+    expect(JSON.stringify(ctx.state.events)).not.toMatch(/purpose|rationale|make it move/);
+  });
+});

@@ -141,10 +141,15 @@ export function createAgentHost(port: AgentPort): AgentHost {
     return hadPending;
   }
 
-  function record(type: AgentEvent["type"]): void {
+  function record(type: AgentEvent["type"], origin?: "provider" | "built-in"): void {
     const task = currentTask();
     if (task !== undefined) {
-      port.record({ type, taskId: task.id, scaffoldLevel: level() });
+      port.record({
+        type,
+        taskId: task.id,
+        scaffoldLevel: level(),
+        ...(origin === undefined ? {} : { origin }),
+      });
     }
   }
 
@@ -177,7 +182,7 @@ export function createAgentHost(port: AgentPort): AgentHost {
       return [cleared(), wf()];
     }
     pending = view;
-    record("proposalRequested");
+    record("proposalRequested", view.origin);
     return agreements.requirePredictionBeforeAccept
       ? [wf(), proposalMsg(view), predictionMsg()]
       : [wf(), proposalMsg(view)];
@@ -211,9 +216,10 @@ export function createAgentHost(port: AgentPort): AgentHost {
     }
     if (decision === "rejected") {
       port.rejectPending();
+      const rejectedOrigin = pending.origin;
       pending = undefined;
       answer = undefined;
-      record("proposalRejected");
+      record("proposalRejected", rejectedOrigin);
       step({ type: "proposalDecided", decision: "rejected" });
       return [cleared(), wf()];
     }
@@ -235,13 +241,14 @@ export function createAgentHost(port: AgentPort): AgentHost {
         },
       ];
     }
+    const decidedOrigin = pending.origin;
     pending = undefined;
     if (outcome === "stale") {
       answer = undefined;
       step({ type: "proposalDecided", decision: "rejected" });
       return [{ schema, type: "error", code: "STALE_PROPOSAL" }, cleared(), wf()];
     }
-    record("proposalAccepted");
+    record(selection === undefined ? "proposalAccepted" : "proposalModified", decidedOrigin);
     step({ type: "proposalDecided", decision: "accepted" });
     lastHash = port.programHash();
     return stageNow() === "predict" ? [cleared(), wf(), predictionMsg()] : [cleared(), wf()];
@@ -308,6 +315,7 @@ export function createAgentHost(port: AgentPort): AgentHost {
         const view = port.chooseAlternative(message.proposalId);
         if (view === undefined) return [];
         pending = view;
+        record("alternativeChosen", view.origin);
         return [proposalMsg(view)];
       }
       case "previewSelection": {

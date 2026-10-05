@@ -5,6 +5,8 @@ export type AgentEventType =
   | "proposalRequested"
   | "proposalAccepted"
   | "proposalRejected"
+  | "proposalModified"
+  | "alternativeChosen"
   | "predictionMatched"
   | "predictionMismatched"
   | "predictionSkipped"
@@ -16,6 +18,8 @@ export interface AgentEvent {
   readonly type: AgentEventType;
   readonly taskId: AgentTaskId;
   readonly scaffoldLevel: AssistanceLevel;
+  /** Where the proposal came from; an enum, never provider or model identity. */
+  readonly origin?: "provider" | "built-in";
 }
 
 export const MAX_AGENT_EVENTS = 200;
