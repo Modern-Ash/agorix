@@ -68,3 +68,42 @@ describe("agent-workflow", () => {
     expect(canOffer(off, "stalled")).toBe(false);
   });
 });
+
+describe("pre-accept prediction", () => {
+  const atProposal = () =>
+    run(createWorkflow("supervised"), [
+      { type: "intentStated" },
+      { type: "planAccepted", taskCount: 2 },
+      { type: "proposalRequested" },
+    ]);
+
+  it("lets accept skip the predict stage once predicted, and resets it on reject", () => {
+    const predicted = run(atProposal(), [
+      { type: "prePredictionMade" },
+      { type: "proposalDecided", decision: "accepted" },
+    ]);
+    expect(predicted.stage).toBe("run");
+    expect(predicted.predicted).toBe(true);
+    const rejected = run(atProposal(), [
+      { type: "prePredictionMade" },
+      { type: "proposalDecided", decision: "rejected" },
+    ]);
+    expect(rejected.predicted).toBe(false);
+    expect(advance(createWorkflow("supervised"), { type: "prePredictionMade" }).ok).toBe(false);
+    expect(
+      advance(run(atProposal(), [{ type: "prePredictionMade" }]), { type: "prePredictionMade" }).ok,
+    ).toBe(false);
+  });
+
+  it("does not carry a prediction into the next task", () => {
+    const next = run(atProposal(), [
+      { type: "prePredictionMade" },
+      { type: "proposalDecided", decision: "accepted" },
+      { type: "runObserved", completed: true },
+      { type: "compared" },
+      { type: "explained" },
+    ]);
+    expect(next.stage).toBe("proposal");
+    expect(next.predicted).toBe(false);
+  });
+});

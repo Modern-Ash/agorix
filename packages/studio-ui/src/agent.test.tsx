@@ -145,3 +145,59 @@ describe("clarification ui", () => {
     expect(stale.notice).toMatch(/plan was dropped/);
   });
 });
+
+describe("prediction before accept ui", () => {
+  const gatedAgreements = { ...DEFAULT_AGREEMENTS, requirePredictionBeforeAccept: true };
+  const withProposal = (predicted: boolean): AgentUiState => {
+    let ui = stageState("proposal");
+    ui = reduceAgentUi(ui, { schema, type: "agreements", agreements: gatedAgreements });
+    ui = reduceAgentUi(ui, {
+      schema,
+      type: "proposal",
+      proposalId: "p1",
+      purpose: "p",
+      rationale: "r",
+      changes: [],
+    });
+    ui = reduceAgentUi(ui, {
+      schema,
+      type: "prediction",
+      questionId: "reaches-goal",
+      options: ["yes", "no"],
+    });
+    return predicted && ui.workflow !== undefined
+      ? { ...ui, workflow: { ...ui.workflow, predicted: true } }
+      : ui;
+  };
+
+  it("disables Accept and asks for a prediction until one is made", () => {
+    const before = renderToStaticMarkup(
+      <AgentPanel state={withProposal(false)} send={() => undefined} />,
+    );
+    expect(before).toContain("Before you accept");
+    expect(before).toMatch(/<button[^>]*disabled=""[^>]*>Accept/);
+    const after = renderToStaticMarkup(
+      <AgentPanel state={withProposal(true)} send={() => undefined} />,
+    );
+    expect(after).not.toContain("Before you accept");
+    expect(after).not.toMatch(/<button[^>]*disabled=""[^>]*>Accept/);
+  });
+
+  it("keeps Accept enabled and hides the prompt when the flag is off", () => {
+    let ui = stageState("proposal");
+    ui = reduceAgentUi(ui, {
+      schema,
+      type: "proposal",
+      proposalId: "p1",
+      purpose: "p",
+      rationale: "r",
+      changes: [],
+    });
+    const markup = renderToStaticMarkup(<AgentPanel state={ui} send={() => undefined} />);
+    expect(markup).not.toContain("Before you accept");
+    expect(markup).not.toMatch(/<button[^>]*disabled=""[^>]*>Accept/);
+    expect(
+      reduceAgentUi(ui, { schema, type: "error", code: "PREDICTION_REQUIRED" }).notice,
+    ).toMatch(/prediction first/);
+  });
+});

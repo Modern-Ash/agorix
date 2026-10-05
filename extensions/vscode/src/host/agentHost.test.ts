@@ -226,3 +226,62 @@ describe("agentHost clarification and stale plans", () => {
     expect(types(host.onProgramChanged())).toEqual(["error", "workflow"]);
   });
 });
+
+describe("agentHost prediction gating", () => {
+  const gated = { ...DEFAULT_AGREEMENTS, requirePredictionBeforeAccept: true };
+
+  async function toProposal(options: Parameters<typeof setup>[0] = {}) {
+    const ctx = setup(options);
+    await ctx.send({ type: "agreementsChanged", agreements: gated });
+    await ctx.send({ type: "stateIntent", text: "make it move" });
+    await ctx.send({ type: "acceptPlan" });
+    return ctx;
+  }
+
+  it("sends the prediction with the proposal and blocks Accept until predicted", async () => {
+    const { send, state } = await toProposal({ reached: true });
+    expect(types(await send({ type: "requestProposal" }))).toEqual([
+      "workflow",
+      "proposal",
+      "prediction",
+    ]);
+    const blocked = await send({
+      type: "decideProposal",
+      proposalId: "first-step",
+      decision: "accepted",
+    });
+    expect(blocked).toEqual([{ schema, type: "error", code: "PREDICTION_REQUIRED" }]);
+    expect(state.applied).toBe(0);
+    expect(await send({ type: "skipPrediction" })).toEqual([]);
+    expect(types(await send({ type: "predict", answer: "yes" }))).toEqual(["workflow"]);
+    expect(
+      types(await send({ type: "decideProposal", proposalId: "first-step", decision: "accepted" })),
+    ).toEqual(["proposalCleared", "workflow"]);
+    expect(state.applied).toBe(1);
+    const run = await send({ type: "run" });
+    expect(run?.[1]).toMatchObject({ type: "comparison", predicted: "yes", result: "matched" });
+  });
+
+  it("lets the learner reject without predicting, and a rejection clears the prediction", async () => {
+    const { send, state } = await toProposal();
+    await send({ type: "requestProposal" });
+    await send({ type: "predict", answer: "no" });
+    await send({ type: "decideProposal", proposalId: "first-step", decision: "rejected" });
+    expect(state.rejected).toBe(1);
+    await send({ type: "requestProposal" });
+    expect(
+      await send({ type: "decideProposal", proposalId: "first-step", decision: "accepted" }),
+    ).toEqual([{ schema, type: "error", code: "PREDICTION_REQUIRED" }]);
+  });
+
+  it("keeps the current predict-after-accept flow when the flag is off", async () => {
+    const { send } = setup();
+    await send({ type: "stateIntent", text: "make it move" });
+    await send({ type: "acceptPlan" });
+    expect(types(await send({ type: "requestProposal" }))).toEqual(["workflow", "proposal"]);
+    expect(await send({ type: "predict", answer: "yes" })).toEqual([]);
+    expect(
+      types(await send({ type: "decideProposal", proposalId: "first-step", decision: "accepted" })),
+    ).toEqual(["proposalCleared", "workflow", "prediction"]);
+  });
+});

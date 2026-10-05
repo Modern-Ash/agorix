@@ -80,6 +80,14 @@ export function createAgentHost(port: AgentPort): AgentHost {
     rationale: view.rationale,
     changes: view.changes,
   });
+  const predictionMsg = (): HostMessage => ({
+    schema,
+    type: "prediction",
+    questionId: "reaches-goal",
+    options: ["yes", "no"],
+  });
+  // `workflow` is reassigned by step(); this defeats control-flow narrowing after guards.
+  const stageNow = () => workflow.stage;
   const level = () => effectiveAssistance(agreements, 4);
   const currentTask = (): AgentTask | undefined => tasks[workflow.taskIndex];
 
@@ -126,7 +134,9 @@ export function createAgentHost(port: AgentPort): AgentHost {
     }
     pending = view;
     record("proposalRequested");
-    return [wf(), proposalMsg(view)];
+    return agreements.requirePredictionBeforeAccept
+      ? [wf(), proposalMsg(view), predictionMsg()]
+      : [wf(), proposalMsg(view)];
   }
 
   async function decide(
@@ -144,9 +154,17 @@ export function createAgentHost(port: AgentPort): AgentHost {
     if (decision === "modified") {
       return [];
     }
+    if (
+      decision === "accepted" &&
+      agreements.requirePredictionBeforeAccept &&
+      !workflow.predicted
+    ) {
+      return [{ schema, type: "error", code: "PREDICTION_REQUIRED" }];
+    }
     if (decision === "rejected") {
       port.rejectPending();
       pending = undefined;
+      answer = undefined;
       record("proposalRejected");
       step({ type: "proposalDecided", decision: "rejected" });
       return [cleared(), wf()];
@@ -160,17 +178,14 @@ export function createAgentHost(port: AgentPort): AgentHost {
     }
     pending = undefined;
     if (outcome === "stale") {
+      answer = undefined;
       step({ type: "proposalDecided", decision: "rejected" });
       return [{ schema, type: "error", code: "STALE_PROPOSAL" }, cleared(), wf()];
     }
     record("proposalAccepted");
     step({ type: "proposalDecided", decision: "accepted" });
     lastHash = port.programHash();
-    return [
-      cleared(),
-      wf(),
-      { schema, type: "prediction", questionId: "reaches-goal", options: ["yes", "no"] },
-    ];
+    return stageNow() === "predict" ? [cleared(), wf(), predictionMsg()] : [cleared(), wf()];
   }
 
   function stalePlan(): HostMessage[] {
@@ -230,6 +245,13 @@ export function createAgentHost(port: AgentPort): AgentHost {
       case "decideProposal":
         return decide(message.proposalId, message.decision);
       case "predict":
+        if (workflow.stage === "proposal") {
+          if (!agreements.requirePredictionBeforeAccept || !step({ type: "prePredictionMade" })) {
+            return [];
+          }
+          answer = message.answer;
+          return [wf()];
+        }
         if (!step({ type: "predictionMade" })) return [];
         answer = message.answer;
         return [wf()];

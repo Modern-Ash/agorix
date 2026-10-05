@@ -268,3 +268,38 @@ describe("clarification messages", () => {
     expect(parseHostMessage({ schema, type: "error", code: "STALE_PLAN" })).toBeDefined();
   });
 });
+
+describe("requirePredictionBeforeAccept agreements", () => {
+  const base = {
+    aiEnabled: true,
+    assistanceCeiling: 4,
+    mode: "supervised",
+    proactive: {
+      "runtime-error": true,
+      stalled: true,
+      "repeated-error": true,
+      "repeat-pattern": true,
+      "first-step": true,
+    },
+  };
+  it("defaults to false when absent and validates the flag when present", () => {
+    expect(parseHostMessage({ schema, type: "agreements", agreements: base })).toMatchObject({
+      agreements: { requirePredictionBeforeAccept: false },
+    });
+    expect(
+      parseHostMessage({
+        schema,
+        type: "agreements",
+        agreements: { ...base, requirePredictionBeforeAccept: true },
+      }),
+    ).toMatchObject({ agreements: { requirePredictionBeforeAccept: true } });
+    expect(
+      parseHostMessage({
+        schema,
+        type: "agreements",
+        agreements: { ...base, requirePredictionBeforeAccept: "yes" },
+      }),
+    ).toBeUndefined();
+    expect(parseHostMessage({ schema, type: "error", code: "PREDICTION_REQUIRED" })).toBeDefined();
+  });
+});

@@ -91,7 +91,12 @@ export type HostMessage =
       readonly schema: Schema;
       readonly type: "error";
       readonly code:
-        "INVALID_CHANGE" | "INVALID_PROGRAM" | "STALE_PROPOSAL" | "STALE_EDIT" | "STALE_PLAN";
+        | "INVALID_CHANGE"
+        | "INVALID_PROGRAM"
+        | "STALE_PROPOSAL"
+        | "STALE_EDIT"
+        | "STALE_PLAN"
+        | "PREDICTION_REQUIRED";
       /** Why a change was refused, only with INVALID_CHANGE. */
       readonly reason?: ChangeRefusalReason;
     }
@@ -278,6 +283,10 @@ function parseAgreements(value: unknown): AgentAgreements | undefined {
   ) {
     return undefined;
   }
+  const requirePrediction = value["requirePredictionBeforeAccept"];
+  if (requirePrediction !== undefined && typeof requirePrediction !== "boolean") {
+    return undefined;
+  }
   const flags = {} as Record<OfferableSignal, boolean>;
   for (const signal of SIGNALS) {
     const flag = proactive[signal];
@@ -290,6 +299,7 @@ function parseAgreements(value: unknown): AgentAgreements | undefined {
     aiEnabled: value["aiEnabled"],
     assistanceCeiling: ceiling as AssistanceLevel,
     mode: mode as WorkflowMode,
+    requirePredictionBeforeAccept: requirePrediction ?? false,
     proactive: flags,
   };
 }
@@ -671,7 +681,8 @@ export function parseHostMessage(value: unknown): HostMessage | undefined {
         value["code"] !== "INVALID_PROGRAM" &&
         value["code"] !== "STALE_PROPOSAL" &&
         value["code"] !== "STALE_EDIT" &&
-        value["code"] !== "STALE_PLAN"
+        value["code"] !== "STALE_PLAN" &&
+        value["code"] !== "PREDICTION_REQUIRED"
       ) {
         return undefined;
       }

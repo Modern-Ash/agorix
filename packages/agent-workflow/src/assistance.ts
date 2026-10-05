@@ -11,6 +11,8 @@ export interface AgentAgreements {
   /** Highest hint-ladder level the agent may use (PEDAGOGY.md levels 0-5). */
   readonly assistanceCeiling: AssistanceLevel;
   readonly mode: WorkflowMode;
+  /** When true, a learner must predict before accepting an AI proposal. Never affects manual edits. */
+  readonly requirePredictionBeforeAccept: boolean;
   readonly proactive: Readonly<Record<OfferableSignal, boolean>>;
 }
 
@@ -18,6 +20,7 @@ export const DEFAULT_AGREEMENTS: AgentAgreements = {
   aiEnabled: true,
   assistanceCeiling: 4,
   mode: "supervised",
+  requirePredictionBeforeAccept: false,
   proactive: {
     "runtime-error": true,
     stalled: true,

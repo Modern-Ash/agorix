@@ -77,6 +77,14 @@ function Agreements({
         </select>
       </label>
       <label>
+        <input
+          type="checkbox"
+          checked={agreements.requirePredictionBeforeAccept}
+          onChange={(event) => change({ requirePredictionBeforeAccept: event.target.checked })}
+        />{" "}
+        Predict before I accept a suggestion
+      </label>
+      <label>
         Help level up to{" "}
         <select
           value={agreements.assistanceCeiling}
@@ -106,6 +114,8 @@ export function AgentPanel({
   const post: Send = (message) =>
     send({ schema: STUDIO_PROTOCOL_VERSION, ...message } as UiMessage);
   const stage = state.workflow?.stage;
+  const needsPrediction =
+    state.agreements.requirePredictionBeforeAccept && state.workflow?.predicted !== true;
   const showIntent = stage === undefined || stage === "intent" || stage === "done";
   return (
     <aside className="agent" aria-label="Agent">
@@ -180,8 +190,24 @@ export function AgentPanel({
           <p>{state.proposal.purpose}</p>
           <p>{state.proposal.rationale}</p>
           <p>Dashed blocks show what would change.</p>
+          {needsPrediction && state.prediction !== undefined && (
+            <div aria-label="Prediction before accepting">
+              <p>Before you accept: will the character reach the goal?</p>
+              {state.prediction.includes("yes") && (
+                <button type="button" onClick={() => post({ type: "predict", answer: "yes" })}>
+                  Yes
+                </button>
+              )}
+              {state.prediction.includes("no") && (
+                <button type="button" onClick={() => post({ type: "predict", answer: "no" })}>
+                  No
+                </button>
+              )}
+            </div>
+          )}
           <button
             type="button"
+            disabled={needsPrediction}
             onClick={() =>
               post({
                 type: "decideProposal",

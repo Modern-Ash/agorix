@@ -76,7 +76,7 @@ export function reduceAgentUi(state: AgentUiState, message: HostMessage): AgentU
         },
       };
     case "proposalCleared":
-      return without(state, "proposal");
+      return without(state, "proposal", "prediction");
     case "prediction":
       return { ...state, prediction: message.options };
     case "comparison":
@@ -98,6 +98,9 @@ export function reduceAgentUi(state: AgentUiState, message: HostMessage): AgentU
         notice: "The agent is off right now. Everything else still works.",
       };
     case "error":
+      if (message.code === "PREDICTION_REQUIRED") {
+        return { ...state, notice: "Make a prediction first, then accept the suggestion." };
+      }
       if (message.code === "STALE_PLAN") {
         return {
           ...without(state, "tasks", "clarify"),
