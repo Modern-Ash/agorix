@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import { MAX_AGENT_EVENTS, type AgentAgreements, type AgentEvent } from "@agorix/agent-workflow";
 import { getLocalizedFirstMission } from "@agorix/curriculum";
 import { createEducatorEvidenceExport, formatEducatorSummary } from "@agorix/learning-evidence";
+import { touchingGoal } from "@agorix/runtime";
 import {
   createExecutionEvidence,
   currentProgramHash,
@@ -63,7 +64,8 @@ export function createStudioEvidenceExportCommandHandlers(
         requirePredictionBeforeAccept: agreements.requirePredictionBeforeAccept,
       },
       ambientOffers: port.ambientOfferStats(),
-      completedByRuntime: runtimeEvidence.result.outcome === "completed",
+      // A run that merely finishes ("completed") is not the goal; the runtime world is the fact.
+      completedByRuntime: touchingGoal(runtimeEvidence.result.world),
     });
     const json = `${JSON.stringify(data, null, 2)}\n`;
     const summary = formatEducatorSummary(data);

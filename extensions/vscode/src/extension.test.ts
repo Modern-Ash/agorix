@@ -726,7 +726,8 @@ describe("Studio extension wiring", () => {
       scope: "single-session",
       mission: { id: "first-mission.reach-goal" },
       proposals: { requested: 1, rejected: 1 },
-      completion: { completedByRuntime: true },
+      // The program was never changed, so it does not reach the goal even though the run finishes.
+      completion: { completedByRuntime: false },
     });
     expect(summary).toContain("counts above are not a grade");
     expect(`${exportedText}\n${summary}`).not.toMatch(
@@ -734,19 +735,27 @@ describe("Studio extension wiring", () => {
     );
   });
 
-  it("does not overwrite an adjacent educator evidence summary", async () => {
-    await openFile("/p/evidence-overwrite.json", stored([]));
-    files.set("/p/educator-evidence.md", new TextEncoder().encode("keep me"));
-
+  it("does not report the goal as reached when the program only finishes running", async () => {
+    await openFile("/p/short.json", stored([{ type: "move", steps: 5 }]));
+    await handlers.get("agorixStudio.run")!();
     choice = "Export";
-    savePicked = { fsPath: "/p/educator-evidence.json" };
+    savePicked = { fsPath: "/p/short-evidence.json" };
     await handlers.get("agorixStudio.exportEducatorEvidence")!();
-
-    expect(new TextDecoder().decode(files.get("/p/educator-evidence.json"))).toContain(
-      "agorix/educator-evidence/v1",
+    const exported = JSON.parse(new TextDecoder().decode(files.get("/p/short-evidence.json")));
+    expect(exported.completion).toEqual({ completedByRuntime: false });
+    expect(new TextDecoder().decode(files.get("/p/short-evidence.md"))).toContain(
+      "reached the goal when run: no",
     );
-    expect(new TextDecoder().decode(files.get("/p/educator-evidence.md"))).toBe("keep me");
-    expect(shown.at(-1)).toBe("Exported educator evidence JSON.");
+  });
+
+  it("reports the goal as reached when the run touches it", async () => {
+    await openFile("/p/goal.json", stored([{ type: "move", steps: 160 }]));
+    await handlers.get("agorixStudio.run")!();
+    choice = "Export";
+    savePicked = { fsPath: "/p/goal-evidence.json" };
+    await handlers.get("agorixStudio.exportEducatorEvidence")!();
+    const exported = JSON.parse(new TextDecoder().decode(files.get("/p/goal-evidence.json")));
+    expect(exported.completion).toEqual({ completedByRuntime: true });
   });
 
   it("cancels educator evidence export before writing files", async () => {
