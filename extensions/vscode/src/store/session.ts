@@ -55,6 +55,12 @@ export interface StudioSessionState {
   agentAgreements: AgentAgreements;
   ambientOffersUsed: number;
   ambientBudgetCapped: boolean;
+  ambientOfferStats: {
+    shown: number;
+    accepted: number;
+    dismissed: number;
+    ignored: number;
+  };
   readonly companionTurns: StudioCompanionTurn[];
   readonly agentEvents: AgentEvent[];
   readonly undoStack: StoredSnapshot[];
@@ -72,6 +78,7 @@ export function createStudioSessionState(): StudioSessionState {
     agentAgreements: DEFAULT_AGREEMENTS,
     ambientOffersUsed: 0,
     ambientBudgetCapped: false,
+    ambientOfferStats: { shown: 0, accepted: 0, dismissed: 0, ignored: 0 },
     companionTurns: [],
     agentEvents: [],
     undoStack: [],
@@ -87,6 +94,7 @@ export function clearProjectSession(state: StudioSessionState): void {
   state.agentAgreements = DEFAULT_AGREEMENTS;
   state.ambientOffersUsed = 0;
   state.ambientBudgetCapped = false;
+  state.ambientOfferStats = { shown: 0, accepted: 0, dismissed: 0, ignored: 0 };
   state.companionTurns.length = 0;
   state.agentEvents.length = 0;
   state.undoStack.length = 0;

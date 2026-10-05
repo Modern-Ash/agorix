@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import type { AgentAgreements } from "@agorix/agent-workflow";
+import type { AgentVerb } from "@agorix/interaction-core";
 import type { ProjectProgram } from "@agorix/program-model";
 import type { StudioExecutionViewState, StudioProposalSession } from "../studioCore.js";
 import { openWorkbenchPanel, refreshWorkbench } from "../host/workbenchPanel.js";
@@ -17,6 +18,7 @@ export interface StudioSurfaceCommandPort {
   getActiveProposal(): StudioProposalSession | undefined;
   reviewProposalSession(proposal: StudioProposalSession): Promise<void>;
   revealCanonicalNode(nodeId: string): Promise<void>;
+  askCompanion(action: AgentVerb, nodeId: string | undefined): Promise<void>;
   updateAgentAgreements(agreements: AgentAgreements): void;
   agentPort(): AgentPort;
 }
@@ -59,6 +61,7 @@ export function createStudioSurfaceCommandHandlers(
           }
         },
         reveal: (nodeId) => port.revealCanonicalNode(nodeId),
+        askAgent: (verb, nodeId) => port.askCompanion(verb, nodeId),
         updateAgreements: port.updateAgentAgreements,
       },
       port.agentPort(),

@@ -30,6 +30,7 @@ function controller(
   const item = statusItem();
   const run = vi.fn(async () => undefined);
   let offers = 0;
+  const stats = { shown: 0, accepted: 0, dismissed: 0, ignored: 0 };
   const c = new AmbientController({
     statusBarItem: item as never,
     programId: () => "p1",
@@ -38,13 +39,16 @@ function controller(
     canOfferSignal: () => options.canOffer ?? true,
     budgetRemaining: () =>
       options.budget === undefined ? undefined : Math.max(0, options.budget - offers),
-    recordOffer: () => {
-      offers += 1;
+    recordOffer: (outcome) => {
+      stats[outcome] += 1;
+      if (outcome === "shown") {
+        offers += 1;
+      }
     },
     runCompanionAction: run,
     ...(options.layaTransport === undefined ? {} : { layaTransport: options.layaTransport }),
   });
-  return { c, item, run, offers: () => offers };
+  return { c, item, run, offers: () => offers, stats };
 }
 
 describe("AmbientController", () => {
@@ -53,7 +57,7 @@ describe("AmbientController", () => {
   });
 
   it("offers, accepts and runs the picked action without provider work beforehand", async () => {
-    const { c, item, run, offers } = controller();
+    const { c, item, run, offers, stats } = controller();
 
     await c.handleSignal(createStudioSignal("runtime-error", 1, { code: "E_LOOP" })!);
     expect(item.text).toContain("Companion");
@@ -65,10 +69,11 @@ describe("AmbientController", () => {
     await c.showOffer();
     expect(run).toHaveBeenCalledWith("debug");
     expect(item.text).toBe("$(sparkle)");
+    expect(stats).toEqual({ shown: 1, accepted: 1, dismissed: 0, ignored: 0 });
   });
 
   it("records decline and suppresses the same program during cooldown", async () => {
-    const { c, item } = controller();
+    const { c, item, stats } = controller();
     await c.handleSignal(createStudioSignal("runtime-error", 10, { code: "E_LOOP" })!);
     quickPick = { label: "Not now", action: "decline" };
     await c.showOffer();
@@ -76,15 +81,17 @@ describe("AmbientController", () => {
     await c.handleSignal(createStudioSignal("runtime-error", 11, { code: "E_LOOP" })!);
     expect(item.command).toBeUndefined();
     expect(item.text).toBe("$(sparkle)");
+    expect(stats).toEqual({ shown: 1, accepted: 0, dismissed: 1, ignored: 0 });
   });
 
   it("counts an old offer as ignored when a newer signal arrives", async () => {
-    const { c, item } = controller();
+    const { c, item, stats } = controller();
     await c.handleSignal(createStudioSignal("runtime-error", 1, { code: "E_LOOP" })!);
     await c.handleSignal(createStudioSignal("runtime-error", 2, { code: "E_LOOP" })!);
 
     expect(item.command).toBeUndefined();
     expect(item.text).toBe("$(sparkle)");
+    expect(stats).toEqual({ shown: 1, accepted: 0, dismissed: 0, ignored: 1 });
   });
 
   it("uses LAYA as an optional high-confidence veto", async () => {

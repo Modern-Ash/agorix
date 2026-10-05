@@ -20,7 +20,7 @@ export interface AmbientControllerOptions {
   readonly aiEnabled: () => boolean;
   readonly canOfferSignal: (kind: StudioSignal["kind"]) => boolean;
   readonly budgetRemaining: () => number | undefined;
-  readonly recordOffer: () => void;
+  readonly recordOffer: (outcome: "shown" | "accepted" | "dismissed" | "ignored") => void;
   readonly runCompanionAction: (action: ProactiveOfferAction) => Promise<unknown>;
   readonly layaTransport?: LayaBatchTransport;
 }
@@ -70,6 +70,7 @@ export class AmbientController implements vscode.Disposable {
         "ignored",
         signal.sequence,
       );
+      this.#opts.recordOffer("ignored");
       this.#offer = undefined;
     }
     const programId = this.#opts.programId();
@@ -96,7 +97,7 @@ export class AmbientController implements vscode.Disposable {
     if (decision.action === "offer") {
       this.#offer = { signal, decision };
       this.#memory = recordProactiveOutcome(this.#memory, programId, "offered", signal.sequence);
-      this.#opts.recordOffer();
+      this.#opts.recordOffer("shown");
       this.#render("available", decision);
       return;
     }
@@ -114,6 +115,7 @@ export class AmbientController implements vscode.Disposable {
     ];
     const picked = await vscode.window.showQuickPick(picks, { title: "Learning Companion" });
     if (picked === undefined || picked.action === "decline") {
+      this.#opts.recordOffer("dismissed");
       this.#memory = recordProactiveOutcome(
         this.#memory,
         programId,
@@ -124,6 +126,7 @@ export class AmbientController implements vscode.Disposable {
       this.#render("quiet");
       return;
     }
+    this.#opts.recordOffer("accepted");
     this.#memory = recordProactiveOutcome(
       this.#memory,
       programId,
