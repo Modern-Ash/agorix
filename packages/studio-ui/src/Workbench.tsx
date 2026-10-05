@@ -1,18 +1,32 @@
 import { useEffect, useReducer, useState } from "react";
 import type { BlockType, BlockWorkspaceSnapshot } from "@agorix/block-editor";
 import type { Intent } from "@agorix/interaction-core";
-import { STUDIO_PROTOCOL_VERSION, type HostMessage } from "@agorix/studio-protocol";
+import {
+  STUDIO_PROTOCOL_VERSION,
+  type ChangeRefusalReason,
+  type HostMessage,
+} from "@agorix/studio-protocol";
 import type { HostBridge } from "./bridge.js";
 import { AgentZone, Canvas, type SyncView } from "./Canvas.js";
 import { Palette } from "./Palette.js";
 import { AgentPanel } from "./AgentPanel.js";
 import { initialAgentUi, reduceAgentUi } from "./agentUi.js";
 
+const REFUSAL_TEXT: Record<ChangeRefusalReason, string> = {
+  NOT_A_CONTAINER: "That block cannot hold other blocks.",
+  BAD_INDEX: "There is no place for it there.",
+  BLOCK_NOT_FOUND: "That block is no longer there.",
+  NOT_A_STATEMENT: "That block cannot go in the program steps.",
+  WOULD_BREAK_PROGRAM: "That would break the program.",
+  UNKNOWN: "That change would break the program.",
+};
+
 export function statusFor(message: HostMessage): string | undefined {
   if (message.type === "error") {
-    return message.code === "INVALID_CHANGE"
-      ? "That change would break the program, so nothing changed."
-      : "The program could not be shown.";
+    if (message.code === "INVALID_CHANGE") {
+      return `${REFUSAL_TEXT[message.reason ?? "UNKNOWN"]} Nothing changed.`;
+    }
+    return "The program could not be shown.";
   }
   if (message.type === "agentUnavailable") {
     return "The agent is not available right now.";

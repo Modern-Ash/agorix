@@ -90,7 +90,15 @@ describe("studio-ui", () => {
     );
     expect(
       statusFor({ schema: "agorix/studio-protocol/v1", type: "error", code: "INVALID_CHANGE" }),
-    ).toMatch(/nothing changed/);
+    ).toMatch(/Nothing changed/);
+    expect(
+      statusFor({
+        schema: "agorix/studio-protocol/v1",
+        type: "error",
+        code: "INVALID_CHANGE",
+        reason: "NOT_A_CONTAINER",
+      }),
+    ).toBe("That block cannot hold other blocks. Nothing changed.");
   });
 
   it("marks selected, running and failed blocks with text, not only color", () => {

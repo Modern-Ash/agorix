@@ -105,6 +105,15 @@ describe("studio-protocol", () => {
     ).toBeUndefined();
     expect(parseHostMessage({ schema, type: "error", code: "INVALID_CHANGE" })).toBeDefined();
     expect(parseHostMessage({ schema, type: "error", code: "x" })).toBeUndefined();
+    expect(
+      parseHostMessage({ schema, type: "error", code: "INVALID_CHANGE", reason: "BAD_INDEX" }),
+    ).toEqual({ schema, type: "error", code: "INVALID_CHANGE", reason: "BAD_INDEX" });
+    expect(
+      parseHostMessage({ schema, type: "error", code: "INVALID_CHANGE", reason: "nope" }),
+    ).toBeUndefined();
+    expect(
+      parseHostMessage({ schema, type: "error", code: "INVALID_PROGRAM", reason: "BAD_INDEX" }),
+    ).toBeUndefined();
   });
 
   it("round-trips and bounds the agent loop messages", () => {

@@ -7,7 +7,12 @@ import {
 import { intentToChange, type AgentAnchorRef, type AgentVerb } from "@agorix/interaction-core";
 import { ProgramValidationError, type ProjectProgram } from "@agorix/program-model";
 import { programSemanticHash } from "@agorix/proposals";
-import { STUDIO_PROTOCOL_VERSION, type HostMessage, type UiMessage } from "@agorix/studio-protocol";
+import {
+  STUDIO_PROTOCOL_VERSION,
+  type ChangeRefusalReason,
+  type HostMessage,
+  type UiMessage,
+} from "@agorix/studio-protocol";
 import type { AgentAgreements } from "@agorix/agent-workflow";
 import type { SyncState } from "../sync/syncHub.js";
 
@@ -27,6 +32,12 @@ export interface WorkbenchHost {
 }
 
 const schema = STUDIO_PROTOCOL_VERSION;
+
+function refusalReason(error: unknown): ChangeRefusalReason {
+  if (error instanceof BlockEditorAdapterError) return error.reason ?? "UNKNOWN";
+  if (error instanceof ProgramValidationError) return "WOULD_BREAK_PROGRAM";
+  return "UNKNOWN";
+}
 
 function isKnownFailure(error: unknown): boolean {
   return error instanceof BlockEditorAdapterError || error instanceof ProgramValidationError;
@@ -134,7 +145,9 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
           );
         } catch (error) {
           if (isKnownFailure(error) || error instanceof Error) {
-            return [{ schema, type: "error", code: "INVALID_CHANGE" }];
+            return [
+              { schema, type: "error", code: "INVALID_CHANGE", reason: refusalReason(error) },
+            ];
           }
           throw error;
         }

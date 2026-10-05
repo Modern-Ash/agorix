@@ -9,6 +9,7 @@ export type {
   BlockScript,
   BlockType,
   BlockWorkspaceSnapshot,
+  PlacementReason,
   ProgramToWorkspaceResult,
   WorkspaceToProgramResult,
 } from "./adapter.js";

@@ -15,6 +15,7 @@ import {
 } from "@agorix/agent-workflow";
 import type {
   BlockNode,
+  PlacementReason,
   BlockScript,
   BlockType,
   BlockWorkspaceSnapshot,
@@ -24,6 +25,16 @@ import { isSafeId, parseAnchorRef, type Intent } from "@agorix/interaction-core"
 /** Versioned host <-> UI messages. UIs send intents; the host owns canonical mutation. */
 export const STUDIO_PROTOCOL_VERSION = "agorix/studio-protocol/v1";
 export const PACKAGE_NAME = "@agorix/studio-protocol";
+
+export type ChangeRefusalReason = PlacementReason | "WOULD_BREAK_PROGRAM" | "UNKNOWN";
+const REFUSAL_REASONS: readonly ChangeRefusalReason[] = [
+  "NOT_A_CONTAINER",
+  "BAD_INDEX",
+  "BLOCK_NOT_FOUND",
+  "NOT_A_STATEMENT",
+  "WOULD_BREAK_PROGRAM",
+  "UNKNOWN",
+];
 
 type Schema = typeof STUDIO_PROTOCOL_VERSION;
 type Decision = "accepted" | "rejected" | "modified";
@@ -72,6 +83,8 @@ export type HostMessage =
       readonly schema: Schema;
       readonly type: "error";
       readonly code: "INVALID_CHANGE" | "INVALID_PROGRAM" | "STALE_PROPOSAL";
+      /** Why a change was refused, only with INVALID_CHANGE. */
+      readonly reason?: ChangeRefusalReason;
     }
   | { readonly schema: Schema; readonly type: "plan"; readonly tasks: readonly AgentTask[] }
   | {
@@ -623,12 +636,21 @@ export function parseHostMessage(value: unknown): HostMessage | undefined {
         ? { schema, type: "workspace", workspace, programHash: hash }
         : undefined;
     }
-    case "error":
-      return value["code"] === "INVALID_CHANGE" ||
-        value["code"] === "INVALID_PROGRAM" ||
-        value["code"] === "STALE_PROPOSAL"
-        ? { schema, type: "error", code: value["code"] }
+    case "error": {
+      if (
+        value["code"] !== "INVALID_CHANGE" &&
+        value["code"] !== "INVALID_PROGRAM" &&
+        value["code"] !== "STALE_PROPOSAL"
+      ) {
+        return undefined;
+      }
+      const reason = value["reason"];
+      if (reason === undefined) return { schema, type: "error", code: value["code"] };
+      return value["code"] === "INVALID_CHANGE" &&
+        (REFUSAL_REASONS as readonly unknown[]).includes(reason)
+        ? { schema, type: "error", code: "INVALID_CHANGE", reason: reason as ChangeRefusalReason }
         : undefined;
+    }
     case "sync": {
       const out: { selectedBlockId?: string; executingBlockId?: string; failedBlockId?: string } =
         {};

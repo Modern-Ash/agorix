@@ -103,8 +103,12 @@ describe("workbenchHost", () => {
         to: { container: script, index: 0 },
       },
     });
-    expect(bad).toEqual([{ schema, type: "error", code: "INVALID_CHANGE" }]);
-    expect(outOfRange).toEqual([{ schema, type: "error", code: "INVALID_CHANGE" }]);
+    expect(bad).toEqual([
+      { schema, type: "error", code: "INVALID_CHANGE", reason: "NOT_A_STATEMENT" },
+    ]);
+    expect(outOfRange).toEqual([
+      { schema, type: "error", code: "INVALID_CHANGE", reason: "BLOCK_NOT_FOUND" },
+    ]);
     expect(labels).toHaveLength(0);
   });
 
