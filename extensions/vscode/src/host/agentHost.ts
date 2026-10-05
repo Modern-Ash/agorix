@@ -96,6 +96,7 @@ export function createAgentHost(port: AgentPort): AgentHost {
   let tasks: AgentTask[] = [];
   let pending: ProposalView | undefined;
   let answer: PredictionAnswer | undefined;
+  let predictedProposalId: string | undefined;
   let applying = false;
   let requesting = false;
   // Bumped whenever the loop resets, so an answer that arrives late is discarded.
@@ -158,6 +159,7 @@ export function createAgentHost(port: AgentPort): AgentHost {
     clarifying = undefined;
     planBaseHash = undefined;
     answer = undefined;
+    predictedProposalId = undefined;
     return hadPending;
   }
 
@@ -217,6 +219,7 @@ export function createAgentHost(port: AgentPort): AgentHost {
       workflow.stage !== "proposal" ||
       !workflow.proposalRequested ||
       pending === undefined ||
+      applying ||
       proposalId !== pending.proposalId
     ) {
       return [];
@@ -224,13 +227,16 @@ export function createAgentHost(port: AgentPort): AgentHost {
     if (decision === "modified" && selection === undefined) {
       return [];
     }
+    if (decision === "modified" && agreements.requirePredictionBeforeAccept) {
+      return [{ schema, type: "error", code: "PREDICTION_REQUIRED" }];
+    }
     if (decision === "modified" && selection !== undefined && selection.include.length === 0) {
       decision = "rejected";
     }
     if (
       decision !== "rejected" &&
       agreements.requirePredictionBeforeAccept &&
-      !workflow.predicted
+      (!workflow.predicted || predictedProposalId !== pending.proposalId)
     ) {
       return [{ schema, type: "error", code: "PREDICTION_REQUIRED" }];
     }
@@ -239,6 +245,7 @@ export function createAgentHost(port: AgentPort): AgentHost {
       const rejectedOrigin = pending.origin;
       pending = undefined;
       answer = undefined;
+      predictedProposalId = undefined;
       record("proposalRejected", rejectedOrigin);
       step({ type: "proposalDecided", decision: "rejected" });
       return [cleared(), wf()];
@@ -265,6 +272,7 @@ export function createAgentHost(port: AgentPort): AgentHost {
     pending = undefined;
     if (outcome === "stale") {
       answer = undefined;
+      predictedProposalId = undefined;
       step({ type: "proposalDecided", decision: "rejected" });
       return [{ schema, type: "error", code: "STALE_PROPOSAL" }, cleared(), wf()];
     }
@@ -346,11 +354,19 @@ export function createAgentHost(port: AgentPort): AgentHost {
         const view = port.chooseAlternative(message.proposalId);
         if (view === undefined) return [];
         pending = view;
+        answer = undefined;
+        predictedProposalId = undefined;
+        if (workflow.predicted) {
+          workflow = { ...workflow, predicted: false };
+        }
         record("alternativeChosen", view.origin);
-        return [proposalMsg(view)];
+        return agreements.requirePredictionBeforeAccept
+          ? [wf(), proposalMsg(view)]
+          : [proposalMsg(view)];
       }
       case "previewSelection": {
         if (pending === undefined || message.proposalId !== pending.proposalId) return [];
+        if (agreements.requirePredictionBeforeAccept) return [];
         return [
           {
             schema,
@@ -365,15 +381,19 @@ export function createAgentHost(port: AgentPort): AgentHost {
           if (!agreements.requirePredictionBeforeAccept || !step({ type: "prePredictionMade" })) {
             return [];
           }
+          if (pending === undefined) return [];
           answer = message.answer;
+          predictedProposalId = pending.proposalId;
           return [wf()];
         }
         if (!step({ type: "predictionMade" })) return [];
         answer = message.answer;
+        predictedProposalId = undefined;
         return [wf()];
       case "skipPrediction":
         if (!step({ type: "predictionSkipped" })) return [];
         answer = undefined;
+        predictedProposalId = undefined;
         return [wf()];
       case "run": {
         if (workflow.stage !== "run") return [];

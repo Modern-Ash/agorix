@@ -39,7 +39,7 @@ vi.mock("vscode", () => {
   const uri = (fsPath: string) => ({
     fsPath,
     path: fsPath.replace(/^[^:]+:/, ""),
-    scheme: fsPath.includes(":") ? fsPath.split(":")[0] : "file",
+    scheme: fsPath.startsWith("/") ? "file" : fsPath.includes(":") ? fsPath.split(":")[0] : "file",
     toString: () => fsPath,
   });
   class Uri {
@@ -266,6 +266,12 @@ vi.mock("vscode", () => {
           files.get(target.fsPath) ?? new Uint8Array(),
         writeFile: async (target: { fsPath: string }, content: Uint8Array) => {
           files.set(target.fsPath, content);
+        },
+        stat: async (target: { fsPath: string }) => {
+          if (!files.has(target.fsPath)) {
+            throw new Error("not found");
+          }
+          return { type: 1 };
         },
       },
     },
@@ -728,6 +734,21 @@ describe("Studio extension wiring", () => {
     );
   });
 
+  it("does not overwrite an adjacent educator evidence summary", async () => {
+    await openFile("/p/evidence-overwrite.json", stored([]));
+    files.set("/p/educator-evidence.md", new TextEncoder().encode("keep me"));
+
+    choice = "Export";
+    savePicked = { fsPath: "/p/educator-evidence.json" };
+    await handlers.get("agorixStudio.exportEducatorEvidence")!();
+
+    expect(new TextDecoder().decode(files.get("/p/educator-evidence.json"))).toContain(
+      "agorix/educator-evidence/v1",
+    );
+    expect(new TextDecoder().decode(files.get("/p/educator-evidence.md"))).toBe("keep me");
+    expect(shown.at(-1)).toBe("Exported educator evidence JSON.");
+  });
+
   it("cancels educator evidence export before writing files", async () => {
     await openFile("/p/evidence-cancel.json", stored([]));
     const before = new Set(files.keys());
@@ -848,6 +869,11 @@ describe("Studio extension wiring", () => {
     workbenchPanel()?.receive({
       schema: "agorix/studio-protocol/v1",
       type: "intent",
+      baseHash: (
+        workbenchPanel()?.messages.find(
+          (message) => (message as { type?: string }).type === "workspace",
+        ) as { programHash?: string }
+      ).programHash,
       intent: {
         type: "insertBlock",
         blockType: "motion_move",
@@ -874,6 +900,12 @@ describe("Studio extension wiring", () => {
     workbenchPanel()?.receive({
       schema: "agorix/studio-protocol/v1",
       type: "intent",
+      baseHash: (
+        [...(workbenchPanel()?.messages ?? [])]
+          .reverse()
+          .find((message) => (message as { type?: string }).type === "workspace") as
+          { programHash?: string } | undefined
+      )?.programHash,
       intent: {
         type: "insertBlock",
         blockType: "motion_turn",
