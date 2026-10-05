@@ -1,10 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AgentEvent } from "@agorix/agent-workflow";
 import {
+  createProposalSession,
   createStudioStarterProject,
   openStoredProject,
   type StudioProposalSession,
 } from "../studioCore.js";
+import { createFirstStepProposal } from "@agorix/proposals";
+import type { ProviderProposalResult } from "../studioProposalSource.js";
 import { createAgentPort } from "./agentPort.js";
 
 function projectWith(statements: unknown[]) {
@@ -18,7 +21,10 @@ function projectWith(statements: unknown[]) {
   } as never);
 }
 
-function setup(statements: unknown[]) {
+function setup(
+  statements: unknown[],
+  providerProposal?: Parameters<typeof createAgentPort>[0]["providerProposal"],
+) {
   let project = projectWith(statements);
   let active: StudioProposalSession | undefined;
   const events: AgentEvent[] = [];
@@ -37,6 +43,7 @@ function setup(statements: unknown[]) {
     },
     runAndGetResult: () => undefined,
     events,
+    ...(providerProposal === undefined ? {} : { providerProposal }),
   });
   return {
     port,
@@ -59,18 +66,18 @@ describe("agentPort", () => {
     expect(setup(repeated).port.availableTasks()).toEqual(["repeat-pattern"]);
   });
 
-  it("builds a proposal view and remembers it; repeat changes resolve to blocks", () => {
+  it("builds a proposal view and remembers it; repeat changes resolve to blocks", async () => {
     const empty = setup([]);
-    const first = empty.port.proposeFor("first-step");
+    const first = await empty.port.proposeFor("first-step");
     expect(first?.purpose).toBeTruthy();
     expect(empty.active()).toBeDefined();
-    const repeat = setup(repeated).port.proposeFor("repeat-pattern");
+    const repeat = await setup(repeated).port.proposeFor("repeat-pattern");
     expect(repeat?.changes.some((change) => change.blockId !== undefined)).toBe(true);
   });
 
   it("refuses to apply a stale proposal and never calls the apply path", async () => {
     const ctx = setup([]);
-    ctx.port.proposeFor("first-step");
+    await ctx.port.proposeFor("first-step");
     ctx.setProject([{ type: "move", steps: 5 }]);
     expect(await ctx.port.applyPending()).toBe("stale");
     expect(ctx.applyActiveProposal).not.toHaveBeenCalled();
@@ -78,7 +85,7 @@ describe("agentPort", () => {
 
   it("applies a fresh proposal, hashes the program and caps events", async () => {
     const ctx = setup([]);
-    ctx.port.proposeFor("first-step");
+    await ctx.port.proposeFor("first-step");
     expect(await ctx.port.applyPending()).toBe("applied");
     expect(ctx.applyActiveProposal).toHaveBeenCalledOnce();
     expect(ctx.port.programHash()).toMatch(/^[A-Za-z0-9:_-]{1,128}$/);
@@ -90,9 +97,9 @@ describe("agentPort", () => {
 });
 
 describe("agentPort advanced proposals", () => {
-  it("offers a real alternative with measured evidence and lets the learner switch", () => {
+  it("offers a real alternative with measured evidence and lets the learner switch", async () => {
     const ctx = setup([]);
-    const first = ctx.port.proposeFor("first-step")!;
+    const first = (await ctx.port.proposeFor("first-step"))!;
     expect(first.proposalId).toBe("first-step");
     expect(first.evidence).toMatchObject({ outcome: "completed" });
     expect(first.operations).toEqual([
@@ -116,17 +123,17 @@ describe("agentPort advanced proposals", () => {
     expect(ctx.applyActiveProposal).not.toHaveBeenCalled();
   });
 
-  it("anchors operations to the original blocks and offers a single repeat proposal", () => {
-    const view = setup(repeated).port.proposeFor("repeat-pattern")!;
+  it("anchors operations to the original blocks and offers a single repeat proposal", async () => {
+    const view = (await setup(repeated).port.proposeFor("repeat-pattern"))!;
     expect(view.alternatives).toBeUndefined();
     expect(view.operations).toHaveLength(6);
     expect(view.operations?.every((op) => op.blockId !== undefined)).toBe(true);
     expect(view.operations?.filter((op) => op.kind === "remove")).toHaveLength(5);
   });
 
-  it("previews a selection with evidence and reports empty, invalid and stale", () => {
+  it("previews a selection with evidence and reports empty, invalid and stale", async () => {
     const ctx = setup([]);
-    ctx.port.proposeFor("first-step");
+    await ctx.port.proposeFor("first-step");
     expect(ctx.port.previewSelection({ include: [0] })).toMatchObject({
       ok: true,
       evidence: { outcome: "completed" },
@@ -141,7 +148,7 @@ describe("agentPort advanced proposals", () => {
 
   it("applies a selected subset as one commit and never touches the apply-all path", async () => {
     const ctx = setup([]);
-    ctx.port.proposeFor("first-step");
+    await ctx.port.proposeFor("first-step");
     expect(
       await ctx.port.applySelection({ include: [0], overrides: [{ index: 0, value: 7 }] }),
     ).toBe("applied");
@@ -156,7 +163,7 @@ describe("agentPort advanced proposals", () => {
 
   it("commits nothing for an empty, invalid or stale selection", async () => {
     const ctx = setup([]);
-    ctx.port.proposeFor("first-step");
+    await ctx.port.proposeFor("first-step");
     expect(await ctx.port.applySelection({ include: [] })).toBe("empty");
     expect(
       await ctx.port.applySelection({ include: [0], overrides: [{ index: 0, value: 100000 }] }),
@@ -164,5 +171,82 @@ describe("agentPort advanced proposals", () => {
     ctx.setProject([{ type: "move", steps: 5 }]);
     expect(await ctx.port.applySelection({ include: [0] })).toBe("stale");
     expect(ctx.commitProgram).not.toHaveBeenCalled();
+  });
+});
+
+describe("agentPort provider-backed proposals", () => {
+  const providerSession = (project: ReturnType<typeof projectWith>) =>
+    createProposalSession(
+      project,
+      createFirstStepProposal({
+        id: "ai-first-step",
+        baseProgram: project.stored.program,
+        purpose: "AI step",
+        rationale: "The assistant suggests a longer move.",
+        steps: 6,
+      })!,
+    );
+
+  it("makes the provider proposal primary and keeps the built-in one as an alternative", async () => {
+    const ctx = setup([], async (project): Promise<ProviderProposalResult> => ({
+      origin: "provider",
+      session: providerSession(project),
+      locality: "local",
+    }));
+    const view = (await ctx.port.proposeFor("first-step"))!;
+    expect(view.origin).toBe("provider");
+    expect(view.proposalId).toBe("ai-first-step");
+    expect(view.alternatives?.map((a) => a.proposalId)).toEqual(["first-step", "first-step-small"]);
+    expect(view.alternatives?.[0]?.tradeoff).toMatch(/Built-in/);
+    expect(view.alternatives?.every((a) => a.evidence.outcome === "completed")).toBe(true);
+    expect(ctx.active()?.review.proposal.id).toBe("ai-first-step");
+    const builtIn = ctx.port.chooseAlternative("first-step")!;
+    expect(builtIn.origin).toBe("built-in");
+    expect(builtIn.alternatives?.[0]?.proposalId).toBe("ai-first-step");
+    expect(ctx.applyActiveProposal).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the built-in proposal and carries the notice", async () => {
+    const ctx = setup([], async () => ({
+      origin: "built-in",
+      reason: "not-allowed",
+      notice: "AI help isn't available right now.",
+    }));
+    const view = (await ctx.port.proposeFor("first-step"))!;
+    expect(view.origin).toBe("built-in");
+    expect(view.notice).toBe("AI help isn't available right now.");
+    expect(view.proposalId).toBe("first-step");
+  });
+
+  it("ignores a provider proposal whose base program is no longer current", async () => {
+    let ctxRef: ReturnType<typeof setup> | undefined;
+    const ctx = setup([], async (project): Promise<ProviderProposalResult> => {
+      const session = providerSession(project);
+      ctxRef?.setProject([{ type: "move", steps: 5 }]);
+      return { origin: "provider", session, locality: "local" };
+    });
+    ctxRef = ctx;
+    const view = await ctx.port.proposeFor("first-step");
+    // The program is no longer empty, so the first-step task no longer applies.
+    expect(view).toBeUndefined();
+    expect(ctx.active()).toBeUndefined();
+  });
+
+  it("never lets a provider proposal reuse a built-in id", async () => {
+    const ctx = setup([], async (project): Promise<ProviderProposalResult> => ({
+      origin: "provider",
+      session: createProposalSession(
+        project,
+        createFirstStepProposal({
+          id: "first-step",
+          baseProgram: project.stored.program,
+          purpose: "dup",
+          rationale: "dup",
+        })!,
+      ),
+      locality: "local",
+    }));
+    const view = (await ctx.port.proposeFor("first-step"))!;
+    expect(view.origin).toBe("built-in");
   });
 });

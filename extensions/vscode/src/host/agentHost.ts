@@ -36,6 +36,8 @@ export interface ProposalView {
   readonly operations?: OperationView[];
   readonly evidence?: EvidenceView;
   readonly alternatives?: AlternativeView[];
+  readonly origin?: "provider" | "built-in";
+  readonly notice?: string;
 }
 
 export type SelectionPreview =
@@ -45,7 +47,7 @@ export type SelectionPreview =
 export interface AgentPort {
   availableTasks(): AgentTaskId[];
   /** Creates and remembers the pending proposal; undefined when the task no longer applies. */
-  proposeFor(task: AgentTaskId): ProposalView | undefined;
+  proposeFor(task: AgentTaskId): Promise<ProposalView | undefined>;
   /** Applies the pending proposal through the canonical path; "stale" when the program changed. */
   applyPending(): Promise<"applied" | "stale">;
   rejectPending(): void;
@@ -75,6 +77,9 @@ export function createAgentHost(port: AgentPort): AgentHost {
   let pending: ProposalView | undefined;
   let answer: PredictionAnswer | undefined;
   let applying = false;
+  let requesting = false;
+  // Bumped whenever the loop resets, so an answer that arrives late is discarded.
+  let epoch = 0;
   let clarifying: AgentTask[] | undefined;
   let planBaseHash: string | undefined;
   let lastHash: string | undefined = port.programHash();
@@ -98,6 +103,8 @@ export function createAgentHost(port: AgentPort): AgentHost {
     ...(view.operations === undefined ? {} : { operations: view.operations }),
     ...(view.evidence === undefined ? {} : { evidence: view.evidence }),
     ...(view.alternatives === undefined ? {} : { alternatives: view.alternatives }),
+    ...(view.origin === undefined ? {} : { origin: view.origin }),
+    ...(view.notice === undefined ? {} : { notice: view.notice }),
   });
   const predictionMsg = (): HostMessage => ({
     schema,
@@ -120,6 +127,7 @@ export function createAgentHost(port: AgentPort): AgentHost {
   }
 
   function resetLoop(): boolean {
+    epoch += 1;
     const hadPending = pending !== undefined;
     if (hadPending) {
       port.rejectPending();
@@ -140,13 +148,30 @@ export function createAgentHost(port: AgentPort): AgentHost {
     }
   }
 
-  function requestProposal(): HostMessage[] {
+  async function requestProposal(): Promise<HostMessage[]> {
     const task = currentTask();
-    if (workflow.stage !== "proposal" || pending !== undefined || task === undefined) {
+    if (
+      workflow.stage !== "proposal" ||
+      pending !== undefined ||
+      task === undefined ||
+      requesting
+    ) {
       return [];
     }
     step({ type: "proposalRequested" });
-    const view = port.proposeFor(task.id);
+    const started = epoch;
+    requesting = true;
+    let view: ProposalView | undefined;
+    try {
+      view = await port.proposeFor(task.id);
+    } finally {
+      requesting = false;
+    }
+    if (epoch !== started) {
+      // The learner changed the program or the agreements while the suggestion was on its way.
+      if (view !== undefined) port.rejectPending();
+      return [];
+    }
     if (view === undefined) {
       workflow = { ...workflow, proposalRequested: false };
       return [cleared(), wf()];
@@ -272,7 +297,7 @@ export function createAgentHost(port: AgentPort): AgentHost {
         if (tasks.length === 0 || !step({ type: "planAccepted", taskCount: tasks.length })) {
           return [];
         }
-        return agreements.mode === "bounded" ? [wf(), ...requestProposal()] : [wf()];
+        return agreements.mode === "bounded" ? [wf(), ...(await requestProposal())] : [wf()];
       }
       case "requestProposal":
         return requestProposal();

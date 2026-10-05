@@ -13,7 +13,7 @@ function setup(options: { tasks?: AgentTaskId[]; reached?: boolean; stale?: bool
   };
   const port: AgentPort = {
     availableTasks: () => options.tasks ?? ["first-step"],
-    proposeFor: (task) => ({
+    proposeFor: async (task) => ({
       proposalId: task,
       purpose: "p",
       rationale: "r",
@@ -421,5 +421,58 @@ describe("agentHost per-operation decisions and alternatives", () => {
     });
     expect(out).toEqual([{ schema, type: "error", code: "PREDICTION_REQUIRED" }]);
     expect(applySelection).not.toHaveBeenCalled();
+  });
+});
+
+describe("agentHost asynchronous suggestions", () => {
+  it("discards a suggestion that arrives after the loop was reset", async () => {
+    const ctx = setup();
+    let release!: (view: Awaited<ReturnType<AgentPort["proposeFor"]>>) => void;
+    ctx.port.proposeFor = () => new Promise((resolve) => (release = resolve));
+    await ctx.send({ type: "stateIntent", text: "make it move" });
+    await ctx.send({ type: "acceptPlan" });
+    const pendingRequest = ctx.send({ type: "requestProposal" });
+    await ctx.send({ type: "agreementsChanged", agreements: DEFAULT_AGREEMENTS });
+    release({ proposalId: "late", purpose: "p", rationale: "r", changes: [] });
+    expect(await pendingRequest).toEqual([]);
+    expect(ctx.state.rejected).toBe(1);
+    expect(types(ctx.host.snapshot())).not.toContain("proposal");
+  });
+
+  it("ignores a second request while one is in flight", async () => {
+    const ctx = setup();
+    let release!: (view: Awaited<ReturnType<AgentPort["proposeFor"]>>) => void;
+    const calls = vi.fn(
+      () =>
+        new Promise<Awaited<ReturnType<AgentPort["proposeFor"]>>>((resolve) => (release = resolve)),
+    );
+    ctx.port.proposeFor = calls;
+    await ctx.send({ type: "stateIntent", text: "make it move" });
+    await ctx.send({ type: "acceptPlan" });
+    const first = ctx.send({ type: "requestProposal" });
+    expect(await ctx.send({ type: "requestProposal" })).toEqual([]);
+    release({ proposalId: "p", purpose: "p", rationale: "r", changes: [], origin: "provider" });
+    expect(types(await first)).toEqual(["workflow", "proposal"]);
+    expect(calls).toHaveBeenCalledOnce();
+  });
+
+  it("forwards origin and notice to the UI", async () => {
+    const ctx = setup();
+    ctx.port.proposeFor = async () => ({
+      proposalId: "p",
+      purpose: "p",
+      rationale: "r",
+      changes: [],
+      origin: "built-in",
+      notice: "AI help isn't available right now.",
+    });
+    await ctx.send({ type: "stateIntent", text: "make it move" });
+    await ctx.send({ type: "acceptPlan" });
+    const out = await ctx.send({ type: "requestProposal" });
+    expect(out?.[1]).toMatchObject({
+      type: "proposal",
+      origin: "built-in",
+      notice: "AI help isn't available right now.",
+    });
   });
 });

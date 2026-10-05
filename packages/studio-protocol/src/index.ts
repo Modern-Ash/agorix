@@ -147,6 +147,10 @@ export type HostMessage =
       readonly operations?: readonly OperationView[];
       readonly evidence?: EvidenceView;
       readonly alternatives?: readonly AlternativeView[];
+      /** Where the proposal came from: an AI provider or the built-in deterministic helper. */
+      readonly origin?: "provider" | "built-in";
+      /** Learner-safe note, for example when the agent fell back to built-in help. */
+      readonly notice?: string;
     }
   | {
       readonly schema: Schema;
@@ -663,6 +667,15 @@ function parseAgentMessageFromHost(value: Obj, schema: Schema): HostMessage | un
       }
       const operations =
         value["operations"] === undefined ? undefined : parseOperations(value["operations"]);
+      const origin = value["origin"];
+      const notice =
+        value["notice"] === undefined ? undefined : boundedString(value["notice"], 1, 300);
+      if (
+        (origin !== undefined && origin !== "provider" && origin !== "built-in") ||
+        (value["notice"] !== undefined && notice === undefined)
+      ) {
+        return undefined;
+      }
       const evidence =
         value["evidence"] === undefined ? undefined : parseEvidence(value["evidence"]);
       const alternatives =
@@ -684,6 +697,8 @@ function parseAgentMessageFromHost(value: Obj, schema: Schema): HostMessage | un
         ...(operations === undefined ? {} : { operations }),
         ...(evidence === undefined ? {} : { evidence }),
         ...(alternatives === undefined ? {} : { alternatives }),
+        ...(origin === undefined ? {} : { origin }),
+        ...(notice === undefined ? {} : { notice }),
       };
     }
     case "selectionEvidence": {

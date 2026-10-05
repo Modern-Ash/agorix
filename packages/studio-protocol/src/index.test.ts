@@ -336,6 +336,10 @@ describe("advanced proposal messages", () => {
     expect(parseHostMessage({ ...base, operations: [{ index: 0 }] })).toBeUndefined();
     expect(parseHostMessage({ ...base, evidence: { stepsUsed: -1 } })).toBeUndefined();
     expect(parseHostMessage({ ...base, alternatives: "x" })).toBeUndefined();
+    const sourced = { ...base, origin: "provider", notice: "Using built-in help." };
+    expect(parseHostMessage(sourced)).toEqual(sourced);
+    expect(parseHostMessage({ ...base, origin: "other" })).toBeUndefined();
+    expect(parseHostMessage({ ...base, notice: "" })).toBeUndefined();
   });
 
   it("parses selectionEvidence results", () => {

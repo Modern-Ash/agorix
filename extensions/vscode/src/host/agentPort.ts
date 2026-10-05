@@ -22,6 +22,7 @@ import {
   type StudioProject,
   type StudioProposalSession,
 } from "../studioCore.js";
+import type { ProviderProposalResult, ProviderProposalTask } from "../studioProposalSource.js";
 import type { AgentPort, ProposalView, SelectionPreview } from "./agentHost.js";
 
 export interface AgentPortDeps {
@@ -34,12 +35,19 @@ export interface AgentPortDeps {
   rejectActiveProposal(): void;
   runAndGetResult(): { world: WorldState; stepsUsed: number } | undefined;
   events: AgentEvent[];
+  /** Asks the decision pipeline and, when allowed, a provider; absent means built-in only. */
+  providerProposal?(
+    project: StudioProject,
+    task: ProviderProposalTask,
+  ): Promise<ProviderProposalResult>;
 }
 
 const TRADEOFFS: Record<string, string> = {
   "first-step": "Moves further in one step.",
   "first-step-small": "Moves a shorter distance, easier to follow one step at a time.",
   "repeat-pattern": "Shorter code that performs the same steps.",
+  provider: "AI suggestion. Check it carefully before you accept.",
+  "built-in": "Built-in suggestion, no AI involved.",
 };
 
 function describeStatement(statement: Statement): string {
@@ -75,6 +83,7 @@ function viewOf(
   project: StudioProject,
   session: StudioProposalSession,
   alternatives: readonly { session: StudioProposalSession; tradeoff: string }[],
+  extra: { origin?: "provider" | "built-in"; notice?: string } = {},
 ): ProposalView {
   const { mapping } = programToWorkspace(project.stored.program);
   const blockFor = new Map(mapping.map((entry) => [entry.nodeId, entry.blockId]));
@@ -104,6 +113,8 @@ function viewOf(
       };
     }),
     evidence: evidenceForProgram(project, session.review.candidateProgram),
+    ...(extra.origin === undefined ? {} : { origin: extra.origin }),
+    ...(extra.notice === undefined ? {} : { notice: extra.notice.slice(0, 300) }),
     ...(alternatives.length === 0
       ? {}
       : {
@@ -120,11 +131,20 @@ function viewOf(
 /** Adapter over the session, proposals and runtime. Imports nothing from vscode. */
 export function createAgentPort(deps: AgentPortDeps): AgentPort {
   // Every proposal offered for the current task, so a learner can switch between them.
-  let offered: { session: StudioProposalSession; tradeoff: string }[] = [];
+  let offered: {
+    session: StudioProposalSession;
+    tradeoff: string;
+    origin: "provider" | "built-in";
+  }[] = [];
+  let offeredNotice: string | undefined;
 
   function viewFor(project: StudioProject, session: StudioProposalSession): ProposalView {
     const others = offered.filter((entry) => entry.session !== session);
-    return viewOf(project, session, others);
+    const current = offered.find((entry) => entry.session === session);
+    return viewOf(project, session, others, {
+      ...(current === undefined ? {} : { origin: current.origin }),
+      ...(offeredNotice === undefined ? {} : { notice: offeredNotice }),
+    });
   }
 
   function deriveSession(
@@ -156,19 +176,55 @@ export function createAgentPort(deps: AgentPortDeps): AgentPort {
       if (suggestRepeat(project) !== undefined) tasks.push("repeat-pattern");
       return tasks;
     },
-    proposeFor(task) {
+    async proposeFor(task) {
+      const first = deps.getProject();
+      if (first === undefined) return undefined;
+      const asked =
+        deps.providerProposal === undefined ? undefined : await deps.providerProposal(first, task);
+      // The program may have changed while a provider was thinking: always build from now.
       const project = deps.getProject();
       if (project === undefined) return undefined;
       const suggestion = task === "first-step" ? suggestFirstStep(project) : suggestRepeat(project);
       if (suggestion === undefined) return undefined;
-      const primary = suggestion.session;
+      const builtIn = suggestion.session;
       const small = task === "first-step" ? suggestFirstStepSmall(project) : undefined;
-      offered = [
-        { session: primary, tradeoff: TRADEOFFS[primary.review.proposal.id] ?? "" },
+      const entries: typeof offered = [
+        {
+          session: builtIn,
+          tradeoff: TRADEOFFS[builtIn.review.proposal.id] ?? TRADEOFFS["built-in"] ?? "",
+          origin: "built-in",
+        },
         ...(small === undefined
           ? []
-          : [{ session: small.session, tradeoff: TRADEOFFS["first-step-small"] ?? "" }]),
+          : [
+              {
+                session: small.session,
+                tradeoff: TRADEOFFS["first-step-small"] ?? "",
+                origin: "built-in" as const,
+              },
+            ]),
       ];
+      const provided =
+        asked?.origin === "provider" &&
+        asked.session.baseProgramHash === programSemanticHash(project.stored.program) &&
+        !entries.some(
+          (entry) => entry.session.review.proposal.id === asked.session.review.proposal.id,
+        )
+          ? asked.session
+          : undefined;
+      offeredNotice = asked?.origin === "built-in" ? asked.notice : undefined;
+      offered =
+        provided === undefined
+          ? entries
+          : [
+              { session: provided, tradeoff: TRADEOFFS["provider"] ?? "", origin: "provider" },
+              ...entries.map((entry) =>
+                entry.session === builtIn
+                  ? { ...entry, tradeoff: TRADEOFFS["built-in"] ?? "" }
+                  : entry,
+              ),
+            ];
+      const primary = offered[0]!.session;
       deps.setActiveProposal(primary);
       return viewFor(project, primary);
     },
