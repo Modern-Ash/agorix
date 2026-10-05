@@ -10,6 +10,8 @@
     "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
-    "@agorix/curriculum": "workspace:*"
+    "@agorix/curriculum": "workspace:*",
+    "@agorix/program-model": "workspace:*",
+    "@agorix/runtime": "workspace:*"
   }
 }

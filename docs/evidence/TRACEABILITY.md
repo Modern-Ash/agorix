@@ -78,6 +78,7 @@ coverage where no committed evidence exists.
 
 - #37 native packaging evaluation;
 - #98 deployment/self-hosting documentation;
-- #101 advanced model-comparison activity.
+- #101 advanced model-comparison UI flow beyond the committed deterministic
+  activity/evidence contract.
 
 They are not dependencies of the completed MVP learner loop.

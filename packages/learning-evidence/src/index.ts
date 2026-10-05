@@ -83,3 +83,20 @@ export {
   type EducatorExportInput,
   type EducatorProposalOrigin,
 } from "./educator-export.js";
+
+export {
+  MODEL_COMPARISON_ACTIVITY_SCHEMA_VERSION,
+  ModelComparisonActivityError,
+  createModelComparisonActivity,
+  recordModelComparisonDecision,
+  type ModelComparisonActivity,
+  type ModelComparisonActivityInput,
+  type ModelComparisonActivitySchemaVersion,
+  type ModelComparisonAlternativeInput,
+  type ModelComparisonAlternativeResult,
+  type ModelComparisonConclusion,
+  type ModelComparisonDecision,
+  type ModelComparisonDecisionInput,
+  type ModelComparisonReflection,
+  type ModelComparisonRuntimeStatus,
+} from "./model-comparison.js";
