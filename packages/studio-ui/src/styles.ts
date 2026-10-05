@@ -27,6 +27,11 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .suggestion { padding: 8px; border: 1px dashed var(--vscode-editorInfo-foreground); border-radius: 6px; }
 .ghost-badge { margin: 0 0 4px; font-size: 0.8em; color: var(--vscode-editorInfo-foreground); }
 .block.ghost-added, .block.ghost-changed, .block.ghost-removed { border-style: dashed; border-color: var(--vscode-editorInfo-foreground); }
+.block.sel { outline: 2px solid var(--vscode-focusBorder); }
+.block.exec { border-left: 4px solid var(--vscode-charts-blue); }
+.block.fail { border-left: 4px solid var(--vscode-errorForeground); }
+.sync-badge { margin-left: 8px; font-weight: 600; }
+.fail-badge { color: var(--vscode-errorForeground); }
 .block.ghost-removed .label { text-decoration: line-through; }
 @media (prefers-reduced-motion: reduce) { .slot { transition: none; } }
 `;

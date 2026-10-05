@@ -92,4 +92,23 @@ describe("studio-ui", () => {
       statusFor({ schema: "agorix/studio-protocol/v1", type: "error", code: "INVALID_CHANGE" }),
     ).toMatch(/nothing changed/);
   });
+
+  it("marks selected, running and failed blocks with text, not only color", () => {
+    const blocks = toRows(workspace).flatMap((row) => (row.kind === "block" ? [row.block.id] : []));
+    const markup = renderToStaticMarkup(
+      <Canvas
+        workspace={workspace}
+        onIntent={() => undefined}
+        sync={{
+          selectedBlockId: blocks[0]!,
+          executingBlockId: blocks[0]!,
+          failedBlockId: blocks[1]!,
+        }}
+      />,
+    );
+    expect(markup).toContain("Failed here");
+    expect(markup).toContain("Running");
+    expect(markup).toContain('aria-current="true"');
+    expect(markup).toContain("This block failed when the program ran");
+  });
 });

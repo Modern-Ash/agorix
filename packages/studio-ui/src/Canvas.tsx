@@ -84,14 +84,22 @@ function ghostKind(ghosts: readonly GhostChange[] | undefined, blockId: string) 
   return ghosts?.find((ghost) => ghost.blockId === blockId)?.kind;
 }
 
+export interface SyncView {
+  readonly selectedBlockId?: string;
+  readonly executingBlockId?: string;
+  readonly failedBlockId?: string;
+}
+
 export function Canvas({
   workspace,
   onIntent,
   ghosts,
+  sync,
 }: {
   readonly workspace: BlockWorkspaceSnapshot;
   readonly onIntent: (intent: Intent) => void;
   readonly ghosts?: readonly GhostChange[] | undefined;
+  readonly sync?: SyncView | undefined;
 }) {
   const addedGhosts = (ghosts ?? []).filter((ghost) => ghost.kind === "added");
   return (
@@ -115,6 +123,9 @@ export function Canvas({
           });
           if (intent !== undefined) onIntent(intent);
         };
+        const isSel = sync?.selectedBlockId === block.id;
+        const isExec = sync?.executingBlockId === block.id;
+        const isFail = sync?.failedBlockId === block.id;
         const fields = Object.entries(block.fields)
           .map(([name, value]) => `${name}: ${String(value)}`)
           .join(", ");
@@ -132,13 +143,16 @@ export function Canvas({
                 : ghostKind(ghosts, block.id) === undefined
                   ? ""
                   : " ghost-changed"
-            }`}
+            }${isSel ? " sel" : ""}${isExec ? " exec" : ""}${isFail ? " fail" : ""}`}
+            aria-current={isSel ? "true" : undefined}
             aria-description={
-              ghostKind(ghosts, block.id) === "removed"
-                ? "Suggestion would remove this block"
-                : ghostKind(ghosts, block.id) === undefined
-                  ? undefined
-                  : "Suggestion would change this block"
+              isFail
+                ? "This block failed when the program ran"
+                : ghostKind(ghosts, block.id) === "removed"
+                  ? "Suggestion would remove this block"
+                  : ghostKind(ghosts, block.id) === undefined
+                    ? undefined
+                    : "Suggestion would change this block"
             }
             onDragStart={(event) => {
               event.dataTransfer.setData(
@@ -155,10 +169,16 @@ export function Canvas({
               }
             }}
           >
-            <span className="label">
+            <span
+              className="label"
+              data-testid="block-label"
+              onClick={() => onIntent({ type: "revealNode", nodeId: block.id })}
+            >
               {block.label}
               {fields === "" ? "" : ` (${fields})`}
             </span>
+            {isFail ? <span className="sync-badge fail-badge">Failed here</span> : null}
+            {isExec ? <span className="sync-badge">Running</span> : null}
             <button
               type="button"
               aria-label={`Move ${block.label} up`}

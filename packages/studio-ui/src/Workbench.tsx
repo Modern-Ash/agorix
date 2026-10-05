@@ -3,7 +3,7 @@ import type { BlockType, BlockWorkspaceSnapshot } from "@agorix/block-editor";
 import type { Intent } from "@agorix/interaction-core";
 import { STUDIO_PROTOCOL_VERSION, type HostMessage } from "@agorix/studio-protocol";
 import type { HostBridge } from "./bridge.js";
-import { AgentZone, Canvas } from "./Canvas.js";
+import { AgentZone, Canvas, type SyncView } from "./Canvas.js";
 import { Palette } from "./Palette.js";
 import { AgentPanel } from "./AgentPanel.js";
 import { initialAgentUi, reduceAgentUi } from "./agentUi.js";
@@ -23,11 +23,24 @@ export function statusFor(message: HostMessage): string | undefined {
 export function Workbench({ bridge }: { readonly bridge: HostBridge }) {
   const [workspace, setWorkspace] = useState<BlockWorkspaceSnapshot | undefined>();
   const [status, setStatus] = useState("");
+  const [sync, setSync] = useState<SyncView>({});
   const [agentUi, dispatchAgent] = useReducer(reduceAgentUi, undefined, initialAgentUi);
 
   useEffect(() => {
     const unsubscribe = bridge.subscribe((message) => {
       dispatchAgent(message);
+      if (message.type === "sync") {
+        setSync({
+          ...(message.selectedBlockId === undefined
+            ? {}
+            : { selectedBlockId: message.selectedBlockId }),
+          ...(message.executingBlockId === undefined
+            ? {}
+            : { executingBlockId: message.executingBlockId }),
+          ...(message.failedBlockId === undefined ? {} : { failedBlockId: message.failedBlockId }),
+        });
+        return;
+      }
       if (message.type === "workspace") {
         setWorkspace(message.workspace);
         setStatus("Updated");
@@ -60,7 +73,12 @@ export function Workbench({ bridge }: { readonly bridge: HostBridge }) {
         {workspace === undefined ? (
           <p>Open a project to start building.</p>
         ) : (
-          <Canvas workspace={workspace} onIntent={post} ghosts={agentUi.proposal?.changes} />
+          <Canvas
+            workspace={workspace}
+            onIntent={post}
+            ghosts={agentUi.proposal?.changes}
+            sync={sync}
+          />
         )}
         <div className="zones">
           <AgentZone verb="explain" label="Explain" onIntent={post} />
