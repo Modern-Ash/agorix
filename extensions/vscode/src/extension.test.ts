@@ -39,7 +39,7 @@ vi.mock("vscode", () => {
   const uri = (fsPath: string) => ({
     fsPath,
     path: fsPath.replace(/^[^:]+:/, ""),
-    scheme: fsPath.includes(":") ? fsPath.split(":")[0] : "file",
+    scheme: fsPath.startsWith("/") ? "file" : fsPath.includes(":") ? fsPath.split(":")[0] : "file",
     toString: () => fsPath,
   });
   class Uri {
@@ -266,6 +266,12 @@ vi.mock("vscode", () => {
           files.get(target.fsPath) ?? new Uint8Array(),
         writeFile: async (target: { fsPath: string }, content: Uint8Array) => {
           files.set(target.fsPath, content);
+        },
+        stat: async (target: { fsPath: string }) => {
+          if (!files.has(target.fsPath)) {
+            throw new Error("not found");
+          }
+          return { type: 1 };
         },
       },
     },
@@ -872,6 +878,11 @@ describe("Studio extension wiring", () => {
     workbenchPanel()?.receive({
       schema: "agorix/studio-protocol/v1",
       type: "intent",
+      baseHash: (
+        workbenchPanel()?.messages.find(
+          (message) => (message as { type?: string }).type === "workspace",
+        ) as { programHash?: string }
+      ).programHash,
       intent: {
         type: "insertBlock",
         blockType: "motion_move",
@@ -898,6 +909,12 @@ describe("Studio extension wiring", () => {
     workbenchPanel()?.receive({
       schema: "agorix/studio-protocol/v1",
       type: "intent",
+      baseHash: (
+        [...(workbenchPanel()?.messages ?? [])]
+          .reverse()
+          .find((message) => (message as { type?: string }).type === "workspace") as
+          { programHash?: string } | undefined
+      )?.programHash,
       intent: {
         type: "insertBlock",
         blockType: "motion_turn",

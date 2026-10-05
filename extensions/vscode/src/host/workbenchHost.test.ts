@@ -65,6 +65,7 @@ describe("workbenchHost", () => {
         blockType: "motion_move",
         to: { container: script, index: 0 },
       },
+      baseHash: programSemanticHash(base),
     });
     expect(get()?.scripts[0]?.statements).toHaveLength(3);
     expect(labels[0]).toMatch(/^Workbench:/);
@@ -75,7 +76,12 @@ describe("workbenchHost", () => {
     const { host, get } = setup();
     const from = { container: script, index: 0 };
     const to = { container: script, index: 1 };
-    await host.handle({ schema, type: "intent", intent: { type: "moveBlock", from, to } });
+    await host.handle({
+      schema,
+      type: "intent",
+      intent: { type: "moveBlock", from, to },
+      baseHash: programSemanticHash(base),
+    });
     const direct = applyWorkspaceChange(programToWorkspace(base).workspace, {
       type: "moveBlock",
       from,
@@ -94,6 +100,7 @@ describe("workbenchHost", () => {
         blockType: "event_on_start",
         to: { container: script, index: 0 },
       },
+      baseHash: programSemanticHash(base),
     });
     const outOfRange = await host.handle({
       schema,
@@ -103,6 +110,7 @@ describe("workbenchHost", () => {
         from: { container: script, index: 9 },
         to: { container: script, index: 0 },
       },
+      baseHash: programSemanticHash(base),
     });
     expect(bad).toEqual([
       { schema, type: "error", code: "INVALID_CHANGE", reason: "NOT_A_STATEMENT" },
@@ -255,6 +263,14 @@ describe("stale edits", () => {
       baseHash: programSemanticHash(base),
     });
     expect(labels).toHaveLength(1);
+  });
+
+  it("refuses a mutating intent without a baseHash", async () => {
+    const { host, labels } = setup();
+    const out = await host.handle({ schema, type: "intent", intent: insert });
+    expect(out[0]).toEqual({ schema, type: "error", code: "STALE_EDIT" });
+    expect(out[1]).toMatchObject({ type: "workspace" });
+    expect(labels).toHaveLength(0);
   });
 
   it("still routes non-mutating intents with a stale baseHash", async () => {

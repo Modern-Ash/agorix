@@ -127,6 +127,39 @@ describe("agentHost", () => {
     expect(state.applied).toBe(1);
   });
 
+  it("does not apply the same pending proposal twice when decisions race", async () => {
+    const ctx = setup();
+    let release!: () => void;
+    ctx.port.applyPending = vi.fn(
+      async () =>
+        new Promise<"applied">((resolve) => {
+          release = () => {
+            ctx.state.applied += 1;
+            ctx.state.hash = "h1";
+            resolve("applied");
+          };
+        }),
+    );
+    await ctx.send({ type: "stateIntent", text: "x" });
+    await ctx.send({ type: "acceptPlan" });
+    await ctx.send({ type: "requestProposal" });
+    const first = ctx.send({
+      type: "decideProposal",
+      proposalId: "first-step",
+      decision: "accepted",
+    });
+    const second = await ctx.send({
+      type: "decideProposal",
+      proposalId: "first-step",
+      decision: "accepted",
+    });
+    release();
+    expect(second).toEqual([]);
+    expect(types(await first)).toEqual(["proposalCleared", "workflow", "prediction"]);
+    expect(ctx.port.applyPending).toHaveBeenCalledOnce();
+    expect(ctx.state.applied).toBe(1);
+  });
+
   it("drops stale proposals without advancing", async () => {
     const { state, send } = setup({ stale: true });
     await send({ type: "stateIntent", text: "x" });
@@ -303,6 +336,25 @@ describe("agentHost prediction gating", () => {
     ).toEqual([{ schema, type: "error", code: "PREDICTION_REQUIRED" }]);
   });
 
+  it("requires a fresh prediction after choosing an alternative", async () => {
+    const ctx = await toProposal();
+    ctx.port.chooseAlternative = (id) =>
+      id === "alt" ? { proposalId: "alt", purpose: "p2", rationale: "r2", changes: [] } : undefined;
+    await ctx.send({ type: "requestProposal" });
+    await ctx.send({ type: "predict", answer: "yes" });
+    expect(types(await ctx.send({ type: "chooseAlternative", proposalId: "alt" }))).toEqual([
+      "workflow",
+      "proposal",
+    ]);
+    expect(
+      await ctx.send({ type: "decideProposal", proposalId: "alt", decision: "accepted" }),
+    ).toEqual([{ schema, type: "error", code: "PREDICTION_REQUIRED" }]);
+    expect(types(await ctx.send({ type: "predict", answer: "no" }))).toEqual(["workflow"]);
+    expect(
+      types(await ctx.send({ type: "decideProposal", proposalId: "alt", decision: "accepted" })),
+    ).toEqual(["proposalCleared", "workflow"]);
+  });
+
   it("keeps the current predict-after-accept flow when the flag is off", async () => {
     const { send } = setup();
     await send({ type: "stateIntent", text: "make it move" });
@@ -447,6 +499,9 @@ describe("agentHost per-operation decisions and alternatives", () => {
     });
     expect(out).toEqual([{ schema, type: "error", code: "PREDICTION_REQUIRED" }]);
     expect(applySelection).not.toHaveBeenCalled();
+    expect(
+      await ctx.send({ type: "previewSelection", proposalId: "first-step", selection }),
+    ).toEqual([]);
   });
 });
 

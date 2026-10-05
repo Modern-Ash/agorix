@@ -211,6 +211,48 @@ describe("prediction before accept ui", () => {
     expect(after).not.toMatch(/<button[^>]*disabled=""[^>]*>Accept/);
   });
 
+  it("does not show runtime outcomes before the required prediction", () => {
+    const withEvidence: AgentUiState = {
+      ...withProposal(false),
+      proposal: {
+        proposalId: "p1",
+        purpose: "p",
+        rationale: "r",
+        changes: [],
+        evidence: { stepsUsed: 4, reachedGoal: true, outcome: "completed" },
+        alternatives: [
+          {
+            proposalId: "p2",
+            purpose: "Other",
+            tradeoff: "Different path.",
+            evidence: { stepsUsed: 8, reachedGoal: false, outcome: "budget-exceeded" },
+          },
+        ],
+      },
+      selectionEvidence: {
+        ok: true,
+        evidence: { stepsUsed: 2, reachedGoal: false, outcome: "completed" },
+      },
+    };
+    const before = renderToStaticMarkup(
+      <AgentPanel
+        state={withEvidence}
+        send={() => undefined}
+        selection={{ include: [0], overrides: {} }}
+        onSelectionChange={() => undefined}
+      />,
+    );
+    expect(before).toContain("Before you accept");
+    expect(before).not.toContain("reaches the goal");
+    expect(before).not.toContain("does not reach the goal");
+    expect(before).not.toContain("Choose which changes to keep");
+
+    const after = renderToStaticMarkup(
+      <AgentPanel state={withProposal(true)} send={() => undefined} />,
+    );
+    expect(after).not.toContain("Before you accept");
+  });
+
   it("keeps Accept enabled and hides the prompt when the flag is off", () => {
     let ui = stageState("proposal");
     ui = reduceAgentUi(ui, {

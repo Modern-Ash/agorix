@@ -46,6 +46,14 @@ function isKnownFailure(error: unknown): boolean {
   return error instanceof BlockEditorAdapterError || error instanceof ProgramValidationError;
 }
 
+function isMutatingIntent(intent: UiMessage & { readonly type: "intent" }): boolean {
+  return (
+    intent.intent.type === "insertBlock" ||
+    intent.intent.type === "moveBlock" ||
+    intent.intent.type === "deleteBlock"
+  );
+}
+
 export function createWorkbenchHost(port: HostPort, newBlockId: () => string): WorkbenchHost {
   function snapshot(): HostMessage[] {
     const program = port.getProgram();
@@ -169,7 +177,7 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
         if (program === undefined) {
           return [];
         }
-        if (message.baseHash !== undefined && message.baseHash !== programSemanticHash(program)) {
+        if (isMutatingIntent(message) && message.baseHash !== programSemanticHash(program)) {
           return [{ schema, type: "error", code: "STALE_EDIT" }, ...snapshot()];
         }
         try {
