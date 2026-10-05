@@ -285,6 +285,13 @@ export function activate(context: vscode.ExtensionContext): void {
           providerWiring.current === undefined
             ? { origin: "built-in", reason: "no-provider" }
             : providerWiring.current.source().request(project, task),
+        providerIntentPlan: (request) => {
+          const client = providerWiring.current?.client();
+          if (client === undefined) return undefined;
+          return client
+            .planIntent(request)
+            .then((outcome) => (outcome.status === "response" ? outcome.response : undefined));
+        },
         rejectActiveProposal: proposalCommands.rejectActiveProposal,
         runAndGetResult: () => {
           const view = executionCommands.runExecution();

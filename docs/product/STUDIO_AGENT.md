@@ -138,9 +138,10 @@ Epic #242. Foundations #243. Phase 1 agent core #244-#251. Phase 2 canvas #252-#
 
 ## Workbench agent slice
 
-Implemented in the Workbench (Plan D, deterministic System-0 scaffolds only, no provider calls):
+Implemented in the Workbench:
 
 - intent bar (max 140 characters, never stored or echoed) that selects among the available deterministic tasks;
+- provider-backed intent planning through the validated `/intent-plan` boundary when AI is configured, with deterministic fallback for offline, invalid, unavailable or stale responses;
 - plan, then a proposal shown as ghost blocks on the canvas with Accept and Reject;
 - predict (will the character reach the goal), run, compare with runtime evidence, explain (closed choice); prediction and explanation can always be skipped;
 - visible agent agreements (agent on/off, supervised or bounded mode, help level ceiling);

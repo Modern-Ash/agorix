@@ -38,7 +38,7 @@ A host-side `SyncHub` (`extensions/vscode/src/sync/syncHub.ts`) holds one select
 
 - An unclear intent (no task keyword, more than one task available) gets at most one clarifying question made of fixed task titles; the learner text is never echoed or stored.
 - A plan is anchored to the program hash it was made against. If the program changes before the plan is accepted, the plan is dropped (`STALE_PLAN`).
-- Workbench intent planning uses the provider-neutral intent-plan contract with a deterministic local planner, then maps the result back to fixed task cards.
+- Workbench intent planning uses the provider-neutral intent-plan contract. When AI is configured it may call the validated `/intent-plan` provider boundary; unavailable, invalid or stale provider output falls back to the deterministic local planner. Both paths map back to fixed task cards and never echo learner free text as task titles.
 - Workbench density is configurable (`agorixStudio.workbench.density`: `comfortable` or `compact`) so Studio can stay readable for first use and denser for repeated IDE editing.
 - Workbench and Agent chrome read the project locale metadata and support fixed English/Spanish UI copy. Dynamic proposal text, provider notices and learner-entered intent remain source text rather than being translated by the UI.
 - Workbench edits carry the `programHash` the UI last saw; a stale edit is refused (`STALE_EDIT`) and a fresh snapshot is sent.

@@ -2,7 +2,14 @@ import { createServer, type IncomingMessage, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterEach, describe, expect, it } from "vitest";
 import { createFakeProviderRuntime } from "@agorix/provider-runtime";
-import type { LearningCompanionRequest, LearningCompanionResponse } from "@agorix/tutor-contract";
+import {
+  createDeterministicIntentPlan,
+  createIntentPlanRequest,
+  type IntentPlanRequest,
+  type IntentPlanResponse,
+  type LearningCompanionRequest,
+  type LearningCompanionResponse,
+} from "@agorix/tutor-contract";
 import {
   createCompanionTurn,
   createStudioStarterProject,
@@ -29,11 +36,37 @@ function request(action: "explain" | "build" = "explain"): LearningCompanionRequ
   return createCompanionTurn(project, action).request;
 }
 
+function intentRequest(learnerIntent = "make it move"): IntentPlanRequest {
+  const project = openStoredProject(
+    createStudioStarterProject({
+      starter: "first-mission",
+      locale: "en",
+      now: "2026-10-03T12:00:00.000Z",
+    }),
+  );
+  return createIntentPlanRequest({
+    learnerIntent,
+    mission: {
+      id: "first-mission",
+      version: 1,
+      learningObjective: "Move to the goal.",
+      concepts: ["sequence", "events", "movement"],
+    },
+    program: project.stored.program,
+    selectedNodeIds: [],
+    priorClarifications: [],
+    reading: { locale: "en" },
+  });
+}
+
 interface BoundaryOptions {
   health?: "available" | "degraded" | "unavailable";
   mutate?: (response: LearningCompanionResponse) => unknown;
+  intentPlan?: (request: IntentPlanRequest) => IntentPlanResponse | unknown;
   raw?: string;
+  intentRaw?: string;
   status?: number;
+  intentStatus?: number;
   hang?: boolean;
 }
 
@@ -61,6 +94,15 @@ async function startBoundary(options: BoundaryOptions = {}): Promise<string> {
     let body = "";
     for await (const chunk of req) {
       body += String(chunk);
+    }
+    if (req.method === "POST" && req.url === "/intent-plan") {
+      const parsed = JSON.parse(body) as IntentPlanRequest;
+      const planned = options.intentPlan
+        ? options.intentPlan(parsed)
+        : createDeterministicIntentPlan(parsed);
+      res.statusCode = options.intentStatus ?? options.status ?? 200;
+      res.end(options.intentRaw ?? JSON.stringify(planned));
+      return;
     }
     const result = await fake.request(JSON.parse(body) as LearningCompanionRequest);
     res.statusCode = options.status ?? 200;
@@ -106,6 +148,26 @@ describe("Studio provider client", () => {
     expect(seenAuth.every((a) => a === undefined)).toBe(true);
   });
 
+  it("plans intent through the boundary with a validated provider-neutral request", async () => {
+    let seen: IntentPlanRequest | undefined;
+    const endpoint = await startBoundary({
+      intentPlan: (request) => {
+        seen = request;
+        return createDeterministicIntentPlan(request);
+      },
+    });
+    const outcome = await client({ endpoint }).planIntent(intentRequest("repeat it"));
+    expect(outcome).toMatchObject({ status: "response", locality: "local" });
+    expect(seen).toMatchObject({
+      schema: "agorix/intent-plan-request/v1",
+      learnerIntent: "repeat it",
+      selectedNodeIds: [],
+      priorClarifications: [],
+    });
+    expect(JSON.stringify(outcome)).not.toContain("127.0.0.1");
+    expect(seenAuth.every((a) => a === undefined)).toBe(true);
+  });
+
   it("reports disabled when turned off and never calls the network", async () => {
     let calls = 0;
     const c = createStudioProviderClient({
@@ -117,6 +179,7 @@ describe("Studio provider client", () => {
     });
     expect(await c.probe()).toMatchObject({ state: "disabled", reason: "offline-mode" });
     expect(await c.request(request())).toMatchObject({ status: "unavailable" });
+    expect(await c.planIntent(intentRequest())).toMatchObject({ status: "unavailable" });
     expect(calls).toBe(0);
   });
 
@@ -164,6 +227,8 @@ describe("Studio provider client", () => {
       fetch: spy,
     });
     expect(await allowed.probe()).toMatchObject({ state: "available", locality: "remote" });
+    expect(await blocked.planIntent(intentRequest())).toMatchObject({ status: "unavailable" });
+    expect(calls).toBe(1);
   });
 
   it("prefers local over remote when both are available, and falls back when local is down", async () => {
@@ -206,6 +271,20 @@ describe("Studio provider client", () => {
       ]) {
         const endpoint = await startBoundary(options);
         expect((await client({ endpoint }).request(request())).status).toBe("unavailable");
+      }
+    });
+
+    it("fails closed on invalid intent-plan responses", async () => {
+      for (const options of [
+        { intentRaw: "not json" },
+        { intentStatus: 500, intentRaw: "{}" },
+        { intentRaw: "x".repeat(300_000) },
+        {
+          intentPlan: (r: IntentPlanRequest) => ({ ...createDeterministicIntentPlan(r), extra: 1 }),
+        },
+      ]) {
+        const endpoint = await startBoundary(options);
+        expect((await client({ endpoint }).planIntent(intentRequest())).status).toBe("unavailable");
       }
     });
 

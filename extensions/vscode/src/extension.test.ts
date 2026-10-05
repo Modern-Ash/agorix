@@ -1002,6 +1002,7 @@ describe("Studio extension wiring", () => {
 
   it("offers a provider-backed proposal, then degrades to built-in when the budget is spent", async () => {
     const { createFakeProviderRuntime } = await import("@agorix/provider-runtime");
+    const { createDeterministicIntentPlan } = await import("@agorix/tutor-contract");
     const fake = createFakeProviderRuntime({
       runtimeId: "fake",
       providerId: "fake",
@@ -1014,6 +1015,14 @@ describe("Studio extension wiring", () => {
       calls.push(url);
       if (url.endsWith("/health")) {
         return { ok: true, status: 200, text: async () => JSON.stringify({ status: "available" }) };
+      }
+      if (url.endsWith("/intent-plan")) {
+        return {
+          ok: true,
+          status: 200,
+          text: async () =>
+            JSON.stringify(createDeterministicIntentPlan(JSON.parse(init.body ?? "{}"))),
+        };
       }
       const result = await fake.request(JSON.parse(init.body ?? "{}"));
       return {
@@ -1042,6 +1051,7 @@ describe("Studio extension wiring", () => {
         }>;
       receive({ type: "ready" });
       receive({ type: "stateIntent", text: "make it move" });
+      await flushWorkbench();
       receive({ type: "acceptPlan" });
       receive({ type: "requestProposal" });
       await flushWorkbench();
@@ -1077,6 +1087,7 @@ describe("Studio extension wiring", () => {
         workbenchPanel()?.receive({ schema, ...message });
       receive({ type: "ready" });
       receive({ type: "stateIntent", text: "make it move" });
+      await flushWorkbench();
       receive({ type: "acceptPlan" });
       receive({ type: "requestProposal" });
       await flushWorkbench();
