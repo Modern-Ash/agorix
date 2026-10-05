@@ -9,6 +9,7 @@ import { ProgramValidationError, type ProjectProgram } from "@agorix/program-mod
 import { programSemanticHash } from "@agorix/proposals";
 import { STUDIO_PROTOCOL_VERSION, type HostMessage, type UiMessage } from "@agorix/studio-protocol";
 import type { AgentAgreements } from "@agorix/agent-workflow";
+import type { SyncState } from "../sync/syncHub.js";
 
 export interface HostPort {
   getProgram(): ProjectProgram | undefined;
@@ -22,6 +23,7 @@ export interface HostPort {
 export interface WorkbenchHost {
   handle(message: UiMessage): Promise<HostMessage[]>;
   snapshot(): HostMessage[];
+  syncMessage(state: SyncState): HostMessage[];
 }
 
 const schema = STUDIO_PROTOCOL_VERSION;
@@ -43,6 +45,33 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
       if (isKnownFailure(error)) {
         return [{ schema, type: "error", code: "INVALID_PROGRAM" }];
       }
+      throw error;
+    }
+  }
+
+  function syncMessage(state: SyncState): HostMessage[] {
+    const program = port.getProgram();
+    if (program === undefined) return [];
+    try {
+      const { mapping } = programToWorkspace(program);
+      const blockFor = (nodeId: string | undefined): string | undefined =>
+        nodeId === undefined
+          ? undefined
+          : mapping.find((entry) => entry.nodeId === nodeId)?.blockId;
+      const selectedBlockId = blockFor(state.selectedNodeId);
+      const executingBlockId = blockFor(state.executingNodeId);
+      const failedBlockId = blockFor(state.failedNodeId);
+      return [
+        {
+          schema,
+          type: "sync",
+          ...(selectedBlockId === undefined ? {} : { selectedBlockId }),
+          ...(executingBlockId === undefined ? {} : { executingBlockId }),
+          ...(failedBlockId === undefined ? {} : { failedBlockId }),
+        },
+      ];
+    } catch (error) {
+      if (isKnownFailure(error)) return [];
       throw error;
     }
   }
@@ -120,5 +149,5 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
     }
   }
 
-  return { handle, snapshot };
+  return { handle, snapshot, syncMessage };
 }

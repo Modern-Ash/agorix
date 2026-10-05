@@ -178,3 +178,19 @@ describe("workbenchHost", () => {
     expect(port.updateAgreements).toHaveBeenCalledWith(agreements);
   });
 });
+
+describe("syncMessage", () => {
+  it("maps canonical hub ids to block ids", () => {
+    const { host } = setup();
+    const { mapping } = programToWorkspace(base);
+    const entry = mapping.find((m) => m.kind === "statement")!;
+    expect(
+      host.syncMessage({ selectedNodeId: entry.nodeId, failedNodeId: "does/not/exist" }),
+    ).toEqual([{ schema, type: "sync", selectedBlockId: entry.blockId }]);
+  });
+
+  it("returns no sync message without a program", () => {
+    const { host } = setup(null);
+    expect(host.syncMessage({ selectedNodeId: "x" })).toEqual([]);
+  });
+});
