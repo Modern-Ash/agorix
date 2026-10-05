@@ -5,6 +5,7 @@ import { createProgramProposal } from "@agorix/proposals";
 import {
   applyProposal,
   applyProposalSession,
+  createCompanionRequest,
   createCompanionTurn,
   createDeveloperContext,
   createExecutionEvidence,
@@ -494,5 +495,31 @@ describe("proposal evidence and alternatives", () => {
     const none = evidenceForProgram(empty, empty.stored.program);
     expect(none.stepsUsed).toBe(0);
     expect(none.reachedGoal).toBe(false);
+  });
+});
+
+describe("provider-backed companion turns", () => {
+  it("uses a validated provider response and marks the turn as provider-backed", () => {
+    const project = openStoredProject(
+      createStudioStarterProject({ starter: "blank", locale: "en-US" }),
+    );
+    const request = createCompanionRequest(project, "build");
+    expect(request.capability).toBe("builder");
+    const deterministic = createCompanionTurn(project, "build");
+    const turn = createCompanionTurn(project, "build", {
+      providerResponse: deterministic.response,
+    });
+    expect(turn.diagnostics.providerSelection).toBe("provider");
+    expect(turn.proposal?.review.proposal.id).toBe(deterministic.proposal?.review.proposal.id);
+    expect(deterministic.diagnostics.providerSelection).not.toBe("provider");
+  });
+
+  it("rejects a provider response that fails the safety contract", () => {
+    const project = openStoredProject(
+      createStudioStarterProject({ starter: "blank", locale: "en-US" }),
+    );
+    const good = createCompanionTurn(project, "build").response;
+    const bad = { ...good, capability: "coach" } as never;
+    expect(() => createCompanionTurn(project, "build", { providerResponse: bad })).toThrow();
   });
 });

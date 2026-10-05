@@ -187,7 +187,7 @@ export interface StudioExecutionViewState {
 export type StudioCompanionAction = "explain" | "challenge" | "debug" | "reflect" | "build";
 
 export interface StudioCompanionDiagnostics {
-  readonly providerSelection: "bypassed" | "not-configured";
+  readonly providerSelection: "bypassed" | "not-configured" | "provider";
   readonly decisionSource: "system0" | "system1" | "fallback";
   readonly reasoningTier: LearningRequirements["reasoningTier"];
   readonly contextNeed: LearningRequirements["contextNeed"];
@@ -782,20 +782,23 @@ export function createExecutionViewState(
   };
 }
 
-export function createCompanionTurn(
+export interface StudioCompanionOptions {
+  readonly selectedNodeIds?: readonly string[];
+  readonly learnerIntent?: string;
+  readonly evidence?: StudioExecutionEvidence;
+}
+
+/** The provider-neutral request for a companion action; also what a provider is asked. */
+export function createCompanionRequest(
   project: StudioProject,
   action: StudioCompanionAction,
-  options: {
-    readonly selectedNodeIds?: readonly string[];
-    readonly learnerIntent?: string;
-    readonly evidence?: StudioExecutionEvidence;
-  } = {},
-): StudioCompanionTurn {
+  options: StudioCompanionOptions = {},
+): LearningCompanionRequest {
   const capability = companionCapability(action);
   const mission = getLocalizedFirstMission(project.stored.metadata.locale);
   const evidence = options.evidence ?? createExecutionEvidence(project.stored);
   const runtimeFacts = runtimeFactsFromEvidence(evidence);
-  const request = createLearningCompanionRequest({
+  return createLearningCompanionRequest({
     capability,
     mission: {
       id: mission.id,
@@ -823,6 +826,19 @@ export function createCompanionTurn(
       : { learnerIntent: options.learnerIntent }),
     reading: { locale: project.stored.metadata.locale ?? "en" },
   });
+}
+
+export function createCompanionTurn(
+  project: StudioProject,
+  action: StudioCompanionAction,
+  options: StudioCompanionOptions & {
+    /** A response already obtained from a provider; validated here before use. */
+    readonly providerResponse?: LearningCompanionResponse;
+  } = {},
+): StudioCompanionTurn {
+  const evidence = options.evidence ?? createExecutionEvidence(project.stored);
+  const request = createCompanionRequest(project, action, { ...options, evidence });
+  const runtimeFacts = runtimeFactsFromEvidence(evidence);
   const state = stateFromLearningCompanionRequest(request, {
     offline: true,
     explicitStrongerHelpRequested: action === "build",
@@ -832,7 +848,7 @@ export function createCompanionTurn(
     requirements.generativeNeeded === "no" || roleCanUseDeterministicFixture(request);
   const response = validateLearningCompanionSafety(
     request,
-    createDeterministicLearningCompanionResponse(request),
+    options.providerResponse ?? createDeterministicLearningCompanionResponse(request),
   );
   const proposal =
     response.capability === "builder" && response.payload.validation.status === "valid"
@@ -846,7 +862,12 @@ export function createCompanionTurn(
     message: response.message,
     selectedNodeIds: request.selectedNodeIds,
     diagnostics: {
-      providerSelection: deterministic ? "bypassed" : "not-configured",
+      providerSelection:
+        options.providerResponse !== undefined
+          ? "provider"
+          : deterministic
+            ? "bypassed"
+            : "not-configured",
       decisionSource: requirements.provenance.generativeNeeded,
       reasoningTier: requirements.reasoningTier,
       contextNeed: requirements.contextNeed,
