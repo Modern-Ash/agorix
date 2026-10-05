@@ -89,6 +89,9 @@ importers:
       '@agorix/learning-decision-plane':
         specifier: workspace:*
         version: link:../../packages/learning-decision-plane
+      '@agorix/learning-evidence':
+        specifier: workspace:*
+        version: link:../../packages/learning-evidence
       '@agorix/persistence':
         specifier: workspace:*
         version: link:../../packages/persistence

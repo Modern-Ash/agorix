@@ -118,6 +118,7 @@ import { loadPresentationPrefs, savePresentationPrefs } from "./presentationPref
 import { LOCALE_LABELS, t, type Locale, type MessageKey } from "./i18n.js";
 import { PredictionChip, PredictionComparison } from "./PredictionChip.js";
 import { AgentCompanion, companionMood } from "./AgentCompanion.js";
+import { ModelComparison } from "./ModelComparison.js";
 import { GhostAddedBlocks } from "./GhostBlocks.js";
 import { ghostMarksFor, type GhostMarkKind } from "./ghostMarks.js";
 import { ProvenanceLabel } from "./ProvenanceLabel.js";
@@ -1736,6 +1737,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
   const [learningDecision, setLearningDecision] = useState<
     WebLearningDecisionDiagnostics | undefined
   >();
+  const [comparisonOpen, setComparisonOpen] = useState(false);
   const [aiLiteracyActivity, setAiLiteracyActivity] = useState(false);
   const [aiPredictionRecorded, setAiPredictionRecorded] = useState(false);
   const timerRef = useRef<number | undefined>();
@@ -3335,6 +3337,9 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
                   {t(locale, "aiLiteracyActivity")}
                 </button>
               ) : null}
+              <button type="button" onClick={() => setComparisonOpen((open) => !open)}>
+                {t(locale, "compareOpen")}
+              </button>
               <button type="button" onClick={requestHint}>
                 {t(locale, "getHint")}
               </button>
@@ -3342,6 +3347,9 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
                 {t(locale, "hintMeter", { count: hintHistory.length })}
               </span>
             </div>
+            {comparisonOpen ? (
+              <ModelComparison locale={locale} onClose={() => setComparisonOpen(false)} />
+            ) : null}
             {proposalCard === undefined || repeatReviewActive ? null : (
               <div className="proposal-card" data-testid="proposal-preview">
                 <ProvenanceLabel kind="suggestion" locale={locale} />
