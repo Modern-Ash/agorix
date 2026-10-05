@@ -60,12 +60,16 @@ A host-side `SyncHub` (`extensions/vscode/src/sync/syncHub.ts`) holds one select
 - Budget: `agorixStudio.agent.proposalBudgetRequests` (default 10 per session). Telemetry holds enums and numbers only; learner text never reaches it.
 - Educator evidence export is local and user-initiated (`agorixStudio.exportEducatorEvidence`). It summarizes one session with counts only: proposal decisions, predictions, explanations, ambient offers, settings and deterministic runtime completion. It writes JSON plus a Markdown summary to files the user chooses and contains no names, emails, paths, learner text or raw model output.
 
+## Provider text policy
+
+Provider-written text (`purpose`, `rationale`, messages) is shown as plain text and only after the shared safety boundary: links, URLs, markup and code blocks are rejected (ADR 0008), and the child sees the safe message while Studio falls back to the built-in proposal. The card leads with the operation list and the runtime evidence; the AI's explanation follows, labelled as not checked by the runtime. Provider text is not logged, sent to telemetry or exported.
+
 ## Studio localization
 
 - The manifest (command titles, view names, settings, welcome text) is localized with `package.nls.json` and `package.nls.es.json`. Runtime messages, dialogs, quick picks, CodeLenses, the status bar and tree labels go through `t()` (`src/l10n.ts`, `vscode.l10n.t`) with `l10n/bundle.l10n.es.json`; the English text is the key and `{0}` marks values.
 - The language follows the VS Code display language. The Workbench keeps following the project's locale (set at creation), so the two can differ.
 - `src/l10n.test.ts` fails when a `%key%`, a `t()`/`msg()` literal or a placeholder is missing from either bundle, and `.vscodeignore` must ship the bundles.
-- Not localized: proposal and provider text (pending a privacy decision), the dynamic ambient tooltip with the offer reason, and mission/world titles, which come from the curriculum already localized.
+- Not localized: proposal and provider text (shown as source text under the provider text policy), the dynamic ambient tooltip with the offer reason, and mission/world titles, which come from the curriculum already localized.
 - The packaged VSIX contains the bundles; the real Spanish UI path was not exercised in VS Code because no Spanish language pack is installed in the test profile.
 
 ## Canvas accessibility
