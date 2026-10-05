@@ -9,7 +9,6 @@ import { chordFromEvent, parseDragPayload } from "./drag.js";
 import { statusFor } from "./Workbench.js";
 import { densityAnnouncement } from "./density.js";
 import { copyFor } from "./i18n.js";
-import { copyFor } from "./i18n.js";
 
 const program = {
   schema: "agorix/program/v1",
