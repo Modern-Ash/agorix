@@ -40,6 +40,13 @@ A host-side `SyncHub` (`extensions/vscode/src/sync/syncHub.ts`) holds one select
 - A refused placement explains why (`NOT_A_CONTAINER`, `BAD_INDEX`, `BLOCK_NOT_FOUND`, `NOT_A_STATEMENT`, `WOULD_BREAK_PROGRAM`) in the live status region.
 - Agent agreement `requirePredictionBeforeAccept` (off by default): the learner must predict before accepting an AI suggestion. It never blocks manual edits, and rejecting never needs a prediction.
 
+## Advanced canvas proposals
+
+- A proposal shows its operations as a list. The learner keeps or skips each one and may edit a numeric value (`steps`, `degrees`, `count`). "Apply selected" derives a narrower, revalidated proposal and commits it as one transaction (one undo step, one `modify` decision). An empty selection is a rejection and changes nothing.
+- A task may offer a second real proposal (for example a shorter first step). Alternatives sit side by side; choosing one only swaps the pending proposal.
+- Evidence on every proposal and on the current selection comes from running the candidate program in the deterministic runtime (steps used, whether it reaches the goal). Trade-off texts are fixed; nothing is claimed that was not run.
+- Each suggested change is anchored to its block as visible text and an accessible description; skipped changes are dimmed. The prediction gate applies to "Apply selected" as well.
+
 ## Release gate
 
 Studio's product release gate is

@@ -5,10 +5,12 @@
 **Goal:** Implement the spec. **Spec:** `docs/superpowers/specs/2026-10-05-canvas-proposals-design.md`
 
 ## Global Constraints
+
 - Domain packages never import `vscode`. No learner text stored or logged. Works with AI off.
 - Run from `agorix/`: `pnpm test`, `pnpm lint`, `pnpm -r typecheck`.
 
 ## Review Focus
+
 - Selection that leaves the program invalid (e.g. removals without the replace) must be refused, not applied.
 - Stale base hash between preview and apply.
 - Empty selection produces zero transactions.
@@ -16,6 +18,7 @@
 - Prediction gate also blocks "Apply selected".
 
 ## Tasks
+
 1. Core: `selectProposalOperations`, `resolveOperationTargets` in `packages/proposals`.
 2. Alternatives and evidence: `agentPort`/`agentHost` (`proposal` view with operations, evidence, alternatives; `chooseAlternative`).
 3. Protocol: new fields/messages and parsing.

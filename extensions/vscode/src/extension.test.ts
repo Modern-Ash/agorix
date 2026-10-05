@@ -885,6 +885,63 @@ describe("Studio extension wiring", () => {
     );
   });
 
+  it("applies a chosen alternative with an edited value as one undoable transaction", async () => {
+    await openFile("/p/alt.json", stored([]));
+    const original = new TextDecoder().decode(files.get("/p/alt.json"));
+    await handlers.get("agorixStudio.openWorkbench")!();
+    const schema = "agorix/studio-protocol/v1";
+    const receive = (message: Record<string, unknown>) =>
+      workbenchPanel()?.receive({ schema, ...message });
+    receive({ type: "ready" });
+    receive({ type: "stateIntent", text: "make it move" });
+    receive({ type: "acceptPlan" });
+    receive({ type: "requestProposal" });
+    await flushWorkbench();
+    const proposals = () =>
+      (workbenchPanel()?.messages ?? []).filter(
+        (m) => (m as { type: string }).type === "proposal",
+      ) as Array<{
+        proposalId: string;
+        operations: { index: number }[];
+        evidence: { outcome: string };
+        alternatives: { proposalId: string; tradeoff: string }[];
+      }>;
+    const first = proposals().at(-1)!;
+    expect(first.proposalId).toBe("first-step");
+    expect(first.evidence.outcome).toBe("completed");
+    expect(first.alternatives.map((a) => a.proposalId)).toEqual(["first-step-small"]);
+    expect(new TextDecoder().decode(files.get("/p/alt.json"))).toBe(original);
+
+    receive({ type: "chooseAlternative", proposalId: "first-step-small" });
+    await flushWorkbench();
+    expect(proposals().at(-1)?.proposalId).toBe("first-step-small");
+    expect(new TextDecoder().decode(files.get("/p/alt.json"))).toBe(original);
+
+    const selection = { include: [0], overrides: [{ index: 0, value: 7 }] };
+    receive({ type: "previewSelection", proposalId: "first-step-small", selection });
+    await flushWorkbench();
+    expect(workbenchPanel()?.messages.at(-1)).toMatchObject({
+      type: "selectionEvidence",
+      result: { ok: true },
+    });
+    expect(new TextDecoder().decode(files.get("/p/alt.json"))).toBe(original);
+
+    receive({
+      type: "decideProposal",
+      proposalId: "first-step-small",
+      decision: "modified",
+      selection,
+    });
+    await flushWorkbench();
+    const applied = JSON.parse(new TextDecoder().decode(files.get("/p/alt.json")));
+    expect(applied.program.scripts[0].statements).toEqual([{ type: "move", steps: 7 }]);
+
+    await handlers.get("agorixStudio.undoProposal")!();
+    expect(JSON.parse(new TextDecoder().decode(files.get("/p/alt.json")))).toEqual(
+      JSON.parse(original),
+    );
+  });
+
   it("reviews first-step proposal through the generic apply flow", async () => {
     await openFile("/p/empty.json", stored([]));
     choice = "Apply";
