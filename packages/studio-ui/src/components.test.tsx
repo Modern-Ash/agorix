@@ -87,6 +87,9 @@ describe("studio-ui", () => {
     const palette = renderToStaticMarkup(<Palette onAdd={() => undefined} />);
     expect(palette).toContain("move steps");
     expect(palette).not.toContain("when run starts");
+    expect(palette).toContain("Touching the goal?");
+    expect(palette).toContain("disabled");
+    expect(palette).toContain("This block fits inside another block");
     const canvas = renderToStaticMarkup(
       <Canvas workspace={workspace} onIntent={() => undefined} />,
     );

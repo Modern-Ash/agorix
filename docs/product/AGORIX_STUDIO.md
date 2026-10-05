@@ -101,6 +101,10 @@ semantic program hash.
 | Execution Inspector     | Current node, statement type and before/after world state.                                                                                   |
 | AI proposal review      | Inspect, reject or explicitly apply structured proposals.                                                                                    |
 
+Workbench palette entries are derived from the shared toolbox. Entries that are
+not valid direct script insertions explain why they are disabled instead of
+allowing a doomed edit.
+
 ## Boundaries
 
 - The accepted canonical program is the only program authority.

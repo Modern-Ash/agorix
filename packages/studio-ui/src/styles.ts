@@ -7,6 +7,7 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 @media (max-width: 900px) { .workbench { grid-template-columns: 1fr; } }
 .palette { display: flex; flex-direction: column; gap: 6px; }
 .palette button, .block button, .zone { min-height: 32px; padding: 4px 10px; border: 1px solid var(--vscode-panel-border); border-radius: 6px; background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); cursor: pointer; text-align: left; }
+.palette button:disabled { cursor: not-allowed; opacity: 0.65; color: var(--vscode-disabledForeground); }
 .workbench[data-density="compact"] .palette { gap: 4px; }
 .workbench[data-density="compact"] .palette button, .workbench[data-density="compact"] .block button, .workbench[data-density="compact"] .zone { padding: 3px 8px; }
 .canvas { display: flex; flex-direction: column; }
