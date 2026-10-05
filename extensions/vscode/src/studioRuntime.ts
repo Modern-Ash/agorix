@@ -262,6 +262,7 @@ export function activate(context: vscode.ExtensionContext): void {
     currentExecutionView: executionCommands.currentExecutionView,
     resetExecution: executionCommands.resetExecution,
     getProgram: () => session.current?.project.stored.program,
+    getProject: () => session.current?.project,
     commitProgram: proposalCommands.commitProgram,
     getActiveProposal: () => session.activeProposal,
     reviewProposalSession: proposalCommands.reviewProposalSession,

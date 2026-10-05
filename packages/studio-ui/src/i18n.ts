@@ -34,6 +34,8 @@ export const COPY = {
     addedAnnouncement: (label: string) => `Added ${label}`,
     alreadyFirst: "Already the first block here",
     alreadyLast: "Already the last block here",
+    densityCompactNote:
+      "The layout is now more compact. Nothing is hidden. You can change this in the Studio settings.",
     up: "Up",
     down: "Down",
     delete: "Delete",
@@ -109,6 +111,7 @@ export const COPY = {
       `Your help level is ${ceiling}. Raise it in the agent agreements to see suggestions.`,
     suggestionPanel: "Suggestion",
     aiSuggestion: "AI suggestion (not in your program yet)",
+    aiExplanationLabel: "The AI's explanation (the runtime did not check it)",
     builtInSuggestion: "Built-in suggestion (not in your program yet)",
     unknownSuggestion: "Suggestion (AI, not in your program yet)",
     dashedBlocks: "Dashed blocks show what would change.",
@@ -190,6 +193,8 @@ export const COPY = {
     addedAnnouncement: (label: string) => `Se agregó ${label}`,
     alreadyFirst: "Ya es el primer bloque de este lugar",
     alreadyLast: "Ya es el último bloque de este lugar",
+    densityCompactNote:
+      "El diseño ahora es más compacto. No se oculta nada. Podés cambiarlo en la configuración de Studio.",
     up: "Subir",
     down: "Bajar",
     delete: "Eliminar",
@@ -265,6 +270,7 @@ export const COPY = {
       `Tu nivel de ayuda es ${ceiling}. Subilo en los acuerdos del agente para ver sugerencias.`,
     suggestionPanel: "Sugerencia",
     aiSuggestion: "Sugerencia de IA (todavia no esta en tu programa)",
+    aiExplanationLabel: "Explicación de la IA (el runtime no la comprobó)",
     builtInSuggestion: "Sugerencia integrada (todavia no esta en tu programa)",
     unknownSuggestion: "Sugerencia (IA, todavia no esta en tu programa)",
     dashedBlocks: "Los bloques punteados muestran que cambiaria.",

@@ -493,3 +493,58 @@ describe("help below the proposal level", () => {
     expect(proposed.help).toBeUndefined();
   });
 });
+
+describe("provider text placement", () => {
+  const proposalWith = (origin: "provider" | "built-in"): AgentUiState =>
+    reduceAgentUi(stageState("proposal"), {
+      schema,
+      type: "proposal",
+      proposalId: "p1",
+      purpose: "PURPOSE-TEXT",
+      rationale: "RATIONALE-TEXT",
+      changes: [],
+      origin,
+      operations: [{ index: 0, kind: "add", label: "Add move 10 steps" }],
+      evidence: { stepsUsed: 1, reachedGoal: true, outcome: "completed" },
+    });
+  const html = (state: AgentUiState) =>
+    renderToStaticMarkup(
+      <AgentPanel
+        state={state}
+        send={() => undefined}
+        selection={{ include: [0], overrides: {} }}
+        onSelectionChange={() => undefined}
+      />,
+    );
+
+  it("puts AI-written text after the deterministic operations and labels it unchecked", () => {
+    const markup = html(proposalWith("provider"));
+    expect(markup).toContain("The AI&#x27;s explanation (the runtime did not check it)");
+    expect(markup.indexOf("Add move 10 steps")).toBeLessThan(markup.indexOf("PURPOSE-TEXT"));
+    expect(markup.indexOf("runtime did not check it")).toBeLessThan(
+      markup.indexOf("RATIONALE-TEXT"),
+    );
+    expect(markup.indexOf("PURPOSE-TEXT")).toBeLessThan(markup.indexOf("Accept"));
+  });
+
+  it("keeps built-in text where it was, without the unchecked label", () => {
+    const markup = html(proposalWith("built-in"));
+    expect(markup).not.toContain("did not check it");
+    expect(markup.indexOf("PURPOSE-TEXT")).toBeLessThan(markup.indexOf("Add move 10 steps"));
+  });
+
+  it("renders markup-looking text as inert text", () => {
+    const state = reduceAgentUi(proposalWith("provider"), {
+      schema,
+      type: "proposal",
+      proposalId: "p2",
+      purpose: "<img src=x onerror=alert(1)>",
+      rationale: "plain",
+      changes: [],
+      origin: "provider",
+    });
+    const markup = html(state);
+    expect(markup).not.toContain("<img");
+    expect(markup).toContain("&lt;img");
+  });
+});

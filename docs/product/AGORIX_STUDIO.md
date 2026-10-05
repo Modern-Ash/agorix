@@ -39,7 +39,7 @@ A host-side `SyncHub` (`extensions/vscode/src/sync/syncHub.ts`) holds one select
 - An unclear intent (no task keyword, more than one task available) gets at most one clarifying question made of fixed task titles; the learner text is never echoed or stored.
 - A plan is anchored to the program hash it was made against. If the program changes before the plan is accepted, the plan is dropped (`STALE_PLAN`).
 - Workbench intent planning uses the provider-neutral intent-plan contract. When AI is configured it may call the validated `/intent-plan` provider boundary; unavailable, invalid or stale provider output falls back to the deterministic local planner. Both paths map back to fixed task cards and never echo learner free text as task titles.
-- Workbench density is configurable (`agorixStudio.workbench.density`: `comfortable` or `compact`) so Studio can stay readable for first use and denser for repeated IDE editing.
+- Workbench density (`agorixStudio.workbench.density`) is `auto` by default: comfortable for first use, compact after 8 successful canvas edits in the session or once the program has reached the goal in the deterministic runtime (both facts only go up, so the layout never flips back). `comfortable` and `compact` pin the layout. Density changes spacing and size only and never hides code, evidence or controls; an automatic change is announced once in the live region and the setting change applies without reopening the Workbench.
 - Workbench and Agent chrome read the project locale metadata and support fixed English/Spanish UI copy. Dynamic proposal text, provider notices and learner-entered intent remain source text rather than being translated by the UI.
 - Workbench edits carry the `programHash` the UI last saw; a stale edit is refused (`STALE_EDIT`) and a fresh snapshot is sent.
 - A refused placement explains why (`NOT_A_CONTAINER`, `BAD_INDEX`, `BLOCK_NOT_FOUND`, `NOT_A_STATEMENT`, `WOULD_BREAK_PROGRAM`) in the live status region.
@@ -64,12 +64,16 @@ A host-side `SyncHub` (`extensions/vscode/src/sync/syncHub.ts`) holds one select
 
 The "help level up to N" agreement (default 4) limits what the agent may show, on every agent surface (ADR 0008). 0 shows nothing; 1 diagnostic questions; 2 adds concept reminders; 3 adds pointing to the relevant blocks; 4 adds bounded proposals, AI or built-in; 5 adds no new kind (a complete explanation needs an explicit request after repeated failure). Below 4, "Show me a suggestion" gives the most help the level allows and a line saying the level can be raised; the Companion actions (challenge and reflect need 1, explain 2, debug 3, build 4), the built-in "Suggest first step / repeat" commands, ambient offers and the CodeLens actions that need more are hidden or declined with the same sentence. The Workbench agreements now reach the session too, so the level, the AI toggle and the mode apply to ambient offers and commands, not only to the Workbench loop.
 
+## Provider text policy
+
+Provider-written text (`purpose`, `rationale`, messages) is shown as plain text and only after the shared safety boundary: links, URLs, markup and code blocks are rejected (ADR 0008), and the child sees the safe message while Studio falls back to the built-in proposal. The card leads with the operation list and the runtime evidence; the AI's explanation follows, labelled as not checked by the runtime. Provider text is not logged, sent to telemetry or exported.
+
 ## Studio localization
 
 - The manifest (command titles, view names, settings, welcome text) is localized with `package.nls.json` and `package.nls.es.json`. Runtime messages, dialogs, quick picks, CodeLenses, the status bar and tree labels go through `t()` (`src/l10n.ts`, `vscode.l10n.t`) with `l10n/bundle.l10n.es.json`; the English text is the key and `{0}` marks values.
 - The language follows the VS Code display language. The Workbench keeps following the project's locale (set at creation), so the two can differ.
 - `src/l10n.test.ts` fails when a `%key%`, a `t()`/`msg()` literal or a placeholder is missing from either bundle, and `.vscodeignore` must ship the bundles.
-- Not localized: proposal and provider text (pending a privacy decision), the dynamic ambient tooltip with the offer reason, and mission/world titles, which come from the curriculum already localized.
+- Not localized: proposal and provider text (shown as source text under the provider text policy), the dynamic ambient tooltip with the offer reason, and mission/world titles, which come from the curriculum already localized.
 - The packaged VSIX contains the bundles; the real Spanish UI path was not exercised in VS Code because no Spanish language pack is installed in the test profile.
 
 ## Canvas accessibility

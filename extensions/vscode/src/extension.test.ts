@@ -245,6 +245,7 @@ vi.mock("vscode", () => {
         get: (key: string, defaultValue: string) =>
           key in agentConfig ? agentConfig[key] : serverUrl || defaultValue,
       }),
+      onDidChangeConfiguration: () => ({ dispose() {} }),
       registerTextDocumentContentProvider: (
         scheme: string,
         provider: { provideTextDocumentContent(uri: unknown): string },
@@ -868,6 +869,84 @@ describe("Studio extension wiring", () => {
     await handlers.get("agorixStudio.redoProposal")!();
     const redone = JSON.parse(new TextDecoder().decode(files.get("/p/a.json")));
     expect(redone.program.scripts[0].statements).toEqual(written.program.scripts[0].statements);
+  });
+
+  describe("automatic Workbench density", () => {
+    const densityMessages = () =>
+      (workbenchPanel()?.messages ?? []).filter(
+        (message) => (message as { type?: string }).type === "density",
+      ) as Array<{ value: string; reason: string }>;
+    const latestHash = () =>
+      (
+        (workbenchPanel()?.messages ?? [])
+          .filter((message) => (message as { type?: string }).type === "workspace")
+          .at(-1) as { programHash: string }
+      ).programHash;
+    const addBlock = async () => {
+      workbenchPanel()?.receive({
+        schema: "agorix/studio-protocol/v1",
+        type: "intent",
+        baseHash: latestHash(),
+        intent: {
+          type: "insertBlock",
+          blockType: "motion_turn",
+          to: { container: { kind: "script", scriptIndex: 0 }, index: 0 },
+        },
+      });
+      await flushWorkbench();
+    };
+
+    it("starts comfortable, becomes compact after enough edits, announces it once and stays", async () => {
+      await openFile("/p/density-auto.json", stored([]));
+      await handlers.get("agorixStudio.openWorkbench")!();
+      expect(workbenchPanel()?.html).toContain('data-density="comfortable"');
+      workbenchPanel()?.receive({ schema: "agorix/studio-protocol/v1", type: "ready" });
+      await flushWorkbench();
+      expect(densityMessages().at(-1)).toEqual(
+        expect.objectContaining({ value: "comfortable", reason: "setting" }),
+      );
+      for (let index = 0; index < 7; index += 1) await addBlock();
+      expect(densityMessages().filter((message) => message.reason === "auto")).toHaveLength(0);
+      await addBlock();
+      expect(densityMessages().filter((message) => message.reason === "auto")).toEqual([
+        { schema: "agorix/studio-protocol/v1", type: "density", value: "compact", reason: "auto" },
+      ]);
+      await addBlock();
+      expect(densityMessages().filter((message) => message.reason === "auto")).toHaveLength(1);
+    });
+
+    it("never changes a pinned preference, however many edits happen", async () => {
+      agentConfig["workbench.density"] = "comfortable";
+      await openFile("/p/density-pinned.json", stored([]));
+      await handlers.get("agorixStudio.openWorkbench")!();
+      for (let index = 0; index < 9; index += 1) await addBlock();
+      expect(densityMessages().filter((message) => message.reason === "auto")).toHaveLength(0);
+      expect(workbenchPanel()?.html).toContain('data-density="comfortable"');
+    });
+
+    it("honours a pinned compact layout from the first paint", async () => {
+      agentConfig["workbench.density"] = "compact";
+      await openFile("/p/density-compact.json", stored([]));
+      await handlers.get("agorixStudio.openWorkbench")!();
+      expect(workbenchPanel()?.html).toContain('data-density="compact"');
+    });
+
+    it("turns compact once the program reaches the goal, and stays compact after it changes", async () => {
+      await openFile("/p/density-goal.json", stored([{ type: "move", steps: 160 }]));
+      await handlers.get("agorixStudio.openWorkbench")!();
+      expect(workbenchPanel()?.html).toContain('data-density="compact"');
+      workbenchPanel()?.receive({
+        schema: "agorix/studio-protocol/v1",
+        type: "intent",
+        baseHash: latestHash(),
+        intent: {
+          type: "deleteBlock",
+          location: { container: { kind: "script", scriptIndex: 0 }, index: 0 },
+        },
+      });
+      await flushWorkbench();
+      expect(densityMessages().some((message) => message.value === "comfortable")).toBe(false);
+    });
   });
 
   it("writes Workbench edits through the proposal undo stack and clears redo", async () => {

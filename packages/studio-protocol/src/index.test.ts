@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { createStarterWorkspace } from "@agorix/block-editor";
 import { DEFAULT_AGREEMENTS, createWorkflow } from "@agorix/agent-workflow";
-import { STUDIO_PROTOCOL_VERSION as schema, parseHostMessage, parseUiMessage } from "./index.js";
+import {
+  AUTO_DENSITY_EDITS,
+  STUDIO_PROTOCOL_VERSION as schema,
+  normalizeDensityPreference,
+  parseHostMessage,
+  parseUiMessage,
+  resolveDensity,
+} from "./index.js";
 
 const script = { kind: "script", scriptIndex: 0 } as const;
 
@@ -451,5 +458,45 @@ describe("help message", () => {
     expect(parseHostMessage({ ...help, taskId: "free text" })).toBeUndefined();
     expect(parseHostMessage({ ...help, concept: "magic" })).toBeUndefined();
     expect(parseHostMessage({ ...help, blockIds: ["<x>"] })).toBeUndefined();
+  });
+});
+
+describe("density", () => {
+  it("auto starts comfortable and turns compact after enough edits or reaching the goal", () => {
+    const fresh = { edits: 0, reachedGoal: false };
+    expect(resolveDensity("auto", fresh)).toBe("comfortable");
+    expect(resolveDensity("auto", { edits: AUTO_DENSITY_EDITS - 1, reachedGoal: false })).toBe(
+      "comfortable",
+    );
+    expect(resolveDensity("auto", { edits: AUTO_DENSITY_EDITS, reachedGoal: false })).toBe(
+      "compact",
+    );
+    expect(resolveDensity("auto", { edits: 0, reachedGoal: true })).toBe("compact");
+  });
+
+  it("a pinned preference always wins and unknown values mean auto", () => {
+    const experienced = { edits: 99, reachedGoal: true };
+    expect(resolveDensity("comfortable", experienced)).toBe("comfortable");
+    expect(resolveDensity("compact", { edits: 0, reachedGoal: false })).toBe("compact");
+    expect(normalizeDensityPreference("compact")).toBe("compact");
+    expect(normalizeDensityPreference("huge")).toBe("auto");
+    expect(normalizeDensityPreference(undefined)).toBe("auto");
+  });
+
+  it("parses the density message and rejects anything else", () => {
+    expect(parseHostMessage({ schema, type: "density", value: "compact", reason: "auto" })).toEqual(
+      {
+        schema,
+        type: "density",
+        value: "compact",
+        reason: "auto",
+      },
+    );
+    expect(
+      parseHostMessage({ schema, type: "density", value: "tiny", reason: "auto" }),
+    ).toBeUndefined();
+    expect(
+      parseHostMessage({ schema, type: "density", value: "compact", reason: "x" }),
+    ).toBeUndefined();
   });
 });

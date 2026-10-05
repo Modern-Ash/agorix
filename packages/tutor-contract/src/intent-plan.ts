@@ -21,6 +21,7 @@ import { normalizeLocale, type MissionConcept, type SupportedLocale } from "@ago
 import { programSemanticHash } from "@agorix/proposals";
 import { validateProgram, type ProjectProgram, type Statement } from "@agorix/program-model";
 import {
+  assertNoActiveContent,
   assertNoHiddenProviderAction,
   assertNoPersonalDataRequest,
   type TutorReadingConfig,
@@ -802,6 +803,7 @@ function assertPlanTextIsChildSafe(response: IntentPlanResponse): void {
   for (const { path, value } of fields) {
     assertNoPersonalDataRequest(value, path);
     assertNoHiddenProviderAction(value, path);
+    assertNoActiveContent(value, path);
   }
 }
 
