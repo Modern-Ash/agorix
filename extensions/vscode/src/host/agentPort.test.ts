@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AgentEvent } from "@agorix/agent-workflow";
+import { createLearningCompanionResponse } from "@agorix/tutor-contract";
 import {
   createProposalSession,
   createStudioStarterProject,
@@ -201,13 +202,40 @@ describe("agentPort provider-backed proposals", () => {
         steps: 6,
       })!,
     );
+  const providerResponse = (session: StudioProposalSession) =>
+    createLearningCompanionResponse({
+      capability: "builder",
+      message: session.review.proposal.purpose,
+      nodeIds: session.review.proposal.affectedNodeIds,
+      concepts: ["movement"],
+      metadata: {
+        capability: "builder",
+        scaffoldLevel: 4,
+        provenance: "deterministic-fake",
+        uncertainty: "low",
+      },
+      payload: {
+        kind: "program-proposal",
+        proposal: session.review.proposal,
+        reviewState: "proposed",
+        validation: { status: "valid", errors: [] },
+        preview: {
+          summary: session.review.proposal.purpose,
+          affectedNodeIds: session.review.proposal.affectedNodeIds,
+        },
+      },
+    });
 
   it("makes the provider proposal primary and keeps the built-in one as an alternative", async () => {
-    const ctx = setup([], async (project): Promise<ProviderProposalResult> => ({
-      origin: "provider",
-      session: providerSession(project),
-      locality: "local",
-    }));
+    const ctx = setup([], async (project): Promise<ProviderProposalResult> => {
+      const session = providerSession(project);
+      return {
+        origin: "provider",
+        session,
+        response: providerResponse(session),
+        locality: "local",
+      };
+    });
     const view = (await ctx.port.proposeFor("first-step"))!;
     expect(view.origin).toBe("provider");
     expect(view.proposalId).toBe("ai-first-step");
@@ -238,7 +266,12 @@ describe("agentPort provider-backed proposals", () => {
     const ctx = setup([], async (project): Promise<ProviderProposalResult> => {
       const session = providerSession(project);
       ref.ctx?.setProject([{ type: "move", steps: 5 }]);
-      return { origin: "provider", session, locality: "local" };
+      return {
+        origin: "provider",
+        session,
+        response: providerResponse(session),
+        locality: "local",
+      };
     });
     ref.ctx = ctx;
     const view = await ctx.port.proposeFor("first-step");
@@ -248,9 +281,8 @@ describe("agentPort provider-backed proposals", () => {
   });
 
   it("never lets a provider proposal reuse a built-in id", async () => {
-    const ctx = setup([], async (project): Promise<ProviderProposalResult> => ({
-      origin: "provider",
-      session: createProposalSession(
+    const ctx = setup([], async (project): Promise<ProviderProposalResult> => {
+      const session = createProposalSession(
         project,
         createFirstStepProposal({
           id: "first-step",
@@ -258,9 +290,14 @@ describe("agentPort provider-backed proposals", () => {
           purpose: "dup",
           rationale: "dup",
         })!,
-      ),
-      locality: "local",
-    }));
+      );
+      return {
+        origin: "provider",
+        session,
+        response: providerResponse(session),
+        locality: "local",
+      };
+    });
     const view = (await ctx.port.proposeFor("first-step"))!;
     expect(view.origin).toBe("built-in");
   });

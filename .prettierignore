@@ -1,6 +1,7 @@
 dist
 node_modules
 pnpm-lock.yaml
+.venv
 .agora/
 extensions/vscode/test/integration/fixtures/invalid.json
 extensions/vscode/.vscode-test
