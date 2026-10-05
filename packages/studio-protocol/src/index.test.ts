@@ -194,3 +194,22 @@ describe("studio-protocol", () => {
     expect(parseHostMessage({ ...proposal, extra: 1 })).not.toHaveProperty("extra");
   });
 });
+
+describe("sync host message", () => {
+  it("parses a sync message with optional block ids", () => {
+    expect(
+      parseHostMessage({
+        schema,
+        type: "sync",
+        selectedBlockId: "block:a",
+        failedBlockId: "block:b",
+      }),
+    ).toEqual({ schema, type: "sync", selectedBlockId: "block:a", failedBlockId: "block:b" });
+    expect(parseHostMessage({ schema, type: "sync" })).toEqual({ schema, type: "sync" });
+  });
+
+  it("rejects unsafe ids", () => {
+    expect(parseHostMessage({ schema, type: "sync", selectedBlockId: "<script>" })).toBeUndefined();
+    expect(parseHostMessage({ schema, type: "sync", executingBlockId: 5 })).toBeUndefined();
+  });
+});

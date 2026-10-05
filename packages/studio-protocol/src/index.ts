@@ -107,7 +107,14 @@ export type HostMessage =
       readonly type: "explainFeedback";
       readonly result: "relevant" | "other";
     }
-  | { readonly schema: Schema; readonly type: "agreements"; readonly agreements: AgentAgreements };
+  | { readonly schema: Schema; readonly type: "agreements"; readonly agreements: AgentAgreements }
+  | {
+      readonly schema: Schema;
+      readonly type: "sync";
+      readonly selectedBlockId?: string;
+      readonly executingBlockId?: string;
+      readonly failedBlockId?: string;
+    };
 
 const DECISIONS: readonly Decision[] = ["accepted", "rejected", "modified"];
 const STAGES: readonly WorkflowStage[] = [
@@ -622,6 +629,17 @@ export function parseHostMessage(value: unknown): HostMessage | undefined {
         value["code"] === "STALE_PROPOSAL"
         ? { schema, type: "error", code: value["code"] }
         : undefined;
+    case "sync": {
+      const out: { selectedBlockId?: string; executingBlockId?: string; failedBlockId?: string } =
+        {};
+      for (const key of ["selectedBlockId", "executingBlockId", "failedBlockId"] as const) {
+        const raw = value[key];
+        if (raw === undefined) continue;
+        if (!isSafeId(raw)) return undefined;
+        out[key] = raw;
+      }
+      return { schema, type: "sync", ...out };
+    }
     default:
       return parseAgentMessageFromHost(value, schema);
   }
