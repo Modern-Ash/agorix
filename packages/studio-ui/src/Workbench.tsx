@@ -26,6 +26,9 @@ export function statusFor(message: HostMessage): string | undefined {
     if (message.code === "INVALID_CHANGE") {
       return `${REFUSAL_TEXT[message.reason ?? "UNKNOWN"]} Nothing changed.`;
     }
+    if (message.code === "STALE_EDIT") {
+      return "The program changed, so that edit was not applied. Try again.";
+    }
     return "The program could not be shown.";
   }
   if (message.type === "agentUnavailable") {
@@ -37,6 +40,7 @@ export function statusFor(message: HostMessage): string | undefined {
 export function Workbench({ bridge }: { readonly bridge: HostBridge }) {
   const [workspace, setWorkspace] = useState<BlockWorkspaceSnapshot | undefined>();
   const [status, setStatus] = useState("");
+  const [programHash, setProgramHash] = useState<string | undefined>();
   const [sync, setSync] = useState<SyncView>({});
   const [agentUi, dispatchAgent] = useReducer(reduceAgentUi, undefined, initialAgentUi);
 
@@ -57,6 +61,7 @@ export function Workbench({ bridge }: { readonly bridge: HostBridge }) {
       }
       if (message.type === "workspace") {
         setWorkspace(message.workspace);
+        setProgramHash(message.programHash);
         setStatus("Updated");
         return;
       }
@@ -68,7 +73,12 @@ export function Workbench({ bridge }: { readonly bridge: HostBridge }) {
   }, [bridge]);
 
   const post = (intent: Intent) =>
-    bridge.post({ schema: STUDIO_PROTOCOL_VERSION, type: "intent", intent });
+    bridge.post({
+      schema: STUDIO_PROTOCOL_VERSION,
+      type: "intent",
+      intent,
+      ...(programHash === undefined ? {} : { baseHash: programHash }),
+    });
 
   const add = (blockType: BlockType) => {
     const script = workspace?.scripts[0];

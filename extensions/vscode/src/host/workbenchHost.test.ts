@@ -198,3 +198,41 @@ describe("syncMessage", () => {
     expect(host.syncMessage({ selectedNodeId: "x" })).toEqual([]);
   });
 });
+
+describe("stale edits", () => {
+  const insert = {
+    type: "insertBlock",
+    blockType: "motion_move",
+    to: { container: script, index: 0 },
+  } as const;
+
+  it("refuses a mutating intent whose baseHash is stale and resends a snapshot", async () => {
+    const { host, labels } = setup();
+    const out = await host.handle({ schema, type: "intent", intent: insert, baseHash: "old-hash" });
+    expect(out[0]).toEqual({ schema, type: "error", code: "STALE_EDIT" });
+    expect(out[1]).toMatchObject({ type: "workspace" });
+    expect(labels).toHaveLength(0);
+  });
+
+  it("commits when the baseHash matches the current program", async () => {
+    const { host, labels } = setup();
+    await host.handle({
+      schema,
+      type: "intent",
+      intent: insert,
+      baseHash: programSemanticHash(base),
+    });
+    expect(labels).toHaveLength(1);
+  });
+
+  it("still routes non-mutating intents with a stale baseHash", async () => {
+    const { host, port } = setup();
+    await host.handle({
+      schema,
+      type: "intent",
+      intent: { type: "revealNode", nodeId: "scripts[0]/statements[0]" },
+      baseHash: "old-hash",
+    });
+    expect(port.reveal).toHaveBeenCalled();
+  });
+});

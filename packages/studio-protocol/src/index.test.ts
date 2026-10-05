@@ -222,3 +222,22 @@ describe("sync host message", () => {
     expect(parseHostMessage({ schema, type: "sync", executingBlockId: 5 })).toBeUndefined();
   });
 });
+
+describe("intent baseHash", () => {
+  const intent = { type: "revealNode", nodeId: "n1" };
+  it("accepts an optional well-formed baseHash", () => {
+    expect(parseUiMessage({ schema, type: "intent", intent })).toEqual({
+      schema,
+      type: "intent",
+      intent,
+    });
+    expect(parseUiMessage({ schema, type: "intent", intent, baseHash: "sha:abc" })).toEqual({
+      schema,
+      type: "intent",
+      intent,
+      baseHash: "sha:abc",
+    });
+    expect(parseUiMessage({ schema, type: "intent", intent, baseHash: "<x>" })).toBeUndefined();
+    expect(parseHostMessage({ schema, type: "error", code: "STALE_EDIT" })).toBeDefined();
+  });
+});

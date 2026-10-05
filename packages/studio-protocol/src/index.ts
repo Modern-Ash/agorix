@@ -41,7 +41,13 @@ type Decision = "accepted" | "rejected" | "modified";
 
 export type UiMessage =
   | { readonly schema: Schema; readonly type: "ready" }
-  | { readonly schema: Schema; readonly type: "intent"; readonly intent: Intent }
+  | {
+      readonly schema: Schema;
+      readonly type: "intent";
+      readonly intent: Intent;
+      /** Program hash the UI last saw; the host refuses mutating intents when it is stale. */
+      readonly baseHash?: string;
+    }
   | {
       readonly schema: Schema;
       readonly type: "agreementsChanged";
@@ -82,7 +88,7 @@ export type HostMessage =
   | {
       readonly schema: Schema;
       readonly type: "error";
-      readonly code: "INVALID_CHANGE" | "INVALID_PROGRAM" | "STALE_PROPOSAL";
+      readonly code: "INVALID_CHANGE" | "INVALID_PROGRAM" | "STALE_PROPOSAL" | "STALE_EDIT";
       /** Why a change was refused, only with INVALID_CHANGE. */
       readonly reason?: ChangeRefusalReason;
     }
@@ -565,7 +571,12 @@ export function parseUiMessage(value: unknown): UiMessage | undefined {
       return { schema, type: "ready" };
     case "intent": {
       const intent = parseIntent(value["intent"]);
-      return intent === undefined ? undefined : { schema, type: "intent", intent };
+      if (intent === undefined) return undefined;
+      const baseHash = value["baseHash"];
+      if (baseHash === undefined) return { schema, type: "intent", intent };
+      return typeof baseHash === "string" && HASH_PATTERN.test(baseHash)
+        ? { schema, type: "intent", intent, baseHash }
+        : undefined;
     }
     case "agreementsChanged": {
       const agreements = parseAgreements(value["agreements"]);
@@ -640,7 +651,8 @@ export function parseHostMessage(value: unknown): HostMessage | undefined {
       if (
         value["code"] !== "INVALID_CHANGE" &&
         value["code"] !== "INVALID_PROGRAM" &&
-        value["code"] !== "STALE_PROPOSAL"
+        value["code"] !== "STALE_PROPOSAL" &&
+        value["code"] !== "STALE_EDIT"
       ) {
         return undefined;
       }

@@ -133,6 +133,9 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
         if (program === undefined) {
           return [];
         }
+        if (message.baseHash !== undefined && message.baseHash !== programSemanticHash(program)) {
+          return [{ schema, type: "error", code: "STALE_EDIT" }, ...snapshot()];
+        }
         try {
           const change = intentToChange(intent, newBlockId);
           if (change === undefined) {

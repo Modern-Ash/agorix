@@ -92,6 +92,9 @@ describe("studio-ui", () => {
       statusFor({ schema: "agorix/studio-protocol/v1", type: "error", code: "INVALID_CHANGE" }),
     ).toMatch(/Nothing changed/);
     expect(
+      statusFor({ schema: "agorix/studio-protocol/v1", type: "error", code: "STALE_EDIT" }),
+    ).toMatch(/changed/);
+    expect(
       statusFor({
         schema: "agorix/studio-protocol/v1",
         type: "error",
