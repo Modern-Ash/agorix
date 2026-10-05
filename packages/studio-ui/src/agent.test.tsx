@@ -366,3 +366,27 @@ describe("canvas hints", () => {
     expect(markup).toContain("Suggestion: Add move 10 steps (skipped)");
   });
 });
+
+describe("proposal origin ui", () => {
+  const withOrigin = (origin?: "provider" | "built-in", notice?: string): AgentUiState =>
+    reduceAgentUi(stageState("proposal"), {
+      schema,
+      type: "proposal",
+      proposalId: "p1",
+      purpose: "p",
+      rationale: "r",
+      changes: [],
+      ...(origin === undefined ? {} : { origin }),
+      ...(notice === undefined ? {} : { notice }),
+    });
+  const html = (state: AgentUiState) =>
+    renderToStaticMarkup(<AgentPanel state={state} send={() => undefined} />);
+
+  it("labels AI and built-in suggestions honestly and shows the notice", () => {
+    expect(html(withOrigin("provider"))).toContain("AI suggestion (not in your program yet)");
+    const builtIn = html(withOrigin("built-in", "AI help isn't available right now."));
+    expect(builtIn).toContain("Built-in suggestion (not in your program yet)");
+    expect(builtIn).toContain("AI help isn&#x27;t available right now.");
+    expect(html(withOrigin())).toContain("Suggestion (AI, not in your program yet)");
+  });
+});

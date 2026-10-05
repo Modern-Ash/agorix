@@ -319,7 +319,18 @@ export function AgentPanel({
       )}
       {stage === "proposal" && state.proposal !== undefined && (
         <section className="suggestion" aria-label="Suggestion">
-          <p className="ghost-badge">Suggestion (AI, not in your program yet)</p>
+          <p className="ghost-badge">
+            {state.proposal.origin === "built-in"
+              ? "Built-in suggestion (not in your program yet)"
+              : state.proposal.origin === "provider"
+                ? "AI suggestion (not in your program yet)"
+                : "Suggestion (AI, not in your program yet)"}
+          </p>
+          {state.proposal.notice !== undefined && (
+            <p className="notice" role="status">
+              {state.proposal.notice}
+            </p>
+          )}
           <p>{state.proposal.purpose}</p>
           <p>{state.proposal.rationale}</p>
           <p>Dashed blocks show what would change.</p>

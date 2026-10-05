@@ -219,13 +219,13 @@ describe("agentPort provider-backed proposals", () => {
   });
 
   it("ignores a provider proposal whose base program is no longer current", async () => {
-    let ctxRef: ReturnType<typeof setup> | undefined;
+    const ref: { ctx?: ReturnType<typeof setup> } = {};
     const ctx = setup([], async (project): Promise<ProviderProposalResult> => {
       const session = providerSession(project);
-      ctxRef?.setProject([{ type: "move", steps: 5 }]);
+      ref.ctx?.setProject([{ type: "move", steps: 5 }]);
       return { origin: "provider", session, locality: "local" };
     });
-    ctxRef = ctx;
+    ref.ctx = ctx;
     const view = await ctx.port.proposeFor("first-step");
     // The program is no longer empty, so the first-step task no longer applies.
     expect(view).toBeUndefined();

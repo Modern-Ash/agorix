@@ -92,6 +92,8 @@ export interface AgentUiState {
     readonly operations?: readonly OperationView[];
     readonly evidence?: EvidenceView;
     readonly alternatives?: readonly AlternativeView[];
+    readonly origin?: "provider" | "built-in";
+    readonly notice?: string;
   };
   readonly selectionEvidence?: Extract<HostMessage, { type: "selectionEvidence" }>["result"];
   readonly prediction?: readonly PredictionAnswer[];
@@ -149,6 +151,8 @@ export function reduceAgentUi(state: AgentUiState, message: HostMessage): AgentU
           ...(message.operations === undefined ? {} : { operations: message.operations }),
           ...(message.evidence === undefined ? {} : { evidence: message.evidence }),
           ...(message.alternatives === undefined ? {} : { alternatives: message.alternatives }),
+          ...(message.origin === undefined ? {} : { origin: message.origin }),
+          ...(message.notice === undefined ? {} : { notice: message.notice }),
         },
       };
     case "selectionEvidence":

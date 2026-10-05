@@ -47,6 +47,13 @@ A host-side `SyncHub` (`extensions/vscode/src/sync/syncHub.ts`) holds one select
 - Evidence on every proposal and on the current selection comes from running the candidate program in the deterministic runtime (steps used, whether it reaches the goal). Trade-off texts are fixed; nothing is claimed that was not run.
 - Each suggested change is anchored to its block as visible text and an accessible description; skipped changes are dimmed. The prediction gate applies to "Apply selected" as well.
 
+## Provider-backed proposals
+
+- Companion "build" and the Workbench agent loop obtain proposals through one seam (`studioProposalSource.ts`). The Studio decision pipeline (System 0, optional LAYA, a policy router and a request budget) decides whether a provider may be asked; the client then validates the contract and safety of the answer, and the proposal is validated again (including base-hash freshness).
+- A provider proposal is a normal `ProgramProposal`: it is reviewed, selected per operation and decided by the learner. The built-in suggestion stays available as an alternative with runtime evidence.
+- Every failure (AI off, no endpoint, route unavailable, budget spent, unavailable or rejected provider, invalid or stale proposal) degrades to the built-in proposal with a short learner notice. Editing and running never depend on a provider.
+- Budget: `agorixStudio.agent.proposalBudgetRequests` (default 10 per session). Telemetry holds enums and numbers only; learner text never reaches it.
+
 ## Release gate
 
 Studio's product release gate is

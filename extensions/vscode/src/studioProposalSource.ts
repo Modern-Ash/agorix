@@ -10,6 +10,7 @@ import {
   type StudioSignalKind,
 } from "@agorix/learning-decision-plane";
 import { programSemanticHash } from "@agorix/proposals";
+import type { LearningCompanionResponse } from "@agorix/tutor-contract";
 import {
   createCompanionRequest,
   createProposalSession,
@@ -18,7 +19,8 @@ import {
 } from "./studioCore.js";
 import type { StudioProviderClient } from "./studioProvider.js";
 
-export type ProviderProposalTask = "first-step" | "repeat-pattern";
+/** "build" is the learner asking the Companion to build; the others come from the agent loop. */
+export type ProviderProposalTask = "first-step" | "repeat-pattern" | "build";
 
 export type BuiltInReason =
   "no-provider" | "not-allowed" | "unavailable" | "rejected" | "invalid" | "stale";
@@ -27,6 +29,8 @@ export type ProviderProposalResult =
   | {
       readonly origin: "provider";
       readonly session: StudioProposalSession;
+      /** The validated builder response the session was derived from. */
+      readonly response: LearningCompanionResponse;
       readonly locality: "local" | "remote";
     }
   | {
@@ -49,6 +53,7 @@ export interface ProposalSource {
 const SIGNAL_FOR_TASK: Record<ProviderProposalTask, StudioSignalKind> = {
   "first-step": "first-step",
   "repeat-pattern": "repeat-pattern",
+  build: "selection-changed",
 };
 
 function builtIn(reason: BuiltInReason, notice?: string): ProviderProposalResult {
@@ -101,7 +106,7 @@ export function createProposalSource(options: ProposalSourceOptions): ProposalSo
           // The provider's operations do not produce a valid program: never shown to the learner.
           return builtIn("invalid");
         }
-        return { origin: "provider", session, locality: outcome.locality };
+        return { origin: "provider", session, response, locality: outcome.locality };
       } catch {
         return builtIn("unavailable");
       }

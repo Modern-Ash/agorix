@@ -134,6 +134,13 @@
           "default": "",
           "markdownDescription": "Optional local LAYA decision endpoint. Studio calls `POST /decideMany` only for cheap proactive veto decisions. Remote endpoints require `agorixStudio.agent.allowRemote`."
         },
+        "agorixStudio.agent.proposalBudgetRequests": {
+          "type": "integer",
+          "default": 10,
+          "minimum": 0,
+          "maximum": 1000,
+          "markdownDescription": "Maximum AI-backed suggestions per Studio session. When the limit is reached Studio keeps offering built-in suggestions; editing and running are unaffected."
+        },
         "agorixStudio.agent.ambientBudgetRequests": {
           "type": "integer",
           "default": 20,

@@ -8,6 +8,7 @@ import {
   type StudioProposalSession,
 } from "../studioCore.js";
 import type { OpenProject } from "../store/session.js";
+import type { ProviderProposalResult } from "../studioProposalSource.js";
 
 export interface StudioCompanionCommandPort {
   requireProject(): OpenProject | undefined;
@@ -17,6 +18,8 @@ export interface StudioCompanionCommandPort {
   refreshCompanionViews(): void;
   revealCanonicalNode(nodeId: string): Promise<void>;
   reviewProposalSession(proposal: StudioProposalSession): Promise<void>;
+  /** Asks for a provider-backed build proposal; absent means built-in only. */
+  providerBuild?(project: OpenProject["project"]): Promise<ProviderProposalResult>;
 }
 
 export interface StudioCompanionCommandHandlers {
@@ -42,10 +45,18 @@ export function createStudioCompanionCommandHandlers(
         ? nodeId
         : port.currentExecutionView()?.currentFrame?.highlightedNodeId;
     const evidence = port.getExecutionEvidence();
+    const asked =
+      action === "build" && port.providerBuild !== undefined
+        ? await port.providerBuild(open.project)
+        : undefined;
     const turn = createCompanionTurn(open.project, action, {
       ...(selected === undefined ? {} : { selectedNodeIds: [selected] }),
       ...(evidence === undefined ? {} : { evidence }),
+      ...(asked?.origin === "provider" ? { providerResponse: asked.response } : {}),
     });
+    if (asked?.origin === "built-in" && asked.notice !== undefined) {
+      void vscode.window.showInformationMessage(asked.notice);
+    }
     port.companionTurns().unshift(turn);
     port.refreshCompanionViews();
     if (turn.selectedNodeIds[0] !== undefined) {

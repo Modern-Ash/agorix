@@ -10,6 +10,7 @@ const shown: string[] = [];
 const diffs: unknown[][] = [];
 const output: string[] = [];
 const treeViews: string[] = [];
+const agentConfig: Record<string, unknown> = {};
 const selectionListeners: Array<(event: unknown) => void> = [];
 const treeProviders = new Map<string, { getChildren(): unknown[] }>();
 const providers = new Map<string, { provideTextDocumentContent(uri: unknown): string }>();
@@ -241,7 +242,8 @@ vi.mock("vscode", () => {
     workspace: {
       workspaceFolders: [{ uri: uri("/workspace"), name: "workspace", index: 0 }],
       getConfiguration: () => ({
-        get: (_key: string, defaultValue: string) => serverUrl || defaultValue,
+        get: (key: string, defaultValue: string) =>
+          key in agentConfig ? agentConfig[key] : serverUrl || defaultValue,
       }),
       registerTextDocumentContentProvider: (
         scheme: string,
@@ -334,6 +336,7 @@ describe("Studio extension wiring", () => {
     output.length = 0;
     treeViews.length = 0;
     selectionListeners.length = 0;
+    for (const key of Object.keys(agentConfig)) delete agentConfig[key];
     treeProviders.clear();
     providers.clear();
     lensProviders.length = 0;
@@ -940,6 +943,96 @@ describe("Studio extension wiring", () => {
     expect(JSON.parse(new TextDecoder().decode(files.get("/p/alt.json")))).toEqual(
       JSON.parse(original),
     );
+  });
+
+  it("offers a provider-backed proposal, then degrades to built-in when the budget is spent", async () => {
+    const { createFakeProviderRuntime } = await import("@agorix/provider-runtime");
+    const fake = createFakeProviderRuntime({
+      runtimeId: "fake",
+      providerId: "fake",
+      modelId: "deterministic",
+      locality: "local",
+      capabilities: ["coach", "builder", "debugger", "explainer", "challenger", "reflector"],
+    });
+    const calls: string[] = [];
+    vi.stubGlobal("fetch", async (url: string, init: { body?: string }) => {
+      calls.push(url);
+      if (url.endsWith("/health")) {
+        return { ok: true, status: 200, text: async () => JSON.stringify({ status: "available" }) };
+      }
+      const result = await fake.request(JSON.parse(init.body ?? "{}"));
+      return {
+        ok: result.ok,
+        status: 200,
+        text: async () => JSON.stringify(result.ok ? result.response : {}),
+      };
+    });
+    try {
+      agentConfig["endpoint"] = "http://127.0.0.1:9";
+      agentConfig["proposalBudgetRequests"] = 1;
+      await openFile("/p/prov.json", stored([]));
+      const original = new TextDecoder().decode(files.get("/p/prov.json"));
+      await handlers.get("agorixStudio.openWorkbench")!();
+      const schema = "agorix/studio-protocol/v1";
+      const receive = (message: Record<string, unknown>) =>
+        workbenchPanel()?.receive({ schema, ...message });
+      const proposals = () =>
+        (workbenchPanel()?.messages ?? []).filter(
+          (m) => (m as { type: string }).type === "proposal",
+        ) as Array<{
+          proposalId: string;
+          origin?: string;
+          notice?: string;
+          alternatives?: { proposalId: string }[];
+        }>;
+      receive({ type: "ready" });
+      receive({ type: "stateIntent", text: "make it move" });
+      receive({ type: "acceptPlan" });
+      receive({ type: "requestProposal" });
+      await flushWorkbench();
+      const first = proposals().at(-1)!;
+      expect(first.origin).toBe("provider");
+      expect(first.alternatives?.map((a) => a.proposalId)).toContain("first-step");
+      expect(calls.some((url) => url.endsWith("/companion"))).toBe(true);
+      expect(new TextDecoder().decode(files.get("/p/prov.json"))).toBe(original);
+
+      receive({ type: "decideProposal", proposalId: first.proposalId, decision: "rejected" });
+      await flushWorkbench();
+      receive({ type: "requestProposal" });
+      await flushWorkbench();
+      const second = proposals().at(-1)!;
+      expect(second.origin).toBe("built-in");
+      expect(second.notice).toMatch(/limit/);
+      expect(new TextDecoder().decode(files.get("/p/prov.json"))).toBe(original);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("stays built-in when the provider call fails", async () => {
+    vi.stubGlobal("fetch", async () => {
+      throw new Error("offline");
+    });
+    try {
+      agentConfig["endpoint"] = "http://127.0.0.1:9";
+      await openFile("/p/off.json", stored([]));
+      await handlers.get("agorixStudio.openWorkbench")!();
+      const schema = "agorix/studio-protocol/v1";
+      const receive = (message: Record<string, unknown>) =>
+        workbenchPanel()?.receive({ schema, ...message });
+      receive({ type: "ready" });
+      receive({ type: "stateIntent", text: "make it move" });
+      receive({ type: "acceptPlan" });
+      receive({ type: "requestProposal" });
+      await flushWorkbench();
+      const last = (workbenchPanel()?.messages ?? [])
+        .filter((m) => (m as { type: string }).type === "proposal")
+        .at(-1) as { proposalId: string; origin?: string };
+      expect(last.proposalId).toBe("first-step");
+      expect(last.origin).toBe("built-in");
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("reviews first-step proposal through the generic apply flow", async () => {

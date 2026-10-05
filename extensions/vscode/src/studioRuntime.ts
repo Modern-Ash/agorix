@@ -23,6 +23,7 @@ import {
 import { disposeWorkbench } from "./host/workbenchPanel.js";
 import { disposeWorldPreview, refreshWorldPreviewSync } from "./host/worldPreviewPanel.js";
 import { createSyncHub } from "./sync/syncHub.js";
+import { createProviderWiring } from "./providerWiring.js";
 import { registerCodeSync } from "./sync/codeSync.js";
 import { programToWorkspace } from "@agorix/block-editor";
 import { createAgentPort } from "./host/agentPort.js";
@@ -59,6 +60,8 @@ export { createAgentClient };
 
 export function activate(context: vscode.ExtensionContext): void {
   const hub = createSyncHub();
+  // Assigned once AI settings and the LAYA transport exist; used lazily by the hooks below.
+  const providerWiring: { current?: ReturnType<typeof createProviderWiring> } = {};
   const selectNode = (nodeId: string): Promise<void> => {
     hub.select(nodeId, "runtime");
     return Promise.resolve();
@@ -169,6 +172,10 @@ export function activate(context: vscode.ExtensionContext): void {
     refreshCompanionViews: () => refreshCompanionViews(),
     revealCanonicalNode: selectNode,
     reviewProposalSession: proposalCommands.reviewProposalSession,
+    providerBuild: async (project) =>
+      providerWiring.current === undefined
+        ? { origin: "built-in", reason: "no-provider" }
+        : providerWiring.current.source().request(project, "build"),
   });
   const ambientStatusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, -1);
   const aiEnabled = (): boolean =>
@@ -188,6 +195,11 @@ export function activate(context: vscode.ExtensionContext): void {
     allowRemote: agentConfig().get("allowRemote", false),
     timeoutMs: agentConfig().get("healthTimeoutMs", 1500),
     fetch: (input, init) => fetch(input, init),
+  });
+  providerWiring.current = createProviderWiring({
+    context,
+    aiEnabled,
+    layaTransport,
   });
   const ambientController = new AmbientController({
     statusBarItem: ambientStatusItem,
@@ -262,6 +274,10 @@ export function activate(context: vscode.ExtensionContext): void {
         },
         applyActiveProposal: proposalCommands.applyActiveProposal,
         commitProgram: proposalCommands.commitProgram,
+        providerProposal: async (project, task) =>
+          providerWiring.current === undefined
+            ? { origin: "built-in", reason: "no-provider" }
+            : providerWiring.current.source().request(project, task),
         rejectActiveProposal: proposalCommands.rejectActiveProposal,
         runAndGetResult: () => {
           const view = executionCommands.runExecution();
