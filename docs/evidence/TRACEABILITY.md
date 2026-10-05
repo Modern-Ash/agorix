@@ -67,7 +67,7 @@ Product traceability is complete enough for Agorix MVP acceptance.
 
 The broader Agora framework experiment is intentionally separate:
 
-- #33 multi-agent delivery matrix: pending/open;
+- #33 multi-agent delivery matrix: documented in `docs/evidence/AGENT_MATRIX.md`;
 - #34 provenance/review-separation/metrics evidence: partially documented in
   `docs/evidence/AGORA_PROJECTION.md`; digest-bound independent review remains open;
 - #7 framework-validation epic: remains open until those experiments are reconciled.
