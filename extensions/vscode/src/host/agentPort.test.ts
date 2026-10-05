@@ -23,6 +23,7 @@ function setup(statements: unknown[]) {
   let active: StudioProposalSession | undefined;
   const events: AgentEvent[] = [];
   const applyActiveProposal = vi.fn(async () => undefined);
+  const commitProgram = vi.fn(async (_program: unknown) => undefined);
   const port = createAgentPort({
     getProject: () => project,
     getActiveProposal: () => active,
@@ -30,6 +31,7 @@ function setup(statements: unknown[]) {
       active = next;
     },
     applyActiveProposal,
+    commitProgram,
     rejectActiveProposal: () => {
       active = undefined;
     },
@@ -39,6 +41,7 @@ function setup(statements: unknown[]) {
   return {
     port,
     applyActiveProposal,
+    commitProgram,
     events,
     setProject: (next: unknown[]) => (project = projectWith(next)),
     active: () => active,
@@ -83,5 +86,83 @@ describe("agentPort", () => {
       ctx.port.record({ type: "proposalRequested", taskId: "first-step", scaffoldLevel: 4 });
     }
     expect(ctx.events).toHaveLength(200);
+  });
+});
+
+describe("agentPort advanced proposals", () => {
+  it("offers a real alternative with measured evidence and lets the learner switch", () => {
+    const ctx = setup([]);
+    const first = ctx.port.proposeFor("first-step")!;
+    expect(first.proposalId).toBe("first-step");
+    expect(first.evidence).toMatchObject({ outcome: "completed" });
+    expect(first.operations).toEqual([
+      expect.objectContaining({
+        index: 0,
+        kind: "add",
+        label: "Add move 10 steps",
+        editable: { field: "steps", value: 10 },
+      }),
+    ]);
+    expect(first.alternatives).toHaveLength(1);
+    const alt = first.alternatives![0]!;
+    expect(alt.proposalId).toBe("first-step-small");
+    expect(alt.tradeoff).toMatch(/shorter/);
+    expect(alt.evidence.stepsUsed).toBeGreaterThan(0);
+    const chosen = ctx.port.chooseAlternative("first-step-small")!;
+    expect(chosen.operations?.[0]?.label).toBe("Add move 5 steps");
+    expect(chosen.alternatives?.[0]?.proposalId).toBe("first-step");
+    expect(ctx.active()?.review.proposal.id).toBe("first-step-small");
+    expect(ctx.port.chooseAlternative("nope")).toBeUndefined();
+    expect(ctx.applyActiveProposal).not.toHaveBeenCalled();
+  });
+
+  it("anchors operations to the original blocks and offers a single repeat proposal", () => {
+    const view = setup(repeated).port.proposeFor("repeat-pattern")!;
+    expect(view.alternatives).toBeUndefined();
+    expect(view.operations).toHaveLength(6);
+    expect(view.operations?.every((op) => op.blockId !== undefined)).toBe(true);
+    expect(view.operations?.filter((op) => op.kind === "remove")).toHaveLength(5);
+  });
+
+  it("previews a selection with evidence and reports empty, invalid and stale", () => {
+    const ctx = setup([]);
+    ctx.port.proposeFor("first-step");
+    expect(ctx.port.previewSelection({ include: [0] })).toMatchObject({
+      ok: true,
+      evidence: { outcome: "completed" },
+    });
+    expect(ctx.port.previewSelection({ include: [] })).toEqual({ ok: false, reason: "EMPTY" });
+    expect(
+      ctx.port.previewSelection({ include: [0], overrides: [{ index: 0, value: 100000 }] }),
+    ).toEqual({ ok: false, reason: "INVALID" });
+    ctx.setProject([{ type: "move", steps: 5 }]);
+    expect(ctx.port.previewSelection({ include: [0] })).toEqual({ ok: false, reason: "STALE" });
+  });
+
+  it("applies a selected subset as one commit and never touches the apply-all path", async () => {
+    const ctx = setup([]);
+    ctx.port.proposeFor("first-step");
+    expect(
+      await ctx.port.applySelection({ include: [0], overrides: [{ index: 0, value: 7 }] }),
+    ).toBe("applied");
+    expect(ctx.commitProgram).toHaveBeenCalledOnce();
+    const committed = ctx.commitProgram.mock.calls[0]![0] as {
+      scripts: { statements: unknown[] }[];
+    };
+    expect(committed.scripts[0]?.statements).toEqual([{ type: "move", steps: 7 }]);
+    expect(ctx.applyActiveProposal).not.toHaveBeenCalled();
+    expect(ctx.active()).toBeUndefined();
+  });
+
+  it("commits nothing for an empty, invalid or stale selection", async () => {
+    const ctx = setup([]);
+    ctx.port.proposeFor("first-step");
+    expect(await ctx.port.applySelection({ include: [] })).toBe("empty");
+    expect(
+      await ctx.port.applySelection({ include: [0], overrides: [{ index: 0, value: 100000 }] }),
+    ).toBe("invalid");
+    ctx.setProject([{ type: "move", steps: 5 }]);
+    expect(await ctx.port.applySelection({ include: [0] })).toBe("stale");
+    expect(ctx.commitProgram).not.toHaveBeenCalled();
   });
 });

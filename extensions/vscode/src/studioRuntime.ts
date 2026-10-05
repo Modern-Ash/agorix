@@ -261,6 +261,7 @@ export function activate(context: vscode.ExtensionContext): void {
           refreshCompanionViews();
         },
         applyActiveProposal: proposalCommands.applyActiveProposal,
+        commitProgram: proposalCommands.commitProgram,
         rejectActiveProposal: proposalCommands.rejectActiveProposal,
         runAndGetResult: () => {
           const view = executionCommands.runExecution();

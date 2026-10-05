@@ -36,6 +36,7 @@ import {
   createProposalReview as createSharedProposalReview,
   createRepeatPatternProposal,
   createStudioProposalDiffView,
+  modifyProposal as modifySharedProposal,
   programSemanticHash,
   type StudioProposalDiffView,
   rejectProposal as rejectSharedProposal,
@@ -47,6 +48,7 @@ import { SCHEMA_VERSION, validateProgram, type ProjectProgram } from "@agorix/pr
 import {
   createWorldState,
   runProgram,
+  touchingGoal,
   type ExecutionTraceEntry,
   type RunResult,
 } from "@agorix/runtime";
@@ -910,6 +912,35 @@ export function applyProposalSession(
   return acceptSharedProposal(acceptedProgram, session.review);
 }
 
+/** A learner-edited subset of a proposal, accepted as one `modify` decision. */
+export function modifyProposalSession(
+  acceptedProgram: ProjectProgram,
+  session: StudioProposalSession,
+  learnerReviewedProgram: ProjectProgram,
+): StudioProposalDecision {
+  return modifySharedProposal(acceptedProgram, session.review, learnerReviewedProgram);
+}
+
+export interface StudioProgramEvidence {
+  readonly stepsUsed: number;
+  readonly reachedGoal: boolean;
+  readonly outcome: RunResult["outcome"];
+}
+
+/** Runs a candidate program in the deterministic runtime; the only source of proposal evidence. */
+export function evidenceForProgram(
+  project: StudioProject,
+  program: ProjectProgram,
+): StudioProgramEvidence {
+  const mission = getLocalizedFirstMission(project.stored.metadata.locale);
+  const result = runProgram(validateProgram(program), createWorldState(mission.starterStage));
+  return {
+    stepsUsed: result.stepsUsed,
+    reachedGoal: touchingGoal(result.world),
+    outcome: result.outcome,
+  };
+}
+
 export function currentProgramHash(program: ProjectProgram): string {
   return programSemanticHash(program);
 }
@@ -1019,6 +1050,22 @@ export function suggestRepeat(project: StudioProject): StudioSuggestion | undefi
     purpose: "Write the repeated steps once with repeat",
     rationale:
       "The same steps appear several times in a row. A repeat does the same with less code.",
+  });
+  if (proposal === undefined) {
+    return undefined;
+  }
+  const session = createProposalSession(project, proposal);
+  return { session, review: session.review, diff: session.diff };
+}
+
+/** A real alternative to the default first step: a shorter move. Same safety, different trade-off. */
+export function suggestFirstStepSmall(project: StudioProject): StudioSuggestion | undefined {
+  const proposal = createFirstStepProposal({
+    id: "first-step-small",
+    baseProgram: project.stored.program,
+    purpose: "Try a shorter movement step",
+    rationale: "A shorter Move block is easier to follow one step at a time.",
+    steps: 5,
   });
   if (proposal === undefined) {
     return undefined;

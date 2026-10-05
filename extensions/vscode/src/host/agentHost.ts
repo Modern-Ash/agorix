@@ -19,8 +19,12 @@ import {
 } from "@agorix/agent-workflow";
 import {
   STUDIO_PROTOCOL_VERSION,
+  type AlternativeView,
+  type EvidenceView,
   type GhostChange,
   type HostMessage,
+  type OperationView,
+  type SelectionInput,
   type UiMessage,
 } from "@agorix/studio-protocol";
 
@@ -29,7 +33,14 @@ export interface ProposalView {
   readonly purpose: string;
   readonly rationale: string;
   readonly changes: GhostChange[];
+  readonly operations?: OperationView[];
+  readonly evidence?: EvidenceView;
+  readonly alternatives?: AlternativeView[];
 }
+
+export type SelectionPreview =
+  | { readonly ok: true; readonly evidence: EvidenceView }
+  | { readonly ok: false; readonly reason: "EMPTY" | "INVALID" | "STALE" };
 
 export interface AgentPort {
   availableTasks(): AgentTaskId[];
@@ -38,6 +49,11 @@ export interface AgentPort {
   /** Applies the pending proposal through the canonical path; "stale" when the program changed. */
   applyPending(): Promise<"applied" | "stale">;
   rejectPending(): void;
+  /** Makes an offered alternative the pending proposal; undefined when it is unknown. */
+  chooseAlternative(proposalId: string): ProposalView | undefined;
+  previewSelection(selection: SelectionInput): SelectionPreview;
+  /** Applies the chosen operations of the pending proposal as one transaction. */
+  applySelection(selection: SelectionInput): Promise<"applied" | "stale" | "invalid" | "empty">;
   run(): { reachedGoal: boolean; stepsUsed: number } | undefined;
   programHash(): string | undefined;
   record(event: AgentEvent): void;
@@ -79,6 +95,9 @@ export function createAgentHost(port: AgentPort): AgentHost {
     purpose: view.purpose,
     rationale: view.rationale,
     changes: view.changes,
+    ...(view.operations === undefined ? {} : { operations: view.operations }),
+    ...(view.evidence === undefined ? {} : { evidence: view.evidence }),
+    ...(view.alternatives === undefined ? {} : { alternatives: view.alternatives }),
   });
   const predictionMsg = (): HostMessage => ({
     schema,
@@ -142,6 +161,7 @@ export function createAgentHost(port: AgentPort): AgentHost {
   async function decide(
     proposalId: string,
     decision: "accepted" | "rejected" | "modified",
+    selection?: SelectionInput,
   ): Promise<HostMessage[]> {
     if (
       workflow.stage !== "proposal" ||
@@ -151,11 +171,14 @@ export function createAgentHost(port: AgentPort): AgentHost {
     ) {
       return [];
     }
-    if (decision === "modified") {
+    if (decision === "modified" && selection === undefined) {
       return [];
     }
+    if (decision === "modified" && selection !== undefined && selection.include.length === 0) {
+      decision = "rejected";
+    }
     if (
-      decision === "accepted" &&
+      decision !== "rejected" &&
       agreements.requirePredictionBeforeAccept &&
       !workflow.predicted
     ) {
@@ -170,11 +193,22 @@ export function createAgentHost(port: AgentPort): AgentHost {
       return [cleared(), wf()];
     }
     applying = true;
-    let outcome: "applied" | "stale";
+    let outcome: "applied" | "stale" | "invalid" | "empty";
     try {
-      outcome = await port.applyPending();
+      outcome =
+        selection === undefined ? await port.applyPending() : await port.applySelection(selection);
     } finally {
       applying = false;
+    }
+    if (outcome === "invalid" || outcome === "empty") {
+      return [
+        {
+          schema,
+          type: "selectionEvidence",
+          proposalId,
+          result: { ok: false, reason: outcome === "empty" ? "EMPTY" : "INVALID" },
+        },
+      ];
     }
     pending = undefined;
     if (outcome === "stale") {
@@ -243,7 +277,25 @@ export function createAgentHost(port: AgentPort): AgentHost {
       case "requestProposal":
         return requestProposal();
       case "decideProposal":
-        return decide(message.proposalId, message.decision);
+        return decide(message.proposalId, message.decision, message.selection);
+      case "chooseAlternative": {
+        if (workflow.stage !== "proposal" || pending === undefined || applying) return [];
+        const view = port.chooseAlternative(message.proposalId);
+        if (view === undefined) return [];
+        pending = view;
+        return [proposalMsg(view)];
+      }
+      case "previewSelection": {
+        if (pending === undefined || message.proposalId !== pending.proposalId) return [];
+        return [
+          {
+            schema,
+            type: "selectionEvidence",
+            proposalId: pending.proposalId,
+            result: port.previewSelection(message.selection),
+          },
+        ];
+      }
       case "predict":
         if (workflow.stage === "proposal") {
           if (!agreements.requirePredictionBeforeAccept || !step({ type: "prePredictionMade" })) {

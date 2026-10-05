@@ -18,7 +18,9 @@ import {
   createNavigationSections,
   listStudioProjections,
   openStoredProject,
+  evidenceForProgram,
   nodeIdForProjectionLine,
+  suggestFirstStepSmall,
   openProjectionDocument,
   parseProjectFile,
   parseStoredProject,
@@ -475,5 +477,22 @@ describe("nodeIdForProjectionLine", () => {
     expect(nodeIdForProjectionLine(document, 1)).toBe("inner");
     expect(nodeIdForProjectionLine(document, 0)).toBe("outer");
     expect(nodeIdForProjectionLine({ text: "a", mapping: {} } as never, 0)).toBeUndefined();
+  });
+});
+
+describe("proposal evidence and alternatives", () => {
+  it("offers a shorter first step whose evidence is measured by the runtime", () => {
+    const empty = openStoredProject(
+      createStudioStarterProject({ starter: "blank", locale: "en-US" }),
+    );
+    const small = suggestFirstStepSmall(empty);
+    expect(small?.session.review.proposal.id).toBe("first-step-small");
+    const evidence = evidenceForProgram(empty, small!.review.candidateProgram);
+    expect(evidence.outcome).toBe("completed");
+    expect(evidence.stepsUsed).toBeGreaterThan(0);
+    expect(typeof evidence.reachedGoal).toBe("boolean");
+    const none = evidenceForProgram(empty, empty.stored.program);
+    expect(none.stepsUsed).toBe(0);
+    expect(none.reachedGoal).toBe(false);
   });
 });
