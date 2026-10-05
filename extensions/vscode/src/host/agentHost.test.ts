@@ -25,6 +25,7 @@ function setup(
   };
   const port: AgentPort = {
     availableTasks: () => options.tasks ?? ["first-step"],
+    pointerFor: () => ["block:a"],
     ...(options.planIntent === undefined ? {} : { planIntent: options.planIntent }),
     proposeFor: async (task) => ({
       proposalId: task,
@@ -587,5 +588,74 @@ describe("agentHost evidence events", () => {
       expect.objectContaining({ type: "proposalModified", origin: "provider" }),
     ]);
     expect(JSON.stringify(ctx.state.events)).not.toMatch(/purpose|rationale|make it move/);
+  });
+});
+
+describe("agentHost assistance ceiling", () => {
+  const withCeiling = async (assistanceCeiling: 0 | 1 | 2 | 3 | 4 | 5, mode?: "bounded") => {
+    const ctx = setup({ tasks: ["repeat-pattern"] });
+    await ctx.send({
+      type: "agreementsChanged",
+      agreements: {
+        ...DEFAULT_AGREEMENTS,
+        assistanceCeiling,
+        ...(mode === undefined ? {} : { mode }),
+      },
+    });
+    await ctx.send({ type: "stateIntent", text: "repite 3 veces" });
+    return ctx;
+  };
+
+  it.each([
+    [0, "none"],
+    [1, "question"],
+    [2, "concept"],
+    [3, "pointer"],
+  ] as const)("at ceiling %i it shows %s help instead of a proposal", async (ceiling, kind) => {
+    const ctx = await withCeiling(ceiling);
+    await ctx.send({ type: "acceptPlan" });
+    const proposeFor = vi.spyOn(ctx.port, "proposeFor");
+    const out = await ctx.send({ type: "requestProposal" });
+    expect(proposeFor).not.toHaveBeenCalled();
+    expect(types(out)).toEqual(["help"]);
+    expect(out?.[0]).toMatchObject({ kind, ceiling, taskId: "repeat-pattern" });
+    expect(ctx.state.events).toEqual([]);
+    expect(types(ctx.host.snapshot())).not.toContain("proposal");
+  });
+
+  it("adds the concept at 2 and the pointer blocks at 3, and nothing extra otherwise", async () => {
+    const two = await withCeiling(2);
+    await two.send({ type: "acceptPlan" });
+    expect((await two.send({ type: "requestProposal" }))?.[0]).toMatchObject({
+      concept: "repetition",
+    });
+    expect((await two.send({ type: "requestProposal" }))?.[0]).not.toHaveProperty("blockIds");
+    const three = await withCeiling(3);
+    await three.send({ type: "acceptPlan" });
+    expect((await three.send({ type: "requestProposal" }))?.[0]).toMatchObject({
+      blockIds: ["block:a"],
+    });
+  });
+
+  it("still proposes at 4 and 5, and bounded mode also gives help instead of proposing", async () => {
+    for (const ceiling of [4, 5] as const) {
+      const ctx = await withCeiling(ceiling);
+      await ctx.send({ type: "acceptPlan" });
+      expect(types(await ctx.send({ type: "requestProposal" }))).toEqual(["workflow", "proposal"]);
+    }
+    const bounded = await withCeiling(2, "bounded");
+    const out = await bounded.send({ type: "acceptPlan" });
+    expect(types(out)).toEqual(["workflow", "help"]);
+    expect(types(bounded.host.snapshot())).not.toContain("proposal");
+  });
+
+  it("lets the learner raise the ceiling and get the proposal afterwards", async () => {
+    const ctx = await withCeiling(1);
+    await ctx.send({ type: "acceptPlan" });
+    expect(types(await ctx.send({ type: "requestProposal" }))).toEqual(["help"]);
+    await ctx.send({ type: "agreementsChanged", agreements: DEFAULT_AGREEMENTS });
+    await ctx.send({ type: "stateIntent", text: "repite 3 veces" });
+    await ctx.send({ type: "acceptPlan" });
+    expect(types(await ctx.send({ type: "requestProposal" }))).toEqual(["workflow", "proposal"]);
   });
 });

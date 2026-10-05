@@ -28,6 +28,7 @@ import {
 } from "./host/workbenchPanel.js";
 import { disposeWorldPreview, refreshWorldPreviewSync } from "./host/worldPreviewPanel.js";
 import { createSyncHub } from "./sync/syncHub.js";
+import { canDoCompanionAction, offerActionAllowed } from "./assistance.js";
 import { createProviderWiring } from "./providerWiring.js";
 import { registerCodeSync } from "./sync/codeSync.js";
 import { programToWorkspace } from "@agorix/block-editor";
@@ -153,6 +154,7 @@ export function activate(context: vscode.ExtensionContext): void {
   });
   const proposalCommands = createStudioProposalCommandHandlers({
     requireProject,
+    agentAgreements: () => session.agentAgreements,
     getCurrentProject: () => session.current,
     setCurrentProject: (project) => {
       session.current = project;
@@ -171,6 +173,7 @@ export function activate(context: vscode.ExtensionContext): void {
   });
   const companionCommands = createStudioCompanionCommandHandlers({
     requireProject,
+    agentAgreements: () => session.agentAgreements,
     currentExecutionView: executionCommands.currentExecutionView,
     getExecutionEvidence: () => session.executionEvidence,
     companionTurns: () => session.companionTurns,
@@ -208,6 +211,7 @@ export function activate(context: vscode.ExtensionContext): void {
   });
   const ambientController = new AmbientController({
     statusBarItem: ambientStatusItem,
+    allowAction: (action) => offerActionAllowed(session.agentAgreements, action),
     programId: () =>
       session.current === undefined
         ? undefined
@@ -433,6 +437,7 @@ export function activate(context: vscode.ExtensionContext): void {
         ambientController.showOffer(),
       ),
       ...registerAmbientLenses({
+        allowAction: (action) => canDoCompanionAction(session.agentAgreements, action),
         getProjection: (document) => {
           const current = session.current?.project;
           if (current === undefined || document.uri.scheme !== "agorix-studio") return undefined;

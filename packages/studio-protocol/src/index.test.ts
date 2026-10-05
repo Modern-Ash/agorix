@@ -447,6 +447,20 @@ describe("advanced proposal messages", () => {
   });
 });
 
+describe("help message", () => {
+  const help = { schema, type: "help", kind: "pointer", ceiling: 3, taskId: "repeat-pattern" };
+  it("parses help with optional concept and block ids and rejects bad input", () => {
+    expect(parseHostMessage(help)).toEqual(help);
+    const full = { ...help, concept: "repetition", blockIds: ["block:a"] };
+    expect(parseHostMessage(full)).toEqual(full);
+    expect(parseHostMessage({ ...help, kind: "proposal" })).toBeUndefined();
+    expect(parseHostMessage({ ...help, ceiling: 9 })).toBeUndefined();
+    expect(parseHostMessage({ ...help, taskId: "free text" })).toBeUndefined();
+    expect(parseHostMessage({ ...help, concept: "magic" })).toBeUndefined();
+    expect(parseHostMessage({ ...help, blockIds: ["<x>"] })).toBeUndefined();
+  });
+});
+
 describe("density", () => {
   it("auto starts comfortable and turns compact after enough edits or reaching the goal", () => {
     const fresh = { edits: 0, reachedGoal: false };

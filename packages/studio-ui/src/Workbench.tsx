@@ -172,9 +172,16 @@ export function Workbench({
             sync={sync}
             hints={
               agentUi.proposal === undefined
-                ? ambientHint?.blockId === undefined
-                  ? undefined
-                  : { hints: { [ambientHint.blockId]: ambientHint.label }, skipped: [] }
+                ? agentUi.help?.blockIds !== undefined
+                  ? {
+                      hints: Object.fromEntries(
+                        agentUi.help.blockIds.map((id) => [id, copy.helpLookHere]),
+                      ),
+                      skipped: [],
+                    }
+                  : ambientHint?.blockId === undefined
+                    ? undefined
+                    : { hints: { [ambientHint.blockId]: ambientHint.label }, skipped: [] }
                 : { hints: anchored.hints, skipped: anchored.skipped }
             }
             ambientHint={agentUi.proposal === undefined ? ambientHint : undefined}

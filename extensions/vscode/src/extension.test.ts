@@ -1221,6 +1221,66 @@ describe("Studio extension wiring", () => {
     }
   });
 
+  describe("assistance ceiling on explicit commands", () => {
+    const sendAgreements = async (assistanceCeiling: number) => {
+      await openFile("/p/ceiling.json", stored([]));
+      await handlers.get("agorixStudio.openWorkbench")!();
+      workbenchPanel()?.receive({
+        schema: "agorix/studio-protocol/v1",
+        type: "agreementsChanged",
+        agreements: {
+          aiEnabled: true,
+          assistanceCeiling,
+          mode: "supervised",
+          requirePredictionBeforeAccept: false,
+          proactive: {
+            "runtime-error": true,
+            stalled: true,
+            "repeated-error": true,
+            "repeat-pattern": true,
+            "first-step": true,
+          },
+        },
+      });
+      await flushWorkbench();
+      shown.length = 0;
+    };
+    const turns = () => treeProviders.get("agorixStudio.companionHistory")?.getChildren() ?? [];
+
+    it("runs only the Companion actions the ceiling allows and says why for the rest", async () => {
+      await sendAgreements(2);
+      await handlers.get("agorixStudio.companionExplain")!();
+      expect(turns()).toHaveLength(1);
+      await handlers.get("agorixStudio.companionDebug")!();
+      await handlers.get("agorixStudio.companionBuild")!();
+      expect(turns()).toHaveLength(1);
+      expect(shown.filter((message) => message.includes("Your help level is 2"))).toHaveLength(2);
+    });
+
+    it("blocks the built-in suggestions below level 4 without opening a proposal", async () => {
+      await sendAgreements(3);
+      await handlers.get("agorixStudio.suggestFirstStep")!();
+      await handlers.get("agorixStudio.suggestRepeat")!();
+      expect(diffs).toHaveLength(0);
+      expect(shown.filter((message) => message.includes("Your help level is 3"))).toHaveLength(2);
+      const written = JSON.parse(new TextDecoder().decode(files.get("/p/ceiling.json")));
+      expect(written.program.scripts[0].statements).toEqual([]);
+    });
+
+    it("blocks every Companion action at level 0 and keeps all of them at level 4", async () => {
+      await sendAgreements(0);
+      for (const name of ["Explain", "Challenge", "Debug", "Reflect", "Build"]) {
+        await handlers.get(`agorixStudio.companion${name}`)!();
+      }
+      expect(turns()).toHaveLength(0);
+      await sendAgreements(4);
+      for (const name of ["Explain", "Challenge", "Debug", "Reflect"]) {
+        await handlers.get(`agorixStudio.companion${name}`)!();
+      }
+      expect(turns()).toHaveLength(4);
+    });
+  });
+
   it("reviews first-step proposal through the generic apply flow", async () => {
     await openFile("/p/empty.json", stored([]));
     choice = "Apply";

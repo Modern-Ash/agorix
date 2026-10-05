@@ -1,4 +1,6 @@
 import * as vscode from "vscode";
+import type { AgentAgreements } from "@agorix/agent-workflow";
+import { canPropose, ceilingMessage } from "../assistance.js";
 import { t } from "../l10n.js";
 import type { ProjectProgram } from "@agorix/program-model";
 import {
@@ -16,6 +18,7 @@ import { REMOTE_SCHEME, type OpenProject, type StoredSnapshot } from "../store/s
 
 export interface StudioProposalCommandPort {
   requireProject(): OpenProject | undefined;
+  agentAgreements(): AgentAgreements;
   getCurrentProject(): OpenProject | undefined;
   setCurrentProject(project: OpenProject): void;
   getCurrentProjectionId(): string;
@@ -133,6 +136,10 @@ export function createStudioProposalCommandHandlers(
     if (open === undefined) {
       return;
     }
+    if (!canPropose(port.agentAgreements())) {
+      await vscode.window.showInformationMessage(ceilingMessage(port.agentAgreements()));
+      return;
+    }
     const suggestion = suggestFirstStep(open.project);
     if (suggestion === undefined) {
       await vscode.window.showInformationMessage(
@@ -146,6 +153,10 @@ export function createStudioProposalCommandHandlers(
   const suggestRepeatCommand = async (): Promise<void> => {
     const open = port.requireProject();
     if (open === undefined) {
+      return;
+    }
+    if (!canPropose(port.agentAgreements())) {
+      await vscode.window.showInformationMessage(ceilingMessage(port.agentAgreements()));
       return;
     }
     const suggestion = suggestRepeat(open.project);
