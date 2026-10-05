@@ -28,6 +28,10 @@ The ambient presence slice makes the Studio Agent visible without making it loud
 
 This slice is infrastructure for the Studio direction, not the final experience: the next work should measure offer quality, anchor suggestions on the Workbench canvas, export non-PII evidence and route accepted generative actions through the full LAYA/provider budget pipeline.
 
+## Live sync
+
+A host-side `SyncHub` (`extensions/vscode/src/sync/syncHub.ts`) holds one selected, one executing and one failed canonical node id. The canvas, code editor, World Preview and Inspector write selections into it; each surface reflects the shared state (canvas via the `sync` protocol message mapped to block ids, code via reveal and run/fail decorations, World Preview via `agorix-sync`, Inspector via tree reveal). Failure is shown with text and an accessible description, never color alone. A program change reconciles the hub so removed nodes are cleared.
+
 ## Release gate
 
 Studio's product release gate is
