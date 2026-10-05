@@ -169,6 +169,7 @@ export type LearningCompanionSafetyIssueCode =
   | "pii-request"
   | "unsafe-program-proposal"
   | "hidden-provider-action"
+  | "active-content"
   | "context-provenance-mismatch";
 
 export interface LearningCompanionSafetyDiagnostic {
@@ -247,6 +248,7 @@ export function validateLearningCompanionSafety(
   textFields.forEach(({ path, value }) => {
     assertNoPersonalDataRequest(value, path);
     assertNoHiddenProviderAction(value, path);
+    assertNoActiveContent(value, path);
     assertNoOverAssistance(value, path, validatedResponse.metadata.scaffoldLevel);
   });
 
@@ -802,6 +804,33 @@ export function assertNoHiddenProviderAction(value: string, path: string): void 
   ) {
     safetyFail("hidden-provider-action", path, "response exposes a hidden provider tool action");
   }
+}
+
+/**
+ * Provider text shown to a child is plain text only: no links, markup or code blocks. A link in
+ * a children's tool is an exit to an unvetted page, and markup can mislead the renderer.
+ */
+export function assertNoActiveContent(value: string, path: string): void {
+  if (
+    /\b(?:https?|ftp|file|data|javascript|mailto):/i.test(value) ||
+    /\bwww\./i.test(value) ||
+    /\]\(/.test(value) ||
+    /<\/?[a-z][^>]*>/i.test(value) ||
+    /```/.test(value)
+  ) {
+    safetyFail("active-content", path, "response contains a link, markup or a code block");
+  }
+}
+
+/** Collapses control characters and runs of whitespace; the result is shown as plain text. */
+export function normalizeProviderText(value: string): string {
+  return (
+    value
+      // eslint-disable-next-line no-control-regex
+      .replace(/[\u0000-\u001f\u007f]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+  );
 }
 
 function assertNoOverAssistance(

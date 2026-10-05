@@ -24,6 +24,7 @@ import {
   createTutorResponseFromLearningCompanionResponse,
   parseLearningCompanionResponse,
   parseTutorResponse,
+  normalizeProviderText,
   validateLearningCompanionSafety,
   validateLearningCompanionRequest,
   validateLearningCompanionResponse,
@@ -591,6 +592,46 @@ describe("LearningCompanion contract", () => {
 
     expect(dependencyNames).not.toEqual(
       expect.arrayContaining(["openai", "@anthropic-ai/sdk", "ollama"]),
+    );
+  });
+});
+
+describe("active content in provider text", () => {
+  const withText = (text: string) =>
+    createLearningCompanionResponse({
+      ...learningCompanionResponse,
+      message: text,
+      payload: { kind: "question", question: text },
+    });
+
+  it.each([
+    "Read this: https://example.test/answer",
+    "Open www.example.test for the answer",
+    "Click [here](other) to continue",
+    "Try <img src=x> now",
+    "```move(10)``` is the answer",
+    "Write to mailto:someone@example.test",
+  ])("rejects %s", (text) => {
+    expect(() => validateLearningCompanionSafety(learningCompanionRequest, withText(text))).toThrow(
+      /active-content/,
+    );
+  });
+
+  it("accepts ordinary child-facing text with code-like punctuation", () => {
+    for (const text of [
+      "What happens after move(10) runs?",
+      "Is 3 < 5 here, and does the sprite turn > once?",
+      "The http word alone is fine, and so is a trailing colon:",
+    ]) {
+      expect(() =>
+        validateLearningCompanionSafety(learningCompanionRequest, withText(text)),
+      ).not.toThrow();
+    }
+  });
+
+  it("normalizes control characters and whitespace before display", () => {
+    expect(normalizeProviderText("  Move\u0000 forward \n\n then   turn\t ")).toBe(
+      "Move forward then turn",
     );
   });
 });

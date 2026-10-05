@@ -10,7 +10,12 @@ import {
   type StudioSignalKind,
 } from "@agorix/learning-decision-plane";
 import { programSemanticHash } from "@agorix/proposals";
-import type { LearningCompanionResponse } from "@agorix/tutor-contract";
+import {
+  LearningCompanionSafetyValidationError,
+  normalizeProviderText,
+  validateLearningCompanionSafety,
+  type LearningCompanionResponse,
+} from "@agorix/tutor-contract";
 import {
   createCompanionRequest,
   createProposalSession,
@@ -91,14 +96,34 @@ export function createProposalSource(options: ProposalSourceOptions): ProposalSo
         if (outcome.status === "rejected") {
           return builtIn("rejected", outcome.message);
         }
-        const response = outcome.response;
-        if (response.capability !== "builder" || response.payload.validation.status !== "valid") {
+        const raw = outcome.response;
+        if (raw.capability !== "builder" || raw.payload.validation.status !== "valid") {
           return builtIn("invalid");
         }
-        const proposal = response.payload.proposal;
-        if (proposal.baseProgramHash !== programHash) {
+        if (raw.payload.proposal.baseProgramHash !== programHash) {
           return builtIn("stale");
         }
+        // The client already validated this; checking again keeps the boundary here too, so
+        // provider text with links or markup can never reach a child through this seam.
+        try {
+          validateLearningCompanionSafety(request, raw);
+        } catch (error) {
+          if (error instanceof LearningCompanionSafetyValidationError) {
+            return builtIn("rejected", error.childMessage);
+          }
+          throw error;
+        }
+        // Provider text is shown as plain text with control characters and spacing normalized.
+        const proposal = {
+          ...raw.payload.proposal,
+          purpose: normalizeProviderText(raw.payload.proposal.purpose),
+          rationale: normalizeProviderText(raw.payload.proposal.rationale),
+        };
+        const response: LearningCompanionResponse = {
+          ...raw,
+          message: normalizeProviderText(raw.message),
+          payload: { ...raw.payload, proposal },
+        };
         let session: StudioProposalSession;
         try {
           session = createProposalSession(project, proposal);

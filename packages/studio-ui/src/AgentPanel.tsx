@@ -360,8 +360,12 @@ export function AgentPanel({
               {state.proposal.notice}
             </p>
           )}
-          <p>{state.proposal.purpose}</p>
-          <p>{state.proposal.rationale}</p>
+          {state.proposal.origin !== "provider" && (
+            <>
+              <p>{state.proposal.purpose}</p>
+              <p>{state.proposal.rationale}</p>
+            </>
+          )}
           <p>{copy.dashedBlocks}</p>
           {!needsPrediction && state.proposal.evidence !== undefined && (
             <p>{evidenceText(state.proposal.evidence, copy)}</p>
@@ -379,6 +383,15 @@ export function AgentPanel({
                 needsPrediction={needsPrediction}
               />
             )}
+          {state.proposal.origin === "provider" && (
+            // AI-written text comes after what is deterministic (operations, evidence) and is
+            // labelled as unchecked, as plain text.
+            <aside className="ai-explanation" aria-label={copy.aiExplanationLabel}>
+              <p className="ghost-badge">{copy.aiExplanationLabel}</p>
+              <p>{state.proposal.purpose}</p>
+              <p>{state.proposal.rationale}</p>
+            </aside>
+          )}
           {needsPrediction && state.prediction !== undefined && (
             <div aria-label={copy.predictionBeforeAccept}>
               <p>{copy.beforeAccept}</p>

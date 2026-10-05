@@ -458,3 +458,29 @@ describe("intent-plan validation", () => {
     );
   });
 });
+
+describe("provider text is plain text only", () => {
+  it("rejects a link or markup in an intent plan step", () => {
+    const plan = planFrom("move toward the goal");
+    for (const bad of [
+      "see https://example.test/solution",
+      "<b>move</b> now",
+      "go to www.example.test",
+    ]) {
+      expect(() =>
+        validateIntentPlanResponse({
+          schema: INTENT_PLAN_RESPONSE_SCHEMA_VERSION,
+          kind: "plan",
+          message: "Here is your plan.",
+          metadata: { provenance: "deterministic-fake", uncertainty: "low", questionsAsked: 0 },
+          plan: {
+            ...plan,
+            steps: plan.steps.map((step, index) =>
+              index === 0 ? { ...step, description: bad } : step,
+            ),
+          },
+        }),
+      ).toThrow(/active-content/);
+    }
+  });
+});

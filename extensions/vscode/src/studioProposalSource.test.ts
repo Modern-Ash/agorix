@@ -208,3 +208,56 @@ describe("proposal source", () => {
     expect(text).not.toMatch(/learnerIntent|"text"|message/);
   });
 });
+
+describe("proposal source and provider text policy", () => {
+  const builder = () => {
+    const good = validResponse();
+    if (good.capability !== "builder") throw new Error("expected builder");
+    return good;
+  };
+
+  it("rejects provider text with a link or markup and falls back with the child-safe message", async () => {
+    const good = builder();
+    for (const text of ["Open https://example.test now", "Try <b>this</b>", "[click](x)"]) {
+      const unsafe = {
+        ...good,
+        payload: { ...good.payload, proposal: { ...good.payload.proposal, rationale: text } },
+      } as LearningCompanionResponse;
+      const { source } = setup({
+        route: allow,
+        outcome: { status: "response", response: unsafe, locality: "local" },
+      });
+      const result = await source.request(project(), "first-step");
+      expect(result).toMatchObject({ origin: "built-in", reason: "rejected" });
+      expect(result.origin === "built-in" && result.notice).toBe(
+        "I couldn't use that AI suggestion safely. Your program stayed the same.",
+      );
+    }
+  });
+
+  it("shows accepted provider text as normalized plain text", async () => {
+    const good = builder();
+    const messy = {
+      ...good,
+      message: "  Here   is\n a step ",
+      payload: {
+        ...good.payload,
+        proposal: {
+          ...good.payload.proposal,
+          purpose: "  A   shorter\tstep ",
+          rationale: "Because\n\nit   is easy.",
+        },
+      },
+    } as LearningCompanionResponse;
+    const { source } = setup({
+      route: allow,
+      outcome: { status: "response", response: messy, locality: "local" },
+    });
+    const result = await source.request(project(), "first-step");
+    expect(result.origin).toBe("provider");
+    if (result.origin !== "provider") return;
+    expect(result.session.purpose).toBe("A shorter step");
+    expect(result.session.rationale).toBe("Because it is easy.");
+    expect(result.response.message).toBe("Here is a step");
+  });
+});

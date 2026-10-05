@@ -60,6 +60,10 @@ A host-side `SyncHub` (`extensions/vscode/src/sync/syncHub.ts`) holds one select
 - Budget: `agorixStudio.agent.proposalBudgetRequests` (default 10 per session). Telemetry holds enums and numbers only; learner text never reaches it.
 - Educator evidence export is local and user-initiated (`agorixStudio.exportEducatorEvidence`). It summarizes one session with counts only: proposal decisions, predictions, explanations, ambient offers, settings and deterministic runtime completion. It writes JSON plus a Markdown summary to files the user chooses and contains no names, emails, paths, learner text or raw model output.
 
+## Provider text policy
+
+Provider-written text (`purpose`, `rationale`, messages) is shown as plain text and only after the shared safety boundary: links, URLs, markup and code blocks are rejected (ADR 0008), and the child sees the safe message while Studio falls back to the built-in proposal. The card leads with the operation list and the runtime evidence; the AI's explanation follows, labelled as not checked by the runtime. Provider text is not logged, sent to telemetry or exported.
+
 ## Release gate
 
 Studio's product release gate is
