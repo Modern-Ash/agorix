@@ -241,3 +241,30 @@ describe("intent baseHash", () => {
     expect(parseHostMessage({ schema, type: "error", code: "STALE_EDIT" })).toBeDefined();
   });
 });
+
+describe("clarification messages", () => {
+  const options = [
+    { id: "first-step", title: "Try one visible movement step" },
+    { id: "repeat-pattern", title: "Write the repeated steps once with repeat" },
+  ];
+  it("round-trips clarify and answerClarification and rejects bad input", () => {
+    expect(parseHostMessage({ schema, type: "clarify", options })).toEqual({
+      schema,
+      type: "clarify",
+      options,
+    });
+    expect(parseHostMessage({ schema, type: "clarify", options: [options[0]] })).toBeUndefined();
+    expect(
+      parseHostMessage({ schema, type: "clarify", options: [options[0], { id: "x", title: "t" }] }),
+    ).toBeUndefined();
+    expect(parseUiMessage({ schema, type: "answerClarification", taskId: "first-step" })).toEqual({
+      schema,
+      type: "answerClarification",
+      taskId: "first-step",
+    });
+    expect(
+      parseUiMessage({ schema, type: "answerClarification", taskId: "free text" }),
+    ).toBeUndefined();
+    expect(parseHostMessage({ schema, type: "error", code: "STALE_PLAN" })).toBeDefined();
+  });
+});

@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   checkExplanation,
   comparePrediction,
+  needsClarification,
   normalizeIntent,
   planTasks,
+  taskForId,
   type AgentTaskId,
 } from "./index.js";
 
@@ -30,5 +32,19 @@ describe("agent helpers", () => {
     expect(comparePrediction(undefined, false)).toBe("skipped");
     expect(checkExplanation("repeat-pattern", "repetition")).toBe("relevant");
     expect(checkExplanation("first-step", "condition")).toBe("other");
+  });
+});
+
+describe("clarification", () => {
+  it("asks only when nothing matches and there is a real choice", () => {
+    expect(needsClarification("hola", both)).toBe(true);
+    expect(needsClarification("repite 3 veces", both)).toBe(false);
+    expect(needsClarification("move and repeat", both)).toBe(false);
+    expect(needsClarification("hola", ["first-step"])).toBe(false);
+    expect(needsClarification("hola", [])).toBe(false);
+    expect(taskForId("first-step")).toEqual({
+      id: "first-step",
+      title: "Try one visible movement step",
+    });
   });
 });

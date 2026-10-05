@@ -6,7 +6,9 @@ import {
   comparePrediction,
   createWorkflow,
   effectiveAssistance,
+  needsClarification,
   planTasks,
+  taskForId,
   type AgentAgreements,
   type AgentEvent,
   type AgentTask,
@@ -57,12 +59,19 @@ export function createAgentHost(port: AgentPort): AgentHost {
   let pending: ProposalView | undefined;
   let answer: PredictionAnswer | undefined;
   let applying = false;
+  let clarifying: AgentTask[] | undefined;
+  let planBaseHash: string | undefined;
   let lastHash: string | undefined = port.programHash();
 
   const wf = (): HostMessage => ({ schema, type: "workflow", state: workflow });
   const agreementsMsg = (): HostMessage => ({ schema, type: "agreements", agreements });
   const cleared = (): HostMessage => ({ schema, type: "proposalCleared" });
   const planMsg = (): HostMessage => ({ schema, type: "plan", tasks });
+  const clarifyMsg = (options: readonly AgentTask[]): HostMessage => ({
+    schema,
+    type: "clarify",
+    options,
+  });
   const proposalMsg = (view: ProposalView): HostMessage => ({
     schema,
     type: "proposal",
@@ -91,6 +100,8 @@ export function createAgentHost(port: AgentPort): AgentHost {
     pending = undefined;
     workflow = createWorkflow(agreements.mode);
     tasks = [];
+    clarifying = undefined;
+    planBaseHash = undefined;
     answer = undefined;
     return hadPending;
   }
@@ -162,6 +173,11 @@ export function createAgentHost(port: AgentPort): AgentHost {
     ];
   }
 
+  function stalePlan(): HostMessage[] {
+    resetLoop();
+    return [{ schema, type: "error", code: "STALE_PLAN" }, wf()];
+  }
+
   async function handle(message: UiMessage): Promise<HostMessage[] | undefined> {
     switch (message.type) {
       case "ready":
@@ -182,10 +198,28 @@ export function createAgentHost(port: AgentPort): AgentHost {
       case "stateIntent": {
         const had = resetLoop();
         step({ type: "intentStated" });
-        tasks = planTasks(message.text, port.availableTasks());
+        planBaseHash = port.programHash();
+        const available = port.availableTasks();
+        if (needsClarification(message.text, available)) {
+          clarifying = available.map(taskForId);
+          return [...(had ? [cleared()] : []), wf(), clarifyMsg(clarifying)];
+        }
+        tasks = planTasks(message.text, available);
         return [...(had ? [cleared()] : []), wf(), planMsg()];
       }
+      case "answerClarification": {
+        if (clarifying === undefined || workflow.stage !== "plan") return [];
+        if (planBaseHash !== port.programHash()) return stalePlan();
+        const chosen = clarifying.find((task) => task.id === message.taskId);
+        if (chosen === undefined) return [];
+        clarifying = undefined;
+        tasks = [chosen];
+        return [wf(), planMsg()];
+      }
       case "acceptPlan": {
+        if (workflow.stage === "plan" && tasks.length > 0 && planBaseHash !== port.programHash()) {
+          return stalePlan();
+        }
         if (tasks.length === 0 || !step({ type: "planAccepted", taskCount: tasks.length })) {
           return [];
         }
@@ -251,7 +285,8 @@ export function createAgentHost(port: AgentPort): AgentHost {
 
   function snapshot(): HostMessage[] {
     const out: HostMessage[] = [agreementsMsg(), wf()];
-    if (tasks.length > 0 && workflow.stage !== "intent") out.push(planMsg());
+    if (clarifying !== undefined && workflow.stage === "plan") out.push(clarifyMsg(clarifying));
+    else if (tasks.length > 0 && workflow.stage !== "intent") out.push(planMsg());
     if (pending !== undefined) out.push(proposalMsg(pending));
     return out;
   }
@@ -262,6 +297,9 @@ export function createAgentHost(port: AgentPort): AgentHost {
       return [];
     }
     lastHash = hash;
+    if (workflow.stage === "plan") {
+      return stalePlan();
+    }
     if (["proposal", "predict", "run", "compare"].includes(workflow.stage)) {
       const had = resetLoop();
       return had ? [cleared(), wf()] : [wf()];

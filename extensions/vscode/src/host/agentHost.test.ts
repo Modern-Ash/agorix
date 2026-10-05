@@ -163,3 +163,66 @@ describe("agentHost", () => {
     void vi;
   });
 });
+
+describe("agentHost clarification and stale plans", () => {
+  const both: AgentTaskId[] = ["first-step", "repeat-pattern"];
+
+  it("asks one question for an unclear intent and pins the plan to the answer", async () => {
+    const { send, host } = setup({ tasks: both });
+    const out = await send({ type: "stateIntent", text: "hola" });
+    expect(types(out)).toEqual(["workflow", "clarify"]);
+    expect(types(host.snapshot())).toContain("clarify");
+    const answered = await send({ type: "answerClarification", taskId: "repeat-pattern" });
+    expect(types(answered)).toEqual(["workflow", "plan"]);
+    expect(answered?.[1]).toMatchObject({ tasks: [{ id: "repeat-pattern" }] });
+    expect(await send({ type: "answerClarification", taskId: "first-step" })).toEqual([]);
+  });
+
+  it("does not ask when the intent is clear or there is a single task", async () => {
+    const clear = setup({ tasks: both });
+    expect(types(await clear.send({ type: "stateIntent", text: "repite 3 veces" }))).toEqual([
+      "workflow",
+      "plan",
+    ]);
+    const single = setup({ tasks: ["first-step"] });
+    expect(types(await single.send({ type: "stateIntent", text: "hola" }))).toEqual([
+      "workflow",
+      "plan",
+    ]);
+  });
+
+  it("refuses an answer for a task that was not offered", async () => {
+    const { send } = setup({ tasks: both });
+    await send({ type: "stateIntent", text: "hola" });
+    const out = await send({ type: "answerClarification", taskId: "first-step" });
+    expect(types(out)).toEqual(["workflow", "plan"]);
+    const { send: other } = setup({ tasks: ["first-step"] });
+    await other({ type: "stateIntent", text: "hola" });
+    expect(await other({ type: "answerClarification", taskId: "repeat-pattern" })).toEqual([]);
+  });
+
+  it("drops a plan whose base program changed before it was accepted", async () => {
+    const { send, state } = setup();
+    await send({ type: "stateIntent", text: "make it move" });
+    state.hash = "h-other";
+    const out = await send({ type: "acceptPlan" });
+    expect(out?.[0]).toEqual({ schema, type: "error", code: "STALE_PLAN" });
+    expect(types(out)).toEqual(["error", "workflow"]);
+    expect(await send({ type: "requestProposal" })).toEqual([]);
+  });
+
+  it("drops a clarification answered after the program changed", async () => {
+    const { send, state } = setup({ tasks: both });
+    await send({ type: "stateIntent", text: "hola" });
+    state.hash = "h-other";
+    const out = await send({ type: "answerClarification", taskId: "first-step" });
+    expect(out?.[0]).toEqual({ schema, type: "error", code: "STALE_PLAN" });
+  });
+
+  it("resets a pending plan when the program changes under it", async () => {
+    const { send, host, state } = setup();
+    await send({ type: "stateIntent", text: "make it move" });
+    state.hash = "h-other";
+    expect(types(host.onProgramChanged())).toEqual(["error", "workflow"]);
+  });
+});

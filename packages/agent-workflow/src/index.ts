@@ -19,7 +19,14 @@ export {
   nextAssistanceLevel,
 } from "./assistance.js";
 export type { AgentTask, AgentTaskId } from "./plan.js";
-export { AGENT_TASK_IDS, MAX_INTENT_LENGTH, normalizeIntent, planTasks } from "./plan.js";
+export {
+  AGENT_TASK_IDS,
+  MAX_INTENT_LENGTH,
+  needsClarification,
+  normalizeIntent,
+  planTasks,
+  taskForId,
+} from "./plan.js";
 export type { PredictionAnswer, PredictionResult } from "./predict.js";
 export { comparePrediction } from "./predict.js";
 export type { ConceptId } from "./explain.js";

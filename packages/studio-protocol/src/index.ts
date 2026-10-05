@@ -4,6 +4,7 @@ import {
   normalizeIntent,
   type AgentAgreements,
   type AgentTask,
+  type AgentTaskId,
   type AssistanceLevel,
   type ConceptId,
   type OfferableSignal,
@@ -61,6 +62,7 @@ export type UiMessage =
     }
   | { readonly schema: Schema; readonly type: "stateIntent"; readonly text: string }
   | { readonly schema: Schema; readonly type: "acceptPlan" }
+  | { readonly schema: Schema; readonly type: "answerClarification"; readonly taskId: AgentTaskId }
   | { readonly schema: Schema; readonly type: "requestProposal" }
   | { readonly schema: Schema; readonly type: "predict"; readonly answer: PredictionAnswer }
   | { readonly schema: Schema; readonly type: "skipPrediction" }
@@ -88,11 +90,13 @@ export type HostMessage =
   | {
       readonly schema: Schema;
       readonly type: "error";
-      readonly code: "INVALID_CHANGE" | "INVALID_PROGRAM" | "STALE_PROPOSAL" | "STALE_EDIT";
+      readonly code:
+        "INVALID_CHANGE" | "INVALID_PROGRAM" | "STALE_PROPOSAL" | "STALE_EDIT" | "STALE_PLAN";
       /** Why a change was refused, only with INVALID_CHANGE. */
       readonly reason?: ChangeRefusalReason;
     }
   | { readonly schema: Schema; readonly type: "plan"; readonly tasks: readonly AgentTask[] }
+  | { readonly schema: Schema; readonly type: "clarify"; readonly options: readonly AgentTask[] }
   | {
       readonly schema: Schema;
       readonly type: "proposal";
@@ -474,21 +478,31 @@ function parseGhostChanges(value: unknown): GhostChange[] | undefined {
   return out;
 }
 
+function parseTasks(value: unknown): AgentTask[] | undefined {
+  if (!Array.isArray(value) || value.length > 8) return undefined;
+  const out: AgentTask[] = [];
+  for (const raw of value) {
+    if (!isObject(raw)) return undefined;
+    const title = boundedString(raw["title"], 1, 120);
+    if (!(AGENT_TASK_IDS as readonly unknown[]).includes(raw["id"]) || title === undefined) {
+      return undefined;
+    }
+    out.push({ id: raw["id"] as AgentTask["id"], title });
+  }
+  return out;
+}
+
 function parseAgentMessageFromHost(value: Obj, schema: Schema): HostMessage | undefined {
   switch (value["type"]) {
     case "plan": {
-      const tasks = value["tasks"];
-      if (!Array.isArray(tasks) || tasks.length > 8) return undefined;
-      const out: AgentTask[] = [];
-      for (const raw of tasks) {
-        if (!isObject(raw)) return undefined;
-        const title = boundedString(raw["title"], 1, 120);
-        if (!(AGENT_TASK_IDS as readonly unknown[]).includes(raw["id"]) || title === undefined) {
-          return undefined;
-        }
-        out.push({ id: raw["id"] as AgentTask["id"], title });
-      }
-      return { schema, type: "plan", tasks: out };
+      const tasks = parseTasks(value["tasks"]);
+      return tasks === undefined ? undefined : { schema, type: "plan", tasks };
+    }
+    case "clarify": {
+      const options = parseTasks(value["options"]);
+      return options === undefined || options.length < 2
+        ? undefined
+        : { schema, type: "clarify", options };
     }
     case "proposal": {
       const purpose = boundedString(value["purpose"], 1, 300);
@@ -601,6 +615,10 @@ export function parseUiMessage(value: unknown): UiMessage | undefined {
     }
     case "acceptPlan":
       return { schema, type: "acceptPlan" };
+    case "answerClarification":
+      return (AGENT_TASK_IDS as readonly unknown[]).includes(value["taskId"])
+        ? { schema, type: "answerClarification", taskId: value["taskId"] as AgentTaskId }
+        : undefined;
     case "requestProposal":
       return { schema, type: "requestProposal" };
     case "predict":
@@ -652,7 +670,8 @@ export function parseHostMessage(value: unknown): HostMessage | undefined {
         value["code"] !== "INVALID_CHANGE" &&
         value["code"] !== "INVALID_PROGRAM" &&
         value["code"] !== "STALE_PROPOSAL" &&
-        value["code"] !== "STALE_EDIT"
+        value["code"] !== "STALE_EDIT" &&
+        value["code"] !== "STALE_PLAN"
       ) {
         return undefined;
       }

@@ -137,7 +137,21 @@ export function AgentPanel({
           </button>
         </form>
       )}
-      {stage === "plan" && (
+      {stage === "plan" && state.clarify !== undefined && (
+        <section aria-label="Question">
+          <p>What do you want to try first?</p>
+          {state.clarify.map((task) => (
+            <button
+              key={task.id}
+              type="button"
+              onClick={() => post({ type: "answerClarification", taskId: task.id })}
+            >
+              {task.title}
+            </button>
+          ))}
+        </section>
+      )}
+      {stage === "plan" && state.clarify === undefined && (
         <section aria-label="Plan">
           {state.tasks !== undefined && state.tasks.length > 0 ? (
             <>

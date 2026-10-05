@@ -124,3 +124,24 @@ describe("agent ui", () => {
     expect(html.match(/draggable="true"/g)).toHaveLength(2);
   });
 });
+
+describe("clarification ui", () => {
+  const options = [
+    { id: "first-step", title: "Try one visible movement step" },
+    { id: "repeat-pattern", title: "Write the repeated steps once with repeat" },
+  ] as const;
+
+  it("shows the question as buttons and clears it when the plan arrives or goes stale", () => {
+    let ui = stageState("plan");
+    ui = reduceAgentUi(ui, { schema, type: "clarify", options });
+    const markup = renderToStaticMarkup(<AgentPanel state={ui} send={() => undefined} />);
+    expect(markup).toContain("What do you want to try first?");
+    expect(markup).toContain("Try one visible movement step");
+    expect(markup).not.toContain("Use this plan");
+    const planned = reduceAgentUi(ui, { schema, type: "plan", tasks: [options[0]] });
+    expect(planned.clarify).toBeUndefined();
+    const stale = reduceAgentUi(ui, { schema, type: "error", code: "STALE_PLAN" });
+    expect(stale.clarify).toBeUndefined();
+    expect(stale.notice).toMatch(/plan was dropped/);
+  });
+});

@@ -14,6 +14,7 @@ export interface AgentUiState {
   readonly workflow?: WorkflowState;
   readonly agreements: AgentAgreements;
   readonly tasks?: readonly AgentTask[];
+  readonly clarify?: readonly AgentTask[];
   readonly proposal?: {
     readonly proposalId: string;
     readonly purpose: string;
@@ -47,6 +48,7 @@ export function reduceAgentUi(state: AgentUiState, message: HostMessage): AgentU
         next = without(
           next,
           "tasks",
+          "clarify",
           "proposal",
           "prediction",
           "comparison",
@@ -60,7 +62,9 @@ export function reduceAgentUi(state: AgentUiState, message: HostMessage): AgentU
       return next;
     }
     case "plan":
-      return { ...without(state, "notice"), tasks: message.tasks };
+      return { ...without(state, "notice", "clarify"), tasks: message.tasks };
+    case "clarify":
+      return { ...without(state, "notice", "tasks"), clarify: message.options };
     case "proposal":
       return {
         ...without(state, "notice"),
@@ -94,6 +98,12 @@ export function reduceAgentUi(state: AgentUiState, message: HostMessage): AgentU
         notice: "The agent is off right now. Everything else still works.",
       };
     case "error":
+      if (message.code === "STALE_PLAN") {
+        return {
+          ...without(state, "tasks", "clarify"),
+          notice: "The program changed, so the plan was dropped. Nothing was applied.",
+        };
+      }
       return message.code === "STALE_PROPOSAL"
         ? {
             ...state,
