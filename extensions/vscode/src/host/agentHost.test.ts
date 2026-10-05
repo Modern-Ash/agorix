@@ -355,7 +355,7 @@ describe("agentHost per-operation decisions and alternatives", () => {
     });
     expect(applySelection).toHaveBeenCalledWith(selection);
     expect(types(out)).toEqual(["proposalCleared", "workflow", "prediction"]);
-    expect(ctx.state.events.map((e) => e.type)).toContain("proposalAccepted");
+    expect(ctx.state.events.map((e) => e.type)).toContain("proposalModified");
   });
 
   it("treats an empty selection as a rejection with zero commits", async () => {
