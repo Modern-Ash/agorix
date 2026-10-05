@@ -121,6 +121,11 @@ vi.mock("vscode", () => {
     Uri,
     TreeItem,
     ThemeColor,
+    Disposable: {
+      from: (...items: { dispose(): void }[]) => ({
+        dispose: () => items.forEach((i) => i.dispose()),
+      }),
+    },
     ThemeIcon,
     CodeLens,
     CodeAction,
@@ -178,8 +183,10 @@ vi.mock("vscode", () => {
       createTreeView: (id: string, options: { treeDataProvider: { getChildren(): unknown[] } }) => {
         treeViews.push(id);
         treeProviders.set(id, options.treeDataProvider);
-        return { dispose() {} };
+        return { dispose() {}, reveal: async () => undefined };
       },
+      createTextEditorDecorationType: () => ({ dispose() {} }),
+      onDidChangeTextEditorSelection: () => ({ dispose() {} }),
       createWebviewPanel: () => {
         let receive: ((message: unknown) => void) | undefined;
         const panel = {
@@ -436,7 +443,9 @@ describe("Studio extension wiring", () => {
     expect(workbenchPanel()?.reveal).toHaveBeenCalledTimes(1);
     expect(workbenchPanel()?.html).toContain("Content-Security-Policy");
     expect(workbenchPanel()?.html).toContain("Agorix Workbench");
-    expect(workbenchPanel()?.messages.at(-1)).toMatchObject({ type: "workspace" });
+    const sent = workbenchPanel()?.messages as { type: string }[];
+    expect(sent.some((message) => message.type === "workspace")).toBe(true);
+    expect(sent.at(-1)).toMatchObject({ type: "sync" });
 
     const before = new TextDecoder().decode(files.get("/p/workbench.json"));
     expect(() => workbenchPanel()?.receive({})).not.toThrow();

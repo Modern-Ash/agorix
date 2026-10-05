@@ -81,6 +81,12 @@ function render(view) {
 node.addEventListener("click", () => {
   if (highlighted) agorix.post("agorix-reveal-node", { nodeId: highlighted });
 });
+const syncEl = document.getElementById("sync");
+agorix.on("agorix-sync", (message) => {
+  syncEl.textContent = message.failedNodeId
+    ? "failed at " + message.failedNodeId
+    : message.selectedNodeId ? "selected " + message.selectedNodeId : "";
+});
 render(initialView);
 agorix.on("agorix-frame", (message) => render(message.view));
 agorix.post("agorix-ready", {});
@@ -102,6 +108,7 @@ export function renderWorldPreview(
     <header class="agx-toolbar" role="status" aria-live="polite">
       <strong id="status"></strong>
       <span id="step" class="agx-muted"></span>
+      <span id="sync" class="agx-muted"></span>
       <button id="node" class="node" type="button" aria-label="Reveal highlighted node in code"></button>
     </header>
     <section class="world" aria-label="Agorix shared runtime world preview">

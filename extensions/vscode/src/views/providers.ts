@@ -80,6 +80,7 @@ export class ExecutionInspectorItem extends vscode.TreeItem {
   constructor(readonly step: StudioInspectorStep) {
     super(`Step ${step.runtimeStep}: ${step.statementType ?? step.timing}`);
     this.description = step.nodeId ?? "run";
+    this.id = `step-${step.index}`;
     this.contextValue = "agorixRuntimeFact";
     this.tooltip = `${step.provenance}\n${step.summary}\nbefore (${step.before.x}, ${step.before.y}) heading ${step.before.heading}\nafter (${step.after.x}, ${step.after.y}) heading ${step.after.heading}`;
     this.command = {

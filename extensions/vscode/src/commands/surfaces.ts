@@ -7,9 +7,11 @@ import { openWorkbenchPanel, refreshWorkbench } from "../host/workbenchPanel.js"
 import { openWorldPreviewPanel } from "../host/worldPreviewPanel.js";
 import type { AgentPort } from "../host/agentHost.js";
 import type { OpenProject } from "../store/session.js";
+import type { SyncHub } from "../sync/syncHub.js";
 
 export interface StudioSurfaceCommandPort {
   readonly context: vscode.ExtensionContext;
+  readonly hub: SyncHub;
   requireProject(): OpenProject | undefined;
   currentExecutionView(): StudioExecutionViewState | undefined;
   resetExecution(): StudioExecutionViewState | undefined;
@@ -36,7 +38,9 @@ export function createStudioSurfaceCommandHandlers(
     if (view === undefined) {
       return undefined;
     }
-    openWorldPreviewPanel(view, port.revealCanonicalNode);
+    openWorldPreviewPanel(view, (nodeId) => {
+      port.hub.select(nodeId, "preview");
+    });
     return view;
   };
 
@@ -60,11 +64,15 @@ export function createStudioSurfaceCommandHandlers(
             await port.reviewProposalSession(proposal);
           }
         },
-        reveal: (nodeId) => port.revealCanonicalNode(nodeId),
+        reveal: (nodeId) => {
+          port.hub.select(nodeId, "canvas");
+          return Promise.resolve();
+        },
         askAgent: (verb, nodeId) => port.askCompanion(verb, nodeId),
         updateAgreements: port.updateAgentAgreements,
       },
       port.agentPort(),
+      port.hub,
     );
     refreshWorkbench();
   };
