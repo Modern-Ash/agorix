@@ -48,5 +48,16 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .sync-badge { margin-left: 8px; font-weight: 600; }
 .fail-badge { color: var(--vscode-errorForeground); }
 .block.ghost-removed .label { text-decoration: line-through; }
+.canvas:focus { outline: none; }
+.canvas-help { margin: 0 0 8px; font-size: 0.9em; color: var(--vscode-descriptionForeground); }
+.block button { min-width: 32px; }
+@media (forced-colors: active) {
+  .block { border: 1px solid CanvasText; }
+  .block.sel { outline: 3px solid Highlight; }
+  .block.exec { border-left: 6px solid Highlight; }
+  .block.fail { border-left: 6px double LinkText; }
+  .block.ghost-added, .block.ghost-changed, .block.ghost-removed { border-style: dashed; }
+  .block:focus-visible, .palette button:focus-visible, .block button:focus-visible { outline: 3px solid Highlight; }
+}
 @media (prefers-reduced-motion: reduce) { .slot { transition: none; } }
 `;

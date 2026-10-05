@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { t } from "../l10n.js";
 import {
   isStudioProjectionId,
   listStudioProjections,
@@ -83,7 +84,7 @@ export function createStudioProjectionCommandHandlers(
         description: projection.id,
         id: projection.id,
       })),
-      { title: "Agorix projection" },
+      { title: t("Agorix projection") },
     );
     if (picked !== undefined && isStudioProjectionId(picked.id)) {
       await openProjection(picked.id);

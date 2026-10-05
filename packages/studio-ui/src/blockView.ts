@@ -22,6 +22,11 @@ export type RenderRow =
   | { readonly kind: "slot"; readonly slot: InsertionPoint; readonly depth: number }
   | { readonly kind: "block"; readonly block: RenderBlock; readonly depth: number };
 
+/** Stable DOM identity of a block by where it sits; block ids are positional, so focus follows location. */
+export function locationKey(location: StatementLocation): string {
+  return `${JSON.stringify(location.container)}#${location.index}`;
+}
+
 function pushList(
   rows: RenderRow[],
   list: readonly BlockNode[],

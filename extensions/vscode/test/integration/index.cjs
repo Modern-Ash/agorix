@@ -212,6 +212,16 @@ const tests = [
     },
   ],
   [
+    "runtime messages follow the VS Code display language",
+    async () => {
+      const spanish = vscode.env.language.toLowerCase().startsWith("es");
+      assert.equal(
+        vscode.l10n.t("Open an Agorix project first."),
+        spanish ? "Primero abrí un proyecto de Agorix." : "Open an Agorix project first.",
+      );
+    },
+  ],
+  [
     "Workbench opens once beside the project and survives execution commands",
     async () => {
       const workbenchTabs = () =>

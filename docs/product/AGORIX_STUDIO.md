@@ -64,6 +64,25 @@ A host-side `SyncHub` (`extensions/vscode/src/sync/syncHub.ts`) holds one select
 
 Provider-written text (`purpose`, `rationale`, messages) is shown as plain text and only after the shared safety boundary: links, URLs, markup and code blocks are rejected (ADR 0008), and the child sees the safe message while Studio falls back to the built-in proposal. The card leads with the operation list and the runtime evidence; the AI's explanation follows, labelled as not checked by the runtime. Provider text is not logged, sent to telemetry or exported.
 
+## Studio localization
+
+- The manifest (command titles, view names, settings, welcome text) is localized with `package.nls.json` and `package.nls.es.json`. Runtime messages, dialogs, quick picks, CodeLenses, the status bar and tree labels go through `t()` (`src/l10n.ts`, `vscode.l10n.t`) with `l10n/bundle.l10n.es.json`; the English text is the key and `{0}` marks values.
+- The language follows the VS Code display language. The Workbench keeps following the project's locale (set at creation), so the two can differ.
+- `src/l10n.test.ts` fails when a `%key%`, a `t()`/`msg()` literal or a placeholder is missing from either bundle, and `.vscodeignore` must ship the bundles.
+- Not localized: proposal and provider text (shown as source text under the provider text policy), the dynamic ambient tooltip with the offer reason, and mission/world titles, which come from the curriculum already localized.
+- The packaged VSIX contains the bundles; the real Spanish UI path was not exercised in VS Code because no Spanish language pack is installed in the test profile.
+
+## Canvas accessibility
+
+- **One tab stop.** The canvas is a single tab stop (roving tabindex). Arrow Up/Down, Home and End move between blocks; the action buttons are tabbable only on the active block.
+- **Names carry structure.** Each block is named with its position and nesting level ("Move [N] steps, 2 of 5, level 2"), in English and Spanish.
+- **Keyboard parity.** Enter or Space on a block shows it in the code (it was click-only). Alt+Up/Down moves a block and Delete removes it, as before. A visible help line is linked with `aria-describedby`.
+- **Focus follows the work.** After a move the focus stays on the moved block; after a delete it goes to the next block, then the previous one, then the canvas; after inserting from the palette it goes to the new block. Blocks are located by container and index because block ids are positional.
+- **Announcements.** Moves, deletes and inserts, and impossible moves ("Already the first block here"), are announced in the polite live region and survive the generic "Updated"; a refusal from the host replaces them.
+- **High contrast.** `forced-colors` rules keep selected, running, failed and suggested states distinguishable with system colors; action buttons are at least 32 px.
+- **Tests.** `canvas.a11y.test.tsx` drives a real DOM (jsdom) with keyboard events and runs axe-core for roles, names and ARIA validity. Axe cannot check color contrast in jsdom, so contrast and a screen-reader pass remain manual.
+- **Not covered.** Nesting and outdenting with the keyboard (the Web editor has it), text size and zoom.
+
 ## Release gate
 
 Studio's product release gate is

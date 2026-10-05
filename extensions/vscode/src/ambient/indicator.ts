@@ -1,3 +1,4 @@
+import { msg } from "../messages.js";
 import type { ProactiveDecision } from "@agorix/learning-decision-plane";
 
 export type AmbientIndicatorState = "quiet" | "available" | "working" | "off" | "budget-capped";
@@ -18,25 +19,25 @@ export interface AmbientIndicatorInput {
 
 const VIEWS: Record<AmbientIndicatorState, AmbientIndicatorView> = {
   quiet: {
-    text: "$(sparkle)",
-    tooltip: "Learning Companion is quiet.",
+    text: msg("$(sparkle)"),
+    tooltip: msg("Learning Companion is quiet."),
   },
   available: {
-    text: "$(lightbulb) Companion",
-    tooltip: "Learning Companion has a suggestion.",
+    text: msg("$(lightbulb) Companion"),
+    tooltip: msg("Learning Companion has a suggestion."),
     command: "agorixStudio.ambientOffer",
   },
   working: {
-    text: "$(sync~spin) Companion",
-    tooltip: "Learning Companion is working.",
+    text: msg("$(sync~spin) Companion"),
+    tooltip: msg("Learning Companion is working."),
   },
   off: {
-    text: "$(circle-slash) Companion",
-    tooltip: "Learning Companion is off or unavailable.",
+    text: msg("$(circle-slash) Companion"),
+    tooltip: msg("Learning Companion is off or unavailable."),
   },
   "budget-capped": {
-    text: "$(warning) Companion",
-    tooltip: "Learning Companion paused at the budget cap.",
+    text: msg("$(warning) Companion"),
+    tooltip: msg("Learning Companion paused at the budget cap."),
   },
 };
 
