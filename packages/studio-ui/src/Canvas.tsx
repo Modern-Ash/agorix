@@ -10,6 +10,7 @@ import {
 import type { AmbientHintView, GhostChange } from "@agorix/studio-protocol";
 import { dropPointFor, toRows } from "./blockView.js";
 import { chordFromEvent, dragPayload, parseDragPayload } from "./drag.js";
+import { copyFor, type StudioUiCopy } from "./i18n.js";
 
 const DRAG_TYPE = "application/x-agorix-drag";
 
@@ -84,6 +85,10 @@ function ghostKind(ghosts: readonly GhostChange[] | undefined, blockId: string) 
   return ghosts?.find((ghost) => ghost.blockId === blockId)?.kind;
 }
 
+function fieldLabel(name: string, copy: StudioUiCopy): string {
+  return name === "steps" || name === "degrees" || name === "count" ? copy.fieldLabels[name] : name;
+}
+
 /** Visible, anchored explanation of a suggested change on a block. */
 export interface BlockHints {
   readonly hints: Readonly<Record<string, string>>;
@@ -103,6 +108,7 @@ export function Canvas({
   sync,
   hints,
   ambientHint,
+  copy = copyFor("en"),
 }: {
   readonly workspace: BlockWorkspaceSnapshot;
   readonly onIntent: (intent: Intent) => void;
@@ -110,10 +116,11 @@ export function Canvas({
   readonly sync?: SyncView | undefined;
   readonly hints?: BlockHints | undefined;
   readonly ambientHint?: AmbientHintView | undefined;
+  readonly copy?: StudioUiCopy;
 }) {
   const addedGhosts = (ghosts ?? []).filter((ghost) => ghost.kind === "added");
   return (
-    <section className="canvas" aria-label="Program">
+    <section className="canvas" aria-label={copy.canvasLabel}>
       {ambientHint !== undefined && ambientHint.blockId === undefined ? (
         <div className="ambient-hint" role="note">
           {ambientHint.label}
@@ -123,7 +130,7 @@ export function Canvas({
         if (row.kind === "script") {
           return (
             <div key={key} className="script-title">
-              Script {row.scriptIndex + 1}: when you press Run
+              {copy.scriptTitle(row.scriptIndex + 1)}
             </div>
           );
         }
@@ -144,8 +151,10 @@ export function Canvas({
         const isSel = sync?.selectedBlockId === block.id;
         const isExec = sync?.executingBlockId === block.id;
         const isFail = sync?.failedBlockId === block.id;
+        const blockLabels: Readonly<Record<string, string>> = copy.blockLabels;
+        const label = blockLabels[block.type] ?? block.label;
         const fields = Object.entries(block.fields)
-          .map(([name, value]) => `${name}: ${String(value)}`)
+          .map(([name, value]) => `${fieldLabel(name, copy)}: ${String(value)}`)
           .join(", ");
         return (
           <div
@@ -153,7 +162,7 @@ export function Canvas({
             role="group"
             tabIndex={0}
             draggable
-            aria-label={block.label}
+            aria-label={label}
             aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown Delete"
             className={`block depth-${Math.min(row.depth, 4)}${
               ghostKind(ghosts, block.id) === "removed"
@@ -165,14 +174,14 @@ export function Canvas({
             aria-current={isSel ? "true" : undefined}
             aria-description={
               isFail
-                ? "This block failed when the program ran"
+                ? copy.blockFailedDescription
                 : hint !== undefined
-                  ? `${ambient === undefined ? "Suggestion" : "Companion hint"}: ${hint}${isSkipped ? " (skipped)" : ""}`
+                  ? `${ambient === undefined ? copy.suggestion : copy.companionHint}: ${hint}${isSkipped ? ` (${copy.skipped})` : ""}`
                   : ghostKind(ghosts, block.id) === "removed"
-                    ? "Suggestion would remove this block"
+                    ? copy.suggestionRemoveDescription
                     : ghostKind(ghosts, block.id) === undefined
                       ? undefined
-                      : "Suggestion would change this block"
+                      : copy.suggestionChangeDescription
             }
             onDragStart={(event) => {
               event.dataTransfer.setData(
@@ -194,37 +203,39 @@ export function Canvas({
               data-testid="block-label"
               onClick={() => onIntent({ type: "revealNode", nodeId: block.id })}
             >
-              {block.label}
+              {label}
               {fields === "" ? "" : ` (${fields})`}
             </span>
             {hint === undefined ? null : (
               <span className={ambient === undefined ? "hint-badge" : "hint-badge ambient"}>
-                {ambient === undefined ? (isSkipped ? "Skipped: " : "Suggested: ") : ""}
+                {ambient === undefined
+                  ? `${isSkipped ? copy.skippedSuggestion : copy.suggested}: `
+                  : ""}
                 {hint}
               </span>
             )}
-            {isFail ? <span className="sync-badge fail-badge">Failed here</span> : null}
-            {isExec ? <span className="sync-badge">Running</span> : null}
+            {isFail ? <span className="sync-badge fail-badge">{copy.failedHere}</span> : null}
+            {isExec ? <span className="sync-badge">{copy.running}</span> : null}
             <button
               type="button"
-              aria-label={`Move ${block.label} up`}
+              aria-label={copy.moveUp(label)}
               onClick={() => press("Alt+ArrowUp")}
             >
-              Up
+              {copy.up}
             </button>
             <button
               type="button"
-              aria-label={`Move ${block.label} down`}
+              aria-label={copy.moveDown(label)}
               onClick={() => press("Alt+ArrowDown")}
             >
-              Down
+              {copy.down}
             </button>
             <button
               type="button"
-              aria-label={`Delete ${block.label}`}
+              aria-label={copy.deleteBlock(label)}
               onClick={() => press("Delete")}
             >
-              Delete
+              {copy.delete}
             </button>
           </div>
         );
@@ -233,10 +244,10 @@ export function Canvas({
         <div
           key={`ghost-${index}`}
           className="block ghost-added depth-0"
-          aria-label={`Suggested: ${ghost.afterText ?? "new block"}`}
+          aria-label={`${copy.suggested}: ${ghost.afterText ?? copy.newBlock}`}
         >
-          <span className="ghost-badge">Suggestion</span>
-          <span className="label">{ghost.afterText ?? "new block"}</span>
+          <span className="ghost-badge">{copy.suggestion}</span>
+          <span className="label">{ghost.afterText ?? copy.newBlock}</span>
         </div>
       ))}
     </section>

@@ -3,7 +3,6 @@ import type { BlockType, BlockWorkspaceSnapshot } from "@agorix/block-editor";
 import type { Intent } from "@agorix/interaction-core";
 import {
   STUDIO_PROTOCOL_VERSION,
-  type ChangeRefusalReason,
   type HostMessage,
   type AmbientHintView,
 } from "@agorix/studio-protocol";
@@ -11,7 +10,12 @@ import type { HostBridge } from "./bridge.js";
 import { AgentZone, Canvas, type SyncView } from "./Canvas.js";
 import { Palette } from "./Palette.js";
 import { AgentPanel } from "./AgentPanel.js";
-import { normalizeStudioUiLocale, type StudioUiLocale } from "./i18n.js";
+import {
+  copyFor,
+  normalizeStudioUiLocale,
+  type StudioUiCopy,
+  type StudioUiLocale,
+} from "./i18n.js";
 import {
   canvasHints,
   fullSelection,
@@ -20,27 +24,21 @@ import {
   type SelectionState,
 } from "./agentUi.js";
 
-const REFUSAL_TEXT: Record<ChangeRefusalReason, string> = {
-  NOT_A_CONTAINER: "That block cannot hold other blocks.",
-  BAD_INDEX: "There is no place for it there.",
-  BLOCK_NOT_FOUND: "That block is no longer there.",
-  NOT_A_STATEMENT: "That block cannot go in the program steps.",
-  WOULD_BREAK_PROGRAM: "That would break the program.",
-  UNKNOWN: "That change would break the program.",
-};
-
-export function statusFor(message: HostMessage): string | undefined {
+export function statusFor(
+  message: HostMessage,
+  copy: StudioUiCopy = copyFor("en"),
+): string | undefined {
   if (message.type === "error") {
     if (message.code === "INVALID_CHANGE") {
-      return `${REFUSAL_TEXT[message.reason ?? "UNKNOWN"]} Nothing changed.`;
+      return `${copy.refusal[message.reason ?? "UNKNOWN"]} ${copy.nothingChanged}`;
     }
     if (message.code === "STALE_EDIT") {
-      return "The program changed, so that edit was not applied. Try again.";
+      return copy.staleEdit;
     }
-    return "The program could not be shown.";
+    return copy.programUnavailable;
   }
   if (message.type === "agentUnavailable") {
-    return "The agent is not available right now.";
+    return copy.agentUnavailable;
   }
   return undefined;
 }
@@ -57,6 +55,7 @@ export function Workbench({
   readonly locale?: StudioUiLocale;
 }) {
   const copyLocale = normalizeStudioUiLocale(locale);
+  const copy = copyFor(copyLocale);
   const [workspace, setWorkspace] = useState<BlockWorkspaceSnapshot | undefined>();
   const [status, setStatus] = useState("");
   const [programHash, setProgramHash] = useState<string | undefined>();
@@ -83,19 +82,19 @@ export function Workbench({
       if (message.type === "workspace") {
         setWorkspace(message.workspace);
         setProgramHash(message.programHash);
-        setStatus("Updated");
+        setStatus(copy.updated);
         return;
       }
       if (message.type === "ambientHint") {
         setAmbientHint(message.hint);
         return;
       }
-      const text = statusFor(message);
+      const text = statusFor(message, copy);
       if (text !== undefined) setStatus(text);
     });
     bridge.post({ schema: STUDIO_PROTOCOL_VERSION, type: "ready" });
     return unsubscribe;
-  }, [bridge]);
+  }, [bridge, copy]);
 
   const proposalId = agentUi.proposal?.proposalId;
   const operations = agentUi.proposal?.operations;
@@ -125,14 +124,15 @@ export function Workbench({
 
   return (
     <div className="workbench" data-density={density}>
-      <Palette onAdd={add} />
+      <Palette onAdd={add} copy={copy} />
       <main>
         {workspace === undefined ? (
-          <p>Open a project to start building.</p>
+          <p>{copy.openProject}</p>
         ) : (
           <Canvas
             workspace={workspace}
             onIntent={post}
+            copy={copy}
             ghosts={agentUi.proposal === undefined ? undefined : anchored.ghosts}
             sync={sync}
             hints={
@@ -146,9 +146,9 @@ export function Workbench({
           />
         )}
         <div className="zones">
-          <AgentZone verb="explain" label="Explain" onIntent={post} />
-          <AgentZone verb="debug" label="Debug" onIntent={post} />
-          <AgentZone verb="challenge" label="Challenge" onIntent={post} />
+          <AgentZone verb="explain" label={copy.explainZone} onIntent={post} />
+          <AgentZone verb="debug" label={copy.debugZone} onIntent={post} />
+          <AgentZone verb="challenge" label={copy.challengeZone} onIntent={post} />
         </div>
         <div className="status" role="status" aria-live="polite">
           {status}
