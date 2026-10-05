@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { t } from "../l10n.js";
 import {
   EMPTY_PROACTIVE_MEMORY,
   decideProactiveSuggestion,
@@ -127,7 +128,7 @@ export class AmbientController implements vscode.Disposable {
       ...actions.map((action) => ({ ...PICK_BY_ACTION[action], action })),
       { label: "Not now", description: "Keep working without help", action: "decline" as const },
     ];
-    const picked = await vscode.window.showQuickPick(picks, { title: "Learning Companion" });
+    const picked = await vscode.window.showQuickPick(picks, { title: t("Learning Companion") });
     if (picked === undefined || picked.action === "decline") {
       this.#opts.recordOffer("dismissed");
       this.#memory = recordProactiveOutcome(
@@ -175,8 +176,8 @@ export class AmbientController implements vscode.Disposable {
       state,
       ...(offer === undefined ? {} : { offer: { reason: offer.reason, source: offer.source } }),
     });
-    this.#statusBarItem.text = view.text;
-    this.#statusBarItem.tooltip = view.tooltip;
+    this.#statusBarItem.text = t(view.text);
+    this.#statusBarItem.tooltip = t(view.tooltip);
     this.#statusBarItem.command = view.command;
     this.#statusBarItem.show();
   }

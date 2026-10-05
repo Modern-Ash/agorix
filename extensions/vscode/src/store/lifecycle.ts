@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { t } from "../l10n.js";
 import { refreshWorkbench } from "../host/workbenchPanel.js";
 import { clearProjectSession, type OpenProject, type StudioSessionState } from "./session.js";
 
@@ -23,7 +24,7 @@ export function updateStudioContext(state: StudioSessionState): void {
 
 export function requireProject(state: StudioSessionState): OpenProject | undefined {
   if (state.current === undefined) {
-    void vscode.window.showWarningMessage("Open an Agorix project first.");
+    void vscode.window.showWarningMessage(t("Open an Agorix project first."));
   }
   return state.current;
 }

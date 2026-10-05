@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { t } from "../l10n.js";
 
 /** Runs a command body and surfaces any failure to the learner instead of failing silently. */
 export function guarded<Args extends unknown[], Result>(
@@ -22,5 +23,5 @@ export function reportFailure(output: vscode.OutputChannel, summary: string, err
   if (error instanceof Error && error.stack !== undefined) {
     output.appendLine(error.stack);
   }
-  void vscode.window.showErrorMessage(`Agorix Studio: ${summary}. ${detail}`);
+  void vscode.window.showErrorMessage(t("Agorix Studio: {0}. {1}", summary, detail));
 }
