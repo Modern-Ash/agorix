@@ -78,6 +78,30 @@ Observable indicators for the dimensions #102 asks for:
 `aiLiteracy.learnerIsAuthor` is only demonstrated when the learner recorded an actual
 accept/reject/modify decision. A mission the AI finished alone never demonstrates it.
 
+## Model-comparison activity (#101)
+
+The executable model for #101 is `createModelComparisonActivity` in
+`@agorix/learning-evidence`. It supports deterministic classroom/CI fixtures
+where two or more abstract proposals are evaluated against the same world.
+
+Rules enforced by the model:
+
+- each alternative runs from an isolated world state;
+- invalid proposals are reported as `invalid-proposal` without blocking the
+  valid candidate runs;
+- the activity never emits an automatic winner or provider ranking;
+- a decision cannot be recorded until at least two known alternatives were
+  inspected;
+- the evidence event records only `alternativesCompared` and
+  `decisionJustified`, not provider names, model names, labels or reflection
+  text.
+
+The learner-facing flow remains:
+
+```text
+inspect alternatives -> predict -> run isolated candidates -> compare evidence -> conclude
+```
+
 ## Assistance level
 
 `independent` → `hinted` → `proposed` → `delegated`, ordered from learner-led to AI-led.
