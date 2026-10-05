@@ -210,6 +210,29 @@ const tests = [
     },
   ],
   [
+    "Workbench opens once beside the project and survives execution commands",
+    async () => {
+      const workbenchTabs = () =>
+        vscode.window.tabGroups.all
+          .flatMap((group) => group.tabs)
+          .filter(
+            (t) => t.input instanceof vscode.TabInputWebview && t.label === "Agorix Workbench",
+          );
+      await vscode.commands.executeCommand("agorixStudio.openWorkbench");
+      await waitFor("the Workbench tab", () => workbenchTabs().length === 1);
+      // Reopening reveals the same panel instead of creating another one.
+      await vscode.commands.executeCommand("agorixStudio.openWorkbench");
+      await sleep(300);
+      assert.equal(workbenchTabs().length, 1);
+      // Live sync: running and selecting steps with the Workbench open must not throw.
+      await vscode.commands.executeCommand("agorixStudio.reset");
+      const step = await vscode.commands.executeCommand("agorixStudio.step");
+      assert.equal(step.currentFrame.highlightedNodeId, "scripts[0]/statements[0]");
+      await vscode.commands.executeCommand("agorixStudio.selectExecutionStep", 1);
+      assert.equal(workbenchTabs().length, 1);
+    },
+  ],
+  [
     "Validate Project and Developer Context expose canonical task metadata",
     async () => {
       const reportText = await vscode.commands.executeCommand("agorixStudio.validateProject");

@@ -32,6 +32,14 @@ This slice is infrastructure for the Studio direction, not the final experience:
 
 A host-side `SyncHub` (`extensions/vscode/src/sync/syncHub.ts`) holds one selected, one executing and one failed canonical node id. The canvas, code editor, World Preview and Inspector write selections into it; each surface reflects the shared state (canvas via the `sync` protocol message mapped to block ids, code via reveal and run/fail decorations, World Preview via `agorix-sync`, Inspector via tree reveal). Failure is shown with text and an accessible description, never color alone. A program change reconciles the hub so removed nodes are cleared.
 
+## Agent gating and Workbench robustness
+
+- An unclear intent (no task keyword, more than one task available) gets at most one clarifying question made of fixed task titles; the learner text is never echoed or stored.
+- A plan is anchored to the program hash it was made against. If the program changes before the plan is accepted, the plan is dropped (`STALE_PLAN`).
+- Workbench edits carry the `programHash` the UI last saw; a stale edit is refused (`STALE_EDIT`) and a fresh snapshot is sent.
+- A refused placement explains why (`NOT_A_CONTAINER`, `BAD_INDEX`, `BLOCK_NOT_FOUND`, `NOT_A_STATEMENT`, `WOULD_BREAK_PROGRAM`) in the live status region.
+- Agent agreement `requirePredictionBeforeAccept` (off by default): the learner must predict before accepting an AI suggestion. It never blocks manual edits, and rejecting never needs a prediction.
+
 ## Release gate
 
 Studio's product release gate is
