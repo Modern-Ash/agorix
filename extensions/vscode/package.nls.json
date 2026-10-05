@@ -63,6 +63,6 @@
   "config.agent.layaEndpoint": "Optional local LAYA decision endpoint. Studio calls `POST /decideMany` only for cheap proactive veto decisions. Remote endpoints require `agorixStudio.agent.allowRemote`.",
   "config.agent.proposalBudgetRequests": "Maximum AI-backed suggestions per Studio session. When the limit is reached Studio keeps offering built-in suggestions; editing and running are unaffected.",
   "config.agent.ambientBudgetRequests": "Maximum ambient proactive offers per Studio session. Editing, running and explicit Companion commands are unaffected.",
-  "config.workbench.density": "Workbench UI density. Compact reduces spacing for IDE-style repeated editing while keeping controls keyboard accessible.",
+  "config.workbench.density": "Workbench UI density. `auto` starts comfortable and turns compact after a few edits or once the program reaches the goal; it only changes spacing and size and never hides anything. `compact` reduces spacing for IDE-style repeated editing while keeping controls keyboard accessible.",
   "welcome.projects": "Agorix Studio\n\nStart coding with Agorix.\n\n[Create New Project](command:agorixStudio.createProject)\n[Open .agorix Project](command:agorixStudio.openProject)\n[Open Account Project](command:agorixStudio.openRemoteProject)\n\nYou can work locally without an account.\n\nAgorix can suggest, explain and debug from your program and runtime evidence. Changes are never applied without your approval."
 }

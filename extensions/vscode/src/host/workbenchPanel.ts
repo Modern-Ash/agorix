@@ -1,8 +1,16 @@
 import { randomBytes } from "node:crypto";
 import * as vscode from "vscode";
-import { parseUiMessage, type HostMessage } from "@agorix/studio-protocol";
+import {
+  STUDIO_PROTOCOL_VERSION,
+  normalizeDensityPreference,
+  parseUiMessage,
+  resolveDensity,
+  type Density,
+  type DensityPreference,
+  type HostMessage,
+} from "@agorix/studio-protocol";
 import type { ProactiveDecision, StudioSignal } from "@agorix/learning-decision-plane";
-import { workbenchHtml, type WorkbenchDensity, type WorkbenchLocale } from "./workbenchHtml.js";
+import { workbenchHtml, type WorkbenchLocale } from "./workbenchHtml.js";
 import { createAgentHost, type AgentHost, type AgentPort } from "./agentHost.js";
 import type { SyncHub } from "../sync/syncHub.js";
 import { createWorkbenchHost, type HostPort, type WorkbenchHost } from "./workbenchHost.js";
@@ -15,11 +23,29 @@ let blockCounter = 0;
 let currentHub: SyncHub | undefined;
 let unsubscribeSync: (() => void) | undefined;
 
-function configuredDensity(): WorkbenchDensity {
-  const value = vscode.workspace
-    .getConfiguration("agorixStudio")
-    .get<string>("workbench.density", "comfortable");
-  return value === "compact" ? "compact" : "comfortable";
+let lastDensity: Density | undefined;
+let configListener: vscode.Disposable | undefined;
+
+function densityPreference(): DensityPreference {
+  return normalizeDensityPreference(
+    vscode.workspace.getConfiguration("agorixStudio").get<string>("workbench.density", "auto"),
+  );
+}
+
+function currentDensity(): Density {
+  return resolveDensity(
+    densityPreference(),
+    host?.experience() ?? { edits: 0, reachedGoal: false },
+  );
+}
+
+/** Tells the webview the layout when it changes; `auto` changes are announced to the learner. */
+async function pushDensity(reason: "auto" | "setting", force = false): Promise<void> {
+  if (host === undefined) return;
+  const value = currentDensity();
+  if (!force && value === lastDensity) return;
+  lastDensity = value;
+  await send([{ schema: STUDIO_PROTOCOL_VERSION, type: "density", value, reason }]);
 }
 
 async function send(messages: readonly HostMessage[]): Promise<void> {
@@ -53,6 +79,7 @@ export function openWorkbenchPanel(
   host = createWorkbenchHost(port, () => `block:wb_${(blockCounter += 1)}`);
   agent = createAgentHost(agentPort);
   currentHub = hub;
+  lastDensity = undefined;
   unsubscribeSync = hub.subscribe((state) => {
     if (host !== undefined) void send(host.syncMessage(state));
   });
@@ -61,9 +88,15 @@ export function openWorkbenchPanel(
     randomBytes(16).toString("hex"),
     panel.webview.cspSource,
     scriptUri.toString(),
-    configuredDensity(),
+    currentDensity(),
     locale,
   );
+  lastDensity = currentDensity();
+  configListener = vscode.workspace.onDidChangeConfiguration((event) => {
+    if (event.affectsConfiguration("agorixStudio.workbench.density")) {
+      void pushDensity("setting");
+    }
+  });
   panel.webview.onDidReceiveMessage((raw: unknown) => {
     const message = parseUiMessage(raw);
     if (message === undefined || host === undefined || agent === undefined) {
@@ -76,12 +109,17 @@ export function openWorkbenchPanel(
         await send(await workbench.handle(message));
         await send(agentHost.snapshot());
         await send(workbench.syncMessage(hub.getState()));
+        await pushDensity("setting", true);
         return;
       }
       await send((await agentHost.handle(message)) ?? (await workbench.handle(message)));
+      await pushDensity("auto");
     })().catch(() => undefined);
   });
   panel.onDidDispose(() => {
+    configListener?.dispose();
+    configListener = undefined;
+    lastDensity = undefined;
     unsubscribeSync?.();
     unsubscribeSync = undefined;
     panel = undefined;
@@ -97,7 +135,7 @@ export function refreshWorkbench(): void {
       ...agent.onProgramChanged(),
       ...(currentHub === undefined ? [] : host.syncMessage(currentHub.getState())),
     ];
-    void send(messages);
+    void send(messages).then(() => pushDensity("auto"));
   }
 }
 
@@ -117,6 +155,9 @@ export function clearWorkbenchAmbientHint(): void {
 }
 
 export function disposeWorkbench(): void {
+  configListener?.dispose();
+  configListener = undefined;
+  lastDensity = undefined;
   unsubscribeSync?.();
   unsubscribeSync = undefined;
   currentHub = undefined;

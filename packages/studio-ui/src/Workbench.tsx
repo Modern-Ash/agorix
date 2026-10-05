@@ -10,6 +10,7 @@ import type { HostBridge } from "./bridge.js";
 import { AgentZone, Canvas, type FocusRequest, type SyncView } from "./Canvas.js";
 import { locationKey } from "./blockView.js";
 import { Palette } from "./Palette.js";
+import { densityAnnouncement } from "./density.js";
 import { AgentPanel } from "./AgentPanel.js";
 import {
   copyFor,
@@ -62,6 +63,8 @@ export function Workbench({
   const [focusRequest, setFocusRequest] = useState<FocusRequest | undefined>();
   // An announcement from a keyboard action must survive the generic "Updated" that follows it.
   const announced = useRef(false);
+  const [layout, setLayout] = useState<WorkbenchDensity>(density);
+  const layoutRef = useRef<WorkbenchDensity>(density);
   const [programHash, setProgramHash] = useState<string | undefined>();
   const [selection, setSelection] = useState<SelectionState>({ include: [], overrides: {} });
   const [sync, setSync] = useState<SyncView>({});
@@ -71,6 +74,13 @@ export function Workbench({
   useEffect(() => {
     const unsubscribe = bridge.subscribe((message) => {
       dispatchAgent(message);
+      if (message.type === "density") {
+        setLayout(message.value);
+        const note = densityAnnouncement(layoutRef.current, message, copy);
+        layoutRef.current = message.value;
+        if (note !== undefined) setStatus(note);
+        return;
+      }
       if (message.type === "sync") {
         setSync({
           ...(message.selectedBlockId === undefined
@@ -146,7 +156,7 @@ export function Workbench({
   };
 
   return (
-    <div className="workbench" data-density={density}>
+    <div className="workbench" data-density={layout}>
       <Palette onAdd={add} copy={copy} />
       <main>
         {workspace === undefined ? (
