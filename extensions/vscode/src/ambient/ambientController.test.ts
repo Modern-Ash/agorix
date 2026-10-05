@@ -3,6 +3,7 @@ import {
   createLayaLearningProvider,
   createStudioPipeline,
   createStudioSignal,
+  type ProactiveOfferAction,
   type StudioPipeline,
 } from "@agorix/learning-decision-plane";
 import { AmbientController } from "./ambientController.js";
@@ -34,7 +35,7 @@ function controller(
     readonly budget?: number;
     readonly proactivePipeline?: StudioPipeline;
     readonly canOffer?: boolean;
-    readonly allowAction?: (action: string) => boolean;
+    readonly allowAction?: (action: ProactiveOfferAction) => boolean;
   } = {},
 ) {
   const item = statusItem();
@@ -49,9 +50,7 @@ function controller(
     executionStatus: () => "idle",
     aiEnabled: () => true,
     canOfferSignal: () => options.canOffer ?? true,
-    ...(options.allowAction === undefined
-      ? {}
-      : { allowAction: options.allowAction as (action: never) => boolean }),
+    ...(options.allowAction === undefined ? {} : { allowAction: options.allowAction }),
     budgetRemaining: () =>
       options.budget === undefined ? undefined : Math.max(0, options.budget - offers),
     recordOffer: (outcome) => {

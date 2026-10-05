@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { t } from "../l10n.js";
 import { createDeveloperContext, createValidationReport } from "../studioCore.js";
 import type { OpenProject } from "../store/session.js";
 
@@ -34,7 +35,11 @@ export function createStudioDeveloperCommandHandlers(
     output.appendLine(text);
     output.show(true);
     void vscode.window.showInformationMessage(
-      `Agorix validation ${report.outcome}; ${report.diagnostics.length} projection diagnostics.`,
+      t(
+        "Agorix validation {0}; {1} projection diagnostics.",
+        report.outcome,
+        report.diagnostics.length,
+      ),
     );
     return text;
   };

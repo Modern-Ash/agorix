@@ -12,6 +12,12 @@ const manifest = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"))
     menus: Record<string, Array<{ command: string; when?: string; group?: string }>>;
   };
 };
+const nls = JSON.parse(readFileSync(resolve(root, "package.nls.json"), "utf8")) as Record<
+  string,
+  string
+>;
+const resolveNls = (value: string | undefined) =>
+  value?.replace(/^%([^%]+)%$/, (_match, key: string) => nls[key] ?? value);
 const commandIds = new Set(manifest.contributes.commands.map((c) => c.command));
 
 describe("Studio shell manifest", () => {
@@ -24,11 +30,11 @@ describe("Studio shell manifest", () => {
   it("names the five shell views and gives each an icon", () => {
     const views = manifest.contributes.views.agorixStudio;
     const byId = new Map(views.map((view) => [view.id, view]));
-    expect(byId.get("agorixStudio.projects")?.name).toBe("Projects");
-    expect(byId.get("agorixStudio.missions")?.name).toBe("Missions");
-    expect(byId.get("agorixStudio.progress")?.name).toBe("Progress");
-    expect(byId.get("agorixStudio.worlds")?.name).toBe("Worlds");
-    expect(byId.get("agorixStudio.inspector")?.name).toBe("Inspector");
+    expect(resolveNls(byId.get("agorixStudio.projects")?.name)).toBe("Projects");
+    expect(resolveNls(byId.get("agorixStudio.missions")?.name)).toBe("Missions");
+    expect(resolveNls(byId.get("agorixStudio.progress")?.name)).toBe("Progress");
+    expect(resolveNls(byId.get("agorixStudio.worlds")?.name)).toBe("Worlds");
+    expect(resolveNls(byId.get("agorixStudio.inspector")?.name)).toBe("Inspector");
     for (const view of views) expect(view.icon, view.id).toMatch(/^\$\(/);
   });
 

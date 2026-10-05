@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { t } from "../l10n.js";
 import {
   createStudioStarterProject,
   defaultStudioProjectFilename,
@@ -48,8 +49,8 @@ export function createStudioProjectCommandHandlers(
         ? target
         : ((await vscode.window.showOpenDialog({
             canSelectMany: false,
-            filters: { "Agorix project": ["agorix", "json"] },
-            openLabel: "Open Agorix project",
+            filters: { [t("Agorix project")]: ["agorix", "json"] },
+            openLabel: t("Open Agorix project"),
           })) ?? [])[0];
     if (uri === undefined) {
       return;
@@ -61,7 +62,10 @@ export function createStudioProjectCommandHandlers(
     } catch (error) {
       // Do not await: a toast resolves only when dismissed and would hang the command.
       void vscode.window.showErrorMessage(
-        `Agorix Studio could not open this project: ${error instanceof Error ? error.message : "unknown error"}`,
+        t(
+          "Agorix Studio could not open this project: {0}",
+          error instanceof Error ? error.message : t("unknown error"),
+        ),
       );
       return;
     }
@@ -95,7 +99,7 @@ export function createStudioProjectCommandHandlers(
     port.updateStudioContext();
     await port.openProjection(port.getCurrentProjectionId());
     await port.afterProjectOpened?.();
-    void vscode.window.showInformationMessage(`Created Agorix project: ${picked.uri.fsPath}`);
+    void vscode.window.showInformationMessage(t("Created Agorix project: {0}", picked.uri.fsPath));
     return picked.uri;
   };
 
@@ -105,8 +109,8 @@ export function createStudioProjectCommandHandlers(
       return undefined;
     }
     const uri = await vscode.window.showSaveDialog({
-      filters: { "Agorix portable project": ["agorix"] },
-      saveLabel: "Export Agorix project",
+      filters: { [t("Agorix portable project")]: ["agorix"] },
+      saveLabel: t("Export Agorix project"),
       defaultUri: vscode.Uri.file("agorix-project.agorix"),
     });
     if (uri === undefined) {
@@ -114,7 +118,7 @@ export function createStudioProjectCommandHandlers(
     }
     const raw = serializeProjectFile(open.project.stored, ".agorix");
     await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(raw));
-    void vscode.window.showInformationMessage("Exported portable .agorix project.");
+    void vscode.window.showInformationMessage(t("Exported portable .agorix project."));
     return uri;
   };
 
@@ -123,23 +127,23 @@ export function createStudioProjectCommandHandlers(
 
 async function promptForCreateProjectOptions(): Promise<CreateProjectCommandOptions | undefined> {
   const name = await vscode.window.showInputBox({
-    title: "Agorix project name",
-    prompt: "Choose a name for the local .agorix project.",
+    title: t("Agorix project name"),
+    prompt: t("Choose a name for the local .agorix project."),
     value: "Agorix first mission",
     ignoreFocusOut: true,
     validateInput: (value) =>
-      value.trim().length === 0 ? "Enter a project name before creating a file." : undefined,
+      value.trim().length === 0 ? t("Enter a project name before creating a file.") : undefined,
   });
   if (name === undefined) {
     return undefined;
   }
 
   const starterItems: IdQuickPickItem<StudioStarterId>[] = STUDIO_STARTER_OPTIONS.map((option) => ({
-    label: option.label,
-    description: option.description,
+    label: t(option.label),
+    description: t(option.description),
     id: option.id,
   }));
-  const starter = await vscode.window.showQuickPick(starterItems, { title: "Agorix starter" });
+  const starter = await vscode.window.showQuickPick(starterItems, { title: t("Agorix starter") });
   if (starter === undefined) {
     return undefined;
   }
@@ -149,15 +153,15 @@ async function promptForCreateProjectOptions(): Promise<CreateProjectCommandOpti
     {
       label: "English",
       id: "en",
-      ...(vscodeLocale.startsWith("en") ? { description: "VS Code locale" } : {}),
+      ...(vscodeLocale.startsWith("en") ? { description: t("VS Code locale") } : {}),
     },
     {
       label: "Español",
       id: "es",
-      ...(vscodeLocale.startsWith("es") ? { description: "VS Code locale" } : {}),
+      ...(vscodeLocale.startsWith("es") ? { description: t("VS Code locale") } : {}),
     },
   ];
-  const locale = await vscode.window.showQuickPick(localeItems, { title: "Agorix language" });
+  const locale = await vscode.window.showQuickPick(localeItems, { title: t("Agorix language") });
   if (locale === undefined) {
     return undefined;
   }
@@ -169,8 +173,8 @@ async function promptForCreateProjectOptions(): Promise<CreateProjectCommandOpti
       ? vscode.Uri.file(filename)
       : vscode.Uri.file(`${workspace.uri.fsPath.replace(/[\\/]$/, "")}/${filename}`);
   const uri = await vscode.window.showSaveDialog({
-    filters: { "Agorix portable project": ["agorix"] },
-    saveLabel: "Create Agorix project",
+    filters: { [t("Agorix portable project")]: ["agorix"] },
+    saveLabel: t("Create Agorix project"),
     defaultUri,
   });
   return uri === undefined ? undefined : { name, starter: starter.id, locale: locale.id, uri };

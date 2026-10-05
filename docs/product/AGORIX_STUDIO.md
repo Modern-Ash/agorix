@@ -64,6 +64,25 @@ A host-side `SyncHub` (`extensions/vscode/src/sync/syncHub.ts`) holds one select
 
 The "help level up to N" agreement (default 4) limits what the agent may show, on every agent surface (ADR 0008). 0 shows nothing; 1 diagnostic questions; 2 adds concept reminders; 3 adds pointing to the relevant blocks; 4 adds bounded proposals, AI or built-in; 5 adds no new kind (a complete explanation needs an explicit request after repeated failure). Below 4, "Show me a suggestion" gives the most help the level allows and a line saying the level can be raised; the Companion actions (challenge and reflect need 1, explain 2, debug 3, build 4), the built-in "Suggest first step / repeat" commands, ambient offers and the CodeLens actions that need more are hidden or declined with the same sentence. The Workbench agreements now reach the session too, so the level, the AI toggle and the mode apply to ambient offers and commands, not only to the Workbench loop.
 
+## Studio localization
+
+- The manifest (command titles, view names, settings, welcome text) is localized with `package.nls.json` and `package.nls.es.json`. Runtime messages, dialogs, quick picks, CodeLenses, the status bar and tree labels go through `t()` (`src/l10n.ts`, `vscode.l10n.t`) with `l10n/bundle.l10n.es.json`; the English text is the key and `{0}` marks values.
+- The language follows the VS Code display language. The Workbench keeps following the project's locale (set at creation), so the two can differ.
+- `src/l10n.test.ts` fails when a `%key%`, a `t()`/`msg()` literal or a placeholder is missing from either bundle, and `.vscodeignore` must ship the bundles.
+- Not localized: proposal and provider text (pending a privacy decision), the dynamic ambient tooltip with the offer reason, and mission/world titles, which come from the curriculum already localized.
+- The packaged VSIX contains the bundles; the real Spanish UI path was not exercised in VS Code because no Spanish language pack is installed in the test profile.
+
+## Canvas accessibility
+
+- **One tab stop.** The canvas is a single tab stop (roving tabindex). Arrow Up/Down, Home and End move between blocks; the action buttons are tabbable only on the active block.
+- **Names carry structure.** Each block is named with its position and nesting level ("Move [N] steps, 2 of 5, level 2"), in English and Spanish.
+- **Keyboard parity.** Enter or Space on a block shows it in the code (it was click-only). Alt+Up/Down moves a block and Delete removes it, as before. A visible help line is linked with `aria-describedby`.
+- **Focus follows the work.** After a move the focus stays on the moved block; after a delete it goes to the next block, then the previous one, then the canvas; after inserting from the palette it goes to the new block. Blocks are located by container and index because block ids are positional.
+- **Announcements.** Moves, deletes and inserts, and impossible moves ("Already the first block here"), are announced in the polite live region and survive the generic "Updated"; a refusal from the host replaces them.
+- **High contrast.** `forced-colors` rules keep selected, running, failed and suggested states distinguishable with system colors; action buttons are at least 32 px.
+- **Tests.** `canvas.a11y.test.tsx` drives a real DOM (jsdom) with keyboard events and runs axe-core for roles, names and ARIA validity. Axe cannot check color contrast in jsdom, so contrast and a screen-reader pass remain manual.
+- **Not covered.** Nesting and outdenting with the keyboard (the Web editor has it), text size and zoom.
+
 ## Release gate
 
 Studio's product release gate is

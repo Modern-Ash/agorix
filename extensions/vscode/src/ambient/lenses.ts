@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { t } from "../l10n.js";
 import {
   nodeIdsForProjectionLines,
   projectionRangeForNode,
@@ -22,15 +23,15 @@ interface AmbientLensAction {
 }
 
 const ACTIONS: readonly AmbientLensAction[] = [
-  { action: "explain", title: "$(comment) Explain", command: "agorixStudio.companionExplain" },
-  { action: "debug", title: "$(debug-alt) Debug", command: "agorixStudio.companionDebug" },
+  { action: "explain", title: t("$(comment) Explain"), command: "agorixStudio.companionExplain" },
+  { action: "debug", title: t("$(debug-alt) Debug"), command: "agorixStudio.companionDebug" },
   {
     action: "challenge",
-    title: "$(beaker) Challenge",
+    title: t("$(beaker) Challenge"),
     command: "agorixStudio.companionChallenge",
   },
-  { action: "build", title: "$(lightbulb) Propose", command: "agorixStudio.companionBuild" },
-  { action: "reflect", title: "$(eye) Reflect", command: "agorixStudio.companionReflect" },
+  { action: "build", title: t("$(lightbulb) Propose"), command: "agorixStudio.companionBuild" },
+  { action: "reflect", title: t("$(eye) Reflect"), command: "agorixStudio.companionReflect" },
 ];
 
 function allowedActions(options: AmbientLensesOptions): readonly AmbientLensAction[] {

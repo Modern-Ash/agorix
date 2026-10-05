@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useState } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import type { BlockType, BlockWorkspaceSnapshot } from "@agorix/block-editor";
 import type { Intent } from "@agorix/interaction-core";
 import {
@@ -7,7 +7,8 @@ import {
   type AmbientHintView,
 } from "@agorix/studio-protocol";
 import type { HostBridge } from "./bridge.js";
-import { AgentZone, Canvas, type SyncView } from "./Canvas.js";
+import { AgentZone, Canvas, type FocusRequest, type SyncView } from "./Canvas.js";
+import { locationKey } from "./blockView.js";
 import { Palette } from "./Palette.js";
 import { AgentPanel } from "./AgentPanel.js";
 import {
@@ -58,6 +59,9 @@ export function Workbench({
   const copy = copyFor(copyLocale);
   const [workspace, setWorkspace] = useState<BlockWorkspaceSnapshot | undefined>();
   const [status, setStatus] = useState("");
+  const [focusRequest, setFocusRequest] = useState<FocusRequest | undefined>();
+  // An announcement from a keyboard action must survive the generic "Updated" that follows it.
+  const announced = useRef(false);
   const [programHash, setProgramHash] = useState<string | undefined>();
   const [selection, setSelection] = useState<SelectionState>({ include: [], overrides: {} });
   const [sync, setSync] = useState<SyncView>({});
@@ -82,7 +86,11 @@ export function Workbench({
       if (message.type === "workspace") {
         setWorkspace(message.workspace);
         setProgramHash(message.programHash);
-        setStatus(copy.updated);
+        if (announced.current) {
+          announced.current = false;
+        } else {
+          setStatus(copy.updated);
+        }
         return;
       }
       if (message.type === "ambientHint") {
@@ -90,7 +98,10 @@ export function Workbench({
         return;
       }
       const text = statusFor(message, copy);
-      if (text !== undefined) setStatus(text);
+      if (text !== undefined) {
+        announced.current = false;
+        setStatus(text);
+      }
     });
     bridge.post({ schema: STUDIO_PROTOCOL_VERSION, type: "ready" });
     return unsubscribe;
@@ -112,13 +123,25 @@ export function Workbench({
       ...(programHash === undefined ? {} : { baseHash: programHash }),
     });
 
+  const announce = (text: string) => {
+    announced.current = true;
+    setStatus(text);
+  };
+
   const add = (blockType: BlockType) => {
     const script = workspace?.scripts[0];
     if (script === undefined) return;
+    const container = { kind: "script", scriptIndex: 0 } as const;
+    const labels: Readonly<Record<string, string>> = copy.blockLabels;
+    announce(copy.addedAnnouncement(labels[blockType] ?? blockType));
+    setFocusRequest((previous) => ({
+      pos: locationKey({ container, index: script.statements.length }),
+      nonce: (previous?.nonce ?? 0) + 1,
+    }));
     post({
       type: "insertBlock",
       blockType,
-      to: { container: { kind: "script", scriptIndex: 0 }, index: script.statements.length },
+      to: { container, index: script.statements.length },
     });
   };
 
@@ -132,6 +155,8 @@ export function Workbench({
           <Canvas
             workspace={workspace}
             onIntent={post}
+            onAnnounce={announce}
+            focusRequest={focusRequest}
             copy={copy}
             ghosts={agentUi.proposal === undefined ? undefined : anchored.ghosts}
             sync={sync}

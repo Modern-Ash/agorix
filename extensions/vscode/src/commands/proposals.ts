@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import type { AgentAgreements } from "@agorix/agent-workflow";
 import { canPropose, ceilingMessage } from "../assistance.js";
+import { t } from "../l10n.js";
 import type { ProjectProgram } from "@agorix/program-model";
 import {
   applyProposalSession,
@@ -111,19 +112,21 @@ export function createStudioProposalCommandHandlers(
       "vscode.diff",
       before.uri,
       after.uri,
-      `Agorix proposal: ${proposalSession.purpose}`,
+      t("Agorix proposal: {0}", proposalSession.purpose),
     );
     if (proposalSession.affectedNodeIds[0] !== undefined) {
       await revealIfPresent(proposalSession.affectedNodeIds[0]);
     }
+    const apply = t("Apply");
+    const reject = t("Reject");
     const choice = await vscode.window.showInformationMessage(
       `${proposalSession.purpose}. ${proposalSession.rationale}`,
-      "Apply",
-      "Reject",
+      apply,
+      reject,
     );
-    if (choice === "Apply") {
+    if (choice === apply) {
       await applyActiveProposal();
-    } else if (choice === "Reject") {
+    } else if (choice === reject) {
       rejectActiveProposal();
     }
   };
@@ -140,7 +143,7 @@ export function createStudioProposalCommandHandlers(
     const suggestion = suggestFirstStep(open.project);
     if (suggestion === undefined) {
       await vscode.window.showInformationMessage(
-        "First-step proposal is only available for an empty script.",
+        t("First-step proposal is only available for an empty script."),
       );
       return;
     }
@@ -158,7 +161,7 @@ export function createStudioProposalCommandHandlers(
     }
     const suggestion = suggestRepeat(open.project);
     if (suggestion === undefined) {
-      await vscode.window.showInformationMessage("Nothing repeated here. No suggestion.");
+      await vscode.window.showInformationMessage(t("Nothing repeated here. No suggestion."));
       return;
     }
     await reviewProposalSession(suggestion.session);
@@ -185,7 +188,7 @@ export function createStudioProposalCommandHandlers(
     port.redoStack().length = 0;
     port.setActiveProposal(undefined);
     await vscode.window.showInformationMessage(
-      "Applied proposal. Use Undo Proposal to restore it.",
+      t("Applied proposal. Use Undo Proposal to restore it."),
     );
   };
 
@@ -198,7 +201,7 @@ export function createStudioProposalCommandHandlers(
     rejectProposalSession(open.project.stored.program, activeProposal);
     port.setActiveProposal(undefined);
     port.refreshCompanionViews();
-    void vscode.window.showInformationMessage("Rejected proposal. Project unchanged.");
+    void vscode.window.showInformationMessage(t("Rejected proposal. Project unchanged."));
   };
 
   const undoProposal = async (): Promise<void> => {
