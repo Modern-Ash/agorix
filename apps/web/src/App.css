@@ -4168,3 +4168,26 @@ button:hover:not(:disabled) {
 .prediction-comparison {
   margin: 8px 0;
 }
+
+.model-comparison {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0.75rem 0;
+  padding: 0.75rem;
+  border: 2px solid var(--agx-border-strong, currentColor);
+  border-radius: 8px;
+}
+
+.comparison-cards {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+}
+
+.comparison-cards article {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+}

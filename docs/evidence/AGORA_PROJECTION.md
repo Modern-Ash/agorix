@@ -157,23 +157,99 @@ blocked loopback listeners with `listen EPERM 127.0.0.1` in
 sandbox passed earlier for the PR, and GitHub CI also passed. This is runtime
 provenance evidence: sandbox execution and GitHub CI are distinguishable.
 
+## Scenario evidence: digest-bound independent review, stale and re-review (issue #34)
+
+Recorded on 2026-10-05 in swarm `issue-34-review-evidence`, work
+`issue-34-digest-bound-review`, on a real Agorix artifact: the learner-facing
+model-comparison activity for issue #101 (`apps/web/src/ModelComparison.tsx`).
+
+### How the reviewer is distinct, and what that does not prove
+
+| Role     | Actor                        | What it is                                                                                                             |
+| -------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Producer | `project:ai-claude`          | the Claude Code session that wrote the artifact                                                                        |
+| Reviewer | `project:ai-claude-reviewer` | a separate Claude Code subagent session with a fresh context that read only the file, its digest and the #101 criteria |
+| Gate     | `project:product-owner`      | owner of the work item                                                                                                 |
+
+The two actors are distinct Core actors and distinct sessions, but they share
+the same provider and model. This satisfies the Core `distinct-actor` dimension.
+It does **not** satisfy `distinct-provider` or `distinct-model`, and it is not a
+human review. The `ai-sdlc` Method Pack only requires the `product-owner` and
+`developer` roles for a swarm, so the reviewer held the `developer` role through
+durable Core handoffs (4 handoff records under the swarm) while it recorded each
+review, and the role returned to the producer afterwards. Producer attribution
+stays on the artifact record (`produced_by`), not on the current role holder.
+
+### Timeline (Core records)
+
+| Step | Core fact                                                                                                                                                  | Digest (SHA-256)                                                   |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| 1    | artifact `implementation` registered by `project:ai-claude` at `repo://apps/web/src/ModelComparison.tsx` (2026-10-05T15:59:43Z)                            | `5f054c2db6cf532c56ec2ad5c8ffccb00553fadc016c7f222cb73e2138e12d3b` |
+| 2    | `review` evidence `review-r1-d1` by `project:ai-claude-reviewer` (16:01:35Z); verdict approved-with-observations; 10 observations                          | same digest, stored in `artifact_content_sha256`                   |
+| 3    | projection `separation`: `decision: satisfied`, `reviewed_artifacts: 1`                                                                                    |                                                                    |
+| 4    | the producer applied four of the observations; commit `fix(web): address independent review observations ...`; artifact re-registered (16:03:05Z)          | `f48e75ec86ef60636077e304e257021f2574eb3344761693fbe7dda761275ea2` |
+| 5    | projection `separation`: `decision: blocked`, blocker `separation.review-missing-or-stale` ("No review evidence matches the current digest")               |                                                                    |
+| 6    | second review in a new reviewer session, evidence `review-r2-d2` (16:03:44Z); verdict approved-with-observations; all four earlier findings reported fixed | same as step 4                                                     |
+| 7    | projection `separation`: `decision: satisfied`, `reviewed_artifacts: 1`, no blockers                                                                       |                                                                    |
+
+Both reviewers first computed the SHA-256 of the file themselves and matched it
+against the claimed digest before reviewing. The review evidence is bound by
+Core to the digest of the artifact at the time it was recorded
+(`artifact_content_sha256`), so the step 2 review no longer matched after step 4.
+
+### Reproducing the projection check
+
+The separation section is the AI-SDLC provider's own function, evaluated on the
+Core facts returned by `agora work inspect --full`:
+
+```text
+agora work inspect --swarm issue-34-review-evidence --work issue-34-digest-bound-review --full
+python -c "from agora_ai_sdlc.studio_projection import _separation"   # fed with the artifacts/evidence above
+```
+
+The full Agora read-service projection could not be used from a Git worktree
+because an older session record points at another worktree path
+(`Durable record resolves outside the Agora project`). That is a tooling limit,
+not a missing fact: the same Core artifact and evidence records feed both paths.
+
+### Observations deferred, not hidden
+
+Review 2 left nine observations, none high. They are recorded, not fixed here:
+the practice-scenario selector labels reveal the answer before the learner
+predicts (medium; it is a classroom/demo control); an invalid proposal is
+labelled invalid before a run; the event `sequence` is fixed at 1; `run()` and
+`decide()` have no try/catch; the "Looked at" buttons share a label; the stored
+prediction collapses per-proposal guesses; result/feedback status regions are
+inserted already populated; mixed voseo/tuteo in Spanish; a flat heading level.
+
+### Limits and a false start
+
+- A first work item, `issue-34-review-evidence`, registered the same file with a
+  plain path instead of `repo://`, so Core captured no content digest. It was
+  superseded by `issue-34-digest-bound-review`. It could not be cancelled
+  because no assigned actor was allowed `work.cancel`, so it remains `active`
+  with an artifact that has `content_sha256: null`.
+- The producer and both reviewers are AI sessions. Human review of this
+  artifact is not recorded.
+
 ## Acceptance mapping for #34
 
-| Acceptance item                                | Status                   | Evidence                                                                                                                      |
-| ---------------------------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
-| Producer session attributable                  | Demonstrated             | issue #87 producer `project:ai-opencode`; #283 commit `e16511b`                                                               |
-| Reviewer distinct where policy requires        | Partially demonstrated   | Product Owner gate is distinct; digest-bound independent code review is not recorded                                          |
-| Review binds exact digest                      | Not fully demonstrated   | artifact/evidence digests exist, but no distinct review record binds them                                                     |
-| Stale condition observable after change        | Demonstrated             | changed log digests and pre-PR dirty delta in issue #87 operations evidence                                                   |
-| Projection surfaces profile/separation/metrics | Demonstrated with caveat | `aisdlc status` exposes profile/depth/actor; economics events expose route/runtime metrics; active Core work drift is visible |
-| No private side-channel data required          | Demonstrated             | all facts come from repo files, `aisdlc` output and GitHub PR metadata                                                        |
-| Evidence documented here                       | Demonstrated             | this file                                                                                                                     |
+| Acceptance item                                | Status                        | Evidence                                                                                                                      |
+| ---------------------------------------------- | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Producer session attributable                  | Demonstrated                  | issue #87 producer `project:ai-opencode`; #283 commit `e16511b`                                                               |
+| Reviewer distinct where policy requires        | Demonstrated (distinct-actor) | `project:ai-claude-reviewer` is a distinct actor and session; same provider and model, so not distinct-provider               |
+| Review binds exact digest                      | Demonstrated                  | `review-r1-d1` and `review-r2-d2` carry `artifact_content_sha256` equal to the artifact digest at review time                 |
+| Stale condition observable after change        | Demonstrated                  | issue #34 step 5: `separation.review-missing-or-stale`; also the issue #87 changed log digests and dirty delta                |
+| Projection surfaces profile/separation/metrics | Demonstrated with caveat      | `aisdlc status` exposes profile/depth/actor; economics events expose route/runtime metrics; active Core work drift is visible |
+| No private side-channel data required          | Demonstrated                  | all facts come from repo files, `aisdlc` output and GitHub PR metadata                                                        |
+| Evidence documented here                       | Demonstrated                  | this file                                                                                                                     |
 
 ## Conclusion
 
-Agora AI-SDLC projection is useful enough to expose profile/depth, actor
-provenance, exact artifact digests, stale evidence and runtime/metric telemetry
-from real Agorix work. The remaining gap for #34 is narrower and clearer:
-repository evidence does not yet include a distinct, digest-bound reviewer record
-that becomes stale after an artifact revision and is then restored by a new
-digest-bound review.
+Agora AI-SDLC projection exposes profile/depth, actor provenance, exact
+artifact digests, stale evidence and runtime/metric telemetry from real Agorix
+work. The scenario above closes the gap that remained for #34: a distinct actor
+reviewed an exact digest, a revision made that review stale and observable, and
+a new digest-bound review restored current evidence. Its limits are explicit:
+the reviewer shares the producer's provider and model, no human reviewed the
+artifact, and the full read-service projection could not be run from a worktree.
