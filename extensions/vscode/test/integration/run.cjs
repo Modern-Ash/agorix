@@ -25,6 +25,7 @@ async function main() {
         workspace,
         "--disable-extensions",
         "--disable-workspace-trust",
+        ...(process.env.VSCODE_LOCALE ? ["--locale", process.env.VSCODE_LOCALE] : []),
         "--user-data-dir",
         path.join(scratch, "user-data"),
         "--extensions-dir",

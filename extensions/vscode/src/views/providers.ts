@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { t } from "../l10n.js";
 import {
   createNavigationSections,
   openProjectionDocument,
@@ -22,9 +23,9 @@ export class StudioTreeItem extends vscode.TreeItem {
     command: string | undefined,
     contextValue: string | undefined,
   ) {
-    super(label, vscode.TreeItemCollapsibleState.None);
+    super(t(label), vscode.TreeItemCollapsibleState.None);
     if (description !== undefined) {
-      this.description = description;
+      this.description = t(description);
     }
     if (contextValue !== undefined) {
       this.contextValue = contextValue;
@@ -34,7 +35,7 @@ export class StudioTreeItem extends vscode.TreeItem {
       this.iconPath = themeIcon;
     }
     if (command !== undefined) {
-      this.command = { command, title: label };
+      this.command = { command, title: t(label) };
     }
   }
 }
@@ -78,14 +79,19 @@ export class StudioTreeProvider implements vscode.TreeDataProvider<StudioTreeIte
 
 export class ExecutionInspectorItem extends vscode.TreeItem {
   constructor(readonly step: StudioInspectorStep) {
-    super(`Step ${step.runtimeStep}: ${step.statementType ?? step.timing}`);
-    this.description = step.nodeId ?? "run";
+    super(t("Step {0}: {1}", step.runtimeStep, step.statementType ?? step.timing));
+    this.description = step.nodeId ?? t("run");
     this.id = `step-${step.index}`;
     this.contextValue = "agorixRuntimeFact";
-    this.tooltip = `${step.provenance}\n${step.summary}\nbefore (${step.before.x}, ${step.before.y}) heading ${step.before.heading}\nafter (${step.after.x}, ${step.after.y}) heading ${step.after.heading}`;
+    this.tooltip = [
+      step.provenance,
+      step.summary,
+      t("before ({0}, {1}) heading {2}", step.before.x, step.before.y, step.before.heading),
+      t("after ({0}, {1}) heading {2}", step.after.x, step.after.y, step.after.heading),
+    ].join("\n");
     this.command = {
       command: "agorixStudio.selectExecutionStep",
-      title: "Select Execution Step",
+      title: t("Select Execution Step"),
       arguments: [step.index],
     };
   }
@@ -121,21 +127,25 @@ export class CompanionHistoryItem extends vscode.TreeItem {
   ) {
     super(shortActionLabel(turn.action));
     this.iconPath = agentIcon;
-    this.description = `${turn.diagnostics.providerSelection} · ${turn.diagnostics.runtimeFactCount} facts`;
+    this.description = t(
+      "{0} · {1} facts",
+      turn.diagnostics.providerSelection,
+      turn.diagnostics.runtimeFactCount,
+    );
     this.accessibilityInformation = { label: `${turn.action}: ${turn.message}` };
     this.contextValue = turn.proposal === undefined ? "agorixCompanionTurn" : "agorixProposal";
     this.tooltip = [
       turn.message,
-      `provider: ${turn.diagnostics.providerSelection}`,
-      `decision: ${turn.diagnostics.decisionSource}`,
-      `context: ${turn.diagnostics.contextNeed}`,
-      `runtime facts: ${turn.diagnostics.runtimeFactCount}`,
-      turn.proposal === undefined ? "no proposal" : `proposal: ${turn.proposal.purpose}`,
+      t("provider: {0}", turn.diagnostics.providerSelection),
+      t("decision: {0}", turn.diagnostics.decisionSource),
+      t("context: {0}", turn.diagnostics.contextNeed),
+      t("runtime facts: {0}", turn.diagnostics.runtimeFactCount),
+      turn.proposal === undefined ? t("no proposal") : t("proposal: {0}", turn.proposal.purpose),
     ].join("\n");
     if (turn.selectedNodeIds[0] !== undefined) {
       this.command = {
         command: "agorixStudio.revealCanonicalNode",
-        title: "Reveal Companion Context",
+        title: t("Reveal Companion Context"),
         arguments: [turn.selectedNodeIds[0]],
       };
     }
@@ -178,15 +188,15 @@ function iconFor(
 function shortActionLabel(action: StudioCompanionTurn["action"]): string {
   switch (action) {
     case "explain":
-      return "Explain";
+      return t("Explain");
     case "challenge":
-      return "Challenge";
+      return t("Challenge");
     case "debug":
-      return "Debug";
+      return t("Debug");
     case "reflect":
-      return "Reflect";
+      return t("Reflect");
     case "build":
-      return "Proposal";
+      return t("Proposal");
   }
 }
 

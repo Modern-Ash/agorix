@@ -7,3 +7,6 @@
 !media/agorix-agent-active.svg
 !dist/extension.cjs
 !dist/workbench.js
+!package.nls.json
+!package.nls.es.json
+!l10n/*.json
