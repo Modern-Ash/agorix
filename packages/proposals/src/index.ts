@@ -606,3 +606,13 @@ export function createFirstStepProposal(input: {
     ],
   });
 }
+
+export {
+  operationEditable,
+  resolveOperationTargets,
+  selectProposalOperations,
+  type EditableField,
+  type EditableValue,
+  type OperationOverride,
+  type OperationSelection,
+} from "./selection.js";
