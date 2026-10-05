@@ -303,3 +303,109 @@ describe("requirePredictionBeforeAccept agreements", () => {
     expect(parseHostMessage({ schema, type: "error", code: "PREDICTION_REQUIRED" })).toBeDefined();
   });
 });
+
+describe("advanced proposal messages", () => {
+  const evidence = { stepsUsed: 4, reachedGoal: true, outcome: "completed" } as const;
+  const operations = [
+    {
+      index: 0,
+      kind: "add",
+      label: "Add move 10 steps",
+      blockId: "block:a",
+      editable: { field: "steps", value: 10 },
+    },
+  ];
+  const base = {
+    schema,
+    type: "proposal",
+    proposalId: "p1",
+    purpose: "p",
+    rationale: "r",
+    changes: [],
+  };
+
+  it("keeps old proposal messages valid and parses operations, evidence and alternatives", () => {
+    expect(parseHostMessage(base)).toEqual(base);
+    const full = {
+      ...base,
+      operations,
+      evidence,
+      alternatives: [{ proposalId: "p2", purpose: "q", tradeoff: "t", evidence }],
+    };
+    expect(parseHostMessage(full)).toEqual(full);
+    expect(parseHostMessage({ ...base, operations: [{ index: 0 }] })).toBeUndefined();
+    expect(parseHostMessage({ ...base, evidence: { stepsUsed: -1 } })).toBeUndefined();
+    expect(parseHostMessage({ ...base, alternatives: "x" })).toBeUndefined();
+  });
+
+  it("parses selectionEvidence results", () => {
+    const ok = {
+      schema,
+      type: "selectionEvidence",
+      proposalId: "p1",
+      result: { ok: true, evidence },
+    };
+    expect(parseHostMessage(ok)).toEqual(ok);
+    const bad = {
+      schema,
+      type: "selectionEvidence",
+      proposalId: "p1",
+      result: { ok: false, reason: "EMPTY" },
+    };
+    expect(parseHostMessage(bad)).toEqual(bad);
+    expect(parseHostMessage({ ...bad, result: { ok: false, reason: "nope" } })).toBeUndefined();
+  });
+
+  it("parses selections on decideProposal, previewSelection and chooseAlternative", () => {
+    const selection = { include: [0, 2], overrides: [{ index: 0, value: 7 }] };
+    expect(
+      parseUiMessage({
+        schema,
+        type: "decideProposal",
+        proposalId: "p1",
+        decision: "modified",
+        selection,
+      }),
+    ).toEqual({
+      schema,
+      type: "decideProposal",
+      proposalId: "p1",
+      decision: "modified",
+      selection,
+    });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "decideProposal",
+        proposalId: "p1",
+        decision: "modified",
+        selection: { include: [-1] },
+      }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({
+        schema,
+        type: "decideProposal",
+        proposalId: "p1",
+        decision: "modified",
+        selection: { include: [0], overrides: [{ index: 0, value: 1.5 }] },
+      }),
+    ).toBeUndefined();
+    expect(
+      parseUiMessage({ schema, type: "previewSelection", proposalId: "p1", selection }),
+    ).toEqual({
+      schema,
+      type: "previewSelection",
+      proposalId: "p1",
+      selection,
+    });
+    expect(parseUiMessage({ schema, type: "chooseAlternative", proposalId: "p2" })).toEqual({
+      schema,
+      type: "chooseAlternative",
+      proposalId: "p2",
+    });
+    expect(
+      parseUiMessage({ schema, type: "chooseAlternative", proposalId: "<x>" }),
+    ).toBeUndefined();
+  });
+});

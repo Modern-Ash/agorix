@@ -59,6 +59,14 @@ export type UiMessage =
       readonly type: "decideProposal";
       readonly proposalId: string;
       readonly decision: Decision;
+      readonly selection?: SelectionInput;
+    }
+  | { readonly schema: Schema; readonly type: "chooseAlternative"; readonly proposalId: string }
+  | {
+      readonly schema: Schema;
+      readonly type: "previewSelection";
+      readonly proposalId: string;
+      readonly selection: SelectionInput;
     }
   | { readonly schema: Schema; readonly type: "stateIntent"; readonly text: string }
   | { readonly schema: Schema; readonly type: "acceptPlan" }
@@ -70,6 +78,33 @@ export type UiMessage =
   | { readonly schema: Schema; readonly type: "continue" }
   | { readonly schema: Schema; readonly type: "explain"; readonly concept: ConceptId }
   | { readonly schema: Schema; readonly type: "skipExplain" };
+
+export interface OperationView {
+  readonly index: number;
+  readonly kind: "add" | "replace" | "remove" | "setField";
+  readonly label: string;
+  readonly blockId?: string;
+  readonly editable?: { readonly field: "steps" | "degrees" | "count"; readonly value: number };
+}
+
+/** Measured by running the candidate program in the deterministic runtime. */
+export interface EvidenceView {
+  readonly stepsUsed: number;
+  readonly reachedGoal: boolean;
+  readonly outcome: "completed" | "budget-exceeded" | "stopped";
+}
+
+export interface AlternativeView {
+  readonly proposalId: string;
+  readonly purpose: string;
+  readonly tradeoff: string;
+  readonly evidence: EvidenceView;
+}
+
+export interface SelectionInput {
+  readonly include: readonly number[];
+  readonly overrides?: readonly { readonly index: number; readonly value: number }[];
+}
 
 export interface GhostChange {
   readonly kind: "added" | "changed" | "removed" | "referenced";
@@ -109,6 +144,17 @@ export type HostMessage =
       readonly purpose: string;
       readonly rationale: string;
       readonly changes: readonly GhostChange[];
+      readonly operations?: readonly OperationView[];
+      readonly evidence?: EvidenceView;
+      readonly alternatives?: readonly AlternativeView[];
+    }
+  | {
+      readonly schema: Schema;
+      readonly type: "selectionEvidence";
+      readonly proposalId: string;
+      readonly result:
+        | { readonly ok: true; readonly evidence: EvidenceView }
+        | { readonly ok: false; readonly reason: "EMPTY" | "INVALID" | "STALE" };
     }
   | { readonly schema: Schema; readonly type: "proposalCleared" }
   | {
@@ -458,6 +504,95 @@ function boundedString(value: unknown, min: number, max: number): string | undef
     : undefined;
 }
 
+function parseEvidence(value: unknown): EvidenceView | undefined {
+  if (!isObject(value)) return undefined;
+  const { stepsUsed, reachedGoal, outcome } = value;
+  return isIndex(stepsUsed) &&
+    typeof reachedGoal === "boolean" &&
+    (outcome === "completed" || outcome === "budget-exceeded" || outcome === "stopped")
+    ? { stepsUsed, reachedGoal, outcome }
+    : undefined;
+}
+
+const OP_KINDS = ["add", "replace", "remove", "setField"] as const;
+const EDIT_FIELDS = ["steps", "degrees", "count"] as const;
+
+function parseOperations(value: unknown): OperationView[] | undefined {
+  if (!Array.isArray(value) || value.length > 50) return undefined;
+  const out: OperationView[] = [];
+  for (const raw of value) {
+    if (!isObject(raw) || !isIndex(raw["index"])) return undefined;
+    const kind = raw["kind"];
+    const label = boundedString(raw["label"], 1, 120);
+    if (!(OP_KINDS as readonly unknown[]).includes(kind) || label === undefined) return undefined;
+    const blockId =
+      raw["blockId"] === undefined ? undefined : boundedString(raw["blockId"], 1, 128);
+    if (raw["blockId"] !== undefined && blockId === undefined) return undefined;
+    let editable: OperationView["editable"];
+    if (raw["editable"] !== undefined) {
+      const e = raw["editable"];
+      if (
+        !isObject(e) ||
+        !(EDIT_FIELDS as readonly unknown[]).includes(e["field"]) ||
+        typeof e["value"] !== "number" ||
+        !Number.isInteger(e["value"])
+      ) {
+        return undefined;
+      }
+      editable = { field: e["field"] as (typeof EDIT_FIELDS)[number], value: e["value"] };
+    }
+    out.push({
+      index: raw["index"],
+      kind: kind as (typeof OP_KINDS)[number],
+      label,
+      ...(blockId === undefined ? {} : { blockId }),
+      ...(editable === undefined ? {} : { editable }),
+    });
+  }
+  return out;
+}
+
+function parseAlternatives(value: unknown): AlternativeView[] | undefined {
+  if (!Array.isArray(value) || value.length > 3) return undefined;
+  const out: AlternativeView[] = [];
+  for (const raw of value) {
+    if (!isObject(raw) || !isSafeId(raw["proposalId"])) return undefined;
+    const purpose = boundedString(raw["purpose"], 1, 300);
+    const tradeoff = boundedString(raw["tradeoff"], 1, 300);
+    const evidence = parseEvidence(raw["evidence"]);
+    if (purpose === undefined || tradeoff === undefined || evidence === undefined) return undefined;
+    out.push({ proposalId: raw["proposalId"], purpose, tradeoff, evidence });
+  }
+  return out;
+}
+
+function parseSelection(value: unknown): SelectionInput | undefined {
+  if (!isObject(value) || !Array.isArray(value["include"]) || value["include"].length > 50) {
+    return undefined;
+  }
+  const include = value["include"];
+  if (!include.every(isIndex)) return undefined;
+  let overrides: { index: number; value: number }[] | undefined;
+  if (value["overrides"] !== undefined) {
+    const raw = value["overrides"];
+    if (!Array.isArray(raw) || raw.length > 50) return undefined;
+    overrides = [];
+    for (const item of raw) {
+      if (
+        !isObject(item) ||
+        !isIndex(item["index"]) ||
+        typeof item["value"] !== "number" ||
+        !Number.isInteger(item["value"]) ||
+        Math.abs(item["value"]) > 100_000
+      ) {
+        return undefined;
+      }
+      overrides.push({ index: item["index"], value: item["value"] });
+    }
+  }
+  return { include, ...(overrides === undefined ? {} : { overrides }) };
+}
+
 function parseGhostChanges(value: unknown): GhostChange[] | undefined {
   if (!Array.isArray(value) || value.length > 50) {
     return undefined;
@@ -518,11 +653,62 @@ function parseAgentMessageFromHost(value: Obj, schema: Schema): HostMessage | un
       const purpose = boundedString(value["purpose"], 1, 300);
       const rationale = boundedString(value["rationale"], 1, 300);
       const changes = parseGhostChanges(value["changes"]);
-      return isSafeId(value["proposalId"]) &&
-        purpose !== undefined &&
-        rationale !== undefined &&
-        changes !== undefined
-        ? { schema, type: "proposal", proposalId: value["proposalId"], purpose, rationale, changes }
+      if (
+        !isSafeId(value["proposalId"]) ||
+        purpose === undefined ||
+        rationale === undefined ||
+        changes === undefined
+      ) {
+        return undefined;
+      }
+      const operations =
+        value["operations"] === undefined ? undefined : parseOperations(value["operations"]);
+      const evidence =
+        value["evidence"] === undefined ? undefined : parseEvidence(value["evidence"]);
+      const alternatives =
+        value["alternatives"] === undefined ? undefined : parseAlternatives(value["alternatives"]);
+      if (
+        (value["operations"] !== undefined && operations === undefined) ||
+        (value["evidence"] !== undefined && evidence === undefined) ||
+        (value["alternatives"] !== undefined && alternatives === undefined)
+      ) {
+        return undefined;
+      }
+      return {
+        schema,
+        type: "proposal",
+        proposalId: value["proposalId"],
+        purpose,
+        rationale,
+        changes,
+        ...(operations === undefined ? {} : { operations }),
+        ...(evidence === undefined ? {} : { evidence }),
+        ...(alternatives === undefined ? {} : { alternatives }),
+      };
+    }
+    case "selectionEvidence": {
+      const result = value["result"];
+      if (!isSafeId(value["proposalId"]) || !isObject(result)) return undefined;
+      if (result["ok"] === true) {
+        const evidence = parseEvidence(result["evidence"]);
+        return evidence === undefined
+          ? undefined
+          : {
+              schema,
+              type: "selectionEvidence",
+              proposalId: value["proposalId"],
+              result: { ok: true, evidence },
+            };
+      }
+      const reason = result["reason"];
+      return result["ok"] === false &&
+        (reason === "EMPTY" || reason === "INVALID" || reason === "STALE")
+        ? {
+            schema,
+            type: "selectionEvidence",
+            proposalId: value["proposalId"],
+            result: { ok: false, reason },
+          }
         : undefined;
     }
     case "proposalCleared":
@@ -610,13 +796,28 @@ export function parseUiMessage(value: unknown): UiMessage | undefined {
     }
     case "decideProposal": {
       const decision = value["decision"];
-      return isSafeId(value["proposalId"]) && (DECISIONS as readonly unknown[]).includes(decision)
-        ? {
-            schema,
-            type: "decideProposal",
-            proposalId: value["proposalId"],
-            decision: decision as Decision,
-          }
+      if (!isSafeId(value["proposalId"]) || !(DECISIONS as readonly unknown[]).includes(decision)) {
+        return undefined;
+      }
+      const selection =
+        value["selection"] === undefined ? undefined : parseSelection(value["selection"]);
+      if (value["selection"] !== undefined && selection === undefined) return undefined;
+      return {
+        schema,
+        type: "decideProposal",
+        proposalId: value["proposalId"],
+        decision: decision as Decision,
+        ...(selection === undefined ? {} : { selection }),
+      };
+    }
+    case "chooseAlternative":
+      return isSafeId(value["proposalId"])
+        ? { schema, type: "chooseAlternative", proposalId: value["proposalId"] }
+        : undefined;
+    case "previewSelection": {
+      const selection = parseSelection(value["selection"]);
+      return isSafeId(value["proposalId"]) && selection !== undefined
+        ? { schema, type: "previewSelection", proposalId: value["proposalId"], selection }
         : undefined;
     }
     case "stateIntent": {
