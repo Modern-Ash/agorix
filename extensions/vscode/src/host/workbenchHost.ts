@@ -10,6 +10,7 @@ import { programSemanticHash } from "@agorix/proposals";
 import {
   STUDIO_PROTOCOL_VERSION,
   type ChangeRefusalReason,
+  type ExperienceFacts,
   type HostMessage,
   type UiMessage,
 } from "@agorix/studio-protocol";
@@ -24,12 +25,16 @@ export interface HostPort {
   reveal(nodeId: string): Promise<void>;
   askAgent(verb: AgentVerb, nodeId: string | undefined): Promise<void>;
   updateAgreements(agreements: AgentAgreements): void;
+  /** True when the current program reaches the goal in the deterministic runtime. */
+  reachedGoal?(): boolean;
 }
 
 export interface WorkbenchHost {
   handle(message: UiMessage): Promise<HostMessage[]>;
   snapshot(): HostMessage[];
   syncMessage(state: SyncState): HostMessage[];
+  /** Non-personal session facts behind the automatic density; both only ever go up. */
+  experience(): ExperienceFacts;
   ambientHint(signal: StudioSignal, decision: ProactiveDecision): HostMessage[];
   clearAmbientHint(): HostMessage[];
 }
@@ -55,6 +60,8 @@ function isMutatingIntent(intent: UiMessage & { readonly type: "intent" }): bool
 }
 
 export function createWorkbenchHost(port: HostPort, newBlockId: () => string): WorkbenchHost {
+  let edits = 0;
+  let reachedGoal = false;
   function snapshot(): HostMessage[] {
     const program = port.getProgram();
     if (program === undefined) {
@@ -190,6 +197,7 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
             applyWorkspaceChange(workspace, change).program,
             `Workbench: ${intent.type}`,
           );
+          edits += 1;
         } catch (error) {
           if (isKnownFailure(error) || error instanceof Error) {
             return [
@@ -209,7 +217,13 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
     }
   }
 
-  return { handle, snapshot, syncMessage, ambientHint, clearAmbientHint };
+  function experience(): ExperienceFacts {
+    // Sticky: deleting blocks later must not flip the layout back and forth.
+    if (!reachedGoal && port.reachedGoal?.() === true) reachedGoal = true;
+    return { edits, reachedGoal };
+  }
+
+  return { experience, handle, snapshot, syncMessage, ambientHint, clearAmbientHint };
 }
 
 function labelForAmbientHint(signal: StudioSignal, decision: ProactiveDecision): string {

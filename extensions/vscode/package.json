@@ -152,10 +152,11 @@
         "agorixStudio.workbench.density": {
           "type": "string",
           "enum": [
+            "auto",
             "comfortable",
             "compact"
           ],
-          "default": "comfortable",
+          "default": "auto",
           "markdownDescription": "%config.workbench.density%"
         }
       }

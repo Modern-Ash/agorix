@@ -34,6 +34,8 @@ export const COPY = {
     addedAnnouncement: (label: string) => `Added ${label}`,
     alreadyFirst: "Already the first block here",
     alreadyLast: "Already the last block here",
+    densityCompactNote:
+      "The layout is now more compact. Nothing is hidden. You can change this in the Studio settings.",
     up: "Up",
     down: "Down",
     delete: "Delete",
@@ -176,6 +178,8 @@ export const COPY = {
     addedAnnouncement: (label: string) => `Se agregó ${label}`,
     alreadyFirst: "Ya es el primer bloque de este lugar",
     alreadyLast: "Ya es el último bloque de este lugar",
+    densityCompactNote:
+      "El diseño ahora es más compacto. No se oculta nada. Podés cambiarlo en la configuración de Studio.",
     up: "Subir",
     down: "Bajar",
     delete: "Eliminar",

@@ -284,3 +284,45 @@ describe("stale edits", () => {
     expect(port.reveal).toHaveBeenCalled();
   });
 });
+
+describe("experience facts for the automatic density", () => {
+  const insert = {
+    type: "insertBlock",
+    blockType: "motion_move",
+    to: { container: script, index: 0 },
+  } as const;
+
+  it("counts only edits that were committed, never refused ones", async () => {
+    const { host } = setup();
+    expect(host.experience()).toEqual({ edits: 0, reachedGoal: false });
+    await host.handle({
+      schema,
+      type: "intent",
+      intent: insert,
+      baseHash: programSemanticHash(base),
+    });
+    await host.handle({ schema, type: "intent", intent: insert, baseHash: "stale-hash" });
+    await host.handle({
+      schema,
+      type: "intent",
+      intent: {
+        type: "insertBlock",
+        blockType: "event_on_start",
+        to: { container: script, index: 0 },
+      },
+      baseHash: programSemanticHash(base),
+    });
+    expect(host.experience().edits).toBe(1);
+  });
+
+  it("latches the goal fact so it never flips back", async () => {
+    let reaches = false;
+    const port = { ...setup().port, reachedGoal: () => reaches };
+    const host = createWorkbenchHost(port, () => "block:x");
+    expect(host.experience().reachedGoal).toBe(false);
+    reaches = true;
+    expect(host.experience().reachedGoal).toBe(true);
+    reaches = false;
+    expect(host.experience().reachedGoal).toBe(true);
+  });
+});

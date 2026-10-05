@@ -7,6 +7,8 @@ import { Workbench } from "./Workbench.js";
 import { dropPointFor, toRows } from "./blockView.js";
 import { chordFromEvent, parseDragPayload } from "./drag.js";
 import { statusFor } from "./Workbench.js";
+import { densityAnnouncement } from "./density.js";
+import { copyFor } from "./i18n.js";
 import { copyFor } from "./i18n.js";
 
 const program = {
@@ -214,5 +216,28 @@ describe("studio-ui", () => {
     );
     expect(global).toContain('role="note"');
     expect(global).toContain("Companion can suggest a small next step.");
+  });
+});
+
+describe("density announcements", () => {
+  it("announces only an automatic change to compact, in both languages", () => {
+    const en = copyFor("en");
+    expect(densityAnnouncement("comfortable", { value: "compact", reason: "auto" }, en)).toBe(
+      en.densityCompactNote,
+    );
+    expect(
+      densityAnnouncement("comfortable", { value: "compact", reason: "setting" }, en),
+    ).toBeUndefined();
+    expect(
+      densityAnnouncement("compact", { value: "compact", reason: "auto" }, en),
+    ).toBeUndefined();
+    expect(
+      densityAnnouncement("compact", { value: "comfortable", reason: "auto" }, en),
+    ).toBeUndefined();
+    const es = copyFor("es");
+    expect(densityAnnouncement("comfortable", { value: "compact", reason: "auto" }, es)).toMatch(
+      /más compacto/,
+    );
+    expect(es.densityCompactNote).not.toBe(en.densityCompactNote);
   });
 });
