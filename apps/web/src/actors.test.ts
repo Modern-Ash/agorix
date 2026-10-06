@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { validateProjectActors } from "@agorix/persistence";
 import { INITIAL_STAGE } from "./editorModel";
-import { activeActor, defaultActors, patchActive, stageForActors, withBackdrop } from "./actors";
+import {
+  activeActor,
+  defaultActors,
+  patchActive,
+  stageForActors,
+  toggleSound,
+  withBackdrop,
+} from "./actors";
 
 describe("web actors", () => {
   it("defaults to a valid actor at the mission start", () => {
@@ -40,5 +47,17 @@ describe("library choices", () => {
     expect(activeActor(cleared).costume).toBeUndefined();
     expect(cleared.backdrop).toBeUndefined();
     expect(patchActive(chosen, { x: 3 }).items[0]?.costume).toBe("cat");
+  });
+});
+
+describe("sound attachment", () => {
+  it("toggles unique sounds and stays valid", () => {
+    const base = defaultActors(INITIAL_STAGE);
+    const one = toggleSound(base, "pop");
+    const two = toggleSound(one, "chime");
+    expect(two.sounds).toEqual(["pop", "chime"]);
+    expect(validateProjectActors(two)).toEqual(two);
+    const back = toggleSound(toggleSound(two, "pop"), "chime");
+    expect(back.sounds).toBeUndefined();
   });
 });

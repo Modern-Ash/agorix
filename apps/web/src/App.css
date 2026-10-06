@@ -4262,3 +4262,36 @@ button:hover:not(:disabled) {
   stroke-width: 1;
   stroke-dasharray: none;
 }
+
+/* Costumes / Sounds tabs (#301) */
+.actor-tabs {
+  display: flex;
+  gap: 4px;
+}
+.actor-tabs [role="tab"][aria-selected="true"] {
+  font-weight: 700;
+  outline: 2px solid currentColor;
+}
+.actor-assets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.asset-tile {
+  display: grid;
+  gap: 2px;
+  min-width: 4.5rem;
+  padding: 6px;
+  text-align: center;
+}
+.asset-tile[aria-pressed="true"] {
+  outline: 2px solid currentColor;
+}
+.actor-sounds li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

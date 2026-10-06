@@ -23,3 +23,15 @@ describe("asset library", () => {
     expect(findBackdrop(undefined)).toBeUndefined();
   });
 });
+
+describe("sound library", () => {
+  it("offers sounds as ids with a tone and both locales", async () => {
+    const { SOUNDS } = await import("./assetLibrary");
+    expect(SOUNDS.length).toBeGreaterThanOrEqual(3);
+    for (const sound of SOUNDS) {
+      expect(sound.id).toMatch(/^[a-z][a-z0-9-]{0,31}$/);
+      expect(sound.tone?.hz).toBeGreaterThan(0);
+      expect(sound.name.es).not.toBe("");
+    }
+  });
+});

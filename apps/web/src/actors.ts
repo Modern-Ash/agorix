@@ -1,5 +1,6 @@
 import {
   ACTOR_NAME_MAX_LENGTH,
+  ACTOR_SOUND_MAX_COUNT,
   ACTOR_SIZE_MAX,
   ACTOR_SIZE_MIN,
   ACTOR_COORDINATE_LIMIT,
@@ -78,6 +79,17 @@ export function patchActive(actors: ProjectActors, patch: ActorPatch): ProjectAc
       });
     }),
   };
+}
+
+export function toggleSound(actors: ProjectActors, id: string): ProjectActors {
+  const current = actors.sounds ?? [];
+  const sounds = current.includes(id)
+    ? current.filter((sound) => sound !== id)
+    : [...current, id].slice(0, ACTOR_SOUND_MAX_COUNT);
+  const next: { -readonly [K in keyof ProjectActors]: ProjectActors[K] } = { ...actors };
+  if (sounds.length === 0) delete next.sounds;
+  else next.sounds = sounds;
+  return next;
 }
 
 export function withBackdrop(actors: ProjectActors, id: string): ProjectActors {
