@@ -1,4 +1,5 @@
 import { validateProgram, type ProjectProgram } from "@agorix/program-model";
+import { validateProjectActors } from "./actors.js";
 import { PersistenceError, type StoredProject } from "./store.js";
 
 export const CROSS_SURFACE_CONTRACT_VERSION = "agorix/cross-surface/v1";
@@ -46,7 +47,11 @@ export interface SemanticProjectSnapshot {
 export function assertCrossSurfaceCompatibleProject(stored: StoredProject): StoredProject {
   const program = validateProgram(stored.program);
   assertNoUiSpecificProgramState(program);
-  return { ...stored, program };
+  if (stored.metadata.actors === undefined) {
+    return { ...stored, program };
+  }
+  const actors = validateProjectActors(stored.metadata.actors);
+  return { ...stored, program, metadata: { ...stored.metadata, actors } };
 }
 
 export function semanticProjectSnapshot(stored: StoredProject): SemanticProjectSnapshot {

@@ -1,4 +1,5 @@
 import { SCHEMA_VERSION, type ProjectProgram } from "@agorix/program-model";
+import { validateProjectActors } from "./actors.js";
 import {
   FORBIDDEN_CANONICAL_UI_KEYS,
   assertCrossSurfaceCompatibleProject,
@@ -15,7 +16,14 @@ const PORTABLE_PROJECT_ID = "portable-project";
 
 const ENVELOPE_KEYS = ["format", "formatVersion", "exportedAt", "project"] as const;
 const PROJECT_KEYS = ["schemaVersion", "program", "metadata"] as const;
-const METADATA_KEYS = ["createdAt", "updatedAt", "missionProgress", "hintLevel", "locale"] as const;
+const METADATA_KEYS = [
+  "createdAt",
+  "updatedAt",
+  "missionProgress",
+  "hintLevel",
+  "locale",
+  "actors",
+] as const;
 
 export const FORBIDDEN_PORTABLE_PROJECT_KEYS = [
   "accountId",
@@ -204,19 +212,16 @@ function validatePortableMetadata(input: unknown): ProjectMetadata {
     throw new PersistenceError("SCHEMA_MISMATCH", PORTABLE_PROJECT_ID, "locale must be a string");
   }
 
-  const metadata: ProjectMetadata = {
+  const locale = typeof input.locale === "string" ? { locale: input.locale } : {};
+  const actors = "actors" in input ? { actors: validateProjectActors(input.actors) } : {};
+  return {
     createdAt: input.createdAt,
     updatedAt: input.updatedAt,
     missionProgress: input.missionProgress,
     hintLevel: input.hintLevel,
+    ...locale,
+    ...actors,
   };
-  if ("locale" in input) {
-    const locale = input.locale;
-    if (typeof locale === "string") {
-      return { ...metadata, locale };
-    }
-  }
-  return metadata;
 }
 
 function assertByteLimit(source: AgorixProjectSource, maxBytes: number): void {

@@ -4191,3 +4191,139 @@ button:hover:not(:disabled) {
   border: 1px solid currentColor;
   border-radius: 6px;
 }
+
+/* Sprite inspector (#296) */
+.actor-inspector {
+  display: grid;
+  gap: 6px;
+  padding: 8px 0 0;
+  border-top: 1px solid var(--border, rgba(127, 127, 127, 0.35));
+  max-height: 150px;
+  overflow: auto;
+}
+.actor-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.actor-chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+.actor-chip[aria-pressed="true"] {
+  outline: 2px solid currentColor;
+  font-weight: 600;
+}
+.actor-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: end;
+}
+.actor-field {
+  display: grid;
+  gap: 2px;
+  font-size: 0.8rem;
+}
+.actor-field input[type="number"] {
+  width: 5.5rem;
+}
+.actor-field-name input {
+  width: 9rem;
+}
+.actor-field-visible {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Built-in backdrops (#297); the flat colour of the default world stays as is. */
+.stage-canvas rect.backdrop-space {
+  fill: #0b1530;
+}
+.stage-canvas rect.backdrop-meadow {
+  fill: #cfeeff;
+}
+.stage-canvas rect.backdrop-grid {
+  fill: #fffdf5;
+}
+.stage-canvas rect.backdrop-ground {
+  fill: #6cc070;
+}
+.stage-canvas .backdrop-star {
+  fill: #ffffff;
+}
+.stage-canvas .backdrop-gridline {
+  fill: none;
+  stroke: #b9c4d0;
+  stroke-width: 1;
+  stroke-dasharray: none;
+}
+
+/* Costumes / Sounds tabs (#301) */
+.actor-tabs {
+  display: flex;
+  gap: 4px;
+}
+.actor-tabs [role="tab"][aria-selected="true"] {
+  font-weight: 700;
+  outline: 2px solid currentColor;
+}
+.actor-assets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.asset-tile {
+  display: grid;
+  gap: 2px;
+  min-width: 4.5rem;
+  padding: 6px;
+  text-align: center;
+}
+.asset-tile[aria-pressed="true"] {
+  outline: 2px solid currentColor;
+}
+.actor-sounds li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Pico the fox (original vector character) */
+.stage-canvas .sprite.sprite-art {
+  fill: transparent;
+  stroke: none;
+}
+.stage-canvas .pico * {
+  stroke: #7a3b12;
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+.pico-body,
+.pico-head,
+.pico-tail,
+.pico-ear,
+.pico-leg {
+  fill: #ff9a3c;
+}
+.pico-chest,
+.pico-cheek,
+.pico-tail-tip {
+  fill: #fff4e0;
+}
+.pico-eye {
+  fill: #2b1b0e;
+}
+.pico-nose {
+  fill: #2b1b0e;
+}
+.pico-leg {
+  fill: #e0782a;
+}
