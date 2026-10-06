@@ -889,6 +889,7 @@ export function StageView({
   feedback,
   activeCode,
   reducedMotion,
+  controls,
   panelControls,
   panelProps,
   actors,
@@ -907,6 +908,8 @@ export function StageView({
   feedback: StageFeedback;
   activeCode?: string;
   reducedMotion: boolean;
+  /** Play / Step / Stop / Reset, right above the stage like the green flag in Scratch. */
+  controls?: ReactNode;
   panelControls?: ReactNode;
   panelProps?: PanelChromeProps;
 }) {
@@ -942,6 +945,21 @@ export function StageView({
         </span>
         {panelControls}
       </div>
+      {controls}
+      {(feedback.phase === "running" || feedback.phase === "stepping") &&
+      feedback.total > 1 &&
+      feedback.position !== undefined ? (
+        <div className="stage-progress" data-testid="stage-progress">
+          <progress
+            max={feedback.total}
+            value={feedback.position}
+            aria-label={t(locale, "stageProgressLabel")}
+          />
+          <span>
+            {t(locale, "stageProgressText", { n: feedback.position, total: feedback.total })}
+          </span>
+        </div>
+      ) : null}
       <div className="world-identity" data-testid="world-identity">
         <span className="world-badge">
           <span aria-hidden="true">{glyphs.sprite}</span> {t(locale, "stageWorldBadge")}
@@ -3179,6 +3197,45 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
 
   const closedPanelIds = PANEL_AREAS.filter((panel) => closedPanels.includes(panel));
 
+  const stageClosed = closedPanels.includes("stage");
+  const playControls = (
+    <div
+      className="play-controls"
+      role="group"
+      aria-label={t(locale, "run")}
+      data-testid="play-controls"
+    >
+      <button
+        type="button"
+        className="play-button"
+        onClick={runBlocks}
+        disabled={status === "running"}
+      >
+        <span className="play-glyph" aria-hidden="true">
+          ⚑
+        </span>
+        {t(locale, "run")}
+      </button>
+      <button type="button" onClick={stepBlocks} disabled={status === "running"}>
+        {t(locale, "step")}
+      </button>
+      <button
+        type="button"
+        className="stop-button"
+        onClick={stopRun}
+        disabled={status !== "running"}
+      >
+        <span className="stop-glyph" aria-hidden="true">
+          ■
+        </span>
+        {t(locale, "stop")}
+      </button>
+      <button type="button" onClick={resetEditor}>
+        {t(locale, "reset")}
+      </button>
+    </div>
+  );
+
   return (
     <main
       className={status === "complete" ? "editor-shell mission-complete" : "editor-shell"}
@@ -3227,9 +3284,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
             onProjectLoaded={loadAccountProject}
             onRemoveLocalProject={() => removeLocalStoredProject(persistenceRef.current)}
           />
-          <button type="button" onClick={runBlocks} disabled={status === "running"}>
-            {t(locale, "run")}
-          </button>
+          {stageClosed ? playControls : null}
           <button
             type="button"
             onClick={undoEditor}
@@ -3267,15 +3322,6 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
               }
             }}
           />
-          <button type="button" onClick={stepBlocks} disabled={status === "running"}>
-            {t(locale, "step")}
-          </button>
-          <button type="button" onClick={stopRun} disabled={status !== "running"}>
-            {t(locale, "stop")}
-          </button>
-          <button type="button" onClick={resetEditor}>
-            {t(locale, "reset")}
-          </button>
         </div>
       </header>
 
@@ -3440,6 +3486,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
             feedback={stageFeedback}
             activeCode={highlightedCode.trim()}
             reducedMotion={reducedMotion}
+            controls={playControls}
             panelControls={panelControls("stage")}
             panelProps={panelProps("stage", "stage-panel")}
             actors={actors}
