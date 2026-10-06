@@ -4296,6 +4296,38 @@ button:hover:not(:disabled) {
   gap: 8px;
 }
 
+/* Pico the fox (original vector character) */
+.stage-canvas .sprite.sprite-art {
+  fill: transparent;
+  stroke: none;
+}
+.stage-canvas .pico * {
+  stroke: #7a3b12;
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+.pico-body,
+.pico-head,
+.pico-tail,
+.pico-ear,
+.pico-leg {
+  fill: #ff9a3c;
+}
+.pico-chest,
+.pico-cheek,
+.pico-tail-tip {
+  fill: #fff4e0;
+}
+.pico-eye {
+  fill: #2b1b0e;
+}
+.pico-nose {
+  fill: #2b1b0e;
+}
+.pico-leg {
+  fill: #e0782a;
+}
+
 /* Stage-first, Scratch-like controls (#298). */
 .play-controls {
   display: flex;

@@ -7,6 +7,7 @@ import {
   type ProjectActor,
   type ProjectActors,
 } from "@agorix/persistence";
+import { DEFAULT_ACTOR_COSTUME } from "./assetLibrary";
 import { createStageSession, type StageSession } from "@agorix/stage";
 
 export const DEFAULT_ACTOR_ID = "sprite";
@@ -30,6 +31,7 @@ export function defaultActors(stage: StageSession): ProjectActors {
         direction: sprite.heading,
         size: 100,
         visible: true,
+        costume: DEFAULT_ACTOR_COSTUME,
       },
     ],
   };
