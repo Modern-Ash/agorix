@@ -123,6 +123,30 @@ function projectStatement(
     case "turn":
       write(writer, `${pad}sprite.turn(${formatNumber(statement.degrees)});\n`);
       return;
+    case "setX":
+      write(writer, `${pad}sprite.setX(${formatNumber(statement.x)});\n`);
+      return;
+    case "setY":
+      write(writer, `${pad}sprite.setY(${formatNumber(statement.y)});\n`);
+      return;
+    case "wait":
+      write(writer, `${pad}wait(${formatNumber(statement.seconds)});\n`);
+      return;
+    case "show":
+      write(writer, `${pad}sprite.show();\n`);
+      return;
+    case "hide":
+      write(writer, `${pad}sprite.hide();\n`);
+      return;
+    case "setSize":
+      write(writer, `${pad}sprite.setSize(${formatNumber(statement.percent)});\n`);
+      return;
+    case "say":
+      write(
+        writer,
+        `${pad}sprite.say(${JSON.stringify(statement.message)}, ${formatNumber(statement.seconds)});\n`,
+      );
+      return;
     case "repeat": {
       write(writer, `${pad}repeat(${formatNumber(statement.count)}, () => {\n`);
       projectStatements(statement.body, nodeId, "body", indent + 1, writer);

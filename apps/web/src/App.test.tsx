@@ -87,6 +87,7 @@ describe("main editor shell", () => {
         locale="en"
         onSelect={() => undefined}
         onCommitValue={() => undefined}
+        onCommitText={() => undefined}
         onMove={() => undefined}
         onNest={() => undefined}
         onOutdent={() => undefined}
@@ -123,6 +124,7 @@ describe("input parity semantics (issue #201)", () => {
         locale={locale}
         onSelect={() => undefined}
         onCommitValue={() => undefined}
+        onCommitText={() => undefined}
         onMove={() => undefined}
         onNest={() => undefined}
         onOutdent={() => undefined}

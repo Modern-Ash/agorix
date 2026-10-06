@@ -6,7 +6,19 @@ import type {
   Trigger,
 } from "@agorix/program-model";
 import { eventForTrigger, validateProgram } from "@agorix/program-model";
-import { cloneWorldState, moveWorld, touchingGoal, turnWorld, type WorldState } from "./world.js";
+import {
+  cloneWorldState,
+  hideWorld,
+  moveWorld,
+  sayWorld,
+  setWorldSize,
+  showWorld,
+  setWorldX,
+  setWorldY,
+  touchingGoal,
+  turnWorld,
+  type WorldState,
+} from "./world.js";
 import { RuntimeExecutionError } from "./errors.js";
 import { assertAllowedRuntimeOperation, assertProgramOperationsAllowed } from "./operations.js";
 
@@ -163,6 +175,26 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
       break;
     case "turn":
       state.world = turnWorld(state.world, statement.degrees);
+      break;
+    case "setX":
+      state.world = setWorldX(state.world, statement.x);
+      break;
+    case "setY":
+      state.world = setWorldY(state.world, statement.y);
+      break;
+    case "wait":
+      break;
+    case "show":
+      state.world = showWorld(state.world);
+      break;
+    case "hide":
+      state.world = hideWorld(state.world);
+      break;
+    case "setSize":
+      state.world = setWorldSize(state.world, statement.percent);
+      break;
+    case "say":
+      state.world = sayWorld(state.world, statement.message);
       break;
     case "repeat": {
       if (!Number.isInteger(statement.count)) {

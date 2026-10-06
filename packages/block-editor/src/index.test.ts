@@ -58,6 +58,7 @@ describe("block-editor", () => {
     expect(POC_TOOLBOX.map((section) => section.name)).toEqual([
       "Start",
       "Move",
+      "Looks",
       "Repeat & Decide",
       "Check",
     ]);
@@ -65,11 +66,18 @@ describe("block-editor", () => {
       "When green flag clicked",
       "Move [N] steps",
       "Turn [N] degrees",
+      "Set x to [N]",
+      "Set y to [N]",
+      "Show",
+      "Hide",
+      "Set size to [N]%",
+      "Say [text] for [N] seconds",
+      "Wait [N] seconds",
       "Repeat [N] times",
       "If ___, then",
       "Touching the goal?",
     ]);
-    expect(POC_TOOLBOX.flatMap((section) => section.blocks)).toHaveLength(6);
+    expect(POC_TOOLBOX.flatMap((section) => section.blocks)).toHaveLength(13);
   });
 
   it("creates safe defaults for every required POC block", () => {

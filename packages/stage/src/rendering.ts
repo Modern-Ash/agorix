@@ -117,6 +117,13 @@ export function framesFromRuntimeObservations(
           x: observation.world.sprite.x,
           y: observation.world.sprite.y,
           heading: observation.world.sprite.heading,
+          ...(observation.world.sprite.hidden === true ? { hidden: true as const } : {}),
+          ...(observation.world.sprite.sizePercent === undefined
+            ? {}
+            : { sizePercent: observation.world.sprite.sizePercent }),
+          ...(observation.world.sprite.say === undefined
+            ? {}
+            : { say: observation.world.sprite.say }),
         },
         goal: observation.world.goal,
       }),

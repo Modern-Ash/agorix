@@ -44,6 +44,43 @@ export interface TurnStatement {
   readonly degrees: number;
 }
 
+export interface SetXStatement {
+  readonly type: "setX";
+  readonly x: number;
+}
+
+export interface SetYStatement {
+  readonly type: "setY";
+  readonly y: number;
+}
+
+/** A deterministic pause: it takes one step and never changes the world. */
+export interface WaitStatement {
+  readonly type: "wait";
+  readonly seconds: number;
+}
+
+export interface ShowStatement {
+  readonly type: "show";
+}
+
+export interface HideStatement {
+  readonly type: "hide";
+}
+
+export interface SetSizeStatement {
+  readonly type: "setSize";
+  /** Percent of the default sprite size. */
+  readonly percent: number;
+}
+
+/** Shows a speech bubble. Deterministic like wait: `seconds` is a step marker, not a timer. */
+export interface SayStatement {
+  readonly type: "say";
+  readonly message: string;
+  readonly seconds: number;
+}
+
 export interface RepeatStatement {
   readonly type: "repeat";
   readonly count: number;
@@ -56,7 +93,18 @@ export interface IfStatement {
   readonly then: readonly Statement[];
 }
 
-export type Statement = MoveStatement | TurnStatement | RepeatStatement | IfStatement;
+export type Statement =
+  | MoveStatement
+  | TurnStatement
+  | SetXStatement
+  | SetYStatement
+  | WaitStatement
+  | ShowStatement
+  | HideStatement
+  | SetSizeStatement
+  | SayStatement
+  | RepeatStatement
+  | IfStatement;
 
 // --- Triggers ---------------------------------------------------------------
 

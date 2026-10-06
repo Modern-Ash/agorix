@@ -12,6 +12,13 @@ export type BlockType =
   | "event_green_flag"
   | "motion_move"
   | "motion_turn"
+  | "motion_set_x"
+  | "motion_set_y"
+  | "control_wait"
+  | "looks_show"
+  | "looks_hide"
+  | "looks_set_size"
+  | "looks_say"
   | "control_repeat"
   | "control_if"
   | "sensing_touching_goal"
@@ -214,6 +221,24 @@ function statementFromBlock(
       return { type: "move", steps: numberField(block, "steps", path) };
     case "motion_turn":
       return { type: "turn", degrees: numberField(block, "degrees", path) };
+    case "motion_set_x":
+      return { type: "setX", x: numberField(block, "x", path) };
+    case "motion_set_y":
+      return { type: "setY", y: numberField(block, "y", path) };
+    case "looks_show":
+      return { type: "show" };
+    case "looks_hide":
+      return { type: "hide" };
+    case "looks_set_size":
+      return { type: "setSize", percent: numberField(block, "percent", path) };
+    case "looks_say":
+      return {
+        type: "say",
+        message: String(block.fields?.["message"] ?? ""),
+        seconds: numberField(block, "seconds", path),
+      };
+    case "control_wait":
+      return { type: "wait", seconds: numberField(block, "seconds", path) };
     case "control_repeat":
       return {
         type: "repeat",
@@ -299,6 +324,24 @@ function statementToBlock(
       return { id, type: "motion_move", fields: { steps: statement.steps } };
     case "turn":
       return { id, type: "motion_turn", fields: { degrees: statement.degrees } };
+    case "setX":
+      return { id, type: "motion_set_x", fields: { x: statement.x } };
+    case "setY":
+      return { id, type: "motion_set_y", fields: { y: statement.y } };
+    case "show":
+      return { id, type: "looks_show" };
+    case "hide":
+      return { id, type: "looks_hide" };
+    case "setSize":
+      return { id, type: "looks_set_size", fields: { percent: statement.percent } };
+    case "say":
+      return {
+        id,
+        type: "looks_say",
+        fields: { message: statement.message, seconds: statement.seconds },
+      };
+    case "wait":
+      return { id, type: "control_wait", fields: { seconds: statement.seconds } };
     case "repeat":
       return {
         id,
