@@ -4192,6 +4192,54 @@ button:hover:not(:disabled) {
   border-radius: 6px;
 }
 
+/* Sprite inspector (#296) */
+.actor-inspector {
+  display: grid;
+  gap: 6px;
+  padding: 8px 0 0;
+  border-top: 1px solid var(--border, rgba(127, 127, 127, 0.35));
+  max-height: 150px;
+  overflow: auto;
+}
+.actor-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.actor-chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+.actor-chip[aria-pressed="true"] {
+  outline: 2px solid currentColor;
+  font-weight: 600;
+}
+.actor-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: end;
+}
+.actor-field {
+  display: grid;
+  gap: 2px;
+  font-size: 0.8rem;
+}
+.actor-field input[type="number"] {
+  width: 5.5rem;
+}
+.actor-field-name input {
+  width: 9rem;
+}
+.actor-field-visible {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 /* Stage-first, Scratch-like controls (#298). */
 .play-controls {
   display: flex;

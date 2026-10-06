@@ -12,6 +12,16 @@ export {
   ProjectStore,
 } from "./store.js";
 export {
+  ACTOR_COORDINATE_LIMIT,
+  ACTOR_MAX_COUNT,
+  ACTOR_NAME_MAX_LENGTH,
+  ACTOR_SIZE_MAX,
+  ACTOR_SIZE_MIN,
+  validateProjectActors,
+  type ProjectActor,
+  type ProjectActors,
+} from "./actors.js";
+export {
   CROSS_SURFACE_CONTRACT_VERSION,
   FORBIDDEN_CANONICAL_IDENTITY_KEYS,
   FORBIDDEN_CANONICAL_PROGRAM_KEYS,
