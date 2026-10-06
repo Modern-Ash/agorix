@@ -5,6 +5,10 @@ export interface Position {
 
 export interface SpriteState extends Position {
   readonly heading: number;
+  /** Looks are stored only when they differ from the defaults, so plain worlds stay unchanged. */
+  readonly hidden?: true;
+  readonly sizePercent?: number;
+  readonly say?: string;
 }
 
 export interface WorldState {
@@ -40,6 +44,13 @@ export function createWorldState(input: WorldStateInput = {}): WorldState {
       x: normalizeCoordinate(input.sprite?.x ?? 0),
       y: normalizeCoordinate(input.sprite?.y ?? 0),
       heading: normalizeHeading(input.sprite?.heading ?? 0),
+      ...(input.sprite?.hidden === true ? { hidden: true as const } : {}),
+      ...(input.sprite?.sizePercent !== undefined && input.sprite.sizePercent !== 100
+        ? { sizePercent: normalizeCoordinate(input.sprite.sizePercent) }
+        : {}),
+      ...(input.sprite?.say !== undefined && input.sprite.say !== ""
+        ? { say: input.sprite.say }
+        : {}),
     },
     goal: {
       x: normalizeCoordinate(input.goal?.x ?? 0),
@@ -62,9 +73,19 @@ export function moveWorld(world: WorldState, steps: number): WorldState {
       x: world.sprite.x + Math.cos(radians) * steps,
       y: world.sprite.y + Math.sin(radians) * steps,
       heading: world.sprite.heading,
+      ...looksOf(world),
     },
     goal: world.goal,
   });
+}
+
+function looksOf(world: WorldState): Partial<SpriteState> {
+  const { hidden, sizePercent, say } = world.sprite;
+  return {
+    ...(hidden === undefined ? {} : { hidden }),
+    ...(sizePercent === undefined ? {} : { sizePercent }),
+    ...(say === undefined ? {} : { say }),
+  };
 }
 
 export function turnWorld(world: WorldState, degrees: number): WorldState {
@@ -76,6 +97,7 @@ export function turnWorld(world: WorldState, degrees: number): WorldState {
       x: world.sprite.x,
       y: world.sprite.y,
       heading: world.sprite.heading + degrees,
+      ...looksOf(world),
     },
     goal: world.goal,
   });
@@ -87,6 +109,27 @@ export function setWorldX(world: WorldState, x: number): WorldState {
 
 export function setWorldY(world: WorldState, y: number): WorldState {
   return createWorldState({ ...world, sprite: { ...world.sprite, y } });
+}
+
+export function showWorld(world: WorldState): WorldState {
+  const sprite: { -readonly [K in keyof SpriteState]?: SpriteState[K] } = { ...world.sprite };
+  delete sprite.hidden;
+  return createWorldState({ ...world, sprite });
+}
+
+export function hideWorld(world: WorldState): WorldState {
+  return createWorldState({ ...world, sprite: { ...world.sprite, hidden: true } });
+}
+
+export function setWorldSize(world: WorldState, percent: number): WorldState {
+  return createWorldState({ ...world, sprite: { ...world.sprite, sizePercent: percent } });
+}
+
+export function sayWorld(world: WorldState, message: string): WorldState {
+  const sprite: { -readonly [K in keyof SpriteState]?: SpriteState[K] } = { ...world.sprite };
+  delete sprite.say;
+  if (message !== "") sprite.say = message;
+  return createWorldState({ ...world, sprite });
 }
 
 export function touchingGoal(world: WorldState): boolean {

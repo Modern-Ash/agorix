@@ -6,6 +6,10 @@ export interface StagePosition {
 export interface StageSprite extends StagePosition {
   readonly heading: number;
   readonly radius: number;
+  readonly hidden?: true;
+  /** Runtime `set size` as a percent; undefined means 100. */
+  readonly sizePercent?: number;
+  readonly say?: string;
 }
 
 export interface StageGoal extends StagePosition {
@@ -77,6 +81,11 @@ export function createStageState(input: StageStateInput = {}): StageState {
       y: normalizeStageCoordinate(input.sprite?.y ?? 0),
       heading: normalizeStageHeading(input.sprite?.heading ?? 0),
       radius: normalizeRadius(input.sprite?.radius ?? 10, "sprite.radius"),
+      ...(input.sprite?.hidden === true ? { hidden: true as const } : {}),
+      ...(input.sprite?.sizePercent === undefined
+        ? {}
+        : { sizePercent: normalizeStageCoordinate(input.sprite.sizePercent) }),
+      ...(input.sprite?.say === undefined ? {} : { say: input.sprite.say }),
     },
     goal: {
       x: normalizeStageCoordinate(input.goal?.x ?? 100),

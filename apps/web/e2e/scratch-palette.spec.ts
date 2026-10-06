@@ -41,3 +41,19 @@ test("a new block is click-added, projected to code and runs on the stage", asyn
   await page.getByRole("button", { name: "Run", exact: true }).first().click();
   await expect(page.getByTestId("stage-sprite")).toHaveAttribute("data-x", "0");
 });
+
+test("Looks blocks change the sprite on the stage", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const looks = page.locator(".scratch-category", {
+    has: page.getByRole("heading", { name: "Looks", exact: true }),
+  });
+  await looks.getByRole("button", { name: "Set size", exact: true }).click();
+  await looks.getByRole("button", { name: "Say", exact: true }).click();
+  await expect(page.locator(".code-surface")).toContainText("sprite.setSize(100);");
+  await expect(page.locator(".code-surface")).toContainText('sprite.say("Hello!", 2);');
+  await page.getByRole("button", { name: "Run", exact: true }).first().click();
+  await expect(page.getByTestId("stage-say")).toHaveText("Hello!");
+  await looks.getByRole("button", { name: "Hide", exact: true }).click();
+  await page.getByRole("button", { name: "Run", exact: true }).first().click();
+  await expect(page.getByTestId("stage-sprite")).toHaveAttribute("data-visible", "false");
+});

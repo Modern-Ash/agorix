@@ -12,6 +12,9 @@ import {
   TURN_DEGREES_MAX,
   COORDINATE_MAX,
   COORDINATE_MIN,
+  SAY_MESSAGE_MAX_LENGTH,
+  SIZE_PERCENT_MAX,
+  SIZE_PERCENT_MIN,
   WAIT_SECONDS_MAX,
   WAIT_SECONDS_MIN,
   TURN_DEGREES_MIN,
@@ -194,6 +197,37 @@ function validateStatement(
       }
       checkBounds(input.seconds, WAIT_SECONDS_MIN, WAIT_SECONDS_MAX, `${path}.seconds`);
       return { type: "wait", seconds: input.seconds };
+    }
+    case "show":
+      return { type: "show" };
+    case "hide":
+      return { type: "hide" };
+    case "setSize": {
+      if (typeof input.percent !== "number") {
+        fail("MISSING_FIELD", `${path}.percent`, "expected a number", input.percent);
+      }
+      checkBounds(input.percent, SIZE_PERCENT_MIN, SIZE_PERCENT_MAX, `${path}.percent`);
+      return { type: "setSize", percent: input.percent };
+    }
+    case "say": {
+      const message = input.message;
+      if (
+        typeof message !== "string" ||
+        message.length > SAY_MESSAGE_MAX_LENGTH ||
+        [...message].some((char) => char.charCodeAt(0) <= 0x1f || char.charCodeAt(0) === 0x7f)
+      ) {
+        fail(
+          "INVALID_FIELD_TYPE",
+          `${path}.message`,
+          `expected up to ${SAY_MESSAGE_MAX_LENGTH} printable characters`,
+          message,
+        );
+      }
+      if (typeof input.seconds !== "number") {
+        fail("MISSING_FIELD", `${path}.seconds`, "expected a number", input.seconds);
+      }
+      checkBounds(input.seconds, WAIT_SECONDS_MIN, WAIT_SECONDS_MAX, `${path}.seconds`);
+      return { type: "say", message, seconds: input.seconds };
     }
     case "repeat": {
       if (typeof input.count !== "number") {

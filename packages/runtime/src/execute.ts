@@ -8,7 +8,11 @@ import type {
 import { eventForTrigger, validateProgram } from "@agorix/program-model";
 import {
   cloneWorldState,
+  hideWorld,
   moveWorld,
+  sayWorld,
+  setWorldSize,
+  showWorld,
   setWorldX,
   setWorldY,
   touchingGoal,
@@ -179,6 +183,18 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
       state.world = setWorldY(state.world, statement.y);
       break;
     case "wait":
+      break;
+    case "show":
+      state.world = showWorld(state.world);
+      break;
+    case "hide":
+      state.world = hideWorld(state.world);
+      break;
+    case "setSize":
+      state.world = setWorldSize(state.world, statement.percent);
+      break;
+    case "say":
+      state.world = sayWorld(state.world, statement.message);
       break;
     case "repeat": {
       if (!Number.isInteger(statement.count)) {

@@ -466,11 +466,10 @@ test("explicit reorder controls update generated code without drag", async ({ pa
 test("palette shows only implemented actions, in familiar categories", async ({ page }) => {
   await page.goto("/");
 
-  for (const name of ["Motion", "Control"]) {
+  for (const name of ["Motion", "Looks", "Control"]) {
     await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
   }
   for (const name of [
-    "Looks",
     "Sound",
     "Events",
     "Sensing",
@@ -480,7 +479,7 @@ test("palette shows only implemented actions, in familiar categories", async ({ 
   ]) {
     await expect(page.getByRole("heading", { name, exact: true })).toHaveCount(0);
   }
-  await expect(page.getByRole("button", { name: "Say", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Play until done" })).toHaveCount(0);
   await expect(page.locator(".action-palette button:disabled")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Move", exact: true })).toBeEnabled();
 });
@@ -555,7 +554,7 @@ test("cancelled and invalid drops leave canonical state unchanged", async ({ pag
     const target = document.querySelector(".block-stack");
     if (!(target instanceof HTMLElement)) throw new Error("Missing target");
     const dataTransfer = new DataTransfer();
-    dataTransfer.setData("application/x-agorix-block-type", "looks_say");
+    dataTransfer.setData("application/x-agorix-block-type", "sound_play");
     target.dispatchEvent(new DragEvent("dragover", { bubbles: true, dataTransfer }));
     target.dispatchEvent(new DragEvent("drop", { bubbles: true, dataTransfer }));
   });

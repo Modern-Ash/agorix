@@ -1,6 +1,6 @@
 import type { BlockNode, BlockType, BlockWorkspaceSnapshot } from "./adapter.js";
 
-export type ToolboxSectionName = "Start" | "Move" | "Repeat & Decide" | "Check";
+export type ToolboxSectionName = "Start" | "Move" | "Looks" | "Repeat & Decide" | "Check";
 export type BlockPlacement = "trigger" | "statement" | "expression";
 
 export interface ToolboxBlockDefinition {
@@ -22,6 +22,7 @@ export interface ToolboxSection {
 export const TOOLBOX_SECTION_ORDER: readonly ToolboxSectionName[] = [
   "Start",
   "Move",
+  "Looks",
   "Repeat & Decide",
   "Check",
 ];
@@ -81,6 +82,42 @@ const definitions: readonly ToolboxBlockDefinition[] = [
     placement: "statement",
     accessibleName: "set y position",
     createDefaultBlock: (id) => ({ id, type: "motion_set_y", fields: { y: 0 } }),
+  },
+  {
+    type: "looks_show",
+    label: "Show",
+    section: "Looks",
+    placement: "statement",
+    accessibleName: "show sprite",
+    createDefaultBlock: (id) => ({ id, type: "looks_show" }),
+  },
+  {
+    type: "looks_hide",
+    label: "Hide",
+    section: "Looks",
+    placement: "statement",
+    accessibleName: "hide sprite",
+    createDefaultBlock: (id) => ({ id, type: "looks_hide" }),
+  },
+  {
+    type: "looks_set_size",
+    label: "Set size to [N]%",
+    section: "Looks",
+    placement: "statement",
+    accessibleName: "set size percent",
+    createDefaultBlock: (id) => ({ id, type: "looks_set_size", fields: { percent: 100 } }),
+  },
+  {
+    type: "looks_say",
+    label: "Say [text] for [N] seconds",
+    section: "Looks",
+    placement: "statement",
+    accessibleName: "say text",
+    createDefaultBlock: (id) => ({
+      id,
+      type: "looks_say",
+      fields: { message: "Hello!", seconds: 2 },
+    }),
   },
   {
     type: "control_wait",

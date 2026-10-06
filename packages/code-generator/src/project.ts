@@ -132,6 +132,21 @@ function projectStatement(
     case "wait":
       write(writer, `${pad}wait(${formatNumber(statement.seconds)});\n`);
       return;
+    case "show":
+      write(writer, `${pad}sprite.show();\n`);
+      return;
+    case "hide":
+      write(writer, `${pad}sprite.hide();\n`);
+      return;
+    case "setSize":
+      write(writer, `${pad}sprite.setSize(${formatNumber(statement.percent)});\n`);
+      return;
+    case "say":
+      write(
+        writer,
+        `${pad}sprite.say(${JSON.stringify(statement.message)}, ${formatNumber(statement.seconds)});\n`,
+      );
+      return;
     case "repeat": {
       write(writer, `${pad}repeat(${formatNumber(statement.count)}, () => {\n`);
       projectStatements(statement.body, nodeId, "body", indent + 1, writer);

@@ -20,6 +20,10 @@ export const RUNTIME_STATEMENT_OPERATIONS = Object.freeze([
   "setX",
   "setY",
   "wait",
+  "show",
+  "hide",
+  "setSize",
+  "say",
   "repeat",
   "if",
 ] as const);

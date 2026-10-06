@@ -172,6 +172,11 @@ const messages = {
     setX: "Set x",
     setY: "Set y",
     wait: "Wait",
+    looksShow: "Show",
+    looksHide: "Hide",
+    looksSetSize: "Set size",
+    looksSay: "Say",
+    sayMessage: "message",
     emptyRunMessage:
       "Nothing happens yet — add a block under 'When green flag clicked' to get started.",
     evidenceGoalReached: "Goal reached",
@@ -447,6 +452,11 @@ const messages = {
     setX: "Fijar x",
     setY: "Fijar y",
     wait: "Esperar",
+    looksShow: "Mostrar",
+    looksHide: "Ocultar",
+    looksSetSize: "Fijar tamaño",
+    looksSay: "Decir",
+    sayMessage: "mensaje",
     emptyRunMessage:
       "Todavía no pasa nada: agrega un bloque debajo de 'Cuando se hace clic en la bandera verde' para empezar.",
     evidenceGoalReached: "Meta alcanzada",

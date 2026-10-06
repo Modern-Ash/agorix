@@ -4191,3 +4191,20 @@ button:hover:not(:disabled) {
   border: 1px solid currentColor;
   border-radius: 6px;
 }
+
+/* Looks blocks (#299) */
+.block-looks {
+  --block-fill: #9966ff;
+  --block-fill-strong: #774dcb;
+  --block-shadow: rgba(87, 56, 150, 0.28);
+}
+.category-looks .tool-button:not(.tool-disabled) {
+  background: linear-gradient(180deg, #9966ff, #774dcb);
+  color: #ffffff;
+}
+.stage-canvas .sprite-say {
+  fill: var(--agx-text-primary);
+  paint-order: stroke;
+  stroke: #ffffff;
+  stroke-width: 3px;
+}

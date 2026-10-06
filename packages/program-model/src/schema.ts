@@ -60,6 +60,27 @@ export interface WaitStatement {
   readonly seconds: number;
 }
 
+export interface ShowStatement {
+  readonly type: "show";
+}
+
+export interface HideStatement {
+  readonly type: "hide";
+}
+
+export interface SetSizeStatement {
+  readonly type: "setSize";
+  /** Percent of the default sprite size. */
+  readonly percent: number;
+}
+
+/** Shows a speech bubble. Deterministic like wait: `seconds` is a step marker, not a timer. */
+export interface SayStatement {
+  readonly type: "say";
+  readonly message: string;
+  readonly seconds: number;
+}
+
 export interface RepeatStatement {
   readonly type: "repeat";
   readonly count: number;
@@ -78,6 +99,10 @@ export type Statement =
   | SetXStatement
   | SetYStatement
   | WaitStatement
+  | ShowStatement
+  | HideStatement
+  | SetSizeStatement
+  | SayStatement
   | RepeatStatement
   | IfStatement;
 

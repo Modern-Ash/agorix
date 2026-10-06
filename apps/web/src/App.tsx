@@ -15,7 +15,7 @@ import {
   serializeAgorixProject,
   type ProjectMetadata,
 } from "@agorix/persistence";
-import type { ProjectProgram } from "@agorix/program-model";
+import { SAY_MESSAGE_MAX_LENGTH, type ProjectProgram } from "@agorix/program-model";
 import {
   createEditorHistory,
   recordCanonicalTransaction,
@@ -227,6 +227,10 @@ const addableBlocks = new Set<AddableBlockType>([
   "motion_set_x",
   "motion_set_y",
   "control_wait",
+  "looks_show",
+  "looks_hide",
+  "looks_set_size",
+  "looks_say",
   "control_repeat",
   "control_if",
 ]);
@@ -294,7 +298,10 @@ function numericFieldFor(block: BlockNode): NumericField | undefined {
     case "motion_set_y":
       return "y";
     case "control_wait":
+    case "looks_say":
       return "seconds";
+    case "looks_set_size":
+      return "percent";
     case "control_repeat":
       return "count";
     default:
@@ -314,6 +321,14 @@ function displayNameForType(type: string, locale: Locale): string {
       return t(locale, "setY");
     case "control_wait":
       return t(locale, "wait");
+    case "looks_show":
+      return t(locale, "looksShow");
+    case "looks_hide":
+      return t(locale, "looksHide");
+    case "looks_set_size":
+      return t(locale, "looksSetSize");
+    case "looks_say":
+      return t(locale, "looksSay");
     case "control_repeat":
       return t(locale, "repeat");
     case "control_if":
@@ -341,6 +356,8 @@ function fieldLabelFor(field: NumericField, locale: Locale): string {
       return "y";
     case "seconds":
       return t(locale, "fieldSeconds");
+    case "percent":
+      return "%";
   }
 }
 
@@ -433,7 +450,16 @@ function scratchPaletteFor(locale: Locale): readonly PaletteCategory[] {
           label: es ? "Decir" : "Say",
           detail: es ? "Burbuja de texto" : "Speech bubble",
           glyph: '"',
-          enabled: false,
+          type: "looks_say",
+          enabled: true,
+        },
+        {
+          id: "looks_set_size",
+          label: es ? "Fijar tamaño" : "Set size",
+          detail: es ? "Porcentaje" : "Percent",
+          glyph: "%",
+          type: "looks_set_size",
+          enabled: true,
         },
         {
           id: "looks_think",
@@ -447,14 +473,16 @@ function scratchPaletteFor(locale: Locale): readonly PaletteCategory[] {
           label: es ? "Mostrar" : "Show",
           detail: es ? "Aparece" : "Become visible",
           glyph: "👁",
-          enabled: false,
+          type: "looks_show",
+          enabled: true,
         },
         {
           id: "looks_hide",
           label: es ? "Ocultar" : "Hide",
           detail: es ? "Desaparece" : "Become hidden",
           glyph: "—",
-          enabled: false,
+          type: "looks_hide",
+          enabled: true,
         },
         {
           id: "looks_costume",
@@ -923,7 +951,11 @@ export function StageView({
   panelProps?: PanelChromeProps;
 }) {
   const state = frame?.state ?? fallback;
-  const sprite = state.sprite;
+  const stateSprite = state.sprite;
+  const sprite = {
+    ...stateSprite,
+    radius: stateSprite.radius * ((stateSprite.sizePercent ?? 100) / 100),
+  };
   const goal = state.goal;
   const viewport = state.viewport;
   const copy = worldCopy(world, locale);
@@ -1004,6 +1036,9 @@ export function StageView({
           data-x={sprite.x}
           data-y={sprite.y}
           data-heading={sprite.heading}
+          data-visible={sprite.hidden === true ? "false" : "true"}
+          data-size={sprite.sizePercent ?? 100}
+          display={sprite.hidden === true ? "none" : undefined}
           style={{
             transform: `translate(${sprite.x}px, ${sprite.y}px)`,
             transition: motion.glideMs === 0 ? "none" : `transform ${motion.glideMs}ms ease-out`,
@@ -1024,6 +1059,17 @@ export function StageView({
           >
             {glyphs.sprite}
           </text>
+          {sprite.say === undefined ? null : (
+            <text
+              className="sprite-say"
+              data-testid="stage-say"
+              y={-sprite.radius - 8}
+              textAnchor="middle"
+              fontSize="11"
+            >
+              {sprite.say}
+            </text>
+          )}
         </g>
       </svg>
       <div
@@ -1151,6 +1197,7 @@ function StepCard({
 function blockToneFor(type: BlockNode["type"]): string {
   if (type.startsWith("motion_")) return "motion";
   if (type.startsWith("control_")) return "control";
+  if (type.startsWith("looks_")) return "looks";
   return "logic";
 }
 
@@ -1187,6 +1234,7 @@ export function ProgramBlockCard({
   children,
   onSelect,
   onCommitValue,
+  onCommitText,
   onMove,
   onNest,
   onOutdent,
@@ -1210,6 +1258,7 @@ export function ProgramBlockCard({
   children?: ReactNode;
   onSelect: () => void;
   onCommitValue: (value: number) => void;
+  onCommitText: (value: string) => void;
   onMove: (direction: -1 | 1) => void;
   onNest: () => void;
   onOutdent: () => void;
@@ -1220,6 +1269,9 @@ export function ProgramBlockCard({
   onDropAfter: (event: ReactDragEvent<HTMLElement>) => void;
   onDropInside: (event: ReactDragEvent<HTMLElement>) => void;
 }) {
+  const currentText = typeof block.fields?.["message"] === "string" ? block.fields["message"] : "";
+  const [draftText, setDraftText] = useState(currentText);
+  useEffect(() => setDraftText(currentText), [currentText]);
   const field = numericFieldFor(block);
   const currentValue = field === undefined ? undefined : blockValue(block, field);
   const [draftValue, setDraftValue] = useState(() =>
@@ -1352,8 +1404,25 @@ export function ProgramBlockCard({
         <span id={positionId} className="visually-hidden">
           {positionText}
         </span>
+        {block.type === "looks_say" ? (
+          <label className="value-editor block-inline-value">
+            <input
+              type="text"
+              maxLength={SAY_MESSAGE_MAX_LENGTH}
+              value={draftText}
+              aria-label={`${displayName} ${t(locale, "sayMessage")}`}
+              onChange={(event) => setDraftText(event.currentTarget.value)}
+              onBlur={() => {
+                if (draftText !== currentText) onCommitText(draftText);
+              }}
+              onKeyDown={handleValueKeyDown}
+            />
+          </label>
+        ) : null}
         {field === undefined ? (
-          <span className="block-slot block-slot-predicate">{t(locale, "touchingGoal")}</span>
+          block.type === "control_if" ? (
+            <span className="block-slot block-slot-predicate">{t(locale, "touchingGoal")}</span>
+          ) : null
         ) : (
           <label className="value-editor block-inline-value">
             <input
@@ -2206,6 +2275,21 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     }
   }
 
+  function editBlockTextAt(path: StatementPath, value: string) {
+    const text = [...value]
+      .filter((char) => char.charCodeAt(0) > 0x1f && char.charCodeAt(0) !== 0x7f)
+      .join("")
+      .slice(0, SAY_MESSAGE_MAX_LENGTH);
+    if (
+      commitProjection(
+        "edit text block field",
+        editNumericBlockFieldAt(model.workspace, path, "message", text),
+      )
+    ) {
+      setMessage(t(locale, "programUpdatedMessage"));
+    }
+  }
+
   function moveBlockAt(path: StatementPath, direction: -1 | 1) {
     const containerPath = parentContainerPath(path);
     const siblings = statementListAtPath(model.workspace, containerPath);
@@ -2807,6 +2891,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
           locale={locale}
           onSelect={() => setHighlightedNodeId(nodeId)}
           onCommitValue={(value) => editBlockAt(path, block, value)}
+          onCommitText={(value) => editBlockTextAt(path, value)}
           onMove={(direction) => moveBlockAt(path, direction)}
           onNest={() => nestBlockAt(path)}
           onOutdent={() => outdentBlockAt(path)}

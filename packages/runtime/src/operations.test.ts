@@ -55,11 +55,15 @@ describe("runtime operation allowlist", () => {
 
   it("names every canonical statement, expression and trigger exactly once", () => {
     expect([...RUNTIME_STATEMENT_OPERATIONS].sort()).toEqual([
+      "hide",
       "if",
       "move",
       "repeat",
+      "say",
+      "setSize",
       "setX",
       "setY",
+      "show",
       "turn",
       "wait",
     ]);
