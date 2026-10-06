@@ -469,14 +469,7 @@ test("palette shows only implemented actions, in familiar categories", async ({ 
   for (const name of ["Motion", "Looks", "Control"]) {
     await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
   }
-  for (const name of [
-    "Sound",
-    "Events",
-    "Sensing",
-    "Operators",
-    "Variables",
-    "My Blocks",
-  ]) {
+  for (const name of ["Sound", "Events", "Sensing", "Operators", "Variables", "My Blocks"]) {
     await expect(page.getByRole("heading", { name, exact: true })).toHaveCount(0);
   }
   await expect(page.getByRole("button", { name: "Play until done" })).toHaveCount(0);
