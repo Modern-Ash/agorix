@@ -25,6 +25,28 @@ import {
   saveEditorProject,
 } from "./projectStorage.js";
 
+describe("stage-first controls (#298)", () => {
+  it("puts Run, Step, Stop and Reset in the stage panel and not in the header", () => {
+    const html = renderToStaticMarkup(<App />);
+    const header = html.slice(html.indexOf('<header class="topbar">'), html.indexOf("</header>"));
+    const stage = html.slice(html.indexOf('class="stage-panel'));
+    for (const label of ["Run", "Step", "Stop", "Reset"]) {
+      expect(header).not.toContain(`>${label}</button>`);
+      expect(stage).toContain(label);
+    }
+    expect(html).toContain('data-testid="play-controls"');
+    expect(stage.indexOf('data-testid="play-controls"')).toBeLessThan(
+      stage.indexOf('data-testid="world-identity"'),
+    );
+  });
+
+  it("starts with Stop disabled and no progress bar until something runs", () => {
+    const html = renderToStaticMarkup(<App />);
+    expect(html).toMatch(/<button[^>]*class="stop-button"[^>]*disabled=""/);
+    expect(html).not.toContain('data-testid="stage-progress"');
+  });
+});
+
 describe("main editor shell", () => {
   it("renders required editor regions together", () => {
     const html = renderToStaticMarkup(<App />);
