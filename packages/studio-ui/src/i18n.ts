@@ -51,7 +51,8 @@ export const COPY = {
     debugZone: "Debug",
     challengeZone: "Challenge",
     blockLabels: {
-      event_on_start: "When you press Run",
+      event_on_start: "When green flag clicked",
+      event_green_flag: "When green flag clicked",
       motion_move: "Move [N] steps",
       motion_turn: "Turn [N] degrees",
       control_repeat: "Repeat [N] times",
@@ -59,7 +60,8 @@ export const COPY = {
       sensing_touching_goal: "Touching the goal?",
     },
     blockAccessibleNames: {
-      event_on_start: "when run starts",
+      event_on_start: "when green flag clicked",
+      event_green_flag: "when green flag clicked",
       motion_move: "move steps",
       motion_turn: "turn degrees",
       control_repeat: "repeat times",
@@ -210,7 +212,8 @@ export const COPY = {
     debugZone: "Depurar",
     challengeZone: "Desafio",
     blockLabels: {
-      event_on_start: "Cuando presionas Ejecutar",
+      event_on_start: "Cuando se hace clic en la bandera verde",
+      event_green_flag: "Cuando se hace clic en la bandera verde",
       motion_move: "Mover [N] pasos",
       motion_turn: "Girar [N] grados",
       control_repeat: "Repetir [N] veces",
@@ -218,7 +221,8 @@ export const COPY = {
       sensing_touching_goal: "Toca la meta?",
     },
     blockAccessibleNames: {
-      event_on_start: "cuando empieza la ejecucion",
+      event_on_start: "cuando se hace clic en la bandera verde",
+      event_green_flag: "cuando se hace clic en la bandera verde",
       motion_move: "mover pasos",
       motion_turn: "girar grados",
       control_repeat: "repetir veces",

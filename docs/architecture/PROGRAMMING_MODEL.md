@@ -104,3 +104,7 @@ Canonical program
   v          v
 Runtime   Generated code
 ```
+
+## Start events (green flag)
+
+A script starts from a trigger. `greenFlag` ("When green flag clicked") is the Scratch-familiar start event and the one new programs use; `onStart` ("When you press Run") is the legacy hat that older projects were saved with and means the same event. Both are valid, both run when a program is played, and `migrateLegacyTriggers` rewrites the legacy hat as the green flag when a project is opened in the Web editor (the file changes only when it is saved again). The runtime dispatches an event (`ProgramEvent`, today only `greenFlag`) and runs the scripts whose trigger answers to it, in order: key press, sprite click and messages will add events and triggers without changing how scripts are stored. The block editor starts new scripts with `event_green_flag` and keeps `event_on_start` (not offered in the toolbox) so old projects round-trip unchanged. Code projections name the hat `whenGreenFlagClicked` (`whenStarted` for the legacy hat).

@@ -993,7 +993,7 @@ function blankProgram(): ProjectProgram {
     scripts: [
       {
         id: "main",
-        trigger: { type: "onStart" },
+        trigger: { type: "greenFlag" },
         statements: [],
       },
     ],

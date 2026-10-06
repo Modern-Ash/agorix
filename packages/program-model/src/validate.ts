@@ -210,6 +210,8 @@ function validateTrigger(input: unknown, path: string): Trigger {
   switch (type) {
     case "onStart":
       return { type: "onStart" };
+    case "greenFlag":
+      return { type: "greenFlag" };
     default:
       return fail(
         "UNKNOWN_TRIGGER_TYPE",

@@ -64,7 +64,19 @@ export interface OnStartTrigger {
   readonly type: "onStart";
 }
 
-export type Trigger = OnStartTrigger;
+/** "When green flag clicked": the Scratch-familiar start event. */
+export interface GreenFlagTrigger {
+  readonly type: "greenFlag";
+}
+
+/**
+ * What can start a script. `onStart` is the legacy "When you press Run" hat; it still loads and
+ * runs, and means the same event as `greenFlag`. New programs use `greenFlag`.
+ */
+export type Trigger = OnStartTrigger | GreenFlagTrigger;
+
+/** Events a run can dispatch. Key press, sprite click and messages will join this list. */
+export type ProgramEvent = "greenFlag";
 
 // --- Script / ProjectProgram ------------------------------------------------
 

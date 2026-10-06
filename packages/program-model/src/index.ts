@@ -4,10 +4,12 @@ export const PACKAGE_NAME = "@agorix/program-model";
 export type {
   BooleanLiteralExpression,
   Expression,
+  GreenFlagTrigger,
   IfStatement,
   MoveStatement,
   NumericLiteralExpression,
   OnStartTrigger,
+  ProgramEvent,
   ProjectProgram,
   RepeatStatement,
   Script,
@@ -18,6 +20,7 @@ export type {
   TurnStatement,
 } from "./schema.js";
 export { SCHEMA_VERSION } from "./schema.js";
+export { eventForTrigger, migrateLegacyTriggers } from "./events.js";
 export type { ProgramValidationErrorCode } from "./validate.js";
 export { ProgramValidationError, validateProgram } from "./validate.js";
 export {
