@@ -27,7 +27,7 @@ export const RUNTIME_EXPRESSION_OPERATIONS = Object.freeze([
   "numericLiteral",
 ] as const);
 
-export const RUNTIME_TRIGGER_OPERATIONS = Object.freeze(["onStart"] as const);
+export const RUNTIME_TRIGGER_OPERATIONS = Object.freeze(["onStart", "greenFlag"] as const);
 
 export const RUNTIME_OPERATIONS = Object.freeze({
   statement: RUNTIME_STATEMENT_OPERATIONS,

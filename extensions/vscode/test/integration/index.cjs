@@ -150,7 +150,7 @@ const tests = [
         () => vscode.window.activeTextEditor,
       );
       assert.equal(editor.document.uri.scheme, "agorix-studio");
-      assert.match(editor.document.getText(), /whenStarted/);
+      assert.match(editor.document.getText(), /whenGreenFlagClicked/);
 
       const run = await vscode.commands.executeCommand("agorixStudio.run");
       const step = await vscode.commands.executeCommand("agorixStudio.step");

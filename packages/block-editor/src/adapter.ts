@@ -9,6 +9,7 @@ import {
 
 export type BlockType =
   | "event_on_start"
+  | "event_green_flag"
   | "motion_move"
   | "motion_turn"
   | "control_repeat"
@@ -335,17 +336,17 @@ function scriptFromBlocks(
   mapBlock(mapping, script.id, scriptId, "script");
   const trigger = ensureBlock(script.trigger, `scripts[${index}].trigger`);
   mapBlock(mapping, trigger.id, `${scriptId}/trigger`, "trigger");
-  if (trigger.type !== "event_on_start") {
+  if (trigger.type !== "event_on_start" && trigger.type !== "event_green_flag") {
     fail(
       "UNSUPPORTED_TRIGGER",
       `scripts[${index}].trigger.type`,
-      "expected event_on_start",
+      "expected event_green_flag or event_on_start",
       trigger.type,
     );
   }
   return {
     id: script.programId ?? script.id,
-    trigger: { type: "onStart" },
+    trigger: trigger.type === "event_green_flag" ? { type: "greenFlag" } : { type: "onStart" },
     statements: statementsFromBlocks(
       ensureBlockArray(script.statements, `scripts[${index}].statements`),
       `${scriptId}/statements`,
@@ -383,7 +384,10 @@ export function programToWorkspace(program: ProjectProgram): ProgramToWorkspaceR
       return {
         id: blockId,
         programId: script.id,
-        trigger: { id: triggerId, type: "event_on_start" },
+        trigger: {
+          id: triggerId,
+          type: script.trigger.type === "greenFlag" ? "event_green_flag" : "event_on_start",
+        },
         statements: statementsToBlocks(script.statements, `${scriptId}/statements`, mapping),
       };
     }),
