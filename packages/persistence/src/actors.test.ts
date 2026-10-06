@@ -36,13 +36,24 @@ describe("project actors", () => {
     expect(semanticProjectHash(withActors)).toBe(semanticProjectHash(base));
   });
 
+  it("keeps library asset choices through .agorix", () => {
+    const chosen: ProjectActors = {
+      ...actors,
+      backdrop: "space",
+      items: [{ ...actors.items[0]!, costume: "rocket" }],
+    };
+    const project = { ...base, metadata: { ...base.metadata, actors: chosen } };
+    const json = serializeAgorixProject(project, { exportedAt: "2026-01-02T03:04:05.000Z" });
+    expect(parseAgorixProject(json).project.metadata.actors).toEqual(chosen);
+  });
+
   it("keeps projects without actors loading", () => {
     const json = serializeAgorixProject(base, { exportedAt: "2026-01-02T03:04:05.000Z" });
     expect(parseAgorixProject(json).project.metadata.actors).toBeUndefined();
   });
 
   it.each([
-    ["unknown actor field", { ...actors, items: [{ ...actors.items[0], costume: "x" }] }],
+    ["unknown actor field", { ...actors, items: [{ ...actors.items[0], sound: "x" }] }],
     ["empty name", { ...actors, items: [{ ...actors.items[0], name: "  " }] }],
     ["long name", { ...actors, items: [{ ...actors.items[0], name: "a".repeat(41) }] }],
     ["control characters", { ...actors, items: [{ ...actors.items[0], name: "a\nb" }] }],
@@ -51,6 +62,8 @@ describe("project actors", () => {
     ["position out of range", { ...actors, items: [{ ...actors.items[0], x: 1e9 }] }],
     ["visible not boolean", { ...actors, items: [{ ...actors.items[0], visible: 1 }] }],
     ["missing active actor", { ...actors, activeId: "other" }],
+    ["bad costume id", { ...actors, items: [{ ...actors.items[0], costume: "../x" }] }],
+    ["bad backdrop id", { ...actors, backdrop: 3 }],
     ["no actors", { activeId: "sprite", items: [] }],
     ["unknown set field", { ...actors, extra: true }],
   ])("rejects %s", (_label, value) => {

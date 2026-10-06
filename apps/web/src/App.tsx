@@ -86,11 +86,13 @@ import {
   type StageFeedback,
   type StageState,
 } from "@agorix/stage";
+import { ACTOR_VISUALS, BACKDROPS, assetName, findActorVisual } from "./assetLibrary.js";
 import {
   BASE_SPRITE_RADIUS,
   activeActor,
   defaultActors,
   patchActive,
+  withBackdrop,
   stageForActors,
   type ActorPatch,
 } from "./actors.js";
@@ -889,9 +891,11 @@ export function StageView({
   panelProps,
   actors,
   onActorChange,
+  onBackdropChange,
 }: {
   actors?: ProjectActors;
   onActorChange?: (patch: ActorPatch) => void;
+  onBackdropChange?: (id: string) => void;
   world: WorldDefinition;
   frame: ObservationFrame | undefined;
   fallback: StageState;
@@ -946,7 +950,13 @@ export function StageView({
         role="img"
         aria-label={t(locale, "stageAria")}
       >
-        <rect width={viewport.width} height={viewport.height} rx="14" />
+        <rect
+          className={`stage-backdrop backdrop-${actors?.backdrop ?? "default"}`}
+          width={viewport.width}
+          height={viewport.height}
+          rx="14"
+        />
+        <BackdropArt id={actors?.backdrop} width={viewport.width} height={viewport.height} />
         <line x1="24" y1="128" x2="240" y2="128" />
         {feedback.trail.length > 1 ? (
           <polyline className="world-trail" points={trailPoints} data-testid="world-trail">
@@ -1009,7 +1019,7 @@ export function StageView({
             fontSize={sprite.radius * 1.5}
             aria-hidden="true"
           >
-            {glyphs.sprite}
+            {findActorVisual(actor?.costume)?.glyph ?? glyphs.sprite}
           </text>
         </g>
       </svg>
@@ -1040,21 +1050,80 @@ export function StageView({
           </code>
         ) : null}
       </div>
-      {actors !== undefined && onActorChange !== undefined ? (
-        <ActorInspector actors={actors} locale={locale} onChange={onActorChange} />
+      {actors !== undefined && onActorChange !== undefined && onBackdropChange !== undefined ? (
+        <ActorInspector
+          actors={actors}
+          locale={locale}
+          onChange={onActorChange}
+          onBackdropChange={onBackdropChange}
+        />
       ) : null}
     </section>
   );
+}
+
+/** Code-native decoration for a library backdrop; the flat colour comes from CSS. */
+function BackdropArt({
+  id,
+  width,
+  height,
+}: {
+  id?: string | undefined;
+  width: number;
+  height: number;
+}) {
+  switch (id) {
+    case "space":
+      return (
+        <g className="backdrop-art" aria-hidden="true">
+          {[
+            [22, 18],
+            [70, 150],
+            [120, 40],
+            [180, 110],
+            [236, 26],
+            [210, 170],
+          ].map(([x, y]) => (
+            <circle key={`${x}-${y}`} className="backdrop-star" cx={x} cy={y} r="1.6" />
+          ))}
+        </g>
+      );
+    case "meadow":
+      return (
+        <rect
+          className="backdrop-ground"
+          y={height * 0.72}
+          width={width}
+          height={height * 0.28}
+          aria-hidden="true"
+        />
+      );
+    case "grid":
+      return (
+        <g className="backdrop-art" aria-hidden="true">
+          {[0.25, 0.5, 0.75].map((fraction) => (
+            <g key={fraction}>
+              <path className="backdrop-gridline" d={`M ${width * fraction} 0 V ${height}`} />
+              <path className="backdrop-gridline" d={`M 0 ${height * fraction} H ${width}`} />
+            </g>
+          ))}
+        </g>
+      );
+    default:
+      return null;
+  }
 }
 
 function ActorInspector({
   actors,
   locale,
   onChange,
+  onBackdropChange,
 }: {
   actors: ProjectActors;
   locale: Locale;
   onChange: (patch: ActorPatch) => void;
+  onBackdropChange: (id: string) => void;
 }) {
   const actor = activeActor(actors);
   // Like Scratch's sprite pane: open next to the stage on wide screens, folded on narrow ones so
@@ -1122,6 +1191,39 @@ function ActorInspector({
         {number("y", t(locale, "actorY"))}
         {number("direction", t(locale, "actorDirection"))}
         {number("size", t(locale, "actorSize"), { min: ACTOR_SIZE_MIN, max: ACTOR_SIZE_MAX })}
+        <label className="actor-field">
+          <span>{t(locale, "actorLook")}</span>
+          <select
+            data-testid="actor-costume"
+            value={actor.costume ?? ""}
+            onChange={(event) => {
+              const value = event.currentTarget.value;
+              onChange({ costume: value === "" ? null : value });
+            }}
+          >
+            <option value="">{t(locale, "assetWorldDefault")}</option>
+            {ACTOR_VISUALS.map((asset) => (
+              <option key={asset.id} value={asset.id}>
+                {asset.glyph} {assetName(asset, locale)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="actor-field">
+          <span>{t(locale, "backdropLabel")}</span>
+          <select
+            data-testid="stage-backdrop"
+            value={actors.backdrop ?? ""}
+            onChange={(event) => onBackdropChange(event.currentTarget.value)}
+          >
+            <option value="">{t(locale, "assetWorldDefault")}</option>
+            {BACKDROPS.map((asset) => (
+              <option key={asset.id} value={asset.id}>
+                {assetName(asset, locale)}
+              </option>
+            ))}
+          </select>
+        </label>
         <label className="actor-field actor-field-visible">
           <input
             type="checkbox"
@@ -2196,6 +2298,10 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     setFrameIndex(0);
   }
 
+  function updateBackdrop(id: string) {
+    setActors((current) => withBackdrop(current, id));
+  }
+
   function exportProject() {
     const metadata = createProjectMetadata(createdAt, countProgramBlocks(model), locale, actors);
     const json = serializeAgorixProject({
@@ -3202,6 +3308,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
             panelProps={panelProps("stage", "stage-panel")}
             actors={actors}
             onActorChange={updateActor}
+            onBackdropChange={updateBackdrop}
           />
         )}
 
