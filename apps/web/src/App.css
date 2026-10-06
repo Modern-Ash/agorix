@@ -4240,6 +4240,29 @@ button:hover:not(:disabled) {
   gap: 4px;
 }
 
+/* Built-in backdrops (#297); the flat colour of the default world stays as is. */
+.stage-canvas rect.backdrop-space {
+  fill: #0b1530;
+}
+.stage-canvas rect.backdrop-meadow {
+  fill: #cfeeff;
+}
+.stage-canvas rect.backdrop-grid {
+  fill: #fffdf5;
+}
+.stage-canvas rect.backdrop-ground {
+  fill: #6cc070;
+}
+.stage-canvas .backdrop-star {
+  fill: #ffffff;
+}
+.stage-canvas .backdrop-gridline {
+  fill: none;
+  stroke: #b9c4d0;
+  stroke-width: 1;
+  stroke-dasharray: none;
+}
+
 /* Stage-first, Scratch-like controls (#298). */
 .play-controls {
   display: flex;

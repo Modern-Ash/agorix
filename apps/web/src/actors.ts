@@ -11,7 +11,10 @@ import { createStageSession, type StageSession } from "@agorix/stage";
 export const DEFAULT_ACTOR_ID = "sprite";
 export const BASE_SPRITE_RADIUS = 12;
 
-export type ActorPatch = Partial<Omit<ProjectActor, "id">>;
+/** `costume: null` clears the choice and goes back to the world default. */
+export type ActorPatch = Partial<Omit<ProjectActor, "id" | "costume">> & {
+  costume?: string | null;
+};
 
 export function defaultActors(stage: StageSession): ProjectActors {
   const { sprite } = stage.initial;
@@ -62,10 +65,26 @@ export function sanitizeActor(actor: ProjectActor): ProjectActor {
 export function patchActive(actors: ProjectActors, patch: ActorPatch): ProjectActors {
   return {
     ...actors,
-    items: actors.items.map((item) =>
-      item.id === actors.activeId ? sanitizeActor({ ...item, ...patch }) : item,
-    ),
+    items: actors.items.map((item) => {
+      if (item.id !== actors.activeId) return item;
+      const { costume, ...rest } = patch;
+      const base: { -readonly [K in keyof ProjectActor]?: ProjectActor[K] } = { ...item };
+      delete base.costume;
+      const next = costume === undefined ? item.costume : (costume ?? undefined);
+      return sanitizeActor({
+        ...(base as ProjectActor),
+        ...rest,
+        ...(next === undefined ? {} : { costume: next }),
+      });
+    }),
   };
+}
+
+export function withBackdrop(actors: ProjectActors, id: string): ProjectActors {
+  const next: { -readonly [K in keyof ProjectActors]: ProjectActors[K] } = { ...actors };
+  if (id === "") delete next.backdrop;
+  else next.backdrop = id;
+  return next;
 }
 
 /** The stage starts from the active actor; the goal keeps the mission's semantics. */

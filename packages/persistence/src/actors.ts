@@ -6,8 +6,9 @@ export const ACTOR_COORDINATE_LIMIT = 10_000;
 export const ACTOR_SIZE_MIN = 5;
 export const ACTOR_SIZE_MAX = 500;
 
-const ACTOR_KEYS = ["id", "name", "x", "y", "direction", "size", "visible"] as const;
-const ACTOR_SET_KEYS = ["activeId", "items"] as const;
+const ACTOR_KEYS = ["id", "name", "x", "y", "direction", "size", "visible", "costume"] as const;
+const ACTOR_SET_KEYS = ["activeId", "items", "backdrop"] as const;
+const ASSET_ID = /^[a-z][a-z0-9-]{0,31}$/;
 const ACTOR_ID = /^[a-z][a-z0-9-]{0,31}$/;
 
 /** Starting properties of a Scratch-like actor (sprite). Scripts will attach to actors later. */
@@ -21,11 +22,15 @@ export interface ProjectActor {
   /** Percent of the default sprite size. */
   readonly size: number;
   readonly visible: boolean;
+  /** Id of a built-in library visual (apps/web assetLibrary); absent means the world default. */
+  readonly costume?: string;
 }
 
 export interface ProjectActors {
   readonly activeId: string;
   readonly items: readonly ProjectActor[];
+  /** Id of a built-in library backdrop; absent means the world default. */
+  readonly backdrop?: string;
 }
 
 function fail(message: string): never {
@@ -95,11 +100,28 @@ export function validateProjectActors(input: unknown): ProjectActors {
     const size = finite(actor["size"], `${path}.size`);
     if (size < ACTOR_SIZE_MIN || size > ACTOR_SIZE_MAX) fail(`${path}.size is out of range`);
     if (typeof actor["visible"] !== "boolean") fail(`${path}.visible must be a boolean`);
-    return { id, name, x, y, direction, size, visible: actor["visible"] };
+    const costume = actor["costume"];
+    if (costume !== undefined && (typeof costume !== "string" || !ASSET_ID.test(costume))) {
+      fail(`${path}.costume must be a library asset id`);
+    }
+    return {
+      id,
+      name,
+      x,
+      y,
+      direction,
+      size,
+      visible: actor["visible"],
+      ...(costume === undefined ? {} : { costume }),
+    };
   });
   const activeId = record["activeId"];
   if (typeof activeId !== "string" || !seen.has(activeId)) {
     fail("metadata.actors.activeId must name an existing actor");
   }
-  return { activeId, items: actors };
+  const backdrop = record["backdrop"];
+  if (backdrop !== undefined && (typeof backdrop !== "string" || !ASSET_ID.test(backdrop))) {
+    fail("metadata.actors.backdrop must be a library asset id");
+  }
+  return { activeId, items: actors, ...(backdrop === undefined ? {} : { backdrop }) };
 }
