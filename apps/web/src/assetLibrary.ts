@@ -7,7 +7,7 @@
  * (matching /^[a-z][a-z0-9-]{0,31}$/), then add its look in StageView (backdrops) or just its
  * glyph (actor visuals). Never reuse or rename an id: saved projects refer to it.
  */
-export type AssetKind = "actor" | "backdrop";
+export type AssetKind = "actor" | "backdrop" | "sound";
 
 export interface LibraryAsset {
   readonly id: string;
@@ -20,6 +20,8 @@ export interface LibraryAsset {
   readonly tags: readonly string[];
   /** Actor visuals: the glyph drawn on the stage. */
   readonly glyph?: string;
+  /** Sounds: a synthesized tone, so no audio file is bundled. */
+  readonly tone?: { readonly hz: number; readonly ms: number };
 }
 
 export const ACTOR_VISUALS: readonly LibraryAsset[] = [
@@ -93,6 +95,36 @@ export const BACKDROPS: readonly LibraryAsset[] = [
     width: 264,
     height: 192,
     tags: ["plain", "math"],
+  },
+];
+
+export const SOUNDS: readonly LibraryAsset[] = [
+  {
+    id: "pop",
+    kind: "sound",
+    name: { en: "Pop", es: "Pop" },
+    width: 0,
+    height: 0,
+    tags: ["short"],
+    tone: { hz: 520, ms: 120 },
+  },
+  {
+    id: "beep",
+    kind: "sound",
+    name: { en: "Beep", es: "Bip" },
+    width: 0,
+    height: 0,
+    tags: ["machine"],
+    tone: { hz: 880, ms: 220 },
+  },
+  {
+    id: "chime",
+    kind: "sound",
+    name: { en: "Chime", es: "Campanilla" },
+    width: 0,
+    height: 0,
+    tags: ["reward"],
+    tone: { hz: 1320, ms: 380 },
   },
 ];
 

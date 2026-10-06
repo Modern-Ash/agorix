@@ -55,3 +55,26 @@ test("a learner picks a sprite look and a backdrop from the offline library", as
   await expect(page.getByTestId("actor-costume")).toHaveValue("cat");
   await expect(page.getByTestId("stage-backdrop")).toHaveValue("space");
 });
+
+test("Costumes and Sounds tabs switch the look and attach sounds that survive a reload", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const tabs = page.getByRole("tablist", { name: "Sprite sections" });
+  await expect(tabs.getByRole("tab", { name: "Costumes" })).toBeVisible();
+  await expect(tabs.getByRole("tab", { name: "Sounds" })).toBeVisible();
+  await tabs.getByRole("tab", { name: "Costumes" }).click();
+  await page.getByTestId("costume-cat").click();
+  await expect(page.locator(".stage-canvas text.world-glyph").last()).toHaveText("🐱");
+  await page.getByTestId("costume-robot").click();
+  await expect(page.locator(".stage-canvas text.world-glyph").last()).toHaveText("🤖");
+  await tabs.getByRole("tab", { name: "Costumes" }).press("ArrowRight");
+  await expect(tabs.getByRole("tab", { name: "Sounds" })).toBeFocused();
+  await page.getByTestId("sound-chime").check();
+  await page.getByRole("button", { name: "Move", exact: true }).first().click();
+  await page.reload();
+  await page.getByRole("tab", { name: "Sounds" }).click();
+  await expect(page.getByTestId("sound-chime")).toBeChecked();
+  await page.getByRole("tab", { name: "Costumes" }).click();
+  await expect(page.getByTestId("costume-robot")).toHaveAttribute("aria-pressed", "true");
+});

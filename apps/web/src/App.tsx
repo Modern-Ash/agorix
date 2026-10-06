@@ -86,12 +86,14 @@ import {
   type StageFeedback,
   type StageState,
 } from "@agorix/stage";
-import { ACTOR_VISUALS, BACKDROPS, assetName, findActorVisual } from "./assetLibrary.js";
+import { ACTOR_VISUALS, BACKDROPS, SOUNDS, assetName, findActorVisual } from "./assetLibrary.js";
+import { previewSound } from "./soundPreview.js";
 import {
   BASE_SPRITE_RADIUS,
   activeActor,
   defaultActors,
   patchActive,
+  toggleSound,
   withBackdrop,
   stageForActors,
   type ActorPatch,
@@ -893,10 +895,12 @@ export function StageView({
   actors,
   onActorChange,
   onBackdropChange,
+  onToggleSound,
 }: {
   actors?: ProjectActors;
   onActorChange?: (patch: ActorPatch) => void;
   onBackdropChange?: (id: string) => void;
+  onToggleSound?: (id: string) => void;
   world: WorldDefinition;
   frame: ObservationFrame | undefined;
   fallback: StageState;
@@ -1068,12 +1072,16 @@ export function StageView({
           </code>
         ) : null}
       </div>
-      {actors !== undefined && onActorChange !== undefined && onBackdropChange !== undefined ? (
+      {actors !== undefined &&
+      onActorChange !== undefined &&
+      onBackdropChange !== undefined &&
+      onToggleSound !== undefined ? (
         <ActorInspector
           actors={actors}
           locale={locale}
           onChange={onActorChange}
           onBackdropChange={onBackdropChange}
+          onToggleSound={onToggleSound}
         />
       ) : null}
     </section>
@@ -1132,18 +1140,29 @@ function BackdropArt({
   }
 }
 
+type ActorTab = "properties" | "costumes" | "sounds";
+const ACTOR_TABS: readonly ActorTab[] = ["properties", "costumes", "sounds"];
+const ACTOR_TAB_LABELS = {
+  properties: "actorTabProperties",
+  costumes: "actorTabCostumes",
+  sounds: "actorTabSounds",
+} as const;
+
 function ActorInspector({
   actors,
   locale,
   onChange,
   onBackdropChange,
+  onToggleSound,
 }: {
   actors: ProjectActors;
   locale: Locale;
   onChange: (patch: ActorPatch) => void;
   onBackdropChange: (id: string) => void;
+  onToggleSound: (id: string) => void;
 }) {
   const actor = activeActor(actors);
+  const [tab, setTab] = useState<ActorTab>("properties");
   // Like Scratch's sprite pane: open next to the stage on wide screens, folded on narrow ones so
   // the Code panel stays in the first viewport.
   const [open, setOpen] = useState(
@@ -1194,7 +1213,87 @@ function ActorInspector({
           </li>
         ))}
       </ul>
-      <div className="actor-fields">
+      <div className="actor-tabs" role="tablist" aria-label={t(locale, "actorTabs")}>
+        {ACTOR_TABS.map((id, index) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            id={`actor-tab-${id}`}
+            aria-selected={tab === id}
+            aria-controls={`actor-panel-${id}`}
+            tabIndex={tab === id ? 0 : -1}
+            data-testid={`actor-tab-${id}`}
+            onClick={() => setTab(id)}
+            onKeyDown={(event) => {
+              const step = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
+              if (step === 0) return;
+              event.preventDefault();
+              const next = ACTOR_TABS[(index + step + ACTOR_TABS.length) % ACTOR_TABS.length]!;
+              setTab(next);
+              document.getElementById(`actor-tab-${next}`)?.focus();
+            }}
+          >
+            {t(locale, ACTOR_TAB_LABELS[id])}
+          </button>
+        ))}
+      </div>
+      {tab === "costumes" ? (
+        <div
+          className="actor-assets"
+          role="tabpanel"
+          id="actor-panel-costumes"
+          aria-labelledby="actor-tab-costumes"
+        >
+          {[undefined, ...ACTOR_VISUALS].map((asset) => (
+            <button
+              key={asset?.id ?? "default"}
+              type="button"
+              className="asset-tile"
+              aria-pressed={(actor.costume ?? "") === (asset?.id ?? "")}
+              data-testid={`costume-${asset?.id ?? "default"}`}
+              onClick={() => onChange({ costume: asset?.id ?? null })}
+            >
+              <span aria-hidden="true">{asset?.glyph ?? "◌"}</span>
+              <small>
+                {asset === undefined ? t(locale, "assetWorldDefault") : assetName(asset, locale)}
+              </small>
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {tab === "sounds" ? (
+        <ul
+          className="actor-assets actor-sounds"
+          role="tabpanel"
+          id="actor-panel-sounds"
+          aria-labelledby="actor-tab-sounds"
+        >
+          {SOUNDS.map((asset) => (
+            <li key={asset.id}>
+              <label>
+                <input
+                  type="checkbox"
+                  data-testid={`sound-${asset.id}`}
+                  checked={(actors.sounds ?? []).includes(asset.id)}
+                  onChange={() => onToggleSound(asset.id)}
+                />
+                <span>{assetName(asset, locale)}</span>
+              </label>
+              <button type="button" onClick={() => previewSound(asset)}>
+                {t(locale, "soundPlay")}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      <div
+        className="actor-fields"
+        role="tabpanel"
+        id="actor-panel-properties"
+        aria-labelledby="actor-tab-properties"
+        hidden={tab !== "properties"}
+      >
         <label className="actor-field actor-field-name">
           <span>{t(locale, "actorName")}</span>
           <input
@@ -3356,6 +3455,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
             actors={actors}
             onActorChange={updateActor}
             onBackdropChange={updateBackdrop}
+            onToggleSound={(id) => setActors((current) => toggleSound(current, id))}
           />
         )}
 

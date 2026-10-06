@@ -47,6 +47,13 @@ describe("project actors", () => {
     expect(parseAgorixProject(json).project.metadata.actors).toEqual(chosen);
   });
 
+  it("keeps attached sounds through .agorix", () => {
+    const chosen: ProjectActors = { ...actors, sounds: ["pop", "chime"] };
+    const project = { ...base, metadata: { ...base.metadata, actors: chosen } };
+    const json = serializeAgorixProject(project, { exportedAt: "2026-01-02T03:04:05.000Z" });
+    expect(parseAgorixProject(json).project.metadata.actors?.sounds).toEqual(["pop", "chime"]);
+  });
+
   it("keeps projects without actors loading", () => {
     const json = serializeAgorixProject(base, { exportedAt: "2026-01-02T03:04:05.000Z" });
     expect(parseAgorixProject(json).project.metadata.actors).toBeUndefined();
@@ -64,6 +71,9 @@ describe("project actors", () => {
     ["missing active actor", { ...actors, activeId: "other" }],
     ["bad costume id", { ...actors, items: [{ ...actors.items[0], costume: "../x" }] }],
     ["bad backdrop id", { ...actors, backdrop: 3 }],
+    ["duplicate sounds", { ...actors, sounds: ["pop", "pop"] }],
+    ["bad sound id", { ...actors, sounds: ["../x"] }],
+    ["too many sounds", { ...actors, sounds: Array.from({ length: 17 }, (_, i) => `s${i}`) }],
     ["no actors", { activeId: "sprite", items: [] }],
     ["unknown set field", { ...actors, extra: true }],
   ])("rejects %s", (_label, value) => {

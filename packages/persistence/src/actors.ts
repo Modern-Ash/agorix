@@ -7,7 +7,8 @@ export const ACTOR_SIZE_MIN = 5;
 export const ACTOR_SIZE_MAX = 500;
 
 const ACTOR_KEYS = ["id", "name", "x", "y", "direction", "size", "visible", "costume"] as const;
-const ACTOR_SET_KEYS = ["activeId", "items", "backdrop"] as const;
+const ACTOR_SET_KEYS = ["activeId", "items", "backdrop", "sounds"] as const;
+export const ACTOR_SOUND_MAX_COUNT = 16;
 const ASSET_ID = /^[a-z][a-z0-9-]{0,31}$/;
 const ACTOR_ID = /^[a-z][a-z0-9-]{0,31}$/;
 
@@ -31,6 +32,8 @@ export interface ProjectActors {
   readonly items: readonly ProjectActor[];
   /** Id of a built-in library backdrop; absent means the world default. */
   readonly backdrop?: string;
+  /** Ids of built-in library sounds attached to the project (playback blocks come later). */
+  readonly sounds?: readonly string[];
 }
 
 function fail(message: string): never {
@@ -123,5 +126,20 @@ export function validateProjectActors(input: unknown): ProjectActors {
   if (backdrop !== undefined && (typeof backdrop !== "string" || !ASSET_ID.test(backdrop))) {
     fail("metadata.actors.backdrop must be a library asset id");
   }
-  return { activeId, items: actors, ...(backdrop === undefined ? {} : { backdrop }) };
+  const sounds = record["sounds"];
+  if (
+    sounds !== undefined &&
+    (!Array.isArray(sounds) ||
+      sounds.length > ACTOR_SOUND_MAX_COUNT ||
+      new Set(sounds).size !== sounds.length ||
+      sounds.some((sound) => typeof sound !== "string" || !ASSET_ID.test(sound)))
+  ) {
+    fail(`metadata.actors.sounds must hold up to ${ACTOR_SOUND_MAX_COUNT} unique library ids`);
+  }
+  return {
+    activeId,
+    items: actors,
+    ...(backdrop === undefined ? {} : { backdrop }),
+    ...(sounds === undefined ? {} : { sounds: sounds as string[] }),
+  };
 }
