@@ -4239,3 +4239,150 @@ button:hover:not(:disabled) {
   align-items: center;
   gap: 4px;
 }
+
+/* Stage-first, Scratch-like controls (#298). */
+.play-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--agx-space-2, 8px);
+  margin: var(--agx-space-2, 8px) 0 var(--agx-space-3, 12px);
+}
+
+.play-controls button {
+  min-height: 44px;
+  font-weight: 800;
+}
+
+.play-controls .play-button,
+.play-controls .stop-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 20px;
+  border-radius: 999px;
+  color: #fff;
+}
+
+.play-controls .play-button {
+  background: #1f9d55;
+  border-color: #157a41;
+  font-size: 1.05rem;
+}
+
+.play-controls .stop-button {
+  background: #d64545;
+  border-color: #a93232;
+}
+
+.play-controls .play-button:disabled,
+.play-controls .stop-button:disabled {
+  opacity: 0.55;
+}
+
+.play-glyph,
+.stop-glyph {
+  font-size: 1.25em;
+  line-height: 1;
+}
+
+.stage-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--agx-space-2, 8px);
+  margin-bottom: var(--agx-space-2, 8px);
+  font-weight: 700;
+}
+
+.stage-progress progress {
+  flex: 1;
+  height: 12px;
+  accent-color: #1f9d55;
+}
+
+@media (forced-colors: active) {
+  .play-controls .play-button,
+  .play-controls .stop-button {
+    border: 2px solid ButtonText;
+  }
+}
+
+/* Desktop shell: the stage gets the room (#298). The chrome above it stays, but slimmer. */
+@media (min-width: 1180px) {
+  .learning-layout {
+    grid-template-rows: minmax(330px, 1.5fr) minmax(170px, 0.85fr) minmax(100px, 0.35fr);
+  }
+
+  .learning-flow {
+    margin: 4px 0;
+    padding: 2px 6px;
+  }
+
+  .learning-flow .flow-step {
+    min-height: 0;
+    padding: 3px 10px;
+  }
+
+  .mission-strip {
+    margin: 4px 0;
+    padding: 6px 10px;
+  }
+
+  .mission-strip h2 {
+    margin: 0 0 2px;
+    font-size: 1.05rem;
+  }
+
+  .play-controls {
+    margin: 4px 0 8px;
+  }
+}
+
+/* Smaller desktops: the stage takes the right column and the coach moves under the work area. */
+@media (min-width: 1180px) and (max-width: 1439px) {
+  .learning-layout {
+    grid-template-columns: 210px minmax(300px, 1fr) minmax(430px, 1.2fr);
+    grid-template-rows: minmax(340px, 1.7fr) minmax(150px, 0.8fr) minmax(130px, 0.55fr);
+    grid-template-areas:
+      "action program stage"
+      "action program code"
+      "companion companion companion";
+  }
+
+  .play-controls {
+    flex-wrap: nowrap;
+  }
+
+  .play-controls button:not(.play-button):not(.stop-button) {
+    min-height: 38px;
+    padding: 0 12px;
+  }
+
+  .play-controls .play-button,
+  .play-controls .stop-button {
+    padding: 0 16px;
+  }
+}
+
+/* The stage always fits its panel: the canvas scales to the room left under the controls. */
+@media (min-width: 1180px) {
+  .stage-panel {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .stage-panel .stage-canvas {
+    flex: 1 1 0;
+    width: 100%;
+    height: auto;
+    min-height: 120px;
+    max-height: none;
+  }
+
+  .stage-panel .world-feedback,
+  .stage-panel .stage-progress,
+  .stage-panel .world-identity,
+  .stage-panel .play-controls {
+    flex: 0 0 auto;
+  }
+}

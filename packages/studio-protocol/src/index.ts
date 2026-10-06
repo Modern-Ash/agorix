@@ -271,6 +271,7 @@ const SIGNALS: readonly OfferableSignal[] = [
 const AGENT_VERBS = ["explain", "debug", "challenge"] as const;
 const BLOCK_TYPES = [
   "event_on_start",
+  "event_green_flag",
   "motion_move",
   "motion_turn",
   "control_repeat",

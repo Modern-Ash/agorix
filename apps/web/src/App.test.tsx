@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { ProjectStore } from "@agorix/persistence";
 import type { ProjectProgram, Script } from "@agorix/program-model";
-import { SCHEMA_VERSION } from "@agorix/program-model";
+import { SCHEMA_VERSION, migrateLegacyTriggers } from "@agorix/program-model";
 import { describe, expect, it } from "vitest";
 import { App, ProgramBlockCard } from "./App.js";
 import { assertCatalogCompleteness, resolveLocale, t } from "./i18n.js";
@@ -25,6 +25,28 @@ import {
   saveEditorProject,
 } from "./projectStorage.js";
 
+describe("stage-first controls (#298)", () => {
+  it("puts Run, Step, Stop and Reset in the stage panel and not in the header", () => {
+    const html = renderToStaticMarkup(<App />);
+    const header = html.slice(html.indexOf('<header class="topbar">'), html.indexOf("</header>"));
+    const stage = html.slice(html.indexOf('class="stage-panel'));
+    for (const label of ["Run", "Step", "Stop", "Reset"]) {
+      expect(header).not.toContain(`>${label}</button>`);
+      expect(stage).toContain(label);
+    }
+    expect(html).toContain('data-testid="play-controls"');
+    expect(stage.indexOf('data-testid="play-controls"')).toBeLessThan(
+      stage.indexOf('data-testid="world-identity"'),
+    );
+  });
+
+  it("starts with Stop disabled and no progress bar until something runs", () => {
+    const html = renderToStaticMarkup(<App />);
+    expect(html).toMatch(/<button[^>]*class="stop-button"[^>]*disabled=""/);
+    expect(html).not.toContain('data-testid="stage-progress"');
+  });
+});
+
 describe("main editor shell", () => {
   it("renders required editor regions together", () => {
     const html = renderToStaticMarkup(<App />);
@@ -32,7 +54,7 @@ describe("main editor shell", () => {
     expect(html).toContain("Agorix First Mission");
     expect(html).toContain("Mission: Get your sprite to the goal.");
     expect(html).toContain("Action palette");
-    expect(html).toContain("When you press Run");
+    expect(html).toContain("When green flag clicked");
     expect(html).toContain("Stage");
     expect(html).toContain("Code");
     expect(html).toContain('aria-label="Code projection"');
@@ -316,7 +338,8 @@ describe("editor persistence", () => {
     expect(JSON.stringify(parsed.program)).not.toContain("locale");
     expect(raw).not.toContain("sprite.move");
     expect(raw).not.toContain('"code"');
-    expect(loaded.model?.program).toEqual(program);
+    // A project saved with the legacy "When you press Run" hat opens with the green flag.
+    expect(loaded.model?.program).toEqual(migrateLegacyTriggers(program));
     expect(loaded.metadata?.locale).toBe("es");
     expect(loaded.model?.code).toContain("sprite.move(24);");
   });

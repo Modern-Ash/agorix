@@ -10,6 +10,7 @@ import {
   canPlaceBlock,
   createDefaultBlock,
   createStarterWorkspace,
+  getBlockDefinition,
   getCanonicalNodeIdForBlock,
   programToWorkspace,
   projectWorkspace,
@@ -61,7 +62,7 @@ describe("block-editor", () => {
       "Check",
     ]);
     expect(POC_TOOLBOX.flatMap((section) => section.blocks.map((block) => block.label))).toEqual([
-      "When you press Run",
+      "When green flag clicked",
       "Move [N] steps",
       "Turn [N] degrees",
       "Repeat [N] times",
@@ -72,9 +73,9 @@ describe("block-editor", () => {
   });
 
   it("creates safe defaults for every required POC block", () => {
-    expect(createDefaultBlock("event_on_start", "start")).toEqual({
+    expect(createDefaultBlock("event_green_flag", "start")).toEqual({
       id: "start",
-      type: "event_on_start",
+      type: "event_green_flag",
     });
     expect(createDefaultBlock("motion_move", "move")).toEqual({
       id: "move",
@@ -397,5 +398,38 @@ describe("block-editor", () => {
     };
 
     expect(() => workspaceToProgram(workspace)).toThrowError(/UNSUPPORTED_TRIGGER/);
+  });
+});
+
+describe("green-flag hat in the block editor", () => {
+  const flagProgram = (type: "greenFlag" | "onStart"): ProjectProgram => ({
+    schema: "agorix/program/v1",
+    scripts: [{ id: "main", trigger: { type }, statements: [{ type: "move", steps: 10 }] }],
+  });
+
+  it("starts new workspaces with the green flag and converts it back to a green-flag trigger", () => {
+    const starter = createStarterWorkspace();
+    expect(starter.scripts[0]?.trigger.type).toBe("event_green_flag");
+    expect(workspaceToProgram(starter).program.scripts[0]?.trigger).toEqual({ type: "greenFlag" });
+  });
+
+  it("round-trips green-flag and legacy programs without changing them", () => {
+    for (const type of ["greenFlag", "onStart"] as const) {
+      const program = flagProgram(type);
+      const { workspace } = programToWorkspace(program);
+      expect(workspace.scripts[0]?.trigger.type).toBe(
+        type === "greenFlag" ? "event_green_flag" : "event_on_start",
+      );
+      expect(workspaceToProgram(workspace).program).toEqual(program);
+    }
+  });
+
+  it("offers one start block, the green flag, and still knows the legacy one", () => {
+    const hats = POC_TOOLBOX.flatMap((section) => section.blocks).filter(
+      (block) => block.placement === "trigger",
+    );
+    expect(hats.map((block) => block.label)).toEqual(["When green flag clicked"]);
+    expect(getBlockDefinition("event_on_start")?.legacy).toBe(true);
+    expect(canPlaceBlock("event_green_flag", "trigger")).toBe(true);
   });
 });

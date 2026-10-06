@@ -153,6 +153,8 @@ function projectTrigger(trigger: Trigger, nodeId: string): string {
   switch (trigger.type) {
     case "onStart":
       return "whenStarted";
+    case "greenFlag":
+      return "whenGreenFlagClicked";
     default: {
       const unknown = trigger as { type?: unknown };
       throw new UnsupportedNodeError(nodeId, String(unknown.type));
