@@ -54,7 +54,15 @@ describe("runtime operation allowlist", () => {
   });
 
   it("names every canonical statement, expression and trigger exactly once", () => {
-    expect([...RUNTIME_STATEMENT_OPERATIONS].sort()).toEqual(["if", "move", "repeat", "turn"]);
+    expect([...RUNTIME_STATEMENT_OPERATIONS].sort()).toEqual([
+      "if",
+      "move",
+      "repeat",
+      "setX",
+      "setY",
+      "turn",
+      "wait",
+    ]);
     expect([...RUNTIME_EXPRESSION_OPERATIONS].sort()).toEqual([
       "booleanLiteral",
       "numericLiteral",

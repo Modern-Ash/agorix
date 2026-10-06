@@ -24,7 +24,16 @@ export interface EditorModel extends EditorProjection {
   readonly stage: StageSession;
 }
 
-export type AddableBlockType = "motion_move" | "motion_turn" | "control_repeat" | "control_if";
+export type AddableBlockType =
+  | "motion_move"
+  | "motion_turn"
+  | "motion_set_x"
+  | "motion_set_y"
+  | "control_wait"
+  | "control_repeat"
+  | "control_if";
+
+export type NumericField = "steps" | "degrees" | "count" | "x" | "y" | "seconds";
 
 export type StatementPath = readonly number[];
 
@@ -193,7 +202,7 @@ export function duplicateBlockInWorkspace(
 export function editNumericBlockField(
   workspace: BlockWorkspaceSnapshot,
   index: number,
-  field: "steps" | "degrees" | "count",
+  field: NumericField,
   value: number,
 ): EditorProjection {
   return editNumericBlockFieldAt(workspace, [index], field, value);
@@ -202,7 +211,7 @@ export function editNumericBlockField(
 export function editNumericBlockFieldAt(
   workspace: BlockWorkspaceSnapshot,
   path: StatementPath,
-  field: "steps" | "degrees" | "count",
+  field: NumericField,
   value: number,
 ): EditorProjection {
   const block = blockAtPath(workspace, path);

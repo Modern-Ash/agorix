@@ -17,6 +17,9 @@ import { RuntimeExecutionError } from "./errors.js";
 export const RUNTIME_STATEMENT_OPERATIONS = Object.freeze([
   "move",
   "turn",
+  "setX",
+  "setY",
+  "wait",
   "repeat",
   "if",
 ] as const);

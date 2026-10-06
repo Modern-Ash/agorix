@@ -12,6 +12,9 @@ export type BlockType =
   | "event_green_flag"
   | "motion_move"
   | "motion_turn"
+  | "motion_set_x"
+  | "motion_set_y"
+  | "control_wait"
   | "control_repeat"
   | "control_if"
   | "sensing_touching_goal"
@@ -214,6 +217,12 @@ function statementFromBlock(
       return { type: "move", steps: numberField(block, "steps", path) };
     case "motion_turn":
       return { type: "turn", degrees: numberField(block, "degrees", path) };
+    case "motion_set_x":
+      return { type: "setX", x: numberField(block, "x", path) };
+    case "motion_set_y":
+      return { type: "setY", y: numberField(block, "y", path) };
+    case "control_wait":
+      return { type: "wait", seconds: numberField(block, "seconds", path) };
     case "control_repeat":
       return {
         type: "repeat",
@@ -299,6 +308,12 @@ function statementToBlock(
       return { id, type: "motion_move", fields: { steps: statement.steps } };
     case "turn":
       return { id, type: "motion_turn", fields: { degrees: statement.degrees } };
+    case "setX":
+      return { id, type: "motion_set_x", fields: { x: statement.x } };
+    case "setY":
+      return { id, type: "motion_set_y", fields: { y: statement.y } };
+    case "wait":
+      return { id, type: "control_wait", fields: { seconds: statement.seconds } };
     case "repeat":
       return {
         id,

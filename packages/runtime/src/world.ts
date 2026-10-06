@@ -81,6 +81,14 @@ export function turnWorld(world: WorldState, degrees: number): WorldState {
   });
 }
 
+export function setWorldX(world: WorldState, x: number): WorldState {
+  return createWorldState({ ...world, sprite: { ...world.sprite, x } });
+}
+
+export function setWorldY(world: WorldState, y: number): WorldState {
+  return createWorldState({ ...world, sprite: { ...world.sprite, y } });
+}
+
 export function touchingGoal(world: WorldState): boolean {
   return (
     normalizeCoordinate(world.sprite.x) === normalizeCoordinate(world.goal.x) &&

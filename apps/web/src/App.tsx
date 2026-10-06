@@ -101,6 +101,7 @@ import {
   resetWorkspace,
   statementListAtPath,
   type AddableBlockType,
+  type NumericField,
   type EditorModel,
   type EditorProjection,
   type StatementPath,
@@ -223,6 +224,9 @@ function PanelControls({
 const addableBlocks = new Set<AddableBlockType>([
   "motion_move",
   "motion_turn",
+  "motion_set_x",
+  "motion_set_y",
+  "control_wait",
   "control_repeat",
   "control_if",
 ]);
@@ -279,12 +283,18 @@ function initialProjectFor(
   return { ...loaded, model: loaded.model ?? createEditorModel() };
 }
 
-function numericFieldFor(block: BlockNode): "steps" | "degrees" | "count" | undefined {
+function numericFieldFor(block: BlockNode): NumericField | undefined {
   switch (block.type) {
     case "motion_move":
       return "steps";
     case "motion_turn":
       return "degrees";
+    case "motion_set_x":
+      return "x";
+    case "motion_set_y":
+      return "y";
+    case "control_wait":
+      return "seconds";
     case "control_repeat":
       return "count";
     default:
@@ -298,6 +308,12 @@ function displayNameForType(type: string, locale: Locale): string {
       return t(locale, "move");
     case "motion_turn":
       return t(locale, "turn");
+    case "motion_set_x":
+      return t(locale, "setX");
+    case "motion_set_y":
+      return t(locale, "setY");
+    case "control_wait":
+      return t(locale, "wait");
     case "control_repeat":
       return t(locale, "repeat");
     case "control_if":
@@ -311,7 +327,7 @@ function displayNameFor(block: BlockNode, locale: Locale): string {
   return displayNameForType(block.type, locale);
 }
 
-function fieldLabelFor(field: "steps" | "degrees" | "count", locale: Locale): string {
+function fieldLabelFor(field: NumericField, locale: Locale): string {
   switch (field) {
     case "steps":
       return t(locale, "steps");
@@ -319,6 +335,12 @@ function fieldLabelFor(field: "steps" | "degrees" | "count", locale: Locale): st
       return t(locale, "degrees");
     case "count":
       return t(locale, "fieldCount");
+    case "x":
+      return "x";
+    case "y":
+      return "y";
+    case "seconds":
+      return t(locale, "fieldSeconds");
   }
 }
 
@@ -360,6 +382,22 @@ function scratchPaletteFor(locale: Locale): readonly PaletteCategory[] {
           detail: es ? "Cambia direccion" : "Change direction",
           glyph: "90",
           type: "motion_turn",
+          enabled: true,
+        },
+        {
+          id: "motion_set_x",
+          label: es ? "Fijar x" : "Set x",
+          detail: es ? "Posición horizontal" : "Horizontal position",
+          glyph: "x",
+          type: "motion_set_x",
+          enabled: true,
+        },
+        {
+          id: "motion_set_y",
+          label: es ? "Fijar y" : "Set y",
+          detail: es ? "Posición vertical" : "Vertical position",
+          glyph: "y",
+          type: "motion_set_y",
           enabled: true,
         },
         {
@@ -523,7 +561,8 @@ function scratchPaletteFor(locale: Locale): readonly PaletteCategory[] {
           label: es ? "Esperar" : "Wait",
           detail: es ? "Pausa" : "Pause",
           glyph: "⏱",
-          enabled: false,
+          type: "control_wait",
+          enabled: true,
         },
         {
           id: "control_forever",
@@ -677,7 +716,7 @@ function scratchPaletteFor(locale: Locale): readonly PaletteCategory[] {
   ];
 }
 
-function blockValue(block: BlockNode, field: "steps" | "degrees" | "count"): number {
+function blockValue(block: BlockNode, field: NumericField): number {
   const value = block.fields?.[field];
   return typeof value === "number" ? value : 0;
 }

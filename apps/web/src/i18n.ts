@@ -168,6 +168,10 @@ const messages = {
     duplicateBlock: "Duplicate",
     degrees: "degrees",
     fieldCount: "count",
+    fieldSeconds: "seconds",
+    setX: "Set x",
+    setY: "Set y",
+    wait: "Wait",
     emptyRunMessage:
       "Nothing happens yet — add a block under 'When green flag clicked' to get started.",
     evidenceGoalReached: "Goal reached",
@@ -439,6 +443,10 @@ const messages = {
     duplicateBlock: "Duplicar",
     degrees: "grados",
     fieldCount: "cantidad",
+    fieldSeconds: "segundos",
+    setX: "Fijar x",
+    setY: "Fijar y",
+    wait: "Esperar",
     emptyRunMessage:
       "Todavía no pasa nada: agrega un bloque debajo de 'Cuando se hace clic en la bandera verde' para empezar.",
     evidenceGoalReached: "Meta alcanzada",

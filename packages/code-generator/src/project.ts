@@ -123,6 +123,15 @@ function projectStatement(
     case "turn":
       write(writer, `${pad}sprite.turn(${formatNumber(statement.degrees)});\n`);
       return;
+    case "setX":
+      write(writer, `${pad}sprite.setX(${formatNumber(statement.x)});\n`);
+      return;
+    case "setY":
+      write(writer, `${pad}sprite.setY(${formatNumber(statement.y)});\n`);
+      return;
+    case "wait":
+      write(writer, `${pad}wait(${formatNumber(statement.seconds)});\n`);
+      return;
     case "repeat": {
       write(writer, `${pad}repeat(${formatNumber(statement.count)}, () => {\n`);
       projectStatements(statement.body, nodeId, "body", indent + 1, writer);

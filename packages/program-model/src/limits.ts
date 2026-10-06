@@ -9,6 +9,12 @@ export const MOVE_STEPS_MAX = 1000;
 export const TURN_DEGREES_MIN = -1000;
 export const TURN_DEGREES_MAX = 1000;
 
+export const COORDINATE_MIN = -1000;
+export const COORDINATE_MAX = 1000;
+
+export const WAIT_SECONDS_MIN = 0;
+export const WAIT_SECONDS_MAX = 60;
+
 export const REPEAT_COUNT_MIN = 1;
 export const REPEAT_COUNT_MAX = 1000;
 

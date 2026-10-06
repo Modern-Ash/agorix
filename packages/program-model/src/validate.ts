@@ -10,6 +10,10 @@ import {
   REPEAT_COUNT_MAX,
   REPEAT_COUNT_MIN,
   TURN_DEGREES_MAX,
+  COORDINATE_MAX,
+  COORDINATE_MIN,
+  WAIT_SECONDS_MAX,
+  WAIT_SECONDS_MIN,
   TURN_DEGREES_MIN,
 } from "./limits.js";
 
@@ -169,6 +173,27 @@ function validateStatement(
       }
       checkBounds(input.degrees, TURN_DEGREES_MIN, TURN_DEGREES_MAX, `${path}.degrees`);
       return { type: "turn", degrees: input.degrees };
+    }
+    case "setX": {
+      if (typeof input.x !== "number") {
+        fail("MISSING_FIELD", `${path}.x`, "expected a number", input.x);
+      }
+      checkBounds(input.x, COORDINATE_MIN, COORDINATE_MAX, `${path}.x`);
+      return { type: "setX", x: input.x };
+    }
+    case "setY": {
+      if (typeof input.y !== "number") {
+        fail("MISSING_FIELD", `${path}.y`, "expected a number", input.y);
+      }
+      checkBounds(input.y, COORDINATE_MIN, COORDINATE_MAX, `${path}.y`);
+      return { type: "setY", y: input.y };
+    }
+    case "wait": {
+      if (typeof input.seconds !== "number") {
+        fail("MISSING_FIELD", `${path}.seconds`, "expected a number", input.seconds);
+      }
+      checkBounds(input.seconds, WAIT_SECONDS_MIN, WAIT_SECONDS_MAX, `${path}.seconds`);
+      return { type: "wait", seconds: input.seconds };
     }
     case "repeat": {
       if (typeof input.count !== "number") {
