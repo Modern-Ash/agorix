@@ -1,5 +1,11 @@
-import type { Expression, ProjectProgram, Statement, Trigger } from "@agorix/program-model";
-import { validateProgram } from "@agorix/program-model";
+import type {
+  Expression,
+  ProgramEvent,
+  ProjectProgram,
+  Statement,
+  Trigger,
+} from "@agorix/program-model";
+import { eventForTrigger, validateProgram } from "@agorix/program-model";
 import { cloneWorldState, moveWorld, touchingGoal, turnWorld, type WorldState } from "./world.js";
 import { RuntimeExecutionError } from "./errors.js";
 import { assertAllowedRuntimeOperation, assertProgramOperationsAllowed } from "./operations.js";
@@ -21,6 +27,8 @@ export interface ExecutionOptions {
   readonly stopAfterSteps?: number;
   readonly shouldStop?: (boundary: ExecutionBoundary) => boolean;
   readonly collectObservations?: boolean;
+  /** The event to dispatch; scripts whose trigger answers to it run, in order. Default: green flag. */
+  readonly event?: ProgramEvent;
 }
 
 export interface ExecutionTraceEntry {
@@ -212,6 +220,7 @@ function assertTrigger(trigger: Trigger, path: string): void {
   assertAllowedRuntimeOperation("trigger", trigger.type, path);
   switch (trigger.type) {
     case "onStart":
+    case "greenFlag":
       return;
     default: {
       const unknown = trigger as { type?: unknown };
@@ -227,6 +236,7 @@ export function runProgram(
 ): RunResult {
   const validated = validateProgram(program);
   assertProgramOperationsAllowed(validated);
+  const event = options.event ?? "greenFlag";
   const state: MutableRunState = {
     world: cloneWorldState(initialWorld),
     stepsUsed: 0,
@@ -243,6 +253,9 @@ export function runProgram(
         continue;
       }
       assertTrigger(script.trigger, `scripts[${i}].trigger`);
+      if (eventForTrigger(script.trigger) !== event) {
+        continue;
+      }
       executeStatements(script.statements, `scripts[${i}].statements`, state);
     }
     const world = cloneWorldState(state.world);

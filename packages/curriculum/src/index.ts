@@ -117,7 +117,7 @@ export const FIRST_MISSION = Object.freeze({
     scripts: [
       {
         id: "main",
-        trigger: { type: "onStart" },
+        trigger: { type: "greenFlag" },
         statements: [],
       },
     ],

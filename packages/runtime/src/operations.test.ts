@@ -60,7 +60,7 @@ describe("runtime operation allowlist", () => {
       "numericLiteral",
       "touchingGoal",
     ]);
-    expect([...RUNTIME_TRIGGER_OPERATIONS]).toEqual(["onStart"]);
+    expect([...RUNTIME_TRIGGER_OPERATIONS]).toEqual(["onStart", "greenFlag"]);
   });
 
   it("freezes the allowlist so callers cannot widen it at runtime", () => {

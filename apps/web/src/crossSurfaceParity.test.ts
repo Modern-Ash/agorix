@@ -24,7 +24,7 @@ const three = {
   scripts: [
     {
       id: "main",
-      trigger: { type: "onStart" },
+      trigger: { type: "greenFlag" },
       statements: [
         { type: "move", steps: 1 },
         { type: "turn", degrees: 90 },
@@ -35,7 +35,7 @@ const three = {
 } as unknown as ProjectProgram;
 const empty = {
   schema: "agorix/program/v1",
-  scripts: [{ id: "main", trigger: { type: "onStart" }, statements: [] }],
+  scripts: [{ id: "main", trigger: { type: "greenFlag" }, statements: [] }],
 } as unknown as ProjectProgram;
 
 const hash = (program: ProjectProgram) => programSemanticHash(program);

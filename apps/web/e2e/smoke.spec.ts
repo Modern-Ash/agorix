@@ -112,7 +112,7 @@ test("main editor shell renders persistent blocks, stage and code", async ({ pag
     }),
   ).toBeVisible();
   await expect(page.getByRole("heading", { name: "Action palette", exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "When you press Run" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "When green flag clicked" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Stage" })).toBeVisible();
   await expect(codeHeading(page)).toBeVisible();
   await expect(page.getByRole("button", { name: "Run" })).toBeVisible();
