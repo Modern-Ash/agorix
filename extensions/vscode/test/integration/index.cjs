@@ -212,6 +212,26 @@ const tests = [
     },
   ],
   [
+    "Stage opens once beside the editor and follows run, stop and reset",
+    async () => {
+      const stageTabs = () =>
+        vscode.window.tabGroups.all
+          .flatMap((group) => group.tabs)
+          .filter((t) => t.input instanceof vscode.TabInputWebview && t.label === "Mundo Agorix");
+      await vscode.commands.executeCommand("agorixStudio.openWorldPreview");
+      await vscode.commands.executeCommand("agorixStudio.openWorldPreview");
+      await waitFor("the Stage tab", () => stageTabs().length === 1);
+      const ran = await vscode.commands.executeCommand("agorixStudio.run");
+      assert.equal(ran.status, "completed");
+      const stopped = await vscode.commands.executeCommand("agorixStudio.stop");
+      assert.equal(stopped.status, "stopped");
+      const reset = await vscode.commands.executeCommand("agorixStudio.reset");
+      assert.equal(reset.status, "idle");
+      assert.equal(reset.selectedFrameIndex, 0);
+      assert.equal(stageTabs().length, 1);
+    },
+  ],
+  [
     "runtime messages follow the VS Code display language",
     async () => {
       const spanish = vscode.env.language.toLowerCase().startsWith("es");

@@ -205,6 +205,9 @@ importers:
         specifier: workspace:*
         version: link:../../packages/tutor-contract
     devDependencies:
+      '@types/jsdom':
+        specifier: ^21.1.7
+        version: 21.1.7
       '@types/vscode':
         specifier: 1.95.0
         version: 1.95.0
@@ -217,6 +220,9 @@ importers:
       esbuild:
         specifier: ^0.28.2
         version: 0.28.2
+      jsdom:
+        specifier: ^24.1.3
+        version: 24.1.3
       typescript:
         specifier: ^5.6.3
         version: 5.9.3

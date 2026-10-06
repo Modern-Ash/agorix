@@ -4,6 +4,7 @@ import type { SyncState } from "../sync/syncHub.js";
 import { createNonce } from "../webview/framework.js";
 import { onValidatedMessage } from "../webview/host.js";
 import { renderWorldPreview, worldPreviewInboundSchemas } from "../webview/worldPreview.js";
+import { handleStageMessage } from "./stageMessages.js";
 
 const WORLD_PREVIEW_VIEW_TYPE = "agorixStudio.worldPreview";
 let worldPreviewPanel: vscode.WebviewPanel | undefined;
@@ -30,11 +31,11 @@ export function openWorldPreviewPanel(
     const intake = onValidatedMessage(panel.webview, {
       schemas: worldPreviewInboundSchemas,
       onMessage: async (message) => {
-        if (message.type === "agorix-ready") {
-          refreshWorldPreview(latestView, false);
-        } else {
-          await selectNode(message.nodeId);
-        }
+        await handleStageMessage(message, {
+          selectNode,
+          execute: (id, ...args) => vscode.commands.executeCommand(id, ...args),
+          ready: () => refreshWorldPreview(latestView, false),
+        });
       },
     });
     panel.onDidDispose(() => {
