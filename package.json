@@ -8,6 +8,11 @@
     "pnpm": ">=9 <10"
   },
   "packageManager": "pnpm@9.15.9",
+  "pnpm": {
+    "overrides": {
+      "source-map-js": "1.2.2"
+    }
+  },
   "scripts": {
     "lint": "eslint . --max-warnings=0",
     "format": "prettier --write .",
