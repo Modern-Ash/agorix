@@ -666,7 +666,14 @@ function requireRevision(value: unknown): number {
 }
 
 const STORED_PROJECT_KEYS = ["schemaVersion", "program", "metadata"];
-const METADATA_KEYS = ["createdAt", "updatedAt", "missionProgress", "hintLevel", "locale"];
+const METADATA_KEYS = [
+  "createdAt",
+  "updatedAt",
+  "missionProgress",
+  "hintLevel",
+  "locale",
+  "actors",
+];
 
 function requireStoredProject(value: unknown, maxBodyBytes: number): StoredProject {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {

@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { actorsOf } from "../studioCore.js";
 import type {
   StudioCompanionTurn,
   StudioExecutionViewState,
@@ -6,6 +7,7 @@ import type {
   StudioProjectionId,
 } from "../studioCore.js";
 import { PROJECTION_SCHEME } from "../store/session.js";
+import { refreshActorInspector } from "../host/actorInspectorPanel.js";
 import { refreshWorldPreview } from "../host/worldPreviewPanel.js";
 import {
   CompanionHistoryProvider,
@@ -51,6 +53,7 @@ export function registerStudioViews(
     new StudioTreeProvider("missions", options.getCurrentProject),
     new StudioTreeProvider("progress", options.getCurrentProject),
     new StudioTreeProvider("worlds", options.getCurrentProject),
+    new StudioTreeProvider("actors", options.getCurrentProject),
     new StudioTreeProvider("companion", options.getCurrentProject),
     new StudioTreeProvider("developer", options.getCurrentProject),
   ];
@@ -62,6 +65,8 @@ export function registerStudioViews(
     for (const provider of treeProviders) {
       provider.refresh();
     }
+    const current = options.getCurrentProject();
+    if (current !== undefined) refreshActorInspector(actorsOf(current.stored));
     projectionProvider.refresh(options.projectionUri(options.getCurrentProjectionId()));
   };
   const refreshExecutionViews = (): void => {

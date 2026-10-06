@@ -13,6 +13,10 @@ import {
   sanitizeAgorixFilename,
   semanticProjectHash,
   serializeAgorixProject,
+  ACTOR_NAME_MAX_LENGTH,
+  ACTOR_SIZE_MAX,
+  ACTOR_SIZE_MIN,
+  type ProjectActors,
   type ProjectMetadata,
 } from "@agorix/persistence";
 import type { ProjectProgram } from "@agorix/program-model";
@@ -82,6 +86,18 @@ import {
   type StageFeedback,
   type StageState,
 } from "@agorix/stage";
+import { ACTOR_VISUALS, BACKDROPS, SOUNDS, assetName, findActorVisual } from "./assetLibrary.js";
+import { previewSound } from "./soundPreview.js";
+import {
+  BASE_SPRITE_RADIUS,
+  activeActor,
+  defaultActors,
+  patchActive,
+  toggleSound,
+  withBackdrop,
+  stageForActors,
+  type ActorPatch,
+} from "./actors.js";
 import {
   addBlockToWorkspace,
   addBlockToWorkspaceAt,
@@ -89,6 +105,7 @@ import {
   canContainStatements,
   childContainerPathFor,
   codeSliceForNode,
+  INITIAL_STAGE,
   createEditorModel,
   createEditorModelFromProgram,
   deleteBlockFromWorkspaceAt,
@@ -239,6 +256,7 @@ function createProjectMetadata(
   createdAt: string,
   programBlockCount: number,
   locale: Locale,
+  actors: ProjectActors,
 ): ProjectMetadata {
   return {
     createdAt,
@@ -246,6 +264,7 @@ function createProjectMetadata(
     missionProgress: programBlockCount > 0 ? 1 : 0,
     hintLevel: 0,
     locale,
+    actors,
   };
 }
 
@@ -872,7 +891,15 @@ export function StageView({
   reducedMotion,
   panelControls,
   panelProps,
+  actors,
+  onActorChange,
+  onBackdropChange,
+  onToggleSound,
 }: {
+  actors?: ProjectActors;
+  onActorChange?: (patch: ActorPatch) => void;
+  onBackdropChange?: (id: string) => void;
+  onToggleSound?: (id: string) => void;
   world: WorldDefinition;
   frame: ObservationFrame | undefined;
   fallback: StageState;
@@ -884,7 +911,14 @@ export function StageView({
   panelProps?: PanelChromeProps;
 }) {
   const state = frame?.state ?? fallback;
-  const sprite = state.sprite;
+  const actor = actors === undefined ? undefined : activeActor(actors);
+  const artId = findActorVisual(actor?.costume)?.art;
+  // Like Scratch's two-costume walk cycle: the art alternates frames on every executed step.
+  const walkFrame = !reducedMotion && frame?.running === true ? (frame.step ?? 0) % 2 : 0;
+  const sprite = {
+    ...state.sprite,
+    radius: BASE_SPRITE_RADIUS * ((actor?.size ?? 100) / 100),
+  };
   const goal = state.goal;
   const viewport = state.viewport;
   const copy = worldCopy(world, locale);
@@ -923,7 +957,13 @@ export function StageView({
         role="img"
         aria-label={t(locale, "stageAria")}
       >
-        <rect width={viewport.width} height={viewport.height} rx="14" />
+        <rect
+          className={`stage-backdrop backdrop-${actors?.backdrop ?? "default"}`}
+          width={viewport.width}
+          height={viewport.height}
+          rx="14"
+        />
+        <BackdropArt id={actors?.backdrop} width={viewport.width} height={viewport.height} />
         <line x1="24" y1="128" x2="240" y2="128" />
         {feedback.trail.length > 1 ? (
           <polyline className="world-trail" points={trailPoints} data-testid="world-trail">
@@ -962,6 +1002,9 @@ export function StageView({
         <g
           className="sprite-group"
           data-testid="stage-sprite"
+          data-visible={actor?.visible === false ? "false" : "true"}
+          data-size={actor?.size ?? 100}
+          display={actor?.visible === false ? "none" : undefined}
           data-x={sprite.x}
           data-y={sprite.y}
           data-heading={sprite.heading}
@@ -971,20 +1014,26 @@ export function StageView({
           }}
         >
           <g transform={`rotate(${sprite.heading})`}>
-            <circle className="sprite" r={sprite.radius}>
-              <title>{copy.spriteAlt}</title>
+            <circle
+              className={artId === undefined ? "sprite" : "sprite sprite-art"}
+              r={sprite.radius}
+            >
+              <title>{actor === undefined ? copy.spriteAlt : actor.name}</title>
             </circle>
-            <path d="M 4 0 L 16 -6 L 16 6 Z" />
+            {artId === undefined ? <path d="M 4 0 L 16 -6 L 16 6 Z" /> : null}
+            {artId === "pico" ? <PicoArt radius={sprite.radius} frame={walkFrame} /> : null}
           </g>
-          <text
-            className="world-glyph"
-            textAnchor="middle"
-            dominantBaseline="central"
-            fontSize={sprite.radius * 1.5}
-            aria-hidden="true"
-          >
-            {glyphs.sprite}
-          </text>
+          {artId === undefined ? (
+            <text
+              className="world-glyph"
+              textAnchor="middle"
+              dominantBaseline="central"
+              fontSize={sprite.radius * 1.5}
+              aria-hidden="true"
+            >
+              {findActorVisual(actor?.costume)?.glyph ?? glyphs.sprite}
+            </text>
+          ) : null}
         </g>
       </svg>
       <div
@@ -1014,7 +1063,314 @@ export function StageView({
           </code>
         ) : null}
       </div>
+      {actors !== undefined &&
+      onActorChange !== undefined &&
+      onBackdropChange !== undefined &&
+      onToggleSound !== undefined ? (
+        <ActorInspector
+          actors={actors}
+          locale={locale}
+          onChange={onActorChange}
+          onBackdropChange={onBackdropChange}
+          onToggleSound={onToggleSound}
+        />
+      ) : null}
     </section>
+  );
+}
+
+/**
+ * Pico the fox: an original character drawn from SVG shapes (no bundled image). Faces east at
+ * heading 0 like every actor; `frame` swaps the leg pose for a two-frame walk cycle.
+ */
+function PicoArt({ radius, frame }: { radius: number; frame: 0 | 1 | number }) {
+  const scale = radius / 12;
+  const front = frame === 0 ? 3 : -3;
+  return (
+    <g className="pico" data-testid="pico-art" data-frame={frame} transform={`scale(${scale})`}>
+      <path className="pico-tail" d="M -9 2 C -20 -4 -19 -14 -12 -12 C -13 -7 -9 -4 -6 -2 Z" />
+      <path
+        className="pico-tail-tip"
+        d="M -18 -12 C -16 -15 -13 -14 -12 -12 C -14 -11 -16 -10 -18 -12 Z"
+      />
+      <rect className="pico-leg" x={-7 + front} y="4" width="4" height="8" rx="2" />
+      <rect className="pico-leg" x={3 - front} y="4" width="4" height="8" rx="2" />
+      <ellipse className="pico-body" cx="-1" cy="1" rx="10" ry="7" />
+      <path className="pico-chest" d="M 4 3 C 8 3 10 0 9 -3 C 6 -1 4 0 4 3 Z" />
+      <path className="pico-ear" d="M 5 -12 L 8 -20 L 12 -12 Z" />
+      <path className="pico-ear" d="M 9 -11 L 14 -17 L 15 -9 Z" />
+      <circle className="pico-head" cx="9" cy="-6" r="8" />
+      <path className="pico-cheek" d="M 5 -3 C 9 1 15 0 17 -4 C 13 -2 9 -2 5 -3 Z" />
+      <circle className="pico-eye" cx="11.5" cy="-8" r="1.6" />
+      <circle className="pico-nose" cx="16.5" cy="-5" r="1.4" />
+    </g>
+  );
+}
+
+/** Code-native decoration for a library backdrop; the flat colour comes from CSS. */
+function BackdropArt({
+  id,
+  width,
+  height,
+}: {
+  id?: string | undefined;
+  width: number;
+  height: number;
+}) {
+  switch (id) {
+    case "space":
+      return (
+        <g className="backdrop-art" aria-hidden="true">
+          {[
+            [22, 18],
+            [70, 150],
+            [120, 40],
+            [180, 110],
+            [236, 26],
+            [210, 170],
+          ].map(([x, y]) => (
+            <circle key={`${x}-${y}`} className="backdrop-star" cx={x} cy={y} r="1.6" />
+          ))}
+        </g>
+      );
+    case "meadow":
+      return (
+        <rect
+          className="backdrop-ground"
+          y={height * 0.72}
+          width={width}
+          height={height * 0.28}
+          aria-hidden="true"
+        />
+      );
+    case "grid":
+      return (
+        <g className="backdrop-art" aria-hidden="true">
+          {[0.25, 0.5, 0.75].map((fraction) => (
+            <g key={fraction}>
+              <path className="backdrop-gridline" d={`M ${width * fraction} 0 V ${height}`} />
+              <path className="backdrop-gridline" d={`M 0 ${height * fraction} H ${width}`} />
+            </g>
+          ))}
+        </g>
+      );
+    default:
+      return null;
+  }
+}
+
+type ActorTab = "properties" | "costumes" | "sounds";
+const ACTOR_TABS: readonly ActorTab[] = ["properties", "costumes", "sounds"];
+const ACTOR_TAB_LABELS = {
+  properties: "actorTabProperties",
+  costumes: "actorTabCostumes",
+  sounds: "actorTabSounds",
+} as const;
+
+function ActorInspector({
+  actors,
+  locale,
+  onChange,
+  onBackdropChange,
+  onToggleSound,
+}: {
+  actors: ProjectActors;
+  locale: Locale;
+  onChange: (patch: ActorPatch) => void;
+  onBackdropChange: (id: string) => void;
+  onToggleSound: (id: string) => void;
+}) {
+  const actor = activeActor(actors);
+  const [tab, setTab] = useState<ActorTab>("properties");
+  // Like Scratch's sprite pane: open next to the stage on wide screens, folded on narrow ones so
+  // the Code panel stays in the first viewport.
+  const [open, setOpen] = useState(
+    () =>
+      typeof window === "undefined" ||
+      typeof window.matchMedia !== "function" ||
+      window.matchMedia("(min-width: 1024px)").matches,
+  );
+  const number = (
+    key: "x" | "y" | "direction" | "size",
+    label: string,
+    attrs: { min?: number; max?: number } = {},
+  ) => (
+    <label className="actor-field">
+      <span>{label}</span>
+      <input
+        type="number"
+        data-testid={`actor-${key}`}
+        value={actor[key]}
+        {...attrs}
+        onChange={(event) => {
+          const value = event.currentTarget.valueAsNumber;
+          if (Number.isFinite(value)) onChange({ [key]: value });
+        }}
+      />
+    </label>
+  );
+  return (
+    <details
+      className="actor-inspector"
+      open={open}
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+    >
+      <summary>
+        {t(locale, "actorsTitle")}: {actor.name}
+      </summary>
+      <ul className="actor-list" aria-label={t(locale, "actorListLabel")}>
+        {actors.items.map((item) => (
+          <li key={item.id}>
+            <button
+              type="button"
+              className="actor-chip"
+              aria-pressed={item.id === actors.activeId}
+              data-testid="actor-chip"
+            >
+              <span aria-hidden="true">{item.visible ? "●" : "○"}</span> {item.name}
+            </button>
+          </li>
+        ))}
+      </ul>
+      <div className="actor-tabs" role="tablist" aria-label={t(locale, "actorTabs")}>
+        {ACTOR_TABS.map((id, index) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            id={`actor-tab-${id}`}
+            aria-selected={tab === id}
+            aria-controls={`actor-panel-${id}`}
+            tabIndex={tab === id ? 0 : -1}
+            data-testid={`actor-tab-${id}`}
+            onClick={() => setTab(id)}
+            onKeyDown={(event) => {
+              const step = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
+              if (step === 0) return;
+              event.preventDefault();
+              const next = ACTOR_TABS[(index + step + ACTOR_TABS.length) % ACTOR_TABS.length]!;
+              setTab(next);
+              document.getElementById(`actor-tab-${next}`)?.focus();
+            }}
+          >
+            {t(locale, ACTOR_TAB_LABELS[id])}
+          </button>
+        ))}
+      </div>
+      {tab === "costumes" ? (
+        <div
+          className="actor-assets"
+          role="tabpanel"
+          id="actor-panel-costumes"
+          aria-labelledby="actor-tab-costumes"
+        >
+          {[undefined, ...ACTOR_VISUALS].map((asset) => (
+            <button
+              key={asset?.id ?? "default"}
+              type="button"
+              className="asset-tile"
+              aria-pressed={(actor.costume ?? "") === (asset?.id ?? "")}
+              data-testid={`costume-${asset?.id ?? "default"}`}
+              onClick={() => onChange({ costume: asset?.id ?? null })}
+            >
+              <span aria-hidden="true">{asset?.glyph ?? "◌"}</span>
+              <small>
+                {asset === undefined ? t(locale, "assetWorldDefault") : assetName(asset, locale)}
+              </small>
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {tab === "sounds" ? (
+        <ul
+          className="actor-assets actor-sounds"
+          role="tabpanel"
+          id="actor-panel-sounds"
+          aria-labelledby="actor-tab-sounds"
+        >
+          {SOUNDS.map((asset) => (
+            <li key={asset.id}>
+              <label>
+                <input
+                  type="checkbox"
+                  data-testid={`sound-${asset.id}`}
+                  checked={(actors.sounds ?? []).includes(asset.id)}
+                  onChange={() => onToggleSound(asset.id)}
+                />
+                <span>{assetName(asset, locale)}</span>
+              </label>
+              <button type="button" onClick={() => previewSound(asset)}>
+                {t(locale, "soundPlay")}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      <div
+        className="actor-fields"
+        role="tabpanel"
+        id="actor-panel-properties"
+        aria-labelledby="actor-tab-properties"
+        hidden={tab !== "properties"}
+      >
+        <label className="actor-field actor-field-name">
+          <span>{t(locale, "actorName")}</span>
+          <input
+            type="text"
+            data-testid="actor-name"
+            value={actor.name}
+            maxLength={ACTOR_NAME_MAX_LENGTH}
+            onChange={(event) => onChange({ name: event.currentTarget.value })}
+          />
+        </label>
+        {number("x", t(locale, "actorX"))}
+        {number("y", t(locale, "actorY"))}
+        {number("direction", t(locale, "actorDirection"))}
+        {number("size", t(locale, "actorSize"), { min: ACTOR_SIZE_MIN, max: ACTOR_SIZE_MAX })}
+        <label className="actor-field">
+          <span>{t(locale, "actorLook")}</span>
+          <select
+            data-testid="actor-costume"
+            value={actor.costume ?? ""}
+            onChange={(event) => {
+              const value = event.currentTarget.value;
+              onChange({ costume: value === "" ? null : value });
+            }}
+          >
+            <option value="">{t(locale, "assetWorldDefault")}</option>
+            {ACTOR_VISUALS.map((asset) => (
+              <option key={asset.id} value={asset.id}>
+                {asset.glyph} {assetName(asset, locale)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="actor-field">
+          <span>{t(locale, "backdropLabel")}</span>
+          <select
+            data-testid="stage-backdrop"
+            value={actors.backdrop ?? ""}
+            onChange={(event) => onBackdropChange(event.currentTarget.value)}
+          >
+            <option value="">{t(locale, "assetWorldDefault")}</option>
+            {BACKDROPS.map((asset) => (
+              <option key={asset.id} value={asset.id}>
+                {assetName(asset, locale)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="actor-field actor-field-visible">
+          <input
+            type="checkbox"
+            data-testid="actor-visible"
+            checked={actor.visible}
+            onChange={(event) => onChange({ visible: event.currentTarget.checked })}
+          />
+          <span>{t(locale, "actorShow")}</span>
+        </label>
+      </div>
+    </details>
   );
 }
 
@@ -1689,7 +2045,15 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     initialProjectRef.current = initialProjectFor(persistenceRef.current);
   }
 
-  const [model, setModel] = useState<EditorModel>(() => initialProjectRef.current!.model);
+  const [actors, setActors] = useState<ProjectActors>(
+    () =>
+      initialProjectRef.current!.metadata?.actors ??
+      defaultActors(initialProjectRef.current!.model.stage),
+  );
+  const [model, setModel] = useState<EditorModel>(() => {
+    const initial = initialProjectRef.current!.model;
+    return { ...initial, stage: stageForActors(initial.stage, actors) };
+  });
   const [history, setHistory] = useState<EditorHistory>(() =>
     createEditorHistory(initialProjectRef.current!.model.program),
   );
@@ -1862,9 +2226,9 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     if (initialProjectRef.current?.message !== undefined || showingRemoteRef.current) {
       return;
     }
-    const metadata = createProjectMetadata(createdAt, countProgramBlocks(model), locale);
+    const metadata = createProjectMetadata(createdAt, countProgramBlocks(model), locale, actors);
     setPersistenceMessage(saveEditorProject(persistenceRef.current, model.program, metadata));
-  }, [createdAt, locale, model.program]);
+  }, [actors, createdAt, locale, model.program]);
 
   useEffect(() => {
     void workspace.init();
@@ -1882,7 +2246,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     const stored = {
       schemaVersion: model.program.schema,
       program: model.program,
-      metadata: createProjectMetadata(createdAt, countProgramBlocks(model), locale),
+      metadata: createProjectMetadata(createdAt, countProgramBlocks(model), locale, actors),
     };
     const hash = semanticProjectHash(stored);
     if (awaitBaselineRef.current) {
@@ -1898,7 +2262,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
       workspace.queueSave(stored);
     }, 400);
     return () => clearTimeout(timer);
-  }, [createdAt, locale, model.program, workspace, workspaceState.active?.projectId]);
+  }, [actors, createdAt, locale, model.program, workspace, workspaceState.active?.projectId]);
 
   function loadAccountProject(dto: ProjectDto) {
     showingRemoteRef.current = true;
@@ -1921,7 +2285,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     } else {
       replaceCurrentProject(
         createEditorModel().program,
-        createProjectMetadata(new Date().toISOString(), 0, locale),
+        createProjectMetadata(new Date().toISOString(), 0, locale, defaultActors(INITIAL_STAGE)),
       );
     }
     setMessage(t(locale, "emptyRunMessage"));
@@ -1932,7 +2296,12 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     return {
       schemaVersion: program.schema,
       program,
-      metadata: createProjectMetadata(new Date().toISOString(), 0, locale),
+      metadata: createProjectMetadata(
+        new Date().toISOString(),
+        0,
+        locale,
+        defaultActors(INITIAL_STAGE),
+      ),
     };
   }
 
@@ -2011,7 +2380,13 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     resetEphemeralEditorState();
     const restored = createEditorModelFromProgram(program);
     setHistory(createEditorHistory(restored.program));
-    setModel((current) => ({ ...current, ...restored, stage: resetStageSession(current.stage) }));
+    const restoredActors = metadata.actors ?? defaultActors(INITIAL_STAGE);
+    setActors(restoredActors);
+    setModel((current) => ({
+      ...current,
+      ...restored,
+      stage: stageForActors(current.stage, restoredActors),
+    }));
     setCreatedAt(metadata.createdAt);
     if (metadata.locale === "en" || metadata.locale === "es") {
       setLocale(metadata.locale);
@@ -2051,8 +2426,20 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     setMessage(t(locale, "programUpdatedMessage"));
   }
 
+  function updateActor(patch: ActorPatch) {
+    const next = patchActive(actors, patch);
+    setActors(next);
+    setModel((current) => ({ ...current, stage: stageForActors(current.stage, next) }));
+    setFrames([]);
+    setFrameIndex(0);
+  }
+
+  function updateBackdrop(id: string) {
+    setActors((current) => withBackdrop(current, id));
+  }
+
   function exportProject() {
-    const metadata = createProjectMetadata(createdAt, countProgramBlocks(model), locale);
+    const metadata = createProjectMetadata(createdAt, countProgramBlocks(model), locale, actors);
     const json = serializeAgorixProject({
       schemaVersion: model.program.schema,
       program: model.program,
@@ -3055,6 +3442,10 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
             reducedMotion={reducedMotion}
             panelControls={panelControls("stage")}
             panelProps={panelProps("stage", "stage-panel")}
+            actors={actors}
+            onActorChange={updateActor}
+            onBackdropChange={updateBackdrop}
+            onToggleSound={(id) => setActors((current) => toggleSound(current, id))}
           />
         )}
 

@@ -70,6 +70,7 @@ automation and human acceptance:
 - `agorixStudio.openProjection`;
 - `agorixStudio.switchProjection`;
 - `agorixStudio.openWorldPreview`;
+- `agorixStudio.openActorInspector`;
 - `agorixStudio.openWorkbench`;
 - `agorixStudio.run`;
 - `agorixStudio.step`;

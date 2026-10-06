@@ -40,6 +40,8 @@ export interface StudioCommandHandlers {
   readonly validateProject: CommandBody;
   readonly runChecks: CommandBody;
   readonly openWorkbench: CommandBody;
+  readonly openActorInspector: CommandBody;
+  readonly updateActor: CommandBody;
   readonly showDeveloperContext: CommandBody;
   readonly openScm: CommandBody;
   readonly suggestRepeat: CommandBody;
@@ -114,6 +116,12 @@ export function registerStudioCommands(
       label: "Open Mundo Agorix",
       body: handlers.openWorldPreview,
     },
+    {
+      id: "agorixStudio.openActorInspector",
+      label: "Open Actor Inspector",
+      body: handlers.openActorInspector,
+    },
+    { id: "agorixStudio.updateActor", label: "Update Actor", body: handlers.updateActor },
     { id: "agorixStudio.run", label: "Run", body: handlers.runExecution },
     { id: "agorixStudio.step", label: "Step", body: handlers.stepExecution },
     { id: "agorixStudio.reset", label: "Reset", body: handlers.resetExecution },

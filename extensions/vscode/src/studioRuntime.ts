@@ -27,6 +27,7 @@ import {
   publishWorkbenchAmbientHint,
 } from "./host/workbenchPanel.js";
 import { disposeWorldPreview, refreshWorldPreviewSync } from "./host/worldPreviewPanel.js";
+import { disposeActorInspector } from "./host/actorInspectorPanel.js";
 import { createSyncHub } from "./sync/syncHub.js";
 import { canDoCompanionAction, offerActionAllowed } from "./assistance.js";
 import { createProviderWiring } from "./providerWiring.js";
@@ -264,6 +265,7 @@ export function activate(context: vscode.ExtensionContext): void {
     getProgram: () => session.current?.project.stored.program,
     getProject: () => session.current?.project,
     commitProgram: proposalCommands.commitProgram,
+    commitActors: proposalCommands.commitActors,
     getActiveProposal: () => session.activeProposal,
     reviewProposalSession: proposalCommands.reviewProposalSession,
     revealCanonicalNode: selectNode,
@@ -409,6 +411,8 @@ export function activate(context: vscode.ExtensionContext): void {
         switchProjection: projectionCommands.switchProjection,
         revealCanonicalNode: projectionCommands.revealCanonicalNode,
         openWorldPreview: surfaceCommands.openWorldPreview,
+        openActorInspector: surfaceCommands.openActorInspector,
+        updateActor: surfaceCommands.updateActor,
         runExecution: executionCommands.runExecution,
         stepExecution: executionCommands.stepExecution,
         resetExecution: executionCommands.resetExecution,
@@ -462,5 +466,6 @@ export function activate(context: vscode.ExtensionContext): void {
 export function deactivate(): void {
   disposeWorkbench();
   disposeWorldPreview();
+  disposeActorInspector();
   clearStudioSession(session);
 }

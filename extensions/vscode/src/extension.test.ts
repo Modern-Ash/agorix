@@ -390,6 +390,8 @@ describe("Studio extension wiring", () => {
         "agorixStudio.openProject",
         "agorixStudio.openProjection",
         "agorixStudio.openWorldPreview",
+        "agorixStudio.openActorInspector",
+        "agorixStudio.updateActor",
         "agorixStudio.openWorkbench",
         "agorixStudio.exportAgorix",
         "agorixStudio.exportEducatorEvidence",
@@ -429,6 +431,7 @@ describe("Studio extension wiring", () => {
     expect(lensProviders).toHaveLength(1);
     expect(actionProviders).toHaveLength(1);
     expect(treeViews.sort()).toEqual([
+      "agorixStudio.actors",
       "agorixStudio.companion",
       "agorixStudio.companionHistory",
       "agorixStudio.developer",

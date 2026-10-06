@@ -50,3 +50,5 @@ export type {
   StageRunStatus,
 } from "./feedback.js";
 export { deriveStageFeedback, resolveStageMotion } from "./feedback.js";
+
+export * from "./assets.js";

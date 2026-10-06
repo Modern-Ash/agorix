@@ -46,6 +46,8 @@
     "onCommand:agorixStudio.switchProjection",
     "onCommand:agorixStudio.revealCanonicalNode",
     "onCommand:agorixStudio.openWorldPreview",
+    "onCommand:agorixStudio.openActorInspector",
+    "onCommand:agorixStudio.updateActor",
     "onCommand:agorixStudio.openWorkbench",
     "onCommand:agorixStudio.run",
     "onCommand:agorixStudio.step",
@@ -77,6 +79,7 @@
     "onView:agorixStudio.missions",
     "onView:agorixStudio.progress",
     "onView:agorixStudio.worlds",
+    "onView:agorixStudio.actors",
     "onView:agorixStudio.inspector",
     "onView:agorixStudio.companion",
     "onView:agorixStudio.companionHistory",
@@ -196,6 +199,12 @@
           "icon": "$(globe)"
         },
         {
+          "id": "agorixStudio.actors",
+          "name": "%view.actors.name%",
+          "when": "agorixStudio.hasProject",
+          "icon": "$(symbol-misc)"
+        },
+        {
           "id": "agorixStudio.inspector",
           "name": "%view.inspector.name%",
           "when": "agorixStudio.hasProject",
@@ -299,6 +308,18 @@
         "title": "%command.openWorldPreview.title%",
         "category": "%category%",
         "icon": "$(globe)"
+      },
+      {
+        "command": "agorixStudio.openActorInspector",
+        "title": "%command.openActorInspector.title%",
+        "category": "%category%",
+        "icon": "$(symbol-misc)"
+      },
+      {
+        "command": "agorixStudio.updateActor",
+        "title": "%command.updateActor.title%",
+        "category": "%category%",
+        "icon": "$(edit)"
       },
       {
         "command": "agorixStudio.openWorkbench",

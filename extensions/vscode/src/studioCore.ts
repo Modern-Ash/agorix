@@ -28,8 +28,12 @@ import {
   sanitizeAgorixFilename,
   semanticProjectHash,
   serializeAgorixProject,
+  validateProjectActors,
+  type ProjectActor,
+  type ProjectActors,
   type StoredProject,
 } from "@agorix/persistence";
+import { DEFAULT_ACTOR_COSTUME } from "@agorix/stage";
 import { pythonProjection } from "@agorix/python-projection";
 import {
   acceptProposal as acceptSharedProposal,
@@ -99,7 +103,8 @@ export interface StudioProjectionDocument {
 }
 
 export interface StudioNavigationSection {
-  readonly id: "projects" | "missions" | "progress" | "worlds" | "companion" | "developer";
+  readonly id:
+    "projects" | "missions" | "progress" | "worlds" | "actors" | "companion" | "developer";
   readonly label: string;
   /** Codicon id (without `$(...)`). */
   readonly icon: string;
@@ -564,6 +569,7 @@ export function createNavigationSections(
       { id: "missions", label: msg("Missions"), icon: "target", items: [] },
       { id: "progress", label: msg("Progress"), icon: "graph", items: [] },
       { id: "worlds", label: msg("Worlds"), icon: "globe", items: [] },
+      { id: "actors", label: msg("Actors"), icon: "symbol-misc", items: [] },
       { id: "companion", label: msg("Learning Companion"), icon: "sparkle", items: [] },
       developer,
     ];
@@ -662,6 +668,21 @@ export function createNavigationSections(
       }),
     },
     {
+      id: "actors",
+      label: msg("Actors"),
+      icon: "symbol-misc",
+      summary: `${actorsOf(project.stored).items.length}`,
+      items: actorsOf(project.stored).items.map((actor) => ({
+        id: actor.id,
+        label: actor.name,
+        icon: actor.visible ? "eye" : "eye-closed",
+        description: describeActor(actor),
+        tooltip: msg("Open the Actor Inspector"),
+        command: "agorixStudio.openActorInspector",
+        contextValue: "agorixActor",
+      })),
+    },
+    {
       id: "companion",
       label: msg("Learning Companion"),
       icon: "sparkle",
@@ -715,13 +736,60 @@ export function createNavigationSections(
   ];
 }
 
+/** Actors of a project; projects saved before actors existed get the mission's starting sprite. */
+export function actorsOf(stored: StoredProject): ProjectActors {
+  if (stored.metadata.actors !== undefined) {
+    return validateProjectActors(stored.metadata.actors);
+  }
+  const sprite = getLocalizedFirstMission(stored.metadata.locale).starterStage.sprite;
+  return {
+    activeId: "sprite",
+    items: [
+      {
+        id: "sprite",
+        name: "Sprite",
+        x: sprite?.x ?? 0,
+        y: sprite?.y ?? 0,
+        direction: sprite?.heading ?? 0,
+        size: 100,
+        visible: true,
+        costume: DEFAULT_ACTOR_COSTUME,
+      },
+    ],
+  };
+}
+
+export function describeActor(actor: ProjectActor): string {
+  return `x ${actor.x}  y ${actor.y}  dir ${actor.direction}°  ${actor.size}%`;
+}
+
+export function createStoredProjectWithActors(
+  stored: StoredProject,
+  actors: ProjectActors,
+): StoredProject {
+  return {
+    ...stored,
+    metadata: { ...stored.metadata, actors: validateProjectActors(actors) },
+  };
+}
+
+/** The runtime starts from the mission world with the sprite placed where the active actor is. */
+export function initialWorldFor(stored: StoredProject) {
+  const mission = getLocalizedFirstMission(stored.metadata.locale);
+  const actors = actorsOf(stored);
+  const actor = actors.items.find((item) => item.id === actors.activeId) ?? actors.items[0]!;
+  return createWorldState({
+    ...mission.starterStage,
+    sprite: { x: actor.x, y: actor.y, heading: actor.direction },
+  });
+}
+
 export function createExecutionEvidence(
   stored: StoredProject,
   options: { stopAfterSteps?: number } = {},
 ): StudioExecutionEvidence {
   const program = validateProgram(stored.program);
-  const mission = getLocalizedFirstMission(stored.metadata.locale);
-  const result = runProgram(program, createWorldState(mission.starterStage), {
+  const result = runProgram(program, initialWorldFor(stored), {
     collectObservations: true,
     ...(options.stopAfterSteps === undefined ? {} : { stopAfterSteps: options.stopAfterSteps }),
   });
