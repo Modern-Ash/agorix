@@ -32,6 +32,8 @@ This slice is infrastructure for the Studio direction, not the final experience:
 
 ## Live sync
 
+The World Preview doubles as the Studio **Stage**: a dense toolbar with Run, Step, Stop and Reset (keys R, S, X, 0 when focus is not in a field), a position/direction readout, an execution scrubber and a trace table whose rows select a step and reveal the canonical node. The webview only posts allowlisted messages (`agorix-command`, `agorix-select-step`, `agorix-reveal-node`); the host maps them to the existing `agorixStudio.*` commands in `host/stageMessages.ts`. Covered by jsdom end-to-end tests (`webview/stage.e2e.test.ts`) and the Extension Host suite.
+
 A host-side `SyncHub` (`extensions/vscode/src/sync/syncHub.ts`) holds one selected, one executing and one failed canonical node id. The canvas, code editor, World Preview and Inspector write selections into it; each surface reflects the shared state (canvas via the `sync` protocol message mapped to block ids, code via reveal and run/fail decorations, World Preview via `agorix-sync`, Inspector via tree reveal). Failure is shown with text and an accessible description, never color alone. A program change reconciles the hub so removed nodes are cleared.
 
 ## Agent gating and Workbench robustness
