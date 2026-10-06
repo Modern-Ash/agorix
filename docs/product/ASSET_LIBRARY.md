@@ -15,3 +15,10 @@ without AI (issue #297). It follows the "choose a sprite / choose a backdrop" id
   give it names in both locales, and (backdrops) add its look in `BackdropArt`/`App.css`. Never
   rename or reuse an id.
 - **Not included yet**: uploads, painting, sounds (see #301).
+
+## Pico the fox (default sprite)
+
+Pico is an original vector character (not Scratch's cat) drawn from SVG shapes in `PicoArt`
+(`apps/web/src/App.tsx`). It is the default look of new projects. Like Scratch's two-costume walk
+cycle, its legs swap pose on every executed step while a program runs and rest otherwise (also
+under reduced motion). Assets with `art` are drawn as vector art; others use their `glyph`.

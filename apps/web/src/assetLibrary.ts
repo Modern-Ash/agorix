@@ -20,11 +20,25 @@ export interface LibraryAsset {
   readonly tags: readonly string[];
   /** Actor visuals: the glyph drawn on the stage. */
   readonly glyph?: string;
+  /** Actor visuals drawn as animated vector art instead of a glyph (walk cycle of 2 frames). */
+  readonly art?: "pico";
   /** Sounds: a synthesized tone, so no audio file is bundled. */
   readonly tone?: { readonly hz: number; readonly ms: number };
 }
 
+export const DEFAULT_ACTOR_COSTUME = "pico";
+
 export const ACTOR_VISUALS: readonly LibraryAsset[] = [
+  {
+    id: "pico",
+    kind: "actor",
+    name: { en: "Pico the fox", es: "Pico el zorro" },
+    width: 32,
+    height: 32,
+    tags: ["animal", "animated", "default"],
+    glyph: "🦊",
+    art: "pico",
+  },
   {
     id: "rocket",
     kind: "actor",

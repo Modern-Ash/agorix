@@ -912,6 +912,9 @@ export function StageView({
 }) {
   const state = frame?.state ?? fallback;
   const actor = actors === undefined ? undefined : activeActor(actors);
+  const artId = findActorVisual(actor?.costume)?.art;
+  // Like Scratch's two-costume walk cycle: the art alternates frames on every executed step.
+  const walkFrame = !reducedMotion && frame?.running === true ? (frame.step ?? 0) % 2 : 0;
   const sprite = {
     ...state.sprite,
     radius: BASE_SPRITE_RADIUS * ((actor?.size ?? 100) / 100),
@@ -1011,20 +1014,26 @@ export function StageView({
           }}
         >
           <g transform={`rotate(${sprite.heading})`}>
-            <circle className="sprite" r={sprite.radius}>
+            <circle
+              className={artId === undefined ? "sprite" : "sprite sprite-art"}
+              r={sprite.radius}
+            >
               <title>{actor === undefined ? copy.spriteAlt : actor.name}</title>
             </circle>
-            <path d="M 4 0 L 16 -6 L 16 6 Z" />
+            {artId === undefined ? <path d="M 4 0 L 16 -6 L 16 6 Z" /> : null}
+            {artId === "pico" ? <PicoArt radius={sprite.radius} frame={walkFrame} /> : null}
           </g>
-          <text
-            className="world-glyph"
-            textAnchor="middle"
-            dominantBaseline="central"
-            fontSize={sprite.radius * 1.5}
-            aria-hidden="true"
-          >
-            {findActorVisual(actor?.costume)?.glyph ?? glyphs.sprite}
-          </text>
+          {artId === undefined ? (
+            <text
+              className="world-glyph"
+              textAnchor="middle"
+              dominantBaseline="central"
+              fontSize={sprite.radius * 1.5}
+              aria-hidden="true"
+            >
+              {findActorVisual(actor?.costume)?.glyph ?? glyphs.sprite}
+            </text>
+          ) : null}
         </g>
       </svg>
       <div
@@ -1067,6 +1076,34 @@ export function StageView({
         />
       ) : null}
     </section>
+  );
+}
+
+/**
+ * Pico the fox: an original character drawn from SVG shapes (no bundled image). Faces east at
+ * heading 0 like every actor; `frame` swaps the leg pose for a two-frame walk cycle.
+ */
+function PicoArt({ radius, frame }: { radius: number; frame: 0 | 1 | number }) {
+  const scale = radius / 12;
+  const front = frame === 0 ? 3 : -3;
+  return (
+    <g className="pico" data-testid="pico-art" data-frame={frame} transform={`scale(${scale})`}>
+      <path className="pico-tail" d="M -9 2 C -20 -4 -19 -14 -12 -12 C -13 -7 -9 -4 -6 -2 Z" />
+      <path
+        className="pico-tail-tip"
+        d="M -18 -12 C -16 -15 -13 -14 -12 -12 C -14 -11 -16 -10 -18 -12 Z"
+      />
+      <rect className="pico-leg" x={-7 + front} y="4" width="4" height="8" rx="2" />
+      <rect className="pico-leg" x={3 - front} y="4" width="4" height="8" rx="2" />
+      <ellipse className="pico-body" cx="-1" cy="1" rx="10" ry="7" />
+      <path className="pico-chest" d="M 4 3 C 8 3 10 0 9 -3 C 6 -1 4 0 4 3 Z" />
+      <path className="pico-ear" d="M 5 -12 L 8 -20 L 12 -12 Z" />
+      <path className="pico-ear" d="M 9 -11 L 14 -17 L 15 -9 Z" />
+      <circle className="pico-head" cx="9" cy="-6" r="8" />
+      <path className="pico-cheek" d="M 5 -3 C 9 1 15 0 17 -4 C 13 -2 9 -2 5 -3 Z" />
+      <circle className="pico-eye" cx="11.5" cy="-8" r="1.6" />
+      <circle className="pico-nose" cx="16.5" cy="-5" r="1.4" />
+    </g>
   );
 }
 
