@@ -13,6 +13,10 @@ import {
   sanitizeAgorixFilename,
   semanticProjectHash,
   serializeAgorixProject,
+  ACTOR_NAME_MAX_LENGTH,
+  ACTOR_SIZE_MAX,
+  ACTOR_SIZE_MIN,
+  type ProjectActors,
   type ProjectMetadata,
 } from "@agorix/persistence";
 import type { ProjectProgram } from "@agorix/program-model";
@@ -83,12 +87,21 @@ import {
   type StageState,
 } from "@agorix/stage";
 import {
+  BASE_SPRITE_RADIUS,
+  activeActor,
+  defaultActors,
+  patchActive,
+  stageForActors,
+  type ActorPatch,
+} from "./actors.js";
+import {
   addBlockToWorkspace,
   addBlockToWorkspaceAt,
   blockNodeIdForPath,
   canContainStatements,
   childContainerPathFor,
   codeSliceForNode,
+  INITIAL_STAGE,
   createEditorModel,
   createEditorModelFromProgram,
   deleteBlockFromWorkspaceAt,
@@ -239,6 +252,7 @@ function createProjectMetadata(
   createdAt: string,
   programBlockCount: number,
   locale: Locale,
+  actors: ProjectActors,
 ): ProjectMetadata {
   return {
     createdAt,
@@ -246,6 +260,7 @@ function createProjectMetadata(
     missionProgress: programBlockCount > 0 ? 1 : 0,
     hintLevel: 0,
     locale,
+    actors,
   };
 }
 
@@ -872,7 +887,11 @@ export function StageView({
   reducedMotion,
   panelControls,
   panelProps,
+  actors,
+  onActorChange,
 }: {
+  actors?: ProjectActors;
+  onActorChange?: (patch: ActorPatch) => void;
   world: WorldDefinition;
   frame: ObservationFrame | undefined;
   fallback: StageState;
@@ -884,7 +903,11 @@ export function StageView({
   panelProps?: PanelChromeProps;
 }) {
   const state = frame?.state ?? fallback;
-  const sprite = state.sprite;
+  const actor = actors === undefined ? undefined : activeActor(actors);
+  const sprite = {
+    ...state.sprite,
+    radius: BASE_SPRITE_RADIUS * ((actor?.size ?? 100) / 100),
+  };
   const goal = state.goal;
   const viewport = state.viewport;
   const copy = worldCopy(world, locale);
@@ -962,6 +985,9 @@ export function StageView({
         <g
           className="sprite-group"
           data-testid="stage-sprite"
+          data-visible={actor?.visible === false ? "false" : "true"}
+          data-size={actor?.size ?? 100}
+          display={actor?.visible === false ? "none" : undefined}
           data-x={sprite.x}
           data-y={sprite.y}
           data-heading={sprite.heading}
@@ -972,7 +998,7 @@ export function StageView({
         >
           <g transform={`rotate(${sprite.heading})`}>
             <circle className="sprite" r={sprite.radius}>
-              <title>{copy.spriteAlt}</title>
+              <title>{actor === undefined ? copy.spriteAlt : actor.name}</title>
             </circle>
             <path d="M 4 0 L 16 -6 L 16 6 Z" />
           </g>
@@ -1014,7 +1040,99 @@ export function StageView({
           </code>
         ) : null}
       </div>
+      {actors !== undefined && onActorChange !== undefined ? (
+        <ActorInspector actors={actors} locale={locale} onChange={onActorChange} />
+      ) : null}
     </section>
+  );
+}
+
+function ActorInspector({
+  actors,
+  locale,
+  onChange,
+}: {
+  actors: ProjectActors;
+  locale: Locale;
+  onChange: (patch: ActorPatch) => void;
+}) {
+  const actor = activeActor(actors);
+  // Like Scratch's sprite pane: open next to the stage on wide screens, folded on narrow ones so
+  // the Code panel stays in the first viewport.
+  const [open, setOpen] = useState(
+    () =>
+      typeof window === "undefined" ||
+      typeof window.matchMedia !== "function" ||
+      window.matchMedia("(min-width: 1024px)").matches,
+  );
+  const number = (
+    key: "x" | "y" | "direction" | "size",
+    label: string,
+    attrs: { min?: number; max?: number } = {},
+  ) => (
+    <label className="actor-field">
+      <span>{label}</span>
+      <input
+        type="number"
+        data-testid={`actor-${key}`}
+        value={actor[key]}
+        {...attrs}
+        onChange={(event) => {
+          const value = event.currentTarget.valueAsNumber;
+          if (Number.isFinite(value)) onChange({ [key]: value });
+        }}
+      />
+    </label>
+  );
+  return (
+    <details
+      className="actor-inspector"
+      open={open}
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+    >
+      <summary>
+        {t(locale, "actorsTitle")}: {actor.name}
+      </summary>
+      <ul className="actor-list" aria-label={t(locale, "actorListLabel")}>
+        {actors.items.map((item) => (
+          <li key={item.id}>
+            <button
+              type="button"
+              className="actor-chip"
+              aria-pressed={item.id === actors.activeId}
+              data-testid="actor-chip"
+            >
+              <span aria-hidden="true">{item.visible ? "●" : "○"}</span> {item.name}
+            </button>
+          </li>
+        ))}
+      </ul>
+      <div className="actor-fields">
+        <label className="actor-field actor-field-name">
+          <span>{t(locale, "actorName")}</span>
+          <input
+            type="text"
+            data-testid="actor-name"
+            value={actor.name}
+            maxLength={ACTOR_NAME_MAX_LENGTH}
+            onChange={(event) => onChange({ name: event.currentTarget.value })}
+          />
+        </label>
+        {number("x", t(locale, "actorX"))}
+        {number("y", t(locale, "actorY"))}
+        {number("direction", t(locale, "actorDirection"))}
+        {number("size", t(locale, "actorSize"), { min: ACTOR_SIZE_MIN, max: ACTOR_SIZE_MAX })}
+        <label className="actor-field actor-field-visible">
+          <input
+            type="checkbox"
+            data-testid="actor-visible"
+            checked={actor.visible}
+            onChange={(event) => onChange({ visible: event.currentTarget.checked })}
+          />
+          <span>{t(locale, "actorShow")}</span>
+        </label>
+      </div>
+    </details>
   );
 }
 
@@ -1689,7 +1807,15 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     initialProjectRef.current = initialProjectFor(persistenceRef.current);
   }
 
-  const [model, setModel] = useState<EditorModel>(() => initialProjectRef.current!.model);
+  const [actors, setActors] = useState<ProjectActors>(
+    () =>
+      initialProjectRef.current!.metadata?.actors ??
+      defaultActors(initialProjectRef.current!.model.stage),
+  );
+  const [model, setModel] = useState<EditorModel>(() => {
+    const initial = initialProjectRef.current!.model;
+    return { ...initial, stage: stageForActors(initial.stage, actors) };
+  });
   const [history, setHistory] = useState<EditorHistory>(() =>
     createEditorHistory(initialProjectRef.current!.model.program),
   );
@@ -1862,9 +1988,9 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     if (initialProjectRef.current?.message !== undefined || showingRemoteRef.current) {
       return;
     }
-    const metadata = createProjectMetadata(createdAt, countProgramBlocks(model), locale);
+    const metadata = createProjectMetadata(createdAt, countProgramBlocks(model), locale, actors);
     setPersistenceMessage(saveEditorProject(persistenceRef.current, model.program, metadata));
-  }, [createdAt, locale, model.program]);
+  }, [actors, createdAt, locale, model.program]);
 
   useEffect(() => {
     void workspace.init();
@@ -1882,7 +2008,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     const stored = {
       schemaVersion: model.program.schema,
       program: model.program,
-      metadata: createProjectMetadata(createdAt, countProgramBlocks(model), locale),
+      metadata: createProjectMetadata(createdAt, countProgramBlocks(model), locale, actors),
     };
     const hash = semanticProjectHash(stored);
     if (awaitBaselineRef.current) {
@@ -1898,7 +2024,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
       workspace.queueSave(stored);
     }, 400);
     return () => clearTimeout(timer);
-  }, [createdAt, locale, model.program, workspace, workspaceState.active?.projectId]);
+  }, [actors, createdAt, locale, model.program, workspace, workspaceState.active?.projectId]);
 
   function loadAccountProject(dto: ProjectDto) {
     showingRemoteRef.current = true;
@@ -1921,7 +2047,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     } else {
       replaceCurrentProject(
         createEditorModel().program,
-        createProjectMetadata(new Date().toISOString(), 0, locale),
+        createProjectMetadata(new Date().toISOString(), 0, locale, defaultActors(INITIAL_STAGE)),
       );
     }
     setMessage(t(locale, "emptyRunMessage"));
@@ -1932,7 +2058,12 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     return {
       schemaVersion: program.schema,
       program,
-      metadata: createProjectMetadata(new Date().toISOString(), 0, locale),
+      metadata: createProjectMetadata(
+        new Date().toISOString(),
+        0,
+        locale,
+        defaultActors(INITIAL_STAGE),
+      ),
     };
   }
 
@@ -2011,7 +2142,13 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     resetEphemeralEditorState();
     const restored = createEditorModelFromProgram(program);
     setHistory(createEditorHistory(restored.program));
-    setModel((current) => ({ ...current, ...restored, stage: resetStageSession(current.stage) }));
+    const restoredActors = metadata.actors ?? defaultActors(INITIAL_STAGE);
+    setActors(restoredActors);
+    setModel((current) => ({
+      ...current,
+      ...restored,
+      stage: stageForActors(current.stage, restoredActors),
+    }));
     setCreatedAt(metadata.createdAt);
     if (metadata.locale === "en" || metadata.locale === "es") {
       setLocale(metadata.locale);
@@ -2051,8 +2188,16 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     setMessage(t(locale, "programUpdatedMessage"));
   }
 
+  function updateActor(patch: ActorPatch) {
+    const next = patchActive(actors, patch);
+    setActors(next);
+    setModel((current) => ({ ...current, stage: stageForActors(current.stage, next) }));
+    setFrames([]);
+    setFrameIndex(0);
+  }
+
   function exportProject() {
-    const metadata = createProjectMetadata(createdAt, countProgramBlocks(model), locale);
+    const metadata = createProjectMetadata(createdAt, countProgramBlocks(model), locale, actors);
     const json = serializeAgorixProject({
       schemaVersion: model.program.schema,
       program: model.program,
@@ -3055,6 +3200,8 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
             reducedMotion={reducedMotion}
             panelControls={panelControls("stage")}
             panelProps={panelProps("stage", "stage-panel")}
+            actors={actors}
+            onActorChange={updateActor}
           />
         )}
 

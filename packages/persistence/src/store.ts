@@ -1,4 +1,5 @@
 import { SCHEMA_VERSION, type ProjectProgram } from "@agorix/program-model";
+import type { ProjectActors } from "./actors.js";
 
 export const PACKAGE_NAME = "@agorix/persistence";
 
@@ -39,6 +40,8 @@ export interface ProjectMetadata {
   readonly missionProgress: number;
   readonly hintLevel: number;
   readonly locale?: string;
+  /** Starting actor (sprite) properties; absent in projects saved before actors existed. */
+  readonly actors?: ProjectActors;
 }
 
 export interface BrowserStorageAdapter {
