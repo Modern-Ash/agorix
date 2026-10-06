@@ -59,6 +59,7 @@ export const luaLanguagePack: LanguagePack = {
   version: "spike-1",
   supportedCanonicalOperations: [
     "onStart",
+    "greenFlag",
     "move",
     "turn",
     "repeat",

@@ -168,7 +168,8 @@ const messages = {
     duplicateBlock: "Duplicate",
     degrees: "degrees",
     fieldCount: "count",
-    emptyRunMessage: "Nothing happens yet — add a block to 'When you press Run' to get started.",
+    emptyRunMessage:
+      "Nothing happens yet — add a block under 'When green flag clicked' to get started.",
     evidenceGoalReached: "Goal reached",
     evidenceReachGoal: "Reach the goal",
     exportProject: "Export",
@@ -244,6 +245,8 @@ const messages = {
     stage: "Stage",
     stageAria: "Sprite and goal stage",
     stagePhaseIdle: "Ready. Press Run or Step.",
+    stageProgressLabel: "Program progress",
+    stageProgressText: "Step {n} of {total}",
     stagePhaseRunning: "Running",
     stagePhaseStepping: "Step {n} of {total}",
     stagePhaseStopped: "Stopped. Press Run or Step to continue.",
@@ -295,7 +298,7 @@ const messages = {
     touchingGoal: "Touching the goal?",
     turn: "Turn",
     up: "Up",
-    whenRun: "When you press Run",
+    whenRun: "When green flag clicked",
   },
   es: {
     actionPalette: "Paleta de acciones",
@@ -452,7 +455,7 @@ const messages = {
     degrees: "grados",
     fieldCount: "cantidad",
     emptyRunMessage:
-      "Todavía no pasa nada: agrega un bloque a 'Cuando presionas Ejecutar' para empezar.",
+      "Todavía no pasa nada: agrega un bloque debajo de 'Cuando se hace clic en la bandera verde' para empezar.",
     evidenceGoalReached: "Meta alcanzada",
     evidenceReachGoal: "Alcanza la meta",
     exportProject: "Exportar",
@@ -528,6 +531,8 @@ const messages = {
     stage: "Escenario",
     stageAria: "Escenario con personaje y meta",
     stagePhaseIdle: "Listo. Pulsa Ejecutar o Paso.",
+    stageProgressLabel: "Progreso del programa",
+    stageProgressText: "Paso {n} de {total}",
     stagePhaseRunning: "Ejecutando",
     stagePhaseStepping: "Paso {n} de {total}",
     stagePhaseStopped: "Detenido. Pulsa Ejecutar o Paso para continuar.",
@@ -579,7 +584,7 @@ const messages = {
     touchingGoal: "¿Toca la meta?",
     turn: "Girar",
     up: "Subir",
-    whenRun: "Cuando presionas Ejecutar",
+    whenRun: "Cuando se hace clic en la bandera verde",
   },
 } as const;
 
