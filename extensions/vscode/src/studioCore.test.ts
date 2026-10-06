@@ -33,6 +33,9 @@ import {
   semanticHash,
   suggestFirstStep,
   suggestRepeat,
+  actorsOf,
+  createStoredProjectWithActors,
+  initialWorldFor,
 } from "./studioCore.js";
 
 class MemoryStorage implements BrowserStorageAdapter {
@@ -178,6 +181,7 @@ describe("Agorix Studio first slice", () => {
       "missions",
       "progress",
       "worlds",
+      "actors",
       "companion",
       "developer",
     ]);
@@ -521,5 +525,43 @@ describe("provider-backed companion turns", () => {
     const good = createCompanionTurn(project, "build").response;
     const bad = { ...good, capability: "coach" } as never;
     expect(() => createCompanionTurn(project, "build", { providerResponse: bad })).toThrow();
+  });
+});
+
+describe("studio actors", () => {
+  const base = () =>
+    createStudioStarterProject({
+      starter: "first-mission",
+      locale: "en",
+      now: "2026-01-01T00:00:00.000Z",
+    });
+
+  it("gives projects without actors the mission's starting sprite", () => {
+    const actors = actorsOf(base());
+    expect(actors.items).toHaveLength(1);
+    expect(actors.activeId).toBe(actors.items[0]?.id);
+  });
+
+  it("persists edited actors and starts the run where the actor is", () => {
+    const stored = createStoredProjectWithActors(base(), {
+      activeId: "sprite",
+      items: [{ id: "sprite", name: "P", x: 7, y: 8, direction: 45, size: 100, visible: true }],
+    });
+    expect(stored.metadata.actors?.items[0]?.x).toBe(7);
+    const start = createExecutionEvidence(stored).previewFrames[0]?.state.sprite;
+    expect(start).toMatchObject({ x: 7, y: 8, heading: 45 });
+    expect(initialWorldFor(stored).sprite).toMatchObject({ x: 7, y: 8, heading: 45 });
+  });
+
+  it("refuses invalid actors instead of saving them", () => {
+    expect(() => createStoredProjectWithActors(base(), { activeId: "none", items: [] })).toThrow();
+  });
+
+  it("lists actors in the navigation with the Actor Inspector command", () => {
+    const project = openStoredProject(base());
+    const section = createNavigationSections(project).find((item) => item.id === "actors");
+    expect(section?.items).toHaveLength(1);
+    expect(section?.items[0]?.command).toBe("agorixStudio.openActorInspector");
+    expect(section?.items[0]?.description).toContain("dir");
   });
 });

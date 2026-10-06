@@ -38,6 +38,8 @@ const tests = [
         "agorixStudio.openProject",
         "agorixStudio.openProjection",
         "agorixStudio.openWorldPreview",
+        "agorixStudio.openActorInspector",
+        "agorixStudio.updateActor",
         "agorixStudio.openWorkbench",
         "agorixStudio.exportAgorix",
         "agorixStudio.exportEducatorEvidence",
@@ -86,6 +88,8 @@ const tests = [
           "agorixStudio.openProject",
           "agorixStudio.openProjection",
           "agorixStudio.openWorldPreview",
+          "agorixStudio.openActorInspector",
+          "agorixStudio.updateActor",
           "agorixStudio.openWorkbench",
           "agorixStudio.exportAgorix",
           "agorixStudio.exportEducatorEvidence",
@@ -229,6 +233,58 @@ const tests = [
       assert.equal(reset.status, "idle");
       assert.equal(reset.selectedFrameIndex, 0);
       assert.equal(stageTabs().length, 1);
+    },
+  ],
+  [
+    "Actor edits persist to the .agorix file, drive the run and are undoable",
+    async () => {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), "agorix-studio-actors-"));
+      const file = path.join(dir, "actors.agorix");
+      await vscode.commands.executeCommand("agorixStudio.createProject", {
+        name: "Actors",
+        starter: "first-mission",
+        locale: "en",
+        uri: vscode.Uri.file(file),
+      });
+      const actorsOnDisk = () => JSON.parse(fs.readFileSync(file, "utf8")).project.metadata.actors;
+      assert.equal(actorsOnDisk(), undefined, "a new project stores no actors until edited");
+
+      await vscode.commands.executeCommand("agorixStudio.openActorInspector");
+      const updated = await vscode.commands.executeCommand("agorixStudio.updateActor", {
+        name: "Probe",
+        x: 25,
+        direction: 90,
+        size: 150,
+        visible: false,
+      });
+      assert.equal(updated.items[0].name, "Probe");
+      const saved = actorsOnDisk();
+      assert.equal(saved.items[0].x, 25);
+      assert.equal(saved.items[0].direction, 90);
+      assert.equal(saved.items[0].size, 150);
+      assert.equal(saved.items[0].visible, false);
+
+      const reset = await vscode.commands.executeCommand("agorixStudio.reset");
+      assert.equal(reset.previewFrames[0].state.sprite.x, 25, "the run starts at the actor");
+      assert.equal(reset.previewFrames[0].state.sprite.heading, 90);
+
+      // Command failures are reported to the learner (guarded) and resolve to undefined.
+      assert.equal(
+        await vscode.commands.executeCommand("agorixStudio.updateActor", { x: "far" }),
+        undefined,
+      );
+      assert.equal(
+        await vscode.commands.executeCommand("agorixStudio.updateActor", { size: 100000 }),
+        undefined,
+      );
+      assert.equal(actorsOnDisk().items[0].x, 25, "refused edits leave the file untouched");
+
+      await vscode.commands.executeCommand("agorixStudio.undoProposal");
+      assert.equal(actorsOnDisk(), undefined, "undo restores the previous file");
+      await vscode.commands.executeCommand(
+        "agorixStudio.openProject",
+        fixture("repeat.agorix.json"),
+      );
     },
   ],
   [

@@ -3,12 +3,13 @@ import type { AgentAgreements } from "@agorix/agent-workflow";
 import { canPropose, ceilingMessage } from "../assistance.js";
 import { t } from "../l10n.js";
 import type { ProjectProgram } from "@agorix/program-model";
+import type { ProjectActors } from "@agorix/persistence";
 import {
   applyProposalSession,
+  createStoredProjectWithActors,
   createStoredProjectWithProgram,
   rejectProposalSession,
   serializeProjectFile,
-  serializeStoredProject,
   suggestFirstStep,
   suggestRepeat,
   parseProjectFile,
@@ -42,6 +43,7 @@ export interface StudioProposalCommandHandlers {
   undoProposal(): Promise<void>;
   redoProposal(): Promise<void>;
   commitProgram(program: ProjectProgram): Promise<void>;
+  commitActors(actors: ProjectActors): Promise<void>;
 }
 
 export function createStudioProposalCommandHandlers(
@@ -180,7 +182,7 @@ export function createStudioProposalCommandHandlers(
     if (open === undefined || activeProposal === undefined) {
       return;
     }
-    const previousRaw = serializeStoredProject(open.project.stored);
+    const previousRaw = serializeProjectFile(open.project.stored, open.uri.fsPath);
     const decision = applyProposalSession(open.project.stored.program, activeProposal);
     const stored = createStoredProjectWithProgram(open.project.stored, decision.program);
     await writeCurrentProject(stored);
@@ -210,7 +212,9 @@ export function createStudioProposalCommandHandlers(
     if (open === undefined || previous === undefined) {
       return;
     }
-    port.redoStack().push({ uri: open.uri, raw: serializeStoredProject(open.project.stored) });
+    port
+      .redoStack()
+      .push({ uri: open.uri, raw: serializeProjectFile(open.project.stored, open.uri.fsPath) });
     await restoreSnapshot(previous);
   };
 
@@ -220,7 +224,9 @@ export function createStudioProposalCommandHandlers(
     if (open === undefined || next === undefined) {
       return;
     }
-    port.undoStack().push({ uri: open.uri, raw: serializeStoredProject(open.project.stored) });
+    port
+      .undoStack()
+      .push({ uri: open.uri, raw: serializeProjectFile(open.project.stored, open.uri.fsPath) });
     await restoreSnapshot(next);
   };
 
@@ -229,8 +235,19 @@ export function createStudioProposalCommandHandlers(
     if (open === undefined) {
       return;
     }
-    const previousRaw = serializeStoredProject(open.project.stored);
+    const previousRaw = serializeProjectFile(open.project.stored, open.uri.fsPath);
     await writeCurrentProject(createStoredProjectWithProgram(open.project.stored, program));
+    port.undoStack().push({ uri: open.uri, raw: previousRaw });
+    port.redoStack().length = 0;
+  };
+
+  const commitActors = async (actors: ProjectActors): Promise<void> => {
+    const open = port.requireProject();
+    if (open === undefined) {
+      return;
+    }
+    const previousRaw = serializeProjectFile(open.project.stored, open.uri.fsPath);
+    await writeCurrentProject(createStoredProjectWithActors(open.project.stored, actors));
     port.undoStack().push({ uri: open.uri, raw: previousRaw });
     port.redoStack().length = 0;
   };
@@ -245,5 +262,6 @@ export function createStudioProposalCommandHandlers(
     undoProposal,
     redoProposal,
     commitProgram,
+    commitActors,
   };
 }

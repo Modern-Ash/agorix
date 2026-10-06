@@ -2,13 +2,18 @@ import * as vscode from "vscode";
 import type { AgentAgreements } from "@agorix/agent-workflow";
 import type { AgentVerb } from "@agorix/interaction-core";
 import type { ProjectProgram } from "@agorix/program-model";
+import { patchActive, type ProjectActors } from "@agorix/persistence";
 import {
+  actorsOf,
   evidenceForProgram,
   type StudioExecutionViewState,
   type StudioProject,
   type StudioProposalSession,
 } from "../studioCore.js";
 import { openWorkbenchPanel, refreshWorkbench } from "../host/workbenchPanel.js";
+import { validateMessage } from "../webview/framework.js";
+import { actorInspectorInboundSchemas } from "../webview/actorInspector.js";
+import { openActorInspectorPanel } from "../host/actorInspectorPanel.js";
 import { openWorldPreviewPanel } from "../host/worldPreviewPanel.js";
 import type { AgentPort } from "../host/agentHost.js";
 import type { WorkbenchLocale } from "../host/workbenchHtml.js";
@@ -25,6 +30,7 @@ export interface StudioSurfaceCommandPort {
   /** The open project without any prompt; undefined when none is open. */
   getProject(): StudioProject | undefined;
   commitProgram(program: ProjectProgram): Promise<void>;
+  commitActors(actors: ProjectActors): Promise<void>;
   getActiveProposal(): StudioProposalSession | undefined;
   reviewProposalSession(proposal: StudioProposalSession): Promise<void>;
   revealCanonicalNode(nodeId: string): Promise<void>;
@@ -36,6 +42,8 @@ export interface StudioSurfaceCommandPort {
 export interface StudioSurfaceCommandHandlers {
   openWorldPreview(): StudioExecutionViewState | undefined;
   openWorkbench(): Promise<void>;
+  openActorInspector(): ProjectActors | undefined;
+  updateActor(patch?: unknown): Promise<ProjectActors | undefined>;
 }
 
 export function createStudioSurfaceCommandHandlers(
@@ -99,5 +107,57 @@ export function createStudioSurfaceCommandHandlers(
     refreshWorkbench();
   };
 
-  return { openWorldPreview, openWorkbench };
+  const applyActorPatch = async (
+    patch: Parameters<typeof patchActive>[1],
+  ): Promise<ProjectActors | { readonly error: string }> => {
+    const project = port.getProject();
+    if (project === undefined) {
+      return { error: "No project is open." };
+    }
+    try {
+      const next = patchActive(actorsOf(project.stored), patch);
+      await port.commitActors(next);
+      return next;
+    } catch (error) {
+      return { error: error instanceof Error ? error.message : "Invalid actor change." };
+    }
+  };
+
+  const openActorInspector = (): ProjectActors | undefined => {
+    const open = port.requireProject();
+    if (open === undefined) {
+      return undefined;
+    }
+    const actors = actorsOf(open.project.stored);
+    openActorInspectorPanel(actors, { applyPatch: applyActorPatch });
+    return actors;
+  };
+
+  const updateActor = async (patch?: unknown): Promise<ProjectActors | undefined> => {
+    const result = await applyActorPatch(validatedPatch(patch));
+    if ("error" in result) {
+      throw new Error(result.error);
+    }
+    return result;
+  };
+
+  return { openWorldPreview, openWorkbench, openActorInspector, updateActor };
+}
+
+/** Programmatic edits use the same limits as the Inspector webview. */
+function validatedPatch(patch: unknown): Parameters<typeof patchActive>[1] {
+  const result = validateMessage(actorInspectorInboundSchemas, {
+    ...(typeof patch === "object" && patch !== null ? patch : {}),
+    type: "agorix-actor-patch",
+  });
+  if (!result.ok || result.message.type !== "agorix-actor-patch") {
+    throw new Error("Invalid actor change.");
+  }
+  return withoutType(result.message);
+}
+
+function withoutType<T extends { readonly type: string }>(message: T): Omit<T, "type"> {
+  const copy: Record<string, unknown> = { ...message };
+  delete copy["type"];
+  return copy as Omit<T, "type">;
 }

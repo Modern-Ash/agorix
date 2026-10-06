@@ -69,6 +69,7 @@ const requiredCommands = [
   "agorixStudio.openProjection",
   "agorixStudio.switchProjection",
   "agorixStudio.openWorldPreview",
+  "agorixStudio.openActorInspector",
   "agorixStudio.run",
   "agorixStudio.step",
   "agorixStudio.reset",

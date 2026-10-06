@@ -18,7 +18,13 @@ export {
   ACTOR_SOUND_MAX_COUNT,
   ACTOR_SIZE_MAX,
   ACTOR_SIZE_MIN,
+  activeActor,
+  patchActive,
+  sanitizeActor,
+  toggleSound,
   validateProjectActors,
+  withBackdrop,
+  type ActorPatch,
   type ProjectActor,
   type ProjectActors,
 } from "./actors.js";
