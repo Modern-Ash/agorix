@@ -206,6 +206,49 @@ describe("project api", () => {
     expect((await a.call("GET", `/v1/projects/${id}`)).status).toBe(404);
   });
 
+  it("accepts creative stage and asset metadata from newer clients", async () => {
+    const { client } = setup();
+    const a = await client("alice");
+    const project = {
+      ...stored(),
+      metadata: {
+        ...stored().metadata,
+        actors: {
+          activeId: "nova",
+          items: [
+            {
+              id: "nova",
+              name: "Nova",
+              x: 52,
+              y: 128,
+              direction: 0,
+              size: 100,
+              visible: true,
+            },
+          ],
+        },
+        stage: { backdropId: "space-trailhead", width: 264, height: 192 },
+        assets: [
+          {
+            id: "space-trailhead",
+            kind: "backdrop",
+            name: "Space trailhead",
+            source: "builtin:space.trailhead",
+          },
+        ],
+      },
+    };
+
+    const created = await a.call("POST", "/v1/projects", {
+      title: "Creative project",
+      storedProject: project,
+    });
+
+    expect(created.status).toBe(201);
+    expect(rec(created).storedProject.metadata.stage).toEqual(project.metadata.stage);
+    expect(rec(created).storedProject.metadata.assets).toEqual(project.metadata.assets);
+  });
+
   it("never lets account B reach A's project, even with the id", async () => {
     const { client } = setup();
     const a = await client("alice");
