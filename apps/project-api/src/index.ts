@@ -673,6 +673,8 @@ const METADATA_KEYS = [
   "hintLevel",
   "locale",
   "actors",
+  "stage",
+  "assets",
 ];
 
 function requireStoredProject(value: unknown, maxBodyBytes: number): StoredProject {
