@@ -613,27 +613,27 @@
         },
         {
           "command": "agorixStudio.run",
-          "when": "(view == agorixStudio.inspector || view == agorixStudio.progress || view == agorixStudio.worlds || view == agorixStudio.missions) && agorixStudio.executionStatus != running",
+          "when": "(view == agorixStudio.projects || view == agorixStudio.inspector || view == agorixStudio.progress || view == agorixStudio.worlds || view == agorixStudio.missions) && agorixStudio.executionStatus != running",
           "group": "navigation@1"
         },
         {
           "command": "agorixStudio.step",
-          "when": "(view == agorixStudio.inspector || view == agorixStudio.progress || view == agorixStudio.worlds || view == agorixStudio.missions) && agorixStudio.executionStatus != completed",
+          "when": "(view == agorixStudio.projects || view == agorixStudio.inspector || view == agorixStudio.progress || view == agorixStudio.worlds || view == agorixStudio.missions) && agorixStudio.executionStatus != completed",
           "group": "navigation@2"
         },
         {
           "command": "agorixStudio.stop",
-          "when": "(view == agorixStudio.inspector || view == agorixStudio.progress || view == agorixStudio.worlds || view == agorixStudio.missions) && agorixStudio.executionStatus == running",
+          "when": "(view == agorixStudio.projects || view == agorixStudio.inspector || view == agorixStudio.progress || view == agorixStudio.worlds || view == agorixStudio.missions) && agorixStudio.executionStatus == running",
           "group": "navigation@3"
         },
         {
           "command": "agorixStudio.reset",
-          "when": "(view == agorixStudio.inspector || view == agorixStudio.progress || view == agorixStudio.worlds || view == agorixStudio.missions) && agorixStudio.executionStatus != idle",
+          "when": "(view == agorixStudio.projects || view == agorixStudio.inspector || view == agorixStudio.progress || view == agorixStudio.worlds || view == agorixStudio.missions) && agorixStudio.executionStatus != idle",
           "group": "navigation@4"
         },
         {
           "command": "agorixStudio.openWorldPreview",
-          "when": "view == agorixStudio.inspector || view == agorixStudio.progress || view == agorixStudio.worlds || view == agorixStudio.missions",
+          "when": "view == agorixStudio.projects || view == agorixStudio.inspector || view == agorixStudio.progress || view == agorixStudio.worlds || view == agorixStudio.missions",
           "group": "navigation@5"
         }
       ],

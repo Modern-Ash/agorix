@@ -24,12 +24,35 @@ async function canonicalHash(page: Page) {
   return page.getByTestId("canonical-hash").getAttribute("data-canonical-hash");
 }
 
+async function openAppMenu(page: Page) {
+  const menuButton = page.getByRole("button", { name: "Show app menu" });
+  if (await menuButton.isVisible().catch(() => false)) {
+    await menuButton.click();
+  }
+}
+
 function visibleCode(page: Page, code: string) {
   return page.locator(".code-surface", { hasText: code });
 }
 
 function codeHeading(page: Page, name = "Code") {
   return page.getByRole("heading", { name, exact: true }).first();
+}
+
+function stageRun(page: Page) {
+  return page.locator(".stage-panel").getByRole("button", { name: "Run", exact: true });
+}
+
+function appMenuButton(page: Page, name: string) {
+  return page.locator("#app-menu").getByRole("button", { name, exact: true });
+}
+
+function appMenuControl(page: Page, name: string) {
+  return page.locator("#app-menu").getByRole("button", { name });
+}
+
+async function openCodePanel(page: Page) {
+  await page.locator(".stage-backstage-code").getByRole("button", { name: "Open code" }).click();
 }
 
 async function dragHtml5(page: Page, sourceSelector: string, targetSelector: string) {
@@ -62,7 +85,7 @@ async function runTransparencyJourney(page: Page, viewport: { width: number; hei
     await page.locator(".action-palette").getByLabel("Turn", { exact: true }).click();
   }
   await expect(visibleCode(page, "sprite.move(10);")).toBeVisible();
-  await expect(codeHeading(page)).toBeVisible();
+  await expect(page.locator(".stage-backstage-code")).toBeVisible();
   const beforeHash = await canonicalHash(page);
 
   // The suggestion is triggered by what the learner built, and stays a proposal.
@@ -77,47 +100,114 @@ async function runTransparencyJourney(page: Page, viewport: { width: number; hei
     .getByTestId("repeat-suggestion")
     .getByRole("button", { name: "Reject proposal" })
     .click();
-  await expect(page.getByText("Proposal rejected. Your program stayed the same.")).toBeVisible();
   expect(await canonicalHash(page)).toBe(beforeHash);
 
   // Changing the program makes a new offer possible; this time the learner accepts.
   await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
   await page.getByRole("button", { name: "Try it" }).click();
   await page.getByRole("button", { name: "Accept proposal" }).click();
-  await expect(
-    page.getByText("Proposal accepted. Blocks and code updated from canonical state."),
-  ).toBeVisible();
   await expect(page.locator(".code-surface")).toContainText("repeat");
   expect(await canonicalHash(page)).not.toBe(beforeHash);
 
-  await page.getByRole("button", { name: "Step" }).click();
-  await page.getByRole("button", { name: "Step" }).click();
+  await openAppMenu(page);
+  await appMenuButton(page, "Step").click();
+  await appMenuButton(page, "Step").click();
   await expect(page.getByTestId("step-card")).toBeVisible();
-  await expect(page.locator(".code-surface mark")).toBeVisible();
+  await expect(page.getByTestId("stage-active-block")).toContainText("sprite.move(10);");
 
   await page.setViewportSize({ width: viewport.height, height: viewport.width });
-  await expect(page.locator(".code-surface")).toContainText("repeat");
-  await expect(codeHeading(page)).toBeVisible();
+  await expect(page.getByTestId("stage-active-block")).toContainText("sprite.move(10);");
+  await expect(page.locator(".stage-backstage-code")).toBeVisible();
 
-  await page.getByRole("button", { name: "Run" }).click();
+  await stageRun(page).click();
   await expect(page.locator(".run-state")).toBeVisible();
 }
 
 test("main editor shell renders persistent blocks, stage and code", async ({ page }) => {
   await page.goto("/");
 
-  await expect(
-    page.getByRole("heading", {
-      name: /^(Build with blocks\. See the code\.|Construye con bloques\. Mira el código\.)$/,
-    }),
-  ).toBeVisible();
+  await expect(page.locator(".brand-identity")).toHaveAccessibleName("Agorix");
+  await expect(page.locator(".brand-wordmark")).toHaveText("Agorix");
   await expect(page.getByRole("heading", { name: "Action palette", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "When you press Run" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Stage" })).toBeVisible();
-  await expect(codeHeading(page)).toBeVisible();
-  await expect(page.getByRole("button", { name: "Run" })).toBeVisible();
-  await expect(page.locator(".brand-identity")).toHaveAccessibleName("Agorix");
-  await expect(page.locator(".brand-wordmark")).toHaveText("Agorix");
+  await expect(page.locator(".stage-backstage-code")).toBeVisible();
+  await expect(stageRun(page)).toBeVisible();
+});
+
+test("Looks blocks edit text and asset refs, then render on the stage", async ({ page }) => {
+  await page.goto("/");
+
+  await page.locator(".action-palette").getByLabel("Say", { exact: true }).click();
+  await page.locator(".action-palette").getByLabel("Costume", { exact: true }).click();
+  await page.locator(".action-palette").getByLabel("Backdrop", { exact: true }).click();
+  await page.getByLabel("Say Text").fill("Go Nova");
+  await page.getByLabel("Say Text").press("Enter");
+  await page.getByLabel("Costume Costume").selectOption("asset:costume.spark");
+  await page.getByLabel("Backdrop Backdrop").selectOption("asset:space.nebula");
+
+  await expect(visibleCode(page, 'sprite.say("Go Nova");')).toBeVisible();
+  await expect(visibleCode(page, 'sprite.switchCostume("asset:costume.spark");')).toBeVisible();
+  await expect(visibleCode(page, 'stage.switchBackdrop("asset:space.nebula");')).toBeVisible();
+
+  await page.locator(".stage-panel").getByRole("button", { name: "Run", exact: true }).click();
+  await page.waitForFunction(
+    () =>
+      document.querySelector(".stage-panel")?.getAttribute("data-backdrop-id") ===
+      "asset:space.nebula",
+  );
+
+  await expect(page.locator(".stage-panel")).toHaveAttribute(
+    "data-backdrop-id",
+    "asset:space.nebula",
+  );
+  await expect(page.getByTestId("stage-sprite")).toHaveAttribute(
+    "data-costume-id",
+    "asset:costume.spark",
+  );
+  await expect(page.locator(".stage-bubble")).toContainText("Go Nova");
+});
+
+test("Sound blocks project to code and render runtime evidence on the stage", async ({ page }) => {
+  await page.goto("/");
+
+  await page.locator(".action-palette").getByLabel("Start sound", { exact: true }).click();
+
+  await expect(page.locator(".stage-backstage-code code")).toContainText(
+    'sound.play("asset:sound.beacon");',
+  );
+  await expect(page.getByLabel("Sound sound")).toHaveValue("asset:sound.beacon");
+
+  await page.locator(".stage-panel").getByRole("button", { name: "Run", exact: true }).click();
+
+  await expect(page.locator(".stage-sounds")).toBeVisible({ timeout: 5000 });
+  await expect(page.locator(".stage-sounds")).toContainText("Sounds playing");
+  await expect(page.locator(".stage-sounds")).toContainText("Beacon ping");
+});
+
+test("multi-actor app flow edits a selected actor script and runs shared frames", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Move", exact: true }).click();
+  await applyMoveSteps(page, "12");
+  await page.getByRole("button", { name: "Add actor" }).click();
+  await page.getByLabel("Name").fill("Helper");
+  await page.getByRole("button", { name: "+ click" }).click();
+  await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
+
+  const stored = await page.evaluate(() => localStorage.getItem("agorix:default-project"));
+  const parsed = JSON.parse(stored ?? "{}");
+  const helper = parsed.metadata.actors.find((actor: { id: string }) => actor.id === "actor:2");
+  expect(helper.name).toBe("Helper");
+  expect(helper.scripts).toEqual(expect.arrayContaining(["main", "click-1"]));
+
+  const helperSprite = page.locator('[data-actor-id="actor:2"]');
+  await expect(helperSprite).toHaveAttribute("data-x", "100");
+  await helperSprite.dispatchEvent("click");
+  await expect(helperSprite).toHaveAttribute("data-x", "110", { timeout: 5000 });
+  await expect(page.locator('[data-actor-id="actor:main"]')).toHaveAttribute("data-x", "52");
 });
 
 test("block edits update generated code", async ({ page }) => {
@@ -156,11 +246,12 @@ test("Undo and Redo restore exact canonical block edits", async ({ page }) => {
   const afterEdit = await canonicalHash(page);
 
   expect(afterEdit).not.toBe(afterAdd);
-  await page.getByRole("button", { name: "Undo program edit" }).click();
+  await openAppMenu(page);
+  await appMenuControl(page, "Undo program edit").click();
   expect(await canonicalHash(page)).toBe(afterAdd);
   await expect(visibleCode(page, "sprite.move(10);")).toBeVisible();
 
-  await page.getByRole("button", { name: "Redo program edit" }).click();
+  await appMenuControl(page, "Redo program edit").click();
   expect(await canonicalHash(page)).toBe(afterEdit);
   await expect(visibleCode(page, "sprite.move(24);")).toBeVisible();
 });
@@ -172,13 +263,14 @@ test("anonymous project exports and imports as a portable .agorix file", async (
   await applyMoveSteps(page, "24");
   const exportedHash = await canonicalHash(page);
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Export" }).click();
+  await openAppMenu(page);
+  await appMenuButton(page, "Export").click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toBe("agorix-first-mission.agorix");
   const downloadPath = await download.path();
   expect(downloadPath).not.toBeNull();
 
-  await page.getByRole("button", { name: "Reset" }).click();
+  await appMenuButton(page, "Reset").click();
   await expect(visibleCode(page, "sprite.move(24);")).toHaveCount(0);
   await page.getByLabel("Import Agorix project file").setInputFiles(downloadPath!);
 
@@ -197,13 +289,16 @@ test("locale switch localizes UI without changing canonical program", async ({ p
   const before = await page.evaluate(() => localStorage.getItem("agorix:default-project"));
   const beforeProgram = JSON.parse(before ?? "{}").program;
 
+  await openAppMenu(page);
   await page.getByLabel("Product language").selectOption("es");
 
   await expect(
     page.getByRole("heading", { name: "Construye con bloques. Mira el código." }),
   ).toBeVisible();
-  await expect(page.getByRole("button", { name: "Ejecutar" })).toBeVisible();
-  await expect(codeHeading(page, "Código")).toBeVisible();
+  await expect(
+    page.locator(".stage-panel").getByRole("button", { name: "Ejecutar" }),
+  ).toBeVisible();
+  await expect(page.locator(".stage-backstage-code")).toBeVisible();
   await expect(page.getByLabel("Bloque Mover").getByRole("spinbutton")).toHaveValue("24");
 
   const after = await page.evaluate(() => localStorage.getItem("agorix:default-project"));
@@ -219,18 +314,18 @@ test("offline tutor hints escalate without changing blocks", async ({ page }) =>
   await page.getByRole("button", { name: "Move" }).click();
   await expect(page.getByLabel("Move block").getByRole("spinbutton")).toHaveValue("10");
 
-  await page.getByRole("button", { name: "Get hint" }).click();
-  await expect(page.getByText("Hint level 1 of 5")).toBeVisible();
+  await page.getByRole("button", { name: "Use AI hint tool" }).click();
+  await expect(page.getByText("Hint level 1 of 5").first()).toBeVisible();
   await expect(page.getByText("Hints used: 1")).toBeVisible();
-  await expect(page.getByText("What changed on the stage after Run")).toBeVisible();
-  await expect(
-    page.locator(".code-surface mark").filter({ hasText: "sprite.move(10);" }),
-  ).toBeVisible();
+  await expect(page.getByText("What changed on the stage after Run").first()).toBeVisible();
+  await expect(visibleCode(page, "sprite.move(10);")).toBeVisible();
 
-  await page.getByRole("button", { name: "Get hint" }).click();
-  await expect(page.getByText("Hint level 2 of 5")).toBeVisible();
+  await page.getByRole("button", { name: "Use AI hint tool" }).click();
+  await expect(page.getByText("Hint level 2 of 5").first()).toBeVisible();
   await expect(page.getByText("Hints used: 2")).toBeVisible();
-  await expect(page.getByText("Compare that number with the distance to the goal")).toBeVisible();
+  await expect(
+    page.getByText("Compare that number with the distance to the goal").first(),
+  ).toBeVisible();
   await expect(page.getByLabel("Move block").getByRole("spinbutton")).toHaveValue("10");
 });
 
@@ -239,11 +334,11 @@ test("first mission completes from runtime facts and shows reflection", async ({
 
   await page.getByRole("button", { name: "Move" }).click();
   await applyMoveSteps(page, "10");
-  await page.getByRole("button", { name: "Run" }).click();
+  await stageRun(page).click();
   await expect(page.getByText("stopped short")).toBeVisible({ timeout: 5000 });
 
   await applyMoveSteps(page, "160");
-  await page.getByRole("button", { name: "Run" }).click();
+  await stageRun(page).click();
   await expect(page.getByText("Mission complete: your sprite reached the goal.")).toBeVisible({
     timeout: 5000,
   });
@@ -258,7 +353,7 @@ test("mission retry keeps work, code, and unlocks non-blocking free play", async
 
   await page.getByRole("button", { name: "Move" }).click();
   await applyMoveSteps(page, "10");
-  await page.getByRole("button", { name: "Run" }).click();
+  await stageRun(page).click();
   await expect(page.getByText("stopped short")).toBeVisible({ timeout: 5000 });
   await expect(page.getByText("Attempts: 1")).toBeVisible();
   await expect(page.getByText("sprite.move(10);")).toBeVisible();
@@ -268,7 +363,7 @@ test("mission retry keeps work, code, and unlocks non-blocking free play", async
   await expect(page.getByText("sprite.move(10);")).toBeVisible();
 
   await applyMoveSteps(page, "160");
-  await page.getByRole("button", { name: "Run" }).click();
+  await stageRun(page).click();
   await expect(page.getByText("Mission complete: your sprite reached the goal.")).toBeVisible({
     timeout: 5000,
   });
@@ -284,18 +379,19 @@ test("Step synchronizes block, code and stage without racing Run", async ({ page
 
   await page.getByRole("button", { name: "Move" }).click();
   await applyMoveSteps(page, "24");
-  await page.getByRole("button", { name: "Step" }).click();
+  await openAppMenu(page);
+  await appMenuButton(page, "Step").click();
 
-  await expect(page.getByTestId("step-readout")).toContainText("before-statement");
+  await expect(page.getByTestId("stage-feedback")).toContainText("Step 1 of");
   await expect(page.locator(".block-node.active")).toContainText("Move");
-  await expect(page.locator(".code-surface mark")).toContainText("sprite.move(24);");
+  await expect(page.getByTestId("stage-active-block")).toContainText("sprite.move(24);");
 
-  await page.getByRole("button", { name: "Step" }).click();
-  await expect(page.getByTestId("step-readout")).toContainText("after-statement");
-  await expect(page.getByText("Current node: sprite.move(24);")).toBeVisible();
+  await appMenuButton(page, "Step").click();
+  await expect(page.getByTestId("stage-feedback")).toContainText("Step 2 of");
+  await expect(page.getByTestId("stage-active-block")).toContainText("sprite.move(24);");
 
-  await page.getByRole("button", { name: "Run" }).click();
-  await expect(page.getByRole("button", { name: "Step" })).toBeDisabled();
+  await stageRun(page).click();
+  await expect(appMenuButton(page, "Step")).toBeDisabled();
 });
 
 test("orientation change preserves prepared Step state", async ({ page }) => {
@@ -304,14 +400,14 @@ test("orientation change preserves prepared Step state", async ({ page }) => {
 
   await page.getByRole("button", { name: "Move" }).click();
   await applyMoveSteps(page, "24");
-  await page.getByRole("button", { name: "Step" }).click();
-  await expect(page.getByTestId("step-readout")).toContainText("scripts[0]/statements[0]");
+  await openAppMenu(page);
+  await appMenuButton(page, "Step").click();
+  await expect(page.getByTestId("stage-active-block")).toContainText("sprite.move(24);");
 
   await page.setViewportSize({ width: 1180, height: 820 });
   await page.evaluate(() => window.scrollTo(0, 0));
 
-  await expect(page.getByTestId("step-readout")).toContainText("scripts[0]/statements[0]");
-  await expect(page.locator(".code-surface mark")).toContainText("sprite.move(24);");
+  await expect(page.getByTestId("stage-active-block")).toContainText("sprite.move(24);");
   await expect(page.locator(".block-node.active")).toContainText("Move");
 });
 
@@ -320,8 +416,9 @@ test("Step trace explains before and after state without raw logs", async ({ pag
 
   await page.getByRole("button", { name: "Move" }).click();
   await applyMoveSteps(page, "24");
-  await page.getByRole("button", { name: "Step" }).click();
-  await page.getByRole("button", { name: "Step" }).click();
+  await openAppMenu(page);
+  await appMenuButton(page, "Step").click();
+  await appMenuButton(page, "Step").click();
 
   const card = page.getByTestId("step-card");
   await expect(card).toBeVisible();
@@ -365,44 +462,42 @@ test("mission celebration respects reduced motion", async ({ page }) => {
   expect(reducedAnimationSeconds).toBeLessThanOrEqual(0.001);
 });
 
-test("tablet landscape uses a Scratch-style left tool palette with World and Code primary", async ({
+test("tablet landscape uses a Scratch-style left tool palette with Stage code primary", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
   await page.goto("/");
 
   const world = page.getByRole("heading", { name: "Stage" });
-  const code = codeHeading(page);
   const palette = page.getByRole("heading", { name: "Action palette", exact: true });
 
   await expect(world).toBeInViewport();
-  await expect(code).toBeInViewport();
+  await expect(page.locator(".stage-backstage-code")).toBeInViewport();
   await expect(palette).toBeVisible();
   await expect(page.getByRole("heading", { name: "Blocks", exact: true })).toHaveCount(0);
 
   const stageBox = await page.locator(".stage-panel").boundingBox();
-  const codeBox = await page.locator(".code-panel").first().boundingBox();
   const paletteBox = await page.locator(".action-palette").boundingBox();
   expect(stageBox).not.toBeNull();
-  expect(codeBox).not.toBeNull();
   expect(paletteBox).not.toBeNull();
   expect(stageBox!.width).toBeGreaterThan(360);
-  expect(codeBox!.width).toBeGreaterThan(300);
   expect(paletteBox!.x).toBeLessThan(stageBox!.x);
 });
 
-test("tablet portrait shows World before inspectable Code in normal flow", async ({ page }) => {
+test("tablet portrait shows Stage before inspectable backstage code in normal flow", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 768, height: 1024 });
   await page.goto("/");
 
   await expect(page.getByRole("heading", { name: "Stage" })).toBeInViewport();
-  await expect(codeHeading(page)).toBeInViewport();
+  await expect(page.locator(".stage-backstage-code")).toBeInViewport();
 
   const stageBox = await page.locator(".stage-panel").boundingBox();
-  const codeBox = await page.locator(".code-panel").first().boundingBox();
+  const codeBox = await page.locator(".stage-backstage-code").boundingBox();
   expect(stageBox).not.toBeNull();
   expect(codeBox).not.toBeNull();
-  expect(stageBox!.y).toBeLessThan(codeBox!.y);
+  expect(stageBox!.y).toBeLessThanOrEqual(codeBox!.y);
   await expect(page.locator(".code-surface")).toBeVisible();
 });
 
@@ -410,8 +505,15 @@ test("tablet controls meet touch target guidance", async ({ page }) => {
   await page.setViewportSize({ width: 820, height: 1180 });
   await page.goto("/");
 
-  for (const name of ["Run", "Step", "Stop", "Reset"]) {
-    const box = await page.getByRole("button", { name, exact: true }).boundingBox();
+  await openAppMenu(page);
+  const controls = [
+    stageRun(page),
+    appMenuButton(page, "Step"),
+    page.locator(".stage-panel").getByRole("button", { name: "Stop", exact: true }),
+    appMenuButton(page, "Reset"),
+  ];
+  for (const control of controls) {
+    const box = await control.boundingBox();
     expect(box).not.toBeNull();
     expect(box!.width).toBeGreaterThanOrEqual(44);
     expect(box!.height).toBeGreaterThanOrEqual(44);
@@ -432,7 +534,7 @@ test("orientation change preserves canonical program and visible code", async ({
   await expect(page.getByLabel("Move block").getByRole("spinbutton")).toHaveValue("24");
   await expect(visibleCode(page, "sprite.move(24);")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Stage" })).toBeInViewport();
-  await expect(codeHeading(page)).toBeInViewport();
+  await expect(page.locator(".stage-backstage-code")).toBeInViewport();
 });
 
 test("touch/no-drag path completes the First Mission", async ({ page }) => {
@@ -443,7 +545,7 @@ test("touch/no-drag path completes the First Mission", async ({ page }) => {
   await applyMoveSteps(page, "160");
   await expect(visibleCode(page, "sprite.move(160);")).toBeVisible();
 
-  await page.getByRole("button", { name: "Run" }).click();
+  await stageRun(page).click();
   await expect(page.getByText("Mission complete: your sprite reached the goal.")).toBeVisible({
     timeout: 5000,
   });
@@ -466,21 +568,15 @@ test("explicit reorder controls update generated code without drag", async ({ pa
 test("palette shows only implemented actions, in familiar categories", async ({ page }) => {
   await page.goto("/");
 
-  for (const name of ["Motion", "Control"]) {
+  for (const name of ["Motion", "Looks", "Sound", "Events", "Control", "Operators", "Variables"]) {
     await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
   }
-  for (const name of [
-    "Looks",
-    "Sound",
-    "Events",
-    "Sensing",
-    "Operators",
-    "Variables",
-    "My Blocks",
-  ]) {
+  for (const name of ["Sensing", "My Blocks"]) {
     await expect(page.getByRole("heading", { name, exact: true })).toHaveCount(0);
   }
-  await expect(page.getByRole("button", { name: "Say", exact: true })).toHaveCount(0);
+  for (const name of ["Say", "Start sound", "Broadcast", "Set variable"]) {
+    await expect(page.getByRole("button", { name, exact: true })).toBeEnabled();
+  }
   await expect(page.locator(".action-palette button:disabled")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Move", exact: true })).toBeEnabled();
 });
@@ -489,6 +585,7 @@ test("IDE panels can collapse, close, restore, and blocks support drag and drop"
   page,
 }) => {
   await page.goto("/");
+  await openCodePanel(page);
 
   await page
     .getByLabel("Tools panel controls")
@@ -501,17 +598,13 @@ test("IDE panels can collapse, close, restore, and blocks support drag and drop"
     .click();
   await expect(page.getByRole("button", { name: "Move", exact: true })).toBeVisible();
 
-  await expect(page.getByRole("heading", { name: "Trace" })).toHaveCount(0);
-  await page.getByRole("button", { name: "Trace" }).click();
-  await expect(page.getByRole("heading", { name: "Trace" })).toBeVisible();
-
   await dragHtml5(page, ".tool-motion_move", ".block-stack");
   await expect(page.getByLabel("Move block")).toBeVisible();
   await dragHtml5(page, ".tool-motion_turn", ".block-stack");
   await expect(page.getByLabel("Turn block")).toBeVisible();
 
   await dragHtml5(page, '[aria-label="Turn block"]', '[aria-label="Move block"]');
-  const code = await page.locator(".code-surface").innerText();
+  const code = await page.locator(".code-panel .code-surface").innerText();
   expect(code.indexOf("sprite.turn(90);")).toBeLessThan(code.indexOf("sprite.move(10);"));
 });
 
@@ -529,7 +622,8 @@ test("palette drag supports nested drop and one-step undo", async ({ page }) => 
   await expect(page.locator(".code-surface")).toContainText("sprite.move(10);");
   expect(await canonicalHash(page)).not.toBe(repeatOnly);
 
-  await page.getByRole("button", { name: "Undo program edit" }).click();
+  await openAppMenu(page);
+  await appMenuControl(page, "Undo program edit").click();
   expect(await canonicalHash(page)).toBe(repeatOnly);
   await expect(
     page.locator('[data-canonical-node-id="scripts[0]/statements[0]/body[0]"]'),
@@ -555,7 +649,7 @@ test("cancelled and invalid drops leave canonical state unchanged", async ({ pag
     const target = document.querySelector(".block-stack");
     if (!(target instanceof HTMLElement)) throw new Error("Missing target");
     const dataTransfer = new DataTransfer();
-    dataTransfer.setData("application/x-agorix-block-type", "looks_say");
+    dataTransfer.setData("application/x-agorix-block-type", "not_a_block");
     target.dispatchEvent(new DragEvent("dragover", { bubbles: true, dataTransfer }));
     target.dispatchEvent(new DragEvent("drop", { bubbles: true, dataTransfer }));
   });
@@ -579,15 +673,16 @@ test("nested blocks can move out and duplicate as undoable subtrees", async ({ p
   expect(duplicatedHash).not.toBe(nestedHash);
   expect((await page.locator(".code-surface").innerText()).match(/repeat\(3/g)?.length).toBe(2);
 
-  await page.getByRole("button", { name: "Undo program edit" }).click();
+  await openAppMenu(page);
+  await appMenuControl(page, "Undo program edit").click();
   expect(await canonicalHash(page)).toBe(nestedHash);
   expect((await page.locator(".code-surface").innerText()).match(/repeat\(3/g)?.length).toBe(1);
 
-  await page.getByRole("button", { name: "Redo program edit" }).click();
+  await appMenuControl(page, "Redo program edit").click();
   expect(await canonicalHash(page)).toBe(duplicatedHash);
   expect((await page.locator(".code-surface").innerText()).match(/repeat\(3/g)?.length).toBe(2);
 
-  await page.getByRole("button", { name: "Undo program edit" }).click();
+  await appMenuControl(page, "Undo program edit").click();
   await page.getByLabel("Move block").getByRole("button", { name: "Outdent" }).click();
   await expect(page.locator('[data-canonical-node-id="scripts[0]/statements[1]"]')).toContainText(
     "Move",
@@ -610,6 +705,7 @@ test("non-drag nesting keeps projections synchronized", async ({ page }) => {
 
 test("IDE panels can maximize and expose resize affordances", async ({ page }) => {
   await page.goto("/");
+  await openCodePanel(page);
 
   await expect(page.locator(".program-panel")).toHaveCSS("resize", "both");
   await page
@@ -630,16 +726,17 @@ test("IDE panels can maximize and expose resize affordances", async ({ page }) =
   await expect(page.locator(".code-panel")).not.toHaveClass(/panel-maximized/);
 });
 
-test("workflow rail relates tools, blocks, stage, code and AI", async ({ page }) => {
+test("compact workflow keeps tools, blocks, stage, code and AI reachable", async ({ page }) => {
   await page.goto("/");
 
-  for (const label of ["Choose", "Build", "Test", "Inspect", "Coach"]) {
-    await expect(page.locator(".learning-flow").getByText(label, { exact: true })).toBeVisible();
-  }
-
-  await expect(page.locator(".learning-flow .flow-step.active")).toHaveCount(2);
+  await expect(page.locator(".learning-flow")).toBeHidden();
+  await expect(page.getByRole("heading", { name: "Action palette", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "When you press Run" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Stage" })).toBeVisible();
+  await expect(page.locator(".stage-backstage-code")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Use AI explain tool" })).toBeVisible();
   await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
-  await expect(page.locator(".learning-flow .flow-step.active")).toHaveCount(3);
+  await expect(page.getByText("Block added. Run it to test your idea on the stage.")).toBeVisible();
 });
 
 test("desktop IDE keeps AI visible without document-level scrolling", async ({ page }) => {
@@ -651,6 +748,8 @@ test("desktop IDE keeps AI visible without document-level scrolling", async ({ p
     innerHeight: window.innerHeight,
   }));
   expect(metrics.scrollHeight).toBeLessThanOrEqual(metrics.innerHeight + 2);
+  await openCodePanel(page);
+  await page.getByRole("button", { name: "Use AI explain tool" }).click();
 
   const codeBox = await page.locator(".code-panel").boundingBox();
   const aiBox = await page.locator(".companion-panel").boundingBox();
@@ -664,7 +763,6 @@ test("Explain tool reveals the AI companion without a mode switch", async ({ pag
   await page.goto("/");
 
   await expect(page.getByRole("navigation", { name: /Work mode/ })).toHaveCount(0);
-  await page.getByRole("button", { name: "Close AI" }).click();
   await expect(page.locator(".companion-panel")).toHaveCount(0);
   await page.getByRole("button", { name: "Use AI explain tool" }).click();
   await expect(page.locator(".companion-panel")).toBeVisible();
@@ -673,17 +771,21 @@ test("Explain tool reveals the AI companion without a mode switch", async ({ pag
 test("adding a block refreshes coach and starter guidance", async ({ page }) => {
   await page.goto("/");
 
-  await expect(page.getByText("Add Move to start the mission.")).toBeVisible();
+  await expect(
+    page.getByText("Nothing happens yet — add a block to 'When you press Run' to get started."),
+  ).toBeVisible();
   await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
 
-  await expect(page.getByText("Add Move to start the mission.")).toHaveCount(0);
-  await expect(page.getByText("Run your idea and watch what the stage proves.")).toBeVisible();
+  await expect(
+    page.getByText("Nothing happens yet — add a block to 'When you press Run' to get started."),
+  ).toHaveCount(0);
   await expect(page.getByText("Block added. Run it to test your idea on the stage.")).toBeVisible();
 });
 
 test("AI coach exposes a provider connection entry point", async ({ page }) => {
   await page.goto("/");
 
+  await page.getByRole("button", { name: "Use AI explain tool" }).click();
   await page.getByRole("button", { name: "Connect AI" }).click();
   await expect(page.getByText("Connect a real AI provider")).toBeVisible();
   await expect(page.getByText("Not configured yet")).toBeVisible();
@@ -712,6 +814,7 @@ test("Spanish touch edit path keeps action palette and numeric commit usable", a
   await page.setViewportSize({ width: 820, height: 1180 });
   await page.goto("/");
 
+  await openAppMenu(page);
   await page.getByLabel("Product language").selectOption("es");
   await page.getByRole("button", { name: "Mover" }).click();
   await page.getByLabel("Bloque Mover").getByRole("spinbutton").fill("160");
@@ -764,10 +867,8 @@ test("app shell stays available offline after the service worker installs", asyn
   await context.setOffline(true);
   await page.reload();
 
-  await expect(
-    page.getByRole("heading", { name: "Build with blocks. See the code." }),
-  ).toBeVisible();
-  await expect(page.getByRole("button", { name: "Run" })).toBeVisible();
+  await expect(page.locator(".brand-identity")).toHaveAccessibleName("Agorix");
+  await expect(stageRun(page)).toBeVisible();
 
   await context.setOffline(false);
 });
@@ -776,6 +877,7 @@ test("provenance is visually and textually distinguishable across suggestion, ac
   page,
 }) => {
   await page.goto("/");
+  await page.getByRole("button", { name: "Use AI explain tool" }).click();
 
   // Initial state: no AI content shown yet, tutor marked unavailable.
   await expect(page.locator('[data-provenance="unavailable"]')).toHaveCount(0);
@@ -802,7 +904,7 @@ test("provenance is visually and textually distinguishable across suggestion, ac
   await expect(page.locator('[data-provenance="suggestion"]')).toHaveCount(0);
 
   // Running the program produces a runtime-fact label distinct from both AI states.
-  await page.getByRole("button", { name: "Run" }).click();
+  await stageRun(page).click();
   await expect(page.locator('[data-provenance="runtime-fact"]')).toBeVisible({ timeout: 20000 });
 });
 
@@ -817,7 +919,7 @@ test("AI-literacy journey predicts, tests, challenges and corrects an imperfect 
   const learnerHash = await canonicalHash(page);
 
   // Deterministic AI fixture proposes a plausible but wrong value.
-  await page.getByRole("button", { name: "Try an AI suggestion" }).click();
+  await page.getByRole("button", { name: "Use AI challenge tool" }).click();
   const proposal = page.getByTestId("proposal-preview");
   await expect(proposal).toBeVisible();
   await expect(proposal.getByText("AI suggestion — not applied yet")).toBeVisible();
@@ -837,21 +939,22 @@ test("AI-literacy journey predicts, tests, challenges and corrects an imperfect 
   expect(await canonicalHash(page)).not.toBe(learnerHash);
 
   // Deterministic runtime disproves the prediction.
-  await page.getByRole("button", { name: "Run" }).click();
+  await stageRun(page).click();
   await expect(page.getByText("stopped short")).toBeVisible({ timeout: 5000 });
   await expect(page.getByText("Runtime result — actually happened")).toBeVisible();
 
   // Runtime evidence is inspectable; debugger/hint must reason from the run, not invent a fact.
-  await page.getByRole("button", { name: "Step" }).click();
-  await page.getByRole("button", { name: "Step" }).click();
+  await openAppMenu(page);
+  await appMenuButton(page, "Step").click();
+  await appMenuButton(page, "Step").click();
   await expect(page.getByTestId("step-card")).toBeVisible();
-  await page.getByRole("button", { name: "Get hint" }).click();
-  await expect(page.getByText("Hint level 1 of 5")).toBeVisible();
+  await page.getByRole("button", { name: "Use AI hint tool" }).click();
+  await expect(page.getByText("Hint level 1 of 5").first()).toBeVisible();
 
   // Learner corrects the accepted program explicitly.
   await applyMoveSteps(page, "160");
   await expect(visibleCode(page, "sprite.move(160);")).toBeVisible();
-  await page.getByRole("button", { name: "Run" }).click();
+  await stageRun(page).click();
   await expect(page.getByText("Mission complete: your sprite reached the goal.")).toBeVisible({
     timeout: 5000,
   });
@@ -870,7 +973,7 @@ test.describe("MVP release happy paths", () => {
     await page.getByRole("button", { name: "Move" }).click();
     await applyMoveSteps(page, "160");
     await expect(visibleCode(page, "sprite.move(160);")).toBeVisible();
-    await page.getByRole("button", { name: "Run" }).click();
+    await stageRun(page).click();
     await expect(page.getByText("Mission complete: your sprite reached the goal.")).toBeVisible({
       timeout: 5000,
     });
@@ -884,17 +987,20 @@ test.describe("MVP release happy paths", () => {
     await page.getByRole("button", { name: "Move" }).click();
     await applyMoveSteps(page, "24");
     const before = await canonicalHash(page);
+    await openCodePanel(page);
 
     await codeProjectionSelect(page).selectOption("agorix-code");
-    await expect(visibleCode(page, "move 24")).toBeVisible();
+    await expect(page.locator(".code-panel .code-surface", { hasText: "move 24" })).toBeVisible();
     expect(await canonicalHash(page)).toBe(before);
 
     await page.getByLabel("Compare code projection").selectOption("python");
-    await expect(visibleCode(page, "move(24)")).toBeVisible();
+    await expect(page.locator(".code-panel .code-surface", { hasText: "move(24)" })).toBeVisible();
     expect(await canonicalHash(page)).toBe(before);
 
     await codeProjectionSelect(page).selectOption("typescript");
-    await expect(visibleCode(page, "sprite.move(24);")).toBeVisible();
+    await expect(
+      page.locator(".code-panel .code-surface", { hasText: "sprite.move(24);" }),
+    ).toBeVisible();
     expect(await canonicalHash(page)).toBe(before);
   });
 
@@ -903,26 +1009,26 @@ test.describe("MVP release happy paths", () => {
   }) => {
     await page.goto("/");
     await page.getByRole("button", { name: "Move" }).click();
-    await page.getByRole("button", { name: "Run" }).click();
-    await page.getByRole("button", { name: "Get hint" }).click();
+    await stageRun(page).click();
+    await page.getByRole("button", { name: "Use AI hint tool" }).click();
 
     const shell = page.locator("main.editor-shell");
     await expect(shell).toHaveAttribute("data-learning-capability", "coach");
     await expect(shell).toHaveAttribute("data-provider-selection-bypassed", /true|false/);
-    await expect(page.getByText("Hint level 1 of 5")).toBeVisible();
+    await expect(page.getByText("Hint level 1 of 5").first()).toBeVisible();
   });
 
   test("happy path: coach hint records deterministic routing metadata", async ({ page }) => {
     await page.goto("/");
     await page.getByRole("button", { name: "Move" }).click();
-    await page.getByRole("button", { name: "Get hint" }).click();
+    await page.getByRole("button", { name: "Use AI hint tool" }).click();
 
     const shell = page.locator("main.editor-shell");
     await expect(shell).toHaveAttribute("data-learning-capability", "coach");
     await expect(shell).toHaveAttribute("data-generative-needed", "yes");
     await expect(shell).toHaveAttribute("data-reasoning-tier", "local");
     await expect(shell).toHaveAttribute("data-provider-selection-bypassed", "false");
-    await expect(page.getByText("Hint level 1 of 5")).toBeVisible();
+    await expect(page.getByText("Hint level 1 of 5").first()).toBeVisible();
   });
 });
 
@@ -1018,11 +1124,12 @@ test.describe("contextual repeat suggestion", () => {
     expect(accepted).not.toBe(before);
     await expect(page.locator(".code-surface")).toContainText("repeat");
 
-    await page.getByRole("button", { name: "Undo program edit" }).click();
+    await openAppMenu(page);
+    await appMenuControl(page, "Undo program edit").click();
     expect(await canonicalHash(page)).toBe(before);
     await expect(page.locator(".code-surface")).not.toContainText("repeat");
 
-    await page.getByRole("button", { name: "Redo program edit" }).click();
+    await appMenuControl(page, "Redo program edit").click();
     expect(await canonicalHash(page)).toBe(accepted);
     await expect(page.locator(".code-surface")).toContainText("repeat");
   });
@@ -1032,7 +1139,8 @@ test("Step card advances with Next and shows learner-facing evidence", async ({ 
   await page.goto("/");
   await expect(page.getByTestId("step-card")).toHaveCount(0);
   await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
-  await page.getByRole("button", { name: "Step", exact: true }).click();
+  await openAppMenu(page);
+  await appMenuButton(page, "Step").click();
   const card = page.getByTestId("step-card");
   await expect(card).toContainText("Step 1 of");
   await card.getByRole("button", { name: "Next" }).click();
@@ -1048,19 +1156,19 @@ test("debugging journey: wrong program, runtime evidence, hint, correction, succ
   const canonicalBefore = await canonicalHash(page);
 
   // Runtime, not AI language, shows the program is wrong.
-  await page.getByRole("button", { name: "Run", exact: true }).click();
+  await stageRun(page).click();
   await expect(page.getByText("stopped short")).toBeVisible({ timeout: 5000 });
   await expect(page.getByLabel("Runtime result — actually happened").first()).toBeVisible();
 
   // A hint explains without changing the program.
-  await page.getByRole("button", { name: "Get hint" }).click();
-  await expect(page.getByText("Hint level 1 of 5")).toBeVisible();
+  await page.getByRole("button", { name: "Use AI hint tool" }).click();
+  await expect(page.getByText("Hint level 1 of 5").first()).toBeVisible();
   expect(await canonicalHash(page)).toBe(canonicalBefore);
 
   // Learner corrects it and the runtime proves the fix.
   await applyMoveSteps(page, "160");
   expect(await canonicalHash(page)).not.toBe(canonicalBefore);
-  await page.getByRole("button", { name: "Run", exact: true }).click();
+  await stageRun(page).click();
   await expect(page.getByText("Mission complete: your sprite reached the goal.")).toBeVisible({
     timeout: 5000,
   });
@@ -1088,7 +1196,7 @@ test("worlds reframe the mission without changing the program or runtime result"
   }
 
   await page.getByLabel("World").selectOption("ocean.reef");
-  await page.getByRole("button", { name: "Run", exact: true }).click();
+  await stageRun(page).click();
   await expect(page.getByText("Mission complete: your sprite reached the goal.")).toBeVisible({
     timeout: 5000,
   });
@@ -1097,6 +1205,7 @@ test("worlds reframe the mission without changing the program or runtime result"
 
 test("worlds are localized in Spanish", async ({ page }) => {
   await page.goto("/");
+  await openAppMenu(page);
   await page.getByLabel("Product language").selectOption("es");
   await page.getByLabel("Mundo").selectOption("ocean.reef");
   await expect(page.getByTestId("world-narrative")).toContainText("submarino");
@@ -1109,13 +1218,14 @@ test("Step keeps the active block, code and World in sync", async ({ page }) => 
 
   const sprite = page.getByTestId("stage-sprite");
   const startX = await sprite.getAttribute("data-x");
-  await page.getByRole("button", { name: "Step", exact: true }).click();
+  await openAppMenu(page);
+  await appMenuButton(page, "Step").click();
   const feedback = page.getByTestId("stage-feedback");
   await expect(page.locator(".stage-panel")).toHaveAttribute("data-stage-phase", "stepping");
   await expect(feedback).toContainText(/Step 1 of/);
   await expect(page.getByTestId("stage-active-block")).toContainText("sprite.move(160);");
-  await expect(page.locator(".code-surface mark")).toBeVisible();
-  await page.getByRole("button", { name: "Step", exact: true }).click();
+  await expect(page.getByTestId("stage-active-block")).toContainText("sprite.move(160);");
+  await appMenuButton(page, "Step").click();
   await expect(feedback).toContainText(/Step 2 of/);
   await expect(sprite).not.toHaveAttribute("data-x", startX ?? "");
 });
@@ -1125,7 +1235,7 @@ test("World shows success and retry feedback with runtime-observed labelling", a
   await page.getByLabel("World").selectOption("ocean.reef");
   await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
   await applyMoveSteps(page, "20");
-  await page.getByRole("button", { name: "Run", exact: true }).click();
+  await stageRun(page).click();
   const feedback = page.getByTestId("stage-feedback");
   await expect(feedback).toContainText("The submarine stopped before the marker.", {
     timeout: 8000,
@@ -1134,7 +1244,7 @@ test("World shows success and retry feedback with runtime-observed labelling", a
   await expect(feedback.locator('[data-fact-source="runtime"]')).toBeVisible();
 
   await applyMoveSteps(page, "160");
-  await page.getByRole("button", { name: "Run", exact: true }).click();
+  await stageRun(page).click();
   await expect(feedback).toContainText("The submarine reached the marker.", { timeout: 8000 });
   await expect(feedback).toContainText("Goal reached");
   await expect(page.locator(".goal-ring")).toBeVisible();
@@ -1145,9 +1255,9 @@ test("World identity is visible and Stop is reflected in the World", async ({ pa
   await expect(page.getByTestId("world-identity")).toContainText("Agorix World");
   await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
   await applyMoveSteps(page, "160");
-  await page.getByRole("button", { name: "Run", exact: true }).click();
+  await stageRun(page).click();
   await expect(page.locator(".stage-panel")).toHaveAttribute("data-stage-phase", "running");
-  await page.getByRole("button", { name: "Stop", exact: true }).click();
+  await page.locator(".stage-panel").getByRole("button", { name: "Stop", exact: true }).click();
   await expect(page.locator(".stage-panel")).toHaveAttribute("data-stage-phase", "stopped");
   await expect(page.getByTestId("stage-feedback")).toContainText("Stopped");
 });
@@ -1158,7 +1268,7 @@ test("reduced motion turns off glide and pulse while feedback stays visible", as
   await expect(page.locator(".stage-panel")).toHaveAttribute("data-reduced-motion", "true");
   await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
   await applyMoveSteps(page, "160");
-  await page.getByRole("button", { name: "Run", exact: true }).click();
+  await stageRun(page).click();
   await expect(page.getByTestId("stage-feedback")).toContainText("Goal reached", {
     timeout: 8000,
   });
@@ -1185,6 +1295,7 @@ for (const viewport of [
 test.describe("AI available from the start", () => {
   test("companion is ready and offers a first step on an empty project", async ({ page }) => {
     await page.goto("/");
+    await page.getByRole("button", { name: "Use AI explain tool" }).click();
     await expect(page.locator('[data-provenance="unavailable"]')).toHaveCount(0);
     const welcome = page.getByTestId("ai-welcome");
     await expect(welcome).toBeVisible();
@@ -1193,6 +1304,7 @@ test.describe("AI available from the start", () => {
 
   test("first step is a proposal: inspect, reject leaves the program empty", async ({ page }) => {
     await page.goto("/");
+    await page.getByRole("button", { name: "Use AI explain tool" }).click();
     const before = await canonicalHash(page);
     await page.getByRole("button", { name: "Show me a first step" }).click();
     await expect(page.getByTestId("proposal-preview")).toBeVisible();
@@ -1206,6 +1318,7 @@ test.describe("AI available from the start", () => {
     page,
   }) => {
     await page.goto("/");
+    await page.getByRole("button", { name: "Use AI explain tool" }).click();
     const before = await canonicalHash(page);
     await page.getByRole("button", { name: "Show me a first step" }).click();
     await page.getByRole("button", { name: "Accept proposal" }).click();
@@ -1217,6 +1330,7 @@ test.describe("AI available from the start", () => {
 
   test("the offer goes away on its own once the learner starts building", async ({ page }) => {
     await page.goto("/");
+    await page.getByRole("button", { name: "Use AI explain tool" }).click();
     await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
     await expect(page.getByTestId("ai-welcome")).toHaveCount(0);
   });
@@ -1233,6 +1347,7 @@ test.describe("AI available from the start", () => {
       };
     });
     await page.goto("/");
+    await page.getByRole("button", { name: "Use AI explain tool" }).click();
     await page.waitForFunction(
       () => (globalThis as unknown as { layaCalls: number }).layaCalls > 0,
     );
@@ -1246,6 +1361,7 @@ test.describe("AI available from the start", () => {
       };
     });
     await page.goto("/");
+    await page.getByRole("button", { name: "Use AI explain tool" }).click();
     await expect(page.getByTestId("ai-welcome")).toBeVisible();
     await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
     await expect(page.getByTestId("ai-welcome")).toHaveCount(0);
@@ -1275,7 +1391,8 @@ test.describe("presentation preferences", () => {
         await page.locator(".action-palette").getByLabel("Turn", { exact: true }).click();
       }
       await page.getByRole("button", { name: "No thanks" }).click();
-      await page.getByRole("button", { name: "Reset" }).click();
+      await openAppMenu(page);
+      await appMenuButton(page, "Reset").click();
     }
     await page.reload();
     for (let i = 0; i < 3; i += 1) {

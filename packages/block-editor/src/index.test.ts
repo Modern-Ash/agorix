@@ -57,18 +57,53 @@ describe("block-editor", () => {
     expect(POC_TOOLBOX.map((section) => section.name)).toEqual([
       "Start",
       "Move",
+      "Looks",
+      "Sound",
       "Repeat & Decide",
       "Check",
+      "Operators",
+      "Variables",
     ]);
     expect(POC_TOOLBOX.flatMap((section) => section.blocks.map((block) => block.label))).toEqual([
       "When you press Run",
+      "When key pressed",
+      "When actor clicked",
+      "When message received",
+      "Broadcast message",
       "Move [N] steps",
       "Turn [N] degrees",
+      "Say [text]",
+      "Think [text]",
+      "Show",
+      "Hide",
+      "Set size [N]",
+      "Switch costume",
+      "Switch backdrop",
+      "Play sound",
+      "Stop sounds",
       "Repeat [N] times",
       "If ___, then",
       "Touching the goal?",
+      "[N] + [N]",
+      "[N] - [N]",
+      "[N] * [N]",
+      "[N] / [N]",
+      "[N] < [N]",
+      "[N] > [N]",
+      "[N] = [N]",
+      "[A] and [B]",
+      "[A] or [B]",
+      "not [A]",
+      "random [N] to [N]",
+      "[N]",
+      "true/false",
+      "score",
+      "Set score to [N]",
+      "Change score by [N]",
+      "Show score",
+      "Hide score",
     ]);
-    expect(POC_TOOLBOX.flatMap((section) => section.blocks)).toHaveLength(6);
+    expect(POC_TOOLBOX.flatMap((section) => section.blocks)).toHaveLength(37);
   });
 
   it("creates safe defaults for every required POC block", () => {
@@ -86,6 +121,39 @@ describe("block-editor", () => {
       type: "motion_turn",
       fields: { degrees: 90 },
     });
+    expect(createDefaultBlock("looks_say", "say")).toEqual({
+      id: "say",
+      type: "looks_say",
+      fields: { text: "Hello" },
+    });
+    expect(createDefaultBlock("looks_think", "think")).toEqual({
+      id: "think",
+      type: "looks_think",
+      fields: { text: "Hmm" },
+    });
+    expect(createDefaultBlock("looks_show", "show")).toEqual({ id: "show", type: "looks_show" });
+    expect(createDefaultBlock("looks_hide", "hide")).toEqual({ id: "hide", type: "looks_hide" });
+    expect(createDefaultBlock("looks_set_size", "size")).toEqual({
+      id: "size",
+      type: "looks_set_size",
+      fields: { size: 100 },
+    });
+    expect(createDefaultBlock("looks_switch_costume", "costume")).toEqual({
+      id: "costume",
+      type: "looks_switch_costume",
+      fields: { costumeId: "asset:costume.default" },
+    });
+    expect(createDefaultBlock("looks_switch_backdrop", "backdrop")).toEqual({
+      id: "backdrop",
+      type: "looks_switch_backdrop",
+      fields: { backdropId: "asset:space.trailhead" },
+    });
+    expect(createDefaultBlock("sound_play", "sound")).toEqual({
+      id: "sound",
+      type: "sound_play",
+      fields: { soundId: "asset:sound.beacon" },
+    });
+    expect(createDefaultBlock("sound_stop", "stop")).toEqual({ id: "stop", type: "sound_stop" });
     expect(createDefaultBlock("control_repeat", "repeat")).toEqual({
       id: "repeat",
       type: "control_repeat",
@@ -104,6 +172,30 @@ describe("block-editor", () => {
       id: "goal",
       type: "sensing_touching_goal",
     });
+    expect(createDefaultBlock("event_on_key_pressed", "key")).toEqual({
+      id: "key",
+      type: "event_on_key_pressed",
+      fields: { key: "Space" },
+    });
+    expect(createDefaultBlock("event_broadcast", "broadcast")).toEqual({
+      id: "broadcast",
+      type: "event_broadcast",
+      fields: { message: "go" },
+    });
+    expect(createDefaultBlock("variables_change", "change")).toEqual({
+      id: "change",
+      type: "variables_change",
+      fields: { variableId: "score" },
+      inputs: { delta: { id: "change:delta", type: "literal_number", fields: { value: 1 } } },
+    });
+    expect(createDefaultBlock("operator_less_than", "less")).toEqual({
+      id: "less",
+      type: "operator_less_than",
+      inputs: {
+        left: { id: "less:left", type: "variables_value", fields: { variableId: "score" } },
+        right: { id: "less:right", type: "literal_number", fields: { value: 10 } },
+      },
+    });
   });
 
   it("allows only valid visual block placements", () => {
@@ -111,6 +203,15 @@ describe("block-editor", () => {
     expect(canPlaceBlock("control_repeat", "statement")).toBe(true);
     expect(canPlaceBlock("sensing_touching_goal", "expression")).toBe(true);
     expect(canPlaceBlock("event_on_start", "trigger")).toBe(true);
+    expect(canPlaceBlock("event_on_key_pressed", "trigger")).toBe(true);
+    expect(canPlaceBlock("event_on_actor_clicked", "trigger")).toBe(true);
+    expect(canPlaceBlock("event_on_message", "trigger")).toBe(true);
+    expect(canPlaceBlock("event_broadcast", "statement")).toBe(true);
+    expect(canPlaceBlock("sound_play", "statement")).toBe(true);
+    expect(canPlaceBlock("sound_stop", "statement")).toBe(true);
+    expect(canPlaceBlock("variables_change", "statement")).toBe(true);
+    expect(canPlaceBlock("operator_less_than", "expression")).toBe(true);
+    expect(canPlaceBlock("event_broadcast", "trigger")).toBe(false);
     expect(canPlaceBlock("sensing_touching_goal", "statement")).toBe(false);
     expect(canPlaceBlock("motion_move", "expression")).toBe(false);
   });
@@ -156,6 +257,149 @@ describe("block-editor", () => {
       ],
     });
     expect(JSON.stringify(program.scripts[0]?.statements)).not.toMatch(/block|blockly|workspace/i);
+  });
+
+  it("round-trips event triggers and broadcast blocks", () => {
+    const program: ProjectProgram = {
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "key",
+          trigger: { type: "onKeyPressed", key: "Space" },
+          statements: [{ type: "broadcast", message: "go" }],
+        },
+        {
+          id: "click",
+          trigger: { type: "onActorClicked" },
+          statements: [{ type: "move", steps: 1 }],
+        },
+        {
+          id: "message",
+          trigger: { type: "onMessage", message: "go" },
+          statements: [{ type: "turn", degrees: 15 }],
+        },
+      ],
+    };
+
+    const { workspace } = programToWorkspace(program);
+    const roundTripped = workspaceToProgram(workspace);
+
+    expect(workspace.scripts.map((script) => script.trigger)).toMatchObject([
+      { type: "event_on_key_pressed", fields: { key: "Space" } },
+      { type: "event_on_actor_clicked" },
+      { type: "event_on_message", fields: { message: "go" } },
+    ]);
+    expect(workspace.scripts[0]?.statements[0]).toMatchObject({
+      type: "event_broadcast",
+      fields: { message: "go" },
+    });
+    expect(roundTripped.program).toEqual(validateProgram(program));
+  });
+
+  it("round-trips Looks and Sound blocks through the canonical model", () => {
+    const program: ProjectProgram = {
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "looks-and-sound",
+          trigger: { type: "onStart" },
+          statements: [
+            { type: "say", text: "Go Nova" },
+            { type: "think", text: "Need a plan" },
+            { type: "hide" },
+            { type: "show" },
+            { type: "setSize", size: 120 },
+            { type: "switchCostume", costumeId: "asset:costume.spark" },
+            { type: "switchBackdrop", backdropId: "asset:space.nebula" },
+            { type: "playSound", soundId: "asset:sound.beacon" },
+            { type: "stopSounds" },
+          ],
+        },
+      ],
+    };
+
+    const { workspace } = programToWorkspace(program);
+    const roundTripped = workspaceToProgram(workspace);
+
+    expect(workspace.scripts[0]?.statements.map((block) => block.type)).toEqual([
+      "looks_say",
+      "looks_think",
+      "looks_hide",
+      "looks_show",
+      "looks_set_size",
+      "looks_switch_costume",
+      "looks_switch_backdrop",
+      "sound_play",
+      "sound_stop",
+    ]);
+    expect(workspace.scripts[0]?.statements[5]).toMatchObject({
+      fields: { costumeId: "asset:costume.spark" },
+    });
+    expect(workspace.scripts[0]?.statements[6]).toMatchObject({
+      fields: { backdropId: "asset:space.nebula" },
+    });
+    expect(workspace.scripts[0]?.statements[7]).toMatchObject({
+      fields: { soundId: "asset:sound.beacon" },
+    });
+    expect(roundTripped.program).toEqual(validateProgram(program));
+  });
+
+  it("round-trips variables and operator expressions through blocks", () => {
+    const program: ProjectProgram = {
+      schema: "agorix/program/v1",
+      variables: [{ id: "score", name: "score", initialValue: 0, visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "changeVariable",
+              variableId: "score",
+              delta: {
+                type: "add",
+                left: { type: "variable", variableId: "score" },
+                right: { type: "numericLiteral", value: 1 },
+              },
+            },
+            {
+              type: "if",
+              condition: {
+                type: "lessThan",
+                left: { type: "variable", variableId: "score" },
+                right: { type: "numericLiteral", value: 10 },
+              },
+              then: [{ type: "showVariable", variableId: "score" }],
+            },
+          ],
+        },
+      ],
+    };
+
+    const { workspace } = programToWorkspace(program);
+    const roundTripped = workspaceToProgram(workspace);
+
+    expect(workspace.variables).toEqual(program.variables);
+    expect(workspace.scripts[0]?.statements[0]).toMatchObject({
+      type: "variables_change",
+      inputs: { delta: { type: "operator_add" } },
+    });
+    expect(roundTripped.program).toEqual(validateProgram(program));
+  });
+
+  it("creates the default score variable when adding a variable block", () => {
+    const added = applyWorkspaceChange(createStarterWorkspace(), {
+      type: "addBlock",
+      container: { kind: "script", scriptIndex: 0 },
+      index: 0,
+      block: createDefaultBlock("variables_change", "change-1"),
+    });
+
+    expect(added.workspace.variables).toEqual([
+      { id: "score", name: "score", initialValue: 0, visible: true },
+    ]);
+    expect(added.program.variables).toEqual(added.workspace.variables);
+    expect(added.projection.code).toContain("score += 1;");
   });
 
   it("maps selected blocks to canonical node ids compatible with code highlighting", () => {

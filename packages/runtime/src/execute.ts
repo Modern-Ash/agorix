@@ -1,6 +1,31 @@
-import type { Expression, ProjectProgram, Statement, Trigger } from "@agorix/program-model";
+import type {
+  Expression,
+  ProgramVariable,
+  ProjectProgram,
+  Statement,
+  Trigger,
+} from "@agorix/program-model";
 import { validateProgram } from "@agorix/program-model";
-import { cloneWorldState, moveWorld, touchingGoal, turnWorld, type WorldState } from "./world.js";
+import {
+  cloneWorldState,
+  changeVariableWorld,
+  getVariableWorld,
+  hideWorld,
+  moveWorld,
+  playSoundWorld,
+  sayWorld,
+  setVariableVisibilityWorld,
+  setVariableWorld,
+  setSpriteSizeWorld,
+  showWorld,
+  stopSoundsWorld,
+  switchBackdropWorld,
+  switchCostumeWorld,
+  thinkWorld,
+  touchingGoal,
+  turnWorld,
+  type WorldState,
+} from "./world.js";
 import { RuntimeExecutionError } from "./errors.js";
 import { assertAllowedRuntimeOperation, assertProgramOperationsAllowed } from "./operations.js";
 
@@ -21,6 +46,7 @@ export interface ExecutionOptions {
   readonly stopAfterSteps?: number;
   readonly shouldStop?: (boundary: ExecutionBoundary) => boolean;
   readonly collectObservations?: boolean;
+  readonly randomSeed?: number;
 }
 
 export interface ExecutionTraceEntry {
@@ -73,6 +99,7 @@ interface MutableRunState {
   readonly options: ExecutionOptions;
   readonly trace: ExecutionTraceEntry[];
   readonly observations: RuntimeObservation[];
+  randomState: number;
 }
 
 function normalizeBudget(maxSteps: number | undefined): number {
@@ -120,20 +147,126 @@ function assertStatementBoundary(path: string, state: MutableRunState): void {
   }
 }
 
-function evaluateExpression(expression: Expression, path: string, world: WorldState): boolean {
+type ExpressionValue = boolean | number;
+
+function coerceNumber(value: ExpressionValue): number {
+  return typeof value === "boolean" ? (value ? 1 : 0) : value;
+}
+
+function coerceBoolean(value: ExpressionValue): boolean {
+  return typeof value === "boolean" ? value : value !== 0;
+}
+
+function normalizeRuntimeNumber(value: number, path: string): number {
+  if (!Number.isFinite(value)) {
+    throw new RuntimeExecutionError(path, String(value));
+  }
+  return value;
+}
+
+function normalizeRandomSeed(seed: number | undefined): number {
+  if (seed === undefined) {
+    return 0x6d2b79f5;
+  }
+  if (!Number.isFinite(seed)) {
+    throw new RangeError("randomSeed must be a finite number");
+  }
+  return Math.trunc(seed) >>> 0;
+}
+
+function nextRandomUnit(state: MutableRunState): number {
+  state.randomState = (Math.imul(state.randomState, 1664525) + 1013904223) >>> 0;
+  return state.randomState / 0x100000000;
+}
+
+function evaluateExpression(
+  expression: Expression,
+  path: string,
+  state: MutableRunState,
+): ExpressionValue {
   assertAllowedRuntimeOperation("expression", expression.type, path);
   switch (expression.type) {
     case "touchingGoal":
-      return touchingGoal(world);
+      return touchingGoal(state.world);
     case "booleanLiteral":
       return expression.value;
     case "numericLiteral":
-      return expression.value !== 0;
+      return expression.value;
+    case "variable":
+      return getVariableWorld(state.world, expression.variableId);
+    case "add":
+      return normalizeRuntimeNumber(
+        coerceNumber(evaluateExpression(expression.left, `${path}.left`, state)) +
+          coerceNumber(evaluateExpression(expression.right, `${path}.right`, state)),
+        path,
+      );
+    case "subtract":
+      return normalizeRuntimeNumber(
+        coerceNumber(evaluateExpression(expression.left, `${path}.left`, state)) -
+          coerceNumber(evaluateExpression(expression.right, `${path}.right`, state)),
+        path,
+      );
+    case "multiply":
+      return normalizeRuntimeNumber(
+        coerceNumber(evaluateExpression(expression.left, `${path}.left`, state)) *
+          coerceNumber(evaluateExpression(expression.right, `${path}.right`, state)),
+        path,
+      );
+    case "divide": {
+      const denominator = coerceNumber(
+        evaluateExpression(expression.right, `${path}.right`, state),
+      );
+      if (denominator === 0) {
+        throw new RuntimeExecutionError(`${path}.right`, "divide-by-zero");
+      }
+      return normalizeRuntimeNumber(
+        coerceNumber(evaluateExpression(expression.left, `${path}.left`, state)) / denominator,
+        path,
+      );
+    }
+    case "lessThan":
+      return (
+        coerceNumber(evaluateExpression(expression.left, `${path}.left`, state)) <
+        coerceNumber(evaluateExpression(expression.right, `${path}.right`, state))
+      );
+    case "greaterThan":
+      return (
+        coerceNumber(evaluateExpression(expression.left, `${path}.left`, state)) >
+        coerceNumber(evaluateExpression(expression.right, `${path}.right`, state))
+      );
+    case "equals":
+      return (
+        coerceNumber(evaluateExpression(expression.left, `${path}.left`, state)) ===
+        coerceNumber(evaluateExpression(expression.right, `${path}.right`, state))
+      );
+    case "and":
+      return (
+        coerceBoolean(evaluateExpression(expression.left, `${path}.left`, state)) &&
+        coerceBoolean(evaluateExpression(expression.right, `${path}.right`, state))
+      );
+    case "or":
+      return (
+        coerceBoolean(evaluateExpression(expression.left, `${path}.left`, state)) ||
+        coerceBoolean(evaluateExpression(expression.right, `${path}.right`, state))
+      );
+    case "not":
+      return !coerceBoolean(evaluateExpression(expression.value, `${path}.value`, state));
+    case "random": {
+      const min = coerceNumber(evaluateExpression(expression.min, `${path}.min`, state));
+      const max = coerceNumber(evaluateExpression(expression.max, `${path}.max`, state));
+      const lower = Math.min(min, max);
+      const upper = Math.max(min, max);
+      return normalizeRuntimeNumber(lower + nextRandomUnit(state) * (upper - lower), path);
+    }
     default: {
       const unknown = expression as { type?: unknown };
       throw new RuntimeExecutionError(path, String(unknown.type));
     }
   }
+}
+
+function evaluateNumber(expression: Expression, path: string, state: MutableRunState): number {
+  return coerceNumber(evaluateExpression(expression, path, state));
 }
 
 function executeStatement(statement: Statement, path: string, state: MutableRunState): void {
@@ -156,6 +289,56 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
     case "turn":
       state.world = turnWorld(state.world, statement.degrees);
       break;
+    case "say":
+      state.world = sayWorld(state.world, statement.text);
+      break;
+    case "think":
+      state.world = thinkWorld(state.world, statement.text);
+      break;
+    case "show":
+      state.world = showWorld(state.world);
+      break;
+    case "hide":
+      state.world = hideWorld(state.world);
+      break;
+    case "setSize":
+      state.world = setSpriteSizeWorld(state.world, statement.size);
+      break;
+    case "switchCostume":
+      state.world = switchCostumeWorld(state.world, statement.costumeId);
+      break;
+    case "switchBackdrop":
+      state.world = switchBackdropWorld(state.world, statement.backdropId);
+      break;
+    case "playSound":
+      state.world = playSoundWorld(state.world, statement.soundId);
+      break;
+    case "stopSounds":
+      state.world = stopSoundsWorld(state.world);
+      break;
+    case "broadcast":
+      state.world = cloneWorldState(state.world);
+      break;
+    case "setVariable":
+      state.world = setVariableWorld(
+        state.world,
+        statement.variableId,
+        evaluateNumber(statement.value, `${path}.value`, state),
+      );
+      break;
+    case "changeVariable":
+      state.world = changeVariableWorld(
+        state.world,
+        statement.variableId,
+        evaluateNumber(statement.delta, `${path}.delta`, state),
+      );
+      break;
+    case "showVariable":
+      state.world = setVariableVisibilityWorld(state.world, statement.variableId, true);
+      break;
+    case "hideVariable":
+      state.world = setVariableVisibilityWorld(state.world, statement.variableId, false);
+      break;
     case "repeat": {
       if (!Number.isInteger(statement.count)) {
         throw new RuntimeExecutionError(`${path}.count`, String(statement.count));
@@ -166,7 +349,7 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
       break;
     }
     case "if":
-      if (evaluateExpression(statement.condition, `${path}.condition`, state.world)) {
+      if (coerceBoolean(evaluateExpression(statement.condition, `${path}.condition`, state))) {
         executeStatements(statement.then, `${path}.then`, state);
       }
       break;
@@ -195,6 +378,23 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
   });
 }
 
+function seedProgramVariables(
+  world: WorldState,
+  variables: readonly ProgramVariable[] | undefined,
+): WorldState {
+  if (variables === undefined || variables.length === 0) {
+    return cloneWorldState(world);
+  }
+  let next = cloneWorldState(world);
+  for (const variable of variables) {
+    if (next.variables?.[variable.id] === undefined) {
+      next = setVariableWorld(next, variable.id, variable.initialValue);
+      next = setVariableVisibilityWorld(next, variable.id, variable.visible);
+    }
+  }
+  return next;
+}
+
 function executeStatements(
   statements: readonly Statement[],
   path: string,
@@ -212,6 +412,9 @@ function assertTrigger(trigger: Trigger, path: string): void {
   assertAllowedRuntimeOperation("trigger", trigger.type, path);
   switch (trigger.type) {
     case "onStart":
+    case "onKeyPressed":
+    case "onActorClicked":
+    case "onMessage":
       return;
     default: {
       const unknown = trigger as { type?: unknown };
@@ -228,12 +431,13 @@ export function runProgram(
   const validated = validateProgram(program);
   assertProgramOperationsAllowed(validated);
   const state: MutableRunState = {
-    world: cloneWorldState(initialWorld),
+    world: seedProgramVariables(initialWorld, validated.variables),
     stepsUsed: 0,
     maxSteps: normalizeBudget(options.maxSteps),
     options,
     trace: [],
     observations: [],
+    randomState: normalizeRandomSeed(options.randomSeed),
   };
 
   try {

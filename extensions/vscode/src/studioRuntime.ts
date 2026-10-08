@@ -14,7 +14,7 @@ import { createStudioProposalCommandHandlers } from "./commands/proposals.js";
 import { createStudioSurfaceCommandHandlers } from "./commands/surfaces.js";
 import { reportFailure } from "./commands/guarded.js";
 import { registerStudioCommands } from "./commands/register.js";
-import { clearStudioSession, createStudioSessionState } from "./store/session.js";
+import { clearStudioSession, createStudioSessionState, REMOTE_SCHEME } from "./store/session.js";
 import {
   afterCanonicalProgramChange as applyCanonicalProgramChange,
   requireProject as requireProjectFromState,
@@ -25,12 +25,14 @@ import {
   clearWorkbenchAmbientHint,
   disposeWorkbench,
   publishWorkbenchAmbientHint,
+  refreshWorkbench,
 } from "./host/workbenchPanel.js";
 import { disposeWorldPreview, refreshWorldPreviewSync } from "./host/worldPreviewPanel.js";
 import { createSyncHub } from "./sync/syncHub.js";
 import { createProviderWiring } from "./providerWiring.js";
 import { registerCodeSync } from "./sync/codeSync.js";
 import { programToWorkspace } from "@agorix/block-editor";
+import type { ProjectMetadata } from "@agorix/persistence";
 import { createAgentPort } from "./host/agentPort.js";
 import { registerStudioViews } from "./views/register.js";
 import { AmbientController } from "./ambient/ambientController.js";
@@ -38,10 +40,14 @@ import { registerAmbientLenses } from "./ambient/lenses.js";
 import { createHttpLayaTransport } from "./ambient/layaTransport.js";
 import { StudioSignalAdapter } from "./studioSignals.js";
 import {
+  createStoredProjectWithMetadata,
   countProgramStatements,
   nodeIdsForProjectionLines,
   openProjectionDocument,
+  parseProjectFile,
   semanticHash,
+  serializeProjectFile,
+  serializeStoredProject,
   suggestRepeat,
   type StudioCompanionAction,
 } from "./studioCore.js";
@@ -149,6 +155,7 @@ export function activate(context: vscode.ExtensionContext): void {
           ? { nodeId: failedNode }
           : {}),
       });
+      refreshWorkbench();
     },
   });
   const proposalCommands = createStudioProposalCommandHandlers({
@@ -251,6 +258,27 @@ export function activate(context: vscode.ExtensionContext): void {
   });
   signalAdapterRef.current = signalAdapter;
   context.subscriptions.push(ambientController, signalAdapter);
+  const commitMetadata = async (metadata: ProjectMetadata): Promise<void> => {
+    const open = requireProject();
+    if (open === undefined) {
+      return;
+    }
+    const previousRaw = serializeStoredProject(open.project.stored);
+    const stored = createStoredProjectWithMetadata(open.project.stored, metadata);
+    const raw = serializeProjectFile(stored, open.uri.fsPath);
+    if (open.uri.scheme !== REMOTE_SCHEME) {
+      await vscode.workspace.fs.writeFile(open.uri, new TextEncoder().encode(raw));
+    }
+    session.current = {
+      uri: open.uri,
+      project: parseProjectFile(raw, open.uri.fsPath),
+      ...(open.remote === undefined ? {} : { remote: open.remote }),
+    };
+    session.undoStack.push({ uri: open.uri, raw: previousRaw });
+    session.redoStack.length = 0;
+    afterCanonicalProgramChange();
+    await projectionCommands.openProjection(session.currentProjectionId);
+  };
   const surfaceCommands = createStudioSurfaceCommandHandlers({
     context,
     hub,
@@ -259,6 +287,8 @@ export function activate(context: vscode.ExtensionContext): void {
     resetExecution: executionCommands.resetExecution,
     getProgram: () => session.current?.project.stored.program,
     commitProgram: proposalCommands.commitProgram,
+    getMetadata: () => session.current?.project.stored.metadata,
+    commitMetadata,
     getActiveProposal: () => session.activeProposal,
     reviewProposalSession: proposalCommands.reviewProposalSession,
     revealCanonicalNode: selectNode,
@@ -295,12 +325,9 @@ export function activate(context: vscode.ExtensionContext): void {
         rejectActiveProposal: proposalCommands.rejectActiveProposal,
         runAndGetResult: () => {
           const view = executionCommands.runExecution();
-          const world =
-            view?.currentFrame?.state ??
-            view?.previewFrames[Math.max(0, (view?.previewFrames.length ?? 1) - 1)]?.state;
-          return view === undefined || world === undefined
+          return view === undefined
             ? undefined
-            : { world, stepsUsed: view.stepsUsed };
+            : { world: view.finalWorld, stepsUsed: view.stepsUsed };
         },
         events: session.agentEvents,
       }),

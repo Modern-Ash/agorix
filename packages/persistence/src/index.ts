@@ -5,6 +5,7 @@ export {
   type PersistenceErrorCode,
   type StoredProject,
   type ProjectMetadata,
+  type ProjectActor,
   type BrowserStorageAdapter,
   type MigrationFn,
   type MigrationStep,

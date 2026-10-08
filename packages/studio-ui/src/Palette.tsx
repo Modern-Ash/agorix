@@ -1,43 +1,85 @@
+import { useMemo, useState } from "react";
 import { POC_TOOLBOX, getBlockDefinition, type BlockType } from "@agorix/block-editor";
 import { dragPayload } from "./drag.js";
+import { copyFor, type StudioUiCopy } from "./i18n.js";
 
-const INSERTION_REASON = "This block fits inside another block, not directly in the script.";
+function sectionLabel(name: string, copy: StudioUiCopy): string {
+  if (name === "Move") return copy.paletteMotion;
+  if (name === "Repeat & Decide") return copy.paletteControl;
+  if (name === "Check") return copy.paletteSensing;
+  return name;
+}
 
-export function Palette({ onAdd }: { readonly onAdd: (blockType: BlockType) => void }) {
+export function Palette({
+  copy = copyFor("en"),
+  onAdd,
+}: {
+  readonly copy?: StudioUiCopy;
+  readonly onAdd: (blockType: BlockType) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const normalizedQuery = query.trim().toLowerCase();
+  const sections = useMemo(
+    () =>
+      POC_TOOLBOX.map((section) => ({
+        name: sectionLabel(section.name, copy),
+        blocks: section.blocks
+          .filter((block) => getBlockDefinition(block.type)?.placement !== "trigger")
+          .filter((block) =>
+            normalizedQuery.length === 0
+              ? true
+              : `${block.label} ${block.accessibleName} ${section.name}`
+                  .toLowerCase()
+                  .includes(normalizedQuery),
+          ),
+      })).filter((section) => section.blocks.length > 0),
+    [copy, normalizedQuery],
+  );
   return (
-    <nav className="palette" aria-label="Blocks">
-      {POC_TOOLBOX.flatMap((section) => section.blocks)
-        .filter((block) => getBlockDefinition(block.type)?.placement !== "trigger")
-        .map((block) => {
-          const canInsertInScript = block.placement === "statement";
-          return (
-            <button
-              key={block.type}
-              type="button"
-              disabled={!canInsertInScript}
-              draggable={canInsertInScript}
-              title={canInsertInScript ? block.accessibleName : INSERTION_REASON}
-              aria-label={
-                canInsertInScript
-                  ? block.accessibleName
-                  : `${block.accessibleName}. ${INSERTION_REASON}`
-              }
-              onClick={() => {
-                if (canInsertInScript) onAdd(block.type);
-              }}
-              onDragStart={(event) => {
-                if (!canInsertInScript) return;
-                event.dataTransfer.setData(
-                  "application/x-agorix-drag",
-                  dragPayload({ kind: "palette", blockType: block.type }),
-                );
-                event.dataTransfer.effectAllowed = "copy";
-              }}
-            >
-              {block.label}
-            </button>
-          );
-        })}
+    <nav className="palette" aria-label={copy.paletteBlocks}>
+      <label className="palette-search">
+        <span>{copy.paletteSearch}</span>
+        <input
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.currentTarget.value)}
+        />
+      </label>
+      {sections.map((section) => (
+        <section key={section.name} className="palette-section">
+          <h2>{section.name}</h2>
+          {section.blocks.map((block) => {
+            const canInsertInScript = block.placement === "statement";
+            return (
+              <button
+                key={block.type}
+                type="button"
+                disabled={!canInsertInScript}
+                draggable={canInsertInScript}
+                title={canInsertInScript ? block.accessibleName : copy.paletteNestedOnly}
+                aria-label={
+                  canInsertInScript
+                    ? block.accessibleName
+                    : `${block.accessibleName}. ${copy.paletteNestedOnly}`
+                }
+                onClick={() => {
+                  if (canInsertInScript) onAdd(block.type);
+                }}
+                onDragStart={(event) => {
+                  if (!canInsertInScript) return;
+                  event.dataTransfer.setData(
+                    "application/x-agorix-drag",
+                    dragPayload({ kind: "palette", blockType: block.type }),
+                  );
+                  event.dataTransfer.effectAllowed = "copy";
+                }}
+              >
+                {block.label}
+              </button>
+            );
+          })}
+        </section>
+      ))}
     </nav>
   );
 }

@@ -17,6 +17,20 @@ import { RuntimeExecutionError } from "./errors.js";
 export const RUNTIME_STATEMENT_OPERATIONS = Object.freeze([
   "move",
   "turn",
+  "say",
+  "think",
+  "show",
+  "hide",
+  "setSize",
+  "switchCostume",
+  "switchBackdrop",
+  "playSound",
+  "stopSounds",
+  "broadcast",
+  "setVariable",
+  "changeVariable",
+  "showVariable",
+  "hideVariable",
   "repeat",
   "if",
 ] as const);
@@ -25,9 +39,26 @@ export const RUNTIME_EXPRESSION_OPERATIONS = Object.freeze([
   "touchingGoal",
   "booleanLiteral",
   "numericLiteral",
+  "variable",
+  "add",
+  "subtract",
+  "multiply",
+  "divide",
+  "lessThan",
+  "greaterThan",
+  "equals",
+  "and",
+  "or",
+  "not",
+  "random",
 ] as const);
 
-export const RUNTIME_TRIGGER_OPERATIONS = Object.freeze(["onStart"] as const);
+export const RUNTIME_TRIGGER_OPERATIONS = Object.freeze([
+  "onStart",
+  "onKeyPressed",
+  "onActorClicked",
+  "onMessage",
+] as const);
 
 export const RUNTIME_OPERATIONS = Object.freeze({
   statement: RUNTIME_STATEMENT_OPERATIONS,
@@ -67,6 +98,36 @@ export function listRuntimeOperations(): readonly RuntimeOperation[] {
   ]);
 }
 
+function assertExpressionAllowed(expression: Expression, path: string): void {
+  assertAllowedRuntimeOperation("expression", expression.type, path);
+  switch (expression.type) {
+    case "add":
+    case "subtract":
+    case "multiply":
+    case "divide":
+    case "lessThan":
+    case "greaterThan":
+    case "equals":
+    case "and":
+    case "or":
+      assertExpressionAllowed(expression.left, `${path}.left`);
+      assertExpressionAllowed(expression.right, `${path}.right`);
+      return;
+    case "not":
+      assertExpressionAllowed(expression.value, `${path}.value`);
+      return;
+    case "random":
+      assertExpressionAllowed(expression.min, `${path}.min`);
+      assertExpressionAllowed(expression.max, `${path}.max`);
+      return;
+    case "touchingGoal":
+    case "booleanLiteral":
+    case "numericLiteral":
+    case "variable":
+      return;
+  }
+}
+
 function assertStatementsAllowed(statements: readonly Statement[], path: string): void {
   for (let i = 0; i < statements.length; i += 1) {
     const statement = statements[i];
@@ -78,12 +139,12 @@ function assertStatementsAllowed(statements: readonly Statement[], path: string)
     if (statement.type === "repeat") {
       assertStatementsAllowed(statement.body, `${statementPath}.body`);
     } else if (statement.type === "if") {
-      assertAllowedRuntimeOperation(
-        "expression",
-        statement.condition.type,
-        `${statementPath}.condition`,
-      );
+      assertExpressionAllowed(statement.condition, `${statementPath}.condition`);
       assertStatementsAllowed(statement.then, `${statementPath}.then`);
+    } else if (statement.type === "setVariable") {
+      assertExpressionAllowed(statement.value, `${statementPath}.value`);
+    } else if (statement.type === "changeVariable") {
+      assertExpressionAllowed(statement.delta, `${statementPath}.delta`);
     }
   }
 }

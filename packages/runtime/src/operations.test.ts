@@ -54,13 +54,49 @@ describe("runtime operation allowlist", () => {
   });
 
   it("names every canonical statement, expression and trigger exactly once", () => {
-    expect([...RUNTIME_STATEMENT_OPERATIONS].sort()).toEqual(["if", "move", "repeat", "turn"]);
-    expect([...RUNTIME_EXPRESSION_OPERATIONS].sort()).toEqual([
-      "booleanLiteral",
-      "numericLiteral",
-      "touchingGoal",
+    expect([...RUNTIME_STATEMENT_OPERATIONS].sort()).toEqual([
+      "broadcast",
+      "changeVariable",
+      "hide",
+      "hideVariable",
+      "if",
+      "move",
+      "playSound",
+      "repeat",
+      "say",
+      "setSize",
+      "setVariable",
+      "show",
+      "showVariable",
+      "stopSounds",
+      "switchBackdrop",
+      "switchCostume",
+      "think",
+      "turn",
     ]);
-    expect([...RUNTIME_TRIGGER_OPERATIONS]).toEqual(["onStart"]);
+    expect([...RUNTIME_EXPRESSION_OPERATIONS].sort()).toEqual([
+      "add",
+      "and",
+      "booleanLiteral",
+      "divide",
+      "equals",
+      "greaterThan",
+      "lessThan",
+      "multiply",
+      "not",
+      "numericLiteral",
+      "or",
+      "random",
+      "subtract",
+      "touchingGoal",
+      "variable",
+    ]);
+    expect([...RUNTIME_TRIGGER_OPERATIONS]).toEqual([
+      "onStart",
+      "onKeyPressed",
+      "onActorClicked",
+      "onMessage",
+    ]);
   });
 
   it("freezes the allowlist so callers cannot widen it at runtime", () => {

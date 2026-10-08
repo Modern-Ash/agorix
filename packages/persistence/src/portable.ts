@@ -1,9 +1,19 @@
-import { SCHEMA_VERSION, type ProjectProgram } from "@agorix/program-model";
+import {
+  SCHEMA_VERSION,
+  validateProgram,
+  validateProjectCreativeState,
+  type ProjectProgram,
+} from "@agorix/program-model";
 import {
   FORBIDDEN_CANONICAL_UI_KEYS,
   assertCrossSurfaceCompatibleProject,
 } from "./compatibility.js";
-import { PersistenceError, type ProjectMetadata, type StoredProject } from "./store.js";
+import {
+  PersistenceError,
+  type ProjectActor,
+  type ProjectMetadata,
+  type StoredProject,
+} from "./store.js";
 
 export const AGORIX_PROJECT_FORMAT = "agorix-project";
 export const AGORIX_PROJECT_FORMAT_VERSION = "1";
@@ -15,7 +25,30 @@ const PORTABLE_PROJECT_ID = "portable-project";
 
 const ENVELOPE_KEYS = ["format", "formatVersion", "exportedAt", "project"] as const;
 const PROJECT_KEYS = ["schemaVersion", "program", "metadata"] as const;
-const METADATA_KEYS = ["createdAt", "updatedAt", "missionProgress", "hintLevel", "locale"] as const;
+const METADATA_KEYS = [
+  "createdAt",
+  "updatedAt",
+  "missionProgress",
+  "hintLevel",
+  "locale",
+  "actors",
+  "stage",
+  "assets",
+] as const;
+const ACTOR_KEYS = [
+  "id",
+  "name",
+  "x",
+  "y",
+  "direction",
+  "size",
+  "visible",
+  "costumeId",
+  "appearanceId",
+  "scripts",
+] as const;
+const STAGE_KEYS = ["backdropId", "width", "height", "actorOrder"] as const;
+const ASSET_KEYS = ["id", "kind", "name", "source", "tags"] as const;
 
 export const FORBIDDEN_PORTABLE_PROJECT_KEYS = [
   "accountId",
@@ -147,11 +180,12 @@ export function validatePortableStoredProject(input: unknown): StoredProject {
     );
   }
 
-  const metadata = validatePortableMetadata(input.metadata);
   assertNoForbiddenProgramKeys(input.program);
+  const program = validateProgram(input.program);
+  const metadata = validatePortableMetadata(input.metadata, program);
   return assertCrossSurfaceCompatibleProject({
     schemaVersion: input.schemaVersion,
-    program: input.program as ProjectProgram,
+    program,
     metadata,
   });
 }
@@ -167,7 +201,7 @@ export function sanitizeAgorixFilename(name: string): string {
   return `${slug || "agorix-project"}${AGORIX_PROJECT_EXTENSION}`;
 }
 
-function validatePortableMetadata(input: unknown): ProjectMetadata {
+function validatePortableMetadata(input: unknown, program: ProjectProgram): ProjectMetadata {
   assertPlainObject(input, "$.project.metadata");
   assertAllowedKeys(input, METADATA_KEYS, "$.project.metadata");
   assertNoForbiddenPortableKeys(input, "$.project.metadata");
@@ -204,11 +238,20 @@ function validatePortableMetadata(input: unknown): ProjectMetadata {
     throw new PersistenceError("SCHEMA_MISMATCH", PORTABLE_PROJECT_ID, "locale must be a string");
   }
 
+  const creative = validateProjectCreativeState(
+    {
+      actors: validateActors(input.actors),
+      stage: validateStage(input.stage),
+      assets: validateAssets(input.assets),
+    },
+    program,
+  );
   const metadata: ProjectMetadata = {
     createdAt: input.createdAt,
     updatedAt: input.updatedAt,
     missionProgress: input.missionProgress,
     hintLevel: input.hintLevel,
+    ...creative,
   };
   if ("locale" in input) {
     const locale = input.locale;
@@ -217,6 +260,151 @@ function validatePortableMetadata(input: unknown): ProjectMetadata {
     }
   }
   return metadata;
+}
+
+function validateActors(input: unknown): readonly ProjectActor[] | undefined {
+  if (input === undefined) return undefined;
+  if (!Array.isArray(input) || input.length > 32) {
+    throw new PersistenceError("SCHEMA_MISMATCH", PORTABLE_PROJECT_ID, "actors must be an array");
+  }
+  return input.map((actor, index) => validateActor(actor, index));
+}
+
+function validateActor(input: unknown, index: number): ProjectActor {
+  const path = `$.project.metadata.actors[${index}]`;
+  assertPlainObject(input, path);
+  assertAllowedKeys(input, ACTOR_KEYS, path);
+  assertNoForbiddenPortableKeys(input, path);
+  if (typeof input.id !== "string" || input.id.length < 1 || input.id.length > 80) {
+    throw new PersistenceError("SCHEMA_MISMATCH", PORTABLE_PROJECT_ID, `${path}.id invalid`);
+  }
+  if (typeof input.name !== "string" || input.name.length < 1 || input.name.length > 80) {
+    throw new PersistenceError("SCHEMA_MISMATCH", PORTABLE_PROJECT_ID, `${path}.name invalid`);
+  }
+  for (const key of ["x", "y", "direction", "size"] as const) {
+    if (typeof input[key] !== "number" || !Number.isFinite(input[key])) {
+      throw new PersistenceError("SCHEMA_MISMATCH", PORTABLE_PROJECT_ID, `${path}.${key} invalid`);
+    }
+  }
+  if (typeof input.visible !== "boolean") {
+    throw new PersistenceError("SCHEMA_MISMATCH", PORTABLE_PROJECT_ID, `${path}.visible invalid`);
+  }
+  const { x, y, direction, size } = input as Record<"x" | "y" | "direction" | "size", number>;
+  if ("costumeId" in input && typeof input.costumeId !== "string") {
+    throw new PersistenceError("SCHEMA_MISMATCH", PORTABLE_PROJECT_ID, `${path}.costumeId invalid`);
+  }
+  if ("appearanceId" in input && typeof input.appearanceId !== "string") {
+    throw new PersistenceError(
+      "SCHEMA_MISMATCH",
+      PORTABLE_PROJECT_ID,
+      `${path}.appearanceId invalid`,
+    );
+  }
+  if (
+    "scripts" in input &&
+    (!Array.isArray(input.scripts) ||
+      input.scripts.length > 32 ||
+      !input.scripts.every((script) => typeof script === "string"))
+  ) {
+    throw new PersistenceError("SCHEMA_MISMATCH", PORTABLE_PROJECT_ID, `${path}.scripts invalid`);
+  }
+  const costumeId =
+    typeof input.costumeId === "string"
+      ? input.costumeId
+      : typeof input.appearanceId === "string"
+        ? input.appearanceId
+        : undefined;
+  return {
+    id: input.id,
+    name: input.name,
+    x,
+    y,
+    direction,
+    size,
+    visible: input.visible,
+    ...(costumeId === undefined ? {} : { costumeId }),
+    ...(Array.isArray(input.scripts) ? { scripts: input.scripts as readonly string[] } : {}),
+  };
+}
+
+function validateStage(input: unknown): ProjectMetadata["stage"] {
+  if (input === undefined) return undefined;
+  const path = "$.project.metadata.stage";
+  assertPlainObject(input, path);
+  assertAllowedKeys(input, STAGE_KEYS, path);
+  assertNoForbiddenPortableKeys(input, path);
+  if ("backdropId" in input && typeof input.backdropId !== "string") {
+    throw new PersistenceError(
+      "SCHEMA_MISMATCH",
+      PORTABLE_PROJECT_ID,
+      `${path}.backdropId invalid`,
+    );
+  }
+  for (const key of ["width", "height"] as const) {
+    if (key in input && (typeof input[key] !== "number" || !Number.isFinite(input[key]))) {
+      throw new PersistenceError("SCHEMA_MISMATCH", PORTABLE_PROJECT_ID, `${path}.${key} invalid`);
+    }
+  }
+  if (
+    "actorOrder" in input &&
+    (!Array.isArray(input.actorOrder) ||
+      input.actorOrder.length > 32 ||
+      !input.actorOrder.every((actorId) => typeof actorId === "string"))
+  ) {
+    throw new PersistenceError(
+      "SCHEMA_MISMATCH",
+      PORTABLE_PROJECT_ID,
+      `${path}.actorOrder invalid`,
+    );
+  }
+  return {
+    ...(typeof input.backdropId === "string" ? { backdropId: input.backdropId } : {}),
+    ...(typeof input.width === "number" ? { width: input.width } : {}),
+    ...(typeof input.height === "number" ? { height: input.height } : {}),
+    ...(Array.isArray(input.actorOrder)
+      ? { actorOrder: input.actorOrder as readonly string[] }
+      : {}),
+  };
+}
+
+function validateAssets(input: unknown): ProjectMetadata["assets"] {
+  if (input === undefined) return undefined;
+  if (!Array.isArray(input) || input.length > 128) {
+    throw new PersistenceError("SCHEMA_MISMATCH", PORTABLE_PROJECT_ID, "assets must be an array");
+  }
+  return input.map((asset, index) => {
+    const path = `$.project.metadata.assets[${index}]`;
+    assertPlainObject(asset, path);
+    assertAllowedKeys(asset, ASSET_KEYS, path);
+    assertNoForbiddenPortableKeys(asset, path);
+    if (typeof asset.id !== "string") {
+      throw new PersistenceError("SCHEMA_MISMATCH", PORTABLE_PROJECT_ID, `${path}.id invalid`);
+    }
+    if (asset.kind !== "costume" && asset.kind !== "backdrop" && asset.kind !== "sound") {
+      throw new PersistenceError("SCHEMA_MISMATCH", PORTABLE_PROJECT_ID, `${path}.kind invalid`);
+    }
+    if (typeof asset.name !== "string" || asset.name.length < 1 || asset.name.length > 120) {
+      throw new PersistenceError("SCHEMA_MISMATCH", PORTABLE_PROJECT_ID, `${path}.name invalid`);
+    }
+    if (typeof asset.source !== "string" || asset.source.length < 1 || asset.source.length > 120) {
+      throw new PersistenceError("SCHEMA_MISMATCH", PORTABLE_PROJECT_ID, `${path}.source invalid`);
+    }
+    if (
+      "tags" in asset &&
+      (!Array.isArray(asset.tags) ||
+        asset.tags.length > 16 ||
+        !asset.tags.every((tag) => typeof tag === "string" && tag.length >= 1 && tag.length <= 40))
+    ) {
+      throw new PersistenceError("SCHEMA_MISMATCH", PORTABLE_PROJECT_ID, `${path}.tags invalid`);
+    }
+    return {
+      id: asset.id,
+      kind: asset.kind,
+      name: asset.name,
+      source: asset.source,
+      ...(Array.isArray(asset.tags) ? { tags: asset.tags as readonly string[] } : {}),
+    };
+  });
 }
 
 function assertByteLimit(source: AgorixProjectSource, maxBytes: number): void {

@@ -67,12 +67,35 @@ It must include:
 
 - proposed canonical change or structural suggestion;
 - affected canonical node ids;
+- affected actor, script, asset and variable ids when the project has shared
+  creative state or learner variables;
+- expected runtime evidence that the learner can test;
 - human-readable rationale;
 - validation result;
 - preview/diff content for the learner;
 - accept/reject/modify affordance.
 
 The canonical program mutates only after learner acceptance or learner modification.
+
+Proposal actor, script, asset, variable and evidence ids are validated as stable
+tokens and must be unique within each scope list. Canonical node ids stay as AST
+paths such as `scripts[0]/statements[0]`, but duplicates are rejected so the
+review surface and runtime evidence cannot double-count the same change.
+Every operation must target a node declared in `affectedNodeIds`, including the
+predicted insertion path for append operations.
+When a proposal declares `affectedAssetIds`, any inserted or replaced
+appearance, backdrop or sound statement must reference only assets in that
+declared scope.
+When a proposal declares `affectedVariableIds`, any inserted or replaced
+variable statement or expression must reference only variables in that declared
+scope.
+When any affected actor, script, asset or variable scope is declared, expected
+runtime evidence for that dimension must stay within the declared scope.
+Runtime evidence binding reports observed actors, scripts, assets and variables only
+from trace entries whose node ids are in the proposal's affected or expected
+evidence sets. Actor, script, asset and variable evidence also records
+expected, matched and missing ids so review surfaces can distinguish "observed
+somewhere" from "proved the proposal's stated expectation".
 
 ## Grounding
 

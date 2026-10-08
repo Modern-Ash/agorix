@@ -206,6 +206,61 @@ describe("project api", () => {
     expect((await a.call("GET", `/v1/projects/${id}`)).status).toBe(404);
   });
 
+  it("accepts shared creative metadata for web and Studio projects", async () => {
+    const { client } = setup();
+    const a = await client("alice");
+    const project: StoredProject = {
+      ...stored(),
+      metadata: {
+        ...stored().metadata,
+        actors: [
+          {
+            id: "actor:main",
+            name: "Nova",
+            x: 52,
+            y: 128,
+            direction: 0,
+            size: 100,
+            visible: true,
+            costumeId: "asset:costume.default",
+            scripts: ["main"],
+          },
+        ],
+        stage: {
+          backdropId: "asset:space.trailhead",
+          width: 264,
+          height: 192,
+          actorOrder: ["actor:main"],
+        },
+        assets: [
+          {
+            id: "asset:costume.default",
+            kind: "costume",
+            name: "Nova default",
+            source: "builtin:costume.default",
+            tags: ["starter"],
+          },
+          {
+            id: "asset:space.trailhead",
+            kind: "backdrop",
+            name: "Space trailhead",
+            source: "builtin:space.trailhead",
+            tags: ["space", "mission"],
+          },
+        ],
+      },
+    };
+
+    const created = await a.call("POST", "/v1/projects", {
+      title: "Creative project",
+      storedProject: project,
+    });
+
+    expect(created.status).toBe(201);
+    expect(rec(created).storedProject).toEqual(project);
+    expect(rec(created).semanticHash).toBe(semanticProjectHash(project));
+  });
+
   it("never lets account B reach A's project, even with the id", async () => {
     const { client } = setup();
     const a = await client("alice");

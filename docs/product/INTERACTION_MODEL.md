@@ -33,11 +33,12 @@ The Action Palette is the primary tablet insertion model. It groups actions by c
 Current supported categories:
 
 - Movement: Move, Turn.
-- Control: Repeat, If touching goal.
-
-Future-compatible categories:
-
-- Data: Variable actions once the canonical program model supports variables.
+- Looks: Say, Think, Show, Hide, Set size and Switch costume/backdrop.
+- Events: When Run starts, key press, actor click, message and Broadcast.
+- Control: Repeat and If with touching-goal or score comparison conditions.
+- Variables: Set, Change, Show and Hide score.
+- Operators: arithmetic, comparison, boolean and deterministic random expressions
+  used inside variable and condition blocks.
 
 ## Visual Program Cards
 
@@ -45,6 +46,8 @@ Block cards are modern manipulable structures, not Scratch-like puzzle pieces. E
 
 - block selection;
 - numeric editing where relevant;
+- condition selection where relevant, including touching-goal and score
+  comparison predicates;
 - Apply and Cancel for numeric edits;
 - Move up/down reorder controls;
 - Delete;
@@ -67,6 +70,10 @@ Familiar gestures never bypass these semantics: no gesture applies an AI proposa
 - Palette context: palette remains a contextual surface under World/Code, not a permanent rail.
 - Orientation: existing program state persists across viewport changes.
 - Virtual keyboard: numeric edit Apply/Cancel remain in the same card as the focused field.
+- Variables: visible watchers mirror runtime state, generated code and canonical
+  program data.
+- Conditions: If cards preserve the selected predicate and project it into
+  generated code.
 - EN/ES: labels are localized and tested.
 - Automated coverage: Playwright covers the key paths.
 

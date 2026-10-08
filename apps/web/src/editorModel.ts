@@ -24,9 +24,32 @@ export interface EditorModel extends EditorProjection {
   readonly stage: StageSession;
 }
 
-export type AddableBlockType = "motion_move" | "motion_turn" | "control_repeat" | "control_if";
+export type AddableBlockType =
+  | "motion_move"
+  | "motion_turn"
+  | "looks_say"
+  | "looks_think"
+  | "looks_show"
+  | "looks_hide"
+  | "looks_set_size"
+  | "looks_switch_costume"
+  | "looks_switch_backdrop"
+  | "sound_play"
+  | "sound_stop"
+  | "event_broadcast"
+  | "variables_set"
+  | "variables_change"
+  | "variables_show"
+  | "variables_hide"
+  | "control_repeat"
+  | "control_if";
+
+export type AddableTriggerType =
+  "event_on_key_pressed" | "event_on_actor_clicked" | "event_on_message";
 
 export type StatementPath = readonly number[];
+
+export type IfConditionKind = "touchingGoal" | "scoreLessThan" | "scoreEquals";
 
 export const INITIAL_STAGE = createStageSession({
   sprite: { ...FIRST_MISSION.starterStage.sprite, radius: 12 },
@@ -58,20 +81,24 @@ export function createEditorModelFromProgram(program: ProjectProgram): EditorMod
   return { ...project(programToWorkspace(program).workspace), stage: INITIAL_STAGE };
 }
 
-export function blockNodeId(path: number | StatementPath): string {
+export function blockNodeId(path: number | StatementPath, scriptIndex = 0): string {
   const indexes = typeof path === "number" ? [path] : [...path];
   return indexes.reduce((nodeId, index, depth) => {
     if (depth === 0) return `${nodeId}/statements[${index}]`;
     return `${nodeId}/body[${index}]`;
-  }, "scripts[0]");
+  }, `scripts[${scriptIndex}]`);
 }
 
-export function blockNodeIdForPath(workspace: BlockWorkspaceSnapshot, path: StatementPath): string {
+export function blockNodeIdForPath(
+  workspace: BlockWorkspaceSnapshot,
+  path: StatementPath,
+  scriptIndex = 0,
+): string {
   if (path.length === 0) {
     throw new Error("Expected a non-empty statement path");
   }
-  let nodeId = "scripts[0]";
-  let list: readonly BlockNode[] = workspace.scripts[0]?.statements ?? [];
+  let nodeId = `scripts[${scriptIndex}]`;
+  let list: readonly BlockNode[] = workspace.scripts[scriptIndex]?.statements ?? [];
   for (const [depth, index] of path.entries()) {
     const block = list[index];
     if (block === undefined) {
@@ -98,15 +125,76 @@ function blockId(type: BlockType, index: number): string {
   return `workspace:${type}:${index}`;
 }
 
-function nextBlockIndex(workspace: BlockWorkspaceSnapshot): number {
-  return workspace.scripts[0]?.statements.length ?? 0;
+function nextBlockIndex(workspace: BlockWorkspaceSnapshot, scriptIndex = 0): number {
+  return workspace.scripts[scriptIndex]?.statements.length ?? 0;
 }
 
 export function addBlockToWorkspace(
   workspace: BlockWorkspaceSnapshot,
   type: AddableBlockType,
+  scriptIndex = 0,
 ): EditorProjection {
-  return addBlockToWorkspaceAt(workspace, type, [], nextBlockIndex(workspace));
+  return addBlockToWorkspaceAt(
+    workspace,
+    type,
+    [],
+    nextBlockIndex(workspace, scriptIndex),
+    scriptIndex,
+  );
+}
+
+function triggerProgramId(type: AddableTriggerType, index: number): string {
+  switch (type) {
+    case "event_on_key_pressed":
+      return `key-${index}`;
+    case "event_on_actor_clicked":
+      return `click-${index}`;
+    case "event_on_message":
+      return `message-${index}`;
+  }
+}
+
+export function addScriptToWorkspace(
+  workspace: BlockWorkspaceSnapshot,
+  triggerType: AddableTriggerType,
+): EditorProjection {
+  const index = workspace.scripts.length;
+  return project({
+    scripts: [
+      ...workspace.scripts,
+      {
+        id: `block:scripts_${index}_`,
+        programId: triggerProgramId(triggerType, index),
+        trigger: createDefaultBlock(triggerType, `block:scripts_${index}_trigger`),
+        statements: [],
+      },
+    ],
+  });
+}
+
+export function editScriptTriggerField(
+  workspace: BlockWorkspaceSnapshot,
+  scriptIndex: number,
+  field: "key" | "message",
+  value: string,
+): EditorProjection {
+  const script = workspace.scripts[scriptIndex];
+  if (script === undefined) {
+    throw new Error(`No script at index ${scriptIndex}`);
+  }
+  return project({
+    scripts: workspace.scripts.map((candidate, index) =>
+      index === scriptIndex
+        ? {
+            ...candidate,
+            trigger: {
+              ...candidate.trigger,
+              fields: { ...candidate.trigger.fields, [field]: value },
+            },
+          }
+        : candidate,
+    ),
+  });
 }
 
 export function addBlockToWorkspaceAt(
@@ -114,12 +202,13 @@ export function addBlockToWorkspaceAt(
   type: AddableBlockType,
   containerPath: StatementPath,
   index: number,
+  scriptIndex = 0,
 ): EditorProjection {
   const block = createDefaultBlock(type, blockId(type, index));
   return fromUpdate(
     applyWorkspaceChange(workspace, {
       type: "addBlock",
-      container: containerForPath(workspace, containerPath),
+      container: containerForPath(workspace, containerPath, scriptIndex),
       index,
       block,
     }),
@@ -139,9 +228,10 @@ export function moveBlockInWorkspaceByPath(
   fromPath: StatementPath,
   toContainerPath: StatementPath,
   toIndex: number,
+  scriptIndex = 0,
 ): EditorProjection {
-  const from = locationForPath(workspace, fromPath);
-  const toContainer = containerForPath(workspace, toContainerPath);
+  const from = locationForPath(workspace, fromPath, scriptIndex);
+  const toContainer = containerForPath(workspace, toContainerPath, scriptIndex);
   return fromUpdate(
     applyWorkspaceChange(workspace, {
       type: "moveBlock",
@@ -161,11 +251,12 @@ export function deleteBlockFromWorkspace(
 export function deleteBlockFromWorkspaceAt(
   workspace: BlockWorkspaceSnapshot,
   path: StatementPath,
+  scriptIndex = 0,
 ): EditorProjection {
   return fromUpdate(
     applyWorkspaceChange(workspace, {
       type: "deleteBlock",
-      location: locationForPath(workspace, path),
+      location: locationForPath(workspace, path, scriptIndex),
     }),
   );
 }
@@ -173,9 +264,10 @@ export function deleteBlockFromWorkspaceAt(
 export function duplicateBlockInWorkspace(
   workspace: BlockWorkspaceSnapshot,
   path: StatementPath,
+  scriptIndex = 0,
 ): EditorProjection {
-  const block = blockAtPath(workspace, path);
-  const location = locationForPath(workspace, path);
+  const block = blockAtPath(workspace, path, scriptIndex);
+  const location = locationForPath(workspace, path, scriptIndex);
   return fromUpdate(
     applyWorkspaceChange(workspace, {
       type: "addBlock",
@@ -189,7 +281,7 @@ export function duplicateBlockInWorkspace(
 export function editNumericBlockField(
   workspace: BlockWorkspaceSnapshot,
   index: number,
-  field: "steps" | "degrees" | "count",
+  field: "steps" | "degrees" | "count" | "size",
   value: number,
 ): EditorProjection {
   return editNumericBlockFieldAt(workspace, [index], field, value);
@@ -198,10 +290,171 @@ export function editNumericBlockField(
 export function editNumericBlockFieldAt(
   workspace: BlockWorkspaceSnapshot,
   path: StatementPath,
-  field: "steps" | "degrees" | "count",
+  field: "steps" | "degrees" | "count" | "size",
   value: number,
+  scriptIndex = 0,
 ): EditorProjection {
-  const block = blockAtPath(workspace, path);
+  return editBlockFieldAt(workspace, path, field, value, scriptIndex);
+}
+
+export function editVariableNumberInputAt(
+  workspace: BlockWorkspaceSnapshot,
+  path: StatementPath,
+  value: number,
+  scriptIndex = 0,
+): EditorProjection {
+  const block = blockAtPath(workspace, path, scriptIndex);
+  const inputName =
+    block.type === "variables_set"
+      ? "value"
+      : block.type === "variables_change"
+        ? "delta"
+        : undefined;
+  if (inputName === undefined) {
+    throw new Error(`Block at ${path.join(".")} has no editable variable number input`);
+  }
+  const current = block.inputs?.[inputName];
+  const nextBlock: BlockNode = {
+    ...block,
+    inputs: {
+      ...block.inputs,
+      [inputName]: {
+        id: current?.id ?? `${block.id}:${inputName}`,
+        type: "literal_number",
+        fields: { value },
+      },
+    },
+  };
+  return fromUpdate(
+    applyWorkspaceChange(workspace, {
+      type: "editBlock",
+      location: locationForPath(workspace, path, scriptIndex),
+      block: nextBlock,
+    }),
+  );
+}
+
+function scoreComparisonBlock(
+  blockId: string,
+  type: "operator_less_than" | "operator_equals",
+  value: number,
+): BlockNode {
+  return {
+    id: `${blockId}:condition`,
+    type,
+    inputs: {
+      left: {
+        id: `${blockId}:condition:left`,
+        type: "variables_value",
+        fields: { variableId: "score" },
+      },
+      right: {
+        id: `${blockId}:condition:right`,
+        type: "literal_number",
+        fields: { value },
+      },
+    },
+  };
+}
+
+export function editIfConditionAt(
+  workspace: BlockWorkspaceSnapshot,
+  path: StatementPath,
+  kind: IfConditionKind,
+  scriptIndex = 0,
+): EditorProjection {
+  const block = blockAtPath(workspace, path, scriptIndex);
+  if (block.type !== "control_if") {
+    throw new Error(`Block at ${path.join(".")} is not an if block`);
+  }
+  const currentValue = ifConditionNumberValue(block) ?? 10;
+  const condition =
+    kind === "touchingGoal"
+      ? createDefaultBlock("sensing_touching_goal", `${block.id}:condition`)
+      : kind === "scoreLessThan"
+        ? scoreComparisonBlock(block.id, "operator_less_than", currentValue)
+        : scoreComparisonBlock(block.id, "operator_equals", currentValue);
+  const nextBlock: BlockNode = {
+    ...block,
+    inputs: { ...block.inputs, condition },
+  };
+  return fromUpdate(
+    applyWorkspaceChange(workspace, {
+      type: "editBlock",
+      location: locationForPath(workspace, path, scriptIndex),
+      block: nextBlock,
+    }),
+  );
+}
+
+export function editIfConditionNumberAt(
+  workspace: BlockWorkspaceSnapshot,
+  path: StatementPath,
+  value: number,
+  scriptIndex = 0,
+): EditorProjection {
+  const block = blockAtPath(workspace, path, scriptIndex);
+  if (block.type !== "control_if") {
+    throw new Error(`Block at ${path.join(".")} is not an if block`);
+  }
+  const condition = block.inputs?.condition;
+  if (condition?.type !== "operator_less_than" && condition?.type !== "operator_equals") {
+    throw new Error(`If block at ${path.join(".")} has no editable comparison number`);
+  }
+  const nextBlock: BlockNode = {
+    ...block,
+    inputs: {
+      ...block.inputs,
+      condition: {
+        ...condition,
+        inputs: {
+          ...condition.inputs,
+          right: {
+            id: condition.inputs?.right?.id ?? `${condition.id}:right`,
+            type: "literal_number",
+            fields: { value },
+          },
+        },
+      },
+    },
+  };
+  return fromUpdate(
+    applyWorkspaceChange(workspace, {
+      type: "editBlock",
+      location: locationForPath(workspace, path, scriptIndex),
+      block: nextBlock,
+    }),
+  );
+}
+
+export function ifConditionKind(block: BlockNode): IfConditionKind {
+  const condition = block.inputs?.condition;
+  if (condition?.type === "operator_less_than") {
+    return "scoreLessThan";
+  }
+  if (condition?.type === "operator_equals") {
+    return "scoreEquals";
+  }
+  return "touchingGoal";
+}
+
+export function ifConditionNumberValue(block: BlockNode): number | undefined {
+  const condition = block.inputs?.condition;
+  if (condition?.type !== "operator_less_than" && condition?.type !== "operator_equals") {
+    return undefined;
+  }
+  const value = condition.inputs?.right?.fields?.value;
+  return typeof value === "number" ? value : 10;
+}
+
+export function editBlockFieldAt(
+  workspace: BlockWorkspaceSnapshot,
+  path: StatementPath,
+  field: string,
+  value: unknown,
+  scriptIndex = 0,
+): EditorProjection {
+  const block = blockAtPath(workspace, path, scriptIndex);
   if (block === undefined) {
     throw new Error(`No block at path ${path.join(".")}`);
   }
@@ -209,7 +462,7 @@ export function editNumericBlockFieldAt(
   return fromUpdate(
     applyWorkspaceChange(workspace, {
       type: "editBlock",
-      location: locationForPath(workspace, path),
+      location: locationForPath(workspace, path, scriptIndex),
       block: nextBlock,
     }),
   );
@@ -230,11 +483,12 @@ export function codeSliceForNode(model: EditorProjection, nodeId: string): strin
 export function statementListAtPath(
   workspace: BlockWorkspaceSnapshot,
   containerPath: StatementPath,
+  scriptIndex = 0,
 ): readonly BlockNode[] {
   if (containerPath.length === 0) {
-    return workspace.scripts[0]?.statements ?? [];
+    return workspace.scripts[scriptIndex]?.statements ?? [];
   }
-  const container = blockAtPath(workspace, containerPath);
+  const container = blockAtPath(workspace, containerPath, scriptIndex);
   if (container.type === "control_repeat") {
     return container.inputs?.body ?? [];
   }
@@ -267,32 +521,37 @@ export function indexInContainer(path: StatementPath): number {
 function containerForPath(
   workspace: BlockWorkspaceSnapshot,
   containerPath: StatementPath,
+  scriptIndex = 0,
 ): StatementContainerPath {
   if (containerPath.length === 0) {
-    return { kind: "script", scriptIndex: 0 };
+    return { kind: "script", scriptIndex };
   }
-  const container = blockAtPath(workspace, containerPath);
+  const container = blockAtPath(workspace, containerPath, scriptIndex);
   if (container.type === "control_repeat") {
-    return { kind: "repeatBody", scriptIndex: 0, statementPath: containerPath };
+    return { kind: "repeatBody", scriptIndex, statementPath: containerPath };
   }
   if (container.type === "control_if") {
-    return { kind: "ifThen", scriptIndex: 0, statementPath: containerPath };
+    return { kind: "ifThen", scriptIndex, statementPath: containerPath };
   }
   throw new Error(`Block at ${containerPath.join(".")} cannot contain statements`);
 }
 
-function locationForPath(workspace: BlockWorkspaceSnapshot, path: StatementPath) {
+function locationForPath(workspace: BlockWorkspaceSnapshot, path: StatementPath, scriptIndex = 0) {
   return {
-    container: containerForPath(workspace, parentContainerPath(path)),
+    container: containerForPath(workspace, parentContainerPath(path), scriptIndex),
     index: indexInContainer(path),
   };
 }
 
-function blockAtPath(workspace: BlockWorkspaceSnapshot, path: StatementPath): BlockNode {
+function blockAtPath(
+  workspace: BlockWorkspaceSnapshot,
+  path: StatementPath,
+  scriptIndex = 0,
+): BlockNode {
   if (path.length === 0) {
     throw new Error("Expected a non-empty statement path");
   }
-  let list: readonly BlockNode[] = workspace.scripts[0]?.statements ?? [];
+  let list: readonly BlockNode[] = workspace.scripts[scriptIndex]?.statements ?? [];
   let current: BlockNode | undefined;
   for (const [depth, index] of path.entries()) {
     current = list[index];
@@ -317,6 +576,10 @@ function collectBlockIds(block: BlockNode, ids: Set<string>): void {
   for (const child of block.inputs?.body ?? []) collectBlockIds(child, ids);
   for (const child of block.inputs?.then ?? []) collectBlockIds(child, ids);
   if (block.inputs?.condition !== undefined) collectBlockIds(block.inputs.condition, ids);
+  if (block.inputs?.left !== undefined) collectBlockIds(block.inputs.left, ids);
+  if (block.inputs?.right !== undefined) collectBlockIds(block.inputs.right, ids);
+  if (block.inputs?.value !== undefined) collectBlockIds(block.inputs.value, ids);
+  if (block.inputs?.delta !== undefined) collectBlockIds(block.inputs.delta, ids);
 }
 
 function workspaceBlockIds(workspace: BlockWorkspaceSnapshot): Set<string> {
@@ -359,6 +622,10 @@ function cloneBlockTreeWithFreshIds(
             ...(current.inputs.condition === undefined
               ? {}
               : { condition: clone(current.inputs.condition) }),
+            ...(current.inputs.left === undefined ? {} : { left: clone(current.inputs.left) }),
+            ...(current.inputs.right === undefined ? {} : { right: clone(current.inputs.right) }),
+            ...(current.inputs.value === undefined ? {} : { value: clone(current.inputs.value) }),
+            ...(current.inputs.delta === undefined ? {} : { delta: clone(current.inputs.delta) }),
           };
     return {
       ...current,

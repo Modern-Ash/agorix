@@ -454,11 +454,32 @@ describe("Studio extension wiring", () => {
     expect(workbenchPanel()?.html).toContain("Agorix Workbench");
     const sent = workbenchPanel()?.messages as { type: string }[];
     expect(sent.some((message) => message.type === "workspace")).toBe(true);
-    expect(sent.at(-1)).toMatchObject({ type: "sync" });
+    expect(sent.some((message) => message.type === "actors")).toBe(true);
+    expect(sent.some((message) => message.type === "assets")).toBe(true);
+    expect(sent.some((message) => message.type === "sync")).toBe(true);
 
     const before = new TextDecoder().decode(files.get("/p/workbench.json"));
     expect(() => workbenchPanel()?.receive({})).not.toThrow();
     expect(() => workbenchPanel()?.receive("x")).not.toThrow();
+    workbenchPanel()?.receive({
+      schema: "agorix/studio-protocol/v1",
+      type: "executionCommand",
+      command: "step",
+    });
+    await flushWorkbench();
+    expect(commandCalls).toContainEqual(["agorixStudio.step"]);
+    expect(sent.some((message) => message.type === "executionState")).toBe(true);
+    expect(sent.some((message) => message.type === "stageFrame")).toBe(true);
+    expect(new TextDecoder().decode(files.get("/p/workbench.json"))).toBe(before);
+    workbenchPanel()?.receive({
+      schema: "agorix/studio-protocol/v1",
+      type: "updateActor",
+      actorId: "actor:main",
+      patch: { x: 24, y: 6, direction: 90 },
+    });
+    await flushWorkbench();
+    const afterActorUpdate = new TextDecoder().decode(files.get("/p/workbench.json"));
+    expect(afterActorUpdate).toContain('"actors"');
     expect(() =>
       workbenchPanel()?.receive({
         schema: "agorix/studio-protocol/v1",
@@ -466,7 +487,7 @@ describe("Studio extension wiring", () => {
         intent: { type: "revealNode", nodeId: "/etc/passwd" },
       }),
     ).not.toThrow();
-    expect(new TextDecoder().decode(files.get("/p/workbench.json"))).toBe(before);
+    expect(new TextDecoder().decode(files.get("/p/workbench.json"))).toBe(afterActorUpdate);
   });
 
   it("reveals Mundo Agorix and the Companion when a project is opened", async () => {

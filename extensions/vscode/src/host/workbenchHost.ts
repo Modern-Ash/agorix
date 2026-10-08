@@ -9,17 +9,23 @@ import { ProgramValidationError, type ProjectProgram } from "@agorix/program-mod
 import { programSemanticHash } from "@agorix/proposals";
 import {
   STUDIO_PROTOCOL_VERSION,
+  type ActorPatch,
+  type ActorView,
   type ChangeRefusalReason,
   type HostMessage,
   type UiMessage,
 } from "@agorix/studio-protocol";
+import type { ProjectActor, ProjectMetadata } from "@agorix/persistence";
 import type { AgentAgreements } from "@agorix/agent-workflow";
 import type { ProactiveDecision, StudioSignal } from "@agorix/learning-decision-plane";
 import type { SyncState } from "../sync/syncHub.js";
+import { defaultProjectActor, studioAssetCatalog } from "../studioCore.js";
 
 export interface HostPort {
   getProgram(): ProjectProgram | undefined;
+  getMetadata(): ProjectMetadata | undefined;
   commit(program: ProjectProgram, label: string): Promise<void>;
+  commitMetadata(metadata: ProjectMetadata, label: string): Promise<void>;
   openProposalReview(proposalId: string): Promise<void>;
   reveal(nodeId: string): Promise<void>;
   askAgent(verb: AgentVerb, nodeId: string | undefined): Promise<void>;
@@ -36,6 +42,34 @@ export interface WorkbenchHost {
 
 const schema = STUDIO_PROTOCOL_VERSION;
 
+function actorView(actor: ProjectActor, program: ProjectProgram | undefined): ActorView {
+  const costumeId = actor.costumeId ?? actor.appearanceId;
+  return {
+    id: actor.id,
+    name: actor.name,
+    x: actor.x,
+    y: actor.y,
+    direction: actor.direction,
+    size: actor.size,
+    visible: actor.visible,
+    ...(costumeId === undefined ? {} : { costumeId }),
+    scriptCount: actor.scripts?.length ?? program?.scripts.length ?? 0,
+  };
+}
+
+function actorPatchForPersistence(patch: ActorPatch): Partial<ProjectActor> {
+  const { appearanceId: _appearanceId, ...canonical } = patch;
+  return canonical;
+}
+
+function knownCostumeIds(metadata: ProjectMetadata): ReadonlySet<string> {
+  return new Set(
+    [...(metadata.assets ?? []), ...studioAssetCatalog()]
+      .filter((asset) => asset.kind === "costume")
+      .map((asset) => asset.id),
+  );
+}
+
 function refusalReason(error: unknown): ChangeRefusalReason {
   if (error instanceof BlockEditorAdapterError) return error.reason ?? "UNKNOWN";
   if (error instanceof ProgramValidationError) return "WOULD_BREAK_PROGRAM";
@@ -47,14 +81,35 @@ function isKnownFailure(error: unknown): boolean {
 }
 
 export function createWorkbenchHost(port: HostPort, newBlockId: () => string): WorkbenchHost {
+  function actorsMessage(): HostMessage[] {
+    const metadata = port.getMetadata();
+    if (metadata === undefined) return [];
+    const program = port.getProgram();
+    const actors = (
+      metadata.actors?.length ? metadata.actors : [defaultProjectActor(metadata.locale)]
+    ).map((actor) => actorView(actor, program));
+    return [
+      {
+        schema,
+        type: "actors",
+        actors,
+        ...(actors[0] === undefined ? {} : { selectedActorId: actors[0].id }),
+      },
+    ];
+  }
+
   function snapshot(): HostMessage[] {
     const program = port.getProgram();
     if (program === undefined) {
-      return [];
+      return actorsMessage();
     }
     try {
       const { workspace } = programToWorkspace(program);
-      return [{ schema, type: "workspace", workspace, programHash: programSemanticHash(program) }];
+      return [
+        { schema, type: "workspace", workspace, programHash: programSemanticHash(program) },
+        ...actorsMessage(),
+        { schema, type: "assets", assets: studioAssetCatalog() },
+      ];
     } catch (error) {
       if (isKnownFailure(error)) {
         return [{ schema, type: "error", code: "INVALID_PROGRAM" }];
@@ -195,6 +250,31 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
       case "agreementsChanged":
         port.updateAgreements(message.agreements);
         return [];
+      case "updateActor": {
+        const metadata = port.getMetadata();
+        if (metadata === undefined) return [];
+        const current = metadata.actors?.length
+          ? metadata.actors
+          : [defaultProjectActor(metadata.locale)];
+        const patch = actorPatchForPersistence(message.patch);
+        if (!current.some((actor) => actor.id === message.actorId)) {
+          return [{ schema, type: "error", code: "INVALID_CHANGE", reason: "BLOCK_NOT_FOUND" }];
+        }
+        if (patch.costumeId !== undefined && !knownCostumeIds(metadata).has(patch.costumeId)) {
+          return [{ schema, type: "error", code: "INVALID_CHANGE", reason: "WOULD_BREAK_PROGRAM" }];
+        }
+        const nextActors: readonly ProjectActor[] = current.map((actor) =>
+          actor.id === message.actorId ? { ...actor, ...patch } : actor,
+        );
+        await port.commitMetadata(
+          {
+            ...metadata,
+            actors: nextActors,
+          },
+          "Workbench: update actor",
+        );
+        return actorsMessage();
+      }
       default:
         // Agent-loop and proposal messages are handled by the agent host.
         return [];

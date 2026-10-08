@@ -1,16 +1,29 @@
 import { SCHEMA_VERSION } from "./schema.js";
-import type { Expression, ProjectProgram, Script, Statement, Trigger } from "./schema.js";
+import type {
+  Expression,
+  ProgramVariable,
+  ProjectProgram,
+  Script,
+  Statement,
+  Trigger,
+} from "./schema.js";
 import {
   MAX_NESTING_DEPTH,
+  EVENT_KEY_MAX_LENGTH,
+  EVENT_MESSAGE_MAX_LENGTH,
   MAX_PROGRAM_NODES,
+  LOOKS_TEXT_MAX_LENGTH,
   MOVE_STEPS_MAX,
   MOVE_STEPS_MIN,
   NUMERIC_LITERAL_MAX,
   NUMERIC_LITERAL_MIN,
   REPEAT_COUNT_MAX,
   REPEAT_COUNT_MIN,
+  SPRITE_SIZE_MAX,
+  SPRITE_SIZE_MIN,
   TURN_DEGREES_MAX,
   TURN_DEGREES_MIN,
+  VARIABLE_NAME_MAX_LENGTH,
 } from "./limits.js";
 
 /**
@@ -28,7 +41,9 @@ export type ProgramValidationErrorCode =
   | "INVALID_FIELD_TYPE"
   | "NUMERIC_OUT_OF_BOUNDS"
   | "PROGRAM_TOO_LARGE"
-  | "NESTING_TOO_DEEP";
+  | "NESTING_TOO_DEEP"
+  | "INVALID_CREATIVE_STATE"
+  | "INVALID_REFERENCE";
 
 /**
  * Thrown by validateProgram for any malformed/unknown/unsafe input. Names the
@@ -71,10 +86,35 @@ function checkBounds(value: number, min: number, max: number, path: string): voi
   }
 }
 
+function checkText(value: unknown, path: string): string {
+  if (typeof value !== "string" || value.length < 1 || value.length > LOOKS_TEXT_MAX_LENGTH) {
+    fail(
+      "INVALID_FIELD_TYPE",
+      path,
+      `expected a non-empty string of at most ${LOOKS_TEXT_MAX_LENGTH} characters`,
+      value,
+    );
+  }
+  return value;
+}
+
+function checkLimitedText(value: unknown, path: string, maxLength: number, label: string): string {
+  if (typeof value !== "string" || value.length < 1 || value.length > maxLength) {
+    fail(
+      "INVALID_FIELD_TYPE",
+      path,
+      `expected a non-empty ${label} string of at most ${maxLength} characters`,
+      value,
+    );
+  }
+  return value;
+}
+
 /** Mutable traversal state threaded through validation (issue #13 size/depth limits). */
 interface ValidationState {
   nodeCount: number;
   seenIds: Map<string, string>; // id -> first path where it was seen
+  variableIds: Set<string>;
 }
 
 function countNode(state: ValidationState, path: string): void {
@@ -100,6 +140,61 @@ function checkDepth(depth: number, path: string): void {
   }
 }
 
+function assertKnownVariableId(value: unknown, path: string, state: ValidationState): string {
+  if (typeof value !== "string" || value.length === 0) {
+    fail("MISSING_FIELD", path, "expected a non-empty variable id", value);
+  }
+  if (!state.variableIds.has(value)) {
+    fail("INVALID_REFERENCE", path, `unknown variable id ${JSON.stringify(value)}`, value);
+  }
+  return value;
+}
+
+function validateBinaryExpression(
+  input: Record<string, unknown>,
+  path: string,
+  state: ValidationState,
+  type:
+    | "add"
+    | "subtract"
+    | "multiply"
+    | "divide"
+    | "lessThan"
+    | "greaterThan"
+    | "equals"
+    | "and"
+    | "or",
+): Expression {
+  return {
+    type,
+    left: validateExpression(input.left, `${path}.left`, state),
+    right: validateExpression(input.right, `${path}.right`, state),
+  };
+}
+
+function validateUnaryExpression(
+  input: Record<string, unknown>,
+  path: string,
+  state: ValidationState,
+): Expression {
+  return {
+    type: "not",
+    value: validateExpression(input.value, `${path}.value`, state),
+  };
+}
+
+function validateRandomExpression(
+  input: Record<string, unknown>,
+  path: string,
+  state: ValidationState,
+): Expression {
+  return {
+    type: "random",
+    min: validateExpression(input.min, `${path}.min`, state),
+    max: validateExpression(input.max, `${path}.max`, state),
+  };
+}
+
 function validateExpression(input: unknown, path: string, state: ValidationState): Expression {
   countNode(state, path);
   if (!isPlainObject(input)) {
@@ -122,6 +217,25 @@ function validateExpression(input: unknown, path: string, state: ValidationState
       checkBounds(input.value, NUMERIC_LITERAL_MIN, NUMERIC_LITERAL_MAX, `${path}.value`);
       return { type: "numericLiteral", value: input.value };
     }
+    case "variable":
+      return {
+        type: "variable",
+        variableId: assertKnownVariableId(input.variableId, `${path}.variableId`, state),
+      };
+    case "add":
+    case "subtract":
+    case "multiply":
+    case "divide":
+    case "lessThan":
+    case "greaterThan":
+    case "equals":
+    case "and":
+    case "or":
+      return validateBinaryExpression(input, path, state, type);
+    case "not":
+      return validateUnaryExpression(input, path, state);
+    case "random":
+      return validateRandomExpression(input, path, state);
     default:
       return fail(
         "UNKNOWN_EXPRESSION_TYPE",
@@ -170,6 +284,64 @@ function validateStatement(
       checkBounds(input.degrees, TURN_DEGREES_MIN, TURN_DEGREES_MAX, `${path}.degrees`);
       return { type: "turn", degrees: input.degrees };
     }
+    case "say":
+      return { type: "say", text: checkText(input.text, `${path}.text`) };
+    case "think":
+      return { type: "think", text: checkText(input.text, `${path}.text`) };
+    case "show":
+      return { type: "show" };
+    case "hide":
+      return { type: "hide" };
+    case "setSize": {
+      if (typeof input.size !== "number") {
+        fail("MISSING_FIELD", `${path}.size`, "expected a number", input.size);
+      }
+      checkBounds(input.size, SPRITE_SIZE_MIN, SPRITE_SIZE_MAX, `${path}.size`);
+      return { type: "setSize", size: input.size };
+    }
+    case "switchCostume":
+      return { type: "switchCostume", costumeId: checkText(input.costumeId, `${path}.costumeId`) };
+    case "switchBackdrop":
+      return {
+        type: "switchBackdrop",
+        backdropId: checkText(input.backdropId, `${path}.backdropId`),
+      };
+    case "playSound":
+      return { type: "playSound", soundId: checkText(input.soundId, `${path}.soundId`) };
+    case "stopSounds":
+      return { type: "stopSounds" };
+    case "broadcast":
+      return {
+        type: "broadcast",
+        message: checkLimitedText(
+          input.message,
+          `${path}.message`,
+          EVENT_MESSAGE_MAX_LENGTH,
+          "event message",
+        ),
+      };
+    case "setVariable":
+      return {
+        type: "setVariable",
+        variableId: assertKnownVariableId(input.variableId, `${path}.variableId`, state),
+        value: validateExpression(input.value, `${path}.value`, state),
+      };
+    case "changeVariable":
+      return {
+        type: "changeVariable",
+        variableId: assertKnownVariableId(input.variableId, `${path}.variableId`, state),
+        delta: validateExpression(input.delta, `${path}.delta`, state),
+      };
+    case "showVariable":
+      return {
+        type: "showVariable",
+        variableId: assertKnownVariableId(input.variableId, `${path}.variableId`, state),
+      };
+    case "hideVariable":
+      return {
+        type: "hideVariable",
+        variableId: assertKnownVariableId(input.variableId, `${path}.variableId`, state),
+      };
     case "repeat": {
       if (typeof input.count !== "number") {
         fail("MISSING_FIELD", `${path}.count`, "expected a number", input.count);
@@ -210,6 +382,23 @@ function validateTrigger(input: unknown, path: string): Trigger {
   switch (type) {
     case "onStart":
       return { type: "onStart" };
+    case "onKeyPressed":
+      return {
+        type: "onKeyPressed",
+        key: checkLimitedText(input.key, `${path}.key`, EVENT_KEY_MAX_LENGTH, "event key"),
+      };
+    case "onActorClicked":
+      return { type: "onActorClicked" };
+    case "onMessage":
+      return {
+        type: "onMessage",
+        message: checkLimitedText(
+          input.message,
+          `${path}.message`,
+          EVENT_MESSAGE_MAX_LENGTH,
+          "event message",
+        ),
+      };
     default:
       return fail(
         "UNKNOWN_TRIGGER_TYPE",
@@ -226,6 +415,31 @@ function recordId(state: ValidationState, id: string, path: string): void {
     fail("DUPLICATE_ID", path, `id ${JSON.stringify(id)} already used at ${firstSeenAt}`, id);
   }
   state.seenIds.set(id, path);
+}
+
+function validateVariable(input: unknown, path: string, state: ValidationState): ProgramVariable {
+  if (!isPlainObject(input)) {
+    fail("INVALID_FIELD_TYPE", path, "expected an object", input);
+  }
+  if (typeof input.id !== "string" || input.id.length === 0) {
+    fail("MISSING_FIELD", `${path}.id`, "expected a non-empty string", input.id);
+  }
+  recordId(state, input.id, `${path}.id`);
+  state.variableIds.add(input.id);
+  const name = checkLimitedText(
+    input.name,
+    `${path}.name`,
+    VARIABLE_NAME_MAX_LENGTH,
+    "variable name",
+  );
+  if (typeof input.initialValue !== "number") {
+    fail("MISSING_FIELD", `${path}.initialValue`, "expected a number", input.initialValue);
+  }
+  checkBounds(input.initialValue, NUMERIC_LITERAL_MIN, NUMERIC_LITERAL_MAX, `${path}.initialValue`);
+  if (typeof input.visible !== "boolean") {
+    fail("MISSING_FIELD", `${path}.visible`, "expected a boolean", input.visible);
+  }
+  return { id: input.id, name, initialValue: input.initialValue, visible: input.visible };
 }
 
 function validateScript(input: unknown, path: string, state: ValidationState): Script {
@@ -266,9 +480,19 @@ export function validateProgram(input: unknown): ProjectProgram {
   if (!Array.isArray(input.scripts)) {
     fail("INVALID_FIELD_TYPE", "$.scripts", "expected an array", input.scripts);
   }
-  const state: ValidationState = { nodeCount: 0, seenIds: new Map() };
+  const state: ValidationState = { nodeCount: 0, seenIds: new Map(), variableIds: new Set() };
+  const variables =
+    input.variables === undefined
+      ? undefined
+      : Array.isArray(input.variables)
+        ? input.variables.map((item, index) =>
+            validateVariable(item, `$.variables[${index}]`, state),
+          )
+        : fail("INVALID_FIELD_TYPE", "$.variables", "expected an array", input.variables);
   const scripts = input.scripts.map((item, index) =>
     validateScript(item, `$.scripts[${index}]`, state),
   );
-  return { schema: SCHEMA_VERSION, scripts };
+  return variables === undefined
+    ? { schema: SCHEMA_VERSION, scripts }
+    : { schema: SCHEMA_VERSION, variables, scripts };
 }

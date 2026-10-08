@@ -10,6 +10,7 @@ import {
 import type { AmbientHintView, GhostChange } from "@agorix/studio-protocol";
 import { dropPointFor, toRows } from "./blockView.js";
 import { chordFromEvent, dragPayload, parseDragPayload } from "./drag.js";
+import { copyFor, type StudioUiCopy } from "./i18n.js";
 
 const DRAG_TYPE = "application/x-agorix-drag";
 
@@ -97,6 +98,7 @@ export interface SyncView {
 }
 
 export function Canvas({
+  copy = copyFor("en"),
   workspace,
   onIntent,
   ghosts,
@@ -104,6 +106,7 @@ export function Canvas({
   hints,
   ambientHint,
 }: {
+  readonly copy?: StudioUiCopy;
   readonly workspace: BlockWorkspaceSnapshot;
   readonly onIntent: (intent: Intent) => void;
   readonly ghosts?: readonly GhostChange[] | undefined;
@@ -113,7 +116,7 @@ export function Canvas({
 }) {
   const addedGhosts = (ghosts ?? []).filter((ghost) => ghost.kind === "added");
   return (
-    <section className="canvas" aria-label="Program">
+    <section className="canvas" aria-label={copy.canvasProgram}>
       {ambientHint !== undefined && ambientHint.blockId === undefined ? (
         <div className="ambient-hint" role="note">
           {ambientHint.label}
@@ -123,7 +126,7 @@ export function Canvas({
         if (row.kind === "script") {
           return (
             <div key={key} className="script-title">
-              Script {row.scriptIndex + 1}: when you press Run
+              {copy.canvasScript} {row.scriptIndex + 1}: {copy.canvasWhenRun}
             </div>
           );
         }
@@ -165,14 +168,14 @@ export function Canvas({
             aria-current={isSel ? "true" : undefined}
             aria-description={
               isFail
-                ? "This block failed when the program ran"
+                ? copy.canvasFailedDescription
                 : hint !== undefined
-                  ? `${ambient === undefined ? "Suggestion" : "Companion hint"}: ${hint}${isSkipped ? " (skipped)" : ""}`
+                  ? `${ambient === undefined ? copy.canvasSuggestion : copy.canvasCompanionHint}: ${hint}${isSkipped ? ` (${copy.canvasSkipped})` : ""}`
                   : ghostKind(ghosts, block.id) === "removed"
-                    ? "Suggestion would remove this block"
+                    ? copy.canvasSuggestionRemove
                     : ghostKind(ghosts, block.id) === undefined
                       ? undefined
-                      : "Suggestion would change this block"
+                      : copy.canvasSuggestionChange
             }
             onDragStart={(event) => {
               event.dataTransfer.setData(
@@ -199,32 +202,34 @@ export function Canvas({
             </span>
             {hint === undefined ? null : (
               <span className={ambient === undefined ? "hint-badge" : "hint-badge ambient"}>
-                {ambient === undefined ? (isSkipped ? "Skipped: " : "Suggested: ") : ""}
+                {ambient === undefined
+                  ? `${isSkipped ? copy.canvasSkippedPrefix : copy.canvasSuggestedPrefix} `
+                  : ""}
                 {hint}
               </span>
             )}
-            {isFail ? <span className="sync-badge fail-badge">Failed here</span> : null}
-            {isExec ? <span className="sync-badge">Running</span> : null}
+            {isFail ? <span className="sync-badge fail-badge">{copy.canvasFailedHere}</span> : null}
+            {isExec ? <span className="sync-badge">{copy.canvasRunning}</span> : null}
             <button
               type="button"
-              aria-label={`Move ${block.label} up`}
+              aria-label={`${copy.canvasMoveUp}: ${block.label}`}
               onClick={() => press("Alt+ArrowUp")}
             >
-              Up
+              {copy.canvasMoveUp}
             </button>
             <button
               type="button"
-              aria-label={`Move ${block.label} down`}
+              aria-label={`${copy.canvasMoveDown}: ${block.label}`}
               onClick={() => press("Alt+ArrowDown")}
             >
-              Down
+              {copy.canvasMoveDown}
             </button>
             <button
               type="button"
-              aria-label={`Delete ${block.label}`}
+              aria-label={`${copy.canvasDelete}: ${block.label}`}
               onClick={() => press("Delete")}
             >
-              Delete
+              {copy.canvasDelete}
             </button>
           </div>
         );
@@ -233,10 +238,10 @@ export function Canvas({
         <div
           key={`ghost-${index}`}
           className="block ghost-added depth-0"
-          aria-label={`Suggested: ${ghost.afterText ?? "new block"}`}
+          aria-label={`${copy.canvasSuggestedPrefix} ${ghost.afterText ?? copy.canvasNewBlock}`}
         >
-          <span className="ghost-badge">Suggestion</span>
-          <span className="label">{ghost.afterText ?? "new block"}</span>
+          <span className="ghost-badge">{copy.canvasSuggestion}</span>
+          <span className="label">{ghost.afterText ?? copy.canvasNewBlock}</span>
         </div>
       ))}
     </section>

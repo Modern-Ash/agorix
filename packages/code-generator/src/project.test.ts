@@ -64,6 +64,16 @@ describe("projectProgram", () => {
       "whenStarted(() => {
         sprite.move(3);
         sprite.turn(90);
+        sprite.say("Launch sequence");
+        sprite.think("Need a better route");
+        sprite.hide();
+        sprite.show();
+        sprite.setSize(120);
+        sprite.switchCostume("asset:costume.default");
+        stage.switchBackdrop("asset:space.trailhead");
+        sound.play("asset:sound.beacon");
+        sound.stopAll();
+        stage.broadcast("mission:check");
         repeat(2, () => {
           sprite.move(1);
           if (sprite.touchingGoal()) {
@@ -78,6 +88,18 @@ describe("projectProgram", () => {
         if (42) {
         }
       });
+
+      whenKeyPressed("ArrowRight")(() => {
+        sprite.move(4);
+      });
+
+      whenActorClicked(() => {
+        sprite.say("Clicked");
+      });
+
+      whenMessageReceived("mission:check")(() => {
+        sprite.think("Checking");
+      });
       "
     `);
     expectValidRanges(result);
@@ -85,11 +107,24 @@ describe("projectProgram", () => {
       "whenStarted",
       "sprite.move",
       "sprite.turn",
+      "sprite.say",
+      "sprite.think",
+      "sprite.hide",
+      "sprite.show",
+      "sprite.setSize",
+      "sprite.switchCostume",
+      "stage.switchBackdrop",
+      "sound.play",
+      "sound.stopAll",
+      "stage.broadcast",
       "repeat",
       "if (sprite.touchingGoal())",
       "if (true)",
       "if (false)",
       "if (42)",
+      "whenKeyPressed",
+      "whenActorClicked",
+      "whenMessageReceived",
     ]) {
       expect(result.code).toContain(op);
     }
@@ -138,8 +173,8 @@ describe("projectProgram", () => {
 
   it("maps if-condition ranges to the exact condition substring", () => {
     const result = projectProgram(FULL_COVERAGE_PROGRAM);
-    const condId = "scripts[0]/statements[2]/body[1]/condition";
-    // full-coverage: statements[2] = repeat, body[1] = if(touchingGoal)
+    const condId = "scripts[0]/statements[12]/body[1]/condition";
+    // full-coverage: statements[12] = repeat, body[1] = if(touchingGoal)
     const range = result.mapping[condId];
     expect(range).toBeDefined();
     if (!range) {

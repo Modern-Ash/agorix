@@ -408,4 +408,44 @@ describe("proposal origin ui", () => {
     expect(builtIn).toContain("AI help isn&#x27;t available right now.");
     expect(html(withOrigin())).toContain("Suggestion (AI, not in your program yet)");
   });
+
+  it("shows affected ids and expected runtime evidence for scoped proposals", () => {
+    const state = reduceAgentUi(stageState("proposal"), {
+      schema,
+      type: "proposal",
+      proposalId: "p1",
+      purpose: "p",
+      rationale: "r",
+      affectedActorIds: ["actor:explorer"],
+      affectedScriptIds: ["explorer-script"],
+      affectedAssetIds: ["asset:costume.explorer"],
+      affectedVariableIds: ["score"],
+      affectedNodeIds: ["scripts[0]/statements[0]"],
+      expectedRuntimeEvidence: [
+        {
+          id: "move-runs",
+          description: "The changed move block appears in the runtime trace.",
+          nodeIds: ["scripts[0]/statements[0]"],
+          actorIds: ["actor:explorer"],
+          scriptIds: ["explorer-script"],
+          assetIds: ["asset:costume.explorer"],
+          variableIds: ["score"],
+        },
+      ],
+      changes: [],
+    });
+    const rendered = html(state);
+    expect(rendered).toContain("Affected scope");
+    expect(rendered).toContain("actor:explorer");
+    expect(rendered).toContain("explorer-script");
+    expect(rendered).toContain("asset:costume.explorer");
+    expect(rendered).toContain("score");
+    expect(rendered).toContain("Expected runtime evidence");
+    expect(rendered).toContain("The changed move block appears in the runtime trace.");
+    expect(rendered).toContain("Actors: actor:explorer");
+    expect(rendered).toContain("Scripts: explorer-script");
+    expect(rendered).toContain("Assets: asset:costume.explorer");
+    expect(rendered).toContain("Variables: score");
+    expect(rendered).toContain("Nodes: scripts[0]/statements[0]");
+  });
 });

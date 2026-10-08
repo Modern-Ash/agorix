@@ -25,6 +25,17 @@ describe("studio-protocol", () => {
       agreements: DEFAULT_AGREEMENTS,
     });
     expect(
+      parseUiMessage({
+        schema,
+        type: "intent",
+        intent: {
+          type: "insertBlock",
+          blockType: "sound_play",
+          to: { container: script, index: 0 },
+        },
+      }),
+    ).toMatchObject({ type: "intent", intent: { blockType: "sound_play" } });
+    expect(
       parseUiMessage({ schema, type: "decideProposal", proposalId: "p:1", decision: "rejected" }),
     ).toBeDefined();
   });
@@ -49,6 +60,244 @@ describe("studio-protocol", () => {
       '{"schema":"agorix/studio-protocol/v1","type":"ready","__proto__":{"x":1},"extra":1}',
     );
     expect(parseUiMessage(raw)).toEqual({ schema, type: "ready" });
+  });
+
+  it("parses Workbench execution controls separately from the agent run message", () => {
+    expect(parseUiMessage({ schema, type: "executionCommand", command: "run" })).toEqual({
+      schema,
+      type: "executionCommand",
+      command: "run",
+    });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "updateActor",
+        actorId: "actor:main",
+        patch: { x: 10, y: 4, direction: 90, visible: true, appearanceId: "asset:costume.default" },
+      }),
+    ).toMatchObject({
+      type: "updateActor",
+      patch: { x: 10, costumeId: "asset:costume.default" },
+    });
+    expect(
+      parseUiMessage({
+        schema,
+        type: "updateActor",
+        actorId: "actor:main",
+        patch: { size: 0 },
+      }),
+    ).toBeUndefined();
+    expect(parseUiMessage({ schema, type: "executionCommand", command: "pause" })).toBeUndefined();
+    expect(
+      parseHostMessage({
+        schema,
+        type: "executionState",
+        status: "running",
+        outcome: "completed",
+        frameIndex: 2,
+        frameCount: 8,
+        stepsUsed: 7,
+      }),
+    ).toEqual({
+      schema,
+      type: "executionState",
+      status: "running",
+      outcome: "completed",
+      frameIndex: 2,
+      frameCount: 8,
+      stepsUsed: 7,
+    });
+    expect(
+      parseHostMessage({
+        schema,
+        type: "executionState",
+        status: "paused",
+        outcome: "completed",
+        frameIndex: 0,
+        frameCount: 1,
+        stepsUsed: 0,
+      }),
+    ).toBeUndefined();
+    expect(
+      parseHostMessage({
+        schema,
+        type: "stageFrame",
+        frame: {
+          state: {
+            sprite: { x: 12, y: 4, heading: 90, radius: 10 },
+            goal: { x: 100, y: 0, radius: 12 },
+            viewport: { width: 264, height: 192 },
+            variables: [{ id: "score", label: "score", value: 4, visible: true }],
+            sounds: { activeSoundIds: ["asset:sound.beacon"] },
+            actors: [
+              {
+                id: "actor:main",
+                name: "Explorer",
+                x: 12,
+                y: 4,
+                direction: 90,
+                size: 100,
+                visible: true,
+                costumeId: "asset:costume.default",
+                scriptCount: 1,
+              },
+              {
+                id: "actor:helper",
+                name: "Helper",
+                x: 32,
+                y: 24,
+                direction: 0,
+                size: 75,
+                visible: false,
+                appearanceId: "asset:costume.default",
+              },
+            ],
+          },
+          frameIndex: 1,
+          frameCount: 8,
+          step: 2,
+          running: true,
+          reachedGoal: false,
+          actorId: "actor:main",
+          scriptId: "main",
+          statementType: "move",
+          highlightedNodeId: "scripts[0]/statements[0]",
+        },
+      }),
+    ).toMatchObject({
+      type: "stageFrame",
+      frame: {
+        frameIndex: 1,
+        actorId: "actor:main",
+        scriptId: "main",
+        statementType: "move",
+        highlightedNodeId: "scripts[0]/statements[0]",
+        state: {
+          actors: [
+            { id: "actor:main", costumeId: "asset:costume.default", scriptCount: 1 },
+            { id: "actor:helper", costumeId: "asset:costume.default" },
+          ],
+          variables: [{ id: "score", label: "score", value: 4, visible: true }],
+          sounds: { activeSoundIds: ["asset:sound.beacon"] },
+        },
+      },
+    });
+    expect(
+      parseHostMessage({
+        schema,
+        type: "stageFrame",
+        frame: {
+          state: {
+            sprite: { x: 0, y: 0, heading: Number.NaN, radius: 10 },
+            goal: { x: 0, y: 0, radius: 10 },
+            viewport: { width: 264, height: 192 },
+          },
+          frameIndex: 0,
+          frameCount: 1,
+          step: 0,
+          running: false,
+          reachedGoal: false,
+        },
+      }),
+    ).toBeUndefined();
+    expect(
+      parseHostMessage({
+        schema,
+        type: "actors",
+        selectedActorId: "actor:main",
+        actors: [
+          {
+            id: "actor:main",
+            name: "Sprite",
+            x: 0,
+            y: 0,
+            direction: 0,
+            size: 100,
+            visible: true,
+            costumeId: "asset:costume.default",
+            scriptCount: 1,
+          },
+        ],
+      }),
+    ).toMatchObject({
+      type: "actors",
+      selectedActorId: "actor:main",
+      actors: [{ costumeId: "asset:costume.default", scriptCount: 1 }],
+    });
+    expect(
+      parseHostMessage({
+        schema,
+        type: "actors",
+        actors: [
+          {
+            id: "actor:main",
+            name: "Sprite",
+            x: 0,
+            y: 0,
+            direction: 0,
+            size: 401,
+            visible: true,
+          },
+        ],
+      }),
+    ).toBeUndefined();
+    expect(
+      parseHostMessage({
+        schema,
+        type: "assets",
+        assets: [
+          {
+            id: "asset:space.explorer",
+            name: "Explorer",
+            kind: "sprite",
+            tags: ["starter", "space"],
+            width: 64,
+            height: 64,
+            preview: "triangle",
+          },
+        ],
+      }),
+    ).toMatchObject({ type: "assets", assets: [{ kind: "sprite" }] });
+    expect(
+      parseHostMessage({
+        schema,
+        type: "stageFrame",
+        frame: {
+          state: {
+            sprite: { x: 0, y: 0, heading: 0, radius: 10 },
+            goal: { x: 100, y: 0, radius: 12 },
+            viewport: { width: 264, height: 192 },
+            backdropId: "asset:space.nebula",
+            actors: [
+              {
+                id: "actor:main",
+                name: "Sprite",
+                x: 0,
+                y: 0,
+                direction: 0,
+                size: 100,
+                visible: true,
+                costumeId: "asset:costume.spark",
+                bubble: { kind: "say", text: "Go Nova" },
+              },
+            ],
+          },
+          frameIndex: 0,
+          frameCount: 1,
+          step: 0,
+          running: true,
+          reachedGoal: false,
+        },
+      }),
+    ).toMatchObject({
+      type: "stageFrame",
+      frame: {
+        state: {
+          backdropId: "asset:space.nebula",
+          actors: [{ costumeId: "asset:costume.spark", bubble: { text: "Go Nova" } }],
+        },
+      },
+    });
   });
 
   it("parses host messages strictly", () => {
@@ -103,6 +352,20 @@ describe("studio-protocol", () => {
         ],
       }),
     ).toBeUndefined();
+    expect(
+      bad({
+        scripts: [
+          {
+            id: "s",
+            trigger: { id: "t", type: "event_on_start" },
+            statements: [
+              { id: "sound", type: "sound_play", fields: { soundId: "asset:sound.beacon" } },
+              { id: "stop", type: "sound_stop" },
+            ],
+          },
+        ],
+      }),
+    ).toBeDefined();
     expect(parseHostMessage({ schema, type: "error", code: "INVALID_CHANGE" })).toBeDefined();
     expect(parseHostMessage({ schema, type: "error", code: "x" })).toBeUndefined();
     expect(
@@ -139,6 +402,25 @@ describe("studio-protocol", () => {
     });
     expect(
       parseHostMessage({ schema, type: "ambientHint", hint: { label: "/home/ana", actions: [] } }),
+    ).toBeUndefined();
+    expect(
+      parseHostMessage({
+        schema,
+        type: "stageFrame",
+        frame: {
+          state: {
+            sprite: { x: 0, y: 0, heading: 0, radius: 10 },
+            goal: { x: 0, y: 0, radius: 10 },
+            viewport: { width: 264, height: 192 },
+            variables: [{ id: "bad space", label: "score", value: 1, visible: true }],
+          },
+          frameIndex: 0,
+          frameCount: 1,
+          step: 0,
+          running: false,
+          reachedGoal: false,
+        },
+      }),
     ).toBeUndefined();
   });
 
@@ -368,6 +650,37 @@ describe("advanced proposal messages", () => {
     expect(parseHostMessage({ ...base, notice: "" })).toBeUndefined();
   });
 
+  it("parses proposal scope ids and expected runtime evidence", () => {
+    const scoped = {
+      ...base,
+      affectedActorIds: ["actor:explorer"],
+      affectedScriptIds: ["explorer-script"],
+      affectedAssetIds: ["asset:costume.explorer"],
+      affectedVariableIds: ["score"],
+      affectedNodeIds: ["scripts[0]/statements[0]"],
+      expectedRuntimeEvidence: [
+        {
+          id: "move-runs",
+          description: "The changed move block appears in the runtime trace.",
+          nodeIds: ["scripts[0]/statements[0]"],
+          actorIds: ["actor:explorer"],
+          scriptIds: ["explorer-script"],
+          variableIds: ["score"],
+          outcome: "completes",
+        },
+      ],
+    };
+    expect(parseHostMessage(scoped)).toEqual(scoped);
+    expect(parseHostMessage({ ...base, affectedActorIds: [0] })).toBeUndefined();
+    expect(parseHostMessage({ ...base, affectedVariableIds: [0] })).toBeUndefined();
+    expect(
+      parseHostMessage({
+        ...base,
+        expectedRuntimeEvidence: [{ id: "e", description: "d", outcome: "maybe" }],
+      }),
+    ).toBeUndefined();
+  });
+
   it("parses selectionEvidence results", () => {
     const ok = {
       schema,
@@ -436,6 +749,38 @@ describe("advanced proposal messages", () => {
     });
     expect(
       parseUiMessage({ schema, type: "chooseAlternative", proposalId: "<x>" }),
+    ).toBeUndefined();
+  });
+});
+
+describe("execution event trace messages", () => {
+  it("parses executionState event traces defensively", () => {
+    const message = {
+      schema,
+      type: "executionState",
+      status: "completed",
+      outcome: "completed",
+      frameIndex: 1,
+      frameCount: 2,
+      stepsUsed: 2,
+      eventTrace: [
+        {
+          id: "activation:0",
+          step: 1,
+          actorId: "actor:main",
+          scriptId: "main",
+          event: "start",
+          reason: "Run started",
+        },
+      ],
+    };
+
+    expect(parseHostMessage(message)).toEqual(message);
+    expect(
+      parseHostMessage({
+        ...message,
+        eventTrace: [{ ...message.eventTrace[0], reason: "" }],
+      }),
     ).toBeUndefined();
   });
 });

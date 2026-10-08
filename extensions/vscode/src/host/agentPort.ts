@@ -184,6 +184,22 @@ function viewOf(
     proposalId: proposal.id,
     purpose: session.purpose.slice(0, 300),
     rationale: session.rationale.slice(0, 300),
+    ...(proposal.affectedActorIds === undefined
+      ? {}
+      : { affectedActorIds: proposal.affectedActorIds }),
+    ...(proposal.affectedScriptIds === undefined
+      ? {}
+      : { affectedScriptIds: proposal.affectedScriptIds }),
+    ...(proposal.affectedAssetIds === undefined
+      ? {}
+      : { affectedAssetIds: proposal.affectedAssetIds }),
+    ...(proposal.affectedVariableIds === undefined
+      ? {}
+      : { affectedVariableIds: proposal.affectedVariableIds }),
+    affectedNodeIds: proposal.affectedNodeIds,
+    ...(proposal.expectedRuntimeEvidence === undefined
+      ? {}
+      : { expectedRuntimeEvidence: proposal.expectedRuntimeEvidence }),
     changes: session.diff.changes.slice(0, 50).map((change) => {
       const blockId = blockFor.get(change.nodeId);
       return {

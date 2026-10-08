@@ -15,7 +15,12 @@ import {
   serializeAgorixProject,
   type ProjectMetadata,
 } from "@agorix/persistence";
-import type { ProjectProgram } from "@agorix/program-model";
+import type {
+  ProjectActor,
+  ProjectAsset,
+  ProjectCreativeState,
+  ProjectProgram,
+} from "@agorix/program-model";
 import {
   createEditorHistory,
   recordCanonicalTransaction,
@@ -67,7 +72,19 @@ import {
   rejectProposal,
   type ProposalReview,
 } from "@agorix/proposals";
-import { runProgram, touchingGoal, type RunResult, type WorldState } from "@agorix/runtime";
+import {
+  createWorldState,
+  runMultiActorProgram,
+  runProgram,
+  touchingGoal,
+  type MultiActorFrame,
+  type MultiActorRuntimeActor,
+  type RuntimeEvent,
+  type RuntimeObservation,
+  type RunResult,
+  type VariableState,
+  type WorldState,
+} from "@agorix/runtime";
 import type { PredictionAnswer } from "@agorix/agent-workflow";
 import {
   deriveStageFeedback,
@@ -81,10 +98,12 @@ import {
   type ObservationFrame,
   type StageFeedback,
   type StageState,
+  type StageVariableWatcher,
 } from "@agorix/stage";
 import {
   addBlockToWorkspace,
   addBlockToWorkspaceAt,
+  addScriptToWorkspace,
   blockNodeIdForPath,
   canContainStatements,
   childContainerPathFor,
@@ -93,16 +112,26 @@ import {
   createEditorModelFromProgram,
   deleteBlockFromWorkspaceAt,
   duplicateBlockInWorkspace,
+  editBlockFieldAt,
+  editIfConditionAt,
+  editIfConditionNumberAt,
   editNumericBlockFieldAt,
+  editVariableNumberInputAt,
+  editScriptTriggerField,
+  ifConditionKind,
+  ifConditionNumberValue,
   indexInContainer,
   finalMoveIndex,
+  INITIAL_STAGE,
   moveBlockInWorkspaceByPath,
   parentContainerPath,
   resetWorkspace,
   statementListAtPath,
   type AddableBlockType,
+  type AddableTriggerType,
   type EditorModel,
   type EditorProjection,
+  type IfConditionKind,
   type StatementPath,
 } from "./editorModel.js";
 import {
@@ -166,6 +195,7 @@ const DEFAULT_PANEL_AREAS: Record<PanelId, PanelArea> = {
 
 const BLOCK_DRAG_TYPE = "application/x-agorix-block-type";
 const WORKSPACE_DRAG_TYPE = "application/x-agorix-workspace-index";
+const MAX_ACTOR_SIZE = 400;
 
 type PanelChromeProps = {
   readonly className: string;
@@ -222,6 +252,20 @@ function PanelControls({
 const addableBlocks = new Set<AddableBlockType>([
   "motion_move",
   "motion_turn",
+  "looks_say",
+  "looks_think",
+  "looks_show",
+  "looks_hide",
+  "looks_set_size",
+  "looks_switch_costume",
+  "looks_switch_backdrop",
+  "sound_play",
+  "sound_stop",
+  "event_broadcast",
+  "variables_set",
+  "variables_change",
+  "variables_show",
+  "variables_hide",
   "control_repeat",
   "control_if",
 ]);
@@ -238,6 +282,7 @@ function createProjectMetadata(
   createdAt: string,
   programBlockCount: number,
   locale: Locale,
+  creative: ProjectCreativeState,
 ): ProjectMetadata {
   return {
     createdAt,
@@ -245,6 +290,7 @@ function createProjectMetadata(
     missionProgress: programBlockCount > 0 ? 1 : 0,
     hintLevel: 0,
     locale,
+    ...creative,
   };
 }
 
@@ -252,15 +298,210 @@ function countProgramBlocks(model: EditorModel): number {
   return model.program.scripts.reduce((total, script) => total + script.statements.length, 0);
 }
 
-function initialWorldFor(model: EditorModel): WorldState {
-  return {
+function worldVariablesForProgram(
+  program: ProjectProgram,
+): Readonly<Record<string, VariableState>> {
+  return Object.fromEntries(
+    (program.variables ?? []).map((variable) => [
+      variable.id,
+      { value: variable.initialValue, visible: variable.visible },
+    ]),
+  );
+}
+
+function stageVariablesForProgram(program: ProjectProgram): readonly StageVariableWatcher[] {
+  return (program.variables ?? []).map((variable) => ({
+    id: variable.id,
+    label: variable.name,
+    value: variable.initialValue,
+    visible: variable.visible,
+  }));
+}
+
+function initialWorldFor(model: EditorModel, creative: ProjectCreativeState): WorldState {
+  const actor = creative.actors?.[0];
+  return createWorldState({
     sprite: {
       x: model.stage.initial.sprite.x,
       y: model.stage.initial.sprite.y,
       heading: model.stage.initial.sprite.heading,
+      ...(actor?.visible === undefined ? {} : { visible: actor.visible }),
+      ...(actor?.size === undefined ? {} : { size: actor.size }),
+      ...(actor?.costumeId === undefined ? {} : { costumeId: actor.costumeId }),
     },
     goal: { x: model.stage.initial.goal.x, y: model.stage.initial.goal.y },
+    ...(creative.stage?.backdropId === undefined ? {} : { backdropId: creative.stage.backdropId }),
+    variables: worldVariablesForProgram(model.program),
+  });
+}
+
+function runtimeObservationsFromActorFrames(
+  result: ReturnType<typeof runMultiActorProgram>,
+): readonly RuntimeObservation[] {
+  const observations = result.trace.flatMap((entry): RuntimeObservation[] => [
+    {
+      kind: "statement-start",
+      step: entry.step,
+      nodeId: entry.nodeId,
+      statementType: entry.statementType,
+      world: entry.worldBefore,
+    },
+    {
+      kind: "statement-end",
+      step: entry.step,
+      nodeId: entry.nodeId,
+      statementType: entry.statementType,
+      world: entry.worldAfter,
+    },
+  ]);
+  const world = result.actors[0]?.world ?? createWorldState();
+  return [
+    ...observations,
+    {
+      kind: "run-complete",
+      step: result.stepsUsed,
+      nodeId: "$",
+      outcome: result.outcome,
+      world,
+    },
+  ];
+}
+
+function defaultAssets(locale: Locale): readonly ProjectAsset[] {
+  return [
+    {
+      id: "asset:costume.default",
+      kind: "costume",
+      name: locale === "es" ? "Nova principal" : "Nova default",
+      source: "builtin:costume.default",
+      tags: ["starter"],
+    },
+    {
+      id: "asset:costume.spark",
+      kind: "costume",
+      name: locale === "es" ? "Nova energia" : "Nova spark",
+      source: "builtin:costume.spark",
+      tags: ["starter", "motion"],
+    },
+    {
+      id: "asset:space.trailhead",
+      kind: "backdrop",
+      name: locale === "es" ? "Ruta espacial" : "Space trailhead",
+      source: "builtin:space.trailhead",
+      tags: ["space", "mission"],
+    },
+    {
+      id: "asset:space.nebula",
+      kind: "backdrop",
+      name: locale === "es" ? "Nebulosa" : "Nebula",
+      source: "builtin:space.nebula",
+      tags: ["space"],
+    },
+    {
+      id: "asset:sound.beacon",
+      kind: "sound",
+      name: locale === "es" ? "Pulso de baliza" : "Beacon ping",
+      source: "builtin:sound.beacon",
+      tags: ["starter", "feedback"],
+    },
+  ];
+}
+
+function defaultActor(locale: Locale): ProjectActor {
+  return {
+    id: "actor:main",
+    name: locale === "es" ? "Nova" : "Nova",
+    x: INITIAL_STAGE.initial.sprite.x,
+    y: INITIAL_STAGE.initial.sprite.y,
+    direction: INITIAL_STAGE.initial.sprite.heading,
+    size: 100,
+    visible: true,
+    costumeId: "asset:costume.default",
+    scripts: ["main"],
   };
+}
+
+function defaultCreativeState(locale: Locale): ProjectCreativeState {
+  const actor = defaultActor(locale);
+  return {
+    actors: [actor],
+    stage: {
+      backdropId: "asset:space.trailhead",
+      width: INITIAL_STAGE.initial.viewport.width,
+      height: INITIAL_STAGE.initial.viewport.height,
+      actorOrder: [actor.id],
+    },
+    assets: defaultAssets(locale),
+  };
+}
+
+function creativeStateFromMetadata(
+  metadata: ProjectMetadata | undefined,
+  locale: Locale,
+): ProjectCreativeState {
+  const fallback = defaultCreativeState(locale);
+  const actors = metadata?.actors?.length ? metadata.actors : fallback.actors;
+  const stage = metadata?.stage ?? fallback.stage;
+  return {
+    ...(actors === undefined ? {} : { actors }),
+    ...(stage === undefined ? {} : { stage }),
+    ...(metadata?.assets !== undefined
+      ? { assets: metadata.assets }
+      : fallback.assets === undefined
+        ? {}
+        : { assets: fallback.assets }),
+  };
+}
+
+function safeActorPatch(
+  creative: ProjectCreativeState,
+  patch: Partial<ProjectActor>,
+): Partial<ProjectActor> | undefined {
+  if (
+    patch.size !== undefined &&
+    (!Number.isFinite(patch.size) || patch.size <= 0 || patch.size > MAX_ACTOR_SIZE)
+  ) {
+    return undefined;
+  }
+  if (
+    patch.costumeId !== undefined &&
+    !creative.assets?.some((asset) => asset.kind === "costume" && asset.id === patch.costumeId)
+  ) {
+    return undefined;
+  }
+  return patch;
+}
+
+export function updateActor(
+  creative: ProjectCreativeState,
+  actorId: string,
+  patch: Partial<ProjectActor>,
+): ProjectCreativeState {
+  const safePatch = safeActorPatch(creative, patch);
+  if (safePatch === undefined) return creative;
+  const actors = (creative.actors?.length ? creative.actors : [defaultActor("en")]).map((actor) =>
+    actor.id === actorId ? { ...actor, ...safePatch } : actor,
+  );
+  if (!actors.some((actor) => actor.id === actorId)) return creative;
+  return { ...creative, actors };
+}
+
+function addProjectActor(creative: ProjectCreativeState, locale: Locale): ProjectCreativeState {
+  const actors = creative.actors?.length ? [...creative.actors] : [defaultActor(locale)];
+  const nextNumber = actors.length + 1;
+  const actor: ProjectActor = {
+    id: `actor:${nextNumber}`,
+    name: `Actor ${nextNumber}`,
+    x: INITIAL_STAGE.initial.sprite.x + nextNumber * 24,
+    y: INITIAL_STAGE.initial.sprite.y,
+    direction: 0,
+    size: 100,
+    visible: true,
+    costumeId: "asset:costume.spark",
+    scripts: ["main"],
+  };
+  const actorOrder = [...(creative.stage?.actorOrder ?? actors.map((item) => item.id)), actor.id];
+  return { ...creative, actors: [...actors, actor], stage: { ...creative.stage, actorOrder } };
 }
 
 function safeLocalStorage(): Storage | undefined {
@@ -278,7 +519,7 @@ function initialProjectFor(
   return { ...loaded, model: loaded.model ?? createEditorModel() };
 }
 
-function numericFieldFor(block: BlockNode): "steps" | "degrees" | "count" | undefined {
+function numericFieldFor(block: BlockNode): "steps" | "degrees" | "count" | "size" | undefined {
   switch (block.type) {
     case "motion_move":
       return "steps";
@@ -286,9 +527,27 @@ function numericFieldFor(block: BlockNode): "steps" | "degrees" | "count" | unde
       return "degrees";
     case "control_repeat":
       return "count";
+    case "looks_set_size":
+      return "size";
     default:
       return undefined;
   }
+}
+
+function variableNumberInputFor(block: BlockNode): "value" | "delta" | undefined {
+  switch (block.type) {
+    case "variables_set":
+      return "value";
+    case "variables_change":
+      return "delta";
+    default:
+      return undefined;
+  }
+}
+
+function variableNumberValue(block: BlockNode, input: "value" | "delta"): number {
+  const value = block.inputs?.[input]?.fields?.value;
+  return typeof value === "number" ? value : 0;
 }
 
 function displayNameForType(type: string, locale: Locale): string {
@@ -297,6 +556,34 @@ function displayNameForType(type: string, locale: Locale): string {
       return t(locale, "move");
     case "motion_turn":
       return t(locale, "turn");
+    case "looks_say":
+      return locale === "es" ? "Decir" : "Say";
+    case "looks_think":
+      return locale === "es" ? "Pensar" : "Think";
+    case "looks_show":
+      return locale === "es" ? "Mostrar" : "Show";
+    case "looks_hide":
+      return locale === "es" ? "Ocultar" : "Hide";
+    case "looks_set_size":
+      return locale === "es" ? "Tamaño" : "Size";
+    case "looks_switch_costume":
+      return locale === "es" ? "Disfraz" : "Costume";
+    case "looks_switch_backdrop":
+      return locale === "es" ? "Fondo" : "Backdrop";
+    case "sound_play":
+      return locale === "es" ? "Sonido" : "Sound";
+    case "sound_stop":
+      return locale === "es" ? "Detener sonidos" : "Stop sounds";
+    case "event_broadcast":
+      return locale === "es" ? "Enviar" : "Broadcast";
+    case "variables_set":
+      return locale === "es" ? "Fijar variable" : "Set variable";
+    case "variables_change":
+      return locale === "es" ? "Cambiar variable" : "Change variable";
+    case "variables_show":
+      return locale === "es" ? "Mostrar variable" : "Show variable";
+    case "variables_hide":
+      return locale === "es" ? "Ocultar variable" : "Hide variable";
     case "control_repeat":
       return t(locale, "repeat");
     case "control_if":
@@ -310,7 +597,45 @@ function displayNameFor(block: BlockNode, locale: Locale): string {
   return displayNameForType(block.type, locale);
 }
 
-function fieldLabelFor(field: "steps" | "degrees" | "count", locale: Locale): string {
+function scriptLabelFor(script: BlockWorkspaceSnapshot["scripts"][number], locale: Locale): string {
+  switch (script.trigger.type) {
+    case "event_on_start":
+      return t(locale, "whenRun");
+    case "event_on_key_pressed": {
+      const key = typeof script.trigger.fields?.key === "string" ? script.trigger.fields.key : "";
+      return locale === "es" ? `Al presionar ${key}` : `When ${key} pressed`;
+    }
+    case "event_on_actor_clicked":
+      return locale === "es" ? "Al hacer click" : "When actor clicked";
+    case "event_on_message": {
+      const message =
+        typeof script.trigger.fields?.message === "string" ? script.trigger.fields.message : "";
+      return locale === "es" ? `Al recibir ${message}` : `When ${message} received`;
+    }
+    default:
+      return script.trigger.type;
+  }
+}
+
+function editableTriggerFieldFor(
+  script: BlockWorkspaceSnapshot["scripts"][number] | undefined,
+): "key" | "message" | undefined {
+  switch (script?.trigger.type) {
+    case "event_on_key_pressed":
+      return "key";
+    case "event_on_message":
+      return "message";
+    default:
+      return undefined;
+  }
+}
+
+const KEY_TRIGGER_OPTIONS = ["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "a", "d"];
+
+function fieldLabelFor(
+  field: "steps" | "degrees" | "count" | "size" | "value" | "delta",
+  locale: Locale,
+): string {
   switch (field) {
     case "steps":
       return t(locale, "steps");
@@ -318,7 +643,80 @@ function fieldLabelFor(field: "steps" | "degrees" | "count", locale: Locale): st
       return t(locale, "degrees");
     case "count":
       return t(locale, "fieldCount");
+    case "size":
+      return t(locale, "actorSize");
+    case "value":
+      return locale === "es" ? "valor" : "value";
+    case "delta":
+      return locale === "es" ? "cambio" : "change";
   }
+}
+
+function textFieldFor(block: BlockNode): "text" | "message" | undefined {
+  switch (block.type) {
+    case "looks_say":
+    case "looks_think":
+      return "text";
+    case "event_broadcast":
+      return "message";
+    default:
+      return undefined;
+  }
+}
+
+function assetFieldFor(block: BlockNode): "costumeId" | "backdropId" | "soundId" | undefined {
+  switch (block.type) {
+    case "looks_switch_costume":
+      return "costumeId";
+    case "looks_switch_backdrop":
+      return "backdropId";
+    case "sound_play":
+      return "soundId";
+    default:
+      return undefined;
+  }
+}
+
+function editableFieldLabelFor(
+  field:
+    | "steps"
+    | "degrees"
+    | "count"
+    | "size"
+    | "value"
+    | "delta"
+    | "text"
+    | "message"
+    | "costumeId"
+    | "backdropId"
+    | "soundId",
+  locale: Locale,
+): string {
+  switch (field) {
+    case "text":
+      return t(locale, "blockText");
+    case "message":
+      return locale === "es" ? "mensaje" : "message";
+    case "costumeId":
+      return t(locale, "actorCostume");
+    case "backdropId":
+      return t(locale, "stageBackdrop");
+    case "soundId":
+      return locale === "es" ? "sonido" : "sound";
+    case "value":
+    case "delta":
+      return fieldLabelFor(field, locale);
+    default:
+      return fieldLabelFor(field, locale);
+  }
+}
+
+function stringBlockValue(
+  block: BlockNode,
+  field: "text" | "message" | "costumeId" | "backdropId" | "soundId",
+): string {
+  const value = block.fields?.[field];
+  return typeof value === "string" ? value : "";
 }
 
 type PaletteBlock = {
@@ -394,35 +792,56 @@ function scratchPaletteFor(locale: Locale): readonly PaletteCategory[] {
           label: es ? "Decir" : "Say",
           detail: es ? "Burbuja de texto" : "Speech bubble",
           glyph: '"',
-          enabled: false,
+          type: "looks_say",
+          enabled: true,
         },
         {
           id: "looks_think",
           label: es ? "Pensar" : "Think",
           detail: es ? "Idea visible" : "Thought bubble",
           glyph: "…",
-          enabled: false,
+          type: "looks_think",
+          enabled: true,
         },
         {
           id: "looks_show",
           label: es ? "Mostrar" : "Show",
           detail: es ? "Aparece" : "Become visible",
           glyph: "👁",
-          enabled: false,
+          type: "looks_show",
+          enabled: true,
         },
         {
           id: "looks_hide",
           label: es ? "Ocultar" : "Hide",
           detail: es ? "Desaparece" : "Become hidden",
           glyph: "—",
-          enabled: false,
+          type: "looks_hide",
+          enabled: true,
+        },
+        {
+          id: "looks_set_size",
+          label: es ? "Tamaño" : "Size",
+          detail: es ? "Cambia tamaño" : "Set size",
+          glyph: "%",
+          type: "looks_set_size",
+          enabled: true,
         },
         {
           id: "looks_costume",
           label: es ? "Disfraz" : "Costume",
           detail: es ? "Cambia look" : "Change look",
           glyph: "◐",
-          enabled: false,
+          type: "looks_switch_costume",
+          enabled: true,
+        },
+        {
+          id: "looks_backdrop",
+          label: es ? "Fondo" : "Backdrop",
+          detail: es ? "Cambia escena" : "Change scene",
+          glyph: "▧",
+          type: "looks_switch_backdrop",
+          enabled: true,
         },
       ],
     },
@@ -436,7 +855,8 @@ function scratchPaletteFor(locale: Locale): readonly PaletteCategory[] {
           label: es ? "Iniciar sonido" : "Start sound",
           detail: es ? "No espera" : "Do not wait",
           glyph: "♪",
-          enabled: false,
+          type: "sound_play",
+          enabled: true,
         },
         {
           id: "sound_play",
@@ -450,7 +870,8 @@ function scratchPaletteFor(locale: Locale): readonly PaletteCategory[] {
           label: es ? "Detener sonidos" : "Stop sounds",
           detail: es ? "Silencio" : "Silence",
           glyph: "■",
-          enabled: false,
+          type: "sound_stop",
+          enabled: true,
         },
         {
           id: "sound_volume",
@@ -491,8 +912,9 @@ function scratchPaletteFor(locale: Locale): readonly PaletteCategory[] {
           id: "event_broadcast",
           label: es ? "Enviar mensaje" : "Broadcast",
           detail: es ? "Comunica" : "Send message",
-          glyph: "📣",
-          enabled: false,
+          glyph: "MSG",
+          type: "event_broadcast",
+          enabled: true,
         },
       ],
     },
@@ -585,7 +1007,8 @@ function scratchPaletteFor(locale: Locale): readonly PaletteCategory[] {
           label: "+ - × ÷",
           detail: es ? "Matematica" : "Math",
           glyph: "+",
-          enabled: false,
+          type: "variables_change",
+          enabled: true,
         },
         {
           id: "op_random",
@@ -599,7 +1022,8 @@ function scratchPaletteFor(locale: Locale): readonly PaletteCategory[] {
           label: "= < >",
           detail: es ? "Compara" : "Compare",
           glyph: "=",
-          enabled: false,
+          type: "control_if",
+          enabled: true,
         },
         {
           id: "op_logic",
@@ -634,21 +1058,32 @@ function scratchPaletteFor(locale: Locale): readonly PaletteCategory[] {
           label: es ? "Fijar variable" : "Set variable",
           detail: es ? "Asigna valor" : "Assign value",
           glyph: "=",
-          enabled: false,
+          type: "variables_set",
+          enabled: true,
         },
         {
           id: "var_change",
           label: es ? "Cambiar variable" : "Change variable",
           detail: es ? "Suma/resta" : "Add or subtract",
           glyph: "+=",
-          enabled: false,
+          type: "variables_change",
+          enabled: true,
         },
         {
           id: "var_show",
           label: es ? "Mostrar variable" : "Show variable",
           detail: es ? "Ver dato" : "See data",
-          glyph: "👁",
-          enabled: false,
+          glyph: "V",
+          type: "variables_show",
+          enabled: true,
+        },
+        {
+          id: "var_hide",
+          label: es ? "Ocultar variable" : "Hide variable",
+          detail: es ? "Quita el visor" : "Hide watcher",
+          glyph: "V",
+          type: "variables_hide",
+          enabled: true,
         },
       ],
     },
@@ -676,7 +1111,7 @@ function scratchPaletteFor(locale: Locale): readonly PaletteCategory[] {
   ];
 }
 
-function blockValue(block: BlockNode, field: "steps" | "degrees" | "count"): number {
+function blockValue(block: BlockNode, field: "steps" | "degrees" | "count" | "size"): number {
   const value = block.fields?.[field];
   return typeof value === "number" ? value : 0;
 }
@@ -843,6 +1278,49 @@ export function usePrefersReducedMotion(): boolean {
   return reduced;
 }
 
+type AudioContextConstructor = new () => AudioContext;
+type WebAudioGlobal = typeof globalThis & {
+  readonly AudioContext?: AudioContextConstructor;
+  readonly webkitAudioContext?: AudioContextConstructor;
+};
+
+let stageAudioContext: AudioContext | undefined;
+
+function frequencyForSoundId(soundId: string): number {
+  let hash = 0;
+  for (const character of soundId) {
+    hash = (hash * 31 + character.charCodeAt(0)) % 997;
+  }
+  return 440 + (hash % 5) * 55;
+}
+
+function playStageSoundCue(soundId: string) {
+  if (typeof window === "undefined") return;
+  const audioGlobal = window as unknown as WebAudioGlobal;
+  const AudioContextCtor = audioGlobal.AudioContext ?? audioGlobal.webkitAudioContext;
+  if (AudioContextCtor === undefined) return;
+  try {
+    stageAudioContext ??= new AudioContextCtor();
+    const context = stageAudioContext;
+    if (context.state === "suspended") {
+      void context.resume().catch(() => undefined);
+    }
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    const now = context.currentTime;
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(frequencyForSoundId(soundId), now);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.05, now + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+    oscillator.connect(gain).connect(context.destination);
+    oscillator.start(now);
+    oscillator.stop(now + 0.2);
+  } catch {
+    // Visual runtime evidence remains authoritative when browser audio is unavailable.
+  }
+}
+
 function stagePhaseText(locale: Locale, feedback: StageFeedback): string {
   switch (feedback.phase) {
     case "running":
@@ -861,14 +1339,210 @@ function stagePhaseText(locale: Locale, feedback: StageFeedback): string {
   }
 }
 
+interface StageActorView {
+  readonly id: string;
+  readonly name: string;
+  readonly x: number;
+  readonly y: number;
+  readonly heading: number;
+  readonly size: number;
+  readonly visible: boolean;
+  readonly costumeId?: string;
+  readonly bubble?: {
+    readonly kind: "say" | "think";
+    readonly text: string;
+  };
+}
+
+function stageActorsFromCreative(creative: ProjectCreativeState): readonly StageActorView[] {
+  const actors = creative.actors?.length ? creative.actors : [defaultActor("en")];
+  const order = creative.stage?.actorOrder ?? actors.map((actor) => actor.id);
+  const byId = new Map(actors.map((actor) => [actor.id, actor]));
+  return order.flatMap((id) => {
+    const actor = byId.get(id);
+    if (actor === undefined) return [];
+    return [
+      {
+        id: actor.id,
+        name: actor.name,
+        x: actor.x,
+        y: actor.y,
+        heading: actor.direction,
+        size: actor.size,
+        visible: actor.visible,
+        ...(actor.costumeId === undefined ? {} : { costumeId: actor.costumeId }),
+      },
+    ];
+  });
+}
+
+function stageActorsFromRuntime(
+  actors: readonly MultiActorRuntimeActor[] | undefined,
+): readonly StageActorView[] | undefined {
+  return actors?.map((actor) => ({
+    id: actor.id,
+    name: actor.name,
+    x: actor.world.sprite.x,
+    y: actor.world.sprite.y,
+    heading: actor.world.sprite.heading,
+    size: actor.world.sprite.size,
+    visible: actor.world.sprite.visible,
+    ...(actor.world.sprite.costumeId === undefined
+      ? {}
+      : { costumeId: actor.world.sprite.costumeId }),
+    ...(actor.world.sprite.bubble === undefined ? {} : { bubble: actor.world.sprite.bubble }),
+  }));
+}
+
+function ActorPanel({
+  locale,
+  actors = [],
+  assets = [],
+  stage,
+  selectedActorId = "actor:main",
+  onSelect,
+  onAdd,
+  onChange,
+  onStageChange,
+}: {
+  locale: Locale;
+  actors: readonly ProjectActor[];
+  assets: readonly ProjectAsset[] | undefined;
+  stage?: ProjectCreativeState["stage"];
+  selectedActorId: string;
+  onSelect: (actorId: string) => void;
+  onAdd: () => void;
+  onChange: (actorId: string, patch: Partial<ProjectActor>) => void;
+  onStageChange: (patch: Partial<NonNullable<ProjectCreativeState["stage"]>>) => void;
+}) {
+  const selected = actors.find((actor) => actor.id === selectedActorId) ?? actors[0];
+  const costumeAssets = assets.filter((asset) => asset.kind === "costume");
+  const backdropAssets = assets.filter((asset) => asset.kind === "backdrop");
+  if (selected === undefined) return null;
+  return (
+    <section className="actor-panel" aria-label={t(locale, "actors")}>
+      <div className="actor-tabs" role="list" aria-label={t(locale, "actors")}>
+        {actors.map((actor) => (
+          <button
+            key={actor.id}
+            type="button"
+            className={actor.id === selected.id ? "active" : ""}
+            aria-pressed={actor.id === selected.id}
+            onClick={() => onSelect(actor.id)}
+          >
+            {actor.name}
+          </button>
+        ))}
+        <button type="button" onClick={onAdd}>
+          {t(locale, "addActor")}
+        </button>
+      </div>
+      <div className="actor-inspector">
+        <label>
+          <span>{t(locale, "actorName")}</span>
+          <input
+            value={selected.name}
+            onChange={(event) => onChange(selected.id, { name: event.currentTarget.value })}
+          />
+        </label>
+        <label>
+          <span>x</span>
+          <input
+            type="number"
+            value={selected.x}
+            onChange={(event) => onChange(selected.id, { x: Number(event.currentTarget.value) })}
+          />
+        </label>
+        <label>
+          <span>y</span>
+          <input
+            type="number"
+            value={selected.y}
+            onChange={(event) => onChange(selected.id, { y: Number(event.currentTarget.value) })}
+          />
+        </label>
+        <label>
+          <span>{t(locale, "actorDirection")}</span>
+          <input
+            type="number"
+            value={selected.direction}
+            onChange={(event) =>
+              onChange(selected.id, { direction: Number(event.currentTarget.value) })
+            }
+          />
+        </label>
+        <label>
+          <span>{t(locale, "actorSize")}</span>
+          <input
+            type="number"
+            min="1"
+            max={MAX_ACTOR_SIZE}
+            value={selected.size}
+            onChange={(event) => onChange(selected.id, { size: Number(event.currentTarget.value) })}
+          />
+        </label>
+        <label className="actor-visible">
+          <input
+            type="checkbox"
+            checked={selected.visible}
+            onChange={(event) => onChange(selected.id, { visible: event.currentTarget.checked })}
+          />
+          <span>{t(locale, "actorVisible")}</span>
+        </label>
+        <label>
+          <span>{t(locale, "actorCostume")}</span>
+          <select
+            value={selected.costumeId ?? ""}
+            onChange={(event) => {
+              const costumeId = event.currentTarget.value;
+              onChange(selected.id, costumeId === "" ? {} : { costumeId });
+            }}
+          >
+            {costumeAssets.map((asset) => (
+              <option key={asset.id} value={asset.id}>
+                {asset.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span>{t(locale, "stageBackdrop")}</span>
+          <select
+            value={stage?.backdropId ?? ""}
+            onChange={(event) => {
+              const backdropId = event.currentTarget.value;
+              onStageChange(backdropId === "" ? {} : { backdropId });
+            }}
+          >
+            {backdropAssets.map((asset) => (
+              <option key={asset.id} value={asset.id}>
+                {asset.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+    </section>
+  );
+}
+
 export function StageView({
   frame,
   fallback,
   locale,
   world,
+  actors,
+  assets,
+  selectedActorId,
   feedback,
   activeCode,
+  codePreview,
   reducedMotion,
+  runStatus,
+  onRun,
+  onStop,
+  onActorClick,
+  onOpenCode,
   panelControls,
   panelProps,
 }: {
@@ -876,9 +1550,18 @@ export function StageView({
   frame: ObservationFrame | undefined;
   fallback: StageState;
   locale: Locale;
+  actors?: readonly StageActorView[];
+  assets?: readonly ProjectAsset[];
+  selectedActorId?: string;
   feedback: StageFeedback;
   activeCode?: string;
+  codePreview: string;
   reducedMotion: boolean;
+  runStatus: RunStatus;
+  onRun: () => void;
+  onStop: () => void;
+  onActorClick?: (actorId: string) => void;
+  onOpenCode: () => void;
   panelControls?: ReactNode;
   panelProps?: PanelChromeProps;
 }) {
@@ -891,6 +1574,29 @@ export function StageView({
   const motion = resolveStageMotion(reducedMotion);
   const settled = feedback.phase === "success" || feedback.phase === "retry";
   const trailPoints = feedback.trail.map((point) => `${point.x},${point.y}`).join(" ");
+  const backstageCode = activeCode !== undefined && activeCode !== "" ? activeCode : codePreview;
+  const visibleWatchers = (state.variables ?? []).filter((variable) => variable.visible);
+  const assetNames = new Map((assets ?? []).map((asset) => [asset.id, asset.name]));
+  const activeSoundIds = state.sounds?.activeSoundIds ?? [];
+  const safeActors = actors ?? [];
+  const safeSelectedActorId = selectedActorId ?? "actor:main";
+  const visibleActors = safeActors.length > 0 ? safeActors.filter((actor) => actor.visible) : [];
+  const renderedActors =
+    visibleActors.length > 0
+      ? visibleActors
+      : [
+          {
+            id: "actor:main",
+            name: copy.spriteName,
+            x: sprite.x,
+            y: sprite.y,
+            heading: sprite.heading,
+            size: sprite.size,
+            visible: sprite.visible,
+            ...(sprite.costumeId === undefined ? {} : { costumeId: sprite.costumeId }),
+            ...(sprite.bubble === undefined ? {} : { bubble: sprite.bubble }),
+          },
+        ];
   return (
     <section
       className={panelProps?.className ?? "stage-panel"}
@@ -899,12 +1605,31 @@ export function StageView({
       data-world={world.id}
       data-stage-phase={feedback.phase}
       data-reduced-motion={reducedMotion ? "true" : "false"}
+      data-backdrop-id={state.backdropId ?? "default"}
     >
       <div className="panel-heading">
         <h2 id="stage-title">{t(locale, "stage")}</h2>
         <span className="status-pill">
           {feedback.reachedGoal ? t(locale, "evidenceGoalReached") : t(locale, "evidenceReachGoal")}
         </span>
+        <div className="stage-run-controls" aria-label="Stage execution controls">
+          <button
+            type="button"
+            className="stage-run-button"
+            onClick={onRun}
+            disabled={runStatus === "running"}
+          >
+            {t(locale, "run")}
+          </button>
+          <button
+            type="button"
+            className="stage-stop-button"
+            onClick={onStop}
+            disabled={runStatus !== "running"}
+          >
+            {t(locale, "stop")}
+          </button>
+        </div>
         {panelControls}
       </div>
       <div className="world-identity" data-testid="world-identity">
@@ -916,6 +1641,24 @@ export function StageView({
           {t(locale, "stageRoute", { sprite: copy.spriteName, goal: copy.goalName })}
         </span>
       </div>
+      {visibleWatchers.length === 0 ? null : (
+        <aside className="stage-watchers" aria-label="Variable watchers" aria-live="polite">
+          {visibleWatchers.map((variable) => (
+            <div key={variable.id} className="stage-watcher" data-variable-id={variable.id}>
+              <span>{variable.label}</span>
+              <strong>{variable.value}</strong>
+            </div>
+          ))}
+        </aside>
+      )}
+      {activeSoundIds.length === 0 ? null : (
+        <aside className="stage-sounds" aria-label={t(locale, "activeSounds")} aria-live="polite">
+          <span>{t(locale, "activeSounds")}</span>
+          {activeSoundIds.map((soundId) => (
+            <strong key={soundId}>{assetNames.get(soundId) ?? soundId}</strong>
+          ))}
+        </aside>
+      )}
       <svg
         className="stage-canvas"
         viewBox={`0 0 ${viewport.width} ${viewport.height}`}
@@ -958,33 +1701,61 @@ export function StageView({
         >
           {glyphs.goal}
         </text>
-        <g
-          className="sprite-group"
-          data-testid="stage-sprite"
-          data-x={sprite.x}
-          data-y={sprite.y}
-          data-heading={sprite.heading}
-          style={{
-            transform: `translate(${sprite.x}px, ${sprite.y}px)`,
-            transition: motion.glideMs === 0 ? "none" : `transform ${motion.glideMs}ms ease-out`,
-          }}
-        >
-          <g transform={`rotate(${sprite.heading})`}>
-            <circle className="sprite" r={sprite.radius}>
-              <title>{copy.spriteAlt}</title>
-            </circle>
-            <path d="M 4 0 L 16 -6 L 16 6 Z" />
-          </g>
-          <text
-            className="world-glyph"
-            textAnchor="middle"
-            dominantBaseline="central"
-            fontSize={sprite.radius * 1.5}
-            aria-hidden="true"
-          >
-            {glyphs.sprite}
-          </text>
-        </g>
+        {renderedActors.map((actor) => {
+          const radius = Math.max(8, sprite.radius * (actor.size / 100));
+          return (
+            <g
+              key={actor.id}
+              role="button"
+              tabIndex={0}
+              className={
+                actor.id === safeSelectedActorId ? "sprite-group selected-actor" : "sprite-group"
+              }
+              data-testid="stage-sprite"
+              data-actor-id={actor.id}
+              data-x={actor.x}
+              data-y={actor.y}
+              data-heading={actor.heading}
+              data-costume-id={actor.costumeId ?? "default"}
+              onClick={() => onActorClick?.(actor.id)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onActorClick?.(actor.id);
+                }
+              }}
+              style={{
+                transform: `translate(${actor.x}px, ${actor.y}px)`,
+                transition:
+                  motion.glideMs === 0 ? "none" : `transform ${motion.glideMs}ms ease-out`,
+              }}
+            >
+              <g transform={`rotate(${actor.heading})`}>
+                <circle className="sprite" r={radius}>
+                  <title>{actor.name}</title>
+                </circle>
+                <path d="M 4 0 L 16 -6 L 16 6 Z" />
+              </g>
+              <text
+                className="world-glyph"
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontSize={radius * 1.5}
+                aria-hidden="true"
+              >
+                {glyphs.sprite}
+              </text>
+              {actor.bubble === undefined ? null : (
+                <g className={`stage-bubble stage-bubble-${actor.bubble.kind}`}>
+                  <rect x={radius + 8} y={-radius - 30} width="104" height="26" rx="9" />
+                  <text x={radius + 60} y={-radius - 17} textAnchor="middle">
+                    {actor.bubble.text}
+                  </text>
+                </g>
+              )}
+            </g>
+          );
+        })}
       </svg>
       <div
         className={`world-feedback world-feedback-${feedback.phase}`}
@@ -1013,6 +1784,17 @@ export function StageView({
           </code>
         ) : null}
       </div>
+      <aside className="stage-backstage-code" aria-label={t(locale, "backstageCode")}>
+        <div>
+          <strong>{t(locale, "backstageCode")}</strong>
+          <pre className="code-surface backstage-code-surface">
+            <code>{backstageCode}</code>
+          </pre>
+        </div>
+        <button type="button" onClick={onOpenCode}>
+          {t(locale, "openFullCode")}
+        </button>
+      </aside>
     </section>
   );
 }
@@ -1110,7 +1892,11 @@ function StepCard({
 
 function blockToneFor(type: BlockNode["type"]): string {
   if (type.startsWith("motion_")) return "motion";
+  if (type.startsWith("looks_")) return "looks";
+  if (type.startsWith("event_")) return "events";
   if (type.startsWith("control_")) return "control";
+  if (type.startsWith("variables_")) return "variables";
+  if (type.startsWith("operator_")) return "operators";
   return "logic";
 }
 
@@ -1144,9 +1930,13 @@ export function ProgramBlockCard({
   ghost,
   canonicalNodeId,
   locale,
+  assets = [],
   children,
   onSelect,
   onCommitValue,
+  onCommitCondition,
+  onCommitConditionValue,
+  onCommitField,
   onMove,
   onNest,
   onOutdent,
@@ -1167,9 +1957,13 @@ export function ProgramBlockCard({
   ghost?: GhostMarkKind | undefined;
   canonicalNodeId: string;
   locale: Locale;
+  assets: readonly ProjectAsset[] | undefined;
   children?: ReactNode;
   onSelect: () => void;
   onCommitValue: (value: number) => void;
+  onCommitCondition?: (kind: IfConditionKind) => void;
+  onCommitConditionValue?: (value: number) => void;
+  onCommitField?: (field: string, value: string) => void;
   onMove: (direction: -1 | 1) => void;
   onNest: () => void;
   onOutdent: () => void;
@@ -1181,10 +1975,33 @@ export function ProgramBlockCard({
   onDropInside: (event: ReactDragEvent<HTMLElement>) => void;
 }) {
   const field = numericFieldFor(block);
-  const currentValue = field === undefined ? undefined : blockValue(block, field);
+  const variableInput = variableNumberInputFor(block);
+  const textField = textFieldFor(block);
+  const assetField = assetFieldFor(block);
+  const currentValue =
+    field === undefined
+      ? variableInput === undefined
+        ? undefined
+        : variableNumberValue(block, variableInput)
+      : blockValue(block, field);
+  const numericLabel = field ?? variableInput;
+  const conditionKind = block.type === "control_if" ? ifConditionKind(block) : undefined;
+  const conditionValue = block.type === "control_if" ? ifConditionNumberValue(block) : undefined;
+  const currentTextValue = textField === undefined ? undefined : stringBlockValue(block, textField);
+  const currentAssetValue =
+    assetField === undefined ? undefined : stringBlockValue(block, assetField);
+  const assetOptions =
+    assetField === "costumeId"
+      ? assets.filter((asset) => asset.kind === "costume")
+      : assetField === "backdropId"
+        ? assets.filter((asset) => asset.kind === "backdrop")
+        : assetField === "soundId"
+          ? assets.filter((asset) => asset.kind === "sound")
+          : [];
   const [draftValue, setDraftValue] = useState(() =>
     currentValue === undefined ? "" : String(currentValue),
   );
+  const [draftTextValue, setDraftTextValue] = useState(() => currentTextValue ?? "");
 
   useEffect(() => {
     if (currentValue !== undefined) {
@@ -1192,8 +2009,14 @@ export function ProgramBlockCard({
     }
   }, [currentValue]);
 
+  useEffect(() => {
+    if (currentTextValue !== undefined) {
+      setDraftTextValue(currentTextValue);
+    }
+  }, [currentTextValue]);
+
   function commitDraftValue() {
-    if (field === undefined) return;
+    if (numericLabel === undefined) return;
     const parsed = Number(draftValue);
     if (!Number.isFinite(parsed)) {
       setDraftValue(currentValue === undefined ? "" : String(currentValue));
@@ -1203,12 +2026,33 @@ export function ProgramBlockCard({
     onCommitValue(parsed);
   }
 
+  function commitDraftTextValue() {
+    if (textField === undefined) return;
+    const next = draftTextValue.trim();
+    if (next.length === 0) {
+      setDraftTextValue(currentTextValue ?? "");
+      return;
+    }
+    if (next === currentTextValue) return;
+    onCommitField?.(textField, next);
+  }
+
   function handleValueKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
     if (event.key === "Enter") {
       event.currentTarget.blur();
     }
     if (event.key === "Escape") {
       setDraftValue(currentValue === undefined ? "" : String(currentValue));
+      event.currentTarget.blur();
+    }
+  }
+
+  function handleTextKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Enter") {
+      event.currentTarget.blur();
+    }
+    if (event.key === "Escape") {
+      setDraftTextValue(currentTextValue ?? "");
       event.currentTarget.blur();
     }
   }
@@ -1258,6 +2102,10 @@ export function ProgramBlockCard({
   const blockTone = blockToneFor(block.type);
   const blockShape = blockShapeFor(block.type);
   const hasStatementContainer = canContainStatements(block);
+  const fieldSummary = Object.entries(block.fields ?? {})
+    .filter(([key]) => key !== field && key !== textField && key !== assetField)
+    .map(([, value]) => String(value))
+    .join(" ");
 
   return (
     <article
@@ -1312,15 +2160,43 @@ export function ProgramBlockCard({
         <span id={positionId} className="visually-hidden">
           {positionText}
         </span>
-        {field === undefined ? (
-          <span className="block-slot block-slot-predicate">{t(locale, "touchingGoal")}</span>
-        ) : (
+        {block.type === "control_if" ? (
+          <span className="block-slot block-slot-predicate block-condition-editor">
+            <select
+              value={conditionKind ?? "touchingGoal"}
+              aria-label={locale === "es" ? "condición" : "condition"}
+              onChange={(event) =>
+                onCommitCondition?.(event.currentTarget.value as IfConditionKind)
+              }
+              draggable={false}
+            >
+              <option value="touchingGoal">{t(locale, "touchingGoal")}</option>
+              <option value="scoreLessThan">score &lt;</option>
+              <option value="scoreEquals">score =</option>
+            </select>
+            {conditionValue === undefined ? null : (
+              <input
+                type="number"
+                inputMode="numeric"
+                value={conditionValue}
+                aria-label={locale === "es" ? "valor de condición" : "condition value"}
+                onChange={(event) => {
+                  const next = Number(event.currentTarget.value);
+                  if (Number.isFinite(next)) {
+                    onCommitConditionValue?.(next);
+                  }
+                }}
+                draggable={false}
+              />
+            )}
+          </span>
+        ) : numericLabel !== undefined ? (
           <label className="value-editor block-inline-value">
             <input
               type="number"
               inputMode="numeric"
               value={draftValue}
-              aria-label={`${displayName} ${fieldLabelFor(field, locale)}`}
+              aria-label={`${displayName} ${fieldLabelFor(numericLabel, locale)}`}
               onBlur={commitDraftValue}
               onFocus={(event) => {
                 // Keep the focused value and its block context above a virtual keyboard.
@@ -1329,8 +2205,41 @@ export function ProgramBlockCard({
               onChange={(event) => setDraftValue(event.currentTarget.value)}
               onKeyDown={handleValueKeyDown}
             />
-            <span>{fieldLabelFor(field, locale)}</span>
+            <span>{fieldLabelFor(numericLabel, locale)}</span>
           </label>
+        ) : textField !== undefined ? (
+          <label className="value-editor block-inline-value block-text-value">
+            <input
+              type="text"
+              value={draftTextValue}
+              maxLength={140}
+              aria-label={`${displayName} ${editableFieldLabelFor(textField, locale)}`}
+              onBlur={commitDraftTextValue}
+              onFocus={(event) => {
+                event.currentTarget.scrollIntoView?.({ block: "nearest" });
+              }}
+              onChange={(event) => setDraftTextValue(event.currentTarget.value)}
+              onKeyDown={handleTextKeyDown}
+              draggable={false}
+            />
+          </label>
+        ) : assetField !== undefined ? (
+          <label className="value-editor block-inline-value block-select-value">
+            <select
+              value={currentAssetValue ?? ""}
+              aria-label={`${displayName} ${editableFieldLabelFor(assetField, locale)}`}
+              onChange={(event) => onCommitField?.(assetField, event.currentTarget.value)}
+              draggable={false}
+            >
+              {assetOptions.map((asset) => (
+                <option key={asset.id} value={asset.id}>
+                  {asset.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : fieldSummary === "" ? null : (
+          <span className="block-slot block-inline-value">{fieldSummary}</span>
         )}
         <div
           className="block-actions block-inline-controls"
@@ -1683,6 +2592,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
   const workspace = workspaceRef.current;
   const workspaceState = useWorkspace(workspace);
   const importInputRef = useRef<HTMLInputElement | null>(null);
+  const audibleSoundStateRef = useRef<readonly string[]>([]);
   const initialProjectRef = useRef<ReturnType<typeof initialProjectFor>>();
   if (initialProjectRef.current === undefined) {
     initialProjectRef.current = initialProjectFor(persistenceRef.current);
@@ -1698,6 +2608,14 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
   const [locale, setLocale] = useState<Locale>(() =>
     initialProjectRef.current!.metadata?.locale === "es" ? "es" : "en",
   );
+  const [creativeState, setCreativeState] = useState<ProjectCreativeState>(() =>
+    creativeStateFromMetadata(initialProjectRef.current!.metadata, locale),
+  );
+  const [selectedActorId, setSelectedActorId] = useState(
+    () =>
+      creativeStateFromMetadata(initialProjectRef.current!.metadata, locale).actors?.[0]?.id ??
+      "actor:main",
+  );
   const [status, setStatus] = useState<RunStatus>("idle");
   const [message, setMessage] = useState(
     () => initialProjectRef.current!.message ?? t(locale, "emptyRunMessage"),
@@ -1712,6 +2630,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
   >();
   const [frameIndex, setFrameIndex] = useState(0);
   const [frames, setFrames] = useState<readonly ObservationFrame[]>([]);
+  const [actorFrames, setActorFrames] = useState<readonly MultiActorFrame[]>([]);
   const [executionSteps, setExecutionSteps] = useState<readonly ExecutionStep[]>([]);
   const [learnerTrace, setLearnerTrace] = useState<readonly LearnerTraceItem[]>([]);
   const [hintHistory, setHintHistory] = useState<readonly TutorHintHistoryEntry[]>([]);
@@ -1741,10 +2660,16 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
   const timerRef = useRef<number | undefined>();
   const [panelAreas, setPanelAreas] = useState<Record<PanelId, PanelArea>>(DEFAULT_PANEL_AREAS);
   const [collapsedPanels, setCollapsedPanels] = useState<readonly PanelId[]>([]);
-  const [closedPanels, setClosedPanels] = useState<readonly PanelId[]>(["trace"]);
+  const [closedPanels, setClosedPanels] = useState<readonly PanelId[]>([
+    "code",
+    "trace",
+    "companion",
+  ]);
+  const [topbarOpen, setTopbarOpen] = useState(false);
   const [maximizedPanel, setMaximizedPanel] = useState<PanelId | undefined>(undefined);
   const [aiConnectionOpen, setAiConnectionOpen] = useState(false);
   const [activeDragKind, setActiveDragKind] = useState<"palette" | "workspace" | undefined>();
+  const [activeScriptIndex, setActiveScriptIndex] = useState(0);
 
   useEffect(() => {
     if (pendingFocus === undefined) return;
@@ -1759,18 +2684,76 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
   }, [pendingFocus, model]);
 
   const mission = useMemo(() => getLocalizedFirstMission(locale), [locale]);
-  const statements = model.workspace.scripts[0]?.statements ?? [];
+  const activeScript = model.workspace.scripts[activeScriptIndex] ?? model.workspace.scripts[0];
+  const statements = activeScript?.statements ?? [];
+  const activeScriptBlockCount = statements.length;
   const activeFrame = executionSteps[frameIndex]?.frame ?? frames[frameIndex];
+  const actorFrameIndex = actorFrames.length > 0 ? Math.min(frameIndex, actorFrames.length - 1) : 0;
+  const activeActorSnapshots = actorFrames[actorFrameIndex]?.actors;
+  const stageActors =
+    stageActorsFromRuntime(activeActorSnapshots) ?? stageActorsFromCreative(creativeState);
+  const fallbackStage: StageState = {
+    ...model.stage.current,
+    ...(creativeState.stage?.backdropId === undefined
+      ? {}
+      : { backdropId: creativeState.stage.backdropId }),
+    variables: stageVariablesForProgram(model.program),
+  };
+  const projectActors = creativeState.actors?.length
+    ? creativeState.actors
+    : [defaultActor(locale)];
   const activeStep = executionSteps[frameIndex];
   const activeTrace = learnerTrace[frameIndex];
   const highlightedCode =
     highlightedNodeId === undefined ? "" : codeSliceForNode(model, highlightedNodeId);
+  const codePreview = projectCodeSurface(model.program, "typescript").code.trim();
   const canonicalHash = programSemanticHash(model.program);
   const proposalCard =
     proposalReview === undefined ? undefined : createWebProposalCardView(proposalReview);
+  const proposalScopeRows =
+    proposalCard === undefined
+      ? []
+      : [
+          {
+            key: "actors",
+            label: "proposalAffectedActors" as const,
+            ids: proposalCard.affectedActorIds,
+          },
+          {
+            key: "scripts",
+            label: "proposalAffectedScripts" as const,
+            ids: proposalCard.affectedScriptIds,
+          },
+          {
+            key: "assets",
+            label: "proposalAffectedAssets" as const,
+            ids: proposalCard.affectedAssetIds,
+          },
+          {
+            key: "variables",
+            label: "proposalAffectedVariables" as const,
+            ids: proposalCard.affectedVariableIds,
+          },
+        ].filter((row) => row.ids.length > 0);
   useEffect(() => {
     savePresentationPrefs({ worldId, repeatDeclines, agentEnabled });
   }, [worldId, repeatDeclines, agentEnabled]);
+
+  useEffect(() => {
+    const activeSoundIds = activeFrame?.state.sounds?.activeSoundIds ?? [];
+    const previousSoundIds = audibleSoundStateRef.current;
+    audibleSoundStateRef.current = activeSoundIds;
+    if (status !== "running" && !stepping) {
+      return;
+    }
+    activeSoundIds
+      .filter((soundId) => !previousSoundIds.includes(soundId))
+      .forEach((soundId) => playStageSoundCue(soundId));
+  }, [activeFrame, status, stepping]);
+
+  function updateSelectedActor(actorId: string, patch: Partial<ProjectActor>) {
+    setCreativeState((current) => updateActor(current, actorId, patch));
+  }
   const reducedMotion = usePrefersReducedMotion();
   const stageFeedback = deriveStageFeedback({
     frames: executionSteps.length > 0 ? executionSteps.map((step) => step.frame) : frames,
@@ -1793,6 +2776,11 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     [model.program, locale],
   );
   const repeatReviewActive = proposalReview?.proposal.source.capability === "repeat-pattern";
+  useEffect(() => {
+    if (activeScriptIndex >= model.workspace.scripts.length) {
+      setActiveScriptIndex(0);
+    }
+  }, [activeScriptIndex, model.workspace.scripts.length]);
   const repeatDecision = useProactiveDecision(
     repeatProposal === undefined || proposalReview !== undefined
       ? undefined
@@ -1860,9 +2848,14 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     if (initialProjectRef.current?.message !== undefined || showingRemoteRef.current) {
       return;
     }
-    const metadata = createProjectMetadata(createdAt, countProgramBlocks(model), locale);
+    const metadata = createProjectMetadata(
+      createdAt,
+      countProgramBlocks(model),
+      locale,
+      creativeState,
+    );
     setPersistenceMessage(saveEditorProject(persistenceRef.current, model.program, metadata));
-  }, [createdAt, locale, model.program]);
+  }, [createdAt, creativeState, locale, model.program]);
 
   useEffect(() => {
     void workspace.init();
@@ -1880,7 +2873,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     const stored = {
       schemaVersion: model.program.schema,
       program: model.program,
-      metadata: createProjectMetadata(createdAt, countProgramBlocks(model), locale),
+      metadata: createProjectMetadata(createdAt, countProgramBlocks(model), locale, creativeState),
     };
     const hash = semanticProjectHash(stored);
     if (awaitBaselineRef.current) {
@@ -1896,7 +2889,14 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
       workspace.queueSave(stored);
     }, 400);
     return () => clearTimeout(timer);
-  }, [createdAt, locale, model.program, workspace, workspaceState.active?.projectId]);
+  }, [
+    createdAt,
+    creativeState,
+    locale,
+    model.program,
+    workspace,
+    workspaceState.active?.projectId,
+  ]);
 
   function loadAccountProject(dto: ProjectDto) {
     showingRemoteRef.current = true;
@@ -1919,7 +2919,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     } else {
       replaceCurrentProject(
         createEditorModel().program,
-        createProjectMetadata(new Date().toISOString(), 0, locale),
+        createProjectMetadata(new Date().toISOString(), 0, locale, defaultCreativeState(locale)),
       );
     }
     setMessage(t(locale, "emptyRunMessage"));
@@ -1930,7 +2930,12 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     return {
       schemaVersion: program.schema,
       program,
-      metadata: createProjectMetadata(new Date().toISOString(), 0, locale),
+      metadata: createProjectMetadata(
+        new Date().toISOString(),
+        0,
+        locale,
+        defaultCreativeState(locale),
+      ),
     };
   }
 
@@ -1963,12 +2968,33 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     return () => window.removeEventListener("keydown", handleHistoryShortcut);
   });
 
+  useEffect(() => {
+    function handleRuntimeKey(event: KeyboardEvent) {
+      const target = event.target;
+      const tagName = target instanceof HTMLElement ? target.tagName : "";
+      const nativeEditable =
+        target instanceof HTMLElement &&
+        (target.isContentEditable || tagName === "INPUT" || tagName === "TEXTAREA");
+      if (nativeEditable || event.metaKey || event.ctrlKey || event.altKey) {
+        return;
+      }
+      if (event.key.length > 1 && !event.key.startsWith("Arrow")) {
+        return;
+      }
+      runRuntimeEvents([{ type: "keyPressed", key: event.key }]);
+    }
+    window.addEventListener("keydown", handleRuntimeKey);
+    return () => window.removeEventListener("keydown", handleRuntimeKey);
+  });
+
   function resetEphemeralEditorState() {
     clearRunTimer();
+    audibleSoundStateRef.current = [];
     initialProjectRef.current = { ...initialProjectRef.current!, message: undefined };
     setPersistenceMessage(undefined);
     setHighlightedNodeId(undefined);
     setFrames([]);
+    setActorFrames([]);
     setExecutionSteps([]);
     setLearnerTrace([]);
     setFrameIndex(0);
@@ -1981,6 +3007,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     setProposalMessage(undefined);
     setLearningDecision(undefined);
     setStatus("idle");
+    setActiveScriptIndex(0);
   }
 
   function applyProjection(projection: EditorProjection) {
@@ -2011,10 +3038,14 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     setHistory(createEditorHistory(restored.program));
     setModel((current) => ({ ...current, ...restored, stage: resetStageSession(current.stage) }));
     setCreatedAt(metadata.createdAt);
+    const nextCreative = creativeStateFromMetadata(metadata, locale);
+    setCreativeState(nextCreative);
+    setSelectedActorId(nextCreative.actors?.[0]?.id ?? "actor:main");
     if (metadata.locale === "en" || metadata.locale === "es") {
       setLocale(metadata.locale);
     }
     setFrames([]);
+    setActorFrames([]);
     setExecutionSteps([]);
     setLearnerTrace([]);
     setFrameIndex(0);
@@ -2025,10 +3056,12 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     setReflectionPrompt(undefined);
     setAttempts(0);
     setStatus("idle");
+    setActiveScriptIndex(0);
     setProposalReview(undefined);
     setProposalMessage(undefined);
     setAiLiteracyActivity(false);
     setAiPredictionRecorded(false);
+    setActiveScriptIndex(0);
   }
 
   function undoEditor() {
@@ -2050,7 +3083,12 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
   }
 
   function exportProject() {
-    const metadata = createProjectMetadata(createdAt, countProgramBlocks(model), locale);
+    const metadata = createProjectMetadata(
+      createdAt,
+      countProgramBlocks(model),
+      locale,
+      creativeState,
+    );
     const json = serializeAgorixProject({
       schemaVersion: model.program.schema,
       program: model.program,
@@ -2090,7 +3128,9 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     workspace: BlockWorkspaceSnapshot,
     path: StatementPath,
   ): BlockNode | undefined {
-    return statementListAtPath(workspace, parentContainerPath(path))[indexInContainer(path)];
+    return statementListAtPath(workspace, parentContainerPath(path), activeScriptIndex)[
+      indexInContainer(path)
+    ];
   }
 
   function parentLabel(workspace: BlockWorkspaceSnapshot, path: StatementPath): string {
@@ -2110,7 +3150,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
       t(locale, kind, {
         name: block === undefined ? "" : displayNameFor(block, locale),
         position: indexInContainer(path) + 1,
-        total: statementListAtPath(workspace, parentContainerPath(path)).length,
+        total: statementListAtPath(workspace, parentContainerPath(path), activeScriptIndex).length,
       }),
     );
     setPendingFocus({ path });
@@ -2121,7 +3161,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     id: string,
     container: StatementPath = [],
   ): StatementPath | undefined {
-    const list = statementListAtPath(workspace, container);
+    const list = statementListAtPath(workspace, container, activeScriptIndex);
     for (const [index, block] of list.entries()) {
       const path = [...container, index];
       if (block.id === id) return path;
@@ -2134,31 +3174,139 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
   }
 
   function addBlock(type: AddableBlockType) {
-    const projection = addBlockToWorkspace(model.workspace, type);
+    const projection = addBlockToWorkspace(model.workspace, type, activeScriptIndex);
     if (commitProjection("add block", projection)) {
       setMessage(t(locale, "blockAddedMessage"));
       announceAt("announceAdded", projection.workspace, [
-        model.workspace.scripts[0]?.statements.length ?? 0,
+        model.workspace.scripts[activeScriptIndex]?.statements.length ?? 0,
       ]);
+    }
+  }
+
+  function addEventScript(triggerType: AddableTriggerType) {
+    const nextIndex = model.workspace.scripts.length;
+    const projection = addScriptToWorkspace(model.workspace, triggerType);
+    if (!commitProjection("add event script", projection)) {
+      return;
+    }
+    setActiveScriptIndex(nextIndex);
+    const scriptId = projection.program.scripts[nextIndex]?.id;
+    if (scriptId !== undefined) {
+      setCreativeState((current) => {
+        const selected = selectedActorId ?? current.actors?.[0]?.id ?? "actor:main";
+        const selectedActor = current.actors?.find((actor) => actor.id === selected);
+        return updateActor(current, selected, {
+          scripts: Array.from(new Set([...(selectedActor?.scripts ?? ["main"]), scriptId])),
+        });
+      });
+    }
+    setMessage(t(locale, "programUpdatedMessage"));
+  }
+
+  function editActiveTriggerField(field: "key" | "message", value: string) {
+    const trimmed = value.trim();
+    if (trimmed.length === 0) {
+      return;
+    }
+    if (
+      commitProjection(
+        "edit event trigger",
+        editScriptTriggerField(model.workspace, activeScriptIndex, field, trimmed),
+      )
+    ) {
+      setMessage(t(locale, "programUpdatedMessage"));
     }
   }
 
   function editBlockAt(path: StatementPath, block: BlockNode, value: number) {
     const field = numericFieldFor(block);
-    if (field === undefined) {
+    const variableInput = variableNumberInputFor(block);
+    if (field === undefined && variableInput === undefined) {
       return;
     }
+    const projection =
+      field === undefined
+        ? editVariableNumberInputAt(model.workspace, path, value, activeScriptIndex)
+        : editNumericBlockFieldAt(model.workspace, path, field, value, activeScriptIndex);
+    if (commitProjection("edit numeric block field", projection)) {
+      setMessage(t(locale, "programUpdatedMessage"));
+      setAnnouncement(
+        t(locale, "announceEdited", {
+          name: displayNameFor(block, locale),
+          field: fieldLabelFor(field ?? variableInput ?? "value", locale),
+          value,
+        }),
+      );
+    }
+  }
+
+  function editBlockField(path: StatementPath, block: BlockNode, field: string, value: string) {
     if (
       commitProjection(
-        "edit numeric block field",
-        editNumericBlockFieldAt(model.workspace, path, field, value),
+        "edit block field",
+        editBlockFieldAt(model.workspace, path, field, value, activeScriptIndex),
       )
     ) {
       setMessage(t(locale, "programUpdatedMessage"));
       setAnnouncement(
         t(locale, "announceEdited", {
           name: displayNameFor(block, locale),
-          field: fieldLabelFor(field, locale),
+          field: editableFieldLabelFor(
+            field as
+              | "steps"
+              | "degrees"
+              | "count"
+              | "size"
+              | "value"
+              | "delta"
+              | "text"
+              | "message"
+              | "costumeId"
+              | "backdropId",
+            locale,
+          ),
+          value,
+        }),
+      );
+    }
+  }
+
+  function editIfCondition(path: StatementPath, block: BlockNode, kind: IfConditionKind) {
+    if (block.type !== "control_if") {
+      return;
+    }
+    if (
+      commitProjection(
+        "edit if condition",
+        editIfConditionAt(model.workspace, path, kind, activeScriptIndex),
+      )
+    ) {
+      setMessage(t(locale, "programUpdatedMessage"));
+      setAnnouncement(
+        t(locale, "announceEdited", {
+          name: displayNameFor(block, locale),
+          field: locale === "es" ? "condición" : "condition",
+          value: kind,
+        }),
+      );
+    }
+  }
+
+  function editIfConditionValue(path: StatementPath, block: BlockNode, value: number) {
+    if (block.type !== "control_if") {
+      return;
+    }
+    if (
+      commitProjection(
+        "edit if condition value",
+        editIfConditionNumberAt(model.workspace, path, value, activeScriptIndex),
+      )
+    ) {
+      setMessage(t(locale, "programUpdatedMessage"));
+      setAnnouncement(
+        t(locale, "announceEdited", {
+          name: displayNameFor(block, locale),
+          field: locale === "es" ? "valor de condición" : "condition value",
           value,
         }),
       );
@@ -2167,13 +3315,19 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
 
   function moveBlockAt(path: StatementPath, direction: -1 | 1) {
     const containerPath = parentContainerPath(path);
-    const siblings = statementListAtPath(model.workspace, containerPath);
+    const siblings = statementListAtPath(model.workspace, containerPath, activeScriptIndex);
     const index = indexInContainer(path);
     const nextIndex = index + direction;
     if (nextIndex < 0 || nextIndex >= siblings.length) {
       return;
     }
-    const projection = moveBlockInWorkspaceByPath(model.workspace, path, containerPath, nextIndex);
+    const projection = moveBlockInWorkspaceByPath(
+      model.workspace,
+      path,
+      containerPath,
+      nextIndex,
+      activeScriptIndex,
+    );
     if (commitProjection("move block", projection)) {
       setMessage(t(locale, "programUpdatedMessage"));
       announceAt("announceMoved", projection.workspace, [...containerPath, nextIndex]);
@@ -2182,15 +3336,19 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
 
   function deleteBlockAt(path: StatementPath) {
     const block = blockAtStatementPath(model.workspace, path);
-    const projection = deleteBlockFromWorkspaceAt(model.workspace, path);
+    const projection = deleteBlockFromWorkspaceAt(model.workspace, path, activeScriptIndex);
     if (commitProjection("delete block", projection)) {
       setMessage(t(locale, "programUpdatedMessage"));
       const containerPath = parentContainerPath(path);
-      const remaining = statementListAtPath(projection.workspace, containerPath).length;
+      const remaining = statementListAtPath(
+        projection.workspace,
+        containerPath,
+        activeScriptIndex,
+      ).length;
       setAnnouncement(
         t(locale, "announceDeleted", {
           name: block === undefined ? "" : displayNameFor(block, locale),
-          total: statementListAtPath(projection.workspace, []).length,
+          total: statementListAtPath(projection.workspace, [], activeScriptIndex).length,
         }),
       );
       const index = indexInContainer(path);
@@ -2205,7 +3363,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
   }
 
   function duplicateBlockAt(path: StatementPath) {
-    const projection = duplicateBlockInWorkspace(model.workspace, path);
+    const projection = duplicateBlockInWorkspace(model.workspace, path, activeScriptIndex);
     if (commitProjection("duplicate block", projection)) {
       setMessage(t(locale, "programUpdatedMessage"));
       announceAt("announceDuplicated", projection.workspace, [
@@ -2217,19 +3375,24 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
 
   function nestBlockAt(path: StatementPath) {
     const containerPath = parentContainerPath(path);
-    const siblings = statementListAtPath(model.workspace, containerPath);
+    const siblings = statementListAtPath(model.workspace, containerPath, activeScriptIndex);
     const index = indexInContainer(path);
     const previous = siblings[index - 1];
     if (previous === undefined || !canContainStatements(previous)) {
       return;
     }
     const targetContainerPath = [...containerPath, index - 1];
-    const targetIndex = statementListAtPath(model.workspace, targetContainerPath).length;
+    const targetIndex = statementListAtPath(
+      model.workspace,
+      targetContainerPath,
+      activeScriptIndex,
+    ).length;
     const projection = moveBlockInWorkspaceByPath(
       model.workspace,
       path,
       targetContainerPath,
       targetIndex,
+      activeScriptIndex,
     );
     if (commitProjection("nest block", projection)) {
       setMessage(t(locale, "programUpdatedMessage"));
@@ -2252,6 +3415,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
       path,
       grandParentPath,
       parentIndex + 1,
+      activeScriptIndex,
     );
     if (commitProjection("outdent block", projection)) {
       setMessage(t(locale, "programUpdatedMessage"));
@@ -2275,7 +3439,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
         name: block === undefined ? "" : displayNameFor(block, locale),
         parent,
         position: indexInContainer(path) + 1,
-        total: statementListAtPath(workspace, parentContainerPath(path)).length,
+        total: statementListAtPath(workspace, parentContainerPath(path), activeScriptIndex).length,
       }),
     );
     setPendingFocus({ path });
@@ -2302,6 +3466,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
 
   function stopRun() {
     clearRunTimer();
+    audibleSoundStateRef.current = [];
     setStatus("stopped");
     setMessage(t(locale, "stopped"));
   }
@@ -2321,7 +3486,11 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
       ...mergeProjection(current, projection),
       stage: resetStageSession(current.stage),
     }));
+    const nextCreative = defaultCreativeState(locale);
+    setCreativeState(nextCreative);
+    setSelectedActorId(nextCreative.actors?.[0]?.id ?? "actor:main");
     setFrames([]);
+    setActorFrames([]);
     setExecutionSteps([]);
     setLearnerTrace([]);
     setFrameIndex(0);
@@ -2339,19 +3508,39 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     setMessage(t(locale, "resetMessage"));
   }
 
-  function createRuntimeFrames() {
-    const result = runProgram(model.program, initialWorldFor(model), {
-      collectObservations: true,
-      stopAfterSteps: 24,
+  function createRuntimeFrames(events?: readonly RuntimeEvent[]) {
+    audibleSoundStateRef.current = [];
+    const initialWorld = initialWorldFor(model, creativeState);
+    const multiActorResult = runMultiActorProgram(model.program, creativeState, {
+      maxSteps: 24,
+      goal: initialWorld.goal,
+      ...(events === undefined ? {} : { events }),
     });
-    const nextFrames = framesFromRuntimeObservations(result.observations);
-    const nextSteps = executionStepsFromRuntimeObservations(result.observations);
+    const observations = runtimeObservationsFromActorFrames(multiActorResult);
+    const primaryWorld = multiActorResult.actors[0]?.world ?? initialWorld;
+    const result: RunResult = {
+      outcome: multiActorResult.outcome,
+      world: primaryWorld,
+      stepsUsed: multiActorResult.stepsUsed,
+      trace: multiActorResult.trace.map((entry) => ({
+        step: entry.step,
+        nodeId: entry.nodeId,
+        path: entry.path,
+        statementType: entry.statementType,
+        worldBefore: entry.worldBefore,
+        worldAfter: entry.worldAfter,
+      })),
+      observations,
+    };
+    const nextFrames = framesFromRuntimeObservations(observations);
+    const nextSteps = executionStepsFromRuntimeObservations(observations);
     const nextTrace = learnerTraceFromExecutionSteps(nextSteps, "beginner");
     setLastRunResult(result);
     setFrames(nextFrames);
+    setActorFrames(multiActorResult.frames);
     setExecutionSteps(nextSteps);
     setLearnerTrace(nextTrace);
-    return { result, nextFrames, nextSteps, nextTrace };
+    return { result, nextFrames, nextSteps, nextTrace, multiActorResult };
   }
 
   function runBlocks() {
@@ -2367,6 +3556,44 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     }
     try {
       const { result, nextFrames } = createRuntimeFrames();
+      setAttempts((current) => current + 1);
+      setFrameIndex(0);
+      setStatus("running");
+      setMessage(t(locale, "running"));
+      clearRunTimer();
+      timerRef.current = window.setInterval(() => {
+        setFrameIndex((current) => {
+          const next = current + 1;
+          if (next >= nextFrames.length) {
+            window.clearInterval(timerRef.current);
+            timerRef.current = undefined;
+            const feedback = resultFeedback(result, locale, mission);
+            setObservedGoal(touchingGoal(result.world));
+            setStatus(feedback.completed ? "complete" : "retry");
+            setMessage(feedback.message);
+            setReflectionPrompt(feedback.reflectionPrompt);
+            setHighlightedNodeId(undefined);
+            return Math.max(nextFrames.length - 1, 0);
+          }
+          setHighlightedNodeId(nextFrames[next]?.highlightedNodeId);
+          return next;
+        });
+      }, 550);
+      setHighlightedNodeId(nextFrames[0]?.highlightedNodeId);
+    } catch {
+      setStatus("error");
+      setMessage(t(locale, "runSetupError"));
+    }
+  }
+
+  function runRuntimeEvents(events: readonly RuntimeEvent[]) {
+    if (status === "running") {
+      return;
+    }
+    setStepping(false);
+    setObservedGoal(undefined);
+    try {
+      const { result, nextFrames } = createRuntimeFrames(events);
       setAttempts((current) => current + 1);
       setFrameIndex(0);
       setStatus("running");
@@ -2455,6 +3682,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
       setProposalReview(review);
       setProposalMessage(t(locale, "proposalPreviewReady"));
       setHighlightedNodeId(review.proposal.affectedNodeIds[0]);
+      restorePanel("companion");
     } catch {
       setStatus("error");
       setMessage(t(locale, "runSetupError"));
@@ -2542,7 +3770,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     try {
       const result =
         lastRunResult ??
-        runProgram(model.program, initialWorldFor(model), {
+        runProgram(model.program, initialWorldFor(model, creativeState), {
           collectObservations: true,
           stopAfterSteps: 24,
         });
@@ -2578,6 +3806,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
       setLastRunResult(result);
       setTutorResponse(response);
       setHintHistory((current) => [...current, nextHistory]);
+      restorePanel("companion");
       if (response.nodeIds[0] !== undefined) {
         setHighlightedNodeId(response.nodeIds[0]);
       }
@@ -2590,6 +3819,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
   function retryMission() {
     stopRun();
     setFrames([]);
+    setActorFrames([]);
     setExecutionSteps([]);
     setLearnerTrace([]);
     setFrameIndex(0);
@@ -2702,7 +3932,8 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
   function dropIntoWorkspace(
     event: ReactDragEvent<HTMLElement>,
     targetContainerPath: StatementPath = [],
-    targetIndex = statementListAtPath(model.workspace, targetContainerPath).length,
+    targetIndex = statementListAtPath(model.workspace, targetContainerPath, activeScriptIndex)
+      .length,
   ) {
     event.preventDefault();
     clearDragState();
@@ -2713,6 +3944,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
         type,
         targetContainerPath,
         targetIndex,
+        activeScriptIndex,
       );
       if (commitProjection("add block", projection)) {
         setMessage(t(locale, "blockAddedMessage"));
@@ -2728,6 +3960,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
         source,
         targetContainerPath,
         finalMoveIndex(source, targetContainerPath, targetIndex),
+        activeScriptIndex,
       );
       if (commitProjection("move block", projection)) {
         setMessage(t(locale, "programUpdatedMessage"));
@@ -2746,10 +3979,10 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     proposalReview?.proposal.affectedNodeIds ?? repeatOffer?.affectedNodeIds ?? [];
 
   function renderWorkspaceBlocks(containerPath: StatementPath = [], depth = 0): ReactNode {
-    const blocks = statementListAtPath(model.workspace, containerPath);
+    const blocks = statementListAtPath(model.workspace, containerPath, activeScriptIndex);
     return blocks.map((block, index) => {
       const path = [...containerPath, index];
-      const nodeId = blockNodeIdForPath(model.workspace, path);
+      const nodeId = blockNodeIdForPath(model.workspace, path, activeScriptIndex);
       const childPath = childContainerPathFor(path);
       return (
         <ProgramBlockCard
@@ -2764,8 +3997,12 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
           ghost={ghostMarks.byPath.get(path.join("."))}
           canonicalNodeId={nodeId}
           locale={locale}
+          assets={creativeState.assets}
           onSelect={() => setHighlightedNodeId(nodeId)}
           onCommitValue={(value) => editBlockAt(path, block, value)}
+          onCommitCondition={(kind) => editIfCondition(path, block, kind)}
+          onCommitConditionValue={(value) => editIfConditionValue(path, block, value)}
+          onCommitField={(field, value) => editBlockField(path, block, field, value)}
           onMove={(direction) => moveBlockAt(path, direction)}
           onNest={() => nestBlockAt(path)}
           onOutdent={() => outdentBlockAt(path)}
@@ -2778,7 +4015,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
             dropIntoWorkspace(
               event,
               childPath,
-              statementListAtPath(model.workspace, childPath).length,
+              statementListAtPath(model.workspace, childPath, activeScriptIndex).length,
             )
           }
         >
@@ -2798,8 +4035,11 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
       data-generative-needed={learningDecision?.generativeNeeded}
       data-reasoning-tier={learningDecision?.reasoningTier}
       data-provider-selection-bypassed={learningDecision?.providerSelectionBypassed}
+      data-code-open={closedPanels.includes("code") ? "false" : "true"}
+      data-trace-open={closedPanels.includes("trace") ? "false" : "true"}
+      data-companion-open={closedPanels.includes("companion") ? "false" : "true"}
     >
-      <header className="topbar">
+      <header className={topbarOpen ? "topbar topbar-open" : "topbar"}>
         <div className="brand-lockup">
           <div className="brand-identity" aria-label="Agorix">
             <span className="brand-mark" aria-hidden="true">
@@ -2817,7 +4057,21 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
             <p className="topbar-subtitle">{t(locale, "appSubtitle")}</p>
           </div>
         </div>
-        <div className="run-controls" aria-label={t(locale, "run")}>
+        <div className="topbar-quick-actions">
+          <button
+            type="button"
+            className="topbar-menu-button"
+            aria-label={topbarOpen ? "Hide app menu" : "Show app menu"}
+            aria-expanded={topbarOpen}
+            aria-controls="app-menu"
+            onClick={() => setTopbarOpen((open) => !open)}
+          >
+            <span aria-hidden="true" />
+            <span aria-hidden="true" />
+            <span aria-hidden="true" />
+          </button>
+        </div>
+        <div id="app-menu" className="run-controls" aria-label={t(locale, "run")}>
           <label className="locale-picker">
             <span>{t(locale, "localeLabel")}</span>
             <select
@@ -2899,6 +4153,13 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
       >
         {announcement}
       </div>
+      <span
+        className="visually-hidden"
+        data-testid="canonical-hash"
+        data-canonical-hash={canonicalHash}
+      >
+        {canonicalHash}
+      </span>
       <p id="workspace-keyboard-hint" className="visually-hidden">
         {t(locale, "blockKeyboardHint")}
       </p>
@@ -2971,6 +4232,12 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
           {agentEnabled && (status === "complete" || status === "retry") ? (
             <PredictionComparison locale={locale} answer={prediction} reachedGoal={observedGoal} />
           ) : null}
+          {tutorResponse === undefined ? null : (
+            <div className="compact-ai-feedback" aria-live="polite">
+              <strong>{t(locale, "hintLevelOf", { level: tutorResponse.hintLevel })}</strong>
+              <span>{tutorResponse.message}</span>
+            </div>
+          )}
           {persistenceMessage === undefined ? null : (
             <strong className="run-state run-state-error">{persistenceMessage}</strong>
           )}
@@ -3031,26 +4298,25 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
         </article>
       </section>
 
-      {closedPanelIds.length > 0 ? (
-        <div className="panel-dock" aria-label="Closed panels">
-          {closedPanelIds.map((panel) => (
-            <button key={panel} type="button" onClick={() => restorePanel(panel)}>
-              {PANEL_LABELS[panel]}
-            </button>
-          ))}
-        </div>
-      ) : null}
-
       <div className="learning-layout">
         {closedPanels.includes("stage") ? null : (
           <StageView
             world={world}
             frame={activeFrame}
-            fallback={model.stage.current}
+            fallback={fallbackStage}
             locale={locale}
+            actors={stageActors}
+            {...(creativeState.assets === undefined ? {} : { assets: creativeState.assets })}
+            selectedActorId={selectedActorId}
             feedback={stageFeedback}
-            activeCode={highlightedCode.trim()}
+            {...(highlightedCode.trim() ? { activeCode: highlightedCode.trim() } : {})}
+            codePreview={codePreview}
             reducedMotion={reducedMotion}
+            runStatus={status}
+            onRun={runBlocks}
+            onStop={stopRun}
+            onActorClick={(actorId) => runRuntimeEvents([{ type: "actorClicked", actorId }])}
+            onOpenCode={() => restorePanel("code")}
             panelControls={panelControls("stage")}
             panelProps={panelProps("stage", "stage-panel")}
           />
@@ -3092,6 +4358,31 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
               <span>{t(locale, "actionsContext")}</span>
               {panelControls("action")}
             </div>
+            <ActorPanel
+              locale={locale}
+              actors={projectActors}
+              assets={creativeState.assets}
+              stage={creativeState.stage}
+              selectedActorId={selectedActorId}
+              onSelect={setSelectedActorId}
+              onAdd={() => {
+                setCreativeState((current) => {
+                  const next = addProjectActor(current, locale);
+                  const added = next.actors?.[next.actors.length - 1];
+                  if (added !== undefined) {
+                    setSelectedActorId(added.id);
+                  }
+                  return next;
+                });
+              }}
+              onChange={updateSelectedActor}
+              onStageChange={(patch) =>
+                setCreativeState((current) => ({
+                  ...current,
+                  stage: { ...current.stage, ...patch },
+                }))
+              }
+            />
             <p className="toolbox-intro">{t(locale, "toolboxIntro")}</p>
             {scratchPalette.map((section) => (
               <section key={section.id} className={`scratch-category category-${section.tone}`}>
@@ -3127,7 +4418,20 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
               </section>
             ))}
             <section className="ai-tool-shelf" aria-label={t(locale, "aiToolShelf")}>
-              <h3>{t(locale, "aiToolShelf")}</h3>
+              <div className="ai-native-strip">
+                <span className="ai-orb" aria-hidden="true">
+                  AI
+                </span>
+                <div>
+                  <h3>{t(locale, "aiToolShelf")}</h3>
+                  <p>{t(locale, "aiNativeAssistBody")}</p>
+                </div>
+                {closedPanelIds.includes("companion") ? (
+                  <button type="button" onClick={() => restorePanel("companion")}>
+                    {PANEL_LABELS.companion}
+                  </button>
+                ) : null}
+              </div>
               <div className="action-list ai-action-list">
                 <button type="button" aria-label="Use AI hint tool" onClick={requestHint}>
                   <span className="tool-glyph" aria-hidden="true">
@@ -3182,10 +4486,76 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
             aria-labelledby="workspace-title"
           >
             <div className="panel-heading">
-              <h2 id="workspace-title">{t(locale, "whenRun")}</h2>
-              <span>{t(locale, "blockCount", { count: statements.length })}</span>
+              <h2 id="workspace-title">
+                {activeScript === undefined
+                  ? t(locale, "whenRun")
+                  : scriptLabelFor(activeScript, locale)}
+              </h2>
+              <span>{t(locale, "blockCount", { count: activeScriptBlockCount })}</span>
               {panelControls("program")}
             </div>
+            <div className="script-switcher" aria-label="Event scripts">
+              {model.workspace.scripts.map((script, index) => (
+                <button
+                  key={script.id}
+                  type="button"
+                  className={index === activeScriptIndex ? "active" : ""}
+                  aria-pressed={index === activeScriptIndex}
+                  onClick={() => setActiveScriptIndex(index)}
+                >
+                  {scriptLabelFor(script, locale)}
+                </button>
+              ))}
+              <button type="button" onClick={() => addEventScript("event_on_key_pressed")}>
+                {locale === "es" ? "+ tecla" : "+ key"}
+              </button>
+              <button type="button" onClick={() => addEventScript("event_on_actor_clicked")}>
+                {locale === "es" ? "+ click" : "+ click"}
+              </button>
+              <button type="button" onClick={() => addEventScript("event_on_message")}>
+                {locale === "es" ? "+ mensaje" : "+ message"}
+              </button>
+            </div>
+            {editableTriggerFieldFor(activeScript) === "key" ? (
+              <label className="trigger-editor">
+                <span>{locale === "es" ? "Tecla" : "Key"}</span>
+                <select
+                  value={
+                    typeof activeScript?.trigger.fields?.key === "string"
+                      ? activeScript.trigger.fields.key
+                      : "Space"
+                  }
+                  onChange={(event) => editActiveTriggerField("key", event.currentTarget.value)}
+                >
+                  {KEY_TRIGGER_OPTIONS.map((key) => (
+                    <option key={key} value={key}>
+                      {key}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+            {editableTriggerFieldFor(activeScript) === "message" ? (
+              <label className="trigger-editor">
+                <span>{locale === "es" ? "Mensaje" : "Message"}</span>
+                <input
+                  key={activeScript?.id}
+                  type="text"
+                  defaultValue={
+                    typeof activeScript?.trigger.fields?.message === "string"
+                      ? activeScript.trigger.fields.message
+                      : "go"
+                  }
+                  maxLength={80}
+                  onBlur={(event) => editActiveTriggerField("message", event.currentTarget.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.currentTarget.blur();
+                    }
+                  }}
+                />
+              </label>
+            ) : null}
             <div
               className="block-stack"
               onDragOver={autoScrollWorkspaceOnDrag}
@@ -3217,8 +4587,6 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
             className={panelProps("companion", "companion-panel").className}
             style={panelProps("companion", "companion-panel").style}
             aria-labelledby="companion-title"
-            data-testid="canonical-hash"
-            data-canonical-hash={canonicalHash}
           >
             <div className="panel-heading">
               <h2 id="companion-title">{t(locale, "proposalReview")}</h2>
@@ -3352,6 +4720,21 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
                     hash: proposalReview?.proposal.baseProgramHash ?? "",
                   })}
                 </p>
+                {proposalScopeRows.length === 0 &&
+                proposalCard.expectedRuntimeEvidence.length === 0 ? null : (
+                  <ul className="proposal-evidence">
+                    {proposalScopeRows.map((row) => (
+                      <li key={row.key}>{t(locale, row.label, { ids: row.ids.join(", ") })}</li>
+                    ))}
+                    {proposalCard.expectedRuntimeEvidence.map((evidence) => (
+                      <li key={evidence.id}>
+                        {t(locale, "proposalExpectedEvidence", {
+                          description: evidence.description,
+                        })}
+                      </li>
+                    ))}
+                  </ul>
+                )}
                 <ul>
                   {proposalCard.changes.map((change) => (
                     <li key={change.nodeId}>
@@ -3418,6 +4801,21 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
             <div data-testid="proposal-preview">
               <strong>{proposalCard.title}</strong>
               <p>{proposalCard.rationale}</p>
+              {proposalScopeRows.length === 0 &&
+              proposalCard.expectedRuntimeEvidence.length === 0 ? null : (
+                <ul className="proposal-evidence">
+                  {proposalScopeRows.map((row) => (
+                    <li key={row.key}>{t(locale, row.label, { ids: row.ids.join(", ") })}</li>
+                  ))}
+                  {proposalCard.expectedRuntimeEvidence.map((evidence) => (
+                    <li key={evidence.id}>
+                      {t(locale, "proposalExpectedEvidence", {
+                        description: evidence.description,
+                      })}
+                    </li>
+                  ))}
+                </ul>
+              )}
               <ul>
                 {proposalCard.changes.map((change) => (
                   <li key={change.nodeId}>

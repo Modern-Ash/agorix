@@ -1,4 +1,10 @@
-import { SCHEMA_VERSION, type ProjectProgram } from "@agorix/program-model";
+import {
+  SCHEMA_VERSION,
+  type ProjectActor as CanonicalProjectActor,
+  type ProjectAsset,
+  type ProjectProgram,
+  type ProjectStage,
+} from "@agorix/program-model";
 
 export const PACKAGE_NAME = "@agorix/persistence";
 
@@ -39,6 +45,14 @@ export interface ProjectMetadata {
   readonly missionProgress: number;
   readonly hintLevel: number;
   readonly locale?: string;
+  readonly actors?: readonly ProjectActor[];
+  readonly stage?: ProjectStage;
+  readonly assets?: readonly ProjectAsset[];
+}
+
+export interface ProjectActor extends CanonicalProjectActor {
+  /** @deprecated Use costumeId. Kept as a read compatibility alias for pre-core Studio metadata. */
+  readonly appearanceId?: string;
 }
 
 export interface BrowserStorageAdapter {

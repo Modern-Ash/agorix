@@ -135,7 +135,7 @@ Executes program-model deterministically. Produces runtime observations, event o
 
 ### runtime evidence interface
 
-Structured, deterministic observations consumed by UI feedback, tests and Learning Companion explanation/debugging. AI may explain evidence but may not invent it.
+Structured, deterministic observations consumed by UI feedback, tests and Learning Companion explanation/debugging. AI may explain evidence but may not invent it. Observable evidence includes movement, variables, actors, events and active sound ids; browser audio playback is a presentation effect layered on top of the deterministic sound state.
 
 ### stage
 
@@ -148,6 +148,20 @@ Projects canonical program state into readable Agorix Code, Python, TypeScript o
 ### ProgramProposal
 
 Structured proposed change produced by a human action, deterministic scaffold or Learning Companion. A proposal must validate, show what would change and wait for learner decision before canonical mutation.
+
+For the shared creative core, proposals also carry affected actor ids, script
+ids, asset ids, variable ids and expected runtime evidence. App and Studio
+render the same ids: the App shows them as learner-facing proposal scope, while
+Studio uses them for structured diff/review and evidence inspection. A scoped
+proposal fails closed when its operations target a script outside
+`affectedScriptIds`, reference an asset outside `affectedAssetIds` or reference a
+variable outside `affectedVariableIds`.
+
+The shared proposal package can also build a four-state comparison view:
+accepted project, AI proposal, learner-modified accepted result and runtime
+evidence. Studio core exposes this as a proposal evidence inspector backed by
+real execution inspector rows, so the UI can distinguish "AI suggested",
+"learner changed/accepted" and "runtime proved" without inventing evidence.
 
 ### Learning Companion contract
 

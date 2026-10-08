@@ -14,6 +14,16 @@ export {
   type RuntimeObservationKind,
   type SanitizedTutorContext,
 } from "./execute.js";
+export {
+  runMultiActorProgram,
+  type MultiActorExecutionOptions,
+  type MultiActorFrame,
+  type MultiActorRunResult,
+  type MultiActorRuntimeActor,
+  type MultiActorScriptActivation,
+  type MultiActorTraceEntry,
+  type RuntimeEvent,
+} from "./multiActor.js";
 export { RuntimeExecutionError } from "./errors.js";
 export {
   assertAllowedRuntimeOperation,
@@ -30,15 +40,28 @@ export {
 } from "./operations.js";
 export {
   cloneWorldState,
+  changeVariableWorld,
   createWorldState,
+  getVariableWorld,
+  hideWorld,
   moveWorld,
   normalizeCoordinate,
   normalizeHeading,
   resetWorldState,
+  sayWorld,
+  setVariableVisibilityWorld,
+  setVariableWorld,
+  setSpriteSizeWorld,
+  showWorld,
+  switchBackdropWorld,
+  switchCostumeWorld,
+  thinkWorld,
   touchingGoal,
   turnWorld,
+  type LooksBubble,
   type Position,
   type SpriteState,
+  type VariableState,
   type WorldState,
   type WorldStateInput,
 } from "./world.js";

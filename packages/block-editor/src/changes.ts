@@ -49,8 +49,46 @@ function cloneWorkspace(workspace: BlockWorkspaceSnapshot): BlockWorkspaceSnapsh
 }
 
 type MutableBlockNode = BlockNode & {
-  inputs?: { body?: BlockNode[]; then?: BlockNode[]; condition?: BlockNode };
+  inputs?: {
+    body?: BlockNode[];
+    then?: BlockNode[];
+    condition?: BlockNode;
+    left?: BlockNode;
+    right?: BlockNode;
+    value?: BlockNode;
+    delta?: BlockNode;
+  };
 };
+
+function blockUsesVariables(block: BlockNode): boolean {
+  if (block.type.startsWith("variables_")) {
+    return true;
+  }
+  const inputs = Object.values(block.inputs ?? {}) as Array<BlockNode | readonly BlockNode[]>;
+  for (const input of inputs) {
+    if (Array.isArray(input)) {
+      if (input.some(blockUsesVariables)) {
+        return true;
+      }
+    } else if ("type" in input && blockUsesVariables(input)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function ensureDefaultVariables(workspace: BlockWorkspaceSnapshot, block: BlockNode): void {
+  if (!blockUsesVariables(block)) {
+    return;
+  }
+  if (workspace.variables?.some((variable) => variable.id === "score")) {
+    return;
+  }
+  const variables = [...(workspace.variables ?? [])];
+  variables.push({ id: "score", name: "score", initialValue: 0, visible: true });
+  (workspace as unknown as { variables?: readonly (typeof variables)[number][] }).variables =
+    variables;
+}
 
 function mutableStatementsFor(
   workspace: BlockWorkspaceSnapshot,
@@ -167,6 +205,7 @@ export function applyWorkspaceChange(
   switch (change.type) {
     case "addBlock": {
       assertStatementBlock(change.block);
+      ensureDefaultVariables(next, change.block);
       const list = mutableStatementsFor(next, change.container);
       list.splice(clampInsertionIndex(change.index, list.length), 0, change.block);
       break;
@@ -189,6 +228,7 @@ export function applyWorkspaceChange(
     }
     case "editBlock": {
       assertStatementBlock(change.block);
+      ensureDefaultVariables(next, change.block);
       const list = mutableStatementsFor(next, change.location.container);
       if (list[change.location.index] === undefined) {
         throw new BlockEditorAdapterError(

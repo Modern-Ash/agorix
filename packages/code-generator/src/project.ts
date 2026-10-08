@@ -1,4 +1,11 @@
-import type { Expression, ProjectProgram, Script, Statement, Trigger } from "@agorix/program-model";
+import type {
+  Expression,
+  ProgramVariable,
+  ProjectProgram,
+  Script,
+  Statement,
+  Trigger,
+} from "@agorix/program-model";
 import {
   createUnsupportedNodeDiagnostic,
   firstRangeMapping,
@@ -63,7 +70,61 @@ export function formatNumber(value: number): string {
   return String(value);
 }
 
-function formatExpression(expression: Expression, nodeId: string): string {
+interface ProjectionContext {
+  readonly variableNames: ReadonlyMap<string, string>;
+  readonly variableLabels: ReadonlyMap<string, string>;
+}
+
+function safeIdentifier(value: string, fallback: string): string {
+  const words = value.match(/[A-Za-z0-9]+/g) ?? [];
+  const candidate = words
+    .map((word, index) => {
+      const lower = word.toLowerCase();
+      return index === 0 ? lower : lower[0]?.toUpperCase() + lower.slice(1);
+    })
+    .join("");
+  const identifier = candidate.length > 0 ? candidate : fallback;
+  return /^[A-Za-z_]/.test(identifier) ? identifier : `v${identifier}`;
+}
+
+function createProjectionContext(
+  variables: readonly ProgramVariable[] | undefined,
+): ProjectionContext {
+  const variableNames = new Map<string, string>();
+  const variableLabels = new Map<string, string>();
+  const used = new Set<string>();
+  for (const variable of variables ?? []) {
+    const base = safeIdentifier(variable.name, safeIdentifier(variable.id, "value"));
+    let name = base;
+    let suffix = 2;
+    while (used.has(name)) {
+      name = `${base}${suffix}`;
+      suffix += 1;
+    }
+    used.add(name);
+    variableNames.set(variable.id, name);
+    variableLabels.set(variable.id, variable.name);
+  }
+  return { variableNames, variableLabels };
+}
+
+function formatVariableName(
+  context: ProjectionContext,
+  variableId: string,
+  nodeId: string,
+): string {
+  const name = context.variableNames.get(variableId);
+  if (name === undefined) {
+    throw new UnsupportedNodeError(nodeId, "variable");
+  }
+  return name;
+}
+
+function formatExpression(
+  expression: Expression,
+  nodeId: string,
+  context: ProjectionContext,
+): string {
   switch (expression.type) {
     case "touchingGoal":
       return "sprite.touchingGoal()";
@@ -71,6 +132,30 @@ function formatExpression(expression: Expression, nodeId: string): string {
       return expression.value ? "true" : "false";
     case "numericLiteral":
       return formatNumber(expression.value);
+    case "variable":
+      return formatVariableName(context, expression.variableId, nodeId);
+    case "add":
+      return `(${formatExpression(expression.left, `${nodeId}/left`, context)} + ${formatExpression(expression.right, `${nodeId}/right`, context)})`;
+    case "subtract":
+      return `(${formatExpression(expression.left, `${nodeId}/left`, context)} - ${formatExpression(expression.right, `${nodeId}/right`, context)})`;
+    case "multiply":
+      return `(${formatExpression(expression.left, `${nodeId}/left`, context)} * ${formatExpression(expression.right, `${nodeId}/right`, context)})`;
+    case "divide":
+      return `(${formatExpression(expression.left, `${nodeId}/left`, context)} / ${formatExpression(expression.right, `${nodeId}/right`, context)})`;
+    case "lessThan":
+      return `(${formatExpression(expression.left, `${nodeId}/left`, context)} < ${formatExpression(expression.right, `${nodeId}/right`, context)})`;
+    case "greaterThan":
+      return `(${formatExpression(expression.left, `${nodeId}/left`, context)} > ${formatExpression(expression.right, `${nodeId}/right`, context)})`;
+    case "equals":
+      return `(${formatExpression(expression.left, `${nodeId}/left`, context)} === ${formatExpression(expression.right, `${nodeId}/right`, context)})`;
+    case "and":
+      return `(${formatExpression(expression.left, `${nodeId}/left`, context)} && ${formatExpression(expression.right, `${nodeId}/right`, context)})`;
+    case "or":
+      return `(${formatExpression(expression.left, `${nodeId}/left`, context)} || ${formatExpression(expression.right, `${nodeId}/right`, context)})`;
+    case "not":
+      return `(!${formatExpression(expression.value, `${nodeId}/value`, context)})`;
+    case "random":
+      return `random(${formatExpression(expression.min, `${nodeId}/min`, context)}, ${formatExpression(expression.max, `${nodeId}/max`, context)})`;
     default: {
       const unknown = expression as { type?: unknown };
       throw new UnsupportedNodeError(nodeId, String(unknown.type));
@@ -95,6 +180,7 @@ function projectStatements(
   segment: "statements" | "body" | "then",
   indent: number,
   writer: Writer,
+  context: ProjectionContext,
 ): void {
   const pad = "  ".repeat(indent);
   for (let i = 0; i < statements.length; i += 1) {
@@ -104,7 +190,7 @@ function projectStatements(
     }
     const nodeId = `${path}/${segment}[${i}]`;
     const start = writer.offset;
-    projectStatement(statement, nodeId, pad, indent, writer);
+    projectStatement(statement, nodeId, pad, indent, writer, context);
     writer.mapping[nodeId] = { start, end: writer.offset };
   }
 }
@@ -115,6 +201,7 @@ function projectStatement(
   pad: string,
   indent: number,
   writer: Writer,
+  context: ProjectionContext,
 ): void {
   switch (statement.type) {
     case "move":
@@ -123,22 +210,76 @@ function projectStatement(
     case "turn":
       write(writer, `${pad}sprite.turn(${formatNumber(statement.degrees)});\n`);
       return;
+    case "say":
+      write(writer, `${pad}sprite.say(${JSON.stringify(statement.text)});\n`);
+      return;
+    case "think":
+      write(writer, `${pad}sprite.think(${JSON.stringify(statement.text)});\n`);
+      return;
+    case "show":
+      write(writer, `${pad}sprite.show();\n`);
+      return;
+    case "hide":
+      write(writer, `${pad}sprite.hide();\n`);
+      return;
+    case "setSize":
+      write(writer, `${pad}sprite.setSize(${formatNumber(statement.size)});\n`);
+      return;
+    case "switchCostume":
+      write(writer, `${pad}sprite.switchCostume(${JSON.stringify(statement.costumeId)});\n`);
+      return;
+    case "switchBackdrop":
+      write(writer, `${pad}stage.switchBackdrop(${JSON.stringify(statement.backdropId)});\n`);
+      return;
+    case "playSound":
+      write(writer, `${pad}sound.play(${JSON.stringify(statement.soundId)});\n`);
+      return;
+    case "stopSounds":
+      write(writer, `${pad}sound.stopAll();\n`);
+      return;
+    case "broadcast":
+      write(writer, `${pad}stage.broadcast(${JSON.stringify(statement.message)});\n`);
+      return;
+    case "setVariable":
+      write(
+        writer,
+        `${pad}${formatVariableName(context, statement.variableId, nodeId)} = ${formatExpression(statement.value, `${nodeId}/value`, context)};\n`,
+      );
+      return;
+    case "changeVariable":
+      write(
+        writer,
+        `${pad}${formatVariableName(context, statement.variableId, nodeId)} += ${formatExpression(statement.delta, `${nodeId}/delta`, context)};\n`,
+      );
+      return;
+    case "showVariable":
+      write(
+        writer,
+        `${pad}showVariable(${JSON.stringify(context.variableLabels.get(statement.variableId) ?? statement.variableId)});\n`,
+      );
+      return;
+    case "hideVariable":
+      write(
+        writer,
+        `${pad}hideVariable(${JSON.stringify(context.variableLabels.get(statement.variableId) ?? statement.variableId)});\n`,
+      );
+      return;
     case "repeat": {
       write(writer, `${pad}repeat(${formatNumber(statement.count)}, () => {\n`);
-      projectStatements(statement.body, nodeId, "body", indent + 1, writer);
+      projectStatements(statement.body, nodeId, "body", indent + 1, writer, context);
       write(writer, `${pad}});\n`);
       return;
     }
     case "if": {
       const condId = `${nodeId}/condition`;
-      const cond = formatExpression(statement.condition, condId);
+      const cond = formatExpression(statement.condition, condId, context);
       const lineStart = writer.offset;
       const prefix = `${pad}if (`;
       const condStart = lineStart + prefix.length;
       const condEnd = condStart + cond.length;
       writer.mapping[condId] = { start: condStart, end: condEnd };
       write(writer, `${prefix}${cond}) {\n`);
-      projectStatements(statement.then, nodeId, "then", indent + 1, writer);
+      projectStatements(statement.then, nodeId, "then", indent + 1, writer, context);
       write(writer, `${pad}}\n`);
       return;
     }
@@ -153,6 +294,12 @@ function projectTrigger(trigger: Trigger, nodeId: string): string {
   switch (trigger.type) {
     case "onStart":
       return "whenStarted";
+    case "onKeyPressed":
+      return `whenKeyPressed(${JSON.stringify(trigger.key)})`;
+    case "onActorClicked":
+      return "whenActorClicked";
+    case "onMessage":
+      return `whenMessageReceived(${JSON.stringify(trigger.message)})`;
     default: {
       const unknown = trigger as { type?: unknown };
       throw new UnsupportedNodeError(nodeId, String(unknown.type));
@@ -160,14 +307,19 @@ function projectTrigger(trigger: Trigger, nodeId: string): string {
   }
 }
 
-function projectScript(script: Script, index: number, writer: Writer): void {
+function projectScript(
+  script: Script,
+  index: number,
+  writer: Writer,
+  context: ProjectionContext,
+): void {
   const scriptPath = `scripts[${index}]`;
   const triggerId = `${scriptPath}/trigger`;
   const trigger = projectTrigger(script.trigger, triggerId);
   const start = writer.offset;
   writer.mapping[triggerId] = { start, end: start + trigger.length };
   write(writer, `${trigger}(() => {\n`);
-  projectStatements(script.statements, scriptPath, "statements", 1, writer);
+  projectStatements(script.statements, scriptPath, "statements", 1, writer, context);
   write(writer, "});\n");
   writer.mapping[scriptPath] = { start, end: writer.offset };
 }
@@ -177,6 +329,19 @@ function projectText(program: ProjectProgram): {
   readonly mapping: LanguageNodeTextMapping;
 } {
   const writer: Writer = { parts: [], offset: 0, mapping: {} };
+  const context = createProjectionContext(program.variables);
+  for (const variable of program.variables ?? []) {
+    write(
+      writer,
+      `let ${formatVariableName(context, variable.id, `variables/${variable.id}`)} = ${formatNumber(variable.initialValue)};\n`,
+    );
+    if (variable.visible) {
+      write(writer, `showVariable(${JSON.stringify(variable.name)});\n`);
+    }
+  }
+  if ((program.variables?.length ?? 0) > 0 && program.scripts.length > 0) {
+    write(writer, "\n");
+  }
   for (let i = 0; i < program.scripts.length; i += 1) {
     const script = program.scripts[i];
     if (script === undefined) {
@@ -185,7 +350,7 @@ function projectText(program: ProjectProgram): {
     if (i > 0) {
       write(writer, "\n");
     }
-    projectScript(script, i, writer);
+    projectScript(script, i, writer, context);
   }
   return { text: writer.parts.join(""), mapping: singleRangeMapping(writer.mapping) };
 }

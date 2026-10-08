@@ -6,9 +6,11 @@ export type {
   StageGoal,
   StagePosition,
   StageSession,
+  StageSoundState,
   StageSprite,
   StageState,
   StageStateInput,
+  StageVariableWatcher,
   StageViewport,
 } from "./model.js";
 export {

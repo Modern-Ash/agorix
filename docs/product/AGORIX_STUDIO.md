@@ -45,6 +45,34 @@ A host-side `SyncHub` (`extensions/vscode/src/sync/syncHub.ts`) holds one select
 - A refused placement explains why (`NOT_A_CONTAINER`, `BAD_INDEX`, `BLOCK_NOT_FOUND`, `NOT_A_STATEMENT`, `WOULD_BREAK_PROGRAM`) in the live status region.
 - Agent agreement `requirePredictionBeforeAccept` (off by default): the learner must predict before accepting an AI suggestion. It never blocks manual edits, and rejecting never needs a prediction.
 
+## Workbench Stage, Actors and Assets
+
+The Workbench now carries the Web app's visible project model in an IDE-native
+form:
+
+- The inline Stage subscribes to `stageFrame` messages derived from deterministic
+  runtime evidence. Run and Pause control repeated Step commands from the
+  Workbench, while Reset/Step stay available through the Studio command surface.
+- Stage frames carry the active actor, script and statement type. The Workbench
+  shows that route next to the frame readout and the Event Trace can be filtered
+  by selected actor or script for multi-actor debugging.
+- Actors are read from and persisted to `ProjectMetadata.actors`. The inspector
+  edits name, position, direction, size and visibility with numeric validation
+  before the host commits a fresh `.agorix` snapshot. Actor updates are
+  fail-closed: unknown actor ids and costume refs outside the shared catalog are
+  refused instead of producing silent metadata drift. The Studio protocol also
+  rejects non-positive or extreme actor sizes before they reach the host.
+- Assets are exposed as a technical catalog of sprites, backdrops, costumes and
+  sounds. Studio presents id, kind, dimensions, duration and tags instead of the
+  Web app's beginner-facing library chrome. The catalog is searchable and can be
+  filtered by asset kind for dense project inspection.
+- Sound playback evidence is transported in `stageFrame.state.sounds`. Studio
+  renders active sound ids in the Stage and resolves their names from the shared
+  asset catalog; it does not depend on browser audio to prove that `playSound`
+  ran.
+- The palette is grouped by Motion, Control and Sensing, with search over labels
+  and descriptions. Only canonical-safe direct script insertions are enabled.
+
 ## Advanced canvas proposals
 
 - A proposal shows its operations as a list. The learner keeps or skips each one and may edit a numeric value (`steps`, `degrees`, `count`). "Apply selected" derives a narrower, revalidated proposal and commits it as one transaction (one undo step, one `modify` decision). An empty selection is a rejection and changes nothing.

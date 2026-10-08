@@ -76,6 +76,14 @@ function freezeStageState(state: StageState): StageState {
   Object.freeze(cloned.sprite);
   Object.freeze(cloned.goal);
   Object.freeze(cloned.viewport);
+  cloned.variables?.forEach((variable) => Object.freeze(variable));
+  if (cloned.variables !== undefined) {
+    Object.freeze(cloned.variables);
+  }
+  if (cloned.sounds !== undefined) {
+    Object.freeze(cloned.sounds.activeSoundIds);
+    Object.freeze(cloned.sounds);
+  }
   return Object.freeze(cloned);
 }
 
@@ -117,8 +125,32 @@ export function framesFromRuntimeObservations(
           x: observation.world.sprite.x,
           y: observation.world.sprite.y,
           heading: observation.world.sprite.heading,
+          visible: observation.world.sprite.visible,
+          size: observation.world.sprite.size,
+          ...(observation.world.sprite.costumeId === undefined
+            ? {}
+            : { costumeId: observation.world.sprite.costumeId }),
+          ...(observation.world.sprite.bubble === undefined
+            ? {}
+            : { bubble: observation.world.sprite.bubble }),
         },
         goal: observation.world.goal,
+        ...(observation.world.backdropId === undefined
+          ? {}
+          : { backdropId: observation.world.backdropId }),
+        ...(observation.world.variables === undefined
+          ? {}
+          : {
+              variables: Object.entries(observation.world.variables).map(([id, variable]) => ({
+                id,
+                label: id,
+                value: variable.value,
+                visible: variable.visible,
+              })),
+            }),
+        ...(observation.world.sounds === undefined
+          ? {}
+          : { sounds: { activeSoundIds: observation.world.sounds.activeSoundIds } }),
       }),
       {
         ...(observation.nodeId === "$" ? {} : { highlightedNodeId: observation.nodeId }),
@@ -212,6 +244,28 @@ function makeSummary(
     return changed ? "Question was true" : "Question did not change the world";
   }
   if (step.statementType === "repeat") return "Repeat finished";
+  if (step.statementType === "say") {
+    return `Speech bubble: ${step.observation.world.sprite.bubble?.text ?? ""}`;
+  }
+  if (step.statementType === "think") {
+    return `Thought bubble: ${step.observation.world.sprite.bubble?.text ?? ""}`;
+  }
+  if (step.statementType === "show") return "Sprite shown";
+  if (step.statementType === "hide") return "Sprite hidden";
+  if (step.statementType === "setSize") {
+    return `Sprite size: ${step.observation.world.sprite.size}`;
+  }
+  if (step.statementType === "switchCostume") {
+    return `Costume: ${step.observation.world.sprite.costumeId ?? "default"}`;
+  }
+  if (step.statementType === "switchBackdrop") {
+    return `Backdrop: ${step.observation.world.backdropId ?? "default"}`;
+  }
+  if (step.statementType === "playSound") {
+    const sounds = step.observation.world.sounds?.activeSoundIds ?? [];
+    return sounds.length === 0 ? "Sound cue recorded" : `Sound playing: ${sounds.join(", ")}`;
+  }
+  if (step.statementType === "stopSounds") return "Sounds stopped";
   if (profile === "studio") {
     return `before: x=${before.x} y=${before.y} heading=${before.heading}; after: x=${after.x} y=${after.y} heading=${after.heading}`;
   }
@@ -234,6 +288,24 @@ function titleForStep(step: ExecutionStep, profile: LearnerTraceProfile): string
       return step.timing === "enter-repeat" ? "Repeat starts" : "Repeat ends";
     case "if":
       return "Question";
+    case "say":
+      return "Say";
+    case "think":
+      return "Think";
+    case "show":
+      return "Show";
+    case "hide":
+      return "Hide";
+    case "setSize":
+      return "Set size";
+    case "switchCostume":
+      return "Switch costume";
+    case "switchBackdrop":
+      return "Switch backdrop";
+    case "playSound":
+      return "Play sound";
+    case "stopSounds":
+      return "Stop sounds";
     default:
       return "Instruction";
   }
