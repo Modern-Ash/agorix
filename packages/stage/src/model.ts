@@ -6,6 +6,15 @@ export interface StagePosition {
 export interface StageSprite extends StagePosition {
   readonly heading: number;
   readonly radius: number;
+  readonly visible: boolean;
+  readonly size: number;
+  readonly costumeId?: string;
+  readonly bubble?: StageBubble;
+}
+
+export interface StageBubble {
+  readonly kind: "say" | "think";
+  readonly text: string;
 }
 
 export interface StageGoal extends StagePosition {
@@ -17,16 +26,33 @@ export interface StageViewport {
   readonly height: number;
 }
 
+export interface StageVariableWatcher {
+  readonly id: string;
+  readonly label: string;
+  readonly value: number;
+  readonly visible: boolean;
+}
+
+export interface StageSoundState {
+  readonly activeSoundIds: readonly string[];
+}
+
 export interface StageState {
   readonly sprite: StageSprite;
   readonly goal: StageGoal;
   readonly viewport: StageViewport;
+  readonly backdropId?: string;
+  readonly variables?: readonly StageVariableWatcher[];
+  readonly sounds?: StageSoundState;
 }
 
 export interface StageStateInput {
   readonly sprite?: Partial<StageSprite>;
   readonly goal?: Partial<StageGoal>;
   readonly viewport?: Partial<StageViewport>;
+  readonly backdropId?: string;
+  readonly variables?: readonly Partial<StageVariableWatcher>[];
+  readonly sounds?: Partial<StageSoundState>;
 }
 
 export interface StageSession {
@@ -70,13 +96,54 @@ function normalizeViewportDimension(value: number, path: string): number {
   return normalizeStageCoordinate(value);
 }
 
+function normalizeVariableWatchers(
+  variables: readonly Partial<StageVariableWatcher>[] | undefined,
+): readonly StageVariableWatcher[] | undefined {
+  if (variables === undefined) {
+    return undefined;
+  }
+  return variables
+    .filter((variable) => variable.id !== undefined)
+    .map((variable) => {
+      const id = variable.id ?? "";
+      return {
+        id,
+        label: variable.label ?? id,
+        value: normalizeStageCoordinate(variable.value ?? 0),
+        visible: variable.visible ?? false,
+      };
+    });
+}
+
+function normalizeSoundState(
+  sounds: Partial<StageSoundState> | undefined,
+): StageSoundState | undefined {
+  if (sounds?.activeSoundIds === undefined) {
+    return undefined;
+  }
+  return { activeSoundIds: [...sounds.activeSoundIds] };
+}
+
 export function createStageState(input: StageStateInput = {}): StageState {
+  const variables = normalizeVariableWatchers(input.variables);
+  const sounds = normalizeSoundState(input.sounds);
   return {
     sprite: {
       x: normalizeStageCoordinate(input.sprite?.x ?? 0),
       y: normalizeStageCoordinate(input.sprite?.y ?? 0),
       heading: normalizeStageHeading(input.sprite?.heading ?? 0),
       radius: normalizeRadius(input.sprite?.radius ?? 10, "sprite.radius"),
+      visible: input.sprite?.visible ?? true,
+      size: normalizeStageCoordinate(input.sprite?.size ?? 100),
+      ...(input.sprite?.costumeId === undefined ? {} : { costumeId: input.sprite.costumeId }),
+      ...(input.sprite?.bubble === undefined
+        ? {}
+        : {
+            bubble: {
+              kind: input.sprite.bubble.kind,
+              text: input.sprite.bubble.text,
+            },
+          }),
     },
     goal: {
       x: normalizeStageCoordinate(input.goal?.x ?? 100),
@@ -87,6 +154,9 @@ export function createStageState(input: StageStateInput = {}): StageState {
       width: normalizeViewportDimension(input.viewport?.width ?? 480, "viewport.width"),
       height: normalizeViewportDimension(input.viewport?.height ?? 320, "viewport.height"),
     },
+    ...(input.backdropId === undefined ? {} : { backdropId: input.backdropId }),
+    ...(variables === undefined ? {} : { variables }),
+    ...(sounds === undefined ? {} : { sounds }),
   };
 }
 

@@ -28,6 +28,16 @@ export const FULL_COVERAGE_PROGRAM: ProjectProgram = {
       statements: [
         { type: "move", steps: 3 },
         { type: "turn", degrees: 90 },
+        { type: "say", text: "Launch sequence" },
+        { type: "think", text: "Need a better route" },
+        { type: "hide" },
+        { type: "show" },
+        { type: "setSize", size: 120 },
+        { type: "switchCostume", costumeId: "asset:costume.default" },
+        { type: "switchBackdrop", backdropId: "asset:space.trailhead" },
+        { type: "playSound", soundId: "asset:sound.beacon" },
+        { type: "stopSounds" },
+        { type: "broadcast", message: "mission:check" },
         {
           type: "repeat",
           count: 2,
@@ -56,6 +66,21 @@ export const FULL_COVERAGE_PROGRAM: ProjectProgram = {
           then: [],
         },
       ],
+    },
+    {
+      id: "key-trigger",
+      trigger: { type: "onKeyPressed", key: "ArrowRight" },
+      statements: [{ type: "move", steps: 4 }],
+    },
+    {
+      id: "click-trigger",
+      trigger: { type: "onActorClicked" },
+      statements: [{ type: "say", text: "Clicked" }],
+    },
+    {
+      id: "message-trigger",
+      trigger: { type: "onMessage", message: "mission:check" },
+      statements: [{ type: "think", text: "Checking" }],
     },
   ],
 };

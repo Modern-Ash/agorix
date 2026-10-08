@@ -6,6 +6,12 @@ export function eventForTrigger(trigger: Trigger): ProgramEvent {
     case "greenFlag":
     case "onStart":
       return "greenFlag";
+    case "onActorClicked":
+      return "actorClicked";
+    case "onKeyPressed":
+      return `key:${trigger.key}`;
+    case "onMessage":
+      return `message:${trigger.message}`;
   }
 }
 

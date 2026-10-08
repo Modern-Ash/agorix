@@ -37,6 +37,33 @@ const storedProject: StoredProject = {
     missionProgress: 0.5,
     hintLevel: 1,
     locale: "es-AR",
+    actors: {
+      activeId: "actor:hero",
+      items: [
+        {
+          id: "actor:hero",
+          name: "Hero",
+          x: 12,
+          y: 4,
+          direction: 90,
+          size: 100,
+          visible: true,
+          costumeId: "costume:rocket",
+          scripts: ["main"],
+        },
+      ],
+    },
+    stage: {
+      backdropId: "backdrop:space",
+      width: 480,
+      height: 320,
+      actorOrder: ["actor:hero"],
+    },
+    assets: [
+      { id: "costume:rocket", kind: "costume", name: "Rocket", source: "builtin:rocket" },
+      { id: "backdrop:space", kind: "backdrop", name: "Space", source: "builtin:space" },
+      { id: "sound:ping", kind: "sound", name: "Ping", source: "builtin:ping" },
+    ],
   },
 };
 
@@ -81,6 +108,146 @@ describe(".agorix portable project v1", () => {
     expect(semanticProjectHash(studioImport)).toBe(semanticProjectHash(storedProject));
     expect(semanticProjectHash(webImport)).toBe(semanticProjectHash(storedProject));
     expect(webImport).toEqual(storedProject);
+  });
+
+  it("rejects malformed actor metadata", () => {
+    const bad = cloneProject({
+      metadata: {
+        ...storedProject.metadata,
+        actors: {
+          activeId: "actor:hero",
+          items: [{ id: "actor:hero", name: "Hero", x: 0, y: 0, direction: 0, size: 100 }],
+        } as never,
+      },
+    });
+    expect(() => serializeAgorixProject(bad, { exportedAt })).toThrow(/visible/);
+
+    const badScriptRef = cloneProject({
+      metadata: {
+        ...storedProject.metadata,
+        actors: {
+          activeId: "actor:hero",
+          items: [
+            {
+              id: "actor:hero",
+              name: "Hero",
+              x: 0,
+              y: 0,
+              direction: 0,
+              size: 100,
+              visible: true,
+              scripts: ["main", 7],
+            },
+          ],
+        } as never,
+      },
+    });
+    expect(() => serializeAgorixProject(badScriptRef, { exportedAt })).toThrow(
+      /actors\.items\[0\]\.scripts/,
+    );
+  });
+
+  it("rejects malformed stage ordering metadata", () => {
+    const badActorOrder = cloneProject({
+      metadata: {
+        ...storedProject.metadata,
+        stage: {
+          ...storedProject.metadata.stage,
+          actorOrder: ["actor:hero", 7],
+        } as never,
+      },
+    });
+    expect(() => serializeAgorixProject(badActorOrder, { exportedAt })).toThrow(
+      /stage\.actorOrder/,
+    );
+  });
+
+  it("rejects malformed asset metadata before creative reference validation", () => {
+    const badKind = cloneProject({
+      metadata: {
+        ...storedProject.metadata,
+        assets: [
+          {
+            id: "asset:bad",
+            kind: "sprite",
+            name: "Bad",
+            source: "builtin:bad",
+          },
+        ] as never,
+      },
+    });
+    expect(() => serializeAgorixProject(badKind, { exportedAt })).toThrow(/assets\[0\]\.kind/);
+
+    const badTag = cloneProject({
+      metadata: {
+        ...storedProject.metadata,
+        assets: [
+          {
+            id: "costume:rocket",
+            kind: "costume",
+            name: "Rocket",
+            source: "builtin:rocket",
+            tags: ["starter", ""],
+          },
+          { id: "backdrop:space", kind: "backdrop", name: "Space", source: "builtin:space" },
+        ],
+      },
+    });
+    expect(() => serializeAgorixProject(badTag, { exportedAt })).toThrow(/assets\[0\]\.tags/);
+  });
+
+  it("normalizes legacy actor appearanceId to canonical costumeId", () => {
+    const legacy = cloneProject({
+      metadata: {
+        ...storedProject.metadata,
+        actors: {
+          activeId: "actor:hero",
+          items: [
+            {
+              id: "actor:hero",
+              name: "Hero",
+              x: 12,
+              y: 4,
+              direction: 90,
+              size: 100,
+              visible: true,
+              appearanceId: "costume:rocket",
+              scripts: ["main"],
+            },
+          ],
+        },
+      },
+    });
+
+    const parsed = parseAgorixProject(serializeAgorixProject(legacy, { exportedAt })).project;
+
+    expect(parsed.metadata.actors?.items[0]).toMatchObject({ costumeId: "costume:rocket" });
+    expect(parsed.metadata.actors?.items[0]).not.toHaveProperty("appearanceId");
+  });
+
+  it("rejects broken creative references in actors, stage and assets", () => {
+    const bad = cloneProject({
+      metadata: {
+        ...storedProject.metadata,
+        actors: {
+          activeId: "actor:hero",
+          items: [
+            {
+              id: "actor:hero",
+              name: "Hero",
+              x: 12,
+              y: 4,
+              direction: 90,
+              size: 100,
+              visible: true,
+              costumeId: "costume:missing",
+            },
+          ],
+        },
+      },
+    });
+
+    expect(() => serializeAgorixProject(bad, { exportedAt })).toThrow(/INVALID_REFERENCE/);
   });
 
   it("does not call network APIs while exporting an anonymous project", () => {

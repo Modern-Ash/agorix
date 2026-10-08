@@ -9,6 +9,14 @@ export const MOVE_STEPS_MAX = 1000;
 export const TURN_DEGREES_MIN = -1000;
 export const TURN_DEGREES_MAX = 1000;
 
+export const LOOKS_TEXT_MAX_LENGTH = 140;
+export const EVENT_KEY_MAX_LENGTH = 40;
+export const EVENT_MESSAGE_MAX_LENGTH = 80;
+export const VARIABLE_NAME_MAX_LENGTH = 40;
+
+export const SPRITE_SIZE_MIN = 1;
+export const SPRITE_SIZE_MAX = 400;
+
 export const REPEAT_COUNT_MIN = 1;
 export const REPEAT_COUNT_MAX = 1000;
 

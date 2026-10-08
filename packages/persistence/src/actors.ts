@@ -6,9 +6,20 @@ export const ACTOR_COORDINATE_LIMIT = 10_000;
 export const ACTOR_SIZE_MIN = 5;
 export const ACTOR_SIZE_MAX = 500;
 
-const ACTOR_KEYS = ["id", "name", "x", "y", "direction", "size", "visible"] as const;
+const ACTOR_KEYS = [
+  "id",
+  "name",
+  "x",
+  "y",
+  "direction",
+  "size",
+  "visible",
+  "costumeId",
+  "appearanceId",
+  "scripts",
+] as const;
 const ACTOR_SET_KEYS = ["activeId", "items"] as const;
-const ACTOR_ID = /^[a-z][a-z0-9-]{0,31}$/;
+const ACTOR_ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$/;
 
 /** Starting properties of a Scratch-like actor (sprite). Scripts will attach to actors later. */
 export interface ProjectActor {
@@ -21,6 +32,10 @@ export interface ProjectActor {
   /** Percent of the default sprite size. */
   readonly size: number;
   readonly visible: boolean;
+  readonly costumeId?: string;
+  /** @deprecated Use costumeId. Kept as a read compatibility alias for pre-core Studio metadata. */
+  readonly appearanceId?: string;
+  readonly scripts?: readonly string[];
 }
 
 export interface ProjectActors {
@@ -95,7 +110,37 @@ export function validateProjectActors(input: unknown): ProjectActors {
     const size = finite(actor["size"], `${path}.size`);
     if (size < ACTOR_SIZE_MIN || size > ACTOR_SIZE_MAX) fail(`${path}.size is out of range`);
     if (typeof actor["visible"] !== "boolean") fail(`${path}.visible must be a boolean`);
-    return { id, name, x, y, direction, size, visible: actor["visible"] };
+    if ("costumeId" in actor && typeof actor["costumeId"] !== "string") {
+      fail(`${path}.costumeId must be a string`);
+    }
+    if ("appearanceId" in actor && typeof actor["appearanceId"] !== "string") {
+      fail(`${path}.appearanceId must be a string`);
+    }
+    if (
+      "scripts" in actor &&
+      (!Array.isArray(actor["scripts"]) ||
+        actor["scripts"].length > 32 ||
+        !actor["scripts"].every((script) => typeof script === "string"))
+    ) {
+      fail(`${path}.scripts must be an array of strings`);
+    }
+    const costumeId =
+      typeof actor["costumeId"] === "string"
+        ? actor["costumeId"]
+        : typeof actor["appearanceId"] === "string"
+          ? actor["appearanceId"]
+          : undefined;
+    return {
+      id,
+      name,
+      x,
+      y,
+      direction,
+      size,
+      visible: actor["visible"],
+      ...(costumeId === undefined ? {} : { costumeId }),
+      ...(Array.isArray(actor["scripts"]) ? { scripts: actor["scripts"] as readonly string[] } : {}),
+    };
   });
   const activeId = record["activeId"];
   if (typeof activeId !== "string" || !seen.has(activeId)) {

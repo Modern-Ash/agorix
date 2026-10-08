@@ -36,10 +36,10 @@ describe("stage", () => {
     const turned = turnStage(movedEast, 90);
     const movedNorth = moveStage(turned, 5);
 
-    expect(movedEast.sprite).toEqual({ x: 10, y: 0, heading: 0, radius: 0 });
-    expect(turned.sprite).toEqual({ x: 10, y: 0, heading: 90, radius: 0 });
-    expect(movedNorth.sprite).toEqual({ x: 10, y: 5, heading: 90, radius: 0 });
-    expect(initial.sprite).toEqual({ x: 0, y: 0, heading: 0, radius: 0 });
+    expect(movedEast.sprite).toMatchObject({ x: 10, y: 0, heading: 0, radius: 0 });
+    expect(turned.sprite).toMatchObject({ x: 10, y: 0, heading: 90, radius: 0 });
+    expect(movedNorth.sprite).toMatchObject({ x: 10, y: 5, heading: 90, radius: 0 });
+    expect(initial.sprite).toMatchObject({ x: 0, y: 0, heading: 0, radius: 0 });
   });
 
   it("detects touching-goal collisions deterministically", () => {
@@ -130,7 +130,12 @@ describe("stage", () => {
         step: 1,
         nodeId: "scripts[0]/statements[0]",
         statementType: "move",
-        world: { sprite: { x: 10, y: 0, heading: 0 }, goal: { x: 10, y: 0 } },
+        world: {
+          sprite: { x: 10, y: 0, heading: 0 },
+          goal: { x: 10, y: 0 },
+          variables: { score: { value: 3, visible: true } },
+          sounds: { activeSoundIds: ["asset:sound.beacon"] },
+        },
       },
       {
         kind: "run-complete",
@@ -150,6 +155,10 @@ describe("stage", () => {
     ]);
     expect(frames.map((frame) => frame.running)).toEqual([true, true, false]);
     expect(frames[1]?.reachedGoal).toBe(true);
+    expect(frames[1]?.state.variables).toEqual([
+      { id: "score", label: "score", value: 3, visible: true },
+    ]);
+    expect(frames[1]?.state.sounds?.activeSoundIds).toEqual(["asset:sound.beacon"]);
   });
 
   it("creates deterministic child-readable execution steps from runtime observations", () => {
@@ -274,6 +283,110 @@ describe("stage", () => {
     expect(studio[1]?.summary).toContain("after: x=30 y=0 heading=0");
     expect(studio[1]?.nodeId).toBe(beginner[1]?.nodeId);
     expect(JSON.stringify(beginner)).not.toMatch(/provider|prompt|stack|email|token/i);
+  });
+
+  it("names sound runtime evidence in learner traces", () => {
+    const observations: RuntimeObservation[] = [
+      {
+        kind: "statement-start",
+        step: 1,
+        nodeId: "scripts[0]/statements[0]",
+        statementType: "playSound",
+        world: { sprite: { x: 0, y: 0, heading: 0 }, goal: { x: 100, y: 0 } },
+      },
+      {
+        kind: "statement-end",
+        step: 1,
+        nodeId: "scripts[0]/statements[0]",
+        statementType: "playSound",
+        world: {
+          sprite: { x: 0, y: 0, heading: 0 },
+          goal: { x: 100, y: 0 },
+          sounds: { activeSoundIds: ["asset:sound.beacon"] },
+        },
+      },
+      {
+        kind: "statement-end",
+        step: 2,
+        nodeId: "scripts[0]/statements[1]",
+        statementType: "stopSounds",
+        world: {
+          sprite: { x: 0, y: 0, heading: 0 },
+          goal: { x: 100, y: 0 },
+          sounds: { activeSoundIds: [] },
+        },
+      },
+    ];
+
+    const trace = learnerTraceFromExecutionSteps(
+      executionStepsFromRuntimeObservations(observations),
+    );
+
+    expect(trace[1]).toMatchObject({
+      title: "Play sound",
+      summary: "Sound playing: asset:sound.beacon",
+    });
+    expect(trace[2]).toMatchObject({
+      title: "Stop sounds",
+      summary: "Sounds stopped",
+    });
+  });
+
+  it("names Looks runtime evidence in learner traces", () => {
+    const observations: RuntimeObservation[] = [
+      {
+        kind: "statement-end",
+        step: 1,
+        nodeId: "scripts[0]/statements[0]",
+        statementType: "say",
+        world: {
+          sprite: { x: 0, y: 0, heading: 0, bubble: { kind: "say", text: "Go Nova" } },
+          goal: { x: 100, y: 0 },
+        },
+      },
+      {
+        kind: "statement-end",
+        step: 2,
+        nodeId: "scripts[0]/statements[1]",
+        statementType: "setSize",
+        world: {
+          sprite: { x: 0, y: 0, heading: 0, size: 150 },
+          goal: { x: 100, y: 0 },
+        },
+      },
+      {
+        kind: "statement-end",
+        step: 3,
+        nodeId: "scripts[0]/statements[2]",
+        statementType: "switchCostume",
+        world: {
+          sprite: { x: 0, y: 0, heading: 0, costumeId: "asset:costume.spark" },
+          goal: { x: 100, y: 0 },
+        },
+      },
+      {
+        kind: "statement-end",
+        step: 4,
+        nodeId: "scripts[0]/statements[3]",
+        statementType: "switchBackdrop",
+        world: {
+          sprite: { x: 0, y: 0, heading: 0 },
+          goal: { x: 100, y: 0 },
+          backdropId: "asset:space.nebula",
+        },
+      },
+    ];
+
+    const trace = learnerTraceFromExecutionSteps(
+      executionStepsFromRuntimeObservations(observations),
+    );
+
+    expect(trace.map((item) => [item.title, item.summary])).toEqual([
+      ["Say", "Speech bubble: Go Nova"],
+      ["Set size", "Sprite size: 150"],
+      ["Switch costume", "Costume: asset:costume.spark"],
+      ["Switch backdrop", "Backdrop: asset:space.nebula"],
+    ]);
   });
 
   it("keeps Phaser out of the stage domain package", () => {
