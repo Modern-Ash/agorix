@@ -430,6 +430,7 @@ export function runProgram(
 ): RunResult {
   const validated = validateProgram(program);
   assertProgramOperationsAllowed(validated);
+  const event = options.event ?? "greenFlag";
   const state: MutableRunState = {
     world: seedProgramVariables(initialWorld, validated.variables),
     stepsUsed: 0,
@@ -447,6 +448,9 @@ export function runProgram(
         continue;
       }
       assertTrigger(script.trigger, `scripts[${i}].trigger`);
+      if (eventForTrigger(script.trigger) !== event) {
+        continue;
+      }
       executeStatements(script.statements, `scripts[${i}].statements`, state);
     }
     const world = cloneWorldState(state.world);

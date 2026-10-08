@@ -150,7 +150,7 @@ const tests = [
         () => vscode.window.activeTextEditor,
       );
       assert.equal(editor.document.uri.scheme, "agorix-studio");
-      assert.match(editor.document.getText(), /whenStarted/);
+      assert.match(editor.document.getText(), /whenGreenFlagClicked/);
 
       const run = await vscode.commands.executeCommand("agorixStudio.run");
       const step = await vscode.commands.executeCommand("agorixStudio.step");
@@ -213,6 +213,36 @@ const tests = [
     },
   ],
   [
+    "Stage opens once beside the editor and follows run, stop and reset",
+    async () => {
+      const stageTabs = () =>
+        vscode.window.tabGroups.all
+          .flatMap((group) => group.tabs)
+          .filter((t) => t.input instanceof vscode.TabInputWebview && t.label === "Mundo Agorix");
+      await vscode.commands.executeCommand("agorixStudio.openWorldPreview");
+      await vscode.commands.executeCommand("agorixStudio.openWorldPreview");
+      await waitFor("the Stage tab", () => stageTabs().length === 1);
+      const ran = await vscode.commands.executeCommand("agorixStudio.run");
+      assert.equal(ran.status, "completed");
+      const stopped = await vscode.commands.executeCommand("agorixStudio.stop");
+      assert.equal(stopped.status, "stopped");
+      const reset = await vscode.commands.executeCommand("agorixStudio.reset");
+      assert.equal(reset.status, "idle");
+      assert.equal(reset.selectedFrameIndex, 0);
+      assert.equal(stageTabs().length, 1);
+    },
+  ],
+  [
+    "runtime messages follow the VS Code display language",
+    async () => {
+      const spanish = vscode.env.language.toLowerCase().startsWith("es");
+      assert.equal(
+        vscode.l10n.t("Open an Agorix project first."),
+        spanish ? "Primero abrí un proyecto de Agorix." : "Open an Agorix project first.",
+      );
+    },
+  ],
+  [
     "Workbench opens once beside the project and survives execution commands",
     async () => {
       const workbenchTabs = () =>
@@ -227,8 +257,10 @@ const tests = [
       const opened = workbenchTabs().length;
       // Reopening reveals the same panel instead of creating another one.
       await vscode.commands.executeCommand("agorixStudio.openWorkbench");
-      await sleep(300);
-      assert.equal(workbenchTabs().length, opened);
+      await waitFor(
+        "Workbench tab count to stay stable after reopen",
+        () => workbenchTabs().length === opened,
+      );
       // Live sync: running and selecting steps with the Workbench open must not throw.
       await vscode.commands.executeCommand("agorixStudio.reset");
       const step = await vscode.commands.executeCommand("agorixStudio.step");

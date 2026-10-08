@@ -12,6 +12,7 @@ import {
   type ActorPatch,
   type ActorView,
   type ChangeRefusalReason,
+  type ExperienceFacts,
   type HostMessage,
   type UiMessage,
 } from "@agorix/studio-protocol";
@@ -30,12 +31,16 @@ export interface HostPort {
   reveal(nodeId: string): Promise<void>;
   askAgent(verb: AgentVerb, nodeId: string | undefined): Promise<void>;
   updateAgreements(agreements: AgentAgreements): void;
+  /** True when the current program reaches the goal in the deterministic runtime. */
+  reachedGoal?(): boolean;
 }
 
 export interface WorkbenchHost {
   handle(message: UiMessage): Promise<HostMessage[]>;
   snapshot(): HostMessage[];
   syncMessage(state: SyncState): HostMessage[];
+  /** Non-personal session facts behind the automatic density; both only ever go up. */
+  experience(): ExperienceFacts;
   ambientHint(signal: StudioSignal, decision: ProactiveDecision): HostMessage[];
   clearAmbientHint(): HostMessage[];
 }
@@ -78,6 +83,14 @@ function refusalReason(error: unknown): ChangeRefusalReason {
 
 function isKnownFailure(error: unknown): boolean {
   return error instanceof BlockEditorAdapterError || error instanceof ProgramValidationError;
+}
+
+function isMutatingIntent(intent: UiMessage & { readonly type: "intent" }): boolean {
+  return (
+    intent.intent.type === "insertBlock" ||
+    intent.intent.type === "moveBlock" ||
+    intent.intent.type === "deleteBlock"
+  );
 }
 
 export function createWorkbenchHost(port: HostPort, newBlockId: () => string): WorkbenchHost {
@@ -224,7 +237,7 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
         if (program === undefined) {
           return [];
         }
-        if (message.baseHash !== undefined && message.baseHash !== programSemanticHash(program)) {
+        if (isMutatingIntent(message) && message.baseHash !== programSemanticHash(program)) {
           return [{ schema, type: "error", code: "STALE_EDIT" }, ...snapshot()];
         }
         try {
@@ -237,6 +250,7 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
             applyWorkspaceChange(workspace, change).program,
             `Workbench: ${intent.type}`,
           );
+          edits += 1;
         } catch (error) {
           if (isKnownFailure(error) || error instanceof Error) {
             return [
@@ -281,7 +295,13 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
     }
   }
 
-  return { handle, snapshot, syncMessage, ambientHint, clearAmbientHint };
+  function experience(): ExperienceFacts {
+    // Sticky: deleting blocks later must not flip the layout back and forth.
+    if (!reachedGoal && port.reachedGoal?.() === true) reachedGoal = true;
+    return { edits, reachedGoal };
+  }
+
+  return { experience, handle, snapshot, syncMessage, ambientHint, clearAmbientHint };
 }
 
 function labelForAmbientHint(signal: StudioSignal, decision: ProactiveDecision): string {

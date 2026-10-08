@@ -129,7 +129,7 @@ test("main editor shell renders persistent blocks, stage and code", async ({ pag
   await expect(page.locator(".brand-identity")).toHaveAccessibleName("Agorix");
   await expect(page.locator(".brand-wordmark")).toHaveText("Agorix");
   await expect(page.getByRole("heading", { name: "Action palette", exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "When you press Run" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "When green flag clicked" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Stage" })).toBeVisible();
   await expect(page.locator(".stage-backstage-code")).toBeVisible();
   await expect(stageRun(page)).toBeVisible();

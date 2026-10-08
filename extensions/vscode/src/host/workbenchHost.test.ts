@@ -84,6 +84,7 @@ describe("workbenchHost", () => {
         blockType: "motion_move",
         to: { container: script, index: 0 },
       },
+      baseHash: programSemanticHash(base),
     });
     expect(get()?.scripts[0]?.statements).toHaveLength(3);
     expect(labels[0]).toMatch(/^Workbench:/);
@@ -94,7 +95,12 @@ describe("workbenchHost", () => {
     const { host, get } = setup();
     const from = { container: script, index: 0 };
     const to = { container: script, index: 1 };
-    await host.handle({ schema, type: "intent", intent: { type: "moveBlock", from, to } });
+    await host.handle({
+      schema,
+      type: "intent",
+      intent: { type: "moveBlock", from, to },
+      baseHash: programSemanticHash(base),
+    });
     const direct = applyWorkspaceChange(programToWorkspace(base).workspace, {
       type: "moveBlock",
       from,
@@ -113,6 +119,7 @@ describe("workbenchHost", () => {
         blockType: "event_on_start",
         to: { container: script, index: 0 },
       },
+      baseHash: programSemanticHash(base),
     });
     const outOfRange = await host.handle({
       schema,
@@ -122,6 +129,7 @@ describe("workbenchHost", () => {
         from: { container: script, index: 9 },
         to: { container: script, index: 0 },
       },
+      baseHash: programSemanticHash(base),
     });
     expect(bad).toEqual([
       { schema, type: "error", code: "INVALID_CHANGE", reason: "NOT_A_STATEMENT" },
@@ -320,6 +328,14 @@ describe("stale edits", () => {
     expect(labels).toHaveLength(1);
   });
 
+  it("refuses a mutating intent without a baseHash", async () => {
+    const { host, labels } = setup();
+    const out = await host.handle({ schema, type: "intent", intent: insert });
+    expect(out[0]).toEqual({ schema, type: "error", code: "STALE_EDIT" });
+    expect(out[1]).toMatchObject({ type: "workspace" });
+    expect(labels).toHaveLength(0);
+  });
+
   it("still routes non-mutating intents with a stale baseHash", async () => {
     const { host, port } = setup();
     await host.handle({
@@ -329,5 +345,47 @@ describe("stale edits", () => {
       baseHash: "old-hash",
     });
     expect(port.reveal).toHaveBeenCalled();
+  });
+});
+
+describe("experience facts for the automatic density", () => {
+  const insert = {
+    type: "insertBlock",
+    blockType: "motion_move",
+    to: { container: script, index: 0 },
+  } as const;
+
+  it("counts only edits that were committed, never refused ones", async () => {
+    const { host } = setup();
+    expect(host.experience()).toEqual({ edits: 0, reachedGoal: false });
+    await host.handle({
+      schema,
+      type: "intent",
+      intent: insert,
+      baseHash: programSemanticHash(base),
+    });
+    await host.handle({ schema, type: "intent", intent: insert, baseHash: "stale-hash" });
+    await host.handle({
+      schema,
+      type: "intent",
+      intent: {
+        type: "insertBlock",
+        blockType: "event_on_start",
+        to: { container: script, index: 0 },
+      },
+      baseHash: programSemanticHash(base),
+    });
+    expect(host.experience().edits).toBe(1);
+  });
+
+  it("latches the goal fact so it never flips back", async () => {
+    let reaches = false;
+    const port = { ...setup().port, reachedGoal: () => reaches };
+    const host = createWorkbenchHost(port, () => "block:x");
+    expect(host.experience().reachedGoal).toBe(false);
+    reaches = true;
+    expect(host.experience().reachedGoal).toBe(true);
+    reaches = false;
+    expect(host.experience().reachedGoal).toBe(true);
   });
 });

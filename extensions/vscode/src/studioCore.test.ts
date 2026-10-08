@@ -123,7 +123,7 @@ describe("Agorix Studio first slice", () => {
     });
     expect(blank.program.scripts[0]?.statements).toEqual([]);
     expect(firstMission.metadata.locale).toBe("en");
-    expect(openStoredProject(firstMission).projection.code).toContain("whenStarted");
+    expect(openStoredProject(firstMission).projection.code).toContain("whenGreenFlagClicked");
     expect(createExecutionEvidence(firstMission).previewFrames.length).toBeGreaterThan(0);
   });
 

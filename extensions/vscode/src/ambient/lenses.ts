@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { t } from "../l10n.js";
 import {
   nodeIdsForProjectionLines,
   projectionRangeForNode,
@@ -11,6 +12,8 @@ import { PROJECTION_SCHEME } from "../store/session.js";
 export interface AmbientLensesOptions {
   readonly getProjection: (document: vscode.TextDocument) => StudioProjectionDocument | undefined;
   readonly getExecutionView: () => StudioExecutionViewState | undefined;
+  /** Hides the actions the learner's assistance ceiling does not allow (ADR 0008). */
+  readonly allowAction?: (action: StudioCompanionAction) => boolean;
 }
 
 interface AmbientLensAction {
@@ -20,16 +23,21 @@ interface AmbientLensAction {
 }
 
 const ACTIONS: readonly AmbientLensAction[] = [
-  { action: "explain", title: "$(comment) Explain", command: "agorixStudio.companionExplain" },
-  { action: "debug", title: "$(debug-alt) Debug", command: "agorixStudio.companionDebug" },
+  { action: "explain", title: t("$(comment) Explain"), command: "agorixStudio.companionExplain" },
+  { action: "debug", title: t("$(debug-alt) Debug"), command: "agorixStudio.companionDebug" },
   {
     action: "challenge",
-    title: "$(beaker) Challenge",
+    title: t("$(beaker) Challenge"),
     command: "agorixStudio.companionChallenge",
   },
-  { action: "build", title: "$(lightbulb) Propose", command: "agorixStudio.companionBuild" },
-  { action: "reflect", title: "$(eye) Reflect", command: "agorixStudio.companionReflect" },
+  { action: "build", title: t("$(lightbulb) Propose"), command: "agorixStudio.companionBuild" },
+  { action: "reflect", title: t("$(eye) Reflect"), command: "agorixStudio.companionReflect" },
 ];
+
+function allowedActions(options: AmbientLensesOptions): readonly AmbientLensAction[] {
+  const allow = options.allowAction;
+  return allow === undefined ? ACTIONS : ACTIONS.filter((entry) => allow(entry.action));
+}
 
 export class AmbientCodeLensProvider implements vscode.CodeLensProvider {
   constructor(private readonly options: AmbientLensesOptions) {}
@@ -61,7 +69,7 @@ export class AmbientCodeLensProvider implements vscode.CodeLensProvider {
         projection.text,
         projectionRangeForNode(projection, nodeId),
       );
-      return ACTIONS.map(
+      return allowedActions(this.options).map(
         (action) =>
           new vscode.CodeLens(range, {
             title: action.title,
@@ -91,7 +99,7 @@ export class AmbientCodeActionProvider implements vscode.CodeActionProvider {
       ...(failed ? [failed] : []),
     ]);
     return ids.flatMap((nodeId) =>
-      ACTIONS.map((entry) => {
+      allowedActions(this.options).map((entry) => {
         const action = new vscode.CodeAction(entry.title, vscode.CodeActionKind.QuickFix);
         action.command = { title: entry.title, command: entry.command, arguments: [nodeId] };
         return action;

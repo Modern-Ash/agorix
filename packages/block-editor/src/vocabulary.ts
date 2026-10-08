@@ -10,6 +10,8 @@ export interface ToolboxBlockDefinition {
   readonly section: ToolboxSectionName;
   readonly placement: BlockPlacement;
   readonly accessibleName: string;
+  /** Kept so old projects load; never offered in the toolbox. */
+  readonly legacy?: boolean;
   readonly createDefaultBlock: (id: string) => BlockNode;
 }
 
@@ -36,7 +38,17 @@ export const ACCESSIBILITY_LIMITATIONS = [
 
 const definitions: readonly ToolboxBlockDefinition[] = [
   {
+    type: "event_green_flag",
+    label: "When green flag clicked",
+    section: "Start",
+    placement: "trigger",
+    accessibleName: "when green flag clicked",
+    createDefaultBlock: (id) => ({ id, type: "event_green_flag" }),
+  },
+  {
     type: "event_on_start",
+    // Legacy hat of projects saved before green-flag scripts; it means the same event and is not offered.
+    legacy: true,
     label: "When you press Run",
     section: "Start",
     placement: "trigger",
@@ -459,7 +471,9 @@ export const POC_BLOCK_DEFINITIONS = definitions;
 
 export const POC_TOOLBOX: readonly ToolboxSection[] = TOOLBOX_SECTION_ORDER.map((name) => ({
   name,
-  blocks: definitions.filter((definition) => definition.section === name),
+  blocks: definitions.filter(
+    (definition) => definition.section === name && definition.legacy !== true,
+  ),
 }));
 
 export function getBlockDefinition(type: BlockType): ToolboxBlockDefinition | undefined {
@@ -484,7 +498,7 @@ export function createStarterWorkspace(scriptId = "main"): BlockWorkspaceSnapsho
       {
         id: "block:scripts_0_",
         programId: scriptId,
-        trigger: createDefaultBlock("event_on_start", "block:scripts_0_trigger"),
+        trigger: createDefaultBlock("event_green_flag", "block:scripts_0_trigger"),
         statements: [],
       },
     ],

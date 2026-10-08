@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useState } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import type { BlockType, BlockWorkspaceSnapshot } from "@agorix/block-editor";
 import type { Intent } from "@agorix/interaction-core";
 import {
@@ -9,8 +9,10 @@ import {
   type AmbientHintView,
 } from "@agorix/studio-protocol";
 import type { HostBridge } from "./bridge.js";
-import { AgentZone, Canvas, type SyncView } from "./Canvas.js";
+import { AgentZone, Canvas, type FocusRequest, type SyncView } from "./Canvas.js";
+import { locationKey } from "./blockView.js";
 import { Palette } from "./Palette.js";
+import { densityAnnouncement } from "./density.js";
 import { AgentPanel } from "./AgentPanel.js";
 import { copyFor, normalizeStudioUiLocale, type StudioUiLocale } from "./i18n.js";
 import {
@@ -612,6 +614,13 @@ export function Workbench({
   useEffect(() => {
     const unsubscribe = bridge.subscribe((message) => {
       dispatchAgent(message);
+      if (message.type === "density") {
+        setLayout(message.value);
+        const note = densityAnnouncement(layoutRef.current, message, copy);
+        layoutRef.current = message.value;
+        if (note !== undefined) setStatus(note);
+        return;
+      }
       if (message.type === "sync") {
         setSync({
           ...(message.selectedBlockId === undefined
@@ -664,7 +673,7 @@ export function Workbench({
     });
     bridge.post({ schema: STUDIO_PROTOCOL_VERSION, type: "ready" });
     return unsubscribe;
-  }, [bridge]);
+  }, [bridge, copy]);
 
   const proposalId = agentUi.proposal?.proposalId;
   const operations = agentUi.proposal?.operations;
@@ -682,13 +691,25 @@ export function Workbench({
       ...(programHash === undefined ? {} : { baseHash: programHash }),
     });
 
+  const announce = (text: string) => {
+    announced.current = true;
+    setStatus(text);
+  };
+
   const add = (blockType: BlockType) => {
     const script = workspace?.scripts[0];
     if (script === undefined) return;
+    const container = { kind: "script", scriptIndex: 0 } as const;
+    const labels: Readonly<Record<string, string>> = copy.blockLabels;
+    announce(copy.addedAnnouncement(labels[blockType] ?? blockType));
+    setFocusRequest((previous) => ({
+      pos: locationKey({ container, index: script.statements.length }),
+      nonce: (previous?.nonce ?? 0) + 1,
+    }));
     post({
       type: "insertBlock",
       blockType,
-      to: { container: { kind: "script", scriptIndex: 0 }, index: script.statements.length },
+      to: { container, index: script.statements.length },
     });
   };
 
@@ -764,13 +785,23 @@ export function Workbench({
             copy={copy}
             workspace={workspace}
             onIntent={post}
+            onAnnounce={announce}
+            focusRequest={focusRequest}
+            copy={copy}
             ghosts={agentUi.proposal === undefined ? undefined : anchored.ghosts}
             sync={sync}
             hints={
               agentUi.proposal === undefined
-                ? ambientHint?.blockId === undefined
-                  ? undefined
-                  : { hints: { [ambientHint.blockId]: ambientHint.label }, skipped: [] }
+                ? agentUi.help?.blockIds !== undefined
+                  ? {
+                      hints: Object.fromEntries(
+                        agentUi.help.blockIds.map((id) => [id, copy.helpLookHere]),
+                      ),
+                      skipped: [],
+                    }
+                  : ambientHint?.blockId === undefined
+                    ? undefined
+                    : { hints: { [ambientHint.blockId]: ambientHint.label }, skipped: [] }
                 : { hints: anchored.hints, skipped: anchored.skipped }
             }
             ambientHint={agentUi.proposal === undefined ? ambientHint : undefined}

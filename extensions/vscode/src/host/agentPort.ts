@@ -275,6 +275,17 @@ export function createAgentPort(deps: AgentPortDeps): AgentPort {
   }
 
   return {
+    pointerFor(task) {
+      const project = deps.getProject();
+      if (project === undefined) return [];
+      const suggestion = task === "first-step" ? suggestFirstStep(project) : suggestRepeat(project);
+      if (suggestion === undefined) return [];
+      const { mapping } = programToWorkspace(project.stored.program);
+      const blockFor = new Map(mapping.map((entry) => [entry.nodeId, entry.blockId]));
+      return suggestion.session.affectedNodeIds
+        .flatMap((nodeId) => blockFor.get(nodeId) ?? [])
+        .slice(0, 50);
+    },
     availableTasks(): AgentTaskId[] {
       const project = deps.getProject();
       if (project === undefined) return [];

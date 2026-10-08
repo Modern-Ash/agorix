@@ -32,6 +32,8 @@ This slice is infrastructure for the Studio direction, not the final experience:
 
 ## Live sync
 
+The World Preview doubles as the Studio **Stage**: a dense toolbar with Run, Step, Stop and Reset (keys R, S, X, 0 when focus is not in a field), a position/direction readout, an execution scrubber and a trace table whose rows select a step and reveal the canonical node. The webview only posts allowlisted messages (`agorix-command`, `agorix-select-step`, `agorix-reveal-node`); the host maps them to the existing `agorixStudio.*` commands in `host/stageMessages.ts`. Covered by jsdom end-to-end tests (`webview/stage.e2e.test.ts`) and the Extension Host suite.
+
 A host-side `SyncHub` (`extensions/vscode/src/sync/syncHub.ts`) holds one selected, one executing and one failed canonical node id. The canvas, code editor, World Preview and Inspector write selections into it; each surface reflects the shared state (canvas via the `sync` protocol message mapped to block ids, code via reveal and run/fail decorations, World Preview via `agorix-sync`, Inspector via tree reveal). Failure is shown with text and an accessible description, never color alone. A program change reconciles the hub so removed nodes are cleared.
 
 ## Agent gating and Workbench robustness
@@ -39,7 +41,7 @@ A host-side `SyncHub` (`extensions/vscode/src/sync/syncHub.ts`) holds one select
 - An unclear intent (no task keyword, more than one task available) gets at most one clarifying question made of fixed task titles; the learner text is never echoed or stored.
 - A plan is anchored to the program hash it was made against. If the program changes before the plan is accepted, the plan is dropped (`STALE_PLAN`).
 - Workbench intent planning uses the provider-neutral intent-plan contract. When AI is configured it may call the validated `/intent-plan` provider boundary; unavailable, invalid or stale provider output falls back to the deterministic local planner. Both paths map back to fixed task cards and never echo learner free text as task titles.
-- Workbench density is configurable (`agorixStudio.workbench.density`: `comfortable` or `compact`) so Studio can stay readable for first use and denser for repeated IDE editing.
+- Workbench density (`agorixStudio.workbench.density`) is `auto` by default: comfortable for first use, compact after 8 successful canvas edits in the session or once the program has reached the goal in the deterministic runtime (both facts only go up, so the layout never flips back). `comfortable` and `compact` pin the layout. Density changes spacing and size only and never hides code, evidence or controls; an automatic change is announced once in the live region and the setting change applies without reopening the Workbench.
 - Workbench and Agent chrome read the project locale metadata and support fixed English/Spanish UI copy. Dynamic proposal text, provider notices and learner-entered intent remain source text rather than being translated by the UI.
 - Workbench edits carry the `programHash` the UI last saw; a stale edit is refused (`STALE_EDIT`) and a fresh snapshot is sent.
 - A refused placement explains why (`NOT_A_CONTAINER`, `BAD_INDEX`, `BLOCK_NOT_FOUND`, `NOT_A_STATEMENT`, `WOULD_BREAK_PROGRAM`) in the live status region.
@@ -87,6 +89,33 @@ form:
 - Every failure (AI off, no endpoint, route unavailable, budget spent, unavailable or rejected provider, invalid or stale proposal) degrades to the built-in proposal with a short learner notice. Editing and running never depend on a provider.
 - Budget: `agorixStudio.agent.proposalBudgetRequests` (default 10 per session). Telemetry holds enums and numbers only; learner text never reaches it.
 - Educator evidence export is local and user-initiated (`agorixStudio.exportEducatorEvidence`). It summarizes one session with counts only: proposal decisions, predictions, explanations, ambient offers, settings and deterministic runtime completion. It writes JSON plus a Markdown summary to files the user chooses and contains no names, emails, paths, learner text or raw model output.
+
+## Assistance ceiling
+
+The "help level up to N" agreement (default 4) limits what the agent may show, on every agent surface (ADR 0008). 0 shows nothing; 1 diagnostic questions; 2 adds concept reminders; 3 adds pointing to the relevant blocks; 4 adds bounded proposals, AI or built-in; 5 adds no new kind (a complete explanation needs an explicit request after repeated failure). Below 4, "Show me a suggestion" gives the most help the level allows and a line saying the level can be raised; the Companion actions (challenge and reflect need 1, explain 2, debug 3, build 4), the built-in "Suggest first step / repeat" commands, ambient offers and the CodeLens actions that need more are hidden or declined with the same sentence. The Workbench agreements now reach the session too, so the level, the AI toggle and the mode apply to ambient offers and commands, not only to the Workbench loop.
+
+## Provider text policy
+
+Provider-written text (`purpose`, `rationale`, messages) is shown as plain text and only after the shared safety boundary: links, URLs, markup and code blocks are rejected (ADR 0008), and the child sees the safe message while Studio falls back to the built-in proposal. The card leads with the operation list and the runtime evidence; the AI's explanation follows, labelled as not checked by the runtime. Provider text is not logged, sent to telemetry or exported.
+
+## Studio localization
+
+- The manifest (command titles, view names, settings, welcome text) is localized with `package.nls.json` and `package.nls.es.json`. Runtime messages, dialogs, quick picks, CodeLenses, the status bar and tree labels go through `t()` (`src/l10n.ts`, `vscode.l10n.t`) with `l10n/bundle.l10n.es.json`; the English text is the key and `{0}` marks values.
+- The language follows the VS Code display language. The Workbench keeps following the project's locale (set at creation), so the two can differ.
+- `src/l10n.test.ts` fails when a `%key%`, a `t()`/`msg()` literal or a placeholder is missing from either bundle, and `.vscodeignore` must ship the bundles.
+- Not localized: proposal and provider text (shown as source text under the provider text policy), the dynamic ambient tooltip with the offer reason, and mission/world titles, which come from the curriculum already localized.
+- The packaged VSIX contains the bundles; the real Spanish UI path was not exercised in VS Code because no Spanish language pack is installed in the test profile.
+
+## Canvas accessibility
+
+- **One tab stop.** The canvas is a single tab stop (roving tabindex). Arrow Up/Down, Home and End move between blocks; the action buttons are tabbable only on the active block.
+- **Names carry structure.** Each block is named with its position and nesting level ("Move [N] steps, 2 of 5, level 2"), in English and Spanish.
+- **Keyboard parity.** Enter or Space on a block shows it in the code (it was click-only). Alt+Up/Down moves a block and Delete removes it, as before. A visible help line is linked with `aria-describedby`.
+- **Focus follows the work.** After a move the focus stays on the moved block; after a delete it goes to the next block, then the previous one, then the canvas; after inserting from the palette it goes to the new block. Blocks are located by container and index because block ids are positional.
+- **Announcements.** Moves, deletes and inserts, and impossible moves ("Already the first block here"), are announced in the polite live region and survive the generic "Updated"; a refusal from the host replaces them.
+- **High contrast.** `forced-colors` rules keep selected, running, failed and suggested states distinguishable with system colors; action buttons are at least 32 px.
+- **Tests.** `canvas.a11y.test.tsx` drives a real DOM (jsdom) with keyboard events and runs axe-core for roles, names and ARIA validity. Axe cannot check color contrast in jsdom, so contrast and a screen-reader pass remain manual.
+- **Not covered.** Nesting and outdenting with the keyboard (the Web editor has it), text size and zoom.
 
 ## Release gate
 

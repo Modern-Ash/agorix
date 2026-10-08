@@ -253,13 +253,6 @@ function validatePortableMetadata(input: unknown, program: ProjectProgram): Proj
     hintLevel: input.hintLevel,
     ...creative,
   };
-  if ("locale" in input) {
-    const locale = input.locale;
-    if (typeof locale === "string") {
-      return { ...metadata, locale };
-    }
-  }
-  return metadata;
 }
 
 function validateActors(input: unknown): readonly ProjectActor[] | undefined {

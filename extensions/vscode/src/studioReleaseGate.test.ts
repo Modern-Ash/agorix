@@ -119,8 +119,8 @@ describe("Studio release gate documentation", () => {
   it("contributes the Workbench density setting used by the IDE surface", () => {
     expect(manifest.contributes.configuration.properties["agorixStudio.workbench.density"]).toEqual(
       expect.objectContaining({
-        enum: ["comfortable", "compact"],
-        default: "comfortable",
+        enum: ["auto", "comfortable", "compact"],
+        default: "auto",
       }),
     );
     expect(gate).toContain("density");

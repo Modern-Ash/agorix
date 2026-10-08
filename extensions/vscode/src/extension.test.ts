@@ -39,7 +39,7 @@ vi.mock("vscode", () => {
   const uri = (fsPath: string) => ({
     fsPath,
     path: fsPath.replace(/^[^:]+:/, ""),
-    scheme: fsPath.includes(":") ? fsPath.split(":")[0] : "file",
+    scheme: fsPath.startsWith("/") ? "file" : fsPath.includes(":") ? fsPath.split(":")[0] : "file",
     toString: () => fsPath,
   });
   class Uri {
@@ -245,6 +245,7 @@ vi.mock("vscode", () => {
         get: (key: string, defaultValue: string) =>
           key in agentConfig ? agentConfig[key] : serverUrl || defaultValue,
       }),
+      onDidChangeConfiguration: () => ({ dispose() {} }),
       registerTextDocumentContentProvider: (
         scheme: string,
         provider: { provideTextDocumentContent(uri: unknown): string },
@@ -266,6 +267,12 @@ vi.mock("vscode", () => {
           files.get(target.fsPath) ?? new Uint8Array(),
         writeFile: async (target: { fsPath: string }, content: Uint8Array) => {
           files.set(target.fsPath, content);
+        },
+        stat: async (target: { fsPath: string }) => {
+          if (!files.has(target.fsPath)) {
+            throw new Error("not found");
+          }
+          return { type: 1 };
         },
       },
     },
@@ -741,12 +748,36 @@ describe("Studio extension wiring", () => {
       scope: "single-session",
       mission: { id: "first-mission.reach-goal" },
       proposals: { requested: 1, rejected: 1 },
-      completion: { completedByRuntime: true },
+      // The program was never changed, so it does not reach the goal even though the run finishes.
+      completion: { completedByRuntime: false },
     });
     expect(summary).toContain("counts above are not a grade");
     expect(`${exportedText}\n${summary}`).not.toMatch(
       /ana@|school|make it move|\/p\/|evidence\.json|raw|model output/i,
     );
+  });
+
+  it("does not report the goal as reached when the program only finishes running", async () => {
+    await openFile("/p/short.json", stored([{ type: "move", steps: 5 }]));
+    await handlers.get("agorixStudio.run")!();
+    choice = "Export";
+    savePicked = { fsPath: "/p/short-evidence.json" };
+    await handlers.get("agorixStudio.exportEducatorEvidence")!();
+    const exported = JSON.parse(new TextDecoder().decode(files.get("/p/short-evidence.json")));
+    expect(exported.completion).toEqual({ completedByRuntime: false });
+    expect(new TextDecoder().decode(files.get("/p/short-evidence.md"))).toContain(
+      "reached the goal when run: no",
+    );
+  });
+
+  it("reports the goal as reached when the run touches it", async () => {
+    await openFile("/p/goal.json", stored([{ type: "move", steps: 160 }]));
+    await handlers.get("agorixStudio.run")!();
+    choice = "Export";
+    savePicked = { fsPath: "/p/goal-evidence.json" };
+    await handlers.get("agorixStudio.exportEducatorEvidence")!();
+    const exported = JSON.parse(new TextDecoder().decode(files.get("/p/goal-evidence.json")));
+    expect(exported.completion).toEqual({ completedByRuntime: true });
   });
 
   it("cancels educator evidence export before writing files", async () => {
@@ -861,6 +892,84 @@ describe("Studio extension wiring", () => {
     expect(redone.program.scripts[0].statements).toEqual(written.program.scripts[0].statements);
   });
 
+  describe("automatic Workbench density", () => {
+    const densityMessages = () =>
+      (workbenchPanel()?.messages ?? []).filter(
+        (message) => (message as { type?: string }).type === "density",
+      ) as Array<{ value: string; reason: string }>;
+    const latestHash = () =>
+      (
+        (workbenchPanel()?.messages ?? [])
+          .filter((message) => (message as { type?: string }).type === "workspace")
+          .at(-1) as { programHash: string }
+      ).programHash;
+    const addBlock = async () => {
+      workbenchPanel()?.receive({
+        schema: "agorix/studio-protocol/v1",
+        type: "intent",
+        baseHash: latestHash(),
+        intent: {
+          type: "insertBlock",
+          blockType: "motion_turn",
+          to: { container: { kind: "script", scriptIndex: 0 }, index: 0 },
+        },
+      });
+      await flushWorkbench();
+    };
+
+    it("starts comfortable, becomes compact after enough edits, announces it once and stays", async () => {
+      await openFile("/p/density-auto.json", stored([]));
+      await handlers.get("agorixStudio.openWorkbench")!();
+      expect(workbenchPanel()?.html).toContain('data-density="comfortable"');
+      workbenchPanel()?.receive({ schema: "agorix/studio-protocol/v1", type: "ready" });
+      await flushWorkbench();
+      expect(densityMessages().at(-1)).toEqual(
+        expect.objectContaining({ value: "comfortable", reason: "setting" }),
+      );
+      for (let index = 0; index < 7; index += 1) await addBlock();
+      expect(densityMessages().filter((message) => message.reason === "auto")).toHaveLength(0);
+      await addBlock();
+      expect(densityMessages().filter((message) => message.reason === "auto")).toEqual([
+        { schema: "agorix/studio-protocol/v1", type: "density", value: "compact", reason: "auto" },
+      ]);
+      await addBlock();
+      expect(densityMessages().filter((message) => message.reason === "auto")).toHaveLength(1);
+    });
+
+    it("never changes a pinned preference, however many edits happen", async () => {
+      agentConfig["workbench.density"] = "comfortable";
+      await openFile("/p/density-pinned.json", stored([]));
+      await handlers.get("agorixStudio.openWorkbench")!();
+      for (let index = 0; index < 9; index += 1) await addBlock();
+      expect(densityMessages().filter((message) => message.reason === "auto")).toHaveLength(0);
+      expect(workbenchPanel()?.html).toContain('data-density="comfortable"');
+    });
+
+    it("honours a pinned compact layout from the first paint", async () => {
+      agentConfig["workbench.density"] = "compact";
+      await openFile("/p/density-compact.json", stored([]));
+      await handlers.get("agorixStudio.openWorkbench")!();
+      expect(workbenchPanel()?.html).toContain('data-density="compact"');
+    });
+
+    it("turns compact once the program reaches the goal, and stays compact after it changes", async () => {
+      await openFile("/p/density-goal.json", stored([{ type: "move", steps: 160 }]));
+      await handlers.get("agorixStudio.openWorkbench")!();
+      expect(workbenchPanel()?.html).toContain('data-density="compact"');
+      workbenchPanel()?.receive({
+        schema: "agorix/studio-protocol/v1",
+        type: "intent",
+        baseHash: latestHash(),
+        intent: {
+          type: "deleteBlock",
+          location: { container: { kind: "script", scriptIndex: 0 }, index: 0 },
+        },
+      });
+      await flushWorkbench();
+      expect(densityMessages().some((message) => message.value === "comfortable")).toBe(false);
+    });
+  });
+
   it("writes Workbench edits through the proposal undo stack and clears redo", async () => {
     await openFile("/p/workbench-edit.json", stored([]));
     const original = new TextDecoder().decode(files.get("/p/workbench-edit.json"));
@@ -869,6 +978,11 @@ describe("Studio extension wiring", () => {
     workbenchPanel()?.receive({
       schema: "agorix/studio-protocol/v1",
       type: "intent",
+      baseHash: (
+        workbenchPanel()?.messages.find(
+          (message) => (message as { type?: string }).type === "workspace",
+        ) as { programHash?: string }
+      ).programHash,
       intent: {
         type: "insertBlock",
         blockType: "motion_move",
@@ -895,6 +1009,12 @@ describe("Studio extension wiring", () => {
     workbenchPanel()?.receive({
       schema: "agorix/studio-protocol/v1",
       type: "intent",
+      baseHash: (
+        [...(workbenchPanel()?.messages ?? [])]
+          .reverse()
+          .find((message) => (message as { type?: string }).type === "workspace") as
+          { programHash?: string } | undefined
+      )?.programHash,
       intent: {
         type: "insertBlock",
         blockType: "motion_turn",
@@ -1120,6 +1240,66 @@ describe("Studio extension wiring", () => {
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+
+  describe("assistance ceiling on explicit commands", () => {
+    const sendAgreements = async (assistanceCeiling: number) => {
+      await openFile("/p/ceiling.json", stored([]));
+      await handlers.get("agorixStudio.openWorkbench")!();
+      workbenchPanel()?.receive({
+        schema: "agorix/studio-protocol/v1",
+        type: "agreementsChanged",
+        agreements: {
+          aiEnabled: true,
+          assistanceCeiling,
+          mode: "supervised",
+          requirePredictionBeforeAccept: false,
+          proactive: {
+            "runtime-error": true,
+            stalled: true,
+            "repeated-error": true,
+            "repeat-pattern": true,
+            "first-step": true,
+          },
+        },
+      });
+      await flushWorkbench();
+      shown.length = 0;
+    };
+    const turns = () => treeProviders.get("agorixStudio.companionHistory")?.getChildren() ?? [];
+
+    it("runs only the Companion actions the ceiling allows and says why for the rest", async () => {
+      await sendAgreements(2);
+      await handlers.get("agorixStudio.companionExplain")!();
+      expect(turns()).toHaveLength(1);
+      await handlers.get("agorixStudio.companionDebug")!();
+      await handlers.get("agorixStudio.companionBuild")!();
+      expect(turns()).toHaveLength(1);
+      expect(shown.filter((message) => message.includes("Your help level is 2"))).toHaveLength(2);
+    });
+
+    it("blocks the built-in suggestions below level 4 without opening a proposal", async () => {
+      await sendAgreements(3);
+      await handlers.get("agorixStudio.suggestFirstStep")!();
+      await handlers.get("agorixStudio.suggestRepeat")!();
+      expect(diffs).toHaveLength(0);
+      expect(shown.filter((message) => message.includes("Your help level is 3"))).toHaveLength(2);
+      const written = JSON.parse(new TextDecoder().decode(files.get("/p/ceiling.json")));
+      expect(written.program.scripts[0].statements).toEqual([]);
+    });
+
+    it("blocks every Companion action at level 0 and keeps all of them at level 4", async () => {
+      await sendAgreements(0);
+      for (const name of ["Explain", "Challenge", "Debug", "Reflect", "Build"]) {
+        await handlers.get(`agorixStudio.companion${name}`)!();
+      }
+      expect(turns()).toHaveLength(0);
+      await sendAgreements(4);
+      for (const name of ["Explain", "Challenge", "Debug", "Reflect"]) {
+        await handlers.get(`agorixStudio.companion${name}`)!();
+      }
+      expect(turns()).toHaveLength(4);
+    });
   });
 
   it("reviews first-step proposal through the generic apply flow", async () => {

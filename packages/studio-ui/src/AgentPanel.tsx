@@ -195,10 +195,12 @@ function Alternatives({
   state,
   post,
   copy,
+  showEvidence,
 }: {
   readonly state: AgentUiState;
   readonly post: Send;
   readonly copy: StudioUiCopy;
+  readonly showEvidence: boolean;
 }) {
   const proposal = state.proposal;
   if (proposal === undefined || proposal.alternatives === undefined) return null;
@@ -206,14 +208,16 @@ function Alternatives({
     <div className="alternatives" role="group" aria-label={copy.alternatives}>
       <article className="alt current" aria-current="true">
         <h4>{proposal.purpose}</h4>
-        {proposal.evidence !== undefined && <p>{evidenceText(proposal.evidence, copy)}</p>}
+        {showEvidence && proposal.evidence !== undefined && (
+          <p>{evidenceText(proposal.evidence, copy)}</p>
+        )}
         <p className="ghost-badge">{copy.showingThisOne}</p>
       </article>
       {proposal.alternatives.map((alt) => (
         <article className="alt" key={alt.proposalId}>
           <h4>{alt.purpose}</h4>
           <p>{alt.tradeoff}</p>
-          <p>{evidenceText(alt.evidence, copy)}</p>
+          {showEvidence && <p>{evidenceText(alt.evidence, copy)}</p>}
           <button
             type="button"
             onClick={() => post({ type: "chooseAlternative", proposalId: alt.proposalId })}
@@ -232,12 +236,14 @@ function Operations({
   onSelectionChange,
   post,
   copy,
+  needsPrediction,
 }: {
   readonly state: AgentUiState;
   readonly selection: SelectionState;
   readonly onSelectionChange: (next: SelectionState) => void;
   readonly post: Send;
   readonly copy: StudioUiCopy;
+  readonly needsPrediction: boolean;
 }) {
   const proposal = state.proposal;
   if (proposal?.operations === undefined || proposal.operations.length === 0) return null;
@@ -286,7 +292,7 @@ function Operations({
           </div>
         );
       })}
-      {state.selectionEvidence !== undefined && (
+      {!needsPrediction && state.selectionEvidence !== undefined && (
         <p role="status">
           {state.selectionEvidence.ok
             ? evidenceText(state.selectionEvidence.evidence, copy)
@@ -299,7 +305,7 @@ function Operations({
       )}
       <button
         type="button"
-        disabled={selection.include.length === 0}
+        disabled={selection.include.length === 0 || needsPrediction}
         onClick={() =>
           post({
             type: "decideProposal",
@@ -403,6 +409,22 @@ export function AgentPanel({
           {copy.showSuggestion}
         </button>
       )}
+      {state.help !== undefined && state.proposal === undefined && (
+        <aside className="help" role="status" aria-label={copy.showSuggestion}>
+          <p>
+            {state.help.kind === "question"
+              ? copy.helpQuestion(state.help.taskId)
+              : state.help.kind === "concept"
+                ? copy.helpConcept(state.help.concept ?? "sequence")
+                : state.help.kind === "pointer"
+                  ? state.help.blockIds === undefined
+                    ? copy.helpPointerEmpty
+                    : copy.helpPointer
+                  : copy.helpNone}
+          </p>
+          <p className="ghost-badge">{copy.helpCeilingNote(state.help.ceiling)}</p>
+        </aside>
+      )}
       {stage === "proposal" && state.proposal !== undefined && (
         <section className="suggestion" aria-label={copy.suggestion}>
           <p className="ghost-badge">
@@ -417,22 +439,38 @@ export function AgentPanel({
               {state.proposal.notice}
             </p>
           )}
-          <p>{state.proposal.purpose}</p>
-          <p>{state.proposal.rationale}</p>
+          {state.proposal.origin !== "provider" && (
+            <>
+              <p>{state.proposal.purpose}</p>
+              <p>{state.proposal.rationale}</p>
+            </>
+          )}
           <p>{copy.dashedBlocks}</p>
           <ProposalScope proposal={state.proposal} copy={copy} />
           {state.proposal.evidence !== undefined && (
             <p>{evidenceText(state.proposal.evidence, copy)}</p>
           )}
-          <Alternatives state={state} post={post} copy={copy} />
-          {selection !== undefined && onSelectionChange !== undefined && (
-            <Operations
-              state={state}
-              selection={selection}
-              onSelectionChange={onSelectionChange}
-              post={post}
-              copy={copy}
-            />
+          <Alternatives state={state} post={post} copy={copy} showEvidence={!needsPrediction} />
+          {!state.agreements.requirePredictionBeforeAccept &&
+            selection !== undefined &&
+            onSelectionChange !== undefined && (
+              <Operations
+                state={state}
+                selection={selection}
+                onSelectionChange={onSelectionChange}
+                post={post}
+                copy={copy}
+                needsPrediction={needsPrediction}
+              />
+            )}
+          {state.proposal.origin === "provider" && (
+            // AI-written text comes after what is deterministic (operations, evidence) and is
+            // labelled as unchecked, as plain text.
+            <aside className="ai-explanation" aria-label={copy.aiExplanationLabel}>
+              <p className="ghost-badge">{copy.aiExplanationLabel}</p>
+              <p>{state.proposal.purpose}</p>
+              <p>{state.proposal.rationale}</p>
+            </aside>
           )}
           {needsPrediction && state.prediction !== undefined && (
             <div aria-label={copy.predictionBeforeAccept}>

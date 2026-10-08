@@ -456,3 +456,37 @@ describe("failure paths", () => {
     expect(() => runProgram(corrupted, createWorldState())).toThrow(RuntimeExecutionError);
   });
 });
+
+describe("green-flag dispatch", () => {
+  const withTriggers = (...types: Array<"onStart" | "greenFlag">): ProjectProgram => ({
+    schema: SCHEMA_VERSION,
+    scripts: types.map((type, index) => ({
+      id: `s${index}`,
+      trigger: { type },
+      statements: [{ type: "move", steps: 10 }],
+    })),
+  });
+  const start = () =>
+    createWorldState({ sprite: { x: 0, y: 0, heading: 0 }, goal: { x: 500, y: 0 } });
+
+  it("runs green-flag scripts and legacy hats on the green-flag event, in order", () => {
+    const result = runProgram(withTriggers("greenFlag", "onStart", "greenFlag"), start());
+    expect(result.outcome).toBe("completed");
+    expect(result.world.sprite.x).toBe(30);
+    expect(result.stepsUsed).toBe(3);
+  });
+
+  it("runs the same either way and projects the green flag clearly", () => {
+    const legacy = runProgram(withTriggers("onStart"), start());
+    const flag = runProgram(withTriggers("greenFlag"), start());
+    expect(flag.world).toEqual(legacy.world);
+    const projected = projectProgram(withTriggers("greenFlag")).code;
+    expect(projected).toContain("whenGreenFlagClicked");
+    expect(projectProgram(withTriggers("onStart")).code).toContain("whenStarted");
+  });
+
+  it("skips scripts that answer to a different event than the one dispatched", () => {
+    const options = { event: "greenFlag" } as const;
+    expect(runProgram(withTriggers("greenFlag"), start(), options).stepsUsed).toBe(1);
+  });
+});

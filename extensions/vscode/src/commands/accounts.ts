@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { t } from "../l10n.js";
 import {
   parseProjectFile,
   serializeStoredProject,
@@ -66,17 +67,17 @@ export function createStudioAccountCommandHandlers(
 
 async function signIn(context: vscode.ExtensionContext): Promise<void> {
   const token = await vscode.window.showInputBox({
-    title: "Agorix account token",
+    title: t("Agorix account token"),
     password: true,
     ignoreFocusOut: true,
-    prompt: "Paste an Agorix API token. It will be stored in VS Code SecretStorage.",
+    prompt: t("Paste an Agorix API token. It will be stored in VS Code SecretStorage."),
   });
   if (token === undefined) {
     return;
   }
   await context.secrets.store(SECRET_TOKEN_KEY, token);
   void vscode.window.showInformationMessage(
-    "Agorix account token stored in VS Code SecretStorage.",
+    t("Agorix account token stored in VS Code SecretStorage."),
   );
 }
 
@@ -90,7 +91,7 @@ async function signOut(port: StudioAccountCommandPort): Promise<void> {
     port.refreshCompanionViews();
     port.updateStudioContext();
   }
-  void vscode.window.showInformationMessage("Signed out of Agorix Studio.");
+  void vscode.window.showInformationMessage(t("Signed out of Agorix Studio."));
 }
 
 async function listRemoteProjects(
@@ -115,7 +116,7 @@ async function openRemoteProject(port: StudioAccountCommandPort): Promise<void> 
       description: project.revision,
       project,
     })),
-    { title: "Agorix projects" },
+    { title: t("Agorix projects") },
   );
   if (picked === undefined) {
     return;
@@ -146,7 +147,7 @@ async function saveRemoteProject(
   }
   if (open.remote === undefined) {
     void vscode.window.showWarningMessage(
-      "Open an authenticated Agorix project before saving to server.",
+      t("Open an authenticated Agorix project before saving to server."),
     );
     return undefined;
   }
@@ -172,17 +173,23 @@ async function saveRemoteProject(
     });
     port.refreshStudioViews();
     void vscode.window.showInformationMessage(
-      `Saved ${open.remote.title} at revision ${result.revision}.`,
+      t("Saved {0} at revision {1}.", open.remote.title, result.revision),
     );
     return result;
   }
+  const reloadLatest = t("Reload Latest");
+  const exportCopy = t("Export Copy");
   const choice = await vscode.window.showWarningMessage(
-    `Server has revision ${result.actualRevision}; local expected ${result.expectedRevision}.`,
-    "Reload Latest",
-    "Export Copy",
-    "Cancel",
+    t(
+      "Server has revision {0}; local expected {1}.",
+      result.actualRevision,
+      result.expectedRevision,
+    ),
+    reloadLatest,
+    exportCopy,
+    t("Cancel"),
   );
-  if (choice === "Reload Latest" && result.latest !== undefined) {
+  if (choice === reloadLatest && result.latest !== undefined) {
     port.setCurrentProject({
       ...open,
       project: openRemotePayload({
@@ -196,7 +203,7 @@ async function saveRemoteProject(
     port.resetProjectSessionState();
     port.refreshStudioViews();
     await port.openProjection(port.currentProjectionId());
-  } else if (choice === "Export Copy") {
+  } else if (choice === exportCopy) {
     await port.exportAgorixProject();
   }
   return result;
@@ -216,13 +223,15 @@ async function createRemoteClient(
     .replace(/\/+$/, "");
   if (serverUrl.length === 0) {
     void vscode.window.showWarningMessage(
-      "Configure agorixStudio.serverUrl before using accounts.",
+      t("Configure agorixStudio.serverUrl before using accounts."),
     );
     return undefined;
   }
   const token = await context.secrets.get(SECRET_TOKEN_KEY);
   if (token === undefined || token.length === 0) {
-    void vscode.window.showWarningMessage("Sign in to Agorix Studio before using server projects.");
+    void vscode.window.showWarningMessage(
+      t("Sign in to Agorix Studio before using server projects."),
+    );
     return undefined;
   }
   const request = async <T>(path: string, init: RequestInit = {}): Promise<T> => {
@@ -281,8 +290,12 @@ export function createAgentClient(context: vscode.ExtensionContext): StudioProvi
 }
 
 function agentStatusText(status: StudioAgentStatus): string {
-  const label = { available: "ready", unavailable: "unavailable", disabled: "off" }[status.state];
-  return `$(sparkle) Agent: ${label}`;
+  const label = {
+    available: t("ready"),
+    unavailable: t("unavailable"),
+    disabled: t("off"),
+  }[status.state];
+  return t("$(sparkle) Agent: {0}", label);
 }
 
 /** Probes the boundary and updates the status item. Never throws, never blocks editing. */
@@ -312,19 +325,19 @@ async function checkAgentHealth(
 
 async function setAgentCredential(context: vscode.ExtensionContext): Promise<void> {
   const value = await vscode.window.showInputBox({
-    title: "Agent deployment credential",
+    title: t("Agent deployment credential"),
     password: true,
     ignoreFocusOut: true,
-    prompt: "Only needed if your tutor API deployment requires one. Stored in SecretStorage.",
+    prompt: t("Only needed if your tutor API deployment requires one. Stored in SecretStorage."),
   });
   if (value === undefined || value.length === 0) {
     return;
   }
   await context.secrets.store(SECRET_AGENT_CREDENTIAL_KEY, value);
-  void vscode.window.showInformationMessage("Agent credential stored in VS Code SecretStorage.");
+  void vscode.window.showInformationMessage(t("Agent credential stored in VS Code SecretStorage."));
 }
 
 async function clearAgentCredential(context: vscode.ExtensionContext): Promise<void> {
   await context.secrets.delete(SECRET_AGENT_CREDENTIAL_KEY);
-  void vscode.window.showInformationMessage("Agent credential removed.");
+  void vscode.window.showInformationMessage(t("Agent credential removed."));
 }

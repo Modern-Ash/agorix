@@ -1,4 +1,4 @@
-import { useState, type DragEvent } from "react";
+import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent } from "react";
 import type { BlockWorkspaceSnapshot } from "@agorix/block-editor";
 import {
   keyboardIntent,
@@ -8,7 +8,7 @@ import {
   type Intent,
 } from "@agorix/interaction-core";
 import type { AmbientHintView, GhostChange } from "@agorix/studio-protocol";
-import { dropPointFor, toRows } from "./blockView.js";
+import { dropPointFor, locationKey, toRows } from "./blockView.js";
 import { chordFromEvent, dragPayload, parseDragPayload } from "./drag.js";
 import { copyFor, type StudioUiCopy } from "./i18n.js";
 
@@ -85,6 +85,10 @@ function ghostKind(ghosts: readonly GhostChange[] | undefined, blockId: string) 
   return ghosts?.find((ghost) => ghost.blockId === blockId)?.kind;
 }
 
+function fieldLabel(name: string, copy: StudioUiCopy): string {
+  return name === "steps" || name === "degrees" || name === "count" ? copy.fieldLabels[name] : name;
+}
+
 /** Visible, anchored explanation of a suggested change on a block. */
 export interface BlockHints {
   readonly hints: Readonly<Record<string, string>>;
@@ -97,6 +101,12 @@ export interface SyncView {
   readonly failedBlockId?: string;
 }
 
+/** Ask the canvas to focus the block at `pos` (a `locationKey`) once it exists. */
+export interface FocusRequest {
+  readonly pos: string;
+  readonly nonce: number;
+}
+
 export function Canvas({
   copy = copyFor("en"),
   workspace,
@@ -105,6 +115,9 @@ export function Canvas({
   sync,
   hints,
   ambientHint,
+  onAnnounce,
+  focusRequest,
+  copy = copyFor("en"),
 }: {
   readonly copy?: StudioUiCopy;
   readonly workspace: BlockWorkspaceSnapshot;
@@ -113,8 +126,67 @@ export function Canvas({
   readonly sync?: SyncView | undefined;
   readonly hints?: BlockHints | undefined;
   readonly ambientHint?: AmbientHintView | undefined;
+  /** Receives plain-language announcements for a polite live region. */
+  readonly onAnnounce?: ((text: string) => void) | undefined;
+  readonly focusRequest?: FocusRequest | undefined;
+  readonly copy?: StudioUiCopy;
 }) {
   const addedGhosts = (ghosts ?? []).filter((ghost) => ghost.kind === "added");
+  const rootRef = useRef<HTMLElement | null>(null);
+  const pendingFocus = useRef<string | undefined>(undefined);
+  const lastNonce = useRef<number | undefined>(undefined);
+  const [activeKey, setActiveKey] = useState<string | undefined>();
+  const rows = toRows(workspace);
+  const blockKeys = rows.flatMap((row) =>
+    row.kind === "block" ? [locationKey(row.block.location)] : [],
+  );
+  const tabbable =
+    activeKey !== undefined && blockKeys.includes(activeKey) ? activeKey : blockKeys[0];
+
+  function blockElements(): HTMLElement[] {
+    return Array.from(rootRef.current?.querySelectorAll<HTMLElement>("[data-pos]") ?? []);
+  }
+
+  function focusBlock(element: HTMLElement | undefined): void {
+    if (element === undefined) return;
+    element.focus();
+    setActiveKey(element.dataset["pos"]);
+  }
+
+  useEffect(() => {
+    if (focusRequest !== undefined && focusRequest.nonce !== lastNonce.current) {
+      lastNonce.current = focusRequest.nonce;
+      pendingFocus.current = focusRequest.pos;
+    }
+    const wanted = pendingFocus.current;
+    if (wanted === undefined) return;
+    if (wanted === "canvas") {
+      pendingFocus.current = undefined;
+      rootRef.current?.focus();
+      return;
+    }
+    const target = blockElements().find((element) => element.dataset["pos"] === wanted);
+    if (target !== undefined) {
+      pendingFocus.current = undefined;
+      focusBlock(target);
+    }
+  }, [workspace, focusRequest]);
+
+  function moveFocus(from: HTMLElement, key: string): void {
+    const all = blockElements();
+    const index = all.indexOf(from);
+    if (index < 0) return;
+    const next =
+      key === "ArrowDown"
+        ? all[index + 1]
+        : key === "ArrowUp"
+          ? all[index - 1]
+          : key === "Home"
+            ? all[0]
+            : all[all.length - 1];
+    focusBlock(next);
+  }
+
   return (
     <section className="canvas" aria-label={copy.canvasProgram}>
       {ambientHint !== undefined && ambientHint.blockId === undefined ? (
@@ -122,7 +194,7 @@ export function Canvas({
           {ambientHint.label}
         </div>
       ) : null}
-      {toRows(workspace).map((row, key) => {
+      {rows.map((row, key) => {
         if (row.kind === "script") {
           return (
             <div key={key} className="script-title">
@@ -134,12 +206,36 @@ export function Canvas({
           return <Slot key={key} row={row} onIntent={onIntent} />;
         }
         const { block } = row;
+        const blockLabels: Readonly<Record<string, string>> = copy.blockLabels;
+        const label = blockLabels[block.type] ?? block.label;
+        const pos = locationKey(block.location);
+        const isTabbable = pos === tabbable;
+        const { index, container } = block.location;
         const press = (chord: "Alt+ArrowUp" | "Alt+ArrowDown" | "Delete") => {
           const intent = keyboardIntent(chord, {
             location: block.location,
             siblingCount: block.siblingCount,
           });
-          if (intent !== undefined) onIntent(intent);
+          if (intent === undefined) {
+            if (chord === "Alt+ArrowUp") onAnnounce?.(copy.alreadyFirst);
+            if (chord === "Alt+ArrowDown") onAnnounce?.(copy.alreadyLast);
+            return;
+          }
+          if (chord === "Delete") {
+            pendingFocus.current =
+              block.siblingCount <= 1
+                ? "canvas"
+                : locationKey({
+                    container,
+                    index: index < block.siblingCount - 1 ? index : index - 1,
+                  });
+            onAnnounce?.(copy.deletedAnnouncement(label));
+          } else {
+            const to = chord === "Alt+ArrowUp" ? index - 1 : index + 1;
+            pendingFocus.current = locationKey({ container, index: to });
+            onAnnounce?.(copy.movedAnnouncement(label, to + 1, block.siblingCount));
+          }
+          onIntent(intent);
         };
         const ambient = ambientHint?.blockId === block.id ? ambientHint.label : undefined;
         const hint = hints?.hints[block.id] ?? ambient;
@@ -148,15 +244,17 @@ export function Canvas({
         const isExec = sync?.executingBlockId === block.id;
         const isFail = sync?.failedBlockId === block.id;
         const fields = Object.entries(block.fields)
-          .map(([name, value]) => `${name}: ${String(value)}`)
+          .map(([name, value]) => `${fieldLabel(name, copy)}: ${String(value)}`)
           .join(", ");
         return (
           <div
             key={key}
             role="group"
-            tabIndex={0}
+            tabIndex={isTabbable ? 0 : -1}
+            data-pos={pos}
             draggable
-            aria-label={block.label}
+            aria-label={copy.blockPosition(label, index + 1, block.siblingCount, row.depth + 1)}
+            onFocus={() => setActiveKey(pos)}
             aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown Delete"
             className={`block depth-${Math.min(row.depth, 4)}${
               ghostKind(ghosts, block.id) === "removed"
@@ -184,11 +282,21 @@ export function Canvas({
               );
               event.dataTransfer.effectAllowed = "move";
             }}
-            onKeyDown={(event) => {
+            onKeyDown={(event: KeyboardEvent<HTMLElement>) => {
               const chord = chordFromEvent(event);
               if (chord !== undefined) {
                 event.preventDefault();
                 press(chord);
+                return;
+              }
+              // Navigation and activation apply to the block itself, never to a control inside it.
+              if (event.target !== event.currentTarget || event.altKey) return;
+              if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
+                event.preventDefault();
+                moveFocus(event.currentTarget, event.key);
+              } else if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                onIntent({ type: "revealNode", nodeId: block.id });
               }
             }}
           >
@@ -197,7 +305,7 @@ export function Canvas({
               data-testid="block-label"
               onClick={() => onIntent({ type: "revealNode", nodeId: block.id })}
             >
-              {block.label}
+              {label}
               {fields === "" ? "" : ` (${fields})`}
             </span>
             {hint === undefined ? null : (

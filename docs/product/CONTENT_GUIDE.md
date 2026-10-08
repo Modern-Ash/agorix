@@ -32,14 +32,14 @@ These must read as different voices (R3):
 
 ## Block / toolbox labels
 
-| Block             | Label                |
-| ----------------- | -------------------- |
-| `when run starts` | "When you press Run" |
-| `move steps`      | "Move [N] steps"     |
-| `turn`            | "Turn [N] degrees"   |
-| `repeat N`        | "Repeat [N] times"   |
-| `if condition`    | "If ___, then"       |
-| `touching goal?`  | "Touching the goal?" |
+| Block                     | Label                                                                                |
+| ------------------------- | ------------------------------------------------------------------------------------ |
+| `when green flag clicked` | "When green flag clicked" (legacy `when run starts`: same event, shown the same way) |
+| `move steps`              | "Move [N] steps"                                                                     |
+| `turn`                    | "Turn [N] degrees"                                                                   |
+| `repeat N`                | "Repeat [N] times"                                                                   |
+| `if condition`            | "If ___, then"                                                                       |
+| `touching goal?`          | "Touching the goal?"                                                                 |
 
 Toolbox section headers: "Start", "Move", "Repeat & Decide", "Check" — task words,
 not category jargon ("Events", "Control").
@@ -70,7 +70,7 @@ move it there."
 
 | Runtime condition                                   | Message                                                                                                                 |
 | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| Program run without any blocks in `when run starts` | "Nothing happens yet — add a block to 'When you press Run' to get started."                                             |
+| Program run without any blocks in `when run starts` | "Nothing happens yet — add a block to 'When green flag clicked' to get started."                                        |
 | Sprite never reaches goal after run completes       | "Not there yet. Your sprite stopped before reaching the goal — try adjusting how far it moves or turns."                |
 | `repeat` block with 0 or missing count              | "This repeat block needs a number of times — try adding one."                                                           |
 | Project file version mismatch on load               | "This project was made with a different version of Agorix and can't be opened here. Start a new project to keep going." |

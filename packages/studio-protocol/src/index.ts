@@ -27,6 +27,37 @@ import { isSafeId, parseAnchorRef, type Intent } from "@agorix/interaction-core"
 export const STUDIO_PROTOCOL_VERSION = "agorix/studio-protocol/v1";
 export const PACKAGE_NAME = "@agorix/studio-protocol";
 
+/** Help shown instead of a proposal when the learner's assistance ceiling is below 4. */
+export type HelpShown = "none" | "question" | "concept" | "pointer";
+const HELP_SHOWN: readonly HelpShown[] = ["none", "question", "concept", "pointer"];
+
+/** How the Workbench is laid out: spacing and size only; no information is ever hidden. */
+export type Density = "comfortable" | "compact";
+export type DensityPreference = Density | "auto";
+
+/** Canvas edits in one session after which `auto` becomes compact. */
+export const AUTO_DENSITY_EDITS = 8;
+
+export interface ExperienceFacts {
+  /** Successful learner edits on the canvas this session. */
+  readonly edits: number;
+  /** The program has reached the goal in the deterministic runtime at least once this session. */
+  readonly reachedGoal: boolean;
+}
+
+/**
+ * Comfortable for first use, compact once the learner has shown fluency. A pinned preference
+ * always wins. The rule uses only local, non-personal facts.
+ */
+export function resolveDensity(preference: DensityPreference, facts: ExperienceFacts): Density {
+  if (preference !== "auto") return preference;
+  return facts.reachedGoal || facts.edits >= AUTO_DENSITY_EDITS ? "compact" : "comfortable";
+}
+
+export function normalizeDensityPreference(value: unknown): DensityPreference {
+  return value === "comfortable" || value === "compact" ? value : "auto";
+}
+
 export type ChangeRefusalReason = PlacementReason | "WOULD_BREAK_PROGRAM" | "UNKNOWN";
 const REFUSAL_REASONS: readonly ChangeRefusalReason[] = [
   "NOT_A_CONTAINER",
@@ -377,6 +408,7 @@ const AGENT_VERBS = ["explain", "debug", "challenge"] as const;
 const ASSET_KINDS: readonly AssetKind[] = ["sprite", "backdrop", "costume", "sound"];
 const BLOCK_TYPES = [
   "event_on_start",
+  "event_green_flag",
   "motion_move",
   "motion_turn",
   "looks_say",

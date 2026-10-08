@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { DEFAULT_AGREEMENTS, createWorkflow, advance } from "@agorix/agent-workflow";
 import { programToWorkspace } from "@agorix/block-editor";
-import { STUDIO_PROTOCOL_VERSION as schema } from "@agorix/studio-protocol";
+import { STUDIO_PROTOCOL_VERSION as schema, type HostMessage } from "@agorix/studio-protocol";
 import { AgentPanel } from "./AgentPanel.js";
 import { Canvas } from "./Canvas.js";
 import {
@@ -209,6 +209,48 @@ describe("prediction before accept ui", () => {
     );
     expect(after).not.toContain("Before you accept");
     expect(after).not.toMatch(/<button[^>]*disabled=""[^>]*>Accept/);
+  });
+
+  it("does not show runtime outcomes before the required prediction", () => {
+    const withEvidence: AgentUiState = {
+      ...withProposal(false),
+      proposal: {
+        proposalId: "p1",
+        purpose: "p",
+        rationale: "r",
+        changes: [],
+        evidence: { stepsUsed: 4, reachedGoal: true, outcome: "completed" },
+        alternatives: [
+          {
+            proposalId: "p2",
+            purpose: "Other",
+            tradeoff: "Different path.",
+            evidence: { stepsUsed: 8, reachedGoal: false, outcome: "budget-exceeded" },
+          },
+        ],
+      },
+      selectionEvidence: {
+        ok: true,
+        evidence: { stepsUsed: 2, reachedGoal: false, outcome: "completed" },
+      },
+    };
+    const before = renderToStaticMarkup(
+      <AgentPanel
+        state={withEvidence}
+        send={() => undefined}
+        selection={{ include: [0], overrides: {} }}
+        onSelectionChange={() => undefined}
+      />,
+    );
+    expect(before).toContain("Before you accept");
+    expect(before).not.toContain("reaches the goal");
+    expect(before).not.toContain("does not reach the goal");
+    expect(before).not.toContain("Choose which changes to keep");
+
+    const after = renderToStaticMarkup(
+      <AgentPanel state={withProposal(true)} send={() => undefined} />,
+    );
+    expect(after).not.toContain("Before you accept");
   });
 
   it("keeps Accept enabled and hides the prompt when the flag is off", () => {
@@ -447,5 +489,102 @@ describe("proposal origin ui", () => {
     expect(rendered).toContain("Assets: asset:costume.explorer");
     expect(rendered).toContain("Variables: score");
     expect(rendered).toContain("Nodes: scripts[0]/statements[0]");
+  });
+});
+
+describe("help below the proposal level", () => {
+  const withHelp = (help: Omit<Extract<HostMessage, { type: "help" }>, "schema" | "type">) =>
+    reduceAgentUi(stageState("proposal"), { schema, type: "help", ...help });
+  const html = (state: AgentUiState, locale: "en" | "es" = "en") =>
+    renderToStaticMarkup(<AgentPanel state={state} send={() => undefined} locale={locale} />);
+
+  it("shows the question, the concept, the pointer or the off message with the level note", () => {
+    expect(html(withHelp({ kind: "question", ceiling: 1, taskId: "first-step" }))).toContain(
+      "What is the first thing you want the character to do?",
+    );
+    expect(
+      html(
+        withHelp({ kind: "concept", ceiling: 2, taskId: "repeat-pattern", concept: "repetition" }),
+      ),
+    ).toContain("Repeat runs the same blocks again and again");
+    expect(
+      html(withHelp({ kind: "pointer", ceiling: 3, taskId: "repeat-pattern", blockIds: ["b1"] })),
+    ).toContain("Look at the blocks marked below");
+    expect(html(withHelp({ kind: "pointer", ceiling: 3, taskId: "first-step" }))).toContain(
+      "Look at your script",
+    );
+    const off = html(withHelp({ kind: "none", ceiling: 0, taskId: "first-step" }));
+    expect(off).toContain("Suggestions are off at your help level.");
+    expect(off).toContain("Your help level is 0.");
+  });
+
+  it("speaks Spanish and clears when a proposal arrives", () => {
+    const state = withHelp({ kind: "question", ceiling: 1, taskId: "repeat-pattern" });
+    expect(html(state, "es")).toContain("¿Ves pasos que se repiten?");
+    expect(html(state, "es")).toContain("Tu nivel de ayuda es 1.");
+    const proposed = reduceAgentUi(state, {
+      schema,
+      type: "proposal",
+      proposalId: "p",
+      purpose: "p",
+      rationale: "r",
+      changes: [],
+    });
+    expect(proposed.help).toBeUndefined();
+  });
+});
+
+describe("provider text placement", () => {
+  const proposalWith = (origin: "provider" | "built-in"): AgentUiState =>
+    reduceAgentUi(stageState("proposal"), {
+      schema,
+      type: "proposal",
+      proposalId: "p1",
+      purpose: "PURPOSE-TEXT",
+      rationale: "RATIONALE-TEXT",
+      changes: [],
+      origin,
+      operations: [{ index: 0, kind: "add", label: "Add move 10 steps" }],
+      evidence: { stepsUsed: 1, reachedGoal: true, outcome: "completed" },
+    });
+  const html = (state: AgentUiState) =>
+    renderToStaticMarkup(
+      <AgentPanel
+        state={state}
+        send={() => undefined}
+        selection={{ include: [0], overrides: {} }}
+        onSelectionChange={() => undefined}
+      />,
+    );
+
+  it("puts AI-written text after the deterministic operations and labels it unchecked", () => {
+    const markup = html(proposalWith("provider"));
+    expect(markup).toContain("The AI&#x27;s explanation (the runtime did not check it)");
+    expect(markup.indexOf("Add move 10 steps")).toBeLessThan(markup.indexOf("PURPOSE-TEXT"));
+    expect(markup.indexOf("runtime did not check it")).toBeLessThan(
+      markup.indexOf("RATIONALE-TEXT"),
+    );
+    expect(markup.indexOf("PURPOSE-TEXT")).toBeLessThan(markup.indexOf("Accept"));
+  });
+
+  it("keeps built-in text where it was, without the unchecked label", () => {
+    const markup = html(proposalWith("built-in"));
+    expect(markup).not.toContain("did not check it");
+    expect(markup.indexOf("PURPOSE-TEXT")).toBeLessThan(markup.indexOf("Add move 10 steps"));
+  });
+
+  it("renders markup-looking text as inert text", () => {
+    const state = reduceAgentUi(proposalWith("provider"), {
+      schema,
+      type: "proposal",
+      proposalId: "p2",
+      purpose: "<img src=x onerror=alert(1)>",
+      rationale: "plain",
+      changes: [],
+      origin: "provider",
+    });
+    const markup = html(state);
+    expect(markup).not.toContain("<img");
+    expect(markup).toContain("&lt;img");
   });
 });

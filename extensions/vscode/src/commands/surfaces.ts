@@ -18,6 +18,8 @@ export interface StudioSurfaceCommandPort {
   currentExecutionView(): StudioExecutionViewState | undefined;
   resetExecution(): StudioExecutionViewState | undefined;
   getProgram(): ProjectProgram | undefined;
+  /** The open project without any prompt; undefined when none is open. */
+  getProject(): StudioProject | undefined;
   commitProgram(program: ProjectProgram): Promise<void>;
   getMetadata(): ProjectMetadata | undefined;
   commitMetadata(metadata: ProjectMetadata): Promise<void>;

@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { createStarterWorkspace } from "@agorix/block-editor";
 import { DEFAULT_AGREEMENTS, createWorkflow } from "@agorix/agent-workflow";
-import { STUDIO_PROTOCOL_VERSION as schema, parseHostMessage, parseUiMessage } from "./index.js";
+import {
+  AUTO_DENSITY_EDITS,
+  STUDIO_PROTOCOL_VERSION as schema,
+  normalizeDensityPreference,
+  parseHostMessage,
+  parseUiMessage,
+  resolveDensity,
+} from "./index.js";
 
 const script = { kind: "script", scriptIndex: 0 } as const;
 

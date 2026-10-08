@@ -13,6 +13,10 @@ import {
   sanitizeAgorixFilename,
   semanticProjectHash,
   serializeAgorixProject,
+  ACTOR_NAME_MAX_LENGTH,
+  ACTOR_SIZE_MAX,
+  ACTOR_SIZE_MIN,
+  type ProjectActors,
   type ProjectMetadata,
 } from "@agorix/persistence";
 import type {
@@ -101,6 +105,14 @@ import {
   type StageVariableWatcher,
 } from "@agorix/stage";
 import {
+  BASE_SPRITE_RADIUS,
+  activeActor,
+  defaultActors,
+  patchActive,
+  stageForActors,
+  type ActorPatch,
+} from "./actors.js";
+import {
   addBlockToWorkspace,
   addBlockToWorkspaceAt,
   addScriptToWorkspace,
@@ -108,6 +120,7 @@ import {
   canContainStatements,
   childContainerPathFor,
   codeSliceForNode,
+  INITIAL_STAGE,
   createEditorModel,
   createEditorModelFromProgram,
   deleteBlockFromWorkspaceAt,
@@ -147,6 +160,7 @@ import { loadPresentationPrefs, savePresentationPrefs } from "./presentationPref
 import { LOCALE_LABELS, t, type Locale, type MessageKey } from "./i18n.js";
 import { PredictionChip, PredictionComparison } from "./PredictionChip.js";
 import { AgentCompanion, companionMood } from "./AgentCompanion.js";
+import { ModelComparison } from "./ModelComparison.js";
 import { GhostAddedBlocks } from "./GhostBlocks.js";
 import { ghostMarksFor, type GhostMarkKind } from "./ghostMarks.js";
 import { ProvenanceLabel } from "./ProvenanceLabel.js";
@@ -1545,7 +1559,11 @@ export function StageView({
   onOpenCode,
   panelControls,
   panelProps,
+  actors,
+  onActorChange,
 }: {
+  actors?: ProjectActors;
+  onActorChange?: (patch: ActorPatch) => void;
   world: WorldDefinition;
   frame: ObservationFrame | undefined;
   fallback: StageState;
@@ -1566,7 +1584,11 @@ export function StageView({
   panelProps?: PanelChromeProps;
 }) {
   const state = frame?.state ?? fallback;
-  const sprite = state.sprite;
+  const actor = actors === undefined ? undefined : activeActor(actors);
+  const sprite = {
+    ...state.sprite,
+    radius: BASE_SPRITE_RADIUS * ((actor?.size ?? 100) / 100),
+  };
   const goal = state.goal;
   const viewport = state.viewport;
   const copy = worldCopy(world, locale);
@@ -1632,6 +1654,21 @@ export function StageView({
         </div>
         {panelControls}
       </div>
+      {controls}
+      {(feedback.phase === "running" || feedback.phase === "stepping") &&
+      feedback.total > 1 &&
+      feedback.position !== undefined ? (
+        <div className="stage-progress" data-testid="stage-progress">
+          <progress
+            max={feedback.total}
+            value={feedback.position}
+            aria-label={t(locale, "stageProgressLabel")}
+          />
+          <span>
+            {t(locale, "stageProgressText", { n: feedback.position, total: feedback.total })}
+          </span>
+        </div>
+      ) : null}
       <div className="world-identity" data-testid="world-identity">
         <span className="world-badge">
           <span aria-hidden="true">{glyphs.sprite}</span> {t(locale, "stageWorldBadge")}
@@ -1796,6 +1833,95 @@ export function StageView({
         </button>
       </aside>
     </section>
+  );
+}
+
+function ActorInspector({
+  actors,
+  locale,
+  onChange,
+}: {
+  actors: ProjectActors;
+  locale: Locale;
+  onChange: (patch: ActorPatch) => void;
+}) {
+  const actor = activeActor(actors);
+  // Like Scratch's sprite pane: open next to the stage on wide screens, folded on narrow ones so
+  // the Code panel stays in the first viewport.
+  const [open, setOpen] = useState(
+    () =>
+      typeof window === "undefined" ||
+      typeof window.matchMedia !== "function" ||
+      window.matchMedia("(min-width: 1024px)").matches,
+  );
+  const number = (
+    key: "x" | "y" | "direction" | "size",
+    label: string,
+    attrs: { min?: number; max?: number } = {},
+  ) => (
+    <label className="actor-field">
+      <span>{label}</span>
+      <input
+        type="number"
+        data-testid={`actor-${key}`}
+        value={actor[key]}
+        {...attrs}
+        onChange={(event) => {
+          const value = event.currentTarget.valueAsNumber;
+          if (Number.isFinite(value)) onChange({ [key]: value });
+        }}
+      />
+    </label>
+  );
+  return (
+    <details
+      className="actor-inspector"
+      open={open}
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+    >
+      <summary>
+        {t(locale, "actorsTitle")}: {actor.name}
+      </summary>
+      <ul className="actor-list" aria-label={t(locale, "actorListLabel")}>
+        {actors.items.map((item) => (
+          <li key={item.id}>
+            <button
+              type="button"
+              className="actor-chip"
+              aria-pressed={item.id === actors.activeId}
+              data-testid="actor-chip"
+            >
+              <span aria-hidden="true">{item.visible ? "●" : "○"}</span> {item.name}
+            </button>
+          </li>
+        ))}
+      </ul>
+      <div className="actor-fields">
+        <label className="actor-field actor-field-name">
+          <span>{t(locale, "actorName")}</span>
+          <input
+            type="text"
+            data-testid="actor-name"
+            value={actor.name}
+            maxLength={ACTOR_NAME_MAX_LENGTH}
+            onChange={(event) => onChange({ name: event.currentTarget.value })}
+          />
+        </label>
+        {number("x", t(locale, "actorX"))}
+        {number("y", t(locale, "actorY"))}
+        {number("direction", t(locale, "actorDirection"))}
+        {number("size", t(locale, "actorSize"), { min: ACTOR_SIZE_MIN, max: ACTOR_SIZE_MAX })}
+        <label className="actor-field actor-field-visible">
+          <input
+            type="checkbox"
+            data-testid="actor-visible"
+            checked={actor.visible}
+            onChange={(event) => onChange({ visible: event.currentTarget.checked })}
+          />
+          <span>{t(locale, "actorShow")}</span>
+        </label>
+      </div>
+    </details>
   );
 }
 
@@ -2598,7 +2724,15 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     initialProjectRef.current = initialProjectFor(persistenceRef.current);
   }
 
-  const [model, setModel] = useState<EditorModel>(() => initialProjectRef.current!.model);
+  const [actors, setActors] = useState<ProjectActors>(
+    () =>
+      initialProjectRef.current!.metadata?.actors ??
+      defaultActors(initialProjectRef.current!.model.stage),
+  );
+  const [model, setModel] = useState<EditorModel>(() => {
+    const initial = initialProjectRef.current!.model;
+    return { ...initial, stage: stageForActors(initial.stage, actors) };
+  });
   const [history, setHistory] = useState<EditorHistory>(() =>
     createEditorHistory(initialProjectRef.current!.model.program),
   );
@@ -2655,6 +2789,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
   const [learningDecision, setLearningDecision] = useState<
     WebLearningDecisionDiagnostics | undefined
   >();
+  const [comparisonOpen, setComparisonOpen] = useState(false);
   const [aiLiteracyActivity, setAiLiteracyActivity] = useState(false);
   const [aiPredictionRecorded, setAiPredictionRecorded] = useState(false);
   const timerRef = useRef<number | undefined>();
@@ -3036,7 +3171,13 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     resetEphemeralEditorState();
     const restored = createEditorModelFromProgram(program);
     setHistory(createEditorHistory(restored.program));
-    setModel((current) => ({ ...current, ...restored, stage: resetStageSession(current.stage) }));
+    const restoredActors = metadata.actors ?? defaultActors(INITIAL_STAGE);
+    setActors(restoredActors);
+    setModel((current) => ({
+      ...current,
+      ...restored,
+      stage: stageForActors(current.stage, restoredActors),
+    }));
     setCreatedAt(metadata.createdAt);
     const nextCreative = creativeStateFromMetadata(metadata, locale);
     setCreativeState(nextCreative);
@@ -3080,6 +3221,14 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     }
     restoreHistory(restored.history, restored.program);
     setMessage(t(locale, "programUpdatedMessage"));
+  }
+
+  function updateActor(patch: ActorPatch) {
+    const next = patchActive(actors, patch);
+    setActors(next);
+    setModel((current) => ({ ...current, stage: stageForActors(current.stage, next) }));
+    setFrames([]);
+    setFrameIndex(0);
   }
 
   function exportProject() {
@@ -4027,6 +4176,45 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
 
   const closedPanelIds = PANEL_AREAS.filter((panel) => closedPanels.includes(panel));
 
+  const stageClosed = closedPanels.includes("stage");
+  const playControls = (
+    <div
+      className="play-controls"
+      role="group"
+      aria-label={t(locale, "run")}
+      data-testid="play-controls"
+    >
+      <button
+        type="button"
+        className="play-button"
+        onClick={runBlocks}
+        disabled={status === "running"}
+      >
+        <span className="play-glyph" aria-hidden="true">
+          ⚑
+        </span>
+        {t(locale, "run")}
+      </button>
+      <button type="button" onClick={stepBlocks} disabled={status === "running"}>
+        {t(locale, "step")}
+      </button>
+      <button
+        type="button"
+        className="stop-button"
+        onClick={stopRun}
+        disabled={status !== "running"}
+      >
+        <span className="stop-glyph" aria-hidden="true">
+          ■
+        </span>
+        {t(locale, "stop")}
+      </button>
+      <button type="button" onClick={resetEditor}>
+        {t(locale, "reset")}
+      </button>
+    </div>
+  );
+
   return (
     <main
       className={status === "complete" ? "editor-shell mission-complete" : "editor-shell"}
@@ -4092,9 +4280,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
             onProjectLoaded={loadAccountProject}
             onRemoveLocalProject={() => removeLocalStoredProject(persistenceRef.current)}
           />
-          <button type="button" onClick={runBlocks} disabled={status === "running"}>
-            {t(locale, "run")}
-          </button>
+          {stageClosed ? playControls : null}
           <button
             type="button"
             onClick={undoEditor}
@@ -4132,15 +4318,6 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
               }
             }}
           />
-          <button type="button" onClick={stepBlocks} disabled={status === "running"}>
-            {t(locale, "step")}
-          </button>
-          <button type="button" onClick={stopRun} disabled={status !== "running"}>
-            {t(locale, "stop")}
-          </button>
-          <button type="button" onClick={resetEditor}>
-            {t(locale, "reset")}
-          </button>
         </div>
       </header>
 
@@ -4319,6 +4496,8 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
             onOpenCode={() => restorePanel("code")}
             panelControls={panelControls("stage")}
             panelProps={panelProps("stage", "stage-panel")}
+            actors={actors}
+            onActorChange={updateActor}
           />
         )}
 
@@ -4703,6 +4882,9 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
                   {t(locale, "aiLiteracyActivity")}
                 </button>
               ) : null}
+              <button type="button" onClick={() => setComparisonOpen((open) => !open)}>
+                {t(locale, "compareOpen")}
+              </button>
               <button type="button" onClick={requestHint}>
                 {t(locale, "getHint")}
               </button>
@@ -4710,6 +4892,9 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
                 {t(locale, "hintMeter", { count: hintHistory.length })}
               </span>
             </div>
+            {comparisonOpen ? (
+              <ModelComparison locale={locale} onClose={() => setComparisonOpen(false)} />
+            ) : null}
             {proposalCard === undefined || repeatReviewActive ? null : (
               <div className="proposal-card" data-testid="proposal-preview">
                 <ProvenanceLabel kind="suggestion" locale={locale} />

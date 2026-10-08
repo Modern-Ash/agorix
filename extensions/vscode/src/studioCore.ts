@@ -1,4 +1,5 @@
 import { agorixCodeProjection } from "@agorix/agorix-code";
+import { msg } from "./messages.js";
 import {
   projectProgram,
   typescriptProjection,
@@ -351,13 +352,13 @@ const PROJECTIONS: Record<
 export const STUDIO_STARTER_OPTIONS: readonly StudioStarterOption[] = [
   {
     id: "blank",
-    label: "Blank project",
-    description: "Start with an empty canonical program.",
+    label: msg("Blank project"),
+    description: msg("Start with an empty canonical program."),
   },
   {
     id: "first-mission",
-    label: "First Mission",
-    description: "Open the shared Reach the Goal starter.",
+    label: msg("First Mission"),
+    description: msg("Open the shared Reach the Goal starter."),
   },
 ] as const;
 
@@ -514,53 +515,54 @@ export function createNavigationSections(
 ): readonly StudioNavigationSection[] {
   const developer: StudioNavigationSection = {
     id: "developer",
-    label: "Developer",
+    label: msg("Developer"),
     icon: "tools",
     items:
       project === undefined
         ? [
             {
               id: "open-scm",
-              label: "Source Control",
+              label: msg("Source Control"),
               icon: "source-control",
-              tooltip: "Open VS Code Source Control",
+              tooltip: msg("Open VS Code Source Control"),
               command: "agorixStudio.openScm",
             },
           ]
         : [
             {
               id: "validate-project",
-              label: "Validate",
+              label: msg("Validate"),
               icon: "check-all",
-              description: "runtime + mission",
-              tooltip:
+              description: msg("runtime + mission"),
+              tooltip: msg(
                 "Validate the current Agorix project with the shared runtime and mission checks",
+              ),
               command: "agorixStudio.validateProject",
               contextValue: "agorixDeveloperTask",
             },
             {
               id: "run-checks",
-              label: "Checks",
+              label: msg("Checks"),
               icon: "checklist",
-              description: "task",
-              tooltip: "Run Agorix workspace checks as a native VS Code task",
+              description: msg("task"),
+              tooltip: msg("Run Agorix workspace checks as a native VS Code task"),
               command: "agorixStudio.runChecks",
               contextValue: "agorixDeveloperTask",
             },
             {
               id: "open-scm",
-              label: "Source Control",
+              label: msg("Source Control"),
               icon: "source-control",
-              tooltip: "Open VS Code Source Control (uses the Git extension)",
+              tooltip: msg("Open VS Code Source Control (uses the Git extension)"),
               command: "agorixStudio.openScm",
               contextValue: "agorixDeveloperTask",
             },
             {
               id: "developer-context",
-              label: "Task context",
+              label: msg("Task context"),
               icon: "symbol-key",
               description: currentProgramHash(project.stored.program),
-              tooltip: "Show the developer task context for the canonical program",
+              tooltip: msg("Show the developer task context for the canonical program"),
               command: "agorixStudio.showDeveloperContext",
               contextValue: "agorixDeveloperTask",
             },
@@ -570,36 +572,36 @@ export function createNavigationSections(
     return [
       {
         id: "projects",
-        label: "Projects",
+        label: msg("Projects"),
         icon: "folder",
         summary: "none open",
         items: [
           {
             id: "create",
-            label: "Create New Project",
+            label: msg("Create New Project"),
             icon: "new-file",
-            description: "local",
-            tooltip: "Create a local .agorix file",
+            description: msg("local"),
+            tooltip: msg("Create a local .agorix file"),
             command: "agorixStudio.createProject",
           },
           {
             id: "open",
-            label: "Open local .agorix project",
+            label: msg("Open local .agorix project"),
             icon: "folder-opened",
             command: "agorixStudio.openProject",
           },
           {
             id: "open-remote",
-            label: "Open account project",
+            label: msg("Open account project"),
             icon: "cloud-download",
             command: "agorixStudio.openRemoteProject",
           },
         ],
       },
-      { id: "missions", label: "Missions", icon: "target", items: [] },
-      { id: "progress", label: "Progress", icon: "graph", items: [] },
-      { id: "worlds", label: "Worlds", icon: "globe", items: [] },
-      { id: "companion", label: "Learning Companion", icon: "sparkle", items: [] },
+      { id: "missions", label: msg("Missions"), icon: "target", items: [] },
+      { id: "progress", label: msg("Progress"), icon: "graph", items: [] },
+      { id: "worlds", label: msg("Worlds"), icon: "globe", items: [] },
+      { id: "companion", label: msg("Learning Companion"), icon: "sparkle", items: [] },
       developer,
     ];
   }
@@ -613,15 +615,15 @@ export function createNavigationSections(
   return [
     {
       id: "projects",
-      label: "Projects",
+      label: msg("Projects"),
       icon: "folder",
       summary: "1 open",
       items: [
         {
           id: "new-project",
-          label: "Create New Project",
+          label: msg("Create New Project"),
           icon: "new-file",
-          tooltip: "Start another local .agorix file",
+          tooltip: msg("Start another local .agorix file"),
           command: "agorixStudio.createProject",
           contextValue: "agorixProject",
         },
@@ -635,7 +637,7 @@ export function createNavigationSections(
         },
         {
           id: "current-project",
-          label: "Current local project",
+          label: msg("Current local project"),
           icon: "file-code",
           state: "ok",
           description: `saved · ${statementCount} ${statementCount === 1 ? "block" : "blocks"}`,
@@ -646,7 +648,7 @@ export function createNavigationSections(
     },
     {
       id: "missions",
-      label: "Missions",
+      label: msg("Missions"),
       icon: "target",
       summary: "1",
       items: [
@@ -662,7 +664,7 @@ export function createNavigationSections(
     },
     {
       id: "progress",
-      label: "Progress",
+      label: msg("Progress"),
       icon: "graph",
       summary: `${statementCount}`,
       items: [
@@ -671,13 +673,13 @@ export function createNavigationSections(
           label: `${statementCount} ${statementCount === 1 ? "block" : "blocks"}`,
           icon: "symbol-event",
           state: statementCount > 0 ? "ok" : "idle",
-          tooltip: "Blocks in the canonical project. Select to show execution evidence.",
+          tooltip: msg("Blocks in the canonical project. Select to show execution evidence."),
           command: "agorixStudio.showEvidence",
           contextValue: "agorixProgress",
           children: [
             {
               id: "hints-used",
-              label: "Hints",
+              label: msg("Hints"),
               icon: "lightbulb",
               state: hints > 0 ? "warn" : "idle",
               description: `${hints}`,
@@ -689,7 +691,7 @@ export function createNavigationSections(
     },
     {
       id: "worlds",
-      label: "Worlds",
+      label: msg("Worlds"),
       icon: "globe",
       summary: `${worlds.length}`,
       items: worlds.map((world) => {
@@ -705,47 +707,49 @@ export function createNavigationSections(
     },
     {
       id: "companion",
-      label: "Learning Companion",
+      label: msg("Learning Companion"),
       icon: "sparkle",
       summary: "ready",
       items: [
         {
           id: "repeat-suggestion",
-          label: "Suggest repeat",
+          label: msg("Suggest repeat"),
           icon: "repeat",
           state: "ai",
-          description: "proposal",
-          tooltip: "Suggest repeat when a pattern is proven. Deterministic ProgramProposal only.",
+          description: msg("proposal"),
+          tooltip: msg(
+            "Suggest repeat when a pattern is proven. Deterministic ProgramProposal only.",
+          ),
           command: "agorixStudio.suggestRepeat",
           contextValue: "agorixCompanion",
         },
         {
           id: "explain-selection",
-          label: "Explain",
+          label: msg("Explain"),
           icon: "comment-discussion",
           state: "ai",
-          description: "selection",
-          tooltip: "Explain the current selection using bounded code and evidence context.",
+          description: msg("selection"),
+          tooltip: msg("Explain the current selection using bounded code and evidence context."),
           command: "agorixStudio.companionExplain",
           contextValue: "agorixCompanion",
         },
         {
           id: "debug-evidence",
-          label: "Debug",
+          label: msg("Debug"),
           icon: "bug",
           state: "ai",
-          description: "runtime facts",
-          tooltip: "Debug with runtime facts only.",
+          description: msg("runtime facts"),
+          tooltip: msg("Debug with runtime facts only."),
           command: "agorixStudio.companionDebug",
           contextValue: "agorixCompanion",
         },
         {
           id: "reflect-run",
-          label: "Reflect",
+          label: msg("Reflect"),
           icon: "mirror",
           state: "ai",
-          description: "last run",
-          tooltip: "Reflect on the run with an evidence-grounded prompt.",
+          description: msg("last run"),
+          tooltip: msg("Reflect on the run with an evidence-grounded prompt."),
           command: "agorixStudio.companionReflect",
           contextValue: "agorixCompanion",
         },
@@ -1456,7 +1460,7 @@ function blankProgram(): ProjectProgram {
     scripts: [
       {
         id: "main",
-        trigger: { type: "onStart" },
+        trigger: { type: "greenFlag" },
         statements: [],
       },
     ],

@@ -35,6 +35,10 @@ actions. The Learning Companion never supplies either proof.
 Every event also carries `assistanceLevel`, so no evidence can be read without knowing how much
 of the work the AI performed.
 
+### Model-comparison activity in Web (#101)
+
+`apps/web/src/ModelComparison.tsx` runs the activity for the learner: inspect both suggestions, guess what each will do, test each in its own separate world, conclude from the runs and pick a reflection. Nothing is chosen for the learner and no winner is labeled. Proposal aliases are "Proposal A" and "Proposal B"; no provider or model identity is shown. Deterministic dual-proposal fixtures (one works, both work, one invalid) make it usable in CI and classrooms. Playwright scenarios live in `apps/web/e2e/model-comparison.spec.ts`.
+
 ## Never measured
 
 Per #102, none of these appear in the schema, and `validateEvidenceEvent` fails closed on them:
