@@ -39,11 +39,19 @@ async function addMove(page: Page) {
     .click();
 }
 
+async function openAppMenu(page: Page) {
+  const menuButton = page.getByRole("button", { name: "Show app menu" });
+  if (await menuButton.isVisible().catch(() => false)) {
+    await menuButton.click();
+  }
+}
+
 function authDialog(page: Page): Locator {
   return page.getByTestId("auth-dialog");
 }
 
 async function register(page: Page, name: string) {
+  await openAppMenu(page);
   await page.getByRole("button", { name: "Create account" }).click();
   const dialog = authDialog(page);
   await dialog.getByLabel("Username").fill(name);
@@ -52,6 +60,7 @@ async function register(page: Page, name: string) {
 }
 
 async function signIn(page: Page, name: string, password = PASSWORD) {
+  await openAppMenu(page);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   const dialog = authDialog(page);
   await dialog.getByLabel("Username").fill(name);
@@ -72,10 +81,19 @@ async function newProject(page: Page) {
   await projectsDialog(page)
     .getByRole("button", { name: /^(New project|Nuevo proyecto)$/ })
     .click();
+  await expect.poll(async () => saveState(page).getAttribute("data-save-state")).toBe("saved");
+  if (
+    await projectsDialog(page)
+      .isVisible()
+      .catch(() => false)
+  ) {
+    await page.keyboard.press("Escape");
+  }
   await expect(projectsDialog(page)).toHaveCount(0);
 }
 
 async function openMyProjects(page: Page) {
+  await openAppMenu(page);
   await page.getByRole("button", { name: "My projects" }).click();
   await expect(projectsDialog(page)).toBeVisible();
 }
@@ -88,6 +106,7 @@ async function keepLocalIfOffered(page: Page) {
 }
 
 test("anonymous use works unchanged and account entry points are optional", async ({ page }) => {
+  await openAppMenu(page);
   await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeVisible();
   await addMove(page);
   await expect(moveBlocks(page)).toHaveCount(1);
@@ -108,7 +127,9 @@ test("create account, land in My projects, sign out and sign in again", async ({
   await expect(page.getByTestId("account-alias")).toContainText(name);
   await closeProjects(page);
 
+  await openAppMenu(page);
   await page.getByRole("button", { name: "Sign out" }).click();
+  await openAppMenu(page);
   await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeVisible();
   await expect(page.getByTestId("account-alias")).toHaveCount(0);
 
@@ -120,8 +141,10 @@ test("sign-in errors are generic and the password toggle is accessible", async (
   const name = alias();
   await register(page, name);
   await closeProjects(page);
+  await openAppMenu(page);
   await page.getByRole("button", { name: "Sign out" }).click();
 
+  await openAppMenu(page);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   const dialog = authDialog(page);
   const password = dialog.getByLabel("Password", { exact: true });
@@ -148,8 +171,10 @@ test("registration validates alias and password and rejects taken aliases", asyn
   const name = alias();
   await register(page, name);
   await closeProjects(page);
+  await openAppMenu(page);
   await page.getByRole("button", { name: "Sign out" }).click();
 
+  await openAppMenu(page);
   await page.getByRole("button", { name: "Create account" }).click();
   const dialog = authDialog(page);
   await expect(dialog.getByLabel("Password", { exact: true })).toHaveAttribute(
@@ -173,6 +198,7 @@ test("registration validates alias and password and rejects taken aliases", asyn
 });
 
 test("dialog keeps focus inside, closes on Escape and returns focus", async ({ page }) => {
+  await openAppMenu(page);
   const opener = page.getByRole("button", { name: "Sign in", exact: true });
   await opener.click();
   const dialog = authDialog(page);
@@ -198,6 +224,7 @@ test("project CRUD, reload persistence and delete confirmation", async ({ page }
   // The saved project survives a full page reload (session cookie + server state).
   await page.waitForTimeout(700);
   await page.reload();
+  await openAppMenu(page);
   await expect(page.getByRole("button", { name: "My projects" })).toBeVisible();
   await openMyProjects(page);
   const dialog = projectsDialog(page);
@@ -278,6 +305,7 @@ test("keep-local never uploads and does not nag again", async ({ page }) => {
     .click();
   await expect(page.getByTestId("project-card")).toHaveCount(0);
   await closeProjects(page);
+  await openAppMenu(page);
   await page.getByRole("button", { name: "Sign out" }).click();
   await signIn(page, name);
   await expect(page.getByTestId("import-dialog")).toHaveCount(0);
@@ -435,6 +463,7 @@ test("account B never sees account A content after sign-out", async ({ page }) =
   await expect(page.getByTestId("rename-dialog")).toHaveCount(0);
   await closeProjects(page);
 
+  await openAppMenu(page);
   await page.getByRole("button", { name: "Sign out" }).click();
   // The editor no longer shows A's blocks and no account chrome remains.
   await expect(moveBlocks(page)).toHaveCount(0);
@@ -454,6 +483,7 @@ test("account B never sees account A content after sign-out", async ({ page }) =
 });
 
 test("account UX and states are localized in Spanish", async ({ page }) => {
+  await openAppMenu(page);
   await page.getByLabel("Product language").selectOption("es");
   await expect(page.getByRole("button", { name: "Iniciar sesión", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Crear cuenta" }).click();
@@ -468,7 +498,9 @@ test("account UX and states are localized in Spanish", async ({ page }) => {
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await expect(page.getByRole("button", { name: /^Eliminar: / })).toBeVisible();
   await closeProjects(page);
+  await openAppMenu(page);
   await page.getByRole("button", { name: "Cerrar sesión" }).click();
+  await openAppMenu(page);
   await page.getByRole("button", { name: "Iniciar sesión", exact: true }).click();
   await authDialog(page).getByLabel("Nombre de usuario").fill("nadie-aqui");
   await authDialog(page).getByLabel("Contraseña", { exact: true }).fill("otra clave cualquiera");

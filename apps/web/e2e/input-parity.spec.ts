@@ -20,6 +20,21 @@ async function canonicalHash(page: Page) {
   return page.getByTestId("canonical-hash").getAttribute("data-canonical-hash");
 }
 
+async function openAppMenu(page: Page) {
+  const menuButton = page.getByRole("button", { name: "Show app menu" });
+  if (await menuButton.isVisible().catch(() => false)) {
+    await menuButton.click();
+  }
+}
+
+function stageRun(page: Page) {
+  return page.locator(".stage-panel").getByRole("button", { name: "Run", exact: true });
+}
+
+function appMenuButton(page: Page, name: string) {
+  return page.locator("#app-menu").getByRole("button", { name, exact: true });
+}
+
 function blockFaces(page: Page) {
   return page.locator(".block-stack .block-face");
 }
@@ -53,7 +68,7 @@ test.describe("touch-only First Mission", () => {
     await page.setViewportSize({ width: 820, height: 1180 });
     expect(await canonicalHash(page)).toBe(portraitHash);
 
-    await page.getByRole("button", { name: "Run", exact: true }).tap();
+    await stageRun(page).tap();
     await expectMissionComplete(page);
   });
 
@@ -106,7 +121,7 @@ test.describe("keyboard-only First Mission", () => {
     await page.keyboard.press("Enter");
     await expect(page.locator(".code-surface")).toContainText("sprite.move(160);");
 
-    await page.getByRole("button", { name: "Run", exact: true }).focus();
+    await stageRun(page).focus();
     await page.keyboard.press("Enter");
     await expectMissionComplete(page);
   });
@@ -192,7 +207,8 @@ test.describe("input method and orientation parity", () => {
     const pointerHash = await canonicalHash(page);
 
     // Keyboard path on a fresh project.
-    await page.getByRole("button", { name: "Reset", exact: true }).click();
+    await openAppMenu(page);
+    await appMenuButton(page, "Reset").click();
     await palette(page).getByRole("button", { name: "Move", exact: true }).focus();
     await page.keyboard.press("Enter");
     await palette(page).getByRole("button", { name: "Turn", exact: true }).focus();

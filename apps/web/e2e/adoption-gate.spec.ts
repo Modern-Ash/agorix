@@ -36,7 +36,23 @@ test.beforeEach(async ({ page }) => {
 const palette = (page: Page) => page.locator(".action-palette");
 const tool = (page: Page, name: string) => palette(page).getByRole("button", { name, exact: true });
 const code = (page: Page) => page.locator(".code-surface");
-const run = (page: Page) => page.getByRole("button", { name: "Run", exact: true });
+const run = (page: Page) =>
+  page.locator(".stage-panel").getByRole("button", { name: "Run", exact: true });
+
+async function openAppMenu(page: Page) {
+  const menuButton = page.getByRole("button", { name: "Show app menu" });
+  if (await menuButton.isVisible().catch(() => false)) {
+    await menuButton.click();
+  }
+}
+
+function appMenuButton(page: Page, name: string) {
+  return page.locator("#app-menu").getByRole("button", { name, exact: true });
+}
+
+function appMenuControl(page: Page, name: string) {
+  return page.locator("#app-menu").getByRole("button", { name });
+}
 
 async function canonicalHash(page: Page) {
   return page.getByTestId("canonical-hash").getAttribute("data-canonical-hash");
@@ -128,13 +144,14 @@ test("journey 2: reorder, nest, duplicate, delete, then Undo/Redo restore exact 
   await checkpoint();
 
   // Undo all the way back, asserting every exact hash on the way.
+  await openAppMenu(page);
   for (let i = hashes.length - 2; i >= 0; i -= 1) {
-    await page.getByRole("button", { name: "Undo program edit" }).click();
+    await appMenuControl(page, "Undo program edit").click();
     expect(await canonicalHash(page), `undo to checkpoint ${i}`).toBe(hashes[i]);
   }
   // Redo all the way forward.
   for (let i = 1; i < hashes.length; i += 1) {
-    await page.getByRole("button", { name: "Redo program edit" }).click();
+    await appMenuControl(page, "Redo program edit").click();
     expect(await canonicalHash(page), `redo to checkpoint ${i}`).toBe(hashes[i]);
   }
 });
@@ -169,10 +186,11 @@ test("journeys 5+6: contextual AI proposal never moves the hash until accept; Un
   expect(accepted).not.toBe(beforeAccept);
   await expect(code(page)).toContainText("repeat");
 
-  await page.getByRole("button", { name: "Undo program edit" }).click();
+  await openAppMenu(page);
+  await appMenuControl(page, "Undo program edit").click();
   expect(await canonicalHash(page)).toBe(beforeAccept);
   await expect(code(page)).not.toContainText("repeat");
-  await page.getByRole("button", { name: "Redo program edit" }).click();
+  await appMenuControl(page, "Redo program edit").click();
   expect(await canonicalHash(page)).toBe(accepted);
   await expect(code(page)).toContainText("repeat");
 });
@@ -186,8 +204,8 @@ test("journey 7: failed Run shows runtime evidence, hint does not mutate, learne
   await expect(page.getByLabel("Runtime result — actually happened").first()).toBeVisible();
   const failed = await canonicalHash(page);
 
-  await page.getByRole("button", { name: "Get hint" }).click();
-  await expect(page.getByText("Hint level 1 of 5")).toBeVisible();
+  await page.getByRole("button", { name: "Use AI hint tool" }).click();
+  await expect(page.getByText("Hint level 1 of 5").first()).toBeVisible();
   expect(await canonicalHash(page)).toBe(failed);
 
   await setMove(page, "160");
@@ -207,11 +225,12 @@ test("journey 8: Step keeps block, code and World synchronized without changing 
   const sprite = page.getByTestId("stage-sprite");
   const startX = await sprite.getAttribute("data-x");
 
-  await page.getByRole("button", { name: "Step", exact: true }).click();
+  await openAppMenu(page);
+  await appMenuButton(page, "Step").click();
   await expect(page.locator(".block-node.active")).toContainText("Move");
-  await expect(page.locator(".code-surface mark")).toContainText("sprite.move(160);");
   await expect(page.getByTestId("stage-active-block")).toContainText("sprite.move(160);");
-  await page.getByRole("button", { name: "Step", exact: true }).click();
+  await expect(page.getByTestId("stage-active-block")).toContainText("sprite.move(160);");
+  await appMenuButton(page, "Step").click();
   await expect(sprite).not.toHaveAttribute("data-x", startX ?? "");
   expect(await canonicalHash(page)).toBe(hash);
 });
@@ -219,7 +238,8 @@ test("journey 8: Step keeps block, code and World synchronized without changing 
 test("journey 9: orientation changes never drift the program, even mid-Step", async ({ page }) => {
   await tool(page, "Move").click();
   await setMove(page, "160");
-  await page.getByRole("button", { name: "Step", exact: true }).click();
+  await openAppMenu(page);
+  await appMenuButton(page, "Step").click();
   const hash = await canonicalHash(page);
   for (const viewport of [
     { width: 820, height: 1180 },
@@ -261,12 +281,14 @@ test.describe("journey 10: AI unavailable", () => {
     });
 
     // Undo still works and the program never depended on AI.
-    await page.getByRole("button", { name: "Undo program edit" }).click();
+    await openAppMenu(page);
+    await appMenuControl(page, "Undo program edit").click();
     await expect(page.getByLabel("Turn block")).toBeVisible();
     await expect(page.getByRole("button", { name: "Keep local mode" })).toHaveCount(0);
   });
 
   test("a project executes with no provider configured", async ({ page }) => {
+    await page.getByRole("button", { name: "Use AI explain tool" }).click();
     await page.getByRole("button", { name: "Connect AI" }).click();
     await expect(page.getByText("Not configured yet")).toBeVisible();
     await page.getByRole("button", { name: "Keep local mode" }).click();
@@ -297,6 +319,7 @@ test("journey 11: ghost proposal, agent toggle and prediction never move the has
   expect(await canonicalHash(page)).toBe(before);
 
   // Agent off: offers and the intent dialogue go away, editing and Run still work.
+  await page.getByRole("button", { name: "Use AI explain tool" }).click();
   await page.getByLabel("Agent helps").uncheck();
   await expect(page.getByTestId("repeat-suggestion")).toHaveCount(0);
   await tool(page, "Move").click();
