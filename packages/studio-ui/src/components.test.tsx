@@ -7,6 +7,7 @@ import {
   ActorInspector,
   AssetPanel,
   EventTracePanel,
+  MissionSpecPanel,
   StagePanel,
   Workbench,
   statusFor,
@@ -292,6 +293,28 @@ describe("studio-ui", () => {
     expect(markup).toContain("Sounds");
     expect(markup).toContain("Dimensions: 64x64");
     expect(markup).toContain("Duration: 900ms");
+  });
+
+  it("renders the Mission Spec as a compact editable runtime contract", () => {
+    const markup = renderToStaticMarkup(
+      <MissionSpecPanel
+        copy={copyFor("en")}
+        onSave={() => undefined}
+        spec={{
+          goal: "Guide the rocket to the beacon.",
+          successCheck: "touches-goal",
+          predictionPrompt: "Will it touch the beacon?",
+          hash: "mission:abcd1234",
+        }}
+      />,
+    );
+
+    expect(markup).toContain("Mission Spec");
+    expect(markup).toContain("Guide the rocket to the beacon.");
+    expect(markup).toContain("Touches the goal");
+    expect(markup).toContain("Will it touch the beacon?");
+    expect(markup).toContain("mission:abcd1234");
+    expect(markup).toContain("Save spec");
   });
 
   it("renders event trace activations as a dense runtime list", () => {

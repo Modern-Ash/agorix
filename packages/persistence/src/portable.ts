@@ -10,6 +10,7 @@ import {
 } from "./compatibility.js";
 import { PersistenceError, type ProjectMetadata, type StoredProject } from "./store.js";
 import { validateProjectActors, type ProjectActors } from "./actors.js";
+import { validateProjectMissionSpec } from "./missionSpec.js";
 
 export const AGORIX_PROJECT_FORMAT = "agorix-project";
 export const AGORIX_PROJECT_FORMAT_VERSION = "1";
@@ -30,6 +31,7 @@ const METADATA_KEYS = [
   "actors",
   "stage",
   "assets",
+  "missionSpec",
 ] as const;
 const STAGE_KEYS = ["backdropId", "width", "height", "actorOrder"] as const;
 const ASSET_KEYS = ["id", "kind", "name", "source", "tags"] as const;
@@ -243,6 +245,9 @@ function validatePortableMetadata(input: unknown, program: ProjectProgram): Proj
     ...("locale" in input && typeof input.locale === "string" ? { locale: input.locale } : {}),
     ...(actors === undefined ? {} : { actors }),
     ...portableCreative,
+    ...(input.missionSpec === undefined
+      ? {}
+      : { missionSpec: validateProjectMissionSpec(input.missionSpec) }),
   };
   return metadata;
 }

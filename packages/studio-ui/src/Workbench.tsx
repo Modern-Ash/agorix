@@ -7,6 +7,7 @@ import {
   type ChangeRefusalReason,
   type HostMessage,
   type AmbientHintView,
+  type MissionSpecView,
 } from "@agorix/studio-protocol";
 import type { HostBridge } from "./bridge.js";
 import { AgentZone, Canvas, type FocusRequest, type SyncView } from "./Canvas.js";
@@ -57,6 +58,88 @@ type ExecutionState = Extract<HostMessage, { type: "executionState" }>;
 type StageFrameMessage = Extract<HostMessage, { type: "stageFrame" }>;
 type ActorsMessage = Extract<HostMessage, { type: "actors" }>;
 type AssetsMessage = Extract<HostMessage, { type: "assets" }>;
+
+export function MissionSpecPanel({
+  copy,
+  spec,
+  onSave,
+}: {
+  readonly copy: StudioUiCopy;
+  readonly spec: MissionSpecView | undefined;
+  readonly onSave: (spec: Omit<MissionSpecView, "hash">) => void;
+}) {
+  const [draft, setDraft] = useState<Omit<MissionSpecView, "hash"> | undefined>(
+    spec === undefined
+      ? undefined
+      : {
+          goal: spec.goal,
+          successCheck: spec.successCheck,
+          ...(spec.predictionPrompt === undefined
+            ? {}
+            : { predictionPrompt: spec.predictionPrompt }),
+        },
+  );
+  useEffect(() => {
+    if (spec !== undefined) {
+      setDraft({
+        goal: spec.goal,
+        successCheck: spec.successCheck,
+        ...(spec.predictionPrompt === undefined ? {} : { predictionPrompt: spec.predictionPrompt }),
+      });
+    }
+  }, [spec?.hash]);
+  if (spec === undefined || draft === undefined) return null;
+  return (
+    <section className="mission-spec" aria-label={copy.missionSpec}>
+      <header>
+        <strong>{copy.missionSpec}</strong>
+        <code title={copy.missionSpecHash}>{spec.hash}</code>
+      </header>
+      <label>
+        {copy.missionSpecGoal}
+        <input
+          maxLength={140}
+          value={draft.goal}
+          onChange={(event) => setDraft({ ...draft, goal: event.currentTarget.value })}
+        />
+      </label>
+      <div className="mission-spec-grid">
+        <label>
+          {copy.missionSpecSuccessCheck}
+          <select
+            value={draft.successCheck}
+            onChange={(event) =>
+              setDraft({ ...draft, successCheck: event.currentTarget.value as "touches-goal" })
+            }
+          >
+            <option value="touches-goal">{copy.missionSpecTouchesGoal}</option>
+          </select>
+        </label>
+        <label>
+          {copy.missionSpecPredictionPrompt}
+          <input
+            maxLength={160}
+            value={draft.predictionPrompt ?? ""}
+            onChange={(event) => {
+              const value = event.currentTarget.value;
+              if (value === "") {
+                setDraft({ goal: draft.goal, successCheck: draft.successCheck });
+                return;
+              }
+              setDraft({
+                ...draft,
+                predictionPrompt: value,
+              });
+            }}
+          />
+        </label>
+      </div>
+      <button type="button" onClick={() => onSave(draft)}>
+        {copy.missionSpecSave}
+      </button>
+    </section>
+  );
+}
 
 function stagePercent(value: number, max: number): string {
   if (!Number.isFinite(value) || !Number.isFinite(max) || max <= 0) return "0%";
@@ -606,6 +689,7 @@ export function Workbench({
   const [actors, setActors] = useState<ActorsMessage | undefined>();
   const [selectedActorId, setSelectedActorId] = useState<string | undefined>();
   const [assets, setAssets] = useState<AssetsMessage["assets"]>([]);
+  const [missionSpec, setMissionSpec] = useState<MissionSpecView | undefined>();
   const [playing, setPlaying] = useState(false);
   const [programHash, setProgramHash] = useState<string | undefined>();
   const [selection, setSelection] = useState<SelectionState>({ include: [], overrides: {} });
@@ -677,6 +761,10 @@ export function Workbench({
         setAssets(message.assets);
         return;
       }
+      if (message.type === "missionSpec") {
+        setMissionSpec(message.spec);
+        return;
+      }
       const text = statusFor(message, copy);
       if (text !== undefined) setStatus(text);
     });
@@ -733,6 +821,11 @@ export function Workbench({
     bridge.post({ schema: STUDIO_PROTOCOL_VERSION, type: "updateActor", actorId, patch });
   };
 
+  const updateMissionSpec = (spec: Omit<MissionSpecView, "hash">) => {
+    bridge.post({ schema: STUDIO_PROTOCOL_VERSION, type: "updateMissionSpec", spec });
+    announce(copy.missionSpecSaved);
+  };
+
   const execute = (command: ExecutionCommand) => {
     if (command === "run") {
       setPlaying(true);
@@ -772,6 +865,7 @@ export function Workbench({
           assets={assets}
           selectedActorId={selectedActorId}
         />
+        <MissionSpecPanel copy={copy} spec={missionSpec} onSave={updateMissionSpec} />
         <EventTracePanel copy={copy} state={execution} selectedActorId={selectedActorId} />
         <ActorTree
           copy={copy}

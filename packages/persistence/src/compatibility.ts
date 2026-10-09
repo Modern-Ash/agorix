@@ -1,5 +1,6 @@
 import { validateProgram, type ProjectProgram } from "@agorix/program-model";
 import { validateProjectActors } from "./actors.js";
+import { missionSpecHash, validateProjectMissionSpec } from "./missionSpec.js";
 import { PersistenceError, type StoredProject } from "./store.js";
 
 export const CROSS_SURFACE_CONTRACT_VERSION = "agorix/cross-surface/v1";
@@ -45,20 +46,37 @@ export interface SemanticProjectSnapshot {
   readonly actors?: StoredProject["metadata"]["actors"];
   readonly stage?: StoredProject["metadata"]["stage"];
   readonly assets?: StoredProject["metadata"]["assets"];
+  readonly missionSpecHash?: string;
 }
 
 export function assertCrossSurfaceCompatibleProject(stored: StoredProject): StoredProject {
   const program = validateProgram(stored.program);
   assertNoUiSpecificProgramState(program);
-  if (stored.metadata.actors === undefined) {
-    return { ...stored, program };
-  }
-  const actors = validateProjectActors(stored.metadata.actors);
-  return { ...stored, program, metadata: { ...stored.metadata, actors } };
+  const actors =
+    stored.metadata.actors === undefined
+      ? undefined
+      : validateProjectActors(stored.metadata.actors);
+  const missionSpec =
+    stored.metadata.missionSpec === undefined
+      ? undefined
+      : validateProjectMissionSpec(stored.metadata.missionSpec);
+  return {
+    ...stored,
+    program,
+    metadata: {
+      ...stored.metadata,
+      ...(actors === undefined ? {} : { actors }),
+      ...(missionSpec === undefined ? {} : { missionSpec }),
+    },
+  };
 }
 
 export function semanticProjectSnapshot(stored: StoredProject): SemanticProjectSnapshot {
   const compatible = assertCrossSurfaceCompatibleProject(stored);
+  const specHash =
+    compatible.metadata.missionSpec === undefined
+      ? undefined
+      : missionSpecHash(compatible.metadata.missionSpec);
   return {
     contractVersion: CROSS_SURFACE_CONTRACT_VERSION,
     schemaVersion: compatible.schemaVersion,
@@ -70,6 +88,7 @@ export function semanticProjectSnapshot(stored: StoredProject): SemanticProjectS
     ...(compatible.metadata.actors === undefined ? {} : { actors: compatible.metadata.actors }),
     ...(compatible.metadata.stage === undefined ? {} : { stage: compatible.metadata.stage }),
     ...(compatible.metadata.assets === undefined ? {} : { assets: compatible.metadata.assets }),
+    ...(specHash === undefined ? {} : { missionSpecHash: specHash }),
   };
 }
 

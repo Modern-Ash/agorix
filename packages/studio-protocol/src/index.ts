@@ -37,12 +37,24 @@ export type DensityPreference = Density | "auto";
 
 /** Canvas edits in one session after which `auto` becomes compact. */
 export const AUTO_DENSITY_EDITS = 8;
+export const MISSION_SPEC_GOAL_MAX_LENGTH = 140;
+export const MISSION_SPEC_PREDICTION_PROMPT_MAX_LENGTH = 160;
+export const MISSION_SPEC_SUCCESS_CHECKS = ["touches-goal"] as const;
 
 export interface ExperienceFacts {
   /** Successful learner edits on the canvas this session. */
   readonly edits: number;
   /** The program has reached the goal in the deterministic runtime at least once this session. */
   readonly reachedGoal: boolean;
+}
+
+export type MissionSpecSuccessCheck = (typeof MISSION_SPEC_SUCCESS_CHECKS)[number];
+
+export interface MissionSpecView {
+  readonly goal: string;
+  readonly successCheck: MissionSpecSuccessCheck;
+  readonly predictionPrompt?: string;
+  readonly hash: string;
 }
 
 /**
@@ -98,6 +110,11 @@ export type UiMessage =
       readonly type: "updateActor";
       readonly actorId: string;
       readonly patch: ActorPatch;
+    }
+  | {
+      readonly schema: Schema;
+      readonly type: "updateMissionSpec";
+      readonly spec: Omit<MissionSpecView, "hash">;
     }
   | {
       readonly schema: Schema;
@@ -391,6 +408,11 @@ export type HostMessage =
       readonly schema: Schema;
       readonly type: "assets";
       readonly assets: readonly AssetView[];
+    }
+  | {
+      readonly schema: Schema;
+      readonly type: "missionSpec";
+      readonly spec: MissionSpecView;
     }
   | {
       readonly schema: Schema;
@@ -730,6 +752,37 @@ function parseAsset(value: unknown): AssetView | undefined {
   };
 }
 
+function parseMissionSpec(value: unknown): Omit<MissionSpecView, "hash"> | undefined {
+  if (!isObject(value)) return undefined;
+  const goal = boundedPlainText(value["goal"], 1, MISSION_SPEC_GOAL_MAX_LENGTH);
+  const successCheck = value["successCheck"];
+  const predictionPrompt =
+    value["predictionPrompt"] === undefined
+      ? undefined
+      : boundedPlainText(value["predictionPrompt"], 1, MISSION_SPEC_PREDICTION_PROMPT_MAX_LENGTH);
+  if (
+    goal === undefined ||
+    !MISSION_SPEC_SUCCESS_CHECKS.includes(successCheck as MissionSpecSuccessCheck) ||
+    (value["predictionPrompt"] !== undefined && predictionPrompt === undefined)
+  ) {
+    return undefined;
+  }
+  return {
+    goal,
+    successCheck: successCheck as MissionSpecSuccessCheck,
+    ...(predictionPrompt === undefined ? {} : { predictionPrompt }),
+  };
+}
+
+function parseMissionSpecView(value: unknown): MissionSpecView | undefined {
+  if (!isObject(value)) return undefined;
+  const spec = parseMissionSpec(value);
+  const hash = value["hash"];
+  return spec !== undefined && typeof hash === "string" && HASH_PATTERN.test(hash)
+    ? { ...spec, hash }
+    : undefined;
+}
+
 function parseContainer(value: unknown): Container | undefined {
   if (!isObject(value) || !isIndex(value["scriptIndex"])) {
     return undefined;
@@ -999,6 +1052,20 @@ function boundedString(value: unknown, min: number, max: number): string | undef
   return typeof value === "string" && value.length >= min && value.length <= max
     ? value
     : undefined;
+}
+
+function boundedPlainText(value: unknown, min: number, max: number): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const normalized = [...value]
+    .map((char) => {
+      const code = char.charCodeAt(0);
+      return code < 32 || code === 127 ? " " : char;
+    })
+    .join("")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (normalized.length < min || normalized.length > max) return undefined;
+  return /[<>`]/.test(normalized) || /\bhttps?:\/\//i.test(normalized) ? undefined : normalized;
 }
 
 function parseEvidence(value: unknown): EvidenceView | undefined {
@@ -1466,6 +1533,10 @@ export function parseUiMessage(value: unknown): UiMessage | undefined {
         ? { schema, type: "updateActor", actorId: value["actorId"], patch }
         : undefined;
     }
+    case "updateMissionSpec": {
+      const spec = parseMissionSpec(value["spec"]);
+      return spec === undefined ? undefined : { schema, type: "updateMissionSpec", spec };
+    }
     case "decideProposal": {
       const decision = value["decision"];
       if (!isSafeId(value["proposalId"]) || !(DECISIONS as readonly unknown[]).includes(decision)) {
@@ -1620,6 +1691,10 @@ export function parseHostMessage(value: unknown): HostMessage | undefined {
       return parsed.every((asset) => asset !== undefined)
         ? { schema, type: "assets", assets: parsed as AssetView[] }
         : undefined;
+    }
+    case "missionSpec": {
+      const spec = parseMissionSpecView(value["spec"]);
+      return spec === undefined ? undefined : { schema, type: "missionSpec", spec };
     }
     case "sync": {
       const out: { selectedBlockId?: string; executingBlockId?: string; failedBlockId?: string } =

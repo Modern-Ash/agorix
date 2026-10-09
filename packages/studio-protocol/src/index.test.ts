@@ -38,6 +38,20 @@ describe("studio-protocol", () => {
     expect(
       parseUiMessage({ schema, type: "decideProposal", proposalId: "p:1", decision: "rejected" }),
     ).toBeDefined();
+    expect(
+      parseUiMessage({
+        schema,
+        type: "updateMissionSpec",
+        spec: {
+          goal: "Guide the rocket to the beacon.",
+          successCheck: "touches-goal",
+          predictionPrompt: "Will it touch the beacon?",
+        },
+      }),
+    ).toMatchObject({
+      type: "updateMissionSpec",
+      spec: { goal: "Guide the rocket to the beacon.", successCheck: "touches-goal" },
+    });
   });
 
   it("rejects junk, unknown types, accept-style intents and bad ids", () => {
@@ -50,6 +64,16 @@ describe("studio-protocol", () => {
       { schema, type: "intent", intent: { type: "acceptProposal", proposalId: "p" } },
       { schema, type: "intent", intent: { type: "reviewProposal", proposalId: "/etc/passwd" } },
       { schema, type: "decideProposal", proposalId: "p", decision: "applied" },
+      {
+        schema,
+        type: "updateMissionSpec",
+        spec: { goal: "x".repeat(141), successCheck: "touches-goal" },
+      },
+      {
+        schema,
+        type: "updateMissionSpec",
+        spec: { goal: "Move", successCheck: "ask-ai" },
+      },
     ]) {
       expect(parseUiMessage(junk)).toBeUndefined();
     }
@@ -258,6 +282,28 @@ describe("studio-protocol", () => {
         ],
       }),
     ).toMatchObject({ type: "assets", assets: [{ kind: "sprite" }] });
+    expect(
+      parseHostMessage({
+        schema,
+        type: "missionSpec",
+        spec: {
+          goal: "Guide the rocket to the beacon.",
+          successCheck: "touches-goal",
+          predictionPrompt: "Will it touch the beacon?",
+          hash: "mission:abcd1234",
+        },
+      }),
+    ).toMatchObject({
+      type: "missionSpec",
+      spec: { goal: "Guide the rocket to the beacon.", hash: "mission:abcd1234" },
+    });
+    expect(
+      parseHostMessage({
+        schema,
+        type: "missionSpec",
+        spec: { goal: "Move", successCheck: "touches-goal", hash: "bad hash" },
+      }),
+    ).toBeUndefined();
     expect(
       parseHostMessage({
         schema,

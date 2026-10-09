@@ -97,13 +97,14 @@ function planTasksFromIntentResponse(
 function createRequestForIntent(project: StudioProject, intent: string): IntentPlanRequest {
   const locale = normalizeLocale(project.stored.metadata.locale);
   const mission = getLocalizedFirstMission(locale);
+  const missionSpec = project.stored.metadata.missionSpec;
   return createIntentPlanRequest({
     learnerIntent: intent,
     mission: {
       id: mission.id,
       version: mission.version,
       concepts: mission.concepts,
-      learningObjective: mission.goal.learnerFacing,
+      learningObjective: missionSpec?.goal ?? mission.goal.learnerFacing,
     },
     program: project.stored.program,
     selectedNodeIds: [],

@@ -64,6 +64,11 @@ const storedProject: StoredProject = {
       { id: "backdrop:space", kind: "backdrop", name: "Space", source: "builtin:space" },
       { id: "sound:ping", kind: "sound", name: "Ping", source: "builtin:ping" },
     ],
+    missionSpec: {
+      goal: "Guide the rocket to the beacon.",
+      successCheck: "touches-goal",
+      predictionPrompt: "Will the rocket touch the beacon?",
+    },
   },
 };
 
@@ -108,6 +113,46 @@ describe(".agorix portable project v1", () => {
     expect(semanticProjectHash(studioImport)).toBe(semanticProjectHash(storedProject));
     expect(semanticProjectHash(webImport)).toBe(semanticProjectHash(storedProject));
     expect(webImport).toEqual(storedProject);
+  });
+
+  it("rejects mission specs that are not learner-safe runtime specs", () => {
+    const tooLongGoal = cloneProject({
+      metadata: {
+        ...storedProject.metadata,
+        missionSpec: {
+          goal: "x".repeat(141),
+          successCheck: "touches-goal",
+        },
+      },
+    });
+    expect(() => serializeAgorixProject(tooLongGoal, { exportedAt })).toThrow(/missionSpec\.goal/);
+
+    const badCheck = cloneProject({
+      metadata: {
+        ...storedProject.metadata,
+        missionSpec: {
+          goal: "Move to the beacon.",
+          successCheck: "ask-ai",
+        } as never,
+      },
+    });
+    expect(() => serializeAgorixProject(badCheck, { exportedAt })).toThrow(
+      /missionSpec\.successCheck/,
+    );
+
+    const linkPrompt = cloneProject({
+      metadata: {
+        ...storedProject.metadata,
+        missionSpec: {
+          goal: "Move to the beacon.",
+          successCheck: "touches-goal",
+          predictionPrompt: "Open https://example.com",
+        },
+      },
+    });
+    expect(() => serializeAgorixProject(linkPrompt, { exportedAt })).toThrow(
+      /missionSpec\.predictionPrompt/,
+    );
   });
 
   it("rejects malformed actor metadata", () => {

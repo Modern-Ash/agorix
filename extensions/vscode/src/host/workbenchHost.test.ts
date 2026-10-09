@@ -70,8 +70,39 @@ describe("workbenchHost", () => {
         actors: [{ id: "actor:main", costumeId: "asset:costume.default", scriptCount: 1 }],
       },
       { schema, type: "assets" },
+      { schema, type: "missionSpec", spec: { successCheck: "touches-goal" } },
     ]);
     expect(await setup(null).host.handle({ schema, type: "ready" })).toEqual([]);
+  });
+
+  it("persists learner-editable mission specs as metadata", async () => {
+    const { host, labels, metadata } = setup();
+    const out = await host.handle({
+      schema,
+      type: "updateMissionSpec",
+      spec: {
+        goal: "Guide the rocket to the beacon.",
+        successCheck: "touches-goal",
+        predictionPrompt: "Will it touch the beacon?",
+      },
+    });
+
+    expect(labels).toEqual(["Workbench: update mission spec"]);
+    expect(metadata().missionSpec).toEqual({
+      goal: "Guide the rocket to the beacon.",
+      successCheck: "touches-goal",
+      predictionPrompt: "Will it touch the beacon?",
+    });
+    expect(out).toMatchObject([
+      {
+        type: "missionSpec",
+        spec: {
+          goal: "Guide the rocket to the beacon.",
+          successCheck: "touches-goal",
+          hash: expect.stringMatching(/^mission:/),
+        },
+      },
+    ]);
   });
 
   it("inserts through the canonical path and reports the new hash", async () => {

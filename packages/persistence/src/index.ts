@@ -22,6 +22,15 @@ export {
   type ProjectActors,
 } from "./actors.js";
 export {
+  MISSION_SPEC_GOAL_MAX_LENGTH,
+  MISSION_SPEC_PREDICTION_PROMPT_MAX_LENGTH,
+  MISSION_SPEC_SUCCESS_CHECKS,
+  missionSpecHash,
+  validateProjectMissionSpec,
+  type MissionSpecSuccessCheck,
+  type ProjectMissionSpec,
+} from "./missionSpec.js";
+export {
   CROSS_SURFACE_CONTRACT_VERSION,
   FORBIDDEN_CANONICAL_IDENTITY_KEYS,
   FORBIDDEN_CANONICAL_PROGRAM_KEYS,

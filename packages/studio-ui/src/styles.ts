@@ -59,6 +59,16 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .stage-readout dd { margin: 0; }
 .workbench[data-density="compact"] .stage-panel { margin-bottom: 6px; }
 .workbench[data-density="compact"] .stage-viewport { min-height: 136px; }
+.mission-spec { display: grid; gap: 8px; margin-bottom: 10px; padding: 8px; border: 1px solid var(--vscode-panel-border); background: var(--vscode-editorWidget-background); }
+.mission-spec header { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--vscode-descriptionForeground); }
+.mission-spec header strong { color: var(--vscode-foreground); }
+.mission-spec code { overflow: hidden; max-width: 14em; font-family: var(--vscode-editor-font-family); font-size: 0.82em; text-overflow: ellipsis; white-space: nowrap; }
+.mission-spec label { display: grid; gap: 3px; color: var(--vscode-descriptionForeground); font-size: 0.9em; }
+.mission-spec input, .mission-spec select { min-height: 28px; box-sizing: border-box; border: 1px solid var(--vscode-input-border, var(--vscode-panel-border)); background: var(--vscode-input-background); color: var(--vscode-input-foreground); }
+.mission-spec button { justify-self: start; min-height: 30px; padding: 4px 10px; border: 1px solid var(--vscode-panel-border); border-radius: 4px; background: var(--vscode-button-background); color: var(--vscode-button-foreground); cursor: pointer; }
+.mission-spec-grid { display: grid; grid-template-columns: minmax(120px, 0.4fr) minmax(0, 1fr); gap: 6px; }
+.workbench[data-density="compact"] .mission-spec { margin-bottom: 6px; padding: 6px; }
+@media (max-width: 700px) { .mission-spec-grid { grid-template-columns: 1fr; } }
 .event-trace { display: grid; gap: 6px; margin-bottom: 10px; padding: 8px; border: 1px solid var(--vscode-panel-border); background: var(--vscode-editorWidget-background); }
 .event-trace header { display: flex; justify-content: space-between; gap: 8px; color: var(--vscode-descriptionForeground); }
 .event-trace header strong { color: var(--vscode-foreground); }
