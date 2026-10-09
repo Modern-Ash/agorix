@@ -52,6 +52,7 @@
   "view.companion.name": "Compañero de aprendizaje",
   "view.companionHistory.name": "Respuestas del Compañero",
   "view.developer.name": "Desarrollo",
+  "customEditor.project.displayName": "Workbench de Agorix",
   "config.serverUrl": "URL opcional del servidor de proyectos de Agorix. Los tokens de cuenta se guardan en SecretStorage de VS Code, nunca en la configuración.",
   "config.agent.enabled": "Permite que Studio pida ayuda al Compañero de aprendizaje. Editar y ejecutar nunca dependen de él.",
   "config.agent.endpoint": "Endpoint de la API del tutor o del adaptador (por ejemplo `http://127.0.0.1:8787`). Studio nunca habla directo con un proveedor de modelos. No pongas credenciales acá.",

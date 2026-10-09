@@ -28,6 +28,18 @@ let unsubscribeSync: (() => void) | undefined;
 let lastDensity: Density | undefined;
 let configListener: vscode.Disposable | undefined;
 
+function clearWorkbenchState(): void {
+  configListener?.dispose();
+  configListener = undefined;
+  lastDensity = undefined;
+  unsubscribeSync?.();
+  unsubscribeSync = undefined;
+  panel = undefined;
+  host = undefined;
+  agent = undefined;
+  currentExecutionView = undefined;
+}
+
 function densityPreference(): DensityPreference {
   return normalizeDensityPreference(
     vscode.workspace.getConfiguration("agorixStudio").get<string>("workbench.density", "auto"),
@@ -127,16 +139,40 @@ export function openWorkbenchPanel(
     return;
   }
   const distRoot = vscode.Uri.file(context.asAbsolutePath("dist"));
-  panel = vscode.window.createWebviewPanel(
-    VIEW_TYPE,
-    "Agorix Workbench",
-    vscode.ViewColumn.Beside,
-    {
+  attachWorkbenchPanel(
+    context,
+    vscode.window.createWebviewPanel(VIEW_TYPE, "Agorix Workbench", vscode.ViewColumn.Beside, {
       enableScripts: true,
       localResourceRoots: [distRoot],
       retainContextWhenHidden: true,
-    },
+    }),
+    port,
+    agentPort,
+    hub,
+    executionView,
+    locale,
   );
+}
+
+export function attachWorkbenchPanel(
+  context: vscode.ExtensionContext,
+  targetPanel: vscode.WebviewPanel,
+  port: HostPort,
+  agentPort: AgentPort,
+  hub: SyncHub,
+  executionView: () => StudioExecutionViewState | undefined,
+  locale: WorkbenchLocale = "en",
+): void {
+  if (panel !== undefined) {
+    if (panel === targetPanel) {
+      panel.reveal(vscode.ViewColumn.Beside, true);
+      return;
+    }
+    panel.dispose();
+    clearWorkbenchState();
+  }
+  const distRoot = vscode.Uri.file(context.asAbsolutePath("dist"));
+  panel = targetPanel;
   host = createWorkbenchHost(port, () => `block:wb_${(blockCounter += 1)}`);
   agent = createAgentHost(agentPort);
   currentHub = hub;
@@ -189,15 +225,7 @@ export function openWorkbenchPanel(
     })().catch(() => undefined);
   });
   panel.onDidDispose(() => {
-    configListener?.dispose();
-    configListener = undefined;
-    lastDensity = undefined;
-    unsubscribeSync?.();
-    unsubscribeSync = undefined;
-    panel = undefined;
-    host = undefined;
-    agent = undefined;
-    currentExecutionView = undefined;
+    clearWorkbenchState();
   });
 }
 
@@ -229,14 +257,6 @@ export function clearWorkbenchAmbientHint(): void {
 }
 
 export function disposeWorkbench(): void {
-  configListener?.dispose();
-  configListener = undefined;
-  lastDensity = undefined;
-  unsubscribeSync?.();
-  unsubscribeSync = undefined;
+  clearWorkbenchState();
   currentHub = undefined;
-  currentExecutionView = undefined;
-  panel = undefined;
-  host = undefined;
-  agent = undefined;
 }

@@ -50,6 +50,7 @@
   "view.companion.name": "Learning Companion",
   "view.companionHistory.name": "Companion Responses",
   "view.developer.name": "Developer",
+  "customEditor.project.displayName": "Agorix Workbench",
   "container.title": "Agorix Studio",
   "configuration.title": "Agorix Studio",
   "config.serverUrl": "Optional Agorix project server URL. Account tokens are stored in VS Code SecretStorage, never in settings.",
