@@ -5,8 +5,8 @@ export interface Position {
 
 export interface SpriteState extends Position {
   readonly heading: number;
-  readonly visible: boolean;
-  readonly size: number;
+  readonly visible?: boolean;
+  readonly size?: number;
   readonly costumeId?: string;
   readonly bubble?: LooksBubble;
 }

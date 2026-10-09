@@ -104,8 +104,8 @@ function cloneRuntimeActor(actor: RuntimeActorMutable): MultiActorRuntimeActor {
     id: actor.id,
     name: actor.name,
     world: cloneWorldState(actor.world),
-    visible: actor.world.sprite.visible,
-    size: actor.world.sprite.size,
+    visible: actor.world.sprite.visible ?? true,
+    size: actor.world.sprite.size ?? 100,
     ...(actor.world.sprite.costumeId === undefined
       ? {}
       : { costumeId: actor.world.sprite.costumeId }),

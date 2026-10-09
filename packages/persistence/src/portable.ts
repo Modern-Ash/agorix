@@ -8,11 +8,7 @@ import {
   FORBIDDEN_CANONICAL_UI_KEYS,
   assertCrossSurfaceCompatibleProject,
 } from "./compatibility.js";
-import {
-  PersistenceError,
-  type ProjectMetadata,
-  type StoredProject,
-} from "./store.js";
+import { PersistenceError, type ProjectMetadata, type StoredProject } from "./store.js";
 import { validateProjectActors, type ProjectActors } from "./actors.js";
 
 export const AGORIX_PROJECT_FORMAT = "agorix-project";

@@ -125,8 +125,12 @@ export function framesFromRuntimeObservations(
           x: observation.world.sprite.x,
           y: observation.world.sprite.y,
           heading: observation.world.sprite.heading,
-          visible: observation.world.sprite.visible,
-          size: observation.world.sprite.size,
+          ...(observation.world.sprite.visible === undefined
+            ? {}
+            : { visible: observation.world.sprite.visible }),
+          ...(observation.world.sprite.size === undefined
+            ? {}
+            : { size: observation.world.sprite.size }),
           ...(observation.world.sprite.costumeId === undefined
             ? {}
             : { costumeId: observation.world.sprite.costumeId }),

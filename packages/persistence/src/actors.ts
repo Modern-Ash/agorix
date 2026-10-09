@@ -139,7 +139,9 @@ export function validateProjectActors(input: unknown): ProjectActors {
       size,
       visible: actor["visible"],
       ...(costumeId === undefined ? {} : { costumeId }),
-      ...(Array.isArray(actor["scripts"]) ? { scripts: actor["scripts"] as readonly string[] } : {}),
+      ...(Array.isArray(actor["scripts"])
+        ? { scripts: actor["scripts"] as readonly string[] }
+        : {}),
     };
   });
   const activeId = record["activeId"];
