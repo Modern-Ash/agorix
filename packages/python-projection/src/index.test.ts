@@ -76,8 +76,75 @@ describe("Python projection", () => {
 
   it("declares support API assumptions and never claims arbitrary executability", () => {
     expect(projectPython(program).metadata).toMatchObject({
-      supportApi: ["move", "turn", "touching_goal"],
+      supportApi: [
+        "move",
+        "turn",
+        "touching_goal",
+        "say",
+        "think",
+        "show",
+        "hide",
+        "set_size",
+        "switch_costume",
+        "switch_backdrop",
+      ],
       executable: false,
     });
+  });
+});
+
+describe("Python projection: Looks operations", () => {
+  const looksProgram: ProjectProgram = {
+    schema: SCHEMA_VERSION,
+    scripts: [
+      {
+        id: "main",
+        trigger: { type: "onStart" },
+        statements: [
+          { type: "say", text: "Launch sequence" },
+          { type: "think", text: "Need a better route" },
+          { type: "show" },
+          { type: "hide" },
+          { type: "setSize", size: 120 },
+          { type: "switchCostume", costumeId: "asset:costume.default" },
+          { type: "switchBackdrop", backdropId: "asset:space.nebula" },
+        ],
+      },
+    ],
+  };
+
+  it("projects Looks operations as beginner-readable Python without diagnostics", () => {
+    const result = projectPython(looksProgram);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toBe(
+      [
+        "def on_start():",
+        '    say("Launch sequence")',
+        '    think("Need a better route")',
+        "    show()",
+        "    hide()",
+        "    set_size(120)",
+        '    switch_costume("asset:costume.default")',
+        '    switch_backdrop("asset:space.nebula")',
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("preserves nested node mappings and mapping boundaries", () => {
+    const result = projectPython(looksProgram);
+    for (const nodeId of [
+      "scripts[0]/statements[0]",
+      "scripts[0]/statements[1]",
+      "scripts[0]/statements[2]",
+      "scripts[0]/statements[3]",
+      "scripts[0]/statements[4]",
+      "scripts[0]/statements[5]",
+      "scripts[0]/statements[6]",
+    ]) {
+      const range = result.mapping[nodeId]?.[0];
+      expect(range).toBeDefined();
+      expect(result.text.slice(range!.start, range!.end)).toMatch(/^ {4}/);
+    }
   });
 });
