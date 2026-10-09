@@ -58,6 +58,7 @@ type ExecutionState = Extract<HostMessage, { type: "executionState" }>;
 type StageFrameMessage = Extract<HostMessage, { type: "stageFrame" }>;
 type ActorsMessage = Extract<HostMessage, { type: "actors" }>;
 type AssetsMessage = Extract<HostMessage, { type: "assets" }>;
+type ValidationMessage = Extract<HostMessage, { type: "validation" }>;
 
 export function MissionSpecPanel({
   copy,
@@ -669,6 +670,38 @@ export function AssetPanel({
   );
 }
 
+export function ValidationPanel({
+  copy,
+  issues,
+}: {
+  readonly copy: StudioUiCopy;
+  readonly issues: readonly ValidationMessage["issues"][number][];
+}) {
+  if (issues.length === 0) return null;
+  const errors = issues.filter((issue) => issue.severity === "error").length;
+  return (
+    <section className="validation-panel" aria-label={copy.validation}>
+      <header>
+        <strong>{copy.validation}</strong>
+        <span>
+          {errors} {copy.validationErrors} · {issues.length} {copy.validationIssues}
+        </span>
+      </header>
+      <ol>
+        {issues.map((issue) => (
+          <li key={issue.id} data-severity={issue.severity}>
+            <strong>{copy.validationKinds[issue.kind]}</strong>
+            <p>{issue.message}</p>
+            <code>
+              {issue.path} → {issue.ref}
+            </code>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
 export function Workbench({
   bridge,
   density = "comfortable",
@@ -689,6 +722,7 @@ export function Workbench({
   const [actors, setActors] = useState<ActorsMessage | undefined>();
   const [selectedActorId, setSelectedActorId] = useState<string | undefined>();
   const [assets, setAssets] = useState<AssetsMessage["assets"]>([]);
+  const [validationIssues, setValidationIssues] = useState<ValidationMessage["issues"]>([]);
   const [missionSpec, setMissionSpec] = useState<MissionSpecView | undefined>();
   const [playing, setPlaying] = useState(false);
   const [programHash, setProgramHash] = useState<string | undefined>();
@@ -759,6 +793,10 @@ export function Workbench({
       }
       if (message.type === "assets") {
         setAssets(message.assets);
+        return;
+      }
+      if (message.type === "validation") {
+        setValidationIssues(message.issues);
         return;
       }
       if (message.type === "missionSpec") {
@@ -880,6 +918,7 @@ export function Workbench({
           selectedActorId={selectedActorId}
           onPatch={updateActor}
         />
+        <ValidationPanel copy={copy} issues={validationIssues} />
         <AssetPanel copy={copy} assets={assets} />
         {workspace === undefined ? (
           <p>{copy.openProjectToStart}</p>

@@ -268,6 +268,41 @@ describe("studio-protocol", () => {
     expect(
       parseHostMessage({
         schema,
+        type: "validation",
+        issues: [
+          {
+            id: "validation:actor-costume:actor:main",
+            severity: "error",
+            kind: "missing-costume",
+            path: "metadata.actors.items[0].costumeId",
+            ref: "asset:costume.missing",
+            message: 'Actor "actor:main" references missing costume "asset:costume.missing".',
+          },
+        ],
+      }),
+    ).toMatchObject({
+      type: "validation",
+      issues: [{ kind: "missing-costume", ref: "asset:costume.missing" }],
+    });
+    expect(
+      parseHostMessage({
+        schema,
+        type: "validation",
+        issues: [
+          {
+            id: "validation:bad",
+            severity: "fatal",
+            kind: "missing-costume",
+            path: "metadata.actors.items[0].costumeId",
+            ref: "asset:costume.missing",
+            message: "broken",
+          },
+        ],
+      }),
+    ).toBeUndefined();
+    expect(
+      parseHostMessage({
+        schema,
         type: "assets",
         assets: [
           {

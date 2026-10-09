@@ -116,6 +116,15 @@ body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-fo
 .asset-row p { color: var(--vscode-descriptionForeground); font-size: 0.82em; }
 .asset-preview { display: grid; place-items: center; min-height: 34px; border: 1px solid var(--vscode-panel-border); background: var(--vscode-editor-background); font-family: var(--vscode-editor-font-family); font-size: 0.75em; }
 .workbench[data-density="compact"] .asset-panel { margin-bottom: 6px; padding: 6px; }
+.validation-panel { display: grid; gap: 8px; margin-bottom: 10px; padding: 8px; border: 1px solid var(--vscode-editorWarning-foreground); background: var(--vscode-editorWidget-background); }
+.validation-panel header { display: flex; justify-content: space-between; gap: 8px; color: var(--vscode-descriptionForeground); }
+.validation-panel header strong { color: var(--vscode-foreground); }
+.validation-panel ol { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.validation-panel li { display: grid; gap: 3px; padding: 6px; border-left: 3px solid var(--vscode-editorWarning-foreground); background: var(--vscode-editor-background); }
+.validation-panel li[data-severity="error"] { border-left-color: var(--vscode-errorForeground); }
+.validation-panel p { margin: 0; color: var(--vscode-foreground); }
+.validation-panel code { overflow: hidden; color: var(--vscode-descriptionForeground); font-family: var(--vscode-editor-font-family); font-size: 0.82em; text-overflow: ellipsis; white-space: nowrap; }
+.workbench[data-density="compact"] .validation-panel { margin-bottom: 6px; padding: 6px; }
 .script-title { margin: 12px 0 4px; font-weight: 600; }
 .workbench[data-density="compact"] .script-title { margin: 8px 0 2px; }
 .slot { height: 8px; border-radius: 4px; transition: height 120ms ease; }

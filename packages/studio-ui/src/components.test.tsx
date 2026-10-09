@@ -9,6 +9,7 @@ import {
   EventTracePanel,
   MissionSpecPanel,
   StagePanel,
+  ValidationPanel,
   Workbench,
   statusFor,
 } from "./Workbench.js";
@@ -315,6 +316,39 @@ describe("studio-ui", () => {
     expect(markup).toContain("Will it touch the beacon?");
     expect(markup).toContain("mission:abcd1234");
     expect(markup).toContain("Save spec");
+  });
+
+  it("renders validation issues for broken actor and asset references", () => {
+    const markup = renderToStaticMarkup(
+      <ValidationPanel
+        copy={copyFor("en")}
+        issues={[
+          {
+            id: "validation:actor-costume:actor:main",
+            severity: "error",
+            kind: "missing-costume",
+            path: "metadata.actors.items[0].costumeId",
+            ref: "asset:costume.missing",
+            message: 'Actor "actor:main" references missing costume "asset:costume.missing".',
+          },
+          {
+            id: "validation:stage-backdrop:asset:space.missing",
+            severity: "error",
+            kind: "missing-backdrop",
+            path: "metadata.stage.backdropId",
+            ref: "asset:space.missing",
+            message: 'Stage references missing backdrop "asset:space.missing".',
+          },
+        ]}
+      />,
+    );
+
+    expect(markup).toContain("Validation");
+    expect(markup).toContain("2 errors · 2 issues");
+    expect(markup).toContain("Missing costume");
+    expect(markup).toContain("Missing backdrop");
+    expect(markup).toContain("metadata.actors.items[0].costumeId");
+    expect(markup).toContain("asset:space.missing");
   });
 
   it("renders event trace activations as a dense runtime list", () => {

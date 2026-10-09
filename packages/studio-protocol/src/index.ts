@@ -295,6 +295,19 @@ export interface AssetView {
   readonly preview?: string;
 }
 
+export type ValidationIssueSeverity = "warning" | "error";
+export type ValidationIssueKind =
+  "missing-actor" | "missing-asset" | "missing-costume" | "missing-backdrop";
+
+export interface ValidationIssueView {
+  readonly id: string;
+  readonly severity: ValidationIssueSeverity;
+  readonly kind: ValidationIssueKind;
+  readonly path: string;
+  readonly ref: string;
+  readonly message: string;
+}
+
 export type HostMessage =
   | { readonly schema: Schema; readonly type: "workflow"; readonly state: WorkflowState }
   | { readonly schema: Schema; readonly type: "programHash"; readonly hash: string }
@@ -411,6 +424,11 @@ export type HostMessage =
     }
   | {
       readonly schema: Schema;
+      readonly type: "validation";
+      readonly issues: readonly ValidationIssueView[];
+    }
+  | {
+      readonly schema: Schema;
       readonly type: "missionSpec";
       readonly spec: MissionSpecView;
     }
@@ -443,6 +461,13 @@ const SIGNALS: readonly OfferableSignal[] = [
 ];
 const AGENT_VERBS = ["explain", "debug", "challenge"] as const;
 const ASSET_KINDS: readonly AssetKind[] = ["sprite", "backdrop", "costume", "sound"];
+const VALIDATION_SEVERITIES: readonly ValidationIssueSeverity[] = ["warning", "error"];
+const VALIDATION_KINDS: readonly ValidationIssueKind[] = [
+  "missing-actor",
+  "missing-asset",
+  "missing-costume",
+  "missing-backdrop",
+];
 const BLOCK_TYPES = [
   "event_on_start",
   "event_green_flag",
@@ -749,6 +774,32 @@ function parseAsset(value: unknown): AssetView | undefined {
     ...(value["height"] === undefined ? {} : { height: value["height"] as number }),
     ...(value["durationMs"] === undefined ? {} : { durationMs: value["durationMs"] as number }),
     ...(value["preview"] === undefined ? {} : { preview: value["preview"] }),
+  };
+}
+
+function parseValidationIssue(value: unknown): ValidationIssueView | undefined {
+  if (
+    !isObject(value) ||
+    !isSafeId(value["id"]) ||
+    !(VALIDATION_SEVERITIES as readonly unknown[]).includes(value["severity"]) ||
+    !(VALIDATION_KINDS as readonly unknown[]).includes(value["kind"]) ||
+    typeof value["path"] !== "string" ||
+    value["path"].length < 1 ||
+    value["path"].length > 200 ||
+    !isSafeId(value["ref"]) ||
+    typeof value["message"] !== "string" ||
+    value["message"].length < 1 ||
+    value["message"].length > 240
+  ) {
+    return undefined;
+  }
+  return {
+    id: value["id"],
+    severity: value["severity"] as ValidationIssueSeverity,
+    kind: value["kind"] as ValidationIssueKind,
+    path: value["path"],
+    ref: value["ref"],
+    message: value["message"],
   };
 }
 
@@ -1690,6 +1741,14 @@ export function parseHostMessage(value: unknown): HostMessage | undefined {
       const parsed = assets.map(parseAsset);
       return parsed.every((asset) => asset !== undefined)
         ? { schema, type: "assets", assets: parsed as AssetView[] }
+        : undefined;
+    }
+    case "validation": {
+      const issues = value["issues"];
+      if (!Array.isArray(issues) || issues.length > 128) return undefined;
+      const parsed = issues.map(parseValidationIssue);
+      return parsed.every((issue) => issue !== undefined)
+        ? { schema, type: "validation", issues: parsed as ValidationIssueView[] }
         : undefined;
     }
     case "missionSpec": {

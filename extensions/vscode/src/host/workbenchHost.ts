@@ -15,6 +15,7 @@ import {
   type ExperienceFacts,
   type HostMessage,
   type UiMessage,
+  type ValidationIssueView,
 } from "@agorix/studio-protocol";
 import {
   missionSpecHash,
@@ -99,6 +100,66 @@ function knownCostumeIds(metadata: ProjectMetadata): ReadonlySet<string> {
   );
 }
 
+function knownAssetIds(
+  metadata: ProjectMetadata,
+  kind?: "backdrop" | "costume",
+): ReadonlySet<string> {
+  return new Set(
+    [...(metadata.assets ?? []), ...studioAssetCatalog()]
+      .filter((asset) => kind === undefined || asset.kind === kind)
+      .map((asset) => asset.id),
+  );
+}
+
+function validationIssuesForMetadata(metadata: ProjectMetadata): readonly ValidationIssueView[] {
+  const actorSet = actorsForMetadata(metadata);
+  const actorIds = new Set(actorSet.items.map((actor) => actor.id));
+  const costumeIds = knownAssetIds(metadata, "costume");
+  const backdropIds = knownAssetIds(metadata, "backdrop");
+  const issues: ValidationIssueView[] = [];
+
+  actorSet.items.forEach((actor, index) => {
+    const costumeId = actor.costumeId ?? actor.appearanceId;
+    if (costumeId !== undefined && !costumeIds.has(costumeId)) {
+      issues.push({
+        id: `validation:actor-costume:${actor.id}`,
+        severity: "error",
+        kind: "missing-costume",
+        path: `metadata.actors.items[${index}].costumeId`,
+        ref: costumeId,
+        message: `Actor "${actor.id}" references missing costume "${costumeId}".`,
+      });
+    }
+  });
+
+  metadata.stage?.actorOrder?.forEach((actorId, index) => {
+    if (!actorIds.has(actorId)) {
+      issues.push({
+        id: `validation:stage-actor:${actorId}:${index}`,
+        severity: "error",
+        kind: "missing-actor",
+        path: `metadata.stage.actorOrder[${index}]`,
+        ref: actorId,
+        message: `Stage order references missing actor "${actorId}".`,
+      });
+    }
+  });
+
+  const backdropId = metadata.stage?.backdropId;
+  if (backdropId !== undefined && !backdropIds.has(backdropId)) {
+    issues.push({
+      id: `validation:stage-backdrop:${backdropId}`,
+      severity: "error",
+      kind: "missing-backdrop",
+      path: "metadata.stage.backdropId",
+      ref: backdropId,
+      message: `Stage references missing backdrop "${backdropId}".`,
+    });
+  }
+
+  return issues;
+}
+
 function missionSpecForMetadata(metadata: ProjectMetadata): ProjectMissionSpec {
   if (metadata.missionSpec !== undefined) return validateProjectMissionSpec(metadata.missionSpec);
   const mission = getLocalizedFirstMission(metadata.locale);
@@ -160,6 +221,12 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
     ];
   }
 
+  function validationMessage(): HostMessage[] {
+    const metadata = port.getMetadata();
+    if (metadata === undefined) return [];
+    return [{ schema, type: "validation", issues: validationIssuesForMetadata(metadata) }];
+  }
+
   function snapshot(): HostMessage[] {
     const program = port.getProgram();
     if (program === undefined) {
@@ -171,6 +238,7 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
         { schema, type: "workspace", workspace, programHash: programSemanticHash(program) },
         ...actorsMessage(),
         { schema, type: "assets", assets: studioAssetCatalog() },
+        ...validationMessage(),
         ...missionSpecMessage(),
       ];
     } catch (error) {
@@ -335,7 +403,7 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
           },
           "Workbench: update actor",
         );
-        return actorsMessage();
+        return [...actorsMessage(), ...validationMessage()];
       }
       case "updateMissionSpec": {
         const metadata = port.getMetadata();
