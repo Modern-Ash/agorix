@@ -1,20 +1,28 @@
 import { renderToStaticMarkup } from "react-dom/server";
+import { getWorld } from "@agorix/curriculum";
 import { ProjectStore } from "@agorix/persistence";
+import { createStageState } from "@agorix/stage";
 import type { ProjectProgram, Script } from "@agorix/program-model";
 import { SCHEMA_VERSION, migrateLegacyTriggers } from "@agorix/program-model";
 import { describe, expect, it } from "vitest";
-import { App, ProgramBlockCard } from "./App.js";
+import { App, ProgramBlockCard, StageView, updateActor } from "./App.js";
 import { assertCatalogCompleteness, resolveLocale, t } from "./i18n.js";
 import {
   addBlockToWorkspace,
   addBlockToWorkspaceAt,
+  addScriptToWorkspace,
   blockNodeId,
   blockNodeIdForPath,
   codeSliceForNode,
   createEditorModel,
   createEditorModelFromProgram,
   duplicateBlockInWorkspace,
+  editBlockFieldAt,
+  editIfConditionAt,
+  editIfConditionNumberAt,
   editNumericBlockField,
+  editVariableNumberInputAt,
+  editScriptTriggerField,
   moveBlockInWorkspaceByPath,
   resetWorkspace,
 } from "./editorModel.js";
@@ -54,20 +62,24 @@ describe("main editor shell", () => {
     expect(html).toContain("Agorix First Mission");
     expect(html).toContain("Mission: Get your sprite to the goal.");
     expect(html).toContain("Action palette");
+    expect(html).toContain("Costume");
+    expect(html).toContain("Nova default");
+    expect(html).toContain("Backdrop");
+    expect(html).toContain("Space trailhead");
+    expect(html).toContain('data-backdrop-id="asset:space.trailhead"');
+    expect(html).toContain('data-costume-id="asset:costume.default"');
     expect(html).toContain("When green flag clicked");
+    expect(html).toContain("+ key");
+    expect(html).toContain("+ click");
+    expect(html).toContain("+ message");
     expect(html).toContain("Stage");
     expect(html).toContain("Code");
-    expect(html).toContain('aria-label="Code projection"');
-    expect(html).toContain("Agorix Code");
-    expect(html).toContain("Python");
-    expect(html).toContain("TypeScript");
-    expect(html).toContain('aria-label="Compare code projection"');
-    expect(html).toContain("Trace");
+    expect(html).toContain("Use AI as a reviewer");
     expect(html).toContain("Product language");
     expect(html).toContain("English");
     expect(html).toContain("Español");
-    expect(html).toContain("Get hint");
-    expect(html).toContain("Hints used: 0");
+    expect(html).toContain("Hint");
+    expect(html).toContain("Hints: 0");
     expect(html).toContain("Build");
     expect(html).toContain("Run");
     expect(html).toContain("Reflect");
@@ -78,21 +90,56 @@ describe("main editor shell", () => {
     expect(html).toContain("Reset");
   });
 
+  it("keeps actor edits inside the shared creative contract", () => {
+    const creative = {
+      actors: [
+        {
+          id: "actor:main",
+          name: "Nova",
+          x: 0,
+          y: 0,
+          direction: 0,
+          size: 100,
+          visible: true,
+          costumeId: "asset:costume.default",
+        },
+      ],
+      assets: [
+        {
+          id: "asset:costume.default",
+          kind: "costume",
+          name: "Nova default",
+          source: "builtin:costume.default",
+        },
+      ],
+    } as const;
+
+    expect(updateActor(creative, "actor:main", { size: 120 }).actors?.[0]?.size).toBe(120);
+    expect(updateActor(creative, "actor:main", { size: 0 })).toBe(creative);
+    expect(updateActor(creative, "actor:missing", { x: 24 })).toBe(creative);
+    expect(updateActor(creative, "actor:main", { costumeId: "asset:costume.missing" })).toBe(
+      creative,
+    );
+  });
+
   it("shows the coach ready from the start, with no suggestion applied (issue #99)", () => {
     const html = renderToStaticMarkup(<App />);
 
-    expect(html).toContain("Local coach ready");
-    expect(html).toContain('data-testid="ai-welcome"');
+    expect(html).toContain("AI");
     expect(html).not.toContain('data-provenance="unavailable"');
     expect(html).not.toContain('data-provenance="suggestion"');
     expect(html).not.toContain('data-provenance="accepted"');
   });
 
-  it("starts with blocks and code visible at the same time", () => {
+  it("starts focused on tools, blocks and stage, with subtle code always visible", () => {
     const html = renderToStaticMarkup(<App />);
 
     expect(html.indexOf("Action palette")).toBeGreaterThan(-1);
-    expect(html.indexOf("This is the code behind your blocks.")).toBeGreaterThan(-1);
+    expect(html.indexOf("When green flag clicked")).toBeGreaterThan(-1);
+    expect(html.indexOf("Stage")).toBeGreaterThan(-1);
+    expect(html).toContain("Behind the scenes");
+    expect(html).toContain("whenGreenFlagClicked");
+    expect(html).not.toContain("This is the code behind your blocks.");
   });
 
   it("renders compact visual blocks with inline values and canonical node mapping", () => {
@@ -127,6 +174,231 @@ describe("main editor shell", () => {
     expect(html).toContain('aria-label="Move steps"');
     expect(html).toContain('value="12"');
     expect(html).not.toContain("<form");
+  });
+
+  it("renders variable blocks with editable inline numbers", () => {
+    const html = renderToStaticMarkup(
+      <ProgramBlockCard
+        block={{
+          id: "change-1",
+          type: "variables_change",
+          fields: { variableId: "score" },
+          inputs: { delta: { id: "delta-1", type: "literal_number", fields: { value: 3 } } },
+        }}
+        path={[0]}
+        siblingIndex={0}
+        siblingTotal={1}
+        depth={0}
+        selected={false}
+        suggestionAffected={false}
+        canonicalNodeId="scripts[0]/statements[0]"
+        locale="en"
+        assets={[]}
+        onSelect={() => undefined}
+        onCommitValue={() => undefined}
+        onMove={() => undefined}
+        onNest={() => undefined}
+        onOutdent={() => undefined}
+        onDelete={() => undefined}
+        onDuplicate={() => undefined}
+        onDragStart={() => undefined}
+        onDropBefore={() => undefined}
+        onDropAfter={() => undefined}
+        onDropInside={() => undefined}
+      />,
+    );
+
+    expect(html).toContain("Change variable");
+    expect(html).toContain('value="3"');
+    expect(html).toContain('aria-label="Change variable change"');
+    expect(html).toContain("block-variables");
+  });
+
+  it("renders if blocks with a compact condition selector", () => {
+    const html = renderToStaticMarkup(
+      <ProgramBlockCard
+        block={{
+          id: "if-1",
+          type: "control_if",
+          inputs: {
+            condition: {
+              id: "cond-1",
+              type: "operator_less_than",
+              inputs: {
+                left: { id: "left-1", type: "variables_value", fields: { variableId: "score" } },
+                right: { id: "right-1", type: "literal_number", fields: { value: 7 } },
+              },
+            },
+            then: [],
+          },
+        }}
+        path={[0]}
+        siblingIndex={0}
+        siblingTotal={1}
+        depth={0}
+        selected={false}
+        suggestionAffected={false}
+        canonicalNodeId="scripts[0]/statements[0]"
+        locale="en"
+        assets={[]}
+        onSelect={() => undefined}
+        onCommitValue={() => undefined}
+        onCommitCondition={() => undefined}
+        onCommitConditionValue={() => undefined}
+        onMove={() => undefined}
+        onNest={() => undefined}
+        onOutdent={() => undefined}
+        onDelete={() => undefined}
+        onDuplicate={() => undefined}
+        onDragStart={() => undefined}
+        onDropBefore={() => undefined}
+        onDropAfter={() => undefined}
+        onDropInside={() => undefined}
+      />,
+    );
+
+    expect(html).toContain("<select");
+    expect(html).toContain('value="scoreLessThan" selected=""');
+    expect(html).toContain('value="7"');
+    expect(html).toContain("score &lt;");
+  });
+
+  it("renders visible variable watchers on the stage", () => {
+    const html = renderToStaticMarkup(
+      <StageView
+        world={getWorld("space.trailhead")}
+        frame={undefined}
+        fallback={createStageState({
+          variables: [{ id: "score", label: "score", value: 7, visible: true }],
+        })}
+        locale="en"
+        feedback={{
+          phase: "idle",
+          reachedGoal: false,
+          trail: [],
+          total: 0,
+        }}
+        codePreview="whenStarted(() => {});"
+        reducedMotion={true}
+        runStatus="idle"
+        onRun={() => undefined}
+        onStop={() => undefined}
+        onOpenCode={() => undefined}
+      />,
+    );
+
+    expect(html).toContain('class="stage-watchers"');
+    expect(html).toContain('data-variable-id="score"');
+    expect(html).toContain("<span>score</span>");
+    expect(html).toContain("<strong>7</strong>");
+  });
+
+  it("renders active sound evidence on the stage from shared assets", () => {
+    const html = renderToStaticMarkup(
+      <StageView
+        world={getWorld("space.trailhead")}
+        frame={undefined}
+        fallback={createStageState({
+          sounds: { activeSoundIds: ["asset:sound.beacon"] },
+        })}
+        assets={[
+          {
+            id: "asset:sound.beacon",
+            kind: "sound",
+            name: "Beacon ping",
+            source: "builtin:sound.beacon",
+          },
+        ]}
+        locale="en"
+        feedback={{
+          phase: "idle",
+          reachedGoal: false,
+          trail: [],
+          total: 0,
+        }}
+        codePreview='sound.play("asset:sound.beacon");'
+        reducedMotion={true}
+        runStatus="idle"
+        onRun={() => undefined}
+        onStop={() => undefined}
+        onOpenCode={() => undefined}
+      />,
+    );
+
+    expect(html).toContain('class="stage-sounds"');
+    expect(html).toContain("Sounds playing");
+    expect(html).toContain("Beacon ping");
+  });
+
+  it("renders editable Looks fields from the shared asset catalog", () => {
+    const sayHtml = renderToStaticMarkup(
+      <ProgramBlockCard
+        block={{ id: "say-1", type: "looks_say", fields: { text: "Hello" } }}
+        path={[0]}
+        siblingIndex={0}
+        siblingTotal={1}
+        depth={0}
+        selected={false}
+        suggestionAffected={false}
+        canonicalNodeId="scripts[0]/statements[0]"
+        locale="en"
+        assets={[]}
+        onSelect={() => undefined}
+        onCommitValue={() => undefined}
+        onCommitField={() => undefined}
+        onMove={() => undefined}
+        onNest={() => undefined}
+        onOutdent={() => undefined}
+        onDelete={() => undefined}
+        onDuplicate={() => undefined}
+        onDragStart={() => undefined}
+        onDropBefore={() => undefined}
+        onDropAfter={() => undefined}
+        onDropInside={() => undefined}
+      />,
+    );
+    const costumeHtml = renderToStaticMarkup(
+      <ProgramBlockCard
+        block={{
+          id: "costume-1",
+          type: "looks_switch_costume",
+          fields: { costumeId: "asset:costume.spark" },
+        }}
+        path={[0]}
+        siblingIndex={0}
+        siblingTotal={1}
+        depth={0}
+        selected={false}
+        suggestionAffected={false}
+        canonicalNodeId="scripts[0]/statements[0]"
+        locale="en"
+        assets={[
+          {
+            id: "asset:costume.spark",
+            kind: "costume",
+            name: "Nova spark",
+            source: "builtin:costume.spark",
+          },
+        ]}
+        onSelect={() => undefined}
+        onCommitValue={() => undefined}
+        onCommitField={() => undefined}
+        onMove={() => undefined}
+        onNest={() => undefined}
+        onOutdent={() => undefined}
+        onDelete={() => undefined}
+        onDuplicate={() => undefined}
+        onDragStart={() => undefined}
+        onDropBefore={() => undefined}
+        onDropAfter={() => undefined}
+        onDropInside={() => undefined}
+      />,
+    );
+
+    expect(sayHtml).toContain('value="Hello"');
+    expect(sayHtml).toContain('aria-label="Say Text"');
+    expect(costumeHtml).toContain("<select");
+    expect(costumeHtml).toContain("Nova spark");
   });
 });
 
@@ -207,6 +479,101 @@ describe("editor model", () => {
     expect(added.program.scripts[0]?.statements).toEqual([{ type: "move", steps: 10 }]);
     expect(edited.program.scripts[0]?.statements).toEqual([{ type: "move", steps: 20 }]);
     expect(edited.code).toContain("sprite.move(20);");
+  });
+
+  it("updates canonical variables when variable block inputs are edited", () => {
+    const initial = createEditorModel();
+    const added = addBlockToWorkspace(initial.workspace, "variables_change");
+    const edited = editVariableNumberInputAt(added.workspace, [0], 5);
+
+    expect(added.program.variables).toEqual([
+      { id: "score", name: "score", initialValue: 0, visible: true },
+    ]);
+    expect(edited.program.scripts[0]?.statements).toEqual([
+      {
+        type: "changeVariable",
+        variableId: "score",
+        delta: { type: "numericLiteral", value: 5 },
+      },
+    ]);
+    expect(edited.code).toContain("score += 5;");
+  });
+
+  it("updates if conditions to score comparisons through canonical projection", () => {
+    const initial = createEditorModel();
+    const added = addBlockToWorkspace(initial.workspace, "control_if");
+    const compared = editIfConditionAt(added.workspace, [0], "scoreLessThan");
+    const edited = editIfConditionNumberAt(compared.workspace, [0], 12);
+
+    expect(compared.program.variables).toEqual([
+      { id: "score", name: "score", initialValue: 0, visible: true },
+    ]);
+    expect(edited.program.scripts[0]?.statements[0]).toMatchObject({
+      type: "if",
+      condition: {
+        type: "lessThan",
+        left: { type: "variable", variableId: "score" },
+        right: { type: "numericLiteral", value: 12 },
+      },
+    });
+    expect(edited.code).toContain("if ((score < 12))");
+  });
+
+  it("updates Looks text and asset references through canonical projection", () => {
+    const initial = createEditorModel();
+    const say = addBlockToWorkspace(initial.workspace, "looks_say");
+    const editedSay = editBlockFieldAt(say.workspace, [0], "text", "Launch");
+    const costume = addBlockToWorkspace(editedSay.workspace, "looks_switch_costume");
+    const editedCostume = editBlockFieldAt(
+      costume.workspace,
+      [1],
+      "costumeId",
+      "asset:costume.spark",
+    );
+
+    expect(editedSay.program.scripts[0]?.statements[0]).toEqual({
+      type: "say",
+      text: "Launch",
+    });
+    expect(editedSay.code).toContain('sprite.say("Launch");');
+    expect(editedCostume.program.scripts[0]?.statements[1]).toEqual({
+      type: "switchCostume",
+      costumeId: "asset:costume.spark",
+    });
+    expect(editedCostume.code).toContain('sprite.switchCostume("asset:costume.spark");');
+  });
+
+  it("adds event scripts and edits blocks in the selected script slot", () => {
+    const initial = createEditorModel();
+    const withKeyScript = addScriptToWorkspace(initial.workspace, "event_on_key_pressed");
+    const withKeyMove = addBlockToWorkspace(withKeyScript.workspace, "motion_move", 1);
+
+    expect(withKeyMove.program.scripts[1]).toMatchObject({
+      id: "key-1",
+      trigger: { type: "onKeyPressed", key: "Space" },
+      statements: [{ type: "move", steps: 10 }],
+    });
+    expect(withKeyMove.program.scripts[0]?.statements).toEqual([]);
+    expect(withKeyMove.code).toContain('whenKeyPressed("Space")');
+  });
+
+  it("edits event trigger fields through canonical projection", () => {
+    const initial = createEditorModel();
+    const withKeyScript = addScriptToWorkspace(initial.workspace, "event_on_key_pressed");
+    const editedKey = editScriptTriggerField(withKeyScript.workspace, 1, "key", "ArrowRight");
+    const withMessageScript = addScriptToWorkspace(editedKey.workspace, "event_on_message");
+    const editedMessage = editScriptTriggerField(withMessageScript.workspace, 2, "message", "win");
+
+    expect(editedKey.program.scripts[1]?.trigger).toEqual({
+      type: "onKeyPressed",
+      key: "ArrowRight",
+    });
+    expect(editedMessage.program.scripts[2]?.trigger).toEqual({
+      type: "onMessage",
+      message: "win",
+    });
+    expect(editedMessage.code).toContain('whenKeyPressed("ArrowRight")');
+    expect(editedMessage.code).toContain('whenMessageReceived("win")');
   });
 
   it("keeps node ids aligned for visual and code highlighting", () => {
@@ -383,12 +750,14 @@ describe("editor persistence", () => {
 });
 
 describe("intent-to-plan dialogue (issue #86)", () => {
-  it("offers the learner an intent field before any AI proposal exists", () => {
+  it("keeps AI planning available without opening the coach by default", () => {
     const html = renderToStaticMarkup(<App />);
 
-    expect(html).toContain("Plan your idea first");
-    expect(html).toContain('aria-label="What should happen?"');
-    expect(html).toContain("Show my plan");
+    expect(html).toContain("AI");
+    expect(html).toContain("Challenge");
+    expect(html).not.toContain("Plan your idea first");
+    expect(html).not.toContain('aria-label="What should happen?"');
+    expect(html).not.toContain("Show my plan");
     expect(html).not.toContain('data-testid="intent-plan"');
     expect(html).not.toContain('data-testid="intent-clarification"');
   });
