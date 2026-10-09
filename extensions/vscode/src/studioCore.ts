@@ -615,6 +615,7 @@ export function createNavigationSections(
     ];
   }
   const mission = getLocalizedFirstMission(project.stored.metadata.locale);
+  const missionGoal = project.stored.metadata.missionSpec?.goal ?? mission.goal.learnerFacing;
   const statementCount = project.stored.program.scripts.reduce(
     (count, script) => count + script.statements.length,
     0,
@@ -666,7 +667,7 @@ export function createNavigationSections(
           label: mission.title,
           icon: "target",
           state: "info",
-          tooltip: mission.goal.learnerFacing,
+          tooltip: missionGoal,
           contextValue: "agorixMission",
         },
       ],
@@ -1114,6 +1115,7 @@ export function createCompanionRequest(
 ): LearningCompanionRequest {
   const capability = companionCapability(action);
   const mission = getLocalizedFirstMission(project.stored.metadata.locale);
+  const missionObjective = project.stored.metadata.missionSpec?.goal ?? mission.goal.learnerFacing;
   const evidence = options.evidence ?? createExecutionEvidence(project.stored);
   const runtimeFacts = runtimeFactsFromEvidence(evidence);
   return createLearningCompanionRequest({
@@ -1122,7 +1124,7 @@ export function createCompanionRequest(
       id: mission.id,
       version: mission.version,
       concepts: mission.concepts,
-      learningObjective: mission.goal.learnerFacing,
+      learningObjective: missionObjective,
     },
     program: project.stored.program,
     selectedNodeIds: options.selectedNodeIds ?? selectedNodeIdsFromEvidence(evidence),

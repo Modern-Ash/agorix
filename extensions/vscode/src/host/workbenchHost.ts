@@ -16,11 +16,19 @@ import {
   type HostMessage,
   type UiMessage,
 } from "@agorix/studio-protocol";
-import type { ProjectActor, ProjectActors, ProjectMetadata } from "@agorix/persistence";
+import {
+  missionSpecHash,
+  validateProjectMissionSpec,
+  type ProjectActor,
+  type ProjectActors,
+  type ProjectMetadata,
+  type ProjectMissionSpec,
+} from "@agorix/persistence";
 import type { AgentAgreements } from "@agorix/agent-workflow";
 import type { ProactiveDecision, StudioSignal } from "@agorix/learning-decision-plane";
 import type { SyncState } from "../sync/syncHub.js";
 import { defaultProjectActor, studioAssetCatalog } from "../studioCore.js";
+import { getLocalizedFirstMission } from "@agorix/curriculum";
 
 export interface HostPort {
   getProgram(): ProjectProgram | undefined;
@@ -91,6 +99,16 @@ function knownCostumeIds(metadata: ProjectMetadata): ReadonlySet<string> {
   );
 }
 
+function missionSpecForMetadata(metadata: ProjectMetadata): ProjectMissionSpec {
+  if (metadata.missionSpec !== undefined) return validateProjectMissionSpec(metadata.missionSpec);
+  const mission = getLocalizedFirstMission(metadata.locale);
+  return {
+    goal: mission.goal.learnerFacing.slice(0, 140),
+    successCheck: "touches-goal",
+    predictionPrompt: "Will the character reach the goal?",
+  };
+}
+
 function refusalReason(error: unknown): ChangeRefusalReason {
   if (error instanceof BlockEditorAdapterError) return error.reason ?? "UNKNOWN";
   if (error instanceof ProgramValidationError) return "WOULD_BREAK_PROGRAM";
@@ -129,6 +147,19 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
     ];
   }
 
+  function missionSpecMessage(): HostMessage[] {
+    const metadata = port.getMetadata();
+    if (metadata === undefined) return [];
+    const spec = missionSpecForMetadata(metadata);
+    return [
+      {
+        schema,
+        type: "missionSpec",
+        spec: { ...spec, hash: missionSpecHash(spec) ?? "mission:00000000" },
+      },
+    ];
+  }
+
   function snapshot(): HostMessage[] {
     const program = port.getProgram();
     if (program === undefined) {
@@ -140,6 +171,7 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
         { schema, type: "workspace", workspace, programHash: programSemanticHash(program) },
         ...actorsMessage(),
         { schema, type: "assets", assets: studioAssetCatalog() },
+        ...missionSpecMessage(),
       ];
     } catch (error) {
       if (isKnownFailure(error)) {
@@ -304,6 +336,24 @@ export function createWorkbenchHost(port: HostPort, newBlockId: () => string): W
           "Workbench: update actor",
         );
         return actorsMessage();
+      }
+      case "updateMissionSpec": {
+        const metadata = port.getMetadata();
+        if (metadata === undefined) return [];
+        let spec: ProjectMissionSpec;
+        try {
+          spec = validateProjectMissionSpec(message.spec);
+        } catch {
+          return [{ schema, type: "error", code: "INVALID_CHANGE", reason: "WOULD_BREAK_PROGRAM" }];
+        }
+        await port.commitMetadata(
+          {
+            ...metadata,
+            missionSpec: spec,
+          },
+          "Workbench: update mission spec",
+        );
+        return missionSpecMessage();
       }
       default:
         // Agent-loop and proposal messages are handled by the agent host.

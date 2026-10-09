@@ -15,10 +15,11 @@ import { createFirstStepProposal, programSemanticHash } from "@agorix/proposals"
 import type { ProviderProposalResult } from "../studioProposalSource.js";
 import { createAgentPort, type AgentPortDeps } from "./agentPort.js";
 
-function projectWith(statements: unknown[]) {
+function projectWith(statements: unknown[], metadata: Record<string, unknown> = {}) {
   const base = createStudioStarterProject({ starter: "blank", now: "2026-01-01T00:00:00.000Z" });
   return openStoredProject({
     ...base,
+    metadata: { ...base.metadata, ...metadata },
     program: {
       ...base.program,
       scripts: [{ id: "main", trigger: { type: "onStart" }, statements }],
@@ -26,8 +27,11 @@ function projectWith(statements: unknown[]) {
   } as never);
 }
 
-function setup(statements: unknown[], options: Partial<AgentPortDeps> = {}) {
-  let project = projectWith(statements);
+function setup(
+  statements: unknown[],
+  options: Partial<AgentPortDeps> & { readonly metadata?: Record<string, unknown> } = {},
+) {
+  let project = projectWith(statements, options.metadata);
   let active: StudioProposalSession | undefined;
   const events: AgentEvent[] = [];
   const applyActiveProposal = vi.fn(async () => undefined);
@@ -57,7 +61,7 @@ function setup(statements: unknown[], options: Partial<AgentPortDeps> = {}) {
     applyActiveProposal,
     commitProgram,
     events,
-    setProject: (next: unknown[]) => (project = projectWith(next)),
+    setProject: (next: unknown[]) => (project = projectWith(next, options.metadata)),
     active: () => active,
   };
 }
@@ -163,6 +167,25 @@ describe("agentPort provider-backed intent planning", () => {
       kind: "plan",
       tasks: [{ id: "repeat-pattern" }],
     });
+  });
+
+  it("anchors intent planning to the learner Mission Spec when present", async () => {
+    let seen: IntentPlanRequest | undefined;
+    const ctx = setup([], {
+      metadata: {
+        missionSpec: {
+          goal: "Guide the rocket to the beacon.",
+          successCheck: "touches-goal",
+        },
+      },
+      providerIntentPlan: async (request) => {
+        seen = request;
+        return responseFor(request, "movement");
+      },
+    });
+    await ctx.port.planIntent?.("make it move");
+
+    expect(seen?.mission.learningObjective).toBe("Guide the rocket to the beacon.");
   });
 
   it("maps provider clarifications to fixed task choices only", async () => {
