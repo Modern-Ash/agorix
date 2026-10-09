@@ -44,14 +44,13 @@ export function createStudioProjectCommandHandlers(
   port: StudioProjectCommandPort,
 ): StudioProjectCommandHandlers {
   const openProject = async (target?: unknown): Promise<void> => {
-    const uri =
-      target instanceof vscode.Uri
-        ? target
-        : ((await vscode.window.showOpenDialog({
-            canSelectMany: false,
-            filters: { [t("Agorix project")]: ["agorix", "json"] },
-            openLabel: t("Open Agorix project"),
-          })) ?? [])[0];
+    const uri = isUriLike(target)
+      ? target
+      : ((await vscode.window.showOpenDialog({
+          canSelectMany: false,
+          filters: { [t("Agorix project")]: ["agorix", "json"] },
+          openLabel: t("Open Agorix project"),
+        })) ?? [])[0];
     if (uri === undefined) {
       return;
     }
@@ -192,5 +191,17 @@ function isCreateProjectCommandOptions(value: unknown): value is CreateProjectCo
     (value.locale === "en" || value.locale === "es") &&
     "uri" in value &&
     value.uri instanceof vscode.Uri
+  );
+}
+
+function isUriLike(value: unknown): value is vscode.Uri {
+  return (
+    value instanceof vscode.Uri ||
+    (typeof value === "object" &&
+      value !== null &&
+      "fsPath" in value &&
+      typeof value.fsPath === "string" &&
+      "scheme" in value &&
+      typeof value.scheme === "string")
   );
 }

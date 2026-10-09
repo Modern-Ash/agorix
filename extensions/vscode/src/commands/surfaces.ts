@@ -8,9 +8,14 @@ import type {
   StudioProject,
   StudioProposalSession,
 } from "../studioCore.js";
-import { openWorkbenchPanel, refreshWorkbench } from "../host/workbenchPanel.js";
+import {
+  attachWorkbenchPanel,
+  openWorkbenchPanel,
+  refreshWorkbench,
+} from "../host/workbenchPanel.js";
 import { openWorldPreviewPanel } from "../host/worldPreviewPanel.js";
 import type { AgentPort } from "../host/agentHost.js";
+import type { HostPort } from "../host/workbenchHost.js";
 import type { WorkbenchLocale } from "../host/workbenchHtml.js";
 import type { OpenProject } from "../store/session.js";
 import type { SyncHub } from "../sync/syncHub.js";
@@ -38,6 +43,7 @@ export interface StudioSurfaceCommandPort {
 export interface StudioSurfaceCommandHandlers {
   openWorldPreview(): StudioExecutionViewState | undefined;
   openWorkbench(): Promise<void>;
+  openWorkbenchInPanel(panel: vscode.WebviewPanel): Promise<void>;
 }
 
 export function createStudioSurfaceCommandHandlers(
@@ -57,48 +63,61 @@ export function createStudioSurfaceCommandHandlers(
     return view;
   };
 
-  const openWorkbench = async (): Promise<void> => {
+  const openWorkbenchWith = async (panel?: vscode.WebviewPanel): Promise<void> => {
     const open = port.requireProject();
     if (open === undefined) {
       return;
     }
-    openWorkbenchPanel(
-      port.context,
-      {
-        getProgram: port.getProgram,
-        getMetadata: port.getMetadata,
-        commit: async (program) => {
-          if (port.requireProject() === undefined) {
-            return;
-          }
-          await port.commitProgram(program);
-        },
-        commitMetadata: async (metadata) => {
-          if (port.requireProject() === undefined) {
-            return;
-          }
-          await port.commitMetadata(metadata);
-        },
-        openProposalReview: async () => {
-          const proposal = port.getActiveProposal();
-          if (proposal !== undefined) {
-            await port.reviewProposalSession(proposal);
-          }
-        },
-        reveal: (nodeId) => {
-          port.hub.select(nodeId, "canvas");
-          return Promise.resolve();
-        },
-        askAgent: (verb, nodeId) => port.askCompanion(verb, nodeId),
-        updateAgreements: port.updateAgentAgreements,
+    const hostPort: HostPort = {
+      getProgram: port.getProgram,
+      getMetadata: port.getMetadata,
+      commit: async (program) => {
+        if (port.requireProject() === undefined) {
+          return;
+        }
+        await port.commitProgram(program);
       },
-      port.agentPort(),
-      port.hub,
-      () => port.currentExecutionView() ?? port.resetExecution(),
-      workbenchLocale(open),
-    );
+      commitMetadata: async (metadata) => {
+        if (port.requireProject() === undefined) {
+          return;
+        }
+        await port.commitMetadata(metadata);
+      },
+      openProposalReview: async () => {
+        const proposal = port.getActiveProposal();
+        if (proposal !== undefined) {
+          await port.reviewProposalSession(proposal);
+        }
+      },
+      reveal: (nodeId) => {
+        port.hub.select(nodeId, "canvas");
+        return Promise.resolve();
+      },
+      askAgent: (verb, nodeId) => port.askCompanion(verb, nodeId),
+      updateAgreements: port.updateAgentAgreements,
+    };
+    const agentPort = port.agentPort();
+    const executionView = () => port.currentExecutionView() ?? port.resetExecution();
+    const locale = workbenchLocale(open);
+    if (panel === undefined) {
+      openWorkbenchPanel(port.context, hostPort, agentPort, port.hub, executionView, locale);
+    } else {
+      attachWorkbenchPanel(
+        port.context,
+        panel,
+        hostPort,
+        agentPort,
+        port.hub,
+        executionView,
+        locale,
+      );
+    }
     refreshWorkbench();
   };
 
-  return { openWorldPreview, openWorkbench };
+  return {
+    openWorldPreview,
+    openWorkbench: () => openWorkbenchWith(),
+    openWorkbenchInPanel: (panel) => openWorkbenchWith(panel),
+  };
 }

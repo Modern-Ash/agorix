@@ -14,6 +14,15 @@ const agentConfig: Record<string, unknown> = {};
 const selectionListeners: Array<(event: unknown) => void> = [];
 const treeProviders = new Map<string, { getChildren(): unknown[] }>();
 const providers = new Map<string, { provideTextDocumentContent(uri: unknown): string }>();
+const customEditors = new Map<
+  string,
+  {
+    resolveCustomTextEditor(
+      document: { uri: { fsPath: string } },
+      webviewPanel: ReturnType<typeof createMockWebviewPanel>,
+    ): Promise<void>;
+  }
+>();
 const lensProviders: unknown[] = [];
 const actionProviders: unknown[] = [];
 const revealed: unknown[] = [];
@@ -34,6 +43,45 @@ let quickPick: Record<string, unknown> | undefined;
 let quickPicks: Array<Record<string, unknown> | undefined> = [];
 let inputBox: string | undefined;
 let serverUrl = "";
+
+function createMockWebviewPanel() {
+  let receive: ((message: unknown) => void) | undefined;
+  const panel = {
+    messages: [] as unknown[],
+    reveal: vi.fn(),
+    receive: (message: unknown) => receive?.(message),
+    html: "",
+  };
+  webviewPanels.push(panel);
+  return {
+    webview: {
+      cspSource: "vscode-webview:",
+      asWebviewUri: (target: { fsPath: string }) => ({
+        fsPath: `vscode-webview:${target.fsPath}`,
+        path: target.fsPath,
+        scheme: "vscode-webview",
+        toString: () => `vscode-webview:${target.fsPath}`,
+      }),
+      get html() {
+        return panel.html;
+      },
+      set html(value: string) {
+        panel.html = value;
+      },
+      postMessage: async (message: unknown) => {
+        panel.messages.push(message);
+        return true;
+      },
+      onDidReceiveMessage: (listener: (message: unknown) => void) => {
+        receive = listener;
+        return { dispose() {} };
+      },
+    },
+    reveal: panel.reveal,
+    onDidDispose: vi.fn(),
+    dispose: vi.fn(),
+  };
+}
 
 vi.mock("vscode", () => {
   const uri = (fsPath: string) => ({
@@ -192,38 +240,10 @@ vi.mock("vscode", () => {
         selectionListeners.push(listener);
         return { dispose() {} };
       },
-      createWebviewPanel: () => {
-        let receive: ((message: unknown) => void) | undefined;
-        const panel = {
-          messages: [] as unknown[],
-          reveal: vi.fn(),
-          receive: (message: unknown) => receive?.(message),
-          html: "",
-        };
-        webviewPanels.push(panel);
-        return {
-          webview: {
-            cspSource: "vscode-webview:",
-            asWebviewUri: (target: { fsPath: string }) => uri(`vscode-webview:${target.fsPath}`),
-            get html() {
-              return panel.html;
-            },
-            set html(value: string) {
-              panel.html = value;
-            },
-            postMessage: async (message: unknown) => {
-              panel.messages.push(message);
-              return true;
-            },
-            onDidReceiveMessage: (listener: (message: unknown) => void) => {
-              receive = listener;
-              return { dispose() {} };
-            },
-          },
-          reveal: panel.reveal,
-          onDidDispose: vi.fn(),
-          dispose: vi.fn(),
-        };
+      createWebviewPanel: () => createMockWebviewPanel(),
+      registerCustomEditorProvider: (viewType: string, provider: unknown) => {
+        customEditors.set(viewType, provider as never);
+        return { dispose() {} };
       },
       createStatusBarItem: () => ({
         text: "",
@@ -346,6 +366,7 @@ describe("Studio extension wiring", () => {
     for (const key of Object.keys(agentConfig)) delete agentConfig[key];
     treeProviders.clear();
     providers.clear();
+    customEditors.clear();
     lensProviders.length = 0;
     actionProviders.length = 0;
     revealed.length = 0;
@@ -426,6 +447,7 @@ describe("Studio extension wiring", () => {
       ].sort(),
     );
     expect([...providers.keys()]).toEqual(["agorix-studio"]);
+    expect([...customEditors.keys()]).toEqual(["agorixStudio.projectEditor"]);
     expect(lensProviders).toHaveLength(1);
     expect(actionProviders).toHaveLength(1);
     expect(treeViews.sort()).toEqual([
@@ -438,6 +460,23 @@ describe("Studio extension wiring", () => {
       "agorixStudio.projects",
       "agorixStudio.worlds",
     ]);
+  });
+
+  it("opens .agorix files through the optional Workbench custom editor", async () => {
+    const portable = serializeAgorixProject(parseStored(stored([{ type: "move", steps: 8 }])), {
+      exportedAt: "2026-01-02T00:00:00.000Z",
+    });
+    files.set("/p/custom.agorix", new TextEncoder().encode(portable));
+    const panel = createMockWebviewPanel();
+
+    const { Uri } = await import("vscode");
+    await customEditors
+      .get("agorixStudio.projectEditor")!
+      .resolveCustomTextEditor({ uri: Uri.file("/p/custom.agorix") }, panel);
+
+    expect(panel.webview.html).toContain("Agorix Workbench");
+    expect(commandCalls).toContainEqual(["setContext", "agorixStudio.hasProject", true]);
+    expect(webviewPanels.some((item) => item.html.includes("Mundo Agorix"))).toBe(true);
   });
 
   it("asks to open a project before evidence or suggestions", async () => {

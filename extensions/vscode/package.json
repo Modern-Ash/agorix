@@ -33,6 +33,7 @@
     "vscode": "^1.95.0"
   },
   "activationEvents": [
+    "onCustomEditor:agorixStudio.projectEditor",
     "onCommand:agorixStudio.createProject",
     "onCommand:agorixStudio.openProject",
     "onCommand:agorixStudio.exportAgorix",
@@ -221,6 +222,18 @@
         }
       ]
     },
+    "customEditors": [
+      {
+        "viewType": "agorixStudio.projectEditor",
+        "displayName": "%customEditor.project.displayName%",
+        "selector": [
+          {
+            "filenamePattern": "*.agorix"
+          }
+        ],
+        "priority": "option"
+      }
+    ],
     "commands": [
       {
         "command": "agorixStudio.createProject",

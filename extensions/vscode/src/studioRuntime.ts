@@ -355,6 +355,16 @@ export function activate(context: vscode.ExtensionContext): void {
     requireProject,
     openProjection: projectionCommands.openProjection,
   });
+  const projectEditorProvider: vscode.CustomTextEditorProvider = {
+    resolveCustomTextEditor: async (document, webviewPanel) => {
+      await projectCommands.openProject(document.uri);
+      if (requireProject() === undefined) {
+        webviewPanel.dispose();
+        return;
+      }
+      await surfaceCommands.openWorkbenchInPanel(webviewPanel);
+    },
+  };
   const developerCommands = createStudioDeveloperCommandHandlers({
     requireProject,
     agentEventCount: () => session.agentEvents.length,
@@ -419,6 +429,14 @@ export function activate(context: vscode.ExtensionContext): void {
   try {
     context.subscriptions.push(
       ...registeredViews.disposables,
+      vscode.window.registerCustomEditorProvider(
+        "agorixStudio.projectEditor",
+        projectEditorProvider,
+        {
+          webviewOptions: { retainContextWhenHidden: true },
+          supportsMultipleEditorsPerDocument: false,
+        },
+      ),
       ...registerStudioCommands(output, {
         createProject: projectCommands.createProject,
         openProject: projectCommands.openProject,
