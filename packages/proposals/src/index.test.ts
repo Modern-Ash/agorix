@@ -147,6 +147,26 @@ describe("proposal package", () => {
     expect(acceptedProgram).toEqual(before);
   });
 
+  it("hashes canonical programs without requiring project asset metadata", () => {
+    const programWithAssets: ProjectProgram = {
+      schema: SCHEMA_VERSION,
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            { type: "switchCostume", costumeId: "costume:rocket" },
+            { type: "switchBackdrop", backdropId: "backdrop:space" },
+            { type: "playSound", soundId: "sound:ping" },
+          ],
+        },
+      ],
+    };
+
+    expect(programSemanticHash(programWithAssets)).toMatch(/^fnv1a32:/);
+    expect(programSemanticHash(programWithAssets)).toBe(programSemanticHash(programWithAssets));
+  });
+
   it("rejects malformed provider response and provider-specific fields", () => {
     expect(() => parseProgramProposal({ id: "missing-schema" })).toThrow(ProposalValidationError);
     expect(() => parseProgramProposal({ ...turnProposal(), openAiThreadId: "thread-1" })).toThrow(

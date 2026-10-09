@@ -51,6 +51,20 @@ const MAX_TAGS = 16;
 const MAX_STAGE_DIMENSION = 4096;
 const MAX_ACTOR_SIZE = 400;
 const STABLE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$/;
+const CREATIVE_KEYS = ["actors", "stage", "assets"] as const;
+const ASSET_KEYS = ["id", "kind", "name", "source", "tags"] as const;
+const ACTOR_KEYS = [
+  "id",
+  "name",
+  "x",
+  "y",
+  "direction",
+  "size",
+  "visible",
+  "costumeId",
+  "scripts",
+] as const;
+const STAGE_KEYS = ["backdropId", "width", "height", "actorOrder"] as const;
 
 function fail(path: string, message: string, value: unknown): never {
   throw new ProgramValidationError("INVALID_CREATIVE_STATE", path, message, value);
@@ -62,6 +76,18 @@ function failReference(path: string, message: string, value: unknown): never {
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function assertAllowedKeys(
+  input: Record<string, unknown>,
+  keys: readonly string[],
+  path: string,
+): void {
+  for (const key of Object.keys(input)) {
+    if (!keys.includes(key)) {
+      fail(`${path}.${key}`, "unexpected creative-state field", input[key]);
+    }
+  }
 }
 
 function finiteNumber(value: unknown, path: string): number {
@@ -148,6 +174,7 @@ function validateAsset(input: unknown, path: string, state: CreativeValidationSt
   if (!isPlainObject(input)) {
     fail(path, "expected an object", input);
   }
+  assertAllowedKeys(input, ASSET_KEYS, path);
   const id = stableId(input.id, `${path}.id`);
   recordUniqueId(state.assetIds, id, `${path}.id`);
   const kind = input.kind;
@@ -173,6 +200,7 @@ function validateActor(input: unknown, path: string, state: CreativeValidationSt
   if (!isPlainObject(input)) {
     fail(path, "expected an object", input);
   }
+  assertAllowedKeys(input, ACTOR_KEYS, path);
   const id = stableId(input.id, `${path}.id`);
   recordUniqueId(state.actorIds, id, `${path}.id`);
   const costumeId = optionalStableId(input.costumeId, `${path}.costumeId`);
@@ -214,6 +242,7 @@ function validateStage(input: unknown, path: string, state: CreativeValidationSt
   if (!isPlainObject(input)) {
     fail(path, "expected an object", input);
   }
+  assertAllowedKeys(input, STAGE_KEYS, path);
   const backdropId = optionalStableId(input.backdropId, `${path}.backdropId`);
   if (backdropId !== undefined && !state.backdropIds.has(backdropId)) {
     failReference(
@@ -297,6 +326,7 @@ export function validateProjectCreativeState(
   if (!isPlainObject(input)) {
     fail("$", "expected an object", input);
   }
+  assertAllowedKeys(input, CREATIVE_KEYS, "$");
   const state: CreativeValidationState = {
     actorIds: new Set(),
     assetIds: new Set(),

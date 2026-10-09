@@ -55,6 +55,11 @@ function appMenuControl(page: Page, name: string) {
     .first();
 }
 
+async function clickAppMenuControl(page: Page, name: string) {
+  await expect(appMenuControl(page, name)).toBeVisible();
+  await appMenuControl(page, name).click({ force: true });
+}
+
 async function openCodePanel(page: Page) {
   await page.locator(".stage-backstage-code").getByRole("button", { name: "Open code" }).click();
 }
@@ -253,11 +258,11 @@ test("Undo and Redo restore exact canonical block edits", async ({ page }) => {
 
   expect(afterEdit).not.toBe(afterAdd);
   await openAppMenu(page);
-  await appMenuControl(page, "Undo program edit").click();
+  await clickAppMenuControl(page, "Undo program edit");
   expect(await canonicalHash(page)).toBe(afterAdd);
   await expect(visibleCode(page, "sprite.move(10);")).toBeVisible();
 
-  await appMenuControl(page, "Redo program edit").click();
+  await clickAppMenuControl(page, "Redo program edit");
   expect(await canonicalHash(page)).toBe(afterEdit);
   await expect(visibleCode(page, "sprite.move(24);")).toBeVisible();
 });
@@ -630,7 +635,7 @@ test("palette drag supports nested drop and one-step undo", async ({ page }) => 
   expect(await canonicalHash(page)).not.toBe(repeatOnly);
 
   await openAppMenu(page);
-  await appMenuControl(page, "Undo program edit").click();
+  await clickAppMenuControl(page, "Undo program edit");
   expect(await canonicalHash(page)).toBe(repeatOnly);
   await expect(
     page.locator('[data-canonical-node-id="scripts[0]/statements[0]/body[0]"]'),
@@ -681,15 +686,15 @@ test("nested blocks can move out and duplicate as undoable subtrees", async ({ p
   expect((await page.locator(".code-surface").innerText()).match(/repeat\(3/g)?.length).toBe(2);
 
   await openAppMenu(page);
-  await appMenuControl(page, "Undo program edit").click();
+  await clickAppMenuControl(page, "Undo program edit");
   expect(await canonicalHash(page)).toBe(nestedHash);
   expect((await page.locator(".code-surface").innerText()).match(/repeat\(3/g)?.length).toBe(1);
 
-  await appMenuControl(page, "Redo program edit").click();
+  await clickAppMenuControl(page, "Redo program edit");
   expect(await canonicalHash(page)).toBe(duplicatedHash);
   expect((await page.locator(".code-surface").innerText()).match(/repeat\(3/g)?.length).toBe(2);
 
-  await appMenuControl(page, "Undo program edit").click();
+  await clickAppMenuControl(page, "Undo program edit");
   await page.getByLabel("Move block").getByRole("button", { name: "Outdent" }).click();
   await expect(page.locator('[data-canonical-node-id="scripts[0]/statements[1]"]')).toContainText(
     "Move",
@@ -1134,11 +1139,11 @@ test.describe("contextual repeat suggestion", () => {
     await expect(page.locator(".code-surface")).toContainText("repeat");
 
     await openAppMenu(page);
-    await appMenuControl(page, "Undo program edit").click();
+    await clickAppMenuControl(page, "Undo program edit");
     expect(await canonicalHash(page)).toBe(before);
     await expect(page.locator(".code-surface")).not.toContainText("repeat");
 
-    await appMenuControl(page, "Redo program edit").click();
+    await clickAppMenuControl(page, "Redo program edit");
     expect(await canonicalHash(page)).toBe(accepted);
     await expect(page.locator(".code-surface")).toContainText("repeat");
   });

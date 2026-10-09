@@ -62,6 +62,11 @@ function appMenuControl(page: Page, name: string) {
     .first();
 }
 
+async function clickAppMenuControl(page: Page, name: string) {
+  await expect(appMenuControl(page, name)).toBeVisible();
+  await appMenuControl(page, name).click({ force: true });
+}
+
 async function canonicalHash(page: Page) {
   return page.getByTestId("canonical-hash").getAttribute("data-canonical-hash");
 }
@@ -154,12 +159,12 @@ test("journey 2: reorder, nest, duplicate, delete, then Undo/Redo restore exact 
   // Undo all the way back, asserting every exact hash on the way.
   await openAppMenu(page);
   for (let i = hashes.length - 2; i >= 0; i -= 1) {
-    await appMenuControl(page, "Undo program edit").click();
+    await clickAppMenuControl(page, "Undo program edit");
     expect(await canonicalHash(page), `undo to checkpoint ${i}`).toBe(hashes[i]);
   }
   // Redo all the way forward.
   for (let i = 1; i < hashes.length; i += 1) {
-    await appMenuControl(page, "Redo program edit").click();
+    await clickAppMenuControl(page, "Redo program edit");
     expect(await canonicalHash(page), `redo to checkpoint ${i}`).toBe(hashes[i]);
   }
 });
@@ -195,10 +200,10 @@ test("journeys 5+6: contextual AI proposal never moves the hash until accept; Un
   await expect(code(page)).toContainText("repeat");
 
   await openAppMenu(page);
-  await appMenuControl(page, "Undo program edit").click();
+  await clickAppMenuControl(page, "Undo program edit");
   expect(await canonicalHash(page)).toBe(beforeAccept);
   await expect(code(page)).not.toContainText("repeat");
-  await appMenuControl(page, "Redo program edit").click();
+  await clickAppMenuControl(page, "Redo program edit");
   expect(await canonicalHash(page)).toBe(accepted);
   await expect(code(page)).toContainText("repeat");
 });
@@ -290,7 +295,7 @@ test.describe("journey 10: AI unavailable", () => {
 
     // Undo still works and the program never depended on AI.
     await openAppMenu(page);
-    await appMenuControl(page, "Undo program edit").click();
+    await clickAppMenuControl(page, "Undo program edit");
     await expect(page.getByLabel("Turn block")).toBeVisible();
     await expect(page.getByRole("button", { name: "Keep local mode" })).toHaveCount(0);
   });
