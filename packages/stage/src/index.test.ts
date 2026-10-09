@@ -332,6 +332,29 @@ describe("stage", () => {
     });
   });
 
+  it("preserves actor and script scope in execution steps and learner traces", () => {
+    const observations: RuntimeObservation[] = [
+      {
+        kind: "statement-end",
+        step: 1,
+        nodeId: "scripts[1]/statements[0]",
+        statementType: "move",
+        actorId: "actor:helper",
+        scriptId: "click-1",
+        world: {
+          sprite: { x: 10, y: 0, heading: 0 },
+          goal: { x: 100, y: 0 },
+        },
+      },
+    ];
+
+    const steps = executionStepsFromRuntimeObservations(observations);
+    const trace = learnerTraceFromExecutionSteps(steps);
+
+    expect(steps[0]).toMatchObject({ actorId: "actor:helper", scriptId: "click-1" });
+    expect(trace[0]).toMatchObject({ actorId: "actor:helper", scriptId: "click-1" });
+  });
+
   it("names Looks runtime evidence in learner traces", () => {
     const observations: RuntimeObservation[] = [
       {

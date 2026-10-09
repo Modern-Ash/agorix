@@ -42,6 +42,8 @@ export interface ExecutionStep {
   readonly index: number;
   readonly runtimeStep: number;
   readonly nodeId?: string;
+  readonly actorId?: string;
+  readonly scriptId?: string;
   readonly statementType?: RuntimeObservation["statementType"];
   readonly timing: ExecutionStepTiming;
   readonly frame: ObservationFrame;
@@ -60,6 +62,8 @@ export interface LearnerTraceItem {
   readonly index: number;
   readonly runtimeStep: number;
   readonly nodeId?: string;
+  readonly actorId?: string;
+  readonly scriptId?: string;
   readonly profile: LearnerTraceProfile;
   readonly title: string;
   readonly summary: string;
@@ -189,6 +193,8 @@ export function executionStepsFromRuntimeObservations(
       index,
       runtimeStep: observation.step,
       ...(nodeId === undefined ? {} : { nodeId }),
+      ...(observation.actorId === undefined ? {} : { actorId: observation.actorId }),
+      ...(observation.scriptId === undefined ? {} : { scriptId: observation.scriptId }),
       ...(observation.statementType === undefined
         ? {}
         : { statementType: observation.statementType }),
@@ -340,6 +346,8 @@ export function learnerTraceFromExecutionSteps(
       index,
       runtimeStep: step.runtimeStep,
       ...(step.nodeId === undefined ? {} : { nodeId: step.nodeId }),
+      ...(step.actorId === undefined ? {} : { actorId: step.actorId }),
+      ...(step.scriptId === undefined ? {} : { scriptId: step.scriptId }),
       profile,
       title: titleForStep(step, profile),
       summary: makeSummary(profile, step, before, after, delta),

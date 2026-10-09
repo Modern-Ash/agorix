@@ -58,6 +58,8 @@ export interface ExecutionTraceEntry {
   readonly statementType: Statement["type"];
   readonly worldBefore: WorldState;
   readonly worldAfter: WorldState;
+  readonly actorId?: string;
+  readonly scriptId?: string;
 }
 
 export type RuntimeObservationKind = "statement-start" | "statement-end" | "run-complete";
@@ -69,6 +71,8 @@ export interface RuntimeObservation {
   readonly statementType?: Statement["type"];
   readonly outcome?: RunOutcome;
   readonly world: WorldState;
+  readonly actorId?: string;
+  readonly scriptId?: string;
 }
 
 export interface SanitizedTutorContext {

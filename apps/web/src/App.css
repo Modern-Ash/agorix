@@ -842,6 +842,12 @@ h3 {
   color: var(--agx-text-primary);
 }
 
+.trace-item .trace-scope {
+  color: var(--agx-text-secondary);
+  font-family: var(--agx-font-mono);
+  font-size: 0.78rem;
+}
+
 .trace-item small {
   color: var(--agx-text-secondary);
   line-height: 1.35;
@@ -3796,6 +3802,12 @@ button:hover:not(:disabled) {
 
 .step-card p {
   margin: 0;
+}
+
+.step-card .step-card-scope {
+  color: #475569;
+  font-family: var(--agx-font-mono);
+  font-size: 0.78rem;
 }
 
 .step-card button {
