@@ -1,4 +1,8 @@
-import { validateProgram, type ProjectProgram } from "@agorix/program-model";
+import {
+  validateProgram,
+  validateProjectCreativeState,
+  type ProjectProgram,
+} from "@agorix/program-model";
 import { validateProjectActors } from "./actors.js";
 import { missionSpecHash, validateProjectMissionSpec } from "./missionSpec.js";
 import { PersistenceError, type StoredProject } from "./store.js";
@@ -56,6 +60,14 @@ export function assertCrossSurfaceCompatibleProject(stored: StoredProject): Stor
     stored.metadata.actors === undefined
       ? undefined
       : validateProjectActors(stored.metadata.actors);
+  const creative = validateProjectCreativeState(
+    {
+      ...(actors === undefined ? {} : { actors: actors.items }),
+      ...(stored.metadata.stage === undefined ? {} : { stage: stored.metadata.stage }),
+      ...(stored.metadata.assets === undefined ? {} : { assets: stored.metadata.assets }),
+    },
+    program,
+  );
   const missionSpec =
     stored.metadata.missionSpec === undefined
       ? undefined
@@ -66,6 +78,8 @@ export function assertCrossSurfaceCompatibleProject(stored: StoredProject): Stor
     metadata: {
       ...stored.metadata,
       ...(actors === undefined ? {} : { actors }),
+      ...(creative.stage === undefined ? {} : { stage: creative.stage }),
+      ...(creative.assets === undefined ? {} : { assets: creative.assets }),
       ...(missionSpec === undefined ? {} : { missionSpec }),
     },
   };

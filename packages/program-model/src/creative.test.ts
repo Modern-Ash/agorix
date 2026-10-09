@@ -152,6 +152,62 @@ describe("validateProjectCreativeState", () => {
     ).toThrow(/INVALID_CREATIVE_STATE/);
   });
 
+  it("rejects unknown creative, actor, asset and stage fields", () => {
+    expect(() =>
+      validateProjectCreativeState({ selectedPanel: "stage" }, FULL_COVERAGE_PROGRAM),
+    ).toThrow(/INVALID_CREATIVE_STATE/);
+
+    expect(() =>
+      validateProjectCreativeState(
+        {
+          assets: [
+            {
+              id: "costume:rocket",
+              kind: "costume",
+              name: "Rocket",
+              source: "builtin:rocket",
+              blocklyId: "ui-only",
+            },
+          ],
+        },
+        FULL_COVERAGE_PROGRAM,
+      ),
+    ).toThrow(/INVALID_CREATIVE_STATE/);
+
+    expect(() =>
+      validateProjectCreativeState(
+        {
+          actors: [
+            {
+              id: "actor:hero",
+              name: "Hero",
+              x: 0,
+              y: 0,
+              direction: 0,
+              size: 100,
+              visible: true,
+              selectedNodeId: "ui-only",
+            },
+          ],
+        },
+        FULL_COVERAGE_PROGRAM,
+      ),
+    ).toThrow(/INVALID_CREATIVE_STATE/);
+
+    expect(() =>
+      validateProjectCreativeState(
+        {
+          stage: {
+            width: 480,
+            height: 320,
+            editorSplitSize: 0.5,
+          },
+        },
+        FULL_COVERAGE_PROGRAM,
+      ),
+    ).toThrow(/INVALID_CREATIVE_STATE/);
+  });
+
   it("rejects non-positive or extreme render dimensions", () => {
     expect(() =>
       validateProjectCreativeState(

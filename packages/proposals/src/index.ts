@@ -1,5 +1,4 @@
 import { projectProgram, type ProjectionResult, type TextRange } from "@agorix/code-generator";
-import { semanticProjectHash } from "@agorix/persistence";
 import {
   validateProgram,
   type Expression,
@@ -226,16 +225,34 @@ const STABLE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$/;
 const MAX_SCOPE_IDS = 64;
 
 export function programSemanticHash(program: ProjectProgram): string {
-  return semanticProjectHash({
-    schemaVersion: program.schema,
-    program: validateProgram(program),
-    metadata: {
-      createdAt: "1970-01-01T00:00:00.000Z",
-      updatedAt: "1970-01-01T00:00:00.000Z",
-      missionProgress: 0,
-      hintLevel: 0,
-    },
-  });
+  return stableHash(
+    stableStringify({
+      contractVersion: "agorix/program-semantic/v1",
+      program: validateProgram(program),
+    }),
+  );
+}
+
+function stableStringify(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableStringify(item)).join(",")}]`;
+  }
+  if (typeof value === "object" && value !== null) {
+    const entries = Object.entries(value).sort(([left], [right]) => left.localeCompare(right));
+    return `{${entries
+      .map(([key, nested]) => `${JSON.stringify(key)}:${stableStringify(nested)}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function stableHash(input: string): string {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < input.length; index += 1) {
+    hash ^= input.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return `fnv1a32:${(hash >>> 0).toString(16).padStart(8, "0")}`;
 }
 
 export function createProgramProposal(

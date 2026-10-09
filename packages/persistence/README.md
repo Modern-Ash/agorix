@@ -32,8 +32,18 @@ human-inspectable and versioned independently from the canonical program schema:
 ```
 
 `project.program` is the canonical `ProjectProgram`. Portable metadata includes
-only progression needed to continue (`missionProgress`, `hintLevel`) plus
-timestamps and `locale` when present as the existing portable user preference.
+only progression needed to continue (`missionProgress`, `hintLevel`), timestamps,
+`locale` when present as the existing portable user preference, the learner
+`missionSpec`, and the shared creative state owned by `ProjectCreativeState`.
+
+The creative state is persisted in metadata for v1 instead of being embedded
+directly into `ProjectProgram`: scripts remain executable code, while actors,
+stage and assets are project context consumed by both Agorix App and Agorix
+Studio. The persistence boundary validates that context through
+`@agorix/program-model` before export, import, semantic hashing or cross-surface
+compatibility checks. Broken references such as an actor costume id without a
+matching costume asset, a stage actor order entry without an actor, or a sound
+statement without a sound asset fail closed.
 
 The v1 reader fails closed: it checks the byte limit before parsing, parses JSON
 only, rejects unknown `formatVersion`, rejects unsupported project
