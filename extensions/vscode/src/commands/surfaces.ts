@@ -2,11 +2,11 @@ import * as vscode from "vscode";
 import type { AgentAgreements } from "@agorix/agent-workflow";
 import type { AgentVerb } from "@agorix/interaction-core";
 import type { ProjectProgram } from "@agorix/program-model";
-import {
-  evidenceForProgram,
-  type StudioExecutionViewState,
-  type StudioProject,
-  type StudioProposalSession,
+import type { ProjectMetadata } from "@agorix/persistence";
+import type {
+  StudioExecutionViewState,
+  StudioProject,
+  StudioProposalSession,
 } from "../studioCore.js";
 import { openWorkbenchPanel, refreshWorkbench } from "../host/workbenchPanel.js";
 import { openWorldPreviewPanel } from "../host/worldPreviewPanel.js";
@@ -25,6 +25,8 @@ export interface StudioSurfaceCommandPort {
   /** The open project without any prompt; undefined when none is open. */
   getProject(): StudioProject | undefined;
   commitProgram(program: ProjectProgram): Promise<void>;
+  getMetadata(): ProjectMetadata | undefined;
+  commitMetadata(metadata: ProjectMetadata): Promise<void>;
   getActiveProposal(): StudioProposalSession | undefined;
   reviewProposalSession(proposal: StudioProposalSession): Promise<void>;
   revealCanonicalNode(nodeId: string): Promise<void>;
@@ -64,20 +66,18 @@ export function createStudioSurfaceCommandHandlers(
       port.context,
       {
         getProgram: port.getProgram,
-        reachedGoal: () => {
-          const project = port.getProject();
-          if (project === undefined) return false;
-          try {
-            return evidenceForProgram(project, project.stored.program).reachedGoal;
-          } catch {
-            return false;
-          }
-        },
+        getMetadata: port.getMetadata,
         commit: async (program) => {
           if (port.requireProject() === undefined) {
             return;
           }
           await port.commitProgram(program);
+        },
+        commitMetadata: async (metadata) => {
+          if (port.requireProject() === undefined) {
+            return;
+          }
+          await port.commitMetadata(metadata);
         },
         openProposalReview: async () => {
           const proposal = port.getActiveProposal();
@@ -94,6 +94,7 @@ export function createStudioSurfaceCommandHandlers(
       },
       port.agentPort(),
       port.hub,
+      () => port.currentExecutionView() ?? port.resetExecution(),
       workbenchLocale(open),
     );
     refreshWorkbench();

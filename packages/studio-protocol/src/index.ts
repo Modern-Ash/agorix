@@ -70,6 +70,9 @@ const REFUSAL_REASONS: readonly ChangeRefusalReason[] = [
 
 type Schema = typeof STUDIO_PROTOCOL_VERSION;
 type Decision = "accepted" | "rejected" | "modified";
+export type ExecutionCommand = "run" | "step" | "stop" | "reset";
+const EXECUTION_COMMANDS: readonly ExecutionCommand[] = ["run", "step", "stop", "reset"];
+const MAX_ACTOR_SIZE = 400;
 
 export type UiMessage =
   | { readonly schema: Schema; readonly type: "ready" }
@@ -84,6 +87,17 @@ export type UiMessage =
       readonly schema: Schema;
       readonly type: "agreementsChanged";
       readonly agreements: AgentAgreements;
+    }
+  | {
+      readonly schema: Schema;
+      readonly type: "executionCommand";
+      readonly command: ExecutionCommand;
+    }
+  | {
+      readonly schema: Schema;
+      readonly type: "updateActor";
+      readonly actorId: string;
+      readonly patch: ActorPatch;
     }
   | {
       readonly schema: Schema;
@@ -125,6 +139,15 @@ export interface EvidenceView {
   readonly outcome: "completed" | "budget-exceeded" | "stopped";
 }
 
+export interface ExecutionEventTraceView {
+  readonly id: string;
+  readonly step: number;
+  readonly actorId: string;
+  readonly scriptId: string;
+  readonly reason: string;
+  readonly event: string;
+}
+
 export interface AlternativeView {
   readonly proposalId: string;
   readonly purpose: string;
@@ -143,10 +166,116 @@ export interface GhostChange {
   readonly afterText?: string;
 }
 
+export type ExpectedEvidenceOutcome =
+  "completes" | "reaches-goal" | "does-not-reach-goal" | "runtime-error";
+
+export interface ExpectedRuntimeEvidenceView {
+  readonly id: string;
+  readonly description: string;
+  readonly nodeIds?: readonly string[];
+  readonly actorIds?: readonly string[];
+  readonly scriptIds?: readonly string[];
+  readonly assetIds?: readonly string[];
+  readonly variableIds?: readonly string[];
+  readonly outcome?: ExpectedEvidenceOutcome;
+}
+
 export interface AmbientHintView {
   readonly label: string;
   readonly blockId?: string;
   readonly actions: readonly ("explain" | "debug" | "challenge" | "propose")[];
+}
+
+export interface HelpView {
+  readonly kind: HelpShown;
+  readonly ceiling: number;
+  readonly taskId: AgentTaskId;
+  readonly concept?: ConceptId;
+  readonly blockIds?: readonly string[];
+}
+
+export interface StagePointView {
+  readonly x: number;
+  readonly y: number;
+}
+
+export interface StageSpriteView extends StagePointView {
+  readonly heading: number;
+  readonly radius: number;
+}
+
+export interface StageGoalView extends StagePointView {
+  readonly radius: number;
+}
+
+export interface StageViewportView {
+  readonly width: number;
+  readonly height: number;
+}
+
+export interface StageVariableWatcherView {
+  readonly id: string;
+  readonly label: string;
+  readonly value: number;
+  readonly visible: boolean;
+}
+
+export interface StageSoundStateView {
+  readonly activeSoundIds: readonly string[];
+}
+
+export interface StageFrameView {
+  readonly state: {
+    readonly sprite: StageSpriteView;
+    readonly goal: StageGoalView;
+    readonly viewport: StageViewportView;
+    readonly actors?: readonly ActorView[];
+    readonly variables?: readonly StageVariableWatcherView[];
+    readonly sounds?: StageSoundStateView;
+    readonly backdropId?: string;
+  };
+  readonly frameIndex: number;
+  readonly frameCount: number;
+  readonly step: number;
+  readonly running: boolean;
+  readonly reachedGoal: boolean;
+  readonly actorId?: string;
+  readonly scriptId?: string;
+  readonly statementType?: string;
+  readonly highlightedNodeId?: string;
+}
+
+export interface ActorView {
+  readonly id: string;
+  readonly name: string;
+  readonly x: number;
+  readonly y: number;
+  readonly direction: number;
+  readonly size: number;
+  readonly visible: boolean;
+  readonly costumeId?: string;
+  readonly bubble?: {
+    readonly kind: "say" | "think";
+    readonly text: string;
+  };
+  readonly scriptCount?: number;
+  /** @deprecated use costumeId. Accepted only for old hosts. */
+  readonly appearanceId?: string;
+}
+
+export type ActorPatch = Partial<Omit<ActorView, "id" | "scriptCount">>;
+
+export type AssetKind = "sprite" | "backdrop" | "costume" | "sound";
+
+export interface AssetView {
+  readonly id: string;
+  readonly name: string;
+  readonly kind: AssetKind;
+  readonly tags: readonly string[];
+  readonly width?: number;
+  readonly height?: number;
+  readonly durationMs?: number;
+  readonly preview?: string;
 }
 
 export type HostMessage =
@@ -180,6 +309,12 @@ export type HostMessage =
       readonly proposalId: string;
       readonly purpose: string;
       readonly rationale: string;
+      readonly affectedActorIds?: readonly string[];
+      readonly affectedScriptIds?: readonly string[];
+      readonly affectedAssetIds?: readonly string[];
+      readonly affectedVariableIds?: readonly string[];
+      readonly affectedNodeIds?: readonly string[];
+      readonly expectedRuntimeEvidence?: readonly ExpectedRuntimeEvidenceView[];
       readonly changes: readonly GhostChange[];
       readonly operations?: readonly OperationView[];
       readonly evidence?: EvidenceView;
@@ -224,22 +359,38 @@ export type HostMessage =
     }
   | { readonly schema: Schema; readonly type: "agreements"; readonly agreements: AgentAgreements }
   | { readonly schema: Schema; readonly type: "ambientHint"; readonly hint?: AmbientHintView }
-  | {
-      readonly schema: Schema;
-      readonly type: "help";
-      readonly kind: HelpShown;
-      readonly ceiling: number;
-      readonly taskId: AgentTaskId;
-      readonly concept?: ConceptId;
-      /** Blocks the learner is pointed to (ceiling 3). */
-      readonly blockIds?: readonly string[];
-    }
+  | ({ readonly schema: Schema; readonly type: "help" } & HelpView)
   | {
       readonly schema: Schema;
       readonly type: "density";
       readonly value: Density;
-      /** "auto" when the layout changed by itself, "setting" when the learner chose it. */
       readonly reason: "auto" | "setting";
+    }
+  | {
+      readonly schema: Schema;
+      readonly type: "executionState";
+      readonly status: "idle" | "running" | "stopped" | "completed";
+      readonly outcome: EvidenceView["outcome"];
+      readonly frameIndex: number;
+      readonly frameCount: number;
+      readonly stepsUsed: number;
+      readonly eventTrace?: readonly ExecutionEventTraceView[];
+    }
+  | {
+      readonly schema: Schema;
+      readonly type: "stageFrame";
+      readonly frame: StageFrameView;
+    }
+  | {
+      readonly schema: Schema;
+      readonly type: "actors";
+      readonly actors: readonly ActorView[];
+      readonly selectedActorId?: string;
+    }
+  | {
+      readonly schema: Schema;
+      readonly type: "assets";
+      readonly assets: readonly AssetView[];
     }
   | {
       readonly schema: Schema;
@@ -269,11 +420,22 @@ const SIGNALS: readonly OfferableSignal[] = [
   "first-step",
 ];
 const AGENT_VERBS = ["explain", "debug", "challenge"] as const;
+const ASSET_KINDS: readonly AssetKind[] = ["sprite", "backdrop", "costume", "sound"];
 const BLOCK_TYPES = [
   "event_on_start",
   "event_green_flag",
   "motion_move",
   "motion_turn",
+  "looks_say",
+  "looks_think",
+  "looks_show",
+  "looks_hide",
+  "looks_set_size",
+  "looks_switch_costume",
+  "looks_switch_backdrop",
+  "sound_play",
+  "sound_stop",
+  "event_broadcast",
   "control_repeat",
   "control_if",
   "sensing_touching_goal",
@@ -284,6 +446,7 @@ const BLOCK_TYPES = [
 type Obj = Record<string, unknown>;
 type Container = Extract<Intent, { type: "insertBlock" }>["to"]["container"];
 type Location = { container: Container; index: number };
+const NODE_ID_PATTERN = /^[A-Za-z0-9:_$.[\]/-]{1,200}$/;
 
 function isObject(value: unknown): value is Obj {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -291,6 +454,280 @@ function isObject(value: unknown): value is Obj {
 
 function isIndex(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 100_000;
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function isActorSize(value: unknown): value is number {
+  return isFiniteNumber(value) && value > 0 && value <= MAX_ACTOR_SIZE;
+}
+
+function parseStagePoint(value: unknown): StagePointView | undefined {
+  if (!isObject(value) || !isFiniteNumber(value["x"]) || !isFiniteNumber(value["y"])) {
+    return undefined;
+  }
+  return { x: value["x"], y: value["y"] };
+}
+
+function parseStageSprite(value: unknown): StageSpriteView | undefined {
+  const point = parseStagePoint(value);
+  if (
+    point === undefined ||
+    !isObject(value) ||
+    !isFiniteNumber(value["heading"]) ||
+    !isFiniteNumber(value["radius"])
+  ) {
+    return undefined;
+  }
+  return { ...point, heading: value["heading"], radius: value["radius"] };
+}
+
+function parseStageGoal(value: unknown): StageGoalView | undefined {
+  const point = parseStagePoint(value);
+  if (point === undefined || !isObject(value) || !isFiniteNumber(value["radius"])) {
+    return undefined;
+  }
+  return { ...point, radius: value["radius"] };
+}
+
+function parseStageViewport(value: unknown): StageViewportView | undefined {
+  if (
+    !isObject(value) ||
+    !isFiniteNumber(value["width"]) ||
+    !isFiniteNumber(value["height"]) ||
+    value["width"] <= 0 ||
+    value["height"] <= 0
+  ) {
+    return undefined;
+  }
+  return { width: value["width"], height: value["height"] };
+}
+
+function parseStageVariableWatcher(value: unknown): StageVariableWatcherView | undefined {
+  if (
+    !isObject(value) ||
+    typeof value["id"] !== "string" ||
+    !isSafeId(value["id"]) ||
+    typeof value["label"] !== "string" ||
+    value["label"].length === 0 ||
+    value["label"].length > 40 ||
+    !isFiniteNumber(value["value"]) ||
+    typeof value["visible"] !== "boolean"
+  ) {
+    return undefined;
+  }
+  return {
+    id: value["id"],
+    label: value["label"],
+    value: value["value"],
+    visible: value["visible"],
+  };
+}
+
+function parseStageSoundState(value: unknown): StageSoundStateView | undefined {
+  if (!isObject(value) || !Array.isArray(value["activeSoundIds"])) {
+    return undefined;
+  }
+  const activeSoundIds = value["activeSoundIds"];
+  if (activeSoundIds.length > 32 || activeSoundIds.some((id) => !isSafeId(id))) {
+    return undefined;
+  }
+  return { activeSoundIds };
+}
+
+function parseStageFrame(value: unknown): StageFrameView | undefined {
+  if (!isObject(value) || !isObject(value["state"])) return undefined;
+  const state = value["state"];
+  const sprite = parseStageSprite(state["sprite"]);
+  const goal = parseStageGoal(state["goal"]);
+  const viewport = parseStageViewport(state["viewport"]);
+  const rawActors = state["actors"];
+  const rawVariables = state["variables"];
+  const rawSounds = state["sounds"];
+  const backdropId = state["backdropId"];
+  const actors =
+    rawActors === undefined
+      ? undefined
+      : Array.isArray(rawActors) && rawActors.length <= 32
+        ? rawActors.map(parseActor)
+        : undefined;
+  const highlightedNodeId = value["highlightedNodeId"];
+  const actorId = value["actorId"];
+  const scriptId = value["scriptId"];
+  const statementType = value["statementType"];
+  const variables =
+    rawVariables === undefined
+      ? undefined
+      : Array.isArray(rawVariables) && rawVariables.length <= 64
+        ? rawVariables.map(parseStageVariableWatcher)
+        : undefined;
+  const sounds = rawSounds === undefined ? undefined : parseStageSoundState(rawSounds);
+  if (
+    sprite === undefined ||
+    goal === undefined ||
+    viewport === undefined ||
+    (rawActors !== undefined &&
+      (actors === undefined || actors.some((actor) => actor === undefined))) ||
+    (rawVariables !== undefined &&
+      (variables === undefined || variables.some((variable) => variable === undefined))) ||
+    (rawSounds !== undefined && sounds === undefined) ||
+    (backdropId !== undefined && !isSafeId(backdropId)) ||
+    !isIndex(value["frameIndex"]) ||
+    !isIndex(value["frameCount"]) ||
+    !isIndex(value["step"]) ||
+    typeof value["running"] !== "boolean" ||
+    typeof value["reachedGoal"] !== "boolean" ||
+    (actorId !== undefined && !isSafeId(actorId)) ||
+    (scriptId !== undefined && !isSafeId(scriptId)) ||
+    (statementType !== undefined &&
+      (typeof statementType !== "string" ||
+        statementType.length < 1 ||
+        statementType.length > 40)) ||
+    (highlightedNodeId !== undefined &&
+      (typeof highlightedNodeId !== "string" || !NODE_ID_PATTERN.test(highlightedNodeId)))
+  ) {
+    return undefined;
+  }
+  return {
+    state: {
+      sprite,
+      goal,
+      viewport,
+      ...(state["actors"] === undefined ? {} : { actors: actors as ActorView[] }),
+      ...(state["variables"] === undefined
+        ? {}
+        : { variables: variables as StageVariableWatcherView[] }),
+      ...(sounds === undefined ? {} : { sounds }),
+      ...(backdropId === undefined ? {} : { backdropId }),
+    },
+    frameIndex: value["frameIndex"],
+    frameCount: value["frameCount"],
+    step: value["step"],
+    running: value["running"],
+    reachedGoal: value["reachedGoal"],
+    ...(actorId === undefined ? {} : { actorId }),
+    ...(scriptId === undefined ? {} : { scriptId }),
+    ...(statementType === undefined ? {} : { statementType }),
+    ...(highlightedNodeId === undefined ? {} : { highlightedNodeId }),
+  };
+}
+
+function parseBubble(value: unknown): ActorView["bubble"] | undefined {
+  if (!isObject(value)) return undefined;
+  const kind = value["kind"];
+  const text = value["text"];
+  if (
+    (kind !== "say" && kind !== "think") ||
+    typeof text !== "string" ||
+    text.length < 1 ||
+    text.length > 140
+  ) {
+    return undefined;
+  }
+  return { kind, text };
+}
+
+function parseActor(value: unknown): ActorView | undefined {
+  const bubble =
+    isObject(value) && value["bubble"] !== undefined ? parseBubble(value["bubble"]) : undefined;
+  if (
+    !isObject(value) ||
+    !isSafeId(value["id"]) ||
+    typeof value["name"] !== "string" ||
+    value["name"].length < 1 ||
+    value["name"].length > 80 ||
+    !isFiniteNumber(value["x"]) ||
+    !isFiniteNumber(value["y"]) ||
+    !isFiniteNumber(value["direction"]) ||
+    !isActorSize(value["size"]) ||
+    typeof value["visible"] !== "boolean" ||
+    (value["costumeId"] !== undefined && !isSafeId(value["costumeId"])) ||
+    (value["appearanceId"] !== undefined && !isSafeId(value["appearanceId"])) ||
+    (value["bubble"] !== undefined && bubble === undefined) ||
+    (value["scriptCount"] !== undefined && !isIndex(value["scriptCount"]))
+  ) {
+    return undefined;
+  }
+  const costumeId = value["costumeId"] ?? value["appearanceId"];
+  return {
+    id: value["id"],
+    name: value["name"],
+    x: value["x"],
+    y: value["y"],
+    direction: value["direction"],
+    size: value["size"],
+    visible: value["visible"],
+    ...(costumeId === undefined ? {} : { costumeId: costumeId as string }),
+    ...(bubble === undefined ? {} : { bubble }),
+    ...(value["scriptCount"] === undefined ? {} : { scriptCount: value["scriptCount"] }),
+  };
+}
+
+function parseActorPatch(value: unknown): ActorPatch | undefined {
+  if (!isObject(value)) return undefined;
+  const patch: Record<string, unknown> = {};
+  for (const [key, raw] of Object.entries(value)) {
+    switch (key) {
+      case "name":
+        if (typeof raw !== "string" || raw.length < 1 || raw.length > 80) return undefined;
+        patch.name = raw;
+        break;
+      case "x":
+      case "y":
+      case "direction":
+        if (!isFiniteNumber(raw)) return undefined;
+        patch[key] = raw;
+        break;
+      case "size":
+        if (!isActorSize(raw)) return undefined;
+        patch.size = raw;
+        break;
+      case "visible":
+        if (typeof raw !== "boolean") return undefined;
+        patch.visible = raw;
+        break;
+      case "appearanceId":
+      case "costumeId":
+        if (raw !== undefined && !isSafeId(raw)) return undefined;
+        patch.costumeId = raw;
+        break;
+      default:
+        return undefined;
+    }
+  }
+  return patch as ActorPatch;
+}
+
+function parseAsset(value: unknown): AssetView | undefined {
+  if (
+    !isObject(value) ||
+    !isSafeId(value["id"]) ||
+    typeof value["name"] !== "string" ||
+    value["name"].length < 1 ||
+    value["name"].length > 120 ||
+    !(ASSET_KINDS as readonly unknown[]).includes(value["kind"]) ||
+    !Array.isArray(value["tags"]) ||
+    value["tags"].length > 16 ||
+    !value["tags"].every((tag) => typeof tag === "string" && tag.length <= 40)
+  ) {
+    return undefined;
+  }
+  for (const key of ["width", "height", "durationMs"] as const) {
+    if (value[key] !== undefined && !isIndex(value[key])) return undefined;
+  }
+  if (value["preview"] !== undefined && typeof value["preview"] !== "string") return undefined;
+  return {
+    id: value["id"],
+    name: value["name"],
+    kind: value["kind"] as AssetKind,
+    tags: [...value["tags"]] as string[],
+    ...(value["width"] === undefined ? {} : { width: value["width"] as number }),
+    ...(value["height"] === undefined ? {} : { height: value["height"] as number }),
+    ...(value["durationMs"] === undefined ? {} : { durationMs: value["durationMs"] as number }),
+    ...(value["preview"] === undefined ? {} : { preview: value["preview"] }),
+  };
 }
 
 function parseContainer(value: unknown): Container | undefined {
@@ -574,6 +1011,30 @@ function parseEvidence(value: unknown): EvidenceView | undefined {
     : undefined;
 }
 
+function parseExecutionEventTrace(value: unknown): ExecutionEventTraceView[] | undefined {
+  if (!Array.isArray(value) || value.length > 200) return undefined;
+  const out: ExecutionEventTraceView[] = [];
+  for (const raw of value) {
+    if (!isObject(raw) || !isIndex(raw["step"])) return undefined;
+    const id = boundedString(raw["id"], 1, 128);
+    const actorId = boundedString(raw["actorId"], 1, 128);
+    const scriptId = boundedString(raw["scriptId"], 1, 128);
+    const reason = boundedString(raw["reason"], 1, 300);
+    const event = boundedString(raw["event"], 1, 160);
+    if (
+      id === undefined ||
+      actorId === undefined ||
+      scriptId === undefined ||
+      reason === undefined ||
+      event === undefined
+    ) {
+      return undefined;
+    }
+    out.push({ id, step: raw["step"], actorId, scriptId, reason, event });
+  }
+  return out;
+}
+
 const OP_KINDS = ["add", "replace", "remove", "setField"] as const;
 const EDIT_FIELDS = ["steps", "degrees", "count"] as const;
 const HINT_ACTIONS = ["explain", "debug", "challenge", "propose"] as const;
@@ -623,6 +1084,66 @@ function parseAlternatives(value: unknown): AlternativeView[] | undefined {
     const evidence = parseEvidence(raw["evidence"]);
     if (purpose === undefined || tradeoff === undefined || evidence === undefined) return undefined;
     out.push({ proposalId: raw["proposalId"], purpose, tradeoff, evidence });
+  }
+  return out;
+}
+
+function parseIdList(value: unknown): readonly string[] | undefined {
+  if (!Array.isArray(value) || value.length > 50) return undefined;
+  const out: string[] = [];
+  for (const item of value) {
+    const parsed = boundedString(item, 1, 160);
+    if (parsed === undefined) return undefined;
+    out.push(parsed);
+  }
+  return out;
+}
+
+function parseOptionalIdList(value: unknown): readonly string[] | undefined {
+  return value === undefined ? undefined : parseIdList(value);
+}
+
+function parseExpectedRuntimeEvidence(
+  value: unknown,
+): readonly ExpectedRuntimeEvidenceView[] | undefined {
+  if (!Array.isArray(value) || value.length > 12) return undefined;
+  const out: ExpectedRuntimeEvidenceView[] = [];
+  for (const raw of value) {
+    if (!isObject(raw)) return undefined;
+    const id = boundedString(raw["id"], 1, 120);
+    const description = boundedString(raw["description"], 1, 400);
+    const nodeIds = parseOptionalIdList(raw["nodeIds"]);
+    const actorIds = parseOptionalIdList(raw["actorIds"]);
+    const scriptIds = parseOptionalIdList(raw["scriptIds"]);
+    const assetIds = parseOptionalIdList(raw["assetIds"]);
+    const variableIds = parseOptionalIdList(raw["variableIds"]);
+    const outcome = raw["outcome"];
+    if (
+      id === undefined ||
+      description === undefined ||
+      (raw["nodeIds"] !== undefined && nodeIds === undefined) ||
+      (raw["actorIds"] !== undefined && actorIds === undefined) ||
+      (raw["scriptIds"] !== undefined && scriptIds === undefined) ||
+      (raw["assetIds"] !== undefined && assetIds === undefined) ||
+      (raw["variableIds"] !== undefined && variableIds === undefined) ||
+      (outcome !== undefined &&
+        outcome !== "completes" &&
+        outcome !== "reaches-goal" &&
+        outcome !== "does-not-reach-goal" &&
+        outcome !== "runtime-error")
+    ) {
+      return undefined;
+    }
+    out.push({
+      id,
+      description,
+      ...(nodeIds === undefined ? {} : { nodeIds }),
+      ...(actorIds === undefined ? {} : { actorIds }),
+      ...(scriptIds === undefined ? {} : { scriptIds }),
+      ...(assetIds === undefined ? {} : { assetIds }),
+      ...(variableIds === undefined ? {} : { variableIds }),
+      ...(outcome === undefined ? {} : { outcome: outcome as ExpectedEvidenceOutcome }),
+    });
   }
   return out;
 }
@@ -747,12 +1268,27 @@ function parseAgentMessageFromHost(value: Obj, schema: Schema): HostMessage | un
       }
       const operations =
         value["operations"] === undefined ? undefined : parseOperations(value["operations"]);
+      const affectedActorIds = parseOptionalIdList(value["affectedActorIds"]);
+      const affectedScriptIds = parseOptionalIdList(value["affectedScriptIds"]);
+      const affectedAssetIds = parseOptionalIdList(value["affectedAssetIds"]);
+      const affectedVariableIds = parseOptionalIdList(value["affectedVariableIds"]);
+      const affectedNodeIds = parseOptionalIdList(value["affectedNodeIds"]);
+      const expectedRuntimeEvidence =
+        value["expectedRuntimeEvidence"] === undefined
+          ? undefined
+          : parseExpectedRuntimeEvidence(value["expectedRuntimeEvidence"]);
       const origin = value["origin"];
       const notice =
         value["notice"] === undefined ? undefined : boundedString(value["notice"], 1, 300);
       if (
         (origin !== undefined && origin !== "provider" && origin !== "built-in") ||
-        (value["notice"] !== undefined && notice === undefined)
+        (value["notice"] !== undefined && notice === undefined) ||
+        (value["affectedActorIds"] !== undefined && affectedActorIds === undefined) ||
+        (value["affectedScriptIds"] !== undefined && affectedScriptIds === undefined) ||
+        (value["affectedAssetIds"] !== undefined && affectedAssetIds === undefined) ||
+        (value["affectedVariableIds"] !== undefined && affectedVariableIds === undefined) ||
+        (value["affectedNodeIds"] !== undefined && affectedNodeIds === undefined) ||
+        (value["expectedRuntimeEvidence"] !== undefined && expectedRuntimeEvidence === undefined)
       ) {
         return undefined;
       }
@@ -773,6 +1309,12 @@ function parseAgentMessageFromHost(value: Obj, schema: Schema): HostMessage | un
         proposalId: value["proposalId"],
         purpose,
         rationale,
+        ...(affectedActorIds === undefined ? {} : { affectedActorIds }),
+        ...(affectedScriptIds === undefined ? {} : { affectedScriptIds }),
+        ...(affectedAssetIds === undefined ? {} : { affectedAssetIds }),
+        ...(affectedVariableIds === undefined ? {} : { affectedVariableIds }),
+        ...(affectedNodeIds === undefined ? {} : { affectedNodeIds }),
+        ...(expectedRuntimeEvidence === undefined ? {} : { expectedRuntimeEvidence }),
         changes,
         ...(operations === undefined ? {} : { operations }),
         ...(evidence === undefined ? {} : { evidence }),
@@ -808,6 +1350,31 @@ function parseAgentMessageFromHost(value: Obj, schema: Schema): HostMessage | un
     }
     case "proposalCleared":
       return { schema, type: "proposalCleared" };
+    case "help": {
+      const kind = value["kind"];
+      const ceiling = value["ceiling"];
+      const taskId = value["taskId"];
+      const concept = value["concept"];
+      const blockIds = value["blockIds"] === undefined ? undefined : parseIdList(value["blockIds"]);
+      if (
+        !(HELP_SHOWN as readonly unknown[]).includes(kind) ||
+        !isIndex(ceiling) ||
+        !(AGENT_TASK_IDS as readonly unknown[]).includes(taskId) ||
+        (concept !== undefined && !(CONCEPT_IDS as readonly unknown[]).includes(concept)) ||
+        (value["blockIds"] !== undefined && blockIds === undefined)
+      ) {
+        return undefined;
+      }
+      return {
+        schema,
+        type: "help",
+        kind: kind as HelpShown,
+        ceiling,
+        taskId: taskId as AgentTaskId,
+        ...(concept === undefined ? {} : { concept: concept as ConceptId }),
+        ...(blockIds === undefined ? {} : { blockIds }),
+      };
+    }
     case "prediction": {
       const options = value["options"];
       return value["questionId"] === "reaches-goal" &&
@@ -888,6 +1455,16 @@ export function parseUiMessage(value: unknown): UiMessage | undefined {
       return agreements === undefined
         ? undefined
         : { schema, type: "agreementsChanged", agreements };
+    }
+    case "executionCommand":
+      return (EXECUTION_COMMANDS as readonly unknown[]).includes(value["command"])
+        ? { schema, type: "executionCommand", command: value["command"] as ExecutionCommand }
+        : undefined;
+    case "updateActor": {
+      const patch = parseActorPatch(value["patch"]);
+      return isSafeId(value["actorId"]) && patch !== undefined
+        ? { schema, type: "updateActor", actorId: value["actorId"], patch }
+        : undefined;
     }
     case "decideProposal": {
       const decision = value["decision"];
@@ -989,38 +1566,61 @@ export function parseHostMessage(value: unknown): HostMessage | undefined {
         ? { schema, type: "error", code: "INVALID_CHANGE", reason: reason as ChangeRefusalReason }
         : undefined;
     }
-    case "help": {
-      const ceiling = value["ceiling"];
-      const blockIds = value["blockIds"];
-      if (
-        !(HELP_SHOWN as readonly unknown[]).includes(value["kind"]) ||
-        typeof ceiling !== "number" ||
-        !Number.isInteger(ceiling) ||
-        ceiling < 0 ||
-        ceiling > 5 ||
-        !(AGENT_TASK_IDS as readonly unknown[]).includes(value["taskId"]) ||
-        (value["concept"] !== undefined &&
-          !(CONCEPT_IDS as readonly unknown[]).includes(value["concept"])) ||
-        (blockIds !== undefined &&
-          (!Array.isArray(blockIds) || blockIds.length > 50 || !blockIds.every(isSafeId)))
-      ) {
-        return undefined;
-      }
-      return {
-        schema,
-        type: "help",
-        kind: value["kind"] as HelpShown,
-        ceiling,
-        taskId: value["taskId"] as AgentTaskId,
-        ...(value["concept"] === undefined ? {} : { concept: value["concept"] as ConceptId }),
-        ...(blockIds === undefined ? {} : { blockIds: [...blockIds] as string[] }),
-      };
-    }
-    case "density":
-      return (value["value"] === "comfortable" || value["value"] === "compact") &&
-        (value["reason"] === "auto" || value["reason"] === "setting")
-        ? { schema, type: "density", value: value["value"], reason: value["reason"] }
+    case "executionState": {
+      const eventTrace =
+        value["eventTrace"] === undefined
+          ? undefined
+          : parseExecutionEventTrace(value["eventTrace"]);
+      return (value["status"] === "idle" ||
+        value["status"] === "running" ||
+        value["status"] === "stopped" ||
+        value["status"] === "completed") &&
+        (value["outcome"] === "completed" ||
+          value["outcome"] === "budget-exceeded" ||
+          value["outcome"] === "stopped") &&
+        isIndex(value["frameIndex"]) &&
+        isIndex(value["frameCount"]) &&
+        isIndex(value["stepsUsed"]) &&
+        (value["eventTrace"] === undefined || eventTrace !== undefined)
+        ? {
+            schema,
+            type: "executionState",
+            status: value["status"],
+            outcome: value["outcome"],
+            frameIndex: value["frameIndex"],
+            frameCount: value["frameCount"],
+            stepsUsed: value["stepsUsed"],
+            ...(eventTrace === undefined ? {} : { eventTrace }),
+          }
         : undefined;
+    }
+    case "stageFrame": {
+      const frame = parseStageFrame(value["frame"]);
+      return frame === undefined ? undefined : { schema, type: "stageFrame", frame };
+    }
+    case "actors": {
+      const actors = value["actors"];
+      const selectedActorId = value["selectedActorId"];
+      if (!Array.isArray(actors) || actors.length > 32) return undefined;
+      const parsed = actors.map(parseActor);
+      return parsed.every((actor) => actor !== undefined) &&
+        (selectedActorId === undefined || isSafeId(selectedActorId))
+        ? {
+            schema,
+            type: "actors",
+            actors: parsed as ActorView[],
+            ...(selectedActorId === undefined ? {} : { selectedActorId }),
+          }
+        : undefined;
+    }
+    case "assets": {
+      const assets = value["assets"];
+      if (!Array.isArray(assets) || assets.length > 128) return undefined;
+      const parsed = assets.map(parseAsset);
+      return parsed.every((asset) => asset !== undefined)
+        ? { schema, type: "assets", assets: parsed as AssetView[] }
+        : undefined;
+    }
     case "sync": {
       const out: { selectedBlockId?: string; executingBlockId?: string; failedBlockId?: string } =
         {};
@@ -1037,6 +1637,11 @@ export function parseHostMessage(value: unknown): HostMessage | undefined {
       const hint = parseAmbientHint(value["hint"]);
       return hint === undefined ? undefined : { schema, type: "ambientHint", hint };
     }
+    case "density":
+      return (value["value"] === "comfortable" || value["value"] === "compact") &&
+        (value["reason"] === "auto" || value["reason"] === "setting")
+        ? { schema, type: "density", value: value["value"], reason: value["reason"] }
+        : undefined;
     default:
       return parseAgentMessageFromHost(value, schema);
   }

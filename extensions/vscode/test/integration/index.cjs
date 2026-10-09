@@ -188,6 +188,7 @@ const tests = [
       assert.match(editor.document.getText(), /move\(/);
       assert.match(editor.document.getText(), /turn\(/);
       assert.equal(fs.readFileSync(file, "utf8"), before, "projection switch is read-only");
+      await vscode.commands.executeCommand("agorixStudio.openProjection", "typescript");
     },
   ],
   [
@@ -311,6 +312,103 @@ const tests = [
     },
   ],
   [
+    "Looks asset state is visible through real Extension Host execution frames",
+    async () => {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), "agorix-studio-looks-"));
+      const file = path.join(dir, "looks.agorix.json");
+      fs.writeFileSync(
+        file,
+        JSON.stringify(
+          {
+            schemaVersion: "agorix/program/v1",
+            program: {
+              schema: "agorix/program/v1",
+              scripts: [
+                {
+                  id: "main",
+                  trigger: { type: "onStart" },
+                  statements: [
+                    { type: "say", text: "Go Nova" },
+                    { type: "setSize", size: 150 },
+                    { type: "switchCostume", costumeId: "asset:costume.spark" },
+                    { type: "switchBackdrop", backdropId: "asset:space.nebula" },
+                  ],
+                },
+              ],
+            },
+            metadata: {
+              createdAt: "2026-01-01T00:00:00.000Z",
+              updatedAt: "2026-01-01T00:00:00.000Z",
+              missionProgress: 0,
+              hintLevel: 0,
+              locale: "en",
+              actors: [
+                {
+                  id: "actor:main",
+                  name: "Explorer",
+                  x: 52,
+                  y: 128,
+                  direction: 0,
+                  size: 100,
+                  visible: true,
+                  costumeId: "asset:costume.default",
+                  scripts: ["main"],
+                },
+              ],
+              stage: { backdropId: "asset:space.trailhead", actorOrder: ["actor:main"] },
+              assets: [
+                {
+                  id: "asset:costume.default",
+                  kind: "costume",
+                  name: "Default Costume",
+                  source: "builtin:costume.default",
+                },
+                {
+                  id: "asset:costume.spark",
+                  kind: "costume",
+                  name: "Spark",
+                  source: "builtin:costume.spark",
+                },
+                {
+                  id: "asset:space.trailhead",
+                  kind: "backdrop",
+                  name: "Trailhead",
+                  source: "builtin:space.trailhead",
+                },
+                {
+                  id: "asset:space.nebula",
+                  kind: "backdrop",
+                  name: "Nebula",
+                  source: "builtin:space.nebula",
+                },
+              ],
+            },
+          },
+          null,
+          2,
+        ),
+      );
+      await vscode.commands.executeCommand("agorixStudio.openProject", vscode.Uri.file(file));
+      const run = await vscode.commands.executeCommand("agorixStudio.run");
+      assert.equal(run.status, "completed");
+      assert.ok(
+        run.previewFrames.some((frame) => frame.state.backdropId === "asset:space.nebula"),
+        "backdrop frame is emitted",
+      );
+      assert.ok(
+        run.previewFrames.some((frame) =>
+          frame.state.actors?.some(
+            (actor) =>
+              actor.bubble?.text === "Go Nova" &&
+              actor.size === 150 &&
+              actor.costumeId === "asset:costume.spark",
+          ),
+        ),
+        "actor Looks state is emitted",
+      );
+    },
+  ],
+  [
     "Studio shell contributes icon-first views and toolbar actions in the real host",
     async () => {
       const manifest = vscode.extensions.getExtension(EXTENSION_ID).packageJSON;
@@ -335,6 +433,10 @@ const tests = [
   [
     "Show Execution Evidence returns the runtime inspector report",
     async () => {
+      await vscode.commands.executeCommand(
+        "agorixStudio.openProject",
+        fixture("repeat.agorix.json"),
+      );
       const report = await vscode.commands.executeCommand("agorixStudio.showEvidence");
       assert.equal(typeof report, "string");
       assert.match(report, /Outcome:/);
@@ -344,6 +446,10 @@ const tests = [
   [
     "Suggest repeat opens a proposal diff and leaves the project unchanged until the learner decides",
     async () => {
+      await vscode.commands.executeCommand(
+        "agorixStudio.openProject",
+        fixture("repeat.agorix.json"),
+      );
       const file = fixture("repeat.agorix.json").fsPath;
       const before = fs.readFileSync(file, "utf8");
       // The command blocks on the learner's Apply/Reject prompt, so do not await it.

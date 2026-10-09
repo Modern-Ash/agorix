@@ -91,6 +91,15 @@ export interface AgentUiState {
     readonly proposalId: string;
     readonly purpose: string;
     readonly rationale: string;
+    readonly affectedActorIds?: readonly string[];
+    readonly affectedScriptIds?: readonly string[];
+    readonly affectedAssetIds?: readonly string[];
+    readonly affectedVariableIds?: readonly string[];
+    readonly affectedNodeIds?: readonly string[];
+    readonly expectedRuntimeEvidence?: Extract<
+      HostMessage,
+      { type: "proposal" }
+    >["expectedRuntimeEvidence"];
     readonly changes: readonly GhostChange[];
     readonly operations?: readonly OperationView[];
     readonly evidence?: EvidenceView;
@@ -151,6 +160,24 @@ export function reduceAgentUi(state: AgentUiState, message: HostMessage): AgentU
           proposalId: message.proposalId,
           purpose: message.purpose,
           rationale: message.rationale,
+          ...(message.affectedActorIds === undefined
+            ? {}
+            : { affectedActorIds: message.affectedActorIds }),
+          ...(message.affectedScriptIds === undefined
+            ? {}
+            : { affectedScriptIds: message.affectedScriptIds }),
+          ...(message.affectedAssetIds === undefined
+            ? {}
+            : { affectedAssetIds: message.affectedAssetIds }),
+          ...(message.affectedVariableIds === undefined
+            ? {}
+            : { affectedVariableIds: message.affectedVariableIds }),
+          ...(message.affectedNodeIds === undefined
+            ? {}
+            : { affectedNodeIds: message.affectedNodeIds }),
+          ...(message.expectedRuntimeEvidence === undefined
+            ? {}
+            : { expectedRuntimeEvidence: message.expectedRuntimeEvidence }),
           changes: message.changes,
           ...(message.operations === undefined ? {} : { operations: message.operations }),
           ...(message.evidence === undefined ? {} : { evidence: message.evidence }),

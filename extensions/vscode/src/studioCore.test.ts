@@ -11,6 +11,8 @@ import {
   createExecutionEvidence,
   createExecutionViewState,
   createProposalReview,
+  createProposalSession,
+  createProposalEvidenceInspector,
   createStudioStarterProject,
   createStoredProjectWithProgram,
   createValidationReport,
@@ -189,15 +191,23 @@ describe("Agorix Studio first slice", () => {
           contextValue: "agorixProject",
         }),
         expect.objectContaining({
-          label: "Current local project",
+          label: "Open local .agorix project",
           command: "agorixStudio.openProject",
+          contextValue: "agorixProject",
+        }),
+        expect.objectContaining({
+          label: "Current local project",
           contextValue: "agorixProject",
         }),
       ]),
     );
     expect(sections.find((section) => section.id === "projects")?.items[1]).toMatchObject({
-      label: "Current local project",
+      label: "Open local .agorix project",
       command: "agorixStudio.openProject",
+      contextValue: "agorixProject",
+    });
+    expect(sections.find((section) => section.id === "projects")?.items[2]).toMatchObject({
+      label: "Current local project",
       contextValue: "agorixProject",
     });
     expect(sections.find((section) => section.id === "missions")?.items[0]?.id).toBe(
@@ -303,6 +313,245 @@ describe("Agorix Studio first slice", () => {
     expect(view.inspectorSteps[1]?.summary).toContain("before:");
   });
 
+  it("carries sound playback evidence into Studio preview frames", () => {
+    const evidence = createExecutionEvidence({
+      ...webCreatedProject,
+      metadata: {
+        ...webCreatedProject.metadata,
+        assets: [
+          {
+            id: "asset:costume.default",
+            kind: "costume",
+            name: "Nova default",
+            source: "builtin:costume.default",
+          },
+          {
+            id: "asset:space.trailhead",
+            kind: "backdrop",
+            name: "Space trailhead",
+            source: "builtin:space.trailhead",
+          },
+          {
+            id: "asset:sound.beacon",
+            kind: "sound",
+            name: "Beacon ping",
+            source: "builtin:sound.beacon",
+          },
+        ],
+      },
+      program: {
+        ...webCreatedProject.program,
+        scripts: [
+          {
+            id: "main",
+            trigger: { type: "onStart" },
+            statements: [{ type: "playSound", soundId: "asset:sound.beacon" }],
+          },
+        ],
+      },
+    });
+
+    const view = createExecutionViewState(evidence, 1, "running");
+
+    expect(view.currentFrame?.state.sounds?.activeSoundIds).toEqual(["asset:sound.beacon"]);
+    expect(view.inspectorSteps[1]?.summary).toContain("Sound playing: asset:sound.beacon");
+    expect(evidence.inspectorRows[0]?.assetIds).toEqual(["asset:sound.beacon"]);
+  });
+
+  it("includes canonical multi-actor snapshots in Studio execution frames", () => {
+    const evidence = createExecutionEvidence({
+      ...webCreatedProject,
+      metadata: {
+        ...webCreatedProject.metadata,
+        actors: {
+          activeId: "actor:main",
+          items: [
+            {
+              id: "actor:main",
+              name: "Explorer",
+              x: 52,
+              y: 128,
+              direction: 0,
+              size: 100,
+              visible: true,
+              scripts: ["main"],
+            },
+            {
+              id: "actor:helper",
+              name: "Helper",
+              x: 10,
+              y: 20,
+              direction: 90,
+              size: 80,
+              visible: true,
+              scripts: ["helper"],
+            },
+          ],
+        },
+        stage: { actorOrder: ["actor:main", "actor:helper"] },
+      },
+      program: {
+        ...webCreatedProject.program,
+        scripts: [
+          {
+            id: "main",
+            trigger: { type: "onStart" },
+            statements: [{ type: "move", steps: 10 }],
+          },
+          {
+            id: "helper",
+            trigger: { type: "onStart" },
+            statements: [{ type: "turn", degrees: 45 }],
+          },
+        ],
+      },
+    });
+
+    const frameActors = evidence.previewFrames[0]?.state.actors;
+    expect(frameActors).toHaveLength(2);
+    expect(frameActors?.map((actor) => actor.id)).toEqual(["actor:main", "actor:helper"]);
+    expect(evidence.previewFrames[0]).toMatchObject({
+      actorId: "actor:main",
+      scriptId: "main",
+      statementType: "move",
+    });
+    expect(evidence.previewFrames.at(-2)?.state.actors?.[1]).toMatchObject({
+      id: "actor:helper",
+      direction: 135,
+    });
+    expect(evidence.inspectorRows.map((row) => row.nodeId)).toEqual([
+      "scripts[0]/statements[0]",
+      "scripts[1]/statements[0]",
+    ]);
+  });
+
+  it("projects Looks world state into Studio execution frames", () => {
+    const evidence = createExecutionEvidence({
+      ...webCreatedProject,
+      metadata: {
+        ...webCreatedProject.metadata,
+        actors: {
+          activeId: "actor:main",
+          items: [
+            {
+              id: "actor:main",
+              name: "Explorer",
+              x: 52,
+              y: 128,
+              direction: 0,
+              size: 100,
+              visible: true,
+              costumeId: "asset:costume.default",
+              scripts: ["main"],
+            },
+          ],
+        },
+        stage: { backdropId: "asset:space.trailhead", actorOrder: ["actor:main"] },
+        assets: [
+          {
+            id: "asset:costume.default",
+            kind: "costume",
+            name: "Default Costume",
+            source: "builtin:costume.default",
+          },
+          {
+            id: "asset:costume.spark",
+            kind: "costume",
+            name: "Spark",
+            source: "builtin:costume.spark",
+          },
+          {
+            id: "asset:space.trailhead",
+            kind: "backdrop",
+            name: "Trailhead",
+            source: "builtin:space.trailhead",
+          },
+          {
+            id: "asset:space.nebula",
+            kind: "backdrop",
+            name: "Nebula",
+            source: "builtin:space.nebula",
+          },
+        ],
+      },
+      program: {
+        ...webCreatedProject.program,
+        scripts: [
+          {
+            id: "main",
+            trigger: { type: "onStart" },
+            statements: [
+              { type: "say", text: "Go Nova" },
+              { type: "setSize", size: 150 },
+              { type: "switchCostume", costumeId: "asset:costume.spark" },
+              { type: "switchBackdrop", backdropId: "asset:space.nebula" },
+            ],
+          },
+        ],
+      },
+    });
+
+    expect(
+      evidence.previewFrames.some((frame) => frame.state.backdropId === "asset:space.nebula"),
+    ).toBe(true);
+    expect(
+      evidence.previewFrames.some((frame) =>
+        frame.state.actors?.some(
+          (actor) =>
+            actor.bubble?.text === "Go Nova" &&
+            actor.size === 150 &&
+            actor.costumeId === "asset:costume.spark",
+        ),
+      ),
+    ).toBe(true);
+    expect(formatInspectorReport(evidence)).toContain('say: speech bubble "Go Nova"');
+    expect(formatInspectorReport(evidence)).toContain("switchBackdrop: backdrop");
+  });
+
+  it("names sprite visibility inspector facts precisely", () => {
+    const evidence = createExecutionEvidence({
+      ...webCreatedProject,
+      program: {
+        ...webCreatedProject.program,
+        scripts: [
+          {
+            id: "main",
+            trigger: { type: "onStart" },
+            statements: [{ type: "hide" }, { type: "show" }],
+          },
+        ],
+      },
+    });
+    const report = formatInspectorReport(evidence);
+
+    expect(report).toContain("hide: sprite hidden true -> false");
+    expect(report).toContain("show: sprite shown false -> true");
+  });
+
+  it("names variable visibility inspector facts precisely", () => {
+    const evidence = createExecutionEvidence({
+      ...webCreatedProject,
+      program: {
+        schema: SCHEMA_VERSION,
+        variables: [{ id: "score", name: "score", initialValue: 0, visible: true }],
+        scripts: [
+          {
+            id: "main",
+            trigger: { type: "onStart" },
+            statements: [
+              { type: "hideVariable", variableId: "score" },
+              { type: "showVariable", variableId: "score" },
+            ],
+          },
+        ],
+      },
+    });
+    const report = formatInspectorReport(evidence);
+
+    expect(report).toContain("hideVariable: variable score hidden true -> false");
+    expect(report).toContain("showVariable: variable score shown false -> true");
+  });
+
   it("requires explicit proposal application and keeps reject non-mutating", () => {
     const proposedProgram: ProjectProgram = {
       ...webCreatedProject.program,
@@ -345,6 +594,200 @@ describe("Agorix Studio first slice", () => {
     expect(review.proposedProjection.code).toContain("sprite.turn(90);");
   });
 
+  it("builds a proposal evidence inspector across accepted, proposed, learner and runtime states", () => {
+    const proposal = createProgramProposal({
+      id: "proposal-longer-move",
+      baseProgram: webCreatedProject.program,
+      source: { kind: "studio", capability: "evidence-inspector" },
+      purpose: "Move closer to the beacon.",
+      rationale: "The run should show the changed move node.",
+      affectedScriptIds: ["main"],
+      affectedNodeIds: ["scripts[0]/statements[0]"],
+      expectedRuntimeEvidence: [
+        {
+          id: "move-runs",
+          description: "The changed move node appears in the runtime inspector.",
+          nodeIds: ["scripts[0]/statements[0]"],
+          scriptIds: ["main"],
+        },
+      ],
+      operations: [
+        {
+          type: "replaceStatementField",
+          nodeId: "scripts[0]/statements[0]",
+          field: "steps",
+          value: 220,
+        },
+      ],
+    });
+    const project = openStoredProject(webCreatedProject);
+    const session = createProposalSession(project, proposal);
+    const learnerModified: ProjectProgram = {
+      ...webCreatedProject.program,
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [{ type: "move", steps: 200 }],
+        },
+      ],
+    };
+    const runtimeEvidence = createExecutionEvidence(
+      createStoredProjectWithProgram(webCreatedProject, session.review.candidateProgram),
+    );
+
+    const inspector = createProposalEvidenceInspector({
+      session,
+      learnerModifiedProgram: learnerModified,
+      runtimeEvidence,
+    });
+
+    expect(inspector.entries.map((entry) => entry.stage)).toEqual([
+      "accepted",
+      "proposed",
+      "learner-modified",
+      "runtime",
+    ]);
+    expect(inspector.entries[0]?.code).toContain("sprite.move(160);");
+    expect(inspector.entries[1]?.code).toContain("sprite.move(220);");
+    expect(inspector.entries[2]?.code).toContain("sprite.move(200);");
+    expect(inspector.entries[3]?.evidence?.matchedNodeIds).toEqual(["scripts[0]/statements[0]"]);
+  });
+
+  it("binds variable runtime evidence into the proposal inspector", () => {
+    const variableProject: StoredProject = {
+      ...webCreatedProject,
+      program: {
+        schema: SCHEMA_VERSION,
+        variables: [{ id: "score", name: "score", initialValue: 0, visible: true }],
+        scripts: [
+          {
+            id: "score-script",
+            trigger: { type: "onStart" },
+            statements: [
+              {
+                type: "setVariable",
+                variableId: "score",
+                value: { type: "numericLiteral", value: 1 },
+              },
+            ],
+          },
+        ],
+      },
+    };
+    const proposal = createProgramProposal({
+      id: "proposal-score",
+      baseProgram: variableProject.program,
+      source: { kind: "studio", capability: "evidence-inspector" },
+      purpose: "Raise the score.",
+      rationale: "The inspector should show that score changed.",
+      affectedActorIds: ["actor:main"],
+      affectedScriptIds: ["score-script"],
+      affectedVariableIds: ["score"],
+      affectedNodeIds: ["scripts[0]/statements[0]"],
+      expectedRuntimeEvidence: [
+        {
+          id: "score-changes",
+          description: "Score changes during the runtime trace.",
+          nodeIds: ["scripts[0]/statements[0]"],
+          actorIds: ["actor:main"],
+          variableIds: ["score"],
+        },
+      ],
+      operations: [
+        {
+          type: "replaceStatement",
+          nodeId: "scripts[0]/statements[0]",
+          statement: {
+            type: "setVariable",
+            variableId: "score",
+            value: { type: "numericLiteral", value: 2 },
+          },
+        },
+      ],
+    });
+    const session = createProposalSession(openStoredProject(variableProject), proposal);
+    const runtimeEvidence = createExecutionEvidence(
+      createStoredProjectWithProgram(variableProject, session.review.candidateProgram),
+      { stopAfterSteps: 10 },
+    );
+
+    const inspector = createProposalEvidenceInspector({ session, runtimeEvidence });
+
+    expect(inspector.entries.find((entry) => entry.stage === "runtime")?.evidence).toMatchObject({
+      expectedActorIds: ["actor:main"],
+      observedActorIds: ["actor:main"],
+      matchedActorIds: ["actor:main"],
+      missingActorIds: [],
+      expectedScriptIds: ["score-script"],
+      observedScriptIds: ["score-script"],
+      matchedScriptIds: ["score-script"],
+      missingScriptIds: [],
+      expectedVariableIds: ["score"],
+      observedVariableIds: ["score"],
+      matchedVariableIds: ["score"],
+      missingVariableIds: [],
+    });
+    expect(formatInspectorReport(runtimeEvidence)).toContain("setVariable: variable score 0 -> 2");
+    expect(formatInspectorReport(runtimeEvidence)).toContain("actor:main score-script");
+  });
+
+  it("binds asset runtime evidence into the proposal inspector", () => {
+    const soundProject: StoredProject = {
+      ...webCreatedProject,
+      metadata: {
+        ...webCreatedProject.metadata,
+        assets: [
+          {
+            id: "asset:sound.beacon",
+            kind: "sound",
+            name: "Beacon ping",
+            source: "builtin:sound.beacon",
+          },
+        ],
+      },
+    };
+    const proposal = createProgramProposal({
+      id: "proposal-sound",
+      baseProgram: soundProject.program,
+      source: { kind: "studio", capability: "evidence-inspector" },
+      purpose: "Play the beacon sound.",
+      rationale: "The inspector should show that the sound asset played.",
+      affectedScriptIds: ["main"],
+      affectedAssetIds: ["asset:sound.beacon"],
+      affectedNodeIds: ["scripts[0]/statements[0]"],
+      expectedRuntimeEvidence: [
+        {
+          id: "sound-plays",
+          description: "The beacon sound appears in runtime evidence.",
+          nodeIds: ["scripts[0]/statements[0]"],
+          assetIds: ["asset:sound.beacon"],
+        },
+      ],
+      operations: [
+        {
+          type: "replaceStatement",
+          nodeId: "scripts[0]/statements[0]",
+          statement: { type: "playSound", soundId: "asset:sound.beacon" },
+        },
+      ],
+    });
+    const session = createProposalSession(openStoredProject(soundProject), proposal);
+    const runtimeEvidence = createExecutionEvidence(
+      createStoredProjectWithProgram(soundProject, session.review.candidateProgram),
+      { stopAfterSteps: 10 },
+    );
+
+    const inspector = createProposalEvidenceInspector({ session, runtimeEvidence });
+
+    expect(inspector.entries.find((entry) => entry.stage === "runtime")?.evidence).toMatchObject({
+      expectedAssetIds: ["asset:sound.beacon"],
+      observedAssetIds: ["asset:sound.beacon"],
+      matchedAssetIds: ["asset:sound.beacon"],
+      missingAssetIds: [],
+    });
+  });
+
   it("creates contextual Companion turns from selected code and runtime evidence without provider authority", () => {
     const project = openStoredProject(webCreatedProject);
     const evidence = createExecutionEvidence(webCreatedProject);
@@ -360,6 +803,7 @@ describe("Agorix Studio first slice", () => {
     expect(turn.response.capability).toBe("debugger");
     if (turn.response.capability !== "debugger") throw new Error("expected debugger response");
     expect(turn.response.payload.facts[0]?.fact).toContain("moved from");
+    expect(turn.response.payload.facts[0]?.fact).toContain("actor:main main");
     expect(project.stored.program).toEqual(webCreatedProject.program);
   });
 
@@ -465,7 +909,104 @@ describe("Agorix Studio first slice", () => {
   it("formats the execution inspector as learner-readable lines", () => {
     const report = formatInspectorReport(createExecutionEvidence(webCreatedProject));
     expect(report).toContain("Outcome:");
-    expect(report).toContain("Step 1  scripts[0]/statements[0]  move");
+    expect(report).toContain("Step 1  actor:main main  scripts[0]/statements[0]  move");
+  });
+
+  it("names turn inspector facts as heading changes", () => {
+    const report = formatInspectorReport(
+      createExecutionEvidence({
+        ...webCreatedProject,
+        program: {
+          ...webCreatedProject.program,
+          scripts: [
+            {
+              id: "main",
+              trigger: { type: "onStart" },
+              statements: [{ type: "turn", degrees: 90 }],
+            },
+          ],
+        },
+      }),
+    );
+
+    expect(report).toContain("turn: turned 0 -> 90");
+    expect(report).not.toContain("turn: moved from");
+  });
+
+  it("names control-flow inspector facts without pretending they are movement", () => {
+    const evidence = createExecutionEvidence({
+      ...webCreatedProject,
+      program: {
+        schema: SCHEMA_VERSION,
+        scripts: [
+          {
+            id: "main",
+            trigger: { type: "onStart" },
+            statements: [
+              { type: "if", condition: { type: "booleanLiteral", value: false }, then: [] },
+              { type: "repeat", count: 1, body: [] },
+              { type: "broadcast", message: "done" },
+            ],
+          },
+        ],
+      },
+    });
+
+    const report = formatInspectorReport(evidence);
+
+    expect(report).toContain("if: condition checked without direct sprite movement");
+    expect(report).toContain("repeat: repeat completed without direct sprite movement");
+    expect(report).toContain("broadcast: broadcast event queued");
+  });
+
+  it("includes event activation reasons in multi-actor inspector evidence", () => {
+    const project: StoredProject = {
+      ...webCreatedProject,
+      program: {
+        schema: "agorix/program/v1",
+        scripts: [
+          {
+            id: "starter",
+            trigger: { type: "onStart" },
+            statements: [{ type: "broadcast", message: "go" }],
+          },
+          {
+            id: "receiver",
+            trigger: { type: "onMessage", message: "go" },
+            statements: [{ type: "turn", degrees: 15 }],
+          },
+        ],
+      },
+    };
+
+    const evidence = createExecutionEvidence(project);
+    const view = createExecutionViewState(evidence, 1, "completed");
+    const report = formatInspectorReport(evidence);
+
+    expect(evidence.inspectorRows.map((row) => row.activationId)).toEqual([
+      "activation:0",
+      "activation:1",
+    ]);
+    expect(evidence.inspectorRows[1]?.activationReason).toContain("broadcast by actor:main");
+    expect(view.eventTrace).toEqual([
+      {
+        id: "activation:0",
+        step: 1,
+        actorId: "actor:main",
+        scriptId: "starter",
+        event: "start",
+        reason: "Run started",
+      },
+      {
+        id: "activation:1",
+        step: 2,
+        actorId: "actor:main",
+        scriptId: "receiver",
+        event: "message:go from actor:main",
+        reason: 'Message "go" was broadcast by actor:main',
+      },
+    ]);
+    expect(report).toContain('reason=Message "go" was broadcast by actor:main');
   });
 });
 

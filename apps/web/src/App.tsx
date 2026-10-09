@@ -245,7 +245,11 @@ function PanelControls({
       >
         <span aria-hidden="true">{maximized ? "▣" : "□"}</span>
       </button>
-      <button type="button" onClick={onClose} aria-label={`Close ${label}`}>
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label={panel === "stage" ? "Close Preview" : `Close ${label}`}
+      >
         <span aria-hidden="true">×</span>
       </button>
     </div>
@@ -615,6 +619,7 @@ function displayNameFor(block: BlockNode, locale: Locale): string {
 
 function scriptLabelFor(script: BlockWorkspaceSnapshot["scripts"][number], locale: Locale): string {
   switch (script.trigger.type) {
+    case "event_green_flag":
     case "event_on_start":
       return t(locale, "whenRun");
     case "event_on_key_pressed": {
@@ -1443,6 +1448,7 @@ function ActorPanel({
             key={actor.id}
             type="button"
             className={actor.id === selected.id ? "active" : ""}
+            data-testid="actor-chip"
             aria-pressed={actor.id === selected.id}
             onClick={() => onSelect(actor.id)}
           >
@@ -1457,6 +1463,7 @@ function ActorPanel({
         <label>
           <span>{t(locale, "actorName")}</span>
           <input
+            data-testid="actor-name"
             value={selected.name}
             onChange={(event) => onChange(selected.id, { name: event.currentTarget.value })}
           />
@@ -1464,6 +1471,7 @@ function ActorPanel({
         <label>
           <span>x</span>
           <input
+            data-testid="actor-x"
             type="number"
             value={selected.x}
             onChange={(event) => onChange(selected.id, { x: Number(event.currentTarget.value) })}
@@ -1472,6 +1480,7 @@ function ActorPanel({
         <label>
           <span>y</span>
           <input
+            data-testid="actor-y"
             type="number"
             value={selected.y}
             onChange={(event) => onChange(selected.id, { y: Number(event.currentTarget.value) })}
@@ -1480,6 +1489,7 @@ function ActorPanel({
         <label>
           <span>{t(locale, "actorDirection")}</span>
           <input
+            data-testid="actor-direction"
             type="number"
             value={selected.direction}
             onChange={(event) =>
@@ -1490,6 +1500,7 @@ function ActorPanel({
         <label>
           <span>{t(locale, "actorSize")}</span>
           <input
+            data-testid="actor-size"
             type="number"
             min="1"
             max={MAX_ACTOR_SIZE}
@@ -1499,6 +1510,7 @@ function ActorPanel({
         </label>
         <label className="actor-visible">
           <input
+            data-testid="actor-visible"
             type="checkbox"
             checked={selected.visible}
             onChange={(event) => onChange(selected.id, { visible: event.currentTarget.checked })}
@@ -1605,10 +1617,9 @@ export function StageView({
   const activeSoundIds = state.sounds?.activeSoundIds ?? [];
   const safeActors = actors ?? [];
   const safeSelectedActorId = selectedActorId ?? "actor:main";
-  const visibleActors = safeActors.length > 0 ? safeActors.filter((actor) => actor.visible) : [];
   const renderedActors =
-    visibleActors.length > 0
-      ? visibleActors
+    safeActors.length > 0
+      ? safeActors
       : [
           {
             id: "actor:main",
@@ -1757,6 +1768,8 @@ export function StageView({
               data-x={actor.x}
               data-y={actor.y}
               data-heading={actor.heading}
+              data-size={actor.size}
+              data-visible={actor.visible ? "true" : "false"}
               data-costume-id={actor.costumeId ?? "default"}
               onClick={() => onActorClick?.(actor.id)}
               onKeyDown={(event) => {
@@ -1766,6 +1779,7 @@ export function StageView({
                 }
               }}
               style={{
+                display: actor.visible ? undefined : "none",
                 transform: `translate(${actor.x}px, ${actor.y}px)`,
                 transition:
                   motion.glideMs === 0 ? "none" : `transform ${motion.glideMs}ms ease-out`,
@@ -4139,6 +4153,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
           </div>
         </div>
         <div className="topbar-quick-actions">
+          {stageClosed ? playControls : null}
           <button
             type="button"
             className="topbar-menu-button"
@@ -4173,7 +4188,6 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
             onProjectLoaded={loadAccountProject}
             onRemoveLocalProject={() => removeLocalStoredProject(persistenceRef.current)}
           />
-          {stageClosed ? playControls : null}
           <button
             type="button"
             onClick={undoEditor}
@@ -4524,6 +4538,21 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
                   <span className="tool-copy">
                     <strong>{t(locale, "aiToolChallenge")}</strong>
                     <small aria-hidden="true">{t(locale, "philosophyAiBody")}</small>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setComparisonOpen(true);
+                    restorePanel("companion");
+                  }}
+                >
+                  <span className="tool-glyph" aria-hidden="true">
+                    A/B
+                  </span>
+                  <span className="tool-copy">
+                    <strong>{t(locale, "compareOpen")}</strong>
+                    <small aria-hidden="true">{t(locale, "compareIntro")}</small>
                   </span>
                 </button>
                 <button type="button" aria-label="Use AI explain tool" onClick={revealCompanion}>

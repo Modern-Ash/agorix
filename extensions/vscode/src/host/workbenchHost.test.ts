@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { applyWorkspaceChange, programToWorkspace } from "@agorix/block-editor";
 import type { ProjectProgram } from "@agorix/program-model";
+import type { ProjectMetadata } from "@agorix/persistence";
 import { programSemanticHash } from "@agorix/proposals";
 import { STUDIO_PROTOCOL_VERSION as schema } from "@agorix/studio-protocol";
 import { DEFAULT_AGREEMENTS } from "@agorix/agent-workflow";
@@ -24,11 +25,23 @@ const base = {
 
 function setup(initial: ProjectProgram | null = base) {
   let program: ProjectProgram | undefined = initial ?? undefined;
+  let metadata: ProjectMetadata = {
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    missionProgress: 0,
+    hintLevel: 0,
+    locale: "en",
+  };
   const labels: string[] = [];
   const port: HostPort = {
     getProgram: () => program,
+    getMetadata: () => (program === undefined ? undefined : metadata),
     commit: async (next, label) => {
       program = next;
+      labels.push(label);
+    },
+    commitMetadata: async (next, label) => {
+      metadata = next;
       labels.push(label);
     },
     openProposalReview: vi.fn(async () => undefined),
@@ -38,19 +51,25 @@ function setup(initial: ProjectProgram | null = base) {
   };
   let n = 0;
   const host = createWorkbenchHost(port, () => `block:wb_${(n += 1)}`);
-  return { host, port, labels, get: () => program };
+  return { host, port, labels, get: () => program, metadata: () => metadata };
 }
 
 describe("workbenchHost", () => {
   it("answers ready with the workspace and hash, or nothing without a project", async () => {
     const { host } = setup();
-    expect(await host.handle({ schema, type: "ready" })).toEqual([
+    expect(await host.handle({ schema, type: "ready" })).toMatchObject([
       {
         schema,
         type: "workspace",
         workspace: programToWorkspace(base).workspace,
         programHash: programSemanticHash(base),
       },
+      {
+        schema,
+        type: "actors",
+        actors: [{ id: "actor:main", costumeId: "asset:costume.default", scriptCount: 1 }],
+      },
+      { schema, type: "assets" },
     ]);
     expect(await setup(null).host.handle({ schema, type: "ready" })).toEqual([]);
   });
@@ -189,6 +208,51 @@ describe("workbenchHost", () => {
 
     expect(await host.handle({ schema, type: "agreementsChanged", agreements })).toEqual([]);
     expect(port.updateAgreements).toHaveBeenCalledWith(agreements);
+  });
+
+  it("persists actor patches with canonical costume refs", async () => {
+    const { host, metadata } = setup();
+    await host.handle({
+      schema,
+      type: "updateActor",
+      actorId: "actor:main",
+      patch: { x: 24, costumeId: "asset:costume.default" },
+    });
+    expect(metadata().actors).toMatchObject({
+      activeId: "actor:main",
+      items: [{ id: "actor:main", x: 24, costumeId: "asset:costume.default" }],
+    });
+    expect(metadata().actors?.items[0]).not.toHaveProperty("scriptCount");
+  });
+
+  it("rejects actor patches for unknown actors or costumes", async () => {
+    const { host, metadata, labels } = setup();
+
+    await expect(
+      host.handle({
+        schema,
+        type: "updateActor",
+        actorId: "actor:missing",
+        patch: { x: 24 },
+      }),
+    ).resolves.toEqual([
+      { schema, type: "error", code: "INVALID_CHANGE", reason: "BLOCK_NOT_FOUND" },
+    ]);
+    expect(metadata().actors).toBeUndefined();
+    expect(labels).toEqual([]);
+
+    await expect(
+      host.handle({
+        schema,
+        type: "updateActor",
+        actorId: "actor:main",
+        patch: { costumeId: "asset:costume.missing" },
+      }),
+    ).resolves.toEqual([
+      { schema, type: "error", code: "INVALID_CHANGE", reason: "WOULD_BREAK_PROGRAM" },
+    ]);
+    expect(metadata().actors).toBeUndefined();
+    expect(labels).toEqual([]);
   });
 
   it("anchors ambient hints to Workbench blocks when the signal names a canonical node", () => {

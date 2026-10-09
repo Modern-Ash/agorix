@@ -40,11 +40,19 @@ function stageRun(page: Page) {
 }
 
 function appMenuButton(page: Page, name: string) {
-  return page.locator("#app-menu").getByRole("button", { name, exact: true });
+  return page
+    .locator("#app-menu")
+    .getByRole("button", { name, exact: true })
+    .or(page.getByTestId("play-controls").getByRole("button", { name, exact: true }))
+    .first();
 }
 
 function appMenuControl(page: Page, name: string) {
-  return page.locator("#app-menu").getByRole("button", { name });
+  return page
+    .locator("#app-menu")
+    .getByRole("button", { name })
+    .or(page.getByTestId("play-controls").getByRole("button", { name }))
+    .first();
 }
 
 async function openCodePanel(page: Page) {
@@ -195,7 +203,9 @@ test("multi-actor app flow edits a selected actor script and runs shared frames"
 
   const stored = await page.evaluate(() => localStorage.getItem("agorix:default-project"));
   const parsed = JSON.parse(stored ?? "{}");
-  const helper = parsed.metadata.actors.find((actor: { id: string }) => actor.id === "actor:2");
+  const helper = parsed.metadata.actors.items.find(
+    (actor: { id: string }) => actor.id === "actor:2",
+  );
   expect(helper.name).toBe("Helper");
   expect(helper.scripts).toEqual(expect.arrayContaining(["main", "click-1"]));
 
@@ -727,7 +737,7 @@ test("compact workflow keeps tools, blocks, stage, code and AI reachable", async
 
   await expect(page.locator(".learning-flow")).toBeHidden();
   await expect(page.getByRole("heading", { name: "Action palette", exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "When you press Run" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "When green flag clicked" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Stage" })).toBeVisible();
   await expect(page.locator(".stage-backstage-code")).toBeVisible();
   await expect(page.getByRole("button", { name: "Use AI explain tool" })).toBeVisible();
@@ -768,7 +778,9 @@ test("adding a block refreshes coach and starter guidance", async ({ page }) => 
   await page.goto("/");
 
   await expect(
-    page.getByText("Nothing happens yet — add a block to 'When you press Run' to get started."),
+    page.getByText(
+      "Nothing happens yet — add a block under 'When green flag clicked' to get started.",
+    ),
   ).toBeVisible();
   await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
 

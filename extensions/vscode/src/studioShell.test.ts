@@ -50,6 +50,7 @@ describe("Studio shell manifest", () => {
     const view = manifest.contributes.menus["view/title"] ?? [];
     for (const name of ["run", "step", "stop", "reset"]) {
       const entry = view.find((item) => item.command === `agorixStudio.${name}`);
+      expect(entry?.when, name).toContain("agorixStudio.projects");
       expect(entry?.when, name).toContain("agorixStudio.inspector");
       expect(entry?.when, name).toContain("agorixStudio.progress");
     }
