@@ -365,6 +365,8 @@ function runtimeObservationsFromActorFrames(
       nodeId: entry.nodeId,
       statementType: entry.statementType,
       world: entry.worldBefore,
+      actorId: entry.actorId,
+      scriptId: entry.scriptId,
     },
     {
       kind: "statement-end",
@@ -372,6 +374,8 @@ function runtimeObservationsFromActorFrames(
       nodeId: entry.nodeId,
       statementType: entry.statementType,
       world: entry.worldAfter,
+      actorId: entry.actorId,
+      scriptId: entry.scriptId,
     },
   ]);
   const world = result.actors[0]?.world ?? createWorldState();
@@ -1889,6 +1893,12 @@ function TracePanel({
             className={activeTrace?.index === item.index ? "trace-item active" : "trace-item"}
           >
             <strong>{item.title}</strong>
+            {item.actorId === undefined ? null : (
+              <span className="trace-scope" data-testid="trace-actor">
+                {item.actorId}
+                {item.scriptId === undefined ? "" : ` · ${item.scriptId}`}
+              </span>
+            )}
             <span>{item.summary}</span>
             <small>
               {t(locale, "traceBefore", {
@@ -1932,6 +1942,12 @@ function StepCard({
       <p>
         {item.title} — {item.summary}
       </p>
+      {item.actorId === undefined ? null : (
+        <p className="step-card-scope" data-testid="step-actor">
+          {item.actorId}
+          {item.scriptId === undefined ? "" : ` · ${item.scriptId}`}
+        </p>
+      )}
       <p className="step-card-states">
         {t(locale, "traceBefore", { ...item.before })} ·{" "}
         {t(locale, "traceAfter", { ...item.after })}
@@ -3585,6 +3601,8 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
         statementType: entry.statementType,
         worldBefore: entry.worldBefore,
         worldAfter: entry.worldAfter,
+        actorId: entry.actorId,
+        scriptId: entry.scriptId,
       })),
       observations,
     };

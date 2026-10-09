@@ -430,6 +430,7 @@ test("Step trace explains before and after state without raw logs", async ({ pag
   await expect(card).toBeVisible();
   await expect(card).toContainText("Step 2 of");
   await expect(card).toContainText("Nova moved right; x: 52 -> 76");
+  await expect(card.getByTestId("step-actor")).toContainText("actor:main · main");
   await expect(card).toContainText("Before: x 52, y 128, heading 0");
   await expect(card).toContainText("After: x 76, y 128, heading 0");
   await expect(page.getByRole("heading", { name: "Trace" })).toHaveCount(0);
