@@ -4,6 +4,7 @@ import {
   type ProjectActor,
   type ProjectCreativeState,
   type ProjectProgram,
+  type ProjectStage,
   type ProgramEvent,
   type Script,
   type Statement,
@@ -25,12 +26,20 @@ export interface MultiActorRuntimeActor {
   readonly costumeId?: string;
 }
 
+export interface MultiActorRuntimeStage {
+  readonly actorOrder: readonly string[];
+  readonly backdropId?: string;
+  readonly width?: number;
+  readonly height?: number;
+}
+
 export interface MultiActorFrame {
   readonly step: number;
   readonly activationId: string;
   readonly actorId: string;
   readonly scriptId: string;
   readonly nodeId: string;
+  readonly stage: MultiActorRuntimeStage;
   readonly actors: readonly MultiActorRuntimeActor[];
 }
 
@@ -65,6 +74,7 @@ export interface MultiActorTraceEntry {
 
 export interface MultiActorRunResult {
   readonly outcome: RunOutcome;
+  readonly stage: MultiActorRuntimeStage;
   readonly actors: readonly MultiActorRuntimeActor[];
   readonly frames: readonly MultiActorFrame[];
   readonly trace: readonly MultiActorTraceEntry[];
@@ -87,6 +97,13 @@ interface RuntimeActorMutable {
   scriptIds?: readonly string[];
 }
 
+interface RuntimeStageMutable {
+  backdropId?: string;
+  width?: number;
+  height?: number;
+  actorOrder: string[];
+}
+
 function defaultActor(): ProjectActor {
   return {
     id: "actor:main",
@@ -96,6 +113,15 @@ function defaultActor(): ProjectActor {
     direction: 0,
     size: 100,
     visible: true,
+  };
+}
+
+function cloneRuntimeStage(stage: RuntimeStageMutable): MultiActorRuntimeStage {
+  return {
+    actorOrder: [...stage.actorOrder],
+    ...(stage.backdropId === undefined ? {} : { backdropId: stage.backdropId }),
+    ...(stage.width === undefined ? {} : { width: stage.width }),
+    ...(stage.height === undefined ? {} : { height: stage.height }),
   };
 }
 
@@ -116,7 +142,11 @@ function snapshotActors(actors: readonly RuntimeActorMutable[]): readonly MultiA
   return actors.map((actor) => cloneRuntimeActor(actor));
 }
 
-function actorWorld(actor: ProjectActor, goal: WorldState["goal"] | undefined): WorldState {
+function actorWorld(
+  actor: ProjectActor,
+  stage: ProjectStage | undefined,
+  goal: WorldState["goal"] | undefined,
+): WorldState {
   return createWorldState({
     sprite: {
       x: actor.x,
@@ -126,12 +156,27 @@ function actorWorld(actor: ProjectActor, goal: WorldState["goal"] | undefined): 
       size: actor.size,
       ...(actor.costumeId === undefined ? {} : { costumeId: actor.costumeId }),
     },
+    ...(stage?.backdropId === undefined ? {} : { backdropId: stage.backdropId }),
     ...(goal === undefined ? {} : { goal }),
   });
 }
 
+function stageForCreative(creative: ProjectCreativeState): RuntimeStageMutable {
+  const actorInputs = creative.actors?.length ? creative.actors : [defaultActor()];
+  const orderedIds = creative.stage?.actorOrder?.length
+    ? creative.stage.actorOrder
+    : actorInputs.map((actor) => actor.id);
+  return {
+    actorOrder: [...orderedIds],
+    ...(creative.stage?.backdropId === undefined ? {} : { backdropId: creative.stage.backdropId }),
+    ...(creative.stage?.width === undefined ? {} : { width: creative.stage.width }),
+    ...(creative.stage?.height === undefined ? {} : { height: creative.stage.height }),
+  };
+}
+
 function actorsForCreative(
   creative: ProjectCreativeState,
+  stage: RuntimeStageMutable,
   goal: WorldState["goal"] | undefined,
 ): RuntimeActorMutable[] {
   const actorInputs = creative.actors?.length ? creative.actors : [defaultActor()];
@@ -141,7 +186,7 @@ function actorsForCreative(
       {
         id: actor.id,
         name: actor.name,
-        world: actorWorld(actor, goal),
+        world: actorWorld(actor, creative.stage, goal),
         visible: actor.visible,
         size: actor.size,
         ...(actor.costumeId === undefined ? {} : { costumeId: actor.costumeId }),
@@ -149,10 +194,7 @@ function actorsForCreative(
       },
     ]),
   );
-  const orderedIds = creative.stage?.actorOrder?.length
-    ? creative.stage.actorOrder
-    : actorInputs.map((actor) => actor.id);
-  return orderedIds.flatMap((id) => {
+  return stage.actorOrder.flatMap((id) => {
     const actor = byId.get(id);
     return actor === undefined ? [] : [actor];
   });
@@ -296,7 +338,8 @@ export function runMultiActorProgram(
 ): MultiActorRunResult {
   const validatedProgram = validateProgram(program);
   const creative = validateProjectCreativeState(creativeInput, validatedProgram);
-  const actors = actorsForCreative(creative, options.goal);
+  const stage = stageForCreative(creative);
+  const actors = actorsForCreative(creative, stage, options.goal);
   const maxSteps = normalizeMaxSteps(options.maxSteps);
   let stepsUsed = 0;
   let outcome: RunOutcome = "completed";
@@ -334,6 +377,9 @@ export function runMultiActorProgram(
         for (const entry of result.trace) {
           const nodeId = remapNodeId(entry.nodeId, scriptIndex);
           actor.world = cloneWorldState(entry.worldAfter);
+          if (entry.worldAfter.backdropId !== undefined) {
+            stage.backdropId = entry.worldAfter.backdropId;
+          }
           if (entry.statementType === "broadcast") {
             const statement = statementAtNodeId(script, entry.nodeId);
             if (statement?.type === "broadcast") {
@@ -363,6 +409,7 @@ export function runMultiActorProgram(
             actorId: actor.id,
             scriptId: script.id,
             nodeId,
+            stage: cloneRuntimeStage(stage),
             actors: snapshotActors(actors),
           });
         }
@@ -377,6 +424,7 @@ export function runMultiActorProgram(
 
   return {
     outcome,
+    stage: cloneRuntimeStage(stage),
     actors: snapshotActors(actors),
     frames,
     trace,

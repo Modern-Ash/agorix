@@ -73,11 +73,71 @@ describe("runMultiActorProgram", () => {
     const b = runMultiActorProgram(structuredClone(program), structuredClone(creative));
 
     expect(JSON.stringify(a)).toBe(JSON.stringify(b));
+    expect(a.stage.actorOrder).toEqual(["actor:villain", "actor:hero"]);
     expect(a.frames).toHaveLength(3);
     expect(a.frames[0]?.actors.map((actor) => actor.id)).toEqual(["actor:villain", "actor:hero"]);
+    expect(a.frames[0]?.stage.actorOrder).toEqual(["actor:villain", "actor:hero"]);
     expect(a.frames[0]?.actorId).toBe("actor:villain");
     expect(a.frames[0]?.actors[0]?.world.sprite).toMatchObject({ x: 20, y: 0, heading: 90 });
     expect(a.frames[1]?.actors[0]?.world.sprite).toMatchObject({ x: 20, y: 5, heading: 90 });
+  });
+
+  it("captures shared stage state in every frame", () => {
+    const stageProgram: ProjectProgram = {
+      schema: SCHEMA_VERSION,
+      scripts: [
+        {
+          id: "set-backdrop",
+          trigger: { type: "onStart" },
+          statements: [{ type: "switchBackdrop", backdropId: "asset:space.nebula" }],
+        },
+      ],
+    };
+    const stageCreative: ProjectCreativeState = {
+      assets: [
+        {
+          id: "asset:space.trailhead",
+          kind: "backdrop",
+          name: "Trailhead",
+          source: "/assets/backdrops/trailhead.svg",
+        },
+        {
+          id: "asset:space.nebula",
+          kind: "backdrop",
+          name: "Nebula",
+          source: "/assets/backdrops/nebula.svg",
+        },
+      ],
+      actors: [
+        {
+          id: "actor:hero",
+          name: "Hero",
+          x: 0,
+          y: 0,
+          direction: 0,
+          size: 100,
+          visible: true,
+          scripts: ["set-backdrop"],
+        },
+      ],
+      stage: {
+        backdropId: "asset:space.trailhead",
+        width: 480,
+        height: 360,
+        actorOrder: ["actor:hero"],
+      },
+    };
+
+    const result = runMultiActorProgram(stageProgram, stageCreative);
+
+    expect(result.stage).toEqual({
+      actorOrder: ["actor:hero"],
+      backdropId: "asset:space.nebula",
+      width: 480,
+      height: 360,
+    });
+    expect(result.frames[0]?.stage).toEqual(result.stage);
+    expect(result.frames[0]?.actors[0]?.world.backdropId).toBe("asset:space.nebula");
   });
 
   it("supports default compatibility actor that runs existing onStart scripts", () => {
