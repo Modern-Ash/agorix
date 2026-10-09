@@ -7,6 +7,7 @@ import {
 } from "@agorix/agent-workflow";
 import { programToWorkspace } from "@agorix/block-editor";
 import { getLocalizedFirstMission, normalizeLocale } from "@agorix/curriculum";
+import { missionSpecHash as hashMissionSpec } from "@agorix/persistence";
 import type { ProjectProgram, Statement } from "@agorix/program-model";
 import {
   ProposalValidationError,
@@ -98,6 +99,7 @@ function createRequestForIntent(project: StudioProject, intent: string): IntentP
   const locale = normalizeLocale(project.stored.metadata.locale);
   const mission = getLocalizedFirstMission(locale);
   const missionSpec = project.stored.metadata.missionSpec;
+  const specHash = hashMissionSpec(missionSpec);
   return createIntentPlanRequest({
     learnerIntent: intent,
     mission: {
@@ -107,6 +109,7 @@ function createRequestForIntent(project: StudioProject, intent: string): IntentP
       learningObjective: missionSpec?.goal ?? mission.goal.learnerFacing,
     },
     program: project.stored.program,
+    ...(specHash === undefined ? {} : { missionSpecHash: specHash }),
     selectedNodeIds: [],
     priorClarifications: [],
     reading: { locale },
@@ -117,6 +120,7 @@ function resultFromIntentResponse(
   response: IntentPlanResponse,
   available: readonly AgentTaskId[],
   baseHash: string,
+  missionSpecHash: string | undefined,
 ) {
   if (response.kind === "clarification") {
     return available.length < 2
@@ -124,17 +128,22 @@ function resultFromIntentResponse(
           kind: "plan" as const,
           tasks: available.map(taskForId),
           baseHash,
+          ...(missionSpecHash === undefined ? {} : { missionSpecHash }),
         }
       : {
           kind: "clarify" as const,
           options: available.map(taskForId),
           baseHash,
+          ...(missionSpecHash === undefined ? {} : { missionSpecHash }),
         };
   }
   return {
     kind: "plan" as const,
     tasks: planTasksFromIntentResponse(response, available),
     baseHash: response.plan.baseProgramHash,
+    ...(response.plan.missionSpecHash === undefined
+      ? {}
+      : { missionSpecHash: response.plan.missionSpecHash }),
   };
 }
 
@@ -297,12 +306,23 @@ export function createAgentPort(deps: AgentPortDeps): AgentPort {
       if (project === undefined) return undefined;
       const available = availableTasksFor(project);
       const baseHash = programSemanticHash(project.stored.program);
+      const baseMissionSpecHash = hashMissionSpec(project.stored.metadata.missionSpec);
       if (available.length === 0) {
-        return { kind: "plan", tasks: [], baseHash };
+        return {
+          kind: "plan",
+          tasks: [],
+          baseHash,
+          ...(baseMissionSpecHash === undefined ? {} : { missionSpecHash: baseMissionSpecHash }),
+        };
       }
       const request = createRequestForIntent(project, intent);
       const deterministic = () =>
-        resultFromIntentResponse(createDeterministicIntentPlan(request), available, baseHash);
+        resultFromIntentResponse(
+          createDeterministicIntentPlan(request),
+          available,
+          baseHash,
+          baseMissionSpecHash,
+        );
       if (deps.providerIntentPlan === undefined) {
         return deterministic();
       }
@@ -311,10 +331,14 @@ export function createAgentPort(deps: AgentPortDeps): AgentPort {
         if (maybeProvided === undefined) {
           return deterministic();
         }
-        if (maybeProvided.kind === "plan" && maybeProvided.plan.baseProgramHash !== baseHash) {
+        if (
+          maybeProvided.kind === "plan" &&
+          (maybeProvided.plan.baseProgramHash !== baseHash ||
+            maybeProvided.plan.missionSpecHash !== baseMissionSpecHash)
+        ) {
           return deterministic();
         }
-        return resultFromIntentResponse(maybeProvided, available, baseHash);
+        return resultFromIntentResponse(maybeProvided, available, baseHash, baseMissionSpecHash);
       }
       return (async () => {
         const provided = await maybeProvided;
@@ -323,13 +347,18 @@ export function createAgentPort(deps: AgentPortDeps): AgentPort {
           return deterministic();
         }
         const currentHash = programSemanticHash(current.stored.program);
-        if (currentHash !== baseHash) {
+        const currentMissionSpecHash = hashMissionSpec(current.stored.metadata.missionSpec);
+        if (currentHash !== baseHash || currentMissionSpecHash !== baseMissionSpecHash) {
           return undefined;
         }
-        if (provided.kind === "plan" && provided.plan.baseProgramHash !== currentHash) {
+        if (
+          provided.kind === "plan" &&
+          (provided.plan.baseProgramHash !== currentHash ||
+            provided.plan.missionSpecHash !== currentMissionSpecHash)
+        ) {
           return deterministic();
         }
-        return resultFromIntentResponse(provided, available, currentHash);
+        return resultFromIntentResponse(provided, available, currentHash, currentMissionSpecHash);
       })();
     },
     async proposeFor(task) {
@@ -450,6 +479,12 @@ export function createAgentPort(deps: AgentPortDeps): AgentPort {
     programHash() {
       const project = deps.getProject();
       return project === undefined ? undefined : programSemanticHash(project.stored.program);
+    },
+    missionSpecHash() {
+      const project = deps.getProject();
+      return project === undefined
+        ? undefined
+        : hashMissionSpec(project.stored.metadata.missionSpec);
     },
     record(event) {
       deps.events.push(event);

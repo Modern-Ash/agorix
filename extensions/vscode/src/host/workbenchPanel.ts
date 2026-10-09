@@ -220,7 +220,15 @@ export function attachWorkbenchPanel(
         // see the same agreements: forward them to the session as well.
         await workbench.handle(message);
       }
-      await send((await agentHost.handle(message)) ?? (await workbench.handle(message)));
+      const agentMessages = await agentHost.handle(message);
+      if (agentMessages !== undefined) {
+        await send(agentMessages);
+      } else {
+        await send(await workbench.handle(message));
+        if (message.type === "updateMissionSpec") {
+          await send(agentHost.onProgramChanged());
+        }
+      }
       await pushDensity("auto");
     })().catch(() => undefined);
   });
