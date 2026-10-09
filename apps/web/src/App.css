@@ -4652,7 +4652,10 @@ button:hover:not(:disabled) {
     grid-template-areas: "action program stage";
   }
 
-  .editor-shell[data-code-open="false"][data-companion-open="false"] .panel-controls {
+  .editor-shell[data-code-open="false"][data-companion-open="false"]
+    .learning-layout
+    > :not(.stage-panel)
+    .panel-controls {
     display: none;
   }
 

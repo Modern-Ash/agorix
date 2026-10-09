@@ -47,11 +47,19 @@ async function openAppMenu(page: Page) {
 }
 
 function appMenuButton(page: Page, name: string) {
-  return page.locator("#app-menu").getByRole("button", { name, exact: true });
+  return page
+    .locator("#app-menu")
+    .getByRole("button", { name, exact: true })
+    .or(page.getByTestId("play-controls").getByRole("button", { name, exact: true }))
+    .first();
 }
 
 function appMenuControl(page: Page, name: string) {
-  return page.locator("#app-menu").getByRole("button", { name });
+  return page
+    .locator("#app-menu")
+    .getByRole("button", { name })
+    .or(page.getByTestId("play-controls").getByRole("button", { name }))
+    .first();
 }
 
 async function canonicalHash(page: Page) {
