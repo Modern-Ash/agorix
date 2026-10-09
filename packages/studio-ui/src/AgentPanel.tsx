@@ -28,6 +28,21 @@ const STAGES = [
 
 type Send = (message: Omit<UiMessage, "schema"> & Record<string, unknown>) => void;
 
+type ExpectedRuntimeEvidenceItem = NonNullable<
+  NonNullable<AgentUiState["proposal"]>["expectedRuntimeEvidence"]
+>[number];
+
+function evidenceScopeText(item: ExpectedRuntimeEvidenceItem, copy: StudioUiCopy): string {
+  const rows = [
+    { label: copy.proposalActors, ids: item.actorIds ?? [] },
+    { label: copy.proposalScripts, ids: item.scriptIds ?? [] },
+    { label: copy.proposalAssets, ids: item.assetIds ?? [] },
+    { label: copy.proposalVariables, ids: item.variableIds ?? [] },
+    { label: copy.proposalNodes, ids: item.nodeIds ?? [] },
+  ].filter((row) => row.ids.length > 0);
+  return rows.map((row) => `${row.label}: ${row.ids.join(", ")}`).join(" · ");
+}
+
 function Ribbon({
   stage,
   copy,
@@ -48,6 +63,54 @@ function Ribbon({
         </li>
       ))}
     </ol>
+  );
+}
+
+function ProposalScope({
+  proposal,
+  copy,
+}: {
+  readonly proposal: NonNullable<AgentUiState["proposal"]>;
+  readonly copy: StudioUiCopy;
+}) {
+  const rows = [
+    { label: copy.proposalActors, ids: proposal.affectedActorIds ?? [] },
+    { label: copy.proposalScripts, ids: proposal.affectedScriptIds ?? [] },
+    { label: copy.proposalAssets, ids: proposal.affectedAssetIds ?? [] },
+    { label: copy.proposalVariables, ids: proposal.affectedVariableIds ?? [] },
+    { label: copy.proposalNodes, ids: proposal.affectedNodeIds ?? [] },
+  ].filter((row) => row.ids.length > 0);
+  const evidence = proposal.expectedRuntimeEvidence ?? [];
+  if (rows.length === 0 && evidence.length === 0) return null;
+  return (
+    <section aria-label={copy.proposalScope}>
+      {rows.length === 0 ? null : (
+        <dl>
+          {rows.map((row) => (
+            <div key={row.label}>
+              <dt>{row.label}</dt>
+              <dd>{row.ids.join(", ")}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {evidence.length === 0 ? null : (
+        <>
+          <p>{copy.expectedEvidence}</p>
+          <ul>
+            {evidence.map((item) => {
+              const scope = evidenceScopeText(item, copy);
+              return (
+                <li key={item.id}>
+                  {item.description}
+                  {scope.length === 0 ? null : <small> {scope}</small>}
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      )}
+    </section>
   );
 }
 
@@ -383,6 +446,7 @@ export function AgentPanel({
             </>
           )}
           <p>{copy.dashedBlocks}</p>
+          <ProposalScope proposal={state.proposal} copy={copy} />
           {!needsPrediction && state.proposal.evidence !== undefined && (
             <p>{evidenceText(state.proposal.evidence, copy)}</p>
           )}

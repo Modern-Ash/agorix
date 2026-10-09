@@ -24,6 +24,7 @@ import {
   STUDIO_PROTOCOL_VERSION,
   type AlternativeView,
   type EvidenceView,
+  type ExpectedRuntimeEvidenceView,
   type GhostChange,
   type HostMessage,
   type OperationView,
@@ -35,6 +36,12 @@ export interface ProposalView {
   readonly proposalId: string;
   readonly purpose: string;
   readonly rationale: string;
+  readonly affectedActorIds?: readonly string[];
+  readonly affectedScriptIds?: readonly string[];
+  readonly affectedAssetIds?: readonly string[];
+  readonly affectedVariableIds?: readonly string[];
+  readonly affectedNodeIds?: readonly string[];
+  readonly expectedRuntimeEvidence?: readonly ExpectedRuntimeEvidenceView[];
   readonly changes: GhostChange[];
   readonly operations?: OperationView[];
   readonly evidence?: EvidenceView;
@@ -139,6 +146,16 @@ export function createAgentHost(port: AgentPort): AgentHost {
     proposalId: view.proposalId,
     purpose: view.purpose,
     rationale: view.rationale,
+    ...(view.affectedActorIds === undefined ? {} : { affectedActorIds: view.affectedActorIds }),
+    ...(view.affectedScriptIds === undefined ? {} : { affectedScriptIds: view.affectedScriptIds }),
+    ...(view.affectedAssetIds === undefined ? {} : { affectedAssetIds: view.affectedAssetIds }),
+    ...(view.affectedVariableIds === undefined
+      ? {}
+      : { affectedVariableIds: view.affectedVariableIds }),
+    ...(view.affectedNodeIds === undefined ? {} : { affectedNodeIds: view.affectedNodeIds }),
+    ...(view.expectedRuntimeEvidence === undefined
+      ? {}
+      : { expectedRuntimeEvidence: view.expectedRuntimeEvidence }),
     changes: view.changes,
     ...(view.operations === undefined ? {} : { operations: view.operations }),
     ...(view.evidence === undefined ? {} : { evidence: view.evidence }),

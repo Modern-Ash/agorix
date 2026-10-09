@@ -28,29 +28,44 @@ import {
   sanitizeAgorixFilename,
   semanticProjectHash,
   serializeAgorixProject,
+  type ProjectActor,
+  type ProjectMetadata,
   type StoredProject,
 } from "@agorix/persistence";
 import { pythonProjection } from "@agorix/python-projection";
 import {
   acceptProposal as acceptSharedProposal,
+  bindProposalRuntimeEvidence,
   createFirstStepProposal,
+  createProposalComparisonView,
   createProposalReview as createSharedProposalReview,
   createRepeatPatternProposal,
   createStudioProposalDiffView,
   modifyProposal as modifySharedProposal,
   programSemanticHash,
   type StudioProposalDiffView,
+  type ProposalComparisonView,
   rejectProposal as rejectSharedProposal,
   type ProposalAuditEvent,
   type ProgramProposal,
   type ProposalReview,
 } from "@agorix/proposals";
-import { SCHEMA_VERSION, validateProgram, type ProjectProgram } from "@agorix/program-model";
+import {
+  SCHEMA_VERSION,
+  validateProgram,
+  type ProjectCreativeState,
+  type ProjectProgram,
+} from "@agorix/program-model";
+import type { ActorView, AssetView, ExecutionEventTraceView } from "@agorix/studio-protocol";
 import {
   createWorldState,
+  runMultiActorProgram,
   runProgram,
   touchingGoal,
   type ExecutionTraceEntry,
+  type MultiActorRunResult,
+  type RuntimeObservation,
+  type RuntimeEvent,
   type RunResult,
 } from "@agorix/runtime";
 import {
@@ -145,19 +160,36 @@ export interface StudioNavigationItem {
 
 export interface InspectorRow {
   readonly step: number;
+  readonly actorId?: string;
+  readonly scriptId?: string;
   readonly nodeId: string;
   readonly statementType: ExecutionTraceEntry["statementType"];
+  readonly activationId?: string;
+  readonly event?: RuntimeEvent;
+  readonly activationReason?: string;
+  readonly assetIds?: readonly string[];
+  readonly variableIds?: readonly string[];
   readonly worldBefore: ExecutionTraceEntry["worldBefore"];
   readonly worldAfter: ExecutionTraceEntry["worldAfter"];
 }
 
 export interface StudioExecutionEvidence {
   readonly result: RunResult;
-  readonly previewFrames: readonly ObservationFrame[];
+  readonly previewFrames: readonly StudioObservationFrame[];
   readonly stepSequence: readonly ExecutionStep[];
   readonly learnerTrace: readonly LearnerTraceItem[];
   readonly inspectorRows: readonly InspectorRow[];
 }
+
+export type StudioObservationFrame = ObservationFrame & {
+  readonly actorId?: string;
+  readonly scriptId?: string;
+  readonly statementType?: ExecutionTraceEntry["statementType"];
+  readonly state: ObservationFrame["state"] & {
+    readonly actors?: readonly ActorView[];
+    readonly backdropId?: string;
+  };
+};
 
 export type StudioExecutionStatus = "idle" | "running" | "stopped" | "completed";
 
@@ -178,11 +210,13 @@ export interface StudioInspectorStep {
 export interface StudioExecutionViewState {
   readonly status: StudioExecutionStatus;
   readonly selectedFrameIndex: number;
-  readonly currentFrame?: ObservationFrame;
+  readonly currentFrame?: StudioObservationFrame;
+  readonly finalWorld: RunResult["world"];
   readonly outcome: StudioExecutionEvidence["result"]["outcome"];
   readonly stepsUsed: number;
-  readonly previewFrames: readonly ObservationFrame[];
+  readonly previewFrames: readonly StudioObservationFrame[];
   readonly inspectorSteps: readonly StudioInspectorStep[];
+  readonly eventTrace: readonly ExecutionEventTraceView[];
 }
 
 export type StudioCompanionAction = "explain" | "challenge" | "debug" | "reflect" | "build";
@@ -214,7 +248,12 @@ export interface StudioProposalSession {
   readonly purpose: string;
   readonly rationale: string;
   readonly source: ProgramProposal["source"];
+  readonly affectedActorIds?: ProgramProposal["affectedActorIds"];
+  readonly affectedScriptIds?: ProgramProposal["affectedScriptIds"];
+  readonly affectedAssetIds?: ProgramProposal["affectedAssetIds"];
+  readonly affectedVariableIds?: ProgramProposal["affectedVariableIds"];
   readonly affectedNodeIds: readonly string[];
+  readonly expectedRuntimeEvidence?: ProgramProposal["expectedRuntimeEvidence"];
 }
 
 export interface StudioProposalDecision {
@@ -356,6 +395,7 @@ export function createStudioStarterProject(options: {
       ? getLocalizedFirstMission(locale).starterProject
       : blankProgram();
   const validated = validateProgram(program);
+  const actor = defaultProjectActor(locale);
   return {
     schemaVersion: SCHEMA_VERSION,
     program: validated,
@@ -365,6 +405,12 @@ export function createStudioStarterProject(options: {
       missionProgress: countTopLevelStatements(validated),
       hintLevel: 0,
       locale,
+      actors: {
+        activeId: actor.id,
+        items: [actor],
+      },
+      stage: defaultProjectStage(),
+      assets: defaultProjectAssets(),
     },
   };
 }
@@ -591,13 +637,20 @@ export function createNavigationSections(
           contextValue: "agorixProject",
         },
         {
+          id: "open-local-project",
+          label: "Open local .agorix project",
+          icon: "folder-opened",
+          tooltip: "Open another local .agorix project",
+          command: "agorixStudio.openProject",
+          contextValue: "agorixProject",
+        },
+        {
           id: "current-project",
           label: msg("Current local project"),
           icon: "file-code",
           state: "ok",
           description: `saved · ${statementCount} ${statementCount === 1 ? "block" : "blocks"}`,
-          tooltip: msg("Saved locally. Select to open another .agorix project."),
-          command: "agorixStudio.openProject",
+          tooltip: "Saved locally.",
           contextValue: "agorixProject",
         },
       ],
@@ -719,12 +772,81 @@ export function createExecutionEvidence(
   stored: StoredProject,
   options: { stopAfterSteps?: number } = {},
 ): StudioExecutionEvidence {
+  if (options.stopAfterSteps !== undefined) {
+    return createSingleActorExecutionEvidence(stored, options);
+  }
   const program = validateProgram(stored.program);
   const mission = getLocalizedFirstMission(stored.metadata.locale);
-  const result = runProgram(program, createWorldState(mission.starterStage), {
-    collectObservations: true,
-    ...(options.stopAfterSteps === undefined ? {} : { stopAfterSteps: options.stopAfterSteps }),
-  });
+  const creative = creativeStateForExecution(stored);
+  const initialWorld = createWorldState(mission.starterStage);
+  const result = runMultiActorProgram(program, creative, { goal: initialWorld.goal });
+  const observations = observationsFromMultiActorRun(result);
+  const stepSequence = executionStepsFromRuntimeObservations(observations);
+  const previewFrames = framesFromMultiActorRun(result, observations);
+  const primaryWorld = result.actors[0]?.world ?? initialWorld;
+  const runResult: RunResult = {
+    outcome: result.outcome,
+    world: primaryWorld,
+    stepsUsed: result.stepsUsed,
+    trace: result.trace.map((entry) => ({
+      step: entry.step,
+      nodeId: entry.nodeId,
+      path: entry.path,
+      statementType: entry.statementType as ExecutionTraceEntry["statementType"],
+      worldBefore: entry.worldBefore,
+      worldAfter: entry.worldAfter,
+    })),
+    observations,
+  };
+  const activationsById = new Map(
+    result.activations.map((activation) => [activation.id, activation]),
+  );
+
+  return {
+    result: runResult,
+    previewFrames,
+    stepSequence,
+    learnerTrace: learnerTraceFromExecutionSteps(stepSequence, "studio"),
+    inspectorRows: result.trace.map((entry) => {
+      const activationReason = activationsById.get(entry.activationId)?.reason;
+      return {
+        step: entry.step,
+        nodeId: entry.nodeId,
+        actorId: entry.actorId,
+        scriptId: entry.scriptId,
+        statementType: entry.statementType as ExecutionTraceEntry["statementType"],
+        activationId: entry.activationId,
+        event: entry.event,
+        ...(activationReason === undefined ? {} : { activationReason }),
+        ...assetTraceScope(entry.worldBefore, entry.worldAfter),
+        ...variableTraceScope(entry.worldBefore, entry.worldAfter),
+        worldBefore: entry.worldBefore,
+        worldAfter: entry.worldAfter,
+      };
+    }),
+  };
+}
+
+function createSingleActorExecutionEvidence(
+  stored: StoredProject,
+  options: { stopAfterSteps?: number } = {},
+): StudioExecutionEvidence {
+  const program = validateProgram(stored.program);
+  const mission = getLocalizedFirstMission(stored.metadata.locale);
+  const actor = actorsForProject(stored)[0];
+  const result = runProgram(
+    program,
+    createWorldState({
+      ...mission.starterStage,
+      ...(actor === undefined
+        ? {}
+        : { sprite: { x: actor.x, y: actor.y, heading: actor.direction } }),
+    }),
+    {
+      collectObservations: true,
+      ...(options.stopAfterSteps === undefined ? {} : { stopAfterSteps: options.stopAfterSteps }),
+    },
+  );
 
   const stepSequence = executionStepsFromRuntimeObservations(result.observations);
 
@@ -736,11 +858,201 @@ export function createExecutionEvidence(
     inspectorRows: result.trace.map((entry) => ({
       step: entry.step,
       nodeId: entry.nodeId,
+      ...(actor === undefined ? {} : { actorId: actor.id }),
+      ...scriptTraceScope(program, entry.nodeId),
       statementType: entry.statementType,
+      ...assetTraceScope(entry.worldBefore, entry.worldAfter),
+      ...variableTraceScope(entry.worldBefore, entry.worldAfter),
       worldBefore: entry.worldBefore,
       worldAfter: entry.worldAfter,
     })),
   };
+}
+
+function scriptTraceScope(program: ProjectProgram, nodeId: string): { readonly scriptId?: string } {
+  const match = /^scripts\[(\d+)\]/.exec(nodeId);
+  const script = match === null ? undefined : program.scripts[Number(match[1])];
+  return script === undefined ? {} : { scriptId: script.id };
+}
+
+function assetTraceScope(
+  before: ExecutionTraceEntry["worldBefore"],
+  after: ExecutionTraceEntry["worldAfter"],
+): { readonly assetIds?: readonly string[] } {
+  const ids: string[] = [];
+  if (before.sprite.costumeId !== after.sprite.costumeId && after.sprite.costumeId !== undefined) {
+    ids.push(after.sprite.costumeId);
+  }
+  if (before.backdropId !== after.backdropId && after.backdropId !== undefined) {
+    ids.push(after.backdropId);
+  }
+  const beforeSounds = new Set(before.sounds?.activeSoundIds ?? []);
+  for (const soundId of after.sounds?.activeSoundIds ?? []) {
+    if (!beforeSounds.has(soundId)) ids.push(soundId);
+  }
+  const uniqueIds = uniqueStrings(ids);
+  return uniqueIds.length === 0 ? {} : { assetIds: uniqueIds };
+}
+
+function variableTraceScope(
+  before: ExecutionTraceEntry["worldBefore"],
+  after: ExecutionTraceEntry["worldAfter"],
+): { readonly variableIds?: readonly string[] } {
+  const ids = uniqueStrings([
+    ...Object.keys(before.variables ?? {}),
+    ...Object.keys(after.variables ?? {}),
+  ]).filter((id) => {
+    const beforeVariable = before.variables?.[id];
+    const afterVariable = after.variables?.[id];
+    return (
+      beforeVariable?.value !== afterVariable?.value ||
+      beforeVariable?.visible !== afterVariable?.visible
+    );
+  });
+  return ids.length === 0 ? {} : { variableIds: ids };
+}
+
+function uniqueStrings(values: readonly string[]): readonly string[] {
+  return [...new Set(values)];
+}
+
+function creativeStateForExecution(stored: StoredProject): ProjectCreativeState {
+  const assets = stored.metadata.assets ?? defaultProjectAssets();
+  return {
+    actors: actorsForProject(stored),
+    stage: stored.metadata.stage ?? defaultProjectStage(),
+    assets,
+  };
+}
+
+function observationsFromMultiActorRun(result: MultiActorRunResult): readonly RuntimeObservation[] {
+  const observations = result.trace.flatMap((entry): RuntimeObservation[] => [
+    {
+      kind: "statement-start",
+      step: entry.step,
+      nodeId: entry.nodeId,
+      statementType: entry.statementType as ExecutionTraceEntry["statementType"],
+      world: entry.worldBefore,
+    },
+    {
+      kind: "statement-end",
+      step: entry.step,
+      nodeId: entry.nodeId,
+      statementType: entry.statementType as ExecutionTraceEntry["statementType"],
+      world: entry.worldAfter,
+    },
+  ]);
+  const finalWorld = result.actors[0]?.world ?? createWorldState();
+  return [
+    ...observations,
+    {
+      kind: "run-complete",
+      step: result.stepsUsed,
+      nodeId: "$",
+      outcome: result.outcome,
+      world: finalWorld,
+    },
+  ];
+}
+
+function actorViewsForFrame(
+  actors: MultiActorRunResult["actors"],
+  activeActorId: string | undefined,
+  activeWorld: MultiActorRunResult["actors"][number]["world"] | undefined,
+): readonly ActorView[] {
+  return actors.map((actor) => {
+    const world =
+      activeActorId === actor.id && activeWorld !== undefined ? activeWorld : actor.world;
+    return {
+      id: actor.id,
+      name: actor.name,
+      x: world.sprite.x,
+      y: world.sprite.y,
+      direction: world.sprite.heading,
+      size: world.sprite.size ?? 100,
+      visible: world.sprite.visible ?? true,
+      ...(world.sprite.costumeId === undefined ? {} : { costumeId: world.sprite.costumeId }),
+      ...(world.sprite.bubble === undefined ? {} : { bubble: world.sprite.bubble }),
+    };
+  });
+}
+
+function withActors(
+  frame: ObservationFrame,
+  actors: readonly ActorView[],
+  row?: MultiActorRunResult["trace"][number],
+): StudioObservationFrame {
+  return {
+    ...frame,
+    ...(row?.actorId === undefined ? {} : { actorId: row.actorId }),
+    ...(row?.scriptId === undefined ? {} : { scriptId: row.scriptId }),
+    ...(row?.statementType === undefined
+      ? {}
+      : { statementType: row.statementType as ExecutionTraceEntry["statementType"] }),
+    state: {
+      ...frame.state,
+      actors,
+    },
+  };
+}
+
+function framesFromMultiActorRun(
+  result: MultiActorRunResult,
+  observations: readonly RuntimeObservation[],
+): readonly StudioObservationFrame[] {
+  const baseFrames = framesFromRuntimeObservations(observations);
+  const actorSnapshots = result.trace.flatMap((entry, index) => {
+    const frameActors = result.frames[index]?.actors ?? result.actors;
+    return [
+      { actors: actorViewsForFrame(frameActors, entry.actorId, entry.worldBefore), row: entry },
+      { actors: actorViewsForFrame(frameActors, entry.actorId, entry.worldAfter), row: entry },
+    ];
+  });
+  const finalActors = actorViewsForFrame(result.actors, undefined, undefined);
+  return baseFrames.map((frame, index) => {
+    const snapshot = actorSnapshots[index];
+    return withActors(frame, snapshot?.actors ?? finalActors, snapshot?.row);
+  });
+}
+
+function eventText(event: RuntimeEvent): string {
+  switch (event.type) {
+    case "start":
+      return "start";
+    case "keyPressed":
+      return `key:${event.key}`;
+    case "actorClicked":
+      return `click:${event.actorId}`;
+    case "message":
+      return event.senderActorId === undefined
+        ? `message:${event.message}`
+        : `message:${event.message} from ${event.senderActorId}`;
+  }
+}
+
+function eventTraceFromRows(rows: readonly InspectorRow[]): readonly ExecutionEventTraceView[] {
+  const seen = new Set<string>();
+  const trace: ExecutionEventTraceView[] = [];
+  for (const row of rows) {
+    if (
+      row.activationId === undefined ||
+      row.event === undefined ||
+      row.activationReason === undefined ||
+      seen.has(row.activationId)
+    ) {
+      continue;
+    }
+    seen.add(row.activationId);
+    trace.push({
+      id: row.activationId,
+      step: row.step,
+      actorId: row.actorId ?? "actor:main",
+      scriptId: row.scriptId ?? row.nodeId.split("/")[0] ?? row.nodeId,
+      reason: row.activationReason,
+      event: eventText(row.event),
+    });
+  }
+  return trace;
 }
 
 export function createExecutionViewState(
@@ -758,9 +1070,11 @@ export function createExecutionViewState(
     ...(evidence.previewFrames[clampedFrameIndex] === undefined
       ? {}
       : { currentFrame: evidence.previewFrames[clampedFrameIndex] }),
+    finalWorld: evidence.result.world,
     outcome: evidence.result.outcome,
     stepsUsed: evidence.result.stepsUsed,
     previewFrames: evidence.previewFrames,
+    eventTrace: eventTraceFromRows(evidence.inspectorRows),
     inspectorSteps: evidence.stepSequence.map((step, index) => {
       const trace = evidence.learnerTrace[index];
       const before = trace?.before ?? {
@@ -901,7 +1215,22 @@ export function createProposalSession(
     purpose: proposal.purpose,
     rationale: proposal.rationale,
     source: proposal.source,
+    ...(proposal.affectedActorIds === undefined
+      ? {}
+      : { affectedActorIds: proposal.affectedActorIds }),
+    ...(proposal.affectedScriptIds === undefined
+      ? {}
+      : { affectedScriptIds: proposal.affectedScriptIds }),
+    ...(proposal.affectedAssetIds === undefined
+      ? {}
+      : { affectedAssetIds: proposal.affectedAssetIds }),
+    ...(proposal.affectedVariableIds === undefined
+      ? {}
+      : { affectedVariableIds: proposal.affectedVariableIds }),
     affectedNodeIds: proposal.affectedNodeIds,
+    ...(proposal.expectedRuntimeEvidence === undefined
+      ? {}
+      : { expectedRuntimeEvidence: proposal.expectedRuntimeEvidence }),
   };
 }
 
@@ -946,6 +1275,32 @@ export function modifyProposalSession(
   return modifySharedProposal(acceptedProgram, session.review, learnerReviewedProgram);
 }
 
+export function createProposalEvidenceInspector(input: {
+  readonly session: StudioProposalSession;
+  readonly runtimeEvidence?: StudioExecutionEvidence;
+  readonly learnerModifiedProgram?: ProjectProgram;
+}): ProposalComparisonView {
+  const runtimeEvidence =
+    input.runtimeEvidence === undefined
+      ? undefined
+      : bindProposalRuntimeEvidence(
+          input.session.review.proposal,
+          input.runtimeEvidence.inspectorRows.map((row) => ({
+            nodeId: row.nodeId,
+            ...(row.actorId === undefined ? {} : { actorId: row.actorId }),
+            ...(row.scriptId === undefined ? {} : { scriptId: row.scriptId }),
+            ...(row.assetIds === undefined ? {} : { assetIds: row.assetIds }),
+            ...(row.variableIds === undefined ? {} : { variableIds: row.variableIds }),
+          })),
+        );
+  return createProposalComparisonView(input.session.review, {
+    ...(input.learnerModifiedProgram === undefined
+      ? {}
+      : { learnerModifiedProgram: input.learnerModifiedProgram }),
+    ...(runtimeEvidence === undefined ? {} : { runtimeEvidence }),
+  });
+}
+
 export interface StudioProgramEvidence {
   readonly stepsUsed: number;
   readonly reachedGoal: boolean;
@@ -985,6 +1340,126 @@ export function createStoredProjectWithProgram(
       ),
     },
   };
+}
+
+export function createStoredProjectWithMetadata(
+  stored: StoredProject,
+  metadata: ProjectMetadata,
+): StoredProject {
+  return {
+    ...stored,
+    metadata: {
+      ...metadata,
+      updatedAt: new Date().toISOString(),
+    },
+  };
+}
+
+export function defaultProjectActor(locale = "en"): ProjectActor {
+  const mission = getLocalizedFirstMission(locale);
+  const sprite = mission.starterStage.sprite ?? {};
+  return {
+    id: "actor:main",
+    name: "Sprite",
+    x: sprite.x ?? 0,
+    y: sprite.y ?? 0,
+    direction: sprite.heading ?? 0,
+    size: 100,
+    visible: true,
+    costumeId: "asset:costume.default",
+  };
+}
+
+export function actorsForProject(stored: StoredProject): readonly ProjectActor[] {
+  const actors = stored.metadata.actors as unknown;
+  if (Array.isArray(actors)) return actors as readonly ProjectActor[];
+  return stored.metadata.actors?.items.length
+    ? stored.metadata.actors.items
+    : [defaultProjectActor(stored.metadata.locale)];
+}
+
+export function defaultProjectStage(): NonNullable<ProjectMetadata["stage"]> {
+  return {
+    backdropId: "asset:space.trailhead",
+    width: 264,
+    height: 192,
+    actorOrder: ["actor:main"],
+  };
+}
+
+export function defaultProjectAssets(): NonNullable<ProjectMetadata["assets"]> {
+  return [
+    {
+      id: "asset:costume.default",
+      kind: "costume",
+      name: "Default Costume",
+      source: "builtin:costume.default",
+      tags: ["starter"],
+    },
+    {
+      id: "asset:space.trailhead",
+      kind: "backdrop",
+      name: "Space Trailhead",
+      source: "builtin:space.trailhead",
+      tags: ["space", "mission"],
+    },
+    {
+      id: "asset:sound.beacon",
+      kind: "sound",
+      name: "Beacon Ping",
+      source: "builtin:sound.beacon",
+      tags: ["starter", "feedback"],
+    },
+  ];
+}
+
+export function studioAssetCatalog(): readonly AssetView[] {
+  return [
+    {
+      id: "asset:space.explorer",
+      name: "Explorer",
+      kind: "sprite",
+      tags: ["starter", "space"],
+      width: 64,
+      height: 64,
+      preview: "triangle",
+    },
+    {
+      id: "asset:ocean.submarine",
+      name: "Submarine",
+      kind: "sprite",
+      tags: ["starter", "ocean"],
+      width: 64,
+      height: 64,
+      preview: "capsule",
+    },
+    {
+      id: "asset:space.trailhead",
+      name: "Space Trailhead",
+      kind: "backdrop",
+      tags: ["space", "mission"],
+      width: 264,
+      height: 192,
+      preview: "grid",
+    },
+    {
+      id: "asset:costume.default",
+      name: "Default Costume",
+      kind: "costume",
+      tags: ["starter"],
+      width: 64,
+      height: 64,
+      preview: "outline",
+    },
+    {
+      id: "asset:sound.beacon",
+      name: "Beacon Ping",
+      kind: "sound",
+      tags: ["starter", "feedback"],
+      durationMs: 420,
+      preview: "sine",
+    },
+  ];
 }
 
 function blankProgram(): ProjectProgram {
@@ -1114,16 +1589,82 @@ export function suggestFirstStep(project: StudioProject): StudioSuggestion | und
 }
 
 export function formatInspectorReport(evidence: StudioExecutionEvidence): string {
-  const point = (world: InspectorRow["worldBefore"]) =>
-    `(${world.sprite.x}, ${world.sprite.y}) heading ${world.sprite.heading}`;
-  const rows = evidence.inspectorRows.map(
-    (row) =>
-      `Step ${row.step}  ${row.nodeId}  ${row.statementType}: ${point(row.worldBefore)} -> ${point(row.worldAfter)}`,
-  );
+  const rows = evidence.inspectorRows.map((row) => {
+    const reason = row.activationReason === undefined ? "" : `  reason=${row.activationReason}`;
+    return `Step ${row.step}  ${runtimeScopeText(row)}${row.nodeId}  ${row.statementType}: ${runtimeFactText(row)}${reason}`;
+  });
   return [
     `Outcome: ${evidence.result.outcome} after ${evidence.result.stepsUsed} steps`,
     ...rows,
   ].join("\n");
+}
+
+function runtimeScopeText(row: InspectorRow): string {
+  const scope = [row.actorId, row.scriptId].filter((value) => value !== undefined).join(" ");
+  return scope.length === 0 ? "" : `${scope}  `;
+}
+
+function runtimeFactText(row: InspectorRow): string {
+  const before = row.worldBefore;
+  const after = row.worldAfter;
+  const point = (world: InspectorRow["worldBefore"]) =>
+    `(${world.sprite.x}, ${world.sprite.y}) heading ${world.sprite.heading}`;
+  const samePoint = point(before) === point(after);
+  switch (row.statementType) {
+    case "move":
+      return `moved from ${point(before)} to ${point(after)}`;
+    case "turn":
+      return `turned ${before.sprite.heading} -> ${after.sprite.heading}`;
+    case "say":
+      return `speech bubble "${after.sprite.bubble?.text ?? ""}"`;
+    case "think":
+      return `thought bubble "${after.sprite.bubble?.text ?? ""}"`;
+    case "show":
+      return `sprite shown ${before.sprite.visible} -> ${after.sprite.visible}`;
+    case "hide":
+      return `sprite hidden ${before.sprite.visible} -> ${after.sprite.visible}`;
+    case "setSize":
+      return `size ${before.sprite.size} -> ${after.sprite.size}`;
+    case "switchCostume":
+      return `costume ${before.sprite.costumeId ?? "default"} -> ${after.sprite.costumeId ?? "default"}`;
+    case "switchBackdrop":
+      return `backdrop ${before.backdropId ?? "default"} -> ${after.backdropId ?? "default"}`;
+    case "playSound":
+      return `sounds ${(after.sounds?.activeSoundIds ?? []).join(", ") || "none"}`;
+    case "stopSounds":
+      return "sounds stopped";
+    case "setVariable":
+    case "changeVariable":
+      return variableValueFactText(row);
+    case "showVariable":
+      return variableVisibilityFactText(row, "shown");
+    case "hideVariable":
+      return variableVisibilityFactText(row, "hidden");
+    case "broadcast":
+      return "broadcast event queued";
+    case "repeat":
+      return samePoint ? "repeat completed without direct sprite movement" : "repeat completed";
+    case "if":
+      return samePoint
+        ? "condition checked without direct sprite movement"
+        : "condition branch ran";
+    default:
+      return `world changed from ${point(before)} to ${point(after)}`;
+  }
+}
+
+function variableValueFactText(row: InspectorRow): string {
+  const variableId = row.variableIds?.[0] ?? "variable";
+  const before = row.worldBefore.variables?.[variableId]?.value ?? 0;
+  const after = row.worldAfter.variables?.[variableId]?.value ?? 0;
+  return `variable ${variableId} ${before} -> ${after}`;
+}
+
+function variableVisibilityFactText(row: InspectorRow, action: "shown" | "hidden"): string {
+  const variableId = row.variableIds?.[0] ?? "variable";
+  const before = row.worldBefore.variables?.[variableId]?.visible ?? false;
+  const after = row.worldAfter.variables?.[variableId]?.visible ?? false;
+  return `variable ${variableId} ${action} ${before} -> ${after}`;
 }
 
 export function serializeStoredProject(stored: StoredProject): string {
@@ -1157,6 +1698,6 @@ function runtimeFactsFromEvidence(
     id: `runtime-step-${row.step}`,
     observationIndex: index,
     nodeId: row.nodeId,
-    fact: `${row.statementType} moved from (${row.worldBefore.sprite.x}, ${row.worldBefore.sprite.y}) heading ${row.worldBefore.sprite.heading} to (${row.worldAfter.sprite.x}, ${row.worldAfter.sprite.y}) heading ${row.worldAfter.sprite.heading}`,
+    fact: `${runtimeScopeText(row)}${row.statementType} ${runtimeFactText(row)}${row.activationReason === undefined ? "" : ` because ${row.activationReason}`}`,
   }));
 }

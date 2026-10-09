@@ -86,7 +86,6 @@
   "Reload Latest": "Recargar la última versión",
   "Reveal Companion Context": "Mostrar el contexto del Compañero",
   "Run Agorix workspace checks as a native VS Code task": "Ejecutar las comprobaciones del espacio de trabajo de Agorix como una tarea nativa de VS Code",
-  "Saved locally. Select to open another .agorix project.": "Guardado localmente. Elegí para abrir otro proyecto .agorix.",
   "Saved {0} at revision {1}.": "Se guardó {0} en la revisión {1}.",
   "Select Execution Step": "Elegir un paso de la ejecución",
   "Server has revision {0}; local expected {1}.": "El servidor tiene la revisión {0}; la local esperaba la {1}.",
