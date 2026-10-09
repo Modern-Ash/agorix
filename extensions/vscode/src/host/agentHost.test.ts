@@ -18,6 +18,7 @@ function setup(
 ) {
   const state = {
     hash: "h0",
+    missionSpecHash: "mission:0",
     applied: 0,
     rejected: 0,
     events: [] as AgentEvent[],
@@ -48,6 +49,7 @@ function setup(
     applySelection: async () => "empty",
     run: () => ({ reachedGoal: options.reached ?? false, stepsUsed: 4 }),
     programHash: () => state.hash,
+    missionSpecHash: () => state.missionSpecHash,
     record: (event) => state.events.push(event),
   };
   const host = createAgentHost(port);
@@ -206,6 +208,12 @@ describe("agentHost", () => {
       { schema, type: "agentUnavailable" },
     ]);
     expect(await send({ type: "ready" })).toBeUndefined();
+    expect(
+      await send({
+        type: "updateMissionSpec",
+        spec: { goal: "Reach the beacon.", successCheck: "touches-goal" },
+      }),
+    ).toBeUndefined();
     const empty = setup({ tasks: [] });
     const plan = await empty.send({ type: "stateIntent", text: "x" });
     expect(plan?.[1]).toMatchObject({ type: "plan", tasks: [] });
@@ -274,6 +282,15 @@ describe("agentHost clarification and stale plans", () => {
     expect(await send({ type: "requestProposal" })).toEqual([]);
   });
 
+  it("drops a plan whose Mission Spec changed before it was accepted", async () => {
+    const { send, state } = setup();
+    await send({ type: "stateIntent", text: "make it move" });
+    state.missionSpecHash = "mission:changed";
+    const out = await send({ type: "acceptPlan" });
+    expect(out?.[0]).toEqual({ schema, type: "error", code: "STALE_PLAN" });
+    expect(types(out)).toEqual(["error", "workflow"]);
+  });
+
   it("drops a clarification answered after the program changed", async () => {
     const { send, state } = setup({ tasks: both });
     await send({ type: "stateIntent", text: "hola" });
@@ -282,10 +299,25 @@ describe("agentHost clarification and stale plans", () => {
     expect(out?.[0]).toEqual({ schema, type: "error", code: "STALE_PLAN" });
   });
 
+  it("drops a clarification answered after the Mission Spec changed", async () => {
+    const { send, state } = setup({ tasks: both });
+    await send({ type: "stateIntent", text: "hola" });
+    state.missionSpecHash = "mission:changed";
+    const out = await send({ type: "answerClarification", taskId: "first-step" });
+    expect(out?.[0]).toEqual({ schema, type: "error", code: "STALE_PLAN" });
+  });
+
   it("resets a pending plan when the program changes under it", async () => {
     const { send, host, state } = setup();
     await send({ type: "stateIntent", text: "make it move" });
     state.hash = "h-other";
+    expect(types(host.onProgramChanged())).toEqual(["error", "workflow"]);
+  });
+
+  it("resets a pending plan when the Mission Spec changes under it", async () => {
+    const { send, host, state } = setup();
+    await send({ type: "stateIntent", text: "make it move" });
+    state.missionSpecHash = "mission:changed";
     expect(types(host.onProgramChanged())).toEqual(["error", "workflow"]);
   });
 });

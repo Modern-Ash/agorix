@@ -127,6 +127,7 @@ describe("agentPort provider-backed intent planning", () => {
     request: IntentPlanRequest,
     concept: "movement" | "repetition",
     baseProgramHash = programSemanticHash(request.program),
+    missionSpecHash = request.missionSpecHash,
   ) =>
     createIntentPlanResponse({
       kind: "plan",
@@ -140,6 +141,7 @@ describe("agentPort provider-backed intent planning", () => {
         schema: "agorix/intent-plan/v1",
         id: "provider-plan",
         baseProgramHash,
+        ...(missionSpecHash === undefined ? {} : { missionSpecHash }),
         status: "proposed",
         revision: 1,
         learnerIntent: request.learnerIntent,
@@ -183,9 +185,11 @@ describe("agentPort provider-backed intent planning", () => {
         return responseFor(request, "movement");
       },
     });
-    await ctx.port.planIntent?.("make it move");
+    const planned = await ctx.port.planIntent?.("make it move");
 
     expect(seen?.mission.learningObjective).toBe("Guide the rocket to the beacon.");
+    expect(seen?.missionSpecHash).toMatch(/^mission:/);
+    expect(planned).toMatchObject({ missionSpecHash: seen?.missionSpecHash });
   });
 
   it("maps provider clarifications to fixed task choices only", async () => {
@@ -223,6 +227,26 @@ describe("agentPort provider-backed intent planning", () => {
       kind: "plan",
       tasks: [{ id: "first-step" }],
     });
+  });
+
+  it("falls back to deterministic planning for stale provider Mission Spec hashes", async () => {
+    const ctx = setup([], {
+      metadata: {
+        missionSpec: {
+          goal: "Guide the rocket to the beacon.",
+          successCheck: "touches-goal",
+        },
+      },
+      providerIntentPlan: async (request) =>
+        responseFor(request, "movement", programSemanticHash(request.program), "mission:stale"),
+    });
+    const planned = await ctx.port.planIntent?.("make it move");
+    expect(planned).toMatchObject({
+      kind: "plan",
+      tasks: [{ id: "first-step" }],
+      missionSpecHash: expect.stringMatching(/^mission:/),
+    });
+    expect(JSON.stringify(planned)).not.toContain("mission:stale");
   });
 });
 

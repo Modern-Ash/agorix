@@ -209,6 +209,23 @@ describe("AC-003 planning performs no canonical mutation", () => {
     expect(plan.baseProgramHash).toBe(programSemanticHash(program));
   });
 
+  it("anchors plans to the Mission Spec hash when the request has one", () => {
+    const withSpec = planFrom("move toward the beacon", {
+      missionSpecHash: "mission:abcd1234",
+      mission: {
+        id: "first-mission.reach-goal",
+        version: 1,
+        learningObjective: "Guide the rocket to the beacon.",
+        concepts: ["sequence", "events", "movement"],
+      },
+    });
+    const withoutSpec = planFrom("move toward the beacon");
+
+    expect(withSpec.missionSpecHash).toBe("mission:abcd1234");
+    expect(withSpec.learningObjective).toBe("Guide the rocket to the beacon.");
+    expect(withSpec.id).not.toBe(withoutSpec.id);
+  });
+
   it("keeps the program unchanged across edit, accept and reject decisions", () => {
     const before = structuredClone(program);
     const plan = planFrom("move toward the goal then turn");

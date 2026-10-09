@@ -59,11 +59,13 @@ export type AgentIntentPlanResult =
       readonly kind: "plan";
       readonly tasks: readonly AgentTask[];
       readonly baseHash?: string;
+      readonly missionSpecHash?: string;
     }
   | {
       readonly kind: "clarify";
       readonly options: readonly AgentTask[];
       readonly baseHash?: string;
+      readonly missionSpecHash?: string;
     };
 
 export interface AgentPort {
@@ -86,6 +88,7 @@ export interface AgentPort {
   applySelection(selection: SelectionInput): Promise<"applied" | "stale" | "invalid" | "empty">;
   run(): { reachedGoal: boolean; stepsUsed: number } | undefined;
   programHash(): string | undefined;
+  missionSpecHash(): string | undefined;
   record(event: AgentEvent): void;
 }
 
@@ -115,7 +118,9 @@ export function createAgentHost(port: AgentPort): AgentHost {
   let epoch = 0;
   let clarifying: AgentTask[] | undefined;
   let planBaseHash: string | undefined;
+  let planMissionSpecHash: string | undefined;
   let lastHash: string | undefined = port.programHash();
+  let lastMissionSpecHash: string | undefined = port.missionSpecHash();
 
   const wf = (): HostMessage => ({ schema, type: "workflow", state: workflow });
   const agreementsMsg = (): HostMessage => ({ schema, type: "agreements", agreements });
@@ -194,6 +199,7 @@ export function createAgentHost(port: AgentPort): AgentHost {
     tasks = [];
     clarifying = undefined;
     planBaseHash = undefined;
+    planMissionSpecHash = undefined;
     answer = undefined;
     predictedProposalId = undefined;
     return hadPending;
@@ -209,6 +215,10 @@ export function createAgentHost(port: AgentPort): AgentHost {
         ...(origin === undefined ? {} : { origin }),
       });
     }
+  }
+
+  function planIsStale(): boolean {
+    return planBaseHash !== port.programHash() || planMissionSpecHash !== port.missionSpecHash();
   }
 
   async function requestProposal(): Promise<HostMessage[]> {
@@ -319,6 +329,7 @@ export function createAgentHost(port: AgentPort): AgentHost {
     record(selection === undefined ? "proposalAccepted" : "proposalModified", decidedOrigin);
     step({ type: "proposalDecided", decision: "accepted" });
     lastHash = port.programHash();
+    lastMissionSpecHash = port.missionSpecHash();
     return stageNow() === "predict" ? [cleared(), wf(), predictionMsg()] : [cleared(), wf()];
   }
 
@@ -331,6 +342,9 @@ export function createAgentHost(port: AgentPort): AgentHost {
     switch (message.type) {
       case "ready":
       case "intent":
+      case "executionCommand":
+      case "updateActor":
+      case "updateMissionSpec":
         return undefined;
       case "agreementsChanged": {
         agreements = message.agreements;
@@ -348,10 +362,12 @@ export function createAgentHost(port: AgentPort): AgentHost {
         const had = resetLoop();
         step({ type: "intentStated" });
         planBaseHash = port.programHash();
+        planMissionSpecHash = port.missionSpecHash();
         const maybePlanned = port.planIntent?.(message.text);
         const planned = isPromiseLike(maybePlanned) ? await maybePlanned : maybePlanned;
         if (planned !== undefined) {
           planBaseHash = planned.baseHash ?? planBaseHash;
+          planMissionSpecHash = planned.missionSpecHash ?? planMissionSpecHash;
           if (planned.kind === "clarify") {
             clarifying = [...planned.options];
             return [...(had ? [cleared()] : []), wf(), clarifyMsg(clarifying)];
@@ -369,7 +385,7 @@ export function createAgentHost(port: AgentPort): AgentHost {
       }
       case "answerClarification": {
         if (clarifying === undefined || workflow.stage !== "plan") return [];
-        if (planBaseHash !== port.programHash()) return stalePlan();
+        if (planIsStale()) return stalePlan();
         const chosen = clarifying.find((task) => task.id === message.taskId);
         if (chosen === undefined) return [];
         clarifying = undefined;
@@ -377,7 +393,7 @@ export function createAgentHost(port: AgentPort): AgentHost {
         return [wf(), planMsg()];
       }
       case "acceptPlan": {
-        if (workflow.stage === "plan" && tasks.length > 0 && planBaseHash !== port.programHash()) {
+        if (workflow.stage === "plan" && tasks.length > 0 && planIsStale()) {
           return stalePlan();
         }
         if (tasks.length === 0 || !step({ type: "planAccepted", taskCount: tasks.length })) {
@@ -491,10 +507,12 @@ export function createAgentHost(port: AgentPort): AgentHost {
 
   function onProgramChanged(): HostMessage[] {
     const hash = port.programHash();
-    if (applying || hash === lastHash) {
+    const specHash = port.missionSpecHash();
+    if (applying || (hash === lastHash && specHash === lastMissionSpecHash)) {
       return [];
     }
     lastHash = hash;
+    lastMissionSpecHash = specHash;
     if (workflow.stage === "plan") {
       return stalePlan();
     }

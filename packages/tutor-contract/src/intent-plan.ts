@@ -11,6 +11,8 @@
  *   canonical program: the plan is anchored by `baseProgramHash`, and each
  *   path re-proves that hash against a pre-decision snapshot instead of
  *   trusting the caller;
+ * - when present, the learner-editable Mission Spec is anchored by
+ *   `missionSpecHash` as part of the same stale-plan boundary;
  * - the learner may edit or reject the plan before anything reaches the editor.
  *
  * Provider/model identity is an implementation detail: the request and response
@@ -57,6 +59,7 @@ export interface IntentPlanRequest {
   readonly learnerIntent: string;
   readonly mission: IntentPlanMissionContext;
   readonly program: ProjectProgram;
+  readonly missionSpecHash?: string;
   readonly selectedNodeIds: readonly string[];
   readonly priorClarifications: readonly string[];
   readonly reading?: TutorReadingConfig;
@@ -80,6 +83,8 @@ export interface IntentPlan {
   readonly id: string;
   /** Semantic hash of the canonical program the plan was written against. */
   readonly baseProgramHash: string;
+  /** Semantic hash of the learner-editable Mission Spec, when the request had one. */
+  readonly missionSpecHash?: string;
   readonly status: IntentPlanStatus;
   readonly revision: number;
   readonly learnerIntent: string;
@@ -307,6 +312,7 @@ export function validateIntentPlanRequest(request: IntentPlanRequest): IntentPla
     "learnerIntent",
     "mission",
     "program",
+    "missionSpecHash",
     "selectedNodeIds",
     "priorClarifications",
     "reading",
@@ -317,6 +323,9 @@ export function validateIntentPlanRequest(request: IntentPlanRequest): IntentPla
   assertBoundedString(request.learnerIntent, "INVALID_REQUEST", "$.learnerIntent", 1, 600);
   assertMission(request.mission, "$.mission");
   validateProgram(request.program);
+  if (request.missionSpecHash !== undefined) {
+    assertBoundedString(request.missionSpecHash, "INVALID_REQUEST", "$.missionSpecHash", 1, 120);
+  }
   assertStringArray(request.selectedNodeIds, "INVALID_REQUEST", "$.selectedNodeIds", 160);
   assertStringArray(request.priorClarifications, "INVALID_REQUEST", "$.priorClarifications", 800);
   if (request.reading !== undefined) {
@@ -396,6 +405,7 @@ export function validateIntentPlan(plan: IntentPlan): IntentPlan {
     "schema",
     "id",
     "baseProgramHash",
+    "missionSpecHash",
     "status",
     "revision",
     "learnerIntent",
@@ -409,6 +419,9 @@ export function validateIntentPlan(plan: IntentPlan): IntentPlan {
   }
   assertBoundedString(plan.id, "INVALID_PLAN", "$.id", 1, 120);
   assertBoundedString(plan.baseProgramHash, "INVALID_PLAN", "$.baseProgramHash", 1, 120);
+  if (plan.missionSpecHash !== undefined) {
+    assertBoundedString(plan.missionSpecHash, "INVALID_PLAN", "$.missionSpecHash", 1, 120);
+  }
   if (!STATUSES.has(plan.status)) {
     fail("INVALID_PLAN", "$.status", "expected plan status");
   }
@@ -614,8 +627,9 @@ function planResponse(
 
   const plan = validateIntentPlan({
     schema: INTENT_PLAN_SCHEMA_VERSION,
-    id: `intent-plan-${stableId(`${baseProgramHash}|${request.learnerIntent.trim()}`)}`,
+    id: `intent-plan-${stableId(`${baseProgramHash}|${request.missionSpecHash ?? ""}|${request.learnerIntent.trim()}`)}`,
     baseProgramHash,
+    ...(request.missionSpecHash === undefined ? {} : { missionSpecHash: request.missionSpecHash }),
     status: "proposed",
     revision: 1,
     learnerIntent: request.learnerIntent.trim(),
