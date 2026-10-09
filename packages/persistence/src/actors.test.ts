@@ -33,7 +33,9 @@ describe("project actors", () => {
     const withActors = { ...base, metadata: { ...base.metadata, actors } };
     const json = serializeAgorixProject(withActors, { exportedAt: "2026-01-02T03:04:05.000Z" });
     expect(parseAgorixProject(json).project.metadata.actors).toEqual(actors);
-    expect(semanticProjectHash(withActors)).toBe(semanticProjectHash(base));
+    expect(semanticProjectHash(parseAgorixProject(json).project)).toBe(
+      semanticProjectHash(withActors),
+    );
   });
 
   it("keeps projects without actors loading", () => {

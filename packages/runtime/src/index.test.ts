@@ -33,7 +33,8 @@ describe("world semantics", () => {
     expect(normalizeHeading(-90)).toBe(270);
     const world = createWorldState({ sprite: { x: 0, y: 0, heading: 0 }, goal: { x: 10, y: 0 } });
     const moved = moveWorld(world, 10);
-    expect(moved.sprite).toEqual({ x: 10, y: 0, heading: 0 });
+    expect(moved.sprite).toMatchObject({ x: 10, y: 0, heading: 0 });
+    expect(moved.sprite).toMatchObject({ visible: true, size: 100 });
     expect(touchingGoal(moved)).toBe(true);
   });
 
@@ -69,7 +70,7 @@ describe("runProgram operations", () => {
       createWorldState({ goal: { x: 3, y: 2 } }),
     );
     expect(result.outcome).toBe("completed");
-    expect(result.world.sprite).toEqual({ x: 1, y: 2, heading: 180 });
+    expect(result.world.sprite).toMatchObject({ x: 1, y: 2, heading: 180 });
     expect(result.stepsUsed).toBe(8);
     expect(result.trace.map((entry) => entry.statementType)).toEqual([
       "move",
@@ -106,6 +107,192 @@ describe("runProgram operations", () => {
     );
     expect(result.world.sprite.x).toBe(4);
     expect(result.stepsUsed).toBe(4);
+  });
+
+  it("executes variables, operators, and watcher visibility as world state", () => {
+    const result = runProgram(
+      {
+        schema: SCHEMA_VERSION,
+        variables: [
+          { id: "score", name: "score", initialValue: 2, visible: true },
+          { id: "energy", name: "energy", initialValue: 5, visible: false },
+        ],
+        scripts: [
+          {
+            id: "main",
+            trigger: { type: "onStart" },
+            statements: [
+              {
+                type: "changeVariable",
+                variableId: "score",
+                delta: {
+                  type: "multiply",
+                  left: { type: "variable", variableId: "energy" },
+                  right: { type: "numericLiteral", value: 3 },
+                },
+              },
+              {
+                type: "if",
+                condition: {
+                  type: "equals",
+                  left: {
+                    type: "add",
+                    left: { type: "variable", variableId: "score" },
+                    right: { type: "numericLiteral", value: 3 },
+                  },
+                  right: { type: "numericLiteral", value: 20 },
+                },
+                then: [{ type: "showVariable", variableId: "energy" }],
+              },
+              {
+                type: "setVariable",
+                variableId: "energy",
+                value: {
+                  type: "divide",
+                  left: { type: "variable", variableId: "score" },
+                  right: { type: "numericLiteral", value: 4 },
+                },
+              },
+              { type: "hideVariable", variableId: "score" },
+            ],
+          },
+        ],
+      },
+      createWorldState(),
+    );
+
+    expect(result.world.variables).toEqual({
+      energy: { value: 4.25, visible: true },
+      score: { value: 17, visible: false },
+    });
+    expect(result.trace.map((entry) => entry.statementType)).toEqual([
+      "changeVariable",
+      "showVariable",
+      "if",
+      "setVariable",
+      "hideVariable",
+    ]);
+  });
+
+  it("fails deterministically on divide-by-zero expressions", () => {
+    expect(() =>
+      runProgram(
+        {
+          schema: SCHEMA_VERSION,
+          variables: [{ id: "score", name: "score", initialValue: 1, visible: true }],
+          scripts: [
+            {
+              id: "main",
+              trigger: { type: "onStart" },
+              statements: [
+                {
+                  type: "setVariable",
+                  variableId: "score",
+                  value: {
+                    type: "divide",
+                    left: { type: "numericLiteral", value: 1 },
+                    right: { type: "numericLiteral", value: 0 },
+                  },
+                },
+              ],
+            },
+          ],
+        },
+        createWorldState(),
+      ),
+    ).toThrow(RuntimeExecutionError);
+  });
+
+  it("executes greater-than, boolean operators, and seeded random deterministically", () => {
+    const randomProgram: ProjectProgram = {
+      schema: SCHEMA_VERSION,
+      variables: [{ id: "score", name: "score", initialValue: 0, visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "setVariable",
+              variableId: "score",
+              value: {
+                type: "random",
+                min: { type: "numericLiteral", value: 1 },
+                max: { type: "numericLiteral", value: 3 },
+              },
+            },
+            {
+              type: "if",
+              condition: {
+                type: "and",
+                left: {
+                  type: "greaterThan",
+                  left: { type: "variable", variableId: "score" },
+                  right: { type: "numericLiteral", value: 1 },
+                },
+                right: {
+                  type: "not",
+                  value: {
+                    type: "or",
+                    left: { type: "booleanLiteral", value: false },
+                    right: { type: "booleanLiteral", value: false },
+                  },
+                },
+              },
+              then: [{ type: "move", steps: 5 }],
+            },
+          ],
+        },
+      ],
+    };
+
+    const first = runProgram(randomProgram, createWorldState(), { randomSeed: 42 });
+    const replay = runProgram(randomProgram, createWorldState(), { randomSeed: 42 });
+    const differentSeed = runProgram(randomProgram, createWorldState(), { randomSeed: 7 });
+
+    expect(first.world.variables?.score?.value).toBe(replay.world.variables?.score?.value);
+    expect(first.trace.map((entry) => entry.statementType)).toEqual(["setVariable", "move", "if"]);
+    expect(differentSeed.world.variables?.score?.value).not.toBe(
+      first.world.variables?.score?.value,
+    );
+  });
+
+  it("executes looks statements as deterministic world changes", () => {
+    const result = runProgram(
+      program([
+        { type: "say", text: "Hello" },
+        { type: "think", text: "Hmm" },
+        { type: "hide" },
+        { type: "show" },
+        { type: "setSize", size: 150 },
+        { type: "switchCostume", costumeId: "asset:costume.default" },
+        { type: "switchBackdrop", backdropId: "asset:space.trailhead" },
+        { type: "playSound", soundId: "asset:sound.beacon" },
+        { type: "stopSounds" },
+      ]),
+      createWorldState(),
+    );
+
+    expect(result.world.sprite).toMatchObject({
+      visible: true,
+      size: 150,
+      costumeId: "asset:costume.default",
+      bubble: { kind: "think", text: "Hmm" },
+    });
+    expect(result.world.backdropId).toBe("asset:space.trailhead");
+    expect(result.world.sounds?.activeSoundIds).toEqual([]);
+    expect(result.trace.map((entry) => entry.statementType)).toEqual([
+      "say",
+      "think",
+      "hide",
+      "show",
+      "setSize",
+      "switchCostume",
+      "switchBackdrop",
+      "playSound",
+      "stopSounds",
+    ]);
+    expect(result.trace.at(-2)?.worldAfter.sounds?.activeSoundIds).toEqual(["asset:sound.beacon"]);
   });
 
   it("supports nested repeat and if structures", () => {

@@ -42,6 +42,9 @@ export interface SemanticProjectSnapshot {
     readonly missionProgress: number;
     readonly hintLevel: number;
   };
+  readonly actors?: StoredProject["metadata"]["actors"];
+  readonly stage?: StoredProject["metadata"]["stage"];
+  readonly assets?: StoredProject["metadata"]["assets"];
 }
 
 export function assertCrossSurfaceCompatibleProject(stored: StoredProject): StoredProject {
@@ -64,6 +67,9 @@ export function semanticProjectSnapshot(stored: StoredProject): SemanticProjectS
       missionProgress: compatible.metadata.missionProgress,
       hintLevel: compatible.metadata.hintLevel,
     },
+    ...(compatible.metadata.actors === undefined ? {} : { actors: compatible.metadata.actors }),
+    ...(compatible.metadata.stage === undefined ? {} : { stage: compatible.metadata.stage }),
+    ...(compatible.metadata.assets === undefined ? {} : { assets: compatible.metadata.assets }),
   };
 }
 

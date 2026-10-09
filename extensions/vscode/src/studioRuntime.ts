@@ -38,6 +38,7 @@ import { AmbientController } from "./ambient/ambientController.js";
 import { registerAmbientLenses } from "./ambient/lenses.js";
 import { createHttpLayaTransport } from "./ambient/layaTransport.js";
 import { StudioSignalAdapter } from "./studioSignals.js";
+import { createWorldState } from "@agorix/runtime";
 import {
   countProgramStatements,
   nodeIdsForProjectionLines,
@@ -300,12 +301,33 @@ export function activate(context: vscode.ExtensionContext): void {
         rejectActiveProposal: proposalCommands.rejectActiveProposal,
         runAndGetResult: () => {
           const view = executionCommands.runExecution();
-          const world =
+          const stageWorld =
             view?.currentFrame?.state ??
             view?.previewFrames[Math.max(0, (view?.previewFrames.length ?? 1) - 1)]?.state;
-          return view === undefined || world === undefined
+          return view === undefined || stageWorld === undefined
             ? undefined
-            : { world, stepsUsed: view.stepsUsed };
+            : {
+                world: createWorldState({
+                  sprite: {
+                    x: stageWorld.sprite.x,
+                    y: stageWorld.sprite.y,
+                    heading: stageWorld.sprite.heading,
+                    visible: stageWorld.sprite.visible,
+                    size: stageWorld.sprite.size,
+                    ...(stageWorld.sprite.costumeId === undefined
+                      ? {}
+                      : { costumeId: stageWorld.sprite.costumeId }),
+                    ...(stageWorld.sprite.bubble === undefined
+                      ? {}
+                      : { bubble: stageWorld.sprite.bubble }),
+                  },
+                  goal: { x: stageWorld.goal.x, y: stageWorld.goal.y },
+                  ...(stageWorld.backdropId === undefined
+                    ? {}
+                    : { backdropId: stageWorld.backdropId }),
+                }),
+                stepsUsed: view.stepsUsed,
+              };
         },
         events: session.agentEvents,
       }),

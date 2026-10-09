@@ -25,6 +25,10 @@ export const DOCUMENTED_EXAMPLE_PROGRAM: ProjectProgram = {
 /** Exercises every Statement/Expression/Trigger variant at least once. */
 export const FULL_COVERAGE_PROGRAM: ProjectProgram = {
   schema: SCHEMA_VERSION,
+  variables: [
+    { id: "score", name: "score", initialValue: 0, visible: true },
+    { id: "energy", name: "energy", initialValue: 10, visible: false },
+  ],
   scripts: [
     {
       id: "full-coverage",
@@ -32,6 +36,32 @@ export const FULL_COVERAGE_PROGRAM: ProjectProgram = {
       statements: [
         { type: "move", steps: 3 },
         { type: "turn", degrees: 90 },
+        { type: "say", text: "Launch sequence" },
+        { type: "think", text: "Need a better route" },
+        { type: "hide" },
+        { type: "show" },
+        { type: "setSize", size: 120 },
+        { type: "switchCostume", costumeId: "asset:costume.default" },
+        { type: "switchBackdrop", backdropId: "asset:space.trailhead" },
+        { type: "playSound", soundId: "asset:sound.beacon" },
+        { type: "stopSounds" },
+        { type: "broadcast", message: "mission:check" },
+        {
+          type: "setVariable",
+          variableId: "score",
+          value: { type: "numericLiteral", value: 1 },
+        },
+        {
+          type: "changeVariable",
+          variableId: "score",
+          delta: {
+            type: "add",
+            left: { type: "numericLiteral", value: 2 },
+            right: { type: "variable", variableId: "energy" },
+          },
+        },
+        { type: "showVariable", variableId: "energy" },
+        { type: "hideVariable", variableId: "energy" },
         {
           type: "repeat",
           count: 2,
@@ -49,10 +79,74 @@ export const FULL_COVERAGE_PROGRAM: ProjectProgram = {
         },
         {
           type: "if",
-          condition: { type: "numericLiteral", value: 42 },
+          condition: {
+            type: "lessThan",
+            left: { type: "variable", variableId: "score" },
+            right: { type: "numericLiteral", value: 20 },
+          },
           then: [],
         },
+        {
+          type: "if",
+          condition: {
+            type: "and",
+            left: {
+              type: "equals",
+              left: {
+                type: "divide",
+                left: {
+                  type: "multiply",
+                  left: {
+                    type: "subtract",
+                    left: { type: "variable", variableId: "energy" },
+                    right: { type: "numericLiteral", value: 4 },
+                  },
+                  right: { type: "numericLiteral", value: 2 },
+                },
+                right: { type: "numericLiteral", value: 3 },
+              },
+              right: { type: "numericLiteral", value: 4 },
+            },
+            right: {
+              type: "not",
+              value: {
+                type: "or",
+                left: {
+                  type: "greaterThan",
+                  left: { type: "variable", variableId: "score" },
+                  right: { type: "numericLiteral", value: 100 },
+                },
+                right: { type: "booleanLiteral", value: false },
+              },
+            },
+          },
+          then: [],
+        },
+        {
+          type: "changeVariable",
+          variableId: "energy",
+          delta: {
+            type: "random",
+            min: { type: "numericLiteral", value: 1 },
+            max: { type: "numericLiteral", value: 3 },
+          },
+        },
       ],
+    },
+    {
+      id: "key-trigger",
+      trigger: { type: "onKeyPressed", key: "ArrowRight" },
+      statements: [{ type: "move", steps: 4 }],
+    },
+    {
+      id: "click-trigger",
+      trigger: { type: "onActorClicked" },
+      statements: [{ type: "say", text: "Clicked" }],
+    },
+    {
+      id: "message-trigger",
+      trigger: { type: "onMessage", message: "mission:check" },
+      statements: [{ type: "think", text: "Checking" }],
     },
   ],
 };
