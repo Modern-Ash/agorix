@@ -70,6 +70,7 @@ describe("workbenchHost", () => {
         actors: [{ id: "actor:main", costumeId: "asset:costume.default", scriptCount: 1 }],
       },
       { schema, type: "assets" },
+      { schema, type: "validation", issues: [] },
       { schema, type: "missionSpec", spec: { successCheck: "touches-goal" } },
     ]);
     expect(await setup(null).host.handle({ schema, type: "ready" })).toEqual([]);
@@ -284,6 +285,64 @@ describe("workbenchHost", () => {
     ]);
     expect(metadata().actors).toBeUndefined();
     expect(labels).toEqual([]);
+  });
+
+  it("reports broken actor, stage and asset references as Studio validation issues", async () => {
+    const { host, metadata } = setup();
+    const editableMetadata = metadata() as unknown as {
+      actors?: ProjectMetadata["actors"];
+      stage?: ProjectMetadata["stage"];
+    };
+    editableMetadata.actors = {
+      activeId: "actor:main",
+      items: [
+        {
+          id: "actor:main",
+          name: "Explorer",
+          x: 0,
+          y: 0,
+          direction: 0,
+          size: 100,
+          visible: true,
+          costumeId: "asset:costume.missing",
+        },
+      ],
+    };
+    editableMetadata.stage = {
+      actorOrder: ["actor:main", "actor:missing"],
+      backdropId: "asset:space.missing",
+    };
+
+    expect(await host.handle({ schema, type: "ready" })).toContainEqual({
+      schema,
+      type: "validation",
+      issues: [
+        {
+          id: "validation:actor-costume:actor:main",
+          severity: "error",
+          kind: "missing-costume",
+          path: "metadata.actors.items[0].costumeId",
+          ref: "asset:costume.missing",
+          message: 'Actor "actor:main" references missing costume "asset:costume.missing".',
+        },
+        {
+          id: "validation:stage-actor:actor:missing:1",
+          severity: "error",
+          kind: "missing-actor",
+          path: "metadata.stage.actorOrder[1]",
+          ref: "actor:missing",
+          message: 'Stage order references missing actor "actor:missing".',
+        },
+        {
+          id: "validation:stage-backdrop:asset:space.missing",
+          severity: "error",
+          kind: "missing-backdrop",
+          path: "metadata.stage.backdropId",
+          ref: "asset:space.missing",
+          message: 'Stage references missing backdrop "asset:space.missing".',
+        },
+      ],
+    });
   });
 
   it("anchors ambient hints to Workbench blocks when the signal names a canonical node", () => {

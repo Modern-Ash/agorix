@@ -493,6 +493,7 @@ describe("Studio extension wiring", () => {
     await openFile("/p/workbench.json", stored([]));
     await handlers.get("agorixStudio.openWorkbench")!();
     await handlers.get("agorixStudio.openWorkbench")!();
+    await flushWorkbench();
 
     expect(webviewPanels.filter((p) => p.html.includes("Agorix Workbench"))).toHaveLength(1);
     expect(workbenchPanel()?.reveal).toHaveBeenCalledTimes(1);
@@ -502,6 +503,7 @@ describe("Studio extension wiring", () => {
     expect(sent.some((message) => message.type === "workspace")).toBe(true);
     expect(sent.some((message) => message.type === "actors")).toBe(true);
     expect(sent.some((message) => message.type === "assets")).toBe(true);
+    expect(sent.some((message) => message.type === "validation")).toBe(true);
     expect(sent.some((message) => message.type === "sync")).toBe(true);
 
     const before = new TextDecoder().decode(files.get("/p/workbench.json"));
