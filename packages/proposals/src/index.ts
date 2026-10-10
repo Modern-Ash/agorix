@@ -231,6 +231,80 @@ export interface ProposalComparisonView {
   readonly entries: readonly ProposalComparisonEntry[];
 }
 
+export interface ProposalEvidenceIds {
+  readonly actorIds: readonly string[];
+  readonly scriptIds: readonly string[];
+  readonly assetIds: readonly string[];
+  readonly variableIds: readonly string[];
+  readonly nodeIds: readonly string[];
+}
+
+export type ProposalProofStatus = "proved" | "partial" | "unproven";
+
+export interface ProposalEvidenceView {
+  readonly proposalId: string;
+  readonly suggested: ProposalEvidenceIds & {
+    readonly expected: readonly ProposalExpectedRuntimeEvidence[];
+  };
+  readonly accepted?: {
+    readonly decision: ProposalAuditEvent["decision"];
+    readonly resultProgramHash: string;
+  };
+  readonly proved?: {
+    readonly status: ProposalProofStatus;
+    readonly matched: ProposalEvidenceIds;
+    readonly missing: ProposalEvidenceIds;
+  };
+}
+
+export function createProposalEvidenceView(
+  review: ProposalReview,
+  options: {
+    readonly audit?: ProposalAuditEvent;
+    readonly trace?: readonly RuntimeEvidenceTraceEntry[];
+  } = {},
+): ProposalEvidenceView {
+  const proposal = review.proposal;
+  const view: ProposalEvidenceView = {
+    proposalId: proposal.id,
+    suggested: {
+      actorIds: proposal.affectedActorIds ?? [],
+      scriptIds: proposal.affectedScriptIds ?? [],
+      assetIds: proposal.affectedAssetIds ?? [],
+      variableIds: proposal.affectedVariableIds ?? [],
+      nodeIds: proposal.affectedNodeIds,
+      expected: proposal.expectedRuntimeEvidence ?? [],
+    },
+  };
+  const audit = options.audit;
+  if (audit === undefined) {
+    return view;
+  }
+  const accepted = { decision: audit.decision, resultProgramHash: audit.resultProgramHash };
+  if (audit.decision === "reject" || options.trace === undefined) {
+    return { ...view, accepted };
+  }
+  const binding = bindProposalRuntimeEvidence(proposal, options.trace);
+  const matched: ProposalEvidenceIds = {
+    actorIds: binding.matchedActorIds,
+    scriptIds: binding.matchedScriptIds,
+    assetIds: binding.matchedAssetIds,
+    variableIds: binding.matchedVariableIds,
+    nodeIds: binding.matchedNodeIds,
+  };
+  const missing: ProposalEvidenceIds = {
+    actorIds: binding.missingActorIds,
+    scriptIds: binding.missingScriptIds,
+    assetIds: binding.missingAssetIds,
+    variableIds: binding.missingVariableIds,
+    nodeIds: binding.missingNodeIds,
+  };
+  const nothingMissing = Object.values(missing).every((ids) => ids.length === 0);
+  const status: ProposalProofStatus =
+    binding.observedNodeIds.length === 0 ? "unproven" : nothingMissing ? "proved" : "partial";
+  return { ...view, accepted, proved: { status, matched, missing } };
+}
+
 type MutableProjectProgram = {
   schema: ProjectProgram["schema"];
   scripts: Array<{

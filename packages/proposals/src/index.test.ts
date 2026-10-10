@@ -7,6 +7,7 @@ import {
   acceptProposal,
   bindProposalRuntimeEvidence,
   createProposalComparisonView,
+  createProposalEvidenceView,
   creativeContextHash,
   createProgramProposal,
   createProposalReview,
@@ -972,5 +973,58 @@ describe("actor scope", () => {
     expect(rejectProposal(multiScriptProgram, review).audit.creativeContextHash).toBe(
       review.creativeContextHash,
     );
+  });
+});
+
+describe("proposal evidence view", () => {
+  const review = () =>
+    createProposalReview(
+      multiScriptProgram,
+      actorProposal({ actors: ["actor:explorer"], scriptIndex: 0 }),
+      { actors: twoActors },
+    );
+  const trace = [
+    { nodeId: "scripts[0]/statements[0]", actorId: "actor:explorer", scriptId: "explorer-script" },
+  ];
+
+  it("shows only the suggested row before a decision", () => {
+    const view = createProposalEvidenceView(review());
+    expect(view.suggested.actorIds).toEqual(["actor:explorer"]);
+    expect(view.suggested.scriptIds).toEqual(["explorer-script"]);
+    expect(view.accepted).toBeUndefined();
+    expect(view.proved).toBeUndefined();
+  });
+
+  it("marks accepted and proved when the trace covers the declared ids", () => {
+    const r = review();
+    const { audit } = acceptProposal(multiScriptProgram, r, { actors: twoActors });
+    const view = createProposalEvidenceView(r, { audit, trace });
+    expect(view.accepted).toEqual({
+      decision: "accept",
+      resultProgramHash: audit.resultProgramHash,
+    });
+    expect(view.proved?.status).toBe("proved");
+    expect(view.proved?.matched.actorIds).toEqual(["actor:explorer"]);
+    expect(view.proved?.missing.nodeIds).toEqual([]);
+  });
+
+  it("is partial when the trace misses a declared id and unproven when empty", () => {
+    const r = review();
+    const { audit } = acceptProposal(multiScriptProgram, r, { actors: twoActors });
+    const partial = createProposalEvidenceView(r, {
+      audit,
+      trace: [{ nodeId: "scripts[0]/statements[0]" }],
+    });
+    expect(partial.proved?.status).toBe("partial");
+    expect(partial.proved?.missing.actorIds).toEqual(["actor:explorer"]);
+    expect(createProposalEvidenceView(r, { audit, trace: [] }).proved?.status).toBe("unproven");
+  });
+
+  it("never proves a rejected proposal", () => {
+    const r = review();
+    const { audit } = rejectProposal(multiScriptProgram, r);
+    const view = createProposalEvidenceView(r, { audit, trace });
+    expect(view.accepted?.decision).toBe("reject");
+    expect(view.proved).toBeUndefined();
   });
 });
