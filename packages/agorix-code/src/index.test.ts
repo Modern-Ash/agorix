@@ -247,6 +247,43 @@ describe("Agorix Code projection: variables and operators", () => {
     );
   });
 
+  it("disambiguates duplicate variable labels", () => {
+    const duplicateProgram: ProjectProgram = {
+      schema: SCHEMA_VERSION,
+      variables: [
+        { id: "first", name: "score", initialValue: 0, visible: true },
+        { id: "second", name: "score", initialValue: 0, visible: true },
+      ],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            { type: "showVariable", variableId: "first" },
+            { type: "showVariable", variableId: "second" },
+            {
+              type: "setVariable",
+              variableId: "second",
+              value: {
+                type: "add",
+                left: { type: "variable", variableId: "first" },
+                right: { type: "numericLiteral", value: 1 },
+              },
+            },
+          ],
+        },
+      ],
+    };
+
+    const result = projectAgorixCode(duplicateProgram);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toContain('variable "score" = 0');
+    expect(result.text).toContain('variable "score2" = 0');
+    expect(result.text).toContain('show "score"');
+    expect(result.text).toContain('show "score2"');
+    expect(result.text).toContain('set "score2" to ("score" + 1)');
+  });
+
   it("passes shared conformance for variable and operator programs", () => {
     expect(() =>
       assertLanguageProjectionConformance(agorixCodeProjection, {

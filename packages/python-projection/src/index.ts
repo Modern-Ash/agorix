@@ -25,7 +25,6 @@ interface Writer {
   mapping: Record<string, TextRange[]>;
   diagnostics: LanguageProjectionDiagnostic[];
   variableNames: ReadonlyMap<string, string>;
-  variableLabels: ReadonlyMap<string, string>;
 }
 
 export function projectPython(program: ProjectProgram): LanguageProjectionResult {
@@ -35,9 +34,6 @@ export function projectPython(program: ProjectProgram): LanguageProjectionResult
     mapping: {},
     diagnostics: [],
     variableNames: variableNamesFor(validated.variables),
-    variableLabels: new Map(
-      (validated.variables ?? []).map((variable) => [variable.id, variable.name]),
-    ),
   };
   for (const variable of validated.variables ?? []) {
     writeMapped(
@@ -162,7 +158,7 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
         nodeId,
         indent +
           "show_variable(" +
-          JSON.stringify(variableLabel(writer, statement.variableId)) +
+          JSON.stringify(variableIdentifier(writer, statement.variableId)) +
           ")\n",
       );
       return;
@@ -172,7 +168,7 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
         nodeId,
         indent +
           "hide_variable(" +
-          JSON.stringify(variableLabel(writer, statement.variableId)) +
+          JSON.stringify(variableIdentifier(writer, statement.variableId)) +
           ")\n",
       );
       return;
@@ -324,10 +320,6 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
 
 function variableIdentifier(writer: Writer, variableId: string): string {
   return writer.variableNames.get(variableId) ?? variableId;
-}
-
-function variableLabel(writer: Writer, variableId: string): string {
-  return writer.variableLabels.get(variableId) ?? variableId;
 }
 
 function assignedVariableIdentifiers(

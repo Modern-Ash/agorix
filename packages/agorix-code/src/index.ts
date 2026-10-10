@@ -33,9 +33,7 @@ export function projectAgorixCode(program: ProjectProgram): LanguageProjectionRe
     text: "",
     mapping: {},
     diagnostics: [],
-    variableLabels: new Map(
-      (validated.variables ?? []).map((variable) => [variable.id, variable.name]),
-    ),
+    variableLabels: variableDisplayNamesFor(validated.variables),
   };
   for (const variable of validated.variables ?? []) {
     writeMapped(
@@ -287,6 +285,24 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
 
 function variableName(writer: Writer, variableId: string): string {
   return JSON.stringify(writer.variableLabels.get(variableId) ?? variableId);
+}
+
+function variableDisplayNamesFor(
+  variables: readonly { id: string; name: string }[] | undefined,
+): ReadonlyMap<string, string> {
+  const names = new Map<string, string>();
+  const used = new Set<string>();
+  for (const variable of variables ?? []) {
+    let name = variable.name;
+    let suffix = 2;
+    while (used.has(name)) {
+      name = `${variable.name}${suffix}`;
+      suffix += 1;
+    }
+    used.add(name);
+    names.set(variable.id, name);
+  }
+  return names;
 }
 
 function writeMapped(writer: Writer, nodeId: string, text: string): void {

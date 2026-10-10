@@ -285,8 +285,37 @@ describe("Python projection: variables and operators", () => {
     expect(result.text).toContain("move_ = 0");
     expect(result.text).toContain("range_ = 0");
     expect(result.text).toContain("say_ = 0");
-    expect(result.text).toContain('show_variable("move")');
+    expect(result.text).toContain('show_variable("move_")');
     expect(result.text).not.toContain("move(");
+  });
+
+  it("keeps watcher operations keyed to disambiguated identifiers", () => {
+    const duplicateProgram: ProjectProgram = {
+      schema: SCHEMA_VERSION,
+      variables: [
+        { id: "first", name: "score", initialValue: 0, visible: true },
+        { id: "second", name: "score", initialValue: 0, visible: true },
+      ],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            { type: "showVariable", variableId: "first" },
+            { type: "showVariable", variableId: "second" },
+            { type: "hideVariable", variableId: "second" },
+          ],
+        },
+      ],
+    };
+
+    const result = projectPython(duplicateProgram);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toContain("score = 0");
+    expect(result.text).toContain("score2 = 0");
+    expect(result.text).toContain('show_variable("score")');
+    expect(result.text).toContain('show_variable("score2")');
+    expect(result.text).toContain('hide_variable("score2")');
   });
 });
 
