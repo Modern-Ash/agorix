@@ -892,8 +892,13 @@ describe("proposalProof host message", () => {
   });
 
   it("accepts a rejection without proof", () => {
-    const { proof: _proof, resultProgramHash: _hash, ...rejected } = message;
-    const parsed = { ...rejected, decision: "rejected" };
+    const rejected = {
+      schema: message.schema,
+      type: message.type,
+      proposalId: message.proposalId,
+      decision: "rejected",
+    };
+    const parsed = rejected;
     expect(parseHostMessage(parsed)).toEqual(parsed);
   });
 
