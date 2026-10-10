@@ -65,6 +65,7 @@ import {
 import {
   acceptProposal,
   createProgramProposal,
+  createProposalEvidenceView,
   createProposalReview,
   createFirstStepProposal,
   createRepeatPatternProposal,
@@ -72,6 +73,7 @@ import {
   createWebProposalCardView,
   programSemanticHash,
   rejectProposal,
+  type ProposalAuditEvent,
   type ProposalReview,
 } from "@agorix/proposals";
 import {
@@ -155,6 +157,7 @@ import { AgentCompanion, companionMood } from "./AgentCompanion.js";
 import { ModelComparison } from "./ModelComparison.js";
 import { GhostAddedBlocks } from "./GhostBlocks.js";
 import { ghostMarksFor, type GhostMarkKind } from "./ghostMarks.js";
+import { ProposalEvidence } from "./ProposalEvidence.js";
 import { ProvenanceLabel } from "./ProvenanceLabel.js";
 import { AccountUi, useWorkspace } from "./accounts/AccountUi.js";
 import type { AccountBackend, ProjectDto } from "./accounts/clients.js";
@@ -2778,6 +2781,9 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
   const [reflectionPrompt, setReflectionPrompt] = useState<string | undefined>();
   const [attempts, setAttempts] = useState(0);
   const [proposalReview, setProposalReview] = useState<ProposalReview | undefined>();
+  const [proposalDecision, setProposalDecision] = useState<
+    { review: ProposalReview; audit: ProposalAuditEvent } | undefined
+  >();
   const [proposalMessage, setProposalMessage] = useState<string | undefined>();
   const [dismissedRepeatHash, setDismissedRepeatHash] = useState<string | undefined>();
   const [worldId, setWorldId] = useState<string>(() => loadPresentationPrefs().worldId);
@@ -2848,6 +2854,25 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     highlightedNodeId === undefined ? "" : codeSliceForNode(model, highlightedNodeId);
   const codePreview = projectCodeSurface(model.program, "typescript").code.trim();
   const canonicalHash = programSemanticHash(model.program);
+  const proposalContext = useMemo(
+    () => ({ actors: creativeState.actors ?? [] }),
+    [creativeState.actors],
+  );
+  const proposalEvidence =
+    proposalDecision === undefined
+      ? undefined
+      : createProposalEvidenceView(proposalDecision.review, {
+          audit: proposalDecision.audit,
+          ...(lastRunResult === undefined
+            ? {}
+            : {
+                trace: lastRunResult.trace.map((entry) => ({
+                  nodeId: entry.nodeId,
+                  ...(entry.actorId === undefined ? {} : { actorId: entry.actorId }),
+                  ...(entry.scriptId === undefined ? {} : { scriptId: entry.scriptId }),
+                })),
+              }),
+        });
   const proposalCard =
     proposalReview === undefined ? undefined : createWebProposalCardView(proposalReview);
   const proposalScopeRows =
@@ -3866,10 +3891,11 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
           },
         ],
       });
-      const review = createProposalReview(model.program, proposal);
+      const review = createProposalReview(model.program, proposal, proposalContext);
       setAiLiteracyActivity(true);
       setAiPredictionRecorded(false);
       setProposalReview(review);
+      setProposalDecision(undefined);
       setProposalMessage(t(locale, "proposalPreviewReady"));
       setHighlightedNodeId(review.proposal.affectedNodeIds[0]);
       restorePanel("companion");
@@ -3897,8 +3923,9 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     if (firstStepOffer === undefined) {
       return;
     }
-    const review = createProposalReview(model.program, firstStepOffer);
+    const review = createProposalReview(model.program, firstStepOffer, proposalContext);
     setProposalReview(review);
+    setProposalDecision(undefined);
     setProposalMessage(t(locale, "proposalPreviewReady"));
     setHighlightedNodeId(review.proposal.affectedNodeIds[0]);
   }
@@ -3907,8 +3934,9 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     if (repeatOffer === undefined) {
       return;
     }
-    const review = createProposalReview(model.program, repeatOffer);
+    const review = createProposalReview(model.program, repeatOffer, proposalContext);
     setProposalReview(review);
+    setProposalDecision(undefined);
     setProposalMessage(t(locale, "proposalPreviewReady"));
     setHighlightedNodeId(review.proposal.affectedNodeIds[0]);
   }
@@ -3931,7 +3959,10 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     if (proposalReview === undefined) {
       return;
     }
-    rejectProposal(model.program, proposalReview);
+    setProposalDecision({
+      review: proposalReview,
+      audit: rejectProposal(model.program, proposalReview).audit,
+    });
     if (repeatReviewActive) {
       setDismissedRepeatHash(canonicalHash);
       setRepeatDeclines((count) => count + 1);
@@ -3948,7 +3979,8 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     if (proposalReview === undefined) {
       return;
     }
-    const accepted = acceptProposal(model.program, proposalReview);
+    const accepted = acceptProposal(model.program, proposalReview, proposalContext);
+    setProposalDecision({ review: proposalReview, audit: accepted.audit });
     const nextModel = createEditorModelFromProgram(accepted.program);
     commitProjection("accept program proposal", nextModel);
     setProposalReview(undefined);
@@ -5009,6 +5041,9 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
                   </button>
                 </div>
               </div>
+            )}
+            {proposalEvidence === undefined ? null : (
+              <ProposalEvidence view={proposalEvidence} locale={locale} />
             )}
             {tutorResponse === undefined ? null : (
               <p className="hint-history">
