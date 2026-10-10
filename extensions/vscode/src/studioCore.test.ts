@@ -1064,3 +1064,95 @@ describe("provider-backed companion turns", () => {
     expect(() => createCompanionTurn(project, "build", { providerResponse: bad })).toThrow();
   });
 });
+
+describe("proposal actor scope in Studio", () => {
+  const twoActorProject = () =>
+    openStoredProject({
+      ...webCreatedProject,
+      program: {
+        ...webCreatedProject.program,
+        scripts: [
+          { id: "main", trigger: { type: "onStart" }, statements: [{ type: "move", steps: 10 }] },
+          {
+            id: "helper",
+            trigger: { type: "onStart" },
+            statements: [{ type: "turn", degrees: 90 }],
+          },
+        ],
+      },
+      metadata: {
+        ...webCreatedProject.metadata,
+        actors: {
+          activeId: "actor:main",
+          items: [
+            {
+              id: "actor:main",
+              name: "Main",
+              x: 0,
+              y: 0,
+              direction: 0,
+              size: 100,
+              visible: true,
+              scripts: ["main"],
+            },
+            {
+              id: "actor:helper",
+              name: "Helper",
+              x: 5,
+              y: 5,
+              direction: 0,
+              size: 100,
+              visible: true,
+              scripts: ["helper"],
+            },
+          ],
+        },
+      },
+    } as never);
+
+  it("rejects a proposal that declares one actor but edits another actor's script", () => {
+    const project = twoActorProject();
+    const proposal = createProgramProposal({
+      id: "studio-actor-cross",
+      baseProgram: project.stored.program,
+      source: { kind: "studio", capability: "actor-scope" },
+      purpose: "Change main only.",
+      rationale: "It edits the helper script instead.",
+      affectedActorIds: ["actor:main"],
+      affectedScriptIds: ["helper"],
+      affectedNodeIds: ["scripts[1]/statements[0]"],
+      operations: [
+        {
+          type: "replaceStatementField",
+          nodeId: "scripts[1]/statements[0]",
+          field: "degrees",
+          value: 45,
+        },
+      ],
+    });
+    expect(() => createProposalSession(project, proposal)).toThrow(/ACTOR_SCOPE_VIOLATION/);
+  });
+
+  it("accepts a proposal that edits only the declared actor's script", () => {
+    const project = twoActorProject();
+    const proposal = createProgramProposal({
+      id: "studio-actor-ok",
+      baseProgram: project.stored.program,
+      source: { kind: "studio", capability: "actor-scope" },
+      purpose: "Change main only.",
+      rationale: "It edits the main script.",
+      affectedActorIds: ["actor:main"],
+      affectedScriptIds: ["main"],
+      affectedNodeIds: ["scripts[0]/statements[0]"],
+      operations: [
+        {
+          type: "replaceStatementField",
+          nodeId: "scripts[0]/statements[0]",
+          field: "steps",
+          value: 30,
+        },
+      ],
+    });
+    expect(createProposalSession(project, proposal).review.creativeContextHash).toBeDefined();
+  });
+});
