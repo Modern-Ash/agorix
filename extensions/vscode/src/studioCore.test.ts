@@ -12,6 +12,7 @@ import {
   createExecutionViewState,
   createProposalReview,
   createProposalSession,
+  proofTraceFromEvidence,
   createProposalEvidenceInspector,
   createStudioStarterProject,
   createStoredProjectWithProgram,
@@ -1154,5 +1155,15 @@ describe("proposal actor scope in Studio", () => {
       ],
     });
     expect(createProposalSession(project, proposal).review.creativeContextHash).toBeDefined();
+  });
+});
+
+describe("proof trace from execution evidence", () => {
+  it("maps inspector rows to runtime evidence trace entries", () => {
+    const evidence = createExecutionEvidence(webCreatedProject);
+    const trace = proofTraceFromEvidence(evidence);
+    expect(trace.length).toBe(evidence.inspectorRows.length);
+    expect(trace[0]).toMatchObject({ nodeId: evidence.inspectorRows[0]?.nodeId });
+    expect(trace.every((entry) => typeof entry.nodeId === "string")).toBe(true);
   });
 });

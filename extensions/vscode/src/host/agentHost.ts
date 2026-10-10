@@ -87,10 +87,17 @@ export interface AgentPort {
   /** Applies the chosen operations of the pending proposal as one transaction. */
   applySelection(selection: SelectionInput): Promise<"applied" | "stale" | "invalid" | "empty">;
   run(): { reachedGoal: boolean; stepsUsed: number } | undefined;
+  /** Evidence of the last decided proposal; `withRun` binds it to the run that just happened. */
+  proofFor?(input: { withRun: boolean }): HostProofSeed | undefined;
   programHash(): string | undefined;
   missionSpecHash(): string | undefined;
   record(event: AgentEvent): void;
 }
+
+export type HostProofSeed = Omit<
+  Extract<HostMessage, { type: "proposalProof" }>,
+  "schema" | "type"
+>;
 
 export interface AgentHost {
   /** undefined means "not an agent message"; the caller falls back to the workbench host. */
@@ -260,6 +267,11 @@ export function createAgentHost(port: AgentPort): AgentHost {
       : [wf(), proposalMsg(view)];
   }
 
+  function proofMsgs(withRun: boolean): HostMessage[] {
+    const proof = port.proofFor?.({ withRun });
+    return proof === undefined ? [] : [{ schema, type: "proposalProof", ...proof }];
+  }
+
   async function decide(
     proposalId: string,
     decision: "accepted" | "rejected" | "modified",
@@ -298,7 +310,7 @@ export function createAgentHost(port: AgentPort): AgentHost {
       predictedProposalId = undefined;
       record("proposalRejected", rejectedOrigin);
       step({ type: "proposalDecided", decision: "rejected" });
-      return [cleared(), wf()];
+      return [cleared(), wf(), ...proofMsgs(false)];
     }
     applying = true;
     let outcome: "applied" | "stale" | "invalid" | "empty";
@@ -330,7 +342,9 @@ export function createAgentHost(port: AgentPort): AgentHost {
     step({ type: "proposalDecided", decision: "accepted" });
     lastHash = port.programHash();
     lastMissionSpecHash = port.missionSpecHash();
-    return stageNow() === "predict" ? [cleared(), wf(), predictionMsg()] : [cleared(), wf()];
+    return stageNow() === "predict"
+      ? [cleared(), wf(), ...proofMsgs(false), predictionMsg()]
+      : [cleared(), wf(), ...proofMsgs(false)];
   }
 
   function stalePlan(): HostMessage[] {
@@ -474,6 +488,7 @@ export function createAgentHost(port: AgentPort): AgentHost {
             result,
             stepsUsed: observed.stepsUsed,
           },
+          ...proofMsgs(true),
         ];
       }
       case "continue":

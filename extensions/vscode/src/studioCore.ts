@@ -48,6 +48,7 @@ import {
   rejectProposal as rejectSharedProposal,
   type ProposalAuditEvent,
   type ProposalCreativeContext,
+  type RuntimeEvidenceTraceEntry,
   type ProgramProposal,
   type ProposalReview,
 } from "@agorix/proposals";
@@ -1293,6 +1294,18 @@ export function modifyProposalSession(
   return modifySharedProposal(acceptedProgram, session.review, learnerReviewedProgram, context);
 }
 
+export function proofTraceFromEvidence(
+  evidence: StudioExecutionEvidence,
+): readonly RuntimeEvidenceTraceEntry[] {
+  return evidence.inspectorRows.map((row) => ({
+    nodeId: row.nodeId,
+    ...(row.actorId === undefined ? {} : { actorId: row.actorId }),
+    ...(row.scriptId === undefined ? {} : { scriptId: row.scriptId }),
+    ...(row.assetIds === undefined ? {} : { assetIds: row.assetIds }),
+    ...(row.variableIds === undefined ? {} : { variableIds: row.variableIds }),
+  }));
+}
+
 export function createProposalEvidenceInspector(input: {
   readonly session: StudioProposalSession;
   readonly runtimeEvidence?: StudioExecutionEvidence;
@@ -1303,13 +1316,7 @@ export function createProposalEvidenceInspector(input: {
       ? undefined
       : bindProposalRuntimeEvidence(
           input.session.review.proposal,
-          input.runtimeEvidence.inspectorRows.map((row) => ({
-            nodeId: row.nodeId,
-            ...(row.actorId === undefined ? {} : { actorId: row.actorId }),
-            ...(row.scriptId === undefined ? {} : { scriptId: row.scriptId }),
-            ...(row.assetIds === undefined ? {} : { assetIds: row.assetIds }),
-            ...(row.variableIds === undefined ? {} : { variableIds: row.variableIds }),
-          })),
+          proofTraceFromEvidence(input.runtimeEvidence),
         );
   return createProposalComparisonView(input.session.review, {
     ...(input.learnerModifiedProgram === undefined
