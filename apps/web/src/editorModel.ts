@@ -10,7 +10,11 @@ import {
   type StatementContainerPath,
 } from "@agorix/block-editor";
 import { FIRST_MISSION } from "@agorix/curriculum";
-import { migrateLegacyTriggers, type ProjectProgram } from "@agorix/program-model";
+import {
+  migrateLegacyTriggers,
+  type ProgramVariable,
+  type ProjectProgram,
+} from "@agorix/program-model";
 import { createStageSession, type StageSession } from "@agorix/stage";
 
 export interface EditorProjection {
@@ -209,12 +213,92 @@ export function addBlockToWorkspaceAt(
   scriptIndex = 0,
 ): EditorProjection {
   const block = createDefaultBlock(type, blockId(type, index));
+  const nextBlock: BlockNode = refersToVariable(type)
+    ? { ...block, fields: { ...block.fields, variableId: defaultVariableIdFor(workspace) } }
+    : block;
   return fromUpdate(
     applyWorkspaceChange(workspace, {
       type: "addBlock",
       container: containerForPath(workspace, containerPath, scriptIndex),
       index,
-      block,
+      block: nextBlock,
+    }),
+  );
+}
+
+function refersToVariable(type: AddableBlockType): boolean {
+  return (
+    type === "variables_set" ||
+    type === "variables_change" ||
+    type === "variables_show" ||
+    type === "variables_hide"
+  );
+}
+
+export function defaultVariableIdFor(workspace: BlockWorkspaceSnapshot): string {
+  return workspace.variables?.[0]?.id ?? "score";
+}
+
+function slugify(text: string): string {
+  const slug = text
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug.length > 0 ? slug.slice(0, 60) : "variable";
+}
+
+export function variableNamed(
+  variables: readonly ProgramVariable[] | undefined,
+  name: string,
+  scriptIds: readonly string[] = [],
+): string {
+  const trimmed = name.trim();
+  const base = slugify(trimmed);
+  const taken = new Set([...(variables ?? []).map((variable) => variable.id), ...scriptIds]);
+  let id = base;
+  let suffix = 2;
+  while (taken.has(id)) {
+    id = `${base}${suffix}`;
+    suffix += 1;
+  }
+  return id;
+}
+
+export function makeVariableInWorkspace(
+  workspace: BlockWorkspaceSnapshot,
+  rawName: string,
+): EditorProjection {
+  const name = rawName.trim();
+  const scriptIds = workspace.scripts.flatMap((script) =>
+    script.programId === undefined ? [] : [script.programId],
+  );
+  const variable: ProgramVariable = {
+    id: variableNamed(workspace.variables, name, scriptIds),
+    name,
+    initialValue: 0,
+    visible: true,
+  };
+  return fromUpdate(applyWorkspaceChange(workspace, { type: "addVariable", variable }));
+}
+
+export function addVariableSetBlockFor(
+  workspace: BlockWorkspaceSnapshot,
+  variableId: string,
+  scriptIndex = 0,
+): EditorProjection {
+  const index = nextBlockIndex(workspace, scriptIndex);
+  const block = createDefaultBlock("variables_set", blockId("variables_set", index));
+  const targetBlock: BlockNode = {
+    ...block,
+    fields: { ...block.fields, variableId },
+  };
+  return fromUpdate(
+    applyWorkspaceChange(workspace, {
+      type: "addBlock",
+      container: containerForPath(workspace, [], scriptIndex),
+      index,
+      block: targetBlock,
     }),
   );
 }

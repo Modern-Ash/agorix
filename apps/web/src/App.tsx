@@ -17,6 +17,7 @@ import {
   type ProjectMetadata,
 } from "@agorix/persistence";
 import type {
+  ProgramVariable,
   ProjectActor,
   ProjectAsset,
   ProjectCreativeState,
@@ -106,6 +107,7 @@ import {
   addBlockToWorkspace,
   addBlockToWorkspaceAt,
   addScriptToWorkspace,
+  addVariableSetBlockFor,
   blockNodeIdForPath,
   canContainStatements,
   childContainerPathFor,
@@ -125,6 +127,7 @@ import {
   indexInContainer,
   finalMoveIndex,
   INITIAL_STAGE,
+  makeVariableInWorkspace,
   moveBlockInWorkspaceByPath,
   parentContainerPath,
   resetWorkspace,
@@ -574,6 +577,23 @@ function variableNumberValue(block: BlockNode, input: "value" | "delta"): number
   return typeof value === "number" ? value : 0;
 }
 
+function refersToVariable(block: BlockNode): boolean {
+  return (
+    block.type === "variables_set" ||
+    block.type === "variables_change" ||
+    block.type === "variables_show" ||
+    block.type === "variables_hide"
+  );
+}
+
+function variableNameForId(
+  variables: readonly ProgramVariable[] | undefined,
+  variableId: string,
+): string {
+  const name = variables?.find((variable) => variable.id === variableId)?.name;
+  return name ?? variableId;
+}
+
 function displayNameForType(type: string, locale: Locale): string {
   switch (type) {
     case "motion_move":
@@ -750,6 +770,7 @@ type PaletteBlock = {
   readonly detail: string;
   readonly glyph: string;
   readonly type?: AddableBlockType;
+  readonly action?: "makeVariable";
   readonly enabled: boolean;
 };
 
@@ -1076,7 +1097,8 @@ function scratchPaletteFor(locale: Locale): readonly PaletteCategory[] {
           label: es ? "Crear variable" : "Make variable",
           detail: es ? "Guarda datos" : "Store data",
           glyph: "v",
-          enabled: false,
+          action: "makeVariable",
+          enabled: true,
         },
         {
           id: "var_set",
@@ -2002,6 +2024,7 @@ export function ProgramBlockCard({
   canonicalNodeId,
   locale,
   assets = [],
+  variables,
   children,
   onSelect,
   onCommitValue,
@@ -2029,6 +2052,7 @@ export function ProgramBlockCard({
   canonicalNodeId: string;
   locale: Locale;
   assets?: readonly ProjectAsset[] | undefined;
+  variables?: readonly ProgramVariable[] | undefined;
   children?: ReactNode;
   onSelect: () => void;
   onCommitValue: (value: number) => void;
@@ -2173,10 +2197,51 @@ export function ProgramBlockCard({
   const blockTone = blockToneFor(block.type);
   const blockShape = blockShapeFor(block.type);
   const hasStatementContainer = canContainStatements(block);
+  const variableId = refersToVariable(block)
+    ? typeof block.fields?.variableId === "string"
+      ? block.fields.variableId
+      : ""
+    : undefined;
+  const variableOptionLabels = new Map<string, number>();
+  const variableOptions =
+    variableId === undefined
+      ? []
+      : [
+          ...(variables ?? []).map((variable) => {
+            const count = variableOptionLabels.get(variable.name) ?? 0;
+            variableOptionLabels.set(variable.name, count + 1);
+            return {
+              id: variable.id,
+              label: count === 0 ? variable.name : `${variable.name} (${variable.id})`,
+            };
+          }),
+          ...(variableId === "" || (variables ?? []).some((variable) => variable.id === variableId)
+            ? []
+            : [{ id: variableId, label: variableNameForId(variables, variableId) }]),
+        ];
   const fieldSummary = Object.entries(block.fields ?? {})
-    .filter(([key]) => key !== field && key !== textField && key !== assetField)
+    .filter(
+      ([key]) => key !== field && key !== textField && key !== assetField && key !== "variableId",
+    )
     .map(([, value]) => String(value))
     .join(" ");
+  const variableSelector =
+    variableId === undefined ? null : (
+      <span className="block-slot block-inline-value block-select-value">
+        <select
+          value={variableId}
+          aria-label={`${displayName} ${t(locale, "variableField")}`}
+          onChange={(event) => onCommitField?.("variableId", event.currentTarget.value)}
+          draggable={false}
+        >
+          {variableOptions.map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </span>
+    );
 
   return (
     <article
@@ -2263,6 +2328,7 @@ export function ProgramBlockCard({
           </span>
         ) : numericLabel !== undefined ? (
           <label className="value-editor block-inline-value">
+            {variableSelector}
             <input
               type="number"
               inputMode="numeric"
@@ -2278,6 +2344,8 @@ export function ProgramBlockCard({
             />
             <span>{fieldLabelFor(numericLabel, locale)}</span>
           </label>
+        ) : variableSelector !== null ? (
+          variableSelector
         ) : textField !== undefined ? (
           <label className="value-editor block-inline-value block-text-value">
             <input
@@ -3255,6 +3323,32 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     }
   }
 
+  function handleMakeVariable() {
+    const name = window.prompt(t(locale, "makeVariablePrompt"), "")?.trim();
+    if (name === undefined) {
+      return;
+    }
+    if (name.length === 0 || name.length > 60) {
+      setMessage(t(locale, "makeVariableInvalid"));
+      return;
+    }
+    const made = makeVariableInWorkspace(model.workspace, name);
+    const variable = made.workspace.variables?.at(-1);
+    if (variable === undefined) {
+      return;
+    }
+    const withBlock = addVariableSetBlockFor(made.workspace, variable.id, activeScriptIndex);
+    if (!commitProjection("make variable", withBlock)) {
+      return;
+    }
+    setMessage(t(locale, "variableCreated", { name: variable.name }));
+    setAnnouncement(
+      t(locale, "announceVariableCreated", {
+        name: variable.name,
+      }),
+    );
+  }
+
   function addEventScript(triggerType: AddableTriggerType) {
     const nextIndex = model.workspace.scripts.length;
     const projection = addScriptToWorkspace(model.workspace, triggerType);
@@ -3320,24 +3414,30 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
       )
     ) {
       setMessage(t(locale, "programUpdatedMessage"));
+      const fieldLabel =
+        field === "variableId"
+          ? t(locale, "variableField")
+          : editableFieldLabelFor(
+              field as
+                | "steps"
+                | "degrees"
+                | "count"
+                | "size"
+                | "value"
+                | "delta"
+                | "text"
+                | "message"
+                | "costumeId"
+                | "backdropId",
+              locale,
+            );
+      const announcedValue =
+        field === "variableId" ? variableNameForId(model.workspace.variables, value) : value;
       setAnnouncement(
         t(locale, "announceEdited", {
           name: displayNameFor(block, locale),
-          field: editableFieldLabelFor(
-            field as
-              | "steps"
-              | "degrees"
-              | "count"
-              | "size"
-              | "value"
-              | "delta"
-              | "text"
-              | "message"
-              | "costumeId"
-              | "backdropId",
-            locale,
-          ),
-          value,
+          field: fieldLabel,
+          value: announcedValue,
         }),
       );
     }
@@ -3606,7 +3706,23 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
       })),
       observations,
     };
-    const nextFrames = framesFromRuntimeObservations(observations);
+    const variableNameById = new Map(
+      (model.program.variables ?? []).map((variable) => [variable.id, variable.name] as const),
+    );
+    const nextFrames = framesFromRuntimeObservations(observations).map((frame) => ({
+      ...frame,
+      state: {
+        ...frame.state,
+        ...(frame.state.variables === undefined
+          ? {}
+          : {
+              variables: frame.state.variables.map((watcher) => {
+                const name = variableNameById.get(watcher.id);
+                return name === undefined ? watcher : { ...watcher, label: name };
+              }),
+            }),
+      },
+    }));
     const nextSteps = executionStepsFromRuntimeObservations(observations);
     const nextTrace = learnerTraceFromExecutionSteps(nextSteps, "beginner");
     setLastRunResult(result);
@@ -4072,6 +4188,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
           canonicalNodeId={nodeId}
           locale={locale}
           assets={creativeState.assets}
+          variables={model.workspace.variables}
           onSelect={() => setHighlightedNodeId(nodeId)}
           onCommitValue={(value) => editBlockAt(path, block, value)}
           onCommitCondition={(kind) => editIfCondition(path, block, kind)}
@@ -4497,7 +4614,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
                       type="button"
                       className={`tool-button tool-${block.id}${block.enabled ? "" : " tool-disabled"}`}
                       aria-label={block.label}
-                      draggable={block.enabled}
+                      draggable={block.enabled && block.type !== undefined}
                       disabled={!block.enabled}
                       data-category={section.tone}
                       onDragStart={(event) => {
@@ -4506,6 +4623,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
                       onDragEnd={clearDragState}
                       onClick={() => {
                         if (block.type !== undefined) addBlock(block.type);
+                        else if (block.action === "makeVariable") handleMakeVariable();
                       }}
                     >
                       <span className="tool-glyph" aria-hidden="true">
