@@ -73,6 +73,8 @@ export interface RuntimeObservation {
   readonly world: WorldState;
   readonly actorId?: string;
   readonly scriptId?: string;
+  /** The program event that activated this run, so traces can explain "why did this run?". */
+  readonly event?: ProgramEvent;
 }
 
 export interface SanitizedTutorContext {
@@ -103,6 +105,7 @@ interface MutableRunState {
   stepsUsed: number;
   readonly maxSteps: number;
   readonly options: ExecutionOptions;
+  readonly event: ProgramEvent;
   readonly trace: ExecutionTraceEntry[];
   readonly observations: RuntimeObservation[];
   randomState: number;
@@ -286,6 +289,7 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
     nodeId,
     statementType: statement.type,
     world: before,
+    event: state.event,
   });
 
   switch (statement.type) {
@@ -381,6 +385,7 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
     nodeId,
     statementType: statement.type,
     world: worldAfter,
+    event: state.event,
   });
 }
 
@@ -443,6 +448,7 @@ export function runProgram(
     stepsUsed: 0,
     maxSteps: normalizeBudget(options.maxSteps),
     options,
+    event,
     trace: [],
     observations: [],
     randomState: normalizeRandomSeed(options.randomSeed),
@@ -467,6 +473,7 @@ export function runProgram(
       nodeId: "$",
       outcome: "completed",
       world,
+      event: state.event,
     });
     return {
       outcome: "completed",
@@ -484,6 +491,7 @@ export function runProgram(
         nodeId: "$",
         outcome: error.outcome,
         world,
+        event: state.event,
       });
       return {
         outcome: error.outcome,

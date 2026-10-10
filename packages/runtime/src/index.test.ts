@@ -416,6 +416,28 @@ describe("observations and reset", () => {
     expect(JSON.stringify(result.observations)).toBe(JSON.stringify(result.observations));
   });
 
+  it("tags every observation with the activating event for traceability", () => {
+    const messageProgram: ProjectProgram = {
+      schema: SCHEMA_VERSION,
+      scripts: [
+        {
+          id: "react",
+          trigger: { type: "onMessage", message: "go" },
+          statements: [{ type: "broadcast", message: "done" }],
+        },
+      ],
+    };
+    const result = runProgram(messageProgram, createWorldState(), {
+      collectObservations: true,
+      event: "message:go",
+    });
+    expect(result.stepsUsed).toBe(1);
+    expect(result.observations[0]?.statementType).toBe("broadcast");
+    expect(result.observations.every((observation) => observation.event === "message:go")).toBe(
+      true,
+    );
+  });
+
   it("provides sanitized serializable tutor context from observations", () => {
     const result = runProgram(program([{ type: "move", steps: 2 }]), createWorldState(), {
       collectObservations: true,

@@ -35,6 +35,12 @@ describe("green-flag trigger", () => {
     expect(eventForTrigger({ type: "onStart" })).toBe("greenFlag");
   });
 
+  it("maps interaction triggers to their canonical events", () => {
+    expect(eventForTrigger({ type: "onKeyPressed", key: "ArrowUp" })).toBe("key:ArrowUp");
+    expect(eventForTrigger({ type: "onActorClicked" })).toBe("actorClicked");
+    expect(eventForTrigger({ type: "onMessage", message: "go" })).toBe("message:go");
+  });
+
   it("migrates only legacy hats, without touching anything else or mutating the input", () => {
     const legacy = program("onStart", "greenFlag", "onStart");
     const migrated = migrateLegacyTriggers(legacy);

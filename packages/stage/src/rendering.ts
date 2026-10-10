@@ -45,6 +45,7 @@ export interface ExecutionStep {
   readonly actorId?: string;
   readonly scriptId?: string;
   readonly statementType?: RuntimeObservation["statementType"];
+  readonly event?: RuntimeObservation["event"];
   readonly timing: ExecutionStepTiming;
   readonly frame: ObservationFrame;
   readonly observation: RuntimeObservation;
@@ -64,6 +65,7 @@ export interface LearnerTraceItem {
   readonly nodeId?: string;
   readonly actorId?: string;
   readonly scriptId?: string;
+  readonly event?: RuntimeObservation["event"];
   readonly profile: LearnerTraceProfile;
   readonly title: string;
   readonly summary: string;
@@ -195,6 +197,7 @@ export function executionStepsFromRuntimeObservations(
       ...(nodeId === undefined ? {} : { nodeId }),
       ...(observation.actorId === undefined ? {} : { actorId: observation.actorId }),
       ...(observation.scriptId === undefined ? {} : { scriptId: observation.scriptId }),
+      ...(observation.event === undefined ? {} : { event: observation.event }),
       ...(observation.statementType === undefined
         ? {}
         : { statementType: observation.statementType }),
@@ -276,6 +279,7 @@ function makeSummary(
     return sounds.length === 0 ? "Sound cue recorded" : `Sound playing: ${sounds.join(", ")}`;
   }
   if (step.statementType === "stopSounds") return "Sounds stopped";
+  if (step.statementType === "broadcast") return "Broadcast message sent";
   if (profile === "studio") {
     return `before: x=${before.x} y=${before.y} heading=${before.heading}; after: x=${after.x} y=${after.y} heading=${after.heading}`;
   }
@@ -316,6 +320,8 @@ function titleForStep(step: ExecutionStep, profile: LearnerTraceProfile): string
       return "Play sound";
     case "stopSounds":
       return "Stop sounds";
+    case "broadcast":
+      return "Broadcast";
     default:
       return "Instruction";
   }
@@ -348,6 +354,7 @@ export function learnerTraceFromExecutionSteps(
       ...(step.nodeId === undefined ? {} : { nodeId: step.nodeId }),
       ...(step.actorId === undefined ? {} : { actorId: step.actorId }),
       ...(step.scriptId === undefined ? {} : { scriptId: step.scriptId }),
+      ...(step.event === undefined ? {} : { event: step.event }),
       profile,
       title: titleForStep(step, profile),
       summary: makeSummary(profile, step, before, after, delta),

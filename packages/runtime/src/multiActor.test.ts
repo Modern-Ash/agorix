@@ -225,6 +225,9 @@ describe("runMultiActorProgram", () => {
     expect(result.trace.map((entry) => [entry.scriptId, entry.event])).toEqual([
       ["right", { type: "keyPressed", key: "ArrowRight" }],
     ]);
+    expect(result.frames.map((frame) => frame.event)).toEqual([
+      { type: "keyPressed", key: "ArrowRight" },
+    ]);
     expect(result.actors[0]?.world.sprite.x).toBe(7);
   });
 
@@ -294,6 +297,11 @@ describe("runMultiActorProgram", () => {
     ]);
     expect(a.trace[2]?.activationId).toBe(a.activations[1]?.id);
     expect(a.activations[1]?.reason).toContain("broadcast by actor:main");
+    expect(a.frames.map((frame) => frame.event)).toEqual([
+      { type: "start" },
+      { type: "start" },
+      { type: "message", message: "go", senderActorId: "actor:main" },
+    ]);
   });
 
   it("stops broadcast loops at the shared execution budget", () => {
