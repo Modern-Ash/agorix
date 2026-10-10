@@ -85,6 +85,8 @@ export function projectPython(program: ProjectProgram): LanguageProjectionResult
         "set_size",
         "switch_costume",
         "switch_backdrop",
+        "play_sound",
+        "stop_sounds",
         "show_variable",
         "hide_variable",
         "random_number",
@@ -136,6 +138,16 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
         nodeId,
         indent + "switch_backdrop(" + JSON.stringify(statement.backdropId) + ")\n",
       );
+      return;
+    case "playSound":
+      writeMapped(
+        writer,
+        nodeId,
+        indent + "play_sound(" + JSON.stringify(statement.soundId) + ")\n",
+      );
+      return;
+    case "stopSounds":
+      writeMapped(writer, nodeId, indent + "stop_sounds()\n");
       return;
     case "setVariable":
       writeMapped(

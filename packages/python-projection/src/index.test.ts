@@ -87,6 +87,8 @@ describe("Python projection", () => {
         "set_size",
         "switch_costume",
         "switch_backdrop",
+        "play_sound",
+        "stop_sounds",
         "show_variable",
         "hide_variable",
         "random_number",
@@ -386,6 +388,38 @@ describe("Python projection: Looks operations", () => {
       "scripts[0]/statements[5]",
       "scripts[0]/statements[6]",
     ]) {
+      const range = result.mapping[nodeId]?.[0];
+      expect(range).toBeDefined();
+      expect(result.text.slice(range!.start, range!.end)).toMatch(/^ {4}/);
+    }
+  });
+});
+
+describe("Python projection: Sound operations", () => {
+  const soundProgram: ProjectProgram = {
+    schema: SCHEMA_VERSION,
+    scripts: [
+      {
+        id: "main",
+        trigger: { type: "onStart" },
+        statements: [{ type: "playSound", soundId: "asset:sound.beacon" }, { type: "stopSounds" }],
+      },
+    ],
+  };
+
+  it("projects Sound operations as beginner-readable Python without diagnostics", () => {
+    const result = projectPython(soundProgram);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toBe(
+      ["def on_start():", '    play_sound("asset:sound.beacon")', "    stop_sounds()", ""].join(
+        "\n",
+      ),
+    );
+  });
+
+  it("maps each Sound statement to its visible text", () => {
+    const result = projectPython(soundProgram);
+    for (const nodeId of ["scripts[0]/statements[0]", "scripts[0]/statements[1]"]) {
       const range = result.mapping[nodeId]?.[0];
       expect(range).toBeDefined();
       expect(result.text.slice(range!.start, range!.end)).toMatch(/^ {4}/);

@@ -313,3 +313,33 @@ describe("Agorix Code projection: variables and operators", () => {
     ).not.toThrow();
   });
 });
+
+describe("Agorix Code projection: Sound operations", () => {
+  const soundProgram: ProjectProgram = {
+    schema: SCHEMA_VERSION,
+    scripts: [
+      {
+        id: "main",
+        trigger: { type: "onStart" },
+        statements: [{ type: "playSound", soundId: "asset:sound.beacon" }, { type: "stopSounds" }],
+      },
+    ],
+  };
+
+  it("projects Sound operations as readable Agorix Code without diagnostics", () => {
+    const result = projectAgorixCode(soundProgram);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toBe(
+      ["when start", '  play sound "asset:sound.beacon"', "  stop all sounds", ""].join("\n"),
+    );
+  });
+
+  it("maps each Sound statement to its visible text", () => {
+    const result = projectAgorixCode(soundProgram);
+    for (const nodeId of ["scripts[0]/statements[0]", "scripts[0]/statements[1]"]) {
+      const range = result.mapping[nodeId]?.[0];
+      expect(range).toBeDefined();
+      expect(result.text.slice(range!.start, range!.end)).toMatch(/^ {2}/);
+    }
+  });
+});
