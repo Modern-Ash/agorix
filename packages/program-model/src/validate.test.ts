@@ -102,6 +102,76 @@ describe("validateProgram", () => {
     expect(() => validateProgram(input)).toThrow(ProgramValidationError);
   });
 
+  // R4 — event triggers are validated with bounded payloads.
+  it("validates event trigger payloads and bounds", () => {
+    const key = { type: "onKeyPressed", key: "ArrowUp" };
+    const click = { type: "onActorClicked" };
+    const message = { type: "onMessage", message: "go" };
+    expect(
+      validateProgram({
+        schema: SCHEMA_VERSION,
+        scripts: [{ id: "a", trigger: key, statements: [] }],
+      }).scripts[0]?.trigger,
+    ).toEqual(key);
+    expect(
+      validateProgram({
+        schema: SCHEMA_VERSION,
+        scripts: [{ id: "b", trigger: click, statements: [] }],
+      }).scripts[0]?.trigger,
+    ).toEqual(click);
+    expect(
+      validateProgram({
+        schema: SCHEMA_VERSION,
+        scripts: [{ id: "c", trigger: message, statements: [] }],
+      }).scripts[0]?.trigger,
+    ).toEqual(message);
+    expect(() =>
+      validateProgram({
+        schema: SCHEMA_VERSION,
+        scripts: [
+          { id: "d", trigger: { type: "onKeyPressed", key: "x".repeat(41) }, statements: [] },
+        ],
+      }),
+    ).toThrowError(/scripts\[0\]\.trigger\.key/);
+    expect(() =>
+      validateProgram({
+        schema: SCHEMA_VERSION,
+        scripts: [
+          { id: "e", trigger: { type: "onMessage", message: "y".repeat(81) }, statements: [] },
+        ],
+      }),
+    ).toThrowError(/scripts\[0\]\.trigger\.message/);
+  });
+
+  // R4 — broadcast message payload is validated at the statement level.
+  it("validates broadcast statement messages within bounds", () => {
+    const input = {
+      schema: SCHEMA_VERSION,
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [{ type: "broadcast", message: "m".repeat(81) }],
+        },
+      ],
+    };
+    expect(() => validateProgram(input)).toThrowError(/statements\[0\]\.message/);
+    const ok = {
+      schema: SCHEMA_VERSION,
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [{ type: "broadcast", message: "go" }],
+        },
+      ],
+    };
+    expect(validateProgram(ok).scripts[0]?.statements[0]).toEqual({
+      type: "broadcast",
+      message: "go",
+    });
+  });
+
   // R4 — malformed nesting (missing required field) fails validation, naming the path.
   it("rejects a statement missing a required field", () => {
     const input = {

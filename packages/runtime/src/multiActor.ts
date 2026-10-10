@@ -36,6 +36,7 @@ export interface MultiActorRuntimeStage {
 export interface MultiActorFrame {
   readonly step: number;
   readonly activationId: string;
+  readonly event: RuntimeEvent;
   readonly actorId: string;
   readonly scriptId: string;
   readonly nodeId: string;
@@ -406,6 +407,7 @@ export function runMultiActorProgram(
           frames.push({
             step: mapped.step,
             activationId,
+            event: cloneRuntimeEvent(event),
             actorId: actor.id,
             scriptId: script.id,
             nodeId,

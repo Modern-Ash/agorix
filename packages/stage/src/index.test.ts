@@ -412,6 +412,32 @@ describe("stage", () => {
     ]);
   });
 
+  it("surfaces broadcast vocabulary and the activating event in learner traces", () => {
+    const observations: RuntimeObservation[] = [
+      {
+        kind: "statement-end",
+        step: 1,
+        nodeId: "scripts[0]/statements[0]",
+        statementType: "broadcast",
+        event: "message:go",
+        world: {
+          sprite: { x: 0, y: 0, heading: 0 },
+          goal: { x: 100, y: 0 },
+        },
+      },
+    ];
+
+    const steps = executionStepsFromRuntimeObservations(observations);
+    const trace = learnerTraceFromExecutionSteps(steps);
+
+    expect(steps[0]?.event).toBe("message:go");
+    expect(trace[0]).toMatchObject({
+      title: "Broadcast",
+      summary: "Broadcast message sent",
+      event: "message:go",
+    });
+  });
+
   it("keeps Phaser out of the stage domain package", () => {
     const sourceFiles = ["index.ts", "model.ts", "rendering.ts"];
     for (const file of sourceFiles) {
