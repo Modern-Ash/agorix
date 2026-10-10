@@ -171,7 +171,10 @@ const CREATIVE_CONTEXT_CONTRACT = "agorix/proposal-creative-context/v1";
 
 export function creativeContextHash(context: ProposalCreativeContext): string {
   const actors = [...(context.actors ?? [])]
-    .map((actor) => ({ id: actor.id, scripts: [...(actor.scripts ?? [])].sort() }))
+    .map((actor) => ({
+      id: actor.id,
+      scripts: actor.scripts === undefined ? null : [...actor.scripts].sort(),
+    }))
     .sort((left, right) => left.id.localeCompare(right.id));
   return stableHash(stableStringify({ contractVersion: CREATIVE_CONTEXT_CONTRACT, actors }));
 }
@@ -846,7 +849,7 @@ function assertActorScope(
       return;
     }
     const owners = actors
-      .filter((actor) => actor.scripts?.includes(script.id) === true)
+      .filter((actor) => actor.scripts === undefined || actor.scripts.includes(script.id))
       .map((actor) => actor.id);
     if (!owners.some((id) => declared.includes(id))) {
       throw new ProposalValidationError(

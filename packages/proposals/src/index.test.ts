@@ -917,6 +917,29 @@ describe("actor scope", () => {
     ).toBe("ACTOR_SCOPE_VIOLATION");
   });
 
+  it("treats an actor with no script list as owning every script, like the runtime", () => {
+    const single = [{ id: "actor:main" }];
+    expect(() =>
+      createProposalReview(
+        multiScriptProgram,
+        actorProposal({ actors: ["actor:main"], scriptIndex: 1 }),
+        { actors: single },
+      ),
+    ).not.toThrow();
+    expect(
+      codeOf(() =>
+        createProposalReview(
+          multiScriptProgram,
+          actorProposal({ actors: ["actor:main"], scriptIndex: 1 }),
+          { actors: [{ id: "actor:main" }, { id: "actor:other" }] },
+        ),
+      ),
+    ).toBe("ACTOR_SCOPE_VIOLATION");
+    expect(creativeContextHash({ actors: [{ id: "actor:main" }] })).not.toBe(
+      creativeContextHash({ actors: [{ id: "actor:main", scripts: [] }] }),
+    );
+  });
+
   it("behaves as before without context or without declared actors", () => {
     const proposal = actorProposal({ actors: ["actor:explorer"], scriptIndex: 1 });
     expect(createProposalReview(multiScriptProgram, proposal).creativeContextHash).toBeUndefined();
