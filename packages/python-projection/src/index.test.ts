@@ -87,9 +87,253 @@ describe("Python projection", () => {
         "set_size",
         "switch_costume",
         "switch_backdrop",
+        "show_variable",
+        "hide_variable",
+        "random_number",
       ],
       executable: false,
     });
+  });
+});
+
+describe("Python projection: variables and operators", () => {
+  const variablesProgram: ProjectProgram = {
+    schema: SCHEMA_VERSION,
+    variables: [{ id: "score", name: "score", initialValue: 0, visible: true }],
+    scripts: [
+      {
+        id: "main",
+        trigger: { type: "onStart" },
+        statements: [
+          {
+            type: "changeVariable",
+            variableId: "score",
+            delta: {
+              type: "add",
+              left: { type: "variable", variableId: "score" },
+              right: { type: "numericLiteral", value: 1 },
+            },
+          },
+          {
+            type: "setVariable",
+            variableId: "score",
+            value: {
+              type: "random",
+              min: { type: "numericLiteral", value: 1 },
+              max: { type: "numericLiteral", value: 10 },
+            },
+          },
+          {
+            type: "if",
+            condition: {
+              type: "and",
+              left: {
+                type: "lessThan",
+                left: { type: "variable", variableId: "score" },
+                right: { type: "numericLiteral", value: 10 },
+              },
+              right: { type: "not", value: { type: "booleanLiteral", value: false } },
+            },
+            then: [
+              { type: "showVariable", variableId: "score" },
+              { type: "hideVariable", variableId: "score" },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+
+  it("projects variables, operators and deterministic random without diagnostics", () => {
+    const result = projectPython(variablesProgram);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toBe(
+      [
+        "score = 0",
+        'show_variable("score")',
+        "",
+        "def on_start():",
+        "    global score",
+        "    score += (score + 1)",
+        "    score = random_number(1, 10)",
+        "    if ((score < 10) and (not False)):",
+        '        show_variable("score")',
+        '        hide_variable("score")',
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("maps variable declarations and statements to their visible text", () => {
+    const result = projectPython(variablesProgram);
+    const declaration = result.mapping["variables/score"]?.[0];
+    expect(declaration).toBeDefined();
+    expect(result.text.slice(declaration!.start, declaration!.end)).toBe("score = 0\n");
+    for (const nodeId of [
+      "scripts[0]/statements[0]",
+      "scripts[0]/statements[1]",
+      "scripts[0]/statements[2]/then[0]",
+      "scripts[0]/statements[2]/then[1]",
+    ]) {
+      expect(result.mapping[nodeId]?.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("passes shared conformance for variable and operator programs", () => {
+    expect(() =>
+      assertLanguageProjectionConformance(pythonProjection, {
+        name: "python variables and operators",
+        program: variablesProgram,
+        requiredNodeIds: ["scripts[0]", "scripts[0]/statements[0]", "scripts[0]/statements[2]"],
+      }),
+    ).not.toThrow();
+  });
+
+  it("escapes Python reserved words used as variable names", () => {
+    const keywordProgram: ProjectProgram = {
+      schema: SCHEMA_VERSION,
+      variables: [{ id: "kw", name: "class", initialValue: 0, visible: false }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            { type: "setVariable", variableId: "kw", value: { type: "numericLiteral", value: 1 } },
+            {
+              type: "if",
+              condition: {
+                type: "equals",
+                left: { type: "variable", variableId: "kw" },
+                right: { type: "numericLiteral", value: 1 },
+              },
+              then: [],
+            },
+          ],
+        },
+      ],
+    };
+
+    const result = projectPython(keywordProgram);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toContain("class_ = 0");
+    expect(result.text).toContain("    global class_");
+    expect(result.text).toContain("class_ = 1");
+    expect(result.text).toContain("(class_ == 1)");
+  });
+
+  it("aligns variable reads and writes on one sanitized identifier", () => {
+    const spacedProgram: ProjectProgram = {
+      schema: SCHEMA_VERSION,
+      variables: [{ id: "total", name: "Total Hits!", initialValue: 0, visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "setVariable",
+              variableId: "total",
+              value: {
+                type: "add",
+                left: { type: "variable", variableId: "total" },
+                right: { type: "numericLiteral", value: 1 },
+              },
+            },
+            {
+              type: "if",
+              condition: {
+                type: "equals",
+                left: { type: "variable", variableId: "total" },
+                right: { type: "numericLiteral", value: 1 },
+              },
+              then: [],
+            },
+          ],
+        },
+      ],
+    };
+
+    const result = projectPython(spacedProgram);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toContain("totalHits = 0");
+    expect(result.text).toContain("    global totalHits");
+    expect(result.text).toContain("totalHits = (totalHits + 1)");
+    expect(result.text).toContain("if (totalHits == 1):");
+  });
+
+  it("escapes variables that collide with generated helpers and builtins", () => {
+    const collisionProgram: ProjectProgram = {
+      schema: SCHEMA_VERSION,
+      variables: [
+        { id: "helper", name: "move", initialValue: 0, visible: false },
+        { id: "builtin", name: "range", initialValue: 0, visible: false },
+        { id: "api", name: "say", initialValue: 0, visible: false },
+      ],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            { type: "repeat", count: 1, body: [] },
+            { type: "showVariable", variableId: "helper" },
+          ],
+        },
+      ],
+    };
+
+    const result = projectPython(collisionProgram);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toContain("move_ = 0");
+    expect(result.text).toContain("range_ = 0");
+    expect(result.text).toContain("say_ = 0");
+    expect(result.text).toContain('show_variable("move_")');
+    expect(result.text).not.toContain("move(");
+  });
+
+  it("encodes initial watcher visibility in the declaration block", () => {
+    const visibilityProgram: ProjectProgram = {
+      schema: SCHEMA_VERSION,
+      variables: [
+        { id: "shown", name: "shown", initialValue: 0, visible: true },
+        { id: "hidden", name: "hidden", initialValue: 0, visible: false },
+      ],
+      scripts: [],
+    };
+
+    const result = projectPython(visibilityProgram);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toContain('shown = 0\nshow_variable("shown")');
+    expect(result.text).toContain("hidden = 0");
+    expect(result.text.split("show_variable")).toHaveLength(2);
+  });
+
+  it("keeps watcher operations keyed to disambiguated identifiers", () => {
+    const duplicateProgram: ProjectProgram = {
+      schema: SCHEMA_VERSION,
+      variables: [
+        { id: "first", name: "score", initialValue: 0, visible: true },
+        { id: "second", name: "score", initialValue: 0, visible: true },
+      ],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            { type: "showVariable", variableId: "first" },
+            { type: "showVariable", variableId: "second" },
+            { type: "hideVariable", variableId: "second" },
+          ],
+        },
+      ],
+    };
+
+    const result = projectPython(duplicateProgram);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toContain("score = 0");
+    expect(result.text).toContain("score2 = 0");
+    expect(result.text).toContain('show_variable("score")');
+    expect(result.text).toContain('show_variable("score2")');
+    expect(result.text).toContain('hide_variable("score2")');
   });
 });
 

@@ -24,17 +24,44 @@ interface Writer {
   text: string;
   mapping: Record<string, TextRange[]>;
   diagnostics: LanguageProjectionDiagnostic[];
+  variableNames: ReadonlyMap<string, string>;
 }
 
 export function projectPython(program: ProjectProgram): LanguageProjectionResult {
   const validated = validateProgram(program);
-  const writer: Writer = { text: "", mapping: {}, diagnostics: [] };
+  const writer: Writer = {
+    text: "",
+    mapping: {},
+    diagnostics: [],
+    variableNames: variableNamesFor(validated.variables),
+  };
+  for (const variable of validated.variables ?? []) {
+    writeMapped(
+      writer,
+      "variables/" + variable.id,
+      variableIdentifier(writer, variable.id) + " = " + formatNumber(variable.initialValue) + "\n",
+    );
+    if (variable.visible) {
+      writeMapped(
+        writer,
+        "variables/" + variable.id,
+        "show_variable(" + JSON.stringify(variableIdentifier(writer, variable.id)) + ")\n",
+      );
+    }
+  }
+  if ((validated.variables?.length ?? 0) > 0) {
+    writer.text += "\n";
+  }
   validated.scripts.forEach((script, scriptIndex) => {
     const scriptId = "scripts[" + scriptIndex + "]";
     writeMapped(writer, scriptId, "def on_start():\n");
     if (script.statements.length === 0) {
       writer.text += "    pass\n";
     } else {
+      const globals = assignedVariableIdentifiers(writer, script.statements);
+      if (globals.length > 0) {
+        writer.text += "    global " + globals.join(", ") + "\n";
+      }
       script.statements.forEach((statement, index) =>
         writeStatement(writer, statement, scriptId + "/statements[" + index + "]", 1),
       );
@@ -58,6 +85,9 @@ export function projectPython(program: ProjectProgram): LanguageProjectionResult
         "set_size",
         "switch_costume",
         "switch_backdrop",
+        "show_variable",
+        "hide_variable",
+        "random_number",
       ],
       executable: false,
     },
@@ -105,6 +135,48 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
         writer,
         nodeId,
         indent + "switch_backdrop(" + JSON.stringify(statement.backdropId) + ")\n",
+      );
+      return;
+    case "setVariable":
+      writeMapped(
+        writer,
+        nodeId,
+        indent +
+          variableIdentifier(writer, statement.variableId) +
+          " = " +
+          expressionText(writer, statement.value, nodeId + "/value") +
+          "\n",
+      );
+      return;
+    case "changeVariable":
+      writeMapped(
+        writer,
+        nodeId,
+        indent +
+          variableIdentifier(writer, statement.variableId) +
+          " += " +
+          expressionText(writer, statement.delta, nodeId + "/delta") +
+          "\n",
+      );
+      return;
+    case "showVariable":
+      writeMapped(
+        writer,
+        nodeId,
+        indent +
+          "show_variable(" +
+          JSON.stringify(variableIdentifier(writer, statement.variableId)) +
+          ")\n",
+      );
+      return;
+    case "hideVariable":
+      writeMapped(
+        writer,
+        nodeId,
+        indent +
+          "hide_variable(" +
+          JSON.stringify(variableIdentifier(writer, statement.variableId)) +
+          ")\n",
       );
       return;
     case "repeat": {
@@ -155,6 +227,90 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return expression.value ? "True" : "False";
     case "numericLiteral":
       return formatNumber(expression.value);
+    case "variable":
+      return variableIdentifier(writer, expression.variableId);
+    case "add":
+      return (
+        "(" +
+        expressionText(writer, expression.left, nodeId + "/left") +
+        " + " +
+        expressionText(writer, expression.right, nodeId + "/right") +
+        ")"
+      );
+    case "subtract":
+      return (
+        "(" +
+        expressionText(writer, expression.left, nodeId + "/left") +
+        " - " +
+        expressionText(writer, expression.right, nodeId + "/right") +
+        ")"
+      );
+    case "multiply":
+      return (
+        "(" +
+        expressionText(writer, expression.left, nodeId + "/left") +
+        " * " +
+        expressionText(writer, expression.right, nodeId + "/right") +
+        ")"
+      );
+    case "divide":
+      return (
+        "(" +
+        expressionText(writer, expression.left, nodeId + "/left") +
+        " / " +
+        expressionText(writer, expression.right, nodeId + "/right") +
+        ")"
+      );
+    case "lessThan":
+      return (
+        "(" +
+        expressionText(writer, expression.left, nodeId + "/left") +
+        " < " +
+        expressionText(writer, expression.right, nodeId + "/right") +
+        ")"
+      );
+    case "greaterThan":
+      return (
+        "(" +
+        expressionText(writer, expression.left, nodeId + "/left") +
+        " > " +
+        expressionText(writer, expression.right, nodeId + "/right") +
+        ")"
+      );
+    case "equals":
+      return (
+        "(" +
+        expressionText(writer, expression.left, nodeId + "/left") +
+        " == " +
+        expressionText(writer, expression.right, nodeId + "/right") +
+        ")"
+      );
+    case "and":
+      return (
+        "(" +
+        expressionText(writer, expression.left, nodeId + "/left") +
+        " and " +
+        expressionText(writer, expression.right, nodeId + "/right") +
+        ")"
+      );
+    case "or":
+      return (
+        "(" +
+        expressionText(writer, expression.left, nodeId + "/left") +
+        " or " +
+        expressionText(writer, expression.right, nodeId + "/right") +
+        ")"
+      );
+    case "not":
+      return "(not " + expressionText(writer, expression.value, nodeId + "/value") + ")";
+    case "random":
+      return (
+        "random_number(" +
+        expressionText(writer, expression.min, nodeId + "/min") +
+        ", " +
+        expressionText(writer, expression.max, nodeId + "/max") +
+        ")"
+      );
     default: {
       const unknown = expression as { type?: unknown };
       writer.diagnostics.push(
@@ -167,6 +323,137 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return "False";
     }
   }
+}
+
+function variableIdentifier(writer: Writer, variableId: string): string {
+  return writer.variableNames.get(variableId) ?? variableId;
+}
+
+function assignedVariableIdentifiers(
+  writer: Writer,
+  statements: readonly Statement[],
+): readonly string[] {
+  const identifiers: string[] = [];
+  const seen = new Set<string>();
+  const visit = (list: readonly Statement[]): void => {
+    for (const statement of list) {
+      if (statement.type === "setVariable" || statement.type === "changeVariable") {
+        if (!writer.variableNames.has(statement.variableId)) {
+          continue;
+        }
+        const identifier = variableIdentifier(writer, statement.variableId);
+        if (!seen.has(identifier)) {
+          seen.add(identifier);
+          identifiers.push(identifier);
+        }
+      } else if (statement.type === "repeat") {
+        visit(statement.body);
+      } else if (statement.type === "if") {
+        visit(statement.then);
+      }
+    }
+  };
+  visit(statements);
+  return identifiers;
+}
+
+const PYTHON_RESERVED_WORDS: ReadonlySet<string> = new Set([
+  "False",
+  "None",
+  "True",
+  "and",
+  "as",
+  "assert",
+  "async",
+  "await",
+  "break",
+  "class",
+  "continue",
+  "def",
+  "del",
+  "elif",
+  "else",
+  "except",
+  "finally",
+  "for",
+  "from",
+  "global",
+  "if",
+  "import",
+  "in",
+  "is",
+  "lambda",
+  "nonlocal",
+  "not",
+  "or",
+  "pass",
+  "raise",
+  "return",
+  "try",
+  "while",
+  "with",
+  "yield",
+]);
+
+const PYTHON_PROJECTION_IDENTIFIERS: ReadonlySet<string> = new Set([
+  "move",
+  "turn",
+  "touching_goal",
+  "say",
+  "think",
+  "show",
+  "hide",
+  "set_size",
+  "switch_costume",
+  "switch_backdrop",
+  "show_variable",
+  "hide_variable",
+  "random_number",
+  "range",
+  "print",
+  "len",
+  "str",
+  "int",
+  "float",
+  "bool",
+  "abs",
+  "max",
+  "min",
+  "sum",
+  "round",
+]);
+
+function safeIdentifier(value: string, fallback: string): string {
+  const words = value.match(/[A-Za-z0-9]+/g) ?? [];
+  const candidate = words
+    .map((word, index) => {
+      const lower = word.toLowerCase();
+      return index === 0 ? lower : lower[0]?.toUpperCase() + lower.slice(1);
+    })
+    .join("");
+  const identifier = candidate.length > 0 ? candidate : fallback;
+  const valid = /^[A-Za-z_]/.test(identifier) ? identifier : `v${identifier}`;
+  const forbidden = PYTHON_RESERVED_WORDS.has(valid) || PYTHON_PROJECTION_IDENTIFIERS.has(valid);
+  return forbidden ? `${valid}_` : valid;
+}
+
+function variableNamesFor(
+  variables: readonly { id: string; name: string }[] | undefined,
+): ReadonlyMap<string, string> {
+  const names = new Map<string, string>();
+  const used = new Set<string>();
+  for (const variable of variables ?? []) {
+    const base = safeIdentifier(variable.name, safeIdentifier(variable.id, "value"));
+    let name = base;
+    let suffix = 2;
+    while (used.has(name)) {
+      name = `${base}${suffix}`;
+      suffix += 1;
+    }
+    used.add(name);
+    names.set(variable.id, name);
+  }
+  return names;
 }
 
 function writeMapped(writer: Writer, nodeId: string, text: string): void {

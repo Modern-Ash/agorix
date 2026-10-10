@@ -86,6 +86,7 @@ export interface MultiActorRunResult {
 export interface MultiActorExecutionOptions extends Pick<ExecutionOptions, "maxSteps"> {
   readonly goal?: WorldState["goal"];
   readonly events?: readonly RuntimeEvent[];
+  readonly randomSeed?: number;
 }
 
 interface RuntimeActorMutable {
@@ -348,6 +349,7 @@ export function runMultiActorProgram(
   const frames: MultiActorFrame[] = [];
   const activations: MultiActorScriptActivation[] = [];
   const queue = initialEvents(options.events);
+  let randomState = options.randomSeed;
 
   while (queue.length > 0) {
     const event = queue.shift();
@@ -373,7 +375,9 @@ export function runMultiActorProgram(
         const result = runProgram(singleScriptProgram(validatedProgram, script), actor.world, {
           maxSteps: maxSteps - stepsUsed,
           event: programEventForRuntimeEvent(event),
+          ...(randomState === undefined ? {} : { randomSeed: randomState }),
         });
+        randomState = result.randomState;
         outcome = mergeOutcome(outcome, result.outcome);
         for (const entry of result.trace) {
           const nodeId = remapNodeId(entry.nodeId, scriptIndex);
