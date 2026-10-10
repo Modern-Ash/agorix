@@ -68,3 +68,59 @@ describe("Agorix Code projection", () => {
     ).not.toThrow();
   });
 });
+
+describe("Agorix Code projection: Looks operations", () => {
+  const looksProgram: ProjectProgram = {
+    schema: SCHEMA_VERSION,
+    scripts: [
+      {
+        id: "main",
+        trigger: { type: "onStart" },
+        statements: [
+          { type: "say", text: "Launch sequence" },
+          { type: "think", text: "Need a better route" },
+          { type: "show" },
+          { type: "hide" },
+          { type: "setSize", size: 120 },
+          { type: "switchCostume", costumeId: "asset:costume.default" },
+          { type: "switchBackdrop", backdropId: "asset:space.nebula" },
+        ],
+      },
+    ],
+  };
+
+  it("projects Looks operations as readable Agorix Code without diagnostics", () => {
+    const result = projectAgorixCode(looksProgram);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toBe(
+      [
+        "when start",
+        '  say "Launch sequence"',
+        '  think "Need a better route"',
+        "  show",
+        "  hide",
+        "  set size to 120",
+        '  switch costume to "asset:costume.default"',
+        '  switch backdrop to "asset:space.nebula"',
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("maps each Looks statement to its visible text", () => {
+    const result = projectAgorixCode(looksProgram);
+    for (const nodeId of [
+      "scripts[0]/statements[0]",
+      "scripts[0]/statements[1]",
+      "scripts[0]/statements[2]",
+      "scripts[0]/statements[3]",
+      "scripts[0]/statements[4]",
+      "scripts[0]/statements[5]",
+      "scripts[0]/statements[6]",
+    ]) {
+      expect(result.mapping[nodeId]?.length).toBeGreaterThan(0);
+      const range = result.mapping[nodeId]![0]!;
+      expect(result.text.slice(range.start, range.end)).toMatch(/^ {2}/);
+    }
+  });
+});

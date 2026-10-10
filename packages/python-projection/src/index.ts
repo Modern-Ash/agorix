@@ -47,7 +47,18 @@ export function projectPython(program: ProjectProgram): LanguageProjectionResult
     diagnostics: writer.diagnostics,
     metadata: {
       structuralNodeIds: Object.keys(writer.mapping),
-      supportApi: ["move", "turn", "touching_goal"],
+      supportApi: [
+        "move",
+        "turn",
+        "touching_goal",
+        "say",
+        "think",
+        "show",
+        "hide",
+        "set_size",
+        "switch_costume",
+        "switch_backdrop",
+      ],
       executable: false,
     },
   };
@@ -66,6 +77,35 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
       return;
     case "turn":
       writeMapped(writer, nodeId, indent + "turn(" + formatNumber(statement.degrees) + ")\n");
+      return;
+    case "say":
+      writeMapped(writer, nodeId, indent + "say(" + JSON.stringify(statement.text) + ")\n");
+      return;
+    case "think":
+      writeMapped(writer, nodeId, indent + "think(" + JSON.stringify(statement.text) + ")\n");
+      return;
+    case "show":
+      writeMapped(writer, nodeId, indent + "show()\n");
+      return;
+    case "hide":
+      writeMapped(writer, nodeId, indent + "hide()\n");
+      return;
+    case "setSize":
+      writeMapped(writer, nodeId, indent + "set_size(" + formatNumber(statement.size) + ")\n");
+      return;
+    case "switchCostume":
+      writeMapped(
+        writer,
+        nodeId,
+        indent + "switch_costume(" + JSON.stringify(statement.costumeId) + ")\n",
+      );
+      return;
+    case "switchBackdrop":
+      writeMapped(
+        writer,
+        nodeId,
+        indent + "switch_backdrop(" + JSON.stringify(statement.backdropId) + ")\n",
+      );
       return;
     case "repeat": {
       const start = writer.text.length;

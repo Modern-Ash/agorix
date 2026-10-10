@@ -59,6 +59,35 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
     case "turn":
       writeMapped(writer, nodeId, indent + "turn " + formatNumber(statement.degrees) + "\n");
       return;
+    case "say":
+      writeMapped(writer, nodeId, indent + "say " + JSON.stringify(statement.text) + "\n");
+      return;
+    case "think":
+      writeMapped(writer, nodeId, indent + "think " + JSON.stringify(statement.text) + "\n");
+      return;
+    case "show":
+      writeMapped(writer, nodeId, indent + "show\n");
+      return;
+    case "hide":
+      writeMapped(writer, nodeId, indent + "hide\n");
+      return;
+    case "setSize":
+      writeMapped(writer, nodeId, indent + "set size to " + formatNumber(statement.size) + "\n");
+      return;
+    case "switchCostume":
+      writeMapped(
+        writer,
+        nodeId,
+        indent + "switch costume to " + JSON.stringify(statement.costumeId) + "\n",
+      );
+      return;
+    case "switchBackdrop":
+      writeMapped(
+        writer,
+        nodeId,
+        indent + "switch backdrop to " + JSON.stringify(statement.backdropId) + "\n",
+      );
+      return;
     case "repeat": {
       const start = writer.text.length;
       writer.text += indent + "repeat " + formatNumber(statement.count) + " times\n";
