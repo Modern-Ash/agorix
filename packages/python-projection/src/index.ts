@@ -396,6 +396,34 @@ const PYTHON_RESERVED_WORDS: ReadonlySet<string> = new Set([
   "yield",
 ]);
 
+const PYTHON_PROJECTION_IDENTIFIERS: ReadonlySet<string> = new Set([
+  "move",
+  "turn",
+  "touching_goal",
+  "say",
+  "think",
+  "show",
+  "hide",
+  "set_size",
+  "switch_costume",
+  "switch_backdrop",
+  "show_variable",
+  "hide_variable",
+  "random_number",
+  "range",
+  "print",
+  "len",
+  "str",
+  "int",
+  "float",
+  "bool",
+  "abs",
+  "max",
+  "min",
+  "sum",
+  "round",
+]);
+
 function safeIdentifier(value: string, fallback: string): string {
   const words = value.match(/[A-Za-z0-9]+/g) ?? [];
   const candidate = words
@@ -406,7 +434,8 @@ function safeIdentifier(value: string, fallback: string): string {
     .join("");
   const identifier = candidate.length > 0 ? candidate : fallback;
   const valid = /^[A-Za-z_]/.test(identifier) ? identifier : `v${identifier}`;
-  return PYTHON_RESERVED_WORDS.has(valid) ? `${valid}_` : valid;
+  const forbidden = PYTHON_RESERVED_WORDS.has(valid) || PYTHON_PROJECTION_IDENTIFIERS.has(valid);
+  return forbidden ? `${valid}_` : valid;
 }
 
 function variableNamesFor(

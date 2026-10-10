@@ -259,6 +259,35 @@ describe("Python projection: variables and operators", () => {
     expect(result.text).toContain("totalHits = (totalHits + 1)");
     expect(result.text).toContain("if (totalHits == 1):");
   });
+
+  it("escapes variables that collide with generated helpers and builtins", () => {
+    const collisionProgram: ProjectProgram = {
+      schema: SCHEMA_VERSION,
+      variables: [
+        { id: "helper", name: "move", initialValue: 0, visible: false },
+        { id: "builtin", name: "range", initialValue: 0, visible: false },
+        { id: "api", name: "say", initialValue: 0, visible: false },
+      ],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            { type: "repeat", count: 1, body: [] },
+            { type: "showVariable", variableId: "helper" },
+          ],
+        },
+      ],
+    };
+
+    const result = projectPython(collisionProgram);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toContain("move_ = 0");
+    expect(result.text).toContain("range_ = 0");
+    expect(result.text).toContain("say_ = 0");
+    expect(result.text).toContain('show_variable("move")');
+    expect(result.text).not.toContain("move(");
+  });
 });
 
 describe("Python projection: Looks operations", () => {
