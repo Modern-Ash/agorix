@@ -23,3 +23,9 @@ Studio shipped as a code-first, tree-view surface and the Web app is block-first
 - Web and Studio can be built in parallel against the core.
 - The same edit sequence must yield the same semantic hash on both surfaces (cross-surface gate, later plan).
 - Reordering of epic #242: anchors and canvas precede agent depth.
+
+## Addendum: actor-scoped proposals (issue #319)
+
+- `createProposalReview(program, proposal, context?)` takes an optional creative context (`actors` with the script ids each owns; an actor without a script list owns every script, as in the runtime). When both the context and `affectedActorIds` are present, every script an operation touches must belong to a declared actor and the declared set must equal the touched set; otherwise `ACTOR_SCOPE_VIOLATION`. Operations and the `agorix/program-proposal/v1` schema are unchanged.
+- `creativeContextHash` fingerprints the actor→scripts map. It is recorded in the review and the audit event, and accept/modify go `STALE_PROPOSAL` if ownership changed since the review.
+- `createProposalEvidenceView` is the one source of the suggested / accepted / proved rows. Web renders it in `ProposalEvidence`; Studio sends it as the `proposalProof` host message and shows it in the agent panel, so both surfaces show the same ids.
