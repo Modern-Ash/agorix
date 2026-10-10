@@ -24,11 +24,31 @@ interface Writer {
   text: string;
   mapping: Record<string, TextRange[]>;
   diagnostics: LanguageProjectionDiagnostic[];
+  variableNames: ReadonlyMap<string, string>;
+  variableLabels: ReadonlyMap<string, string>;
 }
 
 export function projectPython(program: ProjectProgram): LanguageProjectionResult {
   const validated = validateProgram(program);
-  const writer: Writer = { text: "", mapping: {}, diagnostics: [] };
+  const writer: Writer = {
+    text: "",
+    mapping: {},
+    diagnostics: [],
+    variableNames: variableNamesFor(validated.variables),
+    variableLabels: new Map(
+      (validated.variables ?? []).map((variable) => [variable.id, variable.name]),
+    ),
+  };
+  for (const variable of validated.variables ?? []) {
+    writeMapped(
+      writer,
+      "variables/" + variable.id,
+      variableIdentifier(writer, variable.id) + " = " + formatNumber(variable.initialValue) + "\n",
+    );
+  }
+  if ((validated.variables?.length ?? 0) > 0) {
+    writer.text += "\n";
+  }
   validated.scripts.forEach((script, scriptIndex) => {
     const scriptId = "scripts[" + scriptIndex + "]";
     writeMapped(writer, scriptId, "def on_start():\n");
@@ -58,6 +78,11 @@ export function projectPython(program: ProjectProgram): LanguageProjectionResult
         "set_size",
         "switch_costume",
         "switch_backdrop",
+        "set_variable",
+        "change_variable",
+        "show_variable",
+        "hide_variable",
+        "random",
       ],
       executable: false,
     },
@@ -105,6 +130,48 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
         writer,
         nodeId,
         indent + "switch_backdrop(" + JSON.stringify(statement.backdropId) + ")\n",
+      );
+      return;
+    case "setVariable":
+      writeMapped(
+        writer,
+        nodeId,
+        indent +
+          variableIdentifier(writer, statement.variableId) +
+          " = " +
+          expressionText(writer, statement.value, nodeId + "/value") +
+          "\n",
+      );
+      return;
+    case "changeVariable":
+      writeMapped(
+        writer,
+        nodeId,
+        indent +
+          variableIdentifier(writer, statement.variableId) +
+          " += " +
+          expressionText(writer, statement.delta, nodeId + "/delta") +
+          "\n",
+      );
+      return;
+    case "showVariable":
+      writeMapped(
+        writer,
+        nodeId,
+        indent +
+          "show_variable(" +
+          JSON.stringify(variableLabel(writer, statement.variableId)) +
+          ")\n",
+      );
+      return;
+    case "hideVariable":
+      writeMapped(
+        writer,
+        nodeId,
+        indent +
+          "hide_variable(" +
+          JSON.stringify(variableLabel(writer, statement.variableId)) +
+          ")\n",
       );
       return;
     case "repeat": {
@@ -155,6 +222,90 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return expression.value ? "True" : "False";
     case "numericLiteral":
       return formatNumber(expression.value);
+    case "variable":
+      return variableIdentifier(writer, expression.variableId);
+    case "add":
+      return (
+        "(" +
+        expressionText(writer, expression.left, nodeId + "/left") +
+        " + " +
+        expressionText(writer, expression.right, nodeId + "/right") +
+        ")"
+      );
+    case "subtract":
+      return (
+        "(" +
+        expressionText(writer, expression.left, nodeId + "/left") +
+        " - " +
+        expressionText(writer, expression.right, nodeId + "/right") +
+        ")"
+      );
+    case "multiply":
+      return (
+        "(" +
+        expressionText(writer, expression.left, nodeId + "/left") +
+        " * " +
+        expressionText(writer, expression.right, nodeId + "/right") +
+        ")"
+      );
+    case "divide":
+      return (
+        "(" +
+        expressionText(writer, expression.left, nodeId + "/left") +
+        " / " +
+        expressionText(writer, expression.right, nodeId + "/right") +
+        ")"
+      );
+    case "lessThan":
+      return (
+        "(" +
+        expressionText(writer, expression.left, nodeId + "/left") +
+        " < " +
+        expressionText(writer, expression.right, nodeId + "/right") +
+        ")"
+      );
+    case "greaterThan":
+      return (
+        "(" +
+        expressionText(writer, expression.left, nodeId + "/left") +
+        " > " +
+        expressionText(writer, expression.right, nodeId + "/right") +
+        ")"
+      );
+    case "equals":
+      return (
+        "(" +
+        expressionText(writer, expression.left, nodeId + "/left") +
+        " == " +
+        expressionText(writer, expression.right, nodeId + "/right") +
+        ")"
+      );
+    case "and":
+      return (
+        "(" +
+        expressionText(writer, expression.left, nodeId + "/left") +
+        " and " +
+        expressionText(writer, expression.right, nodeId + "/right") +
+        ")"
+      );
+    case "or":
+      return (
+        "(" +
+        expressionText(writer, expression.left, nodeId + "/left") +
+        " or " +
+        expressionText(writer, expression.right, nodeId + "/right") +
+        ")"
+      );
+    case "not":
+      return "(not " + expressionText(writer, expression.value, nodeId + "/value") + ")";
+    case "random":
+      return (
+        "random.randint(" +
+        expressionText(writer, expression.min, nodeId + "/min") +
+        ", " +
+        expressionText(writer, expression.max, nodeId + "/max") +
+        ")"
+      );
     default: {
       const unknown = expression as { type?: unknown };
       writer.diagnostics.push(
@@ -167,6 +318,45 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return "False";
     }
   }
+}
+
+function variableIdentifier(writer: Writer, variableId: string): string {
+  return writer.variableNames.get(variableId) ?? variableId;
+}
+
+function variableLabel(writer: Writer, variableId: string): string {
+  return writer.variableLabels.get(variableId) ?? variableId;
+}
+
+function safeIdentifier(value: string, fallback: string): string {
+  const words = value.match(/[A-Za-z0-9]+/g) ?? [];
+  const candidate = words
+    .map((word, index) => {
+      const lower = word.toLowerCase();
+      return index === 0 ? lower : lower[0]?.toUpperCase() + lower.slice(1);
+    })
+    .join("");
+  const identifier = candidate.length > 0 ? candidate : fallback;
+  return /^[A-Za-z_]/.test(identifier) ? identifier : `v${identifier}`;
+}
+
+function variableNamesFor(
+  variables: readonly { id: string; name: string }[] | undefined,
+): ReadonlyMap<string, string> {
+  const names = new Map<string, string>();
+  const used = new Set<string>();
+  for (const variable of variables ?? []) {
+    const base = safeIdentifier(variable.name, safeIdentifier(variable.id, "value"));
+    let name = base;
+    let suffix = 2;
+    while (used.has(name)) {
+      name = `${base}${suffix}`;
+      suffix += 1;
+    }
+    used.add(name);
+    names.set(variable.id, name);
+  }
+  return names;
 }
 
 function writeMapped(writer: Writer, nodeId: string, text: string): void {

@@ -124,3 +124,95 @@ describe("Agorix Code projection: Looks operations", () => {
     }
   });
 });
+
+describe("Agorix Code projection: variables and operators", () => {
+  const variablesProgram: ProjectProgram = {
+    schema: SCHEMA_VERSION,
+    variables: [{ id: "score", name: "score", initialValue: 0, visible: true }],
+    scripts: [
+      {
+        id: "main",
+        trigger: { type: "onStart" },
+        statements: [
+          {
+            type: "changeVariable",
+            variableId: "score",
+            delta: {
+              type: "add",
+              left: { type: "variable", variableId: "score" },
+              right: { type: "numericLiteral", value: 1 },
+            },
+          },
+          {
+            type: "setVariable",
+            variableId: "score",
+            value: {
+              type: "random",
+              min: { type: "numericLiteral", value: 1 },
+              max: { type: "numericLiteral", value: 10 },
+            },
+          },
+          {
+            type: "if",
+            condition: {
+              type: "and",
+              left: {
+                type: "lessThan",
+                left: { type: "variable", variableId: "score" },
+                right: { type: "numericLiteral", value: 10 },
+              },
+              right: { type: "not", value: { type: "booleanLiteral", value: false } },
+            },
+            then: [
+              { type: "showVariable", variableId: "score" },
+              { type: "hideVariable", variableId: "score" },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+
+  it("projects variables, operators and deterministic random without diagnostics", () => {
+    const result = projectAgorixCode(variablesProgram);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toBe(
+      [
+        "variable score = 0",
+        "",
+        "when start",
+        "  change score by (score + 1)",
+        "  set score to random 1 to 10",
+        "  if ((score < 10) and not false)",
+        "    show score",
+        "    hide score",
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("maps variable declarations and statements to their visible text", () => {
+    const result = projectAgorixCode(variablesProgram);
+    const declaration = result.mapping["variables/score"]?.[0];
+    expect(declaration).toBeDefined();
+    expect(result.text.slice(declaration!.start, declaration!.end)).toBe("variable score = 0\n");
+    for (const nodeId of [
+      "scripts[0]/statements[0]",
+      "scripts[0]/statements[1]",
+      "scripts[0]/statements[2]/then[0]",
+      "scripts[0]/statements[2]/then[1]",
+    ]) {
+      expect(result.mapping[nodeId]?.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("passes shared conformance for variable and operator programs", () => {
+    expect(() =>
+      assertLanguageProjectionConformance(agorixCodeProjection, {
+        name: "agorix-code variables and operators",
+        program: variablesProgram,
+        requiredNodeIds: ["scripts[0]", "scripts[0]/statements[0]", "scripts[0]/statements[2]"],
+      }),
+    ).not.toThrow();
+  });
+});

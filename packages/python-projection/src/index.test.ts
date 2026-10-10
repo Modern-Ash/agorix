@@ -87,9 +87,106 @@ describe("Python projection", () => {
         "set_size",
         "switch_costume",
         "switch_backdrop",
+        "set_variable",
+        "change_variable",
+        "show_variable",
+        "hide_variable",
+        "random",
       ],
       executable: false,
     });
+  });
+});
+
+describe("Python projection: variables and operators", () => {
+  const variablesProgram: ProjectProgram = {
+    schema: SCHEMA_VERSION,
+    variables: [{ id: "score", name: "score", initialValue: 0, visible: true }],
+    scripts: [
+      {
+        id: "main",
+        trigger: { type: "onStart" },
+        statements: [
+          {
+            type: "changeVariable",
+            variableId: "score",
+            delta: {
+              type: "add",
+              left: { type: "variable", variableId: "score" },
+              right: { type: "numericLiteral", value: 1 },
+            },
+          },
+          {
+            type: "setVariable",
+            variableId: "score",
+            value: {
+              type: "random",
+              min: { type: "numericLiteral", value: 1 },
+              max: { type: "numericLiteral", value: 10 },
+            },
+          },
+          {
+            type: "if",
+            condition: {
+              type: "and",
+              left: {
+                type: "lessThan",
+                left: { type: "variable", variableId: "score" },
+                right: { type: "numericLiteral", value: 10 },
+              },
+              right: { type: "not", value: { type: "booleanLiteral", value: false } },
+            },
+            then: [
+              { type: "showVariable", variableId: "score" },
+              { type: "hideVariable", variableId: "score" },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+
+  it("projects variables, operators and deterministic random without diagnostics", () => {
+    const result = projectPython(variablesProgram);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toBe(
+      [
+        "score = 0",
+        "",
+        "def on_start():",
+        "    score += (score + 1)",
+        "    score = random.randint(1, 10)",
+        "    if ((score < 10) and (not False)):",
+        '        show_variable("score")',
+        '        hide_variable("score")',
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("maps variable declarations and statements to their visible text", () => {
+    const result = projectPython(variablesProgram);
+    const declaration = result.mapping["variables/score"]?.[0];
+    expect(declaration).toBeDefined();
+    expect(result.text.slice(declaration!.start, declaration!.end)).toBe("score = 0\n");
+    for (const nodeId of [
+      "scripts[0]/statements[0]",
+      "scripts[0]/statements[1]",
+      "scripts[0]/statements[2]/then[0]",
+      "scripts[0]/statements[2]/then[1]",
+    ]) {
+      expect(result.mapping[nodeId]?.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("passes shared conformance for variable and operator programs", () => {
+    expect(() =>
+      assertLanguageProjectionConformance(pythonProjection, {
+        name: "python variables and operators",
+        program: variablesProgram,
+        requiredNodeIds: ["scripts[0]", "scripts[0]/statements[0]", "scripts[0]/statements[2]"],
+      }),
+    ).not.toThrow();
   });
 });
 

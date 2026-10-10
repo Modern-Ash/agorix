@@ -16,6 +16,7 @@ import {
   DOCUMENTED_EXAMPLE_PROGRAM,
   EMPTY_EDGE_PROGRAM,
   FULL_COVERAGE_PROGRAM,
+  VARIABLES_OPERATORS_PROGRAM,
 } from "./fixtures.js";
 import type { ProjectProgram } from "@agorix/program-model";
 
@@ -128,6 +129,27 @@ describe("projectProgram", () => {
     ]) {
       expect(result.code).toContain(op);
     }
+  });
+
+  it("projects variables, watchers, operators and random (snapshot)", () => {
+    const result = projectProgram(VARIABLES_OPERATORS_PROGRAM);
+    expect(result.code).toMatchInlineSnapshot(`
+      "let score = 0;
+      showVariable("score");
+      let livesLeft = 3;
+
+      whenStarted(() => {
+        score += (score + 1);
+        score = (10 - (2 / 0.5));
+        if (((score > 10) || (!((score === 0) && true)))) {
+          score = random(1, 100);
+          showVariable("Lives Left");
+          hideVariable("score");
+        }
+      });
+      "
+    `);
+    expectValidRanges(result);
   });
 
   it("projects empty edge structures without crashing", () => {
