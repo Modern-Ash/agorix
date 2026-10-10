@@ -11,11 +11,13 @@ import {
   addBlockToWorkspace,
   addBlockToWorkspaceAt,
   addScriptToWorkspace,
+  addVariableSetBlockFor,
   blockNodeId,
   blockNodeIdForPath,
   codeSliceForNode,
   createEditorModel,
   createEditorModelFromProgram,
+  defaultVariableIdFor,
   duplicateBlockInWorkspace,
   editBlockFieldAt,
   editIfConditionAt,
@@ -23,8 +25,10 @@ import {
   editNumericBlockField,
   editVariableNumberInputAt,
   editScriptTriggerField,
+  makeVariableInWorkspace,
   moveBlockInWorkspaceByPath,
   resetWorkspace,
+  variableNamed,
 } from "./editorModel.js";
 import {
   WEB_PROJECT_ID,
@@ -212,6 +216,48 @@ describe("main editor shell", () => {
     expect(html).toContain('value="3"');
     expect(html).toContain('aria-label="Change variable change"');
     expect(html).toContain("block-variables");
+  });
+
+  it("renders a variable picker with declared names on show/hide blocks", () => {
+    const html = renderToStaticMarkup(
+      <ProgramBlockCard
+        block={{
+          id: "show-1",
+          type: "variables_show",
+          fields: { variableId: "points" },
+        }}
+        path={[0]}
+        siblingIndex={0}
+        siblingTotal={1}
+        depth={0}
+        selected={false}
+        suggestionAffected={false}
+        canonicalNodeId="scripts[0]/statements[0]"
+        locale="en"
+        variables={[
+          { id: "score", name: "score", initialValue: 0, visible: true },
+          { id: "points", name: "Points", initialValue: 0, visible: true },
+        ]}
+        onSelect={() => undefined}
+        onCommitValue={() => undefined}
+        onMove={() => undefined}
+        onNest={() => undefined}
+        onOutdent={() => undefined}
+        onDelete={() => undefined}
+        onDuplicate={() => undefined}
+        onDragStart={() => undefined}
+        onDropBefore={() => undefined}
+        onDropAfter={() => undefined}
+        onDropInside={() => undefined}
+      />,
+    );
+
+    expect(html).toContain('aria-label="Show variable variable"');
+    expect(html).toContain("<select");
+    expect(html).toContain(">score</option>");
+    expect(html).toContain(">Points</option>");
+    expect(html).toContain('value="points"');
+    expect(html).not.toContain("Show variable points");
   });
 
   it("renders if blocks with a compact condition selector", () => {
@@ -497,6 +543,52 @@ describe("editor model", () => {
       },
     ]);
     expect(edited.code).toContain("score += 5;");
+  });
+
+  it("creates variables through canonical projection and targets a set block at them", () => {
+    const initial = createEditorModel();
+    const made = makeVariableInWorkspace(initial.workspace, "Points");
+    const variableId = made.workspace.variables?.[0]?.id;
+    const withBlock = addVariableSetBlockFor(made.workspace, variableId ?? "score");
+
+    expect(made.program.variables).toEqual([
+      { id: "points", name: "Points", initialValue: 0, visible: true },
+    ]);
+    expect(withBlock.program.variables).toEqual([
+      { id: "points", name: "Points", initialValue: 0, visible: true },
+    ]);
+    expect(withBlock.program.scripts[0]?.statements).toEqual([
+      { type: "setVariable", variableId: "points", value: { type: "numericLiteral", value: 0 } },
+    ]);
+    expect(withBlock.code).toContain("points = 0;");
+    expect(withBlock.code).toContain('showVariable("Points");');
+  });
+
+  it("rejects a duplicate variable id and dedupes ids for repeated names", () => {
+    const initial = createEditorModel();
+    const first = makeVariableInWorkspace(initial.workspace, "Score");
+    expect(first.workspace.variables?.[0]?.id).toBe("score");
+    expect(first.workspace.variables?.[0]?.name).toBe("Score");
+    expect(variableNamed(first.workspace.variables, "Score")).toBe("score2");
+    expect(defaultVariableIdFor(first.workspace)).toBe("score");
+    expect(defaultVariableIdFor({ ...initial.workspace, variables: [] })).toBe("score");
+  });
+
+  it("defaults new variable blocks to the first declared variable", () => {
+    const initial = createEditorModel();
+    const made = makeVariableInWorkspace(initial.workspace, "Lives");
+    const added = addBlockToWorkspaceAt(made.workspace, "variables_change", [], 0, 0);
+    const addedBlock = added.workspace.scripts[0]?.statements[0];
+
+    expect(addedBlock?.fields?.variableId).toBe("lives");
+    expect(added.workspace.variables).toEqual([
+      { id: "lives", name: "Lives", initialValue: 0, visible: true },
+    ]);
+    expect(added.program.scripts[0]?.statements[0]).toEqual({
+      type: "changeVariable",
+      variableId: "lives",
+      delta: { type: "numericLiteral", value: 1 },
+    });
   });
 
   it("updates if conditions to score comparisons through canonical projection", () => {

@@ -1,4 +1,5 @@
 import { projectProgram, type ProjectionResult } from "@agorix/code-generator";
+import type { ProgramVariable } from "@agorix/program-model";
 import {
   BlockEditorAdapterError,
   workspaceToProgram,
@@ -37,7 +38,8 @@ export type WorkspaceChange =
       readonly to: { readonly container: StatementContainerPath; readonly index: number };
     }
   | { readonly type: "editBlock"; readonly location: StatementLocation; readonly block: BlockNode }
-  | { readonly type: "deleteBlock"; readonly location: StatementLocation };
+  | { readonly type: "deleteBlock"; readonly location: StatementLocation }
+  | { readonly type: "addVariable"; readonly variable: ProgramVariable };
 
 export interface StatementLocation {
   readonly container: StatementContainerPath;
@@ -60,34 +62,42 @@ type MutableBlockNode = BlockNode & {
   };
 };
 
-function blockUsesVariables(block: BlockNode): boolean {
-  if (block.type.startsWith("variables_")) {
-    return true;
-  }
-  const inputs = Object.values(block.inputs ?? {}) as Array<BlockNode | readonly BlockNode[]>;
-  for (const input of inputs) {
-    if (Array.isArray(input)) {
-      if (input.some(blockUsesVariables)) {
-        return true;
-      }
-    } else if ("type" in input && blockUsesVariables(input)) {
-      return true;
+function referencedVariableIds(block: BlockNode): readonly string[] {
+  const ids: string[] = [];
+  const visit = (node: BlockNode | undefined): void => {
+    if (node === undefined) {
+      return;
     }
-  }
-  return false;
+    const variableId = node.fields?.variableId;
+    if (typeof variableId === "string" && !ids.includes(variableId)) {
+      ids.push(variableId);
+    }
+    for (const input of Object.values(node.inputs ?? {})) {
+      if (Array.isArray(input)) {
+        input.forEach(visit);
+      } else if ("type" in input) {
+        visit(input);
+      }
+    }
+  };
+  visit(block);
+  return ids;
 }
 
 function ensureDefaultVariables(workspace: BlockWorkspaceSnapshot, block: BlockNode): void {
-  if (!blockUsesVariables(block)) {
-    return;
-  }
-  if (workspace.variables?.some((variable) => variable.id === "score")) {
-    return;
-  }
   const variables = [...(workspace.variables ?? [])];
-  variables.push({ id: "score", name: "score", initialValue: 0, visible: true });
-  (workspace as unknown as { variables?: readonly (typeof variables)[number][] }).variables =
-    variables;
+  let added = false;
+  for (const variableId of referencedVariableIds(block)) {
+    if (variables.some((variable) => variable.id === variableId)) {
+      continue;
+    }
+    variables.push({ id: variableId, name: variableId, initialValue: 0, visible: true });
+    added = true;
+  }
+  if (added) {
+    (workspace as unknown as { variables?: readonly (typeof variables)[number][] }).variables =
+      variables;
+  }
 }
 
 function mutableStatementsFor(
@@ -254,6 +264,22 @@ export function applyWorkspaceChange(
           "BLOCK_NOT_FOUND",
         );
       }
+      break;
+    }
+    case "addVariable": {
+      const idAlreadyDeclared = next.variables?.some(
+        (variable) => variable.id === change.variable.id,
+      );
+      if (idAlreadyDeclared) {
+        throw new BlockEditorAdapterError(
+          "INVALID_WORKSPACE",
+          "variables",
+          "expected a distinct variable id",
+          change.variable.id,
+        );
+      }
+      const variables = [...(next.variables ?? []), change.variable];
+      (next as unknown as { variables?: readonly ProgramVariable[] }).variables = variables;
       break;
     }
   }
