@@ -178,14 +178,14 @@ describe("Agorix Code projection: variables and operators", () => {
     expect(result.diagnostics).toEqual([]);
     expect(result.text).toBe(
       [
-        "variable score = 0",
+        'variable "score" = 0',
         "",
         "when start",
-        "  change score by (score + 1)",
-        "  set score to random 1 to 10",
-        "  if ((score < 10) and not false)",
-        "    show score",
-        "    hide score",
+        '  change "score" by ("score" + 1)',
+        '  set "score" to random 1 to 10',
+        '  if (("score" < 10) and not false)',
+        '    show "score"',
+        '    hide "score"',
         "",
       ].join("\n"),
     );
@@ -195,7 +195,7 @@ describe("Agorix Code projection: variables and operators", () => {
     const result = projectAgorixCode(variablesProgram);
     const declaration = result.mapping["variables/score"]?.[0];
     expect(declaration).toBeDefined();
-    expect(result.text.slice(declaration!.start, declaration!.end)).toBe("variable score = 0\n");
+    expect(result.text.slice(declaration!.start, declaration!.end)).toBe('variable "score" = 0\n');
     for (const nodeId of [
       "scripts[0]/statements[0]",
       "scripts[0]/statements[1]",
@@ -204,6 +204,47 @@ describe("Agorix Code projection: variables and operators", () => {
     ]) {
       expect(result.mapping[nodeId]?.length).toBeGreaterThan(0);
     }
+  });
+
+  it("quotes variable names so hostile labels cannot inject code", () => {
+    const hostileProgram: ProjectProgram = {
+      schema: SCHEMA_VERSION,
+      variables: [
+        {
+          id: "hostile",
+          name: 'score"\n  move 100\nsay "pwned',
+          initialValue: 0,
+          visible: true,
+        },
+      ],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            { type: "showVariable", variableId: "hostile" },
+            {
+              type: "setVariable",
+              variableId: "hostile",
+              value: { type: "numericLiteral", value: 1 },
+            },
+          ],
+        },
+      ],
+    };
+
+    const result = projectAgorixCode(hostileProgram);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toBe(
+      [
+        'variable "score\\"\\n  move 100\\nsay \\"pwned" = 0',
+        "",
+        "when start",
+        '  show "score\\"\\n  move 100\\nsay \\"pwned"',
+        '  set "score\\"\\n  move 100\\nsay \\"pwned" to 1',
+        "",
+      ].join("\n"),
+    );
   });
 
   it("passes shared conformance for variable and operator programs", () => {

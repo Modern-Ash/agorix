@@ -55,6 +55,10 @@ export function projectPython(program: ProjectProgram): LanguageProjectionResult
     if (script.statements.length === 0) {
       writer.text += "    pass\n";
     } else {
+      const globals = assignedVariableIdentifiers(writer, script.statements);
+      if (globals.length > 0) {
+        writer.text += "    global " + globals.join(", ") + "\n";
+      }
       script.statements.forEach((statement, index) =>
         writeStatement(writer, statement, scriptId + "/statements[" + index + "]", 1),
       );
@@ -78,8 +82,6 @@ export function projectPython(program: ProjectProgram): LanguageProjectionResult
         "set_size",
         "switch_costume",
         "switch_backdrop",
-        "set_variable",
-        "change_variable",
         "show_variable",
         "hide_variable",
         "random_number",
@@ -137,11 +139,10 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
         writer,
         nodeId,
         indent +
-          "set_variable(" +
-          JSON.stringify(variableLabel(writer, statement.variableId)) +
-          ", " +
+          variableIdentifier(writer, statement.variableId) +
+          " = " +
           expressionText(writer, statement.value, nodeId + "/value") +
-          ")\n",
+          "\n",
       );
       return;
     case "changeVariable":
@@ -149,11 +150,10 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
         writer,
         nodeId,
         indent +
-          "change_variable(" +
-          JSON.stringify(variableLabel(writer, statement.variableId)) +
-          ", " +
+          variableIdentifier(writer, statement.variableId) +
+          " += " +
           expressionText(writer, statement.delta, nodeId + "/delta") +
-          ")\n",
+          "\n",
       );
       return;
     case "showVariable":
@@ -328,6 +328,34 @@ function variableIdentifier(writer: Writer, variableId: string): string {
 
 function variableLabel(writer: Writer, variableId: string): string {
   return writer.variableLabels.get(variableId) ?? variableId;
+}
+
+function assignedVariableIdentifiers(
+  writer: Writer,
+  statements: readonly Statement[],
+): readonly string[] {
+  const identifiers: string[] = [];
+  const seen = new Set<string>();
+  const visit = (list: readonly Statement[]): void => {
+    for (const statement of list) {
+      if (statement.type === "setVariable" || statement.type === "changeVariable") {
+        if (!writer.variableNames.has(statement.variableId)) {
+          continue;
+        }
+        const identifier = variableIdentifier(writer, statement.variableId);
+        if (!seen.has(identifier)) {
+          seen.add(identifier);
+          identifiers.push(identifier);
+        }
+      } else if (statement.type === "repeat") {
+        visit(statement.body);
+      } else if (statement.type === "if") {
+        visit(statement.then);
+      }
+    }
+  };
+  visit(statements);
+  return identifiers;
 }
 
 const PYTHON_RESERVED_WORDS: ReadonlySet<string> = new Set([

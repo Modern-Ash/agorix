@@ -286,7 +286,7 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
 }
 
 function variableName(writer: Writer, variableId: string): string {
-  return writer.variableLabels.get(variableId) ?? variableId;
+  return JSON.stringify(writer.variableLabels.get(variableId) ?? variableId);
 }
 
 function writeMapped(writer: Writer, nodeId: string, text: string): void {
