@@ -168,6 +168,7 @@ export function addScriptToWorkspace(
 ): EditorProjection {
   const index = workspace.scripts.length;
   return project({
+    ...workspace,
     scripts: [
       ...workspace.scripts,
       {
@@ -191,6 +192,7 @@ export function editScriptTriggerField(
     throw new Error(`No script at index ${scriptIndex}`);
   }
   return project({
+    ...workspace,
     scripts: workspace.scripts.map((candidate, index) =>
       index === scriptIndex
         ? {
