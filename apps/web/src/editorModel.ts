@@ -251,12 +251,14 @@ function slugify(text: string): string {
 export function variableNamed(
   variables: readonly ProgramVariable[] | undefined,
   name: string,
+  scriptIds: readonly string[] = [],
 ): string {
   const trimmed = name.trim();
   const base = slugify(trimmed);
+  const taken = new Set([...(variables ?? []).map((variable) => variable.id), ...scriptIds]);
   let id = base;
   let suffix = 2;
-  while (variables?.some((variable) => variable.id === id)) {
+  while (taken.has(id)) {
     id = `${base}${suffix}`;
     suffix += 1;
   }
@@ -268,8 +270,11 @@ export function makeVariableInWorkspace(
   rawName: string,
 ): EditorProjection {
   const name = rawName.trim();
+  const scriptIds = workspace.scripts.flatMap((script) =>
+    script.programId === undefined ? [] : [script.programId],
+  );
   const variable: ProgramVariable = {
-    id: variableNamed(workspace.variables, name),
+    id: variableNamed(workspace.variables, name, scriptIds),
     name,
     initialValue: 0,
     visible: true,

@@ -267,10 +267,13 @@ export function applyWorkspaceChange(
       break;
     }
     case "addVariable": {
+      const idCollidesWithScript = next.scripts.some(
+        (script) => (script.programId ?? script.id) === change.variable.id,
+      );
       const idAlreadyDeclared = next.variables?.some(
         (variable) => variable.id === change.variable.id,
       );
-      if (idAlreadyDeclared) {
+      if (idCollidesWithScript || idAlreadyDeclared) {
         throw new BlockEditorAdapterError(
           "INVALID_WORKSPACE",
           "variables",

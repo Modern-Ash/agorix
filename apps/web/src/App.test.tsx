@@ -574,6 +574,20 @@ describe("editor model", () => {
     expect(defaultVariableIdFor({ ...initial.workspace, variables: [] })).toBe("score");
   });
 
+  it("dedupes variable ids against script ids", () => {
+    const initial = createEditorModel();
+    const made = makeVariableInWorkspace(initial.workspace, "Main");
+    const withBlock = addVariableSetBlockFor(made.workspace, "main2");
+
+    expect(made.workspace.variables?.[0]?.id).toBe("main2");
+    expect(made.program.variables?.[0]?.id).toBe("main2");
+    expect(withBlock.program.scripts[0]?.statements[0]).toEqual({
+      type: "setVariable",
+      variableId: "main2",
+      value: { type: "numericLiteral", value: 0 },
+    });
+  });
+
   it("defaults new variable blocks to the first declared variable", () => {
     const initial = createEditorModel();
     const made = makeVariableInWorkspace(initial.workspace, "Lives");
