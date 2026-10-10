@@ -18,7 +18,7 @@ A proposal can target one actor and provably cannot touch another. App and Studi
 ## Success criteria
 
 - A proposal declaring actors is rejected when an operation touches a script not owned by a declared actor.
-- Declared `affectedActorIds` must equal the actors derived from the touched scripts.
+- Every actor owning a touched script must be declared, and every declared actor must be a known actor. A declared actor may go untouched, so a learner can accept a subset of operations.
 - Proposals without actor context or without `affectedActorIds` behave as today (compatible with `agorix/program-proposal/v1`).
 - App card and Studio panel render identical affected ids.
 - Studio shows AI suggested / learner accepted / runtime proved per proposal.
@@ -26,7 +26,7 @@ A proposal can target one actor and provably cannot touch another. App and Studi
 
 ## Design
 
-1. **Contract.** `createProposalReview(program, proposal, context?)` with `context: { actors?: readonly ProjectActor[] }`. New error code `ACTOR_SCOPE_VIOLATION`. When `context.actors` and `proposal.affectedActorIds` are both present: derive the actors owning every script touched by the operations (`scriptForOperation` + `actor.scripts`); reject if a touched script has no owner among the declared actors, or if the derived set differs from the declared set. Operations and schema are unchanged.
+1. **Contract.** `createProposalReview(program, proposal, context?)` with `context: { actors?: readonly ProjectActor[] }`. New error code `ACTOR_SCOPE_VIOLATION`. When `context.actors` and `proposal.affectedActorIds` are both present: derive the actors owning every script touched by the operations (`scriptForOperation` + `actor.scripts`); reject if a touched script has no owner among the declared actors, if an owner of a touched script is undeclared, or if a declared actor is unknown. Operations and schema are unchanged. An actor with no script list owns every script (as in the runtime).
 2. **Canonical hash.** The proposal base binding includes the actor→scripts map when actor context is supplied, so a proposal goes stale when script ownership changes. `programSemanticHash` is unchanged; a separate `creativeContextHash` is added and recorded in the audit event.
 3. **App.** The proposal card (`WebProposalCardView`) keeps the affected ids and adds the comparison entries (accepted, proposed, learner-modified, runtime) from `createProposalComparisonView`. Review state only changes through accept / modify / reject.
 4. **Studio.** `AgentPanel` keeps the same id rows and adds an evidence inspector with three rows: AI suggested (proposal + expected evidence), learner accepted (decision + result hash), runtime proved (`bindProposalRuntimeEvidence` over the multi-actor trace; matched vs missing ids). Text goes through the existing i18n copy and the plain-text provider policy (ADR 0008).

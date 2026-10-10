@@ -868,12 +868,19 @@ describe("actor scope", () => {
     ).toBe("ACTOR_SCOPE_VIOLATION");
   });
 
-  it("rejects a declared actor that owns no touched script, or is unknown", () => {
+  it("allows a declared actor that is not touched (partial selection) but rejects unknown actors", () => {
+    expect(() =>
+      createProposalReview(
+        multiScriptProgram,
+        actorProposal({ actors: ["actor:explorer", "actor:beacon"], scriptIndex: 0 }),
+        { actors: twoActors },
+      ),
+    ).not.toThrow();
     expect(
       codeOf(() =>
         createProposalReview(
           multiScriptProgram,
-          actorProposal({ actors: ["actor:explorer", "actor:beacon"], scriptIndex: 0 }),
+          actorProposal({ actors: ["actor:ghost"], scriptIndex: 0 }),
           { actors: twoActors },
         ),
       ),
@@ -882,7 +889,7 @@ describe("actor scope", () => {
       codeOf(() =>
         createProposalReview(
           multiScriptProgram,
-          actorProposal({ actors: ["actor:ghost"], scriptIndex: 0 }),
+          actorProposal({ actors: ["actor:explorer", "actor:ghost"], scriptIndex: 0 }),
           { actors: twoActors },
         ),
       ),

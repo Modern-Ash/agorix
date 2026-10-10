@@ -861,12 +861,14 @@ function assertActorScope(
     owners.forEach((id) => derived.add(id));
   });
   const undeclared = [...derived].filter((id) => !declared.includes(id));
-  const untouched = declared.filter((id) => !derived.has(id));
-  if (undeclared.length > 0 || untouched.length > 0) {
+  // A declared actor may go untouched (the learner can select a subset of operations), but an
+  // id that names no known actor is never valid.
+  const unknown = declared.filter((id) => !actors.some((actor) => actor.id === id));
+  if (undeclared.length > 0 || unknown.length > 0) {
     throw new ProposalValidationError(
       "ACTOR_SCOPE_VIOLATION",
       "$.affectedActorIds",
-      `declared actors differ from touched actors (undeclared: ${undeclared.join(",") || "none"}; untouched: ${untouched.join(",") || "none"})`,
+      `declared actors do not match touched actors (undeclared: ${undeclared.join(",") || "none"}; unknown: ${unknown.join(",") || "none"})`,
     );
   }
 }
