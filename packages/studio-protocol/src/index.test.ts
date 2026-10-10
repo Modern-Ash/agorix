@@ -865,3 +865,54 @@ describe("execution event trace messages", () => {
     ).toBeUndefined();
   });
 });
+
+describe("proposalProof host message", () => {
+  const ids = {
+    actorIds: ["actor:explorer"],
+    scriptIds: [],
+    assetIds: [],
+    variableIds: [],
+    nodeIds: ["scripts[0]/statements[0]"],
+  };
+  const message = {
+    schema,
+    type: "proposalProof",
+    proposalId: "p1",
+    decision: "accepted",
+    resultProgramHash: "fnv1a32:00000000",
+    proof: {
+      status: "proved",
+      matched: ids,
+      missing: { ...ids, actorIds: [], nodeIds: [] },
+    },
+  };
+
+  it("round-trips a valid message", () => {
+    expect(parseHostMessage(message)).toEqual(message);
+  });
+
+  it("accepts a rejection without proof", () => {
+    const rejected = {
+      schema: message.schema,
+      type: message.type,
+      proposalId: message.proposalId,
+      decision: "rejected",
+    };
+    const parsed = rejected;
+    expect(parseHostMessage(parsed)).toEqual(parsed);
+  });
+
+  it("rejects malformed decision, status, id and id lists", () => {
+    expect(parseHostMessage({ ...message, decision: "maybe" })).toBeUndefined();
+    expect(
+      parseHostMessage({ ...message, proof: { ...message.proof, status: "great" } }),
+    ).toBeUndefined();
+    expect(parseHostMessage({ ...message, proposalId: "bad id!" })).toBeUndefined();
+    expect(
+      parseHostMessage({
+        ...message,
+        proof: { ...message.proof, matched: { ...ids, actorIds: "actor:explorer" } },
+      }),
+    ).toBeUndefined();
+  });
+});

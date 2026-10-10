@@ -41,11 +41,13 @@ import { registerAmbientLenses } from "./ambient/lenses.js";
 import { createHttpLayaTransport } from "./ambient/layaTransport.js";
 import { StudioSignalAdapter } from "./studioSignals.js";
 import {
+  createExecutionEvidence,
   createStoredProjectWithMetadata,
   countProgramStatements,
   nodeIdsForProjectionLines,
   openProjectionDocument,
   parseProjectFile,
+  proofTraceFromEvidence,
   semanticHash,
   serializeProjectFile,
   serializeStoredProject,
@@ -330,9 +332,16 @@ export function activate(context: vscode.ExtensionContext): void {
         rejectActiveProposal: proposalCommands.rejectActiveProposal,
         runAndGetResult: () => {
           const view = executionCommands.runExecution();
+          const stored = session.current?.project.stored;
           return view === undefined
             ? undefined
-            : { world: view.finalWorld, stepsUsed: view.stepsUsed };
+            : {
+                world: view.finalWorld,
+                stepsUsed: view.stepsUsed,
+                ...(stored === undefined
+                  ? {}
+                  : { trace: proofTraceFromEvidence(createExecutionEvidence(stored)) }),
+              };
         },
         events: session.agentEvents,
       }),

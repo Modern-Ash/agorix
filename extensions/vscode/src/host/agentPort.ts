@@ -11,11 +11,15 @@ import { missionSpecHash as hashMissionSpec } from "@agorix/persistence";
 import type { ProjectProgram, Statement } from "@agorix/program-model";
 import {
   ProposalValidationError,
+  createProposalEvidenceView,
   operationEditable,
   programSemanticHash,
   resolveOperationTargets,
   selectProposalOperations,
+  type ProposalAuditEvent,
   type ProposalOperation,
+  type ProposalReview,
+  type RuntimeEvidenceTraceEntry,
 } from "@agorix/proposals";
 import type { SelectionInput } from "@agorix/studio-protocol";
 import { touchingGoal, type WorldState } from "@agorix/runtime";
@@ -26,10 +30,13 @@ import {
   type IntentPlanResponse,
 } from "@agorix/tutor-contract";
 import {
+  applyProposalSession,
   assertProposalFresh,
   createProposalSession,
+  creativeContextForProject,
   evidenceForProgram,
   modifyProposalSession,
+  rejectProposalSession,
   suggestFirstStep,
   suggestFirstStepSmall,
   suggestRepeat,
@@ -47,7 +54,14 @@ export interface AgentPortDeps {
   /** One canonical transaction (one undo step) for a learner-edited subset of a proposal. */
   commitProgram(program: ProjectProgram): Promise<void>;
   rejectActiveProposal(): void;
-  runAndGetResult(): { world: WorldState; stepsUsed: number } | undefined;
+  runAndGetResult():
+    | {
+        world: WorldState;
+        stepsUsed: number;
+        /** Multi-actor trace rows, used to bind a decided proposal to what actually ran. */
+        trace?: readonly RuntimeEvidenceTraceEntry[];
+      }
+    | undefined;
   events: AgentEvent[];
   /** Asks the decision pipeline and, when allowed, a provider; absent means built-in only. */
   providerProposal?(
@@ -247,6 +261,9 @@ function viewOf(
 
 /** Adapter over the session, proposals and runtime. Imports nothing from vscode. */
 export function createAgentPort(deps: AgentPortDeps): AgentPort {
+  // The last decided proposal and the trace of the run that followed it, for the evidence inspector.
+  let lastDecision: { review: ProposalReview; audit: ProposalAuditEvent } | undefined;
+  let lastRunTrace: readonly RuntimeEvidenceTraceEntry[] | undefined;
   // Every proposal offered for the current task, so a learner can switch between them.
   let offered: {
     session: StudioProposalSession;
@@ -362,6 +379,8 @@ export function createAgentPort(deps: AgentPortDeps): AgentPort {
       })();
     },
     async proposeFor(task) {
+      lastDecision = undefined;
+      lastRunTrace = undefined;
       const first = deps.getProject();
       if (first === undefined) return undefined;
       const asked =
@@ -447,8 +466,10 @@ export function createAgentPort(deps: AgentPortDeps): AgentPort {
         project.stored.program,
         derived.session,
         derived.session.review.candidateProgram,
+        creativeContextForProject(project),
       );
       await deps.commitProgram(decision.program);
+      lastDecision = { review: derived.session.review, audit: decision.audit };
       deps.setActiveProposal(undefined);
       return "applied";
     },
@@ -456,25 +477,66 @@ export function createAgentPort(deps: AgentPortDeps): AgentPort {
       const project = deps.getProject();
       const session = deps.getActiveProposal();
       if (project === undefined || session === undefined) return "stale";
+      const context = creativeContextForProject(project);
+      let audit: ProposalAuditEvent;
       try {
-        assertProposalFresh(project.stored.program, session);
+        assertProposalFresh(project.stored.program, session, context);
+        audit = applyProposalSession(project.stored.program, session, context).audit;
       } catch {
         deps.setActiveProposal(undefined);
         return "stale";
       }
       await deps.applyActiveProposal();
+      lastDecision = { review: session.review, audit };
       return "applied";
     },
     rejectPending() {
-      if (deps.getActiveProposal() !== undefined) {
+      const project = deps.getProject();
+      const session = deps.getActiveProposal();
+      if (session !== undefined) {
+        if (project !== undefined) {
+          lastDecision = {
+            review: session.review,
+            audit: rejectProposalSession(project.stored.program, session).audit,
+          };
+        }
         deps.rejectActiveProposal();
       }
     },
     run() {
       const result = deps.runAndGetResult();
+      lastRunTrace = result?.trace;
       return result === undefined
         ? undefined
         : { reachedGoal: touchingGoal(result.world), stepsUsed: result.stepsUsed };
+    },
+    proofFor({ withRun }) {
+      if (lastDecision === undefined) return undefined;
+      const view = createProposalEvidenceView(lastDecision.review, {
+        audit: lastDecision.audit,
+        ...(withRun && lastRunTrace !== undefined ? { trace: lastRunTrace } : {}),
+      });
+      if (view.accepted === undefined) return undefined;
+      const decision =
+        view.accepted.decision === "accept"
+          ? "accepted"
+          : view.accepted.decision === "modify"
+            ? "modified"
+            : "rejected";
+      return {
+        proposalId: view.proposalId,
+        decision,
+        ...(decision === "rejected" ? {} : { resultProgramHash: view.accepted.resultProgramHash }),
+        ...(view.proved === undefined
+          ? {}
+          : {
+              proof: {
+                status: view.proved.status,
+                matched: view.proved.matched,
+                missing: view.proved.missing,
+              },
+            }),
+      };
     },
     programHash() {
       const project = deps.getProject();

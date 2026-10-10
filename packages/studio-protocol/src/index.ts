@@ -186,6 +186,14 @@ export interface GhostChange {
 export type ExpectedEvidenceOutcome =
   "completes" | "reaches-goal" | "does-not-reach-goal" | "runtime-error";
 
+export interface ProofIdsView {
+  readonly actorIds: readonly string[];
+  readonly scriptIds: readonly string[];
+  readonly assetIds: readonly string[];
+  readonly variableIds: readonly string[];
+  readonly nodeIds: readonly string[];
+}
+
 export interface ExpectedRuntimeEvidenceView {
   readonly id: string;
   readonly description: string;
@@ -363,6 +371,18 @@ export type HostMessage =
         | { readonly ok: false; readonly reason: "EMPTY" | "INVALID" | "STALE" };
     }
   | { readonly schema: Schema; readonly type: "proposalCleared" }
+  | {
+      readonly schema: Schema;
+      readonly type: "proposalProof";
+      readonly proposalId: string;
+      readonly decision: Decision;
+      readonly resultProgramHash?: string;
+      readonly proof?: {
+        readonly status: "proved" | "partial" | "unproven";
+        readonly matched: ProofIdsView;
+        readonly missing: ProofIdsView;
+      };
+    }
   | {
       readonly schema: Schema;
       readonly type: "prediction";
@@ -1217,6 +1237,19 @@ function parseIdList(value: unknown): readonly string[] | undefined {
   return out;
 }
 
+const PROOF_ID_KEYS = ["actorIds", "scriptIds", "assetIds", "variableIds", "nodeIds"] as const;
+
+function parseProofIds(raw: unknown): ProofIdsView | undefined {
+  if (!isObject(raw)) return undefined;
+  const out: Record<string, readonly string[]> = {};
+  for (const key of PROOF_ID_KEYS) {
+    const list = parseIdList(raw[key]);
+    if (list === undefined) return undefined;
+    out[key] = list;
+  }
+  return out as unknown as ProofIdsView;
+}
+
 function parseOptionalIdList(value: unknown): readonly string[] | undefined {
   return value === undefined ? undefined : parseIdList(value);
 }
@@ -1468,6 +1501,44 @@ function parseAgentMessageFromHost(value: Obj, schema: Schema): HostMessage | un
     }
     case "proposalCleared":
       return { schema, type: "proposalCleared" };
+    case "proposalProof": {
+      const decision = value["decision"];
+      const hash =
+        value["resultProgramHash"] === undefined
+          ? undefined
+          : boundedString(value["resultProgramHash"], 1, 120);
+      const rawProof = value["proof"];
+      let proof: Extract<HostMessage, { type: "proposalProof" }>["proof"];
+      if (rawProof !== undefined) {
+        if (!isObject(rawProof)) return undefined;
+        const matched = parseProofIds(rawProof["matched"]);
+        const missing = parseProofIds(rawProof["missing"]);
+        const status = rawProof["status"];
+        if (
+          matched === undefined ||
+          missing === undefined ||
+          (status !== "proved" && status !== "partial" && status !== "unproven")
+        ) {
+          return undefined;
+        }
+        proof = { status, matched, missing };
+      }
+      if (
+        !isSafeId(value["proposalId"]) ||
+        !(DECISIONS as readonly unknown[]).includes(decision) ||
+        (value["resultProgramHash"] !== undefined && hash === undefined)
+      ) {
+        return undefined;
+      }
+      return {
+        schema,
+        type: "proposalProof",
+        proposalId: value["proposalId"],
+        decision: decision as Decision,
+        ...(hash === undefined ? {} : { resultProgramHash: hash }),
+        ...(proof === undefined ? {} : { proof }),
+      };
+    }
     case "help": {
       const kind = value["kind"];
       const ceiling = value["ceiling"];

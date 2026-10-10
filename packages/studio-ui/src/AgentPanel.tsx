@@ -114,6 +114,47 @@ function ProposalScope({
   );
 }
 
+function ProposalProof({
+  proof,
+  suggested,
+  copy,
+}: {
+  readonly proof: NonNullable<AgentUiState["proof"]>;
+  readonly suggested: readonly string[];
+  readonly copy: StudioUiCopy;
+}) {
+  const status =
+    proof.proof === undefined
+      ? undefined
+      : { proved: copy.proofProved, partial: copy.proofPartial, unproven: copy.proofUnproven }[
+          proof.proof.status
+        ];
+  const missing = proof.proof === undefined ? [] : Object.values(proof.proof.missing).flat();
+  return (
+    <section aria-label={copy.evidenceInspector}>
+      <ol>
+        <li>
+          {copy.evidenceSuggested}: {suggested.join(", ")}
+        </li>
+        <li>
+          {copy.evidenceAccepted}: {proof.decision}
+        </li>
+        {status === undefined ? null : (
+          <li>
+            {copy.evidenceProved}: {status}
+            {missing.length === 0 ? null : (
+              <small>
+                {" "}
+                {copy.proofMissing}: {missing.join(", ")}
+              </small>
+            )}
+          </li>
+        )}
+      </ol>
+    </section>
+  );
+}
+
 function Agreements({
   agreements,
   send,
@@ -531,6 +572,9 @@ export function AgentPanel({
             {copy.skip}
           </button>
         </section>
+      )}
+      {state.proof !== undefined && (
+        <ProposalProof proof={state.proof} suggested={state.proofSuggested ?? []} copy={copy} />
       )}
       {stage === "run" && (
         <button type="button" onClick={() => post({ type: "run" })}>

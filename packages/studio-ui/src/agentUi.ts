@@ -110,6 +110,9 @@ export interface AgentUiState {
   readonly selectionEvidence?: Extract<HostMessage, { type: "selectionEvidence" }>["result"];
   readonly prediction?: readonly PredictionAnswer[];
   readonly comparison?: ComparisonData;
+  readonly proof?: Extract<HostMessage, { type: "proposalProof" }>;
+  /** Ids the agent suggested, kept after the proposal itself is cleared. */
+  readonly proofSuggested?: readonly string[];
   readonly explain?: readonly ConceptId[];
   readonly feedback?: "relevant" | "other";
   readonly available: boolean;
@@ -155,7 +158,7 @@ export function reduceAgentUi(state: AgentUiState, message: HostMessage): AgentU
       return { ...without(state, "notice", "tasks"), clarify: message.options };
     case "proposal":
       return {
-        ...without(state, "notice", "selectionEvidence", "help"),
+        ...without(state, "notice", "selectionEvidence", "help", "proof", "proofSuggested"),
         proposal: {
           proposalId: message.proposalId,
           purpose: message.purpose,
@@ -192,6 +195,19 @@ export function reduceAgentUi(state: AgentUiState, message: HostMessage): AgentU
         : state;
     case "help":
       return { ...without(state, "notice"), help: message };
+    case "proposalProof": {
+      const proposal = state.proposal;
+      const suggested =
+        proposal === undefined
+          ? (state.proofSuggested ?? [])
+          : [
+              ...(proposal.affectedActorIds ?? []),
+              ...(proposal.affectedScriptIds ?? []),
+              ...(proposal.affectedAssetIds ?? []),
+              ...(proposal.affectedVariableIds ?? []),
+            ];
+      return { ...state, proof: message, proofSuggested: suggested };
+    }
     case "proposalCleared":
       return without(state, "proposal", "prediction", "selectionEvidence");
     case "prediction":

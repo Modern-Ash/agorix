@@ -47,6 +47,8 @@ import {
   type ProposalComparisonView,
   rejectProposal as rejectSharedProposal,
   type ProposalAuditEvent,
+  type ProposalCreativeContext,
+  type RuntimeEvidenceTraceEntry,
   type ProgramProposal,
   type ProposalReview,
 } from "@agorix/proposals";
@@ -1201,15 +1203,24 @@ export function createCompanionTurn(
 export function createProposalReview(
   acceptedProgram: ProjectProgram,
   proposal: ProgramProposal,
+  context?: ProposalCreativeContext,
 ): ProposalReview {
-  return createSharedProposalReview(acceptedProgram, proposal);
+  return createSharedProposalReview(acceptedProgram, proposal, context);
+}
+
+export function creativeContextForProject(project: StudioProject): ProposalCreativeContext {
+  return { actors: actorsForProject(project.stored) };
 }
 
 export function createProposalSession(
   project: StudioProject,
   proposal: ProgramProposal,
 ): StudioProposalSession {
-  const review = createProposalReview(project.stored.program, proposal);
+  const review = createProposalReview(
+    project.stored.program,
+    proposal,
+    creativeContextForProject(project),
+  );
   return {
     review,
     diff: createStudioProposalDiffView(review),
@@ -1236,8 +1247,12 @@ export function createProposalSession(
   };
 }
 
-export function assertProposalFresh(program: ProjectProgram, session: StudioProposalSession): void {
-  createProposalReview(program, session.review.proposal);
+export function assertProposalFresh(
+  program: ProjectProgram,
+  session: StudioProposalSession,
+  context?: ProposalCreativeContext,
+): void {
+  createProposalReview(program, session.review.proposal, context);
 }
 
 export function rejectProposal(
@@ -1264,8 +1279,9 @@ export function applyProposal(
 export function applyProposalSession(
   acceptedProgram: ProjectProgram,
   session: StudioProposalSession,
+  context?: ProposalCreativeContext,
 ): StudioProposalDecision {
-  return acceptSharedProposal(acceptedProgram, session.review);
+  return acceptSharedProposal(acceptedProgram, session.review, context);
 }
 
 /** A learner-edited subset of a proposal, accepted as one `modify` decision. */
@@ -1273,8 +1289,21 @@ export function modifyProposalSession(
   acceptedProgram: ProjectProgram,
   session: StudioProposalSession,
   learnerReviewedProgram: ProjectProgram,
+  context?: ProposalCreativeContext,
 ): StudioProposalDecision {
-  return modifySharedProposal(acceptedProgram, session.review, learnerReviewedProgram);
+  return modifySharedProposal(acceptedProgram, session.review, learnerReviewedProgram, context);
+}
+
+export function proofTraceFromEvidence(
+  evidence: StudioExecutionEvidence,
+): readonly RuntimeEvidenceTraceEntry[] {
+  return evidence.inspectorRows.map((row) => ({
+    nodeId: row.nodeId,
+    ...(row.actorId === undefined ? {} : { actorId: row.actorId }),
+    ...(row.scriptId === undefined ? {} : { scriptId: row.scriptId }),
+    ...(row.assetIds === undefined ? {} : { assetIds: row.assetIds }),
+    ...(row.variableIds === undefined ? {} : { variableIds: row.variableIds }),
+  }));
 }
 
 export function createProposalEvidenceInspector(input: {
@@ -1287,13 +1316,7 @@ export function createProposalEvidenceInspector(input: {
       ? undefined
       : bindProposalRuntimeEvidence(
           input.session.review.proposal,
-          input.runtimeEvidence.inspectorRows.map((row) => ({
-            nodeId: row.nodeId,
-            ...(row.actorId === undefined ? {} : { actorId: row.actorId }),
-            ...(row.scriptId === undefined ? {} : { scriptId: row.scriptId }),
-            ...(row.assetIds === undefined ? {} : { assetIds: row.assetIds }),
-            ...(row.variableIds === undefined ? {} : { variableIds: row.variableIds }),
-          })),
+          proofTraceFromEvidence(input.runtimeEvidence),
         );
   return createProposalComparisonView(input.session.review, {
     ...(input.learnerModifiedProgram === undefined

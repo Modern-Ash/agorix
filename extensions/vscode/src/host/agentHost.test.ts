@@ -14,6 +14,7 @@ function setup(
     reached?: boolean;
     stale?: boolean;
     planIntent?: AgentPort["planIntent"];
+    proofFor?: AgentPort["proofFor"];
   } = {},
 ) {
   const state = {
@@ -28,6 +29,7 @@ function setup(
     availableTasks: () => options.tasks ?? ["first-step"],
     pointerFor: () => ["block:a"],
     ...(options.planIntent === undefined ? {} : { planIntent: options.planIntent }),
+    ...(options.proofFor === undefined ? {} : { proofFor: options.proofFor }),
     proposeFor: async (task) => ({
       proposalId: task,
       purpose: "p",
@@ -689,5 +691,76 @@ describe("agentHost assistance ceiling", () => {
     await ctx.send({ type: "stateIntent", text: "repite 3 veces" });
     await ctx.send({ type: "acceptPlan" });
     expect(types(await ctx.send({ type: "requestProposal" }))).toEqual(["workflow", "proposal"]);
+  });
+});
+
+describe("agentHost proposal proof", () => {
+  const ids = {
+    actorIds: ["actor:main"],
+    scriptIds: [],
+    assetIds: [],
+    variableIds: [],
+    nodeIds: ["scripts[0]/statements[0]"],
+  };
+  const empty = { actorIds: [], scriptIds: [], assetIds: [], variableIds: [], nodeIds: [] };
+
+  it("emits proposalProof after accept and again, bound to the run, after run", async () => {
+    const proofFor = vi.fn((input: { withRun: boolean }) =>
+      input.withRun
+        ? {
+            proposalId: "first-step",
+            decision: "accepted" as const,
+            resultProgramHash: "fnv1a32:00000001",
+            proof: { status: "proved" as const, matched: ids, missing: empty },
+          }
+        : {
+            proposalId: "first-step",
+            decision: "accepted" as const,
+            resultProgramHash: "fnv1a32:00000001",
+          },
+    );
+    const { send } = setup({ reached: true, proofFor });
+    await send({ type: "stateIntent", text: "make it move" });
+    await send({ type: "acceptPlan" });
+    await send({ type: "requestProposal" });
+    const decided = await send({
+      type: "decideProposal",
+      proposalId: "first-step",
+      decision: "accepted",
+    });
+    expect(types(decided)).toEqual(["proposalCleared", "workflow", "proposalProof", "prediction"]);
+    expect(decided?.[2]).toMatchObject({ type: "proposalProof", decision: "accepted" });
+    expect((decided?.[2] as { proof?: unknown }).proof).toBeUndefined();
+    await send({ type: "predict", answer: "yes" });
+    const run = await send({ type: "run" });
+    expect(types(run)).toEqual(["workflow", "comparison", "proposalProof"]);
+    expect(run?.[2]).toMatchObject({ proof: { status: "proved" } });
+    expect(proofFor).toHaveBeenCalledWith({ withRun: false });
+    expect(proofFor).toHaveBeenCalledWith({ withRun: true });
+  });
+
+  it("emits a proof without a proved row after a rejection", async () => {
+    const { send } = setup({
+      proofFor: () => ({ proposalId: "first-step", decision: "rejected" as const }),
+    });
+    await send({ type: "stateIntent", text: "make it move" });
+    await send({ type: "acceptPlan" });
+    await send({ type: "requestProposal" });
+    const decided = await send({
+      type: "decideProposal",
+      proposalId: "first-step",
+      decision: "rejected",
+    });
+    expect(types(decided)).toEqual(["proposalCleared", "workflow", "proposalProof"]);
+  });
+
+  it("emits nothing extra when the port has no proofFor", async () => {
+    const { send } = setup();
+    await send({ type: "stateIntent", text: "make it move" });
+    await send({ type: "acceptPlan" });
+    await send({ type: "requestProposal" });
+    expect(
+      types(await send({ type: "decideProposal", proposalId: "first-step", decision: "accepted" })),
+    ).toEqual(["proposalCleared", "workflow", "prediction"]);
   });
 });

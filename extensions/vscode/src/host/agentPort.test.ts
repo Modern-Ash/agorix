@@ -12,6 +12,7 @@ import {
   type StudioProposalSession,
 } from "../studioCore.js";
 import { createFirstStepProposal, programSemanticHash } from "@agorix/proposals";
+import { createWorldState } from "@agorix/runtime";
 import type { ProviderProposalResult } from "../studioProposalSource.js";
 import { createAgentPort, type AgentPortDeps } from "./agentPort.js";
 
@@ -47,7 +48,7 @@ function setup(
     rejectActiveProposal: () => {
       active = undefined;
     },
-    runAndGetResult: () => undefined,
+    runAndGetResult: options.runAndGetResult ?? (() => undefined),
     events,
     ...(options.providerProposal === undefined
       ? {}
@@ -456,5 +457,45 @@ describe("agentPort pointers", () => {
     expect(new Set(repeat).size).toBe(6);
     expect(setup([]).port.pointerFor("first-step")).toEqual([]);
     expect(setup([]).port.pointerFor("repeat-pattern")).toEqual([]);
+  });
+});
+
+describe("agentPort proposal proof", () => {
+  const node = "scripts[0]/statements[0]";
+  const runWith = (trace: { nodeId: string }[]): Partial<AgentPortDeps> => ({
+    runAndGetResult: () => ({ world: createWorldState(), stepsUsed: 1, trace }),
+  });
+
+  it("has no proof before any decision", () => {
+    expect(setup([]).port.proofFor?.({ withRun: false })).toBeUndefined();
+  });
+
+  it("reports an accepted proof, then a proved row once the run covers the node", async () => {
+    const ctx = setup([], runWith([{ nodeId: node }]));
+    await ctx.port.proposeFor("first-step");
+    expect(await ctx.port.applyPending()).toBe("applied");
+    const decided = ctx.port.proofFor?.({ withRun: false });
+    expect(decided).toMatchObject({ decision: "accepted" });
+    expect(decided?.proof).toBeUndefined();
+    ctx.port.run();
+    expect(ctx.port.proofFor?.({ withRun: true })?.proof?.status).toBe("proved");
+  });
+
+  it("is unproven when the run never reaches the node", async () => {
+    const ctx = setup([], runWith([]));
+    await ctx.port.proposeFor("first-step");
+    await ctx.port.applyPending();
+    ctx.port.run();
+    expect(ctx.port.proofFor?.({ withRun: true })?.proof?.status).toBe("unproven");
+  });
+
+  it("reports a rejection and never a proof", async () => {
+    const ctx = setup([], runWith([{ nodeId: node }]));
+    await ctx.port.proposeFor("first-step");
+    ctx.port.rejectPending();
+    ctx.port.run();
+    const proof = ctx.port.proofFor?.({ withRun: true });
+    expect(proof).toMatchObject({ decision: "rejected" });
+    expect(proof?.proof).toBeUndefined();
   });
 });
