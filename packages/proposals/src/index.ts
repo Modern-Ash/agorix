@@ -76,6 +76,7 @@ export type ProposalErrorCode =
   | "UNKNOWN_OPERATION"
   | "UNSUPPORTED_PATH"
   | "STALE_PROPOSAL"
+  | "ACTOR_SCOPE_VIOLATION"
   | "INVALID_CANDIDATE";
 
 export class ProposalValidationError extends Error {
@@ -98,6 +99,7 @@ export interface ProposalDiffEntry {
 }
 
 export interface ProposalReview {
+  readonly creativeContextHash?: string;
   readonly proposal: ProgramProposal;
   readonly acceptedProgram: ProjectProgram;
   readonly candidateProgram: ProjectProgram;
@@ -108,6 +110,7 @@ export interface ProposalReview {
 }
 
 export interface ProposalAuditEvent {
+  readonly creativeContextHash?: string;
   readonly schema: "agorix/proposal-audit/v1";
   readonly proposalId: string;
   readonly decision: "accept" | "reject" | "modify";
@@ -155,6 +158,22 @@ export interface ProposalRuntimeEvidenceBinding {
   readonly observedVariableIds: readonly string[];
   readonly matchedVariableIds: readonly string[];
   readonly missingVariableIds: readonly string[];
+}
+
+export interface ProposalCreativeContext {
+  readonly actors?: readonly {
+    readonly id: string;
+    readonly scripts?: readonly string[];
+  }[];
+}
+
+const CREATIVE_CONTEXT_CONTRACT = "agorix/proposal-creative-context/v1";
+
+export function creativeContextHash(context: ProposalCreativeContext): string {
+  const actors = [...(context.actors ?? [])]
+    .map((actor) => ({ id: actor.id, scripts: [...(actor.scripts ?? [])].sort() }))
+    .sort((left, right) => left.id.localeCompare(right.id));
+  return stableHash(stableStringify({ contractVersion: CREATIVE_CONTEXT_CONTRACT, actors }));
 }
 
 export interface ProposalDecisionResult {
@@ -329,10 +348,12 @@ export function validateProgramProposal(proposal: ProgramProposal): ProgramPropo
 export function createProposalReview(
   acceptedProgram: ProjectProgram,
   proposal: ProgramProposal,
+  context?: ProposalCreativeContext,
 ): ProposalReview {
   const accepted = validateProgram(acceptedProgram);
   assertFreshBase(accepted, proposal);
   assertProposalScope(accepted, proposal);
+  assertActorScope(accepted, proposal, context);
   const candidate = validateProgram(applyProposalOperations(accepted, proposal));
   const acceptedProjection = projectProgram(accepted);
   const proposedProjection = projectProgram(candidate);
@@ -341,6 +362,7 @@ export function createProposalReview(
     createDiffEntry(nodeId, acceptedProjection, proposedProjection),
   );
   return {
+    ...(context === undefined ? {} : { creativeContextHash: creativeContextHash(context) }),
     proposal,
     acceptedProgram: accepted,
     candidateProgram: candidate,
@@ -362,19 +384,26 @@ export function rejectProposal(
   const accepted = validateProgram(acceptedProgram);
   return {
     program: accepted,
-    audit: createAuditEvent(review.proposal, "reject", accepted),
+    audit: createAuditEvent(review.proposal, "reject", accepted, review.creativeContextHash),
   };
 }
 
 export function acceptProposal(
   acceptedProgram: ProjectProgram,
   review: ProposalReview,
+  context?: ProposalCreativeContext,
 ): ProposalDecisionResult {
   const accepted = validateProgram(acceptedProgram);
   assertFreshBase(accepted, review.proposal);
+  assertFreshContext(review, context);
   return {
     program: validateProgram(review.candidateProgram),
-    audit: createAuditEvent(review.proposal, "accept", review.candidateProgram),
+    audit: createAuditEvent(
+      review.proposal,
+      "accept",
+      review.candidateProgram,
+      review.creativeContextHash,
+    ),
   };
 }
 
@@ -382,13 +411,15 @@ export function modifyProposal(
   acceptedProgram: ProjectProgram,
   review: ProposalReview,
   learnerReviewedProgram: ProjectProgram,
+  context?: ProposalCreativeContext,
 ): ProposalDecisionResult {
   const accepted = validateProgram(acceptedProgram);
   assertFreshBase(accepted, review.proposal);
+  assertFreshContext(review, context);
   const program = validateProgram(learnerReviewedProgram);
   return {
     program,
-    audit: createAuditEvent(review.proposal, "modify", program),
+    audit: createAuditEvent(review.proposal, "modify", program, review.creativeContextHash),
   };
 }
 
@@ -724,6 +755,62 @@ function assertFreshBase(program: ProjectProgram, proposal: ProgramProposal): vo
   }
 }
 
+function assertActorScope(
+  program: ProjectProgram,
+  proposal: ProgramProposal,
+  context: ProposalCreativeContext | undefined,
+): void {
+  const actors = context?.actors;
+  const declared = proposal.affectedActorIds;
+  if (actors === undefined || declared === undefined) {
+    return;
+  }
+  const derived = new Set<string>();
+  proposal.operations.forEach((operation, index) => {
+    const script = scriptForOperation(program, operation);
+    if (script === undefined) {
+      return;
+    }
+    const owners = actors
+      .filter((actor) => actor.scripts?.includes(script.id) === true)
+      .map((actor) => actor.id);
+    if (!owners.some((id) => declared.includes(id))) {
+      throw new ProposalValidationError(
+        "ACTOR_SCOPE_VIOLATION",
+        `$.operations[${index}]`,
+        `operation targets script ${JSON.stringify(script.id)} not owned by a declared actor`,
+      );
+    }
+    owners.forEach((id) => derived.add(id));
+  });
+  const undeclared = [...derived].filter((id) => !declared.includes(id));
+  const untouched = declared.filter((id) => !derived.has(id));
+  if (undeclared.length > 0 || untouched.length > 0) {
+    throw new ProposalValidationError(
+      "ACTOR_SCOPE_VIOLATION",
+      "$.affectedActorIds",
+      `declared actors differ from touched actors (undeclared: ${undeclared.join(",") || "none"}; untouched: ${untouched.join(",") || "none"})`,
+    );
+  }
+}
+
+function assertFreshContext(
+  review: ProposalReview,
+  context: ProposalCreativeContext | undefined,
+): void {
+  if (review.creativeContextHash === undefined || context === undefined) {
+    return;
+  }
+  const current = creativeContextHash(context);
+  if (current !== review.creativeContextHash) {
+    throw new ProposalValidationError(
+      "STALE_PROPOSAL",
+      "$.creativeContext",
+      `proposal context ${review.creativeContextHash} does not match current ${current}`,
+    );
+  }
+}
+
 function assertProposalScope(program: ProjectProgram, proposal: ProgramProposal): void {
   const allowedNodeIds = new Set(proposal.affectedNodeIds);
   const allowedScriptIds =
@@ -977,6 +1064,7 @@ function createAuditEvent(
   proposal: ProgramProposal,
   decision: ProposalAuditEvent["decision"],
   resultProgram: ProjectProgram,
+  creativeContext?: string,
 ): ProposalAuditEvent {
   return {
     schema: "agorix/proposal-audit/v1",
@@ -995,6 +1083,7 @@ function createAuditEvent(
       ? {}
       : { affectedVariableIds: proposal.affectedVariableIds }),
     affectedNodeIds: proposal.affectedNodeIds,
+    ...(creativeContext === undefined ? {} : { creativeContextHash: creativeContext }),
     baseProgramHash: proposal.baseProgramHash,
     resultProgramHash: programSemanticHash(resultProgram),
   };

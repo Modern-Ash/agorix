@@ -7,6 +7,7 @@ import {
   acceptProposal,
   bindProposalRuntimeEvidence,
   createProposalComparisonView,
+  creativeContextHash,
   createProgramProposal,
   createProposalReview,
   createStudioProposalDiffView,
@@ -807,5 +808,169 @@ describe("proposal package", () => {
     expect(comparison.entries[3]?.evidence?.matchedNodeIds).toEqual(["scripts[0]/statements[0]"]);
     expect(comparison.entries[0]?.programHash).not.toBe(comparison.entries[1]?.programHash);
     expect(comparison.entries[2]?.programHash).not.toBe(comparison.entries[1]?.programHash);
+  });
+});
+
+const twoActors = [
+  { id: "actor:explorer", scripts: ["explorer-script"] },
+  { id: "actor:beacon", scripts: ["beacon-script"] },
+];
+
+function codeOf(run: () => unknown): string | undefined {
+  try {
+    run();
+  } catch (error) {
+    return error instanceof ProposalValidationError ? error.code : "OTHER";
+  }
+  return undefined;
+}
+
+function actorProposal(input: {
+  readonly actors: readonly string[];
+  readonly scriptIndex: 0 | 1;
+}): ProgramProposal {
+  const scriptId = input.scriptIndex === 0 ? "explorer-script" : "beacon-script";
+  const field = input.scriptIndex === 0 ? "steps" : "degrees";
+  const nodeId = `scripts[${input.scriptIndex}]/statements[0]`;
+  return createProgramProposal({
+    id: `proposal-actor-${input.scriptIndex}`,
+    baseProgram: multiScriptProgram,
+    source: { kind: "learning-companion", capability: "multi-actor-review" },
+    purpose: "Change one actor.",
+    rationale: "Only the declared actor should change.",
+    affectedActorIds: input.actors,
+    affectedScriptIds: [scriptId],
+    affectedNodeIds: [nodeId],
+    operations: [{ type: "replaceStatementField", nodeId, field, value: 25 }],
+  });
+}
+
+describe("actor scope", () => {
+  it("accepts a proposal whose touched script belongs to the declared actor", () => {
+    const review = createProposalReview(
+      multiScriptProgram,
+      actorProposal({ actors: ["actor:explorer"], scriptIndex: 0 }),
+      { actors: twoActors },
+    );
+    expect(review.creativeContextHash).toBe(creativeContextHash({ actors: twoActors }));
+  });
+
+  it("rejects a proposal that declares one actor but edits another actor's script", () => {
+    expect(
+      codeOf(() =>
+        createProposalReview(
+          multiScriptProgram,
+          actorProposal({ actors: ["actor:explorer"], scriptIndex: 1 }),
+          { actors: twoActors },
+        ),
+      ),
+    ).toBe("ACTOR_SCOPE_VIOLATION");
+  });
+
+  it("rejects a declared actor that owns no touched script, or is unknown", () => {
+    expect(
+      codeOf(() =>
+        createProposalReview(
+          multiScriptProgram,
+          actorProposal({ actors: ["actor:explorer", "actor:beacon"], scriptIndex: 0 }),
+          { actors: twoActors },
+        ),
+      ),
+    ).toBe("ACTOR_SCOPE_VIOLATION");
+    expect(
+      codeOf(() =>
+        createProposalReview(
+          multiScriptProgram,
+          actorProposal({ actors: ["actor:ghost"], scriptIndex: 0 }),
+          { actors: twoActors },
+        ),
+      ),
+    ).toBe("ACTOR_SCOPE_VIOLATION");
+  });
+
+  it("rejects when a touched script is shared with an undeclared actor", () => {
+    const shared = [
+      { id: "actor:explorer", scripts: ["explorer-script"] },
+      { id: "actor:beacon", scripts: ["beacon-script", "explorer-script"] },
+    ];
+    expect(
+      codeOf(() =>
+        createProposalReview(
+          multiScriptProgram,
+          actorProposal({ actors: ["actor:explorer"], scriptIndex: 0 }),
+          { actors: shared },
+        ),
+      ),
+    ).toBe("ACTOR_SCOPE_VIOLATION");
+  });
+
+  it("rejects a touched script that no actor owns", () => {
+    expect(
+      codeOf(() =>
+        createProposalReview(
+          multiScriptProgram,
+          actorProposal({ actors: ["actor:explorer"], scriptIndex: 1 }),
+          { actors: [{ id: "actor:explorer", scripts: ["explorer-script"] }] },
+        ),
+      ),
+    ).toBe("ACTOR_SCOPE_VIOLATION");
+  });
+
+  it("behaves as before without context or without declared actors", () => {
+    const proposal = actorProposal({ actors: ["actor:explorer"], scriptIndex: 1 });
+    expect(createProposalReview(multiScriptProgram, proposal).creativeContextHash).toBeUndefined();
+    const undeclared = createProgramProposal({
+      id: "proposal-no-actors",
+      baseProgram: multiScriptProgram,
+      source: { kind: "learning-companion" },
+      purpose: "p",
+      rationale: "r",
+      affectedNodeIds: ["scripts[1]/statements[0]"],
+      operations: [
+        {
+          type: "replaceStatementField",
+          nodeId: "scripts[1]/statements[0]",
+          field: "degrees",
+          value: 45,
+        },
+      ],
+    });
+    expect(() =>
+      createProposalReview(multiScriptProgram, undeclared, { actors: twoActors }),
+    ).not.toThrow();
+  });
+
+  it("hashes the context independent of ordering and changes with ownership", () => {
+    const reordered = [
+      { id: "actor:beacon", scripts: ["beacon-script"] },
+      { id: "actor:explorer", scripts: ["explorer-script"] },
+    ];
+    expect(creativeContextHash({ actors: reordered })).toBe(
+      creativeContextHash({ actors: twoActors }),
+    );
+    const moved = [
+      { id: "actor:explorer", scripts: ["explorer-script", "beacon-script"] },
+      { id: "actor:beacon", scripts: [] },
+    ];
+    expect(creativeContextHash({ actors: moved })).not.toBe(
+      creativeContextHash({ actors: twoActors }),
+    );
+  });
+
+  it("goes stale on accept when ownership changed and records the hash in the audit", () => {
+    const review = createProposalReview(
+      multiScriptProgram,
+      actorProposal({ actors: ["actor:explorer"], scriptIndex: 0 }),
+      { actors: twoActors },
+    );
+    const moved = [{ id: "actor:explorer", scripts: [] }, ...twoActors.slice(1)];
+    expect(codeOf(() => acceptProposal(multiScriptProgram, review, { actors: moved }))).toBe(
+      "STALE_PROPOSAL",
+    );
+    const accepted = acceptProposal(multiScriptProgram, review, { actors: twoActors });
+    expect(accepted.audit.creativeContextHash).toBe(review.creativeContextHash);
+    expect(rejectProposal(multiScriptProgram, review).audit.creativeContextHash).toBe(
+      review.creativeContextHash,
+    );
   });
 });
