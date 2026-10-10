@@ -150,6 +150,7 @@ describe("Python projection: variables and operators", () => {
     expect(result.text).toBe(
       [
         "score = 0",
+        'show_variable("score")',
         "",
         "def on_start():",
         "    global score",
@@ -287,6 +288,23 @@ describe("Python projection: variables and operators", () => {
     expect(result.text).toContain("say_ = 0");
     expect(result.text).toContain('show_variable("move_")');
     expect(result.text).not.toContain("move(");
+  });
+
+  it("encodes initial watcher visibility in the declaration block", () => {
+    const visibilityProgram: ProjectProgram = {
+      schema: SCHEMA_VERSION,
+      variables: [
+        { id: "shown", name: "shown", initialValue: 0, visible: true },
+        { id: "hidden", name: "hidden", initialValue: 0, visible: false },
+      ],
+      scripts: [],
+    };
+
+    const result = projectPython(visibilityProgram);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toContain('shown = 0\nshow_variable("shown")');
+    expect(result.text).toContain("hidden = 0");
+    expect(result.text.split("show_variable")).toHaveLength(2);
   });
 
   it("keeps watcher operations keyed to disambiguated identifiers", () => {

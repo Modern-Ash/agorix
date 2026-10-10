@@ -179,6 +179,7 @@ describe("Agorix Code projection: variables and operators", () => {
     expect(result.text).toBe(
       [
         'variable "score" = 0',
+        'show "score"',
         "",
         "when start",
         '  change "score" by ("score" + 1)',
@@ -204,6 +205,23 @@ describe("Agorix Code projection: variables and operators", () => {
     ]) {
       expect(result.mapping[nodeId]?.length).toBeGreaterThan(0);
     }
+  });
+
+  it("encodes initial watcher visibility in the declaration block", () => {
+    const visibilityProgram: ProjectProgram = {
+      schema: SCHEMA_VERSION,
+      variables: [
+        { id: "shown", name: "shown", initialValue: 0, visible: true },
+        { id: "hidden", name: "hidden", initialValue: 0, visible: false },
+      ],
+      scripts: [],
+    };
+
+    const result = projectAgorixCode(visibilityProgram);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toContain('variable "shown" = 0\nshow "shown"');
+    expect(result.text).toContain('variable "hidden" = 0');
+    expect(result.text.split("\nshow ")).toHaveLength(2);
   });
 
   it("quotes variable names so hostile labels cannot inject code", () => {
@@ -238,6 +256,7 @@ describe("Agorix Code projection: variables and operators", () => {
     expect(result.text).toBe(
       [
         'variable "score\\"\\n  move 100\\nsay \\"pwned" = 0',
+        'show "score\\"\\n  move 100\\nsay \\"pwned"',
         "",
         "when start",
         '  show "score\\"\\n  move 100\\nsay \\"pwned"',

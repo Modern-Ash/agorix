@@ -45,6 +45,13 @@ export function projectAgorixCode(program: ProjectProgram): LanguageProjectionRe
         formatNumber(variable.initialValue) +
         "\n",
     );
+    if (variable.visible) {
+      writeMapped(
+        writer,
+        "variables/" + variable.id,
+        "show " + variableName(writer, variable.id) + "\n",
+      );
+    }
   }
   if ((validated.variables?.length ?? 0) > 0) {
     writer.text += "\n";

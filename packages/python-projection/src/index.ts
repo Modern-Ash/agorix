@@ -41,6 +41,13 @@ export function projectPython(program: ProjectProgram): LanguageProjectionResult
       "variables/" + variable.id,
       variableIdentifier(writer, variable.id) + " = " + formatNumber(variable.initialValue) + "\n",
     );
+    if (variable.visible) {
+      writeMapped(
+        writer,
+        "variables/" + variable.id,
+        "show_variable(" + JSON.stringify(variableIdentifier(writer, variable.id)) + ")\n",
+      );
+    }
   }
   if ((validated.variables?.length ?? 0) > 0) {
     writer.text += "\n";
