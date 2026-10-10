@@ -115,6 +115,16 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
         indent + "switch backdrop to " + JSON.stringify(statement.backdropId) + "\n",
       );
       return;
+    case "playSound":
+      writeMapped(
+        writer,
+        nodeId,
+        indent + "play sound " + JSON.stringify(statement.soundId) + "\n",
+      );
+      return;
+    case "stopSounds":
+      writeMapped(writer, nodeId, indent + "stop all sounds\n");
+      return;
     case "setVariable":
       writeMapped(
         writer,
