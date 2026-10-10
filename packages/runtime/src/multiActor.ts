@@ -349,6 +349,7 @@ export function runMultiActorProgram(
   const frames: MultiActorFrame[] = [];
   const activations: MultiActorScriptActivation[] = [];
   const queue = initialEvents(options.events);
+  let randomState = options.randomSeed;
 
   while (queue.length > 0) {
     const event = queue.shift();
@@ -374,8 +375,9 @@ export function runMultiActorProgram(
         const result = runProgram(singleScriptProgram(validatedProgram, script), actor.world, {
           maxSteps: maxSteps - stepsUsed,
           event: programEventForRuntimeEvent(event),
-          ...(options.randomSeed === undefined ? {} : { randomSeed: options.randomSeed }),
+          ...(randomState === undefined ? {} : { randomSeed: randomState }),
         });
+        randomState = result.randomState;
         outcome = mergeOutcome(outcome, result.outcome);
         for (const entry of result.trace) {
           const nodeId = remapNodeId(entry.nodeId, scriptIndex);

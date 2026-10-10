@@ -82,7 +82,7 @@ export function projectPython(program: ProjectProgram): LanguageProjectionResult
         "change_variable",
         "show_variable",
         "hide_variable",
-        "random",
+        "random_number",
       ],
       executable: false,
     },
@@ -137,10 +137,11 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
         writer,
         nodeId,
         indent +
-          variableIdentifier(writer, statement.variableId) +
-          " = " +
+          "set_variable(" +
+          JSON.stringify(variableLabel(writer, statement.variableId)) +
+          ", " +
           expressionText(writer, statement.value, nodeId + "/value") +
-          "\n",
+          ")\n",
       );
       return;
     case "changeVariable":
@@ -148,10 +149,11 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
         writer,
         nodeId,
         indent +
-          variableIdentifier(writer, statement.variableId) +
-          " += " +
+          "change_variable(" +
+          JSON.stringify(variableLabel(writer, statement.variableId)) +
+          ", " +
           expressionText(writer, statement.delta, nodeId + "/delta") +
-          "\n",
+          ")\n",
       );
       return;
     case "showVariable":
@@ -300,7 +302,7 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return "(not " + expressionText(writer, expression.value, nodeId + "/value") + ")";
     case "random":
       return (
-        "random.randint(" +
+        "random_number(" +
         expressionText(writer, expression.min, nodeId + "/min") +
         ", " +
         expressionText(writer, expression.max, nodeId + "/max") +
@@ -328,6 +330,44 @@ function variableLabel(writer: Writer, variableId: string): string {
   return writer.variableLabels.get(variableId) ?? variableId;
 }
 
+const PYTHON_RESERVED_WORDS: ReadonlySet<string> = new Set([
+  "False",
+  "None",
+  "True",
+  "and",
+  "as",
+  "assert",
+  "async",
+  "await",
+  "break",
+  "class",
+  "continue",
+  "def",
+  "del",
+  "elif",
+  "else",
+  "except",
+  "finally",
+  "for",
+  "from",
+  "global",
+  "if",
+  "import",
+  "in",
+  "is",
+  "lambda",
+  "nonlocal",
+  "not",
+  "or",
+  "pass",
+  "raise",
+  "return",
+  "try",
+  "while",
+  "with",
+  "yield",
+]);
+
 function safeIdentifier(value: string, fallback: string): string {
   const words = value.match(/[A-Za-z0-9]+/g) ?? [];
   const candidate = words
@@ -337,7 +377,8 @@ function safeIdentifier(value: string, fallback: string): string {
     })
     .join("");
   const identifier = candidate.length > 0 ? candidate : fallback;
-  return /^[A-Za-z_]/.test(identifier) ? identifier : `v${identifier}`;
+  const valid = /^[A-Za-z_]/.test(identifier) ? identifier : `v${identifier}`;
+  return PYTHON_RESERVED_WORDS.has(valid) ? `${valid}_` : valid;
 }
 
 function variableNamesFor(

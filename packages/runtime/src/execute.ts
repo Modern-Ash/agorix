@@ -90,6 +90,11 @@ export interface RunResult {
   readonly stepsUsed: number;
   readonly trace: readonly ExecutionTraceEntry[];
   readonly observations: readonly RuntimeObservation[];
+  /**
+   * Ending PRNG state, so callers can continue one deterministic random stream.
+   * Always present from `runProgram`; optional for synthetic/derived results.
+   */
+  readonly randomState?: number;
 }
 
 class ExecutionHalt {
@@ -481,6 +486,7 @@ export function runProgram(
       stepsUsed: state.stepsUsed,
       trace: state.trace,
       observations: state.observations,
+      randomState: state.randomState,
     };
   } catch (error) {
     if (error instanceof ExecutionHalt) {
@@ -499,6 +505,7 @@ export function runProgram(
         stepsUsed: state.stepsUsed,
         trace: state.trace,
         observations: state.observations,
+        randomState: state.randomState,
       };
     }
     throw error;

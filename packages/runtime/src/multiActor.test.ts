@@ -235,6 +235,57 @@ describe("runMultiActorProgram", () => {
     );
   });
 
+  it("consumes one deterministic random stream across activations", () => {
+    const twoRollers: ProjectProgram = {
+      schema: SCHEMA_VERSION,
+      variables: [
+        { id: "first", name: "first", initialValue: 0, visible: true },
+        { id: "second", name: "second", initialValue: 0, visible: true },
+      ],
+      scripts: [
+        {
+          id: "roll-one",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "setVariable",
+              variableId: "first",
+              value: {
+                type: "random",
+                min: { type: "numericLiteral", value: 1 },
+                max: { type: "numericLiteral", value: 1000 },
+              },
+            },
+          ],
+        },
+        {
+          id: "roll-two",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "setVariable",
+              variableId: "second",
+              value: {
+                type: "random",
+                min: { type: "numericLiteral", value: 1 },
+                max: { type: "numericLiteral", value: 1000 },
+              },
+            },
+          ],
+        },
+      ],
+    };
+
+    const run = runMultiActorProgram(twoRollers, undefined, { randomSeed: 7 });
+    const replay = runMultiActorProgram(structuredClone(twoRollers), undefined, { randomSeed: 7 });
+    const first = run.actors[0]?.world.variables?.first?.value;
+    const second = run.actors[0]?.world.variables?.second?.value;
+
+    expect(first).toBe(replay.actors[0]?.world.variables?.first?.value);
+    expect(second).toBe(replay.actors[0]?.world.variables?.second?.value);
+    expect(first).not.toBe(second);
+  });
+
   it("runs key press scripts only when the queued key matches", () => {
     const keyProgram: ProjectProgram = {
       schema: SCHEMA_VERSION,

@@ -91,7 +91,7 @@ describe("Python projection", () => {
         "change_variable",
         "show_variable",
         "hide_variable",
-        "random",
+        "random_number",
       ],
       executable: false,
     });
@@ -154,8 +154,8 @@ describe("Python projection: variables and operators", () => {
         "score = 0",
         "",
         "def on_start():",
-        "    score += (score + 1)",
-        "    score = random.randint(1, 10)",
+        '    change_variable("score", (score + 1))',
+        '    set_variable("score", random_number(1, 10))',
         "    if ((score < 10) and (not False)):",
         '        show_variable("score")',
         '        hide_variable("score")',
@@ -187,6 +187,37 @@ describe("Python projection: variables and operators", () => {
         requiredNodeIds: ["scripts[0]", "scripts[0]/statements[0]", "scripts[0]/statements[2]"],
       }),
     ).not.toThrow();
+  });
+
+  it("escapes Python reserved words used as variable names", () => {
+    const keywordProgram: ProjectProgram = {
+      schema: SCHEMA_VERSION,
+      variables: [{ id: "kw", name: "class", initialValue: 0, visible: false }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            { type: "setVariable", variableId: "kw", value: { type: "numericLiteral", value: 1 } },
+            {
+              type: "if",
+              condition: {
+                type: "equals",
+                left: { type: "variable", variableId: "kw" },
+                right: { type: "numericLiteral", value: 1 },
+              },
+              then: [],
+            },
+          ],
+        },
+      ],
+    };
+
+    const result = projectPython(keywordProgram);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toContain("class_ = 0");
+    expect(result.text).toContain('set_variable("class", 1)');
+    expect(result.text).toContain("(class_ == 1)");
   });
 });
 
