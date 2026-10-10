@@ -588,3 +588,68 @@ describe("provider text placement", () => {
     expect(markup).toContain("&lt;img");
   });
 });
+
+describe("proposal evidence inspector", () => {
+  const ids = {
+    actorIds: ["actor:explorer"],
+    scriptIds: [],
+    assetIds: [],
+    variableIds: [],
+    nodeIds: ["scripts[0]/statements[0]"],
+  };
+  const empty = { actorIds: [], scriptIds: [], assetIds: [], variableIds: [], nodeIds: [] };
+  const html = (state: AgentUiState) =>
+    renderToStaticMarkup(<AgentPanel state={state} send={() => undefined} />);
+  const withProposal = () =>
+    reduceAgentUi(stageState("proposal"), {
+      schema,
+      type: "proposal",
+      proposalId: "p1",
+      purpose: "p",
+      rationale: "r",
+      affectedActorIds: ["actor:explorer"],
+      affectedNodeIds: ["scripts[0]/statements[0]"],
+      changes: [],
+    });
+
+  it("shows suggested, accepted and proved rows from a proposalProof", () => {
+    const state = reduceAgentUi(withProposal(), {
+      schema,
+      type: "proposalProof",
+      proposalId: "p1",
+      decision: "accepted",
+      proof: { status: "proved", matched: ids, missing: empty },
+    });
+    const markup = html(state);
+    expect(markup).toContain("Suggested by AI");
+    expect(markup).toContain("Accepted by you");
+    expect(markup).toContain("Proved by the runtime");
+    expect(markup).toContain("actor:explorer");
+  });
+
+  it("omits the proved row for a rejection and keeps suggested ids after clearing", () => {
+    const decided = reduceAgentUi(withProposal(), {
+      schema,
+      type: "proposalProof",
+      proposalId: "p1",
+      decision: "rejected",
+    });
+    const cleared = reduceAgentUi(decided, { schema, type: "proposalCleared" });
+    const markup = html(cleared);
+    expect(markup).toContain("Suggested by AI");
+    expect(markup).toContain("actor:explorer");
+    expect(markup).not.toContain("Proved by the runtime");
+  });
+
+  it("lists missing ids when the proof is partial", () => {
+    const state = reduceAgentUi(withProposal(), {
+      schema,
+      type: "proposalProof",
+      proposalId: "p1",
+      decision: "accepted",
+      proof: { status: "partial", matched: empty, missing: ids },
+    });
+    expect(html(state)).toContain("missing");
+    expect(html(state)).toContain("partly proved");
+  });
+});
