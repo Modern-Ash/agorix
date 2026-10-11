@@ -92,6 +92,14 @@ exports[`serialization snapshots > serializes the full-coverage program determin
           "type": "stopSounds"
         },
         {
+          "type": "setVolume",
+          "volume": 40
+        },
+        {
+          "type": "changeVolume",
+          "delta": -10
+        },
+        {
           "type": "broadcast",
           "message": "mission:check"
         },

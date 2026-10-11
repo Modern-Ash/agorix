@@ -87,6 +87,8 @@ export function projectPython(program: ProjectProgram): LanguageProjectionResult
         "switch_backdrop",
         "play_sound",
         "stop_sounds",
+        "set_volume",
+        "change_volume",
         "show_variable",
         "hide_variable",
         "random_number",
@@ -148,6 +150,16 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
       return;
     case "stopSounds":
       writeMapped(writer, nodeId, indent + "stop_sounds()\n");
+      return;
+    case "setVolume":
+      writeMapped(writer, nodeId, indent + "set_volume(" + formatNumber(statement.volume) + ")\n");
+      return;
+    case "changeVolume":
+      writeMapped(
+        writer,
+        nodeId,
+        indent + "change_volume(" + formatNumber(statement.delta) + ")\n",
+      );
       return;
     case "setVariable":
       writeMapped(
