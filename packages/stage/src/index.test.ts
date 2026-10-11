@@ -446,3 +446,49 @@ describe("stage", () => {
     }
   });
 });
+
+describe("volume in stage frames and learner traces", () => {
+  const world = {
+    sprite: { x: 0, y: 0, heading: 0 },
+    goal: { x: 100, y: 0 },
+  };
+  const observations = (): RuntimeObservation[] => [
+    {
+      kind: "statement-end",
+      step: 1,
+      nodeId: "scripts[0]/statements[0]",
+      statementType: "setVolume",
+      world: { ...world, sounds: { activeSoundIds: [], volume: 40 } },
+    },
+    {
+      kind: "statement-end",
+      step: 2,
+      nodeId: "scripts[0]/statements[1]",
+      statementType: "changeVolume",
+      world: { ...world, sounds: { activeSoundIds: [], volume: 30 } },
+    },
+  ];
+
+  it("carries volume into frames and omits it when the world has none", () => {
+    const frames = framesFromRuntimeObservations(observations());
+    expect(frames[0]?.state.sounds).toEqual({ activeSoundIds: [], volume: 40 });
+    const plain = framesFromRuntimeObservations([
+      {
+        kind: "statement-end",
+        step: 1,
+        nodeId: "scripts[0]/statements[0]",
+        statementType: "playSound",
+        world: { ...world, sounds: { activeSoundIds: ["asset:sound.beacon"] } },
+      },
+    ]);
+    expect(plain[0]?.state.sounds).toEqual({ activeSoundIds: ["asset:sound.beacon"] });
+  });
+
+  it("names volume steps in learner traces", () => {
+    const trace = learnerTraceFromExecutionSteps(
+      executionStepsFromRuntimeObservations(observations()),
+    );
+    expect(trace[0]).toMatchObject({ title: "Set volume", summary: "Volume set to 40" });
+    expect(trace[1]).toMatchObject({ title: "Change volume", summary: "Volume 30" });
+  });
+});

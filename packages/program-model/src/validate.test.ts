@@ -197,3 +197,31 @@ describe("validateProgram", () => {
     expect(() => validateProgram(FULL_COVERAGE_PROGRAM)).not.toThrow();
   });
 });
+
+describe("volume statements", () => {
+  const programWith = (statement: unknown) =>
+    ({
+      schema: SCHEMA_VERSION,
+      scripts: [{ id: "main", trigger: { type: "onStart" }, statements: [statement] }],
+    }) as never;
+
+  it("accepts in-range volume statements", () => {
+    expect(() => validateProgram(programWith({ type: "setVolume", volume: 0 }))).not.toThrow();
+    expect(() => validateProgram(programWith({ type: "setVolume", volume: 100 }))).not.toThrow();
+    expect(() => validateProgram(programWith({ type: "changeVolume", delta: -100 }))).not.toThrow();
+    expect(() => validateProgram(programWith({ type: "changeVolume", delta: 100 }))).not.toThrow();
+  });
+
+  it("rejects out-of-range, non-finite and non-number values", () => {
+    for (const volume of [150, -5, Number.NaN, Number.POSITIVE_INFINITY, "50"]) {
+      expect(() => validateProgram(programWith({ type: "setVolume", volume }))).toThrow(
+        ProgramValidationError,
+      );
+    }
+    for (const delta of [101, -101, Number.NaN, "5"]) {
+      expect(() => validateProgram(programWith({ type: "changeVolume", delta }))).toThrow(
+        ProgramValidationError,
+      );
+    }
+  });
+});

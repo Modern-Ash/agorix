@@ -89,6 +89,8 @@ describe("Python projection", () => {
         "switch_backdrop",
         "play_sound",
         "stop_sounds",
+        "set_volume",
+        "change_volume",
         "show_variable",
         "hide_variable",
         "random_number",
@@ -419,6 +421,39 @@ describe("Python projection: Sound operations", () => {
 
   it("maps each Sound statement to its visible text", () => {
     const result = projectPython(soundProgram);
+    for (const nodeId of ["scripts[0]/statements[0]", "scripts[0]/statements[1]"]) {
+      const range = result.mapping[nodeId]?.[0];
+      expect(range).toBeDefined();
+      expect(result.text.slice(range!.start, range!.end)).toMatch(/^ {4}/);
+    }
+  });
+});
+
+describe("Python projection: Volume operations", () => {
+  const volumeProgram: ProjectProgram = {
+    schema: SCHEMA_VERSION,
+    scripts: [
+      {
+        id: "main",
+        trigger: { type: "onStart" },
+        statements: [
+          { type: "setVolume", volume: 40 },
+          { type: "changeVolume", delta: -10 },
+        ],
+      },
+    ],
+  };
+
+  it("projects volume operations as beginner-readable Python without diagnostics", () => {
+    const result = projectPython(volumeProgram);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toBe(
+      ["def on_start():", "    set_volume(40)", "    change_volume(-10)", ""].join("\n"),
+    );
+  });
+
+  it("maps each volume statement to its visible text", () => {
+    const result = projectPython(volumeProgram);
     for (const nodeId of ["scripts[0]/statements[0]", "scripts[0]/statements[1]"]) {
       const range = result.mapping[nodeId]?.[0];
       expect(range).toBeDefined();

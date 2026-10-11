@@ -170,6 +170,16 @@ export interface StopSoundsStatement {
   readonly type: "stopSounds";
 }
 
+export interface SetVolumeStatement {
+  readonly type: "setVolume";
+  readonly volume: number;
+}
+
+export interface ChangeVolumeStatement {
+  readonly type: "changeVolume";
+  readonly delta: number;
+}
+
 export interface BroadcastStatement {
   readonly type: "broadcast";
   readonly message: string;
@@ -221,6 +231,8 @@ export type Statement =
   | SwitchBackdropStatement
   | PlaySoundStatement
   | StopSoundsStatement
+  | SetVolumeStatement
+  | ChangeVolumeStatement
   | BroadcastStatement
   | SetVariableStatement
   | ChangeVariableStatement

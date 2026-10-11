@@ -74,6 +74,8 @@ describe("projectProgram", () => {
         stage.switchBackdrop("asset:space.trailhead");
         sound.play("asset:sound.beacon");
         sound.stopAll();
+        sound.setVolume(40);
+        sound.changeVolume(-10);
         stage.broadcast("mission:check");
         repeat(2, () => {
           sprite.move(1);
@@ -117,6 +119,8 @@ describe("projectProgram", () => {
       "stage.switchBackdrop",
       "sound.play",
       "sound.stopAll",
+      "sound.setVolume",
+      "sound.changeVolume",
       "stage.broadcast",
       "repeat",
       "if (sprite.touchingGoal())",
@@ -195,8 +199,8 @@ describe("projectProgram", () => {
 
   it("maps if-condition ranges to the exact condition substring", () => {
     const result = projectProgram(FULL_COVERAGE_PROGRAM);
-    const condId = "scripts[0]/statements[12]/body[1]/condition";
-    // full-coverage: statements[12] = repeat, body[1] = if(touchingGoal)
+    const condId = "scripts[0]/statements[14]/body[1]/condition";
+    // full-coverage: statements[14] = repeat, body[1] = if(touchingGoal)
     const range = result.mapping[condId];
     expect(range).toBeDefined();
     if (!range) {

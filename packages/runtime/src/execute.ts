@@ -20,6 +20,8 @@ import {
   setSpriteSizeWorld,
   showWorld,
   stopSoundsWorld,
+  setVolumeWorld,
+  changeVolumeWorld,
   switchBackdropWorld,
   switchCostumeWorld,
   thinkWorld,
@@ -330,6 +332,12 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
       break;
     case "stopSounds":
       state.world = stopSoundsWorld(state.world);
+      break;
+    case "setVolume":
+      state.world = setVolumeWorld(state.world, statement.volume);
+      break;
+    case "changeVolume":
+      state.world = changeVolumeWorld(state.world, statement.delta);
       break;
     case "broadcast":
       state.world = cloneWorldState(state.world);

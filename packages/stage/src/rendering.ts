@@ -160,7 +160,14 @@ export function framesFromRuntimeObservations(
             }),
         ...(observation.world.sounds === undefined
           ? {}
-          : { sounds: { activeSoundIds: observation.world.sounds.activeSoundIds } }),
+          : {
+              sounds: {
+                activeSoundIds: observation.world.sounds.activeSoundIds,
+                ...(observation.world.sounds.volume === undefined
+                  ? {}
+                  : { volume: observation.world.sounds.volume }),
+              },
+            }),
       }),
       {
         ...(observation.nodeId === "$" ? {} : { highlightedNodeId: observation.nodeId }),
@@ -279,6 +286,12 @@ function makeSummary(
     return sounds.length === 0 ? "Sound cue recorded" : `Sound playing: ${sounds.join(", ")}`;
   }
   if (step.statementType === "stopSounds") return "Sounds stopped";
+  if (step.statementType === "setVolume") {
+    return `Volume set to ${step.observation.world.sounds?.volume ?? 100}`;
+  }
+  if (step.statementType === "changeVolume") {
+    return `Volume ${step.observation.world.sounds?.volume ?? 100}`;
+  }
   if (step.statementType === "broadcast") return "Broadcast message sent";
   if (profile === "studio") {
     return `before: x=${before.x} y=${before.y} heading=${before.heading}; after: x=${after.x} y=${after.y} heading=${after.heading}`;
@@ -320,6 +333,10 @@ function titleForStep(step: ExecutionStep, profile: LearnerTraceProfile): string
       return "Play sound";
     case "stopSounds":
       return "Stop sounds";
+    case "setVolume":
+      return "Set volume";
+    case "changeVolume":
+      return "Change volume";
     case "broadcast":
       return "Broadcast";
     default:

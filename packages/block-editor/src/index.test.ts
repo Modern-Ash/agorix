@@ -82,6 +82,8 @@ describe("block-editor", () => {
       "Switch backdrop",
       "Play sound",
       "Stop sounds",
+      "Set volume to [N]",
+      "Change volume by [N]",
       "Repeat [N] times",
       "If ___, then",
       "Touching the goal?",
@@ -104,7 +106,7 @@ describe("block-editor", () => {
       "Show score",
       "Hide score",
     ]);
-    expect(POC_TOOLBOX.flatMap((section) => section.blocks)).toHaveLength(37);
+    expect(POC_TOOLBOX.flatMap((section) => section.blocks)).toHaveLength(39);
   });
 
   it("creates safe defaults for every required POC block", () => {
@@ -680,5 +682,43 @@ describe("green-flag hat in the block editor", () => {
     ]);
     expect(getBlockDefinition("event_on_start")?.legacy).toBe(true);
     expect(canPlaceBlock("event_green_flag", "trigger")).toBe(true);
+  });
+});
+
+describe("volume blocks", () => {
+  const volumeProgram = {
+    schema: "agorix/program/v1",
+    scripts: [
+      {
+        id: "main",
+        trigger: { type: "onStart" },
+        statements: [
+          { type: "setVolume", volume: 40 },
+          { type: "changeVolume", delta: -10 },
+        ],
+      },
+    ],
+  } as unknown as ProjectProgram;
+
+  it("round-trips volume statements through blocks", () => {
+    const { workspace } = programToWorkspace(volumeProgram);
+    expect(JSON.stringify(workspace)).toContain("sound_set_volume");
+    expect(JSON.stringify(workspace)).toContain("sound_change_volume");
+    const { program: back } = workspaceToProgram(workspace);
+    expect(back.scripts[0]?.statements).toEqual(volumeProgram.scripts[0]?.statements);
+  });
+
+  it("creates default volume blocks that fit the Sound section", () => {
+    expect(createDefaultBlock("sound_set_volume", "v1")).toEqual({
+      id: "v1",
+      type: "sound_set_volume",
+      fields: { volume: 100 },
+    });
+    expect(createDefaultBlock("sound_change_volume", "v2")).toEqual({
+      id: "v2",
+      type: "sound_change_volume",
+      fields: { delta: -10 },
+    });
+    expect(canPlaceBlock("sound_set_volume", "statement")).toBe(true);
   });
 });

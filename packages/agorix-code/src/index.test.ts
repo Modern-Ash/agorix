@@ -343,3 +343,36 @@ describe("Agorix Code projection: Sound operations", () => {
     }
   });
 });
+
+describe("Agorix Code projection: Volume operations", () => {
+  const volumeProgram: ProjectProgram = {
+    schema: SCHEMA_VERSION,
+    scripts: [
+      {
+        id: "main",
+        trigger: { type: "onStart" },
+        statements: [
+          { type: "setVolume", volume: 40 },
+          { type: "changeVolume", delta: -10 },
+        ],
+      },
+    ],
+  };
+
+  it("projects volume operations as readable Agorix Code without diagnostics", () => {
+    const result = projectAgorixCode(volumeProgram);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toBe(
+      ["when start", "  set volume to 40", "  change volume by -10", ""].join("\n"),
+    );
+  });
+
+  it("maps each volume statement to its visible text", () => {
+    const result = projectAgorixCode(volumeProgram);
+    for (const nodeId of ["scripts[0]/statements[0]", "scripts[0]/statements[1]"]) {
+      const range = result.mapping[nodeId]?.[0];
+      expect(range).toBeDefined();
+      expect(result.text.slice(range!.start, range!.end)).toMatch(/^ {2}/);
+    }
+  });
+});

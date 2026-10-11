@@ -420,6 +420,7 @@ export function StagePanel({
                 {activeSoundIds.map((soundId) => (
                   <strong key={soundId}>{assetNames.get(soundId) ?? soundId}</strong>
                 ))}
+                {state?.sounds?.volume === undefined ? null : <span>{state.sounds.volume}%</span>}
               </div>
             )}
           </>

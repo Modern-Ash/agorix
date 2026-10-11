@@ -23,6 +23,8 @@ export interface VariableState {
 
 export interface SoundState {
   readonly activeSoundIds: readonly string[];
+  /** 0-100; absent means 100 so worlds without volume statements are unchanged. */
+  readonly volume?: number;
 }
 
 export interface WorldState {
@@ -78,10 +80,26 @@ function normalizeVariables(
   return normalized;
 }
 
+function clampVolume(value: number): number {
+  if (!Number.isFinite(value)) {
+    throw new RangeError(`volume must be finite: ${value}`);
+  }
+  return Math.min(100, Math.max(0, normalizeCoordinate(value)));
+}
+
+function normalizeSounds(input: Partial<SoundState> | undefined): SoundState | undefined {
+  if (input === undefined || (input.activeSoundIds === undefined && input.volume === undefined)) {
+    return undefined;
+  }
+  return {
+    activeSoundIds: [...(input.activeSoundIds ?? [])],
+    ...(input.volume === undefined ? {} : { volume: clampVolume(input.volume) }),
+  };
+}
+
 export function createWorldState(input: WorldStateInput = {}): WorldState {
   const variables = normalizeVariables(input.variables);
-  const activeSoundIds =
-    input.sounds?.activeSoundIds === undefined ? undefined : [...input.sounds.activeSoundIds];
+  const sounds = normalizeSounds(input.sounds);
   return {
     sprite: {
       x: normalizeCoordinate(input.sprite?.x ?? 0),
@@ -105,7 +123,7 @@ export function createWorldState(input: WorldStateInput = {}): WorldState {
     },
     ...(input.backdropId === undefined ? {} : { backdropId: input.backdropId }),
     ...(variables === undefined ? {} : { variables }),
-    ...(activeSoundIds === undefined ? {} : { sounds: { activeSoundIds } }),
+    ...(sounds === undefined ? {} : { sounds }),
   };
 }
 
@@ -183,13 +201,25 @@ export function playSoundWorld(world: WorldState, soundId: string): WorldState {
   return createWorldState({
     ...world,
     sounds: {
+      ...world.sounds,
       activeSoundIds: current.includes(soundId) ? current : [...current, soundId],
     },
   });
 }
 
 export function stopSoundsWorld(world: WorldState): WorldState {
-  return createWorldState({ ...world, sounds: { activeSoundIds: [] } });
+  return createWorldState({ ...world, sounds: { ...world.sounds, activeSoundIds: [] } });
+}
+
+export function setVolumeWorld(world: WorldState, volume: number): WorldState {
+  return createWorldState({
+    ...world,
+    sounds: { activeSoundIds: world.sounds?.activeSoundIds ?? [], volume },
+  });
+}
+
+export function changeVolumeWorld(world: WorldState, delta: number): WorldState {
+  return setVolumeWorld(world, (world.sounds?.volume ?? 100) + delta);
 }
 
 export function getVariableWorld(world: WorldState, variableId: string): number {

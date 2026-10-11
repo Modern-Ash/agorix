@@ -35,6 +35,7 @@ export interface StageVariableWatcher {
 
 export interface StageSoundState {
   readonly activeSoundIds: readonly string[];
+  readonly volume?: number;
 }
 
 export interface StageState {
@@ -121,7 +122,10 @@ function normalizeSoundState(
   if (sounds?.activeSoundIds === undefined) {
     return undefined;
   }
-  return { activeSoundIds: [...sounds.activeSoundIds] };
+  return {
+    activeSoundIds: [...sounds.activeSoundIds],
+    ...(sounds.volume === undefined ? {} : { volume: sounds.volume }),
+  };
 }
 
 export function createStageState(input: StageStateInput = {}): StageState {

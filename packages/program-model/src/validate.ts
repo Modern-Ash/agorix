@@ -310,6 +310,20 @@ function validateStatement(
       return { type: "playSound", soundId: checkText(input.soundId, `${path}.soundId`) };
     case "stopSounds":
       return { type: "stopSounds" };
+    case "setVolume": {
+      if (typeof input.volume !== "number") {
+        fail("MISSING_FIELD", `${path}.volume`, "expected a number", input.volume);
+      }
+      checkBounds(input.volume, 0, 100, `${path}.volume`);
+      return { type: "setVolume", volume: input.volume };
+    }
+    case "changeVolume": {
+      if (typeof input.delta !== "number") {
+        fail("MISSING_FIELD", `${path}.delta`, "expected a number", input.delta);
+      }
+      checkBounds(input.delta, -100, 100, `${path}.delta`);
+      return { type: "changeVolume", delta: input.delta };
+    }
     case "broadcast":
       return {
         type: "broadcast",

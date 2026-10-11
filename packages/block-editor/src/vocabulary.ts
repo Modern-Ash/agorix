@@ -192,6 +192,22 @@ const definitions: readonly ToolboxBlockDefinition[] = [
     createDefaultBlock: (id) => ({ id, type: "sound_stop" }),
   },
   {
+    type: "sound_set_volume",
+    label: "Set volume to [N]",
+    section: "Sound",
+    placement: "statement",
+    accessibleName: "set volume",
+    createDefaultBlock: (id) => ({ id, type: "sound_set_volume", fields: { volume: 100 } }),
+  },
+  {
+    type: "sound_change_volume",
+    label: "Change volume by [N]",
+    section: "Sound",
+    placement: "statement",
+    accessibleName: "change volume",
+    createDefaultBlock: (id) => ({ id, type: "sound_change_volume", fields: { delta: -10 } }),
+  },
+  {
     type: "control_repeat",
     label: "Repeat [N] times",
     section: "Repeat & Decide",

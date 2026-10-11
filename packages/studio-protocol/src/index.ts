@@ -247,6 +247,7 @@ export interface StageVariableWatcherView {
 
 export interface StageSoundStateView {
   readonly activeSoundIds: readonly string[];
+  readonly volume?: number;
 }
 
 export interface StageFrameView {
@@ -502,6 +503,8 @@ const BLOCK_TYPES = [
   "looks_switch_backdrop",
   "sound_play",
   "sound_stop",
+  "sound_set_volume",
+  "sound_change_volume",
   "event_broadcast",
   "control_repeat",
   "control_if",
@@ -601,7 +604,14 @@ function parseStageSoundState(value: unknown): StageSoundStateView | undefined {
   if (activeSoundIds.length > 32 || activeSoundIds.some((id) => !isSafeId(id))) {
     return undefined;
   }
-  return { activeSoundIds };
+  const volume = value["volume"];
+  if (
+    volume !== undefined &&
+    (typeof volume !== "number" || !Number.isFinite(volume) || volume < 0 || volume > 100)
+  ) {
+    return undefined;
+  }
+  return { activeSoundIds, ...(volume === undefined ? {} : { volume }) };
 }
 
 function parseStageFrame(value: unknown): StageFrameView | undefined {
