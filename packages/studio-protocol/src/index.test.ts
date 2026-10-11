@@ -940,7 +940,7 @@ describe("stage frame sound volume", () => {
     expect(parseHostMessage(frameWith({ activeSoundIds: [], volume: 40 }))).toMatchObject({
       frame: { state: { sounds: { activeSoundIds: [], volume: 40 } } },
     });
-    const plain = parseHostMessage(frameWith({ activeSoundIds: [] })) as {
+    const plain = parseHostMessage(frameWith({ activeSoundIds: [] })) as unknown as {
       frame: { state: { sounds: Record<string, unknown> } };
     };
     expect("volume" in plain.frame.state.sounds).toBe(false);
