@@ -916,3 +916,39 @@ describe("proposalProof host message", () => {
     ).toBeUndefined();
   });
 });
+
+describe("stage frame sound volume", () => {
+  const frameWith = (sounds: unknown) => ({
+    schema,
+    type: "stageFrame",
+    frame: {
+      state: {
+        sprite: { x: 0, y: 0, heading: 0, radius: 10 },
+        goal: { x: 100, y: 0, radius: 12 },
+        viewport: { width: 264, height: 192 },
+        sounds,
+      },
+      frameIndex: 0,
+      frameCount: 1,
+      step: 0,
+      running: false,
+      reachedGoal: false,
+    },
+  });
+
+  it("round-trips a valid volume and keeps frames without volume unchanged", () => {
+    expect(parseHostMessage(frameWith({ activeSoundIds: [], volume: 40 }))).toMatchObject({
+      frame: { state: { sounds: { activeSoundIds: [], volume: 40 } } },
+    });
+    const plain = parseHostMessage(frameWith({ activeSoundIds: [] })) as {
+      frame: { state: { sounds: Record<string, unknown> } };
+    };
+    expect("volume" in plain.frame.state.sounds).toBe(false);
+  });
+
+  it("rejects out-of-range and non-number volume", () => {
+    for (const volume of [150, -1, Number.NaN, "loud"]) {
+      expect(parseHostMessage(frameWith({ activeSoundIds: [], volume }))).toBeUndefined();
+    }
+  });
+});

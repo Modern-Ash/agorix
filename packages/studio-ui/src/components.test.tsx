@@ -165,7 +165,7 @@ describe("studio-ui", () => {
             viewport: { width: 264, height: 192 },
             backdropId: "asset:space.nebula",
             variables: [{ id: "score", label: "score", value: 5, visible: true }],
-            sounds: { activeSoundIds: ["asset:sound.beacon"] },
+            sounds: { activeSoundIds: ["asset:sound.beacon"], volume: 40 },
             actors: [
               {
                 id: "actor:main",
@@ -213,6 +213,7 @@ describe("studio-ui", () => {
     expect(markup).toContain('class="stage-sounds"');
     expect(markup).toContain("Active sounds");
     expect(markup).toContain("Beacon ping");
+    expect(markup).toContain("40%");
   });
 
   it("renders actor costume as an asset-backed inspector select", () => {

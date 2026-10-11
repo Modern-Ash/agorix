@@ -1167,3 +1167,25 @@ describe("proof trace from execution evidence", () => {
     expect(trace.every((entry) => typeof entry.nodeId === "string")).toBe(true);
   });
 });
+
+describe("volume in Studio execution evidence", () => {
+  it("shows volume in the step summary, the frame state and the runtime fact", () => {
+    const evidence = createExecutionEvidence({
+      ...webCreatedProject,
+      program: {
+        ...webCreatedProject.program,
+        scripts: [
+          {
+            id: "main",
+            trigger: { type: "onStart" },
+            statements: [{ type: "setVolume", volume: 40 }],
+          },
+        ],
+      },
+    });
+    const view = createExecutionViewState(evidence, 1, "running");
+    expect(view.currentFrame?.state.sounds?.volume).toBe(40);
+    expect(view.inspectorSteps[1]?.summary).toContain("Volume set to 40");
+    expect(formatInspectorReport(evidence)).toContain("setVolume: volume 100 -> 40");
+  });
+});

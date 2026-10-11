@@ -158,6 +158,7 @@ import { ModelComparison } from "./ModelComparison.js";
 import { GhostAddedBlocks } from "./GhostBlocks.js";
 import { ghostMarksFor, type GhostMarkKind } from "./ghostMarks.js";
 import { ProposalEvidence } from "./ProposalEvidence.js";
+import { soundCueGain } from "./stageAudio.js";
 import { ProvenanceLabel } from "./ProvenanceLabel.js";
 import { AccountUi, useWorkspace } from "./accounts/AccountUi.js";
 import type { AccountBackend, ProjectDto } from "./accounts/clients.js";
@@ -1371,8 +1372,9 @@ function frequencyForSoundId(soundId: string): number {
   return 440 + (hash % 5) * 55;
 }
 
-function playStageSoundCue(soundId: string) {
+function playStageSoundCue(soundId: string, volume?: number) {
   if (typeof window === "undefined") return;
+  if (soundCueGain(volume) === 0) return;
   const audioGlobal = window as unknown as WebAudioGlobal;
   const AudioContextCtor = audioGlobal.AudioContext ?? audioGlobal.webkitAudioContext;
   if (AudioContextCtor === undefined) return;
@@ -1388,7 +1390,7 @@ function playStageSoundCue(soundId: string) {
     oscillator.type = "sine";
     oscillator.frequency.setValueAtTime(frequencyForSoundId(soundId), now);
     gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.05, now + 0.015);
+    gain.gain.exponentialRampToValueAtTime(soundCueGain(volume), now + 0.015);
     gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
     oscillator.connect(gain).connect(context.destination);
     oscillator.start(now);
@@ -1765,6 +1767,7 @@ export function StageView({
           {activeSoundIds.map((soundId) => (
             <strong key={soundId}>{assetNames.get(soundId) ?? soundId}</strong>
           ))}
+          {state.sounds?.volume === undefined ? null : <span>{state.sounds.volume}%</span>}
         </aside>
       )}
       <svg
@@ -2940,7 +2943,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     }
     activeSoundIds
       .filter((soundId) => !previousSoundIds.includes(soundId))
-      .forEach((soundId) => playStageSoundCue(soundId));
+      .forEach((soundId) => playStageSoundCue(soundId, activeFrame?.state.sounds?.volume));
   }, [activeFrame, status, stepping]);
 
   function updateSelectedActor(actorId: string, patch: Partial<ProjectActor>) {

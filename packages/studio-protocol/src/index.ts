@@ -247,6 +247,7 @@ export interface StageVariableWatcherView {
 
 export interface StageSoundStateView {
   readonly activeSoundIds: readonly string[];
+  readonly volume?: number;
 }
 
 export interface StageFrameView {
@@ -603,7 +604,14 @@ function parseStageSoundState(value: unknown): StageSoundStateView | undefined {
   if (activeSoundIds.length > 32 || activeSoundIds.some((id) => !isSafeId(id))) {
     return undefined;
   }
-  return { activeSoundIds };
+  const volume = value["volume"];
+  if (
+    volume !== undefined &&
+    (typeof volume !== "number" || !Number.isFinite(volume) || volume < 0 || volume > 100)
+  ) {
+    return undefined;
+  }
+  return { activeSoundIds, ...(volume === undefined ? {} : { volume }) };
 }
 
 function parseStageFrame(value: unknown): StageFrameView | undefined {

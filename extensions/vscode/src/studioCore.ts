@@ -1658,6 +1658,9 @@ function runtimeFactText(row: InspectorRow): string {
       return `sounds ${(after.sounds?.activeSoundIds ?? []).join(", ") || "none"}`;
     case "stopSounds":
       return "sounds stopped";
+    case "setVolume":
+    case "changeVolume":
+      return `volume ${before.sounds?.volume ?? 100} -> ${after.sounds?.volume ?? 100}`;
     case "setVariable":
     case "changeVariable":
       return variableValueFactText(row);
