@@ -502,6 +502,8 @@ const BLOCK_TYPES = [
   "looks_switch_backdrop",
   "sound_play",
   "sound_stop",
+  "sound_set_volume",
+  "sound_change_volume",
   "event_broadcast",
   "control_repeat",
   "control_if",

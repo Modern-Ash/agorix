@@ -274,6 +274,8 @@ const addableBlocks = new Set<AddableBlockType>([
   "looks_switch_backdrop",
   "sound_play",
   "sound_stop",
+  "sound_set_volume",
+  "sound_change_volume",
   "event_broadcast",
   "variables_set",
   "variables_change",
@@ -549,7 +551,9 @@ function initialProjectFor(
   return { ...loaded, model: loaded.model ?? createEditorModel() };
 }
 
-function numericFieldFor(block: BlockNode): "steps" | "degrees" | "count" | "size" | undefined {
+function numericFieldFor(
+  block: BlockNode,
+): "steps" | "degrees" | "count" | "size" | "volume" | "delta" | undefined {
   switch (block.type) {
     case "motion_move":
       return "steps";
@@ -559,6 +563,10 @@ function numericFieldFor(block: BlockNode): "steps" | "degrees" | "count" | "siz
       return "count";
     case "looks_set_size":
       return "size";
+    case "sound_set_volume":
+      return "volume";
+    case "sound_change_volume":
+      return "delta";
     default:
       return undefined;
   }
@@ -621,6 +629,10 @@ function displayNameForType(type: string, locale: Locale): string {
       return locale === "es" ? "Sonido" : "Sound";
     case "sound_stop":
       return locale === "es" ? "Detener sonidos" : "Stop sounds";
+    case "sound_set_volume":
+      return locale === "es" ? "Fijar volumen" : "Set volume";
+    case "sound_change_volume":
+      return locale === "es" ? "Cambiar volumen" : "Change volume";
     case "event_broadcast":
       return locale === "es" ? "Enviar" : "Broadcast";
     case "variables_set":
@@ -681,10 +693,12 @@ function editableTriggerFieldFor(
 const KEY_TRIGGER_OPTIONS = ["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "a", "d"];
 
 function fieldLabelFor(
-  field: "steps" | "degrees" | "count" | "size" | "value" | "delta",
+  field: "steps" | "degrees" | "count" | "size" | "volume" | "value" | "delta",
   locale: Locale,
 ): string {
   switch (field) {
+    case "volume":
+      return locale === "es" ? "volumen" : "volume";
     case "steps":
       return t(locale, "steps");
     case "degrees":
@@ -731,6 +745,7 @@ function editableFieldLabelFor(
     | "degrees"
     | "count"
     | "size"
+    | "volume"
     | "value"
     | "delta"
     | "text"
@@ -923,11 +938,20 @@ function scratchPaletteFor(locale: Locale): readonly PaletteCategory[] {
           enabled: true,
         },
         {
-          id: "sound_volume",
-          label: es ? "Volumen" : "Volume",
-          detail: es ? "Sube o baja" : "Louder or softer",
+          id: "sound_set_volume",
+          label: es ? "Fijar volumen" : "Set volume",
+          detail: es ? "De 0 a 100" : "From 0 to 100",
           glyph: "%",
-          enabled: false,
+          type: "sound_set_volume",
+          enabled: true,
+        },
+        {
+          id: "sound_change_volume",
+          label: es ? "Cambiar volumen" : "Change volume",
+          detail: es ? "Sube o baja" : "Louder or softer",
+          glyph: "±",
+          type: "sound_change_volume",
+          enabled: true,
         },
       ],
     },
@@ -1161,7 +1185,10 @@ function scratchPaletteFor(locale: Locale): readonly PaletteCategory[] {
   ];
 }
 
-function blockValue(block: BlockNode, field: "steps" | "degrees" | "count" | "size"): number {
+function blockValue(
+  block: BlockNode,
+  field: "steps" | "degrees" | "count" | "size" | "volume" | "delta",
+): number {
   const value = block.fields?.[field];
   return typeof value === "number" ? value : 0;
 }
@@ -3448,6 +3475,7 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
                 | "degrees"
                 | "count"
                 | "size"
+                | "volume"
                 | "value"
                 | "delta"
                 | "text"

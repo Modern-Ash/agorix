@@ -37,6 +37,8 @@ export const FULL_COVERAGE_PROGRAM: ProjectProgram = {
         { type: "switchBackdrop", backdropId: "asset:space.trailhead" },
         { type: "playSound", soundId: "asset:sound.beacon" },
         { type: "stopSounds" },
+        { type: "setVolume", volume: 40 },
+        { type: "changeVolume", delta: -10 },
         { type: "broadcast", message: "mission:check" },
         {
           type: "repeat",

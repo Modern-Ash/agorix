@@ -27,6 +27,8 @@ export type BlockType =
   | "looks_switch_backdrop"
   | "sound_play"
   | "sound_stop"
+  | "sound_set_volume"
+  | "sound_change_volume"
   | "control_repeat"
   | "control_if"
   | "sensing_touching_goal"
@@ -346,6 +348,10 @@ function statementFromBlock(
       return { type: "playSound", soundId: stringField(block, "soundId", path) };
     case "sound_stop":
       return { type: "stopSounds" };
+    case "sound_set_volume":
+      return { type: "setVolume", volume: numberField(block, "volume", path) };
+    case "sound_change_volume":
+      return { type: "changeVolume", delta: numberField(block, "delta", path) };
     case "event_broadcast":
       return { type: "broadcast", message: stringField(block, "message", path) };
     case "variables_set":
@@ -525,6 +531,10 @@ function statementToBlock(
       return { id, type: "sound_play", fields: { soundId: statement.soundId } };
     case "stopSounds":
       return { id, type: "sound_stop" };
+    case "setVolume":
+      return { id, type: "sound_set_volume", fields: { volume: statement.volume } };
+    case "changeVolume":
+      return { id, type: "sound_change_volume", fields: { delta: statement.delta } };
     case "broadcast":
       return { id, type: "event_broadcast", fields: { message: statement.message } };
     case "setVariable":

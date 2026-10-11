@@ -40,6 +40,8 @@ export type AddableBlockType =
   | "looks_switch_backdrop"
   | "sound_play"
   | "sound_stop"
+  | "sound_set_volume"
+  | "sound_change_volume"
   | "event_broadcast"
   | "variables_set"
   | "variables_change"
@@ -371,7 +373,7 @@ export function duplicateBlockInWorkspace(
 export function editNumericBlockField(
   workspace: BlockWorkspaceSnapshot,
   index: number,
-  field: "steps" | "degrees" | "count" | "size",
+  field: "steps" | "degrees" | "count" | "size" | "volume" | "delta",
   value: number,
 ): EditorProjection {
   return editNumericBlockFieldAt(workspace, [index], field, value);
@@ -380,7 +382,7 @@ export function editNumericBlockField(
 export function editNumericBlockFieldAt(
   workspace: BlockWorkspaceSnapshot,
   path: StatementPath,
-  field: "steps" | "degrees" | "count" | "size",
+  field: "steps" | "degrees" | "count" | "size" | "volume" | "delta",
   value: number,
   scriptIndex = 0,
 ): EditorProjection {
