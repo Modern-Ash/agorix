@@ -10,6 +10,7 @@ import { assertCatalogCompleteness, resolveLocale, t } from "./i18n.js";
 import {
   addBlockToWorkspace,
   addBlockToWorkspaceAt,
+  clampNumericBlockValue,
   addScriptToWorkspace,
   addVariableSetBlockFor,
   blockNodeId,
@@ -603,6 +604,15 @@ describe("editor model", () => {
       variableId: "lives",
       delta: { type: "numericLiteral", value: 1 },
     });
+  });
+
+  it("clamps typed volume values to the range the program validates", () => {
+    expect(clampNumericBlockValue("sound_set_volume", 150)).toBe(100);
+    expect(clampNumericBlockValue("sound_set_volume", -5)).toBe(0);
+    expect(clampNumericBlockValue("sound_change_volume", 500)).toBe(100);
+    expect(clampNumericBlockValue("sound_change_volume", -500)).toBe(-100);
+    expect(clampNumericBlockValue("sound_set_volume", 35)).toBe(35);
+    expect(clampNumericBlockValue("motion_move", 9999)).toBe(9999);
   });
 
   it("adds and edits volume blocks through the canonical program", () => {

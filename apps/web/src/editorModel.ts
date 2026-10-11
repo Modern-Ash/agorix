@@ -370,6 +370,17 @@ export function duplicateBlockInWorkspace(
   );
 }
 
+/** Typed volume values are clamped to the range the program validates; other fields pass through. */
+export function clampNumericBlockValue(blockType: string, value: number): number {
+  if (blockType === "sound_set_volume") {
+    return Math.min(100, Math.max(0, value));
+  }
+  if (blockType === "sound_change_volume") {
+    return Math.min(100, Math.max(-100, value));
+  }
+  return value;
+}
+
 export function editNumericBlockField(
   workspace: BlockWorkspaceSnapshot,
   index: number,

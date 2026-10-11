@@ -108,6 +108,7 @@ import { BASE_SPRITE_RADIUS } from "./actors.js";
 import {
   addBlockToWorkspace,
   addBlockToWorkspaceAt,
+  clampNumericBlockValue,
   addScriptToWorkspace,
   addVariableSetBlockFor,
   blockNodeIdForPath,
@@ -3448,7 +3449,13 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     const projection =
       field === undefined
         ? editVariableNumberInputAt(model.workspace, path, value, activeScriptIndex)
-        : editNumericBlockFieldAt(model.workspace, path, field, value, activeScriptIndex);
+        : editNumericBlockFieldAt(
+            model.workspace,
+            path,
+            field,
+            clampNumericBlockValue(block.type, value),
+            activeScriptIndex,
+          );
     if (commitProjection("edit numeric block field", projection)) {
       setMessage(t(locale, "programUpdatedMessage"));
       setAnnouncement(
