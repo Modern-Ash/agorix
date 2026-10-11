@@ -512,3 +512,45 @@ describe("green-flag dispatch", () => {
     expect(runProgram(withTriggers("greenFlag"), start(), options).stepsUsed).toBe(1);
   });
 });
+
+describe("sound volume", () => {
+  const run = (statements: ProjectProgram["scripts"][number]["statements"]) =>
+    runProgram(program(statements), createWorldState());
+
+  it("has no volume key until a volume statement runs", () => {
+    expect(run([{ type: "playSound", soundId: "asset:sound.beacon" }]).world.sounds).toEqual({
+      activeSoundIds: ["asset:sound.beacon"],
+    });
+  });
+
+  it("sets and changes volume with clamping", () => {
+    expect(run([{ type: "setVolume", volume: 40 }]).world.sounds?.volume).toBe(40);
+    expect(
+      run([
+        { type: "setVolume", volume: 90 },
+        { type: "changeVolume", delta: 50 },
+      ]).world.sounds?.volume,
+    ).toBe(100);
+    expect(
+      run([
+        { type: "setVolume", volume: 10 },
+        { type: "changeVolume", delta: -50 },
+      ]).world.sounds?.volume,
+    ).toBe(0);
+    expect(run([{ type: "changeVolume", delta: -30 }]).world.sounds?.volume).toBe(70);
+  });
+
+  it("keeps volume and active sounds across play and stop", () => {
+    const world = run([
+      { type: "setVolume", volume: 25 },
+      { type: "playSound", soundId: "asset:sound.beacon" },
+      { type: "stopSounds" },
+    ]).world;
+    expect(world.sounds).toEqual({ activeSoundIds: [], volume: 25 });
+  });
+
+  it("records the resulting volume in the trace", () => {
+    const result = run([{ type: "setVolume", volume: 60 }]);
+    expect(result.trace[0]?.worldAfter.sounds?.volume).toBe(60);
+  });
+});

@@ -57,6 +57,7 @@ describe("runtime operation allowlist", () => {
     expect([...RUNTIME_STATEMENT_OPERATIONS].sort()).toEqual([
       "broadcast",
       "changeVariable",
+      "changeVolume",
       "hide",
       "hideVariable",
       "if",
@@ -66,6 +67,7 @@ describe("runtime operation allowlist", () => {
       "say",
       "setSize",
       "setVariable",
+      "setVolume",
       "show",
       "showVariable",
       "stopSounds",
