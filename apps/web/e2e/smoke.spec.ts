@@ -797,16 +797,19 @@ test("adding a block refreshes coach and starter guidance", async ({ page }) => 
   await expect(page.getByText("Block added. Run it to test your idea on the stage.")).toBeVisible();
 });
 
-test("AI coach exposes a provider connection entry point", async ({ page }) => {
+test("AI coach shows normal local mode and no learner-facing connect button (#352)", async ({
+  page,
+}) => {
   await page.goto("/");
 
   await page.getByRole("button", { name: "Use AI explain tool" }).click();
-  await page.getByRole("button", { name: "Connect AI" }).click();
-  await expect(page.getByText("Connect a real AI provider")).toBeVisible();
-  await expect(page.getByText("Not configured yet")).toBeVisible();
+  const card = page.locator(".ai-coach-card");
+  await expect(card.getByRole("status")).toHaveText("Local mode");
+  await expect(card.getByText("I work without internet.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Connect AI" })).toHaveCount(0);
 
-  await page.getByRole("button", { name: "Keep local mode" }).click();
-  await expect(page.getByText("Connect a real AI provider")).toHaveCount(0);
+  await card.getByText("For grown-ups").click();
+  await expect(card.getByText("Nothing is typed or stored in this browser.")).toBeVisible();
 });
 
 test("virtual keyboard numeric edit keeps inline value usable without form ceremony", async ({
