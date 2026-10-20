@@ -1,6 +1,6 @@
 ---
 schema: "agora/artifacts/v2"
-artifact-kinds: ["intent","requirements","unit-of-work","plan","bolt-plan","user-stories","nfr","risk-register","measurement-criteria","domain-model","logical-design","implementation-plan","test-strategy","deployment-unit","verification-evidence"]
+artifact-kinds: ["intent","requirements","unit-of-work","plan","bolt-plan","user-stories","nfr","risk-register","measurement-criteria","domain-model","logical-design","implementation-plan","test-strategy","deployment-unit","verification-evidence","operational-readiness","rollback-procedure","security-test-matrix"]
 ---
 
 # Artifacts
@@ -22,3 +22,6 @@ artifact-kinds: ["intent","requirements","unit-of-work","plan","bolt-plan","user
 | test-strategy | repo://.agora/ai-sdlc/handoffs/issue-340/TEST_STRATEGY.md | 8b2002da30ceed4c66e8a455da16d7324890c7505d30da573a26d06aca23c0b8 | project:ai-claude | 2026-10-20T21:40:35.809179Z |
 | deployment-unit | repo://.agora/ai-sdlc/handoffs/issue-340/DEPLOYMENT_UNIT.md | fd00814d2efe002fc4848081624623daa0222b809a4f3dcc06305e5149b2604c | project:ai-claude | 2026-10-20T21:40:36.107103Z |
 | verification-evidence | repo://.agora/ai-sdlc/handoffs/issue-340/VERIFICATION_EVIDENCE.md | 414caa7ece13b89ac86270f506f962e1e38cc7c3511657f6f36ded904a4ecf69 | project:ai-claude | 2026-10-20T21:40:58.920320Z |
+| operational-readiness | repo://.agora/ai-sdlc/handoffs/issue-340/OPERATIONAL_READINESS.md | 3d1bca1b7427f7a313434cd5c80b41cb9c270f918c8dc86e6f4108629052c604 | project:ai-claude | 2026-10-20T21:41:22.690928Z |
+| rollback-procedure | repo://.agora/ai-sdlc/handoffs/issue-340/ROLLBACK_PROCEDURE.md | f69470cd00282f29ff5d2052f64c1c405ad3fbc1393474a77baafde18a51f54a | project:ai-claude | 2026-10-20T21:41:22.994835Z |
+| security-test-matrix | repo://.agora/ai-sdlc/handoffs/issue-340/SECURITY_SCAN.md | da8def7cbab4b45e75b8018d480c792504c5b877f84247a914274469b8cb3b41 | project:ai-claude | 2026-10-20T21:41:23.298799Z |

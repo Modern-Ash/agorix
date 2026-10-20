@@ -27,3 +27,9 @@
 - 2026-10-20T21:40:58.920384Z | artifact.added | kind=verification-evidence uri=repo://.agora/ai-sdlc/handoffs/issue-340/VERIFICATION_EVIDENCE.md actor=project:ai-claude
 - 2026-10-20T21:40:59.223429Z | evidence.added | id=evidence-000001 type=test-suite result=success revision=1 actor=project:ai-claude
 - 2026-10-20T21:41:03.782127Z | work.transitioned | from=construction to=operations actor=project:ai-claude
+- 2026-10-20T21:41:22.690990Z | artifact.added | kind=operational-readiness uri=repo://.agora/ai-sdlc/handoffs/issue-340/OPERATIONAL_READINESS.md actor=project:ai-claude
+- 2026-10-20T21:41:22.994916Z | artifact.added | kind=rollback-procedure uri=repo://.agora/ai-sdlc/handoffs/issue-340/ROLLBACK_PROCEDURE.md actor=project:ai-claude
+- 2026-10-20T21:41:23.298902Z | artifact.added | kind=security-test-matrix uri=repo://.agora/ai-sdlc/handoffs/issue-340/SECURITY_SCAN.md actor=project:ai-claude
+- 2026-10-20T21:41:23.630777Z | evidence.added | id=evidence-000002 type=deployment result=success revision=1 actor=project:ai-claude
+- 2026-10-20T21:41:23.944796Z | evidence.added | id=evidence-000003 type=security-scan result=success revision=1 actor=project:ai-claude
+- 2026-10-20T21:41:24.282098Z | work.criterion-stage-marked | criterion=source-issue actor=project:ai-claude stage=deployed
