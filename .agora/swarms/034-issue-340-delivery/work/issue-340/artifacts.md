@@ -1,6 +1,6 @@
 ---
 schema: "agora/artifacts/v2"
-artifact-kinds: ["intent","requirements","unit-of-work","plan","bolt-plan","user-stories","nfr","risk-register","measurement-criteria","domain-model","logical-design","implementation-plan","test-strategy","deployment-unit"]
+artifact-kinds: ["intent","requirements","unit-of-work","plan","bolt-plan","user-stories","nfr","risk-register","measurement-criteria","domain-model","logical-design","implementation-plan","test-strategy","deployment-unit","verification-evidence"]
 ---
 
 # Artifacts
@@ -21,3 +21,4 @@ artifact-kinds: ["intent","requirements","unit-of-work","plan","bolt-plan","user
 | implementation-plan | repo://.agora/ai-sdlc/handoffs/issue-340/IMPLEMENTATION_PLAN.md | 726bc31d92c139986bb1f05661588d4345d7484814a6fb0a6bae264f03815360 | project:ai-claude | 2026-10-20T21:40:35.511928Z |
 | test-strategy | repo://.agora/ai-sdlc/handoffs/issue-340/TEST_STRATEGY.md | 8b2002da30ceed4c66e8a455da16d7324890c7505d30da573a26d06aca23c0b8 | project:ai-claude | 2026-10-20T21:40:35.809179Z |
 | deployment-unit | repo://.agora/ai-sdlc/handoffs/issue-340/DEPLOYMENT_UNIT.md | fd00814d2efe002fc4848081624623daa0222b809a4f3dcc06305e5149b2604c | project:ai-claude | 2026-10-20T21:40:36.107103Z |
+| verification-evidence | repo://.agora/ai-sdlc/handoffs/issue-340/VERIFICATION_EVIDENCE.md | 414caa7ece13b89ac86270f506f962e1e38cc7c3511657f6f36ded904a4ecf69 | project:ai-claude | 2026-10-20T21:40:58.920320Z |

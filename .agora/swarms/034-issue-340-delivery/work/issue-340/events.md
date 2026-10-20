@@ -21,3 +21,9 @@
 - 2026-10-20T21:40:35.511994Z | artifact.added | kind=implementation-plan uri=repo://.agora/ai-sdlc/handoffs/issue-340/IMPLEMENTATION_PLAN.md actor=project:ai-claude
 - 2026-10-20T21:40:35.809238Z | artifact.added | kind=test-strategy uri=repo://.agora/ai-sdlc/handoffs/issue-340/TEST_STRATEGY.md actor=project:ai-claude
 - 2026-10-20T21:40:36.107172Z | artifact.added | kind=deployment-unit uri=repo://.agora/ai-sdlc/handoffs/issue-340/DEPLOYMENT_UNIT.md actor=project:ai-claude
+- 2026-10-20T21:40:49.611961Z | work.criterion-stage-marked | criterion=source-issue actor=project:ai-claude stage=designed
+- 2026-10-20T21:40:49.913025Z | work.criterion-stage-marked | criterion=source-issue actor=project:ai-claude stage=built
+- 2026-10-20T21:40:50.204915Z | work.criterion-stage-marked | criterion=source-issue actor=project:ai-claude stage=verified
+- 2026-10-20T21:40:58.920384Z | artifact.added | kind=verification-evidence uri=repo://.agora/ai-sdlc/handoffs/issue-340/VERIFICATION_EVIDENCE.md actor=project:ai-claude
+- 2026-10-20T21:40:59.223429Z | evidence.added | id=evidence-000001 type=test-suite result=success revision=1 actor=project:ai-claude
+- 2026-10-20T21:41:03.782127Z | work.transitioned | from=construction to=operations actor=project:ai-claude
