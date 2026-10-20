@@ -153,6 +153,7 @@ import {
 } from "./projectStorage.js";
 import { loadPresentationPrefs, savePresentationPrefs } from "./presentationPrefs.js";
 import { LOCALE_LABELS, t, type Locale, type MessageKey } from "./i18n.js";
+import { initialLocale, saveLocalePreference } from "./localePreference.js";
 import { PredictionChip, PredictionComparison } from "./PredictionChip.js";
 import { AgentCompanion, companionMood } from "./AgentCompanion.js";
 import { ModelComparison } from "./ModelComparison.js";
@@ -2745,7 +2746,14 @@ function conceptLabel(locale: Locale, concept: string): string {
   return t(locale, `intentConcept_${concept}` as MessageKey);
 }
 
-export function App({ accountBackend }: { readonly accountBackend?: AccountBackend } = {}) {
+export function App({
+  accountBackend,
+  defaultLocale,
+}: {
+  readonly accountBackend?: AccountBackend;
+  /** Locale used when neither the project nor a remembered choice sets one (tests pin `en`). */
+  readonly defaultLocale?: Locale;
+} = {}) {
   const persistenceRef = useRef<ProjectPersistence | undefined>(createBrowserProjectPersistence());
   // True while the editor holds a private account project. Then the anonymous local namespace
   // (`agorix:default-project`) must not be written, and sign-out must drop the content.
@@ -2779,8 +2787,11 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
     () => initialProjectRef.current!.metadata?.createdAt ?? new Date().toISOString(),
   );
   const [locale, setLocale] = useState<Locale>(() =>
-    initialProjectRef.current!.metadata?.locale === "es" ? "es" : "en",
+    initialLocale(initialProjectRef.current!.metadata?.locale, undefined, defaultLocale),
   );
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
   const [creativeState, setCreativeState] = useState<ProjectCreativeState>(() =>
     creativeStateFromMetadata(initialProjectRef.current!.metadata, locale),
   );
@@ -4377,7 +4388,11 @@ export function App({ accountBackend }: { readonly accountBackend?: AccountBacke
             <span>{t(locale, "localeLabel")}</span>
             <select
               value={locale}
-              onChange={(event) => setLocale(event.currentTarget.value as Locale)}
+              onChange={(event) => {
+                const next = event.currentTarget.value as Locale;
+                saveLocalePreference(next);
+                setLocale(next);
+              }}
             >
               {Object.entries(LOCALE_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>

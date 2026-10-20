@@ -40,7 +40,7 @@ import {
 
 describe("stage-first controls (#298)", () => {
   it("puts Run, Step, Stop and Reset in the stage panel and not in the header", () => {
-    const html = renderToStaticMarkup(<App />);
+    const html = renderToStaticMarkup(<App defaultLocale="en" />);
     const header = html.slice(html.indexOf('<header class="topbar">'), html.indexOf("</header>"));
     const stage = html.slice(html.indexOf('class="stage-panel'));
     for (const label of ["Run", "Step", "Stop", "Reset"]) {
@@ -54,7 +54,7 @@ describe("stage-first controls (#298)", () => {
   });
 
   it("starts with Stop disabled and no progress bar until something runs", () => {
-    const html = renderToStaticMarkup(<App />);
+    const html = renderToStaticMarkup(<App defaultLocale="en" />);
     expect(html).toMatch(/<button[^>]*class="stop-button"[^>]*disabled=""/);
     expect(html).not.toContain('data-testid="stage-progress"');
   });
@@ -62,7 +62,7 @@ describe("stage-first controls (#298)", () => {
 
 describe("main editor shell", () => {
   it("renders required editor regions together", () => {
-    const html = renderToStaticMarkup(<App />);
+    const html = renderToStaticMarkup(<App defaultLocale="en" />);
 
     expect(html).toContain("Agorix First Mission");
     expect(html).toContain("Mission: Get your sprite to the goal.");
@@ -128,7 +128,7 @@ describe("main editor shell", () => {
   });
 
   it("shows the coach ready from the start, with no suggestion applied (issue #99)", () => {
-    const html = renderToStaticMarkup(<App />);
+    const html = renderToStaticMarkup(<App defaultLocale="en" />);
 
     expect(html).toContain("AI");
     expect(html).not.toContain('data-provenance="unavailable"');
@@ -137,7 +137,7 @@ describe("main editor shell", () => {
   });
 
   it("starts focused on tools, blocks and stage, with subtle code always visible", () => {
-    const html = renderToStaticMarkup(<App />);
+    const html = renderToStaticMarkup(<App defaultLocale="en" />);
 
     expect(html.indexOf("Action palette")).toBeGreaterThan(-1);
     expect(html.indexOf("When green flag clicked")).toBeGreaterThan(-1);
@@ -500,7 +500,7 @@ describe("input parity semantics (issue #201)", () => {
   });
 
   it("renders a polite status announcer and keyboard hint in the editor shell", () => {
-    const html = renderToStaticMarkup(<App />);
+    const html = renderToStaticMarkup(<App defaultLocale="en" />);
     expect(html).toContain('data-testid="editor-announcer"');
     expect(html).toContain('role="status"');
     expect(html).toContain('id="workspace-keyboard-hint"');
@@ -878,7 +878,7 @@ describe("editor persistence", () => {
 
 describe("intent-to-plan dialogue (issue #86)", () => {
   it("keeps AI planning available without opening the coach by default", () => {
-    const html = renderToStaticMarkup(<App />);
+    const html = renderToStaticMarkup(<App defaultLocale="en" />);
 
     expect(html).toContain("AI");
     expect(html).toContain("Challenge");
@@ -897,7 +897,7 @@ describe("intent-to-plan dialogue (issue #86)", () => {
   });
 
   it("shows no provider or credential surface next to the intent field", () => {
-    const html = renderToStaticMarkup(<App />).toLowerCase();
+    const html = renderToStaticMarkup(<App defaultLocale="en" />).toLowerCase();
 
     expect(html).not.toContain("api key");
     expect(html).not.toContain("api_key");
