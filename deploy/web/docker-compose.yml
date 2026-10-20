@@ -1,0 +1,14 @@
+# Run from the repository root:
+#   docker compose -f deploy/web/docker-compose.yml up -d --build
+# Published on loopback only; the Cloudflare tunnel is the single ingress (#341).
+name: agorix-web
+services:
+  web:
+    build:
+      context: ../..
+      dockerfile: deploy/web/Dockerfile
+    image: agorix-web:local
+    container_name: agorix-web
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8470:80"
