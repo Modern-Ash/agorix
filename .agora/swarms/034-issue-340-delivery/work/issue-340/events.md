@@ -33,3 +33,5 @@
 - 2026-10-20T21:41:23.630777Z | evidence.added | id=evidence-000002 type=deployment result=success revision=1 actor=project:ai-claude
 - 2026-10-20T21:41:23.944796Z | evidence.added | id=evidence-000003 type=security-scan result=success revision=1 actor=project:ai-claude
 - 2026-10-20T21:41:24.282098Z | work.criterion-stage-marked | criterion=source-issue actor=project:ai-claude stage=deployed
+- 2026-10-20T21:48:30.039835Z | work.criterion-stage-marked | criterion=source-issue actor=project:product-owner stage=accepted
+- 2026-10-20T21:48:30.332472Z | work.transitioned | from=operations to=completed actor=project:product-owner

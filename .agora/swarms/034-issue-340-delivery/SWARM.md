@@ -2,7 +2,7 @@
 schema: "agora/swarm/v1"
 id: "issue-340-delivery"
 method: "ai-sdlc"
-status: "running"
+status: "completed"
 branch: "feat/issue-340-web-container"
 required-roles: ["product-owner","developer"]
 assignments: {"product-owner":"project:product-owner","developer":"project:ai-claude"}
