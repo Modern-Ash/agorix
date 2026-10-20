@@ -5,11 +5,15 @@
   "type": "module",
   "main": "./src/index.ts",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "test": "vitest run"
+    "build": "tsc -p tsconfig.json && node scripts/bundle.mjs",
+    "test": "vitest run",
+    "start": "node dist/main.mjs"
   },
   "dependencies": {
     "@agorix/provider-runtime": "workspace:*",
     "@agorix/tutor-contract": "workspace:*"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
   }
 }

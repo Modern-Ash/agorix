@@ -1,0 +1,18 @@
+# Agorix tutor API image (issue #348). Build context: repository root.
+#   docker build -f deploy/web/Dockerfile.tutor -t agorix-tutor .
+FROM node:22.23.2-alpine AS build
+RUN corepack enable
+WORKDIR /repo
+COPY . .
+RUN pnpm install --frozen-lockfile --filter @agorix/tutor-api...
+RUN pnpm --filter @agorix/tutor-api... build
+
+FROM node:22.23.2-alpine
+WORKDIR /app
+COPY --from=build /repo/apps/tutor-api/dist/main.mjs ./main.mjs
+USER node
+ENV AGORIX_TUTOR_HOST=0.0.0.0 AGORIX_TUTOR_PORT=8471
+EXPOSE 8471
+HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
+  CMD wget -q -O /dev/null http://127.0.0.1:8471/api/tutor/health || exit 1
+CMD ["node", "main.mjs"]
