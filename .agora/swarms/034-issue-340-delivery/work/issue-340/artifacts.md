@@ -1,6 +1,6 @@
 ---
 schema: "agora/artifacts/v2"
-artifact-kinds: ["intent","requirements","unit-of-work","plan","bolt-plan","user-stories","nfr","risk-register","measurement-criteria"]
+artifact-kinds: ["intent","requirements","unit-of-work","plan","bolt-plan","user-stories","nfr","risk-register","measurement-criteria","domain-model","logical-design","implementation-plan","test-strategy","deployment-unit"]
 ---
 
 # Artifacts
@@ -16,3 +16,8 @@ artifact-kinds: ["intent","requirements","unit-of-work","plan","bolt-plan","user
 | nfr | repo://.agora/ai-sdlc/handoffs/issue-340/NFR.md | 7df17e73158c4684539c3198b724250e29853fd3cd6683a3be3ebc87ccdb468a | project:ai-claude | 2026-10-20T21:33:03.250365Z |
 | risk-register | repo://.agora/ai-sdlc/handoffs/issue-340/RISK_REGISTER.md | d9739cc8ad4b1b4aae982ffbecaee618df51c6643ebc556c2884f13b1e409ade | project:ai-claude | 2026-10-20T21:33:03.547137Z |
 | measurement-criteria | repo://.agora/ai-sdlc/handoffs/issue-340/MEASUREMENT_CRITERIA.md | 190a5d3a1bb913412f48370d2591ed9d7b85a0a6ac35dc445ad49359e24e6b4c | project:ai-claude | 2026-10-20T21:33:03.854810Z |
+| domain-model | repo://.agora/ai-sdlc/handoffs/issue-340/DOMAIN_MODEL.md | 64caf1413527122463062bc391e09c4b196ce700bb2cc2cefa6e825c4bd19580 | project:ai-claude | 2026-10-20T21:40:34.917484Z |
+| logical-design | repo://.agora/ai-sdlc/handoffs/issue-340/LOGICAL_DESIGN.md | e4d4781a0fdb80063818aa6ed6028aa3d09ea3468c101f617d64ca73ab4fe4a4 | project:ai-claude | 2026-10-20T21:40:35.220459Z |
+| implementation-plan | repo://.agora/ai-sdlc/handoffs/issue-340/IMPLEMENTATION_PLAN.md | 726bc31d92c139986bb1f05661588d4345d7484814a6fb0a6bae264f03815360 | project:ai-claude | 2026-10-20T21:40:35.511928Z |
+| test-strategy | repo://.agora/ai-sdlc/handoffs/issue-340/TEST_STRATEGY.md | 8b2002da30ceed4c66e8a455da16d7324890c7505d30da573a26d06aca23c0b8 | project:ai-claude | 2026-10-20T21:40:35.809179Z |
+| deployment-unit | repo://.agora/ai-sdlc/handoffs/issue-340/DEPLOYMENT_UNIT.md | fd00814d2efe002fc4848081624623daa0222b809a4f3dcc06305e5149b2604c | project:ai-claude | 2026-10-20T21:40:36.107103Z |

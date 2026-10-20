@@ -16,3 +16,8 @@
 - 2026-10-20T21:34:37.100249Z | approval.added | role=product-owner actor=project:product-owner delegation=none
 - 2026-10-20T21:34:37.392150Z | approval.added | role=developer actor=project:ai-claude delegation=none
 - 2026-10-20T21:34:37.680097Z | work.transitioned | from=inception to=construction actor=project:product-owner
+- 2026-10-20T21:40:34.917541Z | artifact.added | kind=domain-model uri=repo://.agora/ai-sdlc/handoffs/issue-340/DOMAIN_MODEL.md actor=project:ai-claude
+- 2026-10-20T21:40:35.220537Z | artifact.added | kind=logical-design uri=repo://.agora/ai-sdlc/handoffs/issue-340/LOGICAL_DESIGN.md actor=project:ai-claude
+- 2026-10-20T21:40:35.511994Z | artifact.added | kind=implementation-plan uri=repo://.agora/ai-sdlc/handoffs/issue-340/IMPLEMENTATION_PLAN.md actor=project:ai-claude
+- 2026-10-20T21:40:35.809238Z | artifact.added | kind=test-strategy uri=repo://.agora/ai-sdlc/handoffs/issue-340/TEST_STRATEGY.md actor=project:ai-claude
+- 2026-10-20T21:40:36.107172Z | artifact.added | kind=deployment-unit uri=repo://.agora/ai-sdlc/handoffs/issue-340/DEPLOYMENT_UNIT.md actor=project:ai-claude
