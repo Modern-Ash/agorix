@@ -14,5 +14,15 @@ export default defineConfig({
   },
   use: {
     baseURL: `http://${host}:${port}`,
+    // The product opens in Spanish (issue #351); the existing journeys assert English copy.
+    storageState: {
+      cookies: [],
+      origins: [
+        {
+          origin: `http://${host}:${port}`,
+          localStorage: [{ name: "agorix.locale", value: "en" }],
+        },
+      ],
+    },
   },
 });
