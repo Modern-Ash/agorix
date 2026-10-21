@@ -216,6 +216,36 @@ and runtime observations. Raw learner free text remains disabled unless the
 server operator explicitly sets `AGORIX_TUTOR_INCLUDE_LEARNER_QUESTION=1` after
 reviewing the privacy impact.
 
+## Optional: tutor HTTP service behind the web container
+
+Modes 3 and 4 need a server-side process that holds the provider settings. The
+repository ships one (`apps/tutor-api`, issue #348) and a container recipe in
+`deploy/web/`:
+
+```text
+Browser -> web container (nginx) -> /api/tutor/* -> tutor container (not published)
+```
+
+- `GET /api/tutor/health` returns `{"configured":boolean,"available":boolean}`.
+  The Web client turns it into "Modo local", "IA activa" or "IA no disponible
+  ahora". With the service absent, nginx answers "not configured" so the app
+  stays in normal local mode.
+- `POST /api/tutor/respond` accepts a `TutorRequest` (JSON, at most 64 KB,
+  same-origin only) and returns `{ response, source }`. Any provider failure
+  falls back to the deterministic response; provider URL, token and error
+  details never reach the browser.
+- The service is off by default. An adult enables it:
+
+```bash
+cp deploy/web/tutor.env.example deploy/web/tutor.env   # then edit; never commit it
+docker compose -f deploy/web/docker-compose.yml --profile ai up -d --build
+```
+
+`deploy/web/tutor.env` is git-ignored and holds only `AGORIX_TUTOR_*` values.
+A provider on the same host (for example Ollama on `127.0.0.1`) is not reachable
+from inside a container network unless it listens on an address the container can
+reach; choose that exposure deliberately.
+
 ## License boundaries
 
 The Agorix source tree is licensed under Apache-2.0 unless a file says
