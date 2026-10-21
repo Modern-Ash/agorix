@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const manifestPath = fileURLToPath(new URL("../public/manifest.webmanifest", import.meta.url));
+const indexHtmlPath = fileURLToPath(new URL("../index.html", import.meta.url));
 const faviconPath = fileURLToPath(new URL("../public/favicon.v2.svg", import.meta.url));
 const brandLogoPath = fileURLToPath(new URL("../public/brand/agorix-logo.v2.svg", import.meta.url));
 const headerLogoPath = fileURLToPath(
@@ -57,6 +58,21 @@ describe("web app manifest (issue #36, AC-001: PWA installability)", () => {
     expect(readFileSync(faviconPath, "utf-8")).toContain("<svg");
     expect(readFileSync(brandLogoPath, "utf-8")).toContain("CODE · CREATE · WITH AI");
     expect(readFileSync(headerLogoPath, "utf-8")).toContain("#FFFFFF");
+  });
+
+  it("describes the product in Spanish for the production audience (issue #344)", () => {
+    const manifest = readManifest() as WebAppManifest & { lang?: string; description?: string };
+    expect(manifest.lang).toBe("es");
+    expect(manifest.description).toMatch(/programaci[oó]n/i);
+  });
+
+  it("ships search and sharing metadata in the document head (issue #344)", () => {
+    const html = readFileSync(indexHtmlPath, "utf-8");
+    expect(html).toMatch(/<meta\s+name="description"\s+content="[^"]{40,}"/);
+    expect(html).toContain('property="og:title"');
+    expect(html).toContain('property="og:description"');
+    expect(html).toContain('property="og:locale" content="es_AR"');
+    expect(html).toContain('property="og:type" content="website"');
   });
 
   it("is valid JSON with no trailing content", () => {
