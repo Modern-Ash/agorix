@@ -153,6 +153,14 @@ import {
 } from "./projectStorage.js";
 import { loadPresentationPrefs, savePresentationPrefs } from "./presentationPrefs.js";
 import { LOCALE_LABELS, t, type Locale, type MessageKey } from "./i18n.js";
+import {
+  AI_STATUS_BODY,
+  AI_STATUS_TITLE,
+  AI_STEPS,
+  fetchAiStatus,
+  type AiStatus,
+  type AiStepId,
+} from "./aiStatus.js";
 import { initialLocale, saveLocalePreference } from "./localePreference.js";
 import { PredictionChip, PredictionComparison } from "./PredictionChip.js";
 import { AgentCompanion, companionMood } from "./AgentCompanion.js";
@@ -2855,7 +2863,16 @@ export function App({
   ]);
   const [topbarOpen, setTopbarOpen] = useState(false);
   const [maximizedPanel, setMaximizedPanel] = useState<PanelId | undefined>(undefined);
-  const [aiConnectionOpen, setAiConnectionOpen] = useState(false);
+  const [aiStatus, setAiStatus] = useState<AiStatus>("connecting");
+  useEffect(() => {
+    let cancelled = false;
+    void fetchAiStatus().then((next) => {
+      if (!cancelled) setAiStatus(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const [activeDragKind, setActiveDragKind] = useState<"palette" | "workspace" | undefined>();
   const [activeScriptIndex, setActiveScriptIndex] = useState(0);
 
@@ -3027,6 +3044,14 @@ export function App({
     agentEnabled && repeatDecision?.action === "offer" ? repeatProposal : undefined;
   const missionStep =
     status === "complete" || status === "freeplay" ? 3 : attempts > 0 || status === "retry" ? 2 : 1;
+  const aiStep: AiStepId =
+    proposalCard !== undefined
+      ? "review"
+      : status === "complete" || status === "freeplay"
+        ? "explain"
+        : statements.length > 0
+          ? "run"
+          : "ask";
   const layaSignal =
     learningDecision === undefined
       ? t(locale, "layaWaiting")
@@ -4939,41 +4964,35 @@ export function App({
               }
               onToggle={toggleAgent}
             />
-            <div className="ai-coach-card">
+            <div className="ai-coach-card" data-ai-status={aiStatus}>
               <div className="ai-coach-card-header">
                 <strong>{t(locale, "aiCoachMode")}</strong>
-                <button
-                  type="button"
-                  className="ai-connect-button"
-                  aria-expanded={aiConnectionOpen}
-                  onClick={() => setAiConnectionOpen((current) => !current)}
-                >
-                  {t(locale, "aiConnectAction")}
-                </button>
+                <span className="ai-status-badge" role="status" aria-live="polite">
+                  <span aria-hidden="true" className="ai-status-dot" />
+                  {t(locale, AI_STATUS_TITLE[aiStatus])}
+                </span>
               </div>
-              <span>{t(locale, "aiCoachBody")}</span>
-              <small>{t(locale, "aiCoachStatus")}</small>
-              <div className="laya-signal" aria-label={t(locale, "layaSignal")}>
-                <strong>{t(locale, "layaSignal")}</strong>
-                <span>{layaSignal}</span>
-              </div>
-              {aiConnectionOpen ? (
-                <section className="ai-connect-panel" aria-label={t(locale, "aiConnectTitle")}>
-                  <strong>{t(locale, "aiConnectTitle")}</strong>
-                  <p>{t(locale, "aiConnectBody")}</p>
-                  <dl>
-                    <div>
-                      <dt>{t(locale, "aiConnectProvider")}</dt>
-                      <dd>{t(locale, "aiConnectProviderValue")}</dd>
-                    </div>
-                  </dl>
-                  <span>{t(locale, "aiConnectConfigHint")}</span>
-                  <button type="button" onClick={() => setAiConnectionOpen(false)}>
-                    {t(locale, "aiConnectClose")}
-                  </button>
-                </section>
-              ) : null}
+              <span>{t(locale, AI_STATUS_BODY[aiStatus])}</span>
+              <details className="ai-adults">
+                <summary>{t(locale, "aiAdultsSummary")}</summary>
+                <p>{t(locale, "aiAdultsBody")}</p>
+                <div className="laya-signal" aria-label={t(locale, "layaSignal")}>
+                  <strong>{t(locale, "layaSignal")}</strong>
+                  <span>{layaSignal}</span>
+                </div>
+              </details>
             </div>
+            <ol className="ai-steps" aria-label={t(locale, "aiStepsLabel")}>
+              {AI_STEPS.map((step) => (
+                <li
+                  key={step.id}
+                  aria-current={step.id === aiStep ? "step" : undefined}
+                  className={step.id === aiStep ? "ai-step current" : "ai-step"}
+                >
+                  {t(locale, step.label)}
+                </li>
+              ))}
+            </ol>
             <div className="coach-nudge" aria-live="polite">
               <strong>{t(locale, "aiNextMove")}</strong>
               <span>
@@ -5018,22 +5037,25 @@ export function App({
                 </div>
               </div>
             )}
-            <div className="tutor-actions">
-              {agentEnabled ? (
-                <button type="button" onClick={previewImperfectAiProposal}>
-                  {t(locale, "aiLiteracyActivity")}
+            <details className="ai-more-help">
+              <summary>{t(locale, "aiMoreHelp")}</summary>
+              <div className="tutor-actions">
+                {agentEnabled ? (
+                  <button type="button" onClick={previewImperfectAiProposal}>
+                    {t(locale, "aiLiteracyActivity")}
+                  </button>
+                ) : null}
+                <button type="button" onClick={() => setComparisonOpen((open) => !open)}>
+                  {t(locale, "compareOpen")}
                 </button>
-              ) : null}
-              <button type="button" onClick={() => setComparisonOpen((open) => !open)}>
-                {t(locale, "compareOpen")}
-              </button>
-              <button type="button" onClick={requestHint}>
-                {t(locale, "getHint")}
-              </button>
-              <span className="hint-meter">
-                {t(locale, "hintMeter", { count: hintHistory.length })}
-              </span>
-            </div>
+                <button type="button" onClick={requestHint}>
+                  {t(locale, "getHint")}
+                </button>
+              </div>
+            </details>
+            <span className="hint-meter">
+              {t(locale, "hintMeter", { count: hintHistory.length })}
+            </span>
             {comparisonOpen ? (
               <ModelComparison locale={locale} onClose={() => setComparisonOpen(false)} />
             ) : null}

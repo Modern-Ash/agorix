@@ -1923,9 +1923,7 @@ button:hover:not(:disabled) {
   padding: var(--agx-space-3);
   border: 1px solid rgba(99, 91, 255, 0.24);
   border-radius: var(--agx-radius-md);
-  background:
-    linear-gradient(135deg, rgba(99, 91, 255, 0.1), rgba(20, 184, 166, 0.1)),
-    rgba(255, 255, 255, 0.74);
+  background: #ffffff;
 }
 
 .ai-coach-card strong {
@@ -3333,81 +3331,52 @@ button:hover:not(:disabled) {
   justify-content: space-between;
 }
 
-.ai-connect-button {
-  min-height: 32px;
-  padding: 0 12px;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #635bff, #14b8a6);
-  color: #ffffff;
-  box-shadow: 0 8px 18px rgba(99, 91, 255, 0.22);
-  font-size: 0.76rem;
-  font-weight: 950;
-}
-
-.ai-connect-button:hover:not(:disabled) {
-  transform: translateY(-1px);
-}
-
-.ai-connect-panel {
-  display: grid;
-  gap: 8px;
-  margin-top: 10px;
-  padding: 10px;
-  border: 1px solid rgba(99, 91, 255, 0.28);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.86);
-  box-shadow: inset 4px 0 0 rgba(99, 91, 255, 0.54);
-}
-
-.ai-connect-panel strong {
-  color: #111827;
-  font-size: 0.82rem;
-  text-transform: none;
-}
-
-.ai-connect-panel p,
-.ai-connect-panel span {
-  margin: 0;
-  color: #475569;
-  font-size: 0.82rem;
-  line-height: 1.35;
-}
-
-.ai-connect-panel dl {
-  margin: 0;
-}
-
-.ai-connect-panel dl div {
-  display: flex;
-  gap: 8px;
+.ai-status-badge {
+  display: inline-flex;
+  gap: 6px;
   align-items: center;
-  justify-content: space-between;
-  padding: 7px 8px;
-  border-radius: 6px;
-  background: rgba(15, 23, 42, 0.06);
-}
-
-.ai-connect-panel dt,
-.ai-connect-panel dd {
-  margin: 0;
-  color: #0f172a;
-  font-size: 0.78rem;
-  font-weight: 900;
-}
-
-.ai-connect-panel dd {
-  color: #b45309;
-}
-
-.ai-connect-panel button {
-  justify-self: start;
-  min-height: 32px;
+  min-height: 28px;
   padding: 0 10px;
+  border: 1px solid var(--agx-border-subtle, #d9ded6);
   border-radius: 999px;
-  background: rgba(15, 23, 42, 0.08);
-  color: #0f172a;
-  box-shadow: none;
-  font-size: 0.76rem;
+  background: #ffffff;
+  color: #17201d;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.ai-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #5e6b65;
+}
+
+.ai-coach-card[data-ai-status="active"] .ai-status-dot {
+  background: #6c5ce7;
+}
+
+.ai-coach-card[data-ai-status="connecting"] .ai-status-dot {
+  background: #b87503;
+}
+
+.ai-adults {
+  margin-top: 4px;
+  font-size: 0.82rem;
+}
+
+.ai-adults summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  color: #5e6b65;
+}
+
+.ai-adults p {
+  margin: 0 0 8px;
+  color: #475569;
+  line-height: 1.35;
 }
 
 .learning-flow {
@@ -4922,5 +4891,71 @@ button:hover:not(:disabled) {
 
   .action-palette .tool-button small {
     display: none;
+  }
+}
+
+.ai-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  margin: 0 0 var(--agx-space-3);
+  padding: 0;
+  list-style: none;
+  counter-reset: ai-step;
+}
+
+.ai-step {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  min-height: 44px;
+  padding: 4px 8px;
+  border: 1px solid var(--agx-border-subtle, #d9ded6);
+  border-radius: 8px;
+  background: #ffffff;
+  color: #5e6b65;
+  font-size: 0.8rem;
+  counter-increment: ai-step;
+}
+
+.ai-step::before {
+  content: counter(ai-step);
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #eceee8;
+  font-weight: 700;
+}
+
+.ai-step.current {
+  border-color: #6c5ce7;
+  color: #17201d;
+  font-weight: 700;
+}
+
+.ai-step.current::before {
+  background: #6c5ce7;
+  color: #ffffff;
+}
+
+.ai-more-help {
+  margin: 8px 0;
+}
+
+.ai-more-help summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  color: #5e6b65;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 760px) {
+  .ai-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

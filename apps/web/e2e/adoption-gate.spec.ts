@@ -303,9 +303,7 @@ test.describe("journey 10: AI unavailable", () => {
 
   test("a project executes with no provider configured", async ({ page }) => {
     await page.getByRole("button", { name: "Use AI explain tool" }).click();
-    await page.getByRole("button", { name: "Connect AI" }).click();
-    await expect(page.getByText("Not configured yet")).toBeVisible();
-    await page.getByRole("button", { name: "Keep local mode" }).click();
+    await expect(page.locator(".ai-coach-card").getByRole("status")).toHaveText("Local mode");
     await tool(page, "Move").click();
     await setMove(page, "160");
     await run(page).click();
