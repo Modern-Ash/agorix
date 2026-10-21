@@ -697,6 +697,8 @@ Un modelo comercial puede rendir mejor para una tarea determinada.
 
 Eso no convierte a su proveedor en parte del modelo de dominio de Agorix.
 
+La operación en producción (deploy, rollback, túnel) está en [docs/deployment/MODERN_ASH_HOST.md](docs/deployment/MODERN_ASH_HOST.md) (en inglés).
+
 Roadmap: [Epic #67 — Open-source-first multi-LLM provider architecture](https://github.com/Modern-Ash/agorix/issues/67)
 
 ---

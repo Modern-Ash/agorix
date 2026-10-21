@@ -1,3 +1,9 @@
+# Unreleased
+
+- Production Web at <https://agorix.modern-ash.com>: container image with a generated security-header set, deploy and rollback scripts with automatic rollback, `/version.json`, a read-only production smoke test as a deploy gate, and the runbook in `docs/deployment/MODERN_ASH_HOST.md`.
+- Spanish by default with a remembered language choice; calm AI status ("Modo local" / "IA activa" / "IA no disponible ahora"), an adults-only explainer and a four-step loop in the AI panel.
+- Optional same-origin tutor HTTP service (`/api/tutor/health`, `/api/tutor/respond`).
+
 # Agorix 0.1.0
 
 First public beta release of Agorix: an AI-native creative coding platform with a Scratch-familiar Web experience and a professional VS Code Studio surface over the same canonical project model.

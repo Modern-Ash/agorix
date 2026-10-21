@@ -11,6 +11,7 @@ ladder is:
 
 Companion references:
 
+- [Running on the Modern Ash host](./MODERN_ASH_HOST.md) (production runbook: deploy, rollback, tunnel)
 - [Provider matrix](../evidence/PROVIDER_MATRIX.md)
 - [Privacy threat model](../safety/PRIVACY_THREAT_MODEL.md)
 - [Ollama local provider](../providers/OLLAMA.md)
