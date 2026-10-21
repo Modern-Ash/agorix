@@ -8,7 +8,7 @@ test("first visit opens in Spanish and remembers the learner's language choice",
 }) => {
   await page.goto("/");
   const openMenu = async () => {
-    const menuButton = page.getByRole("button", { name: "Show app menu" });
+    const menuButton = page.getByRole("button", { name: /Show app menu|Mostrar menú/ });
     if (await menuButton.isVisible().catch(() => false)) await menuButton.click();
   };
   await openMenu();

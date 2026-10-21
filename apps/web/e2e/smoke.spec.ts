@@ -225,7 +225,7 @@ test("multi-actor app flow edits a selected actor script and runs shared frames"
 test("block edits update generated code", async ({ page }) => {
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Move" }).click();
+  await page.getByRole("button", { name: "Move", exact: true }).click();
   await expect(page.getByText("sprite.move(10);")).toBeVisible();
   await applyMoveSteps(page, "24");
   await expect(visibleCode(page, "sprite.move(24);")).toBeVisible();
@@ -234,7 +234,7 @@ test("block edits update generated code", async ({ page }) => {
 test("block edits survive reload from canonical storage", async ({ page }) => {
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Move" }).click();
+  await page.getByRole("button", { name: "Move", exact: true }).click();
   await applyMoveSteps(page, "24");
   await expect(visibleCode(page, "sprite.move(24);")).toBeVisible();
 
@@ -252,7 +252,7 @@ test("block edits survive reload from canonical storage", async ({ page }) => {
 test("Undo and Redo restore exact canonical block edits", async ({ page }) => {
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Move" }).click();
+  await page.getByRole("button", { name: "Move", exact: true }).click();
   const afterAdd = await canonicalHash(page);
   await applyMoveSteps(page, "24");
   const afterEdit = await canonicalHash(page);
@@ -271,7 +271,7 @@ test("Undo and Redo restore exact canonical block edits", async ({ page }) => {
 test("anonymous project exports and imports as a portable .agorix file", async ({ page }) => {
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Move" }).click();
+  await page.getByRole("button", { name: "Move", exact: true }).click();
   await applyMoveSteps(page, "24");
   const exportedHash = await canonicalHash(page);
   const downloadPromise = page.waitForEvent("download");
@@ -296,7 +296,7 @@ test("anonymous project exports and imports as a portable .agorix file", async (
 test("locale switch localizes UI without changing canonical program", async ({ page }) => {
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Move" }).click();
+  await page.getByRole("button", { name: "Move", exact: true }).click();
   await applyMoveSteps(page, "24");
   const before = await page.evaluate(() => localStorage.getItem("agorix:default-project"));
   const beforeProgram = JSON.parse(before ?? "{}").program;
@@ -323,7 +323,7 @@ test("locale switch localizes UI without changing canonical program", async ({ p
 test("offline tutor hints escalate without changing blocks", async ({ page }) => {
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Move" }).click();
+  await page.getByRole("button", { name: "Move", exact: true }).click();
   await expect(page.getByLabel("Move block").getByRole("spinbutton")).toHaveValue("10");
 
   await page.getByRole("button", { name: "Use AI hint tool" }).click();
@@ -344,7 +344,7 @@ test("offline tutor hints escalate without changing blocks", async ({ page }) =>
 test("first mission completes from runtime facts and shows reflection", async ({ page }) => {
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Move" }).click();
+  await page.getByRole("button", { name: "Move", exact: true }).click();
   await applyMoveSteps(page, "10");
   await stageRun(page).click();
   await expect(page.getByText("stopped short")).toBeVisible({ timeout: 5000 });
@@ -363,7 +363,7 @@ test("first mission completes from runtime facts and shows reflection", async ({
 test("mission retry keeps work, code, and unlocks non-blocking free play", async ({ page }) => {
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Move" }).click();
+  await page.getByRole("button", { name: "Move", exact: true }).click();
   await applyMoveSteps(page, "10");
   await stageRun(page).click();
   await expect(page.getByText("stopped short")).toBeVisible({ timeout: 5000 });
@@ -389,7 +389,7 @@ test("mission retry keeps work, code, and unlocks non-blocking free play", async
 test("Step synchronizes block, code and stage without racing Run", async ({ page }) => {
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Move" }).click();
+  await page.getByRole("button", { name: "Move", exact: true }).click();
   await applyMoveSteps(page, "24");
   await openAppMenu(page);
   await appMenuButton(page, "Step").click();
@@ -410,7 +410,7 @@ test("orientation change preserves prepared Step state", async ({ page }) => {
   await page.setViewportSize({ width: 768, height: 1024 });
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Move" }).click();
+  await page.getByRole("button", { name: "Move", exact: true }).click();
   await applyMoveSteps(page, "24");
   await openAppMenu(page);
   await appMenuButton(page, "Step").click();
@@ -426,7 +426,7 @@ test("orientation change preserves prepared Step state", async ({ page }) => {
 test("Step trace explains before and after state without raw logs", async ({ page }) => {
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Move" }).click();
+  await page.getByRole("button", { name: "Move", exact: true }).click();
   await applyMoveSteps(page, "24");
   await openAppMenu(page);
   await appMenuButton(page, "Step").click();
@@ -537,7 +537,7 @@ test("orientation change preserves canonical program and visible code", async ({
   await page.setViewportSize({ width: 768, height: 1024 });
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Move" }).click();
+  await page.getByRole("button", { name: "Move", exact: true }).click();
   await applyMoveSteps(page, "24");
   await expect(visibleCode(page, "sprite.move(24);")).toBeVisible();
 
@@ -554,7 +554,7 @@ test("touch/no-drag path completes the First Mission", async ({ page }) => {
   await page.setViewportSize({ width: 820, height: 1180 });
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Move" }).click();
+  await page.getByRole("button", { name: "Move", exact: true }).click();
   await applyMoveSteps(page, "160");
   await expect(visibleCode(page, "sprite.move(160);")).toBeVisible();
 
@@ -567,7 +567,7 @@ test("touch/no-drag path completes the First Mission", async ({ page }) => {
 test("explicit reorder controls update generated code without drag", async ({ page }) => {
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Move" }).click();
+  await page.getByRole("button", { name: "Move", exact: true }).click();
   await page.getByRole("button", { name: "Turn" }).click();
   await expect(page.getByText("sprite.move(10);")).toBeVisible();
   await expect(page.getByText("sprite.turn(90);")).toBeVisible();
@@ -646,7 +646,7 @@ test("palette drag supports nested drop and one-step undo", async ({ page }) => 
 test("cancelled and invalid drops leave canonical state unchanged", async ({ page }) => {
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Move" }).click();
+  await page.getByRole("button", { name: "Move", exact: true }).click();
   const before = await canonicalHash(page);
 
   await page.evaluate(() => {
@@ -706,7 +706,7 @@ test("non-drag nesting keeps projections synchronized", async ({ page }) => {
   await page.goto("/");
 
   await page.getByRole("button", { name: "Repeat" }).click();
-  await page.getByRole("button", { name: "Move" }).click();
+  await page.getByRole("button", { name: "Move", exact: true }).click();
   await page.getByLabel("Move block").getByRole("button", { name: "Nest" }).click();
 
   await expect(
@@ -818,7 +818,7 @@ test("virtual keyboard numeric edit keeps inline value usable without form cerem
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
 
-  await page.getByRole("button", { name: "Move" }).click();
+  await page.getByRole("button", { name: "Move", exact: true }).click();
   const input = page.getByLabel("Move block").getByRole("spinbutton");
   await input.fill("42");
   await input.press("Enter");
@@ -834,7 +834,7 @@ test("Spanish touch edit path keeps action palette and numeric commit usable", a
 
   await openAppMenu(page);
   await page.getByLabel("Product language").selectOption("es");
-  await page.getByRole("button", { name: "Mover" }).click();
+  await page.getByRole("button", { name: "Mover", exact: true }).click();
   await page.getByLabel("Bloque Mover").getByRole("spinbutton").fill("160");
   await page.getByLabel("Bloque Mover").getByRole("spinbutton").press("Enter");
 
@@ -932,7 +932,7 @@ test("AI-literacy journey predicts, tests, challenges and corrects an imperfect 
   await page.goto("/");
 
   // Establish learner-owned program state before any AI suggestion.
-  await page.getByRole("button", { name: "Move" }).click();
+  await page.getByRole("button", { name: "Move", exact: true }).click();
   await applyMoveSteps(page, "24");
   const learnerHash = await canonicalHash(page);
 
@@ -988,7 +988,7 @@ test("AI-literacy journey predicts, tests, challenges and corrects an imperfect 
 test.describe("MVP release happy paths", () => {
   test("happy path: learner builds, runs, completes and reflects", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("button", { name: "Move" }).click();
+    await page.getByRole("button", { name: "Move", exact: true }).click();
     await applyMoveSteps(page, "160");
     await expect(visibleCode(page, "sprite.move(160);")).toBeVisible();
     await stageRun(page).click();
@@ -1002,7 +1002,7 @@ test.describe("MVP release happy paths", () => {
     page,
   }) => {
     await page.goto("/");
-    await page.getByRole("button", { name: "Move" }).click();
+    await page.getByRole("button", { name: "Move", exact: true }).click();
     await applyMoveSteps(page, "24");
     const before = await canonicalHash(page);
     await openCodePanel(page);
@@ -1026,7 +1026,7 @@ test.describe("MVP release happy paths", () => {
     page,
   }) => {
     await page.goto("/");
-    await page.getByRole("button", { name: "Move" }).click();
+    await page.getByRole("button", { name: "Move", exact: true }).click();
     await stageRun(page).click();
     await page.getByRole("button", { name: "Use AI hint tool" }).click();
 
@@ -1038,7 +1038,7 @@ test.describe("MVP release happy paths", () => {
 
   test("happy path: coach hint records deterministic routing metadata", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("button", { name: "Move" }).click();
+    await page.getByRole("button", { name: "Move", exact: true }).click();
     await page.getByRole("button", { name: "Use AI hint tool" }).click();
 
     const shell = page.locator("main.editor-shell");

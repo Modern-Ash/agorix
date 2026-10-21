@@ -20,7 +20,7 @@ const stageRun = (page: Page) =>
   page.locator(".stage-panel").getByRole("button", { name: /^(Run|Ejecutar)$/ });
 
 async function openAppMenu(page: Page) {
-  const menuButton = page.getByRole("button", { name: "Show app menu" });
+  const menuButton = page.getByRole("button", { name: /Show app menu|Mostrar menú/ });
   if (await menuButton.isVisible().catch(() => false)) await menuButton.click();
 }
 

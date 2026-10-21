@@ -34,7 +34,7 @@ test("server configured but down: calm message, work continues", async ({ page }
   const card = await openCoach(page);
   await expect(card.getByRole("status")).toHaveText("AI not available right now");
   await expect(card.getByText("You can keep working.")).toBeVisible();
-  await page.getByRole("button", { name: "Move" }).click();
+  await page.getByRole("button", { name: "Move", exact: true }).click();
   await expect(page.getByLabel("Move block").getByRole("spinbutton")).toHaveValue("10");
 });
 
@@ -46,7 +46,7 @@ test("the four-step loop follows the learner and secondary help is folded away",
   const steps = page.getByRole("list", { name: "Your steps with the AI" });
   await expect(steps.locator('[aria-current="step"]')).toHaveText("Ask");
 
-  await page.getByRole("button", { name: "Move" }).click();
+  await page.getByRole("button", { name: "Move", exact: true }).click();
   await expect(steps.locator('[aria-current="step"]')).toHaveText("Run");
 
   await expect(page.getByRole("button", { name: "Get hint" })).toBeHidden();
