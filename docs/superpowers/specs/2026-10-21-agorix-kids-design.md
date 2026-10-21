@@ -1,6 +1,6 @@
 # Agorix Kids: the prototype becomes the Web experience, with Ori as an active AI agent
 
-Status: design approved in conversation with the product owner on 2026-10-21; implementation tracked in the epic and issues listed at the end (filled in when they are created). Written so that any engineer or LLM can plan from it without going back to the owner.
+Status: design approved in conversation with the product owner on 2026-10-21; implementation tracked in epic #371 and issues #372 to #389. Written so that any engineer or LLM can plan from it without going back to the owner.
 
 ## Intent
 
@@ -81,4 +81,4 @@ Store choice (`useReducer` or a small store), exact grid/pixel scale, mission au
 
 ## Issue map
 
-See the epic labelled `kids` in GitHub (title starts with "Epic: Agorix Kids"). Issues are written so an engineer or LLM can take one without the conversation.
+Epic #371 (label `kids`, title starts with "Epic: Agorix Kids") with issues #372 to #389 ("Kids 01" to "Kids 18"). Issues are written so an engineer or LLM can take one without the conversation.
