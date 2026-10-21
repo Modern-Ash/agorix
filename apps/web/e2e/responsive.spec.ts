@@ -87,7 +87,7 @@ test("the mission card start button is not cut off in the workbench", async ({ p
 
 test("the stage panel and its controls fit inside a 1180px tablet", async ({ page }) => {
   await openFresh(page, 1180, 820);
-  for (const name of ["Maximize Preview", "Close Preview", "Abrir código"]) {
+  for (const name of [/Maximizar Escenario/, /Cerrar Escenario/, /Abrir código/]) {
     const control = page.getByRole("button", { name }).first();
     await expect(control).toBeInViewport({ ratio: 1 });
   }

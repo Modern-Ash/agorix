@@ -196,14 +196,14 @@ const PANEL_AREAS: readonly PanelArea[] = [
   "companion",
 ];
 
-const PANEL_LABELS: Record<PanelId, string> = {
-  action: "Tools",
-  program: "Blocks",
-  stage: "Preview",
-  code: "Code",
-  trace: "Trace",
-  companion: "AI",
-};
+const PANEL_LABEL_KEYS = {
+  action: "panelAction",
+  program: "panelProgram",
+  stage: "panelStage",
+  code: "panelCode",
+  trace: "panelTrace",
+  companion: "panelCompanion",
+} as const satisfies Record<PanelId, MessageKey>;
 
 const DEFAULT_PANEL_AREAS: Record<PanelId, PanelArea> = {
   action: "action",
@@ -224,6 +224,7 @@ type PanelChromeProps = {
 };
 
 function PanelControls({
+  locale,
   panel,
   collapsed,
   maximized,
@@ -232,6 +233,7 @@ function PanelControls({
   onMaximize,
   onMove,
 }: {
+  readonly locale: Locale;
   readonly panel: PanelId;
   readonly collapsed: boolean;
   readonly maximized: boolean;
@@ -240,34 +242,31 @@ function PanelControls({
   readonly onMaximize: () => void;
   readonly onMove: (direction: -1 | 1) => void;
 }) {
-  const label = PANEL_LABELS[panel];
+  const panelName = t(locale, PANEL_LABEL_KEYS[panel]);
+  const named = (key: MessageKey) => t(locale, key, { panel: panelName });
   return (
-    <div className="panel-controls" aria-label={`${label} panel controls`}>
-      <button type="button" onClick={() => onMove(-1)} aria-label={`Shift ${label} panel left`}>
+    <div className="panel-controls" aria-label={named("panelControlsLabel")}>
+      <button type="button" onClick={() => onMove(-1)} aria-label={named("panelShiftLeft")}>
         <span aria-hidden="true">‹</span>
       </button>
-      <button type="button" onClick={() => onMove(1)} aria-label={`Shift ${label} panel right`}>
+      <button type="button" onClick={() => onMove(1)} aria-label={named("panelShiftRight")}>
         <span aria-hidden="true">›</span>
       </button>
       <button
         type="button"
         onClick={onToggle}
-        aria-label={collapsed ? `Expand ${label}` : `Collapse ${label}`}
+        aria-label={named(collapsed ? "panelExpand" : "panelCollapse")}
       >
         <span aria-hidden="true">{collapsed ? "+" : "−"}</span>
       </button>
       <button
         type="button"
         onClick={onMaximize}
-        aria-label={maximized ? `Restore ${label}` : `Maximize ${label}`}
+        aria-label={named(maximized ? "panelRestore" : "panelMaximize")}
       >
         <span aria-hidden="true">{maximized ? "▣" : "□"}</span>
       </button>
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label={panel === "stage" ? "Close Preview" : `Close ${label}`}
-      >
+      <button type="button" onClick={onClose} aria-label={named("panelClose")}>
         <span aria-hidden="true">×</span>
       </button>
     </div>
@@ -906,7 +905,7 @@ function scratchPaletteFor(locale: Locale): readonly PaletteCategory[] {
         {
           id: "looks_costume",
           label: es ? "Disfraz" : "Costume",
-          detail: es ? "Cambia look" : "Change look",
+          detail: es ? "Cambia la apariencia" : "Change look",
           glyph: "◐",
           type: "looks_switch_costume",
           enabled: true,
@@ -1234,9 +1233,11 @@ function CodeText({
 }
 
 function CodePanel({
+  locale,
   program,
   highlightedNodeId,
 }: {
+  locale: Locale;
   program: ProjectProgram;
   highlightedNodeId: string | undefined;
 }) {
@@ -1250,9 +1251,9 @@ function CodePanel({
     <div className="code-panel-content">
       <div className="code-projection-controls">
         <label>
-          <span>Code projection</span>
+          <span>{t(locale, "codeProjectionLabel")}</span>
           <select
-            aria-label="Code projection"
+            aria-label={t(locale, "codeProjectionLabel")}
             value={projectionId}
             onChange={(event) => setProjectionId(event.currentTarget.value as CodeProjectionId)}
           >
@@ -1264,9 +1265,9 @@ function CodePanel({
           </select>
         </label>
         <label>
-          <span>Compare with</span>
+          <span>{t(locale, "codeCompareWith")}</span>
           <select
-            aria-label="Compare code projection"
+            aria-label={t(locale, "codeProjectionCompareLabel")}
             value={comparisonId ?? ""}
             onChange={(event) =>
               setComparisonId(
@@ -1511,7 +1512,7 @@ function ActorPanel({
   if (selected === undefined) return null;
   return (
     <section className="actor-panel" aria-label={t(locale, "actors")}>
-      <div className="actor-tabs" role="list" aria-label={t(locale, "actors")}>
+      <div className="actor-tabs" role="group" aria-label={t(locale, "actors")}>
         {actors.map((actor) => (
           <button
             key={actor.id}
@@ -1720,7 +1721,7 @@ export function StageView({
         {panelControls}
       </div>
       {controls ?? (
-        <div className="stage-run-controls" aria-label="Stage execution controls">
+        <div className="stage-run-controls" aria-label={t(locale, "stageControlsLabel")}>
           <button
             type="button"
             className="stage-run-button"
@@ -1763,7 +1764,11 @@ export function StageView({
         </span>
       </div>
       {visibleWatchers.length === 0 ? null : (
-        <aside className="stage-watchers" aria-label="Variable watchers" aria-live="polite">
+        <aside
+          className="stage-watchers"
+          aria-label={t(locale, "variableWatchersLabel")}
+          aria-live="polite"
+        >
           {visibleWatchers.map((variable) => (
             <div key={variable.id} className="stage-watcher" data-variable-id={variable.id}>
               <span>{variable.label}</span>
@@ -1784,7 +1789,7 @@ export function StageView({
       <svg
         className="stage-canvas"
         viewBox={`0 0 ${viewport.width} ${viewport.height}`}
-        role="img"
+        role="group"
         aria-label={t(locale, "stageAria")}
       >
         <rect width={viewport.width} height={viewport.height} rx="14" />
@@ -4180,6 +4185,7 @@ export function App({
   function panelControls(panel: PanelId) {
     return (
       <PanelControls
+        locale={locale}
         panel={panel}
         collapsed={collapsedPanels.includes(panel)}
         maximized={maximizedPanel === panel}
@@ -4399,7 +4405,7 @@ export function App({
           <button
             type="button"
             className="topbar-menu-button"
-            aria-label={topbarOpen ? "Hide app menu" : "Show app menu"}
+            aria-label={t(locale, topbarOpen ? "appMenuHide" : "appMenuShow")}
             aria-expanded={topbarOpen}
             aria-controls="app-menu"
             onClick={() => setTopbarOpen((open) => !open)}
@@ -4441,19 +4447,19 @@ export function App({
             type="button"
             onClick={undoEditor}
             disabled={!history.canUndo}
-            aria-label="Undo program edit"
-            title="Undo"
+            aria-label={t(locale, "undoProgramEdit")}
+            title={t(locale, "undoShort")}
           >
-            Undo
+            {t(locale, "undoShort")}
           </button>
           <button
             type="button"
             onClick={redoEditor}
             disabled={!history.canRedo}
-            aria-label="Redo program edit"
-            title="Redo"
+            aria-label={t(locale, "redoProgramEdit")}
+            title={t(locale, "redoShort")}
           >
-            Redo
+            {t(locale, "redoShort")}
           </button>
           <button type="button" onClick={exportProject}>
             {t(locale, "exportProject")}
@@ -4667,7 +4673,11 @@ export function App({
               <span>{t(locale, "codeBehindBlocks")}</span>
               {panelControls("code")}
             </div>
-            <CodePanel program={model.program} highlightedNodeId={highlightedNodeId} />
+            <CodePanel
+              locale={locale}
+              program={model.program}
+              highlightedNodeId={highlightedNodeId}
+            />
             {highlightedCode ? (
               <p className="highlight-readout">
                 {t(locale, "currentNode", { code: highlightedCode.trim() })}
@@ -4763,12 +4773,16 @@ export function App({
                 </div>
                 {closedPanelIds.includes("companion") ? (
                   <button type="button" onClick={() => restorePanel("companion")}>
-                    {PANEL_LABELS.companion}
+                    {t(locale, PANEL_LABEL_KEYS.companion)}
                   </button>
                 ) : null}
               </div>
               <div className="action-list ai-action-list">
-                <button type="button" aria-label="Use AI hint tool" onClick={requestHint}>
+                <button
+                  type="button"
+                  aria-label={t(locale, "aiHintToolLabel")}
+                  onClick={requestHint}
+                >
                   <span className="tool-glyph" aria-hidden="true">
                     AI
                   </span>
@@ -4779,7 +4793,7 @@ export function App({
                 </button>
                 <button
                   type="button"
-                  aria-label="Use AI challenge tool"
+                  aria-label={t(locale, "aiChallengeToolLabel")}
                   onClick={previewImperfectAiProposal}
                 >
                   <span className="tool-glyph" aria-hidden="true">
@@ -4805,7 +4819,11 @@ export function App({
                     <small aria-hidden="true">{t(locale, "compareIntro")}</small>
                   </span>
                 </button>
-                <button type="button" aria-label="Use AI explain tool" onClick={revealCompanion}>
+                <button
+                  type="button"
+                  aria-label={t(locale, "aiExplainToolLabel")}
+                  onClick={revealCompanion}
+                >
                   <span className="tool-glyph" aria-hidden="true">
                     fx
                   </span>
@@ -4844,7 +4862,7 @@ export function App({
               <span>{t(locale, "blockCount", { count: activeScriptBlockCount })}</span>
               {panelControls("program")}
             </div>
-            <div className="script-switcher" aria-label="Event scripts">
+            <div className="script-switcher" aria-label={t(locale, "eventScriptsLabel")}>
               {model.workspace.scripts.map((script, index) => (
                 <button
                   key={script.id}
@@ -4860,7 +4878,7 @@ export function App({
                 {locale === "es" ? "+ tecla" : "+ key"}
               </button>
               <button type="button" onClick={() => addEventScript("event_on_actor_clicked")}>
-                {locale === "es" ? "+ click" : "+ click"}
+                {locale === "es" ? "+ clic" : "+ click"}
               </button>
               <button type="button" onClick={() => addEventScript("event_on_message")}>
                 {locale === "es" ? "+ mensaje" : "+ message"}
