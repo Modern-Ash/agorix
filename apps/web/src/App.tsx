@@ -161,6 +161,7 @@ import {
   type AiStatus,
   type AiStepId,
 } from "./aiStatus.js";
+import { BUILD_INFO, formatBuildInfo } from "./buildInfo.js";
 import { initialLocale, saveLocalePreference } from "./localePreference.js";
 import { PredictionChip, PredictionComparison } from "./PredictionChip.js";
 import { AgentCompanion, companionMood } from "./AgentCompanion.js";
@@ -4426,6 +4427,9 @@ export function App({
               ))}
             </select>
           </label>
+          <small className="build-info" data-testid="build-info">
+            {formatBuildInfo(BUILD_INFO)}
+          </small>
           <AccountUi
             controller={workspace}
             locale={locale}
