@@ -5,6 +5,8 @@ const host = process.env.AGORIX_E2E_HOST ?? "127.0.0.1";
 
 export default defineConfig({
   testDir: "./e2e",
+  // e2e/prod runs against the deployed site with its own config (issue #345).
+  testIgnore: "prod/**",
   webServer: {
     // AGORIX_DEV_BACKEND mounts the in-process DEV/E2E-only account backend (never part of the build).
     command: `AGORIX_DEV_BACKEND=1 corepack pnpm preview --host ${host} --port ${port}`,

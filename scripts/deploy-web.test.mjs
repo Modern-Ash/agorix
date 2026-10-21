@@ -62,6 +62,19 @@ describe("deploy-web.sh preflight (issue #342)", () => {
     expect(result.stderr).toContain("differs from origin/main");
   });
 
+  it("accepts the skip flags together with the preflight", () => {
+    const result = spawnSync(
+      "bash",
+      [script, "--preflight-only", "--skip-verify", "--skip-smoke"],
+      {
+        cwd: repo,
+        encoding: "utf8",
+        env: { ...process.env, AGORIX_REPO_ROOT: repo },
+      },
+    );
+    expect(result.status, result.stderr).toBe(0);
+  });
+
   it("rejects unknown options", () => {
     const result = spawnSync("bash", [script, "--nope"], {
       cwd: repo,
