@@ -1,0 +1,9 @@
+**/node_modules
+**/dist
+**/test-results
+.git
+.agora
+docs
+extensions
+apps/mobile
+apps/tutor-api

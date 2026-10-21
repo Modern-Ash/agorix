@@ -1,0 +1,37 @@
+# Work events
+
+- 2026-10-20T21:30:09.043565Z | work.created | state=inception actor=project:product-owner
+- 2026-10-20T21:33:01.228647Z | work.role-handed-off | handoff=handoff-20261020t21331792542781z role=developer from=project:ai-codex to=project:ai-claude by=project:ai-codex
+- 2026-10-20T21:33:01.507576Z | artifact.added | kind=intent uri=repo://.agora/intents/issue-340/INTENT.md actor=project:ai-claude
+- 2026-10-20T21:33:01.795086Z | artifact.added | kind=requirements uri=repo://.agora/ai-sdlc/handoffs/issue-340/REQUIREMENTS.md actor=project:ai-claude
+- 2026-10-20T21:33:02.069740Z | artifact.added | kind=unit-of-work uri=repo://.agora/ai-sdlc/handoffs/issue-340/UNIT_OF_WORK.md actor=project:ai-claude
+- 2026-10-20T21:33:02.359922Z | artifact.added | kind=plan uri=repo://.agora/ai-sdlc/handoffs/issue-340/LEVEL1_PLAN.md actor=project:ai-claude
+- 2026-10-20T21:33:02.645994Z | artifact.added | kind=bolt-plan uri=repo://.agora/ai-sdlc/handoffs/issue-340/BOLTS.md actor=project:ai-claude
+- 2026-10-20T21:33:02.943780Z | artifact.added | kind=user-stories uri=repo://.agora/ai-sdlc/handoffs/issue-340/USER_STORIES.md actor=project:ai-claude
+- 2026-10-20T21:33:03.250435Z | artifact.added | kind=nfr uri=repo://.agora/ai-sdlc/handoffs/issue-340/NFR.md actor=project:ai-claude
+- 2026-10-20T21:33:03.547214Z | artifact.added | kind=risk-register uri=repo://.agora/ai-sdlc/handoffs/issue-340/RISK_REGISTER.md actor=project:ai-claude
+- 2026-10-20T21:33:03.854874Z | artifact.added | kind=measurement-criteria uri=repo://.agora/ai-sdlc/handoffs/issue-340/MEASUREMENT_CRITERIA.md actor=project:ai-claude
+- 2026-10-20T21:33:17.858430Z | work.criterion-stage-marked | criterion=source-issue actor=project:ai-claude stage=elaborated
+- 2026-10-20T21:34:07.030630Z | work.clarified-advisory | questions=2 actor=project:ai-claude
+- 2026-10-20T21:34:37.100249Z | approval.added | role=product-owner actor=project:product-owner delegation=none
+- 2026-10-20T21:34:37.392150Z | approval.added | role=developer actor=project:ai-claude delegation=none
+- 2026-10-20T21:34:37.680097Z | work.transitioned | from=inception to=construction actor=project:product-owner
+- 2026-10-20T21:40:34.917541Z | artifact.added | kind=domain-model uri=repo://.agora/ai-sdlc/handoffs/issue-340/DOMAIN_MODEL.md actor=project:ai-claude
+- 2026-10-20T21:40:35.220537Z | artifact.added | kind=logical-design uri=repo://.agora/ai-sdlc/handoffs/issue-340/LOGICAL_DESIGN.md actor=project:ai-claude
+- 2026-10-20T21:40:35.511994Z | artifact.added | kind=implementation-plan uri=repo://.agora/ai-sdlc/handoffs/issue-340/IMPLEMENTATION_PLAN.md actor=project:ai-claude
+- 2026-10-20T21:40:35.809238Z | artifact.added | kind=test-strategy uri=repo://.agora/ai-sdlc/handoffs/issue-340/TEST_STRATEGY.md actor=project:ai-claude
+- 2026-10-20T21:40:36.107172Z | artifact.added | kind=deployment-unit uri=repo://.agora/ai-sdlc/handoffs/issue-340/DEPLOYMENT_UNIT.md actor=project:ai-claude
+- 2026-10-20T21:40:49.611961Z | work.criterion-stage-marked | criterion=source-issue actor=project:ai-claude stage=designed
+- 2026-10-20T21:40:49.913025Z | work.criterion-stage-marked | criterion=source-issue actor=project:ai-claude stage=built
+- 2026-10-20T21:40:50.204915Z | work.criterion-stage-marked | criterion=source-issue actor=project:ai-claude stage=verified
+- 2026-10-20T21:40:58.920384Z | artifact.added | kind=verification-evidence uri=repo://.agora/ai-sdlc/handoffs/issue-340/VERIFICATION_EVIDENCE.md actor=project:ai-claude
+- 2026-10-20T21:40:59.223429Z | evidence.added | id=evidence-000001 type=test-suite result=success revision=1 actor=project:ai-claude
+- 2026-10-20T21:41:03.782127Z | work.transitioned | from=construction to=operations actor=project:ai-claude
+- 2026-10-20T21:41:22.690990Z | artifact.added | kind=operational-readiness uri=repo://.agora/ai-sdlc/handoffs/issue-340/OPERATIONAL_READINESS.md actor=project:ai-claude
+- 2026-10-20T21:41:22.994916Z | artifact.added | kind=rollback-procedure uri=repo://.agora/ai-sdlc/handoffs/issue-340/ROLLBACK_PROCEDURE.md actor=project:ai-claude
+- 2026-10-20T21:41:23.298902Z | artifact.added | kind=security-test-matrix uri=repo://.agora/ai-sdlc/handoffs/issue-340/SECURITY_SCAN.md actor=project:ai-claude
+- 2026-10-20T21:41:23.630777Z | evidence.added | id=evidence-000002 type=deployment result=success revision=1 actor=project:ai-claude
+- 2026-10-20T21:41:23.944796Z | evidence.added | id=evidence-000003 type=security-scan result=success revision=1 actor=project:ai-claude
+- 2026-10-20T21:41:24.282098Z | work.criterion-stage-marked | criterion=source-issue actor=project:ai-claude stage=deployed
+- 2026-10-20T21:48:30.039835Z | work.criterion-stage-marked | criterion=source-issue actor=project:product-owner stage=accepted
+- 2026-10-20T21:48:30.332472Z | work.transitioned | from=operations to=completed actor=project:product-owner

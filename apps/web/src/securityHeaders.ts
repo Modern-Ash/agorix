@@ -133,3 +133,21 @@ export function staticHostHeadersFile(): string {
 export function cspMetaFallbackHtml(): string {
   return CSP_META_FALLBACK;
 }
+
+/**
+ * nginx include (`/etc/nginx/security-headers.conf`) generated from the same
+ * constants (issue #340). `always` keeps the headers on error responses, and the
+ * file must be re-included in every `location` that sets its own `add_header`.
+ */
+export function nginxSecurityHeadersFile(): string {
+  const headers = webSecurityHeaders("production");
+  const lines = Object.entries(headers).map(
+    ([name, value]) => `add_header ${name} "${value}" always;`,
+  );
+  return [
+    "# Generated from apps/web/src/securityHeaders.ts — do not edit by hand.",
+    "# apps/web/src/nginxHeaders.test.ts fails if this file drifts.",
+    ...lines,
+    "",
+  ].join("\n");
+}
