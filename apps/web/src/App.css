@@ -4959,3 +4959,9 @@ button:hover:not(:disabled) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+.build-info {
+  align-self: center;
+  color: #5e6b65;
+  font-size: 0.75rem;
+}
