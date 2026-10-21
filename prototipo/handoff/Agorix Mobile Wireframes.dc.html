@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Epilogue:wght@700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#f0eee9;font-family:'Atkinson Hyperlegible',system-ui,sans-serif;color:#1a1a1a}a{color:#1a1a1a;text-decoration:none}a:hover{color:#6C5CE7}</style>
+</helmet>
+<section id="t1" style="padding:40px 44px 40px;scroll-margin-top:16px">
+  <div style="display:flex;align-items:baseline;gap:10px;margin:0 0 8px">
+    <a href="#t1" style="font:600 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:#1a1a1a;color:#fff;border-radius:4px">1</a>
+    <span style="font:800 22px Epilogue,sans-serif">Agorix mobile · wireframes para niños 6–8</span>
+  </div>
+  <p style="margin:0 0 6px;max-width:760px;font:400 14px/1.5 'Atkinson Hyperlegible';color:rgba(0,0,0,.6)">Pre-lectores: todo se entiende por ícono, posición y voz (🔊). Objetivos táctiles ≥ 56px. World + Código siguen juntos (LEARNER_JOURNEY). La IA siempre aparece como propuesta punteada violeta, nunca como cambio directo.</p>
+  <div style="display:flex;flex-wrap:wrap;gap:14px;margin:0 0 8px;font:600 11px 'JetBrains Mono',monospace;color:rgba(0,0,0,.6)">
+    <span style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:10px;border:1.5px dashed #6C5CE7;background:#EEEBFF;border-radius:3px"></span>IA / propuesta</span>
+    <span style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:10px;border:1px solid #0E9F9A;background:#D6F1EF;border-radius:3px"></span>runtime / evidencia</span>
+    <span style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:10px;border:1px solid #9DB3DB;background:#E3EAF7;border-radius:3px"></span>bloque</span>
+    <span style="display:flex;align-items:center;gap:6px"><span style="padding:1px 5px;background:#6C5CE7;color:#fff;border-radius:4px">HI-FI</span>elegida para el prototipo</span>
+  </div>
+  <sc-for list="{{ groups }}" as="g" hint-placeholder-count="3">
+    <div style="margin:30px 0 14px;display:flex;align-items:baseline;gap:10px">
+      <span style="font:800 17px Epilogue,sans-serif">{{ g.title }}</span>
+      <span style="font:400 13px 'Atkinson Hyperlegible';color:rgba(0,0,0,.5)">{{ g.sub }}</span>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start">
+      <sc-for list="{{ g.opts }}" as="o" hint-placeholder-count="3">
+        <div id="{{ o.id }}" style="flex:none;width:{{ o.cw }};display:flex;flex-direction:column;gap:9px;scroll-margin-top:16px">
+          <div style="display:flex;align-items:center;gap:8px;font:700 12px/1.3 'Atkinson Hyperlegible'">
+            <a href="#{{ o.id }}" style="font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#1a1a1a;border-radius:5px">{{ o.id }}</a>
+            <span style="flex:1">{{ o.name }}</span>
+            <sc-if value="{{ o.chosen }}"><span style="font:700 9.5px 'JetBrains Mono';padding:2px 6px;background:#6C5CE7;color:#fff;border-radius:4px">HI-FI</span></sc-if>
+          </div>
+          <div style="position:relative;width:{{ o.w }};height:{{ o.h }};border:2px solid #2a2a2a;border-radius:24px;background:#fff;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)">
+            <sc-for list="{{ o.rects }}" as="r" hint-placeholder-count="6">
+              <div style="position:absolute;left:{{ r.l }};top:{{ r.t }};width:{{ r.w }};height:{{ r.h }};background:{{ r.bg }};border:{{ r.bd }};border-radius:{{ r.rad }};color:{{ r.fg }};box-sizing:border-box;display:flex;align-items:center;justify-content:center;text-align:center;font:600 9px/1.15 'JetBrains Mono',monospace;padding:2px;overflow:hidden">{{ r.label }}</div>
+            </sc-for>
+          </div>
+          <p style="margin:0;font:400 12px/1.45 'Atkinson Hyperlegible';color:rgba(0,0,0,.62);text-wrap:pretty">{{ o.note }}</p>
+        </div>
+      </sc-for>
+    </div>
+  </sc-for>
+  <p style="margin:30px 0 0;font:12px/1.5 system-ui,sans-serif;color:rgba(0,0,0,.5)">Probar después: "llevá <a href="#1h" style="font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);border-radius:5px">1h</a> (cajón de bloques) a hi-fi" · "sumá la comparación de dos ideas de Ori <a href="#1o" style="font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);border-radius:5px">1o</a> como misión avanzada" · "probá la línea de tiempo <a href="#1q" style="font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);border-radius:5px">1q</a> para Paso"</p>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const K={
+  box:['#EDEDEA','1px solid #C9C9C4','6px','#55554f'],
+  dark:['#2A2A2A','0','9px','#fff'],
+  dash:['transparent','1.5px dashed #9A9A95','8px','#77776f'],
+  ai:['#EEEBFF','1.5px dashed #6C5CE7','8px','#4B3FB0'],
+  run:['#D6F1EF','1px solid #0E9F9A','8px','#0B6F6B'],
+  blk:['#E3EAF7','1px solid #9DB3DB','7px','#2C4A80'],
+  rep:['#EEE7FA','1px solid #B9A3E3','8px','#5B3FA0'],
+  circle:['#EDEDEA','1px solid #C9C9C4','50%','#55554f'],
+  dcircle:['#2A2A2A','0','50%','#fff'],
+  aicircle:['#6C5CE7','0','30%','#fff'],
+  line:['#D6D6D0','0','3px','transparent'],
+  stage:['repeating-linear-gradient(45deg,#E4E4DE 0 6px,#EDEDE8 6px 12px)','1px solid #C9C9C4','12px','#6b6b64'],
+  dim:['rgba(0,0,0,.28)','0','0','transparent'],
+  sheet:['#fff','1px solid #C9C9C4','16px 16px 0 0','#55554f'],
+  star:['#FFE08A','1px solid #E0B43C','50%','#7A5200']
+};
+const r=(k,x,y,w,h,label='')=>{const [bg,bd,rad,fg]=K[k];return {l:x+'px',t:y+'px',w:w+'px',h:h+'px',bg,bd,rad,fg,label}};
+const nav=()=>[r('box',0,330,180,40,''),r('circle',22,337,26,26,'🗺'),r('circle',77,337,26,26,'📁'),r('circle',132,337,26,26,'👪')];
+const top=()=>[r('box',8,8,28,24,'←'),r('box',40,8,92,24,'🚀→🌎 🔊'),r('box',136,8,36,24,'▦|</>')];
+const ctrls=y=>[r('run',8,y,84,30,'▶ Jugar'),r('box',96,y,44,30,'▶| Paso'),r('box',144,y,28,30,'⟲')];
+const pal=y=>[r('box',6,y,168,50,''),r('blk',12,y+6,36,38,'➜'),r('blk',52,y+6,36,38,'↺'),r('blk',92,y+6,36,38,'↻'),r('rep',132,y+6,36,38,'⟳')];
+const P={w:'180px',h:'370px',cw:'180px'},L={w:'370px',h:'180px',cw:'370px'};
+const G=[
+ {title:'Onboarding',sub:'sin nombre, sin cuenta — el idioma y el avatar son lo único',opts:[
+  {id:'1a',name:'Idioma → avatar → Ori',chosen:true,...P,note:'3 pasos con puntos de progreso. Cada paso tiene 🔊. Ori se presenta y avisa que puede equivocarse.',rects:[r('line',70,22,40,6),r('aicircle',62,60,56,56,'• •'),r('line',45,130,90,12),r('circle',140,126,22,22,'🔊'),r('box',18,170,68,64,'ES'),r('box',94,170,68,64,'EN'),r('dark',18,322,144,34,'Seguir →')]},
+  {id:'1b',name:'Voz primero',...P,note:'Ori habla y el niño responde con voz o tocando una imagen. Útil para quien aún no lee; el audio no se guarda.',rects:[r('aicircle',62,40,56,56,'• •'),r('ai',22,108,136,34,'"¿Cómo querés que te llame Ori?"'),r('dcircle',50,170,80,80,'🎤'),r('line',50,262,80,8),r('box',22,290,64,40,'🦊'),r('box',94,290,64,40,'🐼')]},
+  {id:'1c',name:'Jugar primero',...P,note:'Arranca directo en la misión 1 con un bloque sugerido; idioma/avatar se piden después del primer ★.',rects:[r('stage',8,14,164,110,'mundo 🚀 · · 🌎'),r('blk',20,140,140,34,'➜ mover 4'),r('ai',20,184,140,40,'Ori: arrastrá ➜ hasta acá'),r('dash',20,232,140,40,'soltar'),...pal(312)]}
+ ]},
+ {title:'Mapa de Worlds',sub:'los Worlds cambian solo la presentación, la misión es la misma',opts:[
+  {id:'1d',name:'Camino vertical',chosen:true,...P,note:'Mundos como pestañas grandes arriba; misiones en zig-zag. La actual late y dice ▶ Jugar.',rects:[r('circle',10,10,30,30,'🦊'),r('box',46,14,40,22,'★ 3'),r('circle',142,12,26,26,'🔊'),r('box',10,50,36,36,'🚀'),r('box',52,50,36,36,'🐙'),r('box',94,50,36,36,'🤖'),r('box',136,50,36,36,'🛴'),r('star',20,110,50,50,'★'),r('line',70,170,4,22),r('dcircle',58,196,64,64,'▶'),r('line',120,266,4,20),r('circle',112,282,46,46,'🔒'),...nav()]},
+  {id:'1e',name:'Carrusel de planetas',...P,note:'Un mundo por pantalla, swipe lateral. Más inmersivo, pero esconde los otros mundos.',rects:[r('box',8,130,22,40,'‹'),r('box',150,130,22,40,'›'),r('circle',36,70,108,108,'Océano 🐙'),r('line',72,190,36,6),r('star',24,220,40,40,'1'),r('dcircle',70,216,48,48,'2'),r('circle',124,220,40,40,'3'),...nav()]},
+  {id:'1f',name:'Grilla de misiones',...P,note:'Todo visible de un vistazo; menos narrativa. Bueno para niños más grandes / docentes.',rects:[r('box',10,12,160,26,'Espacio ▾'),r('star',10,50,76,76,'M1 ★'),r('dark',94,50,76,76,'M2 ▶'),r('box',10,134,76,76,'M3 🔒'),r('box',94,134,76,76,'M4 🔒'),r('box',10,218,76,76,'M5 🔒'),r('box',94,218,76,76,'M6 🔒'),...nav()]}
+ ]},
+ {title:'Editor de misión (vertical)',sub:'World arriba, programa abajo, sin pestañas que escondan el código',opts:[
+  {id:'1g',name:'Apilado: mundo / controles / bloques / paleta',chosen:true,...P,note:'Todo en una pantalla. Toggle ▦ / </> arriba cambia bloques por código (mismo programa).',rects:[...top(),r('stage',8,40,164,108,'mundo 6×4'),r('aicircle',144,46,22,22,'••'),...ctrls(154),r('box',8,190,164,118,''),r('box',14,196,70,20,'▶ al iniciar'),r('blk',24,220,142,26,'➜ mover − 2 +'),r('rep',24,250,142,50,'⟳ repetir 3'),...pal(314)]},
+  {id:'1h',name:'Mundo a pantalla completa + cajón',...P,note:'El mundo domina; los bloques suben en un cajón. Más juego, pero el código queda tapado al jugar.',rects:[r('stage',0,0,180,250,'mundo'),r('box',8,8,28,24,'←'),r('dcircle',130,196,40,40,'▶'),r('sheet',0,240,180,130,''),r('line',75,248,30,4),r('blk',14,262,152,28,'➜ mover 2'),r('blk',14,294,152,28,'↺ girar'),r('dash',14,328,152,30,'cajón ↑')]},
+  {id:'1i',name:'Tira de pasos (línea de tiempo)',...P,note:'Bloques en fila horizontal como viñetas de un cómic: se lee izquierda→derecha, ideal para secuencia.',rects:[...top(),r('stage',8,40,164,120,'mundo'),r('blk',8,174,34,40,'➜'),r('blk',46,174,34,40,'➜'),r('blk',84,174,34,40,'↺'),r('blk',122,174,34,40,'➜'),r('dash',160,174,14,40,'+'),r('run',8,224,164,30,'▶ Jugar'),r('line',8,264,164,6),...pal(314)]}
+ ]},
+ {title:'Paleta de acciones',sub:'arrastrar como gesto principal; tocar agrega al final (alternativa sin drag)',opts:[
+  {id:'1j',name:'Fila fija abajo',chosen:true,...P,note:'4 bloques grandes siempre en el mismo lugar. Soltar un bloque sobre la paleta lo quita (🗑).',rects:[r('stage',8,14,164,100,'mundo'),r('box',8,124,164,170,''),r('blk',22,140,140,28,'➜ mover'),r('dash',22,176,140,28,'soltar acá'),r('box',6,300,168,62,''),r('blk',12,308,36,46,'➜'),r('blk',52,308,36,46,'↺'),r('blk',92,308,36,46,'↻'),r('rep',132,308,36,46,'⟳')]},
+  {id:'1k',name:'Menú radial',...P,note:'Un único botón + abre un abanico. Menos ruido, pero un toque extra por bloque.',rects:[r('stage',8,14,164,100,'mundo'),r('box',8,124,164,150,'programa'),r('circle',26,286,32,32,'➜'),r('circle',58,262,32,32,'↺'),r('circle',94,262,32,32,'↻'),r('circle',124,286,32,32,'⟳'),r('dcircle',70,310,40,40,'+')]},
+  {id:'1l',name:'Acciones sobre el personaje',...P,note:'Tocar el personaje muestra anillo de acciones; cada toque agrega el bloque y lo muestra en el programa.',rects:[r('stage',8,14,164,200,''),r('circle',72,96,36,36,'🚀'),r('blk',76,58,28,28,'➜'),r('blk',36,100,28,28,'↺'),r('blk',116,100,28,28,'↻'),r('rep',76,140,28,28,'⟳'),r('box',8,224,164,130,'programa')]}
+ ]},
+ {title:'Propuesta de IA',sub:'Ori propone → el niño decide: usar / cambiar / no',opts:[
+  {id:'1m',name:'Hoja inferior con bloques fantasma',chosen:true,...P,note:'Muestra qué agregaría, por qué, y que puede equivocarse. Tres decisiones grandes.',rects:[r('dim',0,0,180,370),r('sheet',0,150,180,220,''),r('aicircle',12,164,30,30,'••'),r('line',50,170,80,8),r('ai',12,204,156,40,'+ ➜ mover 2'),r('box',12,250,156,30,'¿por qué? …'),r('line',12,288,120,6),r('dark',12,300,156,28,'✓ Usar'),r('box',12,334,76,26,'✎ Cambiar'),r('box',92,334,76,26,'✕ No')]},
+  {id:'1n',name:'Fantasma dentro del programa',...P,note:'La idea aparece en su lugar real, punteada. Más contexto; menos espacio para explicar.',rects:[...top(),r('stage',8,40,164,100,'mundo'),r('box',8,148,164,166,''),r('blk',18,158,144,28,'➜ mover 2'),r('ai',18,192,144,40,'Ori: + ↺ girar'),r('dark',96,238,32,26,'✓'),r('box',132,238,30,26,'✕'),r('blk',18,270,144,28,'➜ mover 1'),...pal(318)]},
+  {id:'1o',name:'Dos ideas: ¿cuál funciona?',...P,note:'Para misiones avanzadas: dos propuestas, el niño predice y prueba ambas. Enseña que la IA no es autoridad.',rects:[r('line',30,16,120,10),r('ai',8,40,78,200,''),r('ai',94,40,78,200,''),r('stage',14,48,66,60,'A'),r('stage',100,48,66,60,'B'),r('blk',14,116,66,22,'➜ 3'),r('blk',100,116,66,22,'➜ 4'),r('run',14,206,66,26,'▶ probar'),r('run',100,206,66,26,'▶ probar'),r('box',8,256,164,40,'¿cuál llegó? 👍'),r('dark',8,310,164,34,'Elijo esta')]}
+ ]},
+ {title:'Run / Paso con evidencia',sub:'el runtime demuestra; la IA nunca escribe dentro del mundo',opts:[
+  {id:'1p',name:'Chip de paso + franja de resultado',chosen:true,...P,note:'Chip "2/4 · ➜ mover" arriba; resultado abajo con forma + texto (★ / ↻), no solo color. Bloque activo brilla.',rects:[...top(),r('stage',8,40,164,108,''),r('run',14,46,80,16,'2/4 · ➜ mover'),r('box',14,118,152,24,'↻ se detuvo a 2 · Otra vez'),...ctrls(154),r('box',8,190,164,118,''),r('run',18,204,144,28,'➜ mover 2  ◆ ahora'),r('blk',18,238,144,28,'↺ girar'),...pal(314)]},
+  {id:'1q',name:'Línea de tiempo con cabezal',...P,note:'Una barra con un tick por instrucción; arrastrar el cabezal rebobina el mundo. Muy claro para "Paso".',rects:[...top(),r('stage',8,40,164,120,'mundo'),r('run',8,170,164,26,''),r('dcircle',60,172,22,22,''),r('line',20,182,140,2),r('blk',8,206,50,26,'➜'),r('run',62,206,50,26,'➜'),r('blk',116,206,56,26,'↺'),...ctrls(250),...pal(314)]},
+  {id:'1r',name:'Huellas numeradas',...P,note:'Cada paso deja una huella con número sobre la grilla. Se ve dónde se detuvo sin leer.',rects:[...top(),r('stage',8,40,164,160,''),r('run',20,140,20,20,'1'),r('run',46,140,20,20,'2'),r('run',72,140,20,20,'3'),r('circle',98,134,30,30,'🚀'),r('star',136,134,30,30,'🌎'),r('box',8,210,164,24,'3 pasos · faltan 2'),...ctrls(244),...pal(314)]}
+ ]},
+ {title:'Reflexión post-misión',sub:'una pregunta corta; se puede saltar',opts:[
+  {id:'1s',name:'Elegir con imágenes',chosen:true,...P,note:'"¿Qué hizo mover a 🚀?" con 3 bloques como respuesta + carita de cómo se sintió.',rects:[r('star',30,20,30,30,'★'),r('box',66,16,48,40,'🚀🌎'),r('star',120,20,30,30,'★'),r('line',30,70,120,12),r('box',10,96,160,120,''),r('line',30,106,120,8),r('blk',18,130,44,70,'➜'),r('blk',68,130,44,70,'↺'),r('rep',118,130,44,70,'⟳'),r('circle',38,236,30,30,'😀'),r('circle',75,236,30,30,'🙂'),r('circle',112,236,30,30,'😕'),r('box',10,320,70,36,'Seguir'),r('dark',86,320,84,36,'Próxima →')]},
+  {id:'1t',name:'Antes vs después',...P,note:'Repite el intento fallido y el que funcionó lado a lado: "¿qué cambió?".',rects:[r('line',30,20,120,12),r('stage',8,50,78,80,'antes ↻'),r('stage',94,50,78,80,'después ★'),r('blk',8,138,78,22,'➜ 2'),r('blk',94,138,78,22,'➜ 4'),r('ai',8,176,164,40,'¿Qué cambió?'),r('box',8,226,78,40,'el número'),r('box',94,226,78,40,'el giro'),r('dark',8,320,164,36,'Listo')]},
+  {id:'1u',name:'Contalo con tu voz',...P,note:'Explica hablando; transcripción local, no se guarda. Para quien no escribe.',rects:[r('aicircle',62,30,56,56,'••'),r('ai',20,100,140,40,'Contame qué pasó'),r('dcircle',50,160,80,80,'🎤'),r('line',40,256,100,6),r('box',40,272,100,20,'🔒 no se guarda'),r('box',10,320,160,36,'Saltar')]}
+ ]},
+ {title:'Mis proyectos · Adultos',sub:'autosave siempre; los ajustes detrás de un control para adultos',opts:[
+  {id:'1v',name:'Grilla con miniaturas',chosen:true,...P,note:'Cada proyecto se reconoce por su mundo y personaje, no por un título. "Guardado ✓" siempre visible.',rects:[r('line',10,16,90,14),r('run',110,12,62,22,'✓ guardado'),r('dash',10,48,76,96,'+ Nuevo'),r('stage',94,48,76,70,'🐙 🪸'),r('line',94,124,50,8),r('stage',10,156,76,70,'🚀 🌎'),r('line',10,232,50,8),r('stage',94,156,76,70,'🛴 📦'),r('line',94,232,50,8),...nav()]},
+  {id:'1w',name:'Puerta para adultos',chosen:true,...P,note:'Una suma simple con teclado grande. Los niños 6–8 en general no la resuelven; sin pedir PIN ni cuenta.',rects:[r('line',50,40,80,8),r('line',30,60,120,14),r('box',55,92,70,40,'_ _'),r('box',20,150,42,34,'1'),r('box',69,150,42,34,'2'),r('box',118,150,42,34,'3'),r('box',20,190,42,34,'4'),r('box',69,190,42,34,'5'),r('box',118,190,42,34,'6'),r('box',20,230,42,34,'7'),r('box',69,230,42,34,'8'),r('box',118,230,42,34,'9'),...nav()]},
+  {id:'1x',name:'Panel para adultos',chosen:true,...P,note:'Tiempo, conceptos, y cómo decide sobre la IA (usó / cambió / rechazó). Interruptor para apagar Ori.',rects:[r('line',10,14,100,14),r('run',10,40,160,40,'Hoy 18/30 min'),r('box',10,88,160,70,'Secuencia ★ · Giros · Repetición'),r('ai',10,166,160,56,'IA: ✓2 ✎1 ✕1'),r('box',10,230,160,30,'Ori (IA)  ◐'),r('box',10,264,160,30,'Leer en voz alta  ◐'),r('box',10,298,160,26,'🔒 privacidad'),...nav().slice(0,1)]}
+ ]},
+ {title:'Editor horizontal',sub:'teléfono girado: el mundo y el programa lado a lado',opts:[
+  {id:'1y',name:'Mundo izquierda · bloques derecha',chosen:true,...L,note:'Controles debajo del mundo; paleta abajo a la derecha, cerca del pulgar derecho.',rects:[r('box',8,8,24,22,'←'),r('box',36,8,150,22,'🚀→🌎 🔊'),r('box',300,8,62,22,'▦|</>'),r('stage',8,36,160,100,'mundo'),r('run',8,142,90,30,'▶ Jugar'),r('box',102,142,40,30,'Paso'),r('box',146,142,22,30,'⟲'),r('box',176,36,186,84,''),r('blk',186,46,160,24,'➜ mover 2'),r('blk',186,76,160,24,'↺ girar'),r('blk',176,126,44,46,'➜'),r('blk',224,126,44,46,'↺'),r('blk',272,126,44,46,'↻'),r('rep',320,126,42,46,'⟳')]},
+  {id:'1z',name:'Paleta | mundo | programa',...L,note:'Paleta vertical a la izquierda, mundo centrado, programa a la derecha. Drag más corto, mundo más chico.',rects:[r('blk',8,10,40,36,'➜'),r('blk',8,52,40,36,'↺'),r('blk',8,94,40,36,'↻'),r('rep',8,136,40,36,'⟳'),r('stage',56,10,170,112,'mundo'),r('run',56,130,110,40,'▶ Jugar'),r('box',170,130,56,40,'Paso'),r('box',234,10,128,160,''),r('blk',242,20,112,24,'➜ mover 2'),r('blk',242,50,112,24,'↺ girar'),r('dash',242,80,112,30,'soltar')]}
+ ]}
+];
+class Component extends DCLogic {
+  renderVals(){return {groups:G.map(g=>({...g,opts:g.opts.map(o=>({...o,chosen:!!o.chosen}))}))}}
+}
+</script>
+</body>
+</html>
