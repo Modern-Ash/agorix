@@ -6,7 +6,7 @@ Status: design approved in conversation with the product owner on 2026-10-21; im
 
 The Web app is replaced by the **Agorix Kids** prototype (`prototipo/handoff/`, made with Claude Design for ages 6 to 8). It must feel familiar to a Scratch user: the product owner's daughter Mora (11, a Scratch user) is the first real tester and her suggestions drive iteration. The current capabilities (several actors, looks, sounds, variables, events, TypeScript and Python code view) are not deleted: they return later as an **advanced level**, which is the same prototype with changes for that level and keeps its look and feel.
 
-The value Agorix adds is the AI: **Ori**, the character, is an *active agent* (a bot that speaks up, not a passive hint button). The AI is on by default from the first delivery, not an optional extra.
+The value Agorix adds is the AI: **Ori**, the character, is an _active agent_ (a bot that speaks up, not a passive hint button). The AI is on by default from the first delivery, not an optional extra.
 
 ## Goals
 
@@ -35,18 +35,18 @@ The value Agorix adds is the AI: **Ori**, the character, is an *active agent* (a
 
 ## Decisions made by the product owner
 
-| Topic | Decision |
-| --- | --- |
-| Replace or add | The prototype **replaces** the current Web UI. |
-| Old capabilities | Kept for an **advanced level** later; same look and feel. |
-| Advanced level | The prototype itself with changes for that level. |
-| Old projects | Do not matter. |
-| AI by default | Yes, with **Codex or OpenCode** as the default providers. |
-| AI scope | Suggest movements and behaviours of the program, **invent goals**, things about the app. Nothing else. A chat is allowed under the same constraints. |
-| Ori | An **active agent**, behaves like a bot. Defined in advance (fixed prompt/agent). |
-| Failure | Never say the AI is not connected. |
-| Order | One project at a time, but the AI is integrated **from the start**. |
-| Success | Mora, a Scratch user, finds it familiar and can play alone; her feedback drives iteration. |
+| Topic             | Decision                                                                                                                                                                     |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Replace or add    | The prototype **replaces** the current Web UI.                                                                                                                               |
+| Old capabilities  | Kept for an **advanced level** later; same look and feel.                                                                                                                    |
+| Advanced level    | The prototype itself with changes for that level.                                                                                                                            |
+| Old projects      | Do not matter.                                                                                                                                                               |
+| AI by default     | Yes, with **Codex or OpenCode** as the default providers.                                                                                                                    |
+| AI scope          | Suggest movements and behaviours of the program, **invent goals**, things about the app. Nothing else. A chat is allowed under the same constraints.                         |
+| Ori               | An **active agent**, behaves like a bot. Defined in advance (fixed prompt/agent).                                                                                            |
+| Failure           | Never say the AI is not connected.                                                                                                                                           |
+| Order             | One project at a time, but the AI is integrated **from the start**.                                                                                                          |
+| Success           | Mora, a Scratch user, finds it familiar and can play alone; her feedback drives iteration.                                                                                   |
 | From earlier docs | Own touch editor over `program-model` with `block-editor` as adapter; own render over `stage` (no Phaser); character called Ori; Java as a new language pack (low priority). |
 
 ## Decisions made by the builder (not yet confirmed by the owner)
