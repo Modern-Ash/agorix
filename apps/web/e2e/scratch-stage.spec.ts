@@ -4,6 +4,7 @@ test.beforeEach(async ({ page }) => {
   await page.goto("/");
   await page.evaluate(async () => {
     localStorage.clear();
+    localStorage.setItem("agorix.locale", "en");
     for (const registration of await navigator.serviceWorker.getRegistrations()) {
       await registration.unregister();
     }
