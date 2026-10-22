@@ -16,7 +16,9 @@ repo_root() {
 }
 
 compose() {
-  docker compose -f "$(repo_root)/deploy/web/docker-compose.yml" "$@"
+  local socket_dir="${AGORIX_TUTOR_SOCKET_DIR:-${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/agorix-tutor}"
+  mkdir -p -m 755 "$socket_dir"
+  AGORIX_TUTOR_SOCKET_DIR="$socket_dir" docker compose -f "$(repo_root)/deploy/web/docker-compose.yml" "$@"
 }
 
 # Tag of the image the production container runs now (empty when it does not exist).

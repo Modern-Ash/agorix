@@ -1,0 +1,107 @@
+import { describe, expect, it } from "vitest";
+import { getKidsMission } from "@agorix/curriculum";
+import { ORI_AGENT_VERSION } from "@agorix/ori-agent";
+import {
+  CliProcessError,
+  createOriCliService,
+  oriCliConfigFromEnv,
+  runBoundedProcess,
+  type OriCliProcess,
+} from "./oriCli.js";
+
+const mission = getKidsMission("kids.m1.straight", "es");
+const context = {
+  mission,
+  missionIndex: 0 as const,
+  program: mission.starterProject,
+  locale: "es" as const,
+  hintLevel: 1 as const,
+};
+const validOutput = JSON.stringify({
+  version: ORI_AGENT_VERSION,
+  kind: "program-suggestion",
+  reason: "toward-goal",
+  blocks: [{ type: "move", count: 4 }],
+});
+
+describe("Ori host CLI adapter (issue #381)", () => {
+  it("selects Codex before OpenCode and disables every model tool", async () => {
+    const calls: Parameters<OriCliProcess>[] = [];
+    const run: OriCliProcess = async (...args) => {
+      calls.push(args);
+      return args[1].includes("--version") ? "version" : validOutput;
+    };
+    const service = createOriCliService(oriCliConfigFromEnv({}), { run });
+    expect(await service.health()).toMatchObject({
+      configured: true,
+      available: true,
+      providerInUse: "codex",
+    });
+    expect((await service.respond(context)).source).toBe("model");
+    const invocation = calls.find(([, args]) => args.includes("exec"));
+    expect(invocation?.[0]).toBe("codex");
+    expect(invocation?.[1]).toContain("read-only");
+    expect(invocation?.[1]).toContain("shell_tool");
+    expect(invocation?.[1]).toContain("--ignore-user-config");
+    expect(invocation?.[1]).toContain("--ephemeral");
+    expect(invocation?.[2].input).toContain(ORI_AGENT_VERSION);
+    expect(invocation?.[2].input).not.toContain("learnerIntent");
+  });
+
+  it("selects OpenCode when Codex is absent with all permissions denied", async () => {
+    const calls: Parameters<OriCliProcess>[] = [];
+    const run: OriCliProcess = async (...args) => {
+      calls.push(args);
+      if (args[1].includes("--version")) {
+        if (args[0] === "codex") throw new CliProcessError("unavailable");
+        return "version";
+      }
+      return JSON.stringify({ type: "text", part: { text: validOutput } });
+    };
+    const service = createOriCliService(oriCliConfigFromEnv({}), { run });
+    expect(await service.health()).toMatchObject({ providerInUse: "opencode" });
+    expect((await service.respond(context)).source).toBe("model");
+    const invocation = calls.find(([, args]) => args.includes("run"));
+    expect(invocation?.[0]).toBe("opencode");
+    expect(invocation?.[1]).toContain("--pure");
+    expect(invocation?.[2].env?.OPENCODE_PERMISSION).toBe('"deny"');
+    expect(invocation?.[2].env?.OPENCODE_DISABLE_DEFAULT_PLUGINS).toBe("1");
+  });
+
+  it("returns the exact Kids 08 fallback on timeout, bad output and no installed CLI", async () => {
+    for (const result of ["timeout", "invalid", "missing"] as const) {
+      const run: OriCliProcess = async (_bin, args) => {
+        if (args.includes("--version")) {
+          if (result === "missing") throw new CliProcessError("unavailable");
+          return "version";
+        }
+        if (result === "timeout") throw new CliProcessError("timeout");
+        return "not JSON";
+      };
+      const decision = await createOriCliService(oriCliConfigFromEnv({}), { run }).respond(context);
+      expect(decision.source).toBe("fallback");
+      expect(decision.proposal?.operations).toEqual([
+        { type: "appendStatement", scriptIndex: 0, statement: { type: "move", steps: 160 } },
+      ]);
+    }
+  });
+
+  it("bounds process output and kills an overlong or slow child", async () => {
+    await expect(
+      runBoundedProcess(process.execPath, ["-e", "process.stdout.write('x'.repeat(5000))"], {
+        input: "",
+        timeoutMs: 1000,
+        maxOutputBytes: 100,
+        cwd: process.cwd(),
+      }),
+    ).rejects.toMatchObject({ code: "output-too-large" });
+    await expect(
+      runBoundedProcess(process.execPath, ["-e", "setTimeout(() => {}, 5000)"], {
+        input: "",
+        timeoutMs: 50,
+        maxOutputBytes: 100,
+        cwd: process.cwd(),
+      }),
+    ).rejects.toMatchObject({ code: "timeout" });
+  });
+});

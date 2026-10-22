@@ -15,19 +15,9 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:8470:80"
-
-  # Optional AI service (issue #348). Not started by default: the public site runs in plain
-  # local mode. Enable with `docker compose --profile ai up -d` after an adult creates
-  # deploy/web/tutor.env (see docs/deployment/SELF_HOSTING.md). Not published to the host;
-  # only the web container reaches it as http://tutor:8471.
-  tutor:
-    profiles: ["ai"]
-    build:
-      context: ../..
-      dockerfile: deploy/web/Dockerfile.tutor
-    image: agorix-tutor:local
-    container_name: agorix-tutor
-    restart: unless-stopped
-    env_file:
-      - path: tutor.env
-        required: false
+    volumes:
+      # The host tutor process owns this socket. The Web can connect but cannot alter the directory.
+      - type: bind
+        source: ${AGORIX_TUTOR_SOCKET_DIR:?set AGORIX_TUTOR_SOCKET_DIR to the host tutor runtime directory}
+        target: /run/agorix-tutor
+        read_only: true

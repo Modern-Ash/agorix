@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
 import type { TutorRequest } from "@agorix/tutor-contract";
+import { getKidsMission } from "@agorix/curriculum";
+import { createOriCliService, oriCliConfigFromEnv, type OriCliProcess } from "./oriCli.js";
 import { configFromEnv } from "./index.js";
 import { createTutorServer, MAX_BODY_BYTES } from "./server.js";
 
@@ -46,10 +48,12 @@ afterEach(async () => {
 async function start(
   env: Record<string, string | undefined>,
   fetchImpl?: typeof fetch,
+  ori?: ReturnType<typeof createOriCliService>,
 ): Promise<string> {
   const server = createTutorServer({
     config: configFromEnv(env),
     ...(fetchImpl === undefined ? {} : { fetch: fetchImpl }),
+    ...(ori === undefined ? {} : { ori }),
   });
   servers.push(server);
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -199,5 +203,65 @@ describe("tutor HTTP server (issue #348)", () => {
       body: JSON.stringify(request),
     });
     expect(response.status).toBe(403);
+  });
+});
+
+describe("Ori HTTP boundary (issue #381)", () => {
+  const mission = getKidsMission("kids.m1.straight", "es");
+  const body = JSON.stringify({
+    missionId: mission.id,
+    locale: "es",
+    hintLevel: 1,
+    program: mission.starterProject,
+  });
+
+  it("returns only a validated reviewable proposal and adult-only CLI health", async () => {
+    const run: OriCliProcess = async (_bin, args) =>
+      args.includes("--version")
+        ? "version"
+        : JSON.stringify({
+            version: "agorix/ori-agent/v1",
+            kind: "program-suggestion",
+            reason: "toward-goal",
+            blocks: [{ type: "move", count: 4 }],
+          });
+    const base = await start({}, undefined, createOriCliService(oriCliConfigFromEnv({}), { run }));
+    expect(await (await fetch(`${base}/api/tutor/health`)).json()).toEqual({
+      configured: true,
+      available: true,
+      providerInUse: "codex",
+      lastErrorClass: null,
+    });
+    const response = await fetch(`${base}/api/tutor/ori`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body,
+    });
+    expect(response.status).toBe(200);
+    const result = (await response.json()) as Record<string, unknown>;
+    expect(Object.keys(result).sort()).toEqual(["message", "proposal"]);
+    expect(JSON.stringify(result)).not.toMatch(/codex|opencode|providerId|runtimeId|diagnostic/);
+    expect(result.proposal).toMatchObject({
+      source: { kind: "learning-companion", capability: "builder" },
+    });
+  });
+
+  it("falls back without a CLI and rejects extra fields, free text, and cross-origin calls", async () => {
+    const base = await start({});
+    const post = (payload: string, origin?: string) =>
+      fetch(`${base}/api/tutor/ori`, {
+        method: "POST",
+        headers: { "content-type": "application/json", ...(origin ? { origin } : {}) },
+        body: payload,
+      });
+    const response = await post(body);
+    expect(response.status).toBe(200);
+    expect(
+      ((await response.json()) as { proposal: { operations: unknown[] } }).proposal.operations,
+    ).toHaveLength(1);
+    expect(
+      (await post(JSON.stringify({ ...JSON.parse(body), learnerText: "my name" }))).status,
+    ).toBe(400);
+    expect((await post(body, "https://evil.example")).status).toBe(403);
   });
 });

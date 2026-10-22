@@ -303,9 +303,13 @@ export function ParentsScreen({ t, locale, progress, settings, onSettings }: Pro
             <div>
               <dt>{copy.provider}</dt>
               <dd>
-                {health?.providerInUse === "openai-compatible"
-                  ? copy.compatible
-                  : copy.deterministic}
+                {health?.providerInUse === "codex"
+                  ? "Codex"
+                  : health?.providerInUse === "opencode"
+                    ? "OpenCode"
+                    : health?.providerInUse === "openai-compatible"
+                      ? copy.compatible
+                      : copy.deterministic}
               </dd>
             </div>
             <div>

@@ -1,0 +1,19 @@
+[Unit]
+Description=Agorix Ori tutor API (host CLI adapter)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/dev-agora/agorix
+RuntimeDirectory=agorix-tutor
+RuntimeDirectoryMode=0755
+EnvironmentFile=-%h/.config/agorix/tutor.env
+ExecStart=%h/dev-agora/agorix/scripts/start-tutor-host.sh
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=default.target

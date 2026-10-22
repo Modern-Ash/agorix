@@ -57,6 +57,15 @@ importers:
 
   apps/tutor-api:
     dependencies:
+      '@agorix/curriculum':
+        specifier: workspace:*
+        version: link:../../packages/curriculum
+      '@agorix/ori-agent':
+        specifier: workspace:*
+        version: link:../../packages/ori-agent
+      '@agorix/program-model':
+        specifier: workspace:*
+        version: link:../../packages/program-model
       '@agorix/provider-runtime':
         specifier: workspace:*
         version: link:../../packages/provider-runtime

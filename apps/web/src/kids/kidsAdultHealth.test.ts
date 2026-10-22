@@ -52,4 +52,26 @@ describe("adult-only AI health", () => {
       lastErrorClass: null,
     });
   });
+
+  it("recognizes host CLI providers without exposing a binary path", async () => {
+    const health = await fetchAdultAiHealth(
+      async () =>
+        new Response(
+          JSON.stringify({
+            configured: true,
+            available: true,
+            providerInUse: "codex",
+            lastErrorClass: null,
+            binary: "/private/path",
+          }),
+          { headers: { "content-type": "application/json" } },
+        ),
+    );
+    expect(health).toEqual({
+      configured: true,
+      available: true,
+      providerInUse: "codex",
+      lastErrorClass: null,
+    });
+  });
 });
