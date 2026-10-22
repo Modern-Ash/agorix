@@ -53,6 +53,45 @@ test("builds, predicts, runs, steps and undoes on the real Kids mission", async 
   await expect(page.getByRole("combobox", { name: "mover 1" })).toHaveValue("4");
 });
 
+test("records prediction and post-run revision from editor actions only", async ({ page }) => {
+  await openEditor(page);
+  await page.getByRole("button", { name: "+ mover", exact: true }).click();
+  await expect
+    .poll(() => page.evaluate(() => sessionStorage.getItem("agorix.kids.reflections.v1")))
+    .toBeNull();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Sí", exact: true }).click();
+  await page.getByRole("combobox", { name: "mover 1" }).selectOption("2");
+  const events = await page.evaluate(() =>
+    JSON.parse(sessionStorage.getItem("agorix.kids.reflections.v1") ?? "[]"),
+  );
+  expect(events.map((event: { kind: string }) => event.kind)).toEqual([
+    "predictionMade",
+    "programRevisedAfterExecution",
+  ]);
+  expect(events[0]).toMatchObject({ prediction: "reachGoal", matchedRuntimeOutcome: false });
+  expect(events[1]).toMatchObject({ changedNodeCount: 1, afterUnsuccessfulRun: true });
+  expect(JSON.stringify(events)).not.toMatch(/timestamp|freeText|transcript/);
+});
+
+test("reveals hints in order and records only the levels opened", async ({ page }) => {
+  await openEditor(page);
+  await expect(page.getByRole("button", { name: "Ver idea" })).toHaveCount(0);
+  for (let level = 1; level <= 4; level++) {
+    await page.getByRole("button", { name: `Pista ${level}` }).click();
+  }
+  await page.getByRole("button", { name: "Ver idea" }).click();
+  const events = await page.evaluate(() =>
+    JSON.parse(sessionStorage.getItem("agorix.kids.reflections.v1") ?? "[]"),
+  );
+  expect(events.map((event: { level: number }) => event.level)).toEqual([1, 2, 3, 4, 5]);
+  expect(events.at(-1)).toMatchObject({ kind: "scaffoldDelivered", scaffoldKind: "solution" });
+  await page.reload();
+  await page.getByRole("button", { name: "Misión 1" }).click();
+  await expect(page.locator(".kids-hints .kids-note")).toHaveCount(5);
+  await expect(page.getByRole("button", { name: "Ver idea" })).toHaveCount(0);
+});
+
 test("shows wall evidence and has no serious accessibility violations", async ({ page }) => {
   await openEditor(page);
   await page.getByRole("button", { name: "+ mover", exact: true }).click();

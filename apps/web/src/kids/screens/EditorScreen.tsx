@@ -4,10 +4,12 @@ import { createEditorHistory, programToWorkspace } from "@agorix/block-editor";
 import { projectProgram } from "@agorix/code-generator";
 import {
   KIDS_GRID,
+  KIDS_HINT_LEVELS,
   KIDS_MISSION_IDS,
   createFreeWorldMission,
   evaluateKidsRun,
   getKidsMission,
+  getKidsHint,
   worldToCell,
   type KidsCell,
 } from "@agorix/curriculum";
@@ -16,6 +18,7 @@ import { ProjectStore, type ProjectMetadata } from "@agorix/persistence";
 import { validateProgram, type Statement } from "@agorix/program-model";
 import type { Locale } from "../../i18n.js";
 import type { KidsAvatar, KidsWorld } from "../kidsState.js";
+import { recordKidsPrediction, recordKidsRevision, recordKidsScaffold } from "../kidsEvidence.js";
 import {
   addKidsBlock,
   createKidsEditor,
@@ -126,6 +129,14 @@ export function EditorScreen({
       return createKidsEditor(mission);
     }
   });
+  const [usedHintLevels, setUsedHintLevels] = useState<readonly number[]>(() => {
+    try {
+      const level = store.has(projectId) ? (store.load(projectId).metadata.hintLevel ?? 0) : 0;
+      return KIDS_HINT_LEVELS.filter((candidate) => candidate <= level);
+    } catch {
+      return [];
+    }
+  });
   const [view, setView] = useState<"blocks" | "code">("blocks");
   const [language, setLanguage] = useState<CodeLanguage>("agorix");
   const [pending, setPending] = useState<"play" | "step" | null>(null);
@@ -163,6 +174,11 @@ export function EditorScreen({
   const final = evaluation?.final ?? start;
   const trail = evaluation?.trail ?? [start];
   const activeNode = visibleTrace.at(-1)?.nodeId;
+  const assistanceLevel = usedHintLevels.includes(5)
+    ? "delegated"
+    : usedHintLevels.length > 0
+      ? "hinted"
+      : "independent";
 
   function clearRun() {
     setPlayed(null);
@@ -170,20 +186,32 @@ export function EditorScreen({
     setPrediction(null);
   }
 
-  function change(next: typeof history) {
+  function change(
+    next: typeof history,
+    revisionKind: "sequenceChange" | "loopChange" = "sequenceChange",
+  ) {
+    if (played && JSON.stringify(next.current) !== JSON.stringify(history.current)) {
+      recordKidsRevision(
+        revisionKind,
+        1,
+        played.evaluation.outcome !== "success",
+        undefined,
+        assistanceLevel,
+      );
+    }
     setHistory(next);
     save(next, false);
     clearRun();
   }
 
-  function save(next: typeof history, completed: boolean) {
+  function save(next: typeof history, completed: boolean, hintLevel = usedHintLevels.length) {
     try {
       const previous = store.has(projectId) ? store.load(projectId).metadata : undefined;
       const metadata: ProjectMetadata = {
         createdAt: previous?.createdAt ?? createdAt,
         updatedAt: new Date().toISOString(),
         missionProgress: completed || previous?.missionProgress === 1 ? 1 : 0,
-        hintLevel: previous?.hintLevel ?? 0,
+        hintLevel: Math.max(previous?.hintLevel ?? 0, hintLevel),
         locale,
         ...(freeProjectId && freeGoal
           ? { missionSpec: { goal: kidsGoalSpec(freeGoal), successCheck: "touches-goal" as const } }
@@ -212,6 +240,7 @@ export function EditorScreen({
 
   function choosePrediction(answer: Prediction) {
     const run = playKidsProgram(history, mission);
+    recordKidsPrediction(answer, run.evaluation.outcome, undefined, assistanceLevel);
     setPrediction(answer);
     setPlayed(run);
     setStep(pending === "step" ? Math.min(1, run.result.trace.length) : run.result.trace.length);
@@ -239,6 +268,7 @@ export function EditorScreen({
       return;
     }
     setFreeGoal(cell);
+    setUsedHintLevels([]);
     clearRun();
     try {
       const previous = store.has(projectId) ? store.load(projectId).metadata : undefined;
@@ -246,13 +276,22 @@ export function EditorScreen({
         createdAt: previous?.createdAt ?? createdAt,
         updatedAt: new Date().toISOString(),
         missionProgress: 0,
-        hintLevel: previous?.hintLevel ?? 0,
+        hintLevel: 0,
         locale,
         missionSpec: { goal: kidsGoalSpec(cell), successCheck: "touches-goal" },
       });
     } catch {
       /* The free world still works when storage is unavailable. */
     }
+  }
+
+  function showNextHint() {
+    const level = usedHintLevels.length + 1;
+    const hint = getKidsHint(mission, level, usedHintLevels);
+    if (!hint) return;
+    recordKidsScaffold(level === 5 ? "solution" : "hint", hint.level);
+    setUsedHintLevels([...usedHintLevels, level]);
+    save(history, false, level);
   }
 
   function renderBlock(statement: Statement, index: number, childIndex?: number) {
@@ -291,7 +330,10 @@ export function EditorScreen({
               aria-label={`${t(kind)} ${index + 1}`}
               value={number}
               onChange={(event) =>
-                change(setKidsBlockNumber(history, index, Number(event.target.value), childIndex))
+                change(
+                  setKidsBlockNumber(history, index, Number(event.target.value), childIndex),
+                  kind === "repeat" ? "loopChange" : "sequenceChange",
+                )
               }
             >
               {(kind === "repeat" ? [2, 3, 4, 5, 6] : [1, 2, 3, 4, 5]).map((value) => (
@@ -305,7 +347,12 @@ export function EditorScreen({
             type="button"
             className="kids-block-remove"
             aria-label={`${t("trash")} ${t(kind)} ${index + 1}`}
-            onClick={() => change(removeKidsBlock(history, index, childIndex))}
+            onClick={() =>
+              change(
+                removeKidsBlock(history, index, childIndex),
+                kind === "repeat" ? "loopChange" : "sequenceChange",
+              )
+            }
           >
             ×
           </button>
@@ -318,7 +365,7 @@ export function EditorScreen({
                 <button
                   type="button"
                   key={item}
-                  onClick={() => change(addKidsBlock(history, item, index))}
+                  onClick={() => change(addKidsBlock(history, item, index), "loopChange")}
                 >
                   + {t(item)}
                 </button>
@@ -450,6 +497,20 @@ export function EditorScreen({
               {t("predLog")} {t(prediction)}
             </p>
           ) : null}
+          <div className="kids-hints">
+            {usedHintLevels.map((level) => (
+              <p className="kids-note" key={level}>
+                {locale === "es" ? "Pista" : "Hint"} {level}: {mission.hintLadder[level - 1]?.text}
+              </p>
+            ))}
+            {usedHintLevels.length < KIDS_HINT_LEVELS.length ? (
+              <button type="button" className="kids-button" onClick={showNextHint}>
+                {usedHintLevels.length === 4
+                  ? t("seeIdea")
+                  : `${locale === "es" ? "Pista" : "Hint"} ${usedHintLevels.length + 1}`}
+              </button>
+            ) : null}
+          </div>
           {played &&
           step >= trace.length &&
           evaluation?.outcome === "success" &&
@@ -524,7 +585,12 @@ export function EditorScreen({
                   className={`kids-palette-block kids-block-${kind}`}
                   draggable
                   onDragStart={(event) => event.dataTransfer.setData("text/plain", kind)}
-                  onClick={() => change(addKidsBlock(history, kind))}
+                  onClick={() =>
+                    change(
+                      addKidsBlock(history, kind),
+                      kind === "repeat" ? "loopChange" : "sequenceChange",
+                    )
+                  }
                 >
                   + {t(kind)}
                 </button>
@@ -537,7 +603,10 @@ export function EditorScreen({
                 event.preventDefault();
                 const kind = event.dataTransfer.getData("text/plain");
                 if (PALETTE.includes(kind as KidsBlockKind))
-                  change(addKidsBlock(history, kind as KidsBlockKind));
+                  change(
+                    addKidsBlock(history, kind as KidsBlockKind),
+                    kind === "repeat" ? "loopChange" : "sequenceChange",
+                  );
               }}
             >
               {locale === "es" ? "Soltá aquí para agregar" : "Drop here to add"}
