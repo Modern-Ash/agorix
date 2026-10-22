@@ -5,7 +5,7 @@ import { expect, test } from "@playwright/test";
 test.use({ serviceWorkers: "block" });
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
   await page.evaluate(() => {
     localStorage.clear();
     localStorage.setItem("agorix.locale", "en");

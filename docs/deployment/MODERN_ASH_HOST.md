@@ -20,6 +20,8 @@ Browser
   same tunnel and are separate ingress rules.
 - The site remains playable without the host tutor service. Anonymous projects live in the browser;
   `.agorix` export/import is the portable path. Accounts and server-side project storage are separate work.
+- `/` serves Agorix Kids. `/kids` remains an alias for existing links; `/advanced` serves the parked
+  editor with actors, sounds, events and code views. The production smoke checks both routes.
 - Everything is defined in the repository: `deploy/web/` (Dockerfile, `nginx.conf`, generated
   `security-headers.conf`, compose and the host user service template) and `scripts/`.
 
@@ -35,7 +37,8 @@ The script (`scripts/deploy-web.sh`) does, in order, and stops at the first fail
 
 1. **Preflight.** Refuses any branch except `main`, a dirty tree, or a local `main` that differs from `origin/main`.
 2. `pnpm verify`.
-3. Builds the image `agorix-web:<sha12>` (the commit is baked in as `/version.json` and shown in the app menu).
+3. Builds the image `agorix-web:<sha12>` (the commit is baked in as `/version.json`; the parked
+   editor also shows it in its app menu).
 4. Swaps the container (`restart: unless-stopped`, loopback only).
 5. **Health gate.** `/healthz`, the CSP header, and `/version.json` reporting the new commit.
 6. **Smoke gate.** The read-only production smoke (`apps/web/e2e/prod`) through the public URL.

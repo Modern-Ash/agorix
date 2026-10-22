@@ -20,8 +20,11 @@ const stageRun = (page: Page) =>
   page.locator(".stage-panel").getByRole("button", { name: /^(Run|Ejecutar)$/ });
 
 async function openAppMenu(page: Page) {
-  const menuButton = page.getByRole("button", { name: /Show app menu|Mostrar menú/ });
-  if (await menuButton.isVisible().catch(() => false)) await menuButton.click();
+  const menuButton = page.getByRole("button", {
+    name: /Show app menu|Hide app menu|Mostrar menú|Ocultar menú/,
+  });
+  await expect(menuButton).toBeVisible();
+  if ((await menuButton.getAttribute("aria-expanded")) !== "true") await menuButton.click();
 }
 
 // Cloudflare auto-injects its Web Analytics beacon into HTML for browsers; our CSP blocks it.
@@ -85,7 +88,8 @@ test("a first visit opens in Spanish, stays same-origin and registers the servic
   const problems = trackProblems(page, new URL(baseURL!).origin);
   await page.goto("/");
   await expect(page.locator("html")).toHaveAttribute("lang", "es");
-  await expect(page.getByText("Misión: Lleva tu personaje hasta la meta.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "¡Hola!" })).toBeVisible();
+  await expect(page.locator(".kids-root")).toBeVisible();
 
   const registered = await page.evaluate(async () => {
     const registration = await navigator.serviceWorker.ready;
@@ -95,8 +99,17 @@ test("a first visit opens in Spanish, stays same-origin and registers the servic
   expect(problems).toEqual([]);
 });
 
-test("without a server AI the card says local mode", async ({ page }) => {
+test("the default Kids journey reaches the world map", async ({ page }) => {
   await page.goto("/");
+  await page.getByRole("button", { name: "Seguir" }).click();
+  await page.getByRole("button", { name: "Seguir" }).click();
+  await page.getByRole("button", { name: "¡Empezar!" }).click();
+  await expect(page.getByRole("heading", { name: "Mapa" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Misión 1" })).toBeVisible();
+});
+
+test("the parked editor still offers its local AI mode", async ({ page }) => {
+  await page.goto("/advanced");
   await page
     .getByRole("button", { name: /explicar|explain/i })
     .first()
@@ -104,10 +117,10 @@ test("without a server AI the card says local mode", async ({ page }) => {
   await expect(page.locator(".ai-coach-card").getByRole("status")).toBeVisible();
 });
 
-test("First Mission: build, run and finish, then export the project", async ({ page, baseURL }) => {
+test("advanced First Mission: build, run and finish, then export", async ({ page, baseURL }) => {
   await page.addInitScript(() => localStorage.setItem("agorix.locale", "en"));
   const problems = trackProblems(page, new URL(baseURL!).origin);
-  await page.goto("/");
+  await page.goto("/advanced");
 
   await palette(page).getByRole("button", { name: "Move", exact: true }).click();
   const input = page.getByLabel("Move block").getByRole("spinbutton");
@@ -128,16 +141,16 @@ test("First Mission: build, run and finish, then export the project", async ({ p
   expect(problems).toEqual([]);
 });
 
-test("Sound blocks run and show runtime evidence on the stage", async ({ page }) => {
+test("advanced Sound blocks run and show runtime evidence on the stage", async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("agorix.locale", "en"));
-  await page.goto("/");
+  await page.goto("/advanced");
   await palette(page).getByLabel("Start sound", { exact: true }).click();
   await stageRun(page).click();
   await expect(page.locator(".stage-sounds")).toContainText("Sounds playing", { timeout: 10_000 });
 });
 
-test("the language choice switches and survives a reload", async ({ page }) => {
-  await page.goto("/");
+test("the advanced language choice switches and survives a reload", async ({ page }) => {
+  await page.goto("/advanced");
   await openAppMenu(page);
   await page.getByLabel(/Idioma del producto|Product language/).selectOption("en");
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
@@ -160,7 +173,7 @@ test.describe("Kids Ori production fallback", () => {
         JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
       );
     });
-    await page.goto("/kids");
+    await page.goto("/");
     await page.getByRole("button", { name: "Misión 1" }).click();
     await expect(page.locator(".kids-ori-proposal")).toContainText("mover 4");
     await expect(page.locator(".kids-editor")).not.toContainText(

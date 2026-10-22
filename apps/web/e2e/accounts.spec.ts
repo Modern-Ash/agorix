@@ -17,7 +17,7 @@ function alias(prefix = "kid"): string {
 }
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
   await page.evaluate(async () => {
     localStorage.clear();
     localStorage.setItem("agorix.locale", "en");
@@ -41,8 +41,11 @@ async function addMove(page: Page) {
 }
 
 async function openAppMenu(page: Page) {
-  const menuButton = page.getByRole("button", { name: "Show app menu" });
-  if (await menuButton.isVisible().catch(() => false)) {
+  const menuButton = page.getByRole("button", {
+    name: /^(Show|Hide) app menu$|^(Mostrar|Ocultar) menú$/,
+  });
+  await expect(menuButton).toBeVisible();
+  if ((await menuButton.getAttribute("aria-expanded")) !== "true") {
     await menuButton.click();
   }
 }
@@ -359,7 +362,7 @@ test("a newer server version raises a conflict that needs an explicit choice", a
   // Another device saves a newer revision of the same project.
   const other = await browser.newContext({ baseURL: page.url() });
   const otherPage = await other.newPage();
-  await otherPage.goto("/");
+  await otherPage.goto("/advanced");
   await signIn(otherPage, name);
   await keepLocalIfOffered(otherPage);
   await projectsDialog(otherPage)
@@ -402,7 +405,7 @@ test("conflict can reload the latest server version", async ({ page, browser }) 
 
   const other = await browser.newContext({ baseURL: page.url() });
   const otherPage = await other.newPage();
-  await otherPage.goto("/");
+  await otherPage.goto("/advanced");
   await signIn(otherPage, name);
   await keepLocalIfOffered(otherPage);
   await projectsDialog(otherPage)

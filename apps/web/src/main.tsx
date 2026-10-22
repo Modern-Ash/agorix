@@ -1,14 +1,14 @@
 import { StrictMode, Suspense, lazy } from "react";
 import { createRoot } from "react-dom/client";
-import { App } from "./App.js";
 import { registerServiceWorker } from "./registerServiceWorker.js";
 
-// Agorix Kids (epic #371) is developed behind /kids until it replaces the default route (Kids 15).
+// Keep the previous editor reachable while Kids becomes the default experience.
 const KidsApp = lazy(() =>
   import("./kids/KidsApp.js").then((module) => ({ default: module.KidsApp })),
 );
-const isKids =
-  window.location.pathname === "/kids" || window.location.pathname.startsWith("/kids/");
+const AdvancedApp = lazy(() => import("./App.js").then((module) => ({ default: module.App })));
+const isAdvanced =
+  window.location.pathname === "/advanced" || window.location.pathname.startsWith("/advanced/");
 
 const container = document.getElementById("root");
 if (!container) {
@@ -17,13 +17,7 @@ if (!container) {
 
 createRoot(container).render(
   <StrictMode>
-    {isKids ? (
-      <Suspense fallback={null}>
-        <KidsApp />
-      </Suspense>
-    ) : (
-      <App />
-    )}
+    <Suspense fallback={null}>{isAdvanced ? <AdvancedApp /> : <KidsApp />}</Suspense>
   </StrictMode>,
 );
 

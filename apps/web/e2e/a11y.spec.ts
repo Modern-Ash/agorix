@@ -5,7 +5,7 @@ import { expect, test, type Page } from "@playwright/test";
 // Serious and critical findings fail the build; moderate/minor ones are reported in the log.
 
 async function open(page: Page, locale: "es" | "en") {
-  await page.goto("/");
+  await page.goto("/advanced");
   await page.evaluate((value) => {
     localStorage.clear();
     localStorage.setItem("agorix.locale", value);
@@ -56,6 +56,14 @@ for (const locale of ["es", "en"] as const) {
     expect(await scan(page)).toEqual([]);
   });
 }
+
+test("the default Kids onboarding has no serious or critical a11y violations", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "¡Hola!" })).toBeVisible();
+  expect(await scan(page)).toEqual([]);
+});
 
 test("the app menu and the language picker are accessible (es)", async ({ page }) => {
   await open(page, "es");

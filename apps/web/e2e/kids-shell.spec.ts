@@ -20,6 +20,16 @@ test("opens in Spanish and walks the onboarding to the map", async ({ page }) =>
   await expect(page.getByRole("navigation")).toBeVisible();
 });
 
+test("the default route opens Kids and the parked advanced route remains available", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "¡Hola!" })).toBeVisible();
+  await expect(page.locator(".kids-root")).toBeVisible();
+  await page.goto("/advanced");
+  await expect(page.locator(".learning-layout")).toBeVisible();
+});
+
 test("navigates with the keyboard and keeps the current item marked", async ({ page }) => {
   await page.getByRole("button", { name: "Seguir" }).click();
   await page.getByRole("button", { name: "Seguir" }).click();

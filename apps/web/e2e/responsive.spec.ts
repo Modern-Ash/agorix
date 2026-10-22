@@ -11,9 +11,23 @@ const VIEWPORTS = [
   { name: "phone 390x844", width: 390, height: 844 },
 ] as const;
 
+for (const viewport of VIEWPORTS) {
+  test(`default Kids onboarding fits ${viewport.name}`, async ({ page }) => {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await page.goto("/");
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "¡Hola!" })).toBeVisible();
+    const overflows = await page.evaluate(
+      () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+    );
+    expect(overflows).toBe(false);
+  });
+}
+
 async function openFresh(page: Page, width: number, height: number) {
   await page.setViewportSize({ width, height });
-  await page.goto("/");
+  await page.goto("/advanced");
   await page.evaluate(() => {
     localStorage.clear();
     localStorage.setItem("agorix.locale", "es");
