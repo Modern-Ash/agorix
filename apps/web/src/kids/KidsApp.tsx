@@ -8,7 +8,12 @@ import "@fontsource/jetbrains-mono/latin-700.css";
 import "./kids.css";
 import type { Locale } from "../i18n.js";
 import { initialLocale, saveLocalePreference } from "../localePreference.js";
-import { loadKidsProgress, saveKidsProgress, type KidsProgress } from "./kidsProgress.js";
+import {
+  loadKidsProgress,
+  markMissionDone,
+  saveKidsProgress,
+  type KidsProgress,
+} from "./kidsProgress.js";
 import {
   KIDS_NAV_SCREENS,
   initialKidsState,
@@ -19,6 +24,7 @@ import {
 } from "./kidsState.js";
 import { MapScreen } from "./screens/MapScreen.js";
 import { OnboardScreen } from "./screens/OnboardScreen.js";
+import { EditorScreen } from "./screens/EditorScreen.js";
 import { useKidsText, type KidsText } from "./useKidsText.js";
 
 const NAV: readonly {
@@ -101,18 +107,20 @@ export function KidsApp({
             onWorld={(world) => dispatch({ type: "pickWorld", world })}
             onMission={(missionIndex) => dispatch({ type: "pickMission", missionIndex })}
           />
+        ) : state.screen === "editor" ? (
+          <EditorScreen
+            key={`${state.world}:${state.missionIndex}`}
+            t={t}
+            locale={state.locale}
+            world={state.world}
+            avatar={state.avatar}
+            missionIndex={state.missionIndex}
+            onBack={() => dispatch({ type: "go", screen: "map" })}
+            onComplete={() => update(markMissionDone(progress, state.world, state.missionIndex))}
+          />
         ) : (
           <section className="kids-screen" aria-labelledby="kids-title">
             <h1 id="kids-title">{screenTitle(state.screen, t)}</h1>
-            {state.screen === "editor" ? (
-              <button
-                type="button"
-                className="kids-button"
-                onClick={() => dispatch({ type: "go", screen: "map" })}
-              >
-                {t("backMap")}
-              </button>
-            ) : null}
           </section>
         )}
       </main>
