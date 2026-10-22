@@ -5,3 +5,4 @@ pnpm-lock.yaml
 .agora/
 extensions/vscode/test/integration/fixtures/invalid.json
 extensions/vscode/.vscode-test
+prototipo/

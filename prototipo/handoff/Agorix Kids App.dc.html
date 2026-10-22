@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Epilogue:wght@600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;color:#17201D;font-family:'Atkinson Hyperlegible',system-ui,sans-serif;background:linear-gradient(90deg,rgba(23,32,29,.045) 1px,transparent 1px) 0 0/28px 28px,linear-gradient(0deg,rgba(23,32,29,.035) 1px,transparent 1px) 0 0/28px 28px,radial-gradient(circle at 12% 8%,rgba(63,126,232,.12),transparent 28%),radial-gradient(circle at 88% 0%,rgba(14,159,154,.1),transparent 26%),#F7F4EE}
+a{color:#2F6FED}a:hover{color:#6C5CE7}
+button{font:inherit;color:inherit}
+button:focus-visible{outline:3px solid #2F6FED;outline-offset:2px}
+@keyframes agxPulse{0%{box-shadow:0 0 0 0 rgba(255,255,255,.55)}100%{box-shadow:0 0 0 18px rgba(255,255,255,0)}}
+@keyframes agxUp{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</helmet>
+<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;gap:20px;padding:20px 16px 48px;box-sizing:border-box">
+  <div style="width:100%;max-width:1100px;display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;justify-content:space-between">
+    <div style="display:flex;align-items:center;gap:14px">
+      <img src="assets/agorix-logo.svg" alt="Agorix" style="height:44px">
+      <span style="font:600 12px 'JetBrains Mono',monospace;color:#5E6B65;padding:4px 8px;border:1px solid #D9DED6;border-radius:999px;background:#fff;white-space:nowrap">Kids · 6–8 · prototipo</span>
+    </div>
+    <div style="display:flex;flex-wrap:nowrap;gap:6px;max-width:100%;overflow-x:auto;padding:2px">
+      <sc-for list="{{ screenChips }}" as="c" hint-placeholder-count="7">
+        <button onClick="{{ c.go }}" style="min-height:36px;padding:0 12px;border-radius:999px;border:1px solid {{ c.border }};background:{{ c.bg }};color:{{ c.fg }};font:700 13px 'Atkinson Hyperlegible';cursor:pointer">{{ c.label }}</button>
+      </sc-for>
+    </div>
+    <div style="display:flex;gap:8px">
+      <div style="display:flex;background:#fff;border:1px solid #D9DED6;border-radius:999px;padding:3px">
+        <button onClick="{{ setEs }}" style="min-height:32px;padding:0 12px;border:0;border-radius:999px;background:{{ esBg }};color:{{ esFg }};font:700 13px 'Atkinson Hyperlegible';cursor:pointer">ES</button>
+        <button onClick="{{ setEn }}" style="min-height:32px;padding:0 12px;border:0;border-radius:999px;background:{{ enBg }};color:{{ enFg }};font:700 13px 'Atkinson Hyperlegible';cursor:pointer">EN</button>
+      </div>
+      <button onClick="{{ toggleOrient }}" style="min-height:38px;padding:0 14px;border:1px solid #D9DED6;border-radius:999px;background:#fff;font:700 13px 'Atkinson Hyperlegible';cursor:pointer">{{ orientLabel }}</button>
+    </div>
+  </div>
+
+  <div style="max-width:100%;overflow-x:auto;padding:4px">
+  <div style="background:#101418;padding:12px;border-radius:58px;box-shadow:0 18px 48px rgba(20,30,26,.22)">
+  <div style="position:relative;width:{{ frameW }};height:{{ frameH }};border-radius:46px;overflow:hidden;background:#F7F4EE;display:flex;flex-direction:column">
+    <sc-if value="{{ showStatus }}" hint-placeholder-val="{{ false }}">
+      <div style="height:46px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font:700 15px system-ui;background:{{ statusBg }};color:{{ statusFg }}">
+        <span>9:41</span>
+        <div style="width:26px;height:12px;border:1.5px solid currentColor;border-radius:4px;padding:1.5px;box-sizing:border-box"><div style="width:70%;height:100%;background:currentColor;border-radius:1.5px"></div></div>
+      </div>
+    </sc-if>
+    <div style="flex:1;min-height:0;position:relative;display:flex;flex-direction:column">
+
+<!-- ONBOARDING -->
+<sc-if value="{{ isOnboard }}" hint-placeholder-val="{{ true }}">
+  <div style="flex:1;min-height:0;display:flex;flex-direction:column;padding:12px 24px 28px;gap:16px;background:#F7F4EE;overflow:auto">
+    <div style="display:flex;justify-content:center;gap:8px;padding-top:4px">
+      <sc-for list="{{ onDots }}" as="d" hint-placeholder-count="3"><div style="width:{{ d.w }};height:10px;border-radius:999px;background:{{ d.bg }};transition:width .22s"></div></sc-for>
+    </div>
+    <sc-if value="{{ onStep0 }}" hint-placeholder-val="{{ true }}">
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;text-align:center">
+        <div style="width:132px;height:132px;border-radius:40px;background:#6C5CE7;display:flex;align-items:center;justify-content:center;gap:20px;box-shadow:0 0 0 10px rgba(108,92,231,.14),0 18px 48px rgba(108,92,231,.3)">
+          <div style="width:22px;height:30px;border-radius:12px;background:#fff"></div><div style="width:22px;height:30px;border-radius:12px;background:#fff"></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <h1 style="margin:0;font:800 44px/1 Epilogue,sans-serif;letter-spacing:-1px">{{ t.hello }}</h1>
+          <button onClick="{{ say.lang }}" aria-label="{{ t.listen }}" style="width:52px;height:52px;border-radius:50%;border:1px solid #D9DED6;background:#fff;font-size:22px;cursor:pointer;box-shadow:0 1px 2px rgba(20,30,26,.08)">🔊</button>
+        </div>
+        <p style="margin:0;font:400 20px/1.35 'Atkinson Hyperlegible';color:#5E6B65;text-wrap:pretty">{{ t.pickLang }}</p>
+        <div style="display:flex;gap:14px;width:100%;max-width:340px">
+          <button onClick="{{ setEs }}" style="flex:1;min-height:120px;border-radius:24px;border:3px solid {{ esCardBorder }};background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;box-shadow:0 8px 24px rgba(20,30,26,.08)">
+            <span style="font:800 34px Epilogue">ES</span><span style="font:700 17px 'Atkinson Hyperlegible'">Español</span>
+          </button>
+          <button onClick="{{ setEn }}" style="flex:1;min-height:120px;border-radius:24px;border:3px solid {{ enCardBorder }};background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;box-shadow:0 8px 24px rgba(20,30,26,.08)">
+            <span style="font:800 34px Epilogue">EN</span><span style="font:700 17px 'Atkinson Hyperlegible'">English</span>
+          </button>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ onStep1 }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;text-align:center">
+        <div style="display:flex;align-items:center;gap:12px">
+          <h1 style="margin:0;font:800 32px/1.1 Epilogue,sans-serif;letter-spacing:-.5px;text-wrap:balance">{{ t.pickAvatar }}</h1>
+          <button onClick="{{ say.avatar }}" aria-label="{{ t.listen }}" style="flex:none;width:52px;height:52px;border-radius:50%;border:1px solid #D9DED6;background:#fff;font-size:22px;cursor:pointer">🔊</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,96px);gap:14px">
+          <sc-for list="{{ avatars }}" as="a" hint-placeholder-count="6">
+            <button onClick="{{ a.pick }}" aria-label="{{ a.e }}" style="width:96px;height:96px;border-radius:28px;border:3px solid {{ a.border }};background:{{ a.bg }};font-size:48px;cursor:pointer;transform:{{ a.scale }};transition:transform .22s cubic-bezier(.2,.8,.2,1)">{{ a.e }}</button>
+          </sc-for>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:999px;background:#fff;border:1px solid #D9DED6;font:700 15px 'Atkinson Hyperlegible';color:#5E6B65">🔒 {{ t.noName }}</div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ onStep2 }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px">
+        <div style="display:flex;align-items:flex-end;gap:14px">
+          <div style="width:96px;height:96px;flex:none;border-radius:30px;background:#6C5CE7;display:flex;align-items:center;justify-content:center;gap:15px;box-shadow:0 0 0 8px rgba(108,92,231,.14)">
+            <div style="width:16px;height:22px;border-radius:9px;background:#fff"></div><div style="width:16px;height:22px;border-radius:9px;background:#fff"></div>
+          </div>
+          <div style="width:76px;height:76px;border-radius:24px;background:#fff;border:1px solid #D9DED6;display:grid;place-items:center;font-size:42px">{{ avatar }}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:330px">
+          <div style="padding:16px 18px;border-radius:20px 20px 20px 6px;background:#fff;border:1px solid rgba(108,92,231,.3);font:700 20px/1.35 'Atkinson Hyperlegible';text-wrap:pretty">{{ t.meetOri }}</div>
+          <div style="padding:16px 18px;border-radius:20px 20px 20px 6px;background:#fff;border:1px solid rgba(108,92,231,.3);font:400 18px/1.35 'Atkinson Hyperlegible';color:#17201D;text-wrap:pretty">{{ t.meetOri2 }}</div>
+        </div>
+        <button onClick="{{ say.ori }}" style="min-height:48px;padding:0 18px;border-radius:999px;border:1px solid #D9DED6;background:#fff;font:700 16px 'Atkinson Hyperlegible';cursor:pointer;display:flex;align-items:center;gap:8px">🔊 {{ t.listen }}</button>
+      </div>
+    </sc-if>
+    <div style="display:flex;gap:12px">
+      <sc-if value="{{ onCanBack }}" hint-placeholder-val="{{ false }}">
+        <button onClick="{{ onBack }}" aria-label="back" style="width:64px;min-height:64px;border-radius:20px;border:1px solid #D9DED6;background:#fff;font:700 24px system-ui;cursor:pointer">←</button>
+      </sc-if>
+      <button onClick="{{ onNext }}" style="flex:1;min-height:64px;border-radius:20px;border:0;background:#17201D;color:#fff;font:800 22px Epilogue;cursor:pointer;box-shadow:0 8px 24px rgba(20,30,26,.2)">{{ onNextLabel }}</button>
+    </div>
+  </div>
+</sc-if>
+
+<!-- MAP -->
+<sc-if value="{{ isMap }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:1;min-height:0;display:flex;flex-direction:column;background:{{ w.tint }}">
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 18px">
+      <div style="width:52px;height:52px;border-radius:18px;background:#fff;display:grid;place-items:center;font-size:30px;box-shadow:0 1px 2px rgba(20,30,26,.08)">{{ avatar }}</div>
+      <div style="display:flex;align-items:center;gap:6px;padding:0 14px;height:44px;border-radius:999px;background:#fff;font:800 20px Epilogue;box-shadow:0 1px 2px rgba(20,30,26,.08)"><span style="color:#E0A100">★</span>{{ stars }}</div>
+      <div style="flex:1"></div>
+      <div style="display:flex;gap:6px"><sc-for list="{{ concepts }}" as="cc" hint-placeholder-count="3"><span aria-label="{{ cc.name }}" style="width:40px;height:40px;border-radius:12px;background:#fff;border:2px solid {{ cc.stateColor }};display:grid;place-items:center;font:800 18px system-ui;color:{{ cc.color }}">{{ cc.icon }}</span></sc-for></div>
+      <button onClick="{{ say.map }}" aria-label="{{ t.listen }}" style="width:52px;height:52px;border-radius:50%;border:1px solid #D9DED6;background:#fff;font-size:22px;cursor:pointer">🔊</button>
+    </div>
+    <div style="display:flex;gap:10px;padding:4px 18px 12px;overflow-x:auto">
+      <sc-for list="{{ worldTabs }}" as="wt" hint-placeholder-count="4">
+        <button onClick="{{ wt.pick }}" style="flex:none;display:flex;flex-direction:column;align-items:center;gap:6px;background:none;border:0;padding:0;cursor:pointer">
+          <div style="width:68px;height:68px;border-radius:22px;background:{{ wt.bg }};display:grid;place-items:center;font-size:34px;box-shadow:{{ wt.ring }};transition:box-shadow .22s">{{ wt.glyph }}</div>
+          <span style="font:700 14px 'Atkinson Hyperlegible';color:{{ wt.fg }}">{{ wt.name }}</span>
+        </button>
+      </sc-for>
+    </div>
+    <div style="flex:1;min-height:0;overflow:auto;padding:8px 24px 24px;display:flex;flex-direction:column;align-items:stretch;width:100%;box-sizing:border-box;max-width:{{ contentMax }};margin:0 auto">
+      <div style="display:flex;align-items:center;gap:8px;margin:0 0 10px;font:800 22px Epilogue;color:{{ w.ink }}">{{ worldName }}</div>
+      <sc-for list="{{ missionNodes }}" as="m" hint-placeholder-count="3">
+        <div style="display:flex;flex-direction:column;align-items:{{ m.align }}">
+          <sc-if value="{{ m.hasConnector }}"><div style="width:4px;height:28px;margin:{{ m.connMargin }};background:repeating-linear-gradient(to bottom,{{ m.connColor }} 0 6px,transparent 6px 12px);border-radius:2px"></div></sc-if>
+          <button onClick="{{ m.open }}" disabled="{{ m.locked }}" aria-label="{{ m.aria }}" style="display:flex;flex-direction:column;align-items:center;gap:8px;background:none;border:0;padding:0;cursor:{{ m.cursor }}">
+            <div style="width:{{ m.size }};height:{{ m.size }};border-radius:50%;background:{{ m.bg }};border:4px solid {{ m.border }};display:grid;place-items:center;font-size:{{ m.fs }};box-shadow:0 8px 24px rgba(20,30,26,.14);animation:{{ m.anim }};position:relative">
+              {{ m.glyph }}
+              <sc-if value="{{ m.done }}"><div style="position:absolute;right:-6px;top:-6px;width:34px;height:34px;border-radius:50%;background:#FFD24A;border:3px solid #fff;display:grid;place-items:center;font:800 18px system-ui;color:#7A5200">★</div></sc-if>
+            </div>
+            <sc-if value="{{ m.current }}"><span style="display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:999px;background:#17201D;color:#fff;font:800 17px Epilogue">▶ {{ t.play }}</span></sc-if>
+            <sc-if value="{{ m.notCurrent }}"><span style="font:700 14px 'Atkinson Hyperlegible';color:#5E6B65">{{ m.label }}</span></sc-if>
+          </button>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</sc-if>
+
+<!-- EDITOR -->
+<sc-if value="{{ isEditor }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:1;min-height:0;display:flex;flex-direction:column;background:#F7F4EE">
+    <div style="flex:none;display:flex;align-items:center;gap:8px;padding:{{ topPad }}">
+      <button onClick="{{ goMap }}" aria-label="{{ t.map }}" style="width:48px;height:48px;flex:none;border-radius:16px;border:1px solid #D9DED6;background:#fff;font:700 22px system-ui;cursor:pointer">←</button>
+      <button onClick="{{ say.goal }}" style="flex:1;min-width:0;min-height:48px;display:flex;align-items:center;gap:8px;padding:0 12px;border-radius:16px;border:1px solid #D9DED6;background:#fff;cursor:pointer;text-align:left">
+        <span style="font-size:24px">{{ avatar }}</span><span style="font:800 18px system-ui;color:#5E6B65">→</span><span style="font-size:24px">{{ w.g }}</span>
+        <span style="flex:1;min-width:0;font:700 14px/1.2 'Atkinson Hyperlegible';color:#5E6B65;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ goalText }}</span>
+        <span style="font-size:18px">🔊</span>
+      </button>
+      <button onClick="{{ undo }}" aria-label="{{ t.undo }}" disabled="{{ noHistory }}" style="flex:none;min-width:52px;min-height:48px;border-radius:16px;border:1px solid #D9DED6;background:#fff;cursor:pointer;opacity:{{ undoOp }};display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;gap:2px;font:700 10px 'Atkinson Hyperlegible'"><span style="font:800 18px system-ui">↶</span>{{ t.undo }}</button>
+        <div style="flex:none;display:flex;background:#EDEAE2;border-radius:16px;padding:3px">
+        <button onClick="{{ setBlocks }}" aria-label="{{ t.blocks }}" style="min-width:48px;height:42px;border:0;border-radius:13px;background:{{ blocksBg }};box-shadow:{{ blocksSh }};font:700 13px 'Atkinson Hyperlegible';cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1"><span style="font-size:16px">▦</span><span style="font-size:10px">{{ t.blocks }}</span></button>
+        <button onClick="{{ setCode }}" aria-label="{{ t.code }}" style="min-width:48px;height:42px;border:0;border-radius:13px;background:{{ codeBg }};box-shadow:{{ codeSh }};font:700 13px 'JetBrains Mono';cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1"><span style="font-size:13px">&lt;/&gt;</span><span style="font:700 10px 'Atkinson Hyperlegible'">{{ t.code }}</span></button>
+      </div>
+    </div>
+
+    <div style="flex:1;min-height:0;display:flex;flex-direction:{{ editorDir }};gap:10px;padding:0 12px 12px">
+      <div style="flex:none;width:{{ leftW }};display:flex;flex-direction:column;gap:10px;min-height:0">
+        <div onClick="{{ stageTap }}" style="position:relative;width:100%;aspect-ratio:6/4;border-radius:22px;overflow:hidden;background:{{ w.bg }};box-shadow:0 8px 24px rgba(20,30,26,.12)">
+          <div style="position:absolute;inset:0;display:grid;grid-template-columns:repeat(6,1fr);grid-template-rows:repeat(4,1fr)">
+            <sc-for list="{{ cells }}" as="c" hint-placeholder-count="24"><div style="border-right:1px solid {{ w.cell }};border-bottom:1px solid {{ w.cell }};display:grid;place-items:center"><sc-if value="{{ c.trail }}"><div style="width:10px;height:10px;border-radius:50%;background:{{ w.trail }}"></div></sc-if></div></sc-for>
+          </div>
+          <div style="position:absolute;left:{{ goalL }};top:{{ goalT }};width:16.666%;height:25%;display:grid;place-items:center">
+            <div style="width:78%;aspect-ratio:1;border-radius:50%;background:{{ w.goal }};display:grid;place-items:center;font-size:28px;box-shadow:{{ goalRing }}">{{ w.g }}</div>
+          </div>
+          <div style="position:absolute;left:{{ spriteL }};top:{{ spriteT }};width:16.666%;height:25%;display:grid;place-items:center;transition:left .42s cubic-bezier(.16,1,.3,1),top .42s cubic-bezier(.16,1,.3,1);z-index:2">
+            <div style="position:relative;width:82%;aspect-ratio:1;border-radius:30%;background:{{ w.sprite }};display:grid;place-items:center;font-size:30px;box-shadow:{{ spriteGlow }}">
+              {{ avatar }}
+              <div style="position:absolute;inset:0;transform:rotate({{ spriteRot }});transition:transform .3s"><div style="position:absolute;right:-9px;top:50%;margin-top:-9px;width:18px;height:18px;border-radius:50%;background:#fff;color:#17201D;display:grid;place-items:center;font:800 11px system-ui;box-shadow:0 1px 3px rgba(0,0,0,.3)">▶</div></div>
+            </div>
+          </div>
+          <sc-if value="{{ showEvidence }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;left:10px;top:10px;z-index:3;display:flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border-radius:999px;background:rgba(23,33,43,.88);color:#EDF7F1;font:700 13px 'Atkinson Hyperlegible'">
+              <span style="width:26px;height:26px;border-radius:50%;background:#0E9F9A;display:grid;place-items:center;font-size:14px">{{ evIcon }}</span>{{ evText }}
+            </div>
+          </sc-if>
+          <sc-if value="{{ showMascot }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ openProposal }}" aria-label="Ori" style="position:absolute;right:10px;top:10px;z-index:3;display:flex;align-items:center;gap:8px;background:none;border:0;padding:0;cursor:pointer;flex-direction:row-reverse">
+              <div style="width:48px;height:48px;border-radius:16px;background:#6C5CE7;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 0 0 4px rgba(255,255,255,.5)"><div style="width:9px;height:13px;border-radius:5px;background:#fff"></div><div style="width:9px;height:13px;border-radius:5px;background:#fff"></div></div>
+              <span style="max-width:200px;white-space:normal;padding:8px 12px;border-radius:14px 14px 4px 14px;background:#fff;font:700 13px/1.25 'Atkinson Hyperlegible';color:#17201D;text-align:left;box-shadow:0 8px 24px rgba(20,30,26,.16)">{{ oriBubble }}</span>
+            </button>
+          </sc-if>
+          <sc-if value="{{ hasResult }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;left:10px;right:10px;bottom:10px;z-index:4;display:flex;align-items:center;gap:10px;padding:8px 8px 8px 10px;border-radius:18px;background:#fff;box-shadow:0 8px 24px rgba(20,30,26,.2);animation:agxUp .36s cubic-bezier(.16,1,.3,1)">
+              <div style="width:44px;height:44px;flex:none;border-radius:{{ resShapeRadius }};background:{{ resColor }};color:#fff;display:grid;place-items:center;font:800 24px system-ui">{{ resIcon }}</div>
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                <span style="font:800 16px/1.15 Epilogue">{{ resTitle }}</span>
+                <span style="font:700 11px 'Atkinson Hyperlegible';color:#0B7F7B;text-transform:uppercase;letter-spacing:.5px">◆ {{ t.runtimeFact }}{{ predictNote }}</span>
+              </div>
+              <button onClick="{{ resAction }}" style="flex:none;min-height:44px;padding:0 14px;border-radius:14px;border:0;background:{{ resBtnBg }};color:#fff;font:800 15px Epilogue;cursor:pointer">{{ resBtn }}</button>
+            </div>
+          </sc-if>
+        </div>
+
+        <div style="display:flex;gap:8px">
+          <sc-if value="{{ notRunning }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ run }}" style="flex:1.6;min-height:{{ ctrlH }};border-radius:18px;border:0;background:#0E9F9A;color:#fff;font:800 20px Epilogue;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 8px 24px rgba(14,159,154,.3)"><span style="font-size:18px">▶</span>{{ t.run }}</button>
+          </sc-if>
+          <sc-if value="{{ running }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ stop }}" style="flex:1.6;min-height:{{ ctrlH }};border-radius:18px;border:0;background:#17201D;color:#fff;font:800 20px Epilogue;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px"><span style="width:14px;height:14px;background:#fff;border-radius:3px"></span>{{ t.stop }}</button>
+          </sc-if>
+          <button onClick="{{ step }}" style="flex:1;min-height:{{ ctrlH }};border-radius:18px;border:2px solid #0E9F9A;background:#fff;color:#0B7F7B;font:800 16px Epilogue;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px"><span>▶|</span>{{ t.step }}</button>
+          <button onClick="{{ reset }}" aria-label="{{ t.reset }}" style="flex:none;width:{{ ctrlH }};min-height:{{ ctrlH }};border-radius:18px;border:1px solid #D9DED6;background:#fff;font:800 22px system-ui;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1"><span>⟲</span><span style="font:700 10px 'Atkinson Hyperlegible';color:#5E6B65">{{ t.reset }}</span></button>
+        </div>
+
+        <sc-if value="{{ showCard }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ openProposal }}" style="display:flex;align-items:center;gap:10px;min-height:52px;padding:6px 6px 6px 14px;border-radius:16px;border:1px solid rgba(108,92,231,.35);background:#F6F4FF;cursor:pointer;text-align:left">
+            <span style="width:10px;height:10px;flex:none;border-radius:50%;background:#6C5CE7;box-shadow:0 0 0 4px rgba(108,92,231,.18)"></span>
+            <span style="flex:1;font:700 15px/1.25 'Atkinson Hyperlegible';color:#3F33A8">{{ oriBubble }}</span>
+            <span style="flex:none;padding:10px 12px;border-radius:12px;background:#6C5CE7;color:#fff;font:800 14px Epilogue">{{ t.seeIdea }}</span>
+          </button>
+        </sc-if>
+      </div>
+
+      <div style="flex:1;min-height:0;min-width:0;display:flex;flex-direction:column;gap:10px">
+        <sc-if value="{{ isBlocks }}" hint-placeholder-val="{{ true }}">
+          <div data-drop="main" style="flex:1;min-height:0;overflow:auto;padding:12px;border-radius:22px;background:#fff;border:1px solid #D9DED6;display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;flex:none;align-items:center;gap:10px;min-height:52px;padding:4px 14px 4px 4px;border-radius:14px;background:#FBF1E5;align-self:flex-start;white-space:nowrap">
+              <div style="width:44px;height:44px;border-radius:12px;background:#D8892F;color:#fff;display:grid;place-items:center;font-size:18px">▶</div>
+              <span style="font:700 17px 'Atkinson Hyperlegible';color:#7A4A12">{{ t.whenStart }}</span>
+            </div>
+            <sc-for list="{{ mainItems }}" as="b" hint-placeholder-count="2">
+              <div data-mblk="1" style="display:flex;flex-direction:column;gap:6px;opacity:{{ b.opacity }};padding-left:16px">
+                <sc-if value="{{ b.slot }}"><div style="height:6px;border-radius:3px;background:#3F7EE8;box-shadow:0 0 0 3px rgba(63,126,232,.2)"></div></sc-if>
+                <sc-if value="{{ b.notRepeat }}">
+                  <div onPointerDown="{{ b.onDown }}" style="touch-action:none;user-select:none;display:flex;align-items:center;gap:10px;min-height:60px;padding:6px;border-radius:12px;background:{{ b.color }};color:#fff;box-shadow:{{ b.glow }};cursor:grab;transition:box-shadow .22s">
+                    <div style="width:48px;height:48px;flex:none;border-radius:10px;background:rgba(255,255,255,.22);color:#fff;display:grid;place-items:center;font:800 26px system-ui">{{ b.icon }}</div>
+                    <span style="flex:1;min-width:0;font:700 18px 'Atkinson Hyperlegible';color:#fff">{{ b.label }}</span>
+                    <sc-if value="{{ b.activeMark }}"><span style="font:800 12px 'Atkinson Hyperlegible';color:#0B6F6B;background:#fff;padding:3px 7px;border-radius:999px">◆ {{ t.now }}</span></sc-if>
+                    <sc-if value="{{ b.ranMark }}"><span style="font:800 18px system-ui;color:#fff">✓</span></sc-if>
+                    <sc-if value="{{ b.hasN }}">
+                      <div style="display:flex;align-items:center;background:#fff;border-radius:13px;padding:2px">
+                        <button onClick="{{ b.dec }}" aria-label="-" style="width:44px;height:44px;border:0;background:none;font:800 24px system-ui;color:{{ b.color }};cursor:pointer">−</button>
+                        <span style="min-width:26px;text-align:center;font:800 22px Epilogue">{{ b.n }}</span>
+                        <button onClick="{{ b.inc }}" aria-label="+" style="width:44px;height:44px;border:0;background:none;font:800 24px system-ui;color:{{ b.color }};cursor:pointer">+</button>
+                      </div>
+                    </sc-if>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ b.isRepeat }}">
+                  <div style="border-radius:12px;background:{{ b.color }};color:#fff;box-shadow:{{ b.glow }};padding:6px;display:flex;flex-direction:column;gap:6px">
+                    <div onPointerDown="{{ b.onDown }}" style="touch-action:none;user-select:none;display:flex;align-items:center;gap:10px;cursor:grab">
+                      <div style="width:48px;height:48px;flex:none;border-radius:10px;background:rgba(255,255,255,.22);color:#fff;display:grid;place-items:center;font:800 26px system-ui">{{ b.icon }}</div>
+                      <span style="flex:1;font:700 18px 'Atkinson Hyperlegible';color:#fff">{{ b.label }}</span>
+                      <div style="display:flex;align-items:center;background:#fff;border-radius:13px;padding:2px">
+                        <button onClick="{{ b.dec }}" aria-label="-" style="width:44px;height:44px;border:0;background:none;font:800 24px system-ui;color:{{ b.color }};cursor:pointer">−</button>
+                        <span style="min-width:26px;text-align:center;font:800 22px Epilogue">{{ b.n }}</span>
+                        <button onClick="{{ b.inc }}" aria-label="+" style="width:44px;height:44px;border:0;background:none;font:800 24px system-ui;color:{{ b.color }};cursor:pointer">+</button>
+                      </div>
+                    </div>
+                    <div data-drop="rep-{{ b.id }}" style="margin-left:22px;min-height:60px;padding:6px;border-radius:14px;background:rgba(255,255,255,.7);border:2px dashed {{ b.bodyBorder }};display:flex;flex-direction:column;gap:6px">
+                      <sc-for list="{{ b.body }}" as="c" hint-placeholder-count="1">
+                        <div data-rblk="1" style="display:flex;flex-direction:column;gap:6px;opacity:{{ c.opacity }}">
+                          <sc-if value="{{ c.slot }}"><div style="height:6px;border-radius:3px;background:#3F7EE8"></div></sc-if>
+                          <div onPointerDown="{{ c.onDown }}" style="touch-action:none;user-select:none;display:flex;align-items:center;gap:10px;min-height:56px;padding:4px;border-radius:10px;background:{{ c.color }};color:#fff;box-shadow:{{ c.glow }};cursor:grab">
+                            <div style="width:44px;height:44px;flex:none;border-radius:10px;background:rgba(255,255,255,.22);color:#fff;display:grid;place-items:center;font:800 24px system-ui">{{ c.icon }}</div>
+                            <span style="flex:1;min-width:0;font:700 17px 'Atkinson Hyperlegible';color:#fff">{{ c.label }}</span>
+                            <sc-if value="{{ c.ranMark }}"><span style="font:800 18px system-ui;color:#fff">✓</span></sc-if>
+                            <sc-if value="{{ c.hasN }}">
+                              <div style="display:flex;align-items:center;background:#fff;border-radius:12px;padding:2px">
+                                <button onClick="{{ c.dec }}" aria-label="-" style="width:44px;height:44px;border:0;background:none;font:800 22px system-ui;color:{{ c.color }};cursor:pointer">−</button>
+                                <span style="min-width:22px;text-align:center;font:800 20px Epilogue">{{ c.n }}</span>
+                                <button onClick="{{ c.inc }}" aria-label="+" style="width:44px;height:44px;border:0;background:none;font:800 22px system-ui;color:{{ c.color }};cursor:pointer">+</button>
+                              </div>
+                            </sc-if>
+                          </div>
+                        </div>
+                      </sc-for>
+                      <sc-if value="{{ b.bodySlotEnd }}"><div style="height:6px;border-radius:3px;background:#3F7EE8"></div></sc-if>
+                      <sc-if value="{{ b.bodyEmpty }}"><div style="min-height:44px;display:grid;place-items:center;font:700 14px 'Atkinson Hyperlegible';color:#6E55B8">{{ t.dropInside }}</div></sc-if>
+                    </div>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+            <sc-if value="{{ mainSlotEnd }}"><div style="margin-left:16px;height:6px;border-radius:3px;background:#3F7EE8;box-shadow:0 0 0 3px rgba(63,126,232,.2)"></div></sc-if>
+            <sc-if value="{{ programEmpty }}" hint-placeholder-val="{{ true }}">
+              <div style="margin-left:16px;min-height:72px;border-radius:16px;border:2px dashed #B9C2BC;display:flex;align-items:center;justify-content:center;gap:10px;font:700 16px 'Atkinson Hyperlegible';color:#5E6B65;padding:0 12px;text-align:center"><span style="font-size:22px">👇</span>{{ t.dragHere }}</div>
+            </sc-if>
+          </div>
+          <div data-drop="trash" style="flex:none;position:relative;display:flex;gap:8px;padding:8px;border-radius:22px;background:#FBFAF6;border:1px solid #D9DED6;box-shadow:0 8px 24px rgba(20,30,26,.12)">
+            <sc-for list="{{ palette }}" as="p" hint-placeholder-count="4">
+              <div onPointerDown="{{ p.onDown }}" role="button" tabindex="0" aria-label="{{ p.label }}" style="touch-action:none;user-select:none;flex:1;min-width:0;min-height:{{ palH }};border-radius:12px;background:{{ p.color }};color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:grab">
+                <div style="width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,.22);color:#fff;display:grid;place-items:center;font:800 22px system-ui">{{ p.icon }}</div>
+                <span style="font:700 13px/1.1 'Atkinson Hyperlegible';text-align:center;color:#fff">{{ p.label }}</span>
+              </div>
+            </sc-for>
+            <sc-if value="{{ dragProg }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;inset:0;border-radius:22px;background:{{ trashBg }};color:#fff;display:flex;align-items:center;justify-content:center;gap:10px;font:800 18px Epilogue;pointer-events:none">🗑 {{ t.trash }}</div>
+            </sc-if>
+          </div>
+        </sc-if>
+        <sc-if value="{{ isBlocks }}" hint-placeholder-val="{{ true }}">
+          <div style="flex:none;max-height:140px;overflow:auto;border-radius:16px;background:#17212B;padding:8px 0 6px">
+            <div style="padding:0 14px 4px;font:700 11px 'JetBrains Mono',monospace;color:#AEB8B3;text-transform:uppercase;letter-spacing:.6px">{{ codeLangLabel }}</div>
+            <sc-for list="{{ codeLines }}" as="l" hint-placeholder-count="3">
+              <div style="display:flex;align-items:center;min-height:24px;background:{{ l.bg }};font:500 14px/1.5 'JetBrains Mono',monospace;color:#EDF7F1">
+                <span style="width:20px;text-align:center;color:#55D6D2;font-size:11px">{{ l.mark }}</span>
+                <span style="padding-left:{{ l.indent }};white-space:pre;color:{{ l.color }}">{{ l.text }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{ isCode }}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1;min-height:0;display:flex;flex-direction:column;border-radius:22px;background:#17212B;overflow:hidden">
+            <div style="display:flex;gap:6px;padding:10px 10px 0">
+              <button onClick="{{ setAgorix }}" style="min-height:40px;padding:0 14px;border-radius:12px;border:0;background:{{ agxTabBg }};color:#EDF7F1;font:700 14px 'JetBrains Mono';cursor:pointer">Agorix Code</button>
+              <button onClick="{{ setPython }}" style="min-height:40px;padding:0 14px;border-radius:12px;border:0;background:{{ pyTabBg }};color:#EDF7F1;font:700 14px 'JetBrains Mono';cursor:pointer">Python</button>
+              <button onClick="{{ setNode }}" style="min-height:40px;padding:0 14px;border-radius:12px;border:0;background:{{ nodeTabBg }};color:#EDF7F1;font:700 14px 'JetBrains Mono';cursor:pointer">Node</button>
+              <button onClick="{{ setJava }}" style="min-height:40px;padding:0 14px;border-radius:12px;border:0;background:{{ javaTabBg }};color:#EDF7F1;font:700 14px 'JetBrains Mono';cursor:pointer">Java</button>
+            </div>
+            <div style="flex:1;min-height:0;overflow:auto;padding:12px 0">
+              <sc-for list="{{ codeLines }}" as="l" hint-placeholder-count="4">
+                <div style="display:flex;align-items:center;min-height:30px;background:{{ l.bg }};font:500 16px/1.6 'JetBrains Mono',monospace;color:#EDF7F1">
+                  <span style="width:22px;text-align:center;color:#55D6D2;font-size:12px">{{ l.mark }}</span>
+                  <span style="width:26px;color:#6F8293;font-size:13px">{{ l.num }}</span>
+                  <span style="padding-left:{{ l.indent }};white-space:pre;color:{{ l.color }}">{{ l.text }}</span>
+                </div>
+              </sc-for>
+            </div>
+            <div style="padding:10px 14px;border-top:1px solid rgba(255,255,255,.08);font:400 13px/1.35 'Atkinson Hyperlegible';color:#AEB8B3">{{ t.codeNote }}</div>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+
+    <sc-if value="{{ predictOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;inset:0;z-index:20;background:rgba(17,21,27,.45);display:flex;align-items:flex-end;justify-content:center">
+        <div style="width:100%;max-width:520px;padding:22px 20px 26px;border-radius:28px 28px 0 0;background:#fff;display:flex;flex-direction:column;gap:16px;align-items:center;animation:agxUp .3s cubic-bezier(.16,1,.3,1)">
+          <div style="width:44px;height:5px;border-radius:3px;background:#D9DED6"></div>
+          <div style="display:flex;align-items:center;gap:12px;font-size:44px">{{ avatar }}<span style="font:800 28px system-ui;color:#5E6B65">→</span>{{ w.g }}<span style="font:800 36px Epilogue;color:#6C5CE7">?</span></div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font:800 22px/1.2 Epilogue;text-align:center;text-wrap:balance">{{ predictQ }}</span>
+            <button onClick="{{ say.predict }}" aria-label="{{ t.listen }}" style="flex:none;width:44px;height:44px;border-radius:50%;border:1px solid #D9DED6;background:#fff;font-size:18px;cursor:pointer">🔊</button>
+          </div>
+          <div style="display:flex;gap:10px;width:100%">
+            <sc-for list="{{ predictOpts }}" as="o" hint-placeholder-count="3">
+              <button onClick="{{ o.pick }}" style="flex:1;min-height:96px;border-radius:20px;border:2px solid #D9DED6;background:#FBFAF6;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer"><span style="font-size:36px">{{ o.e }}</span><span style="font:700 16px 'Atkinson Hyperlegible'">{{ o.label }}</span></button>
+            </sc-for>
+          </div>
+          <span style="font:400 14px 'Atkinson Hyperlegible';color:#5E6B65">{{ t.predictNote }}</span>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ propOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;inset:0;z-index:20;background:rgba(17,21,27,.45);display:flex;align-items:flex-end;justify-content:center">
+        <div style="width:100%;max-width:520px;max-height:92%;overflow:auto;padding:18px 18px 24px;border-radius:28px 28px 0 0;background:#fff;display:flex;flex-direction:column;gap:14px;animation:agxUp .3s cubic-bezier(.16,1,.3,1);box-shadow:0 -4px 0 #6C5CE7 inset,0 0 0 4px rgba(108,92,231,.14)">
+          <div style="align-self:center;width:44px;height:5px;border-radius:3px;background:#D9DED6"></div>
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:52px;height:52px;flex:none;border-radius:17px;background:#6C5CE7;display:flex;align-items:center;justify-content:center;gap:9px"><div style="width:10px;height:14px;border-radius:5px;background:#fff"></div><div style="width:10px;height:14px;border-radius:5px;background:#fff"></div></div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+              <span style="font:700 12px 'Atkinson Hyperlegible';color:#6C5CE7;text-transform:uppercase;letter-spacing:.6px">{{ t.proposal }}</span>
+              <span style="font:800 20px/1.15 Epilogue">{{ t.oriSuggests }}</span>
+            </div>
+            <button onClick="{{ say.proposal }}" aria-label="{{ t.listen }}" style="flex:none;width:48px;height:48px;border-radius:50%;border:1px solid #D9DED6;background:#fff;font-size:20px;cursor:pointer">🔊</button>
+          </div>
+          <sc-if value="{{ propHasBlocks }}" hint-placeholder-val="{{ true }}">
+            <div style="padding:10px;border-radius:18px;border:2px dashed #A79BFF;background:#F6F4FF;display:flex;flex-direction:column;gap:6px">
+              <span style="font:700 12px 'Atkinson Hyperlegible';color:#5B4BD0">+ {{ t.wouldAdd }}</span>
+              <sc-for list="{{ propBlocks }}" as="pb" hint-placeholder-count="1">
+                <div style="display:flex;align-items:center;gap:10px;min-height:56px;padding:4px;margin-left:{{ pb.ml }};border-radius:14px;background:{{ pb.tint }};opacity:.92">
+                  <div style="width:44px;height:44px;border-radius:12px;background:{{ pb.color }};color:#fff;display:grid;place-items:center;font:800 24px system-ui">{{ pb.icon }}</div>
+                  <span style="flex:1;font:700 17px 'Atkinson Hyperlegible'">{{ pb.label }}</span>
+                  <sc-if value="{{ pb.hasN }}"><span style="min-width:44px;height:40px;border-radius:12px;background:#fff;display:grid;place-items:center;font:800 20px Epilogue">{{ pb.n }}</span></sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+          <div style="display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:16px;background:#FBFAF6;border:1px solid #D9DED6">
+            <span style="font:800 14px 'Atkinson Hyperlegible';color:#6C5CE7;flex:none">{{ t.why }}</span>
+            <span style="font:400 16px/1.35 'Atkinson Hyperlegible';text-wrap:pretty">{{ propWhy }}</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;font:700 14px/1.3 'Atkinson Hyperlegible';color:#8A5A00"><span style="flex:none;width:26px;height:26px;border-radius:7px;background:#FFF1D2;display:grid;place-items:center">!</span>{{ t.mayBeWrong }}</div>
+          <sc-if value="{{ propHasBlocks }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <button onClick="{{ propUse }}" style="min-height:58px;border-radius:18px;border:0;background:#6C5CE7;color:#fff;font:800 19px Epilogue;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px">✓ {{ t.use }}</button>
+              <div style="display:flex;gap:8px">
+                <button onClick="{{ propChange }}" style="flex:1;min-height:54px;border-radius:18px;border:2px solid #6C5CE7;background:#fff;color:#5B4BD0;font:800 16px Epilogue;cursor:pointer">✎ {{ t.change }}</button>
+                <button onClick="{{ propReject }}" style="flex:1;min-height:54px;border-radius:18px;border:1px solid #D9DED6;background:#fff;color:#17201D;font:800 16px Epilogue;cursor:pointer">✕ {{ t.noThanks }}</button>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ propNoBlocks }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ propReject }}" style="min-height:56px;border-radius:18px;border:0;background:#17201D;color:#fff;font:800 18px Epilogue;cursor:pointer">{{ t.gotIt }}</button>
+          </sc-if>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+</sc-if>
+
+<!-- REFLECT -->
+<sc-if value="{{ isReflect }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;align-items:center;gap:18px;padding:20px 22px 26px;background:{{ w.tint }};text-align:center">
+    <div style="display:flex;align-items:center;gap:6px">
+      <span style="font-size:40px;color:#E0A100">★</span><span style="font-size:56px">{{ avatar }}</span><span style="font-size:56px">{{ w.g }}</span><span style="font-size:40px;color:#E0A100">★</span>
+    </div>
+    <h1 style="margin:0;font:800 30px/1.1 Epilogue;letter-spacing:-.5px;text-wrap:balance">{{ reflectTitle }}</h1>
+    <div style="width:100%;max-width:400px;padding:16px;border-radius:24px;background:#fff;box-shadow:0 8px 24px rgba(20,30,26,.1);display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;align-items:center;gap:10px;justify-content:center">
+        <span style="font:800 20px/1.2 Epilogue;text-wrap:balance">{{ reflectQ }}</span>
+        <button onClick="{{ say.reflect }}" aria-label="{{ t.listen }}" style="flex:none;width:44px;height:44px;border-radius:50%;border:1px solid #D9DED6;background:#fff;font-size:18px;cursor:pointer">🔊</button>
+      </div>
+      <div style="display:flex;gap:10px">
+        <sc-for list="{{ reflectOpts }}" as="r" hint-placeholder-count="3">
+          <button onClick="{{ r.pick }}" style="flex:1;min-height:100px;border-radius:20px;border:3px solid {{ r.border }};background:{{ r.tint }};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer">
+            <div style="width:48px;height:48px;border-radius:14px;background:{{ r.color }};color:#fff;display:grid;place-items:center;font:800 26px system-ui">{{ r.icon }}</div>
+            <span style="font:700 15px 'Atkinson Hyperlegible'">{{ r.label }}</span>
+          </button>
+        </sc-for>
+      </div>
+      <sc-if value="{{ hasReflectFb }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:12px 14px;border-radius:16px;background:#F6F4FF;font:700 16px/1.35 'Atkinson Hyperlegible';color:#3F33A8;text-wrap:pretty;animation:agxUp .3s">{{ reflectFb }}</div>
+      </sc-if>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+      <sc-if value="{{ hasPredLog }}" hint-placeholder-val="{{ false }}"><div style="display:flex;align-items:center;gap:8px;font:700 15px 'Atkinson Hyperlegible';color:#5E6B65"><span>{{ t.predLog }}</span><sc-for list="{{ predMarks }}" as="pm" hint-placeholder-count="1"><span style="width:30px;height:30px;border-radius:9px;background:#fff;border:1px solid #D9DED6;display:grid;place-items:center;font:800 16px system-ui;color:{{ pm.c }}">{{ pm.m }}</span></sc-for></div></sc-if>
+      <span style="font:700 16px 'Atkinson Hyperlegible';color:#5E6B65">{{ t.feel }}</span>
+      <div style="display:flex;gap:12px">
+        <sc-for list="{{ feelOpts }}" as="f" hint-placeholder-count="3">
+          <button onClick="{{ f.pick }}" aria-label="{{ f.e }}" style="width:68px;height:68px;border-radius:22px;border:3px solid {{ f.border }};background:#fff;font-size:34px;cursor:pointer;transform:{{ f.scale }};transition:transform .22s">{{ f.e }}</button>
+        </sc-for>
+      </div>
+    </div>
+    <div style="flex:1"></div>
+    <div style="display:flex;gap:10px;width:100%;max-width:400px">
+      <button onClick="{{ keepPlaying }}" style="flex:1;min-height:60px;border-radius:20px;border:1px solid #D9DED6;background:#fff;font:800 17px Epilogue;cursor:pointer">{{ t.keepPlaying }}</button>
+      <button onClick="{{ finishReflect }}" style="flex:1.3;min-height:60px;border-radius:20px;border:0;background:#17201D;color:#fff;font:800 17px Epilogue;cursor:pointer">{{ reflectDoneLabel }}</button>
+    </div>
+  </div>
+</sc-if>
+
+<!-- PROJECTS -->
+<sc-if value="{{ isProjects }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:1;min-height:0;overflow:auto;padding:12px 18px 20px;display:flex;flex-direction:column;gap:14px;width:100%;box-sizing:border-box;max-width:{{ contentMax }};margin:0 auto">
+    <div style="display:flex;align-items:center;gap:10px">
+      <h1 style="margin:0;flex:1;font:800 28px Epilogue;letter-spacing:-.5px">{{ t.projects }}</h1>
+      <span style="display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:999px;background:#E6F4EA;color:#1F6B39;font:700 13px 'Atkinson Hyperlegible'">✓ {{ t.saved }}</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat({{ projCols }},minmax(0,1fr));gap:12px">
+      <button onClick="{{ newProject }}" style="min-height:170px;border-radius:22px;border:2px dashed #B9C2BC;background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer">
+        <span style="width:56px;height:56px;border-radius:18px;background:#17201D;color:#fff;display:grid;place-items:center;font:800 30px system-ui">+</span>
+        <span style="font:800 16px Epilogue">{{ t.newProject }}</span>
+      </button>
+      <sc-for list="{{ projectCards }}" as="pc" hint-placeholder-count="3">
+        <button onClick="{{ pc.open }}" style="display:flex;flex-direction:column;gap:8px;padding:8px;border-radius:22px;border:1px solid #D9DED6;background:#fff;cursor:pointer;text-align:left;box-shadow:0 1px 2px rgba(20,30,26,.08)">
+          <div style="position:relative;width:100%;aspect-ratio:6/4;border-radius:15px;background:{{ pc.bg }};overflow:hidden">
+            <span style="position:absolute;left:{{ pc.sl }};top:{{ pc.st }};width:16.66%;height:25%;display:grid;place-items:center;font-size:20px">{{ pc.s }}</span>
+            <span style="position:absolute;left:{{ pc.gl }};top:{{ pc.gt }};width:16.66%;height:25%;display:grid;place-items:center;font-size:20px">{{ pc.g }}</span>
+            <sc-if value="{{ pc.done }}"><span style="position:absolute;right:6px;top:6px;width:26px;height:26px;border-radius:50%;background:#FFD24A;display:grid;place-items:center;font:800 14px system-ui;color:#7A5200">★</span></sc-if>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;padding:0 4px 4px">
+            <span style="flex:1;font:800 15px Epilogue">{{ pc.title }}</span>
+            <span style="font:700 12px 'JetBrains Mono';color:#5E6B65">{{ pc.count }} ▦</span>
+          </div>
+        </button>
+      </sc-for>
+    </div>
+  </div>
+</sc-if>
+
+<!-- CREATE -->
+<sc-if value="{{ isCreate }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:1;min-height:0;overflow:auto;padding:14px 18px 24px;display:flex;flex-direction:column;gap:16px;width:100%;box-sizing:border-box;max-width:{{ contentMax }};margin:0 auto">
+    <h1 style="margin:0;font:800 28px Epilogue;letter-spacing:-.5px">{{ t.create }}</h1>
+    <span style="font:700 15px 'Atkinson Hyperlegible';color:#5E6B65">{{ t.createChar }}</span>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <sc-for list="{{ avatarsCreate }}" as="a" hint-placeholder-count="6"><button onClick="{{ a.pick }}" aria-label="{{ a.e }}" style="width:72px;height:72px;border-radius:22px;border:3px solid {{ a.border }};background:{{ a.bg }};font-size:36px;cursor:pointer">{{ a.e }}</button></sc-for>
+    </div>
+    <span style="font:700 15px 'Atkinson Hyperlegible';color:#5E6B65">{{ t.createBg }}</span>
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+      <sc-for list="{{ bgOpts }}" as="b" hint-placeholder-count="4"><button onClick="{{ b.pick }}" style="min-height:84px;border-radius:20px;border:3px solid {{ b.border }};background:{{ b.bg }};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer"><span style="font-size:30px">{{ b.glyph }}</span><span style="font:700 15px 'Atkinson Hyperlegible';color:#17201D">{{ b.name }}</span></button></sc-for>
+    </div>
+    <button onClick="{{ startCreate }}" style="min-height:64px;border-radius:20px;border:0;background:#0E9F9A;color:#fff;font:800 20px Epilogue;cursor:pointer">{{ t.createStart }}</button>
+    <span style="font:400 14px 'Atkinson Hyperlegible';color:#5E6B65">{{ t.createNote }}</span>
+  </div>
+</sc-if>
+<!-- PARENTS -->
+<sc-if value="{{ isParents }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:1;min-height:0;overflow:auto;background:#FFFFFF">
+    <sc-if value="{{ gateLocked }}" hint-placeholder-val="{{ true }}">
+      <div style="min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px 28px">
+        <span style="font:700 12px 'Atkinson Hyperlegible';letter-spacing:.8px;text-transform:uppercase;color:#5E6B65">🔒 {{ t.grownOnly }}</span>
+        <span style="font:800 26px Epilogue;text-align:center">{{ t.gateQ }}</span>
+        <div style="min-width:120px;height:64px;padding:0 20px;border-radius:18px;border:2px solid {{ gateBorder }};display:grid;place-items:center;font:800 32px 'JetBrains Mono';letter-spacing:4px">{{ gateShown }}</div>
+        <div style="display:grid;grid-template-columns:repeat(3,72px);gap:10px">
+          <sc-for list="{{ keypad }}" as="k" hint-placeholder-count="12">
+            <button onClick="{{ k.press }}" style="height:60px;border-radius:16px;border:1px solid #D9DED6;background:#FBFAF6;font:700 24px Epilogue;cursor:pointer">{{ k.l }}</button>
+          </sc-for>
+        </div>
+        <span style="font:400 13px 'Atkinson Hyperlegible';color:#5E6B65;text-align:center">{{ t.gateHint }}</span>
+      </div>
+    </sc-if>
+    <sc-if value="{{ gateOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:14px 18px 24px;display:flex;flex-direction:column;gap:14px;width:100%;box-sizing:border-box;max-width:{{ contentMax }};margin:0 auto">
+        <div style="display:flex;align-items:center;gap:10px">
+          <h1 style="margin:0;flex:1;font:800 26px Epilogue;letter-spacing:-.5px">{{ t.grownups }}</h1>
+          <button onClick="{{ lockGate }}" style="min-height:44px;padding:0 14px;border-radius:12px;border:1px solid #D9DED6;background:#fff;font:700 14px 'Atkinson Hyperlegible';cursor:pointer">🔒 {{ t.exit }}</button>
+        </div>
+        <div style="padding:16px;border-radius:16px;border:1px solid #D9DED6;display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:700 15px 'Atkinson Hyperlegible';color:#5E6B65">{{ t.today }}</span><span style="font:800 22px Epilogue">18 / {{ limit }} min</span></div>
+          <div style="height:10px;border-radius:5px;background:#EDEAE2;overflow:hidden"><div style="width:{{ timePct }};height:100%;background:#0E9F9A;border-radius:5px"></div></div>
+        </div>
+        <div style="padding:16px;border-radius:16px;border:1px solid #D9DED6;display:flex;flex-direction:column;gap:12px">
+          <span style="font:700 15px 'Atkinson Hyperlegible';color:#5E6B65">{{ t.concepts }}</span>
+          <sc-for list="{{ concepts }}" as="cc" hint-placeholder-count="3">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="width:32px;height:32px;border-radius:9px;background:{{ cc.color }};color:#fff;display:grid;place-items:center;font:800 16px system-ui">{{ cc.icon }}</span>
+              <span style="flex:1;font:700 16px 'Atkinson Hyperlegible'">{{ cc.name }}</span>
+              <span style="font:700 13px 'Atkinson Hyperlegible';color:{{ cc.stateColor }}">{{ cc.state }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="padding:16px;border-radius:16px;border:1px solid rgba(108,92,231,.35);background:#FAF9FF;display:flex;flex-direction:column;gap:12px">
+          <span style="font:700 15px 'Atkinson Hyperlegible';color:#5B4BD0">{{ t.aiDecisions }}</span>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+            <div style="padding:10px;border-radius:12px;background:#fff;text-align:center"><div style="font:800 26px Epilogue">{{ stats.acc }}</div><div style="font:700 12px 'Atkinson Hyperlegible';color:#5E6B65">✓ {{ t.used }}</div></div>
+            <div style="padding:10px;border-radius:12px;background:#fff;text-align:center"><div style="font:800 26px Epilogue">{{ stats.mod }}</div><div style="font:700 12px 'Atkinson Hyperlegible';color:#5E6B65">✎ {{ t.changed }}</div></div>
+            <div style="padding:10px;border-radius:12px;background:#fff;text-align:center"><div style="font:800 26px Epilogue">{{ stats.rej }}</div><div style="font:700 12px 'Atkinson Hyperlegible';color:#5E6B65">✕ {{ t.rejected }}</div></div>
+          </div>
+          <span style="font:400 14px/1.4 'Atkinson Hyperlegible';color:#17201D">{{ t.aiNote }}</span>
+        </div>
+        <div style="border-radius:16px;border:1px solid #D9DED6;display:flex;flex-direction:column">
+          <sc-for list="{{ settings }}" as="s" hint-placeholder-count="3">
+            <button onClick="{{ s.toggle }}" style="display:flex;align-items:center;gap:12px;min-height:64px;padding:0 16px;border:0;border-bottom:1px solid #EDEAE2;background:none;cursor:pointer;text-align:left">
+              <span style="flex:1;display:flex;flex-direction:column;gap:2px"><span style="font:700 16px 'Atkinson Hyperlegible'">{{ s.name }}</span><span style="font:400 13px 'Atkinson Hyperlegible';color:#5E6B65">{{ s.sub }}</span></span>
+              <span style="width:52px;height:32px;border-radius:16px;background:{{ s.trackBg }};padding:3px;box-sizing:border-box;display:flex;justify-content:{{ s.justify }};transition:background .22s"><span style="width:26px;height:26px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25)"></span></span>
+            </button>
+          </sc-for>
+          <div style="display:flex;align-items:center;gap:12px;min-height:64px;padding:0 16px">
+            <span style="flex:1;font:700 16px 'Atkinson Hyperlegible'">{{ t.dailyLimit }}</span>
+            <button onClick="{{ limitDec }}" style="width:44px;height:44px;border-radius:12px;border:1px solid #D9DED6;background:#fff;font:800 20px system-ui;cursor:pointer">−</button>
+            <span style="min-width:62px;text-align:center;font:800 18px Epilogue">{{ limit }} min</span>
+            <button onClick="{{ limitInc }}" style="width:44px;height:44px;border-radius:12px;border:1px solid #D9DED6;background:#fff;font:800 20px system-ui;cursor:pointer">+</button>
+          </div>
+        </div>
+        <div style="padding:14px 16px;border-radius:16px;background:#F7F4EE;display:flex;gap:10px;font:400 14px/1.45 'Atkinson Hyperlegible';color:#17201D"><span style="flex:none">🔒</span><span>{{ t.privacy }}</span></div>
+      </div>
+    </sc-if>
+  </div>
+</sc-if>
+
+<sc-if value="{{ showNav }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:none;display:flex;gap:6px;padding:8px 14px {{ navPadB }};background:#fff;border-top:1px solid #D9DED6">
+    <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="3">
+      <button onClick="{{ n.go }}" style="flex:1;min-height:60px;border-radius:16px;border:0;background:{{ n.bg }};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer"><span style="font-size:24px">{{ n.e }}</span><span style="font:700 13px 'Atkinson Hyperlegible';color:{{ n.fg }}">{{ n.label }}</span></button>
+    </sc-for>
+  </div>
+</sc-if>
+
+<sc-if value="{{ hasToast }}" hint-placeholder-val="{{ false }}">
+  <div style="position:absolute;left:50%;top:70px;transform:translateX(-50%);z-index:30;padding:12px 18px;border-radius:999px;background:#17201D;color:#fff;font:700 15px 'Atkinson Hyperlegible';white-space:nowrap;box-shadow:0 8px 24px rgba(20,30,26,.25);animation:agxUp .3s">{{ toast }}</div>
+</sc-if>
+
+    </div>
+  </div>
+  </div>
+  </div>
+  <p style="margin:0;max-width:560px;text-align:center;font:400 13px/1.5 'Atkinson Hyperlegible';color:#5E6B65">{{ t.hintFooter }}</p>
+</div>
+<sc-if value="{{ dragging }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed;left:{{ ghostX }};top:{{ ghostY }};z-index:9999;pointer-events:none;display:flex;align-items:center;gap:10px;padding:6px 16px 6px 6px;border-radius:16px;background:{{ ghostTint }};box-shadow:0 18px 48px rgba(20,30,26,.3);transform:rotate(-3deg) scale(1.04)">
+    <div style="width:44px;height:44px;border-radius:12px;background:{{ ghostColor }};color:#fff;display:grid;place-items:center;font:800 24px system-ui">{{ ghostIcon }}</div>
+    <span style="font:700 17px 'Atkinson Hyperlegible'">{{ ghostLabel }}</span>
+  </div>
+</sc-if>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;companionStyle&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;mascot&quot;,&quot;card&quot;],&quot;default&quot;:&quot;mascot&quot;,&quot;tsType&quot;:&quot;'mascot'|'card'&quot;,&quot;section&quot;:&quot;Learning Companion&quot;},&quot;orientation&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;portrait&quot;,&quot;landscape&quot;],&quot;default&quot;:&quot;portrait&quot;,&quot;tsType&quot;:&quot;'portrait'|'landscape'&quot;},&quot;startScreen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;onboard&quot;,&quot;map&quot;,&quot;editor&quot;,&quot;reflect&quot;,&quot;projects&quot;,&quot;parents&quot;],&quot;default&quot;:&quot;onboard&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+const DIRS=['E','S','W','N'];
+const DV={E:[1,0],S:[0,1],W:[-1,0],N:[0,-1]};
+const ROT={E:'0deg',S:'90deg',W:'180deg',N:'270deg'};
+const COLS=6,ROWS=4;
+const MISSIONS=[{start:[0,2,'E'],goal:[4,2]},{start:[0,3,'E'],goal:[3,1]},{start:[0,0,'E'],goal:[3,3]}];
+const WORLDS={
+  space:{bg:'#1e1b4b',cell:'rgba(165,180,252,.22)',trail:'#a5b4fc',goal:'#fde68a',sprite:'#818cf8',ink:'#3730a3',tint:'#EEF0FF',s:'🚀',g:'🌎'},
+  ocean:{bg:'#b6e3f4',cell:'rgba(43,122,155,.22)',trail:'#2b7a9b',goal:'#ff9e80',sprite:'#1d6fa5',ink:'#0b5d8a',tint:'#E6F5FB',s:'🐙',g:'🪸'},
+  robots:{bg:'#e4e7eb',cell:'rgba(107,114,128,.22)',trail:'#6b7280',goal:'#fcd34d',sprite:'#64748b',ink:'#374151',tint:'#F1F2F4',s:'🤖',g:'🔋'},
+  city:{bg:'#fde8c8',cell:'rgba(146,64,14,.16)',trail:'#92400e',goal:'#86efac',sprite:'#f97316',ink:'#9a3412',tint:'#FFF4E6',s:'🛴',g:'📦'}
+};
+const META={
+  move:{icon:'➜',color:'#3F7EE8',tint:'#EAF1FD',hasN:true,min:1,max:5},
+  turnL:{icon:'↺',color:'#3F7EE8',tint:'#EAF1FD',hasN:false},
+  turnR:{icon:'↻',color:'#3F7EE8',tint:'#EAF1FD',hasN:false},
+  repeat:{icon:'⟳',color:'#8B63D9',tint:'#F1ECFB',hasN:true,min:2,max:6},
+  sound:{icon:'♪',color:'#2F9D78',tint:'#E6F4EF',hasN:false}
+};
+const STR={
+es:{hello:'¡Hola!',listen:'Escuchar',pickLang:'¿En qué idioma jugamos?',pickAvatar:'Elegí tu explorador',noName:'No necesitamos tu nombre',meetOri:'Soy Ori. Te doy ideas, pero vos decidís.',meetOri2:'A veces me equivoco. ¡Probá y mirá qué pasa!',next:'Seguir',start:'¡Empezar!',
+map:'Mapa',projects:'Mis proyectos',grownups:'Adultos',play:'Jugar',mission:'Misión',
+worlds:{space:'Espacio',ocean:'Océano',robots:'Robots',city:'Ciudad'},
+goalFor:'Llevá {s} hasta {g}',blocks:'Bloques',code:'Código',run:'Jugar',step:'Paso',stop:'Parar',reset:'Volver',now:'ahora',
+move:'mover',turnL:'girar ←',turnR:'girar →',repeat:'repetir',whenStart:'al iniciar',
+dragHere:'Arrastrá bloques acá',dropInside:'Soltá un bloque adentro',trash:'Soltá para quitar',
+predictQ:'¿Llegará {s} a {g}?',yes:'Sí',no:'No',dunno:'No sé',predictNote:'No es una prueba: es para mirar qué pasa.',
+success:'¡Llegaste a {g}!',short:'Se detuvo a {n} de {g}',wall:'¡Chocó con el borde!',passed:'¡Se pasó de {g}!',runtimeFact:'Lo que pasó de verdad',
+tell:'Contar ★',again:'Otra vez',saidYes:' · dijiste "sí"',saidNo:' · dijiste "no"',
+oriIdle:'¿Te doy una idea?',oriFail:'Mirá dónde paró. ¿Te ayudo?',oriWin:'¡Lo hiciste vos!',oriEmpty:'¿Empezamos juntos?',seeIdea:'Ver idea',
+proposal:'Propuesta',oriSuggests:'Ori sugiere',wouldAdd:'Agregaría al final',why:'¿Por qué?',mayBeWrong:'Ori puede equivocarse. Probalo y decidí vos.',use:'Usar',change:'Usar y cambiar',noThanks:'No, gracias',gotIt:'Entendido',
+whyMove:'{s} mira hacia {g} y le faltan {n} casillas.',whyTurn:'{g} está para otro lado. {s} tiene que girar primero.',whyRepeat:'Son {n} pasos iguales. Repetir hace lo mismo muchas veces.',whyWall:'{s} chocó con el borde. Probá con un número más chico.',whyPassed:'{s} se pasó. Probá con menos pasos.',whyWin:'¡Tu programa ya funciona! Probá hacerlo con menos bloques.',
+codeNote:'El código se arma solo con tus bloques. Son el mismo programa.',
+reflectTitle:'¡{s} llegó a {g}!',reflectQ:'¿Qué hizo mover a {s}?',feel:'¿Cómo te sentiste?',keepPlaying:'Seguir jugando',nextMission:'Próxima misión',backMap:'Volver al mapa',
+fbMove:'¡Sí! Cada ➜ mueve a {s} una casilla.',fbTurn:'Girar cambia hacia dónde mira. ¡Y después mover lo lleva!',fbRepeat:'Repetir hace que un bloque pase muchas veces.',
+saved:'Guardado',newProject:'Nuevo',sound:'sonar',create:'Crear',createChar:'Elegí tu personaje',createBg:'Elegí el fondo',createStart:'¡Crear!',createNote:'Sin misión: armá lo que quieras y mirá qué pasa. Podés poner una meta si querés.',undo:'Deshacer',placeGoal:'Tocá el mundo para poner la meta',explainRan:'ejecutado ✓ × {n}',explainNot:'todavía no se ejecutó',predLog:'Predicciones:',
+grownOnly:'Solo para adultos',gateQ:'¿Cuánto es 7 + 5?',gateHint:'Esto mantiene los ajustes lejos de los más chicos.',exit:'Salir',today:'Hoy',concepts:'Lo que está aprendiendo',
+conceptSeq:'Secuencia',conceptTurn:'Giros',conceptLoop:'Repetición',learned:'Logrado ★',practicing:'Practicando',soon:'Próximo',
+aiDecisions:'Decisiones sobre las ideas de Ori',used:'usadas',changed:'cambiadas',rejected:'rechazadas',aiNote:'Revisar, cambiar o rechazar una idea de la IA también es aprender.',
+oriOn:'Ori (IA)',oriOnSub:'Sugerencias que el niño decide si usar',readAloud:'Leer en voz alta',readAloudSub:'Botón 🔊 en cada pantalla',localModel:'Modelo local',localModelSub:'La IA corre en este dispositivo',dailyLimit:'Límite diario',
+privacy:'No pedimos nombre, escuela ni ubicación. No hay chat público ni mensajes. Lo que escribe el niño no se guarda.',
+toastAdded:'Bloque agregado',toastChange:'Cambiá los números si querés',toastNo:'Ok, tu programa no cambió',toastStar:'¡Ganaste una estrella!',
+hintFooter:'Arrastrá bloques desde la paleta (o tocalos para agregarlos al final). Soltá un bloque sobre la paleta para quitarlo. Ori aparece arriba a la derecha del mundo.',
+chips:{onboard:'Inicio',map:'Mapa',editor:'Editor',ai:'Propuesta IA',reflect:'Reflexión',projects:'Proyectos',parents:'Adultos'},portrait:'Vertical',landscape:'Horizontal',
+projTitle:'{w} · {n}'},
+en:{hello:'Hi!',listen:'Listen',pickLang:'Which language should we play in?',pickAvatar:'Pick your explorer',noName:'We don’t need your name',meetOri:'I’m Ori. I give ideas, but you decide.',meetOri2:'Sometimes I’m wrong. Try it and see what happens!',next:'Next',start:'Let’s go!',
+map:'Map',projects:'My projects',grownups:'Grown-ups',play:'Play',mission:'Mission',
+worlds:{space:'Space',ocean:'Ocean',robots:'Robots',city:'City'},
+goalFor:'Take {s} to {g}',blocks:'Blocks',code:'Code',run:'Run',step:'Step',stop:'Stop',reset:'Reset',now:'now',
+move:'move',turnL:'turn ←',turnR:'turn →',repeat:'repeat',whenStart:'when run starts',
+dragHere:'Drag blocks here',dropInside:'Drop a block inside',trash:'Drop to remove',
+predictQ:'Will {s} reach {g}?',yes:'Yes',no:'No',dunno:'Not sure',predictNote:'Not a test — just to watch what happens.',
+success:'You reached {g}!',short:'Stopped {n} away from {g}',wall:'Bumped into the edge!',passed:'Went past {g}!',runtimeFact:'What really happened',
+tell:'Tell ★',again:'Again',saidYes:' · you said "yes"',saidNo:' · you said "no"',
+oriIdle:'Want an idea?',oriFail:'Look where it stopped. Need help?',oriWin:'You did it yourself!',oriEmpty:'Shall we start together?',seeIdea:'See idea',
+proposal:'Proposal',oriSuggests:'Ori suggests',wouldAdd:'Would add at the end',why:'Why?',mayBeWrong:'Ori can be wrong. Try it and you decide.',use:'Use it',change:'Use & change',noThanks:'No, thanks',gotIt:'Got it',
+whyMove:'{s} is facing {g} and needs {n} more squares.',whyTurn:'{g} is the other way. {s} needs to turn first.',whyRepeat:'That’s {n} identical steps. Repeat does the same thing many times.',whyWall:'{s} bumped the edge. Try a smaller number.',whyPassed:'{s} went too far. Try fewer steps.',whyWin:'Your program already works! Try it with fewer blocks.',
+codeNote:'Code is built from your blocks. They are the same program.',
+reflectTitle:'{s} reached {g}!',reflectQ:'What made {s} move?',feel:'How did it feel?',keepPlaying:'Keep playing',nextMission:'Next mission',backMap:'Back to map',
+fbMove:'Yes! Each ➜ moves {s} one square.',fbTurn:'Turning changes where it faces. Then move takes it there!',fbRepeat:'Repeat makes a block happen many times.',
+saved:'Saved',newProject:'New',sound:'sound',create:'Create',createChar:'Pick your character',createBg:'Pick the backdrop',createStart:'Create!',createNote:'No mission: build what you want and watch what happens. You can place a goal if you want.',undo:'Undo',placeGoal:'Tap the world to place the goal',explainRan:'ran ✓ × {n}',explainNot:'has not run yet',predLog:'Predictions:',
+grownOnly:'Grown-ups only',gateQ:'What is 7 + 5?',gateHint:'This keeps settings away from little hands.',exit:'Exit',today:'Today',concepts:'What they’re learning',
+conceptSeq:'Sequence',conceptTurn:'Turns',conceptLoop:'Loops',learned:'Done ★',practicing:'Practicing',soon:'Next up',
+aiDecisions:'Decisions on Ori’s ideas',used:'used',changed:'changed',rejected:'rejected',aiNote:'Reviewing, changing or rejecting an AI idea is learning too.',
+oriOn:'Ori (AI)',oriOnSub:'Suggestions the child decides to use',readAloud:'Read aloud',readAloudSub:'🔊 button on every screen',localModel:'Local model',localModelSub:'AI runs on this device',dailyLimit:'Daily limit',
+privacy:'We never ask for name, school or location. No public chat or messages. What the child types is not stored.',
+toastAdded:'Block added',toastChange:'Change the numbers if you want',toastNo:'Ok, your program didn’t change',toastStar:'You earned a star!',
+hintFooter:'Drag blocks from the palette (or tap to add at the end). Drop a block on the palette to remove it. Ori sits at the top-right of the world.',
+chips:{onboard:'Start',map:'Map',editor:'Editor',ai:'AI proposal',reflect:'Reflection',projects:'Projects',parents:'Grown-ups'},portrait:'Portrait',landscape:'Landscape',
+projTitle:'{w} · {n}'}
+};
+function fmt(s,o){return s.replace(/\{(\w+)\}/g,(_,k)=>o[k]??'')}
+
+class Component extends DCLogic {
+  state={screen:null,onStep:0,lang:'es',avatar:'🦊',world:'space',mIdx:0,programs:{'space:0':[{id:1,type:'move',n:2}],'ocean:0':[{id:2,type:'move',n:4}],'city:1':[{id:3,type:'move',n:3},{id:4,type:'turnL'}]},nextId:10,mode:'blocks',codeLang:'agorix',run:null,predictOpen:false,prediction:null,predicted:false,propOpen:false,toast:null,drag:null,done:{'ocean:0':true},stars:1,reflectPick:null,feel:null,gateIn:'',gateOk:false,aiOn:true,readAloud:true,localModel:true,limit:30,stats:{acc:2,mod:1,rej:1},orient:null,editId:null,vw:null,history:[],freeGoals:{},predLog:[],predLogged:false,createBg:'space'};
+  componentDidMount(){this.onResize=()=>this.setState({vw:window.innerWidth});window.addEventListener('resize',this.onResize);this.onResize()}
+  componentWillUnmount(){window.removeEventListener('resize',this.onResize);clearInterval(this.timer);clearTimeout(this.toastT)}
+  key(){return this.state.world+':'+this.state.mIdx}
+  program(){return this.state.programs[this.key()]||[]}
+  mission(){const k=this.key();return this.state.mIdx===3?{start:[0,2,'E'],goal:this.state.freeGoals[k]||[5,1]}:MISSIONS[this.state.mIdx]}
+  t(){return STR[this.state.lang]}
+  idleRun(){const m=this.mission();return {status:'idle',ops:[],pc:0,x:m.start[0],y:m.start[1],d:m.start[2],trail:[],activeId:null,result:null,ev:null,total:0}}
+  getRun(){return this.state.run||this.idleRun()}
+  meta(type){const t=this.t();return {...META[type],label:t[type]}}
+  showToast(msg){clearTimeout(this.toastT);this.setState({toast:msg});this.toastT=setTimeout(()=>this.setState({toast:null}),1800)}
+  speak(text){if(!this.state.readAloud)return;try{const u=new SpeechSynthesisUtterance(text);u.lang=this.state.lang==='es'?'es-AR':'en-US';u.rate=.92;speechSynthesis.cancel();speechSynthesis.speak(u)}catch(e){}}
+  go(screen,extra){clearInterval(this.timer);this.setState({screen,run:null,predictOpen:false,propOpen:false,...(extra||{})})}
+  setProgram(p,extra){clearInterval(this.timer);this.setState(s=>({history:[...s.history.slice(-29),{k:this.key(),prog:s.programs[this.key()]||[]}],programs:{...s.programs,[this.key()]:p},run:null,predicted:false,...(extra||{})}))}
+  undo(){const h=this.state.history;if(!h.length)return;const last=h[h.length-1];clearInterval(this.timer);this.setState(s=>({history:s.history.slice(0,-1),programs:{...s.programs,[last.k]:last.prog},run:null,predicted:false}))}
+  explainBlock(id){const r=this.getRun();const b=this.findById(this.program(),id);if(!b)return;const mt=this.meta(b.type);const n=(r.seen||[]).filter(x=>x===id).length;const t=this.t();this.showToast(mt.label+(b.type==='move'?' '+b.n:'')+' · '+(n?fmt(t.explainRan,{n}):t.explainNot))}
+  playTone(){try{const C=window.AudioContext||window.webkitAudioContext;const c=new C();const o=c.createOscillator();const g=c.createGain();o.frequency.value=660;g.gain.value=.15;o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+.18)}catch(e){}}
+  logPrediction(r){const p=this.state.prediction;if(!p||p==='dunno'||this.state.predLogged)return;const ok=(p==='yes')===(r.result==='success');this.setState(s=>({predLog:[...s.predLog.slice(-7),ok],predLogged:true}))}
+  stageTap(e){if(this.state.mIdx!==3||(e.target.closest&&e.target.closest('button')))return;const rc=e.currentTarget.getBoundingClientRect();const x=Math.min(COLS-1,Math.floor((e.clientX-rc.left)/rc.width*COLS)),y=Math.min(ROWS-1,Math.floor((e.clientY-rc.top)/rc.height*ROWS));if(x===0&&y===2)return;const k=this.key();clearInterval(this.timer);this.setState(s=>({freeGoals:{...s.freeGoals,[k]:[x,y]},run:null,predicted:false}))}
+  newBlock(type){const id=this.state.nextId;this.setState({nextId:id+1});const b={id,type};if(type==='move')b.n=1;if(type==='repeat'){b.n=3;b.body=[]}return b}
+  // tree helpers
+  removeById(prog,id){let found=null;const out=[];for(const b of prog){if(b.id===id){found=b;continue}if(b.type==='repeat'){const r=this.removeById(b.body,id);if(r.found)found=r.found;out.push({...b,body:r.prog})}else out.push(b)}return {prog:out,found}}
+  mapById(prog,id,fn){return prog.map(b=>b.id===id?fn(b):(b.type==='repeat'?{...b,body:this.mapById(b.body,id,fn)}:b))}
+  findById(prog,id){for(const b of prog){if(b.id===id)return b;if(b.type==='repeat'){const f=this.findById(b.body,id);if(f)return f}}return null}
+  insertAt(prog,block,target){if(target.zone==='rep'){return prog.map(b=>b.id===target.rid?{...b,body:[...b.body.slice(0,target.index),block,...b.body.slice(target.index)]}:b)}const p=[...prog];p.splice(target.index,0,block);return p}
+  changeN(id,delta){const p=this.mapById(this.program(),id,b=>{const m=META[b.type];return {...b,n:Math.max(m.min,Math.min(m.max,b.n+delta))}});this.setProgram(p)}
+  // drag
+  startDrag(e,src){
+    if(e.target.closest&&e.target.closest('button'))return;
+    if(e.button!=null&&e.button!==0)return;
+    e.preventDefault();
+    let type=src.type;if(src.from==='prog'){const b=this.findById(this.program(),src.id);type=b&&b.type}
+    const d={src,type,x:e.clientX,y:e.clientY,x0:e.clientX,y0:e.clientY,moved:false,target:null};
+    this.setState({drag:d});
+    const mv=ev=>{const dd=this.state.drag;if(!dd)return;const moved=dd.moved||Math.hypot(ev.clientX-dd.x0,ev.clientY-dd.y0)>6;this.setState({drag:{...dd,x:ev.clientX,y:ev.clientY,moved,target:moved?this.hitTest(ev.clientX,ev.clientY,dd):null}})};
+    const up=()=>{window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);window.removeEventListener('pointercancel',up);const dd=this.state.drag;this.setState({drag:null});if(!dd)return;
+      if(!dd.moved){if(src.from==='palette'){const b=this.newBlock(src.type);this.setProgram([...this.program(),b]);this.showToast(this.t().toastAdded)}else this.explainBlock(src.id);return}
+      this.drop(dd)};
+    window.addEventListener('pointermove',mv);window.addEventListener('pointerup',up);window.addEventListener('pointercancel',up);
+  }
+  hitTest(x,y,dd){const el=document.elementFromPoint(x,y);if(!el)return null;let z=el.closest('[data-drop]');if(!z)return null;let v=z.getAttribute('data-drop');
+    if(v==='trash')return dd.src.from==='prog'?{zone:'trash'}:null;
+    if(v.startsWith('rep-')){if(dd.type==='repeat'){z=z.parentElement.closest('[data-drop="main"]');v='main'}else{const rid=+v.slice(4);if(dd.src.from==='prog'&&dd.src.id===rid)return null;const kids=[...z.querySelectorAll('[data-rblk]')];let idx=kids.length;for(let i=0;i<kids.length;i++){const r=kids[i].getBoundingClientRect();if(y<r.top+r.height/2){idx=i;break}}return {zone:'rep',rid,index:idx}}}
+    if(!z)return null;const kids=[...z.querySelectorAll('[data-mblk]')];let idx=kids.length;for(let i=0;i<kids.length;i++){const r=kids[i].getBoundingClientRect();if(y<r.top+r.height/2){idx=i;break}}return {zone:'main',index:idx}}
+  drop(dd){const tg=dd.target;if(!tg)return;let prog=this.program();
+    if(dd.src.from==='palette'){const b=this.newBlock(dd.type);this.setProgram(this.insertAt(prog,b,tg));return}
+    // compute original location for index adjust
+    const id=dd.src.id;let oldZone=null,oldIdx=-1;prog.forEach((b,i)=>{if(b.id===id){oldZone='main';oldIdx=i}if(b.type==='repeat')b.body.forEach((c,j)=>{if(c.id===id){oldZone='rep:'+b.id;oldIdx=j}})});
+    const r=this.removeById(prog,id);if(!r.found)return;
+    if(tg.zone==='trash'){this.setProgram(r.prog);return}
+    const t={...tg};const zk=t.zone==='main'?'main':'rep:'+t.rid;if(zk===oldZone&&oldIdx<t.index)t.index--;
+    this.setProgram(this.insertAt(r.prog,r.found,t))}
+  // runtime
+  flatten(prog){const ops=[];const push=(b)=>{if(b.type==='move'){for(let i=0;i<b.n;i++)ops.push({k:'move',id:b.id,type:b.type})}else ops.push({k:b.type,id:b.id,type:b.type})};
+    for(const b of prog){if(b.type==='repeat'){for(let i=0;i<b.n;i++)for(const c of b.body)push(c)}else push(b)}return ops}
+  apply(r,op){const m=this.mission();let {x,y,d}=r;const t=this.t();let result=null;let ev;
+    if(op.k==='move'){const [dx,dy]=DV[d];const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=COLS||ny>=ROWS){result='wall'}else{x=nx;y=ny}ev={icon:'➜',text:t.move}}
+    else if(op.k==='turnL'){d=DIRS[(DIRS.indexOf(d)+3)%4];ev={icon:'↺',text:t.turnL}}
+    else if(op.k==='turnR'){d=DIRS[(DIRS.indexOf(d)+1)%4];ev={icon:'↻',text:t.turnR}}
+    else if(op.k==='sound'){this.playTone();ev={icon:'♪',text:t.sound}}
+    const trail=[...r.trail,r.x+','+r.y];return {...r,x,y,d,trail,pc:r.pc+1,activeId:op.id,seen:[...(r.seen||[]),op.id],ev:{...ev,text:`${r.pc+1}/${r.total} · ${ev.text}`},result}}
+  finish(r){const m=this.mission();let result=r.result;if(!result){if(r.x===m.goal[0]&&r.y===m.goal[1])result='success';else if(r.trail.includes(m.goal[0]+','+m.goal[1]))result='passed';else result='short'}return {...r,status:'done',result,activeId:null}}
+  stepOnce(){let r=this.getRun();if(r.status==='done'||r.status==='idle'||r.status==='stopped'&&r.pc>=r.ops.length){const ops=this.flatten(this.program());r={...this.idleRun(),ops,total:ops.length,status:'stepping'}}
+    if(r.pc>=r.ops.length){r=this.finish(r)}else{r=this.apply(r,r.ops[r.pc]);if(r.result==='wall')r=this.finish(r);else if(r.pc>=r.ops.length&&r.status!=='stepping')r=this.finish(r)}
+    if(r.status==='done')this.logPrediction(r);if(r.status==='done'&&r.result==='success')this.onSuccess();
+    this.setState({run:r});return r}
+  onSuccess(){}
+  startAuto(){clearInterval(this.timer);const ops=this.flatten(this.program());this.setState({run:{...this.idleRun(),ops,total:ops.length,status:'running'}},()=>{this.timer=setInterval(()=>{const r=this.stepOnce();if(r.status==='done')clearInterval(this.timer)},520)})}
+  run(){if(!this.state.predicted){this.setState({predictOpen:true});return}this.startAuto()}
+  stepBtn(){clearInterval(this.timer);let r=this.getRun();if(r.status==='running')r={...r,status:'stepping'};if(r.status==='stepping'&&r.pc>=r.ops.length){this.setState({run:this.finish(r)});return}this.state.run=r;this.stepOnce()}
+  // proposal
+  simulate(){const m=this.mission();const ops=this.flatten(this.program());let r={...this.idleRun(),ops,total:ops.length,status:'stepping'};for(const op of ops){r=this.apply(r,op);if(r.result)break}return this.finish(r)}
+  computeProposal(){const t=this.t(),w=WORLDS[this.state.world],m=this.mission();const r=this.simulate();const o={s:w.s,g:w.g};
+    if(r.result==='success')return {blocks:[],why:fmt(t.whyWin,o)};
+    if(r.result==='wall')return {blocks:[],why:fmt(t.whyWall,o)};
+    if(r.result==='passed')return {blocks:[],why:fmt(t.whyPassed,o)};
+    const dx=m.goal[0]-r.x,dy=m.goal[1]-r.y;const [fx,fy]=DV[r.d];
+    let n=0;if(fx!==0&&Math.sign(dx)===fx)n=Math.abs(dx);else if(fy!==0&&Math.sign(dy)===fy)n=Math.abs(dy);
+    if(n>0){if(n>=3&&this.state.mIdx===2)return {blocks:[{type:'repeat',n,body:[{type:'move',n:1}]}],why:fmt(t.whyRepeat,{...o,n})};return {blocks:[{type:'move',n:Math.min(5,n)}],why:fmt(t.whyMove,{...o,n})}}
+    const target=dx!==0?(dx>0?'E':'W'):(dy>0?'S':'N');const i=DIRS.indexOf(r.d);const type=DIRS[(i+3)%4]===target?'turnL':'turnR';
+    return {blocks:[{type}],why:fmt(t.whyTurn,o)}}
+  materialize(blocks){let id=this.state.nextId;const mk=b=>{const nb={...b,id:id++};if(b.body)nb.body=b.body.map(mk);return nb};const out=blocks.map(mk);this.setState({nextId:id});return out}
+  acceptProposal(mode){const p=this.computeProposal();const blocks=this.materialize(p.blocks);const t=this.t();this.setProgram([...this.program(),...blocks],{propOpen:false,editId:mode==='mod'?blocks[0]&&blocks[0].id:null,stats:{...this.state.stats,[mode]:this.state.stats[mode]+1}});this.showToast(mode==='mod'?t.toastChange:t.toastAdded);if(mode==='mod')setTimeout(()=>this.setState({editId:null}),2600)}
+  finishMission(next){const k=this.key();const wasDone=this.state.done[k];const extra={done:{...this.state.done,[k]:true},stars:this.state.stars+(wasDone?0:1),reflectPick:null,feel:null};if(next&&this.state.mIdx<2)this.go('editor',{...extra,mIdx:this.state.mIdx+1,predicted:false});else this.go('map',extra);if(!wasDone)this.showToast(this.t().toastStar)}
+
+  renderVals(){
+    const s=this.state,t=this.t(),w=WORLDS[s.world],m=this.mission();
+    const screen=s.screen??this.props.startScreen??'onboard';
+    const vw=s.vw||1280;const tier=vw<700?'phone':(vw<1100?'tablet':'desktop');const phone=tier==='phone';
+    const orient=s.orient??(phone?(this.props.orientation??'portrait'):'landscape');const portrait=orient==='portrait';
+    const frameW=phone?(portrait?'390px':'844px'):(portrait?'min(768px, calc(100vw - 80px))':(tier==='tablet'?'min(1024px, calc(100vw - 80px))':'min(1200px, calc(100vw - 80px))'));
+    const frameH=phone?(portrait?'844px':'390px'):(portrait?'max(560px, min(1024px, calc(100vh - 220px)))':(tier==='tablet'?'max(560px, min(768px, calc(100vh - 220px)))':'max(560px, min(800px, calc(100vh - 220px)))'));
+    const compStyle=this.props.companionStyle??'mascot';
+    const r=this.getRun();const prog=this.program();const o={s:s.avatar,g:w.g};
+    const say={lang:()=>this.speak(t.hello+' '+t.pickLang),avatar:()=>this.speak(t.pickAvatar+'. '+t.noName),ori:()=>this.speak(t.meetOri+' '+t.meetOri2),map:()=>this.speak(t.worlds[s.world]),goal:()=>this.speak(fmt(t.goalFor,{s:'',g:''})),predict:()=>this.speak(fmt(t.predictQ,{s:'',g:''})),proposal:()=>this.speak(t.oriSuggests+'. '+this.computeProposal().why+' '+t.mayBeWrong),reflect:()=>this.speak(fmt(t.reflectQ,{s:''}))};
+    const chipDefs=[['onboard',()=>this.go('onboard',{onStep:0})],['map',()=>this.go('map')],['editor',()=>this.go('editor')],['ai',()=>{this.go('editor');setTimeout(()=>this.setState({propOpen:true}),30)}],['reflect',()=>this.go('reflect',{reflectPick:null,feel:null})],['projects',()=>this.go('projects')],['parents',()=>this.go('parents')]];
+    const curChip=s.propOpen?'ai':screen;
+    const screenChips=chipDefs.map(([k,go])=>({label:t.chips[k],go,bg:curChip===k?'#17201D':'#fff',fg:curChip===k?'#fff':'#17201D',border:curChip===k?'#17201D':'#D9DED6'}));
+    // onboarding
+    const onDots=[0,1,2].map(i=>({w:i===s.onStep?'30px':'10px',bg:i<=s.onStep?'#6C5CE7':'#D9DED6'}));
+    const avatars=['🦊','🐼','🐸','🦁','🐨','🦄'].map(e=>({e,pick:()=>{this.setState({avatar:e})},border:s.avatar===e?'#6C5CE7':'transparent',bg:s.avatar===e?'#F6F4FF':'#fff',scale:s.avatar===e?'scale(1.06)':'none'}));
+    // map
+    const worldTabs=Object.keys(WORLDS).map(id=>({glyph:WORLDS[id].s,name:t.worlds[id],bg:WORLDS[id].bg,pick:()=>this.setState({world:id,run:null}),ring:s.world===id?`0 0 0 4px #fff,0 0 0 7px ${WORLDS[id].ink}`:'0 1px 2px rgba(20,30,26,.08)',fg:s.world===id?WORLDS[id].ink:'#5E6B65'}));
+    let firstOpen=MISSIONS.findIndex((_,i)=>!s.done[s.world+':'+i]);if(firstOpen<0)firstOpen=2;
+    const aligns=['flex-start','center','flex-end'];
+    const missionNodes=MISSIONS.map((_,i)=>{const done=!!s.done[s.world+':'+i];const current=i===firstOpen;const locked=i>firstOpen&&!done;
+      return {done,current,notCurrent:!current,locked,align:aligns[i%3],hasConnector:i>0,connMargin:i%3===0?'0 0 0 44px':(i%3===1?'0':'0 44px 0 0'),connColor:w.ink,
+      size:current?'112px':'88px',fs:current?'50px':'38px',bg:locked?'#E7E5DF':(current?w.bg:'#fff'),border:locked?'#E7E5DF':(current?'#fff':w.goal),
+      glyph:locked?'🔒':(i===2?w.g:s.avatar),label:`${t.mission} ${i+1}`,aria:`${t.mission} ${i+1}`,cursor:locked?'default':'pointer',anim:current?'agxPulse 1.6s ease-out infinite':'none',
+      open:()=>{if(!locked)this.go('editor',{mIdx:i,predicted:false})}}});
+    // editor
+    const dragging=!!(s.drag&&s.drag.moved);const dtg=dragging?s.drag.target:null;const dragId=dragging&&s.drag.src.from==='prog'?s.drag.src.id:null;
+    const glowFor=id=>r.activeId===id?'0 0 0 4px rgba(14,159,154,.45)':(s.editId===id?'0 0 0 4px rgba(108,92,231,.4)':'0 1px 2px rgba(20,30,26,.08)');
+    const bv=(b,i,zone)=>{const mt=this.meta(b.type);return {id:b.id,icon:mt.icon,label:mt.label,color:mt.color,tint:mt.tint,hasN:mt.hasN,n:b.n,isRepeat:b.type==='repeat',notRepeat:b.type!=='repeat',glow:glowFor(b.id),activeMark:r.activeId===b.id,ranMark:(r.seen||[]).includes(b.id)&&r.activeId!==b.id,opacity:dragId===b.id?.35:1,
+      inc:()=>this.changeN(b.id,1),dec:()=>this.changeN(b.id,-1),onDown:e=>this.startDrag(e,{from:'prog',id:b.id}),
+      slot:!!(dtg&&((zone==='main'&&dtg.zone==='main'&&dtg.index===i)||(zone!=='main'&&dtg.zone==='rep'&&dtg.rid===zone&&dtg.index===i)))}};
+    const mainItems=prog.map((b,i)=>{const v=bv(b,i,'main');if(b.type==='repeat'){v.body=b.body.map((c,j)=>bv(c,j,b.id));v.bodyEmpty=b.body.length===0;v.bodySlotEnd=!!(dtg&&dtg.zone==='rep'&&dtg.rid===b.id&&dtg.index===b.body.length&&b.body.length>0);v.bodyBorder=dtg&&dtg.zone==='rep'&&dtg.rid===b.id?'#3F7EE8':'rgba(139,99,217,.35)'}else{v.body=[]}return v});
+    const mainSlotEnd=!!(dtg&&dtg.zone==='main'&&dtg.index===prog.length);
+    const palette=['move','turnL','turnR','repeat','sound'].map(type=>{const mt=this.meta(type);return {...mt,onDown:e=>this.startDrag(e,{from:'palette',type})}});
+    const cells=[];const trailSet=new Set(r.trail);for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++)cells.push({trail:trailSet.has(x+','+y)&&!(x===r.x&&y===r.y)});
+    const running=r.status==='running';const hasResult=r.status==='done';
+    let resTitle='',resIcon='',resColor='',resBtn='',resAction=null,resBtnBg='#17201D',resShapeRadius='50%';
+    if(hasResult){const dist=Math.abs(m.goal[0]-r.x)+Math.abs(m.goal[1]-r.y);
+      if(r.result==='success'){resTitle=fmt(t.success,o);resIcon='★';resColor='#2E8F4E';resBtn=t.tell;resBtnBg='#2E8F4E';resAction=()=>this.go('reflect',{reflectPick:null,feel:null})}
+      else{resIcon='↻';resColor='#B87503';resShapeRadius='12px';resBtn=t.again;resAction=()=>this.setState({run:null});resTitle=r.result==='wall'?t.wall:r.result==='passed'?fmt(t.passed,o):fmt(t.short,{...o,n:dist})}}
+    const predictNote=hasResult&&s.prediction&&s.prediction!=='dunno'?(s.prediction==='yes'?t.saidYes:t.saidNo):'';
+    let oriBubble=prog.length===0?t.oriEmpty:t.oriIdle;if(hasResult)oriBubble=r.result==='success'?t.oriWin:t.oriFail;
+    const showMascot=s.aiOn&&compStyle==='mascot'&&!running&&!hasResult;
+    const showCard=s.aiOn&&compStyle==='card'&&!running;
+    // code
+    const LG=s.codeLang;const codeLines=[];const add=(text,indent,id,color)=>codeLines.push({text,indent:(indent*24)+'px',num:codeLines.length+1,bg:id&&r.activeId===id?'rgba(14,159,154,.28)':'transparent',mark:id&&r.activeId===id?'▶':'',color:color||'#EDF7F1'});
+    const isPy=LG==='python',isNd=LG==='node',isJv=LG==='java';const es=s.lang==='es';
+    const base=isJv?2:(isPy||isNd?0:1);
+    if(LG==='agorix')add(t.whenStart,0,null,'#F2B15D');
+    if(isNd)add('// '+t.whenStart,0,null,'#6F8293');
+    if(isJv){add('public class Programa {',0,null,'#9FB3C8');add('public static void main(String[] args) {',1,null,'#9FB3C8')}
+    const line=(b,ind)=>{if(b.type==='sound'){add(LG==='python'?'play_sound()':(LG==='agorix'?(es?'sonar':'sound'):'playSound();'),ind,b.id,'#F2B15D');return}
+      if(isPy){if(b.type==='move')add(`move(${b.n})`,ind,b.id);else if(b.type==='turnL')add('turn_left()',ind,b.id);else if(b.type==='turnR')add('turn_right()',ind,b.id);else{add(`for _ in range(${b.n}):`,ind,b.id,'#B79CFF');b.body.forEach(c=>line(c,ind+1));if(!b.body.length)add('pass',ind+1,null,'#6F8293')}}
+      else if(isNd){if(b.type==='move')add(`move(${b.n});`,ind,b.id);else if(b.type==='turnL')add('turnLeft();',ind,b.id);else if(b.type==='turnR')add('turnRight();',ind,b.id);else{add(`for (let i = 0; i < ${b.n}; i++) {`,ind,b.id,'#B79CFF');b.body.forEach(c=>line(c,ind+1));add('}',ind,null,'#B79CFF')}}
+      else if(isJv){if(b.type==='move')add(`move(${b.n});`,ind,b.id);else if(b.type==='turnL')add('turnLeft();',ind,b.id);else if(b.type==='turnR')add('turnRight();',ind,b.id);else{add(`for (int i = 0; i < ${b.n}; i++) {`,ind,b.id,'#B79CFF');b.body.forEach(c=>line(c,ind+1));add('}',ind,null,'#B79CFF')}}
+      else{if(b.type==='move')add(`${es?'mover':'move'} ${b.n}`,ind,b.id);else if(b.type==='turnL')add(es?'girar izquierda':'turn left',ind,b.id);else if(b.type==='turnR')add(es?'girar derecha':'turn right',ind,b.id);else{add(es?`repetir ${b.n} veces`:`repeat ${b.n} times`,ind,b.id,'#B79CFF');b.body.forEach(c=>line(c,ind+1))}}};
+    prog.forEach(b=>line(b,base));
+    if(isJv){add('}',1,null,'#9FB3C8');add('}',0,null,'#9FB3C8')}
+    if(isPy&&!prog.length)add('# …',0,null,'#6F8293');
+    if((isNd||isJv)&&!prog.length)add('// …',base,null,'#6F8293');
+    // proposal
+    const prop=s.propOpen?this.computeProposal():{blocks:[],why:''};
+    const propBlocks=[];prop.blocks.forEach(b=>{const mt=this.meta(b.type);propBlocks.push({...mt,n:b.n,ml:'0px'});(b.body||[]).forEach(c=>{const mc=this.meta(c.type);propBlocks.push({...mc,n:c.n,ml:'26px'})})});
+    // drag ghost
+    let ghost={};if(dragging){const mt=this.meta(s.drag.type);ghost={ghostX:(s.drag.x-30)+'px',ghostY:(s.drag.y-28)+'px',ghostIcon:mt.icon,ghostLabel:mt.label,ghostColor:mt.color,ghostTint:mt.tint}}
+    // reflect
+    const reflectOpts=['move','turnL','repeat'].map(type=>{const mt=this.meta(type);return {...mt,border:s.reflectPick===type?mt.color:'transparent',pick:()=>this.setState({reflectPick:type})}});
+    const fbMap={move:t.fbMove,turnL:t.fbTurn,repeat:t.fbRepeat};
+    const feelOpts=['😀','🙂','😕'].map(e=>({e,pick:()=>this.setState({feel:e}),border:s.feel===e?'#6C5CE7':'#D9DED6',scale:s.feel===e?'scale(1.1)':'none'}));
+    // projects
+    const projectCards=Object.keys(s.programs).filter(k=>s.programs[k].length).map(k=>{const [wid,mi]=k.split(':');const ww=WORLDS[wid],mm=+mi===3?{start:[0,2,'E'],goal:s.freeGoals[k]||[5,1]}:MISSIONS[+mi];const count=this.flatten(s.programs[k]).length;
+      return {title:fmt(t.projTitle,{w:t.worlds[wid],n:+mi+1}),bg:ww.bg,s:s.avatar,g:ww.g,sl:(mm.start[0]/COLS*100)+'%',st:(mm.start[1]/ROWS*100)+'%',gl:(mm.goal[0]/COLS*100)+'%',gt:(mm.goal[1]/ROWS*100)+'%',count:s.programs[k].length,done:!!s.done[k],open:()=>this.go('editor',{world:wid,mIdx:+mi,predicted:false})}});
+    // parents
+    const keypad=['1','2','3','4','5','6','7','8','9','⌫','0','✓'].map(l=>({l,press:()=>{if(l==='⌫')this.setState({gateIn:s.gateIn.slice(0,-1)});else if(l==='✓'){if(s.gateIn==='12')this.setState({gateOk:true,gateIn:''});else this.setState({gateIn:''})}else if(s.gateIn.length<3){const v=s.gateIn+l;this.setState({gateIn:v,gateOk:v==='12'})}}}));
+    const doneAny=i=>Object.keys(WORLDS).some(wid=>s.done[wid+':'+i]);
+    const cstate=i=>doneAny(i)?[t.learned,'#2E8F4E']:(i===0||doneAny(i-1)?[t.practicing,'#B87503']:[t.soon,'#5E6B65']);
+    const concepts=[['➜','#3F7EE8',t.conceptSeq,0],['↺','#2F9D78',t.conceptTurn,1],['⟳','#8B63D9',t.conceptLoop,2]].map(([icon,color,name,i])=>{const [st,sc]=cstate(i);return {icon,color,name,state:st,stateColor:sc}});
+    const tog=(name,sub,on,key)=>({name,sub,trackBg:on?'#0E9F9A':'#C9CFC9',justify:on?'flex-end':'flex-start',toggle:()=>this.setState({[key]:!on})});
+    const settings=[tog(t.oriOn,t.oriOnSub,s.aiOn,'aiOn'),tog(t.readAloud,t.readAloudSub,s.readAloud,'readAloud'),tog(t.localModel,t.localModelSub,s.localModel,'localModel')];
+    const navItems=[['map','🗺️',t.map],['create','🎨',t.create],['projects','📁',t.projects],['parents','👪',t.grownups]].map(([k,e,label])=>({e,label,go:()=>this.go(k),bg:screen===k?'#F1EEE6':'transparent',fg:screen===k?'#17201D':'#5E6B65'}));
+    const lastStep=s.onStep===2;
+    return {
+      t,w,say,screenChips,stars:s.stars,avatar:s.avatar,stats:s.stats,limit:s.limit,
+      setEs:()=>this.setState({lang:'es'}),setEn:()=>this.setState({lang:'en'}),
+      esBg:s.lang==='es'?'#17201D':'transparent',esFg:s.lang==='es'?'#fff':'#17201D',enBg:s.lang==='en'?'#17201D':'transparent',enFg:s.lang==='en'?'#fff':'#17201D',
+      esCardBorder:s.lang==='es'?'#6C5CE7':'#D9DED6',enCardBorder:s.lang==='en'?'#6C5CE7':'#D9DED6',
+      toggleOrient:()=>this.setState({orient:portrait?'landscape':'portrait'}),orientLabel:portrait?t.landscape:t.portrait,
+      portrait,showStatus:phone&&portrait,frameW,frameH,
+      statusBg:screen==='map'||screen==='reflect'?w.tint:(screen==='parents'?'#fff':'#F7F4EE'),statusFg:'#17201D',
+      isOnboard:screen==='onboard',isMap:screen==='map',isEditor:screen==='editor',isReflect:screen==='reflect',isProjects:screen==='projects',isParents:screen==='parents',
+      onDots,onStep0:s.onStep===0,onStep1:s.onStep===1,onStep2:s.onStep===2,onCanBack:s.onStep>0,
+      onBack:()=>this.setState({onStep:Math.max(0,s.onStep-1)}),onNext:()=>{if(lastStep)this.go('map');else this.setState({onStep:s.onStep+1})},onNextLabel:lastStep?t.start:t.next,
+      avatars,worldTabs,worldName:t.worlds[s.world],missionNodes,
+      goMap:()=>this.go('map'),goalText:s.mIdx===3?t.placeGoal:fmt(t.goalFor,o),
+      setBlocks:()=>this.setState({mode:'blocks'}),setCode:()=>this.setState({mode:'code'}),isBlocks:s.mode==='blocks',isCode:s.mode==='code',
+      blocksBg:s.mode==='blocks'?'#fff':'transparent',codeBg:s.mode==='code'?'#fff':'transparent',blocksSh:s.mode==='blocks'?'0 1px 2px rgba(20,30,26,.12)':'none',codeSh:s.mode==='code'?'0 1px 2px rgba(20,30,26,.12)':'none',
+      topPad:phone&&portrait?'6px 12px 10px':'10px 16px 8px',editorDir:phone&&portrait?'column':'row',leftW:phone&&portrait?'100%':(tier==='tablet'&&portrait?'46%':'44%'),ctrlH:phone?(portrait?'60px':'52px'):'60px',palH:phone?(portrait?'80px':'70px'):'80px',
+      cells,goalL:(m.goal[0]/COLS*100)+'%',goalT:(m.goal[1]/ROWS*100)+'%',spriteL:(r.x/COLS*100)+'%',spriteT:(r.y/ROWS*100)+'%',spriteRot:ROT[r.d],
+      spriteGlow:r.activeId?'0 0 0 4px rgba(85,214,210,.7)':'0 4px 10px rgba(0,0,0,.18)',goalRing:hasResult&&r.result==='success'?'0 0 0 5px #fff,0 0 0 9px #2E8F4E':'0 0 0 3px rgba(255,255,255,.6)',
+      showEvidence:!!r.ev&&!hasResult,evIcon:r.ev?r.ev.icon:'',evText:r.ev?r.ev.text:'',
+      showMascot,showCard,oriBubble,openProposal:()=>this.setState({propOpen:true}),
+      hasResult,resTitle,resIcon,resColor,resBtn,resAction,resBtnBg,resShapeRadius,predictNote,
+      running,notRunning:!running,run:()=>this.run(),stop:()=>{clearInterval(this.timer);this.setState({run:{...r,status:'stopped',activeId:null}})},step:()=>this.stepBtn(),reset:()=>{clearInterval(this.timer);this.setState({run:null,predicted:false})},
+      mainItems,mainSlotEnd,programEmpty:prog.length===0&&!dragging,palette,dragProg:dragging&&!!dragId,trashBg:dtg&&dtg.zone==='trash'?'#C2413B':'rgba(194,65,59,.82)',
+      codeLines,setAgorix:()=>this.setState({codeLang:'agorix'}),setPython:()=>this.setState({codeLang:'python'}),agxTabBg:LG==='agorix'?'rgba(255,255,255,.12)':'transparent',pyTabBg:isPy?'rgba(255,255,255,.12)':'transparent',nodeTabBg:isNd?'rgba(255,255,255,.12)':'transparent',javaTabBg:isJv?'rgba(255,255,255,.12)':'transparent',setNode:()=>this.setState({codeLang:'node'}),isCreate:screen==='create',avatarsCreate:avatars,bgOpts:Object.keys(WORLDS).map(id=>({name:t.worlds[id],glyph:WORLDS[id].s,bg:s.createBg===id?WORLDS[id].tint:'#fff',border:s.createBg===id?WORLDS[id].ink:'#D9DED6',pick:()=>this.setState({createBg:id})})),startCreate:()=>this.go('editor',{world:s.createBg,mIdx:3,predicted:false}),undo:()=>this.undo(),noHistory:s.history.length===0,undoOp:s.history.length?'1':'.35',stageTap:e=>this.stageTap(e),predMarks:s.predLog.map(ok=>({m:ok?'✓':'✗',c:ok?'#2E8F4E':'#C2413B'})),hasPredLog:s.predLog.length>0,codeLangLabel:({agorix:'Agorix Code',python:'Python',node:'Node',java:'Java'})[LG],setJava:()=>this.setState({codeLang:'java'}),
+      predictOpen:s.predictOpen,predictQ:fmt(t.predictQ,o),predictOpts:[['yes','👍',t.yes],['no','👎',t.no],['dunno','🤔',t.dunno]].map(([k,e,label])=>({e,label,pick:()=>{this.setState({predictOpen:false,predicted:true,prediction:k,predLogged:false},()=>this.startAuto())}})),
+      propOpen:s.propOpen,propHasBlocks:propBlocks.length>0,propNoBlocks:propBlocks.length===0,propBlocks,propWhy:prop.why,
+      propUse:()=>this.acceptProposal('acc'),propChange:()=>this.acceptProposal('mod'),propReject:()=>{const has=propBlocks.length>0;this.setState({propOpen:false,stats:has?{...s.stats,rej:s.stats.rej+1}:s.stats});if(has)this.showToast(t.toastNo)},
+      dragging,...ghost,
+      reflectTitle:fmt(t.reflectTitle,o),reflectQ:fmt(t.reflectQ,o),reflectOpts,hasReflectFb:!!s.reflectPick,reflectFb:s.reflectPick?fmt(fbMap[s.reflectPick],o):'',feelOpts,
+      keepPlaying:()=>{const k=this.key();this.setState({done:{...s.done,[k]:true},stars:s.stars+(s.done[k]?0:1)});this.go('editor')},finishReflect:()=>this.finishMission(true),reflectDoneLabel:s.mIdx<2?t.nextMission:t.backMap,
+      projCols:phone?(portrait?2:4):(portrait?3:4),contentMax:phone?'100%':'760px',projectCards,newProject:()=>this.go('editor',{mIdx:3,predicted:false}),
+      gateLocked:!s.gateOk,gateOpen:s.gateOk,gateShown:s.gateIn||'_ _',gateBorder:s.gateIn.length>=2&&s.gateIn!=='12'?'#C2413B':'#D9DED6',keypad,lockGate:()=>this.setState({gateOk:false,gateIn:''}),
+      timePct:Math.min(100,18/s.limit*100)+'%',concepts,settings,limitDec:()=>this.setState({limit:Math.max(10,s.limit-5)}),limitInc:()=>this.setState({limit:Math.min(90,s.limit+5)}),
+      showNav:screen==='map'||screen==='create'||screen==='projects'||screen==='parents',navItems,navPadB:phone&&portrait?'26px':'10px',
+      hasToast:!!s.toast,toast:s.toast||''
+    };
+  }
+}
+</script>
+</body>
+</html>

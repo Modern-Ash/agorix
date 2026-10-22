@@ -38,6 +38,7 @@ export default tseslint.config(
       "**/.vscode-test/**",
       ".venv/**",
       ".agora/**",
+      "prototipo/**",
       "ai-sdlc/**",
     ],
   },
