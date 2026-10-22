@@ -13,6 +13,7 @@ interface Props {
   readonly avatar: KidsAvatar;
   readonly world: KidsWorld;
   readonly progress: KidsProgress;
+  readonly readAloud?: boolean;
   readonly onWorld: (world: KidsWorld) => void;
   readonly onMission: (index: 0 | 1 | 2) => void;
 }
@@ -28,7 +29,16 @@ const STATE_LABEL = { learned: "learned", practicing: "practicing", soon: "soon"
 const ALIGN = ["flex-start", "center", "flex-end"] as const;
 
 /** World tabs, three missions in a zigzag (current one pulsing, locks), concept chips and stars. */
-export function MapScreen({ t, locale, avatar, world, progress, onWorld, onMission }: Props) {
+export function MapScreen({
+  t,
+  locale,
+  avatar,
+  world,
+  progress,
+  readAloud = true,
+  onWorld,
+  onMission,
+}: Props) {
   const style = KIDS_WORLD_STYLES[world];
   const names = kidsTable(locale, "worlds");
   const concepts = conceptStates(progress);
@@ -68,14 +78,16 @@ export function MapScreen({ t, locale, avatar, world, progress, onWorld, onMissi
             );
           })}
         </ul>
-        <button
-          type="button"
-          className="kids-round"
-          aria-label={t("listen")}
-          onClick={() => speak(names[world] ?? "", locale)}
-        >
-          <span aria-hidden="true">🔊</span>
-        </button>
+        {readAloud ? (
+          <button
+            type="button"
+            className="kids-round"
+            aria-label={t("listen")}
+            onClick={() => speak(names[world] ?? "", locale)}
+          >
+            <span aria-hidden="true">🔊</span>
+          </button>
+        ) : null}
       </header>
 
       <div className="kids-world-tabs" role="group" aria-label={t("map")}>

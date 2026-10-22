@@ -12,6 +12,17 @@ interface SessionStorageLike {
   setItem(key: string, value: string): void;
 }
 
+export function readKidsEvidenceEvents(
+  storage: SessionStorageLike | undefined = defaultStorage(),
+): readonly LearningEvidenceEvent[] {
+  try {
+    const parsed = JSON.parse(storage?.getItem(KEY) ?? "[]") as unknown;
+    return Array.isArray(parsed) ? parsed.map((item) => validateEvidenceEvent(item)) : [];
+  } catch {
+    return [];
+  }
+}
+
 function defaultStorage(): SessionStorageLike | undefined {
   try {
     return typeof window === "undefined" ? undefined : window.sessionStorage;
@@ -25,13 +36,7 @@ export function recordKidsReflection(
   kind: ReflectionKind,
   storage: SessionStorageLike | undefined = defaultStorage(),
 ): LearningEvidenceEvent {
-  let prior: LearningEvidenceEvent[] = [];
-  try {
-    const parsed = JSON.parse(storage?.getItem(KEY) ?? "[]") as unknown;
-    if (Array.isArray(parsed)) prior = parsed.map((item) => validateEvidenceEvent(item));
-  } catch {
-    prior = [];
-  }
+  const prior = readKidsEvidenceEvents(storage);
   const sequence = (prior.at(-1)?.sequence ?? 0) + 1;
   const event = validateEvidenceEvent({
     schema: EVIDENCE_EVENT_SCHEMA_VERSION,

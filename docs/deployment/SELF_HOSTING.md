@@ -227,10 +227,11 @@ repository ships one (`apps/tutor-api`, issue #348) and a container recipe in
 Browser -> web container (nginx) -> /api/tutor/* -> tutor container (not published)
 ```
 
-- `GET /api/tutor/health` returns `{"configured":boolean,"available":boolean}`.
-  The Web client turns it into "Modo local", "IA activa" or "IA no disponible
-  ahora". With the service absent, nginx answers "not configured" so the app
-  stays in normal local mode.
+- `GET /api/tutor/health` returns `configured`, `available`, `providerInUse`
+  (`deterministic` or `openai-compatible`) and `lastErrorClass` (a bounded code
+  or `null`). Agorix Kids shows these details only behind the adults gate. The
+  legacy Web status card still reads the first two fields until Kids replaces
+  the default route. With the service absent, the app stays in local mode.
 - `POST /api/tutor/respond` accepts a `TutorRequest` (JSON, at most 64 KB,
   same-origin only) and returns `{ response, source }`. Any provider failure
   falls back to the deterministic response; provider URL, token and error

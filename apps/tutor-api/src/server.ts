@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { validateTutorRequest } from "@agorix/tutor-contract";
-import type { ProviderRuntimeFetch } from "@agorix/provider-runtime";
+import type { ProviderRuntimeErrorCode, ProviderRuntimeFetch } from "@agorix/provider-runtime";
 import {
   isTutorAdapterConfigured,
   requestTutorResponse,
@@ -21,6 +21,8 @@ export interface TutorServerOptions {
 interface Health {
   readonly configured: boolean;
   readonly available: boolean;
+  readonly providerInUse: "deterministic" | "openai-compatible";
+  readonly lastErrorClass: ProviderRuntimeErrorCode | null;
 }
 
 /**
@@ -35,17 +37,28 @@ export function createTutorServer(options: TutorServerOptions): Server {
   const ttl = options.healthTtlMs ?? HEALTH_TTL_MS;
   const now = options.now ?? Date.now;
   let cached: { readonly at: number; readonly health: Health } | undefined;
+  let lastErrorClass: ProviderRuntimeErrorCode | null = null;
 
   async function health(): Promise<Health> {
     if (cached !== undefined && now() - cached.at < ttl) return cached.health;
     const configured = isTutorAdapterConfigured(config);
-    const value: Health = { configured, available: configured && (await probe()) };
+    const available = configured && (await probe());
+    const value: Health = {
+      configured,
+      available,
+      providerInUse:
+        available && config.adapter === "openai-compatible" ? "openai-compatible" : "deterministic",
+      lastErrorClass,
+    };
     cached = { at: now(), health: value };
     return value;
   }
 
   async function probe(): Promise<boolean> {
-    if (config.adapter === "fake") return true;
+    if (config.adapter === "fake") {
+      lastErrorClass = null;
+      return true;
+    }
     const baseUrl = config.baseUrl;
     if (baseUrl === undefined) return false;
     const headers: Record<string, string> = {};
@@ -58,8 +71,22 @@ export function createTutorServer(options: TutorServerOptions): Server {
         headers,
         signal: AbortSignal.timeout(config.timeoutMs),
       });
-      return response.ok;
-    } catch {
+      if (response.ok) {
+        lastErrorClass = null;
+        return true;
+      }
+      lastErrorClass =
+        response.status === 401 || response.status === 403
+          ? "authentication-failed"
+          : response.status >= 500
+            ? "provider-error"
+            : "provider-unavailable";
+      return false;
+    } catch (cause) {
+      lastErrorClass =
+        cause instanceof Error && (cause.name === "TimeoutError" || cause.name === "AbortError")
+          ? "timeout"
+          : "provider-unavailable";
       return false;
     }
   }
@@ -97,6 +124,9 @@ export function createTutorServer(options: TutorServerOptions): Server {
     const result = await requestTutorResponse(tutorRequest, config, {
       fetch: fetchImpl as unknown as ProviderRuntimeFetch,
     });
+    if (result.diagnostics.errorCode !== undefined) lastErrorClass = result.diagnostics.errorCode;
+    else lastErrorClass = null;
+    cached = undefined;
     return send(response, 200, { response: result.response, source: result.diagnostics.source });
   }
 }
