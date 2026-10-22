@@ -12,6 +12,12 @@ export {
   ProjectStore,
 } from "./store.js";
 export {
+  ADVANCED_PROGRESS_SCHEMA,
+  validateAdvancedProgress,
+  type AdvancedProgressRecord,
+  type AdvancedStageId,
+} from "./advancedProgress.js";
+export {
   ACTOR_COORDINATE_LIMIT,
   ACTOR_MAX_COUNT,
   ACTOR_NAME_MAX_LENGTH,

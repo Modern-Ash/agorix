@@ -6,6 +6,7 @@ import {
 } from "@agorix/program-model";
 import type { ProjectActors } from "./actors.js";
 import type { ProjectMissionSpec } from "./missionSpec.js";
+import type { AdvancedProgressRecord } from "./advancedProgress.js";
 
 export const PACKAGE_NAME = "@agorix/persistence";
 
@@ -50,6 +51,7 @@ export interface ProjectMetadata {
   readonly stage?: ProjectStage;
   readonly assets?: readonly ProjectAsset[];
   readonly missionSpec?: ProjectMissionSpec;
+  readonly advancedProgress?: AdvancedProgressRecord;
 }
 
 export interface BrowserStorageAdapter {
