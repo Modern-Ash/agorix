@@ -30,6 +30,7 @@ export interface KidsState {
 export type KidsAction =
   | { readonly type: "go"; readonly screen: KidsScreen }
   | { readonly type: "onboardNext" }
+  | { readonly type: "onboardBack" }
   | { readonly type: "setLocale"; readonly locale: Locale }
   | { readonly type: "pickAvatar"; readonly avatar: KidsAvatar }
   | { readonly type: "pickWorld"; readonly world: KidsWorld }
@@ -54,6 +55,10 @@ export function kidsReducer(state: KidsState, action: KidsAction): KidsState {
       return state.onboardStep === 2
         ? { ...state, screen: "map", onboardStep: 0 }
         : { ...state, onboardStep: (state.onboardStep + 1) as 1 | 2 };
+    case "onboardBack":
+      return state.onboardStep === 0
+        ? state
+        : { ...state, onboardStep: (state.onboardStep - 1) as 0 | 1 };
     case "setLocale":
       return { ...state, locale: action.locale };
     case "pickAvatar":

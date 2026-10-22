@@ -1,0 +1,19 @@
+import type { Locale } from "../i18n.js";
+
+/**
+ * Reads a fixed piece of interface copy aloud with the browser's own speech synthesis
+ * (the 🔊 buttons of the prototype). It only runs on a tap, never sends child input anywhere
+ * (the text is our own copy) and does nothing where speech is unavailable.
+ */
+export function speak(text: string, locale: Locale): void {
+  try {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = locale === "es" ? "es-AR" : "en-US";
+    utterance.rate = 0.92;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+  } catch {
+    // Speech is a convenience.
+  }
+}

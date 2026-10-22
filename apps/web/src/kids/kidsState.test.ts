@@ -39,3 +39,14 @@ describe("kids state (issue #373)", () => {
     expect(state.screen).toBe("map");
   });
 });
+
+describe("kids onboarding back (issue #374)", () => {
+  it("goes back one step and stops at the first", () => {
+    let state = run(initialKidsState("es"), { type: "onboardNext" }, { type: "onboardNext" });
+    expect(state.onboardStep).toBe(2);
+    state = run(state, { type: "onboardBack" });
+    expect(state.onboardStep).toBe(1);
+    state = run(state, { type: "onboardBack" }, { type: "onboardBack" });
+    expect(state.onboardStep).toBe(0);
+  });
+});
