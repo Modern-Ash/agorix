@@ -120,7 +120,7 @@ Codex and OpenCode use the host user's existing CLI login. The model process rec
 summary of the child's program and deterministic runtime facts, never free child text. Ori's model
 output is validated as a proposal; a missing CLI, timeout or invalid JSON uses Kids 08 local rules.
 The model process has no enabled tools and runs from a temporary workspace. Codex uses its read-only
-sandbox; OpenCode denies all tool permissions. The process is killed after at most five seconds. No
+sandbox; OpenCode denies all tool permissions. The process is killed after at most seven seconds. No
 CLI credentials or prompts are stored in the repository or tutor logs.
 
 The nginx container receives only a read-only bind mount of the tutor socket directory. The tutor
@@ -145,16 +145,21 @@ The unit's `WorkingDirectory` and `ExecStart` assume `%h/dev-agora/agorix`; edit
 the checkout differs. After a future merge that changes `apps/tutor-api`, rebuild it and run
 `systemctl --user restart agorix-tutor`. The systemd unit supervises failures and preserves the
 existing user login. Set `AGORIX_ORI_PROVIDER=auto` (default: probe Codex, then OpenCode), `codex`,
-`opencode`, or `disabled` in the optional host-only environment file. `AGORIX_ORI_TIMEOUT_MS` is
-bounded to 0.5–5 seconds. The health probe uses `--version` and caches its result for 15 seconds;
+`opencode`, or `disabled` in the optional host-only environment file. Codex defaults to
+`gpt-6-luna`; `AGORIX_ORI_CODEX_MODEL` can select another model supported by the host login.
+`AGORIX_ORI_TIMEOUT_MS` is bounded to 0.5–7 seconds. The health probe uses `--version` and caches its result for 15 seconds;
 it does not spend model tokens.
 
-Manual host check before Kids 11: send a same-origin `POST /api/tutor/ori` with a canonical program
-fixture and verify that only `message` and a reviewable `proposal` return. Stop the service with
-`systemctl --user stop agorix-tutor`; `/api/tutor/health` should report local mode and the Kids
-editor must still offer its deterministic Ori card. Kids 11 connects the endpoint to the editor;
-then verify that proposed blocks require an explicit child decision and rejection leaves the
-program unchanged.
+The Kids editor calls `POST /api/tutor/ori` for authored missions. It validates the returned
+proposal again against the current program and allowed Kids blocks. A failed, invalid or late
+response uses the deterministic Ori card without provider wording; the browser budget is 7.5
+seconds. The free world still uses local rules.
+
+Manual host check: send a same-origin `POST /api/tutor/ori` with a canonical program fixture and
+verify that only `message` and a reviewable `proposal` return. In the Kids editor, confirm that
+proposed blocks require an explicit child decision and rejection leaves the program unchanged.
+Stop the service with `systemctl --user stop agorix-tutor`; `/api/tutor/health` should report local
+mode and the editor must still offer its deterministic Ori card.
 
 See [SELF_HOSTING.md](./SELF_HOSTING.md) for the API fields and alternate server-side providers.
 
@@ -172,6 +177,6 @@ See [SELF_HOSTING.md](./SELF_HOSTING.md) for the API fields and alternate server
 ## Not in production yet
 
 - Accounts, server-side projects and a database (#346, #347).
-- Kids 11 client use of the host Ori endpoint (#382).
+- Host tutor service activation (requires a host CLI login and an explicit operator action).
 - Tablet layout, English leftovers, PNG icons and the accessibility pass (#359, #360, #361, #362).
 - Disabling Cloudflare's injected analytics (#365).

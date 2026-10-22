@@ -13,6 +13,7 @@ export type OriCliProvider = "auto" | "codex" | "opencode" | "disabled";
 export interface OriCliConfig {
   readonly provider: OriCliProvider;
   readonly codexBin: string;
+  readonly codexModel: string;
   readonly opencodeBin: string;
   readonly timeoutMs: number;
 }
@@ -59,14 +60,15 @@ export function oriCliConfigFromEnv(env: Record<string, string | undefined>): Or
   if (!["auto", "codex", "opencode", "disabled"].includes(provider)) {
     throw new Error("AGORIX_ORI_PROVIDER: expected auto, codex, opencode or disabled");
   }
-  const requested = Number(env.AGORIX_ORI_TIMEOUT_MS ?? 4_000);
+  const requested = Number(env.AGORIX_ORI_TIMEOUT_MS ?? 7_000);
   return {
     provider: provider as OriCliProvider,
     codexBin: env.AGORIX_ORI_CODEX_BIN || "codex",
+    codexModel: env.AGORIX_ORI_CODEX_MODEL || "gpt-6-luna",
     opencodeBin: env.AGORIX_ORI_OPENCODE_BIN || "opencode",
     timeoutMs: Number.isFinite(requested)
-      ? Math.min(5_000, Math.max(500, Math.floor(requested)))
-      : 4_000,
+      ? Math.min(7_000, Math.max(500, Math.floor(requested)))
+      : 7_000,
   };
 }
 
@@ -129,7 +131,10 @@ export function createOriCliService(
             ) {
               throw new CliProcessError("output-too-large");
             }
-            const args = provider === "codex" ? codexArgs(directory) : opencodeArgs(inputJson);
+            const args =
+              provider === "codex"
+                ? codexArgs(directory, config.codexModel)
+                : opencodeArgs(inputJson);
             const output = await run(bin, args, {
               input,
               timeoutMs: config.timeoutMs,
@@ -168,7 +173,7 @@ export function createOriCliService(
   };
 }
 
-function codexArgs(directory: string): readonly string[] {
+function codexArgs(directory: string, model: string): readonly string[] {
   const disabled = [
     "shell_tool",
     "apps",
@@ -190,6 +195,8 @@ function codexArgs(directory: string): readonly string[] {
     "read-only",
     "--cd",
     directory,
+    "--model",
+    model,
     ...disabled.flatMap((feature) => ["--disable", feature]),
     "-",
   ];

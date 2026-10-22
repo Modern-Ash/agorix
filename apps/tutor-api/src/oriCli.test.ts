@@ -44,6 +44,7 @@ describe("Ori host CLI adapter (issue #381)", () => {
     expect(invocation?.[1]).toContain("shell_tool");
     expect(invocation?.[1]).toContain("--ignore-user-config");
     expect(invocation?.[1]).toContain("--ephemeral");
+    expect(invocation?.[1]).toContain("gpt-6-luna");
     expect(invocation?.[2].input).toContain(ORI_AGENT_VERSION);
     expect(invocation?.[2].input).not.toContain("learnerIntent");
   });
@@ -103,5 +104,13 @@ describe("Ori host CLI adapter (issue #381)", () => {
         cwd: process.cwd(),
       }),
     ).rejects.toMatchObject({ code: "timeout" });
+  });
+
+  it("bounds the host response window and permits an explicit Codex model", () => {
+    expect(oriCliConfigFromEnv({}).timeoutMs).toBe(7_000);
+    expect(oriCliConfigFromEnv({ AGORIX_ORI_TIMEOUT_MS: "99999" }).timeoutMs).toBe(7_000);
+    expect(oriCliConfigFromEnv({ AGORIX_ORI_CODEX_MODEL: "test-model" }).codexModel).toBe(
+      "test-model",
+    );
   });
 });

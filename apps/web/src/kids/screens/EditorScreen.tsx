@@ -37,7 +37,13 @@ import {
   recordKidsRevision,
   recordKidsScaffold,
 } from "../kidsEvidence.js";
-import { createKidsOriProviderRuntime, loadKidsOriMemory, saveKidsOriMemory } from "../kidsOri.js";
+import {
+  createKidsOriProviderRuntime,
+  loadKidsOriMemory,
+  saveKidsOriMemory,
+  type KidsOriOffer,
+} from "../kidsOri.js";
+import { requestKidsOriOffer } from "../kidsOriRemote.js";
 import {
   addKidsBlock,
   createKidsEditor,
@@ -166,6 +172,10 @@ export function EditorScreen({
   const [oriMemory, setOriMemory] = useState(loadKidsOriMemory);
   const [oriOpen, setOriOpen] = useState(false);
   const [oriSeenHash, setOriSeenHash] = useState<string | null>(null);
+  const [remoteOri, setRemoteOri] = useState<{
+    readonly key: string;
+    readonly offer: KidsOriOffer | null;
+  } | null>(null);
   const style = KIDS_WORLD_STYLES[world];
   const statements = history.current.scripts[0]?.statements ?? [];
   const projection = useMemo(() => {
@@ -202,13 +212,17 @@ export function EditorScreen({
     () => createKidsOriProviderRuntime(mission, missionIndex, locale),
     [mission, missionIndex, locale],
   );
-  const oriOffer = useMemo(
+  const localOriOffer = useMemo(
     () => oriProvider.propose(history.current),
     [oriProvider, history.current],
   );
+  const oriHintLevel = Math.min(5, Math.max(1, usedHintLevels.length + 1)) as 1 | 2 | 3 | 4 | 5;
+  const remoteOriKey = `${mission.id}:${locale}:${oriHash}:${oriHintLevel}`;
+  const oriWaiting = !freeProjectId && remoteOri?.key !== remoteOriKey;
+  const oriOffer = oriWaiting ? undefined : (remoteOri?.offer ?? localOriOffer);
   const oriReview = useMemo(
     () =>
-      oriOffer.proposal ? createProposalReview(history.current, oriOffer.proposal) : undefined,
+      oriOffer?.proposal ? createProposalReview(history.current, oriOffer.proposal) : undefined,
     [history.current, oriOffer],
   );
   const assistanceLevel = usedHintLevels.includes(5)
@@ -218,10 +232,32 @@ export function EditorScreen({
       : "independent";
 
   useEffect(() => {
+    if (!oriSuggestions || freeProjectId) return;
+    let current = true;
+    void requestKidsOriOffer(history.current, mission.id, locale, oriHintLevel, missionIndex).then(
+      (offer) => {
+        if (current) setRemoteOri({ key: remoteOriKey, offer });
+      },
+    );
+    return () => {
+      current = false;
+    };
+  }, [
+    oriSuggestions,
+    freeProjectId,
+    history.current,
+    mission.id,
+    locale,
+    oriHintLevel,
+    missionIndex,
+    remoteOriKey,
+  ]);
+
+  useEffect(() => {
     if (
       !oriSuggestions ||
       (freeProjectId && !freeGoal) ||
-      !oriOffer.proposal ||
+      !oriOffer?.proposal ||
       oriSeenHash === oriHash
     )
       return;
@@ -381,7 +417,7 @@ export function EditorScreen({
     inspectedDiff: boolean,
     choice?: number,
   ) {
-    if (!oriReview || !oriOffer.proposal) return;
+    if (!oriReview || !oriOffer?.proposal) return;
     if (decision === "reject") {
       rejectProposal(history.current, oriReview);
       recordKidsProposalDecision("reject", inspectedDiff, false);
@@ -400,6 +436,7 @@ export function EditorScreen({
     if (decision === "accept") {
       result = acceptProposal(history.current, oriReview);
     } else {
+      if (oriOffer.proposal.operations.length !== 1) return;
       const operation = oriOffer.proposal.operations[0];
       if (operation?.type !== "appendStatement" || choice === undefined) return;
       const suggested = operation.statement;
@@ -671,20 +708,22 @@ export function EditorScreen({
           ) : null}
           {oriSuggestions ? (
             !freeProjectId || freeGoal ? (
-              <KidsOriCard
-                key={`${oriHash}-${oriOpen}`}
-                t={t}
-                locale={locale}
-                avatar={avatar}
-                goalGlyph={style.goalGlyph}
-                offer={oriOffer}
-                review={oriReview}
-                open={oriOpen}
-                onOpen={() => setOriOpen(true)}
-                onAccept={(inspected) => decideOri("accept", inspected)}
-                onModify={(choice, inspected) => decideOri("modify", inspected, choice)}
-                onReject={(inspected) => decideOri("reject", inspected)}
-              />
+              oriOffer ? (
+                <KidsOriCard
+                  key={`${oriHash}-${oriOpen}`}
+                  t={t}
+                  locale={locale}
+                  avatar={avatar}
+                  goalGlyph={style.goalGlyph}
+                  offer={oriOffer}
+                  review={oriReview}
+                  open={oriOpen}
+                  onOpen={() => setOriOpen(true)}
+                  onAccept={(inspected) => decideOri("accept", inspected)}
+                  onModify={(choice, inspected) => decideOri("modify", inspected, choice)}
+                  onReject={(inspected) => decideOri("reject", inspected)}
+                />
+              ) : null
             ) : null
           ) : null}
         </div>

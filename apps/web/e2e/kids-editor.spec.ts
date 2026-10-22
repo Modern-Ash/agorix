@@ -1,5 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { getKidsMission, kidsMoveSteps } from "@agorix/curriculum";
+import { createProgramProposal } from "@agorix/proposals";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -115,6 +117,84 @@ test("Ori offers a validated move, applies it only on Use, and Undo restores the
     decision: "accept",
     inspectedDiff: true,
   });
+});
+
+test("Ori shows a validated agent suggestion and leaves the program unchanged until Use", async ({
+  page,
+}) => {
+  const mission = getKidsMission("kids.m1.straight", "es");
+  const proposal = createProgramProposal({
+    id: "ori-e2e-model",
+    baseProgram: mission.starterProject,
+    source: { kind: "learning-companion", capability: "builder" },
+    purpose: "Una idea de Ori",
+    rationale: "Mirá y decidí",
+    affectedNodeIds: ["scripts[0]/statements[0]"],
+    operations: [
+      {
+        type: "appendStatement",
+        scriptIndex: 0,
+        statement: { type: "move", steps: kidsMoveSteps(2) },
+      },
+    ],
+  });
+  await page.route("**/api/tutor/ori", async (route) => {
+    const request = route.request().postDataJSON();
+    expect(request).toMatchObject({ missionId: mission.id, locale: "es", hintLevel: 1 });
+    await route.fulfill({ json: { message: "ignored", proposal } });
+  });
+  await openEditor(page);
+  await expect(page.locator(".kids-ori-proposal")).toContainText("mover 2");
+  await expect(page.locator(".kids-program-block")).toHaveCount(0);
+  await page
+    .locator(".kids-ori-proposal")
+    .getByRole("button", { name: "Usar", exact: true })
+    .click();
+  await expect(page.getByRole("combobox", { name: "mover 1" })).toHaveValue("2");
+  await expect(page.locator(".kids-editor")).not.toContainText(
+    /conectad|proveedor|provider|offline/i,
+  );
+});
+
+test("Ori silently uses local rules for an invalid or late agent answer", async ({ page }) => {
+  const mission = getKidsMission("kids.m1.straight", "es");
+  const proposal = createProgramProposal({
+    id: "ori-e2e-stale",
+    baseProgram: mission.starterProject,
+    source: { kind: "learning-companion", capability: "builder" },
+    purpose: "Una idea de Ori",
+    rationale: "Mirá y decidí",
+    affectedNodeIds: ["scripts[0]/statements[0]"],
+    operations: [
+      {
+        type: "appendStatement",
+        scriptIndex: 0,
+        statement: { type: "move", steps: kidsMoveSteps(2) },
+      },
+    ],
+  });
+  await page.route("**/api/tutor/ori", (route) =>
+    route.fulfill({
+      json: { message: "ignored", proposal: { ...proposal, baseProgramHash: "stale" } },
+    }),
+  );
+  await openEditor(page);
+  await expect(page.locator(".kids-ori-proposal")).toContainText("mover 4");
+  await page.unroute("**/api/tutor/ori");
+  await page.route("**/api/tutor/ori", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 8_000));
+    try {
+      await route.fulfill({ json: { message: "ignored", proposal } });
+    } catch {
+      // The browser cancels the late request at the response budget.
+    }
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Misión 1" }).click();
+  await expect(page.locator(".kids-ori-proposal")).toContainText("mover 4", { timeout: 10_000 });
+  await expect(page.locator(".kids-editor")).not.toContainText(
+    /conectad|proveedor|provider|offline/i,
+  );
 });
 
 test("Ori's No leaves the program alone and repeated declines stop automatic offers", async ({
