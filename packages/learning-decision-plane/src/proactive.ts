@@ -5,7 +5,12 @@ import type { LearningDecisionState } from "./index.js";
 import type { StudioPipeline } from "./studio-pipeline.js";
 
 export type ProactiveSignalKind =
-  "repeat-pattern" | "first-step" | "runtime-error" | "stalled" | "repeated-error";
+  | "repeat-pattern"
+  | "first-step"
+  | "runtime-off-target"
+  | "runtime-error"
+  | "stalled"
+  | "repeated-error";
 
 /** Kinds introduced for Studio; Web behaviour for the original two is unchanged. */
 export const STUDIO_PROACTIVE_KINDS = ["runtime-error", "stalled", "repeated-error"] as const;
@@ -153,6 +158,9 @@ export function decideProactiveSuggestion(signal: ProactiveSignal): ProactiveDec
   if (signal.kind === "first-step" && signal.occurrences > 0) {
     return silence("learner-already-started");
   }
+  if (signal.kind === "runtime-off-target" && signal.occurrences < 1) {
+    return silence("evidence-too-weak");
+  }
   if (signal.declinedForCurrentProgram) {
     return silence("learner-declined-this-program");
   }
@@ -203,7 +211,12 @@ export function decideProactiveSuggestion(signal: ProactiveSignal): ProactiveDec
   }
   return {
     action: "offer",
-    reason: signal.kind === "first-step" ? "empty-program" : "repeated-steps-detected",
+    reason:
+      signal.kind === "first-step"
+        ? "empty-program"
+        : signal.kind === "runtime-off-target"
+          ? "runtime-off-target"
+          : "repeated-steps-detected",
     generativeNeeded: "no",
     source: "system0",
   };

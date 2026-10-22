@@ -71,6 +71,22 @@ describe("first-step signal", () => {
   });
 });
 
+describe("Kids off-target runtime signal", () => {
+  const offTarget: ProactiveSignal = { ...base, kind: "runtime-off-target", occurrences: 1 };
+
+  it("offers once from actual runtime evidence and respects declines", () => {
+    expect(decideProactiveSuggestion(offTarget)).toMatchObject({
+      action: "offer",
+      reason: "runtime-off-target",
+    });
+    expect(decideProactiveSuggestion({ ...offTarget, occurrences: 0 }).action).toBe("silence");
+    expect(
+      decideProactiveSuggestion({ ...offTarget, declinedForCurrentProgram: true }).action,
+    ).toBe("silence");
+    expect(decideProactiveSuggestion({ ...offTarget, declinedCount: 2 }).action).toBe("silence");
+  });
+});
+
 describe("decideProactiveWithLaya", () => {
   const answering = (value: string, confidence: number): LayaBatchTransport => ({
     decideMany: async () => [{ id: "proactiveAction", value, confidence }],

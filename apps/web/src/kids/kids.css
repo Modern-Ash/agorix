@@ -592,6 +592,52 @@
 .kids-ori-card > span:first-child {
   font-size: 1.6rem;
 }
+.kids-ori-content {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  gap: 10px;
+}
+.kids-ori-proposal {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 2px dashed #9c8deb;
+  border-radius: 14px;
+  background: #fff;
+  color: var(--kids-text);
+  font-weight: 400;
+}
+.kids-ori-proposal p {
+  margin: 0;
+}
+.kids-ori-proposal select {
+  min-height: 44px;
+  max-width: 100%;
+  padding: 8px;
+  border: 2px solid #9c8deb;
+  border-radius: 12px;
+  background: white;
+  color: var(--kids-text);
+  font: inherit;
+}
+.kids-ori-diff {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0;
+  padding: 10px;
+  background: #f6f4ff;
+  border-radius: 10px;
+  white-space: pre-wrap;
+}
+.kids-ori-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.kids-ori-actions .kids-button {
+  flex: 1 1 130px;
+}
 .kids-editor-tabs,
 .kids-code-languages {
   display: flex;

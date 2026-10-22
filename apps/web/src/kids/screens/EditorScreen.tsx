@@ -1,6 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { projectAgorixCode } from "@agorix/agorix-code";
-import { createEditorHistory, programToWorkspace } from "@agorix/block-editor";
+import {
+  createEditorHistory,
+  programToWorkspace,
+  recordCanonicalTransaction,
+} from "@agorix/block-editor";
 import { projectProgram } from "@agorix/code-generator";
 import {
   KIDS_GRID,
@@ -10,15 +14,30 @@ import {
   evaluateKidsRun,
   getKidsMission,
   getKidsHint,
+  kidsMoveSteps,
   worldToCell,
   type KidsCell,
 } from "@agorix/curriculum";
 import { projectPython } from "@agorix/python-projection";
 import { ProjectStore, type ProjectMetadata } from "@agorix/persistence";
+import {
+  acceptProposal,
+  createProposalReview,
+  modifyProposal,
+  programSemanticHash,
+  rejectProposal,
+} from "@agorix/proposals";
+import { decideProactiveSuggestion, recordProactiveOutcome } from "@agorix/learning-decision-plane";
 import { validateProgram, type Statement } from "@agorix/program-model";
 import type { Locale } from "../../i18n.js";
 import type { KidsAvatar, KidsWorld } from "../kidsState.js";
-import { recordKidsPrediction, recordKidsRevision, recordKidsScaffold } from "../kidsEvidence.js";
+import {
+  recordKidsPrediction,
+  recordKidsProposalDecision,
+  recordKidsRevision,
+  recordKidsScaffold,
+} from "../kidsEvidence.js";
+import { createKidsOriProviderRuntime, loadKidsOriMemory, saveKidsOriMemory } from "../kidsOri.js";
 import {
   addKidsBlock,
   createKidsEditor,
@@ -33,6 +52,7 @@ import {
 import type { KidsText } from "../useKidsText.js";
 import { kidsGoalSpec, parseKidsGoalSpec } from "../kidsProjects.js";
 import { KIDS_WORLD_STYLES } from "../worlds.js";
+import { KidsOriCard } from "./KidsOriCard.js";
 
 type CodeLanguage = "agorix" | "python" | "typescript";
 type Prediction = "yes" | "no" | "dunno";
@@ -143,6 +163,9 @@ export function EditorScreen({
   const [prediction, setPrediction] = useState<Prediction | null>(null);
   const [played, setPlayed] = useState<KidsPlayedRun | null>(null);
   const [step, setStep] = useState(0);
+  const [oriMemory, setOriMemory] = useState(loadKidsOriMemory);
+  const [oriOpen, setOriOpen] = useState(false);
+  const [oriSeenHash, setOriSeenHash] = useState<string | null>(null);
   const style = KIDS_WORLD_STYLES[world];
   const statements = history.current.scripts[0]?.statements ?? [];
   const projection = useMemo(() => {
@@ -174,11 +197,62 @@ export function EditorScreen({
   const final = evaluation?.final ?? start;
   const trail = evaluation?.trail ?? [start];
   const activeNode = visibleTrace.at(-1)?.nodeId;
+  const oriHash = useMemo(() => programSemanticHash(history.current), [history.current]);
+  const oriProvider = useMemo(() => createKidsOriProviderRuntime(mission, missionIndex, locale), [mission, missionIndex, locale]);
+  const oriOffer = useMemo(() => oriProvider.propose(history.current), [oriProvider, history.current]);
+  const oriReview = useMemo(
+    () =>
+      oriOffer.proposal ? createProposalReview(history.current, oriOffer.proposal) : undefined,
+    [history.current, oriOffer],
+  );
   const assistanceLevel = usedHintLevels.includes(5)
     ? "delegated"
     : usedHintLevels.length > 0
       ? "hinted"
       : "independent";
+
+  useEffect(() => {
+    if (
+      !oriSuggestions ||
+      (freeProjectId && !freeGoal) ||
+      !oriOffer.proposal ||
+      oriSeenHash === oriHash
+    )
+      return;
+    const offTargetRun =
+      played !== null && step >= trace.length && played.evaluation.outcome === "short";
+    const decision = decideProactiveSuggestion({
+      kind: offTargetRun ? "runtime-off-target" : "first-step",
+      occurrences: offTargetRun ? 1 : statements.length,
+      running: pending !== null || (played !== null && step < trace.length),
+      declinedForCurrentProgram: (oriMemory.programs[oriHash]?.declines ?? 0) > 0,
+      declinedCount: oriMemory.sessionDeclines,
+    });
+    if (decision.action !== "offer") return;
+    setOriOpen(true);
+    setOriSeenHash(oriHash);
+    const next = recordProactiveOutcome(
+      oriMemory,
+      oriHash,
+      "offered",
+      (oriMemory.lastOfferSequence ?? 0) + 1,
+    );
+    setOriMemory(next);
+    saveKidsOriMemory(next);
+  }, [
+    oriSuggestions,
+    freeProjectId,
+    freeGoal,
+    oriOffer,
+    oriSeenHash,
+    oriHash,
+    statements.length,
+    pending,
+    played,
+    step,
+    trace.length,
+    oriMemory,
+  ]);
 
   function clearRun() {
     setPlayed(null);
@@ -189,8 +263,9 @@ export function EditorScreen({
   function change(
     next: typeof history,
     revisionKind: "sequenceChange" | "loopChange" = "sequenceChange",
+    learnerEdit = true,
   ) {
-    if (played && JSON.stringify(next.current) !== JSON.stringify(history.current)) {
+    if (learnerEdit && played && JSON.stringify(next.current) !== JSON.stringify(history.current)) {
       recordKidsRevision(
         revisionKind,
         1,
@@ -200,6 +275,7 @@ export function EditorScreen({
       );
     }
     setHistory(next);
+    setOriOpen(false);
     save(next, false);
     clearRun();
   }
@@ -292,6 +368,69 @@ export function EditorScreen({
     recordKidsScaffold(level === 5 ? "solution" : "hint", hint.level);
     setUsedHintLevels([...usedHintLevels, level]);
     save(history, false, level);
+  }
+
+  function decideOri(
+    decision: "accept" | "modify" | "reject",
+    inspectedDiff: boolean,
+    choice?: number,
+  ) {
+    if (!oriReview || !oriOffer.proposal) return;
+    if (decision === "reject") {
+      rejectProposal(history.current, oriReview);
+      recordKidsProposalDecision("reject", inspectedDiff, false);
+      const next = recordProactiveOutcome(
+        oriMemory,
+        oriHash,
+        "declined",
+        (oriMemory.lastDeclineSequence ?? 0) + 1,
+      );
+      setOriMemory(next);
+      saveKidsOriMemory(next);
+      setOriOpen(false);
+      return;
+    }
+    let result;
+    if (decision === "accept") {
+      result = acceptProposal(history.current, oriReview);
+    } else {
+      const operation = oriOffer.proposal.operations[0];
+      if (operation?.type !== "appendStatement" || choice === undefined) return;
+      const suggested = operation.statement;
+      const replacement: Statement =
+        suggested.type === "move"
+          ? { ...suggested, steps: kidsMoveSteps(choice) }
+          : suggested.type === "repeat"
+            ? { ...suggested, count: choice }
+            : suggested.type === "turn"
+              ? { ...suggested, degrees: choice }
+              : suggested;
+      const candidate = oriReview.candidateProgram;
+      const script = candidate.scripts[0];
+      if (!script) return;
+      const modified = validateProgram({
+        ...candidate,
+        scripts: [
+          { ...script, statements: [...script.statements.slice(0, -1), replacement] },
+          ...candidate.scripts.slice(1),
+        ],
+      });
+      result = modifyProposal(history.current, oriReview, modified);
+    }
+    const next = recordCanonicalTransaction(history, {
+      label: decision === "accept" ? "use Ori proposal" : "change Ori proposal",
+      after: result.program,
+    }).history;
+    recordKidsProposalDecision(decision, inspectedDiff, false);
+    const memory = recordProactiveOutcome(
+      oriMemory,
+      oriHash,
+      "accepted",
+      (oriMemory.lastOfferSequence ?? 0) + 1,
+    );
+    setOriMemory(memory);
+    saveKidsOriMemory(memory);
+    change(next, "sequenceChange", false);
   }
 
   function renderBlock(statement: Statement, index: number, childIndex?: number) {
@@ -525,10 +664,22 @@ export function EditorScreen({
             </button>
           ) : null}
           {oriSuggestions ? (
-            <aside className="kids-ori-card">
-              <span aria-hidden="true">✦</span>
-              <span>Ori · {t("oriIdle")}</span>
-            </aside>
+            !freeProjectId || freeGoal ? (
+              <KidsOriCard
+                key={`${oriHash}-${oriOpen}`}
+                t={t}
+                locale={locale}
+                avatar={avatar}
+                goalGlyph={style.goalGlyph}
+                offer={oriOffer}
+                review={oriReview}
+                open={oriOpen}
+                onOpen={() => setOriOpen(true)}
+                onAccept={(inspected) => decideOri("accept", inspected)}
+                onModify={(choice, inspected) => decideOri("modify", inspected, choice)}
+                onReject={(inspected) => decideOri("reject", inspected)}
+              />
+            ) : null
           ) : null}
         </div>
         <div className="kids-editor-program-panel">
