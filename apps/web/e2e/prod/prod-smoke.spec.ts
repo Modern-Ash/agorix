@@ -20,6 +20,8 @@ const stageRun = (page: Page) =>
   page.locator(".stage-panel").getByRole("button", { name: /^(Run|Ejecutar)$/ });
 
 async function openAppMenu(page: Page) {
+  // /advanced loads the legacy editor as a lazy chunk; wait for it, or `isVisible()` below races it.
+  await page.locator(".editor-shell").first().waitFor();
   const menuButton = page.getByRole("button", {
     name: /Show app menu|Hide app menu|Mostrar menú|Ocultar menú/,
   });
