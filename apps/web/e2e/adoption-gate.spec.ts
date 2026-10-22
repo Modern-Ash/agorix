@@ -41,6 +41,8 @@ const run = (page: Page) =>
   page.locator(".stage-panel").getByRole("button", { name: "Run", exact: true });
 
 async function openAppMenu(page: Page) {
+  // /advanced loads the legacy editor as a lazy chunk; wait for it, or `isVisible()` below races it.
+  await page.locator(".editor-shell").first().waitFor();
   const menuButton = page.getByRole("button", { name: "Show app menu" });
   if (await menuButton.isVisible().catch(() => false)) {
     await menuButton.click();
