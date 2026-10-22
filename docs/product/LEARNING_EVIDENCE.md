@@ -39,9 +39,11 @@ In Kids, `apps/web/src/kids/kidsEvidence.ts` validates and keeps event summaries
 session storage. The editor emits `predictionMade` only for a yes/no prediction after the real
 runtime run, and `programRevisedAfterExecution` only when the program changes after a run.
 The editor emits `scaffoldDelivered` only when a child opens the next unlocked hint;
-the reflection screen emits `reflectionRecorded` when the child finishes it. The typed
-`proposalDecided` recorder is connected when Ori's proposal UI ships; the current idle
-Ori card does not create proposal evidence.
+the reflection screen emits `reflectionRecorded` when the child finishes it. Ori's
+deterministic provider uses the canonical runtime and a validated `ProgramProposal`. Its
+card records `proposalDecided` only after the child uses, changes, or rejects the offer;
+the program changes in one undoable transaction only for Use or Change. System-0 can
+offer on an empty program or after an off-target run, and quiets down after declines.
 The educator export below remains counts-only and does not contain these raw session events.
 
 ### Model-comparison activity in Web (#101)

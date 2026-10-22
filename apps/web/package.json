@@ -23,6 +23,7 @@
     "@agorix/learning-decision-plane": "workspace:*",
     "@agorix/learning-evidence": "workspace:*",
     "@agorix/persistence": "workspace:*",
+    "@agorix/provider-runtime": "workspace:*",
     "@agorix/program-model": "workspace:*",
     "@agorix/project-api": "workspace:*",
     "@agorix/project-repository": "workspace:*",

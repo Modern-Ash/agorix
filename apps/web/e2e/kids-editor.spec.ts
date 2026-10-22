@@ -92,6 +92,72 @@ test("reveals hints in order and records only the levels opened", async ({ page 
   await expect(page.getByRole("button", { name: "Ver idea" })).toHaveCount(0);
 });
 
+test("Ori offers a validated move, applies it only on Use, and Undo restores the program", async ({
+  page,
+}) => {
+  await openEditor(page);
+  await expect(page.locator(".kids-ori-proposal")).toBeVisible();
+  await expect(page.locator(".kids-program-block")).toHaveCount(0);
+  await page.locator(".kids-ori-proposal").getByRole("button", { name: "Ver cambios" }).click();
+  await expect(page.locator(".kids-ori-diff")).toContainText("move");
+  await page
+    .locator(".kids-ori-proposal")
+    .getByRole("button", { name: "Usar", exact: true })
+    .click();
+  await expect(page.getByRole("combobox", { name: "mover 1" })).toHaveValue("4");
+  await page.getByRole("button", { name: "Deshacer" }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(0);
+  const events = await page.evaluate(() =>
+    JSON.parse(sessionStorage.getItem("agorix.kids.reflections.v1") ?? "[]"),
+  );
+  expect(events.at(-1)).toMatchObject({
+    kind: "proposalDecided",
+    decision: "accept",
+    inspectedDiff: true,
+  });
+});
+
+test("Ori's No leaves the program alone and repeated declines stop automatic offers", async ({
+  page,
+}) => {
+  await openEditor(page);
+  await page.locator(".kids-ori-proposal").getByRole("button", { name: "No, gracias" }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(0);
+  await page.locator(".kids-ori-card").getByRole("button").click();
+  await page.locator(".kids-ori-proposal").getByRole("button", { name: "No, gracias" }).click();
+  await page.reload();
+  await page.getByRole("button", { name: "Misión 1" }).click();
+  await expect(page.locator(".kids-ori-proposal")).toHaveCount(0);
+  const events = await page.evaluate(() =>
+    JSON.parse(sessionStorage.getItem("agorix.kids.reflections.v1") ?? "[]"),
+  );
+  expect(events.filter((event: { decision?: string }) => event.decision === "reject")).toHaveLength(
+    2,
+  );
+});
+
+test("Ori's Change commits the child's chosen value", async ({ page }) => {
+  await openEditor(page);
+  await page.locator(".kids-ori-proposal").getByRole("combobox").selectOption("3");
+  await page.locator(".kids-ori-proposal").getByRole("button", { name: "Usar y cambiar" }).click();
+  await expect(page.getByRole("combobox", { name: "mover 1" })).toHaveValue("3");
+  const events = await page.evaluate(() =>
+    JSON.parse(sessionStorage.getItem("agorix.kids.reflections.v1") ?? "[]"),
+  );
+  expect(events.at(-1)).toMatchObject({ kind: "proposalDecided", decision: "modify" });
+});
+
+test("Ori speaks after an off-target run with no API connection", async ({ page }) => {
+  await page.route("**/api/**", (route) => route.abort());
+  await openEditor(page);
+  await page.locator(".kids-ori-proposal").getByRole("button", { name: "No, gracias" }).click();
+  await page.getByRole("button", { name: "+ mover", exact: true }).click();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Sí", exact: true }).click();
+  await expect(page.locator(".kids-ori-proposal")).toBeVisible();
+  await expect(page.locator(".kids-program-block")).toHaveCount(1);
+});
+
 test("shows wall evidence and has no serious accessibility violations", async ({ page }) => {
   await openEditor(page);
   await page.getByRole("button", { name: "+ mover", exact: true }).click();
