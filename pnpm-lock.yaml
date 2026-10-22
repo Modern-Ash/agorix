@@ -100,6 +100,9 @@ importers:
       '@agorix/learning-evidence':
         specifier: workspace:*
         version: link:../../packages/learning-evidence
+      '@agorix/ori-agent':
+        specifier: workspace:*
+        version: link:../../packages/ori-agent
       '@agorix/persistence':
         specifier: workspace:*
         version: link:../../packages/persistence
@@ -335,6 +338,24 @@ importers:
       '@agorix/runtime':
         specifier: workspace:*
         version: link:../runtime
+
+  packages/ori-agent:
+    dependencies:
+      '@agorix/curriculum':
+        specifier: workspace:*
+        version: link:../curriculum
+      '@agorix/program-model':
+        specifier: workspace:*
+        version: link:../program-model
+      '@agorix/proposals':
+        specifier: workspace:*
+        version: link:../proposals
+      '@agorix/runtime':
+        specifier: workspace:*
+        version: link:../runtime
+      '@agorix/tutor-contract':
+        specifier: workspace:*
+        version: link:../tutor-contract
 
   packages/persistence:
     dependencies:
