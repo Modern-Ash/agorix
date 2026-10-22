@@ -589,6 +589,43 @@
   border-radius: 16px;
   font-weight: 700;
 }
+.kids-ori-chat {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 2px solid #9c8deb;
+  border-radius: 16px;
+  background: #f8f6ff;
+  color: var(--kids-text);
+}
+.kids-ori-chat-heading,
+.kids-ori-chat-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.kids-ori-chat-heading {
+  justify-content: space-between;
+}
+.kids-ori-chat-form label {
+  flex-basis: 100%;
+  font-weight: 700;
+}
+.kids-ori-chat-form input {
+  flex: 1 1 160px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 2px solid #9c8deb;
+  border-radius: 12px;
+  background: white;
+  color: var(--kids-text);
+  font: inherit;
+}
+.kids-ori-chat p {
+  margin: 0;
+}
 .kids-ori-card > span:first-child {
   font-size: 1.6rem;
 }

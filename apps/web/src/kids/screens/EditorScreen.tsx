@@ -59,6 +59,7 @@ import type { KidsText } from "../useKidsText.js";
 import { kidsGoalSpec, parseKidsGoalSpec } from "../kidsProjects.js";
 import { KIDS_WORLD_STYLES } from "../worlds.js";
 import { KidsOriCard } from "./KidsOriCard.js";
+import { KidsOriChat } from "./KidsOriChat.js";
 
 type CodeLanguage = "agorix" | "python" | "typescript";
 type Prediction = "yes" | "no" | "dunno";
@@ -725,6 +726,14 @@ export function EditorScreen({
                 />
               ) : null
             ) : null
+          ) : null}
+          {oriSuggestions && (!freeProjectId || freeGoal) ? (
+            <KidsOriChat
+              locale={locale}
+              missionId={mission.id}
+              program={history.current}
+              {...(freeProjectId && freeGoal ? { goalCell: freeGoal } : {})}
+            />
           ) : null}
         </div>
         <div className="kids-editor-program-panel">

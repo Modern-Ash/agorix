@@ -61,6 +61,44 @@ async function start(
 }
 
 describe("tutor HTTP server (issue #348)", () => {
+  it("limits Ori chat, rejects invalid input and never echoes child text", async () => {
+    const base = await start({ AGORIX_TUTOR_ADAPTER: "fake" });
+    const sendChat = (text: string, extra: Record<string, unknown> = {}) =>
+      fetch(`${base}/api/tutor/chat`, {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: base },
+        body: JSON.stringify({
+          missionId: "kids.m1.straight",
+          locale: "es",
+          program: request.program,
+          text,
+          ...extra,
+        }),
+      });
+    const unsafe = await sendChat("Mi correo es niña@example.com, ¿cómo muevo bloques?");
+    expect(unsafe.status).toBe(200);
+    expect(await unsafe.json()).toEqual({
+      message: "eso no lo puedo hacer, ¿seguimos con tu programa?",
+    });
+    const fallback = await sendChat("¿Cómo muevo bloques?");
+    expect(fallback.status).toBe(200);
+    expect(await fallback.json()).toEqual({
+      message: "Ori no está disponible ahora. Probá un bloque y mirá qué pasa.",
+    });
+    expect((await sendChat("x".repeat(161))).status).toBe(400);
+    expect((await sendChat("¿Cómo muevo?", { surprise: true })).status).toBe(400);
+    expect(
+      (
+        await fetch(`${base}/api/tutor/chat`, {
+          method: "POST",
+          headers: { "content-type": "application/json", origin: "https://other.example" },
+          body: "{}",
+        })
+      ).status,
+    ).toBe(403);
+    for (let i = 0; i < 4; i++) expect((await sendChat("¿Cómo muevo? ")).status).toBe(200);
+    expect((await sendChat("¿Cómo muevo? ")).status).toBe(429);
+  });
   it("reports not configured when no provider is set (normal local mode)", async () => {
     const base = await start({ AGORIX_TUTOR_ADAPTER: "openai-compatible" });
     const response = await fetch(`${base}/api/tutor/health`);

@@ -1,8 +1,19 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { validateTutorRequest } from "@agorix/tutor-contract";
-import { getKidsMission, KIDS_MISSION_IDS } from "@agorix/curriculum";
+import {
+  createFreeWorldMission,
+  getKidsMission,
+  KIDS_MISSION_IDS,
+  KIDS_FREE_MISSION_ID,
+  KIDS_GRID,
+} from "@agorix/curriculum";
 import { validateProgram, type ProjectProgram } from "@agorix/program-model";
-import { evaluateOriAgentOutput } from "@agorix/ori-agent";
+import {
+  evaluateOriAgentOutput,
+  isOriChatTextValid,
+  runOriChat,
+  type OriChatContext,
+} from "@agorix/ori-agent";
 import type { ProviderRuntimeErrorCode, ProviderRuntimeFetch } from "@agorix/provider-runtime";
 import {
   isTutorAdapterConfigured,
@@ -43,6 +54,7 @@ export function createTutorServer(options: TutorServerOptions): Server {
   const now = options.now ?? Date.now;
   let cached: { readonly at: number; readonly health: Health } | undefined;
   let lastErrorClass: ProviderRuntimeErrorCode | null = null;
+  const chatRate = new Map<string, { count: number; start: number }>();
 
   async function health(): Promise<Health> {
     if (cached !== undefined && now() - cached.at < ttl) return cached.health;
@@ -119,6 +131,10 @@ export function createTutorServer(options: TutorServerOptions): Server {
     if (path === "/api/tutor/ori") {
       if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
       return respondOri(request, response);
+    }
+    if (path === "/api/tutor/chat") {
+      if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
+      return respondChat(request, response);
     }
     return send(response, 404, error("not-found"));
   }
@@ -201,6 +217,70 @@ export function createTutorServer(options: TutorServerOptions): Server {
       message: decision.message,
       ...(decision.proposal === undefined ? {} : { proposal: decision.proposal }),
     });
+  }
+
+  async function respondChat(request: IncomingMessage, response: ServerResponse): Promise<void> {
+    if (!(request.headers["content-type"] ?? "").includes("application/json"))
+      return send(response, 415, error("unsupported-media-type"));
+    if (!sameOrigin(request)) return send(response, 403, error("forbidden-origin"));
+    const body = await readBody(request);
+    if (body === "too-large") return send(response, 413, error("payload-too-large"));
+    let context: OriChatContext;
+    try {
+      const raw = JSON.parse(body) as Record<string, unknown>;
+      if (
+        !raw ||
+        typeof raw !== "object" ||
+        Array.isArray(raw) ||
+        !["locale,missionId,program,text", "goalCell,locale,missionId,program,text"].includes(
+          Object.keys(raw).sort().join(","),
+        ) ||
+        typeof raw.missionId !== "string" ||
+        (!(KIDS_MISSION_IDS as readonly string[]).includes(raw.missionId) &&
+          raw.missionId !== KIDS_FREE_MISSION_ID) ||
+        (raw.locale !== "es" && raw.locale !== "en") ||
+        !isOriChatTextValid(raw.text)
+      )
+        throw new Error("invalid chat request");
+      const goal = raw.goalCell;
+      if (raw.missionId === KIDS_FREE_MISSION_ID) {
+        if (!goal || typeof goal !== "object" || Array.isArray(goal))
+          throw new Error("invalid goal");
+        const cell = goal as Record<string, unknown>;
+        if (
+          Object.keys(cell).sort().join(",") !== "cx,cy" ||
+          !Number.isInteger(cell.cx) ||
+          !Number.isInteger(cell.cy) ||
+          (cell.cx as number) < 0 ||
+          (cell.cx as number) >= KIDS_GRID.cols ||
+          (cell.cy as number) < 0 ||
+          (cell.cy as number) >= KIDS_GRID.rows
+        )
+          throw new Error("invalid goal");
+      } else if (goal !== undefined) throw new Error("unexpected goal");
+      context = {
+        mission:
+          raw.missionId === KIDS_FREE_MISSION_ID
+            ? createFreeWorldMission(goal as { cx: number; cy: number }, raw.locale)
+            : getKidsMission(raw.missionId, raw.locale),
+        program: validateProgram(raw.program as ProjectProgram),
+        locale: raw.locale,
+        text: raw.text,
+      };
+    } catch {
+      return send(response, 400, error("invalid-request"));
+    }
+    const key = request.socket.remoteAddress ?? "unknown";
+    const current = chatRate.get(key);
+    const stamp = now();
+    const next =
+      !current || stamp - current.start >= 60_000
+        ? { count: 1, start: stamp }
+        : { count: current.count + 1, start: current.start };
+    chatRate.set(key, next);
+    if (next.count > 6) return send(response, 429, error("rate-limited"));
+    const message = options.ori ? await options.ori.chat(context) : await runOriChat(context);
+    return send(response, 200, { message });
   }
 }
 

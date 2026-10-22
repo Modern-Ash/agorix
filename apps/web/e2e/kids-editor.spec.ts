@@ -5,6 +5,38 @@ import { createProgramProposal } from "@agorix/proposals";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
+test("Ori chat stays scoped, private and clears when leaving the editor", async ({ page }) => {
+  let calls = 0;
+  await page.route("**/api/tutor/chat", async (route) => {
+    const input = route.request().postDataJSON() as { text: string };
+    calls++;
+    expect(input.text).toBe(calls === 1 ? "¿Cómo muevo los bloques?" : "¿Dónde está la meta?");
+    if (calls === 2) return route.fulfill({ status: 503, body: "" });
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        message: "¿Cuántas casillas querés avanzar? Probá un bloque de mover.",
+      }),
+    });
+  });
+  await openEditor(page);
+  await page.getByRole("button", { name: "Preguntale a Ori" }).click();
+  await page.getByRole("textbox", { name: "Tu pregunta" }).fill("¿Cómo muevo los bloques?");
+  await page.getByRole("button", { name: "Enviar" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "casillas" })).toBeVisible();
+  await page.getByRole("textbox", { name: "Tu pregunta" }).fill("¿Dónde está la meta?");
+  await page.getByRole("button", { name: "Enviar" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Ori no está disponible ahora" })).toBeVisible();
+  expect(
+    await page.evaluate(() => JSON.stringify({ ...localStorage, ...sessionStorage })),
+  ).not.toContain("¿Cómo muevo los bloques?");
+  await page.getByRole("button", { name: "Volver al mapa" }).click();
+  await page.getByRole("button", { name: "Misión 1" }).click();
+  await page.getByRole("button", { name: "Preguntale a Ori" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "casillas" })).toHaveCount(0);
+});
+
 async function openEditor(page: Page, locale: "es" | "en" = "es") {
   await page.goto("/kids");
   await page.evaluate((lang) => {
