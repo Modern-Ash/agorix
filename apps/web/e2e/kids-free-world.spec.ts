@@ -3,6 +3,73 @@ import { expect, test, type Page } from "@playwright/test";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
+test("Ori proposes a verified turn goal; the child accepts and runtime enforces it", async ({
+  page,
+}) => {
+  await page.route("**/api/tutor/goals", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        cell: { cx: 4, cy: 2 },
+        successCheck: "touches-goal-after-turn",
+        message: "¿Podés llegar a la meta en columna 5, fila 3 usando un giro?",
+      }),
+    }),
+  );
+  await seed(page);
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "¡Crear!" }).click();
+  await page.getByRole("button", { name: "Inventá una meta" }).click();
+  await expect(
+    page.getByText("¿Podés llegar a la meta en columna 5, fila 3 usando un giro?"),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Jugar", exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "Elegir esta meta" }).click();
+  await expect(page.getByRole("button", { name: "Jugar", exact: true })).toBeEnabled();
+  expect(await page.evaluate(() => JSON.stringify(localStorage))).toContain(
+    "touches-goal-after-turn",
+  );
+  await page.getByRole("button", { name: "+ mover", exact: true }).click();
+  await page.getByRole("combobox", { name: "mover 1" }).selectOption("4");
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Sí", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("Probá incluir un giro");
+  await page.reload();
+  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  await page.locator(".kids-project-card").getByRole("button", { name: "Jugar" }).click();
+  await expect(
+    page.getByText("¿Podés llegar a la meta en columna 5, fila 3 usando un giro?"),
+  ).toBeVisible();
+});
+
+test("an invalid or unavailable goal response becomes a fixed local proposal", async ({ page }) => {
+  let calls = 0;
+  await page.route("**/api/tutor/goals", (route) => {
+    calls++;
+    return calls === 1
+      ? route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            cell: { cx: 9, cy: 2 },
+            successCheck: "touches-goal",
+            message: "unsafe invented goal",
+          }),
+        })
+      : route.fulfill({ status: 503, body: "" });
+  });
+  await seed(page);
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "¡Crear!" }).click();
+  await page.getByRole("button", { name: "Inventá una meta" }).click();
+  await expect(page.getByText("¿Podés llegar a la meta en columna 5, fila 3?")).toBeVisible();
+  await expect(page.getByText("unsafe invented goal")).toHaveCount(0);
+  await page.getByRole("button", { name: "Otra vez" }).click();
+  await page.getByRole("button", { name: "Inventá una meta" }).click();
+  await expect(page.getByText("¿Podés llegar a la meta en columna 5, fila 3?")).toBeVisible();
+});
+
 async function seed(page: Page) {
   await page.goto("/kids");
   await page.evaluate(() => {

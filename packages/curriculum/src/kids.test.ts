@@ -13,7 +13,51 @@ import {
   kidsMoveSteps,
   validateMission,
   worldToCell,
+  verifyKidsFreeGoal,
+  evaluateKidsGoalRun,
 } from "./index.js";
+
+describe("Kids free-world turn challenges", () => {
+  it("proves a turn challenge with canonical runtime and checks the child's trace", () => {
+    const mission = verifyKidsFreeGoal({ cx: 4, cy: 2 }, "touches-goal-after-turn", "es");
+    const straight = runProgram(program([move(4)]), createWorldState(mission.starterStage));
+    expect(evaluateKidsGoalRun(mission, straight, "touches-goal-after-turn")).toMatchObject({
+      outcome: "short",
+      missingTurn: true,
+    });
+    const lateTurn = runProgram(
+      program([move(4), turnRight]),
+      createWorldState(mission.starterStage),
+    );
+    expect(evaluateKidsGoalRun(mission, lateTurn, "touches-goal-after-turn")).toMatchObject({
+      outcome: "short",
+      missingTurn: true,
+    });
+    const withTurn = runProgram(
+      program([turnRight, move(1), turnLeft, move(4), turnLeft, move(1)]),
+      createWorldState(mission.starterStage),
+    );
+    expect(evaluateKidsGoalRun(mission, withTurn, "touches-goal-after-turn").outcome).toBe(
+      "success",
+    );
+  });
+
+  it("rejects a goal outside the grid or on the start", () => {
+    expect(() => verifyKidsFreeGoal({ cx: 8, cy: 2 }, "touches-goal", "es")).toThrow();
+    expect(() => verifyKidsFreeGoal({ cx: 0, cy: 2 }, "touches-goal-after-turn", "es")).toThrow();
+  });
+
+  it("proves every offered grid cell with the turn rule", () => {
+    for (let cy = 0; cy < KIDS_GRID.rows; cy++) {
+      for (let cx = 0; cx < KIDS_GRID.cols; cx++) {
+        if (cx === 0 && cy === 2) continue;
+        expect(verifyKidsFreeGoal({ cx, cy }, "touches-goal-after-turn", "es").id).toBe(
+          KIDS_FREE_MISSION_ID,
+        );
+      }
+    }
+  });
+});
 
 const move = (cells: number): Statement => ({ type: "move", steps: kidsMoveSteps(cells) });
 const turnLeft: Statement = { type: "turn", degrees: -90 };

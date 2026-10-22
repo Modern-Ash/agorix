@@ -110,10 +110,14 @@ export function MissionSpecPanel({
           <select
             value={draft.successCheck}
             onChange={(event) =>
-              setDraft({ ...draft, successCheck: event.currentTarget.value as "touches-goal" })
+              setDraft({
+                ...draft,
+                successCheck: event.currentTarget.value as MissionSpecView["successCheck"],
+              })
             }
           >
             <option value="touches-goal">{copy.missionSpecTouchesGoal}</option>
+            <option value="touches-goal-after-turn">{copy.missionSpecTouchesGoalAfterTurn}</option>
           </select>
         </label>
         <label>

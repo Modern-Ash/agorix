@@ -5,7 +5,12 @@ import {
   undoCanonicalTransaction,
   type EditorHistory,
 } from "@agorix/block-editor";
-import { evaluateKidsRun, kidsMoveSteps, type KidsRunEvaluation } from "@agorix/curriculum";
+import {
+  evaluateKidsGoalRun,
+  kidsMoveSteps,
+  type KidsGoalCheck,
+  type KidsRunEvaluation,
+} from "@agorix/curriculum";
 import type { MissionDefinition } from "@agorix/curriculum";
 import { validateProgram, type ProjectProgram, type Statement } from "@agorix/program-model";
 import { createWorldState, runProgram, type RunResult } from "@agorix/runtime";
@@ -124,7 +129,11 @@ export interface KidsPlayedRun {
   readonly evaluation: KidsRunEvaluation;
 }
 
-export function playKidsProgram(history: KidsEditor, mission: MissionDefinition): KidsPlayedRun {
+export function playKidsProgram(
+  history: KidsEditor,
+  mission: MissionDefinition,
+  check: KidsGoalCheck = "touches-goal",
+): KidsPlayedRun {
   const result = runProgram(history.current, createWorldState(mission.starterStage));
-  return { result, evaluation: evaluateKidsRun({ mission, result }) };
+  return { result, evaluation: evaluateKidsGoalRun(mission, result, check) };
 }

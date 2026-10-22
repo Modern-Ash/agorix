@@ -9,6 +9,9 @@ import {
   type OriAgentDecision,
   runOriChat,
   type OriChatContext,
+  runOriGoalAgent,
+  type OriGoalDecision,
+  type OriLocale,
 } from "@agorix/ori-agent";
 
 export type OriCliProvider = "auto" | "codex" | "opencode" | "disabled";
@@ -44,6 +47,7 @@ export interface OriCliService {
   health(): Promise<OriCliHealth>;
   respond(context: OriAgentContext): Promise<OriAgentDecision>;
   chat(context: OriChatContext): Promise<string>;
+  proposeGoal(locale: OriLocale): Promise<OriGoalDecision>;
 }
 
 const MAX_INPUT_BYTES = 16 * 1024;
@@ -178,6 +182,10 @@ export function createOriCliService(
     async chat(context) {
       const provider = await select();
       return runOriChat(context, provider ? textModel(provider) : undefined);
+    },
+    async proposeGoal(locale) {
+      const provider = await select();
+      return runOriGoalAgent(locale, provider ? textModel(provider) : undefined);
     },
   };
 }

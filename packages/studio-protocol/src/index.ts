@@ -39,7 +39,7 @@ export type DensityPreference = Density | "auto";
 export const AUTO_DENSITY_EDITS = 8;
 export const MISSION_SPEC_GOAL_MAX_LENGTH = 140;
 export const MISSION_SPEC_PREDICTION_PROMPT_MAX_LENGTH = 160;
-export const MISSION_SPEC_SUCCESS_CHECKS = ["touches-goal"] as const;
+export const MISSION_SPEC_SUCCESS_CHECKS = ["touches-goal", "touches-goal-after-turn"] as const;
 
 export interface ExperienceFacts {
   /** Successful learner edits on the canvas this session. */

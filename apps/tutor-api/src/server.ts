@@ -13,6 +13,7 @@ import {
   isOriChatTextValid,
   runOriChat,
   type OriChatContext,
+  runOriGoalAgent,
 } from "@agorix/ori-agent";
 import type { ProviderRuntimeErrorCode, ProviderRuntimeFetch } from "@agorix/provider-runtime";
 import {
@@ -135,6 +136,10 @@ export function createTutorServer(options: TutorServerOptions): Server {
     if (path === "/api/tutor/chat") {
       if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
       return respondChat(request, response);
+    }
+    if (path === "/api/tutor/goals") {
+      if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
+      return respondGoal(request, response);
     }
     return send(response, 404, error("not-found"));
   }
@@ -281,6 +286,46 @@ export function createTutorServer(options: TutorServerOptions): Server {
     if (next.count > 6) return send(response, 429, error("rate-limited"));
     const message = options.ori ? await options.ori.chat(context) : await runOriChat(context);
     return send(response, 200, { message });
+  }
+
+  async function respondGoal(request: IncomingMessage, response: ServerResponse): Promise<void> {
+    if (!(request.headers["content-type"] ?? "").includes("application/json"))
+      return send(response, 415, error("unsupported-media-type"));
+    if (!sameOrigin(request)) return send(response, 403, error("forbidden-origin"));
+    const body = await readBody(request);
+    if (body === "too-large") return send(response, 413, error("payload-too-large"));
+    let locale: "es" | "en";
+    try {
+      const raw = JSON.parse(body) as Record<string, unknown>;
+      if (
+        !raw ||
+        typeof raw !== "object" ||
+        Array.isArray(raw) ||
+        Object.keys(raw).join(",") !== "locale" ||
+        (raw.locale !== "es" && raw.locale !== "en")
+      )
+        throw new Error("invalid goal request");
+      locale = raw.locale;
+    } catch {
+      return send(response, 400, error("invalid-request"));
+    }
+    const key = request.socket.remoteAddress ?? "unknown";
+    const current = chatRate.get(key);
+    const stamp = now();
+    const next =
+      !current || stamp - current.start >= 60_000
+        ? { count: 1, start: stamp }
+        : { count: current.count + 1, start: current.start };
+    chatRate.set(key, next);
+    if (next.count > 6) return send(response, 429, error("rate-limited"));
+    const proposal = options.ori
+      ? await options.ori.proposeGoal(locale)
+      : await runOriGoalAgent(locale);
+    return send(response, 200, {
+      cell: proposal.cell,
+      successCheck: proposal.successCheck,
+      message: proposal.message,
+    });
   }
 }
 

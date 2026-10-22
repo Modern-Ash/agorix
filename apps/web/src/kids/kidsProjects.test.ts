@@ -70,4 +70,32 @@ describe("Kids free projects (issue #376)", () => {
     expect(() => importKidsProject("not json", "space", "🐸", store, indexStorage)).toThrow();
     expect(listFreeProjects(indexStorage)).toEqual([]);
   });
+
+  it("preserves an accepted turn challenge through portable export and import", () => {
+    const { storage, indexStorage } = memory();
+    const store = new ProjectStore({ storage });
+    const first = createFreeProject("space", "🐸", indexStorage);
+    const mission = createFreeWorldMission({ cx: 4, cy: 2 }, "es");
+    store.save(first.id, mission.starterProject, {
+      createdAt: "2026-10-21T00:00:00.000Z",
+      updatedAt: "2026-10-21T00:00:00.000Z",
+      missionProgress: 0,
+      hintLevel: 0,
+      locale: "es",
+      missionSpec: {
+        goal: kidsGoalSpec({ cx: 4, cy: 2 }),
+        successCheck: "touches-goal-after-turn",
+      },
+    });
+    const imported = importKidsProject(
+      exportKidsProject(store, first.id),
+      "ocean",
+      "🐸",
+      store,
+      indexStorage,
+    );
+    expect(store.load(imported.id).metadata.missionSpec?.successCheck).toBe(
+      "touches-goal-after-turn",
+    );
+  });
 });
