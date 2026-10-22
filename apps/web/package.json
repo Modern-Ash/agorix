@@ -19,6 +19,7 @@
     "@agorix/code-generator": "workspace:*",
     "@agorix/curriculum": "workspace:*",
     "@agorix/interaction-core": "workspace:*",
+    "@agorix/java-projection": "workspace:*",
     "@agorix/language-projection": "workspace:*",
     "@agorix/learning-decision-plane": "workspace:*",
     "@agorix/learning-evidence": "workspace:*",
