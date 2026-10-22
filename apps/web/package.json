@@ -22,6 +22,7 @@
     "@agorix/language-projection": "workspace:*",
     "@agorix/learning-decision-plane": "workspace:*",
     "@agorix/learning-evidence": "workspace:*",
+    "@agorix/ori-agent": "workspace:*",
     "@agorix/persistence": "workspace:*",
     "@agorix/provider-runtime": "workspace:*",
     "@agorix/program-model": "workspace:*",
