@@ -198,8 +198,14 @@ export function EditorScreen({
   const trail = evaluation?.trail ?? [start];
   const activeNode = visibleTrace.at(-1)?.nodeId;
   const oriHash = useMemo(() => programSemanticHash(history.current), [history.current]);
-  const oriProvider = useMemo(() => createKidsOriProviderRuntime(mission, missionIndex, locale), [mission, missionIndex, locale]);
-  const oriOffer = useMemo(() => oriProvider.propose(history.current), [oriProvider, history.current]);
+  const oriProvider = useMemo(
+    () => createKidsOriProviderRuntime(mission, missionIndex, locale),
+    [mission, missionIndex, locale],
+  );
+  const oriOffer = useMemo(
+    () => oriProvider.propose(history.current),
+    [oriProvider, history.current],
+  );
   const oriReview = useMemo(
     () =>
       oriOffer.proposal ? createProposalReview(history.current, oriOffer.proposal) : undefined,
