@@ -27,7 +27,9 @@ test("Ori chat stays scoped, private and clears when leaving the editor", async 
   await expect(page.getByRole("status").filter({ hasText: "casillas" })).toBeVisible();
   await page.getByRole("textbox", { name: "Tu pregunta" }).fill("¿Dónde está la meta?");
   await page.getByRole("button", { name: "Enviar" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Ori no está disponible ahora" })).toBeVisible();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Ori no está disponible ahora" }),
+  ).toBeVisible();
   expect(
     await page.evaluate(() => JSON.stringify({ ...localStorage, ...sessionStorage })),
   ).not.toContain("¿Cómo muevo los bloques?");
