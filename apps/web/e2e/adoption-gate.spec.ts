@@ -282,6 +282,7 @@ test.describe("journey 10: AI unavailable", () => {
       };
     });
     await page.goto("/advanced");
+    await page.locator(".editor-shell").first().waitFor();
     await context.setOffline(true);
 
     // Happy path never opens a chat or connects a provider.

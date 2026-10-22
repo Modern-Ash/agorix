@@ -40,6 +40,8 @@ interface Health {
   readonly available: boolean;
   readonly providerInUse: "deterministic" | "openai-compatible" | "codex" | "opencode";
   readonly lastErrorClass: ProviderRuntimeErrorCode | null;
+  /** Adult diagnostics only; never included in a child's Ori response. */
+  readonly lastOriSource: "model" | "fallback" | "refusal" | null;
 }
 
 /**
@@ -55,13 +57,14 @@ export function createTutorServer(options: TutorServerOptions): Server {
   const now = options.now ?? Date.now;
   let cached: { readonly at: number; readonly health: Health } | undefined;
   let lastErrorClass: ProviderRuntimeErrorCode | null = null;
+  let lastOriSource: Health["lastOriSource"] = null;
   const chatRate = new Map<string, { count: number; start: number }>();
 
   async function health(): Promise<Health> {
     if (cached !== undefined && now() - cached.at < ttl) return cached.health;
     if (options.ori) {
       const ori = await options.ori.health();
-      const value: Health = { ...ori, lastErrorClass };
+      const value: Health = { ...ori, lastErrorClass, lastOriSource };
       cached = { at: now(), health: value };
       return value;
     }
@@ -73,6 +76,7 @@ export function createTutorServer(options: TutorServerOptions): Server {
       providerInUse:
         available && config.adapter === "openai-compatible" ? "openai-compatible" : "deterministic",
       lastErrorClass,
+      lastOriSource,
     };
     cached = { at: now(), health: value };
     return value;
@@ -217,6 +221,7 @@ export function createTutorServer(options: TutorServerOptions): Server {
       : evaluateOriAgentOutput(context, undefined);
     if (decision.source === "fallback") lastErrorClass = "provider-unavailable";
     else lastErrorClass = null;
+    lastOriSource = decision.source;
     cached = undefined;
     return send(response, 200, {
       message: decision.message,

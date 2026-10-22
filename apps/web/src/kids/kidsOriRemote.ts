@@ -2,9 +2,9 @@ import { KIDS_GRID } from "@agorix/curriculum";
 import type { ProjectProgram, Statement } from "@agorix/program-model";
 import { createProposalReview, validateProgramProposal } from "@agorix/proposals";
 import type { KidsOriOffer } from "./kidsOri.js";
+import { ORI_BROWSER_TIMEOUT_MS } from "./oriRequestBudget.js";
 
 const ORI_PATH = "/api/tutor/ori";
-const DEFAULT_TIMEOUT_MS = 7_500;
 const MAX_RESPONSE_CHARS = 16 * 1024;
 
 interface RequestOptions {
@@ -40,7 +40,7 @@ export async function requestKidsOriOffer(
         timer = setTimeout(() => {
           controller.abort();
           reject(new Error("Ori response budget exceeded"));
-        }, options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+        }, options.timeoutMs ?? ORI_BROWSER_TIMEOUT_MS);
       }),
     ]);
     if (text === null || text.length > MAX_RESPONSE_CHARS) return null;
