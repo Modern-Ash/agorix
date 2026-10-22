@@ -56,6 +56,23 @@ rollback() {
 trap rollback EXIT
 systemctl --user daemon-reload
 systemctl --user enable --now agorix-tutor.service
+socket="${XDG_RUNTIME_DIR:?XDG_RUNTIME_DIR is required}/agorix-tutor/tutor.sock"
+ready=0
+for _ in {1..20}; do
+  if curl -fsS --max-time 1 --unix-socket "$socket" http://localhost/api/tutor/health \
+    | node -e 'let s="";process.stdin.on("data",c=>s+=c).on("end",()=>{const h=JSON.parse(s);process.exit(h.configured&&h.available?0:1)})' >/dev/null 2>&1; then
+    ready=1
+    break
+  fi
+  sleep 0.5
+done
+[ "$ready" -eq 1 ] || { echo "Ori service did not become ready" >&2; exit 1; }
+# A previous failed activation may have removed the runtime directory after Docker bound it.
+# Remount only when nginx cannot see the current socket.
+if ! docker exec agorix-web test -S /run/agorix-tutor/tutor.sock; then
+  AGORIX_WEB_TAG="$short_sha" AGORIX_TUTOR_SOCKET_DIR="$(dirname "$socket")" \
+    docker compose -f deploy/web/docker-compose.yml up -d --no-deps --no-build --force-recreate web
+fi
 node scripts/check-ori-live.mjs
 trap - EXIT
 echo "Ori host service active with a verified real model proposal"

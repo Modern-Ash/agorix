@@ -147,6 +147,9 @@ mission through the public route. The read-only `node scripts/check-ori-live.mjs
 provider and latency only; no child data or model text. If activation fails, the script disables
 and removes the new service; the Web keeps its deterministic fallback. For a later check, use
 `scripts/activate-tutor-host.sh --verify-only`.
+The script waits for the local socket before the public check. If an earlier failed activation
+left Docker bound to a removed runtime directory, it recreates the Web container with the same
+deployed image to renew that mount. The service preserves its runtime directory across restarts.
 
 The unit's `WorkingDirectory` and `ExecStart` assume `%h/dev-agora/agorix`; run activation from
 that checkout. After a future merge that changes `apps/tutor-api`, rebuild it and run
