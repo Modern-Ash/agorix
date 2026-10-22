@@ -22,6 +22,8 @@ export function kidsTable(
   return table[key] as Readonly<Record<string, string>>;
 }
 
+export type KidsText = ReturnType<typeof kidsText>;
+
 export function useKidsText(locale: Locale) {
   return useMemo(() => kidsText(locale), [locale]);
 }
