@@ -1,0 +1,154 @@
+/* Agorix Kids shell (issue #373). Tokens follow docs/product/DESIGN_SYSTEM.md and the prototype. */
+:root {
+  --kids-canvas: #f7f4ee;
+  --kids-panel: #ffffff;
+  --kids-text: #17201d;
+  --kids-text-secondary: #5e6b65;
+  --kids-border: #d9ded6;
+  --kids-focus: #2f6fed;
+  --kids-runtime: #0e9f9a;
+  --kids-runtime-strong: #0a7a76; /* white text on this passes WCAG AA (the lighter teal does not) */
+  --kids-ai: #6c5ce7;
+  --kids-move: #3f7ee8;
+  --kids-control: #8b63d9;
+  --kids-event: #d8892f;
+  --kids-data: #2f9d78;
+  --kids-success: #2e8f4e;
+  --kids-error: #c2413b;
+  --kids-font-body: "Atkinson Hyperlegible", system-ui, sans-serif;
+  --kids-font-display: "Epilogue", "Atkinson Hyperlegible", system-ui, sans-serif;
+  --kids-font-code: "JetBrains Mono", ui-monospace, monospace;
+}
+
+.kids-root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+  padding: 16px;
+  color: var(--kids-text);
+  font-family: var(--kids-font-body);
+  background:
+    linear-gradient(90deg, rgba(23, 32, 29, 0.045) 1px, transparent 1px) 0 0 / 28px 28px,
+    linear-gradient(0deg, rgba(23, 32, 29, 0.035) 1px, transparent 1px) 0 0 / 28px 28px,
+    radial-gradient(circle at 12% 8%, rgba(63, 126, 232, 0.12), transparent 28%),
+    radial-gradient(circle at 88% 0%, rgba(14, 159, 154, 0.1), transparent 26%),
+    var(--kids-canvas);
+}
+
+.kids-frame {
+  width: 100%;
+  max-width: 1100px;
+  flex: 1;
+}
+
+.kids-screen {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+  padding: 16px 0 96px;
+}
+
+.kids-screen h1 {
+  margin: 0;
+  font-family: var(--kids-font-display);
+  font-weight: 800;
+  font-size: clamp(1.8rem, 5vw, 2.6rem);
+}
+
+.kids-note {
+  color: var(--kids-text-secondary);
+  margin: 0;
+}
+
+.kids-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.kids-button {
+  min-width: 56px;
+  min-height: 56px;
+  padding: 0 20px;
+  border: 2px solid var(--kids-border);
+  border-radius: 16px;
+  background: var(--kids-panel);
+  color: var(--kids-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.kids-button[aria-pressed="true"] {
+  border-color: var(--kids-runtime);
+  box-shadow: 0 0 0 3px rgba(14, 159, 154, 0.25);
+}
+
+.kids-primary {
+  border-color: var(--kids-runtime-strong);
+  background: var(--kids-runtime-strong);
+  color: #ffffff;
+}
+
+.kids-avatar {
+  font-size: 1.8rem;
+}
+
+.kids-nav {
+  position: fixed;
+  inset: auto 0 0 0;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px max(8px, env(safe-area-inset-bottom));
+  background: var(--kids-panel);
+  border-top: 1px solid var(--kids-border);
+}
+
+.kids-nav-button {
+  display: grid;
+  place-items: center;
+  gap: 2px;
+  min-width: 72px;
+  min-height: 56px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--kids-text-secondary);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.kids-nav-button[aria-current="page"] {
+  background: rgba(14, 159, 154, 0.12);
+  color: var(--kids-text);
+  font-weight: 700;
+}
+
+.kids-root button:focus-visible {
+  outline: 3px solid var(--kids-focus);
+  outline-offset: 2px;
+}
+
+/* Frames: phone < 700px, tablet 700 to 1100px, desktop > 1100px. */
+@media (max-width: 699px) {
+  .kids-root {
+    padding: 12px;
+  }
+}
+
+@media (min-width: 1101px) {
+  .kids-frame {
+    min-height: 560px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kids-root * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
