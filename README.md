@@ -92,6 +92,11 @@ flowchart TB
 
 ## Agorix Web / Tablet
 
+**Current routes:** `/` opens Agorix Kids for ages 6–8. `/kids` remains an alias for existing
+links. The previous editor and its actors, looks, sounds, variables, events, watchers and code
+views remain available at `/advanced` while the advanced experience is redesigned. Both routes
+use the same Web deployment; Kids projects stay in browser storage.
+
 The primary learning and creation surface is **touch-first**.
 
 The dominant visual relationship should be:

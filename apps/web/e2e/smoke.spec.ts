@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
   await page.evaluate(async () => {
     localStorage.clear();
     localStorage.setItem("agorix.locale", "en");
@@ -88,7 +88,7 @@ function codeProjectionSelect(page: Page) {
 
 async function runTransparencyJourney(page: Page, viewport: { width: number; height: number }) {
   await page.setViewportSize(viewport);
-  await page.goto("/");
+  await page.goto("/advanced");
 
   for (let i = 0; i < 3; i += 1) {
     await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
@@ -134,7 +134,7 @@ async function runTransparencyJourney(page: Page, viewport: { width: number; hei
 }
 
 test("main editor shell renders persistent blocks, stage and code", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
 
   await expect(page.locator(".brand-identity")).toHaveAccessibleName("Agorix");
   await expect(page.locator(".brand-wordmark")).toHaveText("Agorix");
@@ -146,7 +146,7 @@ test("main editor shell renders persistent blocks, stage and code", async ({ pag
 });
 
 test("Looks blocks edit text and asset refs, then render on the stage", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
 
   await page.locator(".action-palette").getByLabel("Say", { exact: true }).click();
   await page.locator(".action-palette").getByLabel("Costume", { exact: true }).click();
@@ -179,7 +179,7 @@ test("Looks blocks edit text and asset refs, then render on the stage", async ({
 });
 
 test("Sound blocks project to code and render runtime evidence on the stage", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
 
   await page.locator(".action-palette").getByLabel("Start sound", { exact: true }).click();
 
@@ -198,7 +198,7 @@ test("Sound blocks project to code and render runtime evidence on the stage", as
 test("multi-actor app flow edits a selected actor script and runs shared frames", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
 
   await page.getByRole("button", { name: "Move", exact: true }).click();
   await applyMoveSteps(page, "12");
@@ -223,7 +223,7 @@ test("multi-actor app flow edits a selected actor script and runs shared frames"
 });
 
 test("block edits update generated code", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
 
   await page.getByRole("button", { name: "Move", exact: true }).click();
   await expect(page.getByText("sprite.move(10);")).toBeVisible();
@@ -232,7 +232,7 @@ test("block edits update generated code", async ({ page }) => {
 });
 
 test("block edits survive reload from canonical storage", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
 
   await page.getByRole("button", { name: "Move", exact: true }).click();
   await applyMoveSteps(page, "24");
@@ -250,7 +250,7 @@ test("block edits survive reload from canonical storage", async ({ page }) => {
 });
 
 test("Undo and Redo restore exact canonical block edits", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
 
   await page.getByRole("button", { name: "Move", exact: true }).click();
   const afterAdd = await canonicalHash(page);
@@ -269,7 +269,7 @@ test("Undo and Redo restore exact canonical block edits", async ({ page }) => {
 });
 
 test("anonymous project exports and imports as a portable .agorix file", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
 
   await page.getByRole("button", { name: "Move", exact: true }).click();
   await applyMoveSteps(page, "24");
@@ -294,7 +294,7 @@ test("anonymous project exports and imports as a portable .agorix file", async (
 });
 
 test("locale switch localizes UI without changing canonical program", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
 
   await page.getByRole("button", { name: "Move", exact: true }).click();
   await applyMoveSteps(page, "24");
@@ -321,7 +321,7 @@ test("locale switch localizes UI without changing canonical program", async ({ p
 });
 
 test("offline tutor hints escalate without changing blocks", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
 
   await page.getByRole("button", { name: "Move", exact: true }).click();
   await expect(page.getByLabel("Move block").getByRole("spinbutton")).toHaveValue("10");
@@ -342,7 +342,7 @@ test("offline tutor hints escalate without changing blocks", async ({ page }) =>
 });
 
 test("first mission completes from runtime facts and shows reflection", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
 
   await page.getByRole("button", { name: "Move", exact: true }).click();
   await applyMoveSteps(page, "10");
@@ -361,7 +361,7 @@ test("first mission completes from runtime facts and shows reflection", async ({
 });
 
 test("mission retry keeps work, code, and unlocks non-blocking free play", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
 
   await page.getByRole("button", { name: "Move", exact: true }).click();
   await applyMoveSteps(page, "10");
@@ -387,7 +387,7 @@ test("mission retry keeps work, code, and unlocks non-blocking free play", async
 });
 
 test("Step synchronizes block, code and stage without racing Run", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
 
   await page.getByRole("button", { name: "Move", exact: true }).click();
   await applyMoveSteps(page, "24");
@@ -408,7 +408,7 @@ test("Step synchronizes block, code and stage without racing Run", async ({ page
 
 test("orientation change preserves prepared Step state", async ({ page }) => {
   await page.setViewportSize({ width: 768, height: 1024 });
-  await page.goto("/");
+  await page.goto("/advanced");
 
   await page.getByRole("button", { name: "Move", exact: true }).click();
   await applyMoveSteps(page, "24");
@@ -424,7 +424,7 @@ test("orientation change preserves prepared Step state", async ({ page }) => {
 });
 
 test("Step trace explains before and after state without raw logs", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
 
   await page.getByRole("button", { name: "Move", exact: true }).click();
   await applyMoveSteps(page, "24");
@@ -463,7 +463,7 @@ test("transparency journey is touch-safe on tablet landscape", async ({ page }) 
 
 test("mission celebration respects reduced motion", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/");
+  await page.goto("/advanced");
 
   const reducedAnimationSeconds = await page.locator(".stage-canvas .goal").evaluate((node) => {
     const duration = window.getComputedStyle(node).animationDuration;
@@ -479,7 +479,7 @@ test("tablet landscape uses a Scratch-style left tool palette with Stage code pr
   page,
 }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
-  await page.goto("/");
+  await page.goto("/advanced");
 
   const world = page.getByRole("heading", { name: "Stage" });
   const palette = page.getByRole("heading", { name: "Action palette", exact: true });
@@ -501,7 +501,7 @@ test("tablet portrait shows Stage before inspectable backstage code in normal fl
   page,
 }) => {
   await page.setViewportSize({ width: 768, height: 1024 });
-  await page.goto("/");
+  await page.goto("/advanced");
 
   await expect(page.getByRole("heading", { name: "Stage" })).toBeInViewport();
   await expect(page.locator(".stage-backstage-code")).toBeInViewport();
@@ -516,7 +516,7 @@ test("tablet portrait shows Stage before inspectable backstage code in normal fl
 
 test("tablet controls meet touch target guidance", async ({ page }) => {
   await page.setViewportSize({ width: 820, height: 1180 });
-  await page.goto("/");
+  await page.goto("/advanced");
 
   await openAppMenu(page);
   const controls = [
@@ -535,7 +535,7 @@ test("tablet controls meet touch target guidance", async ({ page }) => {
 
 test("orientation change preserves canonical program and visible code", async ({ page }) => {
   await page.setViewportSize({ width: 768, height: 1024 });
-  await page.goto("/");
+  await page.goto("/advanced");
 
   await page.getByRole("button", { name: "Move", exact: true }).click();
   await applyMoveSteps(page, "24");
@@ -552,7 +552,7 @@ test("orientation change preserves canonical program and visible code", async ({
 
 test("touch/no-drag path completes the First Mission", async ({ page }) => {
   await page.setViewportSize({ width: 820, height: 1180 });
-  await page.goto("/");
+  await page.goto("/advanced");
 
   await page.getByRole("button", { name: "Move", exact: true }).click();
   await applyMoveSteps(page, "160");
@@ -565,7 +565,7 @@ test("touch/no-drag path completes the First Mission", async ({ page }) => {
 });
 
 test("explicit reorder controls update generated code without drag", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
 
   await page.getByRole("button", { name: "Move", exact: true }).click();
   await page.getByRole("button", { name: "Turn" }).click();
@@ -579,7 +579,7 @@ test("explicit reorder controls update generated code without drag", async ({ pa
 });
 
 test("palette shows only implemented actions, in familiar categories", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
 
   for (const name of ["Motion", "Looks", "Sound", "Events", "Control", "Operators", "Variables"]) {
     await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
@@ -597,7 +597,7 @@ test("palette shows only implemented actions, in familiar categories", async ({ 
 test("IDE panels can collapse, close, restore, and blocks support drag and drop", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
   await openCodePanel(page);
 
   await page
@@ -622,7 +622,7 @@ test("IDE panels can collapse, close, restore, and blocks support drag and drop"
 });
 
 test("palette drag supports nested drop and one-step undo", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
 
   await page.getByRole("button", { name: "Repeat" }).click();
   const repeatOnly = await canonicalHash(page);
@@ -644,7 +644,7 @@ test("palette drag supports nested drop and one-step undo", async ({ page }) => 
 });
 
 test("cancelled and invalid drops leave canonical state unchanged", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
 
   await page.getByRole("button", { name: "Move", exact: true }).click();
   const before = await canonicalHash(page);
@@ -671,7 +671,7 @@ test("cancelled and invalid drops leave canonical state unchanged", async ({ pag
 });
 
 test("nested blocks can move out and duplicate as undoable subtrees", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
 
   await page.getByRole("button", { name: "Repeat" }).click();
   await dragHtml5(page, ".tool-motion_move", ".nested-block-stack");
@@ -703,7 +703,7 @@ test("nested blocks can move out and duplicate as undoable subtrees", async ({ p
 });
 
 test("non-drag nesting keeps projections synchronized", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
 
   await page.getByRole("button", { name: "Repeat" }).click();
   await page.getByRole("button", { name: "Move", exact: true }).click();
@@ -717,7 +717,7 @@ test("non-drag nesting keeps projections synchronized", async ({ page }) => {
 });
 
 test("IDE panels can maximize and expose resize affordances", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
   await openCodePanel(page);
 
   await expect(page.locator(".program-panel")).toHaveCSS("resize", "both");
@@ -740,7 +740,7 @@ test("IDE panels can maximize and expose resize affordances", async ({ page }) =
 });
 
 test("compact workflow keeps tools, blocks, stage, code and AI reachable", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
 
   await expect(page.locator(".learning-flow")).toBeHidden();
   await expect(page.getByRole("heading", { name: "Action palette", exact: true })).toBeVisible();
@@ -754,7 +754,7 @@ test("compact workflow keeps tools, blocks, stage, code and AI reachable", async
 
 test("desktop IDE keeps AI visible without document-level scrolling", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 820 });
-  await page.goto("/");
+  await page.goto("/advanced");
 
   const metrics = await page.evaluate(() => ({
     scrollHeight: document.documentElement.scrollHeight,
@@ -773,7 +773,7 @@ test("desktop IDE keeps AI visible without document-level scrolling", async ({ p
 });
 
 test("Explain tool reveals the AI companion without a mode switch", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
 
   await expect(page.getByRole("navigation", { name: /Work mode/ })).toHaveCount(0);
   await expect(page.locator(".companion-panel")).toHaveCount(0);
@@ -782,7 +782,7 @@ test("Explain tool reveals the AI companion without a mode switch", async ({ pag
 });
 
 test("adding a block refreshes coach and starter guidance", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
 
   await expect(
     page.getByText(
@@ -800,7 +800,7 @@ test("adding a block refreshes coach and starter guidance", async ({ page }) => 
 test("AI coach shows normal local mode and no learner-facing connect button (#352)", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
 
   await page.getByRole("button", { name: "Use AI explain tool" }).click();
   const card = page.locator(".ai-coach-card");
@@ -816,7 +816,7 @@ test("virtual keyboard numeric edit keeps inline value usable without form cerem
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/");
+  await page.goto("/advanced");
 
   await page.getByRole("button", { name: "Move", exact: true }).click();
   const input = page.getByLabel("Move block").getByRole("spinbutton");
@@ -830,7 +830,7 @@ test("virtual keyboard numeric edit keeps inline value usable without form cerem
 
 test("Spanish touch edit path keeps action palette and numeric commit usable", async ({ page }) => {
   await page.setViewportSize({ width: 820, height: 1180 });
-  await page.goto("/");
+  await page.goto("/advanced");
 
   await openAppMenu(page);
   await page.getByLabel("Product language").selectOption("es");
@@ -845,7 +845,7 @@ test("Spanish touch edit path keeps action palette and numeric commit usable", a
 test("app is installable: manifest is linked and valid, service worker registers", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
 
   const manifestHref = await page.locator('link[rel="manifest"]').getAttribute("href");
   expect(manifestHref).toBe("/manifest.webmanifest");
@@ -873,7 +873,7 @@ test("app shell stays available offline after the service worker installs", asyn
   page,
   context,
 }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready;
   });
@@ -894,7 +894,7 @@ test("app shell stays available offline after the service worker installs", asyn
 test("provenance is visually and textually distinguishable across suggestion, accepted and runtime-fact states (issue #99)", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
   await page.getByRole("button", { name: "Use AI explain tool" }).click();
 
   // Initial state: no AI content shown yet, tutor marked unavailable.
@@ -929,7 +929,7 @@ test("provenance is visually and textually distinguishable across suggestion, ac
 test("AI-literacy journey predicts, tests, challenges and corrects an imperfect suggestion", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
 
   // Establish learner-owned program state before any AI suggestion.
   await page.getByRole("button", { name: "Move", exact: true }).click();
@@ -987,7 +987,7 @@ test("AI-literacy journey predicts, tests, challenges and corrects an imperfect 
 
 test.describe("MVP release happy paths", () => {
   test("happy path: learner builds, runs, completes and reflects", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/advanced");
     await page.getByRole("button", { name: "Move", exact: true }).click();
     await applyMoveSteps(page, "160");
     await expect(visibleCode(page, "sprite.move(160);")).toBeVisible();
@@ -1001,7 +1001,7 @@ test.describe("MVP release happy paths", () => {
   test("happy path: one canonical program switches and compares code projections", async ({
     page,
   }) => {
-    await page.goto("/");
+    await page.goto("/advanced");
     await page.getByRole("button", { name: "Move", exact: true }).click();
     await applyMoveSteps(page, "24");
     const before = await canonicalHash(page);
@@ -1025,7 +1025,7 @@ test.describe("MVP release happy paths", () => {
   test("happy path: deterministic Learning Decision Plane bypasses provider work", async ({
     page,
   }) => {
-    await page.goto("/");
+    await page.goto("/advanced");
     await page.getByRole("button", { name: "Move", exact: true }).click();
     await stageRun(page).click();
     await page.getByRole("button", { name: "Use AI hint tool" }).click();
@@ -1037,7 +1037,7 @@ test.describe("MVP release happy paths", () => {
   });
 
   test("happy path: coach hint records deterministic routing metadata", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/advanced");
     await page.getByRole("button", { name: "Move", exact: true }).click();
     await page.getByRole("button", { name: "Use AI hint tool" }).click();
 
@@ -1051,7 +1051,7 @@ test.describe("MVP release happy paths", () => {
 });
 
 async function buildRepetitiveProgram(page: Page) {
-  await page.goto("/");
+  await page.goto("/advanced");
   for (let i = 0; i < 3; i += 1) {
     await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
     await page.locator(".action-palette").getByLabel("Turn", { exact: true }).click();
@@ -1060,7 +1060,7 @@ async function buildRepetitiveProgram(page: Page) {
 
 test.describe("contextual repeat suggestion", () => {
   test("no suggestion appears for a non-repetitive program", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/advanced");
     await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
     await page.locator(".action-palette").getByLabel("Turn", { exact: true }).click();
     await expect(page.getByTestId("repeat-suggestion")).toHaveCount(0);
@@ -1154,7 +1154,7 @@ test.describe("contextual repeat suggestion", () => {
 });
 
 test("Step card advances with Next and shows learner-facing evidence", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
   await expect(page.getByTestId("step-card")).toHaveCount(0);
   await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
   await openAppMenu(page);
@@ -1169,7 +1169,7 @@ test("Step card advances with Next and shows learner-facing evidence", async ({ 
 test("debugging journey: wrong program, runtime evidence, hint, correction, success", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
   await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
   const canonicalBefore = await canonicalHash(page);
 
@@ -1195,7 +1195,7 @@ test("debugging journey: wrong program, runtime evidence, hint, correction, succ
 test("worlds reframe the mission without changing the program or runtime result", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
   await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
   await applyMoveSteps(page, "160");
   const hash = await canonicalHash(page);
@@ -1222,7 +1222,7 @@ test("worlds reframe the mission without changing the program or runtime result"
 });
 
 test("worlds are localized in Spanish", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
   await openAppMenu(page);
   await page.getByLabel("Product language").selectOption("es");
   await page.getByLabel("Mundo").selectOption("ocean.reef");
@@ -1230,7 +1230,7 @@ test("worlds are localized in Spanish", async ({ page }) => {
 });
 
 test("Step keeps the active block, code and World in sync", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
   await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
   await applyMoveSteps(page, "160");
 
@@ -1249,7 +1249,7 @@ test("Step keeps the active block, code and World in sync", async ({ page }) => 
 });
 
 test("World shows success and retry feedback with runtime-observed labelling", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
   await page.getByLabel("World").selectOption("ocean.reef");
   await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
   await applyMoveSteps(page, "20");
@@ -1269,7 +1269,7 @@ test("World shows success and retry feedback with runtime-observed labelling", a
 });
 
 test("World identity is visible and Stop is reflected in the World", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
   await expect(page.getByTestId("world-identity")).toContainText("Agorix World");
   await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
   await applyMoveSteps(page, "160");
@@ -1282,7 +1282,7 @@ test("World identity is visible and Stop is reflected in the World", async ({ pa
 
 test("reduced motion turns off glide and pulse while feedback stays visible", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/");
+  await page.goto("/advanced");
   await expect(page.locator(".stage-panel")).toHaveAttribute("data-reduced-motion", "true");
   await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
   await applyMoveSteps(page, "160");
@@ -1300,7 +1300,7 @@ for (const viewport of [
 ]) {
   test(`World stays prominent with feedback at ${viewport.name} size`, async ({ page }) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
-    await page.goto("/");
+    await page.goto("/advanced");
     await expect(page.getByRole("heading", { name: "Stage" })).toBeInViewport();
     await expect(page.getByTestId("stage-feedback")).toBeVisible();
     const overflow = await page.evaluate(
@@ -1312,7 +1312,7 @@ for (const viewport of [
 
 test.describe("AI available from the start", () => {
   test("companion is ready and offers a first step on an empty project", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/advanced");
     await page.getByRole("button", { name: "Use AI explain tool" }).click();
     await expect(page.locator('[data-provenance="unavailable"]')).toHaveCount(0);
     const welcome = page.getByTestId("ai-welcome");
@@ -1321,7 +1321,7 @@ test.describe("AI available from the start", () => {
   });
 
   test("first step is a proposal: inspect, reject leaves the program empty", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/advanced");
     await page.getByRole("button", { name: "Use AI explain tool" }).click();
     const before = await canonicalHash(page);
     await page.getByRole("button", { name: "Show me a first step" }).click();
@@ -1335,7 +1335,7 @@ test.describe("AI available from the start", () => {
   test("accepting the first step adds a Move block through the canonical program", async ({
     page,
   }) => {
-    await page.goto("/");
+    await page.goto("/advanced");
     await page.getByRole("button", { name: "Use AI explain tool" }).click();
     const before = await canonicalHash(page);
     await page.getByRole("button", { name: "Show me a first step" }).click();
@@ -1347,7 +1347,7 @@ test.describe("AI available from the start", () => {
   });
 
   test("the offer goes away on its own once the learner starts building", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/advanced");
     await page.getByRole("button", { name: "Use AI explain tool" }).click();
     await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
     await expect(page.getByTestId("ai-welcome")).toHaveCount(0);
@@ -1364,7 +1364,7 @@ test.describe("AI available from the start", () => {
         },
       };
     });
-    await page.goto("/");
+    await page.goto("/advanced");
     await page.getByRole("button", { name: "Use AI explain tool" }).click();
     await page.waitForFunction(
       () => (globalThis as unknown as { layaCalls: number }).layaCalls > 0,
@@ -1378,7 +1378,7 @@ test.describe("AI available from the start", () => {
         decideMany: async () => [{ id: "proactiveAction", value: "offer", confidence: 1 }],
       };
     });
-    await page.goto("/");
+    await page.goto("/advanced");
     await page.getByRole("button", { name: "Use AI explain tool" }).click();
     await expect(page.getByTestId("ai-welcome")).toBeVisible();
     await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
@@ -1388,7 +1388,7 @@ test.describe("AI available from the start", () => {
 
 test.describe("presentation preferences", () => {
   test("chosen world survives reload without touching the canonical program", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/advanced");
     await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();
     const hash = await canonicalHash(page);
     await page.getByLabel("World").selectOption("city.crossing");
@@ -1398,7 +1398,7 @@ test.describe("presentation preferences", () => {
   });
 
   test("declining twice keeps the AI quiet after a reload", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/advanced");
     for (let round = 0; round < 2; round += 1) {
       for (let i = 0; i < 3; i += 1) {
         await page.locator(".action-palette").getByLabel("Move", { exact: true }).click();

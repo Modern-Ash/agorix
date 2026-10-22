@@ -20,7 +20,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
   await page.evaluate(async () => {
     localStorage.clear();
     localStorage.setItem("agorix.locale", "en");
@@ -279,7 +279,7 @@ test.describe("journey 10: AI unavailable", () => {
         },
       };
     });
-    await page.goto("/");
+    await page.goto("/advanced");
     await context.setOffline(true);
 
     // Happy path never opens a chat or connects a provider.

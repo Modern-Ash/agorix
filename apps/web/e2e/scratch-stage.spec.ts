@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/advanced");
   await page.evaluate(async () => {
     localStorage.clear();
     localStorage.setItem("agorix.locale", "en");
@@ -28,7 +28,7 @@ test("Play and Stop are visible on the first screen, next to the stage, without 
   page,
 }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
-  await page.goto("/");
+  await page.goto("/advanced");
   const controls = play(page);
   await expect(controls.getByRole("button", { name: "Run" })).toBeInViewport();
   await expect(controls.getByRole("button", { name: "Stop" })).toBeInViewport();

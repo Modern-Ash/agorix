@@ -14,8 +14,16 @@ const ENGLISH_LEAKS = [
   /^(Undo|Redo)$/,
 ];
 
-test("the Spanish UI has no English labels in text, aria-label or title", async ({ page }) => {
+test("the default Kids route starts in Spanish", async ({ page }) => {
   await page.goto("/");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("lang", "es");
+  await expect(page.getByRole("heading", { name: "¡Hola!" })).toBeVisible();
+});
+
+test("the Spanish UI has no English labels in text, aria-label or title", async ({ page }) => {
+  await page.goto("/advanced");
   await page.evaluate(() => {
     localStorage.clear();
     localStorage.setItem("agorix.locale", "es");
