@@ -1,5 +1,6 @@
 import { verifyKidsFreeGoal, type KidsCell, type KidsGoalCheck } from "@agorix/curriculum";
 import { describeOriGoal } from "@agorix/ori-agent";
+import { ORI_BROWSER_TIMEOUT_MS } from "./oriRequestBudget.js";
 
 export interface KidsGoalProposal {
   readonly cell: KidsCell;
@@ -14,7 +15,7 @@ export async function requestKidsGoal(
 ): Promise<KidsGoalProposal | null> {
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 7_500);
+    const timeout = setTimeout(() => controller.abort(), ORI_BROWSER_TIMEOUT_MS);
     signal?.addEventListener("abort", () => controller.abort(), { once: true });
     try {
       const response = await fetch("/api/tutor/goals", {

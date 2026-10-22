@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ORI_CHAT_FALLBACK, ORI_CHAT_MAX_CHARS, isOriChatReply } from "@agorix/ori-agent";
 import type { KidsCell } from "@agorix/curriculum";
 import type { ProjectProgram } from "@agorix/program-model";
+import { ORI_BROWSER_TIMEOUT_MS } from "../oriRequestBudget.js";
 
 interface Props {
   readonly locale: "es" | "en";
@@ -36,7 +37,7 @@ export function KidsOriChat({ locale, missionId, goalCell, program }: Props) {
     setText("");
     setAnswer("");
     setPending(true);
-    const timer = setTimeout(() => controller.abort(), 7_500);
+    const timer = setTimeout(() => controller.abort(), ORI_BROWSER_TIMEOUT_MS);
     try {
       const response = await fetch("/api/tutor/chat", {
         method: "POST",

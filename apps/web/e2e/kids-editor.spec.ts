@@ -218,7 +218,7 @@ test("Ori silently uses local rules for an invalid or late agent answer", async 
   await expect(page.locator(".kids-ori-proposal")).toContainText("mover 4");
   await page.unroute("**/api/tutor/ori");
   await page.route("**/api/tutor/ori", async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, 8_000));
+    await new Promise((resolve) => setTimeout(resolve, 11_000));
     try {
       await route.fulfill({ json: { message: "ignored", proposal } });
     } catch {
@@ -227,7 +227,7 @@ test("Ori silently uses local rules for an invalid or late agent answer", async 
   });
   await page.reload();
   await page.getByRole("button", { name: "Misión 1" }).click();
-  await expect(page.locator(".kids-ori-proposal")).toContainText("mover 4", { timeout: 10_000 });
+  await expect(page.locator(".kids-ori-proposal")).toContainText("mover 4", { timeout: 13_000 });
   await expect(page.locator(".kids-editor")).not.toContainText(
     /conectad|proveedor|provider|offline/i,
   );

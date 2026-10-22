@@ -131,31 +131,37 @@ listens on `%t/agorix-tutor/tutor.sock` inside the host user's runtime directory
 `pnpm deploy:web` creates the mount directory if absent, so the Web starts and falls back cleanly
 before this service is enabled. The old Docker Compose `ai` profile is no longer used.
 
-From a merged, clean `main` on this host:
+From a merged, clean `main` on this host, after `pnpm deploy:web` has published the
+same commit (including the 9-second Nginx tutor proxy budget):
 
 ```bash
-pnpm --filter @agorix/tutor-api build
-mkdir -p ~/.config/systemd/user ~/.config/agorix
-cp deploy/web/agorix-tutor.service ~/.config/systemd/user/agorix-tutor.service
-# Optional: cp deploy/web/tutor.env.example ~/.config/agorix/tutor.env and edit provider choice.
-systemctl --user daemon-reload
-systemctl --user enable --now agorix-tutor
-systemctl --user status agorix-tutor
-curl -fsS https://agorix.modern-ash.com/api/tutor/health
+scripts/activate-tutor-host.sh --preflight-only
+# After separate owner authorization for production activation:
+scripts/activate-tutor-host.sh --activate
 ```
 
-The unit's `WorkingDirectory` and `ExecStart` assume `%h/dev-agora/agorix`; edit those two paths if
-the checkout differs. After a future merge that changes `apps/tutor-api`, rebuild it and run
+The activation script requires a clean, synced `main`, a logged-in Codex CLI and a matching public
+`version.json`. It builds the tutor, installs and starts its user unit, then sends a synthetic
+mission through the public route. The read-only `node scripts/check-ori-live.mjs` verifies
+`lastOriSource: model` on the adult health endpoint and a bounded, structured proposal. It prints
+provider and latency only; no child data or model text. If activation fails, the script disables
+and removes the new service; the Web keeps its deterministic fallback. For a later check, use
+`scripts/activate-tutor-host.sh --verify-only`.
+
+The unit's `WorkingDirectory` and `ExecStart` assume `%h/dev-agora/agorix`; run activation from
+that checkout. After a future merge that changes `apps/tutor-api`, rebuild it and run
 `systemctl --user restart agorix-tutor`. The systemd unit supervises failures and preserves the
 existing user login. Set `AGORIX_ORI_PROVIDER=auto` (default: probe Codex, then OpenCode), `codex`,
 `opencode`, or `disabled` in the optional host-only environment file. Codex defaults to
 `gpt-6-luna`; `AGORIX_ORI_CODEX_MODEL` can select another model supported by the host login.
-`AGORIX_ORI_TIMEOUT_MS` is bounded to 0.5–7 seconds. The health probe uses `--version` and caches its result for 15 seconds;
+`AGORIX_ORI_TIMEOUT_MS` is bounded to 0.5–7 seconds. Nginx waits 9 seconds and the browser allows
+10 seconds; this order lets a valid model answer arrive while each layer remains bounded. The health
+probe uses `--version` and caches its result for 15 seconds;
 it does not spend model tokens.
 
 The Kids editor calls `POST /api/tutor/ori` for authored missions. It validates the returned
 proposal again against the current program and allowed Kids blocks. A failed, invalid or late
-response uses the deterministic Ori card without provider wording; the browser budget is 7.5
+response uses the deterministic Ori card without provider wording; the browser budget is 10
 seconds. The free world still uses local rules.
 
 Manual host check: send a same-origin `POST /api/tutor/ori` with a canonical program fixture and

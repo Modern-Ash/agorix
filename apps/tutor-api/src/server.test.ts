@@ -130,6 +130,7 @@ describe("tutor HTTP server (issue #348)", () => {
       available: false,
       providerInUse: "deterministic",
       lastErrorClass: null,
+      lastOriSource: null,
     });
   });
 
@@ -144,6 +145,7 @@ describe("tutor HTTP server (issue #348)", () => {
       available: true,
       providerInUse: "deterministic",
       lastErrorClass: null,
+      lastOriSource: null,
     });
     expect(text).not.toContain("super-secret-token");
   });
@@ -165,6 +167,7 @@ describe("tutor HTTP server (issue #348)", () => {
       available: false,
       providerInUse: "deterministic",
       lastErrorClass: "provider-unavailable",
+      lastOriSource: null,
     });
   });
 
@@ -187,6 +190,7 @@ describe("tutor HTTP server (issue #348)", () => {
       available: true,
       providerInUse: "openai-compatible",
       lastErrorClass: null,
+      lastOriSource: null,
     });
     expect(seen).toEqual(["http://provider.test/v1/models"]);
   });
@@ -208,6 +212,7 @@ describe("tutor HTTP server (issue #348)", () => {
       available: false,
       providerInUse: "deterministic",
       lastErrorClass: "authentication-failed",
+      lastOriSource: null,
     });
     expect(text).not.toMatch(/private|secret/);
   });
@@ -289,6 +294,7 @@ describe("Ori HTTP boundary (issue #381)", () => {
       available: true,
       providerInUse: "codex",
       lastErrorClass: null,
+      lastOriSource: null,
     });
     const response = await fetch(`${base}/api/tutor/ori`, {
       method: "POST",
@@ -301,6 +307,10 @@ describe("Ori HTTP boundary (issue #381)", () => {
     expect(JSON.stringify(result)).not.toMatch(/codex|opencode|providerId|runtimeId|diagnostic/);
     expect(result.proposal).toMatchObject({
       source: { kind: "learning-companion", capability: "builder" },
+    });
+    expect(await (await fetch(`${base}/api/tutor/health`)).json()).toMatchObject({
+      lastOriSource: "model",
+      lastErrorClass: null,
     });
   });
 
@@ -317,6 +327,9 @@ describe("Ori HTTP boundary (issue #381)", () => {
     expect(
       ((await response.json()) as { proposal: { operations: unknown[] } }).proposal.operations,
     ).toHaveLength(1);
+    expect(await (await fetch(`${base}/api/tutor/health`)).json()).toMatchObject({
+      lastOriSource: "fallback",
+    });
     expect(
       (await post(JSON.stringify({ ...JSON.parse(body), learnerText: "my name" }))).status,
     ).toBe(400);
