@@ -5,6 +5,7 @@ import {
 } from "@agorix/program-model";
 import { validateProjectActors } from "./actors.js";
 import { missionSpecHash, validateProjectMissionSpec } from "./missionSpec.js";
+import { validateAdvancedProgress } from "./advancedProgress.js";
 import { PersistenceError, type StoredProject } from "./store.js";
 
 export const CROSS_SURFACE_CONTRACT_VERSION = "agorix/cross-surface/v1";
@@ -51,6 +52,7 @@ export interface SemanticProjectSnapshot {
   readonly stage?: StoredProject["metadata"]["stage"];
   readonly assets?: StoredProject["metadata"]["assets"];
   readonly missionSpecHash?: string;
+  readonly advancedProgress?: StoredProject["metadata"]["advancedProgress"];
 }
 
 export function assertCrossSurfaceCompatibleProject(stored: StoredProject): StoredProject {
@@ -72,6 +74,10 @@ export function assertCrossSurfaceCompatibleProject(stored: StoredProject): Stor
     stored.metadata.missionSpec === undefined
       ? undefined
       : validateProjectMissionSpec(stored.metadata.missionSpec);
+  const advancedProgress =
+    stored.metadata.advancedProgress === undefined
+      ? undefined
+      : validateAdvancedProgress(stored.metadata.advancedProgress);
   return {
     ...stored,
     program,
@@ -81,6 +87,7 @@ export function assertCrossSurfaceCompatibleProject(stored: StoredProject): Stor
       ...(creative.stage === undefined ? {} : { stage: creative.stage }),
       ...(creative.assets === undefined ? {} : { assets: creative.assets }),
       ...(missionSpec === undefined ? {} : { missionSpec }),
+      ...(advancedProgress === undefined ? {} : { advancedProgress }),
     },
   };
 }
@@ -103,6 +110,9 @@ export function semanticProjectSnapshot(stored: StoredProject): SemanticProjectS
     ...(compatible.metadata.stage === undefined ? {} : { stage: compatible.metadata.stage }),
     ...(compatible.metadata.assets === undefined ? {} : { assets: compatible.metadata.assets }),
     ...(specHash === undefined ? {} : { missionSpecHash: specHash }),
+    ...(compatible.metadata.advancedProgress === undefined
+      ? {}
+      : { advancedProgress: compatible.metadata.advancedProgress }),
   };
 }
 
