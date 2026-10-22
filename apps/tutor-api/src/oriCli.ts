@@ -7,6 +7,8 @@ import {
   runOriAgent,
   type OriAgentContext,
   type OriAgentDecision,
+  runOriChat,
+  type OriChatContext,
 } from "@agorix/ori-agent";
 
 export type OriCliProvider = "auto" | "codex" | "opencode" | "disabled";
@@ -41,6 +43,7 @@ export interface OriCliHealth {
 export interface OriCliService {
   health(): Promise<OriCliHealth>;
   respond(context: OriAgentContext): Promise<OriAgentDecision>;
+  chat(context: OriChatContext): Promise<string>;
 }
 
 const MAX_INPUT_BYTES = 16 * 1024;
@@ -106,6 +109,58 @@ export function createOriCliService(
     return undefined;
   }
 
+  function textModel(provider: "codex" | "opencode") {
+    return {
+      generate: async (systemInstructions: string, inputJson: string) => {
+        const bin = provider === "codex" ? config.codexBin : config.opencodeBin;
+        const directory = mkdtempSync(join(tmpdir(), "agorix-ori-"));
+        try {
+          const input =
+            provider === "codex" ? `${systemInstructions}\n\nINPUT_JSON:\n${inputJson}\n` : "";
+          if (
+            Buffer.byteLength(inputJson) > MAX_INPUT_BYTES ||
+            Buffer.byteLength(input) > MAX_INPUT_BYTES
+          )
+            throw new CliProcessError("output-too-large");
+          const args =
+            provider === "codex"
+              ? codexArgs(directory, config.codexModel)
+              : opencodeArgs(inputJson);
+          const output = await run(bin, args, {
+            input,
+            timeoutMs: config.timeoutMs,
+            maxOutputBytes: MAX_OUTPUT_BYTES,
+            cwd: directory,
+            env: safeCliEnv(
+              provider === "opencode"
+                ? {
+                    OPENCODE_PERMISSION: '"deny"',
+                    OPENCODE_DISABLE_DEFAULT_PLUGINS: "1",
+                    OPENCODE_DISABLE_CLAUDE_CODE: "1",
+                    OPENCODE_CONFIG_CONTENT: JSON.stringify({
+                      permission: "deny",
+                      tools: { "*": false },
+                      agent: {
+                        "ori-text": {
+                          mode: "primary",
+                          prompt: systemInstructions,
+                          permission: "deny",
+                          tools: { "*": false },
+                        },
+                      },
+                    }),
+                  }
+                : {},
+            ),
+          });
+          return provider === "opencode" ? parseOpenCodeText(output) : output.trim();
+        } finally {
+          rmSync(directory, { recursive: true, force: true });
+        }
+      },
+    };
+  }
+
   return {
     async health() {
       const provider = await select();
@@ -118,57 +173,11 @@ export function createOriCliService(
     async respond(context) {
       const provider = await select();
       if (!provider) return evaluateOriAgentOutput(context, undefined);
-      const model = {
-        generate: async (systemInstructions: string, inputJson: string) => {
-          const bin = provider === "codex" ? config.codexBin : config.opencodeBin;
-          const directory = mkdtempSync(join(tmpdir(), "agorix-ori-"));
-          try {
-            const input =
-              provider === "codex" ? `${systemInstructions}\n\nINPUT_JSON:\n${inputJson}\n` : "";
-            if (
-              Buffer.byteLength(inputJson) > MAX_INPUT_BYTES ||
-              Buffer.byteLength(input) > MAX_INPUT_BYTES
-            ) {
-              throw new CliProcessError("output-too-large");
-            }
-            const args =
-              provider === "codex"
-                ? codexArgs(directory, config.codexModel)
-                : opencodeArgs(inputJson);
-            const output = await run(bin, args, {
-              input,
-              timeoutMs: config.timeoutMs,
-              maxOutputBytes: MAX_OUTPUT_BYTES,
-              cwd: directory,
-              env: safeCliEnv(
-                provider === "opencode"
-                  ? {
-                      OPENCODE_PERMISSION: '"deny"',
-                      OPENCODE_DISABLE_DEFAULT_PLUGINS: "1",
-                      OPENCODE_DISABLE_CLAUDE_CODE: "1",
-                      OPENCODE_CONFIG_CONTENT: JSON.stringify({
-                        permission: "deny",
-                        tools: { "*": false },
-                        agent: {
-                          "ori-text": {
-                            mode: "primary",
-                            prompt: systemInstructions,
-                            permission: "deny",
-                            tools: { "*": false },
-                          },
-                        },
-                      }),
-                    }
-                  : {},
-              ),
-            });
-            return provider === "opencode" ? parseOpenCodeText(output) : output.trim();
-          } finally {
-            rmSync(directory, { recursive: true, force: true });
-          }
-        },
-      };
-      return runOriAgent(context, model);
+      return runOriAgent(context, textModel(provider));
+    },
+    async chat(context) {
+      const provider = await select();
+      return runOriChat(context, provider ? textModel(provider) : undefined);
     },
   };
 }
