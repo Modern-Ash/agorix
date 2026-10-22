@@ -5,6 +5,7 @@ import { projectProgram } from "@agorix/code-generator";
 import {
   KIDS_GRID,
   KIDS_MISSION_IDS,
+  createFreeWorldMission,
   evaluateKidsRun,
   getKidsMission,
   worldToCell,
@@ -27,6 +28,7 @@ import {
   type KidsPlayedRun,
 } from "../kidsEditorModel.js";
 import type { KidsText } from "../useKidsText.js";
+import { kidsGoalSpec, parseKidsGoalSpec } from "../kidsProjects.js";
 import { KIDS_WORLD_STYLES } from "../worlds.js";
 
 type CodeLanguage = "agorix" | "python" | "typescript";
@@ -41,6 +43,11 @@ interface Props {
   readonly missionIndex: 0 | 1 | 2 | 3;
   readonly onBack: () => void;
   readonly onComplete: () => void;
+  readonly freeProjectId?: string | undefined;
+  readonly onReflect?: (
+    prediction: Prediction,
+    outcome: "success" | "wall" | "passed" | "short",
+  ) => void;
 }
 
 function same(a: KidsCell, b: KidsCell): boolean {
@@ -86,13 +93,27 @@ export function EditorScreen({
   missionIndex,
   onBack,
   onComplete,
+  freeProjectId,
+  onReflect,
 }: Props) {
-  const mission = useMemo(
-    () => getKidsMission(KIDS_MISSION_IDS[Math.min(missionIndex, 2)]!, locale),
-    [missionIndex, locale],
-  );
-  const projectId = `kids.${world}.${mission.id}`;
+  const projectId =
+    freeProjectId ?? `kids.${world}.${KIDS_MISSION_IDS[Math.min(missionIndex, 2)]!}`;
   const [store] = useState(() => new ProjectStore());
+  const [freeGoal, setFreeGoal] = useState<KidsCell | null>(() => {
+    if (!freeProjectId || !store.has(projectId)) return null;
+    try {
+      return parseKidsGoalSpec(store.load(projectId).metadata.missionSpec?.goal ?? "");
+    } catch {
+      return null;
+    }
+  });
+  const mission = useMemo(
+    () =>
+      freeProjectId
+        ? createFreeWorldMission(freeGoal ?? { cx: 4, cy: 2 }, locale)
+        : getKidsMission(KIDS_MISSION_IDS[Math.min(missionIndex, 2)]!, locale),
+    [freeGoal, freeProjectId, missionIndex, locale],
+  );
   const [createdAt] = useState(() => new Date().toISOString());
   const [history, setHistory] = useState(() => {
     try {
@@ -162,6 +183,9 @@ export function EditorScreen({
         missionProgress: completed || previous?.missionProgress === 1 ? 1 : 0,
         hintLevel: previous?.hintLevel ?? 0,
         locale,
+        ...(freeProjectId && freeGoal
+          ? { missionSpec: { goal: kidsGoalSpec(freeGoal), successCheck: "touches-goal" as const } }
+          : {}),
       };
       store.save(projectId, next.current, metadata);
     } catch {
@@ -170,6 +194,7 @@ export function EditorScreen({
   }
 
   function startRun(mode: "play" | "step") {
+    if (freeProjectId && freeGoal === null) return;
     if (played && mode === "step") {
       const next = Math.min(step + 1, trace.length);
       setStep(next);
@@ -202,6 +227,30 @@ export function EditorScreen({
       onComplete();
     }
     setPending(null);
+  }
+
+  function chooseFreeGoal(cell: KidsCell) {
+    if (!freeProjectId) return;
+    try {
+      createFreeWorldMission(cell, locale);
+    } catch {
+      return;
+    }
+    setFreeGoal(cell);
+    clearRun();
+    try {
+      const previous = store.has(projectId) ? store.load(projectId).metadata : undefined;
+      store.save(projectId, history.current, {
+        createdAt: previous?.createdAt ?? createdAt,
+        updatedAt: new Date().toISOString(),
+        missionProgress: 0,
+        hintLevel: previous?.hintLevel ?? 0,
+        locale,
+        missionSpec: { goal: kidsGoalSpec(cell), successCheck: "touches-goal" },
+      });
+    } catch {
+      /* The free world still works when storage is unavailable. */
+    }
   }
 
   function renderBlock(statement: Statement, index: number, childIndex?: number) {
@@ -310,21 +359,23 @@ export function EditorScreen({
       </header>
       <div className="kids-editor-layout">
         <div className="kids-editor-stage-panel">
-          <p className="kids-editor-goal">{mission.goal.learnerFacing}</p>
+          <p className="kids-editor-goal">
+            {freeProjectId && !freeGoal ? t("placeGoal") : mission.goal.learnerFacing}
+          </p>
           <div
             className="kids-world-grid"
-            role="img"
+            role={freeProjectId ? "group" : "img"}
             aria-label={`${mission.goal.learnerFacing} ${t("runtimeFact")}: ${evaluation?.outcome ?? ""}`}
             style={{ background: style.bg }}
           >
             {Array.from({ length: KIDS_GRID.rows * KIDS_GRID.cols }, (_, index) => {
               const cell = { cx: index % KIDS_GRID.cols, cy: Math.floor(index / KIDS_GRID.cols) };
-              return (
-                <div key={index} className="kids-world-cell" style={{ borderColor: style.cell }}>
+              const content = (
+                <>
                   {trail.some((visited) => same(visited, cell)) && !same(final, cell) ? (
                     <span className="kids-world-trail" style={{ background: style.trail }} />
                   ) : null}
-                  {same(goal, cell) ? (
+                  {(!freeProjectId || freeGoal !== null) && same(goal, cell) ? (
                     <span className="kids-world-goal" aria-hidden="true">
                       {style.goalGlyph}
                     </span>
@@ -334,6 +385,24 @@ export function EditorScreen({
                       {avatar}
                     </span>
                   ) : null}
+                </>
+              );
+              return freeProjectId ? (
+                <button
+                  key={index}
+                  type="button"
+                  className="kids-world-cell kids-goal-cell"
+                  style={{ borderColor: style.cell }}
+                  disabled={same(start, cell)}
+                  aria-label={`${t("placeGoal")}: ${cell.cx + 1}, ${cell.cy + 1}`}
+                  aria-pressed={freeGoal !== null && same(freeGoal, cell)}
+                  onClick={() => chooseFreeGoal(cell)}
+                >
+                  {content}
+                </button>
+              ) : (
+                <div key={index} className="kids-world-cell" style={{ borderColor: style.cell }}>
+                  {content}
                 </div>
               );
             })}
@@ -342,11 +411,17 @@ export function EditorScreen({
             <button
               type="button"
               className="kids-button kids-primary"
+              disabled={Boolean(freeProjectId && !freeGoal)}
               onClick={() => startRun("play")}
             >
               {t("run")}
             </button>
-            <button type="button" className="kids-button" onClick={() => startRun("step")}>
+            <button
+              type="button"
+              className="kids-button"
+              disabled={Boolean(freeProjectId && !freeGoal)}
+              onClick={() => startRun("step")}
+            >
               {t("step")}
             </button>
             <button type="button" className="kids-button" onClick={clearRun}>
@@ -372,6 +447,19 @@ export function EditorScreen({
             <p className="kids-note">
               {t("predLog")} {t(prediction)}
             </p>
+          ) : null}
+          {played &&
+          step >= trace.length &&
+          evaluation?.outcome === "success" &&
+          prediction &&
+          onReflect ? (
+            <button
+              type="button"
+              className="kids-button kids-primary"
+              onClick={() => onReflect(prediction, evaluation.outcome)}
+            >
+              {t("tell")}
+            </button>
           ) : null}
           <aside className="kids-ori-card">
             <span aria-hidden="true">✦</span>

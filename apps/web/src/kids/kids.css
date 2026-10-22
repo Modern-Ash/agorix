@@ -217,6 +217,122 @@
   border: 1px solid;
   min-width: 0;
 }
+.kids-goal-cell {
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.kids-goal-cell:disabled {
+  cursor: default;
+}
+.kids-goal-cell[aria-pressed="true"] {
+  background: rgba(255, 255, 255, 0.25);
+  box-shadow: inset 0 0 0 3px #fff;
+}
+
+.kids-create,
+.kids-projects,
+.kids-reflect {
+  max-width: 860px;
+  margin: 0 auto;
+}
+.kids-create h2 {
+  margin: 8px 0 0;
+  font: 700 1.2rem var(--kids-font-display);
+}
+.kids-create-choices,
+.kids-create-worlds,
+.kids-reflect-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.kids-create-choices .kids-button {
+  min-width: 64px;
+  font-size: 1.8rem;
+}
+.kids-create-worlds .kids-button {
+  flex: 1 1 140px;
+}
+.kids-create-start {
+  justify-self: start;
+}
+.kids-projects-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.kids-import-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  cursor: pointer;
+}
+.kids-import-label input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+.kids-import-label:focus-within {
+  outline: 3px solid var(--kids-focus);
+  outline-offset: 2px;
+}
+.kids-project-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 16px;
+}
+.kids-project-card {
+  overflow: hidden;
+  border: 2px solid var(--kids-border);
+  border-radius: 18px;
+  background: var(--kids-panel);
+}
+.kids-project-thumb {
+  display: grid;
+  place-items: center;
+  min-height: 110px;
+  font-size: 2rem;
+}
+.kids-project-card h2,
+.kids-project-card p {
+  margin: 10px 12px;
+}
+.kids-project-card h2 {
+  font: 700 1.1rem var(--kids-font-display);
+}
+.kids-project-card > div:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 12px 12px;
+}
+.kids-project-card .kids-button {
+  flex: 1;
+  min-height: 48px;
+  padding: 0 10px;
+}
+.kids-reflect {
+  text-align: center;
+}
+.kids-reflect-hero {
+  font-size: clamp(3rem, 10vw, 6rem);
+}
+.kids-reflect-choices,
+.kids-reflect .kids-row {
+  justify-content: center;
+}
+.kids-reflect-choices .kids-button {
+  min-width: 84px;
+}
+.kids-reflect-prediction {
+  font-weight: 700;
+}
 .kids-world-avatar,
 .kids-world-goal {
   font-size: clamp(1.3rem, 4vw, 2.5rem);

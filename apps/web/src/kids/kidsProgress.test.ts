@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { getKidsMission, KIDS_MISSION_IDS } from "@agorix/curriculum";
+import { ProjectStore, type BrowserStorageAdapter } from "@agorix/persistence";
 import {
   KIDS_PROGRESS_KEY,
   conceptStates,
@@ -38,6 +40,39 @@ describe("kids progress (issue #374)", () => {
     );
     saveKidsProgress(progress, storage);
     expect(loadKidsProgress(storage)).toEqual(progress);
+  });
+
+  it("derives completion from saved mission projects even without a profile record", () => {
+    const data = new Map<string, string>();
+    const adapter: BrowserStorageAdapter = {
+      get: (key) => data.get(key) ?? null,
+      set: (key, value) => {
+        data.set(key, value);
+      },
+      remove: (key) => {
+        data.delete(key);
+      },
+      has: (key) => data.has(key),
+    };
+    const projects = new ProjectStore({ storage: adapter });
+    const mission = getKidsMission(KIDS_MISSION_IDS[0], "es");
+    projects.save(`kids.space.${KIDS_MISSION_IDS[0]}`, mission.starterProject, {
+      createdAt: "2026-10-21T00:00:00.000Z",
+      updatedAt: "2026-10-21T00:00:00.000Z",
+      missionProgress: 1,
+      hintLevel: 0,
+    });
+    expect(loadKidsProgress(memoryStorage(), projects)).toMatchObject({
+      stars: 1,
+      done: { "space:0": true },
+    });
+    const legacy = markMissionDone(emptyKidsProgress(), "ocean", 0);
+    const profile = memoryStorage();
+    saveKidsProgress(legacy, profile);
+    expect(loadKidsProgress(profile, projects)).toMatchObject({
+      stars: 2,
+      done: { "space:0": true, "ocean:0": true },
+    });
   });
 
   it("gives one star per mission the first time only", () => {
