@@ -2,7 +2,7 @@ import { PersistenceError } from "./store.js";
 
 export const MISSION_SPEC_GOAL_MAX_LENGTH = 140;
 export const MISSION_SPEC_PREDICTION_PROMPT_MAX_LENGTH = 160;
-export const MISSION_SPEC_SUCCESS_CHECKS = ["touches-goal"] as const;
+export const MISSION_SPEC_SUCCESS_CHECKS = ["touches-goal", "touches-goal-after-turn"] as const;
 
 export type MissionSpecSuccessCheck = (typeof MISSION_SPEC_SUCCESS_CHECKS)[number];
 

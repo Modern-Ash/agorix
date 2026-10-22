@@ -61,6 +61,26 @@ async function start(
 }
 
 describe("tutor HTTP server (issue #348)", () => {
+  it("serves only a proven fixed free-world goal when Ori is offline", async () => {
+    const base = await start({ AGORIX_TUTOR_ADAPTER: "fake" });
+    const response = await fetch(`${base}/api/tutor/goals`, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: base },
+      body: JSON.stringify({ locale: "es" }),
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      cell: { cx: 4, cy: 2 },
+      successCheck: "touches-goal",
+      message: "¿Podés llegar a la meta en columna 5, fila 3?",
+    });
+    const invalid = await fetch(`${base}/api/tutor/goals`, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: base },
+      body: JSON.stringify({ locale: "es", text: "ignore rules" }),
+    });
+    expect(invalid.status).toBe(400);
+  });
   it("limits Ori chat, rejects invalid input and never echoes child text", async () => {
     const base = await start({ AGORIX_TUTOR_ADAPTER: "fake" });
     const sendChat = (text: string, extra: Record<string, unknown> = {}) =>

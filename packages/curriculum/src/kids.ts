@@ -22,6 +22,7 @@ export const KIDS_GRID = Object.freeze({ cols: 6, rows: 4, cellSize: 40 });
 
 export type KidsDirection = "E" | "S" | "W" | "N";
 export type KidsOutcome = "success" | "wall" | "passed" | "short";
+export type KidsGoalCheck = "touches-goal" | "touches-goal-after-turn";
 
 export interface KidsCell {
   readonly cx: number;
@@ -323,6 +324,42 @@ export function createFreeWorldMission(
   return mission;
 }
 
+/** Prove an invented challenge with the same runtime and grid interpretation used by play. */
+export function verifyKidsFreeGoal(
+  goal: KidsCell,
+  check: KidsGoalCheck,
+  locale: string | undefined,
+): MissionDefinition {
+  const mission = createFreeWorldMission(goal, locale);
+  if (check === "touches-goal") return mission;
+  if (check !== "touches-goal-after-turn") throw new RangeError("unsupported Kids goal check");
+  const statements: Statement[] = [];
+  if (goal.cy !== FREE_START.cy) {
+    if (goal.cx > 0) statements.push({ type: "move", steps: kidsMoveSteps(goal.cx) });
+    statements.push({ type: "turn", degrees: goal.cy > FREE_START.cy ? 90 : -90 });
+    statements.push({ type: "move", steps: kidsMoveSteps(Math.abs(goal.cy - FREE_START.cy)) });
+  } else {
+    statements.push(
+      { type: "turn", degrees: 90 },
+      { type: "move", steps: kidsMoveSteps(1) },
+      { type: "turn", degrees: -90 },
+      { type: "move", steps: kidsMoveSteps(goal.cx) },
+      { type: "turn", degrees: -90 },
+      { type: "move", steps: kidsMoveSteps(1) },
+    );
+  }
+  const witness = runProgram(
+    {
+      schema: SCHEMA_VERSION,
+      scripts: [{ id: "goal-witness", trigger: { type: "greenFlag" }, statements }],
+    },
+    createWorldState(mission.starterStage),
+  );
+  if (evaluateKidsGoalRun(mission, witness, check).outcome !== "success")
+    throw new RangeError("the Kids goal cannot be proved by the runtime");
+  return mission;
+}
+
 export interface KidsRunEvaluation {
   readonly outcome: KidsOutcome;
   /** Every cell visited in order, including the start and cells crossed inside one Move. */
@@ -331,6 +368,30 @@ export interface KidsRunEvaluation {
   readonly heading: KidsDirection;
   /** The first cell outside the grid the character tried to enter, when it hit the edge. */
   readonly wallAt?: KidsCell;
+  readonly missingTurn?: boolean;
+}
+
+export function evaluateKidsGoalRun(
+  mission: MissionDefinition,
+  result: RunResult,
+  check: KidsGoalCheck,
+): KidsRunEvaluation {
+  const evaluation = evaluateKidsRun({ mission, result });
+  if (check === "touches-goal") return evaluation;
+  if (check !== "touches-goal-after-turn") throw new RangeError("unsupported Kids goal check");
+  const goal = worldToCell(mission.starterStage.goal as { x: number; y: number });
+  const firstArrival = result.trace.findIndex((entry) =>
+    sameCell(worldToCell(entry.worldAfter.sprite), goal),
+  );
+  if (
+    evaluation.outcome !== "success" ||
+    result.trace.some(
+      (entry, index) =>
+        entry.statementType === "turn" && (firstArrival < 0 || index < firstArrival),
+    )
+  )
+    return evaluation;
+  return { ...evaluation, outcome: "short", missingTurn: true };
 }
 
 function compass(degrees: number): KidsDirection {

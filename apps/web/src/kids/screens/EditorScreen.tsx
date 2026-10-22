@@ -10,13 +10,14 @@ import {
   KIDS_GRID,
   KIDS_HINT_LEVELS,
   KIDS_MISSION_IDS,
-  createFreeWorldMission,
-  evaluateKidsRun,
+  verifyKidsFreeGoal,
+  evaluateKidsGoalRun,
   getKidsMission,
   getKidsHint,
   kidsMoveSteps,
   worldToCell,
   type KidsCell,
+  type KidsGoalCheck,
 } from "@agorix/curriculum";
 import { projectPython } from "@agorix/python-projection";
 import { ProjectStore, type ProjectMetadata } from "@agorix/persistence";
@@ -60,6 +61,8 @@ import { kidsGoalSpec, parseKidsGoalSpec } from "../kidsProjects.js";
 import { KIDS_WORLD_STYLES } from "../worlds.js";
 import { KidsOriCard } from "./KidsOriCard.js";
 import { KidsOriChat } from "./KidsOriChat.js";
+import { KidsOriGoals } from "./KidsOriGoals.js";
+import { describeOriGoal } from "@agorix/ori-agent";
 
 type CodeLanguage = "agorix" | "python" | "typescript";
 type Prediction = "yes" | "no" | "dunno";
@@ -139,12 +142,20 @@ export function EditorScreen({
       return null;
     }
   });
+  const [freeGoalCheck, setFreeGoalCheck] = useState<KidsGoalCheck>(() => {
+    if (!freeProjectId || !store.has(projectId)) return "touches-goal";
+    try {
+      return store.load(projectId).metadata.missionSpec?.successCheck ?? "touches-goal";
+    } catch {
+      return "touches-goal";
+    }
+  });
   const mission = useMemo(
     () =>
       freeProjectId
-        ? createFreeWorldMission(freeGoal ?? { cx: 4, cy: 2 }, locale)
+        ? verifyKidsFreeGoal(freeGoal ?? { cx: 4, cy: 2 }, freeGoalCheck, locale)
         : getKidsMission(KIDS_MISSION_IDS[Math.min(missionIndex, 2)]!, locale),
-    [freeGoal, freeProjectId, missionIndex, locale],
+    [freeGoal, freeGoalCheck, freeProjectId, missionIndex, locale],
   );
   const [createdAt] = useState(() => new Date().toISOString());
   const [history, setHistory] = useState(() => {
@@ -202,7 +213,9 @@ export function EditorScreen({
           played.result.world,
       }
     : null;
-  const evaluation = visibleResult ? evaluateKidsRun({ mission, result: visibleResult }) : null;
+  const evaluation = visibleResult
+    ? evaluateKidsGoalRun(mission, visibleResult, freeProjectId ? freeGoalCheck : "touches-goal")
+    : null;
   const start = worldToCell(mission.starterStage.sprite as { x: number; y: number });
   const goal = worldToCell(mission.starterStage.goal as { x: number; y: number });
   const final = evaluation?.final ?? start;
@@ -333,7 +346,7 @@ export function EditorScreen({
         hintLevel: Math.max(previous?.hintLevel ?? 0, hintLevel),
         locale,
         ...(freeProjectId && freeGoal
-          ? { missionSpec: { goal: kidsGoalSpec(freeGoal), successCheck: "touches-goal" as const } }
+          ? { missionSpec: { goal: kidsGoalSpec(freeGoal), successCheck: freeGoalCheck } }
           : {}),
       };
       store.save(projectId, next.current, metadata);
@@ -358,7 +371,7 @@ export function EditorScreen({
   }
 
   function choosePrediction(answer: Prediction) {
-    const run = playKidsProgram(history, mission);
+    const run = playKidsProgram(history, mission, freeProjectId ? freeGoalCheck : "touches-goal");
     recordKidsPrediction(answer, run.evaluation.outcome, undefined, assistanceLevel);
     setPrediction(answer);
     setPlayed(run);
@@ -379,14 +392,15 @@ export function EditorScreen({
     setPending(null);
   }
 
-  function chooseFreeGoal(cell: KidsCell) {
+  function chooseFreeGoal(cell: KidsCell, check: KidsGoalCheck = "touches-goal") {
     if (!freeProjectId) return;
     try {
-      createFreeWorldMission(cell, locale);
+      verifyKidsFreeGoal(cell, check, locale);
     } catch {
       return;
     }
     setFreeGoal(cell);
+    setFreeGoalCheck(check);
     setUsedHintLevels([]);
     clearRun();
     try {
@@ -397,7 +411,7 @@ export function EditorScreen({
         missionProgress: 0,
         hintLevel: 0,
         locale,
-        missionSpec: { goal: kidsGoalSpec(cell), successCheck: "touches-goal" },
+        missionSpec: { goal: kidsGoalSpec(cell), successCheck: check },
       });
     } catch {
       /* The free world still works when storage is unavailable. */
@@ -592,7 +606,11 @@ export function EditorScreen({
       <div className="kids-editor-layout">
         <div className="kids-editor-stage-panel">
           <p className="kids-editor-goal">
-            {freeProjectId && !freeGoal ? t("placeGoal") : mission.goal.learnerFacing}
+            {freeProjectId && !freeGoal
+              ? t("placeGoal")
+              : freeProjectId && freeGoal
+                ? describeOriGoal(freeGoal, freeGoalCheck, locale)
+                : mission.goal.learnerFacing}
           </p>
           <div
             className="kids-world-grid"
@@ -662,15 +680,19 @@ export function EditorScreen({
           </div>
           <p className="kids-run-status" role="status">
             {played && step >= trace.length
-              ? {
-                  success: t("success", { g: style.goalGlyph }),
-                  wall: t("wall"),
-                  passed: t("passed", { g: style.goalGlyph }),
-                  short: t("short", {
-                    n: Math.abs(goal.cx - final.cx) + Math.abs(goal.cy - final.cy),
-                    g: style.goalGlyph,
-                  }),
-                }[evaluation?.outcome ?? "short"]
+              ? evaluation?.missingTurn
+                ? locale === "es"
+                  ? "Llegaste a la meta. Probá incluir un giro."
+                  : "You reached the goal. Try adding a turn."
+                : {
+                    success: t("success", { g: style.goalGlyph }),
+                    wall: t("wall"),
+                    passed: t("passed", { g: style.goalGlyph }),
+                    short: t("short", {
+                      n: Math.abs(goal.cx - final.cx) + Math.abs(goal.cy - final.cy),
+                      g: style.goalGlyph,
+                    }),
+                  }[evaluation?.outcome ?? "short"]
               : played
                 ? `${t("step")} ${step} / ${trace.length}`
                 : t("oriIdle")}
@@ -733,6 +755,12 @@ export function EditorScreen({
               missionId={mission.id}
               program={history.current}
               {...(freeProjectId && freeGoal ? { goalCell: freeGoal } : {})}
+            />
+          ) : null}
+          {oriSuggestions && freeProjectId ? (
+            <KidsOriGoals
+              locale={locale}
+              onAccept={(proposal) => chooseFreeGoal(proposal.cell, proposal.successCheck)}
             />
           ) : null}
         </div>

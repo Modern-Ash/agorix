@@ -1,4 +1,4 @@
-import { createFreeWorldMission, type KidsCell } from "@agorix/curriculum";
+import { createFreeWorldMission, verifyKidsFreeGoal, type KidsCell } from "@agorix/curriculum";
 import {
   parseAgorixProject,
   ProjectStore,
@@ -89,9 +89,11 @@ export function importKidsProject(
   const imported = parseAgorixProject(source).project;
   const goal = imported.metadata.missionSpec?.goal;
   const cell = goal === undefined ? { cx: 4, cy: 2 } : parseKidsGoalSpec(goal);
+  const successCheck = imported.metadata.missionSpec?.successCheck ?? "touches-goal";
+  verifyKidsFreeGoal(cell, successCheck, "es");
   const spec = {
     goal: kidsGoalSpec(cell),
-    successCheck: "touches-goal" as const,
+    successCheck,
   };
   // Validate and save before listing the project, so failed imports never leave a broken card.
   const next =
