@@ -3,7 +3,7 @@ import { AI_HEALTH_PATH } from "../aiStatus.js";
 export interface AdultAiHealth {
   readonly configured: boolean;
   readonly available: boolean;
-  readonly providerInUse: "deterministic" | "openai-compatible";
+  readonly providerInUse: "deterministic" | "openai-compatible" | "codex" | "opencode";
   readonly lastErrorClass: string | null;
 }
 
@@ -37,7 +37,10 @@ export async function fetchAdultAiHealth(
     if (
       typeof value.configured !== "boolean" ||
       typeof value.available !== "boolean" ||
-      (value.providerInUse !== "deterministic" && value.providerInUse !== "openai-compatible") ||
+      (value.providerInUse !== "deterministic" &&
+        value.providerInUse !== "openai-compatible" &&
+        value.providerInUse !== "codex" &&
+        value.providerInUse !== "opencode") ||
       (value.lastErrorClass !== null &&
         (typeof value.lastErrorClass !== "string" || !ERROR_CLASSES.has(value.lastErrorClass)))
     )

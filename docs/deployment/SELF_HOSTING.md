@@ -217,18 +217,18 @@ and runtime observations. Raw learner free text remains disabled unless the
 server operator explicitly sets `AGORIX_TUTOR_INCLUDE_LEARNER_QUESTION=1` after
 reviewing the privacy impact.
 
-## Optional: tutor HTTP service behind the web container
+## Optional: host tutor service behind the web container
 
 Modes 3 and 4 need a server-side process that holds the provider settings. The
-repository ships one (`apps/tutor-api`, issue #348) and a container recipe in
-`deploy/web/`:
+repository ships one (`apps/tutor-api`). For the Kids Codex/OpenCode providers it runs under the
+host user, where the CLI logins live:
 
 ```text
-Browser -> web container (nginx) -> /api/tutor/* -> tutor container (not published)
+Browser -> web container (nginx) -> /api/tutor/* -> host Unix socket -> tutor user service
 ```
 
 - `GET /api/tutor/health` returns `configured`, `available`, `providerInUse`
-  (`deterministic` or `openai-compatible`) and `lastErrorClass` (a bounded code
+  (`deterministic`, `codex`, `opencode` or `openai-compatible`) and `lastErrorClass` (a bounded code
   or `null`). Agorix Kids shows these details only behind the adults gate. The
   legacy Web status card still reads the first two fields until Kids replaces
   the default route. With the service absent, the app stays in local mode.
@@ -236,17 +236,15 @@ Browser -> web container (nginx) -> /api/tutor/* -> tutor container (not publish
   same-origin only) and returns `{ response, source }`. Any provider failure
   falls back to the deterministic response; provider URL, token and error
   details never reach the browser.
-- The service is off by default. An adult enables it:
+- `POST /api/tutor/ori` accepts `missionId`, `locale`, `hintLevel` and a canonical `program`.
+  It returns only a validated proposal and fixed message, never provider diagnostics. Invalid
+  output or provider failure returns the Kids 08 deterministic proposal.
+- Install and start the host user service as described in [MODERN_ASH_HOST.md](./MODERN_ASH_HOST.md).
+  It is optional; the Web works when it is absent. For a generic checkout, adjust the unit paths.
 
-```bash
-cp deploy/web/tutor.env.example deploy/web/tutor.env   # then edit; never commit it
-docker compose -f deploy/web/docker-compose.yml --profile ai up -d --build
-```
-
-`deploy/web/tutor.env` is git-ignored and holds only `AGORIX_TUTOR_*` values.
-A provider on the same host (for example Ollama on `127.0.0.1`) is not reachable
-from inside a container network unless it listens on an address the container can
-reach; choose that exposure deliberately.
+The legacy `openai-compatible` adapter remains available for server operators through
+`AGORIX_TUTOR_*` settings. The production Compose `ai` profile was removed; no login or model
+runtime is copied into the web container.
 
 ## License boundaries
 

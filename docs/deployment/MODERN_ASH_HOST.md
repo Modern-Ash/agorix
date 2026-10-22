@@ -11,16 +11,17 @@ Browser
   -> Cloudflare (TLS, DNS)
   -> cloudflared tunnel "modern-ash"            (user service, outbound only)
   -> 127.0.0.1:8470  nginx container "agorix-web" (static dist + security headers)
-  -> /api/tutor/*    tutor container "agorix-tutor" (optional, profile `ai`, not published)
+  -> /api/tutor/*    Unix socket in user runtime directory
+                     -> host user service "agorix-tutor" -> Codex/OpenCode CLI
 ```
 
 - The tunnel is the only ingress. No port is opened on the router; the container is bound to
   loopback only (`127.0.0.1:8470`). Other `*.modern-ash.com` hostnames (for example Paperclip) share the
   same tunnel and are separate ingress rules.
-- The site is fully static: anonymous projects live in the browser; `.agorix` export/import is the
-  portable path. Accounts, project storage and a connected AI are not part of production yet.
+- The site remains playable without the host tutor service. Anonymous projects live in the browser;
+  `.agorix` export/import is the portable path. Accounts and server-side project storage are separate work.
 - Everything is defined in the repository: `deploy/web/` (Dockerfile, `nginx.conf`, generated
-  `security-headers.conf`, compose) and `scripts/`.
+  `security-headers.conf`, compose and the host user service template) and `scripts/`.
 
 ## Deploy
 
@@ -100,7 +101,7 @@ journalctl --user -u cloudflared -f
 | What                       | Where                                   |
 | -------------------------- | --------------------------------------- |
 | nginx access/error         | `docker logs agorix-web`                |
-| Tutor service (if enabled) | `docker logs agorix-tutor`              |
+| Tutor service (if enabled) | `journalctl --user -u agorix-tutor`     |
 | Tunnel                     | `journalctl --user -u cloudflared`      |
 | Deploy output              | the terminal that ran `pnpm deploy:web` |
 
@@ -113,17 +114,49 @@ journalctl --user -u cloudflared -f
   script bypassing the HTTP cache, so a new deploy still reaches users.
 - The service worker is network-first for same-origin GETs and never caches `/api/*` or `/v1/*`.
 
-## Optional AI service
+## Host tutor service (Kids 10)
 
-Off by default; the public site then shows "Modo local". An adult enables it:
+Codex and OpenCode use the host user's existing CLI login. The model process receives a numeric/type
+summary of the child's program and deterministic runtime facts, never free child text. Ori's model
+output is validated as a proposal; a missing CLI, timeout or invalid JSON uses Kids 08 local rules.
+The model process has no enabled tools and runs from a temporary workspace. Codex uses its read-only
+sandbox; OpenCode denies all tool permissions. The process is killed after at most five seconds. No
+CLI credentials or prompts are stored in the repository or tutor logs.
+
+The nginx container receives only a read-only bind mount of the tutor socket directory. The tutor
+listens on `%t/agorix-tutor/tutor.sock` inside the host user's runtime directory, not on a TCP port.
+`pnpm deploy:web` creates the mount directory if absent, so the Web starts and falls back cleanly
+before this service is enabled. The old Docker Compose `ai` profile is no longer used.
+
+From a merged, clean `main` on this host:
 
 ```bash
-cp deploy/web/tutor.env.example deploy/web/tutor.env     # edit; git-ignored
-docker compose -f deploy/web/docker-compose.yml --profile ai up -d --build
+pnpm --filter @agorix/tutor-api build
+mkdir -p ~/.config/systemd/user ~/.config/agorix
+cp deploy/web/agorix-tutor.service ~/.config/systemd/user/agorix-tutor.service
+# Optional: cp deploy/web/tutor.env.example ~/.config/agorix/tutor.env and edit provider choice.
+systemctl --user daemon-reload
+systemctl --user enable --now agorix-tutor
+systemctl --user status agorix-tutor
+curl -fsS https://agorix.modern-ash.com/api/tutor/health
 ```
 
-See [SELF_HOSTING.md](./SELF_HOSTING.md) for what the endpoints do and for how a provider on the host
-(for example Ollama on loopback) can or cannot be reached from a container.
+The unit's `WorkingDirectory` and `ExecStart` assume `%h/dev-agora/agorix`; edit those two paths if
+the checkout differs. After a future merge that changes `apps/tutor-api`, rebuild it and run
+`systemctl --user restart agorix-tutor`. The systemd unit supervises failures and preserves the
+existing user login. Set `AGORIX_ORI_PROVIDER=auto` (default: probe Codex, then OpenCode), `codex`,
+`opencode`, or `disabled` in the optional host-only environment file. `AGORIX_ORI_TIMEOUT_MS` is
+bounded to 0.5–5 seconds. The health probe uses `--version` and caches its result for 15 seconds;
+it does not spend model tokens.
+
+Manual host check before Kids 11: send a same-origin `POST /api/tutor/ori` with a canonical program
+fixture and verify that only `message` and a reviewable `proposal` return. Stop the service with
+`systemctl --user stop agorix-tutor`; `/api/tutor/health` should report local mode and the Kids
+editor must still offer its deterministic Ori card. Kids 11 connects the endpoint to the editor;
+then verify that proposed blocks require an explicit child decision and rejection leaves the
+program unchanged.
+
+See [SELF_HOSTING.md](./SELF_HOSTING.md) for the API fields and alternate server-side providers.
 
 ## Troubleshooting
 
@@ -139,6 +172,6 @@ See [SELF_HOSTING.md](./SELF_HOSTING.md) for what the endpoints do and for how a
 ## Not in production yet
 
 - Accounts, server-side projects and a database (#346, #347).
-- A connected AI and the client using it (#356); the status badge works today.
+- Kids 11 client use of the host Ori endpoint (#382).
 - Tablet layout, English leftovers, PNG icons and the accessibility pass (#359, #360, #361, #362).
 - Disabling Cloudflare's injected analytics (#365).

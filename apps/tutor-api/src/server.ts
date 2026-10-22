@@ -1,11 +1,15 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { validateTutorRequest } from "@agorix/tutor-contract";
+import { getKidsMission, KIDS_MISSION_IDS } from "@agorix/curriculum";
+import { validateProgram, type ProjectProgram } from "@agorix/program-model";
+import { evaluateOriAgentOutput } from "@agorix/ori-agent";
 import type { ProviderRuntimeErrorCode, ProviderRuntimeFetch } from "@agorix/provider-runtime";
 import {
   isTutorAdapterConfigured,
   requestTutorResponse,
   type TutorAdapterConfig,
 } from "./index.js";
+import type { OriCliService } from "./oriCli.js";
 
 export const MAX_BODY_BYTES = 64 * 1024;
 const HEALTH_TTL_MS = 15_000;
@@ -16,12 +20,13 @@ export interface TutorServerOptions {
   readonly fetch?: typeof fetch;
   readonly healthTtlMs?: number;
   readonly now?: () => number;
+  readonly ori?: OriCliService;
 }
 
 interface Health {
   readonly configured: boolean;
   readonly available: boolean;
-  readonly providerInUse: "deterministic" | "openai-compatible";
+  readonly providerInUse: "deterministic" | "openai-compatible" | "codex" | "opencode";
   readonly lastErrorClass: ProviderRuntimeErrorCode | null;
 }
 
@@ -41,6 +46,12 @@ export function createTutorServer(options: TutorServerOptions): Server {
 
   async function health(): Promise<Health> {
     if (cached !== undefined && now() - cached.at < ttl) return cached.health;
+    if (options.ori) {
+      const ori = await options.ori.health();
+      const value: Health = { ...ori, lastErrorClass };
+      cached = { at: now(), health: value };
+      return value;
+    }
     const configured = isTutorAdapterConfigured(config);
     const available = configured && (await probe());
     const value: Health = {
@@ -105,6 +116,10 @@ export function createTutorServer(options: TutorServerOptions): Server {
       if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
       return respond(request, response);
     }
+    if (path === "/api/tutor/ori") {
+      if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
+      return respondOri(request, response);
+    }
     return send(response, 404, error("not-found"));
   }
 
@@ -128,6 +143,64 @@ export function createTutorServer(options: TutorServerOptions): Server {
     else lastErrorClass = null;
     cached = undefined;
     return send(response, 200, { response: result.response, source: result.diagnostics.source });
+  }
+
+  async function respondOri(request: IncomingMessage, response: ServerResponse): Promise<void> {
+    if (!(request.headers["content-type"] ?? "").includes("application/json")) {
+      return send(response, 415, error("unsupported-media-type"));
+    }
+    if (!sameOrigin(request)) return send(response, 403, error("forbidden-origin"));
+    const body = await readBody(request);
+    if (body === "too-large") return send(response, 413, error("payload-too-large"));
+    let input: {
+      missionId: string;
+      locale: "es" | "en";
+      hintLevel: 1 | 2 | 3 | 4 | 5;
+      program: ProjectProgram;
+    };
+    try {
+      const raw = JSON.parse(body) as Record<string, unknown>;
+      if (
+        !raw ||
+        typeof raw !== "object" ||
+        Array.isArray(raw) ||
+        Object.keys(raw).sort().join(",") !== "hintLevel,locale,missionId,program" ||
+        typeof raw.missionId !== "string" ||
+        !KIDS_MISSION_IDS.includes(raw.missionId as (typeof KIDS_MISSION_IDS)[number]) ||
+        (raw.locale !== "es" && raw.locale !== "en") ||
+        ![1, 2, 3, 4, 5].includes(raw.hintLevel as number)
+      )
+        throw new Error("invalid Ori request");
+      input = {
+        missionId: raw.missionId,
+        locale: raw.locale,
+        hintLevel: raw.hintLevel as 1 | 2 | 3 | 4 | 5,
+        program: validateProgram(raw.program as ProjectProgram),
+      };
+    } catch {
+      return send(response, 400, error("invalid-request"));
+    }
+    const missionIndex = KIDS_MISSION_IDS.indexOf(
+      input.missionId as (typeof KIDS_MISSION_IDS)[number],
+    ) as 0 | 1 | 2;
+    const mission = getKidsMission(input.missionId, input.locale);
+    const context = {
+      mission,
+      missionIndex,
+      program: input.program,
+      locale: input.locale,
+      hintLevel: input.hintLevel,
+    };
+    const decision = options.ori
+      ? await options.ori.respond(context)
+      : evaluateOriAgentOutput(context, undefined);
+    if (decision.source === "fallback") lastErrorClass = "provider-unavailable";
+    else lastErrorClass = null;
+    cached = undefined;
+    return send(response, 200, {
+      message: decision.message,
+      ...(decision.proposal === undefined ? {} : { proposal: decision.proposal }),
+    });
   }
 }
 
