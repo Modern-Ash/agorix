@@ -100,6 +100,9 @@ importers:
       '@agorix/interaction-core':
         specifier: workspace:*
         version: link:../../packages/interaction-core
+      '@agorix/java-projection':
+        specifier: workspace:*
+        version: link:../../packages/java-projection
       '@agorix/language-projection':
         specifier: workspace:*
         version: link:../../packages/language-projection
@@ -314,6 +317,15 @@ importers:
       '@agorix/block-editor':
         specifier: workspace:*
         version: link:../block-editor
+
+  packages/java-projection:
+    dependencies:
+      '@agorix/language-projection':
+        specifier: workspace:*
+        version: link:../language-projection
+      '@agorix/program-model':
+        specifier: workspace:*
+        version: link:../program-model
 
   packages/language-pack-lua:
     dependencies:

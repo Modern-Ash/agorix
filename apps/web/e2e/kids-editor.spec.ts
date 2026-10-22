@@ -83,6 +83,8 @@ test("builds, predicts, runs, steps and undoes on the real Kids mission", async 
   await page.getByRole("button", { name: "Código", exact: true }).click();
   await page.getByRole("button", { name: "Python" }).click();
   await expect(page.locator(".kids-code-view")).toContainText("move(160)");
+  await page.getByRole("button", { name: "Java", exact: true }).click();
+  await expect(page.locator(".kids-code-view")).toContainText("move(160);");
   await page.getByRole("button", { name: "Volver al mapa" }).click();
   await expect(page.locator(".kids-stars")).toHaveText("★1");
   await page.getByRole("button", { name: "Misión 1" }).click();

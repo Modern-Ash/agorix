@@ -20,6 +20,7 @@ import {
   type KidsGoalCheck,
 } from "@agorix/curriculum";
 import { projectPython } from "@agorix/python-projection";
+import { projectJava } from "@agorix/java-projection";
 import { ProjectStore, type ProjectMetadata } from "@agorix/persistence";
 import {
   acceptProposal,
@@ -64,7 +65,7 @@ import { KidsOriChat } from "./KidsOriChat.js";
 import { KidsOriGoals } from "./KidsOriGoals.js";
 import { describeOriGoal } from "@agorix/ori-agent";
 
-type CodeLanguage = "agorix" | "python" | "typescript";
+type CodeLanguage = "agorix" | "python" | "typescript" | "java";
 type Prediction = "yes" | "no" | "dunno";
 const PALETTE: readonly KidsBlockKind[] = ["move", "turnL", "turnR", "repeat", "sound"];
 
@@ -198,6 +199,12 @@ export function EditorScreen({
         return projectPython(history.current).text;
       case "typescript":
         return projectProgram(history.current).code;
+      case "java": {
+        const result = projectJava(history.current);
+        return result.diagnostics.length === 0
+          ? result.text
+          : `${result.text}\n// Some blocks are not available in this Java view.\n`;
+      }
     }
   }, [history.current, language]);
   const mapping = useMemo(() => programToWorkspace(history.current).mapping, [history.current]);
@@ -790,7 +797,7 @@ export function EditorScreen({
           ) : (
             <>
               <div className="kids-code-languages">
-                {(["agorix", "python", "typescript"] as const).map((item) => (
+                {(["agorix", "python", "typescript", "java"] as const).map((item) => (
                   <button
                     type="button"
                     key={item}
@@ -801,7 +808,9 @@ export function EditorScreen({
                       ? "Agorix Code"
                       : item === "python"
                         ? "Python"
-                        : "TypeScript / Node"}
+                        : item === "typescript"
+                          ? "TypeScript / Node"
+                          : "Java"}
                   </button>
                 ))}
               </div>
