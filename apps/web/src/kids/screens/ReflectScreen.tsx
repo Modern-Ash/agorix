@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { ReflectionKind } from "@agorix/learning-evidence";
 import type { KidsAvatar, KidsWorld } from "../kidsState.js";
-import { recordKidsReflection } from "../kidsReflection.js";
+import { recordKidsReflection } from "../kidsEvidence.js";
 import type { KidsText } from "../useKidsText.js";
 import { KIDS_WORLD_STYLES } from "../worlds.js";
 

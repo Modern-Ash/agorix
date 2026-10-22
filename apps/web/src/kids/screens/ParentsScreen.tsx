@@ -4,7 +4,7 @@ import type { Locale } from "../../i18n.js";
 import { fetchAdultAiHealth, type AdultAiHealth } from "../kidsAdultHealth.js";
 import { adultSummary, readTodaySeconds, type AdultSettings } from "../kidsAdults.js";
 import type { KidsProgress } from "../kidsProgress.js";
-import { readKidsEvidenceEvents } from "../kidsReflection.js";
+import { readKidsEvidenceEvents } from "../kidsEvidence.js";
 import type { KidsText } from "../useKidsText.js";
 
 interface Props {

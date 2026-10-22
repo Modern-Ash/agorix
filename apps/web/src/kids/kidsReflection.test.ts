@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { recordKidsReflection } from "./kidsReflection.js";
+import { recordKidsReflection } from "./kidsEvidence.js";
 
 describe("Kids reflection evidence (issue #376)", () => {
   it("stores only schema-validated, text-free events in session storage", () => {
