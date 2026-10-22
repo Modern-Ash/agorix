@@ -1,4 +1,5 @@
 import type { Locale } from "../i18n.js";
+import { loadAdultSettings } from "./kidsAdults.js";
 
 /**
  * Reads a fixed piece of interface copy aloud with the browser's own speech synthesis
@@ -7,6 +8,7 @@ import type { Locale } from "../i18n.js";
  */
 export function speak(text: string, locale: Locale): void {
   try {
+    if (!loadAdultSettings().readAloud) return;
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = locale === "es" ? "es-AR" : "en-US";

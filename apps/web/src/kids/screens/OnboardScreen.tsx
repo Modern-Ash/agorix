@@ -8,6 +8,7 @@ interface Props {
   readonly locale: Locale;
   readonly step: 0 | 1 | 2;
   readonly avatar: KidsAvatar;
+  readonly readAloud?: boolean;
   readonly onLocale: (locale: Locale) => void;
   readonly onAvatar: (avatar: KidsAvatar) => void;
   readonly onNext: () => void;
@@ -33,6 +34,7 @@ export function OnboardScreen({
   locale,
   step,
   avatar,
+  readAloud = true,
   onLocale,
   onAvatar,
   onNext,
@@ -59,7 +61,9 @@ export function OnboardScreen({
           </div>
           <div className="kids-title-row">
             <h1 id="kids-title">{t("hello")}</h1>
-            <Listen t={t} locale={locale} text={`${t("hello")} ${t("pickLang")}`} />
+            {readAloud ? (
+              <Listen t={t} locale={locale} text={`${t("hello")} ${t("pickLang")}`} />
+            ) : null}
           </div>
           <p className="kids-lead">{t("pickLang")}</p>
           <div className="kids-lang-row" role="group" aria-label={t("pickLang")}>
@@ -83,7 +87,9 @@ export function OnboardScreen({
         <div className="kids-onboard-body">
           <div className="kids-title-row">
             <h1 id="kids-title">{t("pickAvatar")}</h1>
-            <Listen t={t} locale={locale} text={`${t("pickAvatar")}. ${t("noName")}`} />
+            {readAloud ? (
+              <Listen t={t} locale={locale} text={`${t("pickAvatar")}. ${t("noName")}`} />
+            ) : null}
           </div>
           <div className="kids-avatar-grid" role="group" aria-label={t("pickAvatar")}>
             {KIDS_AVATARS.map((option) => (
@@ -123,13 +129,15 @@ export function OnboardScreen({
             <p className="kids-bubble strong">{t("meetOri")}</p>
             <p className="kids-bubble">{t("meetOri2")}</p>
           </div>
-          <button
-            type="button"
-            className="kids-pill-button"
-            onClick={() => speak(`${t("meetOri")} ${t("meetOri2")}`, locale)}
-          >
-            <span aria-hidden="true">🔊</span> {t("listen")}
-          </button>
+          {readAloud ? (
+            <button
+              type="button"
+              className="kids-pill-button"
+              onClick={() => speak(`${t("meetOri")} ${t("meetOri2")}`, locale)}
+            >
+              <span aria-hidden="true">🔊</span> {t("listen")}
+            </button>
+          ) : null}
         </div>
       ) : null}
 

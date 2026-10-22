@@ -63,7 +63,12 @@ describe("tutor HTTP server (issue #348)", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("application/json");
     expect(response.headers.get("cache-control")).toBe("no-store");
-    expect(await response.json()).toEqual({ configured: false, available: false });
+    expect(await response.json()).toEqual({
+      configured: false,
+      available: false,
+      providerInUse: "deterministic",
+      lastErrorClass: null,
+    });
   });
 
   it("reports available for the fake adapter and never leaks secrets", async () => {
@@ -72,7 +77,12 @@ describe("tutor HTTP server (issue #348)", () => {
       AGORIX_TUTOR_AUTH_TOKEN: "super-secret-token",
     });
     const text = await (await fetch(`${base}/api/tutor/health`)).text();
-    expect(JSON.parse(text)).toEqual({ configured: true, available: true });
+    expect(JSON.parse(text)).toEqual({
+      configured: true,
+      available: true,
+      providerInUse: "deterministic",
+      lastErrorClass: null,
+    });
     expect(text).not.toContain("super-secret-token");
   });
 
@@ -91,6 +101,8 @@ describe("tutor HTTP server (issue #348)", () => {
     expect(await (await fetch(`${base}/api/tutor/health`)).json()).toEqual({
       configured: true,
       available: false,
+      providerInUse: "deterministic",
+      lastErrorClass: "provider-unavailable",
     });
   });
 
@@ -111,8 +123,31 @@ describe("tutor HTTP server (issue #348)", () => {
     expect(await (await fetch(`${base}/api/tutor/health`)).json()).toEqual({
       configured: true,
       available: true,
+      providerInUse: "openai-compatible",
+      lastErrorClass: null,
     });
     expect(seen).toEqual(["http://provider.test/v1/models"]);
+  });
+
+  it("exposes only a safe error class for an authentication failure", async () => {
+    const denied = (async () => new Response("secret diagnostic", { status: 401 })) as typeof fetch;
+    const base = await start(
+      {
+        AGORIX_TUTOR_ADAPTER: "openai-compatible",
+        AGORIX_TUTOR_BASE_URL: "http://private-provider.test/v1",
+        AGORIX_TUTOR_MODEL: "private-model",
+        AGORIX_TUTOR_AUTH_TOKEN: "private-token",
+      },
+      denied,
+    );
+    const text = await (await fetch(`${base}/api/tutor/health`)).text();
+    expect(JSON.parse(text)).toEqual({
+      configured: true,
+      available: false,
+      providerInUse: "deterministic",
+      lastErrorClass: "authentication-failed",
+    });
+    expect(text).not.toMatch(/private|secret/);
   });
 
   it("answers a tutor request with a validated response and only the source", async () => {

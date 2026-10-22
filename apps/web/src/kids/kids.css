@@ -333,6 +333,223 @@
 .kids-reflect-prediction {
   font-weight: 700;
 }
+
+/* Adults panel: deliberately separate from the child's world colors. */
+.kids-parents,
+.kids-parents-gate {
+  max-width: 900px;
+  margin: 0 auto;
+}
+.kids-parents-gate {
+  min-height: min(680px, calc(100vh - 120px));
+  justify-items: center;
+  align-content: center;
+  text-align: center;
+}
+.kids-parents-kicker {
+  margin: 0;
+  color: var(--kids-text-secondary);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.kids-gate-display {
+  min-width: 130px;
+  min-height: 64px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--kids-border);
+  border-radius: 18px;
+  background: #fff;
+  font: 800 2rem var(--kids-font-code);
+  letter-spacing: 0.12em;
+}
+.kids-gate-pad {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(64px, 72px));
+  gap: 10px;
+}
+.kids-gate-pad button,
+.kids-adult-limit button {
+  min-width: 44px;
+  min-height: 52px;
+  border: 1px solid var(--kids-border);
+  border-radius: 13px;
+  background: #fff;
+  color: var(--kids-text);
+  font: 800 1.3rem var(--kids-font-display);
+  cursor: pointer;
+}
+.kids-gate-pad button {
+  min-height: 60px;
+}
+.kids-parents-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.kids-parents-header .kids-button {
+  min-height: 48px;
+}
+.kids-adult-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.kids-adult-card {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--kids-border);
+  border-radius: 18px;
+  background: #fff;
+}
+.kids-adult-card h2 {
+  margin: 0 0 12px;
+  color: var(--kids-text-secondary);
+  font: 700 1rem var(--kids-font-body);
+}
+.kids-adult-card p {
+  margin-bottom: 0;
+}
+.kids-adult-number {
+  display: block;
+  margin: 0 0 12px;
+  font: 800 clamp(1.6rem, 5vw, 2.2rem) var(--kids-font-display);
+}
+.kids-time-track {
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #edeae2;
+}
+.kids-time-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--kids-runtime-strong);
+}
+.kids-adult-concepts {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.kids-adult-concepts li,
+.kids-health-list div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #edeae2;
+}
+.kids-adult-ai {
+  background: #faf9ff;
+  border-color: #c5bff6;
+}
+.kids-adult-decisions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.kids-adult-decisions div {
+  display: grid;
+  gap: 2px;
+  padding: 10px;
+  border-radius: 12px;
+  background: #fff;
+  text-align: center;
+}
+.kids-adult-decisions strong {
+  font: 800 1.8rem var(--kids-font-display);
+}
+.kids-adult-switch {
+  width: 100%;
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border: 0;
+  border-bottom: 1px solid #edeae2;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.kids-adult-switch span {
+  display: grid;
+  gap: 2px;
+}
+.kids-adult-switch small {
+  color: var(--kids-text-secondary);
+}
+.kids-adult-switch i {
+  flex: none;
+  width: 52px;
+  height: 32px;
+  position: relative;
+  border-radius: 999px;
+  background: #b3bbb4;
+}
+.kids-adult-switch i::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px #0003;
+}
+.kids-adult-switch[aria-checked="true"] i {
+  background: var(--kids-runtime-strong);
+}
+.kids-adult-switch[aria-checked="true"] i::after {
+  left: 23px;
+}
+.kids-adult-limit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.kids-adult-limit span {
+  flex: 1;
+}
+.kids-adult-limit strong {
+  white-space: nowrap;
+}
+.kids-adult-limit button:disabled {
+  opacity: 0.4;
+}
+.kids-health-list {
+  margin: 0 0 12px;
+}
+.kids-health-list dd {
+  margin: 0;
+  font-weight: 700;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.kids-adult-card > .kids-button {
+  min-height: 48px;
+}
+.kids-adult-privacy {
+  padding: 18px;
+  border-radius: 18px;
+  background: #eceee7;
+}
+.kids-adult-privacy p {
+  margin: 6px 0 0;
+}
+@media (max-width: 699px) {
+  .kids-adult-grid {
+    grid-template-columns: 1fr;
+  }
+}
 .kids-world-avatar,
 .kids-world-goal {
   font-size: clamp(1.3rem, 4vw, 2.5rem);

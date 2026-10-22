@@ -44,6 +44,7 @@ interface Props {
   readonly onBack: () => void;
   readonly onComplete: () => void;
   readonly freeProjectId?: string | undefined;
+  readonly oriSuggestions?: boolean;
   readonly onReflect?: (
     prediction: Prediction,
     outcome: "success" | "wall" | "passed" | "short",
@@ -94,6 +95,7 @@ export function EditorScreen({
   onBack,
   onComplete,
   freeProjectId,
+  oriSuggestions = true,
   onReflect,
 }: Props) {
   const projectId =
@@ -461,10 +463,12 @@ export function EditorScreen({
               {t("tell")}
             </button>
           ) : null}
-          <aside className="kids-ori-card">
-            <span aria-hidden="true">✦</span>
-            <span>Ori · {t("oriIdle")}</span>
-          </aside>
+          {oriSuggestions ? (
+            <aside className="kids-ori-card">
+              <span aria-hidden="true">✦</span>
+              <span>Ori · {t("oriIdle")}</span>
+            </aside>
+          ) : null}
         </div>
         <div className="kids-editor-program-panel">
           <div className="kids-editor-tabs">

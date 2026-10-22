@@ -29,6 +29,14 @@ import { CreateScreen } from "./screens/CreateScreen.js";
 import { ProjectsScreen } from "./screens/ProjectsScreen.js";
 import { ReflectScreen } from "./screens/ReflectScreen.js";
 import { createFreeProject } from "./kidsProjects.js";
+import {
+  addActiveSeconds,
+  loadAdultSettings,
+  localDay,
+  saveAdultSettings,
+  type AdultSettings,
+} from "./kidsAdults.js";
+import { ParentsScreen } from "./screens/ParentsScreen.js";
 import { useKidsText, type KidsText } from "./useKidsText.js";
 
 const NAV: readonly {
@@ -58,6 +66,7 @@ export function KidsApp({
     readonly prediction: "yes" | "no" | "dunno";
     readonly outcome: "success" | "wall" | "passed" | "short";
   } | null>(null);
+  const [adultSettings, setAdultSettings] = useState<AdultSettings>(() => loadAdultSettings());
   const t = useKidsText(state.locale);
   const showNav = KIDS_NAV_SCREENS.includes(state.screen);
 
@@ -65,6 +74,32 @@ export function KidsApp({
   useEffect(() => {
     document.documentElement.lang = state.locale;
   }, [state.locale]);
+
+  useEffect(() => {
+    let activeSince =
+      document.visibilityState === "visible" && state.screen !== "parents" ? Date.now() : null;
+    const checkpoint = () => {
+      if (activeSince === null) return;
+      const now = Date.now();
+      addActiveSeconds((now - activeSince) / 1000, localDay(new Date(now)));
+      activeSince =
+        document.visibilityState === "visible" && state.screen !== "parents" ? now : null;
+    };
+    const onVisibility = () => {
+      checkpoint();
+      if (document.visibilityState === "visible" && state.screen !== "parents")
+        activeSince = Date.now();
+    };
+    const interval = window.setInterval(checkpoint, 15_000);
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", checkpoint);
+    return () => {
+      checkpoint();
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", checkpoint);
+    };
+  }, [state.screen]);
 
   function chooseLocale(locale: Locale) {
     saveLocalePreference(locale);
@@ -79,6 +114,11 @@ export function KidsApp({
   function update(next: KidsProgress) {
     setProgress(next);
     saveKidsProgress(next);
+  }
+
+  function updateAdultSettings(next: AdultSettings) {
+    setAdultSettings(next);
+    saveAdultSettings(next);
   }
 
   function onboardNext() {
@@ -100,6 +140,7 @@ export function KidsApp({
             locale={state.locale}
             step={state.onboardStep}
             avatar={state.avatar}
+            readAloud={adultSettings.readAloud}
             onLocale={chooseLocale}
             onAvatar={chooseAvatar}
             onNext={onboardNext}
@@ -112,6 +153,7 @@ export function KidsApp({
             avatar={state.avatar}
             world={state.world}
             progress={progress}
+            readAloud={adultSettings.readAloud}
             onWorld={(world) => dispatch({ type: "pickWorld", world })}
             onMission={(missionIndex) => dispatch({ type: "pickMission", missionIndex })}
           />
@@ -124,6 +166,7 @@ export function KidsApp({
             avatar={state.avatar}
             missionIndex={state.missionIndex}
             freeProjectId={state.freeProjectId}
+            oriSuggestions={adultSettings.oriSuggestions}
             onBack={() => dispatch({ type: "go", screen: "map" })}
             onComplete={() => {
               if (!state.freeProjectId)
@@ -175,6 +218,14 @@ export function KidsApp({
             outcome={reflection.outcome}
             onKeepPlaying={() => dispatch({ type: "go", screen: "editor" })}
             onNext={() => dispatch({ type: "go", screen: "map" })}
+          />
+        ) : state.screen === "parents" ? (
+          <ParentsScreen
+            t={t}
+            locale={state.locale}
+            progress={progress}
+            settings={adultSettings}
+            onSettings={updateAdultSettings}
           />
         ) : (
           <section className="kids-screen" aria-labelledby="kids-title">

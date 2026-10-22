@@ -2,9 +2,9 @@
  * Learner-facing AI availability (issue #352). The adult enables AI on the server; the
  * browser only reads a same-origin health document and never holds a provider secret.
  *
- * Contract (served by the tutor API, #348): GET /api/tutor/health ->
- * `{ "configured": boolean, "available": boolean }`. Anything else, including a missing
- * endpoint, is normal local mode rather than an error.
+ * The legacy Web card reads `configured` and `available` from GET /api/tutor/health.
+ * Kids reads the extended adult-only fields separately. A missing endpoint is normal
+ * local mode rather than an error.
  */
 export type AiStatus = "local" | "connecting" | "active" | "unavailable";
 
