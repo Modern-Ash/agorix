@@ -441,3 +441,4 @@ function assertHintLadder(hints: readonly MissionHint[]): void {
   });
 }
 export * from "./worlds.js";
+export * from "./kids.js";

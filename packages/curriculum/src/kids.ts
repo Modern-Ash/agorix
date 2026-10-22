@@ -1,0 +1,366 @@
+import { SCHEMA_VERSION } from "@agorix/program-model";
+import { type RunResult, type WorldState } from "@agorix/runtime";
+import {
+  MISSION_SCHEMA_VERSION,
+  normalizeLocale,
+  validateMission,
+  type MissionConcept,
+  type MissionDefinition,
+  type MissionHint,
+  type SupportedLocale,
+} from "./index.js";
+
+/**
+ * Agorix Kids worlds and missions (issue #372).
+ *
+ * The prototype plays on a 6x4 grid of cells; the runtime moves in pixels and has no world
+ * edge. This module is the adapter: a cell scale, three missions written as ordinary
+ * `MissionDefinition`s, and an interpretation of a runtime trace in cells (including the
+ * "wall" outcome). Runtime semantics are untouched.
+ */
+export const KIDS_GRID = Object.freeze({ cols: 6, rows: 4, cellSize: 40 });
+
+export type KidsDirection = "E" | "S" | "W" | "N";
+export type KidsOutcome = "success" | "wall" | "passed" | "short";
+
+export interface KidsCell {
+  readonly cx: number;
+  readonly cy: number;
+}
+
+const DIRECTIONS: readonly KidsDirection[] = ["E", "S", "W", "N"];
+
+export function cellToWorld(cell: KidsCell): { readonly x: number; readonly y: number } {
+  return { x: cell.cx * KIDS_GRID.cellSize, y: cell.cy * KIDS_GRID.cellSize };
+}
+
+export function worldToCell(position: { readonly x: number; readonly y: number }): KidsCell {
+  return {
+    cx: Math.round(position.x / KIDS_GRID.cellSize),
+    cy: Math.round(position.y / KIDS_GRID.cellSize),
+  };
+}
+
+/** A Move block of `cells` squares is a runtime `move` of this many steps. */
+export function kidsMoveSteps(cells: number): number {
+  return cells * KIDS_GRID.cellSize;
+}
+
+function insideGrid(cell: KidsCell): boolean {
+  return cell.cx >= 0 && cell.cy >= 0 && cell.cx < KIDS_GRID.cols && cell.cy < KIDS_GRID.rows;
+}
+
+function sameCell(a: KidsCell, b: KidsCell): boolean {
+  return a.cx === b.cx && a.cy === b.cy;
+}
+
+interface KidsMissionSpec {
+  readonly id: string;
+  readonly start: KidsCell;
+  readonly goal: KidsCell;
+  readonly concepts: readonly MissionConcept[];
+}
+
+export const KIDS_MISSION_IDS = Object.freeze([
+  "kids.m1.straight",
+  "kids.m2.corner",
+  "kids.m3.zigzag",
+] as const);
+export const KIDS_FREE_MISSION_ID = "kids.free";
+
+const SPECS: readonly KidsMissionSpec[] = [
+  {
+    id: KIDS_MISSION_IDS[0],
+    start: { cx: 0, cy: 2 },
+    goal: { cx: 4, cy: 2 },
+    concepts: ["sequence", "movement"],
+  },
+  {
+    id: KIDS_MISSION_IDS[1],
+    start: { cx: 0, cy: 3 },
+    goal: { cx: 3, cy: 1 },
+    concepts: ["sequence", "movement"],
+  },
+  {
+    id: KIDS_MISSION_IDS[2],
+    start: { cx: 0, cy: 0 },
+    goal: { cx: 3, cy: 3 },
+    concepts: ["sequence", "movement", "repetition"],
+  },
+];
+
+const FREE_START: KidsCell = { cx: 0, cy: 2 };
+
+interface KidsCopy {
+  readonly title: string;
+  readonly goalTitle: string;
+  readonly learnerFacing: string;
+  readonly hints: readonly [string, string, string, string, string];
+  readonly reflectionPrompt: string;
+}
+
+const COPY: Record<string, Record<SupportedLocale, KidsCopy>> = {
+  [KIDS_MISSION_IDS[0]]: {
+    es: {
+      title: "Camino recto",
+      goalTitle: "Llega a la meta",
+      learnerFacing: "Mueve a tu personaje en línea recta hasta la meta.",
+      hints: [
+        "Mira dónde está la meta. ¿Está cerca o lejos?",
+        "Cuenta los cuadritos que hay entre tu personaje y la meta.",
+        "Un bloque Mover avanza tantos cuadritos como indica su número.",
+        "Prueba un bloque Mover con el número de cuadritos que contaste.",
+        "Una idea: un solo bloque Mover con el número 4.",
+      ],
+      reflectionPrompt: "¿Qué número usaste en Mover y por qué?",
+    },
+    en: {
+      title: "Straight path",
+      goalTitle: "Reach the goal",
+      learnerFacing: "Move your character in a straight line to the goal.",
+      hints: [
+        "Look at where the goal is. Is it near or far?",
+        "Count the squares between your character and the goal.",
+        "A Move block goes forward as many squares as its number says.",
+        "Try a Move block with the number of squares you counted.",
+        "One idea: a single Move block set to 4.",
+      ],
+      reflectionPrompt: "Which number did you use in Move, and why?",
+    },
+  },
+  [KIDS_MISSION_IDS[1]]: {
+    es: {
+      title: "La esquina",
+      goalTitle: "Llega a la meta doblando",
+      learnerFacing: "La meta está arriba. Avanza y gira para llegar.",
+      hints: [
+        "La meta no está en tu fila. ¿Hacia dónde tienes que ir?",
+        "Primero avanza hacia el lado de la meta y después tienes que girar.",
+        "Girar a la izquierda hace que tu personaje mire hacia arriba.",
+        "Prueba: Mover, Girar a la izquierda y otro Mover.",
+        "Una idea: Mover 3, Girar a la izquierda, Mover 2.",
+      ],
+      reflectionPrompt: "¿Por qué tuviste que girar en tu programa?",
+    },
+    en: {
+      title: "The corner",
+      goalTitle: "Reach the goal by turning",
+      learnerFacing: "The goal is up there. Go forward and turn to reach it.",
+      hints: [
+        "The goal is not in your row. Which way do you need to go?",
+        "First go toward the side of the goal, then you will need to turn.",
+        "Turning left makes your character face up.",
+        "Try: Move, Turn left and another Move.",
+        "One idea: Move 3, Turn left, Move 2.",
+      ],
+      reflectionPrompt: "Why did your program need a turn?",
+    },
+  },
+  [KIDS_MISSION_IDS[2]]: {
+    es: {
+      title: "El zigzag",
+      goalTitle: "Llega a la meta con giros",
+      learnerFacing: "Baja, gira y avanza hasta la meta. Repetir te puede ayudar.",
+      hints: [
+        "Mira el camino: la meta está abajo y a la derecha.",
+        "Tu personaje empieza mirando a la derecha. ¿Qué giro lo hace mirar hacia abajo?",
+        "Cuando repites la misma acción varias veces, el bloque Repetir te ahorra bloques.",
+        "Prueba: Girar a la derecha, avanzar, Girar a la izquierda y avanzar otra vez.",
+        "Una idea: Girar a la derecha, Mover 3, Girar a la izquierda, Mover 3.",
+      ],
+      reflectionPrompt: "¿Dónde podrías usar Repetir para tener menos bloques?",
+    },
+    en: {
+      title: "The zigzag",
+      goalTitle: "Reach the goal with turns",
+      learnerFacing: "Go down, turn and move to the goal. Repeat can help.",
+      hints: [
+        "Look at the path: the goal is down and to the right.",
+        "Your character starts facing right. Which turn makes it face down?",
+        "When you do the same action many times, the Repeat block saves you blocks.",
+        "Try: Turn right, move, Turn left and move again.",
+        "One idea: Turn right, Move 3, Turn left, Move 3.",
+      ],
+      reflectionPrompt: "Where could you use Repeat to have fewer blocks?",
+    },
+  },
+  [KIDS_FREE_MISSION_ID]: {
+    es: {
+      title: "Tu propio mundo",
+      goalTitle: "Elige tu meta",
+      learnerFacing: "Toca el mundo para poner la meta y luego llega hasta ella.",
+      hints: [
+        "Toca un cuadrito del mundo para poner tu meta.",
+        "Mira cuántos cuadritos hay hasta tu meta.",
+        "Mover avanza y Girar cambia hacia dónde mira tu personaje.",
+        "Combina Mover y Girar para dibujar tu camino.",
+        "Una idea: elige una meta en tu misma fila y usa un solo Mover.",
+      ],
+      reflectionPrompt: "¿Qué meta elegiste y cómo llegaste?",
+    },
+    en: {
+      title: "Your own world",
+      goalTitle: "Pick your goal",
+      learnerFacing: "Tap the world to place the goal, then reach it.",
+      hints: [
+        "Tap a square of the world to place your goal.",
+        "Count how many squares there are to your goal.",
+        "Move goes forward and Turn changes where your character looks.",
+        "Combine Move and Turn to draw your path.",
+        "One idea: pick a goal in your own row and use a single Move.",
+      ],
+      reflectionPrompt: "Which goal did you pick and how did you get there?",
+    },
+  },
+};
+
+function ladder(hints: KidsCopy["hints"]): readonly MissionHint[] {
+  return hints.map((text, index) => ({
+    level: (index + 1) as MissionHint["level"],
+    text,
+  }));
+}
+
+function buildMission(spec: KidsMissionSpec, locale: SupportedLocale): MissionDefinition {
+  const copy = COPY[spec.id]?.[locale];
+  if (copy === undefined) {
+    throw new RangeError(`unknown kids mission: ${spec.id}`);
+  }
+  const start = cellToWorld(spec.start);
+  const goal = cellToWorld(spec.goal);
+  return validateMission({
+    schema: MISSION_SCHEMA_VERSION,
+    id: spec.id,
+    version: 1,
+    title: copy.title,
+    goal: { title: copy.goalTitle, learnerFacing: copy.learnerFacing },
+    concepts: spec.concepts,
+    starterProject: {
+      schema: SCHEMA_VERSION,
+      scripts: [{ id: "main", trigger: { type: "greenFlag" }, statements: [] }],
+    },
+    starterStage: { sprite: { x: start.x, y: start.y, heading: 0 }, goal },
+    completion: { type: "spriteTouchingGoal" },
+    constraints: [
+      {
+        id: "kids-grid",
+        description: `The world is a ${KIDS_GRID.cols}x${KIDS_GRID.rows} grid; leaving it is a wall bump, judged from the run trace.`,
+      },
+      {
+        id: "runtime-completion",
+        description: "Completion is evaluated from runtime world state, not an LLM judgment.",
+      },
+    ],
+    hintLadder: ladder(copy.hints),
+    reflectionPrompt: copy.reflectionPrompt,
+  });
+}
+
+export function getKidsMission(id: string, locale: string | undefined): MissionDefinition {
+  const spec = SPECS.find((candidate) => candidate.id === id);
+  if (spec === undefined) {
+    throw new RangeError(`unknown kids mission: ${id}`);
+  }
+  return buildMission(spec, normalizeLocale(locale));
+}
+
+/** The free world: the child taps a cell to place the goal; the start is fixed. */
+export function createFreeWorldMission(
+  goal: KidsCell,
+  locale: string | undefined,
+): MissionDefinition {
+  if (!Number.isInteger(goal.cx) || !Number.isInteger(goal.cy) || !insideGrid(goal)) {
+    throw new RangeError("the goal must be a whole cell inside the grid");
+  }
+  if (sameCell(goal, FREE_START)) {
+    throw new RangeError("the goal cannot be on the start cell");
+  }
+  return buildMission(
+    { id: KIDS_FREE_MISSION_ID, start: FREE_START, goal, concepts: ["sequence", "movement"] },
+    normalizeLocale(locale),
+  );
+}
+
+export interface KidsRunEvaluation {
+  readonly outcome: KidsOutcome;
+  /** Every cell visited in order, including the start and cells crossed inside one Move. */
+  readonly trail: readonly KidsCell[];
+  readonly final: KidsCell;
+  readonly heading: KidsDirection;
+  /** The first cell outside the grid the character tried to enter, when it hit the edge. */
+  readonly wallAt?: KidsCell;
+}
+
+function compass(degrees: number): KidsDirection {
+  const quarter = Math.round((((degrees % 360) + 360) % 360) / 90) % 4;
+  return DIRECTIONS[quarter] ?? "E";
+}
+
+function cellsBetween(from: KidsCell, to: KidsCell): readonly KidsCell[] {
+  const cells: KidsCell[] = [];
+  const dx = Math.sign(to.cx - from.cx);
+  const dy = Math.sign(to.cy - from.cy);
+  if (dx !== 0 && dy !== 0) {
+    return [to];
+  }
+  let cursor = from;
+  while (!sameCell(cursor, to)) {
+    cursor = { cx: cursor.cx + dx, cy: cursor.cy + dy };
+    cells.push(cursor);
+  }
+  return cells;
+}
+
+/**
+ * Interprets a runtime run in grid cells, from its execution trace (always present, so
+ * `collectObservations` is not required). The runtime has no world edge, so the first step
+ * outside the grid ends the interpretation as a "wall" and the character stays on the last
+ * cell inside (the prototype's behaviour).
+ */
+export function evaluateKidsRun(input: {
+  readonly mission: MissionDefinition;
+  readonly result: RunResult;
+}): KidsRunEvaluation {
+  const start = worldToCell(input.mission.starterStage.sprite as { x: number; y: number });
+  const goal = worldToCell(input.mission.starterStage.goal as { x: number; y: number });
+  const ends: readonly WorldState[] = input.result.trace.map((entry) => entry.worldAfter);
+
+  const trail: KidsCell[] = [start];
+  let current = start;
+  let heading = compass(input.mission.starterStage.sprite?.heading ?? 0);
+  let wallAt: KidsCell | undefined;
+
+  for (const world of ends) {
+    const next = worldToCell(world.sprite);
+    heading = compass(world.sprite.heading);
+    for (const cell of cellsBetween(current, next)) {
+      if (!insideGrid(cell)) {
+        wallAt = cell;
+        break;
+      }
+      trail.push(cell);
+      current = cell;
+    }
+    if (wallAt !== undefined) {
+      break;
+    }
+  }
+
+  let outcome: KidsOutcome;
+  if (wallAt !== undefined) {
+    outcome = "wall";
+  } else if (sameCell(current, goal)) {
+    outcome = "success";
+  } else if (trail.some((cell) => sameCell(cell, goal))) {
+    outcome = "passed";
+  } else {
+    outcome = "short";
+  }
+  return {
+    outcome,
+    trail,
+    final: current,
+    heading,
+    ...(wallAt === undefined ? {} : { wallAt }),
+  };
+}
