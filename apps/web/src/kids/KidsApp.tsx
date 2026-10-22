@@ -37,6 +37,9 @@ import {
   type AdultSettings,
 } from "./kidsAdults.js";
 import { ParentsScreen } from "./screens/ParentsScreen.js";
+import { AdvancedSceneScreen } from "./screens/AdvancedSceneScreen.js";
+import { advancedEntryUnlocked, ensureAdvancedProject } from "./kidsAdvancedProgress.js";
+import { ProjectStore } from "@agorix/persistence";
 import { useKidsText, type KidsText } from "./useKidsText.js";
 
 const NAV: readonly {
@@ -67,6 +70,7 @@ export function KidsApp({
     readonly outcome: "success" | "wall" | "passed" | "short";
   } | null>(null);
   const [adultSettings, setAdultSettings] = useState<AdultSettings>(() => loadAdultSettings());
+  const [projectStore] = useState(() => new ProjectStore());
   const t = useKidsText(state.locale);
   const showNav = KIDS_NAV_SCREENS.includes(state.screen);
 
@@ -156,6 +160,11 @@ export function KidsApp({
             readAloud={adultSettings.readAloud}
             onWorld={(world) => dispatch({ type: "pickWorld", world })}
             onMission={(missionIndex) => dispatch({ type: "pickMission", missionIndex })}
+            advancedUnlocked={advancedEntryUnlocked(projectStore)}
+            onAdvanced={() => {
+              if (ensureAdvancedProject("scene", state.locale, projectStore))
+                dispatch({ type: "openAdvancedScene" });
+            }}
           />
         ) : state.screen === "editor" ? (
           <EditorScreen
@@ -176,6 +185,11 @@ export function KidsApp({
               setReflection({ prediction, outcome });
               dispatch({ type: "go", screen: "reflect" });
             }}
+          />
+        ) : state.screen === "advanced" ? (
+          <AdvancedSceneScreen
+            locale={state.locale}
+            onBack={() => dispatch({ type: "go", screen: "map" })}
           />
         ) : state.screen === "create" ? (
           <CreateScreen
@@ -269,6 +283,8 @@ function screenTitle(screen: KidsScreen, t: KidsText): string {
     case "parents":
       return t("grownups");
     case "editor":
+      return t("mission");
+    case "advanced":
       return t("mission");
     case "reflect":
       return t("keepPlaying");

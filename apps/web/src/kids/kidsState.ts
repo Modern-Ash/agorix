@@ -5,7 +5,7 @@ import type { Locale } from "../i18n.js";
  * the program lives in the canonical program (`program-model`) and project data in `persistence`.
  */
 export type KidsScreen =
-  "onboard" | "map" | "create" | "editor" | "reflect" | "projects" | "parents";
+  "onboard" | "map" | "create" | "editor" | "advanced" | "reflect" | "projects" | "parents";
 export type KidsWorld = "space" | "ocean" | "robots" | "city";
 
 export const KIDS_AVATARS = ["🦊", "🐼", "🐸", "🦁", "🐨", "🦄"] as const;
@@ -37,6 +37,7 @@ export type KidsAction =
   | { readonly type: "pickAvatar"; readonly avatar: KidsAvatar }
   | { readonly type: "pickWorld"; readonly world: KidsWorld }
   | { readonly type: "pickMission"; readonly missionIndex: 0 | 1 | 2 | 3 }
+  | { readonly type: "openAdvancedScene" }
   | {
       readonly type: "openSavedMission";
       readonly world: KidsWorld;
@@ -85,6 +86,8 @@ export function kidsReducer(state: KidsState, action: KidsAction): KidsState {
         freeProjectId: undefined,
         screen: "editor",
       };
+    case "openAdvancedScene":
+      return { ...state, screen: "advanced" };
     case "openSavedMission":
       return {
         ...state,
