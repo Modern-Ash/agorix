@@ -44,15 +44,19 @@ export function KidsOriCard({
   const suggested = suggestedValue(offer);
   const [choice, setChoice] = useState(suggested);
   const [inspected, setInspected] = useState(false);
-  const canModify = offer.kind === "move" || offer.kind === "repeat" || offer.kind === "turn";
+  const canModify =
+    offer.proposal?.operations.length === 1 &&
+    (offer.kind === "move" || offer.kind === "repeat" || offer.kind === "turn");
   const choices =
     offer.kind === "turn" ? [-90, 90] : offer.kind === "repeat" ? [2, 3, 4, 5, 6] : [1, 2, 3, 4, 5];
-  const label =
-    offer.kind === "turn"
-      ? t(suggested < 0 ? "turnL" : "turnR")
-      : offer.kind === "repeat"
-        ? `${t("repeat")} ${offer.amount ?? ""}`
-        : `${t("move")} ${offer.amount ?? ""}`;
+  const labels = offer.proposal?.operations.flatMap((operation) => {
+    if (operation.type !== "appendStatement") return [];
+    const statement = operation.statement;
+    if (statement.type === "turn") return [t(statement.degrees < 0 ? "turnL" : "turnR")];
+    if (statement.type === "repeat") return [`${t("repeat")} ${statement.count}`];
+    if (statement.type === "move") return [`${t("move")} ${statement.steps / KIDS_GRID.cellSize}`];
+    return [];
+  });
   const feedback =
     offer.kind === "done"
       ? t("oriWin")
@@ -89,7 +93,7 @@ export function KidsOriCard({
           <div className="kids-ori-proposal">
             <strong>{t("oriSuggests")}</strong>
             <p>
-              {t("wouldAdd")}: {label}
+              {t("wouldAdd")}: {labels?.join(", ")}
             </p>
             <p>
               <strong>{t("why")}</strong> {why}

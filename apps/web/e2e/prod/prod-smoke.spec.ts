@@ -147,3 +147,25 @@ test("the language choice switches and survives a reload", async ({ page }) => {
   await page.getByLabel(/Idioma del producto|Product language/).selectOption("es");
   await expect(page.locator("html")).toHaveAttribute("lang", "es");
 });
+
+test.describe("Kids Ori production fallback", () => {
+  test.use({ serviceWorkers: "block" });
+
+  test("a child sees a reviewable local idea without provider wording", async ({ page }) => {
+    await page.route("**/api/tutor/ori", (route) => route.fulfill({ status: 503, body: "" }));
+    await page.addInitScript(() => {
+      localStorage.setItem("agorix.locale", "es");
+      localStorage.setItem(
+        "agorix.kids.progress.v1",
+        JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+      );
+    });
+    await page.goto("/kids");
+    await page.getByRole("button", { name: "Misión 1" }).click();
+    await expect(page.locator(".kids-ori-proposal")).toContainText("mover 4");
+    await expect(page.locator(".kids-editor")).not.toContainText(
+      /conectad|proveedor|provider|offline/i,
+    );
+    await expect(page.locator(".kids-program-block")).toHaveCount(0);
+  });
+});
