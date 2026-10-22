@@ -1,5 +1,5 @@
-import { SCHEMA_VERSION } from "@agorix/program-model";
-import { type RunResult, type WorldState } from "@agorix/runtime";
+import { SCHEMA_VERSION, type Statement } from "@agorix/program-model";
+import { createWorldState, runProgram, type RunResult, type WorldState } from "@agorix/runtime";
 import {
   MISSION_SCHEMA_VERSION,
   normalizeLocale,
@@ -297,10 +297,30 @@ export function createFreeWorldMission(
   if (sameCell(goal, FREE_START)) {
     throw new RangeError("the goal cannot be on the start cell");
   }
-  return buildMission(
+  const mission = buildMission(
     { id: KIDS_FREE_MISSION_ID, start: FREE_START, goal, concepts: ["sequence", "movement"] },
     normalizeLocale(locale),
   );
+  // Prove reachability through the same canonical runtime the child uses. The witness stays
+  // private: it is never inserted into the learner's project or offered as a solution.
+  const route: Statement[] = [];
+  if (goal.cx > FREE_START.cx) route.push({ type: "move", steps: kidsMoveSteps(goal.cx) });
+  const vertical = goal.cy - FREE_START.cy;
+  if (vertical !== 0) {
+    route.push({ type: "turn", degrees: vertical > 0 ? 90 : -90 });
+    route.push({ type: "move", steps: kidsMoveSteps(Math.abs(vertical)) });
+  }
+  const witness = runProgram(
+    {
+      schema: SCHEMA_VERSION,
+      scripts: [{ id: "reachability", trigger: { type: "greenFlag" }, statements: route }],
+    },
+    createWorldState(mission.starterStage),
+  );
+  if (evaluateKidsRun({ mission, result: witness }).outcome !== "success") {
+    throw new RangeError("the free-world goal is not reachable");
+  }
+  return mission;
 }
 
 export interface KidsRunEvaluation {

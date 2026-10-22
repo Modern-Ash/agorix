@@ -1,3 +1,5 @@
+import { KIDS_MISSION_IDS } from "@agorix/curriculum";
+import { ProjectStore } from "@agorix/persistence";
 import { KIDS_AVATARS, KIDS_WORLDS, type KidsAvatar, type KidsWorld } from "./kidsState.js";
 
 /**
@@ -30,11 +32,13 @@ function defaultStorage(): Storage | undefined {
   }
 }
 
-export function loadKidsProgress(storage: Storage | undefined = defaultStorage()): KidsProgress {
+export function loadKidsProgress(
+  storage: Storage | undefined = defaultStorage(),
+  projects: ProjectStore = new ProjectStore(),
+): KidsProgress {
   try {
     const raw = storage?.getItem(KIDS_PROGRESS_KEY);
-    if (raw === null || raw === undefined) return emptyKidsProgress();
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const parsed = raw == null ? emptyKidsProgress() : (JSON.parse(raw) as Record<string, unknown>);
     if (
       typeof parsed["onboarded"] !== "boolean" ||
       typeof parsed["stars"] !== "number" ||
@@ -53,7 +57,34 @@ export function loadKidsProgress(storage: Storage | undefined = defaultStorage()
         }
       }
     }
-    return { onboarded: parsed["onboarded"], avatar, stars: Math.max(0, parsed["stars"]), done };
+    // A stored project's metadata is authoritative for that mission. Keep older progress
+    // entries for missions without projects so migration does not erase earned stars.
+    const authoritativeDone: Record<string, true> = { ...done };
+    let hasMissionProject = false;
+    for (const world of KIDS_WORLDS) {
+      KIDS_MISSION_IDS.forEach((id, index) => {
+        const projectId = `kids.${world}.${id}`;
+        if (!projects.has(projectId)) return;
+        hasMissionProject = true;
+        const key = `${world}:${index}`;
+        delete authoritativeDone[key];
+        try {
+          if (projects.load(projectId).metadata.missionProgress === 1) {
+            authoritativeDone[key] = true;
+          }
+        } catch {
+          /* A damaged project cannot establish mission completion. */
+        }
+      });
+    }
+    return {
+      onboarded: parsed["onboarded"],
+      avatar,
+      stars: hasMissionProject
+        ? Object.keys(authoritativeDone).length
+        : Math.max(0, parsed["stars"]),
+      done: authoritativeDone,
+    };
   } catch {
     return emptyKidsProgress();
   }

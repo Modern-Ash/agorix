@@ -177,4 +177,13 @@ describe("free world mission (issue #372)", () => {
     expect(() => createFreeWorldMission({ cx: 0, cy: 2 }, "es")).toThrow();
     expect(() => createFreeWorldMission({ cx: 1.5, cy: 2 }, "es")).toThrow();
   });
+
+  it("accepts every non-start grid cell only with a runtime-proven route", () => {
+    for (let cx = 0; cx < KIDS_GRID.cols; cx += 1) {
+      for (let cy = 0; cy < KIDS_GRID.rows; cy += 1) {
+        if (cx === 0 && cy === 2) continue;
+        expect(createFreeWorldMission({ cx, cy }, "es").id).toBe(KIDS_FREE_MISSION_ID);
+      }
+    }
+  });
 });

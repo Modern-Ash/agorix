@@ -25,6 +25,8 @@ export interface KidsState {
   readonly world: KidsWorld;
   /** 0 to 2 are the missions; 3 is the free world. */
   readonly missionIndex: 0 | 1 | 2 | 3;
+  /** ID of a free-world stored project; absent for curriculum missions. */
+  readonly freeProjectId?: string | undefined;
 }
 
 export type KidsAction =
@@ -34,7 +36,18 @@ export type KidsAction =
   | { readonly type: "setLocale"; readonly locale: Locale }
   | { readonly type: "pickAvatar"; readonly avatar: KidsAvatar }
   | { readonly type: "pickWorld"; readonly world: KidsWorld }
-  | { readonly type: "pickMission"; readonly missionIndex: 0 | 1 | 2 | 3 };
+  | { readonly type: "pickMission"; readonly missionIndex: 0 | 1 | 2 | 3 }
+  | {
+      readonly type: "openSavedMission";
+      readonly world: KidsWorld;
+      readonly missionIndex: 0 | 1 | 2;
+    }
+  | {
+      readonly type: "openFreeProject";
+      readonly projectId: string;
+      readonly world: KidsWorld;
+      readonly avatar: KidsAvatar;
+    };
 
 export function initialKidsState(locale: Locale): KidsState {
   return {
@@ -66,6 +79,28 @@ export function kidsReducer(state: KidsState, action: KidsAction): KidsState {
     case "pickWorld":
       return { ...state, world: action.world };
     case "pickMission":
-      return { ...state, missionIndex: action.missionIndex, screen: "editor" };
+      return {
+        ...state,
+        missionIndex: action.missionIndex,
+        freeProjectId: undefined,
+        screen: "editor",
+      };
+    case "openSavedMission":
+      return {
+        ...state,
+        world: action.world,
+        missionIndex: action.missionIndex,
+        freeProjectId: undefined,
+        screen: "editor",
+      };
+    case "openFreeProject":
+      return {
+        ...state,
+        world: action.world,
+        avatar: action.avatar,
+        missionIndex: 3,
+        freeProjectId: action.projectId,
+        screen: "editor",
+      };
   }
 }

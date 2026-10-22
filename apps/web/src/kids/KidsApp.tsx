@@ -25,6 +25,10 @@ import {
 import { MapScreen } from "./screens/MapScreen.js";
 import { OnboardScreen } from "./screens/OnboardScreen.js";
 import { EditorScreen } from "./screens/EditorScreen.js";
+import { CreateScreen } from "./screens/CreateScreen.js";
+import { ProjectsScreen } from "./screens/ProjectsScreen.js";
+import { ReflectScreen } from "./screens/ReflectScreen.js";
+import { createFreeProject } from "./kidsProjects.js";
 import { useKidsText, type KidsText } from "./useKidsText.js";
 
 const NAV: readonly {
@@ -50,6 +54,10 @@ export function KidsApp({
     undefined,
     () => initialState ?? startingState(progress),
   );
+  const [reflection, setReflection] = useState<{
+    readonly prediction: "yes" | "no" | "dunno";
+    readonly outcome: "success" | "wall" | "passed" | "short";
+  } | null>(null);
   const t = useKidsText(state.locale);
   const showNav = KIDS_NAV_SCREENS.includes(state.screen);
 
@@ -109,14 +117,64 @@ export function KidsApp({
           />
         ) : state.screen === "editor" ? (
           <EditorScreen
-            key={`${state.world}:${state.missionIndex}`}
+            key={state.freeProjectId ?? `${state.world}:${state.missionIndex}`}
             t={t}
             locale={state.locale}
             world={state.world}
             avatar={state.avatar}
             missionIndex={state.missionIndex}
+            freeProjectId={state.freeProjectId}
             onBack={() => dispatch({ type: "go", screen: "map" })}
-            onComplete={() => update(markMissionDone(progress, state.world, state.missionIndex))}
+            onComplete={() => {
+              if (!state.freeProjectId)
+                update(markMissionDone(progress, state.world, state.missionIndex));
+            }}
+            onReflect={(prediction, outcome) => {
+              setReflection({ prediction, outcome });
+              dispatch({ type: "go", screen: "reflect" });
+            }}
+          />
+        ) : state.screen === "create" ? (
+          <CreateScreen
+            t={t}
+            locale={state.locale}
+            avatar={state.avatar}
+            world={state.world}
+            onAvatar={chooseAvatar}
+            onWorld={(world) => dispatch({ type: "pickWorld", world })}
+            onStart={() => {
+              const project = createFreeProject(state.world, state.avatar);
+              dispatch({
+                type: "openFreeProject",
+                projectId: project.id,
+                world: project.world,
+                avatar: project.avatar,
+              });
+            }}
+          />
+        ) : state.screen === "projects" ? (
+          <ProjectsScreen
+            t={t}
+            locale={state.locale}
+            avatar={state.avatar}
+            world={state.world}
+            onCreate={() => dispatch({ type: "go", screen: "create" })}
+            onMission={(world, missionIndex) =>
+              dispatch({ type: "openSavedMission", world, missionIndex })
+            }
+            onFree={(projectId, world, avatar) =>
+              dispatch({ type: "openFreeProject", projectId, world, avatar })
+            }
+          />
+        ) : state.screen === "reflect" && reflection ? (
+          <ReflectScreen
+            t={t}
+            avatar={state.avatar}
+            world={state.world}
+            prediction={reflection.prediction}
+            outcome={reflection.outcome}
+            onKeepPlaying={() => dispatch({ type: "go", screen: "editor" })}
+            onNext={() => dispatch({ type: "go", screen: "map" })}
           />
         ) : (
           <section className="kids-screen" aria-labelledby="kids-title">
