@@ -68,6 +68,28 @@ export const KIDS_MISSION_IDS = Object.freeze([
 ] as const);
 export const KIDS_FREE_MISSION_ID = "kids.free";
 
+/** Kids uses the mission/evidence scale 1-5; zero means no help was delivered. */
+export const KIDS_HINT_LEVELS = Object.freeze([1, 2, 3, 4, 5] as const);
+export type KidsHintLevel = (typeof KIDS_HINT_LEVELS)[number];
+export const KIDS_DIRECT_HELP_LEVEL: KidsHintLevel = 5;
+
+/** A hint can be shown only after every lighter hint has actually been used. */
+export function kidsHintUnlocked(level: number, usedLevels: readonly number[]): boolean {
+  if (!KIDS_HINT_LEVELS.some((candidate) => candidate === level)) return false;
+  const used = new Set(usedLevels);
+  return KIDS_HINT_LEVELS.every((candidate) => candidate >= level || used.has(candidate));
+}
+
+/** Returns no hint when it is locked; callers must record a level only after display. */
+export function getKidsHint(
+  mission: MissionDefinition,
+  level: number,
+  usedLevels: readonly number[],
+): MissionHint | undefined {
+  if (!kidsHintUnlocked(level, usedLevels)) return undefined;
+  return mission.hintLadder.find((hint) => hint.level === level);
+}
+
 const SPECS: readonly KidsMissionSpec[] = [
   {
     id: KIDS_MISSION_IDS[0],

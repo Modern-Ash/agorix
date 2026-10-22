@@ -93,18 +93,22 @@ Each mission has:
 
 ## Hint and proposal ladder
 
-Level 0: no help.
+No help: no scaffold event is recorded.
 Level 1: diagnostic question.
 Level 2: concept reminder.
 Level 3: point to the relevant program area, code region or runtime observation.
 Level 4: partial structural example or bounded proposal.
-Level 5: complete explanation, only after explicit learner request or repeated failure.
+Level 5: direct idea or complete explanation, only after levels 1 through 4 have actually been shown to the learner.
+
+The shared mission and learning-evidence scale is 1 to 5. Kids maps the prototype's three visible help steps to levels 1, 3 and 5; levels 2 and 4 remain distinct scaffolds in the mission ladder and must also be used before level 5 unlocks. "Ver idea" is level 5. A request for it while locked does not count as using a hint. Displaying any level records that level once; a duplicate view does not advance the ladder. The direct idea is a proposal for inspection, never an accepted program change.
 
 The system must record which level was used so product experiments can evaluate over-assistance. Higher levels should preserve inspection and learner decision; even a Level 5 explanation must not secretly mutate the program.
 
 ## Prediction before execution
 
 When the learner has enough context, Agorix should ask for a lightweight prediction before Run, for example:
+
+In Kids missions, the prediction choice is required before each Play: yes, no or "I don't know" all count as a prediction. It is a learning prompt, not a correctness gate. Free world and advanced experiences retain the contextual rule above. This Kids policy is a builder decision to check with the product owner after Mora's first playtest (#389); record the confirmed decision here.
 
 - "What do you think your sprite will do first?"
 - "How many times do you think this loop will move?"

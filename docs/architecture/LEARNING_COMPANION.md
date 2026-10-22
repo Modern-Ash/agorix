@@ -44,6 +44,7 @@ Input:
 - deterministic runtime observations/errors;
 - selected canonical node ids or visible code ranges when relevant;
 - previous scaffold/hint levels;
+- for Kids, levels use the mission and learning-evidence 1-5 scale; level 5 direct help is gated until levels 1-4 were shown;
 - learner question or intent;
 - requested human language/reading level if configured.
 
