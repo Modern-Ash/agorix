@@ -114,6 +114,8 @@ jobs:
 
   browser-smoke:
     runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -125,8 +127,6 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-      - run: pnpm --filter @agorix/web exec playwright install --with-deps chromium
-        timeout-minutes: 8
       - run: pnpm --filter @agorix/web test:e2e
 
   vscode-extension-smoke:
