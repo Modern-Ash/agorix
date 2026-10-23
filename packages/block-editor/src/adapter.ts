@@ -30,6 +30,7 @@ export type BlockType =
   | "sound_set_volume"
   | "sound_change_volume"
   | "control_repeat"
+  | "control_wait"
   | "control_if"
   | "sensing_touching_goal"
   | "operator_add"
@@ -347,6 +348,8 @@ function statementFromBlock(
       return { type: "show" };
     case "looks_hide":
       return { type: "hide" };
+    case "control_wait":
+      return { type: "wait", seconds: numberField(block, "seconds", path) };
     case "looks_set_size":
       return { type: "setSize", size: numberField(block, "size", path) };
     case "looks_switch_costume":
@@ -545,6 +548,8 @@ function statementToBlock(
       return { id, type: "looks_show" };
     case "hide":
       return { id, type: "looks_hide" };
+    case "wait":
+      return { id, type: "control_wait", fields: { seconds: statement.seconds } };
     case "setSize":
       return { id, type: "looks_set_size", fields: { size: statement.size } };
     case "switchCostume":

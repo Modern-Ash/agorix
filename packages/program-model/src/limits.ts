@@ -17,6 +17,9 @@ export const VARIABLE_NAME_MAX_LENGTH = 40;
 export const SPRITE_SIZE_MIN = 1;
 export const SPRITE_SIZE_MAX = 400;
 
+export const WAIT_SECONDS_MIN = 0.1;
+export const WAIT_SECONDS_MAX = 5;
+
 export const REPEAT_COUNT_MIN = 1;
 export const REPEAT_COUNT_MAX = 1000;
 

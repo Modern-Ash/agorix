@@ -216,7 +216,7 @@ describe("projectProgram", () => {
         {
           id: "main",
           trigger: { type: "onStart" },
-          statements: [{ type: "wait", seconds: 1 }],
+          statements: [{ type: "teleport", x: 1 }],
         },
       ],
     } as unknown as ProjectProgram;
@@ -227,7 +227,7 @@ describe("projectProgram", () => {
     } catch (error) {
       expect(error).toBeInstanceOf(UnsupportedNodeError);
       const err = error as UnsupportedNodeError;
-      expect(err.nodeType).toBe("wait");
+      expect(err.nodeType).toBe("teleport");
       expect(err.nodeId).toBe("scripts[0]/statements[0]");
       expect(err.name).toBe("UnsupportedNodeError");
     }
@@ -299,7 +299,7 @@ describe("projectProgram", () => {
         {
           id: "main",
           trigger: { type: "onStart" },
-          statements: [{ type: "wait", seconds: 1 }],
+          statements: [{ type: "teleport", x: 1 }],
         },
       ],
     } as unknown as ProjectProgram;

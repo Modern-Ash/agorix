@@ -22,6 +22,7 @@ export const RUNTIME_STATEMENT_OPERATIONS = Object.freeze([
   "show",
   "hide",
   "setSize",
+  "wait",
   "switchCostume",
   "switchBackdrop",
   "playSound",

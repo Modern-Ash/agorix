@@ -113,6 +113,13 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
     case "hide":
       writeMapped(writer, nodeId, indent + "hide\n");
       return;
+    case "wait":
+      writeMapped(
+        writer,
+        nodeId,
+        indent + "wait " + formatNumber(statement.seconds) + " seconds\n",
+      );
+      return;
     case "setSize":
       writeMapped(writer, nodeId, indent + "set size to " + formatNumber(statement.size) + "\n");
       return;

@@ -24,6 +24,8 @@ import {
   TURN_DEGREES_MAX,
   TURN_DEGREES_MIN,
   VARIABLE_NAME_MAX_LENGTH,
+  WAIT_SECONDS_MAX,
+  WAIT_SECONDS_MIN,
 } from "./limits.js";
 
 /**
@@ -305,6 +307,13 @@ function validateStatement(
       }
       checkBounds(input.size, SPRITE_SIZE_MIN, SPRITE_SIZE_MAX, `${path}.size`);
       return { type: "setSize", size: input.size };
+    }
+    case "wait": {
+      if (typeof input.seconds !== "number") {
+        fail("MISSING_FIELD", `${path}.seconds`, "expected a number", input.seconds);
+      }
+      checkBounds(input.seconds, WAIT_SECONDS_MIN, WAIT_SECONDS_MAX, `${path}.seconds`);
+      return { type: "wait", seconds: input.seconds };
     }
     case "switchCostume":
       return { type: "switchCostume", costumeId: checkText(input.costumeId, `${path}.costumeId`) };
