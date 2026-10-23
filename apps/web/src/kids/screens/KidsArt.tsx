@@ -63,6 +63,7 @@ export function KidsBackdrop({
   style,
   label,
   role,
+  tabIndex,
   fallbackBackground,
 }: {
   readonly world: KidsWorldRef;
@@ -72,6 +73,7 @@ export function KidsBackdrop({
   readonly style?: CSSProperties;
   readonly label?: string;
   readonly role?: "img" | "group";
+  readonly tabIndex?: number;
   readonly fallbackBackground?: string;
 }) {
   const enabled = useKidsFlag("customImages");
@@ -81,6 +83,7 @@ export function KidsBackdrop({
     <div
       className={`${className ?? ""}${image ? " kids-art-backdrop" : ""}`.trim()}
       role={role}
+      tabIndex={tabIndex}
       aria-label={label}
       style={{
         background: fallbackBackground ?? KIDS_WORLD_STYLES[fallbackWorld].bg,

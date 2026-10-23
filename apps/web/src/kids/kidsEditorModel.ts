@@ -75,6 +75,30 @@ export function addKidsBlock(
   });
 }
 
+/** A palette drop inserts at the visible slot; a block drag moves one canonical statement. */
+export function insertKidsBlock(
+  history: KidsEditor,
+  kind: KidsBlockKind,
+  slot: number,
+): KidsEditor {
+  return edit(history, `insert ${kind}`, (statements) => {
+    if (!Number.isInteger(slot) || slot < 0 || slot > statements.length) return statements;
+    statements.splice(slot, 0, kidsStatement(kind));
+    return statements;
+  });
+}
+
+export function moveKidsBlock(history: KidsEditor, from: number, slot: number): KidsEditor {
+  if (from === slot || from + 1 === slot) return history;
+  return edit(history, "move block", (statements) => {
+    if (from < 0 || from >= statements.length || slot < 0 || slot > statements.length)
+      return statements;
+    const [block] = statements.splice(from, 1);
+    if (block) statements.splice(slot > from ? slot - 1 : slot, 0, block);
+    return statements;
+  });
+}
+
 export function removeKidsBlock(
   history: KidsEditor,
   index: number,

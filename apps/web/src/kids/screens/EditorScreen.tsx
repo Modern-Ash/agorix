@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent } from "react";
 import { projectAgorixCode } from "@agorix/agorix-code";
 import {
   createEditorHistory,
@@ -52,6 +52,8 @@ import {
   playKidsProgram,
   redoKidsEdit,
   duplicateKidsBlock,
+  insertKidsBlock,
+  moveKidsBlock,
   removeKidsBlock,
   setKidsBlockNumber,
   setKidsBlockSound,
@@ -76,6 +78,8 @@ import {
   soundEvents,
 } from "../kidsSoundLibrary.js";
 import { playKidsSound } from "../kidsSoundPlayer.js";
+import { dropSlot, nextZoom, type ZoomLevel } from "../kidsEditorInteractions.js";
+import { KIDS_SHORTCUTS, kidsShortcut } from "../kidsShortcuts.js";
 
 type CodeLanguage = "agorix" | "python" | "typescript" | "java";
 type Prediction = "yes" | "no" | "dunno";
@@ -132,6 +136,23 @@ export function EditorScreen({
   const customImagesEnabled = useKidsFlag("customImages");
   const soundLibraryEnabled = useKidsFlag("soundLibrary");
   const customAudioEnabled = useKidsFlag("customAudio");
+  const zoomEnabled = useKidsFlag("zoom");
+  const contextMenuEnabled = useKidsFlag("contextMenu");
+  const shortcutsEnabled = useKidsFlag("shortcuts");
+  const [zoom, setZoom] = useState<ZoomLevel>(100);
+  const [menu, setMenu] = useState<{
+    index: number;
+    childIndex?: number;
+    x: number;
+    y: number;
+  } | null>(null);
+  const [explanation, setExplanation] = useState("");
+  const [helpOpen, setHelpOpen] = useState(false);
+  const editorRef = useRef<HTMLElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pressOrigin = useRef<{ x: number; y: number } | null>(null);
+  const touchDistance = useRef<number | null>(null);
   const savedArt = freeProjectId
     ? listFreeProjectRefs().find((entry) => entry.id === freeProjectId)
     : undefined;
@@ -357,6 +378,92 @@ export function EditorScreen({
     clearRun();
   }
 
+  function dropOnProgram(event: DragEvent<HTMLUListElement>) {
+    if (!zoomEnabled) return;
+    event.preventDefault();
+    const list = event.currentTarget;
+    const top = list.getBoundingClientRect().top;
+    const midpoints = [...list.children].map((child) => {
+      const rect = child.getBoundingClientRect();
+      return (rect.top + rect.height / 2 - top) / (zoom / 100);
+    });
+    const slot = dropSlot(event.clientY, top, midpoints, zoom);
+    const source = event.dataTransfer.getData("application/x-kids-block-index");
+    if (source) {
+      change(moveKidsBlock(history, Number(source), slot));
+      return;
+    }
+    const kind = event.dataTransfer.getData("text/plain");
+    if (PALETTE.includes(kind as KidsBlockKind))
+      change(insertKidsBlock(history, kind as KidsBlockKind, slot));
+  }
+
+  function explainBlock(index: number, childIndex?: number): string {
+    const parent = statements[index];
+    const block =
+      childIndex === undefined
+        ? parent
+        : parent?.type === "repeat"
+          ? parent.body[childIndex]
+          : undefined;
+    if (!block) return "";
+    if (block.type === "move")
+      return t("explainMoveBlock", { n: block.steps / KIDS_GRID.cellSize });
+    if (block.type === "turn")
+      return t(block.degrees < 0 ? "explainLeftBlock" : "explainRightBlock");
+    if (block.type === "repeat") return t("explainRepeatBlock", { n: block.count });
+    return t("explainSoundBlock");
+  }
+
+  function menuAction(action: "duplicate" | "delete" | "explain") {
+    if (!menu) return;
+    if (action === "duplicate") change(duplicateKidsBlock(history, menu.index, menu.childIndex));
+    if (action === "delete") change(removeKidsBlock(history, menu.index, menu.childIndex));
+    if (action === "explain") setExplanation(explainBlock(menu.index, menu.childIndex));
+    setMenu(null);
+  }
+
+  function editorKeyDown(event: KeyboardEvent<HTMLElement>) {
+    if (menu) return;
+    if (!shortcutsEnabled) return;
+    const action = kidsShortcut(
+      event.nativeEvent,
+      Boolean(pending || helpOpen || editorRef.current?.querySelector("[role='dialog']")),
+    );
+    if (!action) return;
+    const block = (event.target as Element).closest<HTMLElement>(".kids-program-block");
+    if ((action === "delete" || action === "duplicate") && !block) return;
+    if (action === "run" && !(event.target as Element).closest(".kids-world-grid")) return;
+    event.preventDefault();
+    if (action === "undo") change(undoKidsEdit(history));
+    if (action === "redo") change(redoKidsEdit(history));
+    if (action === "run") startRun("play");
+    if (action === "help") setHelpOpen(true);
+    if (block && (action === "delete" || action === "duplicate")) {
+      const index = Number(block.dataset.index);
+      const childIndex =
+        block.dataset.childIndex === undefined ? undefined : Number(block.dataset.childIndex);
+      change(
+        action === "delete"
+          ? removeKidsBlock(history, index, childIndex)
+          : duplicateKidsBlock(history, index, childIndex),
+      );
+    }
+  }
+
+  useEffect(() => {
+    if (menu) menuRef.current?.querySelector<HTMLElement>("[role='menuitem']")?.focus();
+  }, [menu]);
+
+  useEffect(() => {
+    if (!menu) return;
+    const outside = (event: PointerEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) setMenu(null);
+    };
+    document.addEventListener("pointerdown", outside);
+    return () => document.removeEventListener("pointerdown", outside);
+  }, [menu]);
+
   function save(next: typeof history, completed: boolean, hintLevel = usedHintLevels.length) {
     try {
       const previous = store.has(projectId) ? store.load(projectId).metadata : undefined;
@@ -527,6 +634,73 @@ export function EditorScreen({
         className={`kids-program-block kids-block-${kind}`}
         data-active={activeNode === nodeId}
         data-block-id={blockId}
+        data-index={index}
+        data-child-index={childIndex}
+        tabIndex={contextMenuEnabled || shortcutsEnabled ? 0 : undefined}
+        draggable={zoomEnabled && childIndex === undefined}
+        onDragStart={(event) => {
+          if (childIndex !== undefined) return;
+          event.dataTransfer.setData("application/x-kids-block-index", String(index));
+        }}
+        onContextMenu={(event) => {
+          if (!contextMenuEnabled) return;
+          event.preventDefault();
+          setMenu({
+            index,
+            ...(childIndex === undefined ? {} : { childIndex }),
+            x: event.clientX,
+            y: event.clientY,
+          });
+        }}
+        onPointerDown={(event) => {
+          if (!contextMenuEnabled || event.pointerType !== "touch") return;
+          pressOrigin.current = { x: event.clientX, y: event.clientY };
+          pressTimer.current = setTimeout(() => {
+            setMenu({
+              index,
+              ...(childIndex === undefined ? {} : { childIndex }),
+              x: event.clientX,
+              y: event.clientY,
+            });
+            pressTimer.current = null;
+          }, 500);
+        }}
+        onPointerMove={(event) => {
+          if (!pressOrigin.current || !pressTimer.current) return;
+          if (
+            Math.hypot(
+              event.clientX - pressOrigin.current.x,
+              event.clientY - pressOrigin.current.y,
+            ) > 8
+          ) {
+            clearTimeout(pressTimer.current);
+            pressTimer.current = null;
+          }
+        }}
+        onPointerUp={() => {
+          if (pressTimer.current) clearTimeout(pressTimer.current);
+          pressTimer.current = null;
+        }}
+        onPointerCancel={() => {
+          if (pressTimer.current) clearTimeout(pressTimer.current);
+          pressTimer.current = null;
+        }}
+        onKeyDown={(event) => {
+          if (
+            !contextMenuEnabled ||
+            !["F10", "ContextMenu"].includes(event.key) ||
+            (event.key === "F10" && !event.shiftKey)
+          )
+            return;
+          event.preventDefault();
+          const rect = event.currentTarget.getBoundingClientRect();
+          setMenu({
+            index,
+            ...(childIndex === undefined ? {} : { childIndex }),
+            x: rect.left + 24,
+            y: rect.bottom,
+          });
+        }}
       >
         <div className="kids-block-line">
           <span
@@ -584,7 +758,7 @@ export function EditorScreen({
               ) : null}
             </select>
           ) : null}
-          {duplicateEnabled ? (
+          {duplicateEnabled || contextMenuEnabled ? (
             <button
               type="button"
               className="kids-block-duplicate"
@@ -634,7 +808,12 @@ export function EditorScreen({
   }
 
   return (
-    <section className="kids-editor" aria-labelledby="kids-editor-title">
+    <section
+      ref={editorRef}
+      className="kids-editor"
+      aria-labelledby="kids-editor-title"
+      onKeyDown={editorKeyDown}
+    >
       <header className="kids-editor-header">
         <button type="button" className="kids-button" onClick={onBack}>
           {t("backMap")}
@@ -661,6 +840,11 @@ export function EditorScreen({
         >
           {locale === "es" ? "Rehacer" : "Redo"}
         </button>
+        {shortcutsEnabled ? (
+          <button type="button" className="kids-button" onClick={() => setHelpOpen(true)}>
+            {t("shortcutsHelp")}
+          </button>
+        ) : null}
       </header>
       <div className="kids-editor-layout">
         <div className="kids-editor-stage-panel">
@@ -677,6 +861,7 @@ export function EditorScreen({
             role={freeProjectId ? "group" : "img"}
             label={`${mission.goal.learnerFacing} ${t("runtimeFact")}: ${evaluation?.outcome ?? ""}`}
             style={{ background: style.bg }}
+            {...(shortcutsEnabled ? { tabIndex: 0 } : {})}
           >
             {Array.from({ length: KIDS_GRID.rows * KIDS_GRID.cols }, (_, index) => {
               const cell = { cx: index % KIDS_GRID.cols, cy: Math.floor(index / KIDS_GRID.cols) };
@@ -840,11 +1025,70 @@ export function EditorScreen({
               {t("code")}
             </button>
           </div>
+          {zoomEnabled && view === "blocks" ? (
+            <div className="kids-zoom-controls" role="group" aria-label={t("zoomBlocks")}>
+              <button
+                type="button"
+                aria-label={t("zoomOut")}
+                onClick={() => setZoom(nextZoom(zoom, -1))}
+              >
+                −
+              </button>
+              <output aria-label={t("zoomBlocks")}>{zoom}%</output>
+              <button
+                type="button"
+                aria-label={t("zoomIn")}
+                onClick={() => setZoom(nextZoom(zoom, 1))}
+              >
+                ＋
+              </button>
+              <button type="button" onClick={() => setZoom(100)}>
+                {t("zoomReset")}
+              </button>
+            </div>
+          ) : null}
           {view === "blocks" ? (
             <>
-              <div className="kids-program-stack">
+              <div
+                className="kids-program-stack"
+                style={zoomEnabled ? { zoom: `${zoom}%` } : undefined}
+                onWheel={(event) => {
+                  if (!zoomEnabled || !event.ctrlKey) return;
+                  event.preventDefault();
+                  setZoom(nextZoom(zoom, event.deltaY < 0 ? 1 : -1));
+                }}
+                onTouchStart={(event) => {
+                  if (event.touches.length === 2)
+                    touchDistance.current = Math.hypot(
+                      event.touches[0]!.clientX - event.touches[1]!.clientX,
+                      event.touches[0]!.clientY - event.touches[1]!.clientY,
+                    );
+                }}
+                onTouchMove={(event) => {
+                  if (!zoomEnabled || event.touches.length !== 2 || touchDistance.current === null)
+                    return;
+                  const distance = Math.hypot(
+                    event.touches[0]!.clientX - event.touches[1]!.clientX,
+                    event.touches[0]!.clientY - event.touches[1]!.clientY,
+                  );
+                  if (Math.abs(distance - touchDistance.current) > 25) {
+                    setZoom(nextZoom(zoom, distance > touchDistance.current ? 1 : -1));
+                    touchDistance.current = distance;
+                  }
+                }}
+                onTouchEnd={() => {
+                  touchDistance.current = null;
+                }}
+              >
                 <div className="kids-start-block">▶ {t("whenStart")}</div>
-                <ul>{statements.map((statement, index) => renderBlock(statement, index))}</ul>
+                <ul
+                  onDragOver={(event) => {
+                    if (zoomEnabled) event.preventDefault();
+                  }}
+                  onDrop={dropOnProgram}
+                >
+                  {statements.map((statement, index) => renderBlock(statement, index))}
+                </ul>
                 {statements.length === 0 ? <p className="kids-note">{t("dragHere")}</p> : null}
               </div>
               <p className="kids-code-label">{t("codeNote")}</p>
@@ -888,7 +1132,11 @@ export function EditorScreen({
               <pre className="kids-code-view">{projection}</pre>
             </>
           )}
-          <div className="kids-palette" aria-label={t("blocks")}>
+          <div
+            className="kids-palette"
+            aria-label={t("blocks")}
+            style={zoomEnabled ? { zoom: `${zoom}%` } : undefined}
+          >
             <p>{t("blocks")}</p>
             <div>
               {PALETTE.map((kind) => (
@@ -927,6 +1175,76 @@ export function EditorScreen({
           </div>
         </div>
       </div>
+      {menu ? (
+        <div
+          ref={menuRef}
+          className="kids-block-menu"
+          role="menu"
+          aria-label={t("blockMenu")}
+          style={{ left: menu.x, top: menu.y }}
+          onKeyDown={(event) => {
+            const items = [
+              ...event.currentTarget.querySelectorAll<HTMLElement>("[role='menuitem']"),
+            ];
+            const current = items.indexOf(document.activeElement as HTMLElement);
+            if (event.key === "Escape") {
+              event.preventDefault();
+              setMenu(null);
+            }
+            if (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "Tab") {
+              event.preventDefault();
+              const delta = event.key === "ArrowUp" || event.shiftKey ? -1 : 1;
+              items[(current + delta + items.length) % items.length]?.focus();
+            }
+          }}
+        >
+          <button type="button" role="menuitem" onClick={() => menuAction("duplicate")}>
+            {t("duplicate")}
+          </button>
+          <button type="button" role="menuitem" onClick={() => menuAction("delete")}>
+            {t("deleteBlock")}
+          </button>
+          <button type="button" role="menuitem" onClick={() => menuAction("explain")}>
+            {t("explainBlock")}
+          </button>
+        </div>
+      ) : null}
+      {explanation ? (
+        <p className="kids-block-explanation" role="status">
+          {explanation}
+          <button type="button" onClick={() => setExplanation("")} aria-label={t("close")}>
+            ×
+          </button>
+        </p>
+      ) : null}
+      {shortcutsEnabled && helpOpen ? (
+        <div className="kids-predict-backdrop">
+          <div
+            className="kids-shortcuts-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label={t("shortcutsHelp")}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                event.preventDefault();
+                setHelpOpen(false);
+              }
+            }}
+          >
+            <h2>{t("shortcutsHelp")}</h2>
+            <ul>
+              {KIDS_SHORTCUTS.map((item) => (
+                <li key={item.id}>
+                  <kbd>{item.key}</kbd> {t(`shortcut_${item.id}`)}
+                </li>
+              ))}
+            </ul>
+            <button type="button" autoFocus onClick={() => setHelpOpen(false)}>
+              {t("close")}
+            </button>
+          </div>
+        </div>
+      ) : null}
       {pending ? (
         <div className="kids-predict-backdrop">
           <div

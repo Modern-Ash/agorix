@@ -836,6 +836,87 @@
   border: 1px solid var(--kids-border);
   border-radius: 16px;
 }
+.kids-zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.kids-zoom-controls button {
+  min-width: 44px;
+  min-height: 44px;
+  border: 2px solid var(--kids-border);
+  border-radius: 10px;
+  background: white;
+  color: var(--kids-text);
+  font: inherit;
+  cursor: pointer;
+}
+.kids-zoom-controls output {
+  min-width: 3.5em;
+  text-align: center;
+  font-weight: 700;
+}
+.kids-block-menu {
+  position: fixed;
+  z-index: 100;
+  display: grid;
+  width: min(220px, calc(100vw - 16px));
+  padding: 6px;
+  border: 2px solid var(--kids-border);
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 8px 24px #0003;
+}
+.kids-block-menu button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 8px;
+  background: white;
+  color: var(--kids-text);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.kids-block-menu button:focus-visible {
+  outline: 3px solid var(--kids-runtime-strong);
+}
+.kids-block-explanation {
+  position: fixed;
+  z-index: 90;
+  right: 16px;
+  bottom: 16px;
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 12px;
+  border: 2px solid var(--kids-runtime-strong);
+  border-radius: 12px;
+  background: white;
+  color: var(--kids-text);
+}
+.kids-block-explanation button {
+  margin-left: 8px;
+  min-width: 44px;
+  min-height: 44px;
+}
+.kids-shortcuts-dialog {
+  width: min(520px, calc(100vw - 32px));
+  max-height: 90vh;
+  overflow: auto;
+  padding: 24px;
+  border-radius: 16px;
+  background: white;
+  color: var(--kids-text);
+}
+.kids-shortcuts-dialog li {
+  margin: 8px 0;
+}
+.kids-shortcuts-dialog kbd {
+  font-family: monospace;
+  font-weight: 700;
+}
+.kids-shortcuts-dialog button {
+  min-height: 44px;
+}
 .kids-start-block {
   display: inline-block;
   padding: 9px 14px;
