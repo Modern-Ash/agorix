@@ -79,9 +79,7 @@ test("pressing Jugar early jumps to the prediction step and the app still works"
   await expect(coach(page)).toHaveCount(0);
 });
 
-test("is not shown again for a child who already finished it", async ({
-  page,
-}) => {
+test("is not shown again for a child who already finished it", async ({ page }) => {
   await open(page, ["tutorial"], { tutorialDone: true });
   await expect(coach(page)).toHaveCount(0);
 });
