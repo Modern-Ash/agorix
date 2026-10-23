@@ -1648,6 +1648,8 @@ function runtimeFactText(row: InspectorRow): string {
       return `sprite shown ${before.sprite.visible} -> ${after.sprite.visible}`;
     case "hide":
       return `sprite hidden ${before.sprite.visible} -> ${after.sprite.visible}`;
+    case "wait":
+      return "waited";
     case "setSize":
       return `size ${before.sprite.size} -> ${after.sprite.size}`;
     case "switchCostume":

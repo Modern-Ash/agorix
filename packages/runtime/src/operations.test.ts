@@ -75,6 +75,7 @@ describe("runtime operation allowlist", () => {
       "switchCostume",
       "think",
       "turn",
+      "wait",
     ]);
     expect([...RUNTIME_EXPRESSION_OPERATIONS].sort()).toEqual([
       "add",

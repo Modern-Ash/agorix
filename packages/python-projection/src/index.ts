@@ -94,6 +94,7 @@ export function projectPython(program: ProjectProgram): LanguageProjectionResult
         "hide_variable",
         "random_number",
         "random_integer",
+        "wait",
       ],
       executable: false,
     },
@@ -143,6 +144,9 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
       return;
     case "hide":
       writeMapped(writer, nodeId, indent + "hide()\n");
+      return;
+    case "wait":
+      writeMapped(writer, nodeId, indent + "wait(" + formatNumber(statement.seconds) + ")\n");
       return;
     case "setSize":
       writeMapped(writer, nodeId, indent + "set_size(" + formatNumber(statement.size) + ")\n");
@@ -489,6 +493,7 @@ const PYTHON_PROJECTION_IDENTIFIERS: ReadonlySet<string> = new Set([
   "hide_variable",
   "random_number",
   "random_integer",
+  "wait",
   "range",
   "print",
   "len",

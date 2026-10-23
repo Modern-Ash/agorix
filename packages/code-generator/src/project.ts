@@ -228,6 +228,9 @@ function projectStatement(
     case "hide":
       write(writer, `${pad}sprite.hide();\n`);
       return;
+    case "wait":
+      write(writer, `${pad}wait(${formatNumber(statement.seconds)});\n`);
+      return;
     case "setSize":
       write(writer, `${pad}sprite.setSize(${formatNumber(statement.size)});\n`);
       return;

@@ -272,6 +272,7 @@ function makeSummary(
   }
   if (step.statementType === "show") return "Sprite shown";
   if (step.statementType === "hide") return "Sprite hidden";
+  if (step.statementType === "wait") return "Waited";
   if (step.statementType === "setSize") {
     return `Sprite size: ${step.observation.world.sprite.size}`;
   }
@@ -323,6 +324,8 @@ function titleForStep(step: ExecutionStep, profile: LearnerTraceProfile): string
       return "Show";
     case "hide":
       return "Hide";
+    case "wait":
+      return "Wait";
     case "setSize":
       return "Set size";
     case "switchCostume":

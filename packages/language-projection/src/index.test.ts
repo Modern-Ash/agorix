@@ -31,7 +31,7 @@ const UNSUPPORTED_PROGRAM = {
     {
       id: "main",
       trigger: { type: "onStart" },
-      statements: [{ type: "wait", seconds: 1 }],
+      statements: [{ type: "teleport", x: 1 }],
     },
   ],
 } as unknown as ProjectProgram;

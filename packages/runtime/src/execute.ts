@@ -35,6 +35,8 @@ import { assertAllowedRuntimeOperation, assertProgramOperationsAllowed } from ".
 export { RuntimeExecutionError };
 
 export const DEFAULT_EXECUTION_BUDGET = 1_000;
+/** Total virtual time one run may wait; past it the run stops like an exhausted step budget. */
+export const MAX_VIRTUAL_SECONDS = 60;
 
 export type RunOutcome = "completed" | "budget-exceeded" | "stopped";
 
@@ -97,6 +99,8 @@ export interface RunResult {
    * Always present from `runProgram`; optional for synthetic/derived results.
    */
   readonly randomState?: number;
+  /** Present only when the run used `wait`, so other results are unchanged. */
+  readonly virtualSeconds?: number;
 }
 
 class ExecutionHalt {
@@ -116,6 +120,8 @@ interface MutableRunState {
   readonly trace: ExecutionTraceEntry[];
   readonly observations: RuntimeObservation[];
   randomState: number;
+  /** Virtual seconds waited so far; a clock for ordering, never a timer. */
+  virtualSeconds: number;
 }
 
 function normalizeBudget(maxSteps: number | undefined): number {
@@ -342,6 +348,10 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
     case "setSize":
       state.world = setSpriteSizeWorld(state.world, statement.size);
       break;
+    case "wait":
+      state.virtualSeconds = Math.round((state.virtualSeconds + statement.seconds) * 1000) / 1000;
+      if (state.virtualSeconds > MAX_VIRTUAL_SECONDS) throw new ExecutionHalt("budget-exceeded");
+      break;
     case "switchCostume":
       state.world = switchCostumeWorld(state.world, statement.costumeId);
       break;
@@ -488,6 +498,7 @@ export function runProgram(
     trace: [],
     observations: [],
     randomState: normalizeRandomSeed(options.randomSeed),
+    virtualSeconds: 0,
   };
 
   try {
@@ -518,6 +529,7 @@ export function runProgram(
       trace: state.trace,
       observations: state.observations,
       randomState: state.randomState,
+      ...(state.virtualSeconds > 0 ? { virtualSeconds: state.virtualSeconds } : {}),
     };
   } catch (error) {
     if (error instanceof ExecutionHalt) {
@@ -537,6 +549,7 @@ export function runProgram(
         trace: state.trace,
         observations: state.observations,
         randomState: state.randomState,
+        ...(state.virtualSeconds > 0 ? { virtualSeconds: state.virtualSeconds } : {}),
       };
     }
     throw error;

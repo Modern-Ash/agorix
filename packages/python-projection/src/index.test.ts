@@ -102,6 +102,7 @@ describe("Python projection", () => {
         "hide_variable",
         "random_number",
         "random_integer",
+        "wait",
       ],
       executable: false,
     });
