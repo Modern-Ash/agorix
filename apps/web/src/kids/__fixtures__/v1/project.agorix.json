@@ -1,0 +1,31 @@
+{
+  "format": "agorix-project",
+  "formatVersion": "1",
+  "exportedAt": "2026-10-23T15:31:42.029Z",
+  "project": {
+    "schemaVersion": "agorix/program/v1",
+    "program": {
+      "schema": "agorix/program/v1",
+      "scripts": [
+        {
+          "id": "main",
+          "trigger": {
+            "type": "greenFlag"
+          },
+          "statements": []
+        }
+      ]
+    },
+    "metadata": {
+      "createdAt": "2026-10-21T00:00:00.000Z",
+      "updatedAt": "2026-10-21T00:00:00.000Z",
+      "missionProgress": 0,
+      "hintLevel": 0,
+      "locale": "es",
+      "missionSpec": {
+        "goal": "kids.cell.3.1",
+        "successCheck": "touches-goal"
+      }
+    }
+  }
+}

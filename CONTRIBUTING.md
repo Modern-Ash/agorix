@@ -47,3 +47,7 @@ Child safety, privacy and learning evidence override engagement or convenience.
 Unless explicitly stated otherwise, contributions intentionally submitted to Agorix are provided under the Apache License 2.0, matching the repository license in `LICENSE`.
 
 Do not add third-party assets, model weights, datasets, prompts, policies or generated content unless their license and provenance are documented and compatible with redistribution in this repository.
+
+## Kids regression net
+
+`apps/web/e2e/kids-golden.spec.ts` (phone, tablet, landscape) and `apps/web/src/kids/kidsV1Fixtures.test.ts` must stay green for every Kids change. The fixtures in `src/kids/__fixtures__/v1/` are the saved-data contract of the shipped build: never edit them; add a migration and a new fixture instead. CI already runs them (`browser-smoke` and `pnpm test`).
