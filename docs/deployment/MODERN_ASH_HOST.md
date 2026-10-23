@@ -25,7 +25,10 @@ Browser
 - The `/v1/*` route does not serve the SPA shell. It proxies to the project socket when a service
   is present and returns JSON 404 otherwise. The SQLite project service has a separate Compose
   `accounts` profile and persistent data volume. It requires explicit activation after review;
-  see [PROJECT_SQLITE_STORE.md](../architecture/PROJECT_SQLITE_STORE.md).
+  use `scripts/activate-projects-host.sh --preflight-only` after its Web commit is deployed,
+  then obtain separate product-owner approval before `--activate`. The script checks the
+  public 401 response, makes a verified first backup and enables the daily timer; see
+  [PROJECT_SQLITE_STORE.md](../architecture/PROJECT_SQLITE_STORE.md).
 - `/` serves Agorix Kids. `/kids` remains an alias for existing links; `/advanced` serves the parked
   editor with actors, sounds, events and code views. The production smoke checks both routes.
 - Everything is defined in the repository: `deploy/web/` (Dockerfile, `nginx.conf`, generated

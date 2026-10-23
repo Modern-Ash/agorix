@@ -21,7 +21,7 @@ services:
         source: ${AGORIX_TUTOR_SOCKET_DIR:?set AGORIX_TUTOR_SOCKET_DIR to the host tutor runtime directory}
         target: /run/agorix-tutor
         read_only: true
-      # Reserved for the durable project server. It is empty until #347 activates the service.
+      # Project socket appears when the separate accounts profile is activated.
       - type: bind
         source: ${AGORIX_PROJECT_SOCKET_DIR:?set AGORIX_PROJECT_SOCKET_DIR to the project runtime directory}
         target: /run/agorix-projects
