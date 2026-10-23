@@ -1,0 +1,8 @@
+/* Tipografías autoalojadas para la CSP de producción (font-src 'self').
+   Descargar los archivos woff2 desde Google Fonts y ponerlos en apps/web/public/fonts/.
+   Nombres esperados abajo; sin estos archivos la app usa la fuente del sistema. */
+
+@font-face { font-family: "Atkinson Hyperlegible"; font-weight: 400; font-display: swap; src: url("/fonts/atkinson-400.woff2") format("woff2"); }
+@font-face { font-family: "Atkinson Hyperlegible"; font-weight: 700; font-display: swap; src: url("/fonts/atkinson-700.woff2") format("woff2"); }
+@font-face { font-family: "Epilogue"; font-weight: 700 800; font-display: swap; src: url("/fonts/epilogue-800.woff2") format("woff2"); }
+@font-face { font-family: "JetBrains Mono"; font-weight: 500 700; font-display: swap; src: url("/fonts/jetbrains-mono-500.woff2") format("woff2"); }
