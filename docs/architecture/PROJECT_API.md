@@ -6,6 +6,10 @@
 durable boundary. It adds no UI and no client code; a Node/edge host adapts its
 HTTP server to `ApiRequest`/`ApiResponse`. Contract version: `agorix/project-api/v1`.
 
+`apps/server` now provides that Node transport. Its current in-memory entry point is for
+integration and development only; see [Project HTTP server](PROJECT_HTTP_SERVER.md) for
+activation limits and the #347 durable-storage gate.
+
 ## Authorization model
 
 - The account is resolved server-side from the `agorix_session` cookie via

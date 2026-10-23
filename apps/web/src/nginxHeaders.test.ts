@@ -33,4 +33,11 @@ describe("nginx production headers (issue #340)", () => {
   it("never serves the development backend", () => {
     expect(deployFile("nginx.conf")).toMatch(/location \^~ \/__dev\/\s*\{\s*return 404;/);
   });
+
+  it("routes project API requests to the host socket and returns JSON while it is absent", () => {
+    const conf = deployFile("nginx.conf");
+    expect(conf).toMatch(/location \^~ \/v1\/\s*\{[^}]*proxy_pass http:\/\/agorix_projects;/);
+    expect(conf).toContain("error_page 502 504 = @projects_off;");
+    expect(conf).toMatch(/location @projects_off\s*\{[^}]*default_type application\/json;/);
+  });
 });
