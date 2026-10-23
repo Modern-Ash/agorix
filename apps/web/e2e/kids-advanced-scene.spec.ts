@@ -85,6 +85,25 @@ test("advanced entry stays hidden before all three authored missions", async ({ 
   await expect(page.getByRole("button", { name: /Nivel avanzado/ })).toHaveCount(0);
 });
 
+test("Ori's offline stage idea is reviewable, changeable and one undo step", async ({ page }) => {
+  await seed(page, "es");
+  await page.getByRole("button", { name: /Nivel avanzado/ }).click();
+  await page.getByRole("button", { name: "Pedirle una idea a Ori" }).click();
+  const review = page.getByLabel("Ori propone agregar");
+  await expect(review).toContainText("Cambiar disfraz");
+  await expect(page.getByLabel("Código del programa").last()).not.toContainText("switch costume");
+  await review.getByRole("button", { name: "Cambiar bloque" }).click();
+  await expect(review).toContainText("Tocar sonido");
+  await review.getByRole("button", { name: "Agregar bloque" }).click();
+  await expect(page.getByLabel("Código del programa").last()).toContainText("play sound");
+  await page.getByRole("button", { name: "Deshacer" }).click();
+  await expect(page.getByLabel("Código del programa").last()).not.toContainText("play sound");
+  await page.getByRole("button", { name: "Pedirle una idea a Ori" }).click();
+  await review.getByRole("button", { name: "No usar" }).click();
+  await expect(review).toHaveCount(0);
+  await expect(page.getByLabel("Código del programa").last()).not.toContainText("switch costume");
+});
+
 for (const viewport of [
   { width: 390, height: 844 },
   { width: 820, height: 1180 },

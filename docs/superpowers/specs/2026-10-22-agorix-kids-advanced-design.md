@@ -46,6 +46,8 @@ The mission wording and exact examples are authored and tested in the curriculum
 
 ## Data and integration
 
+For A3, the owner chose a simple in-memory server store as the first implementation and a free-tier database such as Supabase as the intended production direction. The server issues a short-lived anonymous token only after replaying the three authored Kids mission programs with the canonical runtime. The store keeps only the token, unlocked stage and expiration; it has a replaceable repository interface so a durable adapter can follow without changing Ori's HTTP contract. A server restart clears these tokens and the browser can prove the missions again from its saved programs. This does not create accounts or upload chat text.
+
 - Extend project metadata with a versioned advanced-stage progress record. Keep it separate from the program and derive completed mission truth from runtime evidence. Do not infer completion from a clicked unlock button or a model response.
 - Reuse `program-model`, `runtime`, `stage`, `block-editor`, `persistence`, `learning-evidence` and language projections. The parked `/advanced` UI can supply implementation examples, not a second editor or project authority.
 - Existing Kids projects remain Kids projects. Entering advanced creates or resumes an advanced project; it does not silently rewrite the child's earlier work.

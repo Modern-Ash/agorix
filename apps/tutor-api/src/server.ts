@@ -9,6 +9,16 @@ import {
 } from "@agorix/curriculum";
 import { validateProgram, type ProjectProgram } from "@agorix/program-model";
 import {
+  runOriAdvanced,
+  type OriAdvancedActorId,
+  validateOriAdvancedProposal,
+} from "@agorix/ori-agent";
+import {
+  createMemoryAdvancedStageRepository,
+  proveAdvancedEntry,
+  type AdvancedStageRepository,
+} from "./advancedSessions.js";
+import {
   evaluateOriAgentOutput,
   isOriChatTextValid,
   runOriChat,
@@ -33,6 +43,7 @@ export interface TutorServerOptions {
   readonly healthTtlMs?: number;
   readonly now?: () => number;
   readonly ori?: OriCliService;
+  readonly advancedStages?: AdvancedStageRepository;
 }
 
 interface Health {
@@ -59,6 +70,7 @@ export function createTutorServer(options: TutorServerOptions): Server {
   let lastErrorClass: ProviderRuntimeErrorCode | null = null;
   let lastOriSource: Health["lastOriSource"] = null;
   const chatRate = new Map<string, { count: number; start: number }>();
+  const advancedStages = options.advancedStages ?? createMemoryAdvancedStageRepository(now);
 
   async function health(): Promise<Health> {
     if (cached !== undefined && now() - cached.at < ttl) return cached.health;
@@ -136,6 +148,14 @@ export function createTutorServer(options: TutorServerOptions): Server {
     if (path === "/api/tutor/ori") {
       if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
       return respondOri(request, response);
+    }
+    if (path === "/api/tutor/advanced/session") {
+      if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
+      return advancedSession(request, response);
+    }
+    if (path === "/api/tutor/advanced/ori") {
+      if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
+      return respondAdvanced(request, response);
     }
     if (path === "/api/tutor/chat") {
       if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
@@ -227,6 +247,78 @@ export function createTutorServer(options: TutorServerOptions): Server {
       message: decision.message,
       ...(decision.proposal === undefined ? {} : { proposal: decision.proposal }),
     });
+  }
+
+  async function advancedSession(
+    request: IncomingMessage,
+    response: ServerResponse,
+  ): Promise<void> {
+    if (!(request.headers["content-type"] ?? "").includes("application/json"))
+      return send(response, 415, error("unsupported-media-type"));
+    if (!sameOrigin(request)) return send(response, 403, error("forbidden-origin"));
+    const body = await readBody(request);
+    if (body === "too-large") return send(response, 413, error("payload-too-large"));
+    try {
+      const raw = JSON.parse(body) as Record<string, unknown>;
+      if (
+        !raw ||
+        Array.isArray(raw) ||
+        Object.keys(raw).sort().join() !== "programs" ||
+        !proveAdvancedEntry(raw.programs)
+      )
+        throw new Error("invalid proof");
+      return send(response, 200, { token: advancedStages.create("scene"), stage: "scene" });
+    } catch {
+      return send(response, 400, error("invalid-request"));
+    }
+  }
+
+  async function respondAdvanced(
+    request: IncomingMessage,
+    response: ServerResponse,
+  ): Promise<void> {
+    if (!(request.headers["content-type"] ?? "").includes("application/json"))
+      return send(response, 415, error("unsupported-media-type"));
+    if (!sameOrigin(request)) return send(response, 403, error("forbidden-origin"));
+    const body = await readBody(request);
+    if (body === "too-large") return send(response, 413, error("payload-too-large"));
+    try {
+      const raw = JSON.parse(body) as Record<string, unknown>;
+      if (
+        !raw ||
+        Array.isArray(raw) ||
+        Object.keys(raw).sort().join() !== "actorId,locale,program,token" ||
+        typeof raw.token !== "string" ||
+        raw.token.length > 64 ||
+        (raw.locale !== "es" && raw.locale !== "en") ||
+        (raw.actorId !== "actor:ori" && raw.actorId !== "actor:friend") ||
+        advancedStages.get(raw.token) !== "scene"
+      )
+        throw new Error("invalid stage");
+      const context = {
+        stage: "scene" as const,
+        actorId: raw.actorId as OriAdvancedActorId,
+        locale: raw.locale as "es" | "en",
+        program: validateProgram(raw.program as ProjectProgram),
+      };
+      let decision;
+      try {
+        decision = options.ori
+          ? await options.ori.advanced(context)
+          : await runOriAdvanced(context);
+      } catch {
+        decision = await runOriAdvanced(context);
+      }
+      if (decision.proposal) validateOriAdvancedProposal(context, decision.proposal);
+      lastOriSource = decision.source;
+      cached = undefined;
+      return send(response, 200, {
+        message: decision.message,
+        ...(decision.proposal ? { proposal: decision.proposal } : {}),
+      });
+    } catch {
+      return send(response, 400, error("invalid-request"));
+    }
   }
 
   async function respondChat(request: IncomingMessage, response: ServerResponse): Promise<void> {

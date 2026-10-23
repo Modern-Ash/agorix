@@ -1493,3 +1493,27 @@
 .kids-advanced-scene .kids-code-strip {
   overflow-x: auto;
 }
+
+.kids-advanced-ori {
+  margin: 0.75rem 0;
+}
+
+.kids-advanced-ori-review {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding: 1rem;
+  border: 2px solid var(--kids-runtime-strong);
+  border-radius: 1rem;
+  background: #fffdf4;
+}
+
+.kids-advanced-ori-review p {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.kids-advanced-ori-review .kids-button {
+  min-height: 44px;
+}

@@ -61,6 +61,54 @@ async function start(
 }
 
 describe("tutor HTTP server (issue #348)", () => {
+  it("opens a proven advanced session and returns a reviewable offline scene idea", async () => {
+    const base = await start({ AGORIX_TUTOR_ADAPTER: "fake" });
+    const program = (statements: unknown[]) => ({
+      schema: "agorix/program/v1",
+      scripts: [{ id: "main", trigger: { type: "greenFlag" }, statements }],
+    });
+    const move = (cells: number) => ({ type: "move", steps: cells * 40 });
+    const programs = [
+      program([move(4)]),
+      program([move(3), { type: "turn", degrees: -90 }, move(2)]),
+      program([{ type: "turn", degrees: 90 }, move(3), { type: "turn", degrees: -90 }, move(3)]),
+    ];
+    const post = (path: string, value: unknown) =>
+      fetch(`${base}${path}`, {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: base },
+        body: JSON.stringify(value),
+      });
+    expect((await post("/api/tutor/advanced/session", { programs: [] })).status).toBe(400);
+    const opened = await post("/api/tutor/advanced/session", { programs });
+    expect(opened.status).toBe(200);
+    const { token } = (await opened.json()) as { token: string };
+    const context = {
+      token,
+      actorId: "actor:ori",
+      locale: "es",
+      program: {
+        schema: "agorix/program/v1",
+        scripts: [{ id: "advanced-scene", trigger: { type: "greenFlag" }, statements: [] }],
+      },
+    };
+    expect((await post("/api/tutor/advanced/ori", { ...context, token: "invalid" })).status).toBe(
+      400,
+    );
+    const offered = await post("/api/tutor/advanced/ori", context);
+    expect(offered.status).toBe(200);
+    expect(await offered.json()).toMatchObject({
+      proposal: {
+        affectedActorIds: ["actor:ori"],
+        operations: [
+          {
+            type: "appendStatement",
+            statement: { type: "switchCostume", costumeId: "asset:costume.spark" },
+          },
+        ],
+      },
+    });
+  });
   it("serves only a proven fixed free-world goal when Ori is offline", async () => {
     const base = await start({ AGORIX_TUTOR_ADAPTER: "fake" });
     const response = await fetch(`${base}/api/tutor/goals`, {
