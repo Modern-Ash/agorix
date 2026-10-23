@@ -4,6 +4,7 @@ import type { ProposalReview } from "@agorix/proposals";
 import type { KidsOriOffer } from "../kidsOri.js";
 import type { KidsText } from "../useKidsText.js";
 import type { BandProfile } from "../kidsAgeBand.js";
+import { KidsSprite } from "./KidsArt.js";
 
 interface Props {
   readonly t: KidsText;
@@ -83,7 +84,7 @@ export function KidsOriCard({
 
   return (
     <aside className="kids-ori-card" aria-label="Ori" data-ori-shape={shape}>
-      <span aria-hidden="true">✦</span>
+      <KidsSprite slot="ori" />
       <div className="kids-ori-content">
         <strong>Ori · {offer.proposal ? t("oriIdle") : feedback}</strong>
         {!offer.proposal ? <p>{why}</p> : null}

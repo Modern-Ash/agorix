@@ -59,7 +59,7 @@ import {
   type KidsPlayedRun,
 } from "../kidsEditorModel.js";
 import type { KidsText } from "../useKidsText.js";
-import { kidsGoalSpec, parseKidsGoalSpec } from "../kidsProjects.js";
+import { kidsGoalSpec, listFreeProjectRefs, parseKidsGoalSpec } from "../kidsProjects.js";
 import { KIDS_WORLD_STYLES } from "../worlds.js";
 import { KidsOriCard } from "./KidsOriCard.js";
 import { useKidsFlag } from "../kidsFlags.js";
@@ -67,6 +67,7 @@ import { bandProfile, codeTabsForBand, type AgeBand, type CodeTab } from "../kid
 import { KidsOriChat } from "./KidsOriChat.js";
 import { KidsOriGoals } from "./KidsOriGoals.js";
 import { describeOriGoal } from "@agorix/ori-agent";
+import { KidsBackdrop, KidsSprite, builtinWorld, emojiSlot, spriteImage } from "./KidsArt.js";
 
 type CodeLanguage = "agorix" | "python" | "typescript" | "java";
 type Prediction = "yes" | "no" | "dunno";
@@ -138,6 +139,12 @@ export function EditorScreen({
   onReflect,
 }: Props) {
   const duplicateEnabled = useKidsFlag("duplicate");
+  const customImagesEnabled = useKidsFlag("customImages");
+  const savedArt = freeProjectId
+    ? listFreeProjectRefs().find((entry) => entry.id === freeProjectId)
+    : undefined;
+  const avatarArt = savedArt?.avatar ?? emojiSlot(avatar);
+  const worldArt = savedArt?.world ?? builtinWorld(world);
   const projectId =
     freeProjectId ?? `kids.${world}.${KIDS_MISSION_IDS[Math.min(missionIndex, 2)]!}`;
   const [store] = useState(() => new ProjectStore());
@@ -649,10 +656,11 @@ export function EditorScreen({
                 ? describeOriGoal(freeGoal, freeGoalCheck, locale)
                 : mission.goal.learnerFacing}
           </p>
-          <div
+          <KidsBackdrop
+            world={worldArt}
             className="kids-world-grid"
             role={freeProjectId ? "group" : "img"}
-            aria-label={`${mission.goal.learnerFacing} ${t("runtimeFact")}: ${evaluation?.outcome ?? ""}`}
+            label={`${mission.goal.learnerFacing} ${t("runtimeFact")}: ${evaluation?.outcome ?? ""}`}
             style={{ background: style.bg }}
           >
             {Array.from({ length: KIDS_GRID.rows * KIDS_GRID.cols }, (_, index) => {
@@ -668,9 +676,11 @@ export function EditorScreen({
                     </span>
                   ) : null}
                   {same(final, cell) ? (
-                    <span className="kids-world-avatar" aria-hidden="true">
-                      {avatar}
-                    </span>
+                    <KidsSprite
+                      slot={avatarArt}
+                      className="kids-world-avatar"
+                      label={avatarArt.kind === "custom" ? t("customExplorer") : undefined}
+                    />
                   ) : null}
                 </>
               );
@@ -693,7 +703,7 @@ export function EditorScreen({
                 </div>
               );
             })}
-          </div>
+          </KidsBackdrop>
           <div className="kids-run-controls">
             <button
               type="button"
@@ -911,6 +921,13 @@ export function EditorScreen({
             aria-labelledby="kids-predict-title"
           >
             <h2 id="kids-predict-title">{t("predictQ", { s: avatar, g: style.goalGlyph })}</h2>
+            {spriteImage(avatarArt, customImagesEnabled) ? (
+              <KidsSprite
+                slot={avatarArt}
+                className="kids-predict-avatar"
+                label={avatarArt.kind === "custom" ? t("customExplorer") : undefined}
+              />
+            ) : null}
             <div>
               {(["yes", "no", "dunno"] as const).map((answer) => (
                 <button

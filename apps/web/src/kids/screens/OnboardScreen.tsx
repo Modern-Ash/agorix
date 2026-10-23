@@ -2,6 +2,7 @@ import type { Locale } from "../../i18n.js";
 import { KIDS_AVATARS, type KidsAvatar } from "../kidsState.js";
 import { speak } from "../speak.js";
 import type { KidsText } from "../useKidsText.js";
+import { KidsSprite, emojiSlot } from "./KidsArt.js";
 
 interface Props {
   readonly t: KidsText;
@@ -55,10 +56,10 @@ export function OnboardScreen({
 
       {step === 0 ? (
         <div className="kids-onboard-body">
-          <div className="kids-ori-badge" aria-hidden="true">
+          <KidsSprite slot="ori" className="kids-ori-badge">
             <i />
             <i />
-          </div>
+          </KidsSprite>
           <div className="kids-title-row">
             <h1 id="kids-title">{t("hello")}</h1>
             {readAloud ? (
@@ -101,7 +102,7 @@ export function OnboardScreen({
                 aria-pressed={avatar === option}
                 onClick={() => onAvatar(option)}
               >
-                {option}
+                <KidsSprite slot={emojiSlot(option)} fallback={option} />
               </button>
             ))}
           </div>
@@ -117,13 +118,11 @@ export function OnboardScreen({
             {t("oriOn")}
           </h1>
           <div className="kids-meet">
-            <div className="kids-ori-badge small" aria-hidden="true">
+            <KidsSprite slot="ori" className="kids-ori-badge small">
               <i />
               <i />
-            </div>
-            <div className="kids-avatar-mini" aria-hidden="true">
-              {avatar}
-            </div>
+            </KidsSprite>
+            <KidsSprite slot={emojiSlot(avatar)} className="kids-avatar-mini" />
           </div>
           <div className="kids-bubbles">
             <p className="kids-bubble strong">{t("meetOri")}</p>
