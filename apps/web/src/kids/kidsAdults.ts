@@ -1,4 +1,5 @@
 import { assessMission, type LearningEvidenceEvent } from "@agorix/learning-evidence";
+import { DEFAULT_AGE_BAND, isAgeBand, type AgeBand } from "./kidsAgeBand.js";
 import type { KidsProgress } from "./kidsProgress.js";
 import { KIDS_WORLDS } from "./kidsState.js";
 
@@ -9,12 +10,14 @@ export interface AdultSettings {
   readonly oriSuggestions: boolean;
   readonly readAloud: boolean;
   readonly dailyLimitMinutes: number;
+  readonly ageBand: AgeBand;
 }
 
 const DEFAULT_SETTINGS: AdultSettings = {
   oriSuggestions: true,
   readAloud: true,
   dailyLimitMinutes: 30,
+  ageBand: DEFAULT_AGE_BAND,
 };
 
 function localStorageOrUndefined(): Storage | undefined {
@@ -46,6 +49,7 @@ export function loadAdultSettings(
       oriSuggestions: parsed.oriSuggestions,
       readAloud: parsed.readAloud,
       dailyLimitMinutes: parsed.dailyLimitMinutes!,
+      ageBand: isAgeBand(parsed.ageBand) ? parsed.ageBand : DEFAULT_AGE_BAND,
     };
   } catch {
     return DEFAULT_SETTINGS;

@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import type { LearningEvidenceEvent } from "@agorix/learning-evidence";
 import type { Locale } from "../../i18n.js";
 import { fetchAdultAiHealth, type AdultAiHealth } from "../kidsAdultHealth.js";
+import { AGE_BANDS } from "../kidsAgeBand.js";
+import { useKidsFlag } from "../kidsFlags.js";
 import { adultSummary, readTodaySeconds, type AdultSettings } from "../kidsAdults.js";
 import type { KidsProgress } from "../kidsProgress.js";
 import { readKidsEvidenceEvents } from "../kidsEvidence.js";
@@ -42,6 +44,8 @@ const COPY = {
     oriNote: "Mostrar u ocultar las ideas en el editor",
     read: "Lectura en voz alta",
     readNote: "Activar los botones de escuchar",
+    ageBand: "Franja de edad",
+    ageBandNote: "Ajusta la herramienta a la edad. Se guarda solo en este dispositivo.",
     ai: "Estado de la IA",
     provider: "Proveedor en uso",
     configured: "Configurado",
@@ -83,6 +87,8 @@ const COPY = {
     oriNote: "Show or hide ideas in the editor",
     read: "Read aloud",
     readNote: "Enable the listen buttons",
+    ageBand: "Age band",
+    ageBandNote: "Matches the tool to the age. Stored only on this device.",
     ai: "AI status",
     provider: "Provider in use",
     configured: "Configured",
@@ -108,6 +114,7 @@ export function ParentsScreen({ t, locale, progress, settings, onSettings }: Pro
   const [events, setEvents] = useState<readonly LearningEvidenceEvent[]>([]);
   const [health, setHealth] = useState<AdultAiHealth | null>(null);
   const copy = COPY[locale];
+  const ageBandsEnabled = useKidsFlag("ageBands");
 
   useEffect(() => {
     if (!unlocked) return;
@@ -270,6 +277,24 @@ export function ParentsScreen({ t, locale, progress, settings, onSettings }: Pro
             </span>
             <i aria-hidden="true" />
           </button>
+          {ageBandsEnabled ? (
+            <fieldset className="kids-adult-band">
+              <legend>{copy.ageBand}</legend>
+              <small>{copy.ageBandNote}</small>
+              {AGE_BANDS.map((band) => (
+                <label key={band}>
+                  <input
+                    type="radio"
+                    name="kids-age-band"
+                    value={band}
+                    checked={settings.ageBand === band}
+                    onChange={() => onSettings({ ...settings, ageBand: band })}
+                  />{" "}
+                  {band.replace("-", "–")}
+                </label>
+              ))}
+            </fieldset>
+          ) : null}
           <div className="kids-adult-limit">
             <span>{copy.goal}</span>
             <button

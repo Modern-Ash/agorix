@@ -41,8 +41,12 @@ describe("Kids adults data (#377)", () => {
       oriSuggestions: true,
       readAloud: true,
       dailyLimitMinutes: 30,
+      ageBand: "6-8",
     });
-    saveAdultSettings({ oriSuggestions: false, readAloud: false, dailyLimitMinutes: 45 }, storage);
+    saveAdultSettings(
+      { oriSuggestions: false, readAloud: false, dailyLimitMinutes: 45, ageBand: "6-8" },
+      storage,
+    );
     expect(loadAdultSettings(storage).dailyLimitMinutes).toBe(45);
     storage.setItem("agorix.kids.adults.v1", JSON.stringify({ dailyLimitMinutes: 999 }));
     expect(loadAdultSettings(storage).dailyLimitMinutes).toBe(30);
@@ -69,5 +73,31 @@ describe("Kids adults data (#377)", () => {
     const withDecision = adultSummary(progress, [decision]);
     expect(withDecision.decisions).toEqual({ used: 0, changed: 1, rejected: 0 });
     expect(withDecision.completedMissions).toBe(1);
+  });
+
+  it("stores the age band, defaults old settings to 6-8 and rejects invalid values (issue #453)", () => {
+    const storage = memoryStorage();
+    saveAdultSettings(
+      { oriSuggestions: true, readAloud: true, dailyLimitMinutes: 30, ageBand: "9-12" },
+      storage,
+    );
+    expect(loadAdultSettings(storage).ageBand).toBe("9-12");
+    for (const bad of ['"teen"', "7", "null", '["6-8"]']) {
+      storage.setItem(
+        "agorix.kids.adults.v1",
+        `{"oriSuggestions":true,"readAloud":true,"dailyLimitMinutes":30,"ageBand":${bad}}`,
+      );
+      expect(loadAdultSettings(storage).ageBand).toBe("6-8");
+    }
+    storage.setItem(
+      "agorix.kids.adults.v1",
+      '{"oriSuggestions":false,"readAloud":true,"dailyLimitMinutes":45}',
+    );
+    expect(loadAdultSettings(storage)).toEqual({
+      oriSuggestions: false,
+      readAloud: true,
+      dailyLimitMinutes: 45,
+      ageBand: "6-8",
+    });
   });
 });

@@ -111,6 +111,7 @@ describe("corrupt local data falls back to safe defaults (issue #442)", () => {
         oriSuggestions: true,
         readAloud: true,
         dailyLimitMinutes: 30,
+        ageBand: "6-8",
       });
     });
     it(`flags ${raw}`, () => {
