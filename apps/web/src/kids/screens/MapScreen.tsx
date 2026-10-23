@@ -16,6 +16,8 @@ interface Props {
   readonly readAloud?: boolean;
   readonly onWorld: (world: KidsWorld) => void;
   readonly onMission: (index: 0 | 1 | 2) => void;
+  readonly advancedUnlocked?: boolean;
+  readonly onAdvanced?: () => void;
 }
 
 const CONCEPTS = [
@@ -38,6 +40,8 @@ export function MapScreen({
   readAloud = true,
   onWorld,
   onMission,
+  advancedUnlocked = false,
+  onAdvanced,
 }: Props) {
   const style = KIDS_WORLD_STYLES[world];
   const names = kidsTable(locale, "worlds");
@@ -151,6 +155,15 @@ export function MapScreen({
           );
         })}
       </div>
+      {advancedUnlocked ? (
+        <div className="kids-advanced-entry">
+          <button type="button" className="kids-button kids-primary" onClick={onAdvanced}>
+            {locale === "es"
+              ? "✨ Nivel avanzado: creá una escena"
+              : "✨ Advanced level: create a scene"}
+          </button>
+        </div>
+      ) : null}
     </section>
   );
 }

@@ -1431,3 +1431,65 @@
     justify-content: center;
   }
 }
+.kids-advanced-entry {
+  display: flex;
+  justify-content: center;
+  padding: 1.5rem 1rem 2rem;
+}
+
+.kids-advanced-entry .kids-button {
+  min-height: 48px;
+  white-space: normal;
+}
+
+.kids-advanced-scene .kids-editor-program-panel h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.1rem;
+}
+
+.kids-advanced-actors {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0;
+  padding: 1rem;
+  border-radius: 1rem;
+  background: #dcedf1;
+  background-image:
+    linear-gradient(transparent 97%, #adcfd1 97%),
+    linear-gradient(90deg, transparent 97%, #adcfd1 97%);
+  background-size: 40px 40px;
+}
+
+.kids-advanced-world-title {
+  margin: 0.75rem 0 0;
+  font-size: 1.1rem;
+}
+
+.kids-advanced-actor {
+  display: flex;
+  min-height: 120px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  border: 2px solid var(--kids-runtime-strong);
+  border-radius: 1rem;
+  background: white;
+  color: #173a34;
+  cursor: pointer;
+  text-align: center;
+}
+
+.kids-advanced-actor[aria-pressed="true"] {
+  background: #e5f6ee;
+  box-shadow: inset 0 0 0 2px var(--kids-runtime-strong);
+}
+
+.kids-advanced-actor-glyph {
+  font-size: 2rem;
+}
+
+.kids-advanced-scene .kids-code-strip {
+  overflow-x: auto;
+}
