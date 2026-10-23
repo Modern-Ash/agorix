@@ -831,6 +831,86 @@
   --kids-block-event-border: #cc9900;
   --kids-block-event-text: #2b2000;
 }
+/* Visual puzzle joins live on the same v2 flag as the Scratch palette. They are
+   paint only: the block box and its drag/drop hit area stay unchanged. */
+.kids-root[data-block-palette="scratch"] .kids-program-stack {
+  --kids-shape-cutout: #f8f7f2;
+}
+.kids-root[data-block-palette="scratch"] .kids-palette {
+  --kids-shape-cutout: var(--kids-panel);
+}
+.kids-root[data-block-palette="scratch"] .kids-program-block,
+.kids-root[data-block-palette="scratch"] .kids-palette-block,
+.kids-root[data-block-palette="scratch"] .kids-start-block {
+  position: relative;
+  overflow: visible;
+}
+.kids-root[data-block-palette="scratch"] .kids-program-block,
+.kids-root[data-block-palette="scratch"] .kids-palette-block {
+  border-radius: 8px;
+}
+.kids-root[data-block-palette="scratch"] .kids-program-block {
+  margin: 8px 0 11px;
+}
+.kids-root[data-block-palette="scratch"] .kids-program-block::before,
+.kids-root[data-block-palette="scratch"] .kids-palette-block::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: 23px;
+  width: 24px;
+  height: 8px;
+  border-radius: 0 0 6px 6px;
+  background: var(--kids-shape-cutout);
+  pointer-events: none;
+}
+.kids-root[data-block-palette="scratch"] .kids-program-block::after,
+.kids-root[data-block-palette="scratch"] .kids-palette-block::after,
+.kids-root[data-block-palette="scratch"] .kids-start-block::after {
+  content: "";
+  position: absolute;
+  bottom: -7px;
+  left: 23px;
+  width: 24px;
+  height: 8px;
+  border-radius: 0 0 6px 6px;
+  background: inherit;
+  pointer-events: none;
+}
+.kids-root[data-block-palette="scratch"] .kids-palette-block {
+  margin-bottom: 8px;
+}
+/* The repeat body's open right edge makes the control block read as a C. */
+.kids-root[data-block-palette="scratch"] .kids-repeat-body {
+  margin: 0 0 9px 22px;
+  padding: 8px 8px 10px 10px;
+  border: 0;
+  border-radius: 7px 0 0 7px;
+  background: #f8f7f2;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kids-root[data-block-palette="scratch"] .kids-program-block,
+  .kids-root[data-block-palette="scratch"] .kids-palette-block,
+  .kids-root[data-block-palette="scratch"] .kids-start-block {
+    animation: none;
+    transition: none;
+  }
+}
+@media (forced-colors: active) {
+  .kids-root[data-block-palette="scratch"] .kids-program-block,
+  .kids-root[data-block-palette="scratch"] .kids-palette-block,
+  .kids-root[data-block-palette="scratch"] .kids-start-block {
+    border: 2px solid CanvasText;
+    box-shadow: none;
+  }
+  .kids-root[data-block-palette="scratch"] .kids-program-block::before,
+  .kids-root[data-block-palette="scratch"] .kids-program-block::after,
+  .kids-root[data-block-palette="scratch"] .kids-palette-block::before,
+  .kids-root[data-block-palette="scratch"] .kids-palette-block::after,
+  .kids-root[data-block-palette="scratch"] .kids-start-block::after {
+    content: none;
+  }
+}
 .kids-repeat-body {
   margin: 0 8px 8px 24px;
   padding: 5px 5px 8px 12px;
