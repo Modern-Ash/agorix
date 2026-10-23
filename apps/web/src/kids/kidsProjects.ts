@@ -70,7 +70,11 @@ export function createFreeProject(
   const previous = listFreeProjects(storage);
   const next = Math.max(0, ...previous.map((entry) => Number(entry.id.slice(5)))) + 1;
   const project = { id: `free-${next}`, world, avatar };
-  storage?.setItem(INDEX_KEY, JSON.stringify([...previous, project]));
+  try {
+    storage?.setItem(INDEX_KEY, JSON.stringify([...previous, project]));
+  } catch {
+    // Full or blocked storage must not end the child's session; the project lives in memory.
+  }
   return project;
 }
 
@@ -102,6 +106,12 @@ export function importKidsProject(
   const metadata: ProjectMetadata = { ...imported.metadata, missionSpec: spec };
   store.save(id, imported.program, metadata);
   const project = { id, world, avatar };
-  storage?.setItem(INDEX_KEY, JSON.stringify([...listFreeProjects(storage), project]));
+  try {
+    storage?.setItem(INDEX_KEY, JSON.stringify([...listFreeProjects(storage), project]));
+  } catch (error) {
+    // Never leave a stored project that no card can reach.
+    store.remove(id);
+    throw error;
+  }
   return project;
 }
