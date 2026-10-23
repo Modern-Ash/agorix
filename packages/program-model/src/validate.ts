@@ -161,6 +161,8 @@ function validateBinaryExpression(
     | "divide"
     | "lessThan"
     | "greaterThan"
+    | "lessOrEqual"
+    | "greaterOrEqual"
     | "equals"
     | "and"
     | "or",
@@ -228,6 +230,8 @@ function validateExpression(input: unknown, path: string, state: ValidationState
     case "divide":
     case "lessThan":
     case "greaterThan":
+    case "lessOrEqual":
+    case "greaterOrEqual":
     case "equals":
     case "and":
     case "or":

@@ -70,6 +70,18 @@ export interface GreaterThanExpression {
   readonly right: Expression;
 }
 
+export interface LessOrEqualExpression {
+  readonly type: "lessOrEqual";
+  readonly left: Expression;
+  readonly right: Expression;
+}
+
+export interface GreaterOrEqualExpression {
+  readonly type: "greaterOrEqual";
+  readonly left: Expression;
+  readonly right: Expression;
+}
+
 export interface EqualsExpression {
   readonly type: "equals";
   readonly left: Expression;
@@ -110,6 +122,8 @@ export type Expression =
   | DivideExpression
   | LessThanExpression
   | GreaterThanExpression
+  | LessOrEqualExpression
+  | GreaterOrEqualExpression
   | EqualsExpression
   | AndExpression
   | OrExpression

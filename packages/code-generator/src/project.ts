@@ -146,6 +146,10 @@ function formatExpression(
       return `(${formatExpression(expression.left, `${nodeId}/left`, context)} < ${formatExpression(expression.right, `${nodeId}/right`, context)})`;
     case "greaterThan":
       return `(${formatExpression(expression.left, `${nodeId}/left`, context)} > ${formatExpression(expression.right, `${nodeId}/right`, context)})`;
+    case "lessOrEqual":
+      return `(${formatExpression(expression.left, `${nodeId}/left`, context)} <= ${formatExpression(expression.right, `${nodeId}/right`, context)})`;
+    case "greaterOrEqual":
+      return `(${formatExpression(expression.left, `${nodeId}/left`, context)} >= ${formatExpression(expression.right, `${nodeId}/right`, context)})`;
     case "equals":
       return `(${formatExpression(expression.left, `${nodeId}/left`, context)} === ${formatExpression(expression.right, `${nodeId}/right`, context)})`;
     case "and":

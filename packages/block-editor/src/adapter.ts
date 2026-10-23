@@ -38,6 +38,8 @@ export type BlockType =
   | "operator_divide"
   | "operator_less_than"
   | "operator_greater_than"
+  | "operator_less_or_equal"
+  | "operator_greater_or_equal"
   | "operator_equals"
   | "operator_and"
   | "operator_or"
@@ -242,6 +244,8 @@ function expressionFromBlock(
     case "operator_divide":
     case "operator_less_than":
     case "operator_greater_than":
+    case "operator_less_or_equal":
+    case "operator_greater_or_equal":
     case "operator_equals":
     case "operator_and":
     case "operator_or": {
@@ -252,6 +256,8 @@ function expressionFromBlock(
         operator_divide: "divide",
         operator_less_than: "lessThan",
         operator_greater_than: "greaterThan",
+        operator_less_or_equal: "lessOrEqual",
+        operator_greater_or_equal: "greaterOrEqual",
         operator_equals: "equals",
         operator_and: "and",
         operator_or: "or",
@@ -450,6 +456,8 @@ function expressionToBlock(
     case "divide":
     case "lessThan":
     case "greaterThan":
+    case "lessOrEqual":
+    case "greaterOrEqual":
     case "equals":
     case "and":
     case "or": {
@@ -460,6 +468,8 @@ function expressionToBlock(
         divide: "operator_divide",
         lessThan: "operator_less_than",
         greaterThan: "operator_greater_than",
+        lessOrEqual: "operator_less_or_equal",
+        greaterOrEqual: "operator_greater_or_equal",
         equals: "operator_equals",
         and: "operator_and",
         or: "operator_or",
