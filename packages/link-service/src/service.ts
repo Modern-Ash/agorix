@@ -230,7 +230,9 @@ export class LinkService {
   async unlinkDevice(token: string): Promise<void> {
     const hash = this.sha256(token);
     const row = await this.repo.getToken(hash);
-    if (row === undefined) throw invalid();
+    if (row === undefined || row.revokedAt !== undefined) throw invalid();
+    const link = await this.repo.getLink(row.linkId);
+    if (link === undefined || link.revokedAt !== undefined) throw invalid();
     await this.revokeLinkInternal(row.linkId);
   }
 

@@ -29,3 +29,10 @@ Then run `pnpm --filter @agorix/server start`. The TCP listener binds to `127.0.
 | Failure               | Unknown routes return JSON 404, internal failures generic JSON 503, and all responses set `no-store` and `nosniff`. nginx maps an absent socket to JSON 404.                                                               |
 
 The HTTP integration tests cover registration, login, save, list, reopen, sign-out, owner separation, CSRF rejection, foreign Origin, body cap and authentication rate limits. SQLite tests cover persistence, concurrent revisions, migration integrity and backup restoration. The Compose `accounts` profile remains off until a separate production activation decision.
+
+## Adult link (optional)
+
+Set `AGORIX_LINK_SECRET` (at least 32 characters, from the host secret store) to enable the adult account
+email and child device link routes (`/v1/account/email*`, `/v1/link/*`). Without it those routes return 404. nginx must pass the real client address in `X-Real-IP` (already configured for `/v1/`); the link
+rate limits hash it and never store it. Verification mail is not delivered until a mailer is configured.
+See `docs/safety/AUTH_SECURITY.md`.

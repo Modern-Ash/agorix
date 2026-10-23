@@ -68,6 +68,9 @@ describe("device tokens", () => {
     });
     const [device] = await ctx.service.listDevices("acct-1");
     expect(device?.unlinkedAt).toBeDefined();
+    await expect(ctx.service.unlinkDevice(mine.deviceToken)).rejects.toMatchObject({
+      code: "INVALID_OR_EXPIRED",
+    });
   });
 
   it("lists only id, dates and flags: no ip, agent or fingerprint field exists", async () => {

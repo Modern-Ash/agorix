@@ -5,7 +5,7 @@ import {
   type Mailer,
 } from "../src/index.js";
 
-export const SECRET = "test-secret-test-secret-test-secret-0123";
+export const SECRET = "k".repeat(40);
 
 export class FakeClock {
   constructor(private ms = Date.parse("2026-10-23T12:00:00.000Z")) {}
