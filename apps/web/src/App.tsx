@@ -44,7 +44,6 @@ import {
 import {
   acceptIntentPlan,
   createDeterministicIntentPlan,
-  createDeterministicTutorResponse,
   createLearningCompanionRequestFromTutorRequest,
   createIntentPlanRequest,
   createTutorRequest,
@@ -171,6 +170,7 @@ import { ghostMarksFor, type GhostMarkKind } from "./ghostMarks.js";
 import { ProposalEvidence } from "./ProposalEvidence.js";
 import { soundCueGain } from "./stageAudio.js";
 import { ProvenanceLabel } from "./ProvenanceLabel.js";
+import { requestWebTutorHint, type TutorHintSource } from "./tutorClient.js";
 import { AccountUi, useWorkspace } from "./accounts/AccountUi.js";
 import type { AccountBackend, ProjectDto } from "./accounts/clients.js";
 import { createHttpBackend } from "./accounts/httpClient.js";
@@ -2833,6 +2833,8 @@ export function App({
   const [learnerTrace, setLearnerTrace] = useState<readonly LearnerTraceItem[]>([]);
   const [hintHistory, setHintHistory] = useState<readonly TutorHintHistoryEntry[]>([]);
   const [tutorResponse, setTutorResponse] = useState<TutorResponse | undefined>();
+  const [tutorHintSource, setTutorHintSource] = useState<TutorHintSource | undefined>();
+  const [hintPending, setHintPending] = useState(false);
   const [lastRunResult, setLastRunResult] = useState<RunResult | undefined>();
   const [reflectionPrompt, setReflectionPrompt] = useState<string | undefined>();
   const [attempts, setAttempts] = useState(0);
@@ -2919,6 +2921,8 @@ export function App({
     highlightedNodeId === undefined ? "" : codeSliceForNode(model, highlightedNodeId);
   const codePreview = projectCodeSurface(model.program, "typescript").code.trim();
   const canonicalHash = programSemanticHash(model.program);
+  const currentProgramHash = useRef(canonicalHash);
+  currentProgramHash.current = canonicalHash;
   const proposalContext = useMemo(
     () => ({ actors: creativeState.actors ?? [] }),
     [creativeState.actors],
@@ -4068,7 +4072,10 @@ export function App({
     setMessage(t(locale, "codeBehindBlocks"));
   }
 
-  function requestHint() {
+  async function requestHint() {
+    if (hintPending) return;
+    setHintPending(true);
+    const requestedProgramHash = canonicalHash;
     try {
       const result =
         lastRunResult ??
@@ -4095,10 +4102,9 @@ export function App({
       const companionRequest = createLearningCompanionRequestFromTutorRequest(tutorRequest);
       const route = decideStaticWebLearningRoute(companionRequest);
       setLearningDecision(route.diagnostics);
-      const response =
-        route.requirements.generativeNeeded === "no"
-          ? createDeterministicTutorResponse(tutorRequest)
-          : createDeterministicTutorResponse(tutorRequest);
+      const hint = await requestWebTutorHint(tutorRequest, aiStatus);
+      if (currentProgramHash.current !== requestedProgramHash) return;
+      const response = hint.response;
       const nextHistory: TutorHintHistoryEntry = {
         level: response.hintLevel,
         ...(response.concepts[0] === undefined ? {} : { concept: response.concepts[0] }),
@@ -4107,6 +4113,7 @@ export function App({
 
       setLastRunResult(result);
       setTutorResponse(response);
+      setTutorHintSource(hint.source);
       setHintHistory((current) => [...current, nextHistory]);
       restorePanel("companion");
       if (response.nodeIds[0] !== undefined) {
@@ -4115,6 +4122,8 @@ export function App({
     } catch {
       setStatus("error");
       setMessage(t(locale, "tutorError"));
+    } finally {
+      setHintPending(false);
     }
   }
 
@@ -4574,6 +4583,9 @@ export function App({
           {tutorResponse === undefined ? null : (
             <div className="compact-ai-feedback" aria-live="polite">
               <strong>{t(locale, "hintLevelOf", { level: tutorResponse.hintLevel })}</strong>
+              <span>
+                {t(locale, tutorHintSource === "server" ? "hintFromAi" : "hintFromLocal")}
+              </span>
               <span>{tutorResponse.message}</span>
             </div>
           )}
@@ -4782,6 +4794,7 @@ export function App({
                   type="button"
                   aria-label={t(locale, "aiHintToolLabel")}
                   onClick={requestHint}
+                  disabled={hintPending}
                 >
                   <span className="tool-glyph" aria-hidden="true">
                     AI
@@ -5070,7 +5083,7 @@ export function App({
                 <button type="button" onClick={() => setComparisonOpen((open) => !open)}>
                   {t(locale, "compareOpen")}
                 </button>
-                <button type="button" onClick={requestHint}>
+                <button type="button" onClick={requestHint} disabled={hintPending}>
                   {t(locale, "getHint")}
                 </button>
               </div>
@@ -5078,6 +5091,12 @@ export function App({
             <span className="hint-meter">
               {t(locale, "hintMeter", { count: hintHistory.length })}
             </span>
+            {tutorResponse === undefined ? null : (
+              <span className="hint-source" role="status">
+                <ProvenanceLabel kind="suggestion" locale={locale} />
+                {t(locale, tutorHintSource === "server" ? "hintFromAi" : "hintFromLocal")}
+              </span>
+            )}
             {comparisonOpen ? (
               <ModelComparison locale={locale} onClose={() => setComparisonOpen(false)} />
             ) : null}
