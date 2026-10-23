@@ -109,6 +109,68 @@ describe("tutor HTTP server (issue #348)", () => {
       },
     });
   });
+  it("keeps stage-2 Ori closed until the scene proof runs, then scopes the click event", async () => {
+    const base = await start({ AGORIX_TUTOR_ADAPTER: "fake" });
+    const program = (id: string, trigger: string, statements: unknown[]) => ({
+      schema: "agorix/program/v1",
+      scripts: [{ id, trigger: { type: trigger }, statements }],
+    });
+    const move = (cells: number) => ({ type: "move", steps: cells * 40 });
+    const programs = [
+      program("main", "greenFlag", [move(4)]),
+      program("main", "greenFlag", [move(3), { type: "turn", degrees: -90 }, move(2)]),
+      program("main", "greenFlag", [
+        { type: "turn", degrees: 90 },
+        move(3),
+        { type: "turn", degrees: -90 },
+        move(3),
+      ]),
+    ];
+    const post = (path: string, value: unknown) =>
+      fetch(`${base}${path}`, {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: base },
+        body: JSON.stringify(value),
+      });
+    const weak = await post("/api/tutor/advanced/session", {
+      programs,
+      stage: "react",
+      sceneProgram: program("advanced-scene", "greenFlag", []),
+    });
+    expect(weak.status).toBe(400);
+    const sceneProgram = program("advanced-scene", "greenFlag", [
+      { type: "switchCostume", costumeId: "asset:costume.spark" },
+      { type: "playSound", soundId: "asset:sound.beacon" },
+    ]);
+    const opened = await post("/api/tutor/advanced/session", {
+      programs,
+      stage: "react",
+      sceneProgram,
+    });
+    expect(opened.status).toBe(200);
+    const { token, stage } = (await opened.json()) as { token: string; stage: string };
+    expect(stage).toBe("react");
+    const answer = await post("/api/tutor/advanced/ori", {
+      token,
+      actorId: "actor:ori",
+      locale: "es",
+      program: program("advanced-react", "onActorClicked", []),
+    });
+    expect(answer.status).toBe(200);
+    expect(await answer.json()).toMatchObject({
+      proposal: { operations: [{ type: "appendStatement", statement: { type: "switchCostume" } }] },
+    });
+    expect(
+      (
+        await post("/api/tutor/advanced/ori", {
+          token,
+          actorId: "actor:ori",
+          locale: "es",
+          program: sceneProgram,
+        })
+      ).status,
+    ).toBe(400);
+  });
   it("serves only a proven fixed free-world goal when Ori is offline", async () => {
     const base = await start({ AGORIX_TUTOR_ADAPTER: "fake" });
     const response = await fetch(`${base}/api/tutor/goals`, {

@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { getKidsAdvancedMission } from "@agorix/curriculum";
-import { evaluateOriAdvancedOutput, ORI_ADVANCED_VERSION } from "@agorix/ori-agent";
+import {
+  evaluateOriAdvancedOutput,
+  evaluateOriReactOutput,
+  ORI_ADVANCED_VERSION,
+  ORI_ADVANCED_REACT_VERSION,
+} from "@agorix/ori-agent";
 import type { ProjectStore } from "@agorix/persistence";
 import { requestAdvancedOri } from "./kidsAdvancedOriRemote.js";
 
@@ -49,5 +54,40 @@ describe("advanced Ori browser boundary", () => {
     const safe = await requestAdvancedOri(context, store, tampered as typeof fetch);
     expect(safe.source).toBe("fallback");
     expect(safe.proposal?.affectedActorIds).toEqual(["actor:ori"]);
+  });
+
+  it("proves the completed scene and validates a stage-2 event proposal", async () => {
+    const reactContext = {
+      stage: "react" as const,
+      actorId: "actor:ori" as const,
+      locale: "es" as const,
+      program: getKidsAdvancedMission("react", "es").starterProgram,
+    };
+    const model = evaluateOriReactOutput(reactContext, {
+      version: ORI_ADVANCED_REACT_VERSION,
+      kind: "event-suggestion",
+      actorId: "actor:ori",
+      event: "actorClicked",
+      block: { type: "switchCostume", costumeId: "asset:costume.spark" },
+    });
+    const requests: unknown[] = [];
+    const fetchImpl = async (url: string | URL | Request, init?: RequestInit) => {
+      requests.push(JSON.parse(String(init?.body)));
+      return new Response(
+        JSON.stringify(
+          String(url).endsWith("/session")
+            ? { token: "anonymous", stage: "react" }
+            : { message: model.message, proposal: model.proposal },
+        ),
+        { status: 200 },
+      );
+    };
+    const result = await requestAdvancedOri(reactContext, store, fetchImpl as typeof fetch);
+    expect(result.source).toBe("model");
+    expect(result.proposal?.operations[0]).toMatchObject({
+      statement: { type: "switchCostume" },
+    });
+    expect(requests[0]).toMatchObject({ stage: "react", sceneProgram: context.program });
+    expect(requests[1]).toMatchObject({ actorId: "actor:ori", program: reactContext.program });
   });
 });

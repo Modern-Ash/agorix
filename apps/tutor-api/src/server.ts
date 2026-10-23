@@ -9,13 +9,14 @@ import {
 } from "@agorix/curriculum";
 import { validateProgram, type ProjectProgram } from "@agorix/program-model";
 import {
-  runOriAdvanced,
+  runOriAdvancedStage,
   type OriAdvancedActorId,
-  validateOriAdvancedProposal,
+  validateOriAdvancedStageProposal,
 } from "@agorix/ori-agent";
 import {
   createMemoryAdvancedStageRepository,
   proveAdvancedEntry,
+  proveAdvancedScene,
   type AdvancedStageRepository,
 } from "./advancedSessions.js";
 import {
@@ -263,11 +264,15 @@ export function createTutorServer(options: TutorServerOptions): Server {
       if (
         !raw ||
         Array.isArray(raw) ||
-        Object.keys(raw).sort().join() !== "programs" ||
+        !["programs", "programs,sceneProgram,stage"].includes(Object.keys(raw).sort().join()) ||
         !proveAdvancedEntry(raw.programs)
       )
         throw new Error("invalid proof");
-      return send(response, 200, { token: advancedStages.create("scene"), stage: "scene" });
+      const stage = raw.stage === undefined ? "scene" : raw.stage;
+      if (stage !== "scene" && stage !== "react") throw new Error("invalid stage");
+      if (stage === "react" && !proveAdvancedScene(raw.sceneProgram))
+        throw new Error("invalid scene proof");
+      return send(response, 200, { token: advancedStages.create(stage), stage });
     } catch {
       return send(response, 400, error("invalid-request"));
     }
@@ -292,11 +297,12 @@ export function createTutorServer(options: TutorServerOptions): Server {
         raw.token.length > 64 ||
         (raw.locale !== "es" && raw.locale !== "en") ||
         (raw.actorId !== "actor:ori" && raw.actorId !== "actor:friend") ||
-        advancedStages.get(raw.token) !== "scene"
+        !advancedStages.get(raw.token)
       )
         throw new Error("invalid stage");
+      const stage = advancedStages.get(raw.token)!;
       const context = {
-        stage: "scene" as const,
+        stage,
         actorId: raw.actorId as OriAdvancedActorId,
         locale: raw.locale as "es" | "en",
         program: validateProgram(raw.program as ProjectProgram),
@@ -305,11 +311,11 @@ export function createTutorServer(options: TutorServerOptions): Server {
       try {
         decision = options.ori
           ? await options.ori.advanced(context)
-          : await runOriAdvanced(context);
+          : await runOriAdvancedStage(context);
       } catch {
-        decision = await runOriAdvanced(context);
+        decision = await runOriAdvancedStage(context);
       }
-      if (decision.proposal) validateOriAdvancedProposal(context, decision.proposal);
+      if (decision.proposal) validateOriAdvancedStageProposal(context, decision.proposal);
       lastOriSource = decision.source;
       cached = undefined;
       return send(response, 200, {

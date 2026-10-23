@@ -24,6 +24,13 @@ const program: ProjectProgram = {
 };
 
 describe("Python projection", () => {
+  it("shows the actor-click callback instead of on_start", () => {
+    const clicked: ProjectProgram = {
+      ...program,
+      scripts: [{ ...program.scripts[0]!, trigger: { type: "onActorClicked" }, statements: [] }],
+    };
+    expect(projectPython(clicked).text).toBe("def on_actor_clicked():\n    pass\n");
+  });
   it("projects current canonical operations as beginner-readable Python", () => {
     expect(projectPython(program).text).toBe(
       [

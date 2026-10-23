@@ -22,6 +22,13 @@ const program: ProjectProgram = {
 };
 
 describe("Agorix Code projection", () => {
+  it("shows an actor-click script as an event, not as an unconditional start", () => {
+    const clicked: ProjectProgram = {
+      ...program,
+      scripts: [{ ...program.scripts[0]!, trigger: { type: "onActorClicked" }, statements: [] }],
+    };
+    expect(projectAgorixCode(clicked).text).toBe("when actor clicked\n");
+  });
   it("projects every current canonical operation with visible nesting", () => {
     expect(projectAgorixCode(program).text).toBe(
       [

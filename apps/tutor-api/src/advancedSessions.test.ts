@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { proveAdvancedEntry, createMemoryAdvancedStageRepository } from "./advancedSessions.js";
+import {
+  proveAdvancedEntry,
+  proveAdvancedScene,
+  createMemoryAdvancedStageRepository,
+} from "./advancedSessions.js";
 
 const program = (statements: unknown[]) => ({
   schema: "agorix/program/v1",
@@ -26,5 +30,25 @@ describe("anonymous advanced stage repository", () => {
     expect(repo.get(token)).toBe("scene");
     now += 30 * 60_000;
     expect(repo.get(token)).toBeUndefined();
+  });
+  it("unlocks stage 2 only after a real scene runtime change and sound", () => {
+    expect(proveAdvancedScene(program([]))).toBe(false);
+    const scene = program([
+      { type: "switchCostume", costumeId: "asset:costume.spark" },
+      { type: "playSound", soundId: "asset:sound.beacon" },
+    ]);
+    const valid = { ...scene, scripts: [{ ...scene.scripts[0]!, id: "advanced-scene" }] };
+    expect(proveAdvancedScene(valid)).toBe(true);
+    expect(
+      proveAdvancedScene({
+        ...valid,
+        scripts: [
+          {
+            ...valid.scripts[0]!,
+            statements: [{ type: "playSound", soundId: "asset:sound.beacon" }],
+          },
+        ],
+      }),
+    ).toBe(false);
   });
 });

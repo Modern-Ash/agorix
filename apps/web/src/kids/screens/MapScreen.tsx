@@ -18,6 +18,8 @@ interface Props {
   readonly onMission: (index: 0 | 1 | 2) => void;
   readonly advancedUnlocked?: boolean;
   readonly onAdvanced?: () => void;
+  readonly advancedReactUnlocked?: boolean;
+  readonly onAdvancedReact?: () => void;
 }
 
 const CONCEPTS = [
@@ -42,6 +44,8 @@ export function MapScreen({
   onMission,
   advancedUnlocked = false,
   onAdvanced,
+  advancedReactUnlocked = false,
+  onAdvancedReact,
 }: Props) {
   const style = KIDS_WORLD_STYLES[world];
   const names = kidsTable(locale, "worlds");
@@ -130,7 +134,7 @@ export function MapScreen({
                 type="button"
                 className={`kids-node ${state}`}
                 disabled={locked}
-                aria-label={`${t("mission")} ${index + 1}`}
+                aria-label={`${t("mission")} ${index + 1}${state === "current" ? `, ${t("play")}` : ""}`}
                 onClick={() => onMission(index)}
               >
                 <span className="kids-node-disc">
@@ -162,6 +166,11 @@ export function MapScreen({
               ? "✨ Nivel avanzado: creá una escena"
               : "✨ Advanced level: create a scene"}
           </button>
+          {advancedReactUnlocked ? (
+            <button type="button" className="kids-button kids-primary" onClick={onAdvancedReact}>
+              {locale === "es" ? "✨ Etapa 2: hacé que reaccione" : "✨ Stage 2: make it react"}
+            </button>
+          ) : null}
         </div>
       ) : null}
     </section>

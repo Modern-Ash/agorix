@@ -1,8 +1,8 @@
 import { KIDS_MISSION_IDS } from "@agorix/curriculum";
 import {
-  runOriAdvanced,
-  validateOriAdvancedProposal,
-  type OriAdvancedContext,
+  runOriAdvancedStage,
+  validateOriAdvancedStageProposal,
+  type OriAdvancedStageContext,
   type OriAdvancedDecision,
 } from "@agorix/ori-agent";
 import type { ProgramProposal } from "@agorix/proposals";
@@ -12,13 +12,13 @@ import { KIDS_WORLDS } from "./kidsState.js";
 
 /** The in-memory host session is reopened from locally authored mission proofs as needed. */
 export async function requestAdvancedOri(
-  context: OriAdvancedContext,
+  context: OriAdvancedStageContext,
   store: ProjectStore,
   fetchImpl: typeof fetch = fetch,
 ): Promise<OriAdvancedDecision> {
   const fallback = async (): Promise<OriAdvancedDecision> => {
     try {
-      return await runOriAdvanced(context);
+      return await runOriAdvancedStage(context);
     } catch {
       return {
         source: "fallback",
@@ -42,18 +42,26 @@ export async function requestAdvancedOri(
       }
       throw new Error("missing mission proof");
     });
+    let sceneProgram;
+    if (context.stage === "react") {
+      const saved = store.load("kids.advanced.scene");
+      if (saved.metadata.missionProgress !== 1) throw new Error("scene is incomplete");
+      sceneProgram = saved.program;
+    }
     const session = await fetchImpl("/api/tutor/advanced/session", {
       method: "POST",
       credentials: "same-origin",
       signal: controller.signal,
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ programs }),
+      body: JSON.stringify(
+        context.stage === "scene" ? { programs } : { programs, sceneProgram, stage: "react" },
+      ),
     });
     if (!session.ok) return fallback();
     const sessionText = await session.text();
     if (sessionText.length > 256) return fallback();
     const parsed = JSON.parse(sessionText) as { token?: unknown; stage?: unknown };
-    if (typeof parsed.token !== "string" || parsed.stage !== "scene") return fallback();
+    if (typeof parsed.token !== "string" || parsed.stage !== context.stage) return fallback();
     const response = await fetchImpl("/api/tutor/advanced/ori", {
       method: "POST",
       credentials: "same-origin",
@@ -72,7 +80,7 @@ export async function requestAdvancedOri(
     const decision = JSON.parse(text) as { message?: unknown; proposal?: unknown };
     if (typeof decision.message !== "string" || decision.message.length > 200) return fallback();
     if (!decision.proposal) return fallback();
-    validateOriAdvancedProposal(context, decision.proposal);
+    validateOriAdvancedStageProposal(context, decision.proposal);
     return {
       source: "model",
       message: decision.message,

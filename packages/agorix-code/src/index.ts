@@ -11,6 +11,7 @@ import {
   type Expression,
   type ProjectProgram,
   type Statement,
+  type Trigger,
 } from "@agorix/program-model";
 
 export const AGORIX_CODE_PROJECTION = {
@@ -58,7 +59,7 @@ export function projectAgorixCode(program: ProjectProgram): LanguageProjectionRe
   }
   validated.scripts.forEach((script, scriptIndex) => {
     const scriptId = "scripts[" + scriptIndex + "]";
-    writeMapped(writer, scriptId, "when start\n");
+    writeMapped(writer, scriptId, triggerText(script.trigger));
     script.statements.forEach((statement, index) =>
       writeStatement(writer, statement, scriptId + "/statements[" + index + "]", 1),
     );
@@ -70,6 +71,20 @@ export function projectAgorixCode(program: ProjectProgram): LanguageProjectionRe
     diagnostics: writer.diagnostics,
     metadata: { structuralNodeIds: Object.keys(writer.mapping) },
   };
+}
+
+function triggerText(trigger: Trigger): string {
+  switch (trigger.type) {
+    case "greenFlag":
+    case "onStart":
+      return "when start\n";
+    case "onActorClicked":
+      return "when actor clicked\n";
+    case "onKeyPressed":
+      return `when key ${JSON.stringify(trigger.key)} pressed\n`;
+    case "onMessage":
+      return `when message ${JSON.stringify(trigger.message)} received\n`;
+  }
 }
 
 export const agorixCodeProjection: LanguageProjection = {
