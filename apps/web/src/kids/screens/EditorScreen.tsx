@@ -865,7 +865,6 @@ export function EditorScreen({
             aria-labelledby="kids-predict-title"
           >
             <h2 id="kids-predict-title">{t("predictQ", { s: avatar, g: style.goalGlyph })}</h2>
-            <p>{t("predictNote")}</p>
             <div>
               {(["yes", "no", "dunno"] as const).map((answer) => (
                 <button
