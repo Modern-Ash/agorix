@@ -246,6 +246,16 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
           writeStatement(writer, child, nodeId + "/then[" + index + "]", depth + 1),
         );
       }
+      if (statement.else !== undefined) {
+        writer.text += indent + "else:\n";
+        if (statement.else.length === 0) {
+          writer.text += indent + "    pass\n";
+        } else {
+          statement.else.forEach((child, index) =>
+            writeStatement(writer, child, nodeId + "/else[" + index + "]", depth + 1),
+          );
+        }
+      }
       addRange(writer, nodeId, start, writer.text.length);
       return;
     }
@@ -393,6 +403,7 @@ function assignedVariableIdentifiers(
         visit(statement.body);
       } else if (statement.type === "if") {
         visit(statement.then);
+        if (statement.else !== undefined) visit(statement.else);
       }
     }
   };

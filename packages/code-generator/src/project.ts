@@ -177,7 +177,7 @@ function write(writer: Writer, text: string): void {
 function projectStatements(
   statements: readonly Statement[],
   path: string,
-  segment: "statements" | "body" | "then",
+  segment: "statements" | "body" | "then" | "else",
   indent: number,
   writer: Writer,
   context: ProjectionContext,
@@ -286,6 +286,10 @@ function projectStatement(
       writer.mapping[condId] = { start: condStart, end: condEnd };
       write(writer, `${prefix}${cond}) {\n`);
       projectStatements(statement.then, nodeId, "then", indent + 1, writer, context);
+      if (statement.else !== undefined) {
+        write(writer, `${pad}} else {\n`);
+        projectStatements(statement.else, nodeId, "else", indent + 1, writer, context);
+      }
       write(writer, `${pad}}\n`);
       return;
     }

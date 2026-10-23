@@ -713,7 +713,7 @@ function statementTarget(
   program: MutableProjectProgram,
   nodeId: string,
 ): { list: Statement[]; index: number } {
-  const match = /^scripts\[(\d+)\](?:\/(statements|body|then)\[(\d+)\])+$/.exec(nodeId);
+  const match = /^scripts\[(\d+)\](?:\/(statements|body|then|else)\[(\d+)\])+$/.exec(nodeId);
   if (match === null) {
     fail("UNSUPPORTED_PATH", "nodeId", `unsupported statement path ${nodeId}`);
   }
@@ -722,7 +722,7 @@ function statementTarget(
   if (script === undefined) {
     fail("UNSUPPORTED_PATH", nodeId, "script does not exist");
   }
-  const parts = [...nodeId.matchAll(/\/(statements|body|then)\[(\d+)\]/g)].map((part) => ({
+  const parts = [...nodeId.matchAll(/\/(statements|body|then|else)\[(\d+)\]/g)].map((part) => ({
     segment: part[1],
     index: Number(part[2]),
   }));
@@ -741,6 +741,8 @@ function statementTarget(
       list = statement.body as Statement[];
     } else if (next?.segment === "then" && statement.type === "if") {
       list = statement.then as Statement[];
+    } else if (next?.segment === "else" && statement.type === "if" && statement.else) {
+      list = statement.else as Statement[];
     } else {
       fail("UNSUPPORTED_PATH", nodeId, "nested statement segment is not supported");
     }
@@ -1052,7 +1054,7 @@ function assetIdsForStatement(statement: Statement): readonly string[] {
     case "repeat":
       return statement.body.flatMap(assetIdsForStatement);
     case "if":
-      return statement.then.flatMap(assetIdsForStatement);
+      return [...statement.then, ...(statement.else ?? [])].flatMap(assetIdsForStatement);
     default:
       return [];
   }
@@ -1086,6 +1088,7 @@ function variableIdsForStatement(statement: Statement): readonly string[] {
       return unique([
         ...variableIdsForExpression(statement.condition),
         ...statement.then.flatMap(variableIdsForStatement),
+        ...(statement.else ?? []).flatMap(variableIdsForStatement),
       ]);
     default:
       return [];

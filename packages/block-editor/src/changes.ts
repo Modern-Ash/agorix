@@ -54,6 +54,7 @@ type MutableBlockNode = BlockNode & {
   inputs?: {
     body?: BlockNode[];
     then?: BlockNode[];
+    else?: BlockNode[];
     condition?: BlockNode;
     left?: BlockNode;
     right?: BlockNode;

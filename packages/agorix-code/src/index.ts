@@ -208,6 +208,12 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
       statement.then.forEach((child, index) =>
         writeStatement(writer, child, nodeId + "/then[" + index + "]", depth + 1),
       );
+      if (statement.else !== undefined) {
+        writer.text += indent + "else\n";
+        statement.else.forEach((child, index) =>
+          writeStatement(writer, child, nodeId + "/else[" + index + "]", depth + 1),
+        );
+      }
       addRange(writer, nodeId, start, writer.text.length);
       return;
     }

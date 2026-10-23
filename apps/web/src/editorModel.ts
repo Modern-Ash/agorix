@@ -678,6 +678,7 @@ function collectBlockIds(block: BlockNode, ids: Set<string>): void {
   ids.add(block.id);
   for (const child of block.inputs?.body ?? []) collectBlockIds(child, ids);
   for (const child of block.inputs?.then ?? []) collectBlockIds(child, ids);
+  for (const child of block.inputs?.else ?? []) collectBlockIds(child, ids);
   if (block.inputs?.condition !== undefined) collectBlockIds(block.inputs.condition, ids);
   if (block.inputs?.left !== undefined) collectBlockIds(block.inputs.left, ids);
   if (block.inputs?.right !== undefined) collectBlockIds(block.inputs.right, ids);
@@ -722,6 +723,9 @@ function cloneBlockTreeWithFreshIds(
             ...(current.inputs.then === undefined
               ? {}
               : { then: current.inputs.then.map((child) => clone(child)) }),
+            ...(current.inputs.else === undefined
+              ? {}
+              : { else: current.inputs.else.map((child) => clone(child)) }),
             ...(current.inputs.condition === undefined
               ? {}
               : { condition: clone(current.inputs.condition) }),

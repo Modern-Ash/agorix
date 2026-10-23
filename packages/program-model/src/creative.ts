@@ -314,6 +314,9 @@ function validateStatementAssetRefs(
     }
     if (statement.type === "if") {
       validateStatementAssetRefs(statement.then, `${statementPath}.then`, state);
+      if (statement.else !== undefined) {
+        validateStatementAssetRefs(statement.else, `${statementPath}.else`, state);
+      }
     }
   }
 }
