@@ -8,6 +8,7 @@ import {
   type Clock,
   type LinkPolicy,
   type LinkRepository,
+  type MailMessage,
   type Mailer,
   type RandomSource,
 } from "./types.js";
@@ -20,6 +21,12 @@ export interface LinkServiceOptions {
   readonly policy?: Partial<LinkPolicy>;
   readonly clock?: Clock;
   readonly random?: RandomSource;
+  /**
+   * Called when a message could not be delivered. Delivery runs in the background so a slow or
+   * failing mail server cannot change the HTTP answer (which would reveal whether an address
+   * exists). Receives the error only: never log the address or the token.
+   */
+  readonly onMailError?: (error: unknown) => void;
 }
 
 export interface CreatedLinkCode {
@@ -71,6 +78,8 @@ export class LinkService {
   private readonly random: RandomSource;
   private readonly sourceFailures = new Map<string, Window>();
   private globalFailures: Window = { count: 0, resetAt: 0 };
+  private readonly onMailError: (error: unknown) => void;
+  private readonly pendingMail = new Set<Promise<void>>();
 
   constructor(options: LinkServiceOptions) {
     if (options.secret.length < 32) throw new Error("link secret must be at least 32 characters");
@@ -80,6 +89,7 @@ export class LinkService {
     this.policy = { ...DEFAULT_LINK_POLICY, ...options.policy };
     this.clock = options.clock ?? { now: () => new Date() };
     this.random = options.random ?? { bytes: (length) => randomBytes(length) };
+    this.onMailError = options.onMailError ?? (() => undefined);
   }
 
   // ---- adult email -------------------------------------------------------------------------
@@ -93,7 +103,7 @@ export class LinkService {
     await this.requireEmailBudget(accountId);
     const owner = await this.repo.findEmailOwner(email);
     if (owner !== undefined && owner !== accountId) {
-      await this.mailer.send({ kind: "email-in-use", to: email });
+      this.deliver({ kind: "email-in-use", to: email });
       return;
     }
     const existing = await this.repo.getEmail(accountId);
@@ -317,7 +327,28 @@ export class LinkService {
     await this.repo.deleteAccountData(accountId);
   }
 
+  /** Resolves when every queued message has been handed to the mailer (tests and shutdown). */
+  async idle(): Promise<void> {
+    while (this.pendingMail.size > 0) await Promise.allSettled([...this.pendingMail]);
+  }
+
   // ---- internals ---------------------------------------------------------------------------
+
+  private deliver(message: MailMessage): void {
+    const job = (async () => {
+      try {
+        await this.mailer.send(message);
+      } catch (error) {
+        try {
+          this.onMailError(error);
+        } catch {
+          // A broken error hook must not take the process down.
+        }
+      }
+    })();
+    this.pendingMail.add(job);
+    void job.finally(() => this.pendingMail.delete(job));
+  }
 
   private async revokeLinkInternal(linkId: string): Promise<void> {
     const now = this.nowIso();
@@ -346,7 +377,7 @@ export class LinkService {
       createdAt: this.nowIso(),
       expiresAt: this.futureIso(this.policy.emailTokenTtlMs),
     });
-    await this.mailer.send({ kind: "verify-email", to: email, token });
+    this.deliver({ kind: "verify-email", to: email, token });
   }
 
   private async requireEmailBudget(accountId: string): Promise<void> {

@@ -34,5 +34,30 @@ The HTTP integration tests cover registration, login, save, list, reopen, sign-o
 
 Set `AGORIX_LINK_SECRET` (at least 32 characters, from the host secret store) to enable the adult account
 email and child device link routes (`/v1/account/email*`, `/v1/link/*`). Without it those routes return 404. nginx must pass the real client address in `X-Real-IP` (already configured for `/v1/`); the link
-rate limits hash it and never store it. Verification mail is not delivered until a mailer is configured.
-See `docs/safety/AUTH_SECURITY.md`.
+rate limits hash it and never store it. See `docs/safety/AUTH_SECURITY.md`.
+
+### Verification email (SMTP)
+
+Without a mail transport the link routes work but nobody receives the verification link, so configure one:
+
+| Variable               | Meaning                                                                                                                                                               |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AGORIX_MAIL_SMTP_URL` | `smtps://user:pass@host` (implicit TLS, port 465) or `smtp://user:pass@host:587` (STARTTLS **required**). Percent-encode special characters in the user and password. |
+| `AGORIX_MAIL_FROM`     | Envelope and header sender, for example `no-reply@agorix.example`.                                                                                                    |
+
+Set both or neither (the server refuses to start with only one). The links in the message use
+`AGORIX_PROJECT_ORIGIN`, so it must be the public HTTPS origin. Behaviour worth knowing:
+
+- TLS is always verified. If the server does not offer STARTTLS the message is **not** sent and no
+  credential is written; there is no downgrade. Plain text is accepted only for `localhost`,
+  `127.0.0.1` and `::1` with `?plaintext=1` (for a local test relay).
+- Delivery happens in the background: a slow or failing mail server never changes the HTTP answer
+  (so it cannot reveal whether an address exists) and there is no automatic retry; the adult can use
+  "Resend email" (60 s cooldown, 5 per hour).
+- Failures are logged as `mail delivery failed: <kind>` (`connect`, `timeout`, `tls`, `auth`, `rejected`,
+  `protocol`). The address, the token, the SMTP URL and the server's reply are never logged.
+- The message is bilingual plain text (Spanish first). A second message, "email already in use", goes to
+  the address owner when someone tries to take it; it contains no token or link.
+- Staging check before enabling for real families: create an account, receive the message, open the
+  link, link a tablet; also try a wrong password in `AGORIX_MAIL_SMTP_URL` and confirm the log line has
+  kind `auth` only.

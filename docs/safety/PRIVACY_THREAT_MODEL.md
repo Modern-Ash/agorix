@@ -155,8 +155,8 @@ email enumeration (same answer for taken and fresh addresses), cross-use of cred
 reject the adult cookie and adult routes reject device tokens), over-collection (strict summary schema,
 8 KB body cap, pinned by tests), and orphaned data (30 day purge, immediate deletion with the account).
 
-Open items: mail delivery provider, account deletion endpoint and screen, persistence of the guess
-counters across restarts, and a legal review (COPPA, GDPR-K / Art. 8) before enabling this for real
+Open items: account deletion endpoint and screen, persistence of the guess counters across restarts,
+and a legal review (COPPA, GDPR-K / Art. 8) before enabling this for real
 families.
 
 ## Deviations
