@@ -44,8 +44,11 @@ function validExport(): string {
   return exportKidsProject(store, project.id);
 }
 
-function mutated(change: (project: Record<string, any>) => void): string {
-  const envelope = JSON.parse(validExport()) as Record<string, any>;
+// Test-only loose JSON view for building hostile variants of a valid export.
+type Json = any; // eslint-disable-line @typescript-eslint/no-explicit-any
+
+function mutated(change: (project: Json) => void): string {
+  const envelope = JSON.parse(validExport()) as Json;
   change(envelope["project"]);
   return JSON.stringify(envelope);
 }
