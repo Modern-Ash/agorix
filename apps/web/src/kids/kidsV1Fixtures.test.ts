@@ -50,6 +50,7 @@ describe("Kids v1 saved data stays loadable (issue #437)", () => {
       oriSuggestions: false,
       readAloud: true,
       dailyLimitMinutes: 45,
+      ageBand: "6-8", // v1 data has no band: default applies
     });
   });
 
