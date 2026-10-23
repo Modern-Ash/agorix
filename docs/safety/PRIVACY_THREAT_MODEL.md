@@ -130,6 +130,35 @@ it can reach learner-facing UI or mutate the canonical program. This
 threat model's scope is the outbound side (what the app sends and stores);
 it does not duplicate #100's inbound schema/safety enforcement.
 
+## Adult account and child device link (issue #514, epic #504)
+
+New data and who can see it. Design: `docs/superpowers/specs/2026-10-23-kids-adult-link-design.md`;
+controls: `AUTH_SECURITY.md`. The feature is off unless the server sets `AGORIX_LINK_SECRET` and the
+`adultLink` web flag is on; local-only Kids is unchanged and makes no request to these routes.
+
+| Data                                                                     | Where                                                                    | Who sees it                                                                               | Retention                                     |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- | --------------------------------------------- |
+| Adult email (normalised)                                                 | server, `agorix_adult_emails`                                            | the adult only; never returned to a device, never logged, never sent to Ori or a provider | until the adult deletes the account           |
+| Email verification token                                                 | server, SHA-256 only                                                     | nobody (single use, 24 h)                                                                 | until used or expired                         |
+| Link code                                                                | server, HMAC only; adult screen in memory only                           | the adult while it is on screen                                                           | 10 minutes, single use                        |
+| Device link (id, created, last-seen **day**, sync flag)                  | server                                                                   | the adult                                                                                 | until unlinked; then 30 days                  |
+| Device token                                                             | child device `localStorage` (`agorix.kids.link.v1`); server SHA-256 only | the device                                                                                | rotated on use; 60 d idle / 180 d absolute    |
+| Progress summary (counts, 14 daily minute totals, age band, daily limit) | server                                                                   | the adult                                                                                 | replaced on each upload; 30 days after unlink |
+| Per-day minutes history                                                  | child device, **only while linked**                                      | the device                                                                                | 14 days; cleared on unlink                    |
+
+Never collected or sent: child name, location, project contents, Ori chat, images, audio, per-event
+timestamps, IP address (the rate limiter hashes it in memory), user agent, device fingerprint.
+
+Threats considered: code guessing (limits on failures per source and globally, 10 minute life, 3 live
+codes per adult), token theft (hashed at rest, rotated, scoped to one link, revocable from either side),
+email enumeration (same answer for taken and fresh addresses), cross-use of credentials (device routes
+reject the adult cookie and adult routes reject device tokens), over-collection (strict summary schema,
+8 KB body cap, pinned by tests), and orphaned data (30 day purge, immediate deletion with the account).
+
+Open items: mail delivery provider, account deletion endpoint and screen, persistence of the guess
+counters across restarts, and a legal review (COPPA, GDPR-K / Art. 8) before enabling this for real
+families.
+
 ## Deviations
 
 None. Every outbound field in the local- and remote-mode diagrams above is

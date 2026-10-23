@@ -4,6 +4,7 @@ import type { Locale } from "../../i18n.js";
 import { fetchAdultAiHealth, type AdultAiHealth } from "../kidsAdultHealth.js";
 import { AGE_BANDS } from "../kidsAgeBand.js";
 import { useKidsFlag } from "../kidsFlags.js";
+import { LinkPanel } from "../link/LinkPanel.js";
 import { KidsImagesPanel } from "./KidsImagesPanel.js";
 import { KidsAudioPanel } from "./KidsAudioPanel.js";
 import { adultSummary, readTodaySeconds, type AdultSettings } from "../kidsAdults.js";
@@ -119,6 +120,7 @@ export function ParentsScreen({ t, locale, progress, settings, onSettings }: Pro
   const ageBandsEnabled = useKidsFlag("ageBands");
   const customImagesEnabled = useKidsFlag("customImages");
   const customAudioEnabled = useKidsFlag("customAudio");
+  const adultLinkEnabled = useKidsFlag("adultLink");
 
   useEffect(() => {
     if (!unlocked) return;
@@ -326,6 +328,7 @@ export function ParentsScreen({ t, locale, progress, settings, onSettings }: Pro
             </button>
           </div>
         </section>
+        {adultLinkEnabled ? <LinkPanel locale={locale} /> : null}
         <section className="kids-adult-card" aria-labelledby="kids-ai-title">
           <h2 id="kids-ai-title">{copy.ai}</h2>
           <dl className="kids-health-list">

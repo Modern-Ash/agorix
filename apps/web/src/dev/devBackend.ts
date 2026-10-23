@@ -7,6 +7,12 @@
  */
 import { AuthService } from "@agorix/auth-service";
 import { InMemoryAccountRepository, InMemorySessionRepository } from "@agorix/auth-service";
+import {
+  InMemoryLinkRepository,
+  LinkService,
+  type Mailer,
+  type MailMessage,
+} from "@agorix/link-service";
 import { createProjectApi, type ApiRequest, type ApiResponse } from "@agorix/project-api";
 import { InMemoryProjectRepository } from "@agorix/project-repository";
 
@@ -27,8 +33,24 @@ export function createDevBackend(): DevBackend {
       signInRateLimit: { maxAttempts: 10_000 },
     },
   });
+  // Dev/e2e only: verification mail is captured in memory so a browser test can read the token
+  // from `/v1/__dev/mail`. Nothing like this exists in the production server.
+  const mails: MailMessage[] = [];
+  const mailer: Mailer = { send: async (message) => void mails.push(message) };
+  const link = new LinkService({
+    repository: new InMemoryLinkRepository(),
+    secret: "d".repeat(40),
+    mailer,
+    policy: {
+      emailResendCooldownMs: 0,
+      emailSendsPerHour: 10_000,
+      redeemFailuresPerSource: 10_000,
+      redeemFailuresGlobal: 10_000,
+    },
+  });
   const api = createProjectApi({
     auth,
+    link,
     projects: new InMemoryProjectRepository(),
     allowedOrigins: [],
   });
@@ -40,6 +62,14 @@ export function createDevBackend(): DevBackend {
 
   return {
     async handle(request) {
+      if (request.method === "GET" && request.url === "/v1/__dev/mail") {
+        const last = [...mails].reverse().find((mail) => mail.kind === "verify-email");
+        return {
+          status: 200,
+          headers: { "content-type": "application/json", "cache-control": "no-store" },
+          body: last?.kind === "verify-email" ? { token: last.token, to: last.to } : {},
+        };
+      }
       // A same-origin Origin is dropped so the API's cross-origin allow-list (empty here) only sees foreign ones.
       const origin = request.headers["origin"];
       if (origin !== undefined && sameOrigin(request, origin)) {

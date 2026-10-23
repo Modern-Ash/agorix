@@ -140,6 +140,9 @@ importers:
       '@agorix/learning-evidence':
         specifier: workspace:*
         version: link:../../packages/learning-evidence
+      '@agorix/link-service':
+        specifier: workspace:*
+        version: link:../../packages/link-service
       '@agorix/ori-agent':
         specifier: workspace:*
         version: link:../../packages/ori-agent
