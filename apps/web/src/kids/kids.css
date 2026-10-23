@@ -15,6 +15,22 @@
   --kids-data: #2f9d78;
   --kids-success: #2e8f4e;
   --kids-error: #c2413b;
+  /* Block categories (issue #447). The default palette equals the shipped look. */
+  --kids-block-move-bg: #2864c5;
+  --kids-block-move-border: transparent;
+  --kids-block-move-text: #ffffff;
+  --kids-block-turn-bg: #6942b7;
+  --kids-block-turn-border: transparent;
+  --kids-block-turn-text: #ffffff;
+  --kids-block-control-bg: #7042b8;
+  --kids-block-control-border: transparent;
+  --kids-block-control-text: #ffffff;
+  --kids-block-sound-bg: #ad5c12;
+  --kids-block-sound-border: transparent;
+  --kids-block-sound-text: #ffffff;
+  --kids-block-event-bg: #f8c573;
+  --kids-block-event-border: transparent;
+  --kids-block-event-text: #3d2203;
   --kids-font-body: "Atkinson Hyperlegible", system-ui, sans-serif;
   --kids-font-display: "Epilogue", "Atkinson Hyperlegible", system-ui, sans-serif;
   --kids-font-code: "JetBrains Mono", ui-monospace, monospace;
@@ -709,8 +725,9 @@
 .kids-start-block {
   display: inline-block;
   padding: 9px 14px;
-  color: #3d2203;
-  background: #f8c573;
+  color: var(--kids-block-event-text);
+  background: var(--kids-block-event-bg);
+  box-shadow: inset 0 0 0 2px var(--kids-block-event-border);
   border-radius: 12px 12px 4px 4px;
   font-weight: 700;
 }
@@ -775,17 +792,44 @@
   cursor: pointer;
 }
 .kids-block-move {
-  background: #2864c5;
+  color: var(--kids-block-move-text);
+  background: var(--kids-block-move-bg);
+  box-shadow: inset 0 0 0 2px var(--kids-block-move-border);
 }
 .kids-block-turnL,
 .kids-block-turnR {
-  background: #6942b7;
+  color: var(--kids-block-turn-text);
+  background: var(--kids-block-turn-bg);
+  box-shadow: inset 0 0 0 2px var(--kids-block-turn-border);
 }
 .kids-block-repeat {
-  background: #7042b8;
+  color: var(--kids-block-control-text);
+  background: var(--kids-block-control-bg);
+  box-shadow: inset 0 0 0 2px var(--kids-block-control-border);
 }
 .kids-block-sound {
-  background: #ad5c12;
+  color: var(--kids-block-sound-text);
+  background: var(--kids-block-sound-bg);
+  box-shadow: inset 0 0 0 2px var(--kids-block-sound-border);
+}
+/* Scratch-style hues; text is dark because these backgrounds are light (issue #447). */
+.kids-root[data-block-palette="scratch"] {
+  --kids-block-move-bg: #4c97ff;
+  --kids-block-move-border: #3373cc;
+  --kids-block-move-text: #08162e;
+  --kids-block-turn-bg: #4c97ff;
+  --kids-block-turn-border: #3373cc;
+  --kids-block-turn-text: #08162e;
+  --kids-block-control-bg: #ffab19;
+  --kids-block-control-border: #cf8b17;
+  --kids-block-control-text: #2b1a00;
+  --kids-block-control-chip: rgba(255, 255, 255, 0.45);
+  --kids-block-sound-bg: #cf63cf;
+  --kids-block-sound-border: #bd42bd;
+  --kids-block-sound-text: #2a0a2a;
+  --kids-block-event-bg: #ffbf00;
+  --kids-block-event-border: #cc9900;
+  --kids-block-event-text: #2b2000;
 }
 .kids-repeat-body {
   margin: 0 8px 8px 24px;
@@ -800,10 +844,10 @@
 .kids-repeat-add button {
   min-height: 44px;
   padding: 6px 9px;
-  border: 1px solid white;
+  border: 1px solid currentColor;
   border-radius: 9px;
-  color: white;
-  background: rgba(0, 0, 0, 0.2);
+  color: var(--kids-block-control-text);
+  background: var(--kids-block-control-chip);
   font: inherit;
   cursor: pointer;
 }
@@ -844,7 +888,6 @@
   padding: 6px 12px;
   border: 0;
   border-radius: 11px;
-  color: white;
   font: inherit;
   font-weight: 700;
   cursor: pointer;

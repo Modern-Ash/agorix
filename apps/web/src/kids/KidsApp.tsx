@@ -46,6 +46,7 @@ import {
   ensureAdvancedProject,
 } from "./kidsAdvancedProgress.js";
 import { ProjectStore } from "@agorix/persistence";
+import { useKidsFlag } from "./kidsFlags.js";
 import { useKidsText, type KidsText } from "./useKidsText.js";
 
 const NAV: readonly {
@@ -63,6 +64,7 @@ export function KidsApp({
   initialState,
   initialProgress,
 }: { readonly initialState?: KidsState; readonly initialProgress?: KidsProgress } = {}) {
+  const scratchBlocks = useKidsFlag("puzzleShape");
   const [progress, setProgress] = useState<KidsProgress>(
     () => initialProgress ?? loadKidsProgress(),
   );
@@ -142,6 +144,7 @@ export function KidsApp({
       lang={state.locale}
       data-screen={state.screen}
       data-testid="kids-root"
+      data-block-palette={scratchBlocks ? "scratch" : "default"}
     >
       <main className="kids-frame">
         {state.screen === "onboard" ? (
