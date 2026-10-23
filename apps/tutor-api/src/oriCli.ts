@@ -10,6 +10,9 @@ import {
   runOriChat,
   type OriChatContext,
   runOriGoalAgent,
+  runOriAdvanced,
+  type OriAdvancedContext,
+  type OriAdvancedDecision,
   type OriGoalDecision,
   type OriLocale,
 } from "@agorix/ori-agent";
@@ -48,6 +51,7 @@ export interface OriCliService {
   respond(context: OriAgentContext): Promise<OriAgentDecision>;
   chat(context: OriChatContext): Promise<string>;
   proposeGoal(locale: OriLocale): Promise<OriGoalDecision>;
+  advanced(context: OriAdvancedContext): Promise<OriAdvancedDecision>;
 }
 
 const MAX_INPUT_BYTES = 16 * 1024;
@@ -186,6 +190,10 @@ export function createOriCliService(
     async proposeGoal(locale) {
       const provider = await select();
       return runOriGoalAgent(locale, provider ? textModel(provider) : undefined);
+    },
+    async advanced(context) {
+      const provider = await select();
+      return runOriAdvanced(context, provider ? textModel(provider) : undefined);
     },
   };
 }

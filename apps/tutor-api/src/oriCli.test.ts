@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { getKidsMission } from "@agorix/curriculum";
-import { ORI_AGENT_VERSION } from "@agorix/ori-agent";
+import { getKidsMission, getKidsAdvancedMission } from "@agorix/curriculum";
+import { ORI_AGENT_VERSION, ORI_ADVANCED_VERSION } from "@agorix/ori-agent";
 import {
   CliProcessError,
   createOriCliService,
@@ -25,6 +25,33 @@ const validOutput = JSON.stringify({
 });
 
 describe("Ori host CLI adapter (issue #381)", () => {
+  it("sends only a fixed stage-1 scene summary to the real CLI boundary", async () => {
+    const calls: Parameters<OriCliProcess>[] = [];
+    const run: OriCliProcess = async (...args) => {
+      calls.push(args);
+      return args[1].includes("--version")
+        ? "version"
+        : JSON.stringify({
+            version: ORI_ADVANCED_VERSION,
+            kind: "program-suggestion",
+            actorId: "actor:ori",
+            block: { type: "playSound", soundId: "asset:sound.beacon" },
+          });
+    };
+    const service = createOriCliService(oriCliConfigFromEnv({}), { run });
+    const decision = await service.advanced({
+      stage: "scene",
+      actorId: "actor:ori",
+      locale: "es",
+      program: getKidsAdvancedMission("scene", "es").starterProgram,
+    });
+    expect(decision.source).toBe("model");
+    expect(decision.proposal?.affectedAssetIds).toEqual(["asset:sound.beacon"]);
+    const input = calls.find(([, args]) => args.includes("exec"))?.[2].input ?? "";
+    expect(input).toContain(ORI_ADVANCED_VERSION);
+    expect(input).toContain("actor:ori");
+    expect(input).not.toContain("learnerIntent");
+  });
   it("selects Codex before OpenCode and disables every model tool", async () => {
     const calls: Parameters<OriCliProcess>[] = [];
     const run: OriCliProcess = async (...args) => {
