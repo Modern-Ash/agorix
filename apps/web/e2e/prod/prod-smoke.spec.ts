@@ -35,10 +35,10 @@ function trackProblems(page: Page, origin: string) {
   page.on("console", (message) => {
     const text = message.text();
     const source = message.location().url;
-    const expectedMissingSession =
-      text.startsWith("Failed to load resource: the server responded with a status of 404") &&
+    const expectedAnonymousSession =
+      /^Failed to load resource: the server responded with a status of (401|404)\b/.test(text) &&
       source === `${origin}/v1/session`;
-    if (message.type() === "error" && !expectedMissingSession) {
+    if (message.type() === "error" && !expectedAnonymousSession) {
       problems.push(`console: ${text.slice(0, 120)}`);
     }
   });
