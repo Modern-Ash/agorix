@@ -4,6 +4,7 @@ import {
   ProjectStore,
   serializeAgorixProject,
   type ProjectMetadata,
+  type StoredProject,
 } from "@agorix/persistence";
 import type { KidsAvatar, KidsWorld } from "./kidsState.js";
 
@@ -114,4 +115,61 @@ export function importKidsProject(
     throw error;
   }
   return project;
+}
+
+export interface RemovedFreeProject {
+  readonly project: KidsFreeProject;
+  readonly stored?: StoredProject;
+}
+
+/** Remove a free project. Returns what is needed to restore it, or null when nothing was removed. */
+export function deleteFreeProject(
+  id: string,
+  store: ProjectStore,
+  storage: KidsIndexStorage | undefined = defaultStorage(),
+): RemovedFreeProject | null {
+  if (!FREE_ID.test(id)) return null;
+  const all = listFreeProjects(storage);
+  const project = all.find((entry) => entry.id === id);
+  if (!project) return null;
+  let stored: StoredProject | undefined;
+  try {
+    stored = store.has(id) ? store.load(id) : undefined;
+  } catch {
+    stored = undefined;
+  }
+  try {
+    storage?.setItem(INDEX_KEY, JSON.stringify(all.filter((entry) => entry.id !== id)));
+  } catch {
+    return null;
+  }
+  try {
+    store.remove(id);
+  } catch {
+    // The card is gone; an unreachable record only costs quota.
+  }
+  return stored ? { project, stored } : { project };
+}
+
+/** Undo a delete. Fails (false) if the id was taken meanwhile or storage cannot be written. */
+export function restoreFreeProject(
+  removed: RemovedFreeProject,
+  store: ProjectStore,
+  storage: KidsIndexStorage | undefined = defaultStorage(),
+): boolean {
+  const current = listFreeProjects(storage);
+  if (current.some((entry) => entry.id === removed.project.id)) return false;
+  try {
+    if (removed.stored) {
+      store.save(removed.project.id, removed.stored.program, removed.stored.metadata);
+    }
+    const next = [...current, removed.project].sort(
+      (a, b) => Number(a.id.slice(5)) - Number(b.id.slice(5)),
+    );
+    storage?.setItem(INDEX_KEY, JSON.stringify(next));
+    return true;
+  } catch {
+    store.remove(removed.project.id);
+    return false;
+  }
 }

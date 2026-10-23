@@ -4,6 +4,8 @@ import { SCHEMA_VERSION } from "@agorix/program-model";
 import { ProjectStore, type BrowserStorageAdapter } from "@agorix/persistence";
 import {
   createFreeProject,
+  deleteFreeProject,
+  restoreFreeProject,
   exportKidsProject,
   importKidsProject,
   kidsGoalSpec,
@@ -136,5 +138,63 @@ describe("Kids free projects (issue #376)", () => {
     expect(() => importKidsProject(exported, "robots", "🐸", store, failing)).toThrow();
     expect(store.has("free-2")).toBe(false);
     expect(listFreeProjects(indexStorage).map((entry) => entry.id)).toEqual(["free-1"]);
+  });
+
+  it("deletes only the chosen free project and can restore it (issue #445)", () => {
+    const { storage, indexStorage } = memory();
+    const store = new ProjectStore({ storage });
+    const first = createFreeProject("space", "🐸", indexStorage);
+    const second = createFreeProject("ocean", "🦊", indexStorage);
+    const mission = createFreeWorldMission({ cx: 3, cy: 1 }, "es");
+    const metadata = {
+      createdAt: "2026-10-21T00:00:00.000Z",
+      updatedAt: "2026-10-21T00:00:00.000Z",
+      missionProgress: 0 as const,
+      hintLevel: 0,
+      locale: "es" as const,
+      missionSpec: { goal: kidsGoalSpec({ cx: 3, cy: 1 }), successCheck: "touches-goal" as const },
+    };
+    store.save(first.id, mission.starterProject, metadata);
+    store.save(second.id, mission.starterProject, metadata);
+    store.save("kids.space.kids.m1.straight", mission.starterProject, metadata);
+
+    const removed = deleteFreeProject(second.id, store, indexStorage);
+    expect(removed).not.toBeNull();
+    expect(listFreeProjects(indexStorage).map((entry) => entry.id)).toEqual(["free-1"]);
+    expect(store.has(second.id)).toBe(false);
+    expect(store.has(first.id)).toBe(true);
+    expect(store.has("kids.space.kids.m1.straight")).toBe(true);
+
+    expect(deleteFreeProject(second.id, store, indexStorage)).toBeNull();
+    expect(deleteFreeProject("kids.space.kids.m1.straight", store, indexStorage)).toBeNull();
+    expect(store.has("kids.space.kids.m1.straight")).toBe(true);
+
+    expect(restoreFreeProject(removed!, store, indexStorage)).toBe(true);
+    expect(listFreeProjects(indexStorage).map((entry) => entry.id)).toEqual(["free-1", "free-2"]);
+    expect(store.has(second.id)).toBe(true);
+    expect(restoreFreeProject(removed!, store, indexStorage)).toBe(false);
+  });
+
+  it("does not delete anything when the index cannot be written (issue #445)", () => {
+    const { storage, indexStorage } = memory();
+    const store = new ProjectStore({ storage });
+    const project = createFreeProject("space", "🐸", indexStorage);
+    const mission = createFreeWorldMission({ cx: 3, cy: 1 }, "es");
+    store.save(project.id, mission.starterProject, {
+      createdAt: "2026-10-21T00:00:00.000Z",
+      updatedAt: "2026-10-21T00:00:00.000Z",
+      missionProgress: 0,
+      hintLevel: 0,
+      locale: "es",
+      missionSpec: { goal: kidsGoalSpec({ cx: 3, cy: 1 }), successCheck: "touches-goal" },
+    });
+    const failing = {
+      getItem: indexStorage.getItem,
+      setItem: () => {
+        throw new DOMException("quota", "QuotaExceededError");
+      },
+    };
+    expect(deleteFreeProject(project.id, store, failing)).toBeNull();
+    expect(store.has(project.id)).toBe(true);
   });
 });
