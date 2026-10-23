@@ -98,4 +98,43 @@ describe("Kids free projects (issue #376)", () => {
       "touches-goal-after-turn",
     );
   });
+
+  it("survives a full or blocked index storage (issue #440)", () => {
+    const failing = {
+      getItem: () => null,
+      setItem: () => {
+        throw new DOMException("quota", "QuotaExceededError");
+      },
+    };
+    expect(createFreeProject("space", "🦊", failing)).toEqual({
+      id: "free-1",
+      world: "space",
+      avatar: "🦊",
+    });
+  });
+
+  it("leaves no stored project behind when an import cannot be indexed (issue #441)", () => {
+    const { storage, indexStorage } = memory();
+    const store = new ProjectStore({ storage });
+    const first = createFreeProject("space", "🐸", indexStorage);
+    const mission = createFreeWorldMission({ cx: 3, cy: 1 }, "es");
+    store.save(first.id, mission.starterProject, {
+      createdAt: "2026-10-21T00:00:00.000Z",
+      updatedAt: "2026-10-21T00:00:00.000Z",
+      missionProgress: 0,
+      hintLevel: 0,
+      locale: "es",
+      missionSpec: { goal: kidsGoalSpec({ cx: 3, cy: 1 }), successCheck: "touches-goal" },
+    });
+    const exported = exportKidsProject(store, first.id);
+    const failing = {
+      getItem: indexStorage.getItem,
+      setItem: () => {
+        throw new DOMException("quota", "QuotaExceededError");
+      },
+    };
+    expect(() => importKidsProject(exported, "robots", "🐸", store, failing)).toThrow();
+    expect(store.has("free-2")).toBe(false);
+    expect(listFreeProjects(indexStorage).map((entry) => entry.id)).toEqual(["free-1"]);
+  });
 });
