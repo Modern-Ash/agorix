@@ -61,9 +61,15 @@ for (const [band, palette, label] of [
     await page.getByRole("button", { name: "Misión 1" }).click();
     await page.getByRole("button", { name: "+ mover", exact: true }).click();
     await page.getByRole("button", { name: "+ repetir", exact: true }).click();
-    await expect(page.locator(".kids-editor-program-panel")).toHaveScreenshot(
-      `band-${band}-editor.png`,
-      { animations: "disabled", maxDiffPixelRatio: 0.04 },
-    );
+    const panel = page.locator(".kids-editor-program-panel");
+    const box = await panel.boundingBox();
+    if (!box) throw new Error("Editor panel is not visible");
+    // The natural panel is one pixel taller on CI. A fixed clip compares the
+    // same 360 × 754 visual area on both Linux hosts.
+    await expect(page).toHaveScreenshot(`band-${band}-editor.png`, {
+      animations: "disabled",
+      maxDiffPixelRatio: 0.04,
+      clip: { x: Math.floor(box.x), y: Math.floor(box.y), width: 360, height: 754 },
+    });
   });
 }
