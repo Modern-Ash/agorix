@@ -382,6 +382,8 @@ importers:
         specifier: workspace:*
         version: link:../runtime
 
+  packages/link-service: {}
+
   packages/ori-agent:
     dependencies:
       '@agorix/curriculum':
