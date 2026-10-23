@@ -1517,3 +1517,14 @@
 .kids-advanced-ori-review .kids-button {
   min-height: 44px;
 }
+
+.kids-advanced-react-actor {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.kids-advanced-react-actor .kids-advanced-actor,
+.kids-advanced-react-actor .kids-button {
+  width: 100%;
+  min-height: 44px;
+}

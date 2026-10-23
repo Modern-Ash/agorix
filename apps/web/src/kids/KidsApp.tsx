@@ -38,7 +38,12 @@ import {
 } from "./kidsAdults.js";
 import { ParentsScreen } from "./screens/ParentsScreen.js";
 import { AdvancedSceneScreen } from "./screens/AdvancedSceneScreen.js";
-import { advancedEntryUnlocked, ensureAdvancedProject } from "./kidsAdvancedProgress.js";
+import { AdvancedReactScreen } from "./screens/AdvancedReactScreen.js";
+import {
+  advancedEntryUnlocked,
+  advancedStageUnlocked,
+  ensureAdvancedProject,
+} from "./kidsAdvancedProgress.js";
 import { ProjectStore } from "@agorix/persistence";
 import { useKidsText, type KidsText } from "./useKidsText.js";
 
@@ -161,9 +166,14 @@ export function KidsApp({
             onWorld={(world) => dispatch({ type: "pickWorld", world })}
             onMission={(missionIndex) => dispatch({ type: "pickMission", missionIndex })}
             advancedUnlocked={advancedEntryUnlocked(projectStore)}
+            advancedReactUnlocked={advancedStageUnlocked("react", projectStore)}
             onAdvanced={() => {
               if (ensureAdvancedProject("scene", state.locale, projectStore))
                 dispatch({ type: "openAdvancedScene" });
+            }}
+            onAdvancedReact={() => {
+              if (ensureAdvancedProject("react", state.locale, projectStore))
+                dispatch({ type: "openAdvancedReact" });
             }}
           />
         ) : state.screen === "editor" ? (
@@ -188,6 +198,11 @@ export function KidsApp({
           />
         ) : state.screen === "advanced" ? (
           <AdvancedSceneScreen
+            locale={state.locale}
+            onBack={() => dispatch({ type: "go", screen: "map" })}
+          />
+        ) : state.screen === "advancedReact" ? (
+          <AdvancedReactScreen
             locale={state.locale}
             onBack={() => dispatch({ type: "go", screen: "map" })}
           />
@@ -285,6 +300,7 @@ function screenTitle(screen: KidsScreen, t: KidsText): string {
     case "editor":
       return t("mission");
     case "advanced":
+    case "advancedReact":
       return t("mission");
     case "reflect":
       return t("keepPlaying");

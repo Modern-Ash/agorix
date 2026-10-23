@@ -24,6 +24,8 @@ export { computeKidsOri, type KidsOriKind, type KidsOriOffer } from "./determini
 export * from "./chat.js";
 export * from "./goals.js";
 export * from "./advanced.js";
+export * from "./advancedReact.js";
+export * from "./advancedStage.js";
 export const ORI_AGENT_VERSION = "agorix/ori-agent/v1";
 export const ORI_FIXED_REFUSAL = Object.freeze({
   es: "Solo puedo ayudarte con tus bloques, metas y cosas de Agorix.",

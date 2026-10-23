@@ -11,6 +11,7 @@ import {
   type Expression,
   type ProjectProgram,
   type Statement,
+  type Trigger,
 } from "@agorix/program-model";
 
 export const PYTHON_PROJECTION = {
@@ -54,7 +55,7 @@ export function projectPython(program: ProjectProgram): LanguageProjectionResult
   }
   validated.scripts.forEach((script, scriptIndex) => {
     const scriptId = "scripts[" + scriptIndex + "]";
-    writeMapped(writer, scriptId, "def on_start():\n");
+    writeMapped(writer, scriptId, triggerText(script.trigger));
     if (script.statements.length === 0) {
       writer.text += "    pass\n";
     } else {
@@ -96,6 +97,24 @@ export function projectPython(program: ProjectProgram): LanguageProjectionResult
       executable: false,
     },
   };
+}
+
+function triggerText(trigger: Trigger): string {
+  switch (trigger.type) {
+    case "greenFlag":
+    case "onStart":
+      return "def on_start():\n";
+    case "onActorClicked":
+      return "def on_actor_clicked():\n";
+    case "onKeyPressed":
+      return `def on_key_pressed_${safeEventName(trigger.key)}():\n`;
+    case "onMessage":
+      return `def on_message_${safeEventName(trigger.message)}():\n`;
+  }
+}
+
+function safeEventName(value: string): string {
+  return value.replace(/[^a-zA-Z0-9_]/g, "_").replace(/^([^a-zA-Z_])/, "_$1");
 }
 
 export const pythonProjection: LanguageProjection = {

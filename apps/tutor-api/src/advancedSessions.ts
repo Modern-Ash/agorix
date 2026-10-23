@@ -1,16 +1,25 @@
 import { randomUUID } from "node:crypto";
-import { evaluateKidsRun, getKidsMission, KIDS_MISSION_IDS } from "@agorix/curriculum";
+import {
+  evaluateKidsRun,
+  getKidsMission,
+  KIDS_MISSION_IDS,
+  getKidsAdvancedMission,
+  evaluateKidsAdvancedMission,
+} from "@agorix/curriculum";
 import { validateProgram, type ProjectProgram, type Statement } from "@agorix/program-model";
-import { createWorldState, runProgram } from "@agorix/runtime";
+import { createWorldState, runProgram, runMultiActorProgram } from "@agorix/runtime";
+import { createOriAdvancedInput } from "@agorix/ori-agent";
+
+export type ServerAdvancedStage = "scene" | "react";
 
 export interface AdvancedStageRepository {
-  create(stage: "scene"): string;
-  get(token: string): "scene" | undefined;
+  create(stage: ServerAdvancedStage): string;
+  get(token: string): ServerAdvancedStage | undefined;
 }
 
 /** Replaceable by a persisted implementation without changing the HTTP contract. */
 export function createMemoryAdvancedStageRepository(now = Date.now): AdvancedStageRepository {
-  const sessions = new Map<string, { stage: "scene"; expires: number }>();
+  const sessions = new Map<string, { stage: ServerAdvancedStage; expires: number }>();
   return {
     create(stage) {
       for (const [token, value] of sessions) if (value.expires <= now()) sessions.delete(token);
@@ -65,6 +74,26 @@ export function proveAdvancedEntry(raw: unknown): boolean {
       const result = runProgram(program, createWorldState(mission.starterStage));
       return evaluateKidsRun({ mission, result }).outcome === "success";
     });
+  } catch {
+    return false;
+  }
+}
+
+/** The stage-2 gate replays an actual scene rather than trusting a completion flag. */
+export function proveAdvancedScene(raw: unknown): boolean {
+  try {
+    const program = validateProgram(raw as ProjectProgram);
+    createOriAdvancedInput({ stage: "scene", actorId: "actor:ori", locale: "es", program });
+    const mission = getKidsAdvancedMission("scene", "es");
+    const creative = {
+      ...mission.starterCreative,
+      actors: (mission.starterCreative.actors ?? []).map((actor) =>
+        actor.id === "actor:friend" && program.scripts[1]?.id === "advanced-scene-friend"
+          ? { ...actor, scripts: ["advanced-scene-friend"] }
+          : actor,
+      ),
+    };
+    return evaluateKidsAdvancedMission("scene", runMultiActorProgram(program, creative));
   } catch {
     return false;
   }
