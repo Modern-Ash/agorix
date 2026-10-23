@@ -1644,3 +1644,84 @@
   gap: 8px;
   min-height: 44px;
 }
+
+/* Age-band chrome is additive. The 6–8 palette remains the shipped :root set. */
+.kids-age-header {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  max-width: 1100px;
+  margin-bottom: 8px;
+}
+.kids-band-chip {
+  padding: 5px 11px;
+  border: 1px solid var(--kids-border);
+  border-radius: 999px;
+  color: var(--kids-text-secondary);
+  background: var(--kids-panel);
+  font: 700 0.8rem var(--kids-font-code);
+}
+.kids-root[data-age-palette="balanced"] {
+  --kids-canvas: #eef4f9;
+  --kids-panel: #ffffff;
+  --kids-text: #17283b;
+  --kids-text-secondary: #52687d;
+  --kids-border: #c4d5e3;
+  --kids-focus: #2367cc;
+  --kids-runtime: #117487;
+  --kids-runtime-strong: #0b6374;
+  --kids-ai: #6351c8;
+  --kids-move: #2e76ce;
+  --kids-control: #7258c4;
+  --kids-event: #a36a1e;
+  --kids-data: #187f72;
+  --kids-success: #247f4b;
+  --kids-error: #b63842;
+  --kids-block-move-bg: #236dc1;
+  --kids-block-move-border: transparent;
+  --kids-block-move-text: #ffffff;
+  --kids-block-turn-bg: #584bb4;
+  --kids-block-turn-border: transparent;
+  --kids-block-turn-text: #ffffff;
+  --kids-block-control-bg: #6d4ab7;
+  --kids-block-control-border: transparent;
+  --kids-block-control-text: #ffffff;
+  --kids-block-sound-bg: #a54a60;
+  --kids-block-sound-border: transparent;
+  --kids-block-sound-text: #ffffff;
+  --kids-block-event-bg: #e6a34c;
+  --kids-block-event-border: transparent;
+  --kids-block-event-text: #332000;
+}
+.kids-root[data-age-palette="compact"] {
+  --kids-canvas: #e9edf2;
+  --kids-panel: #ffffff;
+  --kids-text: #15212e;
+  --kids-text-secondary: #4d5e6f;
+  --kids-border: #aabac9;
+  --kids-focus: #1c55b8;
+  --kids-runtime: #0b6677;
+  --kids-runtime-strong: #075261;
+  --kids-ai: #4d4fc3;
+  --kids-move: #1d5ca5;
+  --kids-control: #534090;
+  --kids-event: #956022;
+  --kids-data: #156d65;
+  --kids-success: #206d42;
+  --kids-error: #a52c39;
+  --kids-block-move-bg: #1d5ca5;
+  --kids-block-move-border: transparent;
+  --kids-block-move-text: #ffffff;
+  --kids-block-turn-bg: #4e3f9d;
+  --kids-block-turn-border: transparent;
+  --kids-block-turn-text: #ffffff;
+  --kids-block-control-bg: #534090;
+  --kids-block-control-border: transparent;
+  --kids-block-control-text: #ffffff;
+  --kids-block-sound-bg: #8c3f5b;
+  --kids-block-sound-border: transparent;
+  --kids-block-sound-text: #ffffff;
+  --kids-block-event-bg: #d8913e;
+  --kids-block-event-border: transparent;
+  --kids-block-event-text: #2b1700;
+}
