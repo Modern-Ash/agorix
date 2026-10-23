@@ -102,3 +102,18 @@ design first.
 4. Web: Adults "Enter code" flow on the child device.
 5. Sync: summary upload and adult dashboard (only if question 2 is yes).
 6. Docs: update `CHILD_SAFETY_PRIVACY.md` and the privacy notice.
+
+## Implementation notes (server, issues #505 to #508)
+
+Where the build differs from the sketch above, and why:
+
+- **Brute force.** The sketch said "5 wrong attempts invalidate that code". The child types only the
+  digits, so a wrong guess cannot be tied to any code. The limits are therefore on failures per source
+  and globally (see `docs/safety/AUTH_SECURITY.md`). Counters are in memory and reset on restart.
+- **Email required.** Existing alias-only accounts stay valid; the email is required to **link a
+  device**. Requiring it at registration is switched on together with the sign-up screen (#509), so the
+  current account flow does not break in between.
+- **Mail delivery** is an injected `Mailer`; the default drops messages. A real provider is a follow-up.
+- Tables: `agorix_adult_emails`, `agorix_email_verifications`, `agorix_link_codes`,
+  `agorix_device_links`, `agorix_device_tokens`, `agorix_link_summaries` (migration
+  `001_create_link_service`).

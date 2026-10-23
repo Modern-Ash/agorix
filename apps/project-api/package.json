@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@agorix/auth-service": "workspace:*",
+    "@agorix/link-service": "workspace:*",
     "@agorix/persistence": "workspace:*",
     "@agorix/platform-contract": "workspace:*",
     "@agorix/program-model": "workspace:*",

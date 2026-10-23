@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { AuthPublicError, type AuthService } from "@agorix/auth-service";
+import { LinkError, type LinkService } from "@agorix/link-service";
 import { PlatformContractError } from "@agorix/platform-contract";
 import {
   AGORIX_PROJECT_MAX_BYTES,
@@ -22,6 +23,8 @@ export const CSRF_HEADER_NAME = "x-agorix-request";
 export const IDEMPOTENCY_HEADER_NAME = "idempotency-key";
 
 const BODY_ENVELOPE_BYTES = 16 * 1024;
+/** Link, email and summary bodies are tiny; anything larger is refused before parsing. */
+const SMALL_BODY_BYTES = 8 * 1024;
 const MAX_IDEMPOTENCY_ENTRIES = 1000;
 const PROJECT_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
 const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9_-]{8,128}$/;
@@ -75,8 +78,32 @@ export interface ApiLogEvent {
   readonly errorCode?: ProjectApiErrorCode;
 }
 
+/** The adult-link surface (issues #505 to #508). Omit it and every `/v1/link` and `/v1/account` route is a 404. */
+export type LinkApiService = Pick<
+  LinkService,
+  | "addEmail"
+  | "resendVerification"
+  | "verifyEmail"
+  | "emailStatus"
+  | "createLinkCode"
+  | "revokeLinkCodes"
+  | "redeemLinkCode"
+  | "resolveDevice"
+  | "unlinkDevice"
+  | "unlinkLink"
+  | "setSyncEnabled"
+  | "listDevices"
+  | "putSummary"
+  | "getSummaries"
+>;
+
+export const DEVICE_AUTH_SCHEME = "Bearer";
+/** Set by the reverse proxy from the real connection; absent means one shared "unknown" bucket. */
+export const CLIENT_ADDRESS_HEADER = "x-real-ip";
+
 export interface ProjectApiOptions {
   readonly auth: Pick<AuthService, "register" | "signIn" | "signOut" | "resolveSession">;
+  readonly link?: LinkApiService;
   readonly projects: ProjectRepository;
   /** Allowed `Origin` values for mutating requests. Requests with a foreign Origin are rejected. */
   readonly allowedOrigins?: readonly string[];
@@ -166,6 +193,113 @@ export function createProjectApi(options: ProjectApiOptions): ProjectApi {
           session: { expiresAt: ctx.sessionExpiresAt },
         },
       }),
+    },
+    {
+      name: "account.email.get",
+      method: "GET",
+      pattern: /^\/v1\/account\/email$/,
+      handler: async (ctx) => ({ status: 200, body: await requireLink().emailStatus(ctx.ownerId) }),
+    },
+    {
+      name: "account.email.set",
+      method: "POST",
+      pattern: /^\/v1\/account\/email$/,
+      handler: async (ctx) => {
+        const body = readBody(ctx.request, SMALL_BODY_BYTES, ["email"]);
+        await requireLink().addEmail(ctx.ownerId, requireString(body, "email"));
+        return { status: 202, body: { status: "sent" } };
+      },
+    },
+    {
+      name: "account.email.resend",
+      method: "POST",
+      pattern: /^\/v1\/account\/email\/resend$/,
+      handler: async (ctx) => {
+        await requireLink().resendVerification(ctx.ownerId);
+        return { status: 202, body: { status: "sent" } };
+      },
+    },
+    {
+      name: "account.email.verify",
+      method: "POST",
+      pattern: /^\/v1\/account\/email\/verify$/,
+      handler: async () => ({ status: 404, body: null }),
+    },
+    {
+      name: "link.codes.create",
+      method: "POST",
+      pattern: /^\/v1\/link\/codes$/,
+      handler: async (ctx) => ({
+        status: 201,
+        body: await requireLink().createLinkCode(ctx.ownerId),
+      }),
+    },
+    {
+      name: "link.codes.revoke",
+      method: "DELETE",
+      pattern: /^\/v1\/link\/codes$/,
+      handler: async (ctx) => {
+        await requireLink().revokeLinkCodes(ctx.ownerId);
+        return { status: 204, body: null };
+      },
+    },
+    {
+      name: "link.redeem",
+      method: "POST",
+      pattern: /^\/v1\/link\/redeem$/,
+      handler: async () => ({ status: 404, body: null }),
+    },
+    {
+      name: "link.devices.list",
+      method: "GET",
+      pattern: /^\/v1\/link\/devices$/,
+      handler: async (ctx) => ({
+        status: 200,
+        body: { items: await requireLink().listDevices(ctx.ownerId) },
+      }),
+    },
+    {
+      name: "link.devices.update",
+      method: "PATCH",
+      pattern: /^\/v1\/link\/devices\/([^/]+)$/,
+      handler: async (ctx) => {
+        const body = readBody(ctx.request, SMALL_BODY_BYTES, ["syncEnabled"]);
+        if (typeof body["syncEnabled"] !== "boolean") {
+          throw new ApiError(400, "VALIDATION", "Invalid request", false, "INVALID_BODY");
+        }
+        await requireLink().setSyncEnabled(ctx.ownerId, linkIdParam(ctx), body["syncEnabled"]);
+        return { status: 204, body: null };
+      },
+    },
+    {
+      name: "link.devices.delete",
+      method: "DELETE",
+      pattern: /^\/v1\/link\/devices\/([^/]+)$/,
+      handler: async (ctx) => {
+        await requireLink().unlinkLink(ctx.ownerId, linkIdParam(ctx));
+        return { status: 204, body: null };
+      },
+    },
+    {
+      name: "link.summaries.list",
+      method: "GET",
+      pattern: /^\/v1\/link\/summaries$/,
+      handler: async (ctx) => ({
+        status: 200,
+        body: { items: await requireLink().getSummaries(ctx.ownerId) },
+      }),
+    },
+    {
+      name: "link.summary.put",
+      method: "PUT",
+      pattern: /^\/v1\/link\/summary$/,
+      handler: async () => ({ status: 404, body: null }),
+    },
+    {
+      name: "link.self.delete",
+      method: "DELETE",
+      pattern: /^\/v1\/link\/self$/,
+      handler: async () => ({ status: 404, body: null }),
     },
     {
       name: "projects.list",
@@ -278,6 +412,17 @@ export function createProjectApi(options: ProjectApiOptions): ProjectApi {
     },
   ];
 
+  function requireLink(): LinkApiService {
+    if (options.link === undefined) throw new ApiError(404, "NOT_FOUND", "Not found");
+    return options.link;
+  }
+
+  function linkIdParam(ctx: Context): string {
+    const id = ctx.params[0] ?? "";
+    if (!/^[0-9a-f]{32}$/.test(id)) throw new ApiError(404, "NOT_FOUND", "Not found");
+    return id;
+  }
+
   async function withIdempotency(
     ctx: Context,
     run: () => Promise<{ status: number; body: unknown }>,
@@ -369,6 +514,59 @@ export function createProjectApi(options: ProjectApiOptions): ProjectApi {
           },
           extraHeaders,
         );
+      }
+
+      if (url.pathname === "/v1/account/email/verify" && method === "POST") {
+        const body = readBody(request, SMALL_BODY_BYTES, ["token"]);
+        await requireLink().verifyEmail(requireString(body, "token"));
+        options.log?.({ route: routeName, status: 204 });
+        return respond(204, null, extraHeaders);
+      }
+
+      if (url.pathname === "/v1/link/redeem" && method === "POST") {
+        const body = readBody(request, SMALL_BODY_BYTES, ["code"]);
+        const redeemed = await requireLink().redeemLinkCode(
+          requireString(body, "code"),
+          sourceKeyFor(request),
+        );
+        options.log?.({ route: routeName, status: 201 });
+        return respond(
+          201,
+          { deviceToken: redeemed.deviceToken, expiresAt: redeemed.expiresAt },
+          extraHeaders,
+        );
+      }
+
+      if (url.pathname === "/v1/link/summary" && method === "PUT") {
+        const device = await resolveDeviceOrFail(requireLink(), request);
+        const body = readBody(request, SMALL_BODY_BYTES, [
+          "version",
+          "completedMissions",
+          "practicedConcepts",
+          "decisions",
+          "minutesByDay",
+          "ageBand",
+          "dailyLimitMinutes",
+        ]);
+        const stored = await requireLink().putSummary(device.linkId, body);
+        options.log?.({ route: routeName, status: 200 });
+        return respond(200, { deviceToken: device.deviceToken, stored }, extraHeaders);
+      }
+
+      if (url.pathname === "/v1/link/self" && method === "DELETE") {
+        const token = readBearer(request);
+        if (token === undefined)
+          throw new ApiError(401, "UNAUTHENTICATED", "Authentication required");
+        try {
+          await requireLink().unlinkDevice(token);
+        } catch (error) {
+          if (error instanceof LinkError && error.code === "INVALID_OR_EXPIRED") {
+            throw new ApiError(401, "UNAUTHENTICATED", "Authentication required");
+          }
+          throw error;
+        }
+        options.log?.({ route: routeName, status: 204 });
+        return respond(204, null, extraHeaders);
       }
 
       const token = readSessionCookie(request.headers["cookie"]);
@@ -480,6 +678,36 @@ function assertCsrf(request: ApiRequest, allowedOrigins: ReadonlySet<string>): v
   }
 }
 
+function readBearer(request: ApiRequest): string | undefined {
+  const header = request.headers["authorization"];
+  if (header === undefined) return undefined;
+  const space = header.indexOf(" ");
+  if (space < 0 || header.slice(0, space).toLowerCase() !== DEVICE_AUTH_SCHEME.toLowerCase()) {
+    return undefined;
+  }
+  const value = header.slice(space + 1).trim();
+  return value === "" || value.length > 256 ? undefined : value;
+}
+
+async function resolveDeviceOrFail(link: LinkApiService, request: ApiRequest) {
+  const token = readBearer(request);
+  if (token === undefined) throw new ApiError(401, "UNAUTHENTICATED", "Authentication required");
+  try {
+    return await link.resolveDevice(token);
+  } catch (error) {
+    if (error instanceof LinkError && error.code === "INVALID_OR_EXPIRED") {
+      throw new ApiError(401, "UNAUTHENTICATED", "Authentication required");
+    }
+    throw error;
+  }
+}
+
+/** Opaque, hashed caller identity for rate limits. The address itself is never kept. */
+function sourceKeyFor(request: ApiRequest): string {
+  const address = request.headers[CLIENT_ADDRESS_HEADER]?.trim().slice(0, 64) || "unknown";
+  return sha256(`link-source:${address}`);
+}
+
 function readSessionCookie(header: string | undefined): string | undefined {
   if (header === undefined) {
     return undefined;
@@ -527,6 +755,28 @@ async function toApiError(
         return new ApiError(400, "VALIDATION", error.message, false, error.code);
       default:
         return new ApiError(503, "TRANSIENT", "Temporarily unavailable", true);
+    }
+  }
+  if (error instanceof LinkError) {
+    switch (error.code) {
+      case "INVALID_EMAIL":
+        return new ApiError(400, "VALIDATION", "Invalid email", false, "INVALID_EMAIL");
+      case "EMAIL_NOT_VERIFIED":
+        return new ApiError(
+          403,
+          "VALIDATION",
+          "Verify your email first",
+          false,
+          "EMAIL_NOT_VERIFIED",
+        );
+      case "INVALID_OR_EXPIRED":
+        return new ApiError(400, "VALIDATION", "Invalid or expired", false, "INVALID_OR_EXPIRED");
+      case "INVALID_SUMMARY":
+        return new ApiError(400, "VALIDATION", "Invalid summary", false, "INVALID_SUMMARY");
+      case "RATE_LIMITED":
+        return new ApiError(429, "RATE_LIMITED", "Too many attempts", true);
+      case "NOT_FOUND":
+        return notFound();
     }
   }
   if (error instanceof PlatformContractError && routeName.startsWith("auth.")) {

@@ -5,6 +5,12 @@ import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
 import { AuthService, SqlAccountRepository, SqlSessionRepository } from "@agorix/auth-service";
 import type { StoredProject } from "@agorix/persistence";
+import {
+  LinkService,
+  SqlLinkRepository,
+  type Mailer,
+  type MailMessage,
+} from "@agorix/link-service";
 import { SqlProjectRepository } from "@agorix/project-repository";
 import { openSQLiteStore } from "./sqlite.js";
 
@@ -60,6 +66,7 @@ describe("SQLite production store", () => {
     expect(store.appliedMigrations()).toEqual([
       "001_create_agorix_projects",
       "001_create_auth_accounts_and_sessions",
+      "001_create_link_service",
     ]);
     await store.close();
 
@@ -154,6 +161,118 @@ describe("SQLite production store", () => {
     expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
     const rejected = results.find((result) => result.status === "rejected");
     expect(rejected).toMatchObject({ reason: { code: "USERNAME_TAKEN" } });
+    await store.close();
+  });
+
+  it("runs the adult link flow on SQLite and stores only hashes (issues #505 to #508)", async () => {
+    const { db } = paths();
+    const store = openSQLiteStore(db);
+    const auth = new AuthService({
+      accounts: new SqlAccountRepository({ executor: store, dialect: "sqlite" }),
+      sessions: new SqlSessionRepository({ executor: store, dialect: "sqlite" }),
+    });
+    const { account } = await auth.register({ username: "Ada", password: PASSWORD });
+    const other = await auth.register({ username: "Bob", password: PASSWORD });
+    let now = Date.parse("2026-10-23T12:00:00.000Z");
+    const sent: MailMessage[] = [];
+    const mailer: Mailer = { send: async (message) => void sent.push(message) };
+    const link = new LinkService({
+      repository: new SqlLinkRepository({ executor: store, dialect: "sqlite" }),
+      secret: "k".repeat(40),
+      mailer,
+      clock: { now: () => new Date(now) },
+    });
+    const verifyToken = () => {
+      const last = [...sent].reverse().find((m) => m.kind === "verify-email");
+      if (last?.kind !== "verify-email") throw new Error("no mail");
+      return last.token;
+    };
+
+    await link.addEmail(account.accountId, "Ada@Example.com");
+    await expect(link.createLinkCode(account.accountId)).rejects.toMatchObject({
+      code: "EMAIL_NOT_VERIFIED",
+    });
+    const mailToken = verifyToken();
+    await link.verifyEmail(mailToken);
+    await expect(link.verifyEmail(mailToken)).rejects.toMatchObject({ code: "INVALID_OR_EXPIRED" });
+    // A second adult cannot take the address; the answer looks the same.
+    await link.addEmail(other.account.accountId, "ada@example.com");
+    expect(await link.emailStatus(other.account.accountId)).toEqual({
+      present: false,
+      verified: false,
+    });
+
+    const { code } = await link.createLinkCode(account.accountId);
+    const linked = await link.redeemLinkCode(code, "src");
+    await expect(link.redeemLinkCode(code, "src")).rejects.toMatchObject({
+      code: "INVALID_OR_EXPIRED",
+    });
+    const resolved = await link.resolveDevice(linked.deviceToken);
+    now += 61_000;
+    await link.resolveDevice(resolved.deviceToken);
+    await link.putSummary(linked.linkId, {
+      version: 1,
+      completedMissions: 1,
+      practicedConcepts: [1, 0, 0],
+      decisions: { used: 0, changed: 0, rejected: 0 },
+      minutesByDay: [{ day: "2026-10-23", minutes: 5 }],
+      ageBand: "6-8",
+      dailyLimitMinutes: 30,
+    });
+    expect(await link.getSummaries(account.accountId)).toHaveLength(1);
+
+    // Only hashes reach the disk: no raw code, device token or mail token appears in any table.
+    const raw = new DatabaseSync(db, { readOnly: true });
+    const dump = JSON.stringify(
+      [
+        "agorix_adult_emails",
+        "agorix_email_verifications",
+        "agorix_link_codes",
+        "agorix_device_links",
+        "agorix_device_tokens",
+        "agorix_link_summaries",
+      ].map((table) => raw.prepare(`select * from ${table}`).all()),
+    );
+    raw.close();
+    for (const secret of [code, linked.deviceToken, resolved.deviceToken, mailToken]) {
+      expect(dump).not.toContain(secret);
+    }
+
+    // Unlink, then retention: day 29 readable, day 31 gone, rerun is a no-op.
+    await link.unlinkLink(account.accountId, linked.linkId);
+    now += 29 * 24 * 60 * 60 * 1000;
+    expect(await link.purgeExpired()).toEqual({ purgedLinks: 0 });
+    expect(await link.getSummaries(account.accountId)).toHaveLength(1);
+    now += 2 * 24 * 60 * 60 * 1000;
+    expect(await link.purgeExpired()).toEqual({ purgedLinks: 1 });
+    expect(await link.purgeExpired()).toEqual({ purgedLinks: 0 });
+    expect(await link.getSummaries(account.accountId)).toEqual([]);
+
+    // Account deletion removes every row this service holds, at once.
+    const again = await link.createLinkCode(account.accountId);
+    const second = await link.redeemLinkCode(again.code, "src");
+    await link.putSummary(second.linkId, {
+      version: 1,
+      completedMissions: 0,
+      practicedConcepts: [0, 0, 0],
+      decisions: { used: 0, changed: 0, rejected: 0 },
+      minutesByDay: [],
+      ageBand: "9-12",
+      dailyLimitMinutes: 45,
+    });
+    await link.deleteAccountData(account.accountId);
+    const check = new DatabaseSync(db, { readOnly: true });
+    for (const table of [
+      "agorix_adult_emails",
+      "agorix_email_verifications",
+      "agorix_link_codes",
+      "agorix_device_links",
+      "agorix_device_tokens",
+      "agorix_link_summaries",
+    ]) {
+      expect(check.prepare(`select count(*) as n from ${table}`).get()?.["n"], table).toBe(0);
+    }
+    check.close();
     await store.close();
   });
 });

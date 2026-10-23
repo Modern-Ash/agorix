@@ -42,6 +42,9 @@ importers:
       '@agorix/auth-service':
         specifier: workspace:*
         version: link:../../packages/auth-service
+      '@agorix/link-service':
+        specifier: workspace:*
+        version: link:../../packages/link-service
       '@agorix/persistence':
         specifier: workspace:*
         version: link:../../packages/persistence
@@ -60,6 +63,9 @@ importers:
       '@agorix/auth-service':
         specifier: workspace:*
         version: link:../../packages/auth-service
+      '@agorix/link-service':
+        specifier: workspace:*
+        version: link:../../packages/link-service
       '@agorix/persistence':
         specifier: workspace:*
         version: link:../../packages/persistence
@@ -381,6 +387,8 @@ importers:
       '@agorix/runtime':
         specifier: workspace:*
         version: link:../runtime
+
+  packages/link-service: {}
 
   packages/ori-agent:
     dependencies:

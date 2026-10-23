@@ -44,3 +44,36 @@ storage can use the exported SQL repositories or provide compatible `AccountRepo
 `SessionRepository` implementations with durable unique constraints, encrypted-at-rest storage,
 audit logging and retention/deletion behavior reviewed with privacy and product owners before child
 accounts are enabled.
+
+## Adult email and child device link (`@agorix/link-service`)
+
+Design: `docs/superpowers/specs/2026-10-23-kids-adult-link-design.md` (epic #504). This package sits
+beside `auth-service`; it does not change how usernames, passwords or sessions work.
+
+- **Adult email.** One address per account, normalised (trim, NFKC, lower-case; dots and plus tags stay
+  distinct) and unique. Verification uses a 256-bit one-time token stored as SHA-256, valid 24 hours,
+  single use, and bound to the address it was issued for (changing the address un-verifies it and old
+  tokens stop working). Resends: 60 s cooldown and 5 per hour. An address that already belongs to
+  someone else gets the same HTTP answer as a fresh one and the owner receives an "email in use" message
+  instead, so the API does not reveal which addresses exist. The address is never returned to a device
+  token, never logged and never sent to Ori or any provider; the API only reports `{present, verified}`.
+- **Link code.** 6 digits from a CSPRNG (no modulo bias), valid 10 minutes, single use, at most 3 live
+  codes per account (the oldest is revoked), stored only as an HMAC-SHA256 keyed with
+  `AGORIX_LINK_SECRET`. A verified email is required to create one and is re-checked on redemption.
+  Because the code is the only thing the child types, a failed guess cannot be attributed to one code,
+  so the brute-force limits are on **failures**: 10 per source and 200 per whole server in a 10 minute
+  window (then `429`); successful redemptions never count. These counters live in process memory and
+  reset on restart; with 6 digits and at most 3 live codes per adult the chance that a guess hits is
+  tiny, and the global ceiling bounds a distributed attacker. The source is `X-Real-IP` set by nginx
+  (hashed, never stored); if it is absent every caller shares one bucket.
+- **Device token.** 256-bit random, stored as SHA-256, scoped to one link and unable to call any adult
+  route (bearer only; the adult session cookie is not accepted on device routes and vice versa).
+  Rotated on every use with a 60 second grace so a lost response does not strand the device; idle TTL
+  60 days, absolute TTL 180 days. Revoked, expired, unknown and malformed tokens fail identically
+  (`401`). The link record keeps only an id, creation time, last-seen **day** and the sync flag; no IP,
+  user agent or fingerprint.
+- **Summaries.** Strict schema (counts, 14 day minutes, age band, daily limit); anything else, any extra
+  key and any body over 8 KB is rejected. Retention: 30 days after unlink (a scheduled purge, every 6
+  hours), immediate on account deletion.
+- **Operations.** The feature is off unless `AGORIX_LINK_SECRET` (at least 32 characters) is set. Until
+  a mail provider is wired in (follow-up), verification messages are dropped by the default `NoopMailer`.
