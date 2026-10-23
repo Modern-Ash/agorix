@@ -6,6 +6,8 @@ import { speak } from "../speak.js";
 import type { KidsText } from "../useKidsText.js";
 import { kidsTable } from "../useKidsText.js";
 import { KIDS_WORLD_STYLES } from "../worlds.js";
+import { useKidsFlag } from "../kidsFlags.js";
+import { KidsBackdrop, KidsSprite, backdropImage, builtinWorld, emojiSlot } from "./KidsArt.js";
 
 interface Props {
   readonly t: KidsText;
@@ -52,6 +54,7 @@ export function MapScreen({
   onAdvancedScore,
 }: Props) {
   const style = KIDS_WORLD_STYLES[world];
+  const image = backdropImage(builtinWorld(world), useKidsFlag("customImages"));
   const names = kidsTable(locale, "worlds");
   const concepts = conceptStates(progress);
   const vars = {
@@ -67,9 +70,7 @@ export function MapScreen({
         {t("map")}
       </h1>
       <header className="kids-map-top">
-        <div className="kids-avatar-badge" aria-hidden="true">
-          {avatar}
-        </div>
+        <KidsSprite slot={emojiSlot(avatar)} className="kids-avatar-badge" />
         <div className="kids-stars" aria-label={`★ ${progress.stars}`}>
           <span aria-hidden="true">★</span>
           {progress.stars}
@@ -114,16 +115,23 @@ export function MapScreen({
               onClick={() => onWorld(id)}
               style={{ ["--tab-bg" as string]: tab.bg, ["--tab-ink" as string]: tab.ink }}
             >
-              <span className="kids-world-glyph" aria-hidden="true">
+              <KidsBackdrop
+                world={builtinWorld(id)}
+                fallbackBackground="transparent"
+                className="kids-world-glyph"
+              >
                 {tab.character}
-              </span>
+              </KidsBackdrop>
               <span className="kids-world-name">{names[id]}</span>
             </button>
           );
         })}
       </div>
 
-      <div className="kids-path">
+      <div
+        className="kids-path"
+        style={image ? { backgroundImage: `url("${image}")`, backgroundSize: "cover" } : undefined}
+      >
         <h2 className="kids-world-title">{names[world]}</h2>
         {([0, 1, 2] as const).map((index) => {
           const state = missionState(progress, world, index);
@@ -143,7 +151,13 @@ export function MapScreen({
               >
                 <span className="kids-node-disc">
                   <span aria-hidden="true">
-                    {locked ? "🔒" : index === 2 ? style.goalGlyph : avatar}
+                    {locked ? (
+                      "🔒"
+                    ) : index === 2 ? (
+                      style.goalGlyph
+                    ) : (
+                      <KidsSprite slot={emojiSlot(avatar)} />
+                    )}
                   </span>
                   {progress.done[`${world}:${index}`] === true ? (
                     <span className="kids-node-star" aria-hidden="true">

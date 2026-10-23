@@ -10,6 +10,12 @@ import {
   type KidsImageSlot,
 } from "../kidsImages.js";
 import { kidsTable, type KidsText } from "../useKidsText.js";
+import {
+  addKidsCustom,
+  deleteKidsCustom,
+  loadKidsCustom,
+  type KidsCustomKind,
+} from "../kidsCustom.js";
 
 interface Props {
   readonly locale: Locale;
@@ -18,6 +24,7 @@ interface Props {
 
 export function KidsImagesPanel({ locale, t }: Props) {
   const [images, setImages] = useState(loadKidsImages);
+  const [custom, setCustom] = useState(loadKidsCustom);
   const [message, setMessage] = useState("");
   const worlds = kidsTable(locale, "worlds");
   const used = Math.ceil(imageStorageBytes(images) / 1024);
@@ -83,6 +90,50 @@ export function KidsImagesPanel({ locale, t }: Props) {
     setMessage(t("imageRemoved"));
   }
 
+  async function addCustom(kind: KidsCustomKind, event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await processKidsImage(file);
+      const result = addKidsCustom(kind, dataUrl);
+      if (!result.ok) {
+        setMessage(
+          t(
+            result.reason === "limit"
+              ? "customLimit"
+              : result.reason === "invalidImage"
+                ? "imageErrorType"
+                : "imageErrorQuota",
+          ),
+        );
+        return;
+      }
+      setCustom(loadKidsCustom());
+      setMessage(t("imageSaved"));
+    } catch (error) {
+      const code = error instanceof KidsImageError ? error.code : "decodeFailed";
+      setMessage(
+        t(
+          code === "tooLarge"
+            ? "imageErrorSize"
+            : code === "unsupportedType"
+              ? "imageErrorType"
+              : code === "outputTooLarge"
+                ? "imageErrorOutput"
+                : "imageErrorDecode",
+        ),
+      );
+    } finally {
+      event.target.value = "";
+    }
+  }
+
+  function removeCustom(id: string) {
+    if (!deleteKidsCustom(id)) return setMessage(t("imageErrorQuota"));
+    setCustom(loadKidsCustom());
+    setMessage(t("imageRemoved"));
+  }
+
   return (
     <section className="kids-adult-card kids-images-panel" aria-labelledby="kids-images-title">
       <h2 id="kids-images-title">{t("gameImages")}</h2>
@@ -131,6 +182,41 @@ export function KidsImagesPanel({ locale, t }: Props) {
       >
         {t("removeAllImages")}
       </button>
+      <h3>
+        {t("customExplorer")} / {t("customBackdrop")}
+      </h3>
+      <p className="kids-note">{t("customLimit")}</p>
+      <div className="kids-create-choices">
+        {(["explorer", "backdrop"] as const).map((kind) => (
+          <label className="kids-button kids-image-file" key={kind}>
+            {t(kind === "explorer" ? "addCustomExplorer" : "addCustomBackdrop")}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              aria-label={t(kind === "explorer" ? "addCustomExplorer" : "addCustomBackdrop")}
+              onChange={(event) => void addCustom(kind, event)}
+            />
+          </label>
+        ))}
+      </div>
+      <div className="kids-images-list">
+        {custom.map((item) => (
+          <div className="kids-image-row" key={item.id}>
+            <span
+              className="kids-image-preview"
+              role="img"
+              aria-label={t(item.kind === "explorer" ? "customExplorer" : "customBackdrop")}
+              style={{ backgroundImage: `url("${item.dataUrl}")` }}
+            />
+            <strong>
+              {t(item.kind === "explorer" ? "customExplorer" : "customBackdrop")} {item.id.slice(7)}
+            </strong>
+            <button type="button" className="kids-button" onClick={() => removeCustom(item.id)}>
+              {t("removeImage")} {item.id.slice(7)}
+            </button>
+          </div>
+        ))}
+      </div>
       <p role="status" className="kids-note">
         {message}
       </p>

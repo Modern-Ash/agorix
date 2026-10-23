@@ -28,7 +28,7 @@ import { EditorScreen } from "./screens/EditorScreen.js";
 import { CreateScreen } from "./screens/CreateScreen.js";
 import { ProjectsScreen } from "./screens/ProjectsScreen.js";
 import { ReflectScreen } from "./screens/ReflectScreen.js";
-import { createFreeProject } from "./kidsProjects.js";
+import { createFreeProjectRef } from "./kidsProjects.js";
 import {
   addActiveSeconds,
   loadAdultSettings,
@@ -244,13 +244,14 @@ export function KidsApp({
             world={state.world}
             onAvatar={chooseAvatar}
             onWorld={(world) => dispatch({ type: "pickWorld", world })}
-            onStart={() => {
-              const project = createFreeProject(state.world, state.avatar);
+            onManageCustom={() => dispatch({ type: "go", screen: "parents" })}
+            onStart={(world, avatar) => {
+              const project = createFreeProjectRef(world, avatar);
               dispatch({
                 type: "openFreeProject",
                 projectId: project.id,
-                world: project.world,
-                avatar: project.avatar,
+                world: world.kind === "builtin" ? world.value : "space",
+                avatar: avatar.kind === "emoji" ? avatar.value : "🦊",
               });
             }}
           />
@@ -273,6 +274,7 @@ export function KidsApp({
             t={t}
             avatar={state.avatar}
             world={state.world}
+            freeProjectId={state.freeProjectId}
             prediction={reflection.prediction}
             outcome={reflection.outcome}
             onKeepPlaying={() => dispatch({ type: "go", screen: "editor" })}

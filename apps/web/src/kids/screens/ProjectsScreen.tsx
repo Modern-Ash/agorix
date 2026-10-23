@@ -7,6 +7,7 @@ import {
   exportKidsProject,
   importKidsProject,
   listFreeProjects,
+  listFreeProjectRefs,
   restoreFreeProject,
   type RemovedFreeProject,
 } from "../kidsProjects.js";
@@ -14,6 +15,7 @@ import { KIDS_WORLDS, type KidsAvatar, type KidsWorld } from "../kidsState.js";
 import { kidsTable, type KidsText } from "../useKidsText.js";
 import { KIDS_WORLD_STYLES } from "../worlds.js";
 import { DeleteProjectDialog } from "./DeleteProjectDialog.js";
+import { KidsBackdrop, KidsSprite, builtinWorld, emojiSlot } from "./KidsArt.js";
 
 interface Props {
   readonly t: KidsText;
@@ -57,6 +59,7 @@ export function ProjectsScreen({ t, locale, avatar, world, onCreate, onMission, 
     setUndo(null);
   }
   const worlds = kidsTable(locale, "worlds");
+  const refs = listFreeProjectRefs();
   const missions = KIDS_WORLDS.flatMap((candidate) =>
     KIDS_MISSION_IDS.map((id, index) => ({
       id: `kids.${candidate}.${id}`,
@@ -134,14 +137,10 @@ export function ProjectsScreen({ t, locale, avatar, world, onCreate, onMission, 
       <div className="kids-project-grid">
         {missions.map((project) => (
           <article className="kids-project-card" key={project.id}>
-            <div
-              className="kids-project-thumb"
-              style={{ background: KIDS_WORLD_STYLES[project.world].bg }}
-              aria-hidden="true"
-            >
+            <KidsBackdrop world={builtinWorld(project.world)} className="kids-project-thumb">
               {KIDS_WORLD_STYLES[project.world].character} →{" "}
               {KIDS_WORLD_STYLES[project.world].goalGlyph}
-            </div>
+            </KidsBackdrop>
             <h2>
               {worlds[project.world]} ·{" "}
               {getKidsMission(KIDS_MISSION_IDS[project.index], locale).title}
@@ -167,13 +166,24 @@ export function ProjectsScreen({ t, locale, avatar, world, onCreate, onMission, 
         ))}
         {free.map((project) => (
           <article className="kids-project-card" key={project.id}>
-            <div
+            <KidsBackdrop
+              world={
+                refs.find((entry) => entry.id === project.id)?.world ?? builtinWorld(project.world)
+              }
               className="kids-project-thumb"
-              style={{ background: KIDS_WORLD_STYLES[project.world].bg }}
-              aria-hidden="true"
             >
-              {project.avatar} → {KIDS_WORLD_STYLES[project.world].goalGlyph}
-            </div>
+              <KidsSprite
+                slot={
+                  refs.find((entry) => entry.id === project.id)?.avatar ?? emojiSlot(project.avatar)
+                }
+                label={
+                  refs.find((entry) => entry.id === project.id)?.avatar.kind === "custom"
+                    ? t("customExplorer")
+                    : undefined
+                }
+              />{" "}
+              → {KIDS_WORLD_STYLES[project.world].goalGlyph}
+            </KidsBackdrop>
             <h2>
               {worlds[project.world]} · {project.id.replace("free-", "#")}
             </h2>

@@ -32,7 +32,7 @@ export function imageSlot(value: unknown): value is KidsImageSlot {
   return typeof value === "string" && (KIDS_IMAGE_SLOTS as readonly string[]).includes(value);
 }
 
-function validDataUrl(value: unknown): value is string {
+export function validKidsImageDataUrl(value: unknown): value is string {
   if (typeof value !== "string") return false;
   const match = /^data:image\/(?:webp|png);base64,([A-Za-z0-9+/]+={0,2})$/.exec(value);
   return match !== null && Math.ceil(match[1]!.length * 0.75) < IMAGE_LIMIT;
@@ -53,7 +53,7 @@ export function loadKidsImages(
     const images: KidsImages = {};
     for (const slot of KIDS_IMAGE_SLOTS) {
       const candidate = entries[slot];
-      if (!validDataUrl(candidate)) continue;
+      if (!validKidsImageDataUrl(candidate)) continue;
       const next = { ...images, [slot]: candidate };
       if (imageStorageBytes(next) <= TOTAL_LIMIT) Object.assign(images, next);
     }
@@ -70,7 +70,8 @@ export function updateKidsImage(
   storage: ImageStorage | undefined = browserStorage(),
 ): KidsImageSaveResult {
   if (!imageSlot(slot)) return { ok: false, reason: "invalidSlot" };
-  if (dataUrl !== null && !validDataUrl(dataUrl)) return { ok: false, reason: "invalidImage" };
+  if (dataUrl !== null && !validKidsImageDataUrl(dataUrl))
+    return { ok: false, reason: "invalidImage" };
   const next: KidsImages = { ...loadKidsImages(storage) };
   if (dataUrl === null) delete next[slot];
   else next[slot] = dataUrl;
