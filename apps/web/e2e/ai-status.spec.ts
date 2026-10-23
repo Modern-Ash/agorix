@@ -53,3 +53,53 @@ test("the four-step loop follows the learner and secondary help is folded away",
   await page.getByText("More help").click();
   await expect(page.getByRole("button", { name: "Get hint" })).toBeVisible();
 });
+
+test("active AI returns a reviewable hint through the same-origin server", async ({ page }) => {
+  await page.route("**/api/tutor/health", (route) =>
+    route.fulfill({ json: { configured: true, available: true } }),
+  );
+  let postedRequest: unknown;
+  await page.route("**/api/tutor/respond", async (route) => {
+    postedRequest = route.request().postDataJSON();
+    await route.fulfill({
+      json: {
+        source: "runtime",
+        response: {
+          schema: "agorix/tutor-response/v1",
+          hintLevel: 1,
+          message: "Compare the move with the distance to the goal.",
+          nodeIds: [],
+          concepts: ["movement"],
+        },
+      },
+    });
+  });
+  await openCoach(page);
+  await page.getByText("More help").click();
+  await page.getByRole("button", { name: "Get hint" }).click();
+  await expect(
+    page.getByText("Compare the move with the distance to the goal.").first(),
+  ).toBeVisible();
+  await expect(
+    page.getByText("AI suggestion. Check it by running your program.").first(),
+  ).toBeVisible();
+  expect(postedRequest).toMatchObject({
+    schema: "agorix/tutor-request/v1",
+    mission: { id: expect.any(String) },
+    program: { scripts: expect.any(Array) },
+    runtime: { observations: expect.any(Array) },
+  });
+});
+
+test("a failed AI endpoint falls back to a local hint", async ({ page }) => {
+  await page.route("**/api/tutor/health", (route) =>
+    route.fulfill({ json: { configured: true, available: true } }),
+  );
+  await page.route("**/api/tutor/respond", (route) => route.abort());
+  await openCoach(page);
+  await page.getByText("More help").click();
+  await page.getByRole("button", { name: "Get hint" }).click();
+  await expect(
+    page.getByText("Local hint. Check it by running your program.").first(),
+  ).toBeVisible();
+});
