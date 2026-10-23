@@ -1,11 +1,19 @@
-import { useState, type ChangeEvent } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import { KIDS_MISSION_IDS, getKidsMission } from "@agorix/curriculum";
 import { ProjectStore, sanitizeAgorixFilename } from "@agorix/persistence";
 import type { Locale } from "../../i18n.js";
-import { exportKidsProject, importKidsProject, listFreeProjects } from "../kidsProjects.js";
+import {
+  deleteFreeProject,
+  exportKidsProject,
+  importKidsProject,
+  listFreeProjects,
+  restoreFreeProject,
+  type RemovedFreeProject,
+} from "../kidsProjects.js";
 import { KIDS_WORLDS, type KidsAvatar, type KidsWorld } from "../kidsState.js";
 import { kidsTable, type KidsText } from "../useKidsText.js";
 import { KIDS_WORLD_STYLES } from "../worlds.js";
+import { DeleteProjectDialog } from "./DeleteProjectDialog.js";
 
 interface Props {
   readonly t: KidsText;
@@ -21,6 +29,33 @@ export function ProjectsScreen({ t, locale, avatar, world, onCreate, onMission, 
   const [store] = useState(() => new ProjectStore());
   const [free, setFree] = useState(() => listFreeProjects());
   const [message, setMessage] = useState("");
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [undo, setUndo] = useState<RemovedFreeProject | null>(null);
+
+  useEffect(() => {
+    if (!undo) return;
+    const id = window.setTimeout(() => setUndo(null), 10_000);
+    return () => window.clearTimeout(id);
+  }, [undo]);
+
+  function confirmDelete() {
+    const id = deleting;
+    setDeleting(null);
+    if (!id) return;
+    const removed = deleteFreeProject(id, store);
+    setFree(listFreeProjects());
+    if (removed) {
+      setUndo(removed);
+      setMessage("");
+    } else {
+      setMessage(locale === "es" ? "No se pudo borrar." : "Could not delete.");
+    }
+  }
+
+  function undoDelete() {
+    if (undo && restoreFreeProject(undo, store)) setFree(listFreeProjects());
+    setUndo(null);
+  }
   const worlds = kidsTable(locale, "worlds");
   const missions = KIDS_WORLDS.flatMap((candidate) =>
     KIDS_MISSION_IDS.map((id, index) => ({
@@ -79,8 +114,23 @@ export function ProjectsScreen({ t, locale, avatar, world, onCreate, onMission, 
         />
       </label>
       <p role="status" className="kids-note">
-        {message}
+        {undo ? (locale === "es" ? "Proyecto borrado." : "Project deleted.") : message}
+        {undo ? (
+          <>
+            {" "}
+            <button type="button" className="kids-button" onClick={undoDelete}>
+              {locale === "es" ? "Deshacer" : "Undo"}
+            </button>
+          </>
+        ) : null}
       </p>
+      {deleting ? (
+        <DeleteProjectDialog
+          locale={locale}
+          onConfirm={confirmDelete}
+          onCancel={() => setDeleting(null)}
+        />
+      ) : null}
       <div className="kids-project-grid">
         {missions.map((project) => (
           <article className="kids-project-card" key={project.id}>
@@ -143,6 +193,9 @@ export function ProjectsScreen({ t, locale, avatar, world, onCreate, onMission, 
                 onClick={() => download(project.id, project.id)}
               >
                 {locale === "es" ? "Exportar" : "Export"}
+              </button>
+              <button type="button" className="kids-button" onClick={() => setDeleting(project.id)}>
+                {locale === "es" ? "Borrar" : "Delete"}
               </button>
             </div>
           </article>
