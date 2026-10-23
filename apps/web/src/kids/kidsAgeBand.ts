@@ -42,3 +42,8 @@ export function isAgeBand(value: unknown): value is AgeBand {
 export function bandProfile(band: AgeBand): BandProfile {
   return PROFILES[band];
 }
+
+/** The extra 6–8 languages are one tap away; the Java projection is installed locally. */
+export function codeTabsForBand(band: AgeBand, showMore: boolean): readonly CodeTab[] {
+  return band === "6-8" && showMore ? PROFILES["13+"].codeTabs : PROFILES[band].codeTabs;
+}
