@@ -52,6 +52,7 @@ import { VerifyLanding } from "./link/VerifyLanding.js";
 import { useLinkSync } from "./link/useLinkSync.js";
 import { bandProfile } from "./kidsAgeBand.js";
 import { useKidsText, type KidsText } from "./useKidsText.js";
+import { stopSpeaking } from "./speak.js";
 
 const NAV: readonly {
   readonly screen: KidsScreen;
@@ -93,6 +94,19 @@ export function KidsApp({
   useEffect(() => {
     document.documentElement.lang = state.locale;
   }, [state.locale]);
+
+  useEffect(() => {
+    stopSpeaking();
+    return stopSpeaking;
+  }, [
+    state.screen,
+    state.onboardStep,
+    state.locale,
+    state.world,
+    state.missionIndex,
+    state.freeProjectId,
+    adultSettings.readAloud,
+  ]);
 
   useEffect(() => {
     let activeSince =
@@ -218,6 +232,7 @@ export function KidsApp({
             missionIndex={state.missionIndex}
             freeProjectId={state.freeProjectId}
             oriSuggestions={adultSettings.oriSuggestions}
+            readAloud={adultSettings.readAloud}
             ageBand={ageBandsEnabled ? adultSettings.ageBand : undefined}
             tutorial={
               tutorialVisible({
@@ -242,16 +257,19 @@ export function KidsApp({
         ) : state.screen === "advanced" ? (
           <AdvancedSceneScreen
             locale={state.locale}
+            readAloud={adultSettings.readAloud}
             onBack={() => dispatch({ type: "go", screen: "map" })}
           />
         ) : state.screen === "advancedReact" ? (
           <AdvancedReactScreen
             locale={state.locale}
+            readAloud={adultSettings.readAloud}
             onBack={() => dispatch({ type: "go", screen: "map" })}
           />
         ) : state.screen === "advancedScore" ? (
           <AdvancedScoreScreen
             locale={state.locale}
+            readAloud={adultSettings.readAloud}
             onBack={() => dispatch({ type: "go", screen: "map" })}
           />
         ) : state.screen === "create" ? (
@@ -260,6 +278,7 @@ export function KidsApp({
             locale={state.locale}
             avatar={state.avatar}
             world={state.world}
+            readAloud={adultSettings.readAloud}
             onAvatar={chooseAvatar}
             onWorld={(world) => dispatch({ type: "pickWorld", world })}
             onManageCustom={() => dispatch({ type: "go", screen: "parents" })}
@@ -279,6 +298,7 @@ export function KidsApp({
             locale={state.locale}
             avatar={state.avatar}
             world={state.world}
+            readAloud={adultSettings.readAloud}
             onCreate={() => dispatch({ type: "go", screen: "create" })}
             onMission={(world, missionIndex) =>
               dispatch({ type: "openSavedMission", world, missionIndex })
@@ -295,6 +315,8 @@ export function KidsApp({
             freeProjectId={state.freeProjectId}
             prediction={reflection.prediction}
             outcome={reflection.outcome}
+            locale={state.locale}
+            readAloud={adultSettings.readAloud}
             onKeepPlaying={() => dispatch({ type: "go", screen: "editor" })}
             onNext={() => dispatch({ type: "go", screen: "map" })}
           />

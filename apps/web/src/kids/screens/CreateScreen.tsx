@@ -7,12 +7,14 @@ import { KidsBackdrop, KidsSprite, builtinWorld, emojiSlot } from "./KidsArt.js"
 import { kidsTable, type KidsText } from "../useKidsText.js";
 import { KIDS_WORLD_STYLES } from "../worlds.js";
 import type { Locale } from "../../i18n.js";
+import { ListenButton } from "./ListenButton.js";
 
 interface Props {
   readonly t: KidsText;
   readonly locale: Locale;
   readonly avatar: KidsAvatar;
   readonly world: KidsWorld;
+  readonly readAloud?: boolean;
   readonly onAvatar: (avatar: KidsAvatar) => void;
   readonly onWorld: (world: KidsWorld) => void;
   readonly onStart: (world: KidsWorldRef, avatar: KidsAvatarRef) => void;
@@ -24,6 +26,7 @@ export function CreateScreen({
   locale,
   avatar,
   world,
+  readAloud = true,
   onAvatar,
   onWorld,
   onStart,
@@ -37,6 +40,7 @@ export function CreateScreen({
   return (
     <section className="kids-screen kids-create" aria-labelledby="kids-create-title">
       <h1 id="kids-create-title">{t("create")}</h1>
+      <ListenButton t={t} locale={locale} enabled={readAloud} text={t("createNote")} />
       <p className="kids-note">{t("createNote")}</p>
       <h2>{t("createChar")}</h2>
       <div className="kids-create-choices">

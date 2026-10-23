@@ -26,9 +26,12 @@ import {
   scoreStatements,
   type ScoreStatement,
 } from "../kidsAdvancedScoreEditorModel.js";
+import { useKidsText } from "../useKidsText.js";
+import { ListenButton } from "./ListenButton.js";
 
 interface Props {
   readonly locale: Locale;
+  readonly readAloud?: boolean;
   readonly onBack: () => void;
 }
 
@@ -43,7 +46,8 @@ const setTwo: ScoreStatement = {
   value: { type: "numericLiteral", value: 2 },
 };
 
-export function AdvancedScoreScreen({ locale, onBack }: Props) {
+export function AdvancedScoreScreen({ locale, readAloud = true, onBack }: Props) {
+  const t = useKidsText(locale);
   const [store] = useState(() => new ProjectStore());
   const mission = useMemo(() => getKidsAdvancedMission("score", locale), [locale]);
   const id = advancedProjectId("score");
@@ -249,6 +253,12 @@ export function AdvancedScoreScreen({ locale, onBack }: Props) {
           <p className="kids-editor-kicker">{copy.stage}</p>
           <h1 id="kids-score-title">{mission.title}</h1>
         </div>
+        <ListenButton
+          t={t}
+          locale={locale}
+          enabled={readAloud}
+          text={run ? (success ? copy.success : copy.tryAgain) : mission.instruction}
+        />
         <button
           type="button"
           className="kids-button"

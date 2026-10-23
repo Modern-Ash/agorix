@@ -82,6 +82,7 @@ import { dropSlot, nextZoom, type ZoomLevel } from "../kidsEditorInteractions.js
 import { KIDS_SHORTCUTS, kidsShortcut } from "../kidsShortcuts.js";
 import { tutorialStep } from "../kidsTutorial.js";
 import { KidsTutorial } from "./KidsTutorial.js";
+import { ListenButton } from "./ListenButton.js";
 
 type CodeLanguage = "agorix" | "python" | "typescript" | "java";
 type Prediction = "yes" | "no" | "dunno";
@@ -97,6 +98,7 @@ interface Props {
   readonly onComplete: () => void;
   readonly freeProjectId?: string | undefined;
   readonly oriSuggestions?: boolean;
+  readonly readAloud?: boolean;
   readonly ageBand?: AgeBand | undefined;
   /** First-run coach for mission 1; absent when the tutorial is off or already done. */
   readonly tutorial?: { readonly onDone: () => void } | undefined;
@@ -133,6 +135,7 @@ export function EditorScreen({
   onComplete,
   freeProjectId,
   oriSuggestions = true,
+  readAloud = true,
   ageBand,
   tutorial,
   onReflect,
@@ -851,6 +854,29 @@ export function EditorScreen({
     );
   }
 
+  const goalText =
+    freeProjectId && !freeGoal
+      ? t("placeGoal")
+      : freeProjectId && freeGoal
+        ? describeOriGoal(freeGoal, freeGoalCheck, locale)
+        : mission.goal.learnerFacing;
+  const resultText =
+    played && step >= trace.length
+      ? evaluation?.missingTurn
+        ? locale === "es"
+          ? "Llegaste a la meta. Probá incluir un giro."
+          : "You reached the goal. Try adding a turn."
+        : {
+            success: t("success", { g: style.goalGlyph }),
+            wall: t("wall"),
+            passed: t("passed", { g: style.goalGlyph }),
+            short: t("short", {
+              n: Math.abs(goal.cx - final.cx) + Math.abs(goal.cy - final.cy),
+              g: style.goalGlyph,
+            }),
+          }[evaluation?.outcome ?? "short"]
+      : null;
+
   return (
     <section
       ref={editorRef}
@@ -868,6 +894,7 @@ export function EditorScreen({
           </p>
           <h1 id="kids-editor-title">{mission.title}</h1>
         </div>
+        <ListenButton t={t} locale={locale} enabled={readAloud} text={resultText ?? goalText} />
         <button
           type="button"
           className="kids-button"
@@ -891,17 +918,17 @@ export function EditorScreen({
         ) : null}
       </header>
       {tutorial && coach ? (
-        <KidsTutorial t={t} locale={locale} step={coach} onSkip={tutorial.onDone} />
+        <KidsTutorial
+          t={t}
+          locale={locale}
+          step={coach}
+          readAloud={readAloud}
+          onSkip={tutorial.onDone}
+        />
       ) : null}
       <div className="kids-editor-layout">
         <div className="kids-editor-stage-panel">
-          <p className="kids-editor-goal">
-            {freeProjectId && !freeGoal
-              ? t("placeGoal")
-              : freeProjectId && freeGoal
-                ? describeOriGoal(freeGoal, freeGoalCheck, locale)
-                : mission.goal.learnerFacing}
-          </p>
+          <p className="kids-editor-goal">{goalText}</p>
           <KidsBackdrop
             world={worldArt}
             className="kids-world-grid"
@@ -974,20 +1001,8 @@ export function EditorScreen({
             </button>
           </div>
           <p className="kids-run-status" role="status">
-            {played && step >= trace.length
-              ? evaluation?.missingTurn
-                ? locale === "es"
-                  ? "Llegaste a la meta. Probá incluir un giro."
-                  : "You reached the goal. Try adding a turn."
-                : {
-                    success: t("success", { g: style.goalGlyph }),
-                    wall: t("wall"),
-                    passed: t("passed", { g: style.goalGlyph }),
-                    short: t("short", {
-                      n: Math.abs(goal.cx - final.cx) + Math.abs(goal.cy - final.cy),
-                      g: style.goalGlyph,
-                    }),
-                  }[evaluation?.outcome ?? "short"]
+            {resultText
+              ? resultText
               : played
                 ? `${t("step")} ${step} / ${trace.length}`
                 : t("oriIdle")}

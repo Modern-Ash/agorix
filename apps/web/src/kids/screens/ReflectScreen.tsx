@@ -6,9 +6,13 @@ import type { KidsText } from "../useKidsText.js";
 import { KIDS_WORLD_STYLES } from "../worlds.js";
 import { listFreeProjectRefs } from "../kidsProjects.js";
 import { KidsSprite, emojiSlot } from "./KidsArt.js";
+import { ListenButton } from "./ListenButton.js";
+import type { Locale } from "../../i18n.js";
 
 interface Props {
   readonly t: KidsText;
+  readonly locale: Locale;
+  readonly readAloud?: boolean;
   readonly avatar: KidsAvatar;
   readonly world: KidsWorld;
   readonly freeProjectId?: string | undefined;
@@ -20,6 +24,8 @@ interface Props {
 
 export function ReflectScreen({
   t,
+  locale,
+  readAloud = true,
   avatar,
   world,
   freeProjectId,
@@ -54,6 +60,12 @@ export function ReflectScreen({
         ★ {goal}
       </div>
       <h1 id="kids-reflect-title">{t("reflectTitle", { s: avatar, g: goal })}</h1>
+      <ListenButton
+        t={t}
+        locale={locale}
+        enabled={readAloud}
+        text={`${t("reflectTitle", { s: avatar, g: goal })}. ${t("reflectQ", { s: avatar })}`}
+      />
       <p>{t("reflectQ", { s: avatar })}</p>
       <div className="kids-reflect-choices" role="group" aria-label={t("reflectQ", { s: avatar })}>
         {(
