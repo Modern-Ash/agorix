@@ -419,6 +419,8 @@ export interface AuthSqlExecutor {
     sql: string,
     params?: readonly AuthSqlValue[],
   ): Promise<AuthSqlResult<R>>;
+  /** Optional atomic unit for a session-token rotation. */
+  transaction?<T>(work: (executor: AuthSqlExecutor) => Promise<T>): Promise<T>;
 }
 
 export interface AuthSqlResult<R extends AuthSqlRow = AuthSqlRow> {
@@ -497,27 +499,39 @@ export class SqlAccountRepository implements AccountRepository {
   }
 
   async create(record: AccountRecord): Promise<void> {
-    await this.executor.execute(
-      authSqlFor(
-        this.dialect,
-        `insert into agorix_accounts
-          (account_id, normalized_username, alias_original, alias_normalized, status,
-           account_created_at, password_hash, password_salt, password_kdf_json, credential_created_at)
-         values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      ),
-      [
-        record.account.accountId,
-        record.credential.normalizedUsername,
-        record.account.alias.original,
-        record.account.alias.normalized,
-        record.account.status,
-        record.account.createdAt,
-        record.credential.passwordHash,
-        record.credential.passwordSalt,
-        JSON.stringify(record.credential.passwordKdf),
-        record.credential.createdAt,
-      ],
-    );
+    try {
+      await this.executor.execute(
+        authSqlFor(
+          this.dialect,
+          `insert into agorix_accounts
+            (account_id, normalized_username, alias_original, alias_normalized, status,
+             account_created_at, password_hash, password_salt, password_kdf_json, credential_created_at)
+           values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ),
+        [
+          record.account.accountId,
+          record.credential.normalizedUsername,
+          record.account.alias.original,
+          record.account.alias.normalized,
+          record.account.status,
+          record.account.createdAt,
+          record.credential.passwordHash,
+          record.credential.passwordSalt,
+          JSON.stringify(record.credential.passwordKdf),
+          record.credential.createdAt,
+        ],
+      );
+    } catch (error) {
+      const code =
+        typeof error === "object" && error !== null && "code" in error ? error.code : undefined;
+      if (
+        (code === "23505" || code === "SQLITE_CONSTRAINT") &&
+        (await this.findByNormalizedUsername(record.credential.normalizedUsername)) !== undefined
+      ) {
+        throw new AuthPublicError("USERNAME_TAKEN", "Username is already registered");
+      }
+      throw error;
+    }
   }
 
   async updateCredential(accountId: string, credential: PasswordCredentialRecord): Promise<void> {
@@ -583,8 +597,24 @@ export class SqlSessionRepository implements SessionRepository {
     nextRecord: SessionRecord,
     revokedAt: string,
   ): Promise<void> {
-    await this.revoke(previousTokenHash, revokedAt);
-    await this.create(nextRecord);
+    const rotate = async (executor: AuthSqlExecutor) => {
+      await executor.execute(
+        authSqlFor(this.dialect, "update agorix_sessions set revoked_at = ? where token_hash = ?"),
+        [revokedAt, previousTokenHash],
+      );
+      await executor.execute(
+        authSqlFor(
+          this.dialect,
+          `insert into agorix_sessions
+            (token_hash, session_id, account_id, session_created_at, session_expires_at,
+             absolute_expires_at, idle_expires_at, revoked_at)
+           values (?, ?, ?, ?, ?, ?, ?, ?)`,
+        ),
+        sessionParams(nextRecord),
+      );
+    };
+    if (this.executor.transaction) await this.executor.transaction(rotate);
+    else await rotate(this.executor);
   }
 
   async revoke(tokenHash: string, revokedAt: string): Promise<void> {

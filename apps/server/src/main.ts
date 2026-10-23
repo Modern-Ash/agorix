@@ -4,15 +4,17 @@ import {
   AuthService,
   InMemoryAccountRepository,
   InMemorySessionRepository,
+  SqlAccountRepository,
+  SqlSessionRepository,
 } from "@agorix/auth-service";
 import { createProjectApi } from "@agorix/project-api";
-import { InMemoryProjectRepository } from "@agorix/project-repository";
+import { InMemoryProjectRepository, SqlProjectRepository } from "@agorix/project-repository";
 import { createProjectHttpServer } from "./server.js";
+import { openSQLiteStore } from "./sqlite.js";
 
-// #347 will add a durable repository. Explicit opt-in prevents accidentally running
-// a production account service whose data disappears when the process restarts.
-if (process.env["AGORIX_PROJECT_STORAGE"] !== "memory") {
-  throw new Error("Set AGORIX_PROJECT_STORAGE=memory for temporary development use");
+const storage = process.env["AGORIX_PROJECT_STORAGE"];
+if (storage !== "memory" && storage !== "sqlite") {
+  throw new Error("Set AGORIX_PROJECT_STORAGE=sqlite or memory explicitly");
 }
 const origin = process.env["AGORIX_PROJECT_ORIGIN"];
 if (!origin || !/^https:\/\/[^/]+$/.test(origin)) {
@@ -29,13 +31,24 @@ if (port !== undefined && (!Number.isInteger(port) || port < 1 || port > 65_535)
   throw new Error("AGORIX_PROJECT_PORT must be a valid TCP port");
 }
 
-const auth = new AuthService({
-  accounts: new InMemoryAccountRepository(),
-  sessions: new InMemorySessionRepository(),
-});
+const sqlitePath = process.env["AGORIX_PROJECT_DB_PATH"];
+if (storage === "sqlite" && (!sqlitePath || !sqlitePath.startsWith("/"))) {
+  throw new Error("AGORIX_PROJECT_DB_PATH must be an absolute path for SQLite storage");
+}
+const sqlite = storage === "sqlite" ? openSQLiteStore(sqlitePath!) : undefined;
+const accounts = sqlite
+  ? new SqlAccountRepository({ executor: sqlite, dialect: "sqlite" })
+  : new InMemoryAccountRepository();
+const sessions = sqlite
+  ? new SqlSessionRepository({ executor: sqlite, dialect: "sqlite" })
+  : new InMemorySessionRepository();
+const projects = sqlite
+  ? new SqlProjectRepository({ executor: sqlite, dialect: "sqlite" })
+  : new InMemoryProjectRepository();
+const auth = new AuthService({ accounts, sessions });
 const api = createProjectApi({
   auth,
-  projects: new InMemoryProjectRepository(),
+  projects,
   allowedOrigins: [origin],
   secureCookies: true,
 });
@@ -67,6 +80,13 @@ if (socket) {
 for (const signal of ["SIGTERM", "SIGINT"] as const) {
   process.on(signal, () => {
     server.close(() => {
+      void sqlite
+        ?.close()
+        .then(() => finish())
+        .catch(() => process.exit(1));
+      if (!sqlite) finish();
+    });
+    function finish() {
       if (socket) {
         try {
           unlinkSync(socket);
@@ -78,7 +98,7 @@ for (const signal of ["SIGTERM", "SIGINT"] as const) {
         }
       }
       process.exit(0);
-    });
+    }
     setTimeout(() => process.exit(1), 5_000).unref();
   });
 }

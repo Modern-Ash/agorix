@@ -26,3 +26,27 @@ services:
         source: ${AGORIX_PROJECT_SOCKET_DIR:?set AGORIX_PROJECT_SOCKET_DIR to the project runtime directory}
         target: /run/agorix-projects
         read_only: true
+  projects:
+    profiles: ["accounts"]
+    build:
+      context: ../..
+      dockerfile: deploy/web/Dockerfile.projects
+    image: agorix-projects:${AGORIX_PROJECT_TAG:-local}
+    container_name: agorix-projects
+    restart: unless-stopped
+    environment:
+      AGORIX_PROJECT_STORAGE: sqlite
+      AGORIX_PROJECT_DB_PATH: /data/agorix.sqlite
+      AGORIX_PROJECT_BACKUP_DIR: /backups
+      AGORIX_PROJECT_SOCKET: /run/agorix-projects/projects.sock
+      AGORIX_PROJECT_ORIGIN: ${AGORIX_PROJECT_ORIGIN-}
+    volumes:
+      - agorix-project-data:/data
+      - agorix-project-backups:/backups
+      - type: bind
+        source: ${AGORIX_PROJECT_SOCKET_DIR:?set AGORIX_PROJECT_SOCKET_DIR to the project runtime directory}
+        target: /run/agorix-projects
+
+volumes:
+  agorix-project-data:
+  agorix-project-backups:

@@ -1,8 +1,9 @@
 import { build } from "esbuild";
 
 await build({
-  entryPoints: ["src/main.ts"],
-  outfile: "dist/main.mjs",
+  entryPoints: ["src/main.ts", "src/backup.ts"],
+  outdir: "dist",
+  outExtension: { ".js": ".mjs" },
   bundle: true,
   platform: "node",
   format: "esm",
