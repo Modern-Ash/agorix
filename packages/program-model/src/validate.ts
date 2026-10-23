@@ -372,10 +372,14 @@ function validateStatement(
     case "if": {
       const nextDepth = depth + 1;
       checkDepth(nextDepth, `${path}.then`);
+      if (input.else !== undefined) checkDepth(nextDepth, `${path}.else`);
       return {
         type: "if",
         condition: validateExpression(input.condition, `${path}.condition`, state),
         then: validateStatementArray(input.then, `${path}.then`, state, nextDepth),
+        ...(input.else === undefined
+          ? {}
+          : { else: validateStatementArray(input.else, `${path}.else`, state, nextDepth) }),
       };
     }
     default:

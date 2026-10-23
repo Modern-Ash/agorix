@@ -288,7 +288,7 @@ function reasonForActivation(
 }
 
 function statementAtNodeId(script: Script, nodeId: string) {
-  const segments = [...nodeId.matchAll(/\/(statements|body|then)\[(\d+)\]/g)].map((match) => ({
+  const segments = [...nodeId.matchAll(/\/(statements|body|then|else)\[(\d+)\]/g)].map((match) => ({
     segment: match[1],
     index: Number(match[2]),
   }));
@@ -302,6 +302,8 @@ function statementAtNodeId(script: Script, nodeId: string) {
       statements = current?.type === "repeat" ? current.body : [];
     } else if (segment === "then") {
       statements = current?.type === "if" ? current.then : [];
+    } else if (segment === "else") {
+      statements = current?.type === "if" ? (current.else ?? []) : [];
     }
     current = statements[index];
   }

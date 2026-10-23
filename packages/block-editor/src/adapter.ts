@@ -58,6 +58,7 @@ export interface BlockNode {
   readonly inputs?: {
     readonly body?: readonly BlockNode[];
     readonly then?: readonly BlockNode[];
+    readonly else?: readonly BlockNode[];
     readonly condition?: BlockNode;
     readonly left?: BlockNode;
     readonly right?: BlockNode;
@@ -199,7 +200,7 @@ function requiredInput(
 
 function statementInput(
   block: BlockNode,
-  name: "body" | "then",
+  name: "body" | "then" | "else",
   path: string,
 ): readonly BlockNode[] {
   const input = block.inputs?.[name] ?? [];
@@ -406,6 +407,16 @@ function statementFromBlock(
           `${path}.inputs.then`,
           mapping,
         ),
+        ...(block.inputs?.else === undefined
+          ? {}
+          : {
+              else: statementsFromBlocks(
+                statementInput(block, "else", path),
+                `${nodeId}/else`,
+                `${path}.inputs.else`,
+                mapping,
+              ),
+            }),
       };
     default:
       return fail(
@@ -569,6 +580,9 @@ function statementToBlock(
         inputs: {
           condition: expressionToBlock(statement.condition, `${nodeId}/condition`, mapping),
           then: statementsToBlocks(statement.then, `${nodeId}/then`, mapping),
+          ...(statement.else === undefined
+            ? {}
+            : { else: statementsToBlocks(statement.else, `${nodeId}/else`, mapping) }),
         },
       };
     default: {

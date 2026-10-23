@@ -96,6 +96,12 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
       statement.then.forEach((child, index) =>
         writeStatement(writer, child, nodeId + "/then[" + index + "]", depth + 1),
       );
+      if (statement.else !== undefined) {
+        writer.text += pad + "else\n";
+        statement.else.forEach((child, index) =>
+          writeStatement(writer, child, nodeId + "/else[" + index + "]", depth + 1),
+        );
+      }
       writer.text += pad + "end\n";
       break;
     default: {

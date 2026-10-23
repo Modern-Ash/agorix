@@ -217,6 +217,8 @@ export interface IfStatement {
   readonly type: "if";
   readonly condition: Expression;
   readonly then: readonly Statement[];
+  /** Optional: absent in every program written before if/else existed. */
+  readonly else?: readonly Statement[];
 }
 
 export type Statement =

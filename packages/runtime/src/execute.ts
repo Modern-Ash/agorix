@@ -130,7 +130,8 @@ function nodeIdFromPath(path: string): string {
   return path
     .replace(/\.statements/g, "/statements")
     .replace(/\.body/g, "/body")
-    .replace(/\.then/g, "/then");
+    .replace(/\.then/g, "/then")
+    .replace(/\.else/g, "/else");
 }
 
 function recordObservation(state: MutableRunState, observation: RuntimeObservation): void {
@@ -374,6 +375,8 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
     case "if":
       if (coerceBoolean(evaluateExpression(statement.condition, `${path}.condition`, state))) {
         executeStatements(statement.then, `${path}.then`, state);
+      } else if (statement.else !== undefined) {
+        executeStatements(statement.else, `${path}.else`, state);
       }
       break;
     default: {

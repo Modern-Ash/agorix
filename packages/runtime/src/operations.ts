@@ -144,6 +144,9 @@ function assertStatementsAllowed(statements: readonly Statement[], path: string)
     } else if (statement.type === "if") {
       assertExpressionAllowed(statement.condition, `${statementPath}.condition`);
       assertStatementsAllowed(statement.then, `${statementPath}.then`);
+      if (statement.else !== undefined) {
+        assertStatementsAllowed(statement.else, `${statementPath}.else`);
+      }
     } else if (statement.type === "setVariable") {
       assertExpressionAllowed(statement.value, `${statementPath}.value`);
     } else if (statement.type === "changeVariable") {

@@ -1037,7 +1037,12 @@ function parseBlock(
     id: string;
     type: BlockType;
     fields?: Record<string, unknown>;
-    inputs?: { body?: BlockNode[]; then?: BlockNode[]; condition?: BlockNode };
+    inputs?: {
+      body?: BlockNode[];
+      then?: BlockNode[];
+      else?: BlockNode[];
+      condition?: BlockNode;
+    };
   } = { id, type: type as BlockType };
   const fields = value["fields"];
   if (fields !== undefined) {
@@ -1058,8 +1063,13 @@ function parseBlock(
     if (!isObject(inputs)) {
       return undefined;
     }
-    const parsed: { body?: BlockNode[]; then?: BlockNode[]; condition?: BlockNode } = {};
-    for (const key of ["body", "then"] as const) {
+    const parsed: {
+      body?: BlockNode[];
+      then?: BlockNode[];
+      else?: BlockNode[];
+      condition?: BlockNode;
+    } = {};
+    for (const key of ["body", "then", "else"] as const) {
       if (inputs[key] !== undefined) {
         const blocks = parseBlockList(inputs[key], depth + 1, budget);
         if (blocks === undefined) {
