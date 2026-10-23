@@ -22,38 +22,43 @@ on `projects`, and its `/v1/*` fallback remains JSON 404 while the service is of
 Building or deploying Web does not activate accounts. Activation requires a
 separate product-owner decision.
 
-## Activate after approval
+## Activate after separate approval
 
-From a clean, merged `main` on the host, after the Web image with the socket
-proxy is deployed:
+Merge and deploy the Web commit containing `scripts/activate-projects-host.sh` first.
+Then, from the clean host `main` checkout, run the read-only preflight:
 
 ```bash
-export AGORIX_PROJECT_ORIGIN=https://agorix.modern-ash.com
-source scripts/web-deploy-lib.sh
-compose --profile accounts build projects
-compose --profile accounts up -d projects
-curl -i https://agorix.modern-ash.com/v1/session
+AGORIX_PROJECT_ORIGIN=https://agorix.modern-ash.com \
+  scripts/activate-projects-host.sh --preflight-only
 ```
 
-The last request should return JSON `401 UNAUTHENTICATED`, indicating the
-service is reachable without creating an account. The service logs only method,
-status and elapsed time. Keep `AGORIX_PROJECT_ORIGIN` in
-`~/.config/agorix/projects.env` for later Compose and backup commands. The file
-must contain only host-local configuration and must not be committed.
+The `--activate` mode requires a **separate product-owner decision**. It builds
+and starts only the `accounts` Compose profile, checks the local socket and the
+public unauthenticated `401` response, creates an integrity-checked first
+snapshot, then enables the daily backup timer. If a gate fails, it stops and
+removes the newly created project container and timer while leaving the Web
+container and data volumes untouched.
+
+```bash
+AGORIX_PROJECT_ORIGIN=https://agorix.modern-ash.com \
+  scripts/activate-projects-host.sh --activate
+scripts/activate-projects-host.sh --verify-only
+```
+
+The service logs only method, status and elapsed time. Activation writes
+`~/.config/agorix/projects.env` with only the public origin for later backup
+commands. This file is host-local and must not be committed.
 
 ## Back up
 
 `scripts/backup-projects.sh` runs a one-shot container against the live data
 volume. It uses SQLite's online backup API, checks the snapshot's integrity and
 atomically moves it into the backup volume. It never copies a live WAL file with
-`cp`. Run it manually once before enabling the schedule:
+`cp`. The activation command runs it once before enabling the schedule. To make
+an additional manual backup later:
 
 ```bash
 scripts/backup-projects.sh
-mkdir -p ~/.config/systemd/user
-cp deploy/web/agorix-project-backup.{service,timer} ~/.config/systemd/user/
-systemctl --user daemon-reload
-systemctl --user enable --now agorix-project-backup.timer
 ```
 
 The timer runs daily at 03:00 and catches up after downtime. Copy snapshots off

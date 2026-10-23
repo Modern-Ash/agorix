@@ -158,7 +158,8 @@ test("sign-in errors are generic and the password toggle is accessible", async (
   const toggle = dialog.getByRole("button", { name: "Show password" });
   await expect(toggle).toHaveAttribute("aria-pressed", "false");
   await password.fill("a wrong password");
-  await toggle.click();
+  await toggle.focus();
+  await page.keyboard.press("Enter");
   await expect(toggle).toHaveAttribute("aria-pressed", "true");
   await expect(password).toHaveAttribute("type", "text");
 
