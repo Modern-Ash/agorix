@@ -4,9 +4,14 @@ import { KIDS_FLAGS_KEY, kidsV2Enabled, kidsV2Features } from "./kidsFlags.js";
 const storageWith = (value: string | null) => ({ getItem: () => value });
 
 describe("Kids v2 flags (issue #439)", () => {
-  it("is off by default", () => {
-    expect(kidsV2Features().size).toBe(0);
+  it("enables approved local images in a new browser, leaving other v2 features off", () => {
+    expect([...kidsV2Features()]).toEqual(["customImages"]);
+    expect(kidsV2Enabled("customImages", { storage: storageWith(null), search: "" })).toBe(true);
     expect(kidsV2Enabled("duplicate", { storage: storageWith(null), search: "" })).toBe(false);
+  });
+
+  it("accepts an explicit empty list as a rollback", () => {
+    expect(kidsV2Features({ storage: storageWith("[]") }).size).toBe(0);
   });
 
   it("reads a validated list from storage", () => {
@@ -14,7 +19,7 @@ describe("Kids v2 flags (issue #439)", () => {
     expect([...kidsV2Features({ storage })].sort()).toEqual(["duplicate", "zoom"]);
   });
 
-  it("falls back to off for corrupt or blocked storage", () => {
+  it("fails closed for corrupt or blocked storage", () => {
     expect(kidsV2Features({ storage: storageWith("{not json") }).size).toBe(0);
     expect(kidsV2Features({ storage: storageWith('{"a":1}') }).size).toBe(0);
     const blocked = {
@@ -29,6 +34,7 @@ describe("Kids v2 flags (issue #439)", () => {
   it("accepts the query parameter outside production and drops unknown names", () => {
     expect([...kidsV2Features({ search: "?kidsv2=tutorial,bogus,ageBands" })].sort()).toEqual([
       "ageBands",
+      "customImages",
       "tutorial",
     ]);
   });
