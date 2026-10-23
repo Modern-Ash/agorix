@@ -698,6 +698,68 @@
   border-radius: 16px;
   font-weight: 700;
 }
+.kids-ori-float-zone {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+  padding: 0 4px 8px;
+}
+.kids-ori-float-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 54px;
+  max-width: min(280px, 100%);
+  padding: 5px 14px 5px 7px;
+  border: 2px solid #7356c5;
+  border-radius: 30px 30px 8px 30px;
+  background: #f2efff;
+  color: #4230a2;
+  box-shadow: 0 6px 18px #31246d24;
+  font: 700 1rem var(--kids-font-body);
+  cursor: pointer;
+}
+.kids-ori-float-trigger > span:first-child {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  place-items: center;
+  border-radius: 50%;
+  background: #6549bb;
+  color: white;
+  font-size: 1.5rem;
+}
+.kids-ori-float-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: #17102499;
+}
+.kids-ori-float-dialog {
+  width: min(560px, 100%);
+  max-height: min(90vh, 760px);
+  overflow: auto;
+  padding: 16px;
+  border-radius: 18px;
+  background: white;
+  box-shadow: 0 18px 48px #140c2a50;
+}
+.kids-ori-float-close {
+  display: block;
+  margin: 0 0 10px auto;
+}
+@media (max-width: 699px) {
+  .kids-ori-float-zone {
+    padding-inline: 0;
+  }
+  .kids-ori-float-trigger {
+    max-width: 100%;
+  }
+}
 .kids-ori-chat {
   display: grid;
   gap: 10px;

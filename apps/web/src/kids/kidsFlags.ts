@@ -10,6 +10,7 @@ export const KIDS_V2_FEATURES = [
   "customImages",
   "soundLibrary",
   "customAudio",
+  "oriFloat",
   "tutorial",
   "advancedOps",
 ] as const;
