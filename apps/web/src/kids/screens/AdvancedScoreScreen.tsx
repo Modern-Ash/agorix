@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type ChangeEvent } from "react";
 import {
   createEditorHistory,
   recordCanonicalTransaction,
@@ -11,7 +11,13 @@ import { projectProgram } from "@agorix/code-generator";
 import { evaluateKidsAdvancedMission, getKidsAdvancedMission } from "@agorix/curriculum";
 import { runMultiActorProgram, type MultiActorRunResult } from "@agorix/runtime";
 import { projectPython } from "@agorix/python-projection";
-import { ProjectStore, type ProjectMetadata } from "@agorix/persistence";
+import {
+  parseAgorixProject,
+  ProjectStore,
+  sanitizeAgorixFilename,
+  serializeAgorixProject,
+  type ProjectMetadata,
+} from "@agorix/persistence";
 import { acceptProposal, modifyProposal, rejectProposal } from "@agorix/proposals";
 import { validateOriScoreProposal, type OriAdvancedDecision } from "@agorix/ori-agent";
 import type { Locale } from "../../i18n.js";
@@ -20,10 +26,14 @@ import { useKidsFlag } from "../kidsFlags.js";
 import { requestAdvancedOri } from "../kidsAdvancedOriRemote.js";
 import {
   addScoreStatement,
+  addScoreListOperation,
+  createScoreList,
   removeScoreStatement,
+  scoreDataStatements,
   scoreArithmetic,
   scoreArithmeticStatement,
-  scoreStatements,
+  validateScoreDataProgram,
+  type ScoreListOperation,
   type ScoreStatement,
 } from "../kidsAdvancedScoreEditorModel.js";
 import { useKidsText } from "../useKidsText.js";
@@ -61,12 +71,20 @@ export function AdvancedScoreScreen({ locale, readAloud = true, onBack }: Props)
   const [prediction, setPrediction] = useState<number | null>(null);
   const [language, setLanguage] = useState<"agorix" | "python" | "typescript">("agorix");
   const [error, setError] = useState(false);
+  const [listInputError, setListInputError] = useState(false);
   const arithmeticEnabled = useKidsFlag("advancedOps");
   const [amount, setAmount] = useState(2);
+  const [listValue, setListValue] = useState("1");
+  const [listIndex, setListIndex] = useState("1");
   const [oriBusy, setOriBusy] = useState(false);
   const [oriDecision, setOriDecision] = useState<OriAdvancedDecision | null>(null);
   const [oriChanged, setOriChanged] = useState(false);
-  const statements = scoreStatements(history.current);
+  const statements = scoreDataStatements(history.current);
+  const list = history.current.lists?.[0];
+  const listItems = list
+    ? (run?.actors.find((actor) => actor.id === "actor:ori")?.world.lists?.[list.id]?.items ??
+      list.initialItems)
+    : [];
   const score = run?.actors.find((actor) => actor.id === "actor:ori")?.world.variables?.score;
   const shownValue = score?.visible
     ? score.value
@@ -83,6 +101,18 @@ export function AdvancedScoreScreen({ locale, readAloud = true, onBack }: Props)
           back: "Volver al mapa",
           stage: "Nivel avanzado · Etapa 3",
           watcher: "Puntaje",
+          createList: "Crear mi lista",
+          listItems: "Mi lista",
+          emptyList: "Vacía",
+          number: "Número para agregar",
+          position: "Posición (empieza en 1)",
+          listAdd: "Agregar {n} a mi lista",
+          listRemove: "Quitar posición {n}",
+          listItem: "Poner elemento {n} en puntaje",
+          listLength: "Poner largo de lista en puntaje",
+          invalidListNumber: "Escribí un número entero entre -1000000 y 1000000.",
+          export: "Exportar .agorix",
+          import: "Importar .agorix",
           blocks: "Bloques del puntaje",
           add: "Sumar 1",
           set: "Poner en 2",
@@ -113,6 +143,18 @@ export function AdvancedScoreScreen({ locale, readAloud = true, onBack }: Props)
           back: "Back to map",
           stage: "Advanced level · Stage 3",
           watcher: "Score",
+          createList: "Create my list",
+          listItems: "My list",
+          emptyList: "Empty",
+          number: "Number to add",
+          position: "Position (starts at 1)",
+          listAdd: "Add {n} to my list",
+          listRemove: "Remove position {n}",
+          listItem: "Set score to item {n}",
+          listLength: "Set score to list length",
+          invalidListNumber: "Enter a whole number between -1000000 and 1000000.",
+          export: "Export .agorix",
+          import: "Import .agorix",
           blocks: "Score blocks",
           add: "Add 1",
           set: "Set to 2",
@@ -149,6 +191,7 @@ export function AdvancedScoreScreen({ locale, readAloud = true, onBack }: Props)
       setHistory(next);
       setRun(null);
       setError(false);
+      setListInputError(false);
       setOriDecision(null);
     } catch {
       setError(true);
@@ -160,6 +203,51 @@ export function AdvancedScoreScreen({ locale, readAloud = true, onBack }: Props)
       persist(addScoreStatement(history, statement));
     } catch {
       setError(true);
+    }
+  }
+
+  function addList(operation: ScoreListOperation) {
+    const raw = operation === "add" ? listValue : operation === "length" ? "0" : listIndex;
+    const value = Number(raw);
+    if (raw.trim() === "" || !Number.isInteger(value) || Math.abs(value) > 1_000_000) {
+      setListInputError(true);
+      return;
+    }
+    try {
+      persist(addScoreListOperation(history, operation, value));
+    } catch {
+      setError(true);
+    }
+  }
+
+  function exportProject() {
+    try {
+      const blob = new Blob([serializeAgorixProject(store.load(id))], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url; // agora-allowlist: local Blob download from validated .agorix serializer
+      anchor.download = sanitizeAgorixFilename("mi-lista");
+      anchor.click();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+      setError(false);
+    } catch {
+      setError(true);
+    }
+  }
+
+  async function importProject(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const parsed = parseAgorixProject(await file.text()).project;
+      const program = validateScoreDataProgram(parsed.program);
+      persist(
+        recordCanonicalTransaction(history, { label: "import score list", after: program }).history,
+      );
+    } catch {
+      setError(true);
+    } finally {
+      event.target.value = "";
     }
   }
 
@@ -287,6 +375,26 @@ export function AdvancedScoreScreen({ locale, readAloud = true, onBack }: Props)
             <span>{copy.watcher}</span>
             <strong>{shownValue}</strong>
           </div>
+          {list ? (
+            <div
+              className="kids-advanced-list-watcher"
+              role="status"
+              aria-label={`${copy.listItems}: ${listItems.length ? listItems.join(", ") : copy.emptyList}`}
+            >
+              <span>
+                {copy.listItems} · {listItems.length}/100
+              </span>
+              {listItems.length ? (
+                <ol>
+                  {listItems.map((value, index) => (
+                    <li key={index}>{value}</li>
+                  ))}
+                </ol>
+              ) : (
+                <strong>{copy.emptyList}</strong>
+              )}
+            </div>
+          ) : null}
           <fieldset className="kids-advanced-score-prediction">
             <legend>{copy.predict}</legend>
             {(arithmeticEnabled ? [-2, -1, 0, 1, 2, 3, 4, 5] : [1, 2, 3]).map((value) => (
@@ -340,13 +448,15 @@ export function AdvancedScoreScreen({ locale, readAloud = true, onBack }: Props)
             ) : null}
           </div>
           <p className="kids-run-status" role="status">
-            {error
-              ? copy.error
-              : success || completed
-                ? copy.success
-                : run
-                  ? copy.tryAgain
-                  : copy.ready}
+            {listInputError
+              ? copy.invalidListNumber
+              : error
+                ? copy.error
+                : success || completed
+                  ? copy.success
+                  : run
+                    ? copy.tryAgain
+                    : copy.ready}
           </p>
           {run ? <p className="kids-note">{reflection}</p> : null}
         </div>
@@ -360,6 +470,29 @@ export function AdvancedScoreScreen({ locale, readAloud = true, onBack }: Props)
                   <div className="kids-block-line">
                     <span>
                       {(() => {
+                        if (
+                          statement.type === "listAdd" &&
+                          statement.value.type === "numericLiteral"
+                        )
+                          return copy.listAdd.replace("{n}", String(statement.value.value));
+                        if (
+                          statement.type === "listRemoveAt" &&
+                          statement.index.type === "numericLiteral"
+                        )
+                          return copy.listRemove.replace("{n}", String(statement.index.value));
+                        if (
+                          statement.type === "setVariable" &&
+                          statement.value.type === "listItem" &&
+                          statement.value.index.type === "numericLiteral"
+                        )
+                          return copy.listItem.replace("{n}", String(statement.value.index.value));
+                        if (
+                          statement.type === "setVariable" &&
+                          statement.value.type === "listLength"
+                        )
+                          return copy.listLength;
+                        if (statement.type !== "setVariable" && statement.type !== "changeVariable")
+                          return copy.blocks;
                         const arithmetic = scoreArithmetic(statement);
                         if (arithmetic)
                           return (arithmetic.op === "add" ? copy.plus : copy.minus).replace(
@@ -438,6 +571,92 @@ export function AdvancedScoreScreen({ locale, readAloud = true, onBack }: Props)
                 </>
               ) : null}
             </div>
+          </div>
+          <div className="kids-palette kids-advanced-list-palette" aria-label={copy.listItems}>
+            <p>{copy.listItems}</p>
+            {list ? (
+              <div>
+                <label>
+                  {copy.number}{" "}
+                  <input
+                    type="number"
+                    step="1"
+                    value={listValue}
+                    onChange={(event) => {
+                      setListValue(event.target.value);
+                      setListInputError(false);
+                    }}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="kids-palette-block kids-block-sound"
+                  onClick={() => addList("add")}
+                >
+                  + {copy.listAdd.replace("{n}", listValue)}
+                </button>
+                <label>
+                  {copy.position}{" "}
+                  <input
+                    type="number"
+                    step="1"
+                    value={listIndex}
+                    onChange={(event) => {
+                      setListIndex(event.target.value);
+                      setListInputError(false);
+                    }}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="kids-palette-block kids-block-sound"
+                  onClick={() => addList("remove")}
+                >
+                  + {copy.listRemove.replace("{n}", listIndex)}
+                </button>
+                <button
+                  type="button"
+                  className="kids-palette-block kids-block-sound"
+                  onClick={() => addList("item")}
+                >
+                  + {copy.listItem.replace("{n}", listIndex)}
+                </button>
+                <button
+                  type="button"
+                  className="kids-palette-block kids-block-sound"
+                  onClick={() => addList("length")}
+                >
+                  + {copy.listLength}
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="kids-palette-block kids-block-sound"
+                onClick={() => {
+                  try {
+                    persist(createScoreList(history, locale));
+                  } catch {
+                    setError(true);
+                  }
+                }}
+              >
+                + {copy.createList}
+              </button>
+            )}
+          </div>
+          <div className="kids-advanced-file-actions">
+            <button type="button" className="kids-button" onClick={exportProject}>
+              {copy.export}
+            </button>
+            <label className="kids-button kids-import-label">
+              {copy.import}
+              <input
+                type="file"
+                accept=".agorix,application/json"
+                onChange={(event) => void importProject(event)}
+              />
+            </label>
           </div>
           <div className="kids-code-languages" role="group" aria-label={copy.code}>
             {(["agorix", "python", "typescript"] as const).map((item) => (
