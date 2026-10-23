@@ -17,6 +17,7 @@ import {
   createMemoryAdvancedStageRepository,
   proveAdvancedEntry,
   proveAdvancedScene,
+  proveAdvancedReact,
   type AdvancedStageRepository,
 } from "./advancedSessions.js";
 import {
@@ -264,14 +265,21 @@ export function createTutorServer(options: TutorServerOptions): Server {
       if (
         !raw ||
         Array.isArray(raw) ||
-        !["programs", "programs,sceneProgram,stage"].includes(Object.keys(raw).sort().join()) ||
+        ![
+          "programs",
+          "programs,sceneProgram,stage",
+          "programs,reactProgram,sceneProgram,stage",
+        ].includes(Object.keys(raw).sort().join()) ||
         !proveAdvancedEntry(raw.programs)
       )
         throw new Error("invalid proof");
       const stage = raw.stage === undefined ? "scene" : raw.stage;
-      if (stage !== "scene" && stage !== "react") throw new Error("invalid stage");
-      if (stage === "react" && !proveAdvancedScene(raw.sceneProgram))
+      if (stage !== "scene" && stage !== "react" && stage !== "score")
+        throw new Error("invalid stage");
+      if (stage !== "scene" && !proveAdvancedScene(raw.sceneProgram))
         throw new Error("invalid scene proof");
+      if (stage === "score" && !proveAdvancedReact(raw.reactProgram))
+        throw new Error("invalid reaction proof");
       return send(response, 200, { token: advancedStages.create(stage), stage });
     } catch {
       return send(response, 400, error("invalid-request"));

@@ -39,6 +39,7 @@ import {
 import { ParentsScreen } from "./screens/ParentsScreen.js";
 import { AdvancedSceneScreen } from "./screens/AdvancedSceneScreen.js";
 import { AdvancedReactScreen } from "./screens/AdvancedReactScreen.js";
+import { AdvancedScoreScreen } from "./screens/AdvancedScoreScreen.js";
 import {
   advancedEntryUnlocked,
   advancedStageUnlocked,
@@ -167,6 +168,7 @@ export function KidsApp({
             onMission={(missionIndex) => dispatch({ type: "pickMission", missionIndex })}
             advancedUnlocked={advancedEntryUnlocked(projectStore)}
             advancedReactUnlocked={advancedStageUnlocked("react", projectStore)}
+            advancedScoreUnlocked={advancedStageUnlocked("score", projectStore)}
             onAdvanced={() => {
               if (ensureAdvancedProject("scene", state.locale, projectStore))
                 dispatch({ type: "openAdvancedScene" });
@@ -174,6 +176,10 @@ export function KidsApp({
             onAdvancedReact={() => {
               if (ensureAdvancedProject("react", state.locale, projectStore))
                 dispatch({ type: "openAdvancedReact" });
+            }}
+            onAdvancedScore={() => {
+              if (ensureAdvancedProject("score", state.locale, projectStore))
+                dispatch({ type: "openAdvancedScore" });
             }}
           />
         ) : state.screen === "editor" ? (
@@ -203,6 +209,11 @@ export function KidsApp({
           />
         ) : state.screen === "advancedReact" ? (
           <AdvancedReactScreen
+            locale={state.locale}
+            onBack={() => dispatch({ type: "go", screen: "map" })}
+          />
+        ) : state.screen === "advancedScore" ? (
+          <AdvancedScoreScreen
             locale={state.locale}
             onBack={() => dispatch({ type: "go", screen: "map" })}
           />
@@ -301,6 +312,7 @@ function screenTitle(screen: KidsScreen, t: KidsText): string {
       return t("mission");
     case "advanced":
     case "advancedReact":
+    case "advancedScore":
       return t("mission");
     case "reflect":
       return t("keepPlaying");

@@ -3,8 +3,10 @@ import { getKidsAdvancedMission } from "@agorix/curriculum";
 import {
   evaluateOriAdvancedOutput,
   evaluateOriReactOutput,
+  evaluateOriScoreOutput,
   ORI_ADVANCED_VERSION,
   ORI_ADVANCED_REACT_VERSION,
+  ORI_ADVANCED_SCORE_VERSION,
 } from "@agorix/ori-agent";
 import type { ProjectStore } from "@agorix/persistence";
 import { requestAdvancedOri } from "./kidsAdvancedOriRemote.js";
@@ -89,5 +91,40 @@ describe("advanced Ori browser boundary", () => {
     });
     expect(requests[0]).toMatchObject({ stage: "react", sceneProgram: context.program });
     expect(requests[1]).toMatchObject({ actorId: "actor:ori", program: reactContext.program });
+  });
+
+  it("sends both prior-stage proofs and validates a stage-3 score proposal", async () => {
+    const scoreContext = {
+      stage: "score" as const,
+      actorId: "actor:ori" as const,
+      locale: "es" as const,
+      program: getKidsAdvancedMission("score", "es").starterProgram,
+    };
+    const model = evaluateOriScoreOutput(scoreContext, {
+      version: ORI_ADVANCED_SCORE_VERSION,
+      kind: "data-suggestion",
+      actorId: "actor:ori",
+      block: { type: "changeVariable", variableId: "score", delta: 1 },
+    });
+    const requests: unknown[] = [];
+    const fetchImpl = async (url: string | URL | Request, init?: RequestInit) => {
+      requests.push(JSON.parse(String(init?.body)));
+      return new Response(
+        JSON.stringify(
+          String(url).endsWith("/session")
+            ? { token: "anonymous", stage: "score" }
+            : { message: model.message, proposal: model.proposal },
+        ),
+        { status: 200 },
+      );
+    };
+    const result = await requestAdvancedOri(scoreContext, store, fetchImpl as typeof fetch);
+    expect(result.source).toBe("model");
+    expect(result.proposal?.operations[0]).toMatchObject({ statement: { type: "changeVariable" } });
+    expect(requests[0]).toMatchObject({
+      stage: "score",
+      sceneProgram: context.program,
+      reactProgram: context.program,
+    });
   });
 });

@@ -8,9 +8,9 @@ import {
 } from "@agorix/curriculum";
 import { validateProgram, type ProjectProgram, type Statement } from "@agorix/program-model";
 import { createWorldState, runProgram, runMultiActorProgram } from "@agorix/runtime";
-import { createOriAdvancedInput } from "@agorix/ori-agent";
+import { createOriAdvancedInput, createOriReactInput } from "@agorix/ori-agent";
 
-export type ServerAdvancedStage = "scene" | "react";
+export type ServerAdvancedStage = "scene" | "react" | "score";
 
 export interface AdvancedStageRepository {
   create(stage: ServerAdvancedStage): string;
@@ -94,6 +94,37 @@ export function proveAdvancedScene(raw: unknown): boolean {
       ),
     };
     return evaluateKidsAdvancedMission("scene", runMultiActorProgram(program, creative));
+  } catch {
+    return false;
+  }
+}
+
+/** Stage 3 requires a replayable event reaction from the previous stage. */
+export function proveAdvancedReact(raw: unknown): boolean {
+  try {
+    const program = validateProgram(raw as ProjectProgram);
+    const mission = getKidsAdvancedMission("react", "es");
+    const hasFriend = program.scripts[1]?.id === "advanced-react-friend";
+    const creative = {
+      ...mission.starterCreative,
+      actors: (mission.starterCreative.actors ?? []).map((actor) =>
+        actor.id === "actor:friend" && hasFriend
+          ? { ...actor, scripts: ["advanced-react-friend"] }
+          : actor,
+      ),
+    };
+    for (const actorId of ["actor:ori", "actor:friend"] as const) {
+      if (actorId === "actor:friend" && !hasFriend) continue;
+      createOriReactInput({ stage: "react", actorId, locale: "es", program });
+      if (
+        evaluateKidsAdvancedMission(
+          "react",
+          runMultiActorProgram(program, creative, { events: [{ type: "actorClicked", actorId }] }),
+        )
+      )
+        return true;
+    }
+    return false;
   } catch {
     return false;
   }
