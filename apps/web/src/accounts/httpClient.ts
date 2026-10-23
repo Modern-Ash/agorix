@@ -81,8 +81,12 @@ export function createHttpBackend(options: HttpBackendOptions = {}): AccountBack
       const { json } = await send("GET", "/v1/session");
       return toAccount(json);
     },
-    async register(alias: string, password: string): Promise<void> {
-      await send("POST", `${accountPath}/register`, { username: alias, password });
+    async register(alias: string, password: string, email?: string): Promise<void> {
+      await send("POST", `${accountPath}/register`, {
+        username: alias,
+        password,
+        ...(email === undefined ? {} : { email }),
+      });
     },
     async signIn(alias: string, password: string): Promise<AccountSummary> {
       try {

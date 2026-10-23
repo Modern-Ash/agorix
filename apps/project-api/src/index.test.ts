@@ -504,6 +504,9 @@ describe("project api", () => {
         resolveSession: async () => {
           throw new Error("db down secret-detail");
         },
+        deleteAccount: async () => {
+          throw new Error("db down secret-detail");
+        },
       },
       projects: new InMemoryProjectRepository(),
     });

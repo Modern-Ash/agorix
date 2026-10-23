@@ -30,6 +30,8 @@ export function AdultAccountCard({ locale, api, session, email, onSession, onEma
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [cooldown, setCooldown] = useState(0);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
   const t = (key: Parameters<typeof linkText>[1], values?: Record<string, string | number>) =>
     linkText(locale, key, values);
 
@@ -149,7 +151,39 @@ export function AdultAccountCard({ locale, api, session, email, onSession, onEma
     <section className="kids-link-card" aria-labelledby="kids-link-account-title">
       <h3 id="kids-link-account-title">{t("adultTitle")}</h3>
       <p>{t("signedInAs", { alias: session.alias })}</p>
-      {email?.verified ? (
+      {email !== null && !email.present ? (
+        <form
+          className="kids-link-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void run(async () => {
+              await api.setEmail(address.trim());
+              setAddress("");
+              onEmail(await api.emailStatus());
+              setCooldown(RESEND_COOLDOWN_S);
+            });
+          }}
+        >
+          <h4>{t("addEmailTitle")}</h4>
+          <p>{t("addEmailIntro")}</p>
+          <div className="kids-link-field">
+            <label htmlFor={`${uid}-add-email`}>{t("email")}</label>
+            <input
+              id={`${uid}-add-email`}
+              value={address}
+              onChange={(event) => setAddress(event.target.value)}
+              type="email"
+              autoComplete="email"
+              required
+              maxLength={254}
+            />
+            <small>{t("emailNote")}</small>
+          </div>
+          <button type="submit" className="kids-button kids-primary" disabled={busy}>
+            {t("addEmailSubmit")}
+          </button>
+        </form>
+      ) : email?.verified ? (
         <p>✓ {t("emailVerified")}</p>
       ) : (
         <>
@@ -201,6 +235,61 @@ export function AdultAccountCard({ locale, api, session, email, onSession, onEma
       >
         {t("signOut")}
       </button>
+      <details className="kids-link-danger">
+        <summary>{t("deleteTitle")}</summary>
+        <p>{t("deleteIntro")}</p>
+        {confirmingDelete ? (
+          <form
+            className="kids-link-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void run(async () => {
+                await api.deleteAccount(deletePassword);
+                setDeletePassword("");
+                setConfirmingDelete(false);
+                setMode("signin");
+                onSession(null);
+                onEmail(null);
+                setMessage(t("deleteDone"));
+              });
+            }}
+          >
+            <div className="kids-link-field">
+              <label htmlFor={`${uid}-delete-password`}>{t("deletePassword")}</label>
+              <input
+                id={`${uid}-delete-password`}
+                value={deletePassword}
+                onChange={(event) => setDeletePassword(event.target.value)}
+                type="password"
+                autoComplete="current-password"
+                required
+                maxLength={256}
+                autoFocus
+              />
+            </div>
+            <div className="kids-link-row">
+              <button
+                type="button"
+                className="kids-button"
+                onClick={() => {
+                  setConfirmingDelete(false);
+                  setDeletePassword("");
+                  setMessage("");
+                }}
+              >
+                {t("cancel")}
+              </button>
+              <button type="submit" className="kids-button" disabled={busy}>
+                {t("deleteConfirm")}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <button type="button" className="kids-button" onClick={() => setConfirmingDelete(true)}>
+            {t("deleteStart")}
+          </button>
+        )}
+      </details>
       <p role="status" className="kids-note">
         {message}
       </p>

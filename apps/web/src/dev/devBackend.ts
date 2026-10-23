@@ -21,7 +21,12 @@ export interface DevBackend {
 }
 
 /** Same-origin only: a request is accepted when its Origin (if any) equals its own Host. */
-export function createDevBackend(): DevBackend {
+export interface DevBackendOptions {
+  /** Mirror production with the link service on: registration must carry an email. */
+  readonly requireEmail?: boolean;
+}
+
+export function createDevBackend(options: DevBackendOptions = {}): DevBackend {
   const accounts = new InMemoryAccountRepository();
   const sessions = new InMemorySessionRepository();
   const auth = new AuthService({
@@ -51,6 +56,7 @@ export function createDevBackend(): DevBackend {
   const api = createProjectApi({
     auth,
     link,
+    requireEmail: options.requireEmail === true,
     projects: new InMemoryProjectRepository(),
     allowedOrigins: [],
   });

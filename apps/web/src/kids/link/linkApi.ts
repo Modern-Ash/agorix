@@ -48,6 +48,8 @@ export type LinkApiErrorKind =
   | "username-taken"
   | "weak-password"
   | "invalid-summary"
+  | "wrong-password"
+  | "email-required"
   | "transient";
 
 /** Fixed message: server and user content are never echoed. */
@@ -72,6 +74,8 @@ export interface LinkApi {
   register(alias: string, password: string, email: string): Promise<{ alias: string }>;
   restore(): Promise<{ alias: string } | null>;
   signOut(): Promise<void>;
+  /** Permanent: removes the account, its projects, link data and sessions. Needs the password again. */
+  deleteAccount(password: string): Promise<void>;
   emailStatus(): Promise<{ present: boolean; verified: boolean }>;
   setEmail(email: string): Promise<void>;
   resendEmail(): Promise<void>;
@@ -158,6 +162,12 @@ export function createLinkApi(options: { readonly fetch?: FetchLike } = {}): Lin
     return toAlias(json);
   };
 
+  const emailStatusRequest = async (): Promise<{ present: boolean; verified: boolean }> => {
+    const { json } = await adult("GET", "/v1/account/email");
+    const body = record(json);
+    return { present: body["present"] === true, verified: body["verified"] === true };
+  };
+
   return {
     async available() {
       try {
@@ -172,9 +182,11 @@ export function createLinkApi(options: { readonly fetch?: FetchLike } = {}): Lin
     signIn: signInRequest,
 
     async register(alias, password, email) {
-      await adult("POST", `${DEFAULT_ACCOUNT_PATH}/register`, { username: alias, password });
+      await adult("POST", `${DEFAULT_ACCOUNT_PATH}/register`, { username: alias, password, email });
       const account = await signInRequest(alias, password);
-      await adult("POST", "/v1/account/email", { email });
+      // Older servers ignore the email at registration: add it now if it did not arrive.
+      if (!(await emailStatusRequest()).present)
+        await adult("POST", "/v1/account/email", { email });
       return account;
     },
 
@@ -192,11 +204,11 @@ export function createLinkApi(options: { readonly fetch?: FetchLike } = {}): Lin
       await adult("POST", `${DEFAULT_ACCOUNT_PATH}/sign-out`, {});
     },
 
-    async emailStatus() {
-      const { json } = await adult("GET", "/v1/account/email");
-      const body = record(json);
-      return { present: body["present"] === true, verified: body["verified"] === true };
+    async deleteAccount(password) {
+      await adult("DELETE", "/v1/account", { password });
     },
+
+    emailStatus: emailStatusRequest,
 
     async setEmail(email) {
       await adult("POST", "/v1/account/email", { email });
@@ -292,6 +304,10 @@ function toError(status: number, json: unknown): LinkApiError {
           return new LinkApiError("invalid-code");
         case "INVALID_SUMMARY":
           return new LinkApiError("invalid-summary");
+        case "WRONG_PASSWORD":
+          return new LinkApiError("wrong-password");
+        case "EMAIL_REQUIRED":
+          return new LinkApiError("email-required");
         case "USERNAME_TAKEN":
           return new LinkApiError("username-taken");
         case "PASSWORD_POLICY_VIOLATION":

@@ -91,6 +91,8 @@ export interface AccountRepository {
   findByAccountId(accountId: string): Promise<AccountRecord | undefined>;
   create(record: AccountRecord): Promise<void>;
   updateCredential(accountId: string, credential: PasswordCredentialRecord): Promise<void>;
+  /** Removes the account and its credential. Idempotent. */
+  deleteAccount(accountId: string): Promise<void>;
 }
 
 export interface SessionRepository {
@@ -98,6 +100,8 @@ export interface SessionRepository {
   create(record: SessionRecord): Promise<void>;
   replace(previousTokenHash: string, nextRecord: SessionRecord, revokedAt: string): Promise<void>;
   revoke(tokenHash: string, revokedAt: string): Promise<void>;
+  /** Removes every session row of an account (used when the account is deleted). Idempotent. */
+  deleteForAccount(accountId: string): Promise<void>;
 }
 
 export interface RegisterInput {
@@ -306,6 +310,32 @@ export class AuthService {
     };
   }
 
+  /**
+   * Permanently deletes an account after the password is checked again. Sessions go first so no
+   * cookie works afterwards; the caller removes the account's other data (projects, link data)
+   * before calling this. Wrong password and unknown account fail the same way.
+   */
+  async deleteAccount(
+    accountId: string,
+    password: string,
+    /** Removes data that points at the account (projects, link data) once the password is confirmed. */
+    beforeDelete?: () => Promise<void>,
+  ): Promise<void> {
+    await this.verifyDeletionPassword(accountId, password);
+    if (beforeDelete !== undefined) await beforeDelete();
+    await this.sessions.deleteForAccount(accountId);
+    await this.accounts.deleteAccount(accountId);
+  }
+
+  /** Rechecks the password and applies the delete rate limit before a durable transaction begins. */
+  async verifyDeletionPassword(accountId: string, password: string): Promise<void> {
+    this.rateLimiter.requireAllowed(`delete:${accountId}`, this.policy.signInRateLimit);
+    const record = await this.accounts.findByAccountId(accountId);
+    if (record === undefined || !(await this.verifyPassword(password, record.credential))) {
+      throw new AuthPublicError("INVALID_CREDENTIALS", GENERIC_INVALID_CREDENTIALS);
+    }
+  }
+
   async signOut(sessionToken: string): Promise<void> {
     await this.sessions.revoke(hashToken(sessionToken), this.nowIso());
   }
@@ -407,6 +437,13 @@ export class InMemoryAccountRepository implements AccountRepository {
     const next = { ...current, credential };
     this.byAccountId.set(accountId, next);
     this.byUsername.set(credential.normalizedUsername, next);
+  }
+
+  async deleteAccount(accountId: string): Promise<void> {
+    const current = this.byAccountId.get(accountId);
+    if (current === undefined) return;
+    this.byAccountId.delete(accountId);
+    this.byUsername.delete(current.credential.normalizedUsername);
   }
 
   snapshot(): readonly AccountRecord[] {
@@ -554,6 +591,13 @@ export class SqlAccountRepository implements AccountRepository {
       throw new AuthInternalError("account not found");
     }
   }
+
+  async deleteAccount(accountId: string): Promise<void> {
+    await this.executor.execute(
+      authSqlFor(this.dialect, "delete from agorix_accounts where account_id = ?"),
+      [accountId],
+    );
+  }
 }
 
 export class SqlSessionRepository implements SessionRepository {
@@ -621,6 +665,13 @@ export class SqlSessionRepository implements SessionRepository {
     await this.executor.execute(
       authSqlFor(this.dialect, "update agorix_sessions set revoked_at = ? where token_hash = ?"),
       [revokedAt, tokenHash],
+    );
+  }
+
+  async deleteForAccount(accountId: string): Promise<void> {
+    await this.executor.execute(
+      authSqlFor(this.dialect, "delete from agorix_sessions where account_id = ?"),
+      [accountId],
     );
   }
 }
@@ -694,6 +745,12 @@ export class InMemorySessionRepository implements SessionRepository {
     const previous = this.byTokenHash.get(tokenHash);
     if (previous !== undefined) {
       this.byTokenHash.set(tokenHash, { ...previous, revokedAt });
+    }
+  }
+
+  async deleteForAccount(accountId: string): Promise<void> {
+    for (const [hash, record] of this.byTokenHash) {
+      if (record.session.accountId === accountId) this.byTokenHash.delete(hash);
     }
   }
 

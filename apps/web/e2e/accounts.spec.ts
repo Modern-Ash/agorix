@@ -60,6 +60,8 @@ async function register(page: Page, name: string) {
   const dialog = authDialog(page);
   await dialog.getByLabel("Username").fill(name);
   await dialog.getByLabel("Password", { exact: true }).fill(PASSWORD);
+  // The server asks for an adult email when the optional link service is on (issue #519).
+  await dialog.getByLabel("Adult email").fill(`${name}@example.com`);
   await dialog.getByRole("button", { name: "Create account" }).click();
 }
 
@@ -188,6 +190,7 @@ test("registration validates alias and password and rejects taken aliases", asyn
   );
   await dialog.getByLabel("Username").fill(name);
   await dialog.getByLabel("Password", { exact: true }).fill(PASSWORD);
+  await dialog.getByLabel("Adult email").fill("adult@example.com");
   await dialog.getByRole("button", { name: "Create account" }).click();
   await expect(dialog.getByTestId("auth-error")).toContainText("already taken");
 
@@ -200,6 +203,12 @@ test("registration validates alias and password and rejects taken aliases", asyn
   await dialog.getByLabel("Password", { exact: true }).fill(PASSWORD);
   await dialog.getByRole("button", { name: "Create account" }).click();
   await expect(dialog.getByTestId("auth-error")).toContainText("Email addresses are not allowed");
+
+  await dialog.getByLabel("Username").fill(alias());
+  await dialog.getByLabel("Password", { exact: true }).fill(PASSWORD);
+  await dialog.getByLabel("Adult email").fill("not-an-email");
+  await dialog.getByRole("button", { name: "Create account" }).click();
+  await expect(dialog.getByTestId("auth-error")).toContainText("Check the email address");
 });
 
 test("dialog keeps focus inside, closes on Escape and returns focus", async ({ page }) => {
@@ -496,6 +505,7 @@ test("account UX and states are localized in Spanish", async ({ page }) => {
   await expect(dialog.getByRole("heading", { name: "Crea una cuenta de Agorix" })).toBeVisible();
   await dialog.getByLabel("Nombre de usuario").fill(alias("es"));
   await dialog.getByLabel("Contraseña", { exact: true }).fill(PASSWORD);
+  await dialog.getByLabel("Correo de un adulto").fill("adulto@example.com");
   await dialog.getByRole("button", { name: "Crear cuenta" }).click();
   await expect(page.getByTestId("projects-empty")).toContainText("Aún no hay proyectos");
   await newProject(page);

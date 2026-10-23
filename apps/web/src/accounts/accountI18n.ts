@@ -17,6 +17,9 @@ const messages = {
     aliasHint: "A nickname is fine. Please do not use your real name or an email address.",
     passwordLabel: "Password",
     passwordHintRegister: "At least 12 characters.",
+    emailLabel: "Adult email",
+    emailHint:
+      "Only the account owner sees it. It confirms the account belongs to an adult and is never shown to children.",
     showPassword: "Show password",
     submitSignIn: "Sign in",
     submitRegister: "Create account",
@@ -29,6 +32,7 @@ const messages = {
     errUsernameTaken: "That username is already taken. Try another one.",
     errRateLimited: "Too many attempts. Please wait a few minutes and try again.",
     errPassword: "Choose a password with at least 12 characters.",
+    errEmail: "Check the email address and try again.",
     errAlias:
       "Use 3 to 32 letters, numbers, dashes or underscores. Email addresses are not allowed.",
     errTransient: "We couldn't reach the server. Check your connection and try again.",
@@ -114,6 +118,9 @@ const messages = {
     aliasHint: "Un apodo está bien. No uses tu nombre real ni un correo electrónico.",
     passwordLabel: "Contraseña",
     passwordHintRegister: "Al menos 12 caracteres.",
+    emailLabel: "Correo de un adulto",
+    emailHint:
+      "Solo lo ve quien tiene la cuenta. Sirve para confirmar que es de un adulto y nunca se muestra a los niños.",
     showPassword: "Mostrar contraseña",
     submitSignIn: "Iniciar sesión",
     submitRegister: "Crear cuenta",
@@ -126,6 +133,7 @@ const messages = {
     errUsernameTaken: "Ese nombre de usuario ya está en uso. Prueba con otro.",
     errRateLimited: "Demasiados intentos. Espera unos minutos e inténtalo de nuevo.",
     errPassword: "Elige una contraseña de al menos 12 caracteres.",
+    errEmail: "Revisa el correo e inténtalo de nuevo.",
     errAlias:
       "Usa de 3 a 32 letras, números, guiones o guiones bajos. No se permiten correos electrónicos.",
     errTransient: "No pudimos conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.",

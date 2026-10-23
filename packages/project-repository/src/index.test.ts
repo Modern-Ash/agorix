@@ -86,6 +86,29 @@ describe("InMemoryProjectRepository", () => {
     });
   });
 
+  it("deletes all projects for one owner across pages", async () => {
+    const repository = makeRepository(2);
+    const owned = await Promise.all(
+      Array.from({ length: 5 }, (_, index) =>
+        repository.create("owner:one", `Project ${index}`, makeStoredProject()),
+      ),
+    );
+    const other = await repository.create("owner:two", "Other", makeStoredProject());
+
+    await repository.deleteByOwner("owner:one");
+
+    expect((await repository.list("owner:one")).items).toEqual([]);
+    for (const item of owned) {
+      await expect(repository.get("owner:one", item.projectId)).rejects.toMatchObject({
+        code: "NOT_FOUND",
+      });
+    }
+    await expect(repository.get("owner:two", other.projectId)).resolves.toMatchObject({
+      title: "Other",
+    });
+    await expect(repository.deleteByOwner("owner:one")).resolves.toBeUndefined();
+  });
+
   it("supports CRUD, rename, duplicate and delete", async () => {
     const repository = makeRepository();
     const created = await repository.create("owner:one", "Original", makeStoredProject());

@@ -74,6 +74,7 @@ export interface ProjectRepository {
   ): Promise<ProjectRecord>;
   duplicate(ownerId: string, projectId: string, title?: string): Promise<ProjectRecord>;
   delete(ownerId: string, projectId: string, expectedRevision?: number): Promise<void>;
+  deleteByOwner(ownerId: string): Promise<void>;
 }
 
 export interface ProjectUpdate {
@@ -203,6 +204,13 @@ export class InMemoryProjectRepository implements ProjectRepository {
       assertRevisionMatches(current, expectedRevision);
     }
     this.records.delete(recordKey(current.ownerId, current.projectId));
+  }
+
+  async deleteByOwner(ownerId: string): Promise<void> {
+    const normalizedOwnerId = validateOwnerId(ownerId);
+    for (const [key, record] of this.records) {
+      if (record.ownerId === normalizedOwnerId) this.records.delete(key);
+    }
   }
 
   private readRecord(ownerId: string, projectId: string): PersistedRecord {
@@ -449,6 +457,13 @@ export class SqlProjectRepository implements ProjectRepository {
     if ((result.rowCount ?? 0) === 0) {
       await assertDeleteMiss(this, normalizedOwnerId, normalizedProjectId, expectedRevision);
     }
+  }
+
+  async deleteByOwner(ownerId: string): Promise<void> {
+    await this.executor.execute(
+      sqlFor(this.dialect, "delete from agorix_projects where owner_id = ?"),
+      [validateOwnerId(ownerId)],
+    );
   }
 }
 
