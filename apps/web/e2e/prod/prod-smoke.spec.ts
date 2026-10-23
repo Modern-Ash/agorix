@@ -29,10 +29,6 @@ async function openAppMenu(page: Page) {
   if ((await menuButton.getAttribute("aria-expanded")) !== "true") await menuButton.click();
 }
 
-// Cloudflare auto-injects its Web Analytics beacon into HTML for browsers; our CSP blocks it.
-// Known and tracked (disable it in the Cloudflare dashboard); everything else must stay clean.
-const KNOWN_EDGE_INJECTION = "cloudflareinsights.com";
-
 function trackProblems(page: Page, origin: string) {
   const problems: string[] = [];
   page.on("pageerror", (error) => problems.push(`pageerror: ${error.message}`));
@@ -42,21 +38,13 @@ function trackProblems(page: Page, origin: string) {
     const expectedMissingSession =
       text.startsWith("Failed to load resource: the server responded with a status of 404") &&
       source === `${origin}/v1/session`;
-    if (
-      message.type() === "error" &&
-      !text.includes(KNOWN_EDGE_INJECTION) &&
-      !expectedMissingSession
-    ) {
+    if (message.type() === "error" && !expectedMissingSession) {
       problems.push(`console: ${text.slice(0, 120)}`);
     }
   });
   page.on("request", (request) => {
     const url = new URL(request.url());
-    if (
-      url.protocol.startsWith("http") &&
-      url.origin !== origin &&
-      !url.hostname.endsWith(KNOWN_EDGE_INJECTION)
-    ) {
+    if (url.protocol.startsWith("http") && url.origin !== origin) {
       problems.push(`third-party request: ${url.origin}`);
     }
   });
@@ -106,6 +94,7 @@ test("a first visit opens in Spanish, stays same-origin and registers the servic
 }) => {
   const problems = trackProblems(page, new URL(baseURL!).origin);
   await page.goto("/");
+  await expect(page.locator('script[src*="cloudflareinsights.com"]')).toHaveCount(0);
   await expect(page.locator("html")).toHaveAttribute("lang", "es");
   await expect(page.getByRole("heading", { name: "¡Hola!" })).toBeVisible();
   await expect(page.locator(".kids-root")).toBeVisible();

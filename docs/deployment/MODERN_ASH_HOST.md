@@ -183,18 +183,18 @@ See [SELF_HOSTING.md](./SELF_HOSTING.md) for the API fields and alternate server
 
 ## Troubleshooting
 
-| Symptom                                            | Check                                                                                       |
-| -------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| Site down, `curl localhost:8470/healthz` fails     | `docker ps`, `docker logs agorix-web`, then `pnpm rollback:web <sha12>`                     |
-| Local 200 but public error                         | `systemctl --user status cloudflared`, tunnel logs, ingress rule in the dashboard           |
-| Deploy stops at preflight                          | Check the branch, `git status`, and `git fetch && git status -sb`                           |
-| Deploy rolled back after the smoke                 | Run the smoke by hand and read the failing test; the previous image is serving              |
-| A browser shows an old app                         | Hard reload; `curl -I https://agorix.modern-ash.com/sw.js` should be revalidated, not `HIT` |
-| Console errors mentioning `cloudflareinsights.com` | Known: Cloudflare's injected analytics beacon, blocked by the CSP (#365)                    |
+| Symptom                                            | Check                                                                                                |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Site down, `curl localhost:8470/healthz` fails     | `docker ps`, `docker logs agorix-web`, then `pnpm rollback:web <sha12>`                              |
+| Local 200 but public error                         | `systemctl --user status cloudflared`, tunnel logs, ingress rule in the dashboard                    |
+| Deploy stops at preflight                          | Check the branch, `git status`, and `git fetch && git status -sb`                                    |
+| Deploy rolled back after the smoke                 | Run the smoke by hand and read the failing test; the previous image is serving                       |
+| A browser shows an old app                         | Hard reload; `curl -I https://agorix.modern-ash.com/sw.js` should be revalidated, not `HIT`          |
+| Console errors mentioning `cloudflareinsights.com` | Disable Cloudflare Web Analytics auto-injection; production smoke rejects third-party scripts (#365) |
 
 ## Not in production yet
 
 - Account activation and scheduled SQLite backups (see the storage runbook above).
 - Host tutor service activation (requires a host CLI login and an explicit operator action).
 - Tablet layout, English leftovers, PNG icons and the accessibility pass (#359, #360, #361, #362).
-- Disabling Cloudflare's injected analytics (#365).
+- Disabling Cloudflare's injected analytics (#365); remove this line after the dashboard change is verified.
