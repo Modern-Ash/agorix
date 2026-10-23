@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { KidsImageError, processKidsImage } from "./kidsImage.js";
+import { processKidsImage } from "./kidsImage.js";
 
 const png = readFileSync(new URL("../../e2e/fixtures/kids-solid.png", import.meta.url));
 
@@ -43,18 +43,18 @@ describe("local Kids image pipeline", () => {
 
   it("rejects an oversized input before reading or decoding it", async () => {
     const oversized = new Blob([new Uint8Array(5 * 1024 * 1024 + 1)], { type: "image/png" });
-    await expect(processKidsImage(oversized)).rejects.toMatchObject<KidsImageError>({
+    await expect(processKidsImage(oversized)).rejects.toMatchObject({
       code: "tooLarge",
     });
     expect(createImageBitmap).not.toHaveBeenCalled();
   });
 
   it("rejects a mismatched MIME and a failed decode with typed errors", async () => {
-    await expect(processKidsImage(image(png, "image/jpeg"))).rejects.toMatchObject<KidsImageError>({
+    await expect(processKidsImage(image(png, "image/jpeg"))).rejects.toMatchObject({
       code: "unsupportedType",
     });
     vi.mocked(createImageBitmap).mockRejectedValueOnce(new Error("bad image"));
-    await expect(processKidsImage(image(png, "image/png"))).rejects.toMatchObject<KidsImageError>({
+    await expect(processKidsImage(image(png, "image/png"))).rejects.toMatchObject({
       code: "decodeFailed",
     });
   });
