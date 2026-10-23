@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, type ChangeEvent } from "react";
 import { KIDS_AVATARS, KIDS_WORLDS, type KidsAvatar, type KidsWorld } from "../kidsState.js";
-import { loadKidsCustom } from "../kidsCustom.js";
+import { addKidsCustom, loadKidsCustom, type KidsCustomKind } from "../kidsCustom.js";
+import { KidsImageError, processKidsImage } from "../kidsImage.js";
 import { useKidsFlag } from "../kidsFlags.js";
 import type { KidsAvatarRef, KidsWorldRef } from "../kidsProjects.js";
 import { KidsBackdrop, KidsSprite, builtinWorld, emojiSlot } from "./KidsArt.js";
@@ -18,7 +19,6 @@ interface Props {
   readonly onAvatar: (avatar: KidsAvatar) => void;
   readonly onWorld: (world: KidsWorld) => void;
   readonly onStart: (world: KidsWorldRef, avatar: KidsAvatarRef) => void;
-  readonly onManageCustom?: () => void;
 }
 
 export function CreateScreen({
@@ -30,13 +30,52 @@ export function CreateScreen({
   onAvatar,
   onWorld,
   onStart,
-  onManageCustom,
 }: Props) {
   const worlds = kidsTable(locale, "worlds");
   const customEnabled = useKidsFlag("customImages");
-  const custom = customEnabled ? loadKidsCustom() : [];
+  const [custom, setCustom] = useState(() => loadKidsCustom());
+  const [imageMessage, setImageMessage] = useState("");
   const [chosenAvatar, setChosenAvatar] = useState<KidsAvatarRef>(emojiSlot(avatar));
   const [chosenWorld, setChosenWorld] = useState<KidsWorldRef>(builtinWorld(world));
+
+  async function addImage(kind: KidsCustomKind, event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const result = addKidsCustom(kind, await processKidsImage(file));
+      if (!result.ok) {
+        setImageMessage(
+          t(
+            result.reason === "limit"
+              ? "customLimit"
+              : result.reason === "invalidImage"
+                ? "imageErrorType"
+                : "imageErrorQuota",
+          ),
+        );
+        return;
+      }
+      setCustom(loadKidsCustom());
+      if (kind === "explorer") setChosenAvatar({ kind: "custom", id: result.item.id });
+      else setChosenWorld({ kind: "custom", id: result.item.id });
+      setImageMessage(t("imageSaved"));
+    } catch (error) {
+      const code = error instanceof KidsImageError ? error.code : "decodeFailed";
+      setImageMessage(
+        t(
+          code === "unsupportedType"
+            ? "imageErrorType"
+            : code === "tooLarge"
+              ? "imageErrorSize"
+              : code === "outputTooLarge"
+                ? "imageErrorOutput"
+                : "imageErrorDecode",
+        ),
+      );
+    } finally {
+      event.target.value = "";
+    }
+  }
   return (
     <section className="kids-screen kids-create" aria-labelledby="kids-create-title">
       <h1 id="kids-create-title">{t("create")}</h1>
@@ -59,24 +98,31 @@ export function CreateScreen({
             <KidsSprite slot={emojiSlot(candidate)} fallback={candidate} />
           </button>
         ))}
-        {custom
-          .filter((item) => item.kind === "explorer")
-          .map((item) => (
-            <button
-              type="button"
-              className="kids-button kids-custom-choice"
-              key={item.id}
-              aria-label={`${t("customExplorer")} ${item.id.slice(7)}`}
-              aria-pressed={chosenAvatar.kind === "custom" && chosenAvatar.id === item.id}
-              onClick={() => setChosenAvatar({ kind: "custom", id: item.id })}
-            >
-              <KidsSprite slot={{ kind: "custom", id: item.id }} label={t("customExplorer")} />
-            </button>
-          ))}
+        {customEnabled &&
+          custom
+            .filter((item) => item.kind === "explorer")
+            .map((item) => (
+              <button
+                type="button"
+                className="kids-button kids-custom-choice"
+                key={item.id}
+                aria-label={`${t("customExplorer")} ${item.id.slice(7)}`}
+                aria-pressed={chosenAvatar.kind === "custom" && chosenAvatar.id === item.id}
+                onClick={() => setChosenAvatar({ kind: "custom", id: item.id })}
+              >
+                <KidsSprite slot={{ kind: "custom", id: item.id }} label={t("customExplorer")} />
+              </button>
+            ))}
         {customEnabled ? (
-          <button type="button" className="kids-button" onClick={onManageCustom}>
+          <label className="kids-button kids-image-file kids-create-upload">
             {t("addCustomExplorer")}
-          </button>
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              aria-label={t("addCustomExplorer")}
+              onChange={(event) => void addImage("explorer", event)}
+            />
+          </label>
         ) : null}
       </div>
       <h2>{t("createBg")}</h2>
@@ -103,35 +149,50 @@ export function CreateScreen({
             {worlds[candidate]}
           </button>
         ))}
-        {custom
-          .filter((item) => item.kind === "backdrop")
-          .map((item) => (
-            <button
-              type="button"
-              className="kids-button kids-custom-world"
-              key={item.id}
-              aria-label={`${t("customBackdrop")} ${item.id.slice(7)}`}
-              aria-pressed={chosenWorld.kind === "custom" && chosenWorld.id === item.id}
-              onClick={() => setChosenWorld({ kind: "custom", id: item.id })}
-            >
-              <KidsBackdrop
-                world={{ kind: "custom", id: item.id }}
-                className="kids-custom-world-thumb"
-              />
-              {t("customBackdrop")} {item.id.slice(7)}
-            </button>
-          ))}
+        {customEnabled &&
+          custom
+            .filter((item) => item.kind === "backdrop")
+            .map((item) => (
+              <button
+                type="button"
+                className="kids-button kids-custom-world"
+                key={item.id}
+                aria-label={`${t("customBackdrop")} ${item.id.slice(7)}`}
+                aria-pressed={chosenWorld.kind === "custom" && chosenWorld.id === item.id}
+                onClick={() => setChosenWorld({ kind: "custom", id: item.id })}
+              >
+                <KidsBackdrop
+                  world={{ kind: "custom", id: item.id }}
+                  className="kids-custom-world-thumb"
+                />
+                {t("customBackdrop")} {item.id.slice(7)}
+              </button>
+            ))}
         {customEnabled ? (
-          <button type="button" className="kids-button" onClick={onManageCustom}>
+          <label className="kids-button kids-image-file kids-create-upload">
             {t("addCustomBackdrop")}
-          </button>
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              aria-label={t("addCustomBackdrop")}
+              onChange={(event) => void addImage("backdrop", event)}
+            />
+          </label>
         ) : null}
       </div>
-      {customEnabled ? <p className="kids-note">{t("customAdultHint")}</p> : null}
+      {customEnabled ? <p className="kids-note">{t("imagesStay")}</p> : null}
+      <p role="status" className="kids-note">
+        {imageMessage}
+      </p>
       <button
         type="button"
         className="kids-button kids-primary kids-create-start"
-        onClick={() => onStart(chosenWorld, chosenAvatar)}
+        onClick={() =>
+          onStart(
+            customEnabled || chosenWorld.kind === "builtin" ? chosenWorld : builtinWorld(world),
+            customEnabled || chosenAvatar.kind === "emoji" ? chosenAvatar : emojiSlot(avatar),
+          )
+        }
       >
         {t("createStart")}
       </button>

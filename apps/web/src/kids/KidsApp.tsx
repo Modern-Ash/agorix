@@ -281,7 +281,6 @@ export function KidsApp({
             readAloud={adultSettings.readAloud}
             onAvatar={chooseAvatar}
             onWorld={(world) => dispatch({ type: "pickWorld", world })}
-            onManageCustom={() => dispatch({ type: "go", screen: "parents" })}
             onStart={(world, avatar) => {
               const project = createFreeProjectRef(world, avatar);
               dispatch({

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { KIDS_FLAGS_KEY, kidsV2Enabled, kidsV2Features } from "./kidsFlags.js";
+import { KIDS_FLAGS_KEY, kidsV2Enabled, kidsV2Features, setKidsV2Feature } from "./kidsFlags.js";
 
 const storageWith = (value: string | null) => ({ getItem: () => value });
 
@@ -46,5 +46,31 @@ describe("Kids v2 flags (issue #439)", () => {
       storage: storageWith('["zoom"]'),
     };
     expect([...kidsV2Features(sources)]).toEqual(["zoom"]);
+  });
+
+  it("lets the adult persistently toggle custom images without dropping other flags", () => {
+    let value: string | null = null;
+    const storage = {
+      getItem: () => value,
+      setItem: (_key: string, next: string) => {
+        value = next;
+      },
+    };
+    expect(setKidsV2Feature("customImages", false, storage)).toBe(true);
+    expect(kidsV2Features({ storage }).has("customImages")).toBe(false);
+    value = '["zoom"]';
+    expect(setKidsV2Feature("customImages", true, storage)).toBe(true);
+    expect([...kidsV2Features({ storage })].sort()).toEqual(["customImages", "zoom"]);
+  });
+
+  it("keeps the flag unchanged if storage rejects the adult's choice", () => {
+    const storage = {
+      getItem: () => null,
+      setItem: () => {
+        throw new DOMException("blocked", "QuotaExceededError");
+      },
+    };
+    expect(setKidsV2Feature("customImages", false, storage)).toBe(false);
+    expect(kidsV2Enabled("customImages", { storage })).toBe(true);
   });
 });

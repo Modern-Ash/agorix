@@ -24,9 +24,10 @@ async function openAdults(page: Page) {
   await page.getByRole("button", { name: "Comprobar" }).click();
 }
 
-test("fresh browser offers adult-gated custom explorer and backdrop by default", async ({
+test("child adds custom explorer and backdrop from Create without entering Adults", async ({
   page,
 }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/kids");
   await page.evaluate(() => {
     localStorage.clear();
@@ -38,19 +39,22 @@ test("fresh browser offers adult-gated custom explorer and backdrop by default",
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await expect(page.getByRole("button", { name: "+ Explorador" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "+ Fondo" })).toBeVisible();
-  await page.getByRole("button", { name: "+ Explorador" }).click();
+  await expect(page.getByText("+ Explorador")).toBeVisible();
+  await expect(page.getByText("+ Fondo")).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   await expect(page.getByRole("region", { name: "Imágenes del juego" })).toHaveCount(0);
-  await page.getByRole("button", { name: "1", exact: true }).click();
-  await page.getByRole("button", { name: "2", exact: true }).click();
-  await page.getByRole("button", { name: "Comprobar" }).click();
-  const panel = page.getByRole("region", { name: "Imágenes del juego" });
-  await panel.getByLabel("+ Explorador").setInputFiles(resolve("e2e/fixtures/kids-solid.png"));
-  await panel.getByLabel("+ Fondo").setInputFiles(resolve("e2e/fixtures/kids-solid.png"));
-  await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Explorador propio 1" }).click();
-  await page.getByRole("button", { name: "Fondo propio 2" }).click();
+  await expect(page.getByRole("button", { name: /Quitar imagen de/ })).toHaveCount(0);
+  await page.getByLabel("+ Explorador").setInputFiles(resolve("e2e/fixtures/kids-solid.png"));
+  await expect(page.getByRole("button", { name: "Explorador propio 1" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await page.getByLabel("+ Fondo").setInputFiles(resolve("e2e/fixtures/kids-solid.png"));
+  await expect(page.getByRole("button", { name: "Fondo propio 2" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(page.getByRole("heading", { name: "Crear" })).toBeVisible();
   await page.getByRole("button", { name: "¡Crear!" }).click();
   await expect(page.locator(".kids-world-avatar")).toHaveCSS("background-image", /data:image/);
   await expect(page.locator(".kids-world-grid")).toHaveCSS("background-image", /data:image/);
@@ -59,6 +63,43 @@ test("fresh browser offers adult-gated custom explorer and backdrop by default",
   await page.locator(".kids-project-card").getByRole("button", { name: "Jugar" }).click();
   await expect(page.locator(".kids-world-avatar")).toHaveCSS("background-image", /data:image/);
   await expect(page.locator(".kids-world-grid")).toHaveCSS("background-image", /data:image/);
+});
+
+test("child cannot replace bundled images and adult can disable custom image uploads", async ({
+  page,
+}) => {
+  await seed(page);
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await expect(page.getByText("+ Explorador")).toBeVisible();
+  await expect(page.getByText("+ Fondo")).toBeVisible();
+  await expect(page.getByLabel(/Elegir imagen para Explorador/)).toHaveCount(0);
+  await expect(page.getByLabel(/Elegir imagen para Fondo/)).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Quitar imagen de/ })).toHaveCount(0);
+  await openAdults(page);
+  await page.getByRole("switch", { name: /Imágenes propias/ }).click();
+  await expect(page.getByRole("switch", { name: /Imágenes propias/ })).toHaveAttribute(
+    "aria-checked",
+    "false",
+  );
+  await expect(page.getByRole("region", { name: "Imágenes del juego" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await expect(page.getByLabel("+ Explorador")).toHaveCount(0);
+  await expect(page.getByLabel("+ Fondo")).toHaveCount(0);
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await expect(page.getByLabel("+ Explorador")).toHaveCount(0);
+});
+
+test("invalid child image is rejected locally without adding a choice", async ({ page }) => {
+  await seed(page);
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByLabel("+ Explorador").setInputFiles({
+    name: "renamed.png",
+    mimeType: "image/png",
+    buffer: Buffer.from("<svg></svg>"),
+  });
+  await expect(page.getByRole("status")).toHaveText("Elegí un archivo PNG, JPEG o WebP.");
+  await expect(page.getByRole("button", { name: /Explorador propio/ })).toHaveCount(0);
 });
 
 test("a built-in image renders locally across map, creation, editor and prediction", async ({
@@ -122,22 +163,15 @@ test("a built-in image renders locally across map, creation, editor and predicti
   expect(policy).toContain("img-src 'self' data:");
 });
 
-test("adult adds custom explorer and backdrop; new free project retains them, deletion falls back", async ({
-  page,
-}) => {
+test("child-added explorer and backdrop persist; adult removal falls back", async ({ page }) => {
   await seed(page);
   await page.getByRole("button", { name: "Crear", exact: true }).click();
   await page.getByRole("button", { name: "¡Crear!" }).click();
   await page.getByRole("button", { name: "Volver al mapa" }).click();
-  await page.getByRole("button", { name: "Mis proyectos" }).click();
-  await openAdults(page);
-  const panel = page.getByRole("region", { name: "Imágenes del juego" });
-  await panel.getByLabel("+ Explorador").setInputFiles(resolve("e2e/fixtures/kids-solid.png"));
-  await panel.getByLabel("+ Fondo").setInputFiles(resolve("e2e/fixtures/kids-solid.png"));
-  await expect(panel.getByRole("status")).toHaveText("Imagen guardada en este dispositivo.");
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Explorador propio 1" }).click();
-  await page.getByRole("button", { name: "Fondo propio 2" }).click();
+  await page.getByLabel("+ Explorador").setInputFiles(resolve("e2e/fixtures/kids-solid.png"));
+  await page.getByLabel("+ Fondo").setInputFiles(resolve("e2e/fixtures/kids-solid.png"));
+  await expect(page.getByRole("status")).toHaveText("Imagen guardada en este dispositivo.");
   await page.getByRole("button", { name: "¡Crear!" }).click();
   await expect(page.locator(".kids-world-avatar")).toHaveCSS(
     "background-image",

@@ -59,19 +59,25 @@ compatible across Web, Tablet and Studio.
 
 ## Content
 
-Starter assets are bundled and curated. User-supplied images and audio are not part of the child flow.
+Starter assets are bundled and curated. Children cannot delete or replace them.
 
-**Reviewed exception (owner decision, 2026-10-23, issue #501):** an _adult_ may add local images
-(Ori, explorers, backdrops: flag `customImages`) and local audio (flag `customAudio`) from the Adults
-panel, only with all of these controls:
+**Reviewed exception (owner decision, 2026-10-23, issue #501):** an _adult_ may override built-in
+images (Ori, explorers, backdrops: flag `customImages`) and add local audio (flag `customAudio`)
+from the Adults panel, only with all of these controls:
 
-- adult-gated; the child cannot open the file picker;
+- built-in image overrides and audio remain adult-gated;
 - stays on the device: no upload, no network request, never part of an account sync, never sent to
   Ori or any provider, never in evidence events;
 - images are decoded locally, resized to 256 px and re-encoded, which drops EXIF/GPS; file type is
   checked by content, not by name; audio has a size and duration cap;
 - exports (`.agorix`) exclude the media unless the adult opts in;
 - an adult can remove all of it in one tap, and nothing is recorded about who or what is shown.
+
+**Owner update (2026-10-23, #531):** the adult controls the `customImages` switch in the gated
+Adults panel. When enabled, a child may add a local custom explorer or backdrop directly from
+Create. The child cannot delete or replace bundled assets, and the add flow offers no delete or
+replace control. The local processing, storage, network, export, and adult removal limits above
+still apply. Local audio and built-in image overrides remain adult-only.
 
 Anything beyond that (child-captured media, voice recording, camera, shared or synced media) needs a
 new review.
