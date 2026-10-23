@@ -1,3 +1,4 @@
+import { LIST_MAX_ITEMS } from "@agorix/program-model";
 export interface Position {
   readonly x: number;
   readonly y: number;
@@ -21,6 +22,11 @@ export interface VariableState {
   readonly visible: boolean;
 }
 
+export interface ListState {
+  readonly items: readonly number[];
+  readonly visible: boolean;
+}
+
 export interface SoundState {
   readonly activeSoundIds: readonly string[];
   /** 0-100; absent means 100 so worlds without volume statements are unchanged. */
@@ -32,6 +38,8 @@ export interface WorldState {
   readonly goal: Position;
   readonly backdropId?: string;
   readonly variables?: Readonly<Record<string, VariableState>>;
+  /** Present only for programs that declare lists, so every other world is unchanged. */
+  readonly lists?: Readonly<Record<string, ListState>>;
   readonly sounds?: SoundState;
 }
 
@@ -40,6 +48,7 @@ export interface WorldStateInput {
   readonly goal?: Partial<Position>;
   readonly backdropId?: string;
   readonly variables?: Readonly<Record<string, Partial<VariableState> | undefined>>;
+  readonly lists?: Readonly<Record<string, Partial<ListState> | undefined>>;
   readonly sounds?: Partial<SoundState>;
 }
 
@@ -80,6 +89,26 @@ function normalizeVariables(
   return normalized;
 }
 
+function normalizeLists(
+  lists: Readonly<Record<string, Partial<ListState> | undefined>> | undefined,
+): Readonly<Record<string, ListState>> | undefined {
+  if (lists === undefined) {
+    return undefined;
+  }
+  const normalized: Record<string, ListState> = {};
+  for (const key of Object.keys(lists).sort()) {
+    const list = lists[key];
+    if (list === undefined) {
+      continue;
+    }
+    normalized[key] = {
+      items: (list.items ?? []).slice(0, LIST_MAX_ITEMS).map((item) => normalizeCoordinate(item)),
+      visible: list.visible ?? false,
+    };
+  }
+  return normalized;
+}
+
 function clampVolume(value: number): number {
   if (!Number.isFinite(value)) {
     throw new RangeError(`volume must be finite: ${value}`);
@@ -99,6 +128,7 @@ function normalizeSounds(input: Partial<SoundState> | undefined): SoundState | u
 
 export function createWorldState(input: WorldStateInput = {}): WorldState {
   const variables = normalizeVariables(input.variables);
+  const lists = normalizeLists(input.lists);
   const sounds = normalizeSounds(input.sounds);
   return {
     sprite: {
@@ -123,6 +153,7 @@ export function createWorldState(input: WorldStateInput = {}): WorldState {
     },
     ...(input.backdropId === undefined ? {} : { backdropId: input.backdropId }),
     ...(variables === undefined ? {} : { variables }),
+    ...(lists === undefined ? {} : { lists }),
     ...(sounds === undefined ? {} : { sounds }),
   };
 }
@@ -263,6 +294,64 @@ export function setVariableVisibilityWorld(
       ...world.variables,
       [variableId]: { value: previous?.value ?? 0, visible },
     },
+  });
+}
+
+/** 1-based item; undefined when the index is not a whole number inside the list. */
+export function getListItemWorld(
+  world: WorldState,
+  listId: string,
+  index: number,
+): number | undefined {
+  const items = world.lists?.[listId]?.items;
+  const at = Math.trunc(index);
+  return items === undefined || !Number.isFinite(index) || at < 1 || at > items.length
+    ? undefined
+    : items[at - 1];
+}
+
+export function getListLengthWorld(world: WorldState, listId: string): number {
+  return world.lists?.[listId]?.items.length ?? 0;
+}
+
+function withList(world: WorldState, listId: string, items: readonly number[]): WorldState {
+  const previous = world.lists?.[listId];
+  return createWorldState({
+    ...world,
+    lists: { ...world.lists, [listId]: { items, visible: previous?.visible ?? false } },
+  });
+}
+
+/** Returns the same world when the list is full; the caller records a note. */
+export function listAddWorld(world: WorldState, listId: string, value: number): WorldState {
+  if (!Number.isFinite(value)) {
+    throw new RangeError(`list item must be finite: ${value}`);
+  }
+  const items = world.lists?.[listId]?.items ?? [];
+  return items.length >= LIST_MAX_ITEMS ? world : withList(world, listId, [...items, value]);
+}
+
+/** Returns the same world when the index is out of range; the caller records a note. */
+export function listRemoveAtWorld(world: WorldState, listId: string, index: number): WorldState {
+  const items = world.lists?.[listId]?.items;
+  const at = Math.trunc(index);
+  if (items === undefined || !Number.isFinite(index) || at < 1 || at > items.length) return world;
+  return withList(
+    world,
+    listId,
+    items.filter((_, position) => position !== at - 1),
+  );
+}
+
+export function setListVisibilityWorld(
+  world: WorldState,
+  listId: string,
+  visible: boolean,
+): WorldState {
+  const previous = world.lists?.[listId];
+  return createWorldState({
+    ...world,
+    lists: { ...world.lists, [listId]: { items: previous?.items ?? [], visible } },
   });
 }
 

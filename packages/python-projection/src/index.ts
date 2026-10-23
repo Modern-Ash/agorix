@@ -26,6 +26,7 @@ interface Writer {
   mapping: Record<string, TextRange[]>;
   diagnostics: LanguageProjectionDiagnostic[];
   variableNames: ReadonlyMap<string, string>;
+  listNames: ReadonlyMap<string, string>;
 }
 
 export function projectPython(program: ProjectProgram): LanguageProjectionResult {
@@ -35,6 +36,10 @@ export function projectPython(program: ProjectProgram): LanguageProjectionResult
     mapping: {},
     diagnostics: [],
     variableNames: variableNamesFor(validated.variables),
+    listNames: variableNamesFor(
+      validated.lists,
+      new Set(variableNamesFor(validated.variables).values()),
+    ),
   };
   for (const variable of validated.variables ?? []) {
     writeMapped(
@@ -50,7 +55,24 @@ export function projectPython(program: ProjectProgram): LanguageProjectionResult
       );
     }
   }
-  if ((validated.variables?.length ?? 0) > 0) {
+  for (const list of validated.lists ?? []) {
+    writeMapped(
+      writer,
+      "lists/" + list.id,
+      listIdentifier(writer, list.id) +
+        " = [" +
+        list.initialItems.map(formatNumber).join(", ") +
+        "]\n",
+    );
+    if (list.visible) {
+      writeMapped(
+        writer,
+        "lists/" + list.id,
+        "show_list(" + JSON.stringify(listIdentifier(writer, list.id)) + ")\n",
+      );
+    }
+  }
+  if ((validated.variables?.length ?? 0) > 0 || (validated.lists?.length ?? 0) > 0) {
     writer.text += "\n";
   }
   validated.scripts.forEach((script, scriptIndex) => {
@@ -94,6 +116,10 @@ export function projectPython(program: ProjectProgram): LanguageProjectionResult
         "hide_variable",
         "random_number",
         "random_integer",
+        "list_add",
+        "list_remove_at",
+        "list_item",
+        "show_list",
         "wait",
       ],
       executable: false,
@@ -144,6 +170,30 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
       return;
     case "hide":
       writeMapped(writer, nodeId, indent + "hide()\n");
+      return;
+    case "listAdd":
+      writeMapped(
+        writer,
+        nodeId,
+        indent +
+          "list_add(" +
+          listIdentifier(writer, statement.listId) +
+          ", " +
+          expressionText(writer, statement.value, nodeId + "/value") +
+          ")\n",
+      );
+      return;
+    case "listRemoveAt":
+      writeMapped(
+        writer,
+        nodeId,
+        indent +
+          "list_remove_at(" +
+          listIdentifier(writer, statement.listId) +
+          ", " +
+          expressionText(writer, statement.index, nodeId + "/index") +
+          ")\n",
+      );
       return;
     case "wait":
       writeMapped(writer, nodeId, indent + "wait(" + formatNumber(statement.seconds) + ")\n");
@@ -377,6 +427,16 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       );
     case "not":
       return "(not " + expressionText(writer, expression.value, nodeId + "/value") + ")";
+    case "listItem":
+      return (
+        "list_item(" +
+        listIdentifier(writer, expression.listId) +
+        ", " +
+        expressionText(writer, expression.index, nodeId + "/index") +
+        ")"
+      );
+    case "listLength":
+      return "len(" + listIdentifier(writer, expression.listId) + ")";
     case "randomInteger":
       return (
         "random_integer(" +
@@ -493,6 +553,10 @@ const PYTHON_PROJECTION_IDENTIFIERS: ReadonlySet<string> = new Set([
   "hide_variable",
   "random_number",
   "random_integer",
+  "list_add",
+  "list_remove_at",
+  "list_item",
+  "show_list",
   "wait",
   "range",
   "print",
@@ -522,11 +586,16 @@ function safeIdentifier(value: string, fallback: string): string {
   return forbidden ? `${valid}_` : valid;
 }
 
+function listIdentifier(writer: Writer, listId: string): string {
+  return writer.listNames.get(listId) ?? safeIdentifier(listId, "items");
+}
+
 function variableNamesFor(
   variables: readonly { id: string; name: string }[] | undefined,
+  taken: ReadonlySet<string> = new Set(),
 ): ReadonlyMap<string, string> {
   const names = new Map<string, string>();
-  const used = new Set<string>();
+  const used = new Set<string>(taken);
   for (const variable of variables ?? []) {
     const base = safeIdentifier(variable.name, safeIdentifier(variable.id, "value"));
     let name = base;

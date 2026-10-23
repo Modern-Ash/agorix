@@ -1,6 +1,7 @@
 import { SCHEMA_VERSION } from "./schema.js";
 import type {
   Expression,
+  ProgramList,
   ProgramVariable,
   ProjectProgram,
   Script,
@@ -15,6 +16,7 @@ import {
   LOOKS_TEXT_MAX_LENGTH,
   MOVE_STEPS_MAX,
   MOVE_STEPS_MIN,
+  LIST_MAX_ITEMS,
   NUMERIC_LITERAL_MAX,
   NUMERIC_LITERAL_MIN,
   REPEAT_COUNT_MAX,
@@ -117,6 +119,7 @@ interface ValidationState {
   nodeCount: number;
   seenIds: Map<string, string>; // id -> first path where it was seen
   variableIds: Set<string>;
+  listIds: Set<string>;
 }
 
 function countNode(state: ValidationState, path: string): void {
@@ -148,6 +151,16 @@ function assertKnownVariableId(value: unknown, path: string, state: ValidationSt
   }
   if (!state.variableIds.has(value)) {
     fail("INVALID_REFERENCE", path, `unknown variable id ${JSON.stringify(value)}`, value);
+  }
+  return value;
+}
+
+function assertKnownListId(value: unknown, path: string, state: ValidationState): string {
+  if (typeof value !== "string" || value.length === 0) {
+    fail("MISSING_FIELD", path, "expected a non-empty list id", value);
+  }
+  if (!state.listIds.has(value)) {
+    fail("INVALID_REFERENCE", path, `unknown list id ${JSON.stringify(value)}`, value);
   }
   return value;
 }
@@ -241,6 +254,17 @@ function validateExpression(input: unknown, path: string, state: ValidationState
       return validateBinaryExpression(input, path, state, type);
     case "not":
       return validateUnaryExpression(input, path, state);
+    case "listItem":
+      return {
+        type: "listItem",
+        listId: assertKnownListId(input.listId, `${path}.listId`, state),
+        index: validateExpression(input.index, `${path}.index`, state),
+      };
+    case "listLength":
+      return {
+        type: "listLength",
+        listId: assertKnownListId(input.listId, `${path}.listId`, state),
+      };
     case "random":
       return validateRandomExpression(input, path, state);
     case "randomInteger":
@@ -362,6 +386,18 @@ function validateStatement(
         variableId: assertKnownVariableId(input.variableId, `${path}.variableId`, state),
         delta: validateExpression(input.delta, `${path}.delta`, state),
       };
+    case "listAdd":
+      return {
+        type: "listAdd",
+        listId: assertKnownListId(input.listId, `${path}.listId`, state),
+        value: validateExpression(input.value, `${path}.value`, state),
+      };
+    case "listRemoveAt":
+      return {
+        type: "listRemoveAt",
+        listId: assertKnownListId(input.listId, `${path}.listId`, state),
+        index: validateExpression(input.index, `${path}.index`, state),
+      };
     case "showVariable":
       return {
         type: "showVariable",
@@ -478,6 +514,40 @@ function validateVariable(input: unknown, path: string, state: ValidationState):
   return { id: input.id, name, initialValue: input.initialValue, visible: input.visible };
 }
 
+function validateList(input: unknown, path: string, state: ValidationState): ProgramList {
+  if (!isPlainObject(input)) {
+    fail("INVALID_FIELD_TYPE", path, "expected an object", input);
+  }
+  if (typeof input.id !== "string" || input.id.length === 0) {
+    fail("MISSING_FIELD", `${path}.id`, "expected a non-empty string", input.id);
+  }
+  recordId(state, input.id, `${path}.id`);
+  state.listIds.add(input.id);
+  const name = checkLimitedText(input.name, `${path}.name`, VARIABLE_NAME_MAX_LENGTH, "list name");
+  if (!Array.isArray(input.initialItems)) {
+    fail("INVALID_FIELD_TYPE", `${path}.initialItems`, "expected an array", input.initialItems);
+  }
+  if (input.initialItems.length > LIST_MAX_ITEMS) {
+    fail(
+      "PROGRAM_TOO_LARGE",
+      `${path}.initialItems`,
+      `a list holds at most ${LIST_MAX_ITEMS} items`,
+      input.initialItems.length,
+    );
+  }
+  const initialItems = input.initialItems.map((item, index) => {
+    if (typeof item !== "number") {
+      fail("INVALID_FIELD_TYPE", `${path}.initialItems[${index}]`, "expected a number", item);
+    }
+    checkBounds(item, NUMERIC_LITERAL_MIN, NUMERIC_LITERAL_MAX, `${path}.initialItems[${index}]`);
+    return item;
+  });
+  if (typeof input.visible !== "boolean") {
+    fail("MISSING_FIELD", `${path}.visible`, "expected a boolean", input.visible);
+  }
+  return { id: input.id, name, initialItems, visible: input.visible };
+}
+
 function validateScript(input: unknown, path: string, state: ValidationState): Script {
   countNode(state, path);
   if (!isPlainObject(input)) {
@@ -516,7 +586,12 @@ export function validateProgram(input: unknown): ProjectProgram {
   if (!Array.isArray(input.scripts)) {
     fail("INVALID_FIELD_TYPE", "$.scripts", "expected an array", input.scripts);
   }
-  const state: ValidationState = { nodeCount: 0, seenIds: new Map(), variableIds: new Set() };
+  const state: ValidationState = {
+    nodeCount: 0,
+    seenIds: new Map(),
+    variableIds: new Set(),
+    listIds: new Set(),
+  };
   const variables =
     input.variables === undefined
       ? undefined
@@ -525,10 +600,19 @@ export function validateProgram(input: unknown): ProjectProgram {
             validateVariable(item, `$.variables[${index}]`, state),
           )
         : fail("INVALID_FIELD_TYPE", "$.variables", "expected an array", input.variables);
+  const lists =
+    input.lists === undefined
+      ? undefined
+      : Array.isArray(input.lists)
+        ? input.lists.map((item, index) => validateList(item, `$.lists[${index}]`, state))
+        : fail("INVALID_FIELD_TYPE", "$.lists", "expected an array", input.lists);
   const scripts = input.scripts.map((item, index) =>
     validateScript(item, `$.scripts[${index}]`, state),
   );
-  return variables === undefined
-    ? { schema: SCHEMA_VERSION, scripts }
-    : { schema: SCHEMA_VERSION, variables, scripts };
+  return {
+    schema: SCHEMA_VERSION,
+    ...(variables === undefined ? {} : { variables }),
+    ...(lists === undefined ? {} : { lists }),
+    scripts,
+  };
 }

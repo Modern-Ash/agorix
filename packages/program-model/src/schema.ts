@@ -118,6 +118,18 @@ export interface RandomIntegerExpression {
   readonly max: Expression;
 }
 
+/** 1-based like Scratch. Out of range reads 0 and the runtime records a note; it never throws. */
+export interface ListItemExpression {
+  readonly type: "listItem";
+  readonly listId: string;
+  readonly index: Expression;
+}
+
+export interface ListLengthExpression {
+  readonly type: "listLength";
+  readonly listId: string;
+}
+
 export type Expression =
   | TouchingGoalExpression
   | BooleanLiteralExpression
@@ -132,6 +144,8 @@ export type Expression =
   | LessOrEqualExpression
   | GreaterOrEqualExpression
   | RandomIntegerExpression
+  | ListItemExpression
+  | ListLengthExpression
   | EqualsExpression
   | AndExpression
   | OrExpression
@@ -235,6 +249,18 @@ export interface HideVariableStatement {
   readonly variableId: string;
 }
 
+export interface ListAddStatement {
+  readonly type: "listAdd";
+  readonly listId: string;
+  readonly value: Expression;
+}
+
+export interface ListRemoveAtStatement {
+  readonly type: "listRemoveAt";
+  readonly listId: string;
+  readonly index: Expression;
+}
+
 export interface RepeatStatement {
   readonly type: "repeat";
   readonly count: number;
@@ -269,6 +295,8 @@ export type Statement =
   | ChangeVariableStatement
   | ShowVariableStatement
   | HideVariableStatement
+  | ListAddStatement
+  | ListRemoveAtStatement
   | RepeatStatement
   | IfStatement;
 
@@ -314,6 +342,14 @@ export interface ProgramVariable {
   readonly visible: boolean;
 }
 
+/** A list of numbers with a visible watcher flag, declared like a variable. */
+export interface ProgramList {
+  readonly id: string;
+  readonly name: string;
+  readonly initialItems: readonly number[];
+  readonly visible: boolean;
+}
+
 export interface Script {
   /** Stable across editor round-trips when structure is unchanged (caller-supplied). */
   readonly id: string;
@@ -324,5 +360,7 @@ export interface Script {
 export interface ProjectProgram {
   readonly schema: SchemaVersion;
   readonly variables?: readonly ProgramVariable[];
+  /** Optional: absent in every program written before lists existed. */
+  readonly lists?: readonly ProgramList[];
   readonly scripts: readonly Script[];
 }

@@ -26,6 +26,7 @@ interface Writer {
   mapping: Record<string, TextRange[]>;
   diagnostics: LanguageProjectionDiagnostic[];
   variableLabels: ReadonlyMap<string, string>;
+  listLabels: ReadonlyMap<string, string>;
 }
 
 export function projectAgorixCode(program: ProjectProgram): LanguageProjectionResult {
@@ -35,6 +36,7 @@ export function projectAgorixCode(program: ProjectProgram): LanguageProjectionRe
     mapping: {},
     diagnostics: [],
     variableLabels: variableDisplayNamesFor(validated.variables),
+    listLabels: variableDisplayNamesFor(validated.lists),
   };
   for (const variable of validated.variables ?? []) {
     writeMapped(
@@ -54,7 +56,21 @@ export function projectAgorixCode(program: ProjectProgram): LanguageProjectionRe
       );
     }
   }
-  if ((validated.variables?.length ?? 0) > 0) {
+  for (const list of validated.lists ?? []) {
+    writeMapped(
+      writer,
+      "lists/" + list.id,
+      "list " +
+        listName(writer, list.id) +
+        " = " +
+        list.initialItems.map(formatNumber).join(", ") +
+        "\n",
+    );
+    if (list.visible) {
+      writeMapped(writer, "lists/" + list.id, "show " + listName(writer, list.id) + "\n");
+    }
+  }
+  if ((validated.variables?.length ?? 0) > 0 || (validated.lists?.length ?? 0) > 0) {
     writer.text += "\n";
   }
   validated.scripts.forEach((script, scriptIndex) => {
@@ -112,6 +128,30 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
       return;
     case "hide":
       writeMapped(writer, nodeId, indent + "hide\n");
+      return;
+    case "listAdd":
+      writeMapped(
+        writer,
+        nodeId,
+        indent +
+          "add " +
+          expressionText(writer, statement.value, nodeId + "/value") +
+          " to " +
+          listName(writer, statement.listId) +
+          "\n",
+      );
+      return;
+    case "listRemoveAt":
+      writeMapped(
+        writer,
+        nodeId,
+        indent +
+          "remove item " +
+          expressionText(writer, statement.index, nodeId + "/index") +
+          " of " +
+          listName(writer, statement.listId) +
+          "\n",
+      );
       return;
     case "wait":
       writeMapped(
@@ -337,6 +377,15 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       );
     case "not":
       return "not " + expressionText(writer, expression.value, nodeId + "/value");
+    case "listItem":
+      return (
+        "item " +
+        expressionText(writer, expression.index, nodeId + "/index") +
+        " of " +
+        listName(writer, expression.listId)
+      );
+    case "listLength":
+      return "length of " + listName(writer, expression.listId);
     case "randomInteger":
       return (
         "random whole number " +
@@ -367,6 +416,10 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
 
 function variableName(writer: Writer, variableId: string): string {
   return JSON.stringify(writer.variableLabels.get(variableId) ?? variableId);
+}
+
+function listName(writer: Writer, listId: string): string {
+  return JSON.stringify(writer.listLabels.get(listId) ?? listId);
 }
 
 function variableDisplayNamesFor(

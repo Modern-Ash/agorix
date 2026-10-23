@@ -1,5 +1,6 @@
 import type {
   Expression,
+  ProgramList,
   ProgramVariable,
   ProjectProgram,
   Script,
@@ -89,10 +90,23 @@ function safeIdentifier(value: string, fallback: string): string {
 
 function createProjectionContext(
   variables: readonly ProgramVariable[] | undefined,
+  lists: readonly ProgramList[] | undefined = undefined,
 ): ProjectionContext {
   const variableNames = new Map<string, string>();
   const variableLabels = new Map<string, string>();
   const used = new Set<string>();
+  for (const list of lists ?? []) {
+    const base = safeIdentifier(list.name, safeIdentifier(list.id, "list"));
+    let name = base;
+    let suffix = 2;
+    while (used.has(name)) {
+      name = `${base}${suffix}`;
+      suffix += 1;
+    }
+    used.add(name);
+    variableNames.set(`list:${list.id}`, name);
+    variableLabels.set(`list:${list.id}`, list.name);
+  }
   for (const variable of variables ?? []) {
     const base = safeIdentifier(variable.name, safeIdentifier(variable.id, "value"));
     let name = base;
@@ -106,6 +120,14 @@ function createProjectionContext(
     variableLabels.set(variable.id, variable.name);
   }
   return { variableNames, variableLabels };
+}
+
+function formatListName(context: ProjectionContext, listId: string, nodeId: string): string {
+  const name = context.variableNames.get(`list:${listId}`);
+  if (name === undefined) {
+    throw new UnsupportedNodeError(nodeId, "list");
+  }
+  return name;
 }
 
 function formatVariableName(
@@ -160,6 +182,10 @@ function formatExpression(
       return `(!${formatExpression(expression.value, `${nodeId}/value`, context)})`;
     case "randomInteger":
       return `randomInteger(${formatExpression(expression.min, `${nodeId}/min`, context)}, ${formatExpression(expression.max, `${nodeId}/max`, context)})`;
+    case "listItem":
+      return `listItem(${formatListName(context, expression.listId, nodeId)}, ${formatExpression(expression.index, `${nodeId}/index`, context)})`;
+    case "listLength":
+      return `${formatListName(context, expression.listId, nodeId)}.length`;
     case "random":
       return `random(${formatExpression(expression.min, `${nodeId}/min`, context)}, ${formatExpression(expression.max, `${nodeId}/max`, context)})`;
     default: {
@@ -227,6 +253,18 @@ function projectStatement(
       return;
     case "hide":
       write(writer, `${pad}sprite.hide();\n`);
+      return;
+    case "listAdd":
+      write(
+        writer,
+        `${pad}listAdd(${formatListName(context, statement.listId, nodeId)}, ${formatExpression(statement.value, `${nodeId}/value`, context)});\n`,
+      );
+      return;
+    case "listRemoveAt":
+      write(
+        writer,
+        `${pad}listRemoveAt(${formatListName(context, statement.listId, nodeId)}, ${formatExpression(statement.index, `${nodeId}/index`, context)});\n`,
+      );
       return;
     case "wait":
       write(writer, `${pad}wait(${formatNumber(statement.seconds)});\n`);
@@ -350,7 +388,7 @@ function projectText(program: ProjectProgram): {
   readonly mapping: LanguageNodeTextMapping;
 } {
   const writer: Writer = { parts: [], offset: 0, mapping: {} };
-  const context = createProjectionContext(program.variables);
+  const context = createProjectionContext(program.variables, program.lists);
   for (const variable of program.variables ?? []) {
     write(
       writer,
@@ -360,7 +398,19 @@ function projectText(program: ProjectProgram): {
       write(writer, `showVariable(${JSON.stringify(variable.name)});\n`);
     }
   }
-  if ((program.variables?.length ?? 0) > 0 && program.scripts.length > 0) {
+  for (const list of program.lists ?? []) {
+    write(
+      writer,
+      `const ${formatListName(context, list.id, `lists/${list.id}`)} = [${list.initialItems.map(formatNumber).join(", ")}];\n`,
+    );
+    if (list.visible) {
+      write(writer, `showList(${JSON.stringify(list.name)});\n`);
+    }
+  }
+  if (
+    ((program.variables?.length ?? 0) > 0 || (program.lists?.length ?? 0) > 0) &&
+    program.scripts.length > 0
+  ) {
     write(writer, "\n");
   }
   for (let i = 0; i < program.scripts.length; i += 1) {

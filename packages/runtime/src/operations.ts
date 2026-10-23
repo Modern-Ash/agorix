@@ -34,6 +34,8 @@ export const RUNTIME_STATEMENT_OPERATIONS = Object.freeze([
   "changeVariable",
   "showVariable",
   "hideVariable",
+  "listAdd",
+  "listRemoveAt",
   "repeat",
   "if",
 ] as const);
@@ -57,6 +59,8 @@ export const RUNTIME_EXPRESSION_OPERATIONS = Object.freeze([
   "not",
   "random",
   "randomInteger",
+  "listItem",
+  "listLength",
 ] as const);
 
 export const RUNTIME_TRIGGER_OPERATIONS = Object.freeze([
@@ -130,10 +134,14 @@ function assertExpressionAllowed(expression: Expression, path: string): void {
       assertExpressionAllowed(expression.min, `${path}.min`);
       assertExpressionAllowed(expression.max, `${path}.max`);
       return;
+    case "listItem":
+      assertExpressionAllowed(expression.index, `${path}.index`);
+      return;
     case "touchingGoal":
     case "booleanLiteral":
     case "numericLiteral":
     case "variable":
+    case "listLength":
       return;
   }
 }
@@ -158,6 +166,10 @@ function assertStatementsAllowed(statements: readonly Statement[], path: string)
       assertExpressionAllowed(statement.value, `${statementPath}.value`);
     } else if (statement.type === "changeVariable") {
       assertExpressionAllowed(statement.delta, `${statementPath}.delta`);
+    } else if (statement.type === "listAdd") {
+      assertExpressionAllowed(statement.value, `${statementPath}.value`);
+    } else if (statement.type === "listRemoveAt") {
+      assertExpressionAllowed(statement.index, `${statementPath}.index`);
     }
   }
 }

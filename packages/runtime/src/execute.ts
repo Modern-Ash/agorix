@@ -1,5 +1,6 @@
 import type {
   Expression,
+  ProgramList,
   ProgramVariable,
   ProgramEvent,
   ProjectProgram,
@@ -9,8 +10,13 @@ import type {
 import { eventForTrigger, validateProgram } from "@agorix/program-model";
 import {
   cloneWorldState,
+  createWorldState,
   changeVariableWorld,
+  getListItemWorld,
+  getListLengthWorld,
   getVariableWorld,
+  listAddWorld,
+  listRemoveAtWorld,
   hideWorld,
   moveWorld,
   playSoundWorld,
@@ -103,6 +109,8 @@ export interface RunResult {
   readonly randomState?: number;
   /** Present only when the run used `wait`, so other results are unchanged. */
   readonly virtualSeconds?: number;
+  /** Present only when a list operation was out of range or full. */
+  readonly notes?: readonly string[];
 }
 
 class ExecutionHalt {
@@ -124,6 +132,8 @@ interface MutableRunState {
   randomState: number;
   /** Virtual seconds waited so far; a clock for ordering, never a timer. */
   virtualSeconds: number;
+  /** Short machine notes (capped), e.g. a list read out of range; surfaced only when non-empty. */
+  readonly notes: string[];
 }
 
 function normalizeBudget(maxSteps: number | undefined): number {
@@ -197,6 +207,10 @@ function normalizeRandomSeed(seed: number | undefined): number {
     throw new RangeError("randomSeed must be a finite number");
   }
   return Math.trunc(seed) >>> 0;
+}
+
+function addNote(state: MutableRunState, note: string): void {
+  if (state.notes.length < 20) state.notes.push(note);
 }
 
 function nextRandomUnit(state: MutableRunState): number {
@@ -293,6 +307,17 @@ function evaluateExpression(
       const upper = Math.max(min, max);
       return normalizeRuntimeNumber(lower + nextRandomUnit(state) * (upper - lower), path);
     }
+    case "listLength":
+      return getListLengthWorld(state.world, expression.listId);
+    case "listItem": {
+      const index = coerceNumber(evaluateExpression(expression.index, `${path}.index`, state));
+      const item = getListItemWorld(state.world, expression.listId, index);
+      if (item === undefined) {
+        addNote(state, `list-index-out-of-range:${expression.listId}:${path}`);
+        return 0;
+      }
+      return item;
+    }
     case "randomInteger": {
       const min = coerceNumber(evaluateExpression(expression.min, `${path}.min`, state));
       const max = coerceNumber(evaluateExpression(expression.max, `${path}.max`, state));
@@ -350,6 +375,21 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
     case "setSize":
       state.world = setSpriteSizeWorld(state.world, statement.size);
       break;
+    case "listAdd": {
+      const value = evaluateNumber(statement.value, `${path}.value`, state);
+      const next = listAddWorld(state.world, statement.listId, value);
+      if (next === state.world) addNote(state, `list-full:${statement.listId}:${path}`);
+      state.world = next;
+      break;
+    }
+    case "listRemoveAt": {
+      const index = evaluateNumber(statement.index, `${path}.index`, state);
+      const next = listRemoveAtWorld(state.world, statement.listId, index);
+      if (next === state.world)
+        addNote(state, `list-index-out-of-range:${statement.listId}:${path}`);
+      state.world = next;
+      break;
+    }
     case "wait":
       state.virtualSeconds = Math.round((state.virtualSeconds + statement.seconds) * 1000) / 1000;
       if (state.virtualSeconds > MAX_VIRTUAL_SECONDS) throw new ExecutionHalt("budget-exceeded");
@@ -438,6 +478,23 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
   });
 }
 
+function seedProgramLists(
+  world: WorldState,
+  lists: readonly ProgramList[] | undefined,
+): WorldState {
+  if (lists === undefined || lists.length === 0) return world;
+  let next = world;
+  for (const list of lists) {
+    if (next.lists?.[list.id] === undefined) {
+      next = createWorldState({
+        ...next,
+        lists: { ...next.lists, [list.id]: { items: list.initialItems, visible: list.visible } },
+      });
+    }
+  }
+  return next;
+}
+
 function seedProgramVariables(
   world: WorldState,
   variables: readonly ProgramVariable[] | undefined,
@@ -493,7 +550,10 @@ export function runProgram(
   assertProgramOperationsAllowed(validated);
   const event = options.event ?? "greenFlag";
   const state: MutableRunState = {
-    world: seedProgramVariables(initialWorld, validated.variables),
+    world: seedProgramLists(
+      seedProgramVariables(initialWorld, validated.variables),
+      validated.lists,
+    ),
     stepsUsed: 0,
     maxSteps: normalizeBudget(options.maxSteps),
     options,
@@ -502,6 +562,7 @@ export function runProgram(
     observations: [],
     randomState: normalizeRandomSeed(options.randomSeed),
     virtualSeconds: 0,
+    notes: [],
   };
 
   try {
@@ -533,6 +594,7 @@ export function runProgram(
       observations: state.observations,
       randomState: state.randomState,
       ...(state.virtualSeconds > 0 ? { virtualSeconds: state.virtualSeconds } : {}),
+      ...(state.notes.length > 0 ? { notes: state.notes } : {}),
     };
   } catch (error) {
     if (error instanceof ExecutionHalt) {
@@ -553,6 +615,7 @@ export function runProgram(
         observations: state.observations,
         randomState: state.randomState,
         ...(state.virtualSeconds > 0 ? { virtualSeconds: state.virtualSeconds } : {}),
+        ...(state.notes.length > 0 ? { notes: state.notes } : {}),
       };
     }
     throw error;

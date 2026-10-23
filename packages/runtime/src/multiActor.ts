@@ -314,6 +314,7 @@ function singleScriptProgram(program: ProjectProgram, script: Script): ProjectPr
   return {
     schema: program.schema,
     ...(program.variables === undefined ? {} : { variables: program.variables }),
+    ...(program.lists === undefined ? {} : { lists: program.lists }),
     scripts: [script],
   };
 }
