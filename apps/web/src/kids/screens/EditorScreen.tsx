@@ -136,6 +136,7 @@ export function EditorScreen({
   const customImagesEnabled = useKidsFlag("customImages");
   const soundLibraryEnabled = useKidsFlag("soundLibrary");
   const customAudioEnabled = useKidsFlag("customAudio");
+  const oriFloatEnabled = useKidsFlag("oriFloat");
   const zoomEnabled = useKidsFlag("zoom");
   const contextMenuEnabled = useKidsFlag("contextMenu");
   const shortcutsEnabled = useKidsFlag("shortcuts");
@@ -327,7 +328,7 @@ export function EditorScreen({
       declinedCount: oriMemory.sessionDeclines,
     });
     if (decision.action !== "offer") return;
-    setOriOpen(true);
+    if (!oriFloatEnabled) setOriOpen(true);
     setOriSeenHash(oriHash);
     const next = recordProactiveOutcome(
       oriMemory,
@@ -339,6 +340,7 @@ export function EditorScreen({
     saveKidsOriMemory(next);
   }, [
     oriSuggestions,
+    oriFloatEnabled,
     freeProjectId,
     freeGoal,
     oriOffer,
@@ -807,6 +809,27 @@ export function EditorScreen({
     );
   }
 
+  function oriCard(open: boolean) {
+    if (!oriOffer) return null;
+    return (
+      <KidsOriCard
+        key={`${oriHash}-${open}`}
+        t={t}
+        locale={locale}
+        avatar={avatar}
+        goalGlyph={style.goalGlyph}
+        offer={oriOffer}
+        shape={ageBand ? bandProfile(ageBand).oriShape : undefined}
+        review={oriReview}
+        open={open}
+        onOpen={() => setOriOpen(true)}
+        onAccept={(inspected) => decideOri("accept", inspected)}
+        onModify={(choice, inspected) => decideOri("modify", inspected, choice)}
+        onReject={(inspected) => decideOri("reject", inspected)}
+      />
+    );
+  }
+
   return (
     <section
       ref={editorRef}
@@ -976,27 +999,15 @@ export function EditorScreen({
               {t("tell")}
             </button>
           ) : null}
-          {oriSuggestions ? (
-            !freeProjectId || freeGoal ? (
-              oriOffer ? (
-                <KidsOriCard
-                  key={`${oriHash}-${oriOpen}`}
-                  t={t}
-                  locale={locale}
-                  avatar={avatar}
-                  goalGlyph={style.goalGlyph}
-                  offer={oriOffer}
-                  shape={ageBand ? bandProfile(ageBand).oriShape : undefined}
-                  review={oriReview}
-                  open={oriOpen}
-                  onOpen={() => setOriOpen(true)}
-                  onAccept={(inspected) => decideOri("accept", inspected)}
-                  onModify={(choice, inspected) => decideOri("modify", inspected, choice)}
-                  onReject={(inspected) => decideOri("reject", inspected)}
-                />
-              ) : null
-            ) : null
-          ) : null}
+          {oriSuggestions
+            ? !freeProjectId || freeGoal
+              ? oriOffer
+                ? oriFloatEnabled && oriOffer.proposal
+                  ? null
+                  : oriCard(oriOpen)
+                : null
+              : null
+            : null}
           {oriSuggestions && (!freeProjectId || freeGoal) ? (
             <KidsOriChat
               locale={locale}
@@ -1175,6 +1186,45 @@ export function EditorScreen({
           </div>
         </div>
       </div>
+      {oriSuggestions && (!freeProjectId || freeGoal) && oriFloatEnabled && oriOffer?.proposal ? (
+        <div className="kids-ori-float-zone">
+          <button
+            type="button"
+            className="kids-ori-float-trigger"
+            aria-label={t("openOriProposal")}
+            onClick={() => setOriOpen(true)}
+          >
+            <KidsSprite slot="ori" />
+            <span>{t("oriIdle")}</span>
+          </button>
+          {oriOpen ? (
+            <div
+              className="kids-ori-float-backdrop"
+              role="dialog"
+              aria-modal="true"
+              aria-label={t("oriProposalTitle")}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  event.stopPropagation();
+                  setOriOpen(false);
+                }
+              }}
+            >
+              <div className="kids-ori-float-dialog">
+                <button
+                  type="button"
+                  className="kids-button kids-ori-float-close"
+                  autoFocus
+                  onClick={() => setOriOpen(false)}
+                >
+                  {t("closeOriProposal")}
+                </button>
+                {oriCard(true)}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
       {menu ? (
         <div
           ref={menuRef}
