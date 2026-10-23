@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { createEditorHistory, undoCanonicalTransaction } from "@agorix/block-editor";
-import { getKidsAdvancedMission } from "@agorix/curriculum";
+import { evaluateKidsAdvancedMission, getKidsAdvancedMission } from "@agorix/curriculum";
 import { runMultiActorProgram } from "@agorix/runtime";
 import {
   addScoreStatement,
+  scoreArithmetic,
+  scoreArithmeticStatement,
   removeScoreStatement,
   scoreStatements,
 } from "./kidsAdvancedScoreEditorModel.js";
@@ -40,5 +42,94 @@ describe("advanced score editor", () => {
         value: { type: "numericLiteral", value: 999 },
       }),
     ).toThrow();
+  });
+
+  describe("arithmetic on the score (issue #465)", () => {
+    const mission = getKidsAdvancedMission("score", "es");
+    const start = createEditorHistory(mission.starterProgram);
+    const set = (value: number) => ({
+      type: "setVariable" as const,
+      variableId: "score",
+      value: { type: "numericLiteral" as const, value },
+    });
+    const shown = (history: typeof start) =>
+      runMultiActorProgram(history.current, mission.starterCreative).actors[0]?.world.variables
+        ?.score?.value;
+
+    it("score 3, score + 2 shows 5 and score - 5 then shows -2 without error", () => {
+      let history = addScoreStatement(start, set(3));
+      history = addScoreStatement(history, scoreArithmeticStatement("add", 2));
+      expect(shown(history)).toBe(5);
+      history = addScoreStatement(history, scoreArithmeticStatement("subtract", 5));
+      expect(shown(history)).toBe(0);
+      const negative = addScoreStatement(
+        addScoreStatement(start, set(3)),
+        scoreArithmeticStatement("subtract", 5),
+      );
+      expect(shown(negative)).toBe(-2);
+      expect(scoreStatements(negative.current).map((item) => scoreArithmetic(item))).toEqual([
+        null,
+        { op: "subtract", amount: 5 },
+      ]);
+    });
+
+    it("counts as a runtime-proven change for the mission", () => {
+      const history = addScoreStatement(start, scoreArithmeticStatement("add", 2));
+      const result = runMultiActorProgram(history.current, mission.starterCreative);
+      expect(evaluateKidsAdvancedMission("score", result)).toBe(true);
+    });
+
+    it("undo removes the arithmetic block in one step", () => {
+      const history = addScoreStatement(start, scoreArithmeticStatement("add", 1));
+      expect(scoreStatements(undoCanonicalTransaction(history).history.current)).toHaveLength(0);
+    });
+
+    it("rejects other variables, amounts outside 1-5 and unsupported shapes", () => {
+      const num = (value: number) => ({ type: "numericLiteral" as const, value });
+      for (const amount of [0, 6, 1.5, -1, Number.NaN]) {
+        expect(() => addScoreStatement(start, scoreArithmeticStatement("add", amount))).toThrow();
+      }
+      expect(() =>
+        addScoreStatement(start, {
+          type: "setVariable",
+          variableId: "score",
+          value: {
+            type: "multiply",
+            left: { type: "variable", variableId: "score" },
+            right: num(2),
+          },
+        }),
+      ).toThrow();
+      expect(() =>
+        addScoreStatement(start, {
+          type: "setVariable",
+          variableId: "score",
+          value: { type: "add", left: { type: "variable", variableId: "other" }, right: num(1) },
+        }),
+      ).toThrow();
+    });
+
+    it("a division by zero fails in the runtime instead of showing NaN", () => {
+      const program = {
+        ...mission.starterProgram,
+        scripts: [
+          {
+            ...mission.starterProgram.scripts[0]!,
+            statements: [
+              {
+                type: "setVariable" as const,
+                variableId: "score",
+                value: {
+                  type: "divide" as const,
+                  left: { type: "numericLiteral" as const, value: 1 },
+                  right: { type: "numericLiteral" as const, value: 0 },
+                },
+              },
+            ],
+          },
+        ],
+      };
+      expect(() => runMultiActorProgram(program, mission.starterCreative)).toThrow();
+    });
   });
 });
