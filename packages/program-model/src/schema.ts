@@ -111,6 +111,13 @@ export interface RandomExpression {
   readonly max: Expression;
 }
 
+/** Whole number in [min, max], both ends possible. Same seeded stream as `random`. */
+export interface RandomIntegerExpression {
+  readonly type: "randomInteger";
+  readonly min: Expression;
+  readonly max: Expression;
+}
+
 export type Expression =
   | TouchingGoalExpression
   | BooleanLiteralExpression
@@ -124,6 +131,7 @@ export type Expression =
   | GreaterThanExpression
   | LessOrEqualExpression
   | GreaterOrEqualExpression
+  | RandomIntegerExpression
   | EqualsExpression
   | AndExpression
   | OrExpression

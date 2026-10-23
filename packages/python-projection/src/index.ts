@@ -93,6 +93,7 @@ export function projectPython(program: ProjectProgram): LanguageProjectionResult
         "show_variable",
         "hide_variable",
         "random_number",
+        "random_integer",
       ],
       executable: false,
     },
@@ -372,6 +373,14 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       );
     case "not":
       return "(not " + expressionText(writer, expression.value, nodeId + "/value") + ")";
+    case "randomInteger":
+      return (
+        "random_integer(" +
+        expressionText(writer, expression.min, nodeId + "/min") +
+        ", " +
+        expressionText(writer, expression.max, nodeId + "/max") +
+        ")"
+      );
     case "random":
       return (
         "random_number(" +
@@ -479,6 +488,7 @@ const PYTHON_PROJECTION_IDENTIFIERS: ReadonlySet<string> = new Set([
   "show_variable",
   "hide_variable",
   "random_number",
+  "random_integer",
   "range",
   "print",
   "len",

@@ -330,6 +330,13 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       );
     case "not":
       return "not " + expressionText(writer, expression.value, nodeId + "/value");
+    case "randomInteger":
+      return (
+        "random whole number " +
+        expressionText(writer, expression.min, nodeId + "/min") +
+        " to " +
+        expressionText(writer, expression.max, nodeId + "/max")
+      );
     case "random":
       return (
         "random " +
