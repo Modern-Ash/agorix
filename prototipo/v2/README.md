@@ -20,7 +20,7 @@ Entrega de Claude Design posterior a `prototipo/handoff/` (v1). Es referencia vi
 | Colores de bloque estilo Scratch | #447 | entregado |
 | Ori flotante con burbuja | #452 | entregado |
 | Franjas de edad 6–8 / 9–12 / 13+ | #453, #454, #455 | entregado |
-| Cuenta de adulto y código de 6 dígitos | #471 | diseño propuesto (docs/superpowers/specs/2026-10-23-kids-adult-link-design.md) |
+| Cuenta de adulto y código de 6 dígitos | #471 | diseño aprobado; implementación en #504 (docs/superpowers/specs/2026-10-23-kids-adult-link-design.md) |
 | Si / si no | #463 | entregado |
 | Comparadores ≥ ≤ | #464 | entregado |
 | Operadores aritméticos en la UI | #465 | entregado |
@@ -37,7 +37,7 @@ Entrega de Claude Design posterior a `prototipo/handoff/` (v1). Es referencia vi
 | Borrar proyectos guardados | #445 | entregado |
 | Tutoriales | #470 | pendiente |
 | Atajos de teclado | #451 | entregado |
-| Compartir y remezclar | #472 | ADR 0009 propuesto: fuera de Kids |
+| Compartir y remezclar | #472 | decidido: fuera de Kids (ADR 0009 aceptado) |
 | Diferencias 6b con la versión publicada | #444 | auditoría |
 
 ## Auditoría de las diferencias 6b (issue #444)
