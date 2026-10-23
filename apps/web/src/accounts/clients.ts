@@ -66,7 +66,8 @@ export interface ProjectDto extends ProjectSummaryDto {
 export interface AccountClient {
   /** Resolves the current session. Throws unauthenticated | session-expired | unavailable | transient. */
   restore(): Promise<AccountSummary>;
-  register(alias: string, password: string): Promise<void>;
+  /** `email` is sent when the server asks for one (adult accounts); it is never required to sign in. */
+  register(alias: string, password: string, email?: string): Promise<void>;
   signIn(alias: string, password: string): Promise<AccountSummary>;
   signOut(): Promise<void>;
 }

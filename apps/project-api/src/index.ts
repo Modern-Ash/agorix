@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { AuthPublicError, type AuthService } from "@agorix/auth-service";
-import { LinkError, type LinkService } from "@agorix/link-service";
+import { LinkError, normalizeEmail, type LinkService } from "@agorix/link-service";
 import { PlatformContractError } from "@agorix/platform-contract";
 import {
   AGORIX_PROJECT_MAX_BYTES,
@@ -95,6 +95,7 @@ export type LinkApiService = Pick<
   | "listDevices"
   | "putSummary"
   | "getSummaries"
+  | "deleteAccountData"
 >;
 
 export const DEVICE_AUTH_SCHEME = "Bearer";
@@ -102,9 +103,19 @@ export const DEVICE_AUTH_SCHEME = "Bearer";
 export const CLIENT_ADDRESS_HEADER = "x-real-ip";
 
 export interface ProjectApiOptions {
-  readonly auth: Pick<AuthService, "register" | "signIn" | "signOut" | "resolveSession">;
+  readonly auth: Pick<
+    AuthService,
+    "register" | "signIn" | "signOut" | "resolveSession" | "deleteAccount"
+  >;
+  /**
+   * Registration must carry an email (validated before the account exists). Needs `link`; without it
+   * the option is ignored. Enabled by default when adult linking is configured.
+   */
+  readonly requireEmail?: boolean;
   readonly link?: LinkApiService;
   readonly projects: ProjectRepository;
+  /** Optional durable delete coordinator, used by the SQLite server for an all-or-nothing delete. */
+  readonly deleteAccount?: (accountId: string, password: string) => Promise<void>;
   /** Allowed `Origin` values for mutating requests. Requests with a foreign Origin are rejected. */
   readonly allowedOrigins?: readonly string[];
   /** Adds `Secure` to the session cookie; must be true in production. */
@@ -193,6 +204,12 @@ export function createProjectApi(options: ProjectApiOptions): ProjectApi {
           session: { expiresAt: ctx.sessionExpiresAt },
         },
       }),
+    },
+    {
+      name: "account.delete",
+      method: "DELETE",
+      pattern: /^\/v1\/account$/,
+      handler: async () => ({ status: 404, body: null }),
     },
     {
       name: "account.email.get",
@@ -478,11 +495,27 @@ export function createProjectApi(options: ProjectApiOptions): ProjectApi {
       }
 
       if (url.pathname === "/v1/auth/register" && method === "POST") {
-        const body = readBody(request, maxBodyBytes, ["username", "password"]);
+        const body = readBody(request, maxBodyBytes, ["username", "password", "email"]);
+        // Validate the email before creating anything, so a bad address never leaves a half account.
+        const wantsEmail = options.link !== undefined;
+        let email: string | undefined;
+        if (wantsEmail && body["email"] !== undefined) {
+          email = requireString(body, "email");
+          normalizeEmail(email);
+        } else if (wantsEmail && options.requireEmail !== false) {
+          throw new ApiError(400, "VALIDATION", "Email is required", false, "EMAIL_REQUIRED");
+        }
         const registered = await options.auth.register({
           username: requireString(body, "username"),
           password: requireString(body, "password"),
         });
+        if (email !== undefined && options.link !== undefined) {
+          try {
+            await options.link.addEmail(registered.account.accountId, email);
+          } catch {
+            // The account exists; the adult can add the email after signing in.
+          }
+        }
         options.log?.({ route: routeName, status: 201 });
         return respond(
           201,
@@ -588,6 +621,34 @@ export function createProjectApi(options: ProjectApiOptions): ProjectApi {
       const match = route.pattern.exec(url.pathname);
       if (url.pathname === "/v1/auth/sign-out" && method === "POST") {
         await options.auth.signOut(resolved.sessionToken);
+        options.log?.({ route: routeName, status: 204 });
+        return respond(204, null, {
+          "set-cookie": sessionCookie(
+            "",
+            new Date(0).toISOString(),
+            options.secureCookies === true,
+          ),
+        });
+      }
+      if (url.pathname === "/v1/account" && method === "DELETE") {
+        const body = readBody(request, SMALL_BODY_BYTES, ["password"]);
+        const ownerId = resolved.account.accountId;
+        try {
+          const password = requireString(body, "password");
+          if (options.deleteAccount) {
+            await options.deleteAccount(ownerId, password);
+          } else {
+            await options.auth.deleteAccount(ownerId, password, async () => {
+              await options.link?.deleteAccountData(ownerId);
+              await repo.deleteByOwner(ownerId);
+            });
+          }
+        } catch (error) {
+          if (error instanceof AuthPublicError && error.code === "INVALID_CREDENTIALS") {
+            throw new ApiError(400, "VALIDATION", "Wrong password", false, "WRONG_PASSWORD");
+          }
+          throw error;
+        }
         options.log?.({ route: routeName, status: 204 });
         return respond(204, null, {
           "set-cookie": sessionCookie(

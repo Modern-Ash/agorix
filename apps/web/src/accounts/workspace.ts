@@ -124,8 +124,8 @@ export class WorkspaceController {
     }
   }
 
-  async register(alias: string, password: string): Promise<void> {
-    await this.options.backend.account.register(alias, password);
+  async register(alias: string, password: string, email?: string): Promise<void> {
+    await this.options.backend.account.register(alias, password, email);
     await this.signIn(alias, password);
   }
 

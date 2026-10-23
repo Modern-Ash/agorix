@@ -25,9 +25,10 @@ export function devBackendPlugin(enabled: boolean): Plugin {
         optimizeDeps: { noDiscovery: true, include: [] },
       });
       const module = (await loader.ssrLoadModule("/src/dev/devBackend.ts")) as {
-        createDevBackend: () => DevBackend;
+        createDevBackend: (options?: { requireEmail?: boolean }) => DevBackend;
       };
-      return module.createDevBackend();
+      // Browser journeys run the way production does once the adult link is configured.
+      return module.createDevBackend({ requireEmail: true });
     })();
     return backendPromise;
   }

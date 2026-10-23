@@ -16,6 +16,7 @@ import {
 import { readLinkConfig } from "./linkConfig.js";
 import { createProjectApi } from "@agorix/project-api";
 import { InMemoryProjectRepository, SqlProjectRepository } from "@agorix/project-repository";
+import { deleteSQLiteAccount } from "./deleteAccount.js";
 import { createProjectHttpServer } from "./server.js";
 import { openSQLiteStore } from "./sqlite.js";
 
@@ -87,8 +88,14 @@ if (link) {
 }
 const api = createProjectApi({
   auth,
-  ...(link ? { link } : {}),
+  ...(link ? { link, requireEmail: true } : {}),
   projects,
+  ...(sqlite
+    ? {
+        deleteAccount: (accountId: string, password: string) =>
+          deleteSQLiteAccount(sqlite, auth, accountId, password),
+      }
+    : {}),
   allowedOrigins: [origin],
   secureCookies: true,
 });

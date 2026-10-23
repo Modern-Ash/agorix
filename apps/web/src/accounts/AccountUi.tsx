@@ -1,6 +1,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { StoredProject } from "@agorix/persistence";
 import type { Locale } from "../i18n.js";
+import { createLinkApi } from "../kids/link/linkApi.js";
 import { ta } from "./accountI18n.js";
 import { AuthDialog, type AuthMode } from "./AuthDialog.js";
 import type { ProjectDto } from "./clients.js";
@@ -33,6 +34,19 @@ export function AccountUi(props: AccountUiProps) {
   const [dialog, setDialog] = useState<DialogState>();
   const [notice, setNotice] = useState<string | undefined>();
   const [projectsAfterImport, setProjectsAfterImport] = useState(false);
+  // The server asks for an adult email when it offers the optional link service.
+  const [emailRequired, setEmailRequired] = useState(false);
+  const authOpen = dialog?.kind === "auth";
+  useEffect(() => {
+    if (!authOpen) return;
+    let cancelled = false;
+    void createLinkApi()
+      .available()
+      .then((available) => !cancelled && setEmailRequired(available));
+    return () => {
+      cancelled = true;
+    };
+  }, [authOpen]);
 
   // Leaving the offer (keep/imported/closed) continues to My Projects when sign-in started it.
   useEffect(() => {
@@ -47,9 +61,9 @@ export function AccountUi(props: AccountUiProps) {
   const authenticated = state.authStatus === "authenticated";
   const expired = state.authStatus === "session-expired";
 
-  async function submitAuth(mode: AuthMode, alias: string, password: string) {
+  async function submitAuth(mode: AuthMode, alias: string, password: string, email?: string) {
     const reauth = expired;
-    if (mode === "register") await controller.register(alias, password);
+    if (mode === "register") await controller.register(alias, password, email);
     else await controller.signIn(alias, password);
     setNotice(undefined);
     if (reauth && controller.getState().active !== undefined) {
@@ -140,6 +154,7 @@ export function AccountUi(props: AccountUiProps) {
           initialMode={dialog.mode}
           sessionExpired={expired}
           prefillAlias={expired ? state.account?.alias : undefined}
+          emailRequired={emailRequired}
           onSubmit={submitAuth}
           onClose={() => setDialog(undefined)}
         />

@@ -54,8 +54,8 @@ function stored(blocks = 0): StoredProject {
   };
 }
 
-function setup(local?: StoredProject) {
-  const backend = createDevBackend();
+function setup(local?: StoredProject, options: { requireEmail?: boolean } = {}) {
+  const backend = createDevBackend(options);
   const net = createInProcessFetch(backend);
   const routes: string[] = [];
   const http = createHttpBackend({
@@ -384,5 +384,24 @@ describe("account cache isolation", () => {
     expect(storage.getItem(DRAFT_KEY)).toBeNull();
     expect(controller.getState().active).toBeUndefined();
     expect(await http.projects.list()).toHaveLength(0);
+  });
+});
+
+describe("registration with the adult email (issue #519)", () => {
+  it("passes the email through and the server accepts it", async () => {
+    const { controller } = setup(undefined, { requireEmail: true });
+    await controller.init();
+    await controller.register("emailed-user", PASSWORD, "adult@example.com");
+    expect(controller.getState().authStatus).toBe("authenticated");
+  });
+
+  it("is rejected without an email when the server requires one, and nothing is created", async () => {
+    const { controller } = setup(undefined, { requireEmail: true });
+    await controller.init();
+    const failure = await controller.register("no-email-user", PASSWORD).catch((e: unknown) => e);
+    expect(failure).toMatchObject({ kind: "validation", reason: "EMAIL_REQUIRED" });
+    expect(controller.getState().authStatus).not.toBe("authenticated");
+    await controller.register("no-email-user", PASSWORD, "adult@example.com");
+    expect(controller.getState().authStatus).toBe("authenticated");
   });
 });

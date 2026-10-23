@@ -12,7 +12,14 @@ export interface AuthDialogProps {
   /** Re-authentication after expiry: alias is prefilled and the copy explains why. */
   readonly sessionExpired?: boolean;
   readonly prefillAlias?: string | undefined;
-  readonly onSubmit: (mode: AuthMode, alias: string, password: string) => Promise<void>;
+  /** The server asked for an email at sign-up (adult accounts). */
+  readonly emailRequired?: boolean;
+  readonly onSubmit: (
+    mode: AuthMode,
+    alias: string,
+    password: string,
+    email?: string,
+  ) => Promise<void>;
   readonly onClose: () => void;
 }
 
@@ -22,7 +29,9 @@ export function authErrorKey(error: unknown): AccountMessageKey {
   if (isClientError(error, "rate-limited")) return "errRateLimited";
   if (isClientError(error, "transient")) return "errTransient";
   if (isClientError(error, "validation")) {
-    return error.reason === "INVALID_ALIAS" ? "errAlias" : "errPassword";
+    if (error.reason === "INVALID_ALIAS") return "errAlias";
+    if (error.reason === "INVALID_EMAIL" || error.reason === "EMAIL_REQUIRED") return "errEmail";
+    return "errPassword";
   }
   return "errGeneric";
 }
@@ -32,12 +41,14 @@ export function AuthDialog(props: AuthDialogProps) {
   const [mode, setMode] = useState<AuthMode>(props.initialMode ?? "sign-in");
   const [alias, setAlias] = useState(props.prefillAlias ?? "");
   const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("");
   const [reveal, setReveal] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<AccountMessageKey | undefined>();
   const register = mode === "register";
   const aliasId = useId();
   const passwordId = useId();
+  const emailId = useId();
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -45,7 +56,12 @@ export function AuthDialog(props: AuthDialogProps) {
     setBusy(true);
     setError(undefined);
     try {
-      await props.onSubmit(mode, alias, password);
+      await props.onSubmit(
+        mode,
+        alias,
+        password,
+        register && props.emailRequired === true ? email.trim() : undefined,
+      );
       setPassword("");
     } catch (caught) {
       setError(authErrorKey(caught));
@@ -123,6 +139,27 @@ export function AuthDialog(props: AuthDialogProps) {
           <p id="agx-password-hint" className="agx-hint">
             {ta(locale, "passwordHintRegister")}
           </p>
+        ) : null}
+        {register && props.emailRequired === true ? (
+          <div className="agx-field">
+            <label htmlFor={emailId}>{ta(locale, "emailLabel")}</label>
+            <input
+              id={emailId}
+              name="email"
+              type="email"
+              autoComplete="email"
+              autoCapitalize="none"
+              spellCheck={false}
+              required
+              maxLength={254}
+              value={email}
+              onChange={(event) => setEmail(event.currentTarget.value)}
+              aria-describedby="agx-email-hint"
+            />
+            <p id="agx-email-hint" className="agx-hint">
+              {ta(locale, "emailHint")}
+            </p>
+          </div>
         ) : null}
         <div role="alert" className="agx-error" data-testid="auth-error">
           {error === undefined ? null : ta(locale, error)}

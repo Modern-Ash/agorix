@@ -54,6 +54,17 @@ const es = {
   minutesLine: "{day}: {n} min",
   retentionNote:
     "Cuando desvinculás un dispositivo, su resumen queda visible 30 días y después se borra.",
+  addEmailTitle: "Agregá tu correo",
+  addEmailIntro:
+    "Tu cuenta todavía no tiene correo. Hace falta uno confirmado para vincular dispositivos.",
+  addEmailSubmit: "Enviar enlace de confirmación",
+  deleteTitle: "Borrar mi cuenta",
+  deleteIntro:
+    "Se borran para siempre tu cuenta, tus proyectos guardados, el correo, los dispositivos vinculados y sus resúmenes. No se puede deshacer.",
+  deleteStart: "Borrar mi cuenta y todos mis datos",
+  deletePassword: "Escribí tu contraseña para confirmar",
+  deleteConfirm: "Sí, borrar todo",
+  deleteDone: "Tu cuenta y tus datos se borraron.",
   privacyTitle: "Privacidad",
   privacyNote:
     "Guardamos tu correo (solo lo ves vos), un vínculo anónimo por dispositivo y resúmenes de cantidades: misiones, conceptos, minutos por día y decisiones sobre Ori. Nunca guardamos el nombre del niño, su ubicación, sus proyectos, lo que charla con Ori, imágenes ni audio. Podés desvincular cuando quieras.",
@@ -81,6 +92,8 @@ const es = {
     "username-taken": "Ese usuario no está disponible.",
     "weak-password": "La contraseña es muy corta (mínimo 12 caracteres).",
     "invalid-summary": "No se pudo enviar el resumen.",
+    "wrong-password": "La contraseña no es correcta.",
+    "email-required": "Hace falta un correo para crear la cuenta.",
     transient: "Algo falló. Probá de nuevo.",
   },
 } as const;
@@ -144,6 +157,16 @@ const en: Catalog = {
   minutesLine: "{day}: {n} min",
   retentionNote:
     "When you unlink a device, its summary stays visible for 30 days and is then deleted.",
+  addEmailTitle: "Add your email",
+  addEmailIntro: "Your account has no email yet. A confirmed one is needed to link devices.",
+  addEmailSubmit: "Send confirmation link",
+  deleteTitle: "Delete my account",
+  deleteIntro:
+    "Your account, saved projects, email, linked devices and their summaries are deleted forever. This cannot be undone.",
+  deleteStart: "Delete my account and all my data",
+  deletePassword: "Type your password to confirm",
+  deleteConfirm: "Yes, delete everything",
+  deleteDone: "Your account and data were deleted.",
   privacyTitle: "Privacy",
   privacyNote:
     "We keep your email (only you see it), an anonymous link per device and summaries of amounts: missions, concepts, minutes per day and decisions about Ori. We never keep the child's name, location, projects, chats with Ori, images or audio. You can unlink whenever you want.",
@@ -171,6 +194,8 @@ const en: Catalog = {
     "username-taken": "That username is not available.",
     "weak-password": "The password is too short (at least 12 characters).",
     "invalid-summary": "The summary could not be sent.",
+    "wrong-password": "The password is not correct.",
+    "email-required": "An email is needed to create the account.",
     transient: "Something failed. Try again.",
   },
 };

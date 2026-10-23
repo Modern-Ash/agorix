@@ -338,3 +338,91 @@ test("Ori requests from a linked device never carry link data", async ({ page, b
   );
   await tablet.context().close();
 });
+
+test("an older alias-only account is asked for an email before it can link (#519)", async ({
+  page,
+}) => {
+  const name = alias();
+  await open(page);
+  await openAdults(page);
+  await signUp(page, name, "old@example.com");
+  // Pretend the server has no email on file for this old account.
+  let present = false;
+  let posted: string | undefined;
+  await page.route("**/v1/account/email", async (route) => {
+    const request = route.request();
+    if (request.method() === "POST") {
+      posted = (request.postDataJSON() as { email: string }).email;
+      present = true;
+      return route.fulfill({
+        status: 202,
+        contentType: "application/json",
+        body: '{"status":"sent"}',
+      });
+    }
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ present, verified: false }),
+    });
+  });
+  await page.getByRole("button", { name: "Ya lo confirmé" }).click();
+  await expect(page.getByRole("heading", { name: "Agregá tu correo" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Vincular un dispositivo" })).toHaveCount(0);
+  await page.getByLabel(/Tu correo/).fill("later@example.com");
+  await page.getByRole("button", { name: "Enviar enlace de confirmación" }).click();
+  await expect(page.getByText("Revisá tu correo")).toBeVisible();
+  expect(posted).toBe("later@example.com");
+});
+
+test("deleting the account needs the password, removes everything and the tablet lets go (#517)", async ({
+  page,
+  browser,
+}) => {
+  const name = alias();
+  await open(page);
+  await openAdults(page);
+  await signUp(page, name, "gone@example.com");
+  await page.goto(`/kids?verify=${await mailToken(page)}`);
+  await openAdults(page);
+  await page.getByRole("button", { name: "Generar código" }).click();
+  const code = (await page.getByLabel("Código de vinculación").innerText()).replace(/\s/g, "");
+
+  const tablet = await newPage(browser);
+  await open(tablet);
+  await openAdults(tablet);
+  const keypad = tablet.getByRole("group", { name: "Código de 6 números" });
+  for (const digit of code) await keypad.getByRole("button", { name: digit, exact: true }).click();
+  await keypad.getByRole("button", { name: "Vincular" }).click();
+  await expect(tablet.getByText("Este dispositivo está vinculado")).toBeVisible();
+
+  // Wrong password keeps everything
+  await page.getByText("Borrar mi cuenta", { exact: true }).click();
+  await page.getByRole("button", { name: "Borrar mi cuenta y todos mis datos" }).click();
+  await page.getByLabel("Escribí tu contraseña para confirmar").fill("wrong password here");
+  await page.getByRole("button", { name: "Sí, borrar todo" }).click();
+  await expect(page.getByText("La contraseña no es correcta.")).toBeVisible();
+  await expect(page.getByText(`Sesión iniciada como ${name}`)).toBeVisible();
+
+  // Right password deletes
+  await page.getByLabel("Escribí tu contraseña para confirmar").fill(PASSWORD);
+  await page.getByRole("button", { name: "Sí, borrar todo" }).click();
+  await expect(page.getByText("Tu cuenta y tus datos se borraron.")).toBeVisible();
+  await expect(page.getByLabel("Usuario")).toBeVisible();
+
+  // The credentials no longer work and the name is free again
+  await page.getByLabel("Usuario").fill(name);
+  await page.getByLabel("Contraseña", { exact: true }).fill(PASSWORD);
+  await page.getByRole("button", { name: "Entrar", exact: true }).last().click();
+  await expect(page.getByText("Usuario o contraseña incorrectos.")).toBeVisible();
+
+  // The tablet forgets the link on its next sync, without telling the child
+  await tablet.getByRole("switch", { name: /Compartir el progreso/ }).click();
+  await tablet.getByRole("switch", { name: /Compartir el progreso/ }).click();
+  await expect
+    .poll(() => tablet.evaluate(() => localStorage.getItem("agorix.kids.link.v1")), {
+      timeout: 20_000,
+    })
+    .toBeNull();
+  await tablet.context().close();
+});

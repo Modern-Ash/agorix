@@ -12,6 +12,7 @@ import {
   type MailMessage,
 } from "@agorix/link-service";
 import { SqlProjectRepository } from "@agorix/project-repository";
+import { deleteSQLiteAccount } from "./deleteAccount.js";
 import { openSQLiteStore } from "./sqlite.js";
 
 const directories: string[] = [];
@@ -273,6 +274,66 @@ describe("SQLite production store", () => {
       expect(check.prepare(`select count(*) as n from ${table}`).get()?.["n"], table).toBe(0);
     }
     check.close();
+    await store.close();
+  });
+
+  it("deletes an account and leaves no row anywhere on SQLite (issue #517)", async () => {
+    const { db } = paths();
+    const store = openSQLiteStore(db);
+    const auth = new AuthService({
+      accounts: new SqlAccountRepository({ executor: store, dialect: "sqlite" }),
+      sessions: new SqlSessionRepository({ executor: store, dialect: "sqlite" }),
+    });
+    const projects = new SqlProjectRepository({ executor: store, dialect: "sqlite" });
+    const link = new LinkService({
+      repository: new SqlLinkRepository({ executor: store, dialect: "sqlite" }),
+      secret: "k".repeat(40),
+      mailer: { send: async () => undefined },
+    });
+    const { account } = await auth.register({ username: "Ada", password: PASSWORD });
+    const keep = await auth.register({ username: "Bob", password: PASSWORD });
+    await auth.signIn({ username: "Ada", password: PASSWORD });
+    await auth.signIn({ username: "Bob", password: PASSWORD });
+    await projects.create(account.accountId, "A1", storedProject);
+    await projects.create(account.accountId, "A2", storedProject);
+    await projects.create(keep.account.accountId, "B1", storedProject);
+    await link.addEmail(account.accountId, "ada@example.com");
+
+    await expect(
+      deleteSQLiteAccount(store, auth, account.accountId, "wrong password here"),
+    ).rejects.toMatchObject({
+      code: "INVALID_CREDENTIALS",
+    });
+    await store.execute(
+      "create trigger abort_account_delete before delete on agorix_accounts begin select raise(abort, 'forced delete failure'); end",
+    );
+    await expect(deleteSQLiteAccount(store, auth, account.accountId, PASSWORD)).rejects.toThrow(
+      "forced delete failure",
+    );
+    expect((await projects.list(account.accountId)).items).toHaveLength(2);
+    expect(await link.emailStatus(account.accountId)).toEqual({ present: true, verified: false });
+    expect(await auth.signIn({ username: "Ada", password: PASSWORD })).toBeDefined();
+    await store.execute("drop trigger abort_account_delete");
+    await deleteSQLiteAccount(store, auth, account.accountId, PASSWORD);
+
+    const raw = new DatabaseSync(db, { readOnly: true });
+    const count = (table: string, column: string, id: string) =>
+      Number(raw.prepare(`select count(*) as n from ${table} where ${column} = ?`).get(id)?.["n"]);
+    for (const [table, column] of [
+      ["agorix_accounts", "account_id"],
+      ["agorix_sessions", "account_id"],
+      ["agorix_projects", "owner_id"],
+      ["agorix_adult_emails", "account_id"],
+      ["agorix_email_verifications", "account_id"],
+      ["agorix_link_codes", "account_id"],
+      ["agorix_device_links", "account_id"],
+    ] as const) {
+      expect(count(table, column, account.accountId), table).toBe(0);
+      expect(count(table, column, keep.account.accountId) >= 0).toBe(true);
+    }
+    expect(count("agorix_accounts", "account_id", keep.account.accountId)).toBe(1);
+    expect(count("agorix_projects", "owner_id", keep.account.accountId)).toBe(1);
+    raw.close();
     await store.close();
   });
 });
