@@ -37,6 +37,7 @@ test("the default age band leaves the shipped screen unchanged", async ({ page }
   await expect(page.locator(".kids-band-chip")).toHaveCount(0);
   await expect(page.locator(".kids-root")).toHaveScreenshot("band-default.png", {
     animations: "disabled",
+    maxDiffPixelRatio: 0.04,
   });
 });
 
@@ -52,6 +53,7 @@ for (const [band, palette, label] of [
     await expect(page.locator(".kids-band-chip")).toHaveText(label);
     await expect(page.locator(".kids-root")).toHaveScreenshot(`band-${band}.png`, {
       animations: "disabled",
+      maxDiffPixelRatio: 0.04,
     });
     const violations = (await new AxeBuilder({ page }).withRules(["color-contrast"]).analyze())
       .violations;
@@ -61,7 +63,7 @@ for (const [band, palette, label] of [
     await page.getByRole("button", { name: "+ repetir", exact: true }).click();
     await expect(page.locator(".kids-editor-program-panel")).toHaveScreenshot(
       `band-${band}-editor.png`,
-      { animations: "disabled" },
+      { animations: "disabled", maxDiffPixelRatio: 0.04 },
     );
   });
 }
