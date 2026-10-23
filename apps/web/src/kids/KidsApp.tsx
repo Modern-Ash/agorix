@@ -47,6 +47,7 @@ import {
 } from "./kidsAdvancedProgress.js";
 import { ProjectStore } from "@agorix/persistence";
 import { useKidsFlag } from "./kidsFlags.js";
+import { bandProfile } from "./kidsAgeBand.js";
 import { useKidsText, type KidsText } from "./useKidsText.js";
 
 const NAV: readonly {
@@ -65,6 +66,7 @@ export function KidsApp({
   initialProgress,
 }: { readonly initialState?: KidsState; readonly initialProgress?: KidsProgress } = {}) {
   const scratchBlocks = useKidsFlag("puzzleShape");
+  const ageBandsEnabled = useKidsFlag("ageBands");
   const [progress, setProgress] = useState<KidsProgress>(
     () => initialProgress ?? loadKidsProgress(),
   );
@@ -145,7 +147,19 @@ export function KidsApp({
       data-screen={state.screen}
       data-testid="kids-root"
       data-block-palette={scratchBlocks ? "scratch" : "default"}
+      data-age-palette={ageBandsEnabled ? bandProfile(adultSettings.ageBand).palette : "warm"}
     >
+      {ageBandsEnabled ? (
+        <header className="kids-age-header">
+          <span className="kids-band-chip">
+            {adultSettings.ageBand === "6-8"
+              ? "6–8"
+              : adultSettings.ageBand === "9-12"
+                ? "9–12"
+                : "13+"}
+          </span>
+        </header>
+      ) : null}
       <main className="kids-frame">
         {state.screen === "onboard" ? (
           <OnboardScreen
