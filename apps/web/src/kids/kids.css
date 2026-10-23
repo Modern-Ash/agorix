@@ -700,6 +700,27 @@
 .kids-ori-card > span:first-child {
   font-size: 1.6rem;
 }
+.kids-ori-card[data-ori-shape] > span:first-child {
+  display: grid;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  color: #fff;
+  background: #6549bb;
+}
+.kids-ori-card[data-ori-shape="round"] > span:first-child,
+.kids-root[data-age-band="6-8"] .kids-ori-badge {
+  border-radius: 50%;
+}
+.kids-ori-card[data-ori-shape="soft"] > span:first-child,
+.kids-root[data-age-band="9-12"] .kids-ori-badge {
+  border-radius: 16px;
+}
+.kids-ori-card[data-ori-shape="angular"] > span:first-child,
+.kids-root[data-age-band="13+"] .kids-ori-badge {
+  border-radius: 4px;
+}
 .kids-ori-content {
   min-width: 0;
   flex: 1;

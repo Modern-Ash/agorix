@@ -148,6 +148,7 @@ export function KidsApp({
       data-testid="kids-root"
       data-block-palette={scratchBlocks ? "scratch" : "default"}
       data-age-palette={ageBandsEnabled ? bandProfile(adultSettings.ageBand).palette : "warm"}
+      data-age-band={ageBandsEnabled ? adultSettings.ageBand : undefined}
     >
       {ageBandsEnabled ? (
         <header className="kids-age-header">
@@ -209,6 +210,7 @@ export function KidsApp({
             missionIndex={state.missionIndex}
             freeProjectId={state.freeProjectId}
             oriSuggestions={adultSettings.oriSuggestions}
+            ageBand={ageBandsEnabled ? adultSettings.ageBand : undefined}
             onBack={() => dispatch({ type: "go", screen: "map" })}
             onComplete={() => {
               if (!state.freeProjectId)

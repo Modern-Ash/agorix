@@ -3,6 +3,7 @@ import { KIDS_GRID } from "@agorix/curriculum";
 import type { ProposalReview } from "@agorix/proposals";
 import type { KidsOriOffer } from "../kidsOri.js";
 import type { KidsText } from "../useKidsText.js";
+import type { BandProfile } from "../kidsAgeBand.js";
 
 interface Props {
   readonly t: KidsText;
@@ -10,6 +11,7 @@ interface Props {
   readonly avatar: string;
   readonly goalGlyph: string;
   readonly offer: KidsOriOffer;
+  readonly shape?: BandProfile["oriShape"] | undefined;
   readonly review?: ProposalReview | undefined;
   readonly open: boolean;
   readonly onOpen: () => void;
@@ -34,6 +36,7 @@ export function KidsOriCard({
   avatar,
   goalGlyph,
   offer,
+  shape,
   review,
   open,
   onOpen,
@@ -79,7 +82,7 @@ export function KidsOriCard({
               : t("whyWin");
 
   return (
-    <aside className="kids-ori-card" aria-label="Ori">
+    <aside className="kids-ori-card" aria-label="Ori" data-ori-shape={shape}>
       <span aria-hidden="true">✦</span>
       <div className="kids-ori-content">
         <strong>Ori · {offer.proposal ? t("oriIdle") : feedback}</strong>

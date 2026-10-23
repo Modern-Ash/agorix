@@ -63,6 +63,7 @@ import { kidsGoalSpec, parseKidsGoalSpec } from "../kidsProjects.js";
 import { KIDS_WORLD_STYLES } from "../worlds.js";
 import { KidsOriCard } from "./KidsOriCard.js";
 import { useKidsFlag } from "../kidsFlags.js";
+import { bandProfile, codeTabsForBand, type AgeBand, type CodeTab } from "../kidsAgeBand.js";
 import { KidsOriChat } from "./KidsOriChat.js";
 import { KidsOriGoals } from "./KidsOriGoals.js";
 import { describeOriGoal } from "@agorix/ori-agent";
@@ -81,6 +82,7 @@ interface Props {
   readonly onComplete: () => void;
   readonly freeProjectId?: string | undefined;
   readonly oriSuggestions?: boolean;
+  readonly ageBand?: AgeBand | undefined;
   readonly onReflect?: (
     prediction: Prediction,
     outcome: "success" | "wall" | "passed" | "short",
@@ -132,6 +134,7 @@ export function EditorScreen({
   onComplete,
   freeProjectId,
   oriSuggestions = true,
+  ageBand,
   onReflect,
 }: Props) {
   const duplicateEnabled = useKidsFlag("duplicate");
@@ -181,6 +184,15 @@ export function EditorScreen({
   });
   const [view, setView] = useState<"blocks" | "code">("blocks");
   const [language, setLanguage] = useState<CodeLanguage>("agorix");
+  const [showMoreLanguages, setShowMoreLanguages] = useState(false);
+  const visibleCodeTabs: readonly CodeTab[] = ageBand
+    ? codeTabsForBand(ageBand, showMoreLanguages)
+    : ["agorix", "python", "node", "java"];
+  const visibleLanguage: CodeLanguage =
+    language !== "agorix" &&
+    !visibleCodeTabs.includes(language === "typescript" ? "node" : language)
+      ? "agorix"
+      : language;
   const [pending, setPending] = useState<"play" | "step" | null>(null);
   const [prediction, setPrediction] = useState<Prediction | null>(null);
   const [played, setPlayed] = useState<KidsPlayedRun | null>(null);
@@ -195,7 +207,7 @@ export function EditorScreen({
   const style = KIDS_WORLD_STYLES[world];
   const statements = history.current.scripts[0]?.statements ?? [];
   const projection = useMemo(() => {
-    switch (language) {
+    switch (visibleLanguage) {
       case "agorix":
         return projectAgorixCode(history.current).text;
       case "python":
@@ -209,7 +221,7 @@ export function EditorScreen({
           : `${result.text}\n// Some blocks are not available in this Java view.\n`;
       }
     }
-  }, [history.current, language]);
+  }, [history.current, visibleLanguage]);
   const mapping = useMemo(() => programToWorkspace(history.current).mapping, [history.current]);
   const trace = played?.result.trace ?? [];
   const visibleTrace = trace.slice(0, step);
@@ -764,6 +776,7 @@ export function EditorScreen({
                   avatar={avatar}
                   goalGlyph={style.goalGlyph}
                   offer={oriOffer}
+                  shape={ageBand ? bandProfile(ageBand).oriShape : undefined}
                   review={oriReview}
                   open={oriOpen}
                   onOpen={() => setOriOpen(true)}
@@ -814,23 +827,38 @@ export function EditorScreen({
             </>
           ) : (
             <>
-              <div className="kids-code-languages">
-                {(["agorix", "python", "typescript", "java"] as const).map((item) => (
+              <div className="kids-code-languages" role="group" aria-label={t("code")}>
+                {visibleCodeTabs.map((tab) => {
+                  const item: CodeLanguage = tab === "node" ? "typescript" : tab;
+                  return (
+                    <button
+                      type="button"
+                      key={item}
+                      aria-pressed={visibleLanguage === item}
+                      onClick={() => setLanguage(item)}
+                    >
+                      {item === "agorix"
+                        ? "Agorix Code"
+                        : item === "python"
+                          ? "Python"
+                          : item === "typescript"
+                            ? "TypeScript / Node"
+                            : "Java"}
+                    </button>
+                  );
+                })}
+                {ageBand === "6-8" ? (
                   <button
                     type="button"
-                    key={item}
-                    aria-pressed={language === item}
-                    onClick={() => setLanguage(item)}
+                    aria-expanded={showMoreLanguages}
+                    onClick={() => {
+                      setShowMoreLanguages((current) => !current);
+                      setLanguage("agorix");
+                    }}
                   >
-                    {item === "agorix"
-                      ? "Agorix Code"
-                      : item === "python"
-                        ? "Python"
-                        : item === "typescript"
-                          ? "TypeScript / Node"
-                          : "Java"}
+                    {t(showMoreLanguages ? "fewerLanguages" : "moreLanguages")}
                   </button>
-                ))}
+                ) : null}
               </div>
               <pre className="kids-code-view">{projection}</pre>
             </>
