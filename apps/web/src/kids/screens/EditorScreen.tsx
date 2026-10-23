@@ -80,6 +80,8 @@ import {
 import { playKidsSound } from "../kidsSoundPlayer.js";
 import { dropSlot, nextZoom, type ZoomLevel } from "../kidsEditorInteractions.js";
 import { KIDS_SHORTCUTS, kidsShortcut } from "../kidsShortcuts.js";
+import { tutorialStep } from "../kidsTutorial.js";
+import { KidsTutorial } from "./KidsTutorial.js";
 
 type CodeLanguage = "agorix" | "python" | "typescript" | "java";
 type Prediction = "yes" | "no" | "dunno";
@@ -96,6 +98,8 @@ interface Props {
   readonly freeProjectId?: string | undefined;
   readonly oriSuggestions?: boolean;
   readonly ageBand?: AgeBand | undefined;
+  /** First-run coach for mission 1; absent when the tutorial is off or already done. */
+  readonly tutorial?: { readonly onDone: () => void } | undefined;
   readonly onReflect?: (
     prediction: Prediction,
     outcome: "success" | "wall" | "passed" | "short",
@@ -130,6 +134,7 @@ export function EditorScreen({
   freeProjectId,
   oriSuggestions = true,
   ageBand,
+  tutorial,
   onReflect,
 }: Props) {
   const duplicateEnabled = useKidsFlag("duplicate");
@@ -215,6 +220,7 @@ export function EditorScreen({
       ? "agorix"
       : language;
   const [pending, setPending] = useState<"play" | "step" | null>(null);
+  const [numberTouched, setNumberTouched] = useState(false);
   const [prediction, setPrediction] = useState<Prediction | null>(null);
   const [played, setPlayed] = useState<KidsPlayedRun | null>(null);
   const [step, setStep] = useState(0);
@@ -359,6 +365,19 @@ export function EditorScreen({
     setStep(0);
     setPrediction(null);
   }
+
+  const coach = tutorial
+    ? tutorialStep({
+        blocks: history.current.scripts[0]?.statements.length ?? 0,
+        numberTouched,
+        predicting: pending !== null,
+        ran: played !== null,
+      })
+    : null;
+  const tutorialDone = tutorial?.onDone;
+  useEffect(() => {
+    if (tutorialDone && played !== null) tutorialDone();
+  }, [tutorialDone, played]);
 
   function change(
     next: typeof history,
@@ -722,12 +741,14 @@ export function EditorScreen({
             <select
               aria-label={`${t(kind)} ${index + 1}`}
               value={number}
-              onChange={(event) =>
+              data-tutorial={coach === "number" ? "target" : undefined}
+              onChange={(event) => {
                 change(
                   setKidsBlockNumber(history, index, Number(event.target.value), childIndex),
                   kind === "repeat" ? "loopChange" : "sequenceChange",
-                )
-              }
+                );
+                setNumberTouched(true);
+              }}
             >
               {(kind === "repeat" ? [2, 3, 4, 5, 6] : [1, 2, 3, 4, 5]).map((value) => (
                 <option key={value} value={value}>
@@ -869,6 +890,9 @@ export function EditorScreen({
           </button>
         ) : null}
       </header>
+      {tutorial && coach ? (
+        <KidsTutorial t={t} locale={locale} step={coach} onSkip={tutorial.onDone} />
+      ) : null}
       <div className="kids-editor-layout">
         <div className="kids-editor-stage-panel">
           <p className="kids-editor-goal">
@@ -932,6 +956,7 @@ export function EditorScreen({
               type="button"
               className="kids-button kids-primary"
               disabled={Boolean(freeProjectId && !freeGoal)}
+              data-tutorial={coach === "run" ? "target" : undefined}
               onClick={() => startRun("play")}
             >
               {t("run")}
@@ -1155,6 +1180,7 @@ export function EditorScreen({
                   type="button"
                   key={kind}
                   className={`kids-palette-block kids-block-${kind}`}
+                  data-tutorial={coach === "add" && kind === "move" ? "target" : undefined}
                   draggable
                   onDragStart={(event) => event.dataTransfer.setData("text/plain", kind)}
                   onClick={() =>
@@ -1317,6 +1343,7 @@ export function EditorScreen({
                   type="button"
                   className="kids-button"
                   key={answer}
+                  data-tutorial={coach === "predict" ? "target" : undefined}
                   onClick={() => choosePrediction(answer)}
                 >
                   {t(answer)}

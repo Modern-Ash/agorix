@@ -47,6 +47,7 @@ import {
 } from "./kidsAdvancedProgress.js";
 import { ProjectStore } from "@agorix/persistence";
 import { useKidsFlag } from "./kidsFlags.js";
+import { tutorialVisible } from "./kidsTutorial.js";
 import { bandProfile } from "./kidsAgeBand.js";
 import { useKidsText, type KidsText } from "./useKidsText.js";
 
@@ -66,6 +67,7 @@ export function KidsApp({
   initialProgress,
 }: { readonly initialState?: KidsState; readonly initialProgress?: KidsProgress } = {}) {
   const scratchBlocks = useKidsFlag("puzzleShape");
+  const tutorialEnabled = useKidsFlag("tutorial");
   const ageBandsEnabled = useKidsFlag("ageBands");
   const [progress, setProgress] = useState<KidsProgress>(
     () => initialProgress ?? loadKidsProgress(),
@@ -211,6 +213,16 @@ export function KidsApp({
             freeProjectId={state.freeProjectId}
             oriSuggestions={adultSettings.oriSuggestions}
             ageBand={ageBandsEnabled ? adultSettings.ageBand : undefined}
+            tutorial={
+              tutorialVisible({
+                enabled: tutorialEnabled,
+                done: progress.tutorialDone === true,
+                missionIndex: state.missionIndex,
+                freeProject: state.freeProjectId !== undefined,
+              })
+                ? { onDone: () => update({ ...progress, tutorialDone: true }) }
+                : undefined
+            }
             onBack={() => dispatch({ type: "go", screen: "map" })}
             onComplete={() => {
               if (!state.freeProjectId)

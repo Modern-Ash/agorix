@@ -14,6 +14,8 @@ export interface KidsProgress {
   readonly stars: number;
   /** Keys are `"<world>:<missionIndex>"`. */
   readonly done: Readonly<Record<string, true>>;
+  /** Set once the first-run tutorial is finished or skipped; absent on older saved progress. */
+  readonly tutorialDone?: true;
 }
 
 export const KIDS_PROGRESS_KEY = "agorix.kids.progress.v1";
@@ -84,6 +86,7 @@ export function loadKidsProgress(
         ? Object.keys(authoritativeDone).length
         : Math.max(0, parsed["stars"]),
       done: authoritativeDone,
+      ...(parsed["tutorialDone"] === true ? { tutorialDone: true as const } : {}),
     };
   } catch {
     return emptyKidsProgress();

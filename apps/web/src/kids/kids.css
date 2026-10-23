@@ -2062,3 +2062,35 @@
   --kids-block-event-border: transparent;
   --kids-block-event-text: #2b1700;
 }
+
+.kids-tutorial {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 16px;
+  padding: 10px 14px;
+  border: 2px solid var(--kids-ai);
+  border-radius: 14px;
+  background: var(--kids-panel);
+  color: var(--kids-text);
+}
+.kids-tutorial p {
+  flex: 1 1 220px;
+  margin: 0;
+  font-weight: 700;
+}
+[data-tutorial="target"] {
+  outline: 4px solid var(--kids-ai);
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-tutorial="target"] {
+    animation: kids-tutorial-pulse 1.4s ease-in-out infinite;
+  }
+}
+@keyframes kids-tutorial-pulse {
+  50% {
+    outline-offset: 6px;
+  }
+}
