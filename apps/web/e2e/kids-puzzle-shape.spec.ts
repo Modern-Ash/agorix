@@ -37,7 +37,11 @@ for (const palette of ["default", "scratch"] as const) {
       expect(shape).toEqual(
         palette === "scratch" ? { notch: '""', tab: '""' } : { notch: "none", tab: "none" },
       );
-      await expect(block).toHaveScreenshot(`${palette}-${kind}.png`, { animations: "disabled" });
+      await expect(block).toHaveScreenshot(`${palette}-${kind}.png`, {
+        animations: "disabled",
+        // Linux hosts rasterize bundled fonts differently; shape presence is asserted above.
+        maxDiffPixelRatio: 0.04,
+      });
     }
     const repeatBody = page.locator(".kids-program-block.kids-block-repeat > .kids-repeat-body");
     await expect(repeatBody).toHaveCSS(
