@@ -13,6 +13,8 @@ Browser
   -> 127.0.0.1:8470  nginx container "agorix-web" (static dist + security headers)
   -> /api/tutor/*    Unix socket in user runtime directory
                      -> host user service "agorix-tutor" -> Codex/OpenCode CLI
+  -> /v1/*           reserved Unix socket for the project server (#346)
+                     -> JSON 404 while durable storage (#347) is unavailable
 ```
 
 - The tunnel is the only ingress. No port is opened on the router; the container is bound to
@@ -20,6 +22,9 @@ Browser
   same tunnel and are separate ingress rules.
 - The site remains playable without the host tutor service. Anonymous projects live in the browser;
   `.agorix` export/import is the portable path. Accounts and server-side project storage are separate work.
+- The `/v1/*` route does not serve the SPA shell. It proxies to the project socket when a service
+  is present and returns JSON 404 otherwise. The in-memory server is not activated in production;
+  durable storage and account activation are tracked in #347 and #358.
 - `/` serves Agorix Kids. `/kids` remains an alias for existing links; `/advanced` serves the parked
   editor with actors, sounds, events and code views. The production smoke checks both routes.
 - Everything is defined in the repository: `deploy/web/` (Dockerfile, `nginx.conf`, generated

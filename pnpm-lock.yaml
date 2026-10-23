@@ -55,6 +55,25 @@ importers:
         specifier: workspace:*
         version: link:../../packages/project-repository
 
+  apps/server:
+    dependencies:
+      '@agorix/auth-service':
+        specifier: workspace:*
+        version: link:../../packages/auth-service
+      '@agorix/persistence':
+        specifier: workspace:*
+        version: link:../../packages/persistence
+      '@agorix/project-api':
+        specifier: workspace:*
+        version: link:../project-api
+      '@agorix/project-repository':
+        specifier: workspace:*
+        version: link:../../packages/project-repository
+    devDependencies:
+      esbuild:
+        specifier: ^0.28.2
+        version: 0.28.2
+
   apps/tutor-api:
     dependencies:
       '@agorix/curriculum':

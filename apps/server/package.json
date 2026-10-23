@@ -1,0 +1,20 @@
+{
+  "name": "@agorix/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/bundle.mjs",
+    "test": "vitest run",
+    "start": "node dist/main.mjs"
+  },
+  "dependencies": {
+    "@agorix/auth-service": "workspace:*",
+    "@agorix/persistence": "workspace:*",
+    "@agorix/project-api": "workspace:*",
+    "@agorix/project-repository": "workspace:*"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}

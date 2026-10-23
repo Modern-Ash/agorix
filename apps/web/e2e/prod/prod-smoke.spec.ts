@@ -83,6 +83,15 @@ test("/version.json reports the deployed build", async ({ request }) => {
   }
 });
 
+test("project API discovery returns private JSON, never the app shell", async ({ request }) => {
+  const response = await request.get("/v1/session");
+  expect([401, 404]).toContain(response.status());
+  expect(response.headers()["content-type"]).toContain("application/json");
+  expect(response.headers()["cache-control"]).toContain("no-store");
+  const body = (await response.json()) as { error?: { code?: string } };
+  expect(["UNAUTHENTICATED", "NOT_FOUND"]).toContain(body.error?.code);
+});
+
 test("a first visit opens in Spanish, stays same-origin and registers the service worker", async ({
   page,
   baseURL,
