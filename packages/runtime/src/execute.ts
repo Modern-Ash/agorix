@@ -60,6 +60,8 @@ export interface ExecutionTraceEntry {
   readonly nodeId: string;
   readonly path: string;
   readonly statementType: Statement["type"];
+  /** Emitted only for playSound, so audio playback follows executed statements exactly. */
+  readonly soundId?: string;
   readonly worldBefore: WorldState;
   readonly worldAfter: WorldState;
   readonly actorId?: string;
@@ -422,6 +424,7 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
     nodeId,
     path: nodeId,
     statementType: statement.type,
+    ...(statement.type === "playSound" ? { soundId: statement.soundId } : {}),
     worldBefore: before,
     worldAfter,
   });

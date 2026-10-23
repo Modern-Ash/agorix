@@ -19,6 +19,7 @@ import {
   type Statement,
 } from "@agorix/program-model";
 import { createWorldState, runProgram, type RunResult } from "@agorix/runtime";
+import { isKidsSoundId } from "./kidsSoundLibrary.js";
 
 export type KidsBlockKind = "move" | "turnL" | "turnR" | "repeat" | "sound";
 export type KidsEditor = EditorHistory;
@@ -140,6 +141,35 @@ export function setKidsBlockNumber(
     } else if (block.type === "repeat" && value >= 2 && value <= 6) {
       replacement = { ...block, count: value };
     } else return statements;
+    if (childIndex === undefined) statements[index] = replacement;
+    else if (parent?.type === "repeat") {
+      statements[index] = {
+        ...parent,
+        body: parent.body.map((item, at) => (at === childIndex ? replacement : item)),
+      };
+    }
+    return statements;
+  });
+}
+
+/** Sound selection stays in the canonical program and shares Undo/Redo with every other edit. */
+export function setKidsBlockSound(
+  history: KidsEditor,
+  index: number,
+  soundId: string,
+  childIndex?: number,
+): KidsEditor {
+  if (!isKidsSoundId(soundId)) return history;
+  return edit(history, "change block sound", (statements) => {
+    const parent = statements[index];
+    const block =
+      childIndex === undefined
+        ? parent
+        : parent?.type === "repeat"
+          ? parent.body[childIndex]
+          : undefined;
+    if (block?.type !== "playSound") return statements;
+    const replacement: Statement = { ...block, soundId };
     if (childIndex === undefined) statements[index] = replacement;
     else if (parent?.type === "repeat") {
       statements[index] = {

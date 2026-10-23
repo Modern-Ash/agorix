@@ -293,6 +293,7 @@ describe("runProgram operations", () => {
       "stopSounds",
     ]);
     expect(result.trace.at(-2)?.worldAfter.sounds?.activeSoundIds).toEqual(["asset:sound.beacon"]);
+    expect(result.trace.at(-2)?.soundId).toBe("asset:sound.beacon");
   });
 
   it("supports nested repeat and if structures", () => {
