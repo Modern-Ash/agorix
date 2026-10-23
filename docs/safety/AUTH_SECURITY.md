@@ -75,5 +75,9 @@ beside `auth-service`; it does not change how usernames, passwords or sessions w
 - **Summaries.** Strict schema (counts, 14 day minutes, age band, daily limit); anything else, any extra
   key and any body over 8 KB is rejected. Retention: 30 days after unlink (a scheduled purge, every 6
   hours), immediate on account deletion.
-- **Operations.** The feature is off unless `AGORIX_LINK_SECRET` (at least 32 characters) is set. Until
-  a mail provider is wired in (follow-up), verification messages are dropped by the default `NoopMailer`.
+- **Operations.** The feature is off unless `AGORIX_LINK_SECRET` (at least 32 characters) is set. Mail
+  goes through SMTP (`AGORIX_MAIL_SMTP_URL`, `AGORIX_MAIL_FROM`; see
+  `docs/architecture/PROJECT_HTTP_SERVER.md`): TLS is mandatory and verified (implicit TLS, or STARTTLS
+  with no downgrade), credentials are never written before TLS, delivery runs in the background so the
+  HTTP answer cannot reveal whether an address exists, and logs carry only the failure kind. Without a
+  transport the default `NoopMailer` drops messages.

@@ -7,7 +7,13 @@ import {
   SqlAccountRepository,
   SqlSessionRepository,
 } from "@agorix/auth-service";
-import { InMemoryLinkRepository, LinkService, SqlLinkRepository } from "@agorix/link-service";
+import {
+  InMemoryLinkRepository,
+  LinkService,
+  MailDeliveryError,
+  SqlLinkRepository,
+} from "@agorix/link-service";
+import { readLinkConfig } from "./linkConfig.js";
 import { createProjectApi } from "@agorix/project-api";
 import { InMemoryProjectRepository, SqlProjectRepository } from "@agorix/project-repository";
 import { createProjectHttpServer } from "./server.js";
@@ -47,22 +53,26 @@ const projects = sqlite
   ? new SqlProjectRepository({ executor: sqlite, dialect: "sqlite" })
   : new InMemoryProjectRepository();
 const auth = new AuthService({ accounts, sessions });
-// The adult-link feature is off unless a secret is configured (docs/deployment).
-const linkSecret = process.env["AGORIX_LINK_SECRET"];
-if (linkSecret !== undefined && linkSecret.length < 32) {
-  throw new Error("AGORIX_LINK_SECRET must be at least 32 characters");
-}
+const { secret: linkSecret, mailer } = readLinkConfig(process.env, origin);
 const link = linkSecret
   ? new LinkService({
       repository: sqlite
         ? new SqlLinkRepository({ executor: sqlite, dialect: "sqlite" })
         : new InMemoryLinkRepository(),
       secret: linkSecret,
+      ...(mailer ? { mailer } : {}),
+      // Kind only: never the address, the token or the server's reply.
+      onMailError: (error) =>
+        process.stdout.write(
+          `mail delivery failed: ${error instanceof MailDeliveryError ? error.kind : "unknown"}\n`,
+        ),
     })
   : undefined;
 if (link) {
   process.stdout.write(
-    "adult link enabled; verification email is not delivered until a mailer is configured\n",
+    mailer
+      ? "adult link enabled; verification email via SMTP\n"
+      : "adult link enabled; no mail transport configured, verification email is not delivered\n",
   );
   const purge = setInterval(
     () => {

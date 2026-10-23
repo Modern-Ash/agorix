@@ -40,6 +40,10 @@ services:
       AGORIX_PROJECT_BACKUP_DIR: /backups
       AGORIX_PROJECT_SOCKET: /run/agorix-projects/projects.sock
       AGORIX_PROJECT_ORIGIN: ${AGORIX_PROJECT_ORIGIN-}
+      # Optional adult link (docs/architecture/PROJECT_HTTP_SERVER.md). Empty means off.
+      AGORIX_LINK_SECRET: ${AGORIX_LINK_SECRET-}
+      AGORIX_MAIL_SMTP_URL: ${AGORIX_MAIL_SMTP_URL-}
+      AGORIX_MAIL_FROM: ${AGORIX_MAIL_FROM-}
     volumes:
       - agorix-project-data:/data
       - agorix-project-backups:/backups
