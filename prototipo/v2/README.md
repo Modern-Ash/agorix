@@ -40,6 +40,14 @@ Entrega de Claude Design posterior a `prototipo/handoff/` (v1). Es referencia vi
 | Compartir y remezclar | #472 | decidido: fuera de Kids (ADR 0009 aceptado) |
 | Diferencias 6b con la versión publicada | #444 | auditoría |
 
+**Visibilidad de imágenes propias (#524):** el dueño del producto aprobó activar
+`customImages` por defecto antes del playtest #389, después de la revisión de
+seguridad #501. En un navegador nuevo, Crear muestra `+ Explorador` y `+ Fondo`;
+la selección del archivo sigue dentro de Adultos. Una lista explícita vacía en
+`agorix.kids.flags.v1` desactiva la función para rollback en ese navegador. El
+resto de las funciones v2 conserva su estado anterior y #524 permanece abierto
+para el despliegue gradual completo.
+
 ## Auditoría de las diferencias 6b (issue #444)
 
 Verificada el 2026-10-23 contra la app en ejecución (`/kids`, español, misión 1). "Igual" = la app publicada y la entregada coinciden con lo que el handoff 6b describe de la versión publicada.

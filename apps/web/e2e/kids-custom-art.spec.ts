@@ -24,6 +24,43 @@ async function openAdults(page: Page) {
   await page.getByRole("button", { name: "Comprobar" }).click();
 }
 
+test("fresh browser offers adult-gated custom explorer and backdrop by default", async ({
+  page,
+}) => {
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await expect(page.getByRole("button", { name: "+ Explorador" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "+ Fondo" })).toBeVisible();
+  await page.getByRole("button", { name: "+ Explorador" }).click();
+  await expect(page.getByRole("region", { name: "Imágenes del juego" })).toHaveCount(0);
+  await page.getByRole("button", { name: "1", exact: true }).click();
+  await page.getByRole("button", { name: "2", exact: true }).click();
+  await page.getByRole("button", { name: "Comprobar" }).click();
+  const panel = page.getByRole("region", { name: "Imágenes del juego" });
+  await panel.getByLabel("+ Explorador").setInputFiles(resolve("e2e/fixtures/kids-solid.png"));
+  await panel.getByLabel("+ Fondo").setInputFiles(resolve("e2e/fixtures/kids-solid.png"));
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Explorador propio 1" }).click();
+  await page.getByRole("button", { name: "Fondo propio 2" }).click();
+  await page.getByRole("button", { name: "¡Crear!" }).click();
+  await expect(page.locator(".kids-world-avatar")).toHaveCSS("background-image", /data:image/);
+  await expect(page.locator(".kids-world-grid")).toHaveCSS("background-image", /data:image/);
+  await page.reload();
+  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  await page.locator(".kids-project-card").getByRole("button", { name: "Jugar" }).click();
+  await expect(page.locator(".kids-world-avatar")).toHaveCSS("background-image", /data:image/);
+  await expect(page.locator(".kids-world-grid")).toHaveCSS("background-image", /data:image/);
+});
+
 test("a built-in image renders locally across map, creation, editor and prediction", async ({
   page,
 }) => {

@@ -19,6 +19,7 @@ export const KIDS_V2_FEATURES = [
 export type KidsV2Feature = (typeof KIDS_V2_FEATURES)[number];
 
 export const KIDS_FLAGS_KEY = "agorix.kids.flags.v1";
+const DEFAULT_FEATURES: readonly KidsV2Feature[] = ["customImages"];
 
 export interface KidsFlagSources {
   readonly search?: string;
@@ -37,14 +38,16 @@ function keep(names: readonly unknown[]): ReadonlySet<KidsV2Feature> {
 
 function stored(storage: KidsFlagSources["storage"]): readonly unknown[] {
   try {
-    const parsed = JSON.parse(storage?.getItem(KIDS_FLAGS_KEY) ?? "[]") as unknown;
+    const raw = storage?.getItem(KIDS_FLAGS_KEY);
+    if (raw === null || raw === undefined) return DEFAULT_FEATURES;
+    const parsed = JSON.parse(raw) as unknown;
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
   }
 }
 
-/** Features switched on for this browser. Default: none, so shipped behaviour is unchanged. */
+/** Approved defaults apply to a new browser; an explicit stored list can roll them back. */
 export function kidsV2Features(sources: KidsFlagSources = {}): ReadonlySet<KidsV2Feature> {
   const names: unknown[] = [...stored(sources.storage)];
   if (sources.production !== true) {
