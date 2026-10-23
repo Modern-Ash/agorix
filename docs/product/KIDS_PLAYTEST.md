@@ -53,3 +53,5 @@ Parafrasear las respuestas en el informe. No publicar nombre completo, foto, aud
 ### Resultado de la sesión
 
 Pendiente de la prueba con Mora. Completar con fecha, tablet/navegador, versión, recorrido terminado sin ayuda (sí/no y hasta dónde), similitudes y diferencias frente a Scratch, enlaces a issues `kids` y decisión del dueño del producto sobre la predicción.
+
+Para una sesión posterior sobre las tres etapas avanzadas, usar el guion y la plantilla de [Validación del nivel avanzado](KIDS_ADVANCED_VALIDATION.md). Esa sesión sigue pendiente y no se sustituye por pruebas automatizadas.
