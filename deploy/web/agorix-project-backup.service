@@ -1,0 +1,8 @@
+[Unit]
+Description=Back up Agorix project and account SQLite database
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/dev-agora/agorix
+EnvironmentFile=-%h/.config/agorix/projects.env
+ExecStart=%h/dev-agora/agorix/scripts/backup-projects.sh

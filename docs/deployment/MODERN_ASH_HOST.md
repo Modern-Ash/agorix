@@ -13,8 +13,8 @@ Browser
   -> 127.0.0.1:8470  nginx container "agorix-web" (static dist + security headers)
   -> /api/tutor/*    Unix socket in user runtime directory
                      -> host user service "agorix-tutor" -> Codex/OpenCode CLI
-  -> /v1/*           reserved Unix socket for the project server (#346)
-                     -> JSON 404 while durable storage (#347) is unavailable
+  -> /v1/*           Unix socket for the project server
+                     -> JSON 404 while its explicit accounts profile is off
 ```
 
 - The tunnel is the only ingress. No port is opened on the router; the container is bound to
@@ -23,8 +23,9 @@ Browser
 - The site remains playable without the host tutor service. Anonymous projects live in the browser;
   `.agorix` export/import is the portable path. Accounts and server-side project storage are separate work.
 - The `/v1/*` route does not serve the SPA shell. It proxies to the project socket when a service
-  is present and returns JSON 404 otherwise. The in-memory server is not activated in production;
-  durable storage and account activation are tracked in #347 and #358.
+  is present and returns JSON 404 otherwise. The SQLite project service has a separate Compose
+  `accounts` profile and persistent data volume. It requires explicit activation after review;
+  see [PROJECT_SQLITE_STORE.md](../architecture/PROJECT_SQLITE_STORE.md).
 - `/` serves Agorix Kids. `/kids` remains an alias for existing links; `/advanced` serves the parked
   editor with actors, sounds, events and code views. The production smoke checks both routes.
 - Everything is defined in the repository: `deploy/web/` (Dockerfile, `nginx.conf`, generated
@@ -193,7 +194,7 @@ See [SELF_HOSTING.md](./SELF_HOSTING.md) for the API fields and alternate server
 
 ## Not in production yet
 
-- Accounts, server-side projects and a database (#346, #347).
+- Account activation and scheduled SQLite backups (see the storage runbook above).
 - Host tutor service activation (requires a host CLI login and an explicit operator action).
 - Tablet layout, English leftovers, PNG icons and the accessibility pass (#359, #360, #361, #362).
 - Disabling Cloudflare's injected analytics (#365).

@@ -6,9 +6,9 @@
 durable boundary. It adds no UI and no client code; a Node/edge host adapts its
 HTTP server to `ApiRequest`/`ApiResponse`. Contract version: `agorix/project-api/v1`.
 
-`apps/server` now provides that Node transport. Its current in-memory entry point is for
-integration and development only; see [Project HTTP server](PROJECT_HTTP_SERVER.md) for
-activation limits and the #347 durable-storage gate.
+`apps/server` provides that Node transport. Its explicit `sqlite` mode has a durable store;
+production accounts remain disabled until a separate activation review. See
+[Project HTTP server](PROJECT_HTTP_SERVER.md) for the transport and storage modes.
 
 ## Authorization model
 
@@ -107,7 +107,7 @@ recovery, explicit local import) and the dialogs. Notes for a real server:
 - `apps/web/src/dev/devBackend.ts` hosts `createProjectApi` + `AuthService` + in-memory repositories
   inside the Vite dev/preview server (`AGORIX_DEV_BACKEND=1`, set by Playwright). It is for dev and
   e2e only, is not part of the build output, loses state on restart and makes no production security
-  claim. The production server requires durable storage before activation (#347).
+  claim. The production server has a durable SQLite mode; activation is reviewed separately.
 - Requests are serialized client-side because sessions rotate on every authenticated call.
 - The service worker never caches `/v1/*`, so account data is not replayed offline or
   across accounts. Unsynced edits are kept in one account-scoped device draft (`agorix:account-draft`),

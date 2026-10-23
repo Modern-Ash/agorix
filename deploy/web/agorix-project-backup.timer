@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily Agorix project and account SQLite backup
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+Persistent=true
+Unit=agorix-project-backup.service
+
+[Install]
+WantedBy=timers.target
