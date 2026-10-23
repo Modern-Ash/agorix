@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed on 2026-10-23 for the product owner's approval (issue #472, epic #436). The prototype v2
+Accepted on 2026-10-23 by the product owner (issue #472, epic #436). The prototype v2
 HANDOFF section 6d lists "Compartir y remezclar: fuera por privacidad, o detrás de la cuenta de
 adulto" as an open question. This ADR records the recommended answer.
 

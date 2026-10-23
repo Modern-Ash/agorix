@@ -59,7 +59,22 @@ compatible across Web, Tablet and Studio.
 
 ## Content
 
-Starter assets are bundled and curated. No user-uploaded images/audio in POC unless separately reviewed.
+Starter assets are bundled and curated. User-supplied images and audio are not part of the child flow.
+
+**Reviewed exception (owner decision, 2026-10-23, issue #501):** an _adult_ may add local images
+(Ori, explorers, backdrops: flag `customImages`) and local audio (flag `customAudio`) from the Adults
+panel, only with all of these controls:
+
+- adult-gated; the child cannot open the file picker;
+- stays on the device: no upload, no network request, never part of an account sync, never sent to
+  Ori or any provider, never in evidence events;
+- images are decoded locally, resized to 256 px and re-encoded, which drops EXIF/GPS; file type is
+  checked by content, not by name; audio has a size and duration cap;
+- exports (`.agorix`) exclude the media unless the adult opts in;
+- an adult can remove all of it in one tap, and nothing is recorded about who or what is shown.
+
+Anything beyond that (child-captured media, voice recording, camera, shared or synced media) needs a
+new review.
 
 ## Security baseline
 
@@ -83,3 +98,8 @@ purpose for collection, storage location, retention/deletion rules, account
 deletion effects, and what is never collected. At minimum, the default product
 posture remains: no real name, mandatory email, precise age, school, address,
 photo, public profile, advertising identifier or monetization profile.
+
+Note (2026-10-23, issue #471): the rule above is about the **child**. The optional adult account
+for linking a child device requires a verified adult email (see
+`docs/superpowers/specs/2026-10-23-kids-adult-link-design.md`). That email is the adult's, is never
+shown to or stored on the child device, and is never sent to Ori or any provider.

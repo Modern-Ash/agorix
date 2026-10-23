@@ -1,7 +1,7 @@
 # Agorix Kids: adult account and child link code (design, no code)
 
-Status: draft for the product owner's review. Tracks issue #471 under epic #436. No implementation
-issues are created until this is approved.
+Status: **approved by the product owner on 2026-10-23** (decisions below). Tracks issue #471 under epic #436;
+implementation is split into the issues linked from the epic created for it.
 
 ## Why
 
@@ -79,13 +79,21 @@ design first.
 - Lost device: adult revokes the link from the account.
 - Clock skew: expiry is judged server-side only.
 
-## Open questions for the owner
+## Decisions (2026-10-23, product owner)
 
-1. Is an email required for the adult account, or is an alias + password enough for the first release?
-2. Do we want progress sync at all in the first release, or only the link plus remote settings?
-3. Retention for summaries: 30 days after unlink, or immediate delete?
+1. **Email is required** for the adult account (not just alias + password). Consequences: the email is
+   normalised and unique, verified with a one-time confirmation link before a child device can be
+   linked, never shown to the child device, never sent to Ori or any provider, and deleted with the
+   account. This applies to the adult only; the child still gives no email, name or location. The
+   "no mandatory email" line in `CHILD_SAFETY_PRIVACY.md` is about children and gets a clarifying note.
+2. **Progress sync is in the first release.** Only the aggregates the adults panel already shows
+   (missions done, concept counts, daily minutes, Ori decision counts). No timestamps per event, no
+   free text, no images, no project contents. The adult can switch sync off per linked device.
+3. **Retention: 30 days after unlink.** Summaries of an unlinked device are kept 30 days so the adult
+   can still read them, then deleted by a scheduled job. Deleting the adult account deletes everything
+   immediately. Link codes and device tokens are never kept past their own expiry/revocation.
 
-## Proposed implementation issues (after approval)
+## Implementation issues
 
 1. Server: link and code endpoints with rate limits and hashed codes (tests for brute force, expiry,
    reuse).
