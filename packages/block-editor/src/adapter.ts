@@ -2,7 +2,8 @@ import {
   SCHEMA_VERSION,
   validateProgram,
   type Expression,
-  type ProgramVariable,
+  type ProgramList,
+  ProgramVariable,
   type ProjectProgram,
   type Script,
   type Statement,
@@ -52,6 +53,10 @@ export type BlockType =
   | "variables_change"
   | "variables_show"
   | "variables_hide"
+  | "lists_add"
+  | "lists_remove_at"
+  | "lists_item"
+  | "lists_length"
   | "literal_boolean"
   | "literal_number";
 
@@ -70,6 +75,7 @@ export interface BlockNode {
     readonly min?: BlockNode;
     readonly max?: BlockNode;
     readonly delta?: BlockNode;
+    readonly index?: BlockNode;
   };
 }
 
@@ -82,6 +88,7 @@ export interface BlockScript {
 
 export interface BlockWorkspaceSnapshot {
   readonly variables?: readonly ProgramVariable[];
+  readonly lists?: readonly ProgramList[];
   readonly scripts: readonly BlockScript[];
 }
 
@@ -192,7 +199,7 @@ function booleanField(block: BlockNode, name: string, path: string): boolean {
 
 function requiredInput(
   block: BlockNode,
-  name: "condition" | "left" | "right" | "value" | "min" | "max" | "delta",
+  name: "condition" | "left" | "right" | "value" | "min" | "max" | "delta" | "index",
   path: string,
 ): BlockNode {
   const input = block.inputs?.[name];
@@ -240,6 +247,19 @@ function expressionFromBlock(
       return { type: "numericLiteral", value: numberField(block, "value", path) };
     case "variables_value":
       return { type: "variable", variableId: stringField(block, "variableId", path) };
+    case "lists_item":
+      return {
+        type: "listItem",
+        listId: stringField(block, "listId", path),
+        index: expressionFromBlock(
+          requiredInput(block, "index", path),
+          `${nodeId}/index`,
+          `${path}.inputs.index`,
+          mapping,
+        ),
+      };
+    case "lists_length":
+      return { type: "listLength", listId: stringField(block, "listId", path) };
     case "operator_add":
     case "operator_subtract":
     case "operator_multiply":
@@ -388,6 +408,28 @@ function statementFromBlock(
           mapping,
         ),
       };
+    case "lists_add":
+      return {
+        type: "listAdd",
+        listId: stringField(block, "listId", path),
+        value: expressionFromBlock(
+          requiredInput(block, "value", path),
+          `${nodeId}/value`,
+          `${path}.inputs.value`,
+          mapping,
+        ),
+      };
+    case "lists_remove_at":
+      return {
+        type: "listRemoveAt",
+        listId: stringField(block, "listId", path),
+        index: expressionFromBlock(
+          requiredInput(block, "index", path),
+          `${nodeId}/index`,
+          `${path}.inputs.index`,
+          mapping,
+        ),
+      };
     case "variables_show":
       return { type: "showVariable", variableId: stringField(block, "variableId", path) };
     case "variables_hide":
@@ -455,6 +497,15 @@ function expressionToBlock(
       return { id, type: "literal_number", fields: { value: expression.value } };
     case "variable":
       return { id, type: "variables_value", fields: { variableId: expression.variableId } };
+    case "listItem":
+      return {
+        id,
+        type: "lists_item",
+        fields: { listId: expression.listId },
+        inputs: { index: expressionToBlock(expression.index, `${nodeId}/index`, mapping) },
+      };
+    case "listLength":
+      return { id, type: "lists_length", fields: { listId: expression.listId } };
     case "add":
     case "subtract":
     case "multiply":
@@ -580,6 +631,20 @@ function statementToBlock(
         fields: { variableId: statement.variableId },
         inputs: { delta: expressionToBlock(statement.delta, `${nodeId}/delta`, mapping) },
       };
+    case "listAdd":
+      return {
+        id,
+        type: "lists_add",
+        fields: { listId: statement.listId },
+        inputs: { value: expressionToBlock(statement.value, `${nodeId}/value`, mapping) },
+      };
+    case "listRemoveAt":
+      return {
+        id,
+        type: "lists_remove_at",
+        fields: { listId: statement.listId },
+        inputs: { index: expressionToBlock(statement.index, `${nodeId}/index`, mapping) },
+      };
     case "showVariable":
       return { id, type: "variables_show", fields: { variableId: statement.variableId } };
     case "hideVariable":
@@ -684,6 +749,7 @@ export function workspaceToProgram(workspace: BlockWorkspaceSnapshot): Workspace
   const program = validateProgram({
     schema: SCHEMA_VERSION,
     ...(workspace.variables === undefined ? {} : { variables: workspace.variables }),
+    ...(workspace.lists === undefined ? {} : { lists: workspace.lists }),
     scripts: workspace.scripts.map((script, index) => scriptFromBlocks(script, index, mapping)),
   });
   return { program, mapping };
@@ -694,6 +760,7 @@ export function programToWorkspace(program: ProjectProgram): ProgramToWorkspaceR
   const mapping: BlockMappingEntry[] = [];
   const workspace: BlockWorkspaceSnapshot = {
     ...(validated.variables === undefined ? {} : { variables: validated.variables }),
+    ...(validated.lists === undefined ? {} : { lists: validated.lists }),
     scripts: validated.scripts.map((script, index) => {
       const scriptId = `scripts[${index}]`;
       const blockId = blockIdFor(scriptId);

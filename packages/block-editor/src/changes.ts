@@ -60,6 +60,7 @@ type MutableBlockNode = BlockNode & {
     right?: BlockNode;
     value?: BlockNode;
     delta?: BlockNode;
+    index?: BlockNode;
   };
 };
 

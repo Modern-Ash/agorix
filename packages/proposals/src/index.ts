@@ -1082,6 +1082,10 @@ function variableIdsForStatement(statement: Statement): readonly string[] {
     case "showVariable":
     case "hideVariable":
       return [statement.variableId];
+    case "listAdd":
+      return variableIdsForExpression(statement.value);
+    case "listRemoveAt":
+      return variableIdsForExpression(statement.index);
     case "repeat":
       return unique(statement.body.flatMap(variableIdsForStatement));
     case "if":
@@ -1099,6 +1103,8 @@ function variableIdsForExpression(expression: Expression): readonly string[] {
   switch (expression.type) {
     case "variable":
       return [expression.variableId];
+    case "listItem":
+      return variableIdsForExpression(expression.index);
     case "add":
     case "subtract":
     case "multiply":

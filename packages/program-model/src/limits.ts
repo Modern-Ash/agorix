@@ -20,6 +20,9 @@ export const SPRITE_SIZE_MAX = 400;
 export const WAIT_SECONDS_MIN = 0.1;
 export const WAIT_SECONDS_MAX = 5;
 
+/** Lists hold numbers only (no child free text) and stay small. */
+export const LIST_MAX_ITEMS = 100;
+
 export const REPEAT_COUNT_MIN = 1;
 export const REPEAT_COUNT_MAX = 1000;
 
