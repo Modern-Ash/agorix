@@ -57,4 +57,35 @@ describe("Ori stage-3 data contract", () => {
       "fallback",
     );
   });
+
+  it("keeps a child's list intact while proposing only a reviewable score block", async () => {
+    const program = {
+      ...context.program,
+      lists: [{ id: "items", name: "Mi lista", initialItems: [], visible: true }],
+      scripts: [
+        {
+          ...context.program.scripts[0]!,
+          statements: [
+            {
+              type: "listAdd" as const,
+              listId: "items",
+              value: { type: "numericLiteral" as const, value: 7 },
+            },
+            {
+              type: "setVariable" as const,
+              variableId: "score",
+              value: { type: "listLength" as const, listId: "items" },
+            },
+          ],
+        },
+      ],
+    };
+    const withList = { ...context, program };
+    const decision = await runOriScore(withList);
+    expect(decision.proposal).toBeDefined();
+    const review = validateOriScoreProposal(withList, decision.proposal);
+    expect(review.candidateProgram.lists).toEqual(program.lists);
+    expect(review.candidateProgram.scripts[0]?.statements).toHaveLength(3);
+    expect(review.candidateProgram.scripts[0]?.statements[2]?.type).toMatch(/Variable/);
+  });
 });

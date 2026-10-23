@@ -18,10 +18,11 @@ export interface OriScoreContext {
 }
 
 const SCORE = "score";
+const LIST = "items";
 const MAX_OUTPUT_CHARS = 4096;
 type ScoreStatement = Extract<Statement, { type: "setVariable" | "changeVariable" }>;
 
-function allowed(statement: Statement): statement is ScoreStatement {
+function allowed(statement: Statement): boolean {
   return (
     (statement.type === "setVariable" &&
       statement.variableId === SCORE &&
@@ -38,6 +39,46 @@ function allowed(statement: Statement): statement is ScoreStatement {
   );
 }
 
+/** Existing child-authored data blocks are context only; Ori still proposes score blocks above. */
+function allowedExisting(statement: Statement, hasList: boolean): boolean {
+  if (allowed(statement)) return true;
+  if (statement.type === "setVariable" && statement.variableId === SCORE) {
+    const value = statement.value;
+    if (
+      (value.type === "add" || value.type === "subtract") &&
+      value.left.type === "variable" &&
+      value.left.variableId === SCORE &&
+      value.right.type === "numericLiteral" &&
+      Number.isInteger(value.right.value) &&
+      value.right.value >= 1 &&
+      value.right.value <= 5
+    )
+      return true;
+    if (!hasList) return false;
+    if (value.type === "listLength") return value.listId === LIST;
+    if (value.type === "listItem")
+      return (
+        value.listId === LIST &&
+        value.index.type === "numericLiteral" &&
+        Number.isInteger(value.index.value)
+      );
+  }
+  if (!hasList) return false;
+  if (statement.type === "listAdd")
+    return (
+      statement.listId === LIST &&
+      statement.value.type === "numericLiteral" &&
+      Number.isInteger(statement.value.value)
+    );
+  if (statement.type === "listRemoveAt")
+    return (
+      statement.listId === LIST &&
+      statement.index.type === "numericLiteral" &&
+      Number.isInteger(statement.index.value)
+    );
+  return false;
+}
+
 function checked(context: OriScoreContext) {
   if (
     context.stage !== "score" ||
@@ -48,6 +89,8 @@ function checked(context: OriScoreContext) {
   const program = validateProgram(context.program);
   const variable = program.variables?.[0];
   const script = program.scripts[0];
+  const hasList =
+    program.lists?.length === 1 && program.lists[0]?.id === LIST && program.lists[0].visible;
   if (
     program.variables?.length !== 1 ||
     variable?.id !== SCORE ||
@@ -56,8 +99,10 @@ function checked(context: OriScoreContext) {
     program.scripts.length !== 1 ||
     script?.id !== "advanced-score" ||
     script.trigger.type !== "greenFlag" ||
-    script.statements.length > 24 ||
-    script.statements.some((statement) => !allowed(statement))
+    (program.lists !== undefined && !hasList) ||
+    script.statements.length > 200 ||
+    script.statements.filter(allowed).length > 24 ||
+    script.statements.some((statement) => !allowedExisting(statement, hasList))
   )
     throw new Error("program is outside stage 3");
   return { program, script };

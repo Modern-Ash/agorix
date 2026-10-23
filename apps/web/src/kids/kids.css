@@ -1948,6 +1948,58 @@
   text-align: center;
 }
 
+.kids-advanced-list-watcher {
+  display: grid;
+  gap: 8px;
+  margin: 0.5rem 0 1rem;
+  padding: 12px;
+  border: 2px solid var(--kids-runtime-strong);
+  border-radius: 16px;
+  background: #f1faf4;
+  color: #173a34;
+}
+
+.kids-advanced-list-watcher ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-height: 150px;
+  overflow: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.kids-advanced-list-watcher li {
+  min-width: 44px;
+  padding: 8px;
+  border-radius: 8px;
+  background: white;
+  text-align: center;
+}
+
+.kids-advanced-list-palette label {
+  display: grid;
+  gap: 4px;
+  font-weight: 700;
+}
+
+.kids-advanced-list-palette input {
+  width: 9rem;
+  min-height: 44px;
+  padding: 6px;
+  border: 1px solid var(--kids-border);
+  border-radius: 8px;
+  font: inherit;
+}
+
+.kids-advanced-file-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+
 .kids-advanced-score-prediction {
   display: flex;
   flex-wrap: wrap;
