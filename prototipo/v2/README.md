@@ -65,3 +65,7 @@ Ninguna fila quedó como `gap`, por lo que no se abrieron issues nuevos.
 ### Decisión de tema
 
 El sistema oficial es `docs/product/DESIGN_SYSTEM.md`: lienzo crema, tipografías autoalojadas y paleta de tokens de Kids. Ese documento dice explícitamente que Agorix **no debe** adoptar por defecto una identidad de piezas de rompecabezas ni paletas arcoíris permanentes. Por eso la paleta Scratch (#447, #448) quedó detrás del flag `puzzleShape`, apagado por defecto. El verde `#06923e` es solo el color del navegador del sitio.
+
+## Nota sobre el código de vinculación (issue #511)
+
+El prototipo v2 pedía el código de 6 dígitos en el onboarding del niño ("Tengo un código de mi adulto"). La versión entregada **no** lo pide ahí: el adulto lo ingresa en el panel de Adultos del dispositivo del niño (detrás de la suma), para que el niño nunca vea ni maneje una cuenta. Ver `docs/superpowers/specs/2026-10-23-kids-adult-link-design.md`.

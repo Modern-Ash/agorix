@@ -15,6 +15,7 @@
     "@agorix/agent-workflow": "workspace:*",
     "@agorix/agorix-code": "workspace:*",
     "@agorix/auth-service": "workspace:*",
+    "@agorix/link-service": "workspace:*",
     "@agorix/block-editor": "workspace:*",
     "@agorix/code-generator": "workspace:*",
     "@agorix/curriculum": "workspace:*",

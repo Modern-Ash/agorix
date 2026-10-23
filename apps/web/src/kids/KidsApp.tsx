@@ -48,6 +48,8 @@ import {
 import { ProjectStore } from "@agorix/persistence";
 import { useKidsFlag } from "./kidsFlags.js";
 import { tutorialVisible } from "./kidsTutorial.js";
+import { VerifyLanding } from "./link/VerifyLanding.js";
+import { useLinkSync } from "./link/useLinkSync.js";
 import { bandProfile } from "./kidsAgeBand.js";
 import { useKidsText, type KidsText } from "./useKidsText.js";
 
@@ -68,6 +70,7 @@ export function KidsApp({
 }: { readonly initialState?: KidsState; readonly initialProgress?: KidsProgress } = {}) {
   const scratchBlocks = useKidsFlag("puzzleShape");
   const tutorialEnabled = useKidsFlag("tutorial");
+  const adultLinkEnabled = useKidsFlag("adultLink");
   const ageBandsEnabled = useKidsFlag("ageBands");
   const [progress, setProgress] = useState<KidsProgress>(
     () => initialProgress ?? loadKidsProgress(),
@@ -127,6 +130,8 @@ export function KidsApp({
     update({ ...progress, avatar });
   }
 
+  useLinkSync(adultLinkEnabled, progress, adultSettings);
+
   function update(next: KidsProgress) {
     setProgress(next);
     saveKidsProgress(next);
@@ -163,6 +168,7 @@ export function KidsApp({
           </span>
         </header>
       ) : null}
+      {adultLinkEnabled ? <VerifyLanding locale={state.locale} /> : null}
       <main className="kids-frame">
         {state.screen === "onboard" ? (
           <OnboardScreen

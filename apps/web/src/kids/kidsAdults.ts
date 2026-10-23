@@ -1,4 +1,5 @@
 import { assessMission, type LearningEvidenceEvent } from "@agorix/learning-evidence";
+import { recordLinkedUsage } from "./link/kidsUsageDays.js";
 import { DEFAULT_AGE_BAND, isAgeBand, type AgeBand } from "./kidsAgeBand.js";
 import type { KidsProgress } from "./kidsProgress.js";
 import { KIDS_WORLDS } from "./kidsState.js";
@@ -98,12 +99,15 @@ export function addActiveSeconds(
   storage: Storage | undefined = localStorageOrUndefined(),
 ): void {
   if (!Number.isFinite(seconds) || seconds <= 0) return;
-  const total = readTodaySeconds(day, storage) + Math.min(60, Math.floor(seconds));
+  const counted = Math.min(60, Math.floor(seconds));
+  const total = readTodaySeconds(day, storage) + counted;
   try {
     storage?.setItem(USAGE_KEY, JSON.stringify({ day, seconds: total }));
   } catch {
     /* Optional local aggregate. */
   }
+  // Kept only while a device is linked; a no-op (and no extra key) otherwise.
+  recordLinkedUsage(day, counted, storage);
 }
 
 export function adultSummary(progress: KidsProgress, events: readonly LearningEvidenceEvent[]) {
