@@ -8,6 +8,7 @@ Type=simple
 WorkingDirectory=%h/dev-agora/agorix
 RuntimeDirectory=agorix-tutor
 RuntimeDirectoryMode=0755
+RuntimeDirectoryPreserve=yes
 EnvironmentFile=-%h/.config/agorix/tutor.env
 ExecStart=%h/dev-agora/agorix/scripts/start-tutor-host.sh
 Restart=on-failure
