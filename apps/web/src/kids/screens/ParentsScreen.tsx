@@ -3,7 +3,7 @@ import type { LearningEvidenceEvent } from "@agorix/learning-evidence";
 import type { Locale } from "../../i18n.js";
 import { fetchAdultAiHealth, type AdultAiHealth } from "../kidsAdultHealth.js";
 import { AGE_BANDS } from "../kidsAgeBand.js";
-import { useKidsFlag } from "../kidsFlags.js";
+import { setKidsV2Feature, useKidsFlag } from "../kidsFlags.js";
 import { LinkPanel } from "../link/LinkPanel.js";
 import { KidsImagesPanel } from "./KidsImagesPanel.js";
 import { KidsAudioPanel } from "./KidsAudioPanel.js";
@@ -47,6 +47,8 @@ const COPY = {
     oriNote: "Mostrar u ocultar las ideas en el editor",
     read: "Lectura en voz alta",
     readNote: "Activar los botones de escuchar",
+    customImages: "Imágenes propias",
+    customImagesNote: "Permitir que el niño agregue exploradores y fondos propios",
     ageBand: "Franja de edad",
     ageBandNote: "Ajusta la herramienta a la edad. Se guarda solo en este dispositivo.",
     ai: "Estado de la IA",
@@ -90,6 +92,8 @@ const COPY = {
     oriNote: "Show or hide ideas in the editor",
     read: "Read aloud",
     readNote: "Enable the listen buttons",
+    customImages: "Custom images",
+    customImagesNote: "Let the child add custom explorers and backdrops",
     ageBand: "Age band",
     ageBandNote: "Matches the tool to the age. Stored only on this device.",
     ai: "AI status",
@@ -280,6 +284,19 @@ export function ParentsScreen({ t, locale, progress, settings, onSettings }: Pro
             <span>
               <strong>{copy.read}</strong>
               <small>{copy.readNote}</small>
+            </span>
+            <i aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className="kids-adult-switch"
+            role="switch"
+            aria-checked={customImagesEnabled}
+            onClick={() => setKidsV2Feature("customImages", !customImagesEnabled)}
+          >
+            <span>
+              <strong>{copy.customImages}</strong>
+              <small>{copy.customImagesNote}</small>
             </span>
             <i aria-hidden="true" />
           </button>

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useSyncExternalStore } from "react";
 
 export const KIDS_V2_FEATURES = [
   "duplicate",
@@ -19,6 +19,7 @@ export const KIDS_V2_FEATURES = [
 export type KidsV2Feature = (typeof KIDS_V2_FEATURES)[number];
 
 export const KIDS_FLAGS_KEY = "agorix.kids.flags.v1";
+const FLAGS_CHANGED = "agorix:kids-flags-changed";
 const DEFAULT_FEATURES: readonly KidsV2Feature[] = ["customImages"];
 
 export interface KidsFlagSources {
@@ -61,6 +62,33 @@ export function kidsV2Enabled(feature: KidsV2Feature, sources: KidsFlagSources =
   return kidsV2Features(sources).has(feature);
 }
 
+export function setKidsV2Feature(
+  feature: KidsV2Feature,
+  enabled: boolean,
+  storage: Pick<Storage, "getItem" | "setItem"> | undefined = browserStorage(),
+): boolean {
+  try {
+    if (!storage) return false;
+    const next = kidsV2Features({ storage, production: true });
+    const names = new Set(next);
+    if (enabled) names.add(feature);
+    else names.delete(feature);
+    storage.setItem(KIDS_FLAGS_KEY, JSON.stringify([...names]));
+    if (typeof window !== "undefined") window.dispatchEvent(new Event(FLAGS_CHANGED));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function browserStorage(): Storage | undefined {
+  try {
+    return typeof window === "undefined" ? undefined : window.localStorage;
+  } catch {
+    return undefined;
+  }
+}
+
 function browserSources(): KidsFlagSources {
   try {
     return {
@@ -74,5 +102,16 @@ function browserSources(): KidsFlagSources {
 }
 
 export function useKidsFlag(feature: KidsV2Feature): boolean {
-  return useMemo(() => kidsV2Enabled(feature, browserSources()), [feature]);
+  return useSyncExternalStore(
+    (notify) => {
+      window.addEventListener(FLAGS_CHANGED, notify);
+      window.addEventListener("storage", notify);
+      return () => {
+        window.removeEventListener(FLAGS_CHANGED, notify);
+        window.removeEventListener("storage", notify);
+      };
+    },
+    () => kidsV2Enabled(feature, browserSources()),
+    () => false,
+  );
 }

@@ -306,6 +306,12 @@
   min-width: 64px;
   font-size: 1.8rem;
 }
+.kids-create-choices .kids-create-upload,
+.kids-create-worlds .kids-create-upload {
+  min-height: 48px;
+  padding: 10px 16px;
+  font-size: 1rem;
+}
 .kids-create-worlds .kids-button {
   flex: 1 1 140px;
 }
