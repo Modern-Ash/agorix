@@ -330,6 +330,22 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
         expressionText(writer, expression.right, nodeId + "/right") +
         ")"
       );
+    case "lessOrEqual":
+      return (
+        "(" +
+        expressionText(writer, expression.left, nodeId + "/left") +
+        " <= " +
+        expressionText(writer, expression.right, nodeId + "/right") +
+        ")"
+      );
+    case "greaterOrEqual":
+      return (
+        "(" +
+        expressionText(writer, expression.left, nodeId + "/left") +
+        " >= " +
+        expressionText(writer, expression.right, nodeId + "/right") +
+        ")"
+      );
     case "equals":
       return (
         "(" +

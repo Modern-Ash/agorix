@@ -1105,6 +1105,8 @@ function variableIdsForExpression(expression: Expression): readonly string[] {
     case "divide":
     case "lessThan":
     case "greaterThan":
+    case "lessOrEqual":
+    case "greaterOrEqual":
     case "equals":
     case "and":
     case "or":

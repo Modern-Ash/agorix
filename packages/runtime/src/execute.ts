@@ -251,6 +251,16 @@ function evaluateExpression(
         coerceNumber(evaluateExpression(expression.left, `${path}.left`, state)) >
         coerceNumber(evaluateExpression(expression.right, `${path}.right`, state))
       );
+    case "lessOrEqual":
+      return (
+        coerceNumber(evaluateExpression(expression.left, `${path}.left`, state)) <=
+        coerceNumber(evaluateExpression(expression.right, `${path}.right`, state))
+      );
+    case "greaterOrEqual":
+      return (
+        coerceNumber(evaluateExpression(expression.left, `${path}.left`, state)) >=
+        coerceNumber(evaluateExpression(expression.right, `${path}.right`, state))
+      );
     case "equals":
       return (
         coerceNumber(evaluateExpression(expression.left, `${path}.left`, state)) ===
