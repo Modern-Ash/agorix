@@ -6,7 +6,7 @@ const sw = readFileSync(fileURLToPath(new URL("../public/sw.js", import.meta.url
 
 describe("service worker cache boundaries", () => {
   it("never caches or replays private or live API responses", () => {
-    for (const prefix of ["/v1/", "/api/", "/__dev/"]) {
+    for (const prefix of ["/v1/", "/api/"]) {
       expect(sw, prefix).toContain(`url.pathname.startsWith("${prefix}")`);
     }
   });

@@ -35,7 +35,7 @@ export function devBackendPlugin(enabled: boolean): Plugin {
   function mount(use: Use) {
     use((req, res, next) => {
       const url = req.url ?? "/";
-      if (!url.startsWith("/v1/") && !url.startsWith("/__dev/auth/")) {
+      if (!url.startsWith("/v1/")) {
         next();
         return;
       }

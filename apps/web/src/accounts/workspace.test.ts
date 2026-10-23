@@ -57,7 +57,13 @@ function stored(blocks = 0): StoredProject {
 function setup(local?: StoredProject) {
   const backend = createDevBackend();
   const net = createInProcessFetch(backend);
-  const http = createHttpBackend({ fetch: net.fetch });
+  const routes: string[] = [];
+  const http = createHttpBackend({
+    fetch: (url, init) => {
+      routes.push(`${init.method} ${url}`);
+      return net.fetch(url, init);
+    },
+  });
   const storage = new MemoryStorage();
   let cleared = 0;
   const controller = new WorkspaceController({
@@ -70,7 +76,7 @@ function setup(local?: StoredProject) {
     setTimer: () => 0,
     clearTimer: () => undefined,
   });
-  return { backend, net, http, storage, controller, cleared: () => cleared };
+  return { backend, net, http, storage, controller, routes, cleared: () => cleared };
 }
 
 async function waitFor(controller: WorkspaceController, ok: (s: WorkspaceState) => boolean) {
@@ -83,7 +89,7 @@ async function waitFor(controller: WorkspaceController, ok: (s: WorkspaceState) 
 
 describe("account journeys against the in-process dev backend", () => {
   it("is anonymous without a session, then registers, signs in and lists nothing", async () => {
-    const { controller } = setup();
+    const { controller, routes } = setup();
     await controller.init();
     expect(controller.getState().authStatus).toBe("anonymous");
     await controller.register("Ada Lovelace", PASSWORD);
@@ -91,12 +97,30 @@ describe("account journeys against the in-process dev backend", () => {
     expect(state.authStatus).toBe("authenticated");
     expect(state.account?.alias).toBe("Ada Lovelace");
     expect(state.projects).toEqual({ status: "ready", items: [] });
+    expect(routes).toContain("POST /v1/auth/register");
+    expect(routes).toContain("POST /v1/auth/sign-in");
+    await controller.signOut();
+    expect(routes).toContain("POST /v1/auth/sign-out");
   });
 
   it("reports unavailable when no Agorix server answers", async () => {
     const controller = new WorkspaceController({
       backend: createHttpBackend({
         fetch: async () => ({ status: 404, text: async () => "<html>nope</html>" }),
+      }),
+      readLocalProject: () => undefined,
+    });
+    await controller.init();
+    expect(controller.getState().authStatus).toBe("unavailable");
+  });
+
+  it("reports unavailable when the API route has a JSON 404 fallback", async () => {
+    const controller = new WorkspaceController({
+      backend: createHttpBackend({
+        fetch: async () => ({
+          status: 404,
+          text: async () => JSON.stringify({ error: { code: "NOT_FOUND" } }),
+        }),
       }),
       readLocalProject: () => undefined,
     });

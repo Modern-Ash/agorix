@@ -151,11 +151,23 @@ describe("security baseline checker", () => {
       expect(result.notes.join(" ")).toContain("built client bundle");
     });
 
+    it.each([
+      "__dev",
+      "devBackend",
+      "InMemoryAccountRepository",
+      "InMemorySessionRepository",
+      "InMemoryProjectRepository",
+    ])("rejects %s in the built client", (marker) => {
+      write("apps/web/dist/assets/index.js", `const marker = ${JSON.stringify(marker)};\n`);
+      expect(rulesIn().inRule("no-dev-backend-bundle")).toBe(true);
+    });
+
     it("reports a clean built bundle", () => {
       write("apps/web/dist/assets/index.js", "export const app = 1;\n");
       const { result } = rulesIn();
       expect(result.notes.join(" ")).toMatch(/scanned 1 built client bundle file/);
       expect(result.findings.filter((item) => item.rule === "no-client-secrets")).toEqual([]);
+      expect(result.findings.filter((item) => item.rule === "no-dev-backend-bundle")).toEqual([]);
     });
 
     it("says so when no build output exists", () => {

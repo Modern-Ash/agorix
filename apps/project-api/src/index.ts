@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { AuthPublicError, type AuthService } from "@agorix/auth-service";
+import { PlatformContractError } from "@agorix/platform-contract";
 import {
   AGORIX_PROJECT_MAX_BYTES,
   semanticProjectHash,
@@ -421,7 +422,7 @@ export function createProjectApi(options: ProjectApiOptions): ProjectApi {
       options.log?.({ route: routeName, status: result.status });
       return respond(result.status, result.body, extraHeaders);
     } catch (error) {
-      const apiError = await toApiError(error, repo, authedOwner);
+      const apiError = await toApiError(error, repo, authedOwner, routeName);
       options.log?.({ route: routeName, status: apiError.status, errorCode: apiError.code });
       return respond(apiError.status, errorBody(apiError), extraHeaders);
     }
@@ -508,6 +509,7 @@ async function toApiError(
   error: unknown,
   repo: ProjectRepository,
   ownerId: string | undefined,
+  routeName: string,
 ): Promise<ApiError> {
   if (error instanceof ApiError) {
     return error;
@@ -526,6 +528,9 @@ async function toApiError(
       default:
         return new ApiError(503, "TRANSIENT", "Temporarily unavailable", true);
     }
+  }
+  if (error instanceof PlatformContractError && routeName.startsWith("auth.")) {
+    return new ApiError(400, "VALIDATION", "Invalid account alias", false, "INVALID_ALIAS");
   }
   if (error instanceof ProjectRepositoryError) {
     switch (error.code) {
