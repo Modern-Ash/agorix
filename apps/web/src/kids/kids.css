@@ -553,6 +553,61 @@
 .kids-adult-card > .kids-button {
   min-height: 48px;
 }
+.kids-images-panel {
+  grid-column: 1 / -1;
+}
+.kids-images-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin: 16px 0;
+}
+.kids-image-row {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 6px 10px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid var(--kids-border);
+  border-radius: 14px;
+}
+.kids-image-preview {
+  display: grid;
+  width: 56px;
+  height: 56px;
+  grid-row: span 3;
+  place-items: center;
+  border-radius: 12px;
+  background-color: #eeeafb;
+  background-size: cover;
+  background-position: center;
+  font-size: 1.5rem;
+}
+.kids-image-row > strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.kids-image-row .kids-button {
+  min-height: 44px;
+  padding: 7px 9px;
+  font-size: 0.85rem;
+}
+.kids-image-file {
+  position: relative;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.kids-image-file:focus-within {
+  outline: 3px solid var(--kids-runtime-strong);
+  outline-offset: 2px;
+}
+.kids-image-file input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
 .kids-adult-privacy {
   padding: 18px;
   border-radius: 18px;
