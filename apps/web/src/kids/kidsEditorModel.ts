@@ -12,7 +12,12 @@ import {
   type KidsRunEvaluation,
 } from "@agorix/curriculum";
 import type { MissionDefinition } from "@agorix/curriculum";
-import { validateProgram, type ProjectProgram, type Statement } from "@agorix/program-model";
+import {
+  ProgramValidationError,
+  validateProgram,
+  type ProjectProgram,
+  type Statement,
+} from "@agorix/program-model";
 import { createWorldState, runProgram, type RunResult } from "@agorix/runtime";
 
 export type KidsBlockKind = "move" | "turnL" | "turnR" | "repeat" | "sound";
@@ -81,6 +86,36 @@ export function removeKidsBlock(
     statements[index] = { ...repeat, body: repeat.body.filter((_, at) => at !== childIndex) };
     return statements;
   });
+}
+
+/** Copy a block (and a repeat's whole body) right below the original, as one undo step. */
+export function duplicateKidsBlock(
+  history: KidsEditor,
+  index: number,
+  childIndex?: number,
+): KidsEditor {
+  try {
+    const next = edit(history, "duplicate block", (statements) => {
+      if (childIndex === undefined) {
+        const block = statements[index];
+        if (block === undefined) return statements;
+        statements.splice(index + 1, 0, structuredClone(block));
+        return statements;
+      }
+      const repeat = statements[index];
+      const child = repeat?.type === "repeat" ? repeat.body[childIndex] : undefined;
+      if (repeat?.type !== "repeat" || child === undefined) return statements;
+      const body = [...repeat.body];
+      body.splice(childIndex + 1, 0, structuredClone(child));
+      statements[index] = { ...repeat, body };
+      return statements;
+    });
+    return JSON.stringify(next.current) === JSON.stringify(history.current) ? history : next;
+  } catch (error) {
+    // Past the program size limit the copy is simply not made.
+    if (error instanceof ProgramValidationError) return history;
+    throw error;
+  }
 }
 
 export function setKidsBlockNumber(

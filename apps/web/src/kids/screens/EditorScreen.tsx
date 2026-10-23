@@ -51,6 +51,7 @@ import {
   createKidsEditor,
   playKidsProgram,
   redoKidsEdit,
+  duplicateKidsBlock,
   removeKidsBlock,
   setKidsBlockNumber,
   undoKidsEdit,
@@ -61,6 +62,7 @@ import type { KidsText } from "../useKidsText.js";
 import { kidsGoalSpec, parseKidsGoalSpec } from "../kidsProjects.js";
 import { KIDS_WORLD_STYLES } from "../worlds.js";
 import { KidsOriCard } from "./KidsOriCard.js";
+import { useKidsFlag } from "../kidsFlags.js";
 import { KidsOriChat } from "./KidsOriChat.js";
 import { KidsOriGoals } from "./KidsOriGoals.js";
 import { describeOriGoal } from "@agorix/ori-agent";
@@ -132,6 +134,7 @@ export function EditorScreen({
   oriSuggestions = true,
   onReflect,
 }: Props) {
+  const duplicateEnabled = useKidsFlag("duplicate");
   const projectId =
     freeProjectId ?? `kids.${world}.${KIDS_MISSION_IDS[Math.min(missionIndex, 2)]!}`;
   const [store] = useState(() => new ProjectStore());
@@ -546,6 +549,21 @@ export function EditorScreen({
                 </option>
               ))}
             </select>
+          ) : null}
+          {duplicateEnabled ? (
+            <button
+              type="button"
+              className="kids-block-duplicate"
+              aria-label={`${t("duplicate")} ${t(kind)} ${index + 1}`}
+              onClick={() =>
+                change(
+                  duplicateKidsBlock(history, index, childIndex),
+                  kind === "repeat" ? "loopChange" : "sequenceChange",
+                )
+              }
+            >
+              ⧉
+            </button>
           ) : null}
           <button
             type="button"
