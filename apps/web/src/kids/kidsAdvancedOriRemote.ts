@@ -43,10 +43,16 @@ export async function requestAdvancedOri(
       throw new Error("missing mission proof");
     });
     let sceneProgram;
-    if (context.stage === "react") {
+    if (context.stage !== "scene") {
       const saved = store.load("kids.advanced.scene");
       if (saved.metadata.missionProgress !== 1) throw new Error("scene is incomplete");
       sceneProgram = saved.program;
+    }
+    let reactProgram;
+    if (context.stage === "score") {
+      const saved = store.load("kids.advanced.react");
+      if (saved.metadata.missionProgress !== 1) throw new Error("reaction is incomplete");
+      reactProgram = saved.program;
     }
     const session = await fetchImpl("/api/tutor/advanced/session", {
       method: "POST",
@@ -54,7 +60,11 @@ export async function requestAdvancedOri(
       signal: controller.signal,
       headers: { "content-type": "application/json" },
       body: JSON.stringify(
-        context.stage === "scene" ? { programs } : { programs, sceneProgram, stage: "react" },
+        context.stage === "scene"
+          ? { programs }
+          : context.stage === "react"
+            ? { programs, sceneProgram, stage: "react" }
+            : { programs, sceneProgram, reactProgram, stage: "score" },
       ),
     });
     if (!session.ok) return fallback();

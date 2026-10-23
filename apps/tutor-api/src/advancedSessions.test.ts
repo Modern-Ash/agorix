@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   proveAdvancedEntry,
   proveAdvancedScene,
+  proveAdvancedReact,
   createMemoryAdvancedStageRepository,
 } from "./advancedSessions.js";
 
@@ -50,5 +51,29 @@ describe("anonymous advanced stage repository", () => {
         ],
       }),
     ).toBe(false);
+  });
+  it("unlocks stage 3 only after a real actor-click reaction", () => {
+    const react = {
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "advanced-react",
+          trigger: { type: "onActorClicked" },
+          statements: [{ type: "switchCostume", costumeId: "asset:costume.spark" }],
+        },
+      ],
+    };
+    expect(proveAdvancedReact(react)).toBe(true);
+    expect(
+      proveAdvancedReact({ ...react, scripts: [{ ...react.scripts[0]!, statements: [] }] }),
+    ).toBe(false);
+    expect(
+      proveAdvancedReact({
+        ...react,
+        scripts: [{ ...react.scripts[0]!, trigger: { type: "greenFlag" } }],
+      }),
+    ).toBe(false);
+    const repo = createMemoryAdvancedStageRepository();
+    expect(repo.get(repo.create("score"))).toBe("score");
   });
 });

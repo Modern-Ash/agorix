@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { getKidsMission, getKidsAdvancedMission } from "@agorix/curriculum";
-import { ORI_AGENT_VERSION, ORI_ADVANCED_VERSION } from "@agorix/ori-agent";
+import {
+  ORI_AGENT_VERSION,
+  ORI_ADVANCED_VERSION,
+  ORI_ADVANCED_SCORE_VERSION,
+} from "@agorix/ori-agent";
 import {
   CliProcessError,
   createOriCliService,
@@ -50,6 +54,35 @@ describe("Ori host CLI adapter (issue #381)", () => {
     const input = calls.find(([, args]) => args.includes("exec"))?.[2].input ?? "";
     expect(input).toContain(ORI_ADVANCED_VERSION);
     expect(input).toContain("actor:ori");
+    expect(input).not.toContain("learnerIntent");
+  });
+  it("sends a bounded stage-3 score summary to the model boundary", async () => {
+    const calls: Parameters<OriCliProcess>[] = [];
+    const run: OriCliProcess = async (...args) => {
+      calls.push(args);
+      return args[1].includes("--version")
+        ? "version"
+        : JSON.stringify({
+            version: ORI_ADVANCED_SCORE_VERSION,
+            kind: "data-suggestion",
+            actorId: "actor:ori",
+            block: { type: "changeVariable", variableId: "score", delta: 1 },
+          });
+    };
+    const service = createOriCliService(oriCliConfigFromEnv({}), { run });
+    const decision = await service.advanced({
+      stage: "score",
+      actorId: "actor:ori",
+      locale: "es",
+      program: getKidsAdvancedMission("score", "es").starterProgram,
+    });
+    expect(decision.source).toBe("model");
+    expect(decision.proposal?.operations[0]).toMatchObject({
+      statement: { type: "changeVariable" },
+    });
+    const input = calls.find(([, args]) => args.includes("exec"))?.[2].input ?? "";
+    expect(input).toContain(ORI_ADVANCED_SCORE_VERSION);
+    expect(input).toContain('"variable":"score"');
     expect(input).not.toContain("learnerIntent");
   });
   it("selects Codex before OpenCode and disables every model tool", async () => {

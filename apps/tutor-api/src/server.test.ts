@@ -171,6 +171,80 @@ describe("tutor HTTP server (issue #348)", () => {
       ).status,
     ).toBe(400);
   });
+  it("keeps stage-3 Ori closed until the click reaction and scopes score proposals", async () => {
+    const base = await start({ AGORIX_TUTOR_ADAPTER: "fake" });
+    const program = (id: string, trigger: string, statements: unknown[]) => ({
+      schema: "agorix/program/v1",
+      scripts: [{ id, trigger: { type: trigger }, statements }],
+    });
+    const move = (cells: number) => ({ type: "move", steps: cells * 40 });
+    const programs = [
+      program("main", "greenFlag", [move(4)]),
+      program("main", "greenFlag", [move(3), { type: "turn", degrees: -90 }, move(2)]),
+      program("main", "greenFlag", [
+        { type: "turn", degrees: 90 },
+        move(3),
+        { type: "turn", degrees: -90 },
+        move(3),
+      ]),
+    ];
+    const sceneProgram = program("advanced-scene", "greenFlag", [
+      { type: "switchCostume", costumeId: "asset:costume.spark" },
+      { type: "playSound", soundId: "asset:sound.beacon" },
+    ]);
+    const reactProgram = program("advanced-react", "onActorClicked", [
+      { type: "switchCostume", costumeId: "asset:costume.spark" },
+    ]);
+    const post = (path: string, value: unknown) =>
+      fetch(`${base}${path}`, {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: base },
+        body: JSON.stringify(value),
+      });
+    expect(
+      (
+        await post("/api/tutor/advanced/session", {
+          programs,
+          stage: "score",
+          sceneProgram,
+          reactProgram: program("advanced-react", "onActorClicked", []),
+        })
+      ).status,
+    ).toBe(400);
+    const opened = await post("/api/tutor/advanced/session", {
+      programs,
+      stage: "score",
+      sceneProgram,
+      reactProgram,
+    });
+    expect(opened.status).toBe(200);
+    const { token, stage } = (await opened.json()) as { token: string; stage: string };
+    expect(stage).toBe("score");
+    const scoreProgram = {
+      ...program("advanced-score", "greenFlag", []),
+      variables: [{ id: "score", name: "Puntaje", initialValue: 0, visible: true }],
+    };
+    const answer = await post("/api/tutor/advanced/ori", {
+      token,
+      actorId: "actor:ori",
+      locale: "es",
+      program: scoreProgram,
+    });
+    expect(answer.status).toBe(200);
+    expect(await answer.json()).toMatchObject({
+      proposal: { operations: [{ statement: { type: "changeVariable", variableId: "score" } }] },
+    });
+    expect(
+      (
+        await post("/api/tutor/advanced/ori", {
+          token,
+          actorId: "actor:ori",
+          locale: "es",
+          program: reactProgram,
+        })
+      ).status,
+    ).toBe(400);
+  });
   it("serves only a proven fixed free-world goal when Ori is offline", async () => {
     const base = await start({ AGORIX_TUTOR_ADAPTER: "fake" });
     const response = await fetch(`${base}/api/tutor/goals`, {

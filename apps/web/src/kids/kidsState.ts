@@ -11,6 +11,7 @@ export type KidsScreen =
   | "editor"
   | "advanced"
   | "advancedReact"
+  | "advancedScore"
   | "reflect"
   | "projects"
   | "parents";
@@ -47,6 +48,7 @@ export type KidsAction =
   | { readonly type: "pickMission"; readonly missionIndex: 0 | 1 | 2 | 3 }
   | { readonly type: "openAdvancedScene" }
   | { readonly type: "openAdvancedReact" }
+  | { readonly type: "openAdvancedScore" }
   | {
       readonly type: "openSavedMission";
       readonly world: KidsWorld;
@@ -99,6 +101,8 @@ export function kidsReducer(state: KidsState, action: KidsAction): KidsState {
       return { ...state, screen: "advanced" };
     case "openAdvancedReact":
       return { ...state, screen: "advancedReact" };
+    case "openAdvancedScore":
+      return { ...state, screen: "advancedScore" };
     case "openSavedMission":
       return {
         ...state,

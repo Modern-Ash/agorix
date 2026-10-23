@@ -20,6 +20,8 @@ interface Props {
   readonly onAdvanced?: () => void;
   readonly advancedReactUnlocked?: boolean;
   readonly onAdvancedReact?: () => void;
+  readonly advancedScoreUnlocked?: boolean;
+  readonly onAdvancedScore?: () => void;
 }
 
 const CONCEPTS = [
@@ -46,6 +48,8 @@ export function MapScreen({
   onAdvanced,
   advancedReactUnlocked = false,
   onAdvancedReact,
+  advancedScoreUnlocked = false,
+  onAdvancedScore,
 }: Props) {
   const style = KIDS_WORLD_STYLES[world];
   const names = kidsTable(locale, "worlds");
@@ -169,6 +173,11 @@ export function MapScreen({
           {advancedReactUnlocked ? (
             <button type="button" className="kids-button kids-primary" onClick={onAdvancedReact}>
               {locale === "es" ? "✨ Etapa 2: hacé que reaccione" : "✨ Stage 2: make it react"}
+            </button>
+          ) : null}
+          {advancedScoreUnlocked ? (
+            <button type="button" className="kids-button kids-primary" onClick={onAdvancedScore}>
+              {locale === "es" ? "✨ Etapa 3: llevá la cuenta" : "✨ Stage 3: keep score"}
             </button>
           ) : null}
         </div>
