@@ -8,6 +8,7 @@ import {
   redoKidsEdit,
   removeKidsBlock,
   setKidsBlockNumber,
+  setKidsBlockSound,
   undoKidsEdit,
 } from "./kidsEditorModel.js";
 
@@ -57,6 +58,20 @@ describe("Kids canonical editor (issue #375)", () => {
     expect(
       playKidsProgram(sound, mission).result.trace.map((entry) => entry.statementType),
     ).toEqual(["move", "move", "repeat", "playSound"]);
+  });
+
+  it("changes a sound id in one undoable canonical transaction", () => {
+    const start = addKidsBlock(createKidsEditor(mission), "sound");
+    const changed = setKidsBlockSound(start, 0, "kids:bell");
+    expect(changed.current.scripts[0]?.statements[0]).toEqual({
+      type: "playSound",
+      soundId: "kids:bell",
+    });
+    expect(undoKidsEdit(changed).current.scripts[0]?.statements[0]).toEqual({
+      type: "playSound",
+      soundId: "kids-tone",
+    });
+    expect(setKidsBlockSound(start, 0, "https://remote.test/file.mp3")).toBe(start);
   });
 
   it("duplicates blocks right after the original as one undo step (issue #446)", () => {

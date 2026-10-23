@@ -5,6 +5,7 @@ import { fetchAdultAiHealth, type AdultAiHealth } from "../kidsAdultHealth.js";
 import { AGE_BANDS } from "../kidsAgeBand.js";
 import { useKidsFlag } from "../kidsFlags.js";
 import { KidsImagesPanel } from "./KidsImagesPanel.js";
+import { KidsAudioPanel } from "./KidsAudioPanel.js";
 import { adultSummary, readTodaySeconds, type AdultSettings } from "../kidsAdults.js";
 import type { KidsProgress } from "../kidsProgress.js";
 import { readKidsEvidenceEvents } from "../kidsEvidence.js";
@@ -117,6 +118,7 @@ export function ParentsScreen({ t, locale, progress, settings, onSettings }: Pro
   const copy = COPY[locale];
   const ageBandsEnabled = useKidsFlag("ageBands");
   const customImagesEnabled = useKidsFlag("customImages");
+  const customAudioEnabled = useKidsFlag("customAudio");
 
   useEffect(() => {
     if (!unlocked) return;
@@ -361,6 +363,7 @@ export function ParentsScreen({ t, locale, progress, settings, onSettings }: Pro
           </button>
         </section>
         {customImagesEnabled ? <KidsImagesPanel locale={locale} t={t} /> : null}
+        {customAudioEnabled ? <KidsAudioPanel t={t} /> : null}
       </div>
       <aside className="kids-adult-privacy">
         <strong>🔒 {copy.privacy}</strong>

@@ -54,6 +54,7 @@ import {
   duplicateKidsBlock,
   removeKidsBlock,
   setKidsBlockNumber,
+  setKidsBlockSound,
   undoKidsEdit,
   type KidsBlockKind,
   type KidsPlayedRun,
@@ -68,6 +69,13 @@ import { KidsOriChat } from "./KidsOriChat.js";
 import { KidsOriGoals } from "./KidsOriGoals.js";
 import { describeOriGoal } from "@agorix/ori-agent";
 import { KidsBackdrop, KidsSprite, builtinWorld, emojiSlot, spriteImage } from "./KidsArt.js";
+import {
+  KIDS_CUSTOM_SOUND_ID,
+  KIDS_SOUNDS,
+  isKidsSoundId,
+  soundEvents,
+} from "../kidsSoundLibrary.js";
+import { playKidsSound } from "../kidsSoundPlayer.js";
 
 type CodeLanguage = "agorix" | "python" | "typescript" | "java";
 type Prediction = "yes" | "no" | "dunno";
@@ -107,24 +115,6 @@ function blockKind(statement: Statement): KidsBlockKind {
   }
 }
 
-function playKidsTone(): void {
-  try {
-    const context = new AudioContext();
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    oscillator.type = "sine";
-    oscillator.frequency.value = 440;
-    gain.gain.setValueAtTime(0.08, context.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.16);
-    oscillator.connect(gain).connect(context.destination);
-    oscillator.start();
-    oscillator.stop(context.currentTime + 0.16);
-    oscillator.onended = () => void context.close();
-  } catch {
-    // Sound is optional; program execution and evidence still work without WebAudio.
-  }
-}
-
 export function EditorScreen({
   t,
   locale,
@@ -140,6 +130,8 @@ export function EditorScreen({
 }: Props) {
   const duplicateEnabled = useKidsFlag("duplicate");
   const customImagesEnabled = useKidsFlag("customImages");
+  const soundLibraryEnabled = useKidsFlag("soundLibrary");
+  const customAudioEnabled = useKidsFlag("customAudio");
   const savedArt = freeProjectId
     ? listFreeProjectRefs().find((entry) => entry.id === freeProjectId)
     : undefined;
@@ -389,7 +381,7 @@ export function EditorScreen({
     if (played && mode === "step") {
       const next = Math.min(step + 1, trace.length);
       setStep(next);
-      if (trace[next - 1]?.statementType === "playSound") playKidsTone();
+      for (const id of soundEvents(trace.slice(next - 1, next))) void playKidsSound(id, avatarArt);
       if (next === trace.length && played.evaluation.outcome === "success") {
         save(history, true);
         onComplete();
@@ -405,12 +397,11 @@ export function EditorScreen({
     setPrediction(answer);
     setPlayed(run);
     setStep(pending === "step" ? Math.min(1, run.result.trace.length) : run.result.trace.length);
-    if (
-      (pending === "play" &&
-        run.result.trace.some((entry) => entry.statementType === "playSound")) ||
-      (pending === "step" && run.result.trace[0]?.statementType === "playSound")
-    )
-      playKidsTone();
+    for (const id of soundEvents(
+      pending === "play" ? run.result.trace : run.result.trace.slice(0, 1),
+    )) {
+      void playKidsSound(id, avatarArt);
+    }
     if (
       (pending === "play" || run.result.trace.length <= 1) &&
       run.evaluation.outcome === "success"
@@ -567,6 +558,30 @@ export function EditorScreen({
                   {value}
                 </option>
               ))}
+            </select>
+          ) : null}
+          {statement.type === "playSound" && soundLibraryEnabled ? (
+            <select
+              aria-label={`${t("sound")} ${index + 1}`}
+              value={statement.soundId}
+              onChange={(event) =>
+                change(
+                  setKidsBlockSound(history, index, event.target.value, childIndex),
+                  "sequenceChange",
+                )
+              }
+            >
+              {!isKidsSoundId(statement.soundId) ? (
+                <option value={statement.soundId}>{t("soundClassic")}</option>
+              ) : null}
+              {KIDS_SOUNDS.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {t(item.nameKey)}
+                </option>
+              ))}
+              {customAudioEnabled || statement.soundId === KIDS_CUSTOM_SOUND_ID ? (
+                <option value={KIDS_CUSTOM_SOUND_ID}>{t("soundCustom")}</option>
+              ) : null}
             </select>
           ) : null}
           {duplicateEnabled ? (
