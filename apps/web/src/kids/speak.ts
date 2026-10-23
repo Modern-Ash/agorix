@@ -19,3 +19,13 @@ export function speak(text: string, locale: Locale): void {
     // Speech is a convenience.
   }
 }
+
+/** Stops an utterance when the learner leaves a screen or changes language. */
+export function stopSpeaking(): void {
+  try {
+    if (typeof window !== "undefined" && "speechSynthesis" in window)
+      window.speechSynthesis.cancel();
+  } catch {
+    // Speech is optional, including when a browser blocks the API.
+  }
+}

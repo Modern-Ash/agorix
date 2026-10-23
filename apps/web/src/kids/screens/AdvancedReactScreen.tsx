@@ -25,14 +25,18 @@ import {
   removeReactStatement,
   type ReactStatement,
 } from "../kidsAdvancedReactEditorModel.js";
+import { useKidsText } from "../useKidsText.js";
+import { ListenButton } from "./ListenButton.js";
 
 interface Props {
   readonly locale: Locale;
+  readonly readAloud?: boolean;
   readonly onBack: () => void;
 }
 const ACTORS: readonly AdvancedSceneActorId[] = ["actor:ori", "actor:friend"];
 
-export function AdvancedReactScreen({ locale, onBack }: Props) {
+export function AdvancedReactScreen({ locale, readAloud = true, onBack }: Props) {
+  const t = useKidsText(locale);
   const [store] = useState(() => new ProjectStore());
   const mission = useMemo(() => getKidsAdvancedMission("react", locale), [locale]);
   const id = advancedProjectId("react");
@@ -243,6 +247,12 @@ export function AdvancedReactScreen({ locale, onBack }: Props) {
           <p className="kids-editor-kicker">{copy.stage}</p>
           <h1 id="kids-react-title">{mission.title}</h1>
         </div>
+        <ListenButton
+          t={t}
+          locale={locale}
+          enabled={readAloud}
+          text={run ? (success ? copy.success : copy.tryAgain) : mission.instruction}
+        />
         <button
           type="button"
           className="kids-button"

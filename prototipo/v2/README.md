@@ -36,6 +36,7 @@ Entrega de Claude Design posterior a `prototipo/handoff/` (v1). Es referencia vi
 | Menú contextual | #450 | entregado |
 | Borrar proyectos guardados | #445 | entregado |
 | Tutoriales | #470 | pendiente |
+| Lectura en voz alta en pantallas Kids | #528 | entregado; botón manual para texto de interfaz, controlado desde Adultos |
 | Atajos de teclado | #451 | entregado |
 | Compartir y remezclar | #472 | decidido: fuera de Kids (ADR 0009 aceptado) |
 | Diferencias 6b con la versión publicada | #444 | auditoría |

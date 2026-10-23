@@ -16,18 +16,29 @@ import { kidsTable, type KidsText } from "../useKidsText.js";
 import { KIDS_WORLD_STYLES } from "../worlds.js";
 import { DeleteProjectDialog } from "./DeleteProjectDialog.js";
 import { KidsBackdrop, KidsSprite, builtinWorld, emojiSlot } from "./KidsArt.js";
+import { ListenButton } from "./ListenButton.js";
 
 interface Props {
   readonly t: KidsText;
   readonly locale: Locale;
   readonly avatar: KidsAvatar;
   readonly world: KidsWorld;
+  readonly readAloud?: boolean;
   readonly onCreate: () => void;
   readonly onMission: (world: KidsWorld, index: 0 | 1 | 2) => void;
   readonly onFree: (id: string, world: KidsWorld, avatar: KidsAvatar) => void;
 }
 
-export function ProjectsScreen({ t, locale, avatar, world, onCreate, onMission, onFree }: Props) {
+export function ProjectsScreen({
+  t,
+  locale,
+  avatar,
+  world,
+  readAloud = true,
+  onCreate,
+  onMission,
+  onFree,
+}: Props) {
   const [store] = useState(() => new ProjectStore());
   const [free, setFree] = useState(() => listFreeProjects());
   const [message, setMessage] = useState("");
@@ -104,6 +115,12 @@ export function ProjectsScreen({ t, locale, avatar, world, onCreate, onMission, 
     <section className="kids-screen kids-projects" aria-labelledby="kids-projects-title">
       <div className="kids-projects-header">
         <h1 id="kids-projects-title">{t("projects")}</h1>
+        <ListenButton
+          t={t}
+          locale={locale}
+          enabled={readAloud}
+          text={`${t("projects")}. ${t("newProject")}`}
+        />
         <button type="button" className="kids-button kids-primary" onClick={onCreate}>
           + {t("newProject")}
         </button>
