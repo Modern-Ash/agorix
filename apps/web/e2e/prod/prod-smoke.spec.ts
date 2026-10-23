@@ -38,7 +38,15 @@ function trackProblems(page: Page, origin: string) {
   page.on("pageerror", (error) => problems.push(`pageerror: ${error.message}`));
   page.on("console", (message) => {
     const text = message.text();
-    if (message.type() === "error" && !text.includes(KNOWN_EDGE_INJECTION)) {
+    const source = message.location().url;
+    const expectedMissingSession =
+      text.startsWith("Failed to load resource: the server responded with a status of 404") &&
+      source === `${origin}/v1/session`;
+    if (
+      message.type() === "error" &&
+      !text.includes(KNOWN_EDGE_INJECTION) &&
+      !expectedMissingSession
+    ) {
       problems.push(`console: ${text.slice(0, 120)}`);
     }
   });

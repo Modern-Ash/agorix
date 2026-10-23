@@ -161,6 +161,18 @@ describe("project api", () => {
     expect(after.status).toBe(401);
   });
 
+  it("returns a stable validation error for an email-shaped account alias", async () => {
+    const { api } = setup();
+    const response = await api.handle({
+      method: "POST",
+      url: "/v1/auth/register",
+      headers: { origin: ORIGIN, [CSRF_HEADER_NAME]: "1", "content-type": "application/json" },
+      body: JSON.stringify({ username: "kid@example.com", password: PASSWORD }),
+    });
+    expect(response.status).toBe(400);
+    expect(rec(response).error).toMatchObject({ code: "VALIDATION", reason: "INVALID_ALIAS" });
+  });
+
   it("supports owner CRUD, rename, duplicate and delete", async () => {
     const { client } = setup();
     const a = await client("alice");

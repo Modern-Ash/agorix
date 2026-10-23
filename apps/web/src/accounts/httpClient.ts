@@ -20,11 +20,11 @@ export type FetchLike = (
 
 export interface HttpBackendOptions {
   readonly fetch?: FetchLike;
-  /** Path of account routes. A real server decides these; the dev server uses `/__dev/auth`. */
+  /** Path of the same-origin account routes. */
   readonly accountPath?: string;
 }
 
-export const DEFAULT_ACCOUNT_PATH = "/__dev/auth";
+export const DEFAULT_ACCOUNT_PATH = "/v1/auth";
 
 interface Parsed {
   readonly status: number;
@@ -85,12 +85,19 @@ export function createHttpBackend(options: HttpBackendOptions = {}): AccountBack
       await send("POST", `${accountPath}/register`, { username: alias, password });
     },
     async signIn(alias: string, password: string): Promise<AccountSummary> {
-      await send("POST", `${accountPath}/login`, { username: alias, password });
+      try {
+        await send("POST", `${accountPath}/sign-in`, { username: alias, password });
+      } catch (error) {
+        if (error instanceof ClientError && error.kind === "unauthenticated") {
+          throw new ClientError("invalid-credentials");
+        }
+        throw error;
+      }
       const { json } = await send("GET", "/v1/session");
       return toAccount(json);
     },
     async signOut(): Promise<void> {
-      await send("POST", `${accountPath}/logout`, {});
+      await send("POST", `${accountPath}/sign-out`, {});
     },
   };
 
@@ -182,6 +189,8 @@ function toError(status: number, json: unknown): ClientError {
     case "NOT_FOUND":
       return new ClientError("not-found");
     case "VALIDATION":
+      if (reason === "USERNAME_TAKEN") return new ClientError("username-taken");
+      return new ClientError("validation", reason ?? String(code));
     case "CSRF_REJECTED":
     case "PASSWORD_POLICY_VIOLATION":
     case "INVALID_ALIAS":

@@ -4,7 +4,7 @@
 
 ## Current deployment state
 
-The runnable entry point supports **temporary in-memory storage only**. It refuses to start unless `AGORIX_PROJECT_STORAGE=memory` is set explicitly. Do not activate it for real accounts: a restart would erase accounts, sessions and projects. Issue #347 will add a durable executor and migrations. The Web container now has a read-only project socket mount and proxies `/v1/*` to it. While the service is absent, nginx returns a JSON 404 with `Cache-Control: no-store`; it never sends the SPA HTML for API requests. The production Web client still uses the dev-only account route and keeps account UI hidden; #358 will switch it to the live API after durable storage is available.
+The runnable entry point supports **temporary in-memory storage only**. It refuses to start unless `AGORIX_PROJECT_STORAGE=memory` is set explicitly. Do not activate it for real accounts: a restart would erase accounts, sessions and projects. Issue #347 will add a durable executor and migrations. The Web container has a read-only project socket mount and proxies `/v1/*` to it. While the service is absent, nginx returns a JSON 404 with `Cache-Control: no-store`; it never sends the SPA HTML for API requests. The production Web client targets `/v1/auth/*` and keeps account UI hidden until the durable service is activated.
 
 For a local HTTP integration run, build with `pnpm --filter @agorix/server build` and set:
 

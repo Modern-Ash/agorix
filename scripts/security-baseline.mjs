@@ -371,6 +371,19 @@ function checkClientSecrets({ files, read, root, notes }) {
           ),
         );
       }
+      const devMarker = /__dev|devBackend|InMemory(?:Account|Session|Project)Repository/.exec(
+        content,
+      );
+      if (devMarker !== null) {
+        findings.push(
+          finding(
+            "no-dev-backend-bundle",
+            `apps/web/dist/${bundleFile}`,
+            0,
+            `built bundle contains dev backend marker "${devMarker[0]}"`,
+          ),
+        );
+      }
     }
     notes.push(`scanned ${bundleFiles.length} built client bundle file(s)`);
   } else {
