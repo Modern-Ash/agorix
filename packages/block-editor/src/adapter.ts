@@ -45,6 +45,7 @@ export type BlockType =
   | "operator_or"
   | "operator_not"
   | "operator_random"
+  | "operator_random_integer"
   | "variables_value"
   | "variables_set"
   | "variables_change"
@@ -289,8 +290,9 @@ function expressionFromBlock(
         ),
       };
     case "operator_random":
+    case "operator_random_integer":
       return {
-        type: "random",
+        type: block.type === "operator_random" ? "random" : "randomInteger",
         min: expressionFromBlock(
           requiredInput(block, "min", path),
           `${nodeId}/min`,
@@ -492,9 +494,10 @@ function expressionToBlock(
         },
       };
     case "random":
+    case "randomInteger":
       return {
         id,
-        type: "operator_random",
+        type: expression.type === "random" ? "operator_random" : "operator_random_integer",
         inputs: {
           min: expressionToBlock(expression.min, `${nodeId}/min`, mapping),
           max: expressionToBlock(expression.max, `${nodeId}/max`, mapping),

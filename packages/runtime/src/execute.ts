@@ -285,6 +285,16 @@ function evaluateExpression(
       const upper = Math.max(min, max);
       return normalizeRuntimeNumber(lower + nextRandomUnit(state) * (upper - lower), path);
     }
+    case "randomInteger": {
+      const min = coerceNumber(evaluateExpression(expression.min, `${path}.min`, state));
+      const max = coerceNumber(evaluateExpression(expression.max, `${path}.max`, state));
+      const lower = Math.round(Math.min(min, max));
+      const upper = Math.round(Math.max(min, max));
+      return normalizeRuntimeNumber(
+        lower + Math.floor(nextRandomUnit(state) * (upper - lower + 1)),
+        path,
+      );
+    }
     default: {
       const unknown = expression as { type?: unknown };
       throw new RuntimeExecutionError(path, String(unknown.type));

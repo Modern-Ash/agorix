@@ -189,9 +189,10 @@ function validateRandomExpression(
   input: Record<string, unknown>,
   path: string,
   state: ValidationState,
+  type: "random" | "randomInteger" = "random",
 ): Expression {
   return {
-    type: "random",
+    type,
     min: validateExpression(input.min, `${path}.min`, state),
     max: validateExpression(input.max, `${path}.max`, state),
   };
@@ -240,6 +241,8 @@ function validateExpression(input: unknown, path: string, state: ValidationState
       return validateUnaryExpression(input, path, state);
     case "random":
       return validateRandomExpression(input, path, state);
+    case "randomInteger":
+      return validateRandomExpression(input, path, state, "randomInteger");
     default:
       return fail(
         "UNKNOWN_EXPRESSION_TYPE",

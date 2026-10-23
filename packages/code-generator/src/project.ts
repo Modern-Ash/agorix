@@ -158,6 +158,8 @@ function formatExpression(
       return `(${formatExpression(expression.left, `${nodeId}/left`, context)} || ${formatExpression(expression.right, `${nodeId}/right`, context)})`;
     case "not":
       return `(!${formatExpression(expression.value, `${nodeId}/value`, context)})`;
+    case "randomInteger":
+      return `randomInteger(${formatExpression(expression.min, `${nodeId}/min`, context)}, ${formatExpression(expression.max, `${nodeId}/max`, context)})`;
     case "random":
       return `random(${formatExpression(expression.min, `${nodeId}/min`, context)}, ${formatExpression(expression.max, `${nodeId}/max`, context)})`;
     default: {

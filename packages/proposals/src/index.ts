@@ -1117,6 +1117,7 @@ function variableIdsForExpression(expression: Expression): readonly string[] {
     case "not":
       return variableIdsForExpression(expression.value);
     case "random":
+    case "randomInteger":
       return unique([
         ...variableIdsForExpression(expression.min),
         ...variableIdsForExpression(expression.max),

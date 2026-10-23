@@ -55,6 +55,7 @@ export const RUNTIME_EXPRESSION_OPERATIONS = Object.freeze([
   "or",
   "not",
   "random",
+  "randomInteger",
 ] as const);
 
 export const RUNTIME_TRIGGER_OPERATIONS = Object.freeze([
@@ -124,6 +125,7 @@ function assertExpressionAllowed(expression: Expression, path: string): void {
       assertExpressionAllowed(expression.value, `${path}.value`);
       return;
     case "random":
+    case "randomInteger":
       assertExpressionAllowed(expression.min, `${path}.min`);
       assertExpressionAllowed(expression.max, `${path}.max`);
       return;
