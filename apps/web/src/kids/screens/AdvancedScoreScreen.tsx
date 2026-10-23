@@ -16,10 +16,13 @@ import { acceptProposal, modifyProposal, rejectProposal } from "@agorix/proposal
 import { validateOriScoreProposal, type OriAdvancedDecision } from "@agorix/ori-agent";
 import type { Locale } from "../../i18n.js";
 import { advancedProjectId, completeAdvancedStage } from "../kidsAdvancedProgress.js";
+import { useKidsFlag } from "../kidsFlags.js";
 import { requestAdvancedOri } from "../kidsAdvancedOriRemote.js";
 import {
   addScoreStatement,
   removeScoreStatement,
+  scoreArithmetic,
+  scoreArithmeticStatement,
   scoreStatements,
   type ScoreStatement,
 } from "../kidsAdvancedScoreEditorModel.js";
@@ -54,6 +57,8 @@ export function AdvancedScoreScreen({ locale, onBack }: Props) {
   const [prediction, setPrediction] = useState<number | null>(null);
   const [language, setLanguage] = useState<"agorix" | "python" | "typescript">("agorix");
   const [error, setError] = useState(false);
+  const arithmeticEnabled = useKidsFlag("advancedOps");
+  const [amount, setAmount] = useState(2);
   const [oriBusy, setOriBusy] = useState(false);
   const [oriDecision, setOriDecision] = useState<OriAdvancedDecision | null>(null);
   const [oriChanged, setOriChanged] = useState(false);
@@ -77,6 +82,9 @@ export function AdvancedScoreScreen({ locale, onBack }: Props) {
           blocks: "Bloques del puntaje",
           add: "Sumar 1",
           set: "Poner en 2",
+          plus: "Sumar {n} al puntaje",
+          minus: "Restar {n} al puntaje",
+          amount: "Cuánto",
           play: "Jugar",
           predict: "Antes de jugar, ¿qué número pensás que aparecerá?",
           ready: "Agregá un bloque y mirá cómo cambia el puntaje.",
@@ -104,6 +112,9 @@ export function AdvancedScoreScreen({ locale, onBack }: Props) {
           blocks: "Score blocks",
           add: "Add 1",
           set: "Set to 2",
+          plus: "Add {n} to the score",
+          minus: "Subtract {n} from the score",
+          amount: "How much",
           play: "Play",
           predict: "Before playing, what number do you think will appear?",
           ready: "Add a block and watch the score change.",
@@ -268,7 +279,7 @@ export function AdvancedScoreScreen({ locale, onBack }: Props) {
           </div>
           <fieldset className="kids-advanced-score-prediction">
             <legend>{copy.predict}</legend>
-            {[1, 2, 3].map((value) => (
+            {(arithmeticEnabled ? [-2, -1, 0, 1, 2, 3, 4, 5] : [1, 2, 3]).map((value) => (
               <button
                 key={value}
                 type="button"
@@ -337,7 +348,17 @@ export function AdvancedScoreScreen({ locale, onBack }: Props) {
               {statements.map((statement, index) => (
                 <li key={index} className="kids-program-block kids-block-sound">
                   <div className="kids-block-line">
-                    <span>{statement.type === "setVariable" ? copy.set : copy.add}</span>
+                    <span>
+                      {(() => {
+                        const arithmetic = scoreArithmetic(statement);
+                        if (arithmetic)
+                          return (arithmetic.op === "add" ? copy.plus : copy.minus).replace(
+                            "{n}",
+                            String(arithmetic.amount),
+                          );
+                        return statement.type === "setVariable" ? copy.set : copy.add;
+                      })()}
+                    </span>
                     <button
                       type="button"
                       className="kids-block-remove"
@@ -374,6 +395,38 @@ export function AdvancedScoreScreen({ locale, onBack }: Props) {
               >
                 + {copy.set}
               </button>
+              {arithmeticEnabled ? (
+                <>
+                  <label>
+                    {copy.amount}{" "}
+                    <select
+                      aria-label={copy.amount}
+                      value={amount}
+                      onChange={(event) => setAmount(Number(event.target.value))}
+                    >
+                      {[1, 2, 3, 4, 5].map((value) => (
+                        <option key={value} value={value}>
+                          {value}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    type="button"
+                    className="kids-palette-block kids-block-sound"
+                    onClick={() => add(scoreArithmeticStatement("add", amount))}
+                  >
+                    + {copy.plus.replace("{n}", String(amount))}
+                  </button>
+                  <button
+                    type="button"
+                    className="kids-palette-block kids-block-sound"
+                    onClick={() => add(scoreArithmeticStatement("subtract", amount))}
+                  >
+                    + {copy.minus.replace("{n}", String(amount))}
+                  </button>
+                </>
+              ) : null}
             </div>
           </div>
           <div className="kids-code-languages" role="group" aria-label={copy.code}>
