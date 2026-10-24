@@ -316,3 +316,32 @@ describe("changeSize statement", () => {
     }
   });
 });
+
+describe("modulo expression", () => {
+  const withValue = (value: unknown) =>
+    ({
+      schema: SCHEMA_VERSION,
+      variables: [{ id: "n", name: "n", initialValue: 0, visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [{ type: "setVariable", variableId: "n", value }],
+        },
+      ],
+    }) as never;
+  it("accepts two numeric operands and rejects a missing one", () => {
+    expect(() =>
+      validateProgram(
+        withValue({
+          type: "modulo",
+          left: { type: "numericLiteral", value: 7 },
+          right: { type: "numericLiteral", value: 3 },
+        }),
+      ),
+    ).not.toThrow();
+    expect(() =>
+      validateProgram(withValue({ type: "modulo", left: { type: "numericLiteral", value: 7 } })),
+    ).toThrow(ProgramValidationError);
+  });
+});

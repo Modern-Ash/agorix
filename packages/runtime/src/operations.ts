@@ -62,6 +62,7 @@ export const RUNTIME_EXPRESSION_OPERATIONS = Object.freeze([
   "subtract",
   "multiply",
   "divide",
+  "modulo",
   "lessThan",
   "greaterThan",
   "lessOrEqual",
@@ -129,6 +130,7 @@ function assertExpressionAllowed(expression: Expression, path: string): void {
     case "subtract":
     case "multiply":
     case "divide":
+    case "modulo":
     case "lessThan":
     case "greaterThan":
     case "lessOrEqual":

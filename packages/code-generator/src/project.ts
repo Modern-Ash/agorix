@@ -174,6 +174,8 @@ function formatExpression(
       return `(${formatExpression(expression.left, `${nodeId}/left`, context)} * ${formatExpression(expression.right, `${nodeId}/right`, context)})`;
     case "divide":
       return `(${formatExpression(expression.left, `${nodeId}/left`, context)} / ${formatExpression(expression.right, `${nodeId}/right`, context)})`;
+    case "modulo":
+      return `(${formatExpression(expression.left, `${nodeId}/left`, context)} % ${formatExpression(expression.right, `${nodeId}/right`, context)})`;
     case "lessThan":
       return `(${formatExpression(expression.left, `${nodeId}/left`, context)} < ${formatExpression(expression.right, `${nodeId}/right`, context)})`;
     case "greaterThan":

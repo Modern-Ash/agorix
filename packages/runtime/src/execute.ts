@@ -311,6 +311,14 @@ function evaluateExpression(
         path,
       );
     }
+    case "modulo": {
+      const divisor = coerceNumber(evaluateExpression(expression.right, `${path}.right`, state));
+      if (divisor === 0) {
+        throw new RuntimeExecutionError(`${path}.right`, "modulo-by-zero");
+      }
+      const dividend = coerceNumber(evaluateExpression(expression.left, `${path}.left`, state));
+      return normalizeRuntimeNumber(((dividend % divisor) + divisor) % divisor, path);
+    }
     case "lessThan":
       return (
         coerceNumber(evaluateExpression(expression.left, `${path}.left`, state)) <

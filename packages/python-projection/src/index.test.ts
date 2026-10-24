@@ -553,3 +553,31 @@ describe("Python projection: change size", () => {
     expect(result.text).toBe(["def on_start():", "    change_size(-25)", ""].join("\n"));
   });
 });
+
+describe("Python projection: modulo", () => {
+  it("projects the remainder operator", () => {
+    const result = projectPython({
+      schema: SCHEMA_VERSION,
+      variables: [{ id: "n", name: "n", initialValue: 0, visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "setVariable",
+              variableId: "n",
+              value: {
+                type: "modulo",
+                left: { type: "variable", variableId: "n" },
+                right: { type: "numericLiteral", value: 2 },
+              },
+            },
+          ],
+        },
+      ],
+    });
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toContain(" % 2)");
+  });
+});

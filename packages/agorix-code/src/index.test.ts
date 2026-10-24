@@ -452,3 +452,31 @@ describe("Agorix Code projection: change size", () => {
     expect(result.text).toBe(["when start", "  change size by -25", ""].join("\n"));
   });
 });
+
+describe("Agorix Code projection: modulo", () => {
+  it("projects the remainder operator", () => {
+    const result = projectAgorixCode({
+      schema: SCHEMA_VERSION,
+      variables: [{ id: "n", name: "n", initialValue: 0, visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "setVariable",
+              variableId: "n",
+              value: {
+                type: "modulo",
+                left: { type: "variable", variableId: "n" },
+                right: { type: "numericLiteral", value: 2 },
+              },
+            },
+          ],
+        },
+      ],
+    });
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toContain(" mod 2)");
+  });
+});

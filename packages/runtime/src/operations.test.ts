@@ -100,6 +100,7 @@ describe("runtime operation allowlist", () => {
       "lessThan",
       "listItem",
       "listLength",
+      "modulo",
       "multiply",
       "not",
       "numericLiteral",
