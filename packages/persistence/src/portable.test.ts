@@ -4,6 +4,7 @@ import { SCHEMA_VERSION, type ProjectProgram } from "@agorix/program-model";
 import {
   AGORIX_PROJECT_FORMAT,
   AGORIX_PROJECT_FORMAT_VERSION,
+  AGORIX_PROJECT_MEDIA_FORMAT_VERSION,
   AGORIX_PROJECT_MEDIA_TYPE,
   parseAgorixProject,
   sanitizeAgorixFilename,
@@ -13,6 +14,8 @@ import { semanticProjectHash } from "./compatibility.js";
 import { PersistenceError, type StoredProject } from "./store.js";
 
 const exportedAt = "2026-01-02T03:04:05.000Z";
+const png =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLttAAAAABJRU5ErkJggg==";
 
 const program: ProjectProgram = {
   schema: SCHEMA_VERSION,
@@ -335,7 +338,7 @@ describe(".agorix portable project v1", () => {
   it("rejects unsupported future format versions without coercion", () => {
     const json = JSON.stringify({
       format: AGORIX_PROJECT_FORMAT,
-      formatVersion: "2",
+      formatVersion: "3",
       exportedAt,
       project: storedProject,
     });
@@ -401,5 +404,52 @@ describe(".agorix portable project v1", () => {
     expect(sanitizeAgorixFilename("../My Space Project!!.agorix")).toBe("my-space-project.agorix");
     expect(sanitizeAgorixFilename("  My Space Project.agorix  ")).toBe("my-space-project.agorix");
     expect(sanitizeAgorixFilename("")).toBe("agorix-project.agorix");
+  });
+});
+
+describe(".agorix portable embedded image v2", () => {
+  function withImage(): StoredProject {
+    return cloneProject({
+      metadata: {
+        ...storedProject.metadata,
+        assets: storedProject.metadata.assets!.map((asset) =>
+          asset.id === "costume:rocket" ? { ...asset, source: png } : asset,
+        ),
+      },
+    });
+  }
+
+  it("embeds a bounded costume image and rehydrates it after import", () => {
+    const source = withImage();
+    expect(() => serializeAgorixProject(source, { exportedAt })).toThrow(/adult opt-in/);
+    const exported = serializeAgorixProject(source, { exportedAt, includeMedia: true });
+    const raw = JSON.parse(exported) as {
+      formatVersion: string;
+      project: StoredProject;
+      media: Record<string, string>;
+    };
+    expect(raw.formatVersion).toBe(AGORIX_PROJECT_MEDIA_FORMAT_VERSION);
+    expect(raw.project.metadata.assets?.[0]?.source).toBe("embedded:costume:rocket");
+    expect(raw.media["costume:rocket"]).toBe(png);
+    expect(parseAgorixProject(exported).project).toEqual(source);
+  });
+
+  it("rejects missing, extra, malformed and unsupported embedded images", () => {
+    const raw = JSON.parse(
+      serializeAgorixProject(withImage(), { exportedAt, includeMedia: true }),
+    ) as Record<string, unknown>;
+    const missing = structuredClone(raw) as { media: Record<string, string> };
+    delete missing.media["costume:rocket"];
+    expect(() => parseAgorixProject(JSON.stringify(missing))).toThrow();
+    const extra = structuredClone(raw) as { media: Record<string, string> };
+    extra.media["costume:extra"] = png;
+    expect(() => parseAgorixProject(JSON.stringify(extra))).toThrow();
+    const malformed = structuredClone(raw) as { media: Record<string, string> };
+    malformed.media["costume:rocket"] = "data:image/svg+xml;base64,PHN2Zz4=";
+    expect(() => parseAgorixProject(JSON.stringify(malformed))).toThrow();
+    const oversized = structuredClone(raw) as { media: Record<string, string> };
+    oversized.media["costume:rocket"] =
+      `data:image/png;base64,${"iVBORw0KGgo"}${"A".repeat(82_000)}`;
+    expect(() => parseAgorixProject(JSON.stringify(oversized))).toThrow();
   });
 });
