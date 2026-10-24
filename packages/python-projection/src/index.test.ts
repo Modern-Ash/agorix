@@ -89,6 +89,8 @@ describe("Python projection", () => {
         "turn",
         "touching_goal",
         "touching_actor",
+        "touching_stage_edge",
+        "distance_to_actor",
         "x_position",
         "y_position",
         "say",

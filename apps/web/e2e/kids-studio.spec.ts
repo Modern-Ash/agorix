@@ -6,6 +6,54 @@ import { evaluateOriStudioOutput, ORI_STUDIO_VERSION } from "@agorix/ori-agent";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
+test("free scene senses the stage edge and saves distance to a character after reopening", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
+  await page.getByRole("button", { name: "+ Agregar personaje" }).click();
+  await page.getByRole("group", { name: "Personajes" }).getByRole("button").first().click();
+  await page.getByRole("textbox", { name: "Nombre" }).fill("Distancia");
+  await page.getByRole("button", { name: "+ Crear variable" }).click();
+  await page.getByRole("button", { name: "+ Guardar distancia" }).click();
+  await page.getByRole("button", { name: "+ Si toca el borde, mover 1" }).click();
+  const violations = (
+    await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
+  ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");
+  expect(violations.map((entry) => entry.id)).toEqual([]);
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByText("Distancia: 60")).toBeVisible();
+  await expect(page.getByRole("status")).toHaveText("La condición se cumplió: Sí");
+  await expect(page.locator(".kids-studio-stage-actor").first()).toHaveAttribute(
+    "style",
+    /left: 18%/,
+  );
+  await page.reload();
+  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  await page
+    .getByRole("article")
+    .filter({ hasText: "Escena libre" })
+    .getByRole("button", { name: "Jugar" })
+    .click();
+  await expect(page.locator(".kids-program-block")).toContainText([
+    "Fijar valor",
+    "Si tocando borde",
+  ]);
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByText("Distancia: 60")).toBeVisible();
+});
+
 test("free scene senses another character and records its own X position after reopening", async ({
   page,
 }) => {

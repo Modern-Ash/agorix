@@ -264,6 +264,35 @@ const definitions: readonly ToolboxBlockDefinition[] = [
     }),
   },
   {
+    type: "sensing_touching_stage_edge",
+    label: "Touching stage edge?",
+    section: "Check",
+    placement: "expression",
+    accessibleName: "touching stage edge",
+    createDefaultBlock: (id) => ({
+      id,
+      type: "sensing_touching_stage_edge",
+      fields: {
+        minX: -240,
+        maxX: 240,
+        minY: -180,
+        maxY: 180,
+      },
+    }),
+  },
+  {
+    type: "sensing_distance_to_actor",
+    label: "Distance to character",
+    section: "Check",
+    placement: "expression",
+    accessibleName: "distance to character",
+    createDefaultBlock: (id) => ({
+      id,
+      type: "sensing_distance_to_actor",
+      fields: { actorId: "actor:main" },
+    }),
+  },
+  {
     type: "sensing_x_position",
     label: "Horizontal position",
     section: "Check",

@@ -61,6 +61,13 @@ export type StudioStatement = Extract<
 
 const STUDIO_KEYS = ["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"] as const;
 const STUDIO_MESSAGES = ["hola", "vamos", "listo"] as const;
+export const STUDIO_EDGE_CONDITION = {
+  type: "touchingStageEdge",
+  minX: 0,
+  maxX: 320,
+  minY: -100,
+  maxY: 120,
+} as const;
 const DATA_NAME = /^[\p{L}\p{N}][\p{L}\p{N} _-]{0,19}$/u;
 const MAX_STUDIO_BLOCKS = 60;
 const MAX_STUDIO_CONTROL_DEPTH = 2;
@@ -114,6 +121,11 @@ function checkedNumber(value: Expression, program: ProjectProgram, depth = 0): b
   if (depth > 2) return false;
   if (value.type === "numericLiteral") return finiteSmallNumber(value.value);
   if (value.type === "xPosition" || value.type === "yPosition") return true;
+  if (value.type === "distanceToActor")
+    return program.scripts.some((script) => {
+      const target = actorOfScript(script.id);
+      return target !== null && studioActorId(target.index, target.characterId) === value.actorId;
+    });
   if (value.type === "variable")
     return program.variables?.some((item) => item.id === value.variableId) === true;
   if (value.type === "listLength")
@@ -147,6 +159,13 @@ function checkedNumber(value: Expression, program: ProjectProgram, depth = 0): b
 }
 
 function checkedCondition(value: Expression, program: ProjectProgram): boolean {
+  if (value.type === "touchingStageEdge")
+    return (
+      value.minX === STUDIO_EDGE_CONDITION.minX &&
+      value.maxX === STUDIO_EDGE_CONDITION.maxX &&
+      value.minY === STUDIO_EDGE_CONDITION.minY &&
+      value.maxY === STUDIO_EDGE_CONDITION.maxY
+    );
   if (value.type === "touchingActor")
     return program.scripts.some((script) => {
       const target = actorOfScript(script.id);

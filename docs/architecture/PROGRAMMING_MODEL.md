@@ -119,6 +119,10 @@ A script starts from a trigger. `greenFlag` ("When green flag clicked") is the S
 
 The block adapter maps these expressions to `sensing_x_position`, `sensing_y_position` and `sensing_touching_actor`; Agorix Code, Python and TypeScript projections read the same canonical expressions. Sensors never call Ori or a provider.
 
+`touchingStageEdge` carries its rectangle (`minX`, `maxX`, `minY`, `maxY`) in the expression, so exported programs retain their edge meaning on another device. It returns true when the running sprite's center is within 12 units of any side or has gone beyond it; the sprite's visibility does not change this geometric result. The validator requires finite bounds in −1000…1000 with positive width and height. Kids Escena libre uses exactly X 0…320 and Y −100…120.
+
+`distanceToActor` reads center-to-center distance to the named actor from the same activation snapshot as `touchingActor`, rounded to the runtime's coordinate precision. Visibility does not erase a position: hidden targets still have a measurable distance. A missing target returns −1, distinct from contact at distance 0. Kids validates that the target exists in the scene. Both expressions have visual blocks and Agorix Code, Python and TypeScript projections; neither reads pixels, network state or provider output.
+
 ## Sound volume
 
 `setVolume` (`volume`, 0 to 100) and `changeVolume` (`delta`, -100 to 100) set and change one global sound volume. The validator rejects values outside those ranges or that are not finite numbers; it never clamps inside the program. At run time the volume lives in `world.sounds.volume`, is clamped to 0-100 and survives `stopSounds`. The key is absent until a volume statement runs (absent means 100), so programs without volume statements keep identical worlds, traces and semantic hashes. The blocks are `sound_set_volume` and `sound_change_volume`; projections read `set volume to 40` (Agorix Code), `set_volume(40)` (Python) and `sound.setVolume(40)` (TypeScript). The App scales its synthetic cue gain by the volume and Studio shows it next to the active sounds.

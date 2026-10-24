@@ -224,6 +224,27 @@ function validateExpression(input: unknown, path: string, state: ValidationState
       return { type: "touchingGoal" };
     case "touchingActor":
       return { type: "touchingActor", actorId: checkText(input.actorId, `${path}.actorId`) };
+    case "touchingStageEdge": {
+      for (const field of ["minX", "maxX", "minY", "maxY"] as const) {
+        if (typeof input[field] !== "number")
+          fail("MISSING_FIELD", `${path}.${field}`, "expected a number", input[field]);
+        checkBounds(input[field], -1000, 1000, `${path}.${field}`);
+      }
+      const minX = input.minX as number;
+      const maxX = input.maxX as number;
+      const minY = input.minY as number;
+      const maxY = input.maxY as number;
+      if (minX >= maxX || minY >= maxY)
+        fail(
+          "NUMERIC_OUT_OF_BOUNDS",
+          path,
+          "stage bounds must have positive width and height",
+          input,
+        );
+      return { type: "touchingStageEdge", minX, maxX, minY, maxY };
+    }
+    case "distanceToActor":
+      return { type: "distanceToActor", actorId: checkText(input.actorId, `${path}.actorId`) };
     case "xPosition":
       return { type: "xPosition" };
     case "yPosition":

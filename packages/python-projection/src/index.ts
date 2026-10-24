@@ -103,6 +103,8 @@ export function projectPython(program: ProjectProgram): LanguageProjectionResult
         "turn",
         "touching_goal",
         "touching_actor",
+        "touching_stage_edge",
+        "distance_to_actor",
         "x_position",
         "y_position",
         "say",
@@ -359,6 +361,10 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return "touching_goal()";
     case "touchingActor":
       return "touching_actor(" + JSON.stringify(expression.actorId) + ")";
+    case "touchingStageEdge":
+      return `touching_stage_edge(${formatNumber(expression.minX)}, ${formatNumber(expression.maxX)}, ${formatNumber(expression.minY)}, ${formatNumber(expression.maxY)})`;
+    case "distanceToActor":
+      return "distance_to_actor(" + JSON.stringify(expression.actorId) + ")";
     case "xPosition":
       return "x_position()";
     case "yPosition":
@@ -576,6 +582,8 @@ const PYTHON_PROJECTION_IDENTIFIERS: ReadonlySet<string> = new Set([
   "turn",
   "touching_goal",
   "touching_actor",
+  "touching_stage_edge",
+  "distance_to_actor",
   "x_position",
   "y_position",
   "say",

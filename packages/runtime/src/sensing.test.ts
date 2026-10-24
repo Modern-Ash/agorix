@@ -66,6 +66,86 @@ function scene(friendX: number, visible = true): ProjectCreativeState {
 }
 
 describe("deterministic studio sensing", () => {
+  it("detects a canonical stage edge after movement, including outside the rectangle", () => {
+    const bounds = {
+      type: "touchingStageEdge",
+      minX: 0,
+      maxX: 320,
+      minY: -100,
+      maxY: 120,
+    } as const;
+    const program: ProjectProgram = {
+      schema: SCHEMA_VERSION,
+      scripts: [
+        {
+          id: "edge",
+          trigger: { type: "greenFlag" },
+          statements: [
+            { type: "goTo", x: 160, y: 0 },
+            {
+              type: "if",
+              condition: bounds,
+              then: [{ type: "say", text: "borde" }],
+              else: [{ type: "say", text: "centro" }],
+            },
+            { type: "goTo", x: 315, y: 0 },
+            { type: "if", condition: bounds, then: [{ type: "think", text: "borde" }] },
+          ],
+        },
+      ],
+    };
+    const result = runProgram(program, createWorldState());
+    expect(
+      result.trace
+        .filter((entry) => entry.statementType === "if")
+        .map((entry) => entry.conditionResult),
+    ).toEqual([false, true]);
+    expect(result.world.sprite.bubble).toEqual({ kind: "think", text: "borde" });
+    const malformed = structuredClone(program) as unknown as {
+      scripts: { statements: unknown[] }[];
+    };
+    malformed.scripts[0]!.statements[1] = {
+      type: "if",
+      condition: { ...bounds, minX: 320, maxX: 0 },
+      then: [],
+    };
+    expect(() => validateProgram(malformed)).toThrow();
+  });
+
+  it("measures center distance to another actor and reports a missing target distinctly", () => {
+    const program: ProjectProgram = {
+      schema: SCHEMA_VERSION,
+      variables: [{ id: "distance", name: "Distance", initialValue: 0, visible: true }],
+      scripts: [
+        {
+          id: "hero",
+          trigger: { type: "greenFlag" },
+          statements: [
+            { type: "goTo", x: 20, y: 10 },
+            {
+              type: "setVariable",
+              variableId: "distance",
+              value: { type: "distanceToActor", actorId: friend },
+            },
+          ],
+        },
+      ],
+    };
+    for (const input of [scene(60), scene(60, false)])
+      expect(runMultiActorProgram(program, input).actors[0]?.world.variables?.distance?.value).toBe(
+        40,
+      );
+    expect(runProgram(program, createWorldState()).world.variables?.distance?.value).toBe(-1);
+    const malformed = structuredClone(program) as unknown as {
+      scripts: { statements: unknown[] }[];
+    };
+    malformed.scripts[0]!.statements[1] = {
+      type: "setVariable",
+      variableId: "distance",
+      value: { type: "distanceToActor", actorId: "" },
+    };
+    expect(() => validateProgram(malformed)).toThrow();
+  });
   it("reads current coordinates and a nearby visible actor", () => {
     const result = runMultiActorProgram(sensingProgram(), scene(40));
     expect(result.actors[0]?.world.variables).toMatchObject({ x: { value: 20 }, y: { value: 10 } });

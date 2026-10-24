@@ -11,6 +11,7 @@ import { projectPython } from "@agorix/python-projection";
 import { runMultiActorProgram } from "@agorix/runtime";
 import {
   addStudioActor,
+  STUDIO_EDGE_CONDITION,
   appendStudioStatement,
   createStudioProgram,
   creativeForStudio,
@@ -22,6 +23,43 @@ import {
 } from "./kidsStudioModel.js";
 
 describe("Kids creative studio", () => {
+  it("keeps edge and distance sensors canonical, bounded and projectable", () => {
+    let history = createEditorHistory(createStudioProgram("nova"));
+    history = addStudioActor(history, "mika");
+    history = addStudioVariable(history, "Distancia");
+    history = appendStudioStatement(history, "actor:studio-1-nova", {
+      type: "if",
+      condition: STUDIO_EDGE_CONDITION,
+      then: [{ type: "say", text: "Borde" }],
+    });
+    history = appendStudioStatement(history, "actor:studio-1-nova", {
+      type: "setVariable",
+      variableId: "studio-var-1",
+      value: { type: "distanceToActor", actorId: "actor:studio-2-mika" },
+    });
+    const program = validateStudioProgram(history.current);
+    expect(workspaceToProgram(programToWorkspace(program).workspace).program).toEqual(program);
+    expect(projectAgorixCode(program).text).toContain("touching edge 0..320, -100..120");
+    expect(projectPython(program).text).toContain("distance_to_actor");
+    expect(projectProgram(program).code).toContain("sprite.touchingStageEdge");
+    const result = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(result.actors[0]?.world.variables?.["studio-var-1"]?.value).toBe(60);
+    expect(result.actors[0]?.world.sprite.bubble?.text).toBe("Borde");
+    expect(() =>
+      appendStudioStatement(history, "actor:studio-1-nova", {
+        type: "if",
+        condition: { ...STUDIO_EDGE_CONDITION, maxX: 400 },
+        then: [{ type: "move", steps: 40 }],
+      }),
+    ).toThrow();
+    expect(() =>
+      appendStudioStatement(history, "actor:studio-1-nova", {
+        type: "setVariable",
+        variableId: "studio-var-1",
+        value: { type: "distanceToActor", actorId: "actor:unknown" },
+      }),
+    ).toThrow();
+  });
   it("lets one character sense its position and a different visible character", () => {
     let history = createEditorHistory(createStudioProgram("nova"));
     history = addStudioActor(history, "mika");
