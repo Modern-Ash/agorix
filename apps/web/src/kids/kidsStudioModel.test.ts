@@ -6,6 +6,7 @@ import {
   appendStudioStatement,
   createStudioProgram,
   creativeForStudio,
+  setStudioTrigger,
   validateStudioProgram,
 } from "./kidsStudioModel.js";
 
@@ -70,5 +71,49 @@ describe("Kids creative studio", () => {
         ],
       }),
     ).toThrow();
+  });
+
+  it("runs bounded looks and wait blocks on the selected character only", () => {
+    let history = createEditorHistory(createStudioProgram("nova"));
+    history = addStudioActor(history, "mika");
+    for (const statement of [
+      { type: "say", text: "¡Hola!" },
+      { type: "setSize", size: 150 },
+      { type: "hide" },
+      { type: "wait", seconds: 1 },
+      { type: "show" },
+      { type: "think", text: "¿Y ahora?" },
+    ] as const)
+      history = appendStudioStatement(history, "actor:studio-2-mika", statement);
+    const result = runMultiActorProgram(
+      history.current,
+      creativeForStudio(history.current, "forest", "es"),
+    );
+    expect(result.actors[0]?.world.sprite.bubble).toBeUndefined();
+    expect(result.actors[1]?.world.sprite).toMatchObject({
+      visible: true,
+      size: 150,
+      bubble: { kind: "think", text: "¿Y ahora?" },
+    });
+    expect(result.trace.map((entry) => entry.statementType)).toContain("wait");
+    expect(() =>
+      appendStudioStatement(history, "actor:studio-2-mika", { type: "say", text: " " }),
+    ).toThrow();
+  });
+
+  it("runs a character click script only after that character is tapped", () => {
+    let history = createEditorHistory(createStudioProgram("nova"));
+    history = addStudioActor(history, "mika");
+    history = setStudioTrigger(history, "actor:studio-2-mika", "onActorClicked");
+    history = appendStudioStatement(history, "actor:studio-2-mika", { type: "say", text: "Hola" });
+    const creative = creativeForStudio(history.current, "forest", "es");
+    expect(runMultiActorProgram(history.current, creative).trace).toHaveLength(0);
+    const clicked = runMultiActorProgram(history.current, creative, {
+      events: [{ type: "start" }, { type: "actorClicked", actorId: "actor:studio-2-mika" }],
+    });
+    expect(clicked.trace.map((entry) => [entry.actorId, entry.statementType])).toEqual([
+      ["actor:studio-2-mika", "say"],
+    ]);
+    expect(clicked.actors[1]?.world.sprite.bubble?.text).toBe("Hola");
   });
 });

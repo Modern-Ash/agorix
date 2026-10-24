@@ -24,7 +24,20 @@ const MAX_STUDIO_ACTORS = 12;
 
 export type StudioStatement = Extract<
   Statement,
-  { type: "move" | "turn" | "switchCostume" | "switchBackdrop" | "playSound" }
+  {
+    type:
+      | "move"
+      | "turn"
+      | "switchCostume"
+      | "switchBackdrop"
+      | "playSound"
+      | "say"
+      | "think"
+      | "show"
+      | "hide"
+      | "setSize"
+      | "wait";
+  }
 >;
 
 export function studioActorId(index: number, characterId: KidsGalleryCharacterId): string {
@@ -61,6 +74,11 @@ function checked(statement: Statement): boolean {
     );
   if (statement.type === "playSound")
     return isKidsSoundId(statement.soundId) && statement.soundId !== "kids:custom";
+  if (statement.type === "say" || statement.type === "think")
+    return statement.text.trim().length > 0 && statement.text.length <= 80;
+  if (statement.type === "show" || statement.type === "hide") return true;
+  if (statement.type === "setSize") return [50, 75, 100, 125, 150].includes(statement.size);
+  if (statement.type === "wait") return [0.5, 1, 2, 3].includes(statement.seconds);
   return false;
 }
 
@@ -76,7 +94,7 @@ export function validateStudioProgram(raw: ProjectProgram): ProjectProgram {
       return (
         !actor ||
         actor.index !== position + 1 ||
-        script.trigger.type !== "greenFlag" ||
+        !["greenFlag", "onActorClicked"].includes(script.trigger.type) ||
         script.statements.some((statement) => !checked(statement))
       );
     })
@@ -187,6 +205,25 @@ export function appendStudioStatement(
   const next = validateStudioProgram({ ...program, scripts });
   return recordCanonicalTransaction(history, { label: `add ${statement.type}`, after: next })
     .history;
+}
+
+export function setStudioTrigger(
+  history: EditorHistory,
+  actorId: string,
+  trigger: "greenFlag" | "onActorClicked",
+): EditorHistory {
+  const program = validateStudioProgram(history.current);
+  const index = program.scripts.findIndex((script) => {
+    const actor = actorOfScript(script.id);
+    return actor !== null && studioActorId(actor.index, actor.characterId) === actorId;
+  });
+  if (index < 0) throw new RangeError("unknown studio actor");
+  const scripts = [...program.scripts];
+  scripts[index] = { ...scripts[index]!, trigger: { type: trigger } };
+  return recordCanonicalTransaction(history, {
+    label: "set studio event",
+    after: validateStudioProgram({ ...program, scripts }),
+  }).history;
 }
 
 export function removeStudioStatement(

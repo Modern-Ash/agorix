@@ -10,7 +10,7 @@ import { projectAgorixCode } from "@agorix/agorix-code";
 import { projectProgram } from "@agorix/code-generator";
 import { projectPython } from "@agorix/python-projection";
 import { ProjectStore } from "@agorix/persistence";
-import { runMultiActorProgram, type MultiActorRunResult } from "@agorix/runtime";
+import { runMultiActorProgram, type MultiActorRunResult, type RuntimeEvent } from "@agorix/runtime";
 import {
   acceptProposal,
   createProgramProposal,
@@ -37,6 +37,7 @@ import {
   appendStudioStatement,
   creativeForStudio,
   removeStudioStatement,
+  setStudioTrigger,
   studioActorId,
   type StudioStatement,
 } from "../kidsStudioModel.js";
@@ -67,6 +68,16 @@ const COPY = {
     costume: "Cambiar disfraz",
     switchBackdrop: "Cambiar fondo",
     sound: "Sonar",
+    say: "Decir",
+    think: "Pensar",
+    show: "Mostrar",
+    hide: "Esconder",
+    size: "Tamaño",
+    wait: "Esperar",
+    event: "Cuando",
+    onPlay: "Al jugar",
+    onTap: "Al tocar este personaje",
+    tapHint: "Tocá el personaje en el escenario después de Jugar.",
     remove: "Quitar bloque",
     undo: "Deshacer",
     redo: "Rehacer",
@@ -99,6 +110,16 @@ const COPY = {
     costume: "Switch costume",
     switchBackdrop: "Switch backdrop",
     sound: "Sound",
+    say: "Say",
+    think: "Think",
+    show: "Show",
+    hide: "Hide",
+    size: "Size",
+    wait: "Wait",
+    event: "When",
+    onPlay: "When played",
+    onTap: "When this character is tapped",
+    tapHint: "Tap the character on the stage after Play.",
     remove: "Remove block",
     undo: "Undo",
     redo: "Redo",
@@ -154,7 +175,11 @@ export function KidsStudioScreen({ id, locale, onBack }: Props) {
   const [newBackdrop, setNewBackdrop] = useState<KidsGalleryBackdropId>("moon");
   const [newSound, setNewSound] = useState<(typeof KIDS_SOUNDS)[number]["id"]>("kids:pop");
   const [moveCells, setMoveCells] = useState(1);
+  const [bubbleText, setBubbleText] = useState(locale === "es" ? "¡Hola!" : "Hello!");
+  const [spriteSize, setSpriteSize] = useState(100);
+  const [waitSeconds, setWaitSeconds] = useState(1);
   const [run, setRun] = useState<MultiActorRunResult | null>(null);
+  const [events, setEvents] = useState<readonly RuntimeEvent[]>([{ type: "start" }]);
   const [frame, setFrame] = useState<number | null>(null);
   const [language, setLanguage] = useState<"agorix" | "python" | "typescript">("agorix");
   const [oriIdea, setOriIdea] = useState<ProgramProposal | null>(null);
@@ -186,6 +211,7 @@ export function KidsStudioScreen({ id, locale, onBack }: Props) {
       setHistory(next);
       setActiveActorId(nextActive);
       setRun(null);
+      setEvents([{ type: "start" }]);
       setFrame(null);
       setOriIdea(null);
       setError(false);
@@ -227,6 +253,7 @@ export function KidsStudioScreen({ id, locale, onBack }: Props) {
       setStudioBackdrop(id, next, locale, store);
       setBackdropId(next);
       setRun(null);
+      setEvents([{ type: "start" }]);
       setFrame(null);
       setOriIdea(null);
       setError(false);
@@ -239,6 +266,7 @@ export function KidsStudioScreen({ id, locale, onBack }: Props) {
     try {
       const result = runMultiActorProgram(history.current, creative);
       setRun(result);
+      setEvents([{ type: "start" }]);
       setFrame(null);
       for (const entry of result.trace
         .filter((item) => item.statementType === "playSound")
@@ -254,6 +282,25 @@ export function KidsStudioScreen({ id, locale, onBack }: Props) {
     } catch {
       setError(true);
     }
+  }
+
+  function tapActor(actorId: string) {
+    if (
+      !run ||
+      !history.current.scripts.some(
+        (entry) =>
+          entry.id === creative.actors?.find((item) => item.id === actorId)?.scripts?.[0] &&
+          entry.trigger.type === "onActorClicked",
+      )
+    ) {
+      selectActor(actorId);
+      return;
+    }
+    const nextEvents: readonly RuntimeEvent[] = [...events, { type: "actorClicked", actorId }];
+    setRun(runMultiActorProgram(history.current, creative, { events: nextEvents }));
+    setEvents(nextEvents);
+    setFrame(null);
+    selectActor(actorId);
   }
 
   function askOri() {
@@ -362,6 +409,8 @@ export function KidsStudioScreen({ id, locale, onBack }: Props) {
               );
               const x = final?.world.sprite.x ?? item.x;
               const y = final?.world.sprite.y ?? item.y;
+              const sprite = final?.world.sprite;
+              if (sprite?.visible === false) return null;
               return (
                 <button
                   key={item.id}
@@ -373,9 +422,20 @@ export function KidsStudioScreen({ id, locale, onBack }: Props) {
                   }}
                   aria-label={`${copy.chooseActor}: ${item.name} ${item.id}`}
                   aria-pressed={activeActorId === item.id}
-                  onClick={() => selectActor(item.id)}
+                  onClick={() => tapActor(item.id)}
                 >
-                  <KidsSprite slot={{ kind: "gallery", id: characterId }} label={item.name} />
+                  <span
+                    className="kids-studio-stage-costume"
+                    style={{ transform: `scale(${(sprite?.size ?? 100) / 100})` }}
+                  >
+                    <KidsSprite slot={{ kind: "gallery", id: characterId }} label={item.name} />
+                  </span>
+                  {sprite?.bubble ? (
+                    <span className="kids-studio-bubble">
+                      {sprite.bubble.kind === "think" ? "☁ " : ""}
+                      {sprite.bubble.text}
+                    </span>
+                  ) : null}
                 </button>
               );
             })}
@@ -406,7 +466,7 @@ export function KidsStudioScreen({ id, locale, onBack }: Props) {
           <p className="kids-note">
             {copy.facts}:{" "}
             {run
-              ? `${run.trace.length} ${locale === "es" ? "bloques ejecutados" : "blocks executed"}`
+              ? `${run.trace.length} ${locale === "es" ? (run.trace.length === 1 ? "bloque ejecutado" : "bloques ejecutados") : run.trace.length === 1 ? "block executed" : "blocks executed"}`
               : "—"}
           </p>
           <h2>{copy.actors}</h2>
@@ -472,7 +532,30 @@ export function KidsStudioScreen({ id, locale, onBack }: Props) {
             {copy.blocks} {actor?.name}
           </h2>
           <div className="kids-program-stack">
-            <div className="kids-start-block">▶ {locale === "es" ? "Al jugar" : "When played"}</div>
+            <label>
+              {copy.event}
+              <select
+                value={script?.trigger.type ?? "greenFlag"}
+                onChange={(event) =>
+                  persist(
+                    setStudioTrigger(
+                      history,
+                      activeActorId,
+                      event.target.value as "greenFlag" | "onActorClicked",
+                    ),
+                  )
+                }
+              >
+                <option value="greenFlag">{copy.onPlay}</option>
+                <option value="onActorClicked">{copy.onTap}</option>
+              </select>
+            </label>
+            <div className="kids-start-block">
+              ▶ {script?.trigger.type === "onActorClicked" ? copy.onTap : copy.onPlay}
+            </div>
+            {script?.trigger.type === "onActorClicked" ? (
+              <p className="kids-note">{copy.tapHint}</p>
+            ) : null}
             <ol>
               {script?.statements.map((statement, index) => (
                 <li key={`${script.id}-${index}`} className="kids-program-block">
@@ -489,7 +572,17 @@ export function KidsStudioScreen({ id, locale, onBack }: Props) {
                             ? `${copy.switchBackdrop}: ${galleryBackdropName(backdropOfStage(statement.backdropId, backdropId), locale)}`
                             : statement.type === "playSound"
                               ? `${copy.sound}: ${KIDS_SOUNDS.find((item) => item.id === statement.soundId)?.[locale] ?? ""}`
-                              : ""}
+                              : statement.type === "say" || statement.type === "think"
+                                ? `${statement.type === "say" ? copy.say : copy.think}: ${statement.text}`
+                                : statement.type === "show"
+                                  ? copy.show
+                                  : statement.type === "hide"
+                                    ? copy.hide
+                                    : statement.type === "setSize"
+                                      ? `${copy.size}: ${statement.size}%`
+                                      : statement.type === "wait"
+                                        ? `${copy.wait}: ${statement.seconds}s`
+                                        : ""}
                   </span>
                   <button
                     type="button"
@@ -505,6 +598,77 @@ export function KidsStudioScreen({ id, locale, onBack }: Props) {
             {script?.statements.length === 0 ? <p className="kids-note">{copy.noBlocks}</p> : null}
           </div>
           <div className="kids-studio-palette">
+            <label>
+              {copy.say} / {copy.think}
+              <input
+                type="text"
+                maxLength={80}
+                value={bubbleText}
+                onChange={(event) => setBubbleText(event.target.value)}
+              />
+            </label>
+            <button
+              type="button"
+              className="kids-button"
+              disabled={!bubbleText.trim()}
+              onClick={() => add({ type: "say", text: bubbleText.trim() })}
+            >
+              + {copy.say}
+            </button>
+            <button
+              type="button"
+              className="kids-button"
+              disabled={!bubbleText.trim()}
+              onClick={() => add({ type: "think", text: bubbleText.trim() })}
+            >
+              + {copy.think}
+            </button>
+            <button type="button" className="kids-button" onClick={() => add({ type: "show" })}>
+              + {copy.show}
+            </button>
+            <button type="button" className="kids-button" onClick={() => add({ type: "hide" })}>
+              + {copy.hide}
+            </button>
+            <label>
+              {copy.size}{" "}
+              <select
+                value={spriteSize}
+                onChange={(event) => setSpriteSize(Number(event.target.value))}
+              >
+                {[50, 75, 100, 125, 150].map((size) => (
+                  <option key={size} value={size}>
+                    {size}%
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              className="kids-button"
+              onClick={() => add({ type: "setSize", size: spriteSize })}
+            >
+              + {copy.size}
+            </button>
+            <label>
+              {copy.wait}{" "}
+              <select
+                value={waitSeconds}
+                onChange={(event) => setWaitSeconds(Number(event.target.value))}
+              >
+                {[0.5, 1, 2, 3].map((seconds) => (
+                  <option key={seconds} value={seconds}>
+                    {seconds}s
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              className="kids-button"
+              onClick={() => add({ type: "wait", seconds: waitSeconds })}
+            >
+              + {copy.wait}
+            </button>
             <label>
               {copy.move}{" "}
               <select
