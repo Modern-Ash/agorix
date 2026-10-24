@@ -137,6 +137,11 @@ const COPY = {
     randomMin: "Azar desde",
     randomMax: "Azar hasta",
     setRandom: "Guardar azar en variable",
+    saveX: "Guardar posición X",
+    saveY: "Guardar posición Y",
+    touchActor: "Tocando personaje",
+    ifTouchActor: "Si toca, mover 1",
+    groupIfTouchActor: "Si toca, ejecutar estos bloques",
     dataName: "Nombre",
     number: "Número",
     watchers: "Datos al jugar",
@@ -159,6 +164,9 @@ const COPY = {
     change: "Cambiar idea",
     reject: "No usar",
     facts: "Lo que pasó de verdad",
+    conditionResult: "La condición se cumplió",
+    yes: "Sí",
+    no: "No",
     saveError: "No pudimos guardar esta escena. Probá de nuevo.",
     chooseActor: "Elegí un personaje",
     noBlocks: "Agregá un bloque para ver qué hace este personaje.",
@@ -242,6 +250,11 @@ const COPY = {
     randomMin: "Random from",
     randomMax: "Random to",
     setRandom: "Save random in variable",
+    saveX: "Save X position",
+    saveY: "Save Y position",
+    touchActor: "Touching character",
+    ifTouchActor: "If touching, move 1",
+    groupIfTouchActor: "If touching, run these blocks",
     dataName: "Name",
     number: "Number",
     watchers: "Data after Play",
@@ -264,6 +277,9 @@ const COPY = {
     change: "Change idea",
     reject: "Don't use",
     facts: "What really happened",
+    conditionResult: "Condition was true",
+    yes: "Yes",
+    no: "No",
     saveError: "We couldn't save this scene. Try again.",
     chooseActor: "Choose a character",
     noBlocks: "Add a block to see what this character does.",
@@ -285,7 +301,15 @@ const STUDIO_KEYS = ["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]
 const STUDIO_MESSAGES = ["hola", "vamos", "listo"] as const;
 type StudioEvent = "greenFlag" | "onActorClicked" | "onKeyPressed" | "onMessage";
 
-function expressionLabel(value: Expression, program: ProjectProgram): string {
+function expressionLabel(
+  value: Expression,
+  program: ProjectProgram,
+  locale: Locale = "es",
+): string {
+  if (value.type === "xPosition") return "X";
+  if (value.type === "yPosition") return "Y";
+  if (value.type === "touchingActor")
+    return `${locale === "es" ? "tocando" : "touching"} ${galleryCharacterName(characterOfActor(value.actorId), locale)}`;
   if (value.type === "numericLiteral") return String(value.value);
   if (value.type === "variable")
     return program.variables?.find((item) => item.id === value.variableId)?.name ?? "?";
@@ -367,6 +391,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
     "greaterThan",
   );
   const [compareCalculation, setCompareCalculation] = useState(false);
+  const [sensorTargetId, setSensorTargetId] = useState("");
   const [dataName, setDataName] = useState("");
   const [dataValue, setDataValue] = useState(1);
   const [variableId, setVariableId] = useState("studio-var-1");
@@ -421,6 +446,10 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
     );
   }, [history.current, backdropId, locale, placementRevision, store, id]);
   const actor = creative.actors?.find((item) => item.id === activeActorId) ?? creative.actors?.[0];
+  const otherActors = creative.actors?.filter((item) => item.id !== actor?.id) ?? [];
+  const targetActorId = otherActors.some((item) => item.id === sensorTargetId)
+    ? sensorTargetId
+    : otherActors[0]?.id;
   const script = history.current.scripts.find((item) => actor?.scripts?.includes(item.id));
   const selectedVariableId = history.current.variables?.some((item) => item.id === variableId)
     ? variableId
@@ -783,7 +812,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
       case "repeat":
         return `${copy.repeat} ${statement.count}`;
       case "if":
-        return `${copy.ifLabel} ${expressionLabel(statement.condition, history.current)}`;
+        return `${copy.ifLabel} ${expressionLabel(statement.condition, history.current, locale)}`;
       default:
         return "";
     }
@@ -809,7 +838,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
     );
   }
 
-  function groupLast(type: "repeat" | "if") {
+  function groupLast(type: "repeat" | "if", overrideCondition?: Expression) {
     try {
       persist(
         wrapStudioTail(
@@ -818,7 +847,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
           groupCount,
           type === "repeat"
             ? { type, times: repeatCount as 2 | 3 | 5 }
-            : { type, condition: condition() },
+            : { type, condition: overrideCondition ?? condition() },
         ),
       );
     } catch {
@@ -1269,6 +1298,15 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
               ? `${run.trace.length} ${locale === "es" ? (run.trace.length === 1 ? "bloque ejecutado" : "bloques ejecutados") : run.trace.length === 1 ? "block executed" : "blocks executed"}`
               : "—"}
           </p>
+          {run?.trace.some((entry) => entry.conditionResult !== undefined) ? (
+            <p className="kids-note" role="status">
+              {copy.conditionResult}:{" "}
+              {run.trace.filter((entry) => entry.conditionResult !== undefined).at(-1)
+                ?.conditionResult
+                ? copy.yes
+                : copy.no}
+            </p>
+          ) : null}
           {run ? (
             <p className="kids-note">
               {copy.volume}: {shownWorld?.sounds?.volume ?? 100}%
@@ -1795,6 +1833,44 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
             >
               {copy.groupRepeat}
             </button>
+            {targetActorId ? (
+              <>
+                <label>
+                  {copy.touchActor}{" "}
+                  <select
+                    value={targetActorId}
+                    onChange={(event) => setSensorTargetId(event.target.value)}
+                  >
+                    {otherActors.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  className="kids-button"
+                  onClick={() =>
+                    add({
+                      type: "if",
+                      condition: { type: "touchingActor", actorId: targetActorId },
+                      then: [{ type: "move", steps: 40 }],
+                    })
+                  }
+                >
+                  + {copy.ifTouchActor}
+                </button>
+                <button
+                  type="button"
+                  className="kids-button"
+                  disabled={(script?.statements.length ?? 0) < groupCount}
+                  onClick={() => groupLast("if", { type: "touchingActor", actorId: targetActorId })}
+                >
+                  {copy.groupIfTouchActor}
+                </button>
+              </>
+            ) : null}
             <label>
               {copy.message}{" "}
               <select
@@ -1886,6 +1962,32 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
                   }
                 >
                   + {copy.setVariable}
+                </button>
+                <button
+                  type="button"
+                  className="kids-button"
+                  onClick={() =>
+                    add({
+                      type: "setVariable",
+                      variableId: selectedVariableId,
+                      value: { type: "xPosition" },
+                    })
+                  }
+                >
+                  + {copy.saveX}
+                </button>
+                <button
+                  type="button"
+                  className="kids-button"
+                  onClick={() =>
+                    add({
+                      type: "setVariable",
+                      variableId: selectedVariableId,
+                      value: { type: "yPosition" },
+                    })
+                  }
+                >
+                  + {copy.saveY}
                 </button>
                 <button
                   type="button"

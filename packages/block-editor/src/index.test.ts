@@ -88,6 +88,9 @@ describe("block-editor", () => {
       "Repeat [N] times",
       "If ___, then",
       "Touching the goal?",
+      "Touching character?",
+      "Horizontal position",
+      "Vertical position",
       "[N] + [N]",
       "[N] - [N]",
       "[N] * [N]",
@@ -107,7 +110,7 @@ describe("block-editor", () => {
       "Show score",
       "Hide score",
     ]);
-    expect(POC_TOOLBOX.flatMap((section) => section.blocks)).toHaveLength(40);
+    expect(POC_TOOLBOX.flatMap((section) => section.blocks)).toHaveLength(43);
   });
 
   it("creates safe defaults for every required POC block", () => {

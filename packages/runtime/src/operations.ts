@@ -45,6 +45,9 @@ export const RUNTIME_STATEMENT_OPERATIONS = Object.freeze([
 
 export const RUNTIME_EXPRESSION_OPERATIONS = Object.freeze([
   "touchingGoal",
+  "touchingActor",
+  "xPosition",
+  "yPosition",
   "booleanLiteral",
   "numericLiteral",
   "variable",
@@ -141,6 +144,9 @@ function assertExpressionAllowed(expression: Expression, path: string): void {
       assertExpressionAllowed(expression.index, `${path}.index`);
       return;
     case "touchingGoal":
+    case "touchingActor":
+    case "xPosition":
+    case "yPosition":
     case "booleanLiteral":
     case "numericLiteral":
     case "variable":

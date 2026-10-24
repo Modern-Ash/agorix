@@ -62,6 +62,13 @@ export interface ExecutionOptions {
   readonly collectObservations?: boolean;
   readonly randomSeed?: number;
   readonly event?: ProgramEvent;
+  /** Other actors at activation start; never includes the running actor. */
+  readonly sensorActors?: readonly {
+    readonly id: string;
+    readonly x: number;
+    readonly y: number;
+    readonly visible: boolean;
+  }[];
 }
 
 export interface ExecutionTraceEntry {
@@ -71,6 +78,8 @@ export interface ExecutionTraceEntry {
   readonly statementType: Statement["type"];
   /** Emitted only for playSound, so audio playback follows executed statements exactly. */
   readonly soundId?: string;
+  /** Deterministic outcome of an if condition, available for learner-facing evidence. */
+  readonly conditionResult?: boolean;
   readonly worldBefore: WorldState;
   readonly worldAfter: WorldState;
   readonly actorId?: string;
@@ -230,6 +239,19 @@ function evaluateExpression(
   switch (expression.type) {
     case "touchingGoal":
       return touchingGoal(state.world);
+    case "touchingActor": {
+      if (state.world.sprite.visible === false) return false;
+      const target = state.options.sensorActors?.find((actor) => actor.id === expression.actorId);
+      return (
+        target !== undefined &&
+        target.visible &&
+        Math.hypot(state.world.sprite.x - target.x, state.world.sprite.y - target.y) <= 24
+      );
+    }
+    case "xPosition":
+      return state.world.sprite.x;
+    case "yPosition":
+      return state.world.sprite.y;
     case "booleanLiteral":
       return expression.value;
     case "numericLiteral":
@@ -347,6 +369,7 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
   assertAllowedRuntimeOperation("statement", statement.type, path);
   const nodeId = nodeIdFromPath(path);
   const before = cloneWorldState(state.world);
+  let conditionResult: boolean | undefined;
   recordObservation(state, {
     kind: "statement-start",
     step: state.stepsUsed + 1,
@@ -467,7 +490,10 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
       break;
     }
     case "if":
-      if (coerceBoolean(evaluateExpression(statement.condition, `${path}.condition`, state))) {
+      conditionResult = coerceBoolean(
+        evaluateExpression(statement.condition, `${path}.condition`, state),
+      );
+      if (conditionResult) {
         executeStatements(statement.then, `${path}.then`, state);
       } else if (statement.else !== undefined) {
         executeStatements(statement.else, `${path}.else`, state);
@@ -487,6 +513,7 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
     path: nodeId,
     statementType: statement.type,
     ...(statement.type === "playSound" ? { soundId: statement.soundId } : {}),
+    ...(conditionResult === undefined ? {} : { conditionResult }),
     worldBefore: before,
     worldAfter,
   });

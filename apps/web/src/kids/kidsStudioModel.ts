@@ -113,6 +113,7 @@ function checkedTrigger(trigger: Trigger): boolean {
 function checkedNumber(value: Expression, program: ProjectProgram, depth = 0): boolean {
   if (depth > 2) return false;
   if (value.type === "numericLiteral") return finiteSmallNumber(value.value);
+  if (value.type === "xPosition" || value.type === "yPosition") return true;
   if (value.type === "variable")
     return program.variables?.some((item) => item.id === value.variableId) === true;
   if (value.type === "listLength")
@@ -146,6 +147,11 @@ function checkedNumber(value: Expression, program: ProjectProgram, depth = 0): b
 }
 
 function checkedCondition(value: Expression, program: ProjectProgram): boolean {
+  if (value.type === "touchingActor")
+    return program.scripts.some((script) => {
+      const target = actorOfScript(script.id);
+      return target !== null && studioActorId(target.index, target.characterId) === value.actorId;
+    });
   if (value.type !== "greaterThan" && value.type !== "lessThan" && value.type !== "equals")
     return false;
   return checkedNumber(value.left, program) && checkedNumber(value.right, program);
