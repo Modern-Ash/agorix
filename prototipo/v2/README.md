@@ -25,7 +25,7 @@ Entrega de Claude Design posterior a `prototipo/handoff/` (v1). Es referencia vi
 | Comparadores ≥ ≤ | #464 | entregado |
 | Operadores aritméticos en la UI | #465 | entregado |
 | Aleatorio | #467 | entregado |
-| Listas | #468 | pendiente |
+| Listas | #468, #525 | entregado en avanzado; apagado por defecto |
 | Esperar | #466 | entregado |
 | Enviar mensaje | — | ya en program-model (`broadcast`); UI en avanzado |
 | Varios personajes y disfraces | #469 | entregado |
@@ -35,19 +35,22 @@ Entrega de Claude Design posterior a `prototipo/handoff/` (v1). Es referencia vi
 | Zoom del área de bloques | #449 | entregado |
 | Menú contextual | #450 | entregado |
 | Borrar proyectos guardados | #445 | entregado |
-| Tutoriales | #470 | pendiente |
+| Tutoriales | #470 | implementado; apagado por defecto |
 | Lectura en voz alta en pantallas Kids | #528 | entregado; botón manual para texto de interfaz, controlado desde Adultos |
 | Atajos de teclado | #451 | entregado |
 | Compartir y remezclar | #472 | decidido: fuera de Kids (ADR 0009 aceptado) |
 | Diferencias 6b con la versión publicada | #444 | auditoría |
 
-**Visibilidad de imágenes propias (#524):** el dueño del producto aprobó activar
-`customImages` por defecto antes del playtest #389, después de la revisión de
-seguridad #501. En un navegador nuevo, Crear muestra `+ Explorador` y `+ Fondo`;
-la selección del archivo sigue dentro de Adultos. Una lista explícita vacía en
-`agorix.kids.flags.v1` desactiva la función para rollback en ese navegador. El
-resto de las funciones v2 conserva su estado anterior y #524 permanece abierto
-para el despliegue gradual completo.
+**Implementado ≠ activado por defecto.** El inventario de los 13 flags, su
+evidencia, etapas y condiciones de activación está en
+[`docs/deployment/KIDS_V2_ROLLOUT.md`](../../docs/deployment/KIDS_V2_ROLLOUT.md).
+El dueño del producto aprobó `customImages` como único default antes del
+playtest #389, después de la revisión #501. En un navegador nuevo, Crear muestra
+`+ Explorador` y `+ Fondo`: el niño puede agregar archivos locales y el adulto
+controla el flag en Adultos. El niño no puede quitar ni reemplazar imágenes que
+vienen con el producto. Una lista explícita vacía en `agorix.kids.flags.v1`
+desactiva la función en ese navegador sin borrar proyectos. #524 sigue abierto
+para el despliegue gradual restante y la validación real con #389/#413.
 
 ## Auditoría de las diferencias 6b (issue #444)
 
