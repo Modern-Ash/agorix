@@ -345,3 +345,34 @@ describe("modulo expression", () => {
     ).toThrow(ProgramValidationError);
   });
 });
+
+describe("mathFunction expression", () => {
+  const withValue = (value: unknown) =>
+    ({
+      schema: SCHEMA_VERSION,
+      variables: [{ id: "n", name: "n", initialValue: 0, visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [{ type: "setVariable", variableId: "n", value }],
+        },
+      ],
+    }) as never;
+  const operand = { type: "numericLiteral", value: -2.5 };
+  it("accepts the four functions and rejects unknown ones or a missing operand", () => {
+    for (const fn of ["abs", "round", "floor", "ceiling"]) {
+      expect(() =>
+        validateProgram(withValue({ type: "mathFunction", function: fn, value: operand })),
+      ).not.toThrow();
+    }
+    for (const fn of ["sqrt", "", 3, undefined]) {
+      expect(() =>
+        validateProgram(withValue({ type: "mathFunction", function: fn, value: operand })),
+      ).toThrow(ProgramValidationError);
+    }
+    expect(() => validateProgram(withValue({ type: "mathFunction", function: "abs" }))).toThrow(
+      ProgramValidationError,
+    );
+  });
+});

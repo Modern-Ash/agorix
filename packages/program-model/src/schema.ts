@@ -94,6 +94,15 @@ export interface ModuloExpression {
   readonly right: Expression;
 }
 
+export type MathFunction = "abs" | "round" | "floor" | "ceiling";
+
+/** Round half up (toward positive infinity), as Scratch does. */
+export interface MathFunctionExpression {
+  readonly type: "mathFunction";
+  readonly function: MathFunction;
+  readonly value: Expression;
+}
+
 export interface LessThanExpression {
   readonly type: "lessThan";
   readonly left: Expression;
@@ -181,6 +190,7 @@ export type Expression =
   | MultiplyExpression
   | DivideExpression
   | ModuloExpression
+  | MathFunctionExpression
   | LessThanExpression
   | GreaterThanExpression
   | LessOrEqualExpression

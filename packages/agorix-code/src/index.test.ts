@@ -480,3 +480,31 @@ describe("Agorix Code projection: modulo", () => {
     expect(result.text).toContain(" mod 2)");
   });
 });
+
+describe("projection: math functions", () => {
+  it("projects the function applied to its operand", () => {
+    const result = projectAgorixCode({
+      schema: "agorix/program/v1",
+      variables: [{ id: "n", name: "n", initialValue: 0, visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "setVariable",
+              variableId: "n",
+              value: {
+                type: "mathFunction",
+                function: "round",
+                value: { type: "variable", variableId: "n" },
+              },
+            },
+          ],
+        },
+      ],
+    });
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toContain("round ");
+  });
+});

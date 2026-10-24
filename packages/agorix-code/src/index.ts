@@ -450,6 +450,10 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
         expressionText(writer, expression.right, nodeId + "/right") +
         ")"
       );
+    case "mathFunction":
+      return (
+        expression.function + " " + expressionText(writer, expression.value, nodeId + "/value")
+      );
     case "not":
       return "not " + expressionText(writer, expression.value, nodeId + "/value");
     case "listItem":

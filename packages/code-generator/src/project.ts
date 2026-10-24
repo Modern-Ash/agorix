@@ -190,6 +190,8 @@ function formatExpression(
       return `(${formatExpression(expression.left, `${nodeId}/left`, context)} && ${formatExpression(expression.right, `${nodeId}/right`, context)})`;
     case "or":
       return `(${formatExpression(expression.left, `${nodeId}/left`, context)} || ${formatExpression(expression.right, `${nodeId}/right`, context)})`;
+    case "mathFunction":
+      return `Math.${expression.function === "ceiling" ? "ceil" : expression.function}(${formatExpression(expression.value, `${nodeId}/value`, context)})`;
     case "not":
       return `(!${formatExpression(expression.value, `${nodeId}/value`, context)})`;
     case "randomInteger":

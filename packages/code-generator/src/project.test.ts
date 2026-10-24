@@ -398,6 +398,35 @@ describe("modulo", () => {
   });
 });
 
+describe("math functions", () => {
+  it("projects the function through Math", () => {
+    const program = {
+      schema: "agorix/program/v1",
+      variables: [{ id: "n", name: "n", initialValue: 0, visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "setVariable",
+              variableId: "n",
+              value: {
+                type: "mathFunction",
+                function: "round",
+                value: { type: "variable", variableId: "n" },
+              },
+            },
+          ],
+        },
+      ],
+    } as unknown as ProjectProgram;
+    const result = projectProgram(program);
+    expect(result.code).toContain("Math.round(");
+    expectValidRanges(result);
+  });
+});
+
 describe("TypeScript LanguageProjection registry", () => {
   it("is selectable by the official typescript id", async () => {
     const { createLanguageProjectionRegistry } = await import("@agorix/language-projection");

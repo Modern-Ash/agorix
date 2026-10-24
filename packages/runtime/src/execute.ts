@@ -354,6 +354,18 @@ function evaluateExpression(
         coerceBoolean(evaluateExpression(expression.left, `${path}.left`, state)) ||
         coerceBoolean(evaluateExpression(expression.right, `${path}.right`, state))
       );
+    case "mathFunction": {
+      const operand = coerceNumber(evaluateExpression(expression.value, `${path}.value`, state));
+      const result =
+        expression.function === "abs"
+          ? Math.abs(operand)
+          : expression.function === "round"
+            ? Math.round(operand)
+            : expression.function === "floor"
+              ? Math.floor(operand)
+              : Math.ceil(operand);
+      return normalizeRuntimeNumber(result + 0, path);
+    }
     case "not":
       return !coerceBoolean(evaluateExpression(expression.value, `${path}.value`, state));
     case "random": {

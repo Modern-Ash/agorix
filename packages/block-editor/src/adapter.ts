@@ -2,6 +2,7 @@ import {
   SCHEMA_VERSION,
   validateProgram,
   type Expression,
+  type MathFunction,
   type ProgramList,
   ProgramVariable,
   type ProjectProgram,
@@ -58,6 +59,7 @@ export type BlockType =
   | "operator_and"
   | "operator_or"
   | "operator_not"
+  | "operator_math_function"
   | "operator_random"
   | "operator_random_integer"
   | "variables_value"
@@ -332,6 +334,17 @@ function expressionFromBlock(
         ),
       };
     }
+    case "operator_math_function":
+      return {
+        type: "mathFunction",
+        function: stringField(block, "function", path) as MathFunction,
+        value: expressionFromBlock(
+          requiredInput(block, "value", path),
+          `${nodeId}/value`,
+          `${path}.inputs.value`,
+          mapping,
+        ),
+      };
     case "operator_not":
       return {
         type: "not",
@@ -636,6 +649,13 @@ function expressionToBlock(
         },
       };
     }
+    case "mathFunction":
+      return {
+        id,
+        type: "operator_math_function",
+        fields: { function: expression.function },
+        inputs: { value: expressionToBlock(expression.value, `${nodeId}/value`, mapping) },
+      };
     case "not":
       return {
         id,
