@@ -88,6 +88,10 @@ const COPY = {
     costume: "Cambiar disfraz",
     switchBackdrop: "Cambiar fondo",
     sound: "Sonar",
+    volume: "Volumen",
+    volumeChange: "Cambio de volumen",
+    setVolume: "Fijar volumen",
+    changeVolume: "Cambiar volumen",
     say: "Decir",
     think: "Pensar",
     show: "Mostrar",
@@ -117,6 +121,8 @@ const COPY = {
     newList: "Crear lista",
     setVariable: "Fijar valor",
     changeVariable: "Cambiar valor",
+    showVariable: "Mostrar variable",
+    hideVariable: "Ocultar variable",
     listAdd: "Agregar número",
     listRemove: "Quitar elemento",
     listInsert: "Insertar número",
@@ -183,6 +189,10 @@ const COPY = {
     costume: "Switch costume",
     switchBackdrop: "Switch backdrop",
     sound: "Sound",
+    volume: "Volume",
+    volumeChange: "Volume change",
+    setVolume: "Set volume",
+    changeVolume: "Change volume",
     say: "Say",
     think: "Think",
     show: "Show",
@@ -212,6 +222,8 @@ const COPY = {
     newList: "Create list",
     setVariable: "Set value",
     changeVariable: "Change value",
+    showVariable: "Show variable",
+    hideVariable: "Hide variable",
     listAdd: "Add number",
     listRemove: "Remove item",
     listInsert: "Insert number",
@@ -331,6 +343,8 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
   const [bubbleText, setBubbleText] = useState(locale === "es" ? "¡Hola!" : "Hello!");
   const [spriteSize, setSpriteSize] = useState(100);
   const [waitSeconds, setWaitSeconds] = useState(1);
+  const [volume, setVolume] = useState(100);
+  const [volumeChange, setVolumeChange] = useState(-10);
   const [eventKey, setEventKey] = useState<(typeof STUDIO_KEYS)[number]>("Space");
   const [eventMessage, setEventMessage] = useState<(typeof STUDIO_MESSAGES)[number]>("vamos");
   const [repeatCount, setRepeatCount] = useState(3);
@@ -424,6 +438,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
           : "idle";
   const selectedFrame = frame === null ? null : run?.frames[frame];
   const shownActors = selectedFrame?.actors ?? run?.actors;
+  const shownWorld = shownActors?.find((entry) => entry.id === activeActorId)?.world;
   const shownStage = selectedFrame?.stage ?? run?.stage ?? creative.stage;
   const stageBackdrop = backdropOfStage(shownStage?.backdropId, backdropId);
   const stageArt = customImagesEnabled
@@ -721,6 +736,10 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
         return `${copy.switchBackdrop}: ${galleryBackdropName(backdropOfStage(statement.backdropId, backdropId), locale)}`;
       case "playSound":
         return `${copy.sound}: ${KIDS_SOUNDS.find((item) => item.id === statement.soundId)?.[locale] ?? ""}`;
+      case "setVolume":
+        return `${copy.setVolume}: ${statement.volume}%`;
+      case "changeVolume":
+        return `${copy.changeVolume}: ${statement.delta}`;
       case "say":
       case "think":
         return `${statement.type === "say" ? copy.say : copy.think}: ${statement.text}`;
@@ -737,6 +756,9 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
       case "setVariable":
       case "changeVariable":
         return `${statement.type === "setVariable" ? copy.setVariable : copy.changeVariable}: ${history.current.variables?.find((item) => item.id === statement.variableId)?.name ?? "?"} ${expressionLabel(statement.type === "setVariable" ? statement.value : statement.delta, history.current)}`;
+      case "showVariable":
+      case "hideVariable":
+        return `${statement.type === "showVariable" ? copy.showVariable : copy.hideVariable}: ${history.current.variables?.find((item) => item.id === statement.variableId)?.name ?? "?"}`;
       case "listAdd":
         return `${copy.listAdd}: ${history.current.lists?.find((item) => item.id === statement.listId)?.name ?? "?"} ${expressionLabel(statement.value, history.current)}`;
       case "listRemoveAt":
@@ -816,10 +838,11 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
         .slice(0, 4)) {
         const owner = creative.actors?.find((item) => item.id === entry.actorId);
         if (owner)
-          void playKidsSound(entry.worldAfter.sounds?.activeSoundIds.at(-1) ?? "kids:pop", {
-            kind: "gallery",
-            id: characterOfActor(owner.id),
-          });
+          void playKidsSound(
+            entry.worldAfter.sounds?.activeSoundIds.at(-1) ?? "kids:pop",
+            { kind: "gallery", id: characterOfActor(owner.id) },
+            { volume: entry.worldAfter.sounds?.volume ?? 100 },
+          );
       }
       setError(false);
     } catch {
@@ -1225,17 +1248,21 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
               ? `${run.trace.length} ${locale === "es" ? (run.trace.length === 1 ? "bloque ejecutado" : "bloques ejecutados") : run.trace.length === 1 ? "block executed" : "blocks executed"}`
               : "—"}
           </p>
+          {run ? (
+            <p className="kids-note">
+              {copy.volume}: {shownWorld?.sounds?.volume ?? 100}%
+            </p>
+          ) : null}
           {history.current.variables?.length || history.current.lists?.length ? (
             <div className="kids-studio-watchers" aria-label={copy.watchers}>
               <h3>{copy.watchers}</h3>
-              {history.current.variables?.map((item) => (
-                <p key={item.id}>
-                  {item.name}:{" "}
-                  {shownActors?.find((entry) => entry.id === activeActorId)?.world.variables?.[
-                    item.id
-                  ]?.value ?? item.initialValue}
-                </p>
-              ))}
+              {history.current.variables
+                ?.filter((item) => shownWorld?.variables?.[item.id]?.visible !== false)
+                .map((item) => (
+                  <p key={item.id}>
+                    {item.name}: {shownWorld?.variables?.[item.id]?.value ?? item.initialValue}
+                  </p>
+                ))}
               {history.current.lists?.map((item) => (
                 <p key={item.id}>
                   {item.name}:{" "}
@@ -1621,6 +1648,44 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
             >
               + {copy.sound}
             </button>
+            <label>
+              {copy.volume}{" "}
+              <input
+                type="number"
+                min={0}
+                max={100}
+                step={1}
+                value={volume}
+                onChange={(event) => setVolume(Number(event.target.value))}
+              />
+            </label>
+            <button
+              type="button"
+              className="kids-button"
+              disabled={!Number.isInteger(volume) || volume < 0 || volume > 100}
+              onClick={() => add({ type: "setVolume", volume })}
+            >
+              + {copy.setVolume}
+            </button>
+            <label>
+              {copy.volumeChange}{" "}
+              <input
+                type="number"
+                min={-100}
+                max={100}
+                step={1}
+                value={volumeChange}
+                onChange={(event) => setVolumeChange(Number(event.target.value))}
+              />
+            </label>
+            <button
+              type="button"
+              className="kids-button"
+              disabled={!Number.isInteger(volumeChange) || Math.abs(volumeChange) > 100}
+              onClick={() => add({ type: "changeVolume", delta: volumeChange })}
+            >
+              + {copy.changeVolume}
+            </button>
             <h3>{copy.paletteLogic}</h3>
             <label>
               {copy.repeat}{" "}
@@ -1770,6 +1835,20 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
                   }
                 >
                   + {copy.changeVariable}
+                </button>
+                <button
+                  type="button"
+                  className="kids-button"
+                  onClick={() => add({ type: "showVariable", variableId: selectedVariableId })}
+                >
+                  + {copy.showVariable}
+                </button>
+                <button
+                  type="button"
+                  className="kids-button"
+                  onClick={() => add({ type: "hideVariable", variableId: selectedVariableId })}
+                >
+                  + {copy.hideVariable}
                 </button>
                 <label>
                   {copy.randomMin}{" "}

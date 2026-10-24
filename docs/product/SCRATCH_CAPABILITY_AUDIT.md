@@ -107,3 +107,9 @@ Each iteration needs an issue with an observable child journey, success and fail
 
 - Escena libre now exposes one-based insert and replace at positions 1–10, plus a bounded whole-number random expression for a variable. Insertion before item 1 works on an empty list; position `length + 1` appends. Invalid positions and a full 100-item list leave state unchanged with a runtime note. A seeded run reproduces the same random result.
 - The canonical validator, deterministic runtime, block adapter and Agorix Code, Python and TypeScript projections recognize the two new list operations. Tests cover valid and invalid indexes, full lists, code projection, visual authoring and reopen. More general list expressions, sensing, custom procedures and extensions remain open.
+
+## Sound volume and variable watchers (next #538 increment)
+
+- Escena libre exposes bounded Set volume and Change volume blocks. They update the canonical program, the deterministic runtime and the generated code. A gallery sound played from the run trace uses the volume recorded at that sound block; the stage shows the final volume after Jugar.
+- A child can add Show variable and Hide variable blocks for a declared variable. The selected actor's watcher follows the runtime visibility state. These blocks survive project reopen and remain subject to the studio's actor and block limits.
+- This increment uses operations already supported by the shared model and runtime. Stop sounds, sensing, movement to coordinates, custom procedures and extensions still need separate visible controls and runtime evidence before claiming parity.

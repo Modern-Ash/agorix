@@ -35,6 +35,8 @@ export type StudioStatement = Extract<
       | "switchCostume"
       | "switchBackdrop"
       | "playSound"
+      | "setVolume"
+      | "changeVolume"
       | "say"
       | "think"
       | "show"
@@ -44,6 +46,8 @@ export type StudioStatement = Extract<
       | "broadcast"
       | "setVariable"
       | "changeVariable"
+      | "showVariable"
+      | "hideVariable"
       | "listAdd"
       | "listRemoveAt"
       | "listInsertAt"
@@ -195,6 +199,10 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0): bool
     );
   if (statement.type === "playSound")
     return isKidsSoundId(statement.soundId) && statement.soundId !== "kids:custom";
+  if (statement.type === "setVolume")
+    return Number.isInteger(statement.volume) && statement.volume >= 0 && statement.volume <= 100;
+  if (statement.type === "changeVolume")
+    return Number.isInteger(statement.delta) && statement.delta >= -100 && statement.delta <= 100;
   if (statement.type === "say" || statement.type === "think")
     return statement.text.trim().length > 0 && statement.text.length <= 80;
   if (statement.type === "show" || statement.type === "hide") return true;
@@ -207,6 +215,8 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0): bool
       program.variables?.some((item) => item.id === statement.variableId) === true &&
       checkedNumber(statement.type === "setVariable" ? statement.value : statement.delta, program)
     );
+  if (statement.type === "showVariable" || statement.type === "hideVariable")
+    return program.variables?.some((item) => item.id === statement.variableId) === true;
   if (statement.type === "listAdd")
     return (
       program.lists?.some((item) => item.id === statement.listId) === true &&
