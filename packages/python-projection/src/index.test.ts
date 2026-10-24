@@ -87,6 +87,9 @@ describe("Python projection", () => {
         "move",
         "go_to",
         "turn",
+        "point_in_direction",
+        "point_towards",
+        "bounce_on_edge",
         "touching_goal",
         "touching_actor",
         "touching_stage_edge",
@@ -478,5 +481,34 @@ describe("Python projection: Volume operations", () => {
       expect(range).toBeDefined();
       expect(result.text.slice(range!.start, range!.end)).toMatch(/^ {4}/);
     }
+  });
+});
+
+describe("Python projection: heading operations", () => {
+  it("projects point and bounce blocks as beginner-readable Python", () => {
+    const result = projectPython({
+      schema: SCHEMA_VERSION,
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            { type: "pointInDirection", degrees: -90 },
+            { type: "pointTowards", actorId: "actor:studio-2-fox" },
+            { type: "bounceOnEdge" },
+          ],
+        },
+      ],
+    });
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toBe(
+      [
+        "def on_start():",
+        "    point_in_direction(-90)",
+        '    point_towards("actor:studio-2-fox")',
+        "    bounce_on_edge()",
+        "",
+      ].join("\n"),
+    );
   });
 });

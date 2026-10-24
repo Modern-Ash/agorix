@@ -337,3 +337,27 @@ describe("TypeScript LanguageProjection registry", () => {
     expect(registry.list().map((entry) => entry.id)).toContain("typescript");
   });
 });
+
+describe("heading statements", () => {
+  it("projects point and bounce statements", () => {
+    const program: ProjectProgram = {
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "a",
+          trigger: { type: "onStart" },
+          statements: [
+            { type: "pointInDirection", degrees: -90 },
+            { type: "pointTowards", actorId: "actor:studio-2-fox" },
+            { type: "bounceOnEdge" },
+          ],
+        },
+      ],
+    } as unknown as ProjectProgram;
+    const result = projectProgram(program);
+    expect(result.code).toContain("sprite.pointInDirection(-90);");
+    expect(result.code).toContain('sprite.pointTowards("actor:studio-2-fox");');
+    expect(result.code).toContain("sprite.bounceOnEdge();");
+    expectValidRanges(result);
+  });
+});

@@ -553,4 +553,45 @@ describe("Kids creative studio", () => {
       }),
     ).toThrow();
   });
+  it("runs a whole scene with pointing, bouncing and persisted positions", () => {
+    let history = createEditorHistory(createStudioProgram("nova"));
+    history = addStudioActor(history, "mika");
+    const nova = "actor:studio-1-nova";
+    const friend = "actor:studio-2-mika";
+    for (const statement of [
+      { type: "pointTowards", actorId: friend },
+      { type: "move", steps: 40 },
+      { type: "pointInDirection", degrees: 180 },
+      { type: "move", steps: 120 },
+      { type: "bounceOnEdge" },
+    ] as const)
+      history = appendStudioStatement(history, nova, statement);
+    const creative = creativeForStudio(history.current, "forest", "es");
+    const run = () => runMultiActorProgram(history.current, creative);
+    const result = run();
+    expect(result.outcome).toBe("completed");
+    expect(result.trace.map((entry) => entry.statementType)).toEqual([
+      "pointTowards",
+      "move",
+      "pointInDirection",
+      "move",
+      "bounceOnEdge",
+    ]);
+    expect(result.actors[0]?.world.sprite).toMatchObject({ x: 0, y: 0, heading: 0 });
+    expect(JSON.stringify(run())).toBe(JSON.stringify(result));
+  });
+  it("rejects heading blocks that point outside the scene", () => {
+    const history = createEditorHistory(createStudioProgram("nova"));
+    const nova = "actor:studio-1-nova";
+    expect(() =>
+      appendStudioStatement(history, nova, { type: "pointInDirection", degrees: 30 }),
+    ).toThrow();
+    expect(() =>
+      appendStudioStatement(history, nova, {
+        type: "pointTowards",
+        actorId: "actor:studio-9-mika",
+      }),
+    ).toThrow();
+    expect(() => appendStudioStatement(history, nova, { type: "bounceOnEdge" })).not.toThrow();
+  });
 });

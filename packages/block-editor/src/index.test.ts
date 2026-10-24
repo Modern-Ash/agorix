@@ -728,3 +728,29 @@ describe("volume blocks", () => {
     expect(canPlaceBlock("sound_set_volume", "statement")).toBe(true);
   });
 });
+
+describe("heading blocks", () => {
+  const headingProgram = {
+    schema: "agorix/program/v1",
+    scripts: [
+      {
+        id: "main",
+        trigger: { type: "onStart" },
+        statements: [
+          { type: "pointInDirection", degrees: -90 },
+          { type: "pointTowards", actorId: "actor:studio-2-fox" },
+          { type: "bounceOnEdge" },
+        ],
+      },
+    ],
+  } as unknown as ProjectProgram;
+
+  it("round-trips heading statements through blocks", () => {
+    const { workspace } = programToWorkspace(headingProgram);
+    expect(JSON.stringify(workspace)).toContain("motion_point_in_direction");
+    expect(JSON.stringify(workspace)).toContain("motion_point_towards");
+    expect(JSON.stringify(workspace)).toContain("motion_bounce_on_edge");
+    const { program: back } = workspaceToProgram(workspace);
+    expect(back.scripts[0]?.statements).toEqual(headingProgram.scripts[0]?.statements);
+  });
+});

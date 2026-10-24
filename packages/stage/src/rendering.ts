@@ -316,6 +316,12 @@ function titleForStep(step: ExecutionStep, profile: LearnerTraceProfile): string
       return "Move";
     case "turn":
       return "Turn";
+    case "pointInDirection":
+      return "Point in direction";
+    case "pointTowards":
+      return "Point towards";
+    case "bounceOnEdge":
+      return "Bounce on edge";
     case "repeat":
       return step.timing === "enter-repeat" ? "Repeat starts" : "Repeat ends";
     case "if":

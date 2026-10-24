@@ -33,6 +33,9 @@ export type StudioStatement = Extract<
       | "move"
       | "goTo"
       | "turn"
+      | "pointInDirection"
+      | "pointTowards"
+      | "bounceOnEdge"
       | "switchCostume"
       | "switchBackdrop"
       | "playSound"
@@ -223,6 +226,13 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0): bool
       statement.y <= 120
     );
   if (statement.type === "turn") return [45, 90, 180, -45, -90, -180].includes(statement.degrees);
+  if (statement.type === "pointInDirection") return [0, 90, 180, -90].includes(statement.degrees);
+  if (statement.type === "pointTowards")
+    return program.scripts.some((script) => {
+      const actor = actorOfScript(script.id);
+      return actor !== null && studioActorId(actor.index, actor.characterId) === statement.actorId;
+    });
+  if (statement.type === "bounceOnEdge") return true;
   if (statement.type === "switchCostume")
     return (
       isGalleryCharacterId(statement.costumeId.slice(8)) &&

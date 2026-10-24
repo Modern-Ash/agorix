@@ -205,6 +205,20 @@ export interface TurnStatement {
   readonly degrees: number;
 }
 
+export interface PointInDirectionStatement {
+  readonly type: "pointInDirection";
+  readonly degrees: number;
+}
+
+export interface PointTowardsStatement {
+  readonly type: "pointTowards";
+  readonly actorId: string;
+}
+
+export interface BounceOnEdgeStatement {
+  readonly type: "bounceOnEdge";
+}
+
 export interface SayStatement {
   readonly type: "say";
   readonly text: string;
@@ -334,6 +348,9 @@ export type Statement =
   | MoveStatement
   | GoToStatement
   | TurnStatement
+  | PointInDirectionStatement
+  | PointTowardsStatement
+  | BounceOnEdgeStatement
   | SayStatement
   | ThinkStatement
   | ShowStatement

@@ -20,6 +20,9 @@ export type BlockType =
   | "motion_move"
   | "motion_go_to"
   | "motion_turn"
+  | "motion_point_in_direction"
+  | "motion_point_towards"
+  | "motion_bounce_on_edge"
   | "looks_say"
   | "looks_think"
   | "looks_show"
@@ -386,6 +389,12 @@ function statementFromBlock(
       return { type: "goTo", x: numberField(block, "x", path), y: numberField(block, "y", path) };
     case "motion_turn":
       return { type: "turn", degrees: numberField(block, "degrees", path) };
+    case "motion_point_in_direction":
+      return { type: "pointInDirection", degrees: numberField(block, "degrees", path) };
+    case "motion_point_towards":
+      return { type: "pointTowards", actorId: stringField(block, "actorId", path) };
+    case "motion_bounce_on_edge":
+      return { type: "bounceOnEdge" };
     case "looks_say":
       return { type: "say", text: stringField(block, "text", path) };
     case "looks_think":
@@ -656,6 +665,12 @@ function statementToBlock(
       return { id, type: "motion_go_to", fields: { x: statement.x, y: statement.y } };
     case "turn":
       return { id, type: "motion_turn", fields: { degrees: statement.degrees } };
+    case "pointInDirection":
+      return { id, type: "motion_point_in_direction", fields: { degrees: statement.degrees } };
+    case "pointTowards":
+      return { id, type: "motion_point_towards", fields: { actorId: statement.actorId } };
+    case "bounceOnEdge":
+      return { id, type: "motion_bounce_on_edge" };
     case "say":
       return { id, type: "looks_say", fields: { text: statement.text } };
     case "think":

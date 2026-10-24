@@ -42,6 +42,9 @@ export type {
   TouchingGoalExpression,
   Trigger,
   TurnStatement,
+  PointInDirectionStatement,
+  PointTowardsStatement,
+  BounceOnEdgeStatement,
   VariableExpression,
 } from "./schema.js";
 export { SCHEMA_VERSION } from "./schema.js";

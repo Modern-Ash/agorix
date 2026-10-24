@@ -352,6 +352,17 @@ function validateStatement(
       checkBounds(input.degrees, TURN_DEGREES_MIN, TURN_DEGREES_MAX, `${path}.degrees`);
       return { type: "turn", degrees: input.degrees };
     }
+    case "pointInDirection": {
+      if (typeof input.degrees !== "number") {
+        fail("MISSING_FIELD", `${path}.degrees`, "expected a number", input.degrees);
+      }
+      checkBounds(input.degrees, -180, 180, `${path}.degrees`);
+      return { type: "pointInDirection", degrees: input.degrees };
+    }
+    case "pointTowards":
+      return { type: "pointTowards", actorId: checkText(input.actorId, `${path}.actorId`) };
+    case "bounceOnEdge":
+      return { type: "bounceOnEdge" };
     case "say":
       return { type: "say", text: checkText(input.text, `${path}.text`) };
     case "think":

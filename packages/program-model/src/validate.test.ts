@@ -225,3 +225,36 @@ describe("volume statements", () => {
     }
   });
 });
+
+describe("heading statements", () => {
+  const programWith = (statement: unknown) =>
+    ({
+      schema: SCHEMA_VERSION,
+      scripts: [{ id: "main", trigger: { type: "onStart" }, statements: [statement] }],
+    }) as never;
+
+  it("accepts pointInDirection, pointTowards and bounceOnEdge", () => {
+    for (const statement of [
+      { type: "pointInDirection", degrees: 0 },
+      { type: "pointInDirection", degrees: -180 },
+      { type: "pointInDirection", degrees: 180 },
+      { type: "pointTowards", actorId: "actor:studio-1-fox" },
+      { type: "bounceOnEdge" },
+    ]) {
+      expect(() => validateProgram(programWith(statement))).not.toThrow();
+    }
+  });
+
+  it("rejects out-of-range directions and empty targets", () => {
+    for (const degrees of [181, -181, Number.NaN, "90"]) {
+      expect(() => validateProgram(programWith({ type: "pointInDirection", degrees }))).toThrow(
+        ProgramValidationError,
+      );
+    }
+    for (const actorId of ["", undefined, 5]) {
+      expect(() => validateProgram(programWith({ type: "pointTowards", actorId }))).toThrow(
+        ProgramValidationError,
+      );
+    }
+  });
+});

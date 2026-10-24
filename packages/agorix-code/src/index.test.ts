@@ -383,3 +383,32 @@ describe("Agorix Code projection: Volume operations", () => {
     }
   });
 });
+
+describe("Agorix Code projection: heading operations", () => {
+  it("projects point and bounce blocks as readable Agorix Code", () => {
+    const result = projectAgorixCode({
+      schema: SCHEMA_VERSION,
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            { type: "pointInDirection", degrees: -90 },
+            { type: "pointTowards", actorId: "actor:studio-2-fox" },
+            { type: "bounceOnEdge" },
+          ],
+        },
+      ],
+    });
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toBe(
+      [
+        "when start",
+        "  point in direction -90",
+        '  point towards "actor:studio-2-fox"',
+        "  bounce on edge",
+        "",
+      ].join("\n"),
+    );
+  });
+});

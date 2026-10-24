@@ -37,6 +37,10 @@ import {
   thinkWorld,
   touchingGoal,
   turnWorld,
+  pointInDirectionWorld,
+  pointTowardsWorld,
+  bounceOnEdgeWorld,
+  DEFAULT_STAGE_BOUNDS,
   type WorldState,
 } from "./world.js";
 import { RuntimeExecutionError } from "./errors.js";
@@ -406,6 +410,21 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
       break;
     case "turn":
       state.world = turnWorld(state.world, statement.degrees);
+      break;
+    case "pointInDirection":
+      state.world = pointInDirectionWorld(state.world, statement.degrees);
+      break;
+    case "pointTowards": {
+      const target = state.options.sensorActors?.find((item) => item.id === statement.actorId);
+      if (target === undefined) {
+        addNote(state, `pointTowards: no actor ${statement.actorId} on the stage`);
+      } else {
+        state.world = pointTowardsWorld(state.world, target);
+      }
+      break;
+    }
+    case "bounceOnEdge":
+      state.world = bounceOnEdgeWorld(state.world, DEFAULT_STAGE_BOUNDS);
       break;
     case "say":
       state.world = sayWorld(state.world, statement.text);

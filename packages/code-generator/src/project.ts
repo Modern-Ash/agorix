@@ -258,6 +258,15 @@ function projectStatement(
     case "turn":
       write(writer, `${pad}sprite.turn(${formatNumber(statement.degrees)});\n`);
       return;
+    case "pointInDirection":
+      write(writer, `${pad}sprite.pointInDirection(${formatNumber(statement.degrees)});\n`);
+      return;
+    case "pointTowards":
+      write(writer, `${pad}sprite.pointTowards(${JSON.stringify(statement.actorId)});\n`);
+      return;
+    case "bounceOnEdge":
+      write(writer, `${pad}sprite.bounceOnEdge();\n`);
+      return;
     case "say":
       write(writer, `${pad}sprite.say(${JSON.stringify(statement.text)});\n`);
       return;
