@@ -80,4 +80,42 @@ describe("Ori free scene contract", () => {
       }),
     ).toThrow();
   });
+
+  it("keeps a data-rich keyed scene reviewable without sending learner names to the model", () => {
+    const expanded: OriStudioContext = {
+      ...context,
+      program: {
+        ...context.program,
+        variables: [{ id: "studio-var-1", name: "Mi secreto", initialValue: 0, visible: true }],
+        lists: [{ id: "studio-list-1", name: "Cosas privadas", initialItems: [], visible: true }],
+        scripts: [
+          context.program.scripts[0]!,
+          {
+            id: "studio-actor-2-mika",
+            trigger: { type: "onKeyPressed", key: "Space" },
+            statements: [
+              {
+                type: "setVariable",
+                variableId: "studio-var-1",
+                value: { type: "numericLiteral", value: 2 },
+              },
+            ],
+          },
+        ],
+      },
+    };
+    expect(JSON.stringify(createOriStudioInput(expanded))).not.toMatch(
+      /Mi secreto|Cosas privadas|studio-var-1/,
+    );
+    const decision = evaluateOriStudioOutput(expanded, {
+      version: ORI_STUDIO_VERSION,
+      kind: "program-suggestion",
+      actorId: expanded.actorId,
+      block: { type: "move", steps: 40 },
+    });
+    expect(decision.source).toBe("model");
+    expect(
+      validateOriStudioProposal(expanded, decision.proposal).candidateProgram.variables,
+    ).toEqual(expanded.program.variables);
+  });
 });

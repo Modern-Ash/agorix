@@ -171,3 +171,52 @@ test("the adult Ori switch hides scene suggestions", async ({ page }) => {
   await page.getByRole("button", { name: "Crear escena" }).click();
   await expect(page.getByRole("button", { name: "Pedirle una idea a Ori" })).toHaveCount(0);
 });
+
+test("free scene composes data, repeat, message and key events in a fresh session", async ({
+  page,
+}) => {
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
+  await page.getByRole("textbox", { name: "Nombre" }).fill("Puntos");
+  await page.getByRole("button", { name: "+ Crear variable" }).click();
+  await page.getByRole("textbox", { name: "Nombre" }).fill("Tesoros");
+  await page.getByRole("button", { name: "+ Crear lista" }).click();
+  await page.getByRole("spinbutton", { name: "Número" }).fill("2");
+  await page.getByRole("button", { name: "+ Fijar valor" }).click();
+  await page.getByRole("button", { name: "+ Agregar número" }).click();
+  await page.getByRole("spinbutton", { name: "Número" }).fill("1");
+  await page.getByRole("button", { name: /\+ Si variable >/ }).click();
+  await page.getByRole("button", { name: "+ Repetir", exact: false }).click();
+  await page.getByRole("button", { name: "+ Enviar mensaje" }).click();
+  await page.getByRole("button", { name: "+ Agregar personaje" }).click();
+  await page.getByRole("combobox", { name: "Cuando" }).selectOption("onMessage");
+  await page.getByRole("button", { name: "+ Mover" }).click();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await page.getByRole("group", { name: "Personajes" }).getByRole("button").first().click();
+  await expect(page.getByText("Puntos: 2")).toBeVisible();
+  await expect(page.getByText("Tesoros: 2")).toBeVisible();
+  await expect(page.getByText("10 bloques ejecutados")).toBeVisible();
+  await page.reload();
+  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  await page
+    .getByRole("article")
+    .filter({ hasText: "Escena libre" })
+    .getByRole("button", { name: "Jugar" })
+    .click();
+  await page.getByRole("group", { name: "Personajes" }).getByRole("button").last().click();
+  await expect(page.getByRole("combobox", { name: "Cuando" })).toHaveValue("onMessage");
+  await page.getByRole("combobox", { name: "Cuando" }).selectOption("onKeyPressed");
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await page.getByRole("button", { name: "Pulsar tecla: Space" }).click();
+  await expect(page.getByText(/bloques ejecutados/)).toBeVisible();
+});

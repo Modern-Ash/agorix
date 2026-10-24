@@ -8,6 +8,8 @@ import {
   creativeForStudio,
   setStudioTrigger,
   validateStudioProgram,
+  addStudioVariable,
+  addStudioList,
 } from "./kidsStudioModel.js";
 
 describe("Kids creative studio", () => {
@@ -115,5 +117,78 @@ describe("Kids creative studio", () => {
       ["actor:studio-2-mika", "say"],
     ]);
     expect(clicked.actors[1]?.world.sprite.bubble?.text).toBe("Hola");
+  });
+
+  it("composes bounded repeat and condition blocks from canonical data", () => {
+    let history = createEditorHistory(createStudioProgram("nova"));
+    history = addStudioVariable(history, "Puntos");
+    history = addStudioList(history, "Tesoros");
+    history = appendStudioStatement(history, "actor:studio-1-nova", {
+      type: "setVariable",
+      variableId: "studio-var-1",
+      value: { type: "numericLiteral", value: 2 },
+    });
+    history = appendStudioStatement(history, "actor:studio-1-nova", {
+      type: "repeat",
+      count: 3,
+      body: [
+        { type: "listAdd", listId: "studio-list-1", value: { type: "numericLiteral", value: 1 } },
+      ],
+    });
+    history = appendStudioStatement(history, "actor:studio-1-nova", {
+      type: "if",
+      condition: {
+        type: "greaterThan",
+        left: { type: "variable", variableId: "studio-var-1" },
+        right: { type: "numericLiteral", value: 1 },
+      },
+      then: [{ type: "move", steps: 40 }],
+    });
+    const result = runMultiActorProgram(
+      history.current,
+      creativeForStudio(history.current, "forest", "es"),
+    );
+    expect(result.actors[0]?.world.sprite.x).toBe(40);
+    expect(result.actors[0]?.world.variables?.["studio-var-1"]?.value).toBe(2);
+    expect(result.actors[0]?.world.lists?.["studio-list-1"]?.items).toEqual([1, 1, 1]);
+    expect(() =>
+      appendStudioStatement(history, "actor:studio-1-nova", {
+        type: "repeat",
+        count: 1000,
+        body: [{ type: "move", steps: 40 }],
+      }),
+    ).toThrow();
+  });
+
+  it("starts scripts from a key or another actor's message and rejects unknown events", () => {
+    let history = createEditorHistory(createStudioProgram("nova"));
+    history = addStudioActor(history, "mika");
+    history = appendStudioStatement(history, "actor:studio-1-nova", {
+      type: "broadcast",
+      message: "vamos",
+    });
+    history = setStudioTrigger(history, "actor:studio-2-mika", {
+      type: "onMessage",
+      message: "vamos",
+    });
+    history = appendStudioStatement(history, "actor:studio-2-mika", { type: "move", steps: 40 });
+    const creative = creativeForStudio(history.current, "forest", "es");
+    expect(runMultiActorProgram(history.current, creative).actors[1]?.world.sprite.x).toBe(100);
+    history = setStudioTrigger(history, "actor:studio-1-nova", {
+      type: "onKeyPressed",
+      key: "Space",
+    });
+    expect(
+      runMultiActorProgram(history.current, creativeForStudio(history.current, "forest", "es"))
+        .trace,
+    ).toHaveLength(0);
+    expect(
+      runMultiActorProgram(history.current, creativeForStudio(history.current, "forest", "es"), {
+        events: [{ type: "start" }, { type: "keyPressed", key: "Space" }],
+      }).actors[1]?.world.sprite.x,
+    ).toBe(100);
+    expect(() =>
+      setStudioTrigger(history, "actor:studio-1-nova", { type: "onKeyPressed", key: "Escape" }),
+    ).toThrow();
   });
 });

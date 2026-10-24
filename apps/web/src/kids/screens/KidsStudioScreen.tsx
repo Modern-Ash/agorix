@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   createEditorHistory,
   recordCanonicalTransaction,
@@ -33,6 +33,8 @@ import { KIDS_SOUNDS } from "../kidsSoundLibrary.js";
 import { playKidsSound } from "../kidsSoundPlayer.js";
 import {
   addStudioActor,
+  addStudioList,
+  addStudioVariable,
   appendStudioStatement,
   creativeForStudio,
   removeStudioStatement,
@@ -75,6 +77,28 @@ const COPY = {
     hide: "Esconder",
     size: "Tamaño",
     wait: "Esperar",
+    repeat: "Repetir",
+    ifScore: "Si variable >",
+    thenMove: "mover 1",
+    message: "Enviar mensaje",
+    onKey: "Al pulsar",
+    onMessage: "Al recibir",
+    pressKey: "Pulsar tecla",
+    variable: "Variable",
+    list: "Lista",
+    newVariable: "Crear variable",
+    newList: "Crear lista",
+    setVariable: "Fijar valor",
+    changeVariable: "Cambiar valor",
+    listAdd: "Agregar número",
+    dataName: "Nombre",
+    number: "Número",
+    watchers: "Datos al jugar",
+    paletteLooks: "Apariencia y tiempo",
+    paletteMotion: "Movimiento",
+    paletteMedia: "Disfraces, fondos y sonidos",
+    paletteLogic: "Eventos y control",
+    paletteData: "Variables y listas",
     event: "Cuando",
     onPlay: "Al jugar",
     onTap: "Al tocar este personaje",
@@ -117,6 +141,28 @@ const COPY = {
     hide: "Hide",
     size: "Size",
     wait: "Wait",
+    repeat: "Repeat",
+    ifScore: "If variable >",
+    thenMove: "move 1",
+    message: "Broadcast message",
+    onKey: "When key pressed",
+    onMessage: "When receiving",
+    pressKey: "Press key",
+    variable: "Variable",
+    list: "List",
+    newVariable: "Create variable",
+    newList: "Create list",
+    setVariable: "Set value",
+    changeVariable: "Change value",
+    listAdd: "Add number",
+    dataName: "Name",
+    number: "Number",
+    watchers: "Data after Play",
+    paletteLooks: "Looks and time",
+    paletteMotion: "Motion",
+    paletteMedia: "Costumes, backdrops and sounds",
+    paletteLogic: "Events and control",
+    paletteData: "Variables and lists",
     event: "When",
     onPlay: "When played",
     onTap: "When this character is tapped",
@@ -137,6 +183,10 @@ const COPY = {
     stage: "Stage",
   },
 } as const;
+
+const STUDIO_KEYS = ["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"] as const;
+const STUDIO_MESSAGES = ["hola", "vamos", "listo"] as const;
+type StudioEvent = "greenFlag" | "onActorClicked" | "onKeyPressed" | "onMessage";
 
 function characterOfActor(id: string): KidsGalleryCharacterId {
   const suffix = id.split("-").at(-1);
@@ -179,6 +229,13 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
   const [bubbleText, setBubbleText] = useState(locale === "es" ? "¡Hola!" : "Hello!");
   const [spriteSize, setSpriteSize] = useState(100);
   const [waitSeconds, setWaitSeconds] = useState(1);
+  const [eventKey, setEventKey] = useState<(typeof STUDIO_KEYS)[number]>("Space");
+  const [eventMessage, setEventMessage] = useState<(typeof STUDIO_MESSAGES)[number]>("vamos");
+  const [repeatCount, setRepeatCount] = useState(3);
+  const [dataName, setDataName] = useState("");
+  const [dataValue, setDataValue] = useState(1);
+  const [variableId, setVariableId] = useState("studio-var-1");
+  const [listId, setListId] = useState("studio-list-1");
   const [run, setRun] = useState<MultiActorRunResult | null>(null);
   const [events, setEvents] = useState<readonly RuntimeEvent[]>([{ type: "start" }]);
   const [frame, setFrame] = useState<number | null>(null);
@@ -210,6 +267,53 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
       : language === "typescript"
         ? projectProgram(history.current).code
         : projectAgorixCode(history.current).text;
+
+  function fireKey(key: string) {
+    if (!run || !STUDIO_KEYS.includes(key as (typeof STUDIO_KEYS)[number])) return;
+    const nextEvents: readonly RuntimeEvent[] = [...events, { type: "keyPressed", key }];
+    setRun(runMultiActorProgram(history.current, creative, { events: nextEvents }));
+    setEvents(nextEvents);
+    setFrame(null);
+  }
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLSelectElement ||
+        event.target instanceof HTMLTextAreaElement
+      )
+        return;
+      if (event.code === "Space" || event.key.startsWith("Arrow"))
+        fireKey(event.code === "Space" ? "Space" : event.key);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  });
+
+  function setEvent(type: StudioEvent) {
+    const trigger =
+      type === "onKeyPressed"
+        ? ({ type, key: eventKey } as const)
+        : type === "onMessage"
+          ? ({ type, message: eventMessage } as const)
+          : ({ type } as const);
+    persist(setStudioTrigger(history, activeActorId, trigger));
+  }
+
+  function createData(kind: "variable" | "list") {
+    try {
+      const name = dataName.trim();
+      const next =
+        kind === "variable" ? addStudioVariable(history, name) : addStudioList(history, name);
+      persist(next);
+      setDataName("");
+      if (kind === "variable") setVariableId(`studio-var-${next.current.variables?.length ?? 1}`);
+      else setListId(`studio-list-${next.current.lists?.length ?? 1}`);
+    } catch {
+      setError(true);
+    }
+  }
 
   function persist(next: EditorHistory, selected: string = activeActorId) {
     const nextCreative = creativeForStudio(next.current, backdropId, locale);
@@ -493,6 +597,28 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
               ? `${run.trace.length} ${locale === "es" ? (run.trace.length === 1 ? "bloque ejecutado" : "bloques ejecutados") : run.trace.length === 1 ? "block executed" : "blocks executed"}`
               : "—"}
           </p>
+          {history.current.variables?.length || history.current.lists?.length ? (
+            <div className="kids-studio-watchers" aria-label={copy.watchers}>
+              <h3>{copy.watchers}</h3>
+              {history.current.variables?.map((item) => (
+                <p key={item.id}>
+                  {item.name}:{" "}
+                  {shownActors?.find((entry) => entry.id === activeActorId)?.world.variables?.[
+                    item.id
+                  ]?.value ?? item.initialValue}
+                </p>
+              ))}
+              {history.current.lists?.map((item) => (
+                <p key={item.id}>
+                  {item.name}:{" "}
+                  {(
+                    shownActors?.find((entry) => entry.id === activeActorId)?.world.lists?.[item.id]
+                      ?.items ?? item.initialItems
+                  ).join(", ") || "—"}
+                </p>
+              ))}
+            </div>
+          ) : null}
           <h2>{copy.actors}</h2>
           <div className="kids-studio-actors" role="group" aria-label={copy.actors}>
             {creative.actors?.map((item) => (
@@ -560,25 +686,80 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
               {copy.event}
               <select
                 value={script?.trigger.type ?? "greenFlag"}
-                onChange={(event) =>
-                  persist(
-                    setStudioTrigger(
-                      history,
-                      activeActorId,
-                      event.target.value as "greenFlag" | "onActorClicked",
-                    ),
-                  )
-                }
+                onChange={(event) => setEvent(event.target.value as StudioEvent)}
               >
                 <option value="greenFlag">{copy.onPlay}</option>
                 <option value="onActorClicked">{copy.onTap}</option>
+                <option value="onKeyPressed">{copy.onKey}</option>
+                <option value="onMessage">{copy.onMessage}</option>
               </select>
             </label>
+            {script?.trigger.type === "onKeyPressed" ? (
+              <label>
+                {copy.onKey}{" "}
+                <select
+                  value={script.trigger.key}
+                  onChange={(event) => {
+                    const key = event.target.value as (typeof STUDIO_KEYS)[number];
+                    setEventKey(key);
+                    persist(
+                      setStudioTrigger(history, activeActorId, { type: "onKeyPressed", key }),
+                    );
+                  }}
+                >
+                  {STUDIO_KEYS.map((key) => (
+                    <option key={key} value={key}>
+                      {key}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+            {script?.trigger.type === "onMessage" ? (
+              <label>
+                {copy.onMessage}{" "}
+                <select
+                  value={script.trigger.message}
+                  onChange={(event) => {
+                    const message = event.target.value as (typeof STUDIO_MESSAGES)[number];
+                    setEventMessage(message);
+                    persist(
+                      setStudioTrigger(history, activeActorId, { type: "onMessage", message }),
+                    );
+                  }}
+                >
+                  {STUDIO_MESSAGES.map((message) => (
+                    <option key={message} value={message}>
+                      {message}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
             <div className="kids-start-block">
-              ▶ {script?.trigger.type === "onActorClicked" ? copy.onTap : copy.onPlay}
+              ▶{" "}
+              {script?.trigger.type === "onActorClicked"
+                ? copy.onTap
+                : script?.trigger.type === "onKeyPressed"
+                  ? `${copy.onKey} ${script.trigger.key}`
+                  : script?.trigger.type === "onMessage"
+                    ? `${copy.onMessage} ${script.trigger.message}`
+                    : copy.onPlay}
             </div>
             {script?.trigger.type === "onActorClicked" ? (
               <p className="kids-note">{copy.tapHint}</p>
+            ) : null}
+            {script?.trigger.type === "onKeyPressed" ? (
+              <button
+                type="button"
+                className="kids-button"
+                disabled={!run}
+                onClick={() =>
+                  fireKey(script.trigger.type === "onKeyPressed" ? script.trigger.key : "")
+                }
+              >
+                {copy.pressKey}: {script.trigger.key}
+              </button>
             ) : null}
             <ol>
               {script?.statements.map((statement, index) => (
@@ -606,7 +787,18 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
                                       ? `${copy.size}: ${statement.size}%`
                                       : statement.type === "wait"
                                         ? `${copy.wait}: ${statement.seconds}s`
-                                        : ""}
+                                        : statement.type === "broadcast"
+                                          ? `${copy.message}: ${statement.message}`
+                                          : statement.type === "setVariable" ||
+                                              statement.type === "changeVariable"
+                                            ? `${statement.type === "setVariable" ? copy.setVariable : copy.changeVariable}: ${history.current.variables?.find((item) => item.id === statement.variableId)?.name} ${statement.type === "setVariable" ? (statement.value.type === "numericLiteral" ? statement.value.value : "") : statement.delta.type === "numericLiteral" ? statement.delta.value : ""}`
+                                            : statement.type === "listAdd"
+                                              ? `${copy.listAdd}: ${history.current.lists?.find((item) => item.id === statement.listId)?.name} ${statement.value.type === "numericLiteral" ? statement.value.value : ""}`
+                                              : statement.type === "repeat"
+                                                ? `${copy.repeat} ${statement.count} → ${statement.body[0]?.type ?? ""}`
+                                                : statement.type === "if"
+                                                  ? `${copy.ifScore} ${statement.condition.type === "greaterThan" && statement.condition.right.type === "numericLiteral" ? statement.condition.right.value : ""} → ${copy.thenMove}`
+                                                  : ""}
                   </span>
                   <button
                     type="button"
@@ -622,6 +814,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
             {script?.statements.length === 0 ? <p className="kids-note">{copy.noBlocks}</p> : null}
           </div>
           <div className="kids-studio-palette">
+            <h3>{copy.paletteLooks}</h3>
             <label>
               {copy.say} / {copy.think}
               <input
@@ -693,6 +886,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
             >
               + {copy.wait}
             </button>
+            <h3>{copy.paletteMotion}</h3>
             <label>
               {copy.move}{" "}
               <select
@@ -727,6 +921,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
             >
               + {copy.turnRight}
             </button>
+            <h3>{copy.paletteMedia}</h3>
             <label>
               {copy.costume}{" "}
               <select
@@ -801,6 +996,190 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
             >
               + {copy.sound}
             </button>
+            <h3>{copy.paletteLogic}</h3>
+            <label>
+              {copy.repeat}{" "}
+              <select
+                value={repeatCount}
+                onChange={(event) => setRepeatCount(Number(event.target.value))}
+              >
+                {[2, 3, 5].map((count) => (
+                  <option key={count} value={count}>
+                    {count}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              className="kids-button"
+              onClick={() =>
+                add({ type: "repeat", count: repeatCount, body: [{ type: "move", steps: 40 }] })
+              }
+            >
+              + {copy.repeat} → {copy.thenMove}
+            </button>
+            <label>
+              {copy.message}{" "}
+              <select
+                value={eventMessage}
+                onChange={(event) =>
+                  setEventMessage(event.target.value as (typeof STUDIO_MESSAGES)[number])
+                }
+              >
+                {STUDIO_MESSAGES.map((message) => (
+                  <option key={message} value={message}>
+                    {message}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              className="kids-button"
+              onClick={() => add({ type: "broadcast", message: eventMessage })}
+            >
+              + {copy.message}
+            </button>
+            <h3>{copy.paletteData}</h3>
+            <label>
+              {copy.dataName}{" "}
+              <input
+                type="text"
+                maxLength={20}
+                value={dataName}
+                onChange={(event) => setDataName(event.target.value)}
+              />
+            </label>
+            <button
+              type="button"
+              className="kids-button"
+              disabled={!dataName.trim() || (history.current.variables?.length ?? 0) >= 3}
+              onClick={() => createData("variable")}
+            >
+              + {copy.newVariable}
+            </button>
+            <button
+              type="button"
+              className="kids-button"
+              disabled={!dataName.trim() || (history.current.lists?.length ?? 0) >= 3}
+              onClick={() => createData("list")}
+            >
+              + {copy.newList}
+            </button>
+            <label>
+              {copy.number}{" "}
+              <input
+                type="number"
+                min={-100}
+                max={100}
+                step={1}
+                value={dataValue}
+                onChange={(event) => setDataValue(Number(event.target.value))}
+              />
+            </label>
+            {history.current.variables?.length ? (
+              <>
+                <label>
+                  {copy.variable}{" "}
+                  <select
+                    value={
+                      history.current.variables.some((item) => item.id === variableId)
+                        ? variableId
+                        : history.current.variables[0]!.id
+                    }
+                    onChange={(event) => setVariableId(event.target.value)}
+                  >
+                    {history.current.variables.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  className="kids-button"
+                  disabled={!Number.isInteger(dataValue) || Math.abs(dataValue) > 100}
+                  onClick={() =>
+                    add({
+                      type: "setVariable",
+                      variableId,
+                      value: { type: "numericLiteral", value: dataValue },
+                    })
+                  }
+                >
+                  + {copy.setVariable}
+                </button>
+                <button
+                  type="button"
+                  className="kids-button"
+                  disabled={!Number.isInteger(dataValue) || Math.abs(dataValue) > 100}
+                  onClick={() =>
+                    add({
+                      type: "changeVariable",
+                      variableId,
+                      delta: { type: "numericLiteral", value: dataValue },
+                    })
+                  }
+                >
+                  + {copy.changeVariable}
+                </button>
+                <button
+                  type="button"
+                  className="kids-button"
+                  disabled={!Number.isInteger(dataValue) || Math.abs(dataValue) > 100}
+                  onClick={() =>
+                    add({
+                      type: "if",
+                      condition: {
+                        type: "greaterThan",
+                        left: { type: "variable", variableId },
+                        right: { type: "numericLiteral", value: dataValue },
+                      },
+                      then: [{ type: "move", steps: 40 }],
+                    })
+                  }
+                >
+                  + {copy.ifScore} {dataValue} → {copy.thenMove}
+                </button>
+              </>
+            ) : null}
+            {history.current.lists?.length ? (
+              <>
+                <label>
+                  {copy.list}{" "}
+                  <select
+                    value={
+                      history.current.lists.some((item) => item.id === listId)
+                        ? listId
+                        : history.current.lists[0]!.id
+                    }
+                    onChange={(event) => setListId(event.target.value)}
+                  >
+                    {history.current.lists.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  className="kids-button"
+                  disabled={!Number.isInteger(dataValue) || Math.abs(dataValue) > 100}
+                  onClick={() =>
+                    add({
+                      type: "listAdd",
+                      listId,
+                      value: { type: "numericLiteral", value: dataValue },
+                    })
+                  }
+                >
+                  + {copy.listAdd}
+                </button>
+              </>
+            ) : null}
           </div>
           {oriSuggestions ? (
             <div className="kids-studio-ori">
