@@ -412,7 +412,7 @@ describe(".agorix portable embedded image v2", () => {
     return cloneProject({
       metadata: {
         ...storedProject.metadata,
-        assets: storedProject.metadata.assets?.map((asset) =>
+        assets: storedProject.metadata.assets!.map((asset) =>
           asset.id === "costume:rocket" ? { ...asset, source: png } : asset,
         ),
       },
