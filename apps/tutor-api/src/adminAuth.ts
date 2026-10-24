@@ -75,7 +75,7 @@ export class AdminAuth {
     this.sessions.set(tokenHash(token), { expires: stamp + SESSION_MS, csrf });
     response.setHeader(
       "set-cookie",
-      `${COOKIE}=${token}; HttpOnly; SameSite=Strict; Path=/api/tutor/admin; Max-Age=7200${request.headers["x-forwarded-proto"] === "https" ? "; Secure" : ""}`,
+      `${COOKIE}=${token}; HttpOnly; Secure; SameSite=Strict; Path=/api/tutor/admin; Max-Age=7200`,
     );
     return { author: this.author, csrf };
   }
@@ -106,7 +106,7 @@ export class AdminAuth {
     if (token) this.sessions.delete(tokenHash(token));
     response.setHeader(
       "set-cookie",
-      `${COOKIE}=; HttpOnly; SameSite=Strict; Path=/api/tutor/admin; Max-Age=0${request.headers["x-forwarded-proto"] === "https" ? "; Secure" : ""}`,
+      `${COOKIE}=; HttpOnly; Secure; SameSite=Strict; Path=/api/tutor/admin; Max-Age=0`,
     );
   }
 }
