@@ -4,12 +4,14 @@ import { SCHEMA_VERSION } from "@agorix/program-model";
 import { ProjectStore, type BrowserStorageAdapter } from "@agorix/persistence";
 import {
   createFreeProject,
+  createFreeProjectRef,
   deleteFreeProject,
   restoreFreeProject,
   exportKidsProject,
   importKidsProject,
   kidsGoalSpec,
   listFreeProjects,
+  listFreeProjectRefs,
   parseKidsGoalSpec,
 } from "./kidsProjects.js";
 
@@ -35,6 +37,37 @@ function memory() {
 }
 
 describe("Kids free projects (issue #376)", () => {
+  it("keeps bundled gallery choices across reload and ignores invented asset ids", () => {
+    const { indexStorage } = memory();
+    const created = createFreeProjectRef(
+      { kind: "gallery", id: "forest" },
+      { kind: "gallery", id: "nova" },
+      indexStorage,
+    );
+    expect(listFreeProjectRefs(indexStorage)).toContainEqual(created);
+    expect(listFreeProjects(indexStorage)).toContainEqual({
+      id: created.id,
+      world: "space",
+      avatar: "🦊",
+    });
+    indexStorage.setItem(
+      "agorix.kids.projects.v2",
+      JSON.stringify([
+        {
+          id: "free-1",
+          world: { kind: "gallery", id: "evil" },
+          avatar: { kind: "gallery", id: "nova" },
+        },
+      ]),
+    );
+    expect(listFreeProjectRefs(indexStorage)).toEqual([
+      {
+        id: "free-1",
+        world: { kind: "builtin", value: "space" },
+        avatar: { kind: "emoji", value: "🦊" },
+      },
+    ]);
+  });
   it("validates goal specs and rejects cells outside the world", () => {
     expect(parseKidsGoalSpec(kidsGoalSpec({ cx: 3, cy: 1 }))).toEqual({ cx: 3, cy: 1 });
     expect(() => parseKidsGoalSpec("kids.cell.6.1")).toThrow();

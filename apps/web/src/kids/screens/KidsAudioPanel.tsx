@@ -10,14 +10,18 @@ import {
 } from "../kidsAudio.js";
 import type { KidsAvatarRef } from "../kidsProjects.js";
 import type { KidsText } from "../useKidsText.js";
+import { KIDS_GALLERY_CHARACTERS, galleryCharacterName } from "../kidsGallery.js";
+import type { Locale } from "../../i18n.js";
 
 interface Props {
   readonly t: KidsText;
+  readonly locale: Locale;
 }
 
-export function KidsAudioPanel({ t }: Props) {
+export function KidsAudioPanel({ t, locale }: Props) {
   const actors: readonly KidsAvatarRef[] = [
     ...KIDS_AVATARS.map((value) => ({ kind: "emoji" as const, value })),
+    ...KIDS_GALLERY_CHARACTERS.map((item) => ({ kind: "gallery" as const, id: item.id })),
     ...loadKidsCustom()
       .filter((item) => item.kind === "explorer")
       .map((item) => ({ kind: "custom" as const, id: item.id })),
@@ -44,7 +48,9 @@ export function KidsAudioPanel({ t }: Props) {
   }, []);
 
   function name(actor: KidsAvatarRef): string {
-    return actor.kind === "emoji" ? actor.value : `${t("customExplorer")} ${actor.id.slice(7)}`;
+    if (actor.kind === "emoji") return actor.value;
+    if (actor.kind === "gallery") return galleryCharacterName(actor.id, locale);
+    return `${t("customExplorer")} ${actor.id.slice(7)}`;
   }
 
   function failure(error: unknown): void {

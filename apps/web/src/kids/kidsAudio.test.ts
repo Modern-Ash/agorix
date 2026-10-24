@@ -32,6 +32,7 @@ describe("adult custom audio (issue #462)", () => {
     expect(output.size).toBe(wav(5).size);
     expect(output.type).toBe("audio/wav");
     expect(actorAudioKey({ kind: "emoji", value: "🐸" })).toBe("emoji:🐸");
+    expect(actorAudioKey({ kind: "gallery", id: "nova" })).toBe("gallery:nova");
     expect(actorAudioKey({ kind: "custom", id: "custom-2" })).toBe("custom:custom-2");
   });
 

@@ -383,7 +383,7 @@ export function ParentsScreen({ t, locale, progress, settings, onSettings }: Pro
           </button>
         </section>
         {customImagesEnabled ? <KidsImagesPanel locale={locale} t={t} /> : null}
-        {customAudioEnabled ? <KidsAudioPanel t={t} /> : null}
+        {customAudioEnabled ? <KidsAudioPanel t={t} locale={locale} /> : null}
       </div>
       <aside className="kids-adult-privacy">
         <strong>🔒 {copy.privacy}</strong>

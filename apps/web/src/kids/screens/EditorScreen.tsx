@@ -157,6 +157,12 @@ export function EditorScreen({
   } | null>(null);
   const [explanation, setExplanation] = useState("");
   const [helpOpen, setHelpOpen] = useState(false);
+  const [soundTarget, setSoundTarget] = useState<{ index: number; childIndex?: number } | null>(
+    null,
+  );
+  const [soundCategory, setSoundCategory] = useState<
+    "all" | "effects" | "music" | "nature" | "actions"
+  >("all");
   const editorRef = useRef<HTMLElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -761,28 +767,39 @@ export function EditorScreen({
             </select>
           ) : null}
           {statement.type === "playSound" && soundLibraryEnabled ? (
-            <select
-              aria-label={`${t("sound")} ${index + 1}`}
-              value={statement.soundId}
-              onChange={(event) =>
-                change(
-                  setKidsBlockSound(history, index, event.target.value, childIndex),
-                  "sequenceChange",
-                )
-              }
-            >
-              {!isKidsSoundId(statement.soundId) ? (
-                <option value={statement.soundId}>{t("soundClassic")}</option>
-              ) : null}
-              {KIDS_SOUNDS.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {t(item.nameKey)}
-                </option>
-              ))}
-              {customAudioEnabled || statement.soundId === KIDS_CUSTOM_SOUND_ID ? (
-                <option value={KIDS_CUSTOM_SOUND_ID}>{t("soundCustom")}</option>
-              ) : null}
-            </select>
+            <>
+              <select
+                aria-label={`${t("sound")} ${index + 1}`}
+                value={statement.soundId}
+                onChange={(event) =>
+                  change(
+                    setKidsBlockSound(history, index, event.target.value, childIndex),
+                    "sequenceChange",
+                  )
+                }
+              >
+                {!isKidsSoundId(statement.soundId) ? (
+                  <option value={statement.soundId}>{t("soundClassic")}</option>
+                ) : null}
+                {KIDS_SOUNDS.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {t(item.nameKey)}
+                  </option>
+                ))}
+                {customAudioEnabled || statement.soundId === KIDS_CUSTOM_SOUND_ID ? (
+                  <option value={KIDS_CUSTOM_SOUND_ID}>{t("soundCustom")}</option>
+                ) : null}
+              </select>
+              <button
+                type="button"
+                className="kids-block-sound-gallery"
+                onClick={() =>
+                  setSoundTarget({ index, ...(childIndex === undefined ? {} : { childIndex }) })
+                }
+              >
+                {locale === "es" ? "Galería de sonidos" : "Sound gallery"}
+              </button>
+            </>
           ) : null}
           {duplicateEnabled || contextMenuEnabled ? (
             <button
@@ -1227,6 +1244,94 @@ export function EditorScreen({
           </div>
         </div>
       </div>
+      {soundTarget ? (
+        <div
+          className="kids-sound-gallery-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-label={locale === "es" ? "Galería de sonidos" : "Sound gallery"}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") setSoundTarget(null);
+          }}
+        >
+          <div className="kids-sound-gallery-dialog">
+            <div className="kids-sound-gallery-heading">
+              <h2>{locale === "es" ? "Escuchá y elegí" : "Listen and choose"}</h2>
+              <button
+                type="button"
+                className="kids-button"
+                autoFocus
+                onClick={() => setSoundTarget(null)}
+              >
+                {t("close")}
+              </button>
+            </div>
+            <div
+              className="kids-gallery-filters"
+              role="group"
+              aria-label={locale === "es" ? "Categorías de sonidos" : "Sound categories"}
+            >
+              {(["all", "effects", "music", "nature", "actions"] as const).map((category) => (
+                <button
+                  key={category}
+                  type="button"
+                  className="kids-button"
+                  aria-pressed={soundCategory === category}
+                  onClick={() => setSoundCategory(category)}
+                >
+                  {
+                    {
+                      all: locale === "es" ? "Todos" : "All",
+                      effects: locale === "es" ? "Efectos" : "Effects",
+                      music: locale === "es" ? "Música" : "Music",
+                      nature: locale === "es" ? "Naturaleza" : "Nature",
+                      actions: locale === "es" ? "Acciones" : "Actions",
+                    }[category]
+                  }
+                </button>
+              ))}
+            </div>
+            <div className="kids-sound-gallery-grid">
+              {KIDS_SOUNDS.filter(
+                (item) => soundCategory === "all" || item.category === soundCategory,
+              ).map((item) => (
+                <div className="kids-sound-gallery-card" key={item.id}>
+                  <strong>{t(item.nameKey)}</strong>
+                  <div>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      aria-label={`${locale === "es" ? "Escuchar" : "Listen"} ${t(item.nameKey)}`}
+                      onClick={() => void playKidsSound(item.id, avatarArt)}
+                    >
+                      ▶
+                    </button>
+                    <button
+                      type="button"
+                      className="kids-button kids-primary"
+                      aria-label={`${locale === "es" ? "Elegir" : "Choose"} ${t(item.nameKey)}`}
+                      onClick={() => {
+                        change(
+                          setKidsBlockSound(
+                            history,
+                            soundTarget.index,
+                            item.id,
+                            soundTarget.childIndex,
+                          ),
+                          "sequenceChange",
+                        );
+                        setSoundTarget(null);
+                      }}
+                    >
+                      {locale === "es" ? "Elegir" : "Choose"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
       {oriSuggestions && oriFloatEnabled ? (
         <div className="kids-ori-float-zone">
           <button

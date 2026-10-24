@@ -303,7 +303,9 @@ test("Ori requests from a linked device never carry link data", async ({ page, b
   await expect(page.getByRole("status").filter({ hasText: "Correo confirmado" })).toBeVisible();
   await openAdults(page);
   const refreshVerification = page.getByRole("button", { name: "Ya lo confirmé" });
-  if (await refreshVerification.isVisible()) await refreshVerification.click();
+  // Verification can complete between checking visibility and clicking the refresh control.
+  if (await refreshVerification.isVisible())
+    await refreshVerification.click({ timeout: 2_000 }).catch(() => undefined);
   await expect(page.getByRole("heading", { name: "Vincular un dispositivo" })).toBeVisible();
   await page.getByRole("button", { name: "Generar código" }).click();
   const code = (await page.getByLabel("Código de vinculación").innerText()).replace(/\s/g, "");

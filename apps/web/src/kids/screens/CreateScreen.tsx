@@ -9,6 +9,15 @@ import { kidsTable, type KidsText } from "../useKidsText.js";
 import { KIDS_WORLD_STYLES } from "../worlds.js";
 import type { Locale } from "../../i18n.js";
 import { ListenButton } from "./ListenButton.js";
+import {
+  KIDS_GALLERY_BACKDROPS,
+  KIDS_GALLERY_CATEGORIES,
+  KIDS_GALLERY_CHARACTERS,
+  galleryBackdropName,
+  galleryCategoryName,
+  galleryCharacterName,
+  type KidsGalleryCategory,
+} from "../kidsGallery.js";
 
 interface Props {
   readonly t: KidsText;
@@ -37,6 +46,25 @@ export function CreateScreen({
   const [imageMessage, setImageMessage] = useState("");
   const [chosenAvatar, setChosenAvatar] = useState<KidsAvatarRef>(emojiSlot(avatar));
   const [chosenWorld, setChosenWorld] = useState<KidsWorldRef>(builtinWorld(world));
+  const [characterCategory, setCharacterCategory] = useState<KidsGalleryCategory>("all");
+  const [backdropCategory, setBackdropCategory] = useState<KidsGalleryCategory>("all");
+  const [characterSearch, setCharacterSearch] = useState("");
+  const [backdropSearch, setBackdropSearch] = useState("");
+
+  const visibleCharacters = KIDS_GALLERY_CHARACTERS.filter(
+    (item) =>
+      (characterCategory === "all" || item.category === characterCategory) &&
+      galleryCharacterName(item.id, locale)
+        .toLocaleLowerCase(locale)
+        .includes(characterSearch.toLocaleLowerCase(locale)),
+  );
+  const visibleBackdrops = KIDS_GALLERY_BACKDROPS.filter(
+    (item) =>
+      (backdropCategory === "all" || item.category === backdropCategory) &&
+      galleryBackdropName(item.id, locale)
+        .toLocaleLowerCase(locale)
+        .includes(backdropSearch.toLocaleLowerCase(locale)),
+  );
 
   async function addImage(kind: KidsCustomKind, event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -125,6 +153,54 @@ export function CreateScreen({
           </label>
         ) : null}
       </div>
+      <div className="kids-gallery-head">
+        <h3>{locale === "es" ? "Galería de personajes" : "Character gallery"}</h3>
+        <input
+          type="search"
+          aria-label={locale === "es" ? "Buscar personaje" : "Search character"}
+          placeholder={locale === "es" ? "Buscar personaje" : "Search character"}
+          value={characterSearch}
+          onChange={(event) => setCharacterSearch(event.target.value)}
+        />
+      </div>
+      <div
+        className="kids-gallery-filters"
+        role="group"
+        aria-label={locale === "es" ? "Categorías de personajes" : "Character categories"}
+      >
+        {KIDS_GALLERY_CATEGORIES.map((category) => (
+          <button
+            key={category}
+            type="button"
+            className="kids-button"
+            aria-pressed={characterCategory === category}
+            onClick={() => setCharacterCategory(category)}
+          >
+            {galleryCategoryName(category, locale)}
+          </button>
+        ))}
+      </div>
+      <div
+        className="kids-gallery-grid"
+        aria-label={locale === "es" ? "Personajes incluidos" : "Included characters"}
+      >
+        {visibleCharacters.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            className="kids-button kids-gallery-card"
+            aria-label={galleryCharacterName(item.id, locale)}
+            aria-pressed={chosenAvatar.kind === "gallery" && chosenAvatar.id === item.id}
+            onClick={() => setChosenAvatar({ kind: "gallery", id: item.id })}
+          >
+            <KidsSprite
+              slot={{ kind: "gallery", id: item.id }}
+              label={galleryCharacterName(item.id, locale)}
+            />
+            <span>{galleryCharacterName(item.id, locale)}</span>
+          </button>
+        ))}
+      </div>
       <h2>{t("createBg")}</h2>
       <div className="kids-create-worlds">
         {KIDS_WORLDS.map((candidate) => (
@@ -180,6 +256,54 @@ export function CreateScreen({
           </label>
         ) : null}
       </div>
+      <div className="kids-gallery-head">
+        <h3>{locale === "es" ? "Galería de fondos" : "Backdrop gallery"}</h3>
+        <input
+          type="search"
+          aria-label={locale === "es" ? "Buscar fondo" : "Search backdrop"}
+          placeholder={locale === "es" ? "Buscar fondo" : "Search backdrop"}
+          value={backdropSearch}
+          onChange={(event) => setBackdropSearch(event.target.value)}
+        />
+      </div>
+      <div
+        className="kids-gallery-filters"
+        role="group"
+        aria-label={locale === "es" ? "Categorías de fondos" : "Backdrop categories"}
+      >
+        {KIDS_GALLERY_CATEGORIES.filter((category) => category !== "animals").map((category) => (
+          <button
+            key={category}
+            type="button"
+            className="kids-button"
+            aria-pressed={backdropCategory === category}
+            onClick={() => setBackdropCategory(category)}
+          >
+            {galleryCategoryName(category, locale)}
+          </button>
+        ))}
+      </div>
+      <div
+        className="kids-gallery-grid kids-gallery-backdrops"
+        aria-label={locale === "es" ? "Fondos incluidos" : "Included backdrops"}
+      >
+        {visibleBackdrops.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            className="kids-button kids-gallery-card"
+            aria-label={galleryBackdropName(item.id, locale)}
+            aria-pressed={chosenWorld.kind === "gallery" && chosenWorld.id === item.id}
+            onClick={() => setChosenWorld({ kind: "gallery", id: item.id })}
+          >
+            <KidsBackdrop
+              world={{ kind: "gallery", id: item.id }}
+              className="kids-gallery-backdrop-thumb"
+            />
+            <span>{galleryBackdropName(item.id, locale)}</span>
+          </button>
+        ))}
+      </div>
       {customEnabled ? <p className="kids-note">{t("imagesStay")}</p> : null}
       <p role="status" className="kids-note">
         {imageMessage}
@@ -189,8 +313,8 @@ export function CreateScreen({
         className="kids-button kids-primary kids-create-start"
         onClick={() =>
           onStart(
-            customEnabled || chosenWorld.kind === "builtin" ? chosenWorld : builtinWorld(world),
-            customEnabled || chosenAvatar.kind === "emoji" ? chosenAvatar : emojiSlot(avatar),
+            customEnabled || chosenWorld.kind !== "custom" ? chosenWorld : builtinWorld(world),
+            customEnabled || chosenAvatar.kind !== "custom" ? chosenAvatar : emojiSlot(avatar),
           )
         }
       >

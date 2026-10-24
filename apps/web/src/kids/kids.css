@@ -318,6 +318,121 @@
 .kids-create-start {
   justify-self: start;
 }
+.kids-gallery-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 16px;
+}
+.kids-gallery-head h3 {
+  margin: 0;
+  font: 700 1rem var(--kids-font-display);
+}
+.kids-gallery-head input {
+  min-height: 44px;
+  min-width: min(100%, 210px);
+  border: 2px solid var(--kids-ink, #26364b);
+  border-radius: 12px;
+  padding: 8px 12px;
+  font: inherit;
+}
+.kids-gallery-filters {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 6px 2px;
+}
+.kids-gallery-filters .kids-button {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 7px 12px;
+}
+.kids-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  gap: 10px;
+}
+.kids-gallery-card {
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  min-height: 116px;
+  padding: 8px;
+  text-align: center;
+}
+.kids-gallery-card .kids-art-image {
+  display: block;
+  width: 70px;
+  height: 70px;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.kids-gallery-backdrops .kids-gallery-card {
+  min-height: 104px;
+}
+.kids-gallery-backdrop-thumb {
+  width: 100%;
+  height: 64px;
+  border-radius: 8px;
+  background-size: cover !important;
+  background-position: center !important;
+}
+.kids-sound-gallery-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(15, 31, 40, 0.66);
+}
+.kids-sound-gallery-dialog {
+  width: min(760px, 100%);
+  max-height: min(85vh, 700px);
+  overflow: auto;
+  padding: 18px;
+  border-radius: 20px;
+  background: #fffdf5;
+  color: #183341;
+  box-shadow: 0 20px 70px rgba(0, 0, 0, 0.28);
+}
+.kids-sound-gallery-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.kids-sound-gallery-heading h2 {
+  margin: 0;
+}
+.kids-sound-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(156px, 1fr));
+  gap: 10px;
+}
+.kids-sound-gallery-card {
+  display: grid;
+  gap: 12px;
+  border: 2px solid #c7ded8;
+  border-radius: 14px;
+  padding: 12px;
+  background: #f4faf5;
+}
+.kids-sound-gallery-card > div {
+  display: flex;
+  gap: 8px;
+}
+.kids-block-sound-gallery {
+  min-height: 44px;
+  border: 1px solid currentColor;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
 .kids-projects-header {
   display: flex;
   flex-wrap: wrap;
