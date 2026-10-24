@@ -16,6 +16,10 @@ const GUIDANCE: Record<KidsScreen, { es: string; en: string }> = {
     es: "Elegí un explorador y un mundo. ¿Qué te gustaría que pase ahí?",
     en: "Choose an explorer and a world. What would you like to happen there?",
   },
+  studio: {
+    es: "Cada personaje tiene su programa. Elegí uno, probá sus bloques y revisá mis ideas.",
+    en: "Each character has a program. Choose one, try its blocks, and review my ideas.",
+  },
   editor: {
     es: "Contame qué querés crear. Revisá mis ideas antes de usarlas.",
     en: "Tell me what you want to create. Review my ideas before using them.",

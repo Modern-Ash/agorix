@@ -28,6 +28,7 @@ interface Props {
   readonly onAvatar: (avatar: KidsAvatar) => void;
   readonly onWorld: (world: KidsWorld) => void;
   readonly onStart: (world: KidsWorldRef, avatar: KidsAvatarRef) => void;
+  readonly onStudio: () => void;
 }
 
 export function CreateScreen({
@@ -39,6 +40,7 @@ export function CreateScreen({
   onAvatar,
   onWorld,
   onStart,
+  onStudio,
 }: Props) {
   const worlds = kidsTable(locale, "worlds");
   const customEnabled = useKidsFlag("customImages");
@@ -109,6 +111,19 @@ export function CreateScreen({
       <h1 id="kids-create-title">{t("create")}</h1>
       <ListenButton t={t} locale={locale} enabled={readAloud} text={t("createNote")} />
       <p className="kids-note">{t("createNote")}</p>
+      <div className="kids-studio-entry">
+        <div>
+          <h2>{locale === "es" ? "Escena libre" : "Free scene"}</h2>
+          <p>
+            {locale === "es"
+              ? "Creá con varios personajes. Cada uno puede tener su propio programa."
+              : "Create with several characters. Each can have its own program."}
+          </p>
+        </div>
+        <button type="button" className="kids-button kids-primary" onClick={onStudio}>
+          {locale === "es" ? "Crear escena" : "Create scene"}
+        </button>
+      </div>
       <h2>{t("createChar")}</h2>
       <div className="kids-create-choices">
         {KIDS_AVATARS.map((candidate) => (
