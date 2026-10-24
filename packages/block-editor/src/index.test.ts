@@ -831,3 +831,34 @@ describe("modulo block", () => {
     );
   });
 });
+
+describe("math function block", () => {
+  it("round-trips through blocks", () => {
+    const program = {
+      schema: "agorix/program/v1",
+      variables: [{ id: "n", name: "n", initialValue: 0, visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "setVariable",
+              variableId: "n",
+              value: {
+                type: "mathFunction",
+                function: "round",
+                value: { type: "variable", variableId: "n" },
+              },
+            },
+          ],
+        },
+      ],
+    } as unknown as ProjectProgram;
+    const { workspace } = programToWorkspace(program);
+    expect(JSON.stringify(workspace)).toContain("operator_math_function");
+    expect(workspaceToProgram(workspace).program.scripts[0]?.statements).toEqual(
+      program.scripts[0]?.statements,
+    );
+  });
+});

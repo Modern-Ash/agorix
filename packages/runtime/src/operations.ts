@@ -63,6 +63,7 @@ export const RUNTIME_EXPRESSION_OPERATIONS = Object.freeze([
   "multiply",
   "divide",
   "modulo",
+  "mathFunction",
   "lessThan",
   "greaterThan",
   "lessOrEqual",
@@ -141,6 +142,7 @@ function assertExpressionAllowed(expression: Expression, path: string): void {
       assertExpressionAllowed(expression.left, `${path}.left`);
       assertExpressionAllowed(expression.right, `${path}.right`);
       return;
+    case "mathFunction":
     case "not":
       assertExpressionAllowed(expression.value, `${path}.value`);
       return;

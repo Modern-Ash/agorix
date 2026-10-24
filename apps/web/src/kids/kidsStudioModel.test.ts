@@ -695,4 +695,47 @@ describe("Kids creative studio", () => {
         }),
       ).toThrow();
   });
+  it("rounds a calculated value and rejects an unsupported operand", () => {
+    const nova = "actor:studio-1-nova";
+    let history = addStudioVariable(createEditorHistory(createStudioProgram("nova")), "Medio");
+    history = appendStudioStatement(history, nova, {
+      type: "setVariable",
+      variableId: "studio-var-1",
+      value: { type: "numericLiteral", value: 7 },
+    });
+    history = appendStudioStatement(history, nova, {
+      type: "setVariable",
+      variableId: "studio-var-1",
+      value: {
+        type: "divide",
+        left: { type: "variable", variableId: "studio-var-1" },
+        right: { type: "numericLiteral", value: 2 },
+      },
+    });
+    history = appendStudioStatement(history, nova, {
+      type: "setVariable",
+      variableId: "studio-var-1",
+      value: {
+        type: "mathFunction",
+        function: "round",
+        value: { type: "variable", variableId: "studio-var-1" },
+      },
+    });
+    const result = runMultiActorProgram(
+      history.current,
+      creativeForStudio(history.current, "forest", "es"),
+    );
+    expect(result.actors[0]?.world.variables?.["studio-var-1"]?.value).toBe(4);
+    expect(() =>
+      appendStudioStatement(history, nova, {
+        type: "setVariable",
+        variableId: "studio-var-1",
+        value: {
+          type: "mathFunction",
+          function: "abs",
+          value: { type: "variable", variableId: "missing" },
+        },
+      }),
+    ).toThrow();
+  });
 });

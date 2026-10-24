@@ -1,6 +1,7 @@
 import { SCHEMA_VERSION } from "./schema.js";
 import type {
   Expression,
+  MathFunction,
   ProgramList,
   ProgramVariable,
   ProjectProgram,
@@ -201,6 +202,28 @@ function validateUnaryExpression(
   };
 }
 
+const MATH_FUNCTIONS: readonly string[] = ["abs", "round", "floor", "ceiling"];
+
+function validateMathFunctionExpression(
+  input: Record<string, unknown>,
+  path: string,
+  state: ValidationState,
+): Expression {
+  if (typeof input.function !== "string" || !MATH_FUNCTIONS.includes(input.function)) {
+    fail(
+      "INVALID_FIELD_TYPE",
+      `${path}.function`,
+      `expected one of ${MATH_FUNCTIONS.join(", ")}`,
+      input.function,
+    );
+  }
+  return {
+    type: "mathFunction",
+    function: input.function as MathFunction,
+    value: validateExpression(input.value, `${path}.value`, state),
+  };
+}
+
 function validateRandomExpression(
   input: Record<string, unknown>,
   path: string,
@@ -296,6 +319,8 @@ function validateExpression(input: unknown, path: string, state: ValidationState
       };
     case "random":
       return validateRandomExpression(input, path, state);
+    case "mathFunction":
+      return validateMathFunctionExpression(input, path, state);
     case "randomInteger":
       return validateRandomExpression(input, path, state, "randomInteger");
     default:

@@ -1136,6 +1136,7 @@ function variableIdsForExpression(expression: Expression): readonly string[] {
         ...variableIdsForExpression(expression.left),
         ...variableIdsForExpression(expression.right),
       ]);
+    case "mathFunction":
     case "not":
       return variableIdsForExpression(expression.value);
     case "random":
