@@ -17,6 +17,12 @@ import { KIDS_WORLD_STYLES } from "../worlds.js";
 import { DeleteProjectDialog } from "./DeleteProjectDialog.js";
 import { KidsBackdrop, KidsSprite, builtinWorld, emojiSlot } from "./KidsArt.js";
 import { ListenButton } from "./ListenButton.js";
+import {
+  deleteStudioProject,
+  exportStudioProject,
+  importStudioProject,
+  listStudioProjects,
+} from "../kidsStudioProjects.js";
 
 interface Props {
   readonly t: KidsText;
@@ -27,6 +33,7 @@ interface Props {
   readonly onCreate: () => void;
   readonly onMission: (world: KidsWorld, index: 0 | 1 | 2) => void;
   readonly onFree: (id: string, world: KidsWorld, avatar: KidsAvatar) => void;
+  readonly onStudio: (id: string) => void;
 }
 
 export function ProjectsScreen({
@@ -38,9 +45,11 @@ export function ProjectsScreen({
   onCreate,
   onMission,
   onFree,
+  onStudio,
 }: Props) {
   const [store] = useState(() => new ProjectStore());
   const [free, setFree] = useState(() => listFreeProjects());
+  const [studios, setStudios] = useState(() => listStudioProjects());
   const [message, setMessage] = useState("");
   const [deleting, setDeleting] = useState<string | null>(null);
   const [undo, setUndo] = useState<RemovedFreeProject | null>(null);
@@ -55,6 +64,20 @@ export function ProjectsScreen({
     const id = deleting;
     setDeleting(null);
     if (!id) return;
+    if (studios.some((item) => item.id === id)) {
+      const removed = deleteStudioProject(id, store);
+      setStudios(listStudioProjects());
+      setMessage(
+        removed
+          ? locale === "es"
+            ? "Escena borrada."
+            : "Scene deleted."
+          : locale === "es"
+            ? "No se pudo borrar."
+            : "Could not delete.",
+      );
+      return;
+    }
     const removed = deleteFreeProject(id, store);
     setFree(listFreeProjects());
     if (removed) {
@@ -99,10 +122,22 @@ export function ProjectsScreen({
     if (!file) return;
     try {
       const source = await file.text();
-      const project = importKidsProject(source, world, avatar, store);
-      setFree(listFreeProjects());
-      setMessage(t("saved"));
-      onFree(project.id, project.world, project.avatar);
+      let sceneId: string | null = null;
+      try {
+        const scene = importStudioProject(source, locale, store);
+        setStudios(listStudioProjects());
+        setMessage(t("saved"));
+        sceneId = scene.id;
+      } catch {
+        // Other .agorix projects use the existing Kids importer.
+      }
+      if (sceneId) onStudio(sceneId);
+      else {
+        const project = importKidsProject(source, world, avatar, store);
+        setFree(listFreeProjects());
+        setMessage(t("saved"));
+        onFree(project.id, project.world, project.avatar);
+      }
     } catch {
       setMessage(
         locale === "es" ? "Este archivo no se pudo abrir." : "This file could not be opened.",
@@ -152,6 +187,48 @@ export function ProjectsScreen({
         />
       ) : null}
       <div className="kids-project-grid">
+        {studios.map((project) => (
+          <article className="kids-project-card" key={project.id}>
+            <KidsBackdrop
+              world={{ kind: "gallery", id: project.backdropId }}
+              className="kids-project-thumb"
+            />
+            <h2>
+              {locale === "es" ? "Escena libre" : "Free scene"} ·{" "}
+              {project.id.replace("studio-", "#")}
+            </h2>
+            <p>{t("saved")}</p>
+            <div>
+              <button type="button" className="kids-button" onClick={() => onStudio(project.id)}>
+                {t("play")}
+              </button>
+              <button
+                type="button"
+                className="kids-button"
+                onClick={() => {
+                  try {
+                    const blob = new Blob([exportStudioProject(project.id, store)], {
+                      type: "application/json",
+                    });
+                    const url = URL.createObjectURL(blob);
+                    const anchor = document.createElement("a");
+                    anchor.href = url; // agora-allowlist: local Blob download from validated .agorix serializer, not outbound navigation
+                    anchor.download = sanitizeAgorixFilename(project.id);
+                    anchor.click();
+                    setTimeout(() => URL.revokeObjectURL(url), 0);
+                  } catch {
+                    setMessage(locale === "es" ? "No se pudo exportar." : "Could not export.");
+                  }
+                }}
+              >
+                {locale === "es" ? "Exportar" : "Export"}
+              </button>
+              <button type="button" className="kids-button" onClick={() => setDeleting(project.id)}>
+                {locale === "es" ? "Borrar" : "Delete"}
+              </button>
+            </div>
+          </article>
+        ))}
         {missions.map((project) => (
           <article className="kids-project-card" key={project.id}>
             <KidsBackdrop world={builtinWorld(project.world)} className="kids-project-thumb">

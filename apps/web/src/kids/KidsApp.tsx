@@ -55,6 +55,8 @@ import { bandProfile } from "./kidsAgeBand.js";
 import { useKidsText, type KidsText } from "./useKidsText.js";
 import { stopSpeaking } from "./speak.js";
 import { KidsOriGuide } from "./screens/KidsOriGuide.js";
+import { KidsStudioScreen } from "./screens/KidsStudioScreen.js";
+import { createStudioProject } from "./kidsStudioProjects.js";
 
 const NAV: readonly {
   readonly screen: KidsScreen;
@@ -291,6 +293,13 @@ export function KidsApp({
             readAloud={adultSettings.readAloud}
             onBack={() => dispatch({ type: "go", screen: "map" })}
           />
+        ) : state.screen === "studio" && state.studioProjectId ? (
+          <KidsStudioScreen
+            key={state.studioProjectId}
+            id={state.studioProjectId}
+            locale={state.locale}
+            onBack={() => dispatch({ type: "go", screen: "create" })}
+          />
         ) : state.screen === "create" ? (
           <CreateScreen
             t={t}
@@ -300,6 +309,10 @@ export function KidsApp({
             readAloud={adultSettings.readAloud}
             onAvatar={chooseAvatar}
             onWorld={(world) => dispatch({ type: "pickWorld", world })}
+            onStudio={() => {
+              const project = createStudioProject("nova", "forest", state.locale, projectStore);
+              dispatch({ type: "openStudio", projectId: project.id });
+            }}
             onStart={(world, avatar) => {
               const project = createFreeProjectRef(world, avatar);
               dispatch({
@@ -324,6 +337,7 @@ export function KidsApp({
             onFree={(projectId, world, avatar) =>
               dispatch({ type: "openFreeProject", projectId, world, avatar })
             }
+            onStudio={(projectId) => dispatch({ type: "openStudio", projectId })}
           />
         ) : state.screen === "reflect" && reflection ? (
           <ReflectScreen
@@ -391,6 +405,7 @@ function screenTitle(screen: KidsScreen, t: KidsText): string {
     case "parents":
       return t("grownups");
     case "editor":
+    case "studio":
       return t("mission");
     case "advanced":
     case "advancedReact":

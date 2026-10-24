@@ -2447,3 +2447,125 @@
   color: var(--kids-text);
   max-width: min(92vw, 520px);
 }
+.kids-studio-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem;
+  border: 2px solid var(--kids-ink, #38304e);
+  border-radius: 1.25rem;
+  background: #f5edff;
+}
+
+.kids-studio-entry h2,
+.kids-studio-entry p {
+  margin: 0 0 0.4rem;
+}
+.kids-studio-header,
+.kids-studio-header > div,
+.kids-run-controls,
+.kids-studio-add,
+.kids-studio-actors {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+.kids-studio-header {
+  justify-content: space-between;
+}
+.kids-studio-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 2fr) minmax(280px, 3fr);
+  gap: 1.5rem;
+}
+.kids-studio-stage {
+  display: block;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 20 / 13;
+  border-radius: 1rem;
+  overflow: hidden;
+}
+.kids-studio-stage-actor {
+  position: absolute;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  background: #fff9;
+  cursor: pointer;
+}
+.kids-studio-stage-actor[aria-pressed="true"] {
+  border-color: #5130a8;
+}
+.kids-studio-stage-actor .kids-sprite {
+  max-width: 100%;
+  max-height: 100%;
+}
+.kids-studio-actors .kids-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.kids-studio-actors .kids-sprite {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+.kids-studio-add label,
+.kids-studio-backdrop-select,
+.kids-studio-palette label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.kids-studio-program-column {
+  min-width: 0;
+}
+.kids-studio-palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 1rem 0;
+}
+.kids-studio-palette label {
+  width: 100%;
+}
+.kids-studio-palette select,
+.kids-studio-add select,
+.kids-studio-backdrop-select select {
+  max-width: 100%;
+  min-height: 2.5rem;
+}
+.kids-studio-program-column .kids-code-strip {
+  overflow: auto;
+  max-height: 22rem;
+}
+.kids-studio-ori {
+  margin: 1.5rem 0;
+}
+.kids-studio-ori .kids-ori-proposal {
+  padding: 1rem;
+  border: 2px solid #7256ad;
+  border-radius: 1rem;
+  background: #f7f0ff;
+}
+.kids-studio-ori .kids-ori-proposal > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+}
+@media (max-width: 720px) {
+  .kids-studio-layout {
+    grid-template-columns: 1fr;
+  }
+  .kids-studio-entry {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

@@ -8,6 +8,7 @@ export type KidsScreen =
   | "onboard"
   | "map"
   | "create"
+  | "studio"
   | "editor"
   | "advanced"
   | "advancedReact"
@@ -38,6 +39,8 @@ export interface KidsState {
   readonly missionIndex: 0 | 1 | 2 | 3;
   /** ID of a free-world stored project; absent for curriculum missions. */
   readonly freeProjectId?: string | undefined;
+  /** ID of a multi-character creative scene. */
+  readonly studioProjectId?: string | undefined;
 }
 
 export type KidsAction =
@@ -53,6 +56,7 @@ export type KidsAction =
   | { readonly type: "openAdvancedScore" }
   | { readonly type: "openAdvancedControl" }
   | { readonly type: "openAdvancedMessage" }
+  | { readonly type: "openStudio"; readonly projectId: string }
   | {
       readonly type: "openSavedMission";
       readonly world: KidsWorld;
@@ -111,6 +115,8 @@ export function kidsReducer(state: KidsState, action: KidsAction): KidsState {
       return { ...state, screen: "advancedControl" };
     case "openAdvancedMessage":
       return { ...state, screen: "advancedMessage" };
+    case "openStudio":
+      return { ...state, studioProjectId: action.projectId, screen: "studio" };
     case "openSavedMission":
       return {
         ...state,
