@@ -2729,6 +2729,22 @@
 .kids-studio-program-column {
   min-width: 0;
 }
+.kids-studio-program-column .kids-program-block {
+  padding: 0.65rem;
+  background: #5d418e;
+}
+.kids-studio-nested-blocks {
+  margin: 0.5rem 0;
+  padding: 0.35rem 0.5rem 0.35rem 1.8rem;
+  border-left: 4px solid #cbb5f2;
+  border-radius: 0.4rem;
+  background: #f7f0ff;
+  color: #332554;
+  font-weight: 600;
+}
+.kids-studio-nested-blocks li {
+  margin: 0.3rem 0;
+}
 .kids-studio-palette {
   display: flex;
   flex-wrap: wrap;
