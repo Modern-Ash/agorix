@@ -49,6 +49,7 @@ export type BlockType =
   | "operator_subtract"
   | "operator_multiply"
   | "operator_divide"
+  | "operator_modulo"
   | "operator_less_than"
   | "operator_greater_than"
   | "operator_less_or_equal"
@@ -293,6 +294,7 @@ function expressionFromBlock(
     case "operator_subtract":
     case "operator_multiply":
     case "operator_divide":
+    case "operator_modulo":
     case "operator_less_than":
     case "operator_greater_than":
     case "operator_less_or_equal":
@@ -305,6 +307,7 @@ function expressionFromBlock(
         operator_subtract: "subtract",
         operator_multiply: "multiply",
         operator_divide: "divide",
+        operator_modulo: "modulo",
         operator_less_than: "lessThan",
         operator_greater_than: "greaterThan",
         operator_less_or_equal: "lessOrEqual",
@@ -602,6 +605,7 @@ function expressionToBlock(
     case "subtract":
     case "multiply":
     case "divide":
+    case "modulo":
     case "lessThan":
     case "greaterThan":
     case "lessOrEqual":
@@ -614,6 +618,7 @@ function expressionToBlock(
         subtract: "operator_subtract",
         multiply: "operator_multiply",
         divide: "operator_divide",
+        modulo: "operator_modulo",
         lessThan: "operator_less_than",
         greaterThan: "operator_greater_than",
         lessOrEqual: "operator_less_or_equal",

@@ -386,6 +386,14 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
         expressionText(writer, expression.right, nodeId + "/right") +
         ")"
       );
+    case "modulo":
+      return (
+        "(" +
+        expressionText(writer, expression.left, nodeId + "/left") +
+        " mod " +
+        expressionText(writer, expression.right, nodeId + "/right") +
+        ")"
+      );
     case "lessThan":
       return (
         "(" +

@@ -359,6 +359,7 @@ function expressionLabel(
     subtract: "−",
     multiply: "×",
     divide: "÷",
+    modulo: "mod",
     greaterThan: ">",
     lessThan: "<",
     equals: "=",
@@ -422,9 +423,9 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
   const [repeatCount, setRepeatCount] = useState(3);
   const [groupCount, setGroupCount] = useState(2);
   const [sourceVariableId, setSourceVariableId] = useState("studio-var-1");
-  const [mathOperator, setMathOperator] = useState<"add" | "subtract" | "multiply" | "divide">(
-    "add",
-  );
+  const [mathOperator, setMathOperator] = useState<
+    "add" | "subtract" | "multiply" | "divide" | "modulo"
+  >("add");
   const [compareOperator, setCompareOperator] = useState<"greaterThan" | "lessThan" | "equals">(
     "greaterThan",
   );
@@ -2294,6 +2295,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
                     <option value="subtract">−</option>
                     <option value="multiply">×</option>
                     <option value="divide">÷</option>
+                    <option value="modulo">{locale === "es" ? "resto" : "mod"}</option>
                   </select>
                 </label>
                 <button
@@ -2302,7 +2304,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
                   disabled={
                     !Number.isInteger(dataValue) ||
                     Math.abs(dataValue) > 100 ||
-                    (mathOperator === "divide" && dataValue === 0)
+                    ((mathOperator === "divide" || mathOperator === "modulo") && dataValue === 0)
                   }
                   onClick={() =>
                     add({
@@ -2341,7 +2343,9 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
                   disabled={
                     !Number.isInteger(dataValue) ||
                     Math.abs(dataValue) > 100 ||
-                    (compareCalculation && mathOperator === "divide" && dataValue === 0)
+                    (compareCalculation &&
+                      (mathOperator === "divide" || mathOperator === "modulo") &&
+                      dataValue === 0)
                   }
                   onClick={() =>
                     add({
@@ -2360,7 +2364,9 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
                     (script?.statements.length ?? 0) < groupCount ||
                     !Number.isInteger(dataValue) ||
                     Math.abs(dataValue) > 100 ||
-                    (compareCalculation && mathOperator === "divide" && dataValue === 0)
+                    (compareCalculation &&
+                      (mathOperator === "divide" || mathOperator === "modulo") &&
+                      dataValue === 0)
                   }
                   onClick={() => groupLast("if")}
                 >

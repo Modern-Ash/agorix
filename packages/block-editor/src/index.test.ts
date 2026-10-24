@@ -800,3 +800,34 @@ describe("change size block", () => {
     ]);
   });
 });
+
+describe("modulo block", () => {
+  it("round-trips through blocks", () => {
+    const program = {
+      schema: "agorix/program/v1",
+      variables: [{ id: "n", name: "n", initialValue: 0, visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "setVariable",
+              variableId: "n",
+              value: {
+                type: "modulo",
+                left: { type: "variable", variableId: "n" },
+                right: { type: "numericLiteral", value: 2 },
+              },
+            },
+          ],
+        },
+      ],
+    } as unknown as ProjectProgram;
+    const { workspace } = programToWorkspace(program);
+    expect(JSON.stringify(workspace)).toContain("operator_modulo");
+    expect(workspaceToProgram(workspace).program.scripts[0]?.statements).toEqual(
+      program.scripts[0]?.statements,
+    );
+  });
+});

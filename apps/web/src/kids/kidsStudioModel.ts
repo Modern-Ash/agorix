@@ -148,15 +148,15 @@ function checkedNumber(value: Expression, program: ProjectProgram, depth = 0): b
       finiteSmallNumber(value.max.value) &&
       value.min.value <= value.max.value
     );
-  if (["add", "subtract", "multiply", "divide"].includes(value.type)) {
+  if (["add", "subtract", "multiply", "divide", "modulo"].includes(value.type)) {
     const binary = value as Extract<
       Expression,
-      { type: "add" | "subtract" | "multiply" | "divide" }
+      { type: "add" | "subtract" | "multiply" | "divide" | "modulo" }
     >;
     return (
       checkedNumber(binary.left, program, depth + 1) &&
       checkedNumber(binary.right, program, depth + 1) &&
-      (binary.type !== "divide" ||
+      (!(binary.type === "divide" || binary.type === "modulo") ||
         (binary.right.type === "numericLiteral" && binary.right.value !== 0))
     );
   }

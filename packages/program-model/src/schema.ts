@@ -87,6 +87,13 @@ export interface DivideExpression {
   readonly right: Expression;
 }
 
+/** Floored remainder: the result takes the sign of the right operand. */
+export interface ModuloExpression {
+  readonly type: "modulo";
+  readonly left: Expression;
+  readonly right: Expression;
+}
+
 export interface LessThanExpression {
   readonly type: "lessThan";
   readonly left: Expression;
@@ -173,6 +180,7 @@ export type Expression =
   | SubtractExpression
   | MultiplyExpression
   | DivideExpression
+  | ModuloExpression
   | LessThanExpression
   | GreaterThanExpression
   | LessOrEqualExpression

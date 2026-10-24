@@ -174,6 +174,7 @@ function validateBinaryExpression(
     | "subtract"
     | "multiply"
     | "divide"
+    | "modulo"
     | "lessThan"
     | "greaterThan"
     | "lessOrEqual"
@@ -271,6 +272,7 @@ function validateExpression(input: unknown, path: string, state: ValidationState
     case "subtract":
     case "multiply":
     case "divide":
+    case "modulo":
     case "lessThan":
     case "greaterThan":
     case "lessOrEqual":
