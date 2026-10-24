@@ -22,6 +22,7 @@ import {
   hideWorld,
   moveWorld,
   goToWorld,
+  normalizeCoordinate,
   playSoundWorld,
   sayWorld,
   setVariableVisibilityWorld,
@@ -247,6 +248,23 @@ function evaluateExpression(
         target.visible &&
         Math.hypot(state.world.sprite.x - target.x, state.world.sprite.y - target.y) <= 24
       );
+    }
+    case "touchingStageEdge": {
+      const { x, y } = state.world.sprite;
+      return (
+        x <= expression.minX + 12 ||
+        x >= expression.maxX - 12 ||
+        y <= expression.minY + 12 ||
+        y >= expression.maxY - 12
+      );
+    }
+    case "distanceToActor": {
+      const target = state.options.sensorActors?.find((actor) => actor.id === expression.actorId);
+      return target === undefined
+        ? -1
+        : normalizeCoordinate(
+            Math.hypot(state.world.sprite.x - target.x, state.world.sprite.y - target.y),
+          );
     }
     case "xPosition":
       return state.world.sprite.x;

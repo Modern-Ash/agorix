@@ -89,6 +89,8 @@ describe("block-editor", () => {
       "If ___, then",
       "Touching the goal?",
       "Touching character?",
+      "Touching stage edge?",
+      "Distance to character",
       "Horizontal position",
       "Vertical position",
       "[N] + [N]",
@@ -110,7 +112,7 @@ describe("block-editor", () => {
       "Show score",
       "Hide score",
     ]);
-    expect(POC_TOOLBOX.flatMap((section) => section.blocks)).toHaveLength(43);
+    expect(POC_TOOLBOX.flatMap((section) => section.blocks)).toHaveLength(45);
   });
 
   it("creates safe defaults for every required POC block", () => {

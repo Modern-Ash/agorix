@@ -38,6 +38,7 @@ import {
   addStudioActor,
   addStudioList,
   addStudioVariable,
+  STUDIO_EDGE_CONDITION,
   appendStudioStatement,
   creativeForStudio,
   removeStudioStatement,
@@ -142,6 +143,10 @@ const COPY = {
     touchActor: "Tocando personaje",
     ifTouchActor: "Si toca, mover 1",
     groupIfTouchActor: "Si toca, ejecutar estos bloques",
+    ifTouchEdge: "Si toca el borde, mover 1",
+    groupIfTouchEdge: "Si toca el borde, ejecutar estos bloques",
+    saveDistance: "Guardar distancia",
+    distanceTarget: "Distancia al personaje",
     dataName: "Nombre",
     number: "Número",
     watchers: "Datos al jugar",
@@ -255,6 +260,10 @@ const COPY = {
     touchActor: "Touching character",
     ifTouchActor: "If touching, move 1",
     groupIfTouchActor: "If touching, run these blocks",
+    ifTouchEdge: "If at edge, move 1",
+    groupIfTouchEdge: "If at edge, run these blocks",
+    saveDistance: "Save distance",
+    distanceTarget: "Distance to character",
     dataName: "Name",
     number: "Number",
     watchers: "Data after Play",
@@ -310,6 +319,10 @@ function expressionLabel(
   if (value.type === "yPosition") return "Y";
   if (value.type === "touchingActor")
     return `${locale === "es" ? "tocando" : "touching"} ${galleryCharacterName(characterOfActor(value.actorId), locale)}`;
+  if (value.type === "touchingStageEdge")
+    return locale === "es" ? "tocando borde" : "touching edge";
+  if (value.type === "distanceToActor")
+    return `${locale === "es" ? "distancia a" : "distance to"} ${galleryCharacterName(characterOfActor(value.actorId), locale)}`;
   if (value.type === "numericLiteral") return String(value.value);
   if (value.type === "variable")
     return program.variables?.find((item) => item.id === value.variableId)?.name ?? "?";
@@ -1833,6 +1846,27 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
             >
               {copy.groupRepeat}
             </button>
+            <button
+              type="button"
+              className="kids-button"
+              onClick={() =>
+                add({
+                  type: "if",
+                  condition: STUDIO_EDGE_CONDITION,
+                  then: [{ type: "move", steps: 40 }],
+                })
+              }
+            >
+              + {copy.ifTouchEdge}
+            </button>
+            <button
+              type="button"
+              className="kids-button"
+              disabled={(script?.statements.length ?? 0) < groupCount}
+              onClick={() => groupLast("if", STUDIO_EDGE_CONDITION)}
+            >
+              {copy.groupIfTouchEdge}
+            </button>
             {targetActorId ? (
               <>
                 <label>
@@ -1989,6 +2023,36 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
                 >
                   + {copy.saveY}
                 </button>
+                {targetActorId ? (
+                  <>
+                    <label>
+                      {copy.distanceTarget}{" "}
+                      <select
+                        value={targetActorId}
+                        onChange={(event) => setSensorTargetId(event.target.value)}
+                      >
+                        {otherActors.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      onClick={() =>
+                        add({
+                          type: "setVariable",
+                          variableId: selectedVariableId,
+                          value: { type: "distanceToActor", actorId: targetActorId },
+                        })
+                      }
+                    >
+                      + {copy.saveDistance}
+                    </button>
+                  </>
+                ) : null}
                 <button
                   type="button"
                   className="kids-button"
@@ -2375,7 +2439,9 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
               </button>
             ))}
           </div>
-          <pre className="kids-code-strip">{code}</pre>
+          <pre className="kids-code-strip" tabIndex={0} aria-label={copy.code}>
+            {code}
+          </pre>
         </div>
       </div>
       {error ? (

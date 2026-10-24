@@ -36,6 +36,8 @@ export type BlockType =
   | "control_if"
   | "sensing_touching_goal"
   | "sensing_touching_actor"
+  | "sensing_touching_stage_edge"
+  | "sensing_distance_to_actor"
   | "sensing_x_position"
   | "sensing_y_position"
   | "operator_add"
@@ -249,6 +251,16 @@ function expressionFromBlock(
       return { type: "touchingGoal" };
     case "sensing_touching_actor":
       return { type: "touchingActor", actorId: stringField(block, "actorId", path) };
+    case "sensing_touching_stage_edge":
+      return {
+        type: "touchingStageEdge",
+        minX: numberField(block, "minX", path),
+        maxX: numberField(block, "maxX", path),
+        minY: numberField(block, "minY", path),
+        maxY: numberField(block, "maxY", path),
+      };
+    case "sensing_distance_to_actor":
+      return { type: "distanceToActor", actorId: stringField(block, "actorId", path) };
     case "sensing_x_position":
       return { type: "xPosition" };
     case "sensing_y_position":
@@ -525,6 +537,19 @@ function expressionToBlock(
       return { id, type: "sensing_touching_goal" };
     case "touchingActor":
       return { id, type: "sensing_touching_actor", fields: { actorId: expression.actorId } };
+    case "touchingStageEdge":
+      return {
+        id,
+        type: "sensing_touching_stage_edge",
+        fields: {
+          minX: expression.minX,
+          maxX: expression.maxX,
+          minY: expression.minY,
+          maxY: expression.maxY,
+        },
+      };
+    case "distanceToActor":
+      return { id, type: "sensing_distance_to_actor", fields: { actorId: expression.actorId } };
     case "xPosition":
       return { id, type: "sensing_x_position" };
     case "yPosition":

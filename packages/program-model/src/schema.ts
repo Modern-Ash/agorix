@@ -25,6 +25,21 @@ export interface TouchingActorExpression {
   readonly actorId: string;
 }
 
+/** Rectangle is explicit so an exported program keeps its stage-edge meaning. */
+export interface TouchingStageEdgeExpression {
+  readonly type: "touchingStageEdge";
+  readonly minX: number;
+  readonly maxX: number;
+  readonly minY: number;
+  readonly maxY: number;
+}
+
+/** Center distance; -1 means the target actor is absent. Visibility does not affect position. */
+export interface DistanceToActorExpression {
+  readonly type: "distanceToActor";
+  readonly actorId: string;
+}
+
 export interface XPositionExpression {
   readonly type: "xPosition";
 }
@@ -147,6 +162,8 @@ export interface ListLengthExpression {
 export type Expression =
   | TouchingGoalExpression
   | TouchingActorExpression
+  | TouchingStageEdgeExpression
+  | DistanceToActorExpression
   | XPositionExpression
   | YPositionExpression
   | BooleanLiteralExpression
