@@ -123,8 +123,21 @@ export interface SummaryRow {
   readonly updatedAt: string;
 }
 
+export interface RedeemFailureWindow {
+  readonly scopeKey: string;
+  readonly count: number;
+  readonly resetAt: number;
+}
+
 /** Storage boundary. Every method is small so the SQL and in-memory versions stay in step. */
 export interface LinkRepository {
+  /** The source key is already hashed by the HTTP boundary. No raw address is stored. */
+  getRedeemFailureWindows(
+    sourceKey: string,
+    nowMs: number,
+  ): Promise<readonly RedeemFailureWindow[]>;
+  recordRedeemFailure(sourceKey: string, nowMs: number, windowMs: number): Promise<void>;
+  sweepRedeemFailureWindows(nowMs: number): Promise<void>;
   getEmail(accountId: string): Promise<EmailRow | undefined>;
   findEmailOwner(emailNormalized: string): Promise<string | undefined>;
   setEmail(row: EmailRow): Promise<void>;

@@ -16,6 +16,29 @@ export class InMemoryLinkRepository implements LinkRepository {
   private links = new Map<string, LinkRow>();
   private tokens = new Map<string, TokenRow>();
   private summaries = new Map<string, SummaryRow>();
+  private redeemFailures = new Map<string, { count: number; resetAt: number }>();
+
+  async getRedeemFailureWindows(sourceKey: string, nowMs: number) {
+    return ["global", `source:${sourceKey}`].flatMap((scopeKey) => {
+      const window = this.redeemFailures.get(scopeKey);
+      return window !== undefined && window.resetAt > nowMs ? [{ scopeKey, ...window }] : [];
+    });
+  }
+  async recordRedeemFailure(sourceKey: string, nowMs: number, windowMs: number) {
+    for (const scopeKey of ["global", `source:${sourceKey}`]) {
+      const old = this.redeemFailures.get(scopeKey);
+      this.redeemFailures.set(
+        scopeKey,
+        old === undefined || old.resetAt <= nowMs
+          ? { count: 1, resetAt: nowMs + windowMs }
+          : { count: old.count + 1, resetAt: old.resetAt },
+      );
+    }
+  }
+  async sweepRedeemFailureWindows(nowMs: number) {
+    for (const [key, window] of this.redeemFailures)
+      if (window.resetAt <= nowMs) this.redeemFailures.delete(key);
+  }
 
   async getEmail(accountId: string) {
     return this.emails.get(accountId);

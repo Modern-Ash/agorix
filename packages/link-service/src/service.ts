@@ -64,11 +64,6 @@ export interface DeviceSummaryView {
   readonly summary: LinkSummary;
 }
 
-interface Window {
-  count: number;
-  resetAt: number;
-}
-
 export class LinkService {
   private readonly repo: LinkRepository;
   private readonly secret: string;
@@ -76,8 +71,6 @@ export class LinkService {
   private readonly policy: LinkPolicy;
   private readonly clock: Clock;
   private readonly random: RandomSource;
-  private readonly sourceFailures = new Map<string, Window>();
-  private globalFailures: Window = { count: 0, resetAt: 0 };
   private readonly onMailError: (error: unknown) => void;
   private readonly pendingMail = new Set<Promise<void>>();
 
@@ -176,15 +169,15 @@ export class LinkService {
    * Only failures count, so a family linking a tablet is never throttled by its own success.
    */
   async redeemLinkCode(code: string, sourceKey: string): Promise<RedeemedLink> {
-    this.requireRedeemBudget(sourceKey);
+    await this.requireRedeemBudget(sourceKey);
     if (typeof code !== "string" || !/^\d{6}$/.test(code)) {
-      this.recordRedeemFailure(sourceKey);
+      await this.recordRedeemFailure(sourceKey);
       throw invalid();
     }
     const now = this.nowIso();
     const row = await this.repo.findLiveCode(this.codeHash(code), now);
     if (row === undefined || !(await this.repo.markCodeUsed(row.codeHash, now))) {
-      this.recordRedeemFailure(sourceKey);
+      await this.recordRedeemFailure(sourceKey);
       throw invalid();
     }
     const email = await this.repo.getEmail(row.accountId);
@@ -316,6 +309,7 @@ export class LinkService {
 
   /** Deletes unlinked devices (and their summaries) older than the retention period. Idempotent. */
   async purgeExpired(): Promise<{ purgedLinks: number }> {
+    await this.repo.sweepRedeemFailureWindows(this.clock.now().getTime());
     const cutoff = new Date(this.clock.now().getTime() - this.policy.retentionAfterUnlinkMs);
     const ids = await this.repo.listRevokedLinksBefore(cutoff.toISOString());
     for (const id of ids) await this.repo.deleteLinkData(id);
@@ -396,37 +390,31 @@ export class LinkService {
     }
   }
 
-  private requireRedeemBudget(sourceKey: string): void {
+  private async requireRedeemBudget(sourceKey: string): Promise<void> {
     const now = this.clock.now().getTime();
-    const source = this.sourceFailures.get(sourceKey);
+    const windows = await this.repo.getRedeemFailureWindows(sourceKey, now);
     if (
-      source !== undefined &&
-      source.resetAt > now &&
-      source.count >= this.policy.redeemFailuresPerSource
+      windows.some(
+        (window) =>
+          window.scopeKey === `source:${sourceKey}` &&
+          window.count >= this.policy.redeemFailuresPerSource,
+      )
     ) {
       throw new LinkError("RATE_LIMITED", "Try again later");
     }
     if (
-      this.globalFailures.resetAt > now &&
-      this.globalFailures.count >= this.policy.redeemFailuresGlobal
+      windows.some(
+        (window) =>
+          window.scopeKey === "global" && window.count >= this.policy.redeemFailuresGlobal,
+      )
     ) {
       throw new LinkError("RATE_LIMITED", "Try again later");
     }
   }
 
-  private recordRedeemFailure(sourceKey: string): void {
+  private async recordRedeemFailure(sourceKey: string): Promise<void> {
     const now = this.clock.now().getTime();
-    const bump = (window: Window | undefined): Window =>
-      window === undefined || window.resetAt <= now
-        ? { count: 1, resetAt: now + this.policy.redeemWindowMs }
-        : { count: window.count + 1, resetAt: window.resetAt };
-    this.sourceFailures.set(sourceKey, bump(this.sourceFailures.get(sourceKey)));
-    this.globalFailures = bump(this.globalFailures);
-    if (this.sourceFailures.size > 10_000) {
-      for (const [key, window] of this.sourceFailures) {
-        if (window.resetAt <= now) this.sourceFailures.delete(key);
-      }
-    }
+    await this.repo.recordRedeemFailure(sourceKey, now, this.policy.redeemWindowMs);
   }
 
   /** Uniform in 0..999999 without modulo bias. */

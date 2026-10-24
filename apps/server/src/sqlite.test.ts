@@ -46,6 +46,49 @@ afterEach(() => {
 });
 
 describe("SQLite production store", () => {
+  it("keeps link-code failure limits across restart and sweeps expired windows", async () => {
+    const { db } = paths();
+    let now = Date.parse("2026-10-23T12:00:00.000Z");
+    const policy = { redeemFailuresPerSource: 2, redeemFailuresGlobal: 3 };
+    const makeService = (store: ReturnType<typeof openSQLiteStore>) =>
+      new LinkService({
+        repository: new SqlLinkRepository({ executor: store, dialect: "sqlite" }),
+        secret: "k".repeat(40),
+        clock: { now: () => new Date(now) },
+        policy,
+      });
+    let store = openSQLiteStore(db);
+    let link = makeService(store);
+    for (let attempt = 0; attempt < 2; attempt += 1)
+      await expect(link.redeemLinkCode("000000", "hashed-source-a")).rejects.toMatchObject({
+        code: "INVALID_OR_EXPIRED",
+      });
+    await store.close();
+
+    store = openSQLiteStore(db);
+    link = makeService(store);
+    await expect(link.redeemLinkCode("000000", "hashed-source-a")).rejects.toMatchObject({
+      code: "RATE_LIMITED",
+    });
+    await expect(link.redeemLinkCode("000000", "hashed-source-b")).rejects.toMatchObject({
+      code: "INVALID_OR_EXPIRED",
+    });
+    await expect(link.redeemLinkCode("000000", "hashed-source-c")).rejects.toMatchObject({
+      code: "RATE_LIMITED",
+    });
+    now += 10 * 60 * 1000 + 1;
+    await link.purgeExpired();
+    await link.purgeExpired();
+    const stale = await store.execute<{ count: number }>(
+      "select count(*) as count from agorix_link_redeem_failures",
+    );
+    expect(stale.rows[0]?.count).toBe(0);
+    await expect(link.redeemLinkCode("000000", "hashed-source-a")).rejects.toMatchObject({
+      code: "INVALID_OR_EXPIRED",
+    });
+    await store.close();
+  });
+
   it("migrates, persists account sessions and projects, and preserves optimistic revisions", async () => {
     const { db } = paths();
     const store = openSQLiteStore(db);
@@ -68,6 +111,7 @@ describe("SQLite production store", () => {
       "001_create_agorix_projects",
       "001_create_auth_accounts_and_sessions",
       "001_create_link_service",
+      "002_persist_link_redeem_failures",
     ]);
     await store.close();
 
