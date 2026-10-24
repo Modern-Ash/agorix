@@ -60,4 +60,5 @@ Set both or neither (the server refuses to start with only one). The links in th
   the address owner when someone tries to take it; it contains no token or link.
 - Staging check before enabling for real families: create an account, receive the message, open the
   link, link a tablet; also try a wrong password in `AGORIX_MAIL_SMTP_URL` and confirm the log line has
-  kind `auth` only.
+  kind `auth` only. See [MAIL_STAGING_CHECK.md](../deployment/MAIL_STAGING_CHECK.md) for the automated
+  loopback inbox and the optional external staging checklist.
