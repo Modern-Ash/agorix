@@ -30,6 +30,7 @@ export interface TutorAdapterConfig {
   readonly timeoutMs: number;
   readonly capabilities: readonly LearningCompanionCapability[];
   readonly includeLearnerQuestion?: boolean;
+  readonly promptTemplate?: string;
 }
 
 export interface TutorAdapterDiagnostics {
@@ -142,6 +143,7 @@ export function createTutorAdapterRuntime(
       ? {}
       : { authHeaderName: bounded(config.authHeaderName) as string }),
     ...(dependencies.fetch === undefined ? {} : { fetch: dependencies.fetch }),
+    ...(config.promptTemplate ? { additionalSystemInstructions: config.promptTemplate } : {}),
   });
 }
 

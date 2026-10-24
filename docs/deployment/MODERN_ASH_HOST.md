@@ -128,6 +128,37 @@ journalctl --user -u cloudflared -f
 
 ## Host tutor service (Kids 10)
 
+### AI operations console (#545)
+
+`/admin/ai` is a separate administrator console. Adult accounts and cookies do not grant access.
+The console edits the server's versioned policies for mission Ori, advanced Ori, studio Ori,
+conversation, goals, and the legacy tutor. It previews a validated draft, publishes it explicitly,
+and can restore any earlier revision. Published changes take effect on the next request. The fixed
+authorship and safety instructions remain in force; an optional instruction template is appended.
+No child conversation, program, or personal data is stored in this configuration database.
+
+The host service stores revision history in
+`~/.local/share/agorix/ai-config.sqlite` by default. Set `AGORIX_AI_CONFIG_DB_PATH` to an absolute
+path to relocate it. Back up the SQLite database and its WAL/SHM files as a consistent snapshot
+before replacing the service or host. Access to `/admin/ai` remains unavailable (HTTP 503) until
+`AGORIX_AI_ADMIN_PASSWORD_HASH` is set in the host service environment. Generate a hash without
+putting the password in a command argument:
+
+```sh
+read -rs 'agorix_ai_password?Admin password (16+ characters): '
+printf '\n'
+printf '%s' "$agorix_ai_password" | node scripts/hash-ai-admin-password.mjs
+unset agorix_ai_password
+```
+
+Store the resulting hash in the host's protected service environment as
+`AGORIX_AI_ADMIN_PASSWORD_HASH`; optionally set `AGORIX_AI_ADMIN_ID` to a stable operator ID
+matching `[a-z0-9_-]` (up to 32 characters). Never place the password or hash in the repository,
+the browser, or a child-facing account. Restart `agorix-tutor` after configuring the host secret.
+The web deployment alone does not restart the tutor service; deploy the matching merged tutor
+bundle and restart it in a separate, explicitly authorized operation. Verify a login, preview,
+publish, and rollback from `/admin/ai`, plus a synthetic Ori request with no child personal data.
+
 Codex and OpenCode use the host user's existing CLI login. The model process receives a numeric/type
 summary of the child's program and deterministic runtime facts, never free child text. Ori's model
 output is validated as a proposal; a missing CLI, timeout or invalid JSON uses Kids 08 local rules.

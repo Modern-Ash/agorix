@@ -38,6 +38,15 @@ import {
   type TutorAdapterConfig,
 } from "./index.js";
 import type { OriCliService } from "./oriCli.js";
+import {
+  AiConfigError,
+  configDiff,
+  validateAiConfig,
+  type AiCapability,
+  type AiConfigRepository,
+  type AiPolicy,
+} from "./aiConfig.js";
+import { AdminAuth } from "./adminAuth.js";
 
 export const MAX_BODY_BYTES = 64 * 1024;
 const HEALTH_TTL_MS = 15_000;
@@ -50,6 +59,8 @@ export interface TutorServerOptions {
   readonly now?: () => number;
   readonly ori?: OriCliService;
   readonly advancedStages?: AdvancedStageRepository;
+  readonly aiConfig?: AiConfigRepository;
+  readonly adminAuth?: AdminAuth;
 }
 
 interface Health {
@@ -63,7 +74,8 @@ interface Health {
 
 /**
  * Same-origin HTTP surface for the Learning Companion (issue #348). It sits behind the web
- * host (`/api/tutor/*`), reads provider settings from the server environment only, and
+ * host (`/api/tutor/*`), reads provider secrets from the server environment and policies
+ * from the versioned server-side registry, and
  * answers with the deterministic fallback whenever the provider is missing or fails. The
  * browser never receives a provider token, endpoint or diagnostic detail.
  */
@@ -77,6 +89,25 @@ export function createTutorServer(options: TutorServerOptions): Server {
   let lastOriSource: Health["lastOriSource"] = null;
   const chatRate = new Map<string, { count: number; start: number }>();
   const advancedStages = options.advancedStages ?? createMemoryAdvancedStageRepository(now);
+
+  function policy(capability: AiCapability): AiPolicy | undefined {
+    return options.aiConfig?.current().config.capabilities[capability];
+  }
+
+  function allowed(request: IncomingMessage, capability: AiCapability): boolean {
+    const limit =
+      policy(capability)?.requestsPerMinute ??
+      (capability === "chat" || capability === "goals" ? 6 : 60);
+    const key = `${request.headers["x-real-ip"] ?? request.socket.remoteAddress ?? "unknown"}:${capability}`;
+    const current = chatRate.get(key);
+    const stamp = now();
+    const next =
+      !current || stamp - current.start >= 60_000
+        ? { count: 1, start: stamp }
+        : { count: current.count + 1, start: current.start };
+    chatRate.set(key, next);
+    return next.count <= limit;
+  }
 
   async function health(): Promise<Health> {
     if (cached !== undefined && now() - cached.at < ttl) return cached.health;
@@ -143,6 +174,7 @@ export function createTutorServer(options: TutorServerOptions): Server {
 
   async function handle(request: IncomingMessage, response: ServerResponse): Promise<void> {
     const path = new URL(request.url ?? "/", "http://local").pathname;
+    if (path.startsWith("/api/tutor/admin/")) return adminRoute(path, request, response);
     if (path === "/api/tutor/health") {
       if (request.method !== "GET") return send(response, 405, error("method-not-allowed"));
       return send(response, 200, await health());
@@ -178,6 +210,109 @@ export function createTutorServer(options: TutorServerOptions): Server {
     return send(response, 404, error("not-found"));
   }
 
+  async function adminRoute(
+    path: string,
+    request: IncomingMessage,
+    response: ServerResponse,
+  ): Promise<void> {
+    const auth = options.adminAuth;
+    const repository = options.aiConfig;
+    if (!auth?.configured || !repository) return send(response, 503, error("admin-unavailable"));
+    if (!sameOrigin(request)) return send(response, 403, error("forbidden-origin"));
+    if (path === "/api/tutor/admin/session" && request.method === "POST") {
+      if (!(request.headers["content-type"] ?? "").includes("application/json"))
+        return send(response, 415, error("unsupported-media-type"));
+      const body = await readBody(request);
+      if (body === "too-large") return send(response, 413, error("payload-too-large"));
+      let password: string;
+      try {
+        const raw = JSON.parse(body) as Record<string, unknown>;
+        if (
+          !raw ||
+          Array.isArray(raw) ||
+          Object.keys(raw).join() !== "password" ||
+          typeof raw.password !== "string" ||
+          raw.password.length > 256
+        )
+          throw new Error("invalid");
+        password = raw.password;
+      } catch {
+        return send(response, 400, error("invalid-request"));
+      }
+      const session = auth.signIn(password, request, response);
+      return session ? send(response, 200, session) : send(response, 401, error("unauthorized"));
+    }
+    const session = auth.read(request);
+    if (!session) return send(response, 401, error("unauthorized"));
+    if (path === "/api/tutor/admin/session" && request.method === "GET")
+      return send(response, 200, session);
+    if (request.method !== "GET" && request.headers["x-agorix-admin-csrf"] !== session.csrf)
+      return send(response, 403, error("invalid-csrf"));
+    if (path === "/api/tutor/admin/session" && request.method === "DELETE") {
+      auth.signOut(request, response);
+      return send(response, 200, { ok: true });
+    }
+    if (path === "/api/tutor/admin/config" && request.method === "GET")
+      return send(response, 200, {
+        current: repository.current(),
+        history: repository.history().map(({ config: _config, ...meta }) => meta),
+      });
+    if (
+      ![
+        "/api/tutor/admin/preview",
+        "/api/tutor/admin/publish",
+        "/api/tutor/admin/rollback",
+      ].includes(path) ||
+      request.method !== "POST"
+    )
+      return send(response, 404, error("not-found"));
+    if (!(request.headers["content-type"] ?? "").includes("application/json"))
+      return send(response, 415, error("unsupported-media-type"));
+    const body = await readBody(request);
+    if (body === "too-large") return send(response, 413, error("payload-too-large"));
+    try {
+      const raw = JSON.parse(body) as Record<string, unknown>;
+      const expected = raw.expectedRevision;
+      if (!Number.isInteger(expected) || (expected as number) < 1)
+        throw new AiConfigError("invalid-config");
+      if (path === "/api/tutor/admin/rollback") {
+        if (
+          Object.keys(raw).sort().join() !== "expectedRevision,sourceRevision" ||
+          !Number.isInteger(raw.sourceRevision)
+        )
+          throw new AiConfigError("invalid-config");
+        return send(response, 200, {
+          current: repository.rollback(
+            raw.sourceRevision as number,
+            expected as number,
+            session.author,
+          ),
+        });
+      }
+      if (Object.keys(raw).sort().join() !== "config,expectedRevision")
+        throw new AiConfigError("invalid-config");
+      const config = validateAiConfig(raw.config);
+      const current = repository.current();
+      if (current.revision !== expected) throw new AiConfigError("revision-conflict");
+      if (path === "/api/tutor/admin/preview")
+        return send(response, 200, {
+          valid: true,
+          changed: configDiff(current.config, config),
+          expectedRevision: current.revision,
+        });
+      return send(response, 200, {
+        current: repository.publish(config, expected as number, session.author),
+      });
+    } catch (cause) {
+      const code = cause instanceof AiConfigError ? cause.code : "invalid-config";
+      return send(
+        response,
+        code === "revision-conflict" ? 409 : code === "revision-not-found" ? 404 : 400,
+        error(code),
+      );
+    }
+  }
+
   async function respond(request: IncomingMessage, response: ServerResponse): Promise<void> {
     if (!(request.headers["content-type"] ?? "").includes("application/json")) {
       return send(response, 415, error("unsupported-media-type"));
@@ -191,7 +326,21 @@ export function createTutorServer(options: TutorServerOptions): Server {
     } catch {
       return send(response, 400, error("invalid-request"));
     }
-    const result = await requestTutorResponse(tutorRequest, config, {
+    if (!allowed(request, "legacy")) return send(response, 429, error("rate-limited"));
+    const legacy = policy("legacy");
+    const effectiveConfig: TutorAdapterConfig = legacy
+      ? {
+          ...config,
+          adapter:
+            !legacy.enabled || legacy.provider === "disabled"
+              ? "fake"
+              : (legacy.provider as "fake" | "openai-compatible"),
+          model: legacy.model,
+          timeoutMs: legacy.timeoutMs,
+          promptTemplate: legacy.promptTemplate,
+        }
+      : config;
+    const result = await requestTutorResponse(tutorRequest, effectiveConfig, {
       fetch: fetchImpl as unknown as ProviderRuntimeFetch,
     });
     if (result.diagnostics.errorCode !== undefined) lastErrorClass = result.diagnostics.errorCode;
@@ -235,6 +384,7 @@ export function createTutorServer(options: TutorServerOptions): Server {
     } catch {
       return send(response, 400, error("invalid-request"));
     }
+    if (!allowed(request, "mission")) return send(response, 429, error("rate-limited"));
     const missionIndex = KIDS_MISSION_IDS.indexOf(
       input.missionId as (typeof KIDS_MISSION_IDS)[number],
     ) as 0 | 1 | 2;
@@ -246,9 +396,12 @@ export function createTutorServer(options: TutorServerOptions): Server {
       locale: input.locale,
       hintLevel: input.hintLevel,
     };
-    const decision = options.ori
-      ? await options.ori.respond(context)
-      : evaluateOriAgentOutput(context, undefined);
+    const decision =
+      policy("mission")?.enabled === false
+        ? evaluateOriAgentOutput(context, undefined)
+        : options.ori
+          ? await options.ori.respond(context)
+          : evaluateOriAgentOutput(context, undefined);
     if (decision.source === "fallback") lastErrorClass = "provider-unavailable";
     else lastErrorClass = null;
     lastOriSource = decision.source;
@@ -325,9 +478,13 @@ export function createTutorServer(options: TutorServerOptions): Server {
       };
       let decision;
       try {
-        decision = options.ori
-          ? await options.ori.advanced(context)
-          : await runOriAdvancedStage(context);
+        if (!allowed(request, "advanced")) return send(response, 429, error("rate-limited"));
+        decision =
+          policy("advanced")?.enabled === false
+            ? await runOriAdvancedStage(context)
+            : options.ori
+              ? await options.ori.advanced(context)
+              : await runOriAdvancedStage(context);
       } catch {
         decision = await runOriAdvancedStage(context);
       }
@@ -372,7 +529,13 @@ export function createTutorServer(options: TutorServerOptions): Server {
     }
     let decision;
     try {
-      decision = options.ori ? await options.ori.studio(context) : await runOriStudio(context);
+      if (!allowed(request, "studio")) return send(response, 429, error("rate-limited"));
+      decision =
+        policy("studio")?.enabled === false
+          ? await runOriStudio(context)
+          : options.ori
+            ? await options.ori.studio(context)
+            : await runOriStudio(context);
       if (decision.proposal) validateOriStudioProposal(context, decision.proposal);
     } catch {
       decision = await runOriStudio(context);
@@ -436,16 +599,13 @@ export function createTutorServer(options: TutorServerOptions): Server {
     } catch {
       return send(response, 400, error("invalid-request"));
     }
-    const key = request.socket.remoteAddress ?? "unknown";
-    const current = chatRate.get(key);
-    const stamp = now();
-    const next =
-      !current || stamp - current.start >= 60_000
-        ? { count: 1, start: stamp }
-        : { count: current.count + 1, start: current.start };
-    chatRate.set(key, next);
-    if (next.count > 6) return send(response, 429, error("rate-limited"));
-    const message = options.ori ? await options.ori.chat(context) : await runOriChat(context);
+    if (!allowed(request, "chat")) return send(response, 429, error("rate-limited"));
+    const message =
+      policy("chat")?.enabled === false
+        ? await runOriChat(context)
+        : options.ori
+          ? await options.ori.chat(context)
+          : await runOriChat(context);
     return send(response, 200, { message });
   }
 
@@ -470,18 +630,13 @@ export function createTutorServer(options: TutorServerOptions): Server {
     } catch {
       return send(response, 400, error("invalid-request"));
     }
-    const key = request.socket.remoteAddress ?? "unknown";
-    const current = chatRate.get(key);
-    const stamp = now();
-    const next =
-      !current || stamp - current.start >= 60_000
-        ? { count: 1, start: stamp }
-        : { count: current.count + 1, start: current.start };
-    chatRate.set(key, next);
-    if (next.count > 6) return send(response, 429, error("rate-limited"));
-    const proposal = options.ori
-      ? await options.ori.proposeGoal(locale)
-      : await runOriGoalAgent(locale);
+    if (!allowed(request, "goals")) return send(response, 429, error("rate-limited"));
+    const proposal =
+      policy("goals")?.enabled === false
+        ? await runOriGoalAgent(locale)
+        : options.ori
+          ? await options.ori.proposeGoal(locale)
+          : await runOriGoalAgent(locale);
     return send(response, 200, {
       cell: proposal.cell,
       successCheck: proposal.successCheck,

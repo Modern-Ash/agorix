@@ -3,6 +3,10 @@ import { createTutorServer } from "./server.js";
 import { createOriCliService, oriCliConfigFromEnv } from "./oriCli.js";
 import { chmodSync, lstatSync, mkdirSync, unlinkSync } from "node:fs";
 import { dirname } from "node:path";
+import { join } from "node:path";
+import { homedir } from "node:os";
+import { defaultAiConfig, openSqliteAiConfigRepository } from "./aiConfig.js";
+import { AdminAuth } from "./adminAuth.js";
 
 // Entry point (issue #348): `node dist/main.js`. Binds loopback unless the deployment
 // explicitly sets AGORIX_TUTOR_HOST (for example inside a container network).
@@ -10,10 +14,24 @@ const config = configFromEnv(process.env);
 const host = process.env["AGORIX_TUTOR_HOST"] ?? "127.0.0.1";
 const port = Number.parseInt(process.env["AGORIX_TUTOR_PORT"] ?? "8471", 10);
 const socket = process.env["AGORIX_TUTOR_SOCKET"];
+const oriConfig = oriCliConfigFromEnv(process.env);
+const aiConfig = openSqliteAiConfigRepository(
+  process.env["AGORIX_AI_CONFIG_DB_PATH"] ??
+    join(homedir(), ".local", "share", "agorix", "ai-config.sqlite"),
+  defaultAiConfig(oriConfig, config),
+);
+const adminAuth = new AdminAuth(
+  process.env["AGORIX_AI_ADMIN_PASSWORD_HASH"],
+  process.env["AGORIX_AI_ADMIN_ID"] ?? "operator",
+);
 
 const server = createTutorServer({
   config,
-  ori: createOriCliService(oriCliConfigFromEnv(process.env)),
+  aiConfig,
+  adminAuth,
+  ori: createOriCliService(oriConfig, {
+    policyFor: (capability) => aiConfig.current().config.capabilities[capability],
+  }),
 });
 if (socket) {
   mkdirSync(dirname(socket), { recursive: true, mode: 0o755 });
@@ -37,6 +55,7 @@ if (socket) {
 for (const signal of ["SIGTERM", "SIGINT"] as const) {
   process.on(signal, () => {
     server.close(() => {
+      aiConfig.close();
       if (socket) {
         try {
           unlinkSync(socket);

@@ -12,6 +12,8 @@ import {
   runBoundedProcess,
   type OriCliProcess,
 } from "./oriCli.js";
+import { defaultAiConfig } from "./aiConfig.js";
+import { configFromEnv } from "./index.js";
 
 const mission = getKidsMission("kids.m1.straight", "es");
 const context = {
@@ -29,6 +31,38 @@ const validOutput = JSON.stringify({
 });
 
 describe("Ori host CLI adapter (issue #381)", () => {
+  it("applies a published model and instruction without losing deterministic fallback", async () => {
+    const calls: Parameters<OriCliProcess>[] = [];
+    let policy = defaultAiConfig(
+      oriCliConfigFromEnv({}),
+      configFromEnv({ AGORIX_TUTOR_ADAPTER: "fake" }),
+    ).capabilities.mission;
+    const service = createOriCliService(oriCliConfigFromEnv({}), {
+      policyFor: () => policy,
+      run: async (...args) => {
+        calls.push(args);
+        return args[1].includes("--version") ? "version" : validOutput;
+      },
+    });
+    policy = {
+      ...policy,
+      provider: "codex",
+      model: "custom-model",
+      promptTemplate: "Ask for a prediction first.",
+    };
+    const model = await service.respond(context);
+    expect(model.source).toBe("model");
+    const call = calls.find(([, args]) => args.includes("exec"))!;
+    expect(call[1].slice(call[1].indexOf("--model"), call[1].indexOf("--model") + 2)).toEqual([
+      "--model",
+      "custom-model",
+    ]);
+    expect(call[2].input).toContain("Ask for a prediction first.");
+    policy = { ...policy, enabled: false };
+    const count = calls.length;
+    expect((await service.respond(context)).source).toBe("fallback");
+    expect(calls).toHaveLength(count);
+  });
   it("sends only a fixed stage-1 scene summary to the real CLI boundary", async () => {
     const calls: Parameters<OriCliProcess>[] = [];
     const run: OriCliProcess = async (...args) => {

@@ -1,0 +1,313 @@
+.ai-admin {
+  --ink: #182733;
+  --muted: #596872;
+  --line: #d7dfe0;
+  --cream: #f6f5ef;
+  --teal: #087c78;
+  min-height: 100vh;
+  background: var(--cream);
+  color: var(--ink);
+  font:
+    16px/1.45 "Atkinson Hyperlegible",
+    sans-serif;
+}
+.ai-admin * {
+  box-sizing: border-box;
+}
+.ai-admin button,
+.ai-admin input,
+.ai-admin select,
+.ai-admin textarea {
+  font: inherit;
+}
+.ai-admin button {
+  cursor: pointer;
+}
+.ai-admin button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+.ai-admin :focus-visible {
+  outline: 3px solid #ef9d49;
+  outline-offset: 3px;
+}
+.ai-admin-header {
+  min-height: 112px;
+  padding: 20px clamp(20px, 5vw, 80px);
+  background: #172f37;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  border-bottom: 5px solid #e6a254;
+}
+.ai-admin-mark {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border: 2px solid #9adbd1;
+  border-radius: 17px;
+  font:
+    700 35px Epilogue,
+    sans-serif;
+  position: relative;
+}
+.ai-admin-mark span {
+  position: absolute;
+  font-size: 15px;
+  color: #e6a254;
+  right: -8px;
+  top: -8px;
+}
+.ai-admin-kicker {
+  font:
+    700 11px Epilogue,
+    sans-serif;
+  letter-spacing: 0.16em;
+  margin: 0 0 9px;
+  color: #518681;
+}
+.ai-admin-header .ai-admin-kicker {
+  color: #a9d4cd;
+}
+.ai-admin h1,
+.ai-admin h2,
+.ai-admin h3 {
+  font-family: Epilogue, sans-serif;
+  line-height: 1.15;
+  margin: 0;
+}
+.ai-admin h1 {
+  font-size: clamp(25px, 3vw, 38px);
+}
+.ai-admin h2 {
+  font-size: clamp(23px, 3vw, 33px);
+}
+.ai-admin-header .ai-admin-back {
+  margin-left: auto;
+  color: #fff;
+  text-decoration: none;
+  border: 1px solid #759298;
+  padding: 10px 14px;
+  border-radius: 8px;
+}
+.ai-admin-login {
+  max-width: 480px;
+  margin: 8vh auto;
+  padding: 38px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 19px;
+  box-shadow: 0 18px 45px #17313914;
+}
+.ai-admin-login p {
+  color: var(--muted);
+}
+.ai-admin-login form {
+  display: grid;
+  gap: 12px;
+  margin-top: 24px;
+}
+.ai-admin input,
+.ai-admin select,
+.ai-admin textarea {
+  border: 1px solid #a9b8b8;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  padding: 10px 12px;
+  width: 100%;
+}
+.ai-admin textarea {
+  resize: vertical;
+}
+.ai-admin button.primary,
+.ai-admin-login button {
+  border: 0;
+  border-radius: 8px;
+  background: var(--teal);
+  color: white;
+  padding: 11px 17px;
+  font-weight: 700;
+}
+.ai-admin-layout {
+  max-width: 1450px;
+  margin: auto;
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: clamp(24px, 4vw, 64px);
+  padding: 42px clamp(20px, 5vw, 80px);
+}
+.ai-admin-side {
+  border-right: 1px solid var(--line);
+  padding-right: 25px;
+}
+.ai-admin-side nav {
+  display: grid;
+  gap: 6px;
+}
+.ai-admin-side nav button {
+  width: 100%;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  text-align: left;
+  padding: 12px 13px;
+  color: var(--ink);
+  display: grid;
+  gap: 3px;
+}
+.ai-admin-side nav button.selected {
+  background: #dcefe9;
+  border-left: 4px solid var(--teal);
+}
+.ai-admin-side small {
+  color: var(--muted);
+}
+.ai-admin-logout {
+  margin-top: 32px;
+  background: none;
+  border: 0;
+  color: #315c5c;
+  text-decoration: underline;
+  padding: 7px;
+}
+.ai-admin-workspace {
+  min-width: 0;
+}
+.ai-admin-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 15px;
+  margin-bottom: 24px;
+}
+.ai-admin-status {
+  white-space: nowrap;
+  color: var(--teal);
+  font-weight: 700;
+}
+.ai-admin-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: clamp(22px, 3vw, 36px);
+  box-shadow: 0 10px 25px #132b3110;
+}
+.ai-admin-note {
+  margin: 0 0 26px;
+  color: var(--muted);
+}
+.ai-admin-card label {
+  display: grid;
+  gap: 7px;
+  font-weight: 700;
+}
+.ai-admin-toggle {
+  display: flex !important;
+  align-items: center;
+  gap: 12px !important;
+  padding: 16px;
+  background: #eff8f5;
+  border-radius: 9px;
+  margin-bottom: 24px;
+}
+.ai-admin-toggle input {
+  width: 21px;
+  height: 21px;
+  accent-color: var(--teal);
+}
+.ai-admin-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 24px;
+  margin-bottom: 24px;
+}
+.ai-admin-footnote {
+  font-size: 14px;
+  color: var(--muted);
+  margin: 10px 0 0;
+}
+.ai-admin-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+.ai-admin-actions button,
+.ai-admin-history button {
+  border: 1px solid #9db2b0;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  padding: 10px 14px;
+  font-weight: 700;
+}
+.ai-admin-preview,
+.ai-admin-message {
+  padding: 10px 13px;
+  border-radius: 8px;
+  background: #e1f2eb;
+  color: #235954;
+}
+.ai-admin-history {
+  margin-top: 42px;
+}
+.ai-admin-history > p {
+  color: var(--muted);
+  margin: 9px 0 20px;
+}
+.ai-admin-history ol {
+  padding: 0;
+  list-style: none;
+}
+.ai-admin-history li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  border-top: 1px solid var(--line);
+  padding: 12px 0;
+}
+.ai-admin-history small {
+  display: block;
+  color: var(--muted);
+  margin-top: 3px;
+}
+@media (max-width: 760px) {
+  .ai-admin-header {
+    min-height: 90px;
+  }
+  .ai-admin-header .ai-admin-back {
+    font-size: 13px;
+  }
+  .ai-admin-layout {
+    grid-template-columns: 1fr;
+    padding-top: 25px;
+  }
+  .ai-admin-side {
+    border: 0;
+    padding: 0;
+  }
+  .ai-admin-side nav {
+    display: flex;
+    overflow-x: auto;
+  }
+  .ai-admin-side nav button {
+    min-width: 145px;
+  }
+  .ai-admin-logout {
+    margin-top: 10px;
+  }
+  .ai-admin-grid {
+    grid-template-columns: 1fr;
+  }
+  .ai-admin-heading {
+    align-items: start;
+    flex-direction: column;
+  }
+  .ai-admin-login {
+    margin: 30px 20px;
+  }
+}
