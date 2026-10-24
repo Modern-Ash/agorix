@@ -34,7 +34,7 @@ test("Ori proposes a verified turn goal; the child accepts and runtime enforces 
   await page.getByRole("combobox", { name: "mover 1" }).selectOption("4");
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Sí", exact: true }).click();
-  await expect(page.getByRole("status")).toContainText("Probá incluir un giro");
+  await expect(page.locator(".kids-run-status")).toContainText("Probá incluir un giro");
   await page.reload();
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await page.locator(".kids-project-card").getByRole("button", { name: "Jugar" }).click();
@@ -103,7 +103,7 @@ test("creates a reachable free goal, reflects without text, and exports/imports 
   await page.getByRole("combobox", { name: "mover 1" }).selectOption("4");
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Sí", exact: true }).click();
-  await expect(page.getByRole("status")).toContainText("Llegaste");
+  await expect(page.locator(".kids-run-status")).toContainText("Llegaste");
   await page.getByRole("button", { name: "Contar ★" }).click();
   await expect(page.getByRole("heading", { name: /llegó/ })).toBeVisible();
   const reflectViolations = (

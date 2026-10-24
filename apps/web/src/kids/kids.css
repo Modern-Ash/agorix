@@ -707,8 +707,10 @@
 .kids-ori-float-zone {
   display: flex;
   justify-content: flex-end;
-  margin-top: 12px;
-  padding: 0 4px 8px;
+  position: fixed;
+  right: max(16px, calc((100vw - 1100px) / 2 + 16px));
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  z-index: 60;
 }
 .kids-ori-float-trigger {
   display: inline-flex;
@@ -757,6 +759,21 @@
 .kids-ori-float-close {
   display: block;
   margin: 0 0 10px auto;
+}
+.kids-ori-guide-zone {
+  position: fixed;
+  right: max(16px, calc((100vw - 1100px) / 2 + 16px));
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  z-index: 60;
+}
+.kids-ori-guide-above-nav {
+  bottom: calc(88px + env(safe-area-inset-bottom));
+}
+.kids-ori-guide-message {
+  margin: 0;
+  color: var(--kids-text);
+  font-size: 1.1rem;
+  line-height: 1.5;
 }
 @media (max-width: 699px) {
   .kids-ori-float-zone {

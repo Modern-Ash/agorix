@@ -20,7 +20,11 @@ export type KidsV2Feature = (typeof KIDS_V2_FEATURES)[number];
 
 export const KIDS_FLAGS_KEY = "agorix.kids.flags.v1";
 const FLAGS_CHANGED = "agorix:kids-flags-changed";
-const DEFAULT_FEATURES: readonly KidsV2Feature[] = ["customImages"];
+// Creative Kids tools are visible by default. Account linking needs a live
+// verification service and remains a separate operational release.
+const DEFAULT_FEATURES: readonly KidsV2Feature[] = KIDS_V2_FEATURES.filter(
+  (feature) => feature !== "adultLink",
+);
 
 export interface KidsFlagSources {
   readonly search?: string;

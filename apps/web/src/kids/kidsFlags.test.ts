@@ -1,13 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { KIDS_FLAGS_KEY, kidsV2Enabled, kidsV2Features, setKidsV2Feature } from "./kidsFlags.js";
+import {
+  KIDS_FLAGS_KEY,
+  KIDS_V2_FEATURES,
+  kidsV2Enabled,
+  kidsV2Features,
+  setKidsV2Feature,
+} from "./kidsFlags.js";
 
 const storageWith = (value: string | null) => ({ getItem: () => value });
 
 describe("Kids v2 flags (issue #439)", () => {
-  it("enables approved local images in a new browser, leaving other v2 features off", () => {
-    expect([...kidsV2Features()]).toEqual(["customImages"]);
+  it("enables creative tools in a new browser and keeps account linking gated", () => {
+    expect([...kidsV2Features()]).toEqual(KIDS_V2_FEATURES.filter((name) => name !== "adultLink"));
     expect(kidsV2Enabled("customImages", { storage: storageWith(null), search: "" })).toBe(true);
-    expect(kidsV2Enabled("duplicate", { storage: storageWith(null), search: "" })).toBe(false);
+    expect(kidsV2Enabled("duplicate", { storage: storageWith(null), search: "" })).toBe(true);
+    expect(kidsV2Enabled("oriFloat", { storage: storageWith(null), search: "" })).toBe(true);
+    expect(kidsV2Enabled("adultLink", { storage: storageWith(null), search: "" })).toBe(false);
   });
 
   it("accepts an explicit empty list as a rollback", () => {
@@ -32,11 +40,9 @@ describe("Kids v2 flags (issue #439)", () => {
   });
 
   it("accepts the query parameter outside production and drops unknown names", () => {
-    expect([...kidsV2Features({ search: "?kidsv2=tutorial,bogus,ageBands" })].sort()).toEqual([
-      "ageBands",
-      "customImages",
-      "tutorial",
-    ]);
+    expect([...kidsV2Features({ search: "?kidsv2=adultLink,bogus" })].sort()).toEqual(
+      [...KIDS_V2_FEATURES].sort(),
+    );
   });
 
   it("ignores the query parameter in production but keeps storage", () => {

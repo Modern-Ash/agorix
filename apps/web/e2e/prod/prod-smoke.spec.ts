@@ -116,7 +116,7 @@ test("the default Kids journey reaches the world map", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Misión 1" })).toBeVisible();
 });
 
-test("a fresh browser sees only the approved Kids v2 default", async ({ page }) => {
+test("a fresh browser sees the creative Kids tools by default", async ({ page }) => {
   await page.goto("/");
   expect(await page.evaluate(() => localStorage.getItem("agorix.kids.flags.v1"))).toBeNull();
   await page.getByRole("button", { name: "Seguir" }).click();
@@ -125,8 +125,9 @@ test("a fresh browser sees only the approved Kids v2 default", async ({ page }) 
   await page.getByRole("button", { name: "Crear", exact: true }).click();
   await expect(page.getByLabel("+ Explorador")).toBeVisible();
   await expect(page.getByLabel("+ Fondo")).toBeVisible();
-  await expect(page.locator(".kids-root")).toHaveAttribute("data-block-palette", "default");
-  await expect(page.locator(".kids-root")).not.toHaveAttribute("data-age-band");
+  await expect(page.locator(".kids-root")).toHaveAttribute("data-block-palette", "scratch");
+  await expect(page.locator(".kids-root")).toHaveAttribute("data-age-band", "6-8");
+  await expect(page.getByRole("button", { name: "Hablar con Ori" })).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem("agorix.kids.flags.v1"))).toBeNull();
 });
 

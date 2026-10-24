@@ -1,10 +1,20 @@
-# Kids v2: staged default rollout (#524)
+# Kids v2: default availability (#524, #538)
 
-The v2 implementation is available in `main`. Availability and the default experience are separate decisions. As of 2026-10-23, the only approved default flag is `customImages` (#501, #524, #531). The learner session in #389 has not happened; #413 cannot claim learner validation without its findings. Do not turn on another child-facing default based only on automated tests.
+## Owner decision, 2026-10-24
+
+Enable all implemented creative Kids flags by default while the team debugs the complete experience. This supersedes the staged child-facing rollout below. A new browser now enables duplicate, zoom, context menu, shortcuts, puzzle shape, age bands, custom images, sound library, adult-supplied custom audio, Ori float, tutorial, and advanced operations. The adult Ori and custom-image controls still work. Account linking (`adultLink`) remains off because its verification service has no configured link secret or working SMTP; exposing a dead linking action would be misleading. Public sharing/remix stays excluded by ADR 0009. The requested Scratch capability parity is tracked in #538 and is not completed by switching flags on.
+
+Ori stays visible on every Kids screen when adult suggestions are enabled. Outside programming editors, the floating surface gives a short contextual prompt from local, fixed copy; in the editor it opens a reviewable program proposal when one exists. The advanced editors retain their existing bounded "ask Ori" proposal controls. Presence does not imply a model request on every screen.
+
+An existing browser with an explicit `agorix.kids.flags.v1` list keeps that local choice, including `[]`; the owner may change settings in Adultos. The real learner sessions #389/#413 remain pending and must not be inferred from automated tests.
+
+The table below records the original staged plan and risks for debugging; its staged approval criteria no longer govern the creative defaults.
+
+The v2 implementation is available in `main`. Availability and the default experience are separate decisions. The learner session in #389 has not happened; #413 cannot claim learner validation without its findings.
 
 ## Current production state
 
-`apps/web/src/kids/kidsFlags.ts` defines the 13 flags. A fresh browser uses only `customImages`. An explicit list in `agorix.kids.flags.v1` replaces that default, including `[]` to disable it in that browser. Production ignores `?kidsv2=...`; the query parameter is for local development. Older saved projects and `.agorix` files are not changed by a flag choice.
+`apps/web/src/kids/kidsFlags.ts` defines the 13 flags. A fresh browser uses all except `adultLink`. An explicit list in `agorix.kids.flags.v1` replaces that default, including `[]` to disable it in that browser. Production ignores `?kidsv2=...`; the query parameter is for local development. Older saved projects and `.agorix` files are not changed by a flag choice.
 
 | Flag           | Intended release stage      | Evidence already in the repo                                                         | Decision or gate still needed                                                                                                                        |
 | -------------- | --------------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -22,7 +32,7 @@ The v2 implementation is available in `main`. Availability and the default exper
 | `adultLink`    | independent account release | `kids-adult-link`, `kids-golden`                                                     | Configure `AGORIX_LINK_SECRET` and working SMTP; complete a real verification, six-digit link and unlink check. The server feature is currently off. |
 | `puzzleShape`  | hold                        | `kids-puzzle-shape`, `kids-golden`                                                   | Product design decision: `docs/product/DESIGN_SYSTEM.md` does not adopt permanent Scratch-style puzzle styling by default.                           |
 
-The automated `kids-golden` journey runs with every flag off and with every flag on at phone, tablet and landscape sizes. That protects compatibility, not learner acceptance. The stage numbers above are a proposed order; **none authorizes a new default**. Record #389 findings, review them against #413, then approve each stage before changing `DEFAULT_FEATURES`.
+The automated `kids-golden` journey runs with every flag off and with every flag on at phone, tablet and landscape sizes. That protects compatibility, not learner acceptance. Record #389 findings and review them against #413 before claiming pedagogical validation.
 
 ## Release checks for a stage
 

@@ -53,15 +53,24 @@ async function openEditor(page: Page, locale: "es" | "en" = "es") {
   await page.getByRole("button", { name: locale === "es" ? "Misión 1" : "Mission 1" }).click();
 }
 
+async function openOriProposal(page: Page) {
+  await page.getByRole("button", { name: "Abrir propuesta de Ori" }).click();
+  const proposal = page
+    .getByRole("dialog", { name: "Propuesta de Ori" })
+    .locator(".kids-ori-proposal");
+  await expect(proposal).toBeVisible();
+  return proposal;
+}
+
 test("builds, predicts, runs, steps and undoes on the real Kids mission", async ({ page }) => {
   await openEditor(page);
   await page.getByRole("button", { name: "+ mover", exact: true }).click();
   await page.getByRole("combobox", { name: "mover 1" }).selectOption("4");
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
-  await expect(page.getByRole("status")).not.toContainText("Llegaste");
+  await expect(page.locator(".kids-run-status")).not.toContainText("Llegaste");
   await page.getByRole("dialog").getByRole("button", { name: "Sí", exact: true }).click();
-  await expect(page.getByRole("status")).toContainText("Llegaste");
+  await expect(page.locator(".kids-run-status")).toContainText("Llegaste");
   await expect(page.locator(".kids-world-avatar")).toHaveText("🐸");
   await expect
     .poll(() =>
@@ -75,12 +84,13 @@ test("builds, predicts, runs, steps and undoes on the real Kids mission", async 
   await page.getByRole("button", { name: "Volver", exact: true }).click();
   await page.getByRole("button", { name: "Paso", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "No sé" }).click();
-  await expect(page.getByRole("status")).toContainText("Llegaste");
+  await expect(page.locator(".kids-run-status")).toContainText("Llegaste");
   await page.getByRole("button", { name: "Deshacer" }).click();
   await expect(page.getByRole("combobox", { name: "mover 1" })).toHaveValue("1");
   await page.getByRole("button", { name: "Rehacer" }).click();
   await expect(page.getByRole("combobox", { name: "mover 1" })).toHaveValue("4");
   await page.getByRole("button", { name: "Código", exact: true }).click();
+  await page.getByRole("button", { name: "Más lenguajes" }).click();
   await page.getByRole("button", { name: "Python" }).click();
   await expect(page.locator(".kids-code-view")).toContainText("move(160)");
   await page.getByRole("button", { name: "Java", exact: true }).click();
@@ -134,14 +144,11 @@ test("Ori offers a validated move, applies it only on Use, and Undo restores the
   page,
 }) => {
   await openEditor(page);
-  await expect(page.locator(".kids-ori-proposal")).toBeVisible();
+  const proposal = await openOriProposal(page);
   await expect(page.locator(".kids-program-block")).toHaveCount(0);
-  await page.locator(".kids-ori-proposal").getByRole("button", { name: "Ver cambios" }).click();
+  await proposal.getByRole("button", { name: "Ver cambios" }).click();
   await expect(page.locator(".kids-ori-diff")).toContainText("move");
-  await page
-    .locator(".kids-ori-proposal")
-    .getByRole("button", { name: "Usar", exact: true })
-    .click();
+  await proposal.getByRole("button", { name: "Usar", exact: true }).click();
   await expect(page.getByRole("combobox", { name: "mover 1" })).toHaveValue("4");
   await page.getByRole("button", { name: "Deshacer" }).click();
   await expect(page.locator(".kids-program-block")).toHaveCount(0);
@@ -180,12 +187,10 @@ test("Ori shows a validated agent suggestion and leaves the program unchanged un
     await route.fulfill({ json: { message: "ignored", proposal } });
   });
   await openEditor(page);
-  await expect(page.locator(".kids-ori-proposal")).toContainText("mover 2");
+  const proposalCard = await openOriProposal(page);
+  await expect(proposalCard).toContainText("mover 2");
   await expect(page.locator(".kids-program-block")).toHaveCount(0);
-  await page
-    .locator(".kids-ori-proposal")
-    .getByRole("button", { name: "Usar", exact: true })
-    .click();
+  await proposalCard.getByRole("button", { name: "Usar", exact: true }).click();
   await expect(page.getByRole("combobox", { name: "mover 1" })).toHaveValue("2");
   await expect(page.locator(".kids-editor")).not.toContainText(
     /conectad|proveedor|provider|offline/i,
@@ -215,7 +220,7 @@ test("Ori silently uses local rules for an invalid or late agent answer", async 
     }),
   );
   await openEditor(page);
-  await expect(page.locator(".kids-ori-proposal")).toContainText("mover 4");
+  await expect(await openOriProposal(page)).toContainText("mover 4");
   await page.unroute("**/api/tutor/ori");
   await page.route("**/api/tutor/ori", async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 11_000));
@@ -227,7 +232,7 @@ test("Ori silently uses local rules for an invalid or late agent answer", async 
   });
   await page.reload();
   await page.getByRole("button", { name: "Misión 1" }).click();
-  await expect(page.locator(".kids-ori-proposal")).toContainText("mover 4", { timeout: 13_000 });
+  await expect(await openOriProposal(page)).toContainText("mover 4", { timeout: 13_000 });
   await expect(page.locator(".kids-editor")).not.toContainText(
     /conectad|proveedor|provider|offline/i,
   );
@@ -237,10 +242,9 @@ test("Ori's No leaves the program alone and repeated declines stop automatic off
   page,
 }) => {
   await openEditor(page);
-  await page.locator(".kids-ori-proposal").getByRole("button", { name: "No, gracias" }).click();
+  await (await openOriProposal(page)).getByRole("button", { name: "No, gracias" }).click();
   await expect(page.locator(".kids-program-block")).toHaveCount(0);
-  await page.locator(".kids-ori-card").getByRole("button").click();
-  await page.locator(".kids-ori-proposal").getByRole("button", { name: "No, gracias" }).click();
+  await (await openOriProposal(page)).getByRole("button", { name: "No, gracias" }).click();
   await page.reload();
   await page.getByRole("button", { name: "Misión 1" }).click();
   await expect(page.locator(".kids-ori-proposal")).toHaveCount(0);
@@ -254,8 +258,9 @@ test("Ori's No leaves the program alone and repeated declines stop automatic off
 
 test("Ori's Change commits the child's chosen value", async ({ page }) => {
   await openEditor(page);
-  await page.locator(".kids-ori-proposal").getByRole("combobox").selectOption("3");
-  await page.locator(".kids-ori-proposal").getByRole("button", { name: "Usar y cambiar" }).click();
+  const proposal = await openOriProposal(page);
+  await proposal.getByRole("combobox").selectOption("3");
+  await proposal.getByRole("button", { name: "Usar y cambiar" }).click();
   await expect(page.getByRole("combobox", { name: "mover 1" })).toHaveValue("3");
   const events = await page.evaluate(() =>
     JSON.parse(sessionStorage.getItem("agorix.kids.reflections.v1") ?? "[]"),
@@ -266,11 +271,11 @@ test("Ori's Change commits the child's chosen value", async ({ page }) => {
 test("Ori speaks after an off-target run with no API connection", async ({ page }) => {
   await page.route("**/api/**", (route) => route.abort());
   await openEditor(page);
-  await page.locator(".kids-ori-proposal").getByRole("button", { name: "No, gracias" }).click();
+  await (await openOriProposal(page)).getByRole("button", { name: "No, gracias" }).click();
   await page.getByRole("button", { name: "+ mover", exact: true }).click();
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Sí", exact: true }).click();
-  await expect(page.locator(".kids-ori-proposal")).toBeVisible();
+  await expect(await openOriProposal(page)).toBeVisible();
   await expect(page.locator(".kids-program-block")).toHaveCount(1);
 });
 
@@ -281,7 +286,7 @@ test("shows wall evidence and has no serious accessibility violations", async ({
   await page.getByRole("button", { name: "+ mover", exact: true }).click();
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "No", exact: true }).click();
-  await expect(page.getByRole("status")).toContainText("Chocó con el borde");
+  await expect(page.locator(".kids-run-status")).toContainText("Chocó con el borde");
   const violations = (
     await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
   ).violations.filter(
@@ -300,7 +305,7 @@ test("palette works by keyboard and repeat executes its child blocks", async ({ 
   await page.getByRole("combobox", { name: "move 1" }).last().selectOption("2");
   await page.getByRole("button", { name: "Run", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Not sure" }).click();
-  await expect(page.getByRole("status")).toContainText("reached");
+  await expect(page.locator(".kids-run-status")).toContainText("reached");
   await expect(page.locator(".kids-program-block[data-active=true]")).toHaveCount(1);
 });
 

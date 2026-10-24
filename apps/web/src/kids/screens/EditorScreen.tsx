@@ -1042,7 +1042,7 @@ export function EditorScreen({
           {oriSuggestions
             ? !freeProjectId || freeGoal
               ? oriOffer
-                ? oriFloatEnabled && oriOffer.proposal
+                ? oriFloatEnabled
                   ? null
                   : oriCard(oriOpen)
                 : null
@@ -1227,12 +1227,18 @@ export function EditorScreen({
           </div>
         </div>
       </div>
-      {oriSuggestions && (!freeProjectId || freeGoal) && oriFloatEnabled && oriOffer?.proposal ? (
+      {oriSuggestions && oriFloatEnabled ? (
         <div className="kids-ori-float-zone">
           <button
             type="button"
             className="kids-ori-float-trigger"
-            aria-label={t("openOriProposal")}
+            aria-label={
+              oriOffer?.proposal
+                ? t("openOriProposal")
+                : locale === "es"
+                  ? "Abrir ayuda de Ori"
+                  : "Open Ori help"
+            }
             onClick={() => setOriOpen(true)}
           >
             <KidsSprite slot="ori" />
@@ -1243,7 +1249,13 @@ export function EditorScreen({
               className="kids-ori-float-backdrop"
               role="dialog"
               aria-modal="true"
-              aria-label={t("oriProposalTitle")}
+              aria-label={
+                oriOffer?.proposal
+                  ? t("oriProposalTitle")
+                  : locale === "es"
+                    ? "Ayuda de Ori"
+                    : "Ori help"
+              }
               onKeyDown={(event) => {
                 if (event.key === "Escape") {
                   event.stopPropagation();
@@ -1260,7 +1272,19 @@ export function EditorScreen({
                 >
                   {t("closeOriProposal")}
                 </button>
-                {oriCard(true)}
+                {oriOffer?.proposal ? (
+                  oriCard(true)
+                ) : (
+                  <p className="kids-ori-guide-message">
+                    {locale === "es"
+                      ? freeProjectId && !freeGoal
+                        ? "Elegí qué querés lograr en tu mundo. Después podemos pensar los bloques juntos."
+                        : "Seguí creando. Si tengo una idea para tu programa, vas a poder revisarla antes de usarla."
+                      : freeProjectId && !freeGoal
+                        ? "Choose what you want to achieve in your world. Then we can think about the blocks together."
+                        : "Keep creating. If I have an idea for your program, you can review it before using it."}
+                  </p>
+                )}
               </div>
             </div>
           ) : null}
