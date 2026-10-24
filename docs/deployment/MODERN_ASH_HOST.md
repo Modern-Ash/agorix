@@ -181,26 +181,50 @@ scripts/activate-tutor-host.sh --activate
 ```
 
 The activation script requires a clean, synced `main`, a logged-in Codex CLI and a matching public
-`version.json`. It builds the tutor, installs and starts its user unit, then sends a synthetic
-mission through the public route. The read-only `node scripts/check-ori-live.mjs` verifies
-`lastOriSource: model` on the adult health endpoint and a bounded, structured proposal. It prints
-provider and latency only; no child data or model text. If activation fails, the script disables
+`version.json`. It builds the tutor, installs and starts its user unit, then sends synthetic
+missions through the public route. The read-only `node scripts/check-ori-live.mjs` sends three
+fixed requests by default and requires a majority of real, validated proposals. It prints
+provider, outcome classes, aggregate latency and request latency only; no child data or model text.
+Use `node scripts/check-ori-live.mjs 5` for a five-sample operator check. A single timeout is
+visible but does not invalidate an otherwise healthy update; persistent fallback fails the check.
+On 2026-10-24, the previously deployed bundle returned 3 validated model proposals in 5
+synthetic sequential requests (4.6–7.1 s end-to-end). Its two 7.1 s fallbacks were labeled
+`provider-unavailable` by the old health code; the new bundle reports CLI timeouts separately.
+Keep the CLI budget at 7 s, nginx at 9 s and the browser at 10 s. Use the rolling latency
+metrics and repeated smoke before changing model or request strategy.
+If activation fails, the script disables
 and removes the new service; the Web keeps its deterministic fallback. For a later check, use
 `scripts/activate-tutor-host.sh --verify-only`.
 The script waits for the local socket before the public check. If an earlier failed activation
 left Docker bound to a removed runtime directory, it recreates the Web container with the same
 deployed image to renew that mount. The service preserves its runtime directory across restarts.
 
-The unit's `WorkingDirectory` and `ExecStart` assume `%h/dev-agora/agorix`; run activation from
-that checkout. After a future merge that changes `apps/tutor-api`, rebuild it and run
-`systemctl --user restart agorix-tutor`. The systemd unit supervises failures and preserves the
-existing user login. Set `AGORIX_ORI_PROVIDER=auto` (default: probe Codex, then OpenCode), `codex`,
+The initial unit assumes `%h/dev-agora/agorix`. For later merges, use a clean, synced `main`
+checkout, including a stable `main` worktree. After publishing the matching Web commit and
+obtaining separate authorization for the host update, run:
+
+```bash
+scripts/update-tutor-host.sh --preflight-only
+scripts/update-tutor-host.sh --activate
+```
+
+The update builds a versioned tutor bundle, makes a consistent SQLite backup, installs a systemd
+drop-in pointing to that bundle, restarts the service and checks three real synthetic proposals
+through the public route. On failure it restores the previous drop-in and restarts the old bundle.
+The backup and versioned bundles remain under `~/.local/share/agorix/tutor-releases` for inspection.
+If `AGORIX_AI_CONFIG_DB_PATH` is customized, export the same path while running the update.
+The script does not restore SQLite automatically because live configuration changes may have
+occurred during the check. For a read-only recheck use `scripts/update-tutor-host.sh --verify-only`.
+The systemd unit supervises failures and preserves the existing user login. Set
+`AGORIX_ORI_PROVIDER=auto` (default: probe Codex, then OpenCode), `codex`,
 `opencode`, or `disabled` in the optional host-only environment file. Codex defaults to
 `gpt-6-luna`; `AGORIX_ORI_CODEX_MODEL` can select another model supported by the host login.
 `AGORIX_ORI_TIMEOUT_MS` is bounded to 0.5–7 seconds. Nginx waits 9 seconds and the browser allows
 10 seconds; this order lets a valid model answer arrive while each layer remains bounded. The health
 probe uses `--version` and caches its result for 15 seconds;
-it does not spend model tokens.
+it does not spend model tokens. The health endpoint reports the last coarse error class
+(`timeout`, `invalid-response` or `provider-unavailable`) and a rolling 32-invocation
+latency window (`p50Ms`, `p95Ms`) for mission Ori. It stores no prompt, program or child text.
 
 The Kids editor calls `POST /api/tutor/ori` for authored missions. It validates the returned
 proposal again against the current program and allowed Kids blocks. A failed, invalid or late
