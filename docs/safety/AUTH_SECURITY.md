@@ -81,3 +81,24 @@ beside `auth-service`; it does not change how usernames, passwords or sessions w
   with no downgrade), credentials are never written before TLS, delivery runs in the background so the
   HTTP answer cannot reveal whether an address exists, and logs carry only the failure kind. Without a
   transport the default `NoopMailer` drops messages.
+
+## Proposed organizer capability for closed groups (ADR 0010, #556)
+
+The `organizer` is a **capability of an existing adult account**, not a child account, a second
+password system or the AI administrator. A verified adult email is necessary to request it but is
+not sufficient to operate another person's group. F1 (#566) must persist the capability with
+grant/revoke audit and enforce it in the server for every create, read, update, join approval,
+expulsion and close operation. A revoked or unverified account loses group control immediately.
+
+The adult-child device link from #504 grants only the existing summary and sync rights for that
+linked device. It does not grant organizer authority over the linked child's peers; conversely, an
+organizer may see only the current group's ephemeral alias, team and aggregate contribution, not
+adult emails or another family's linked-device summaries. The AI administrator from #545 has no
+group membership or moderation authority.
+
+The group host has an ephemeral per-device key for each admitted slot and validates every input.
+Join codes are short-lived and one-use; the organizer explicitly accepts each join. A family/friends
+organizer records adult-consent attestations per child, while a school flow requires institution-level
+authorization and notice. The legal/privacy review must approve those flows before group mode is
+activated for real children. Group membership and device keys expire and are deleted on close;
+precise retention and backup windows are F1 acceptance criteria.

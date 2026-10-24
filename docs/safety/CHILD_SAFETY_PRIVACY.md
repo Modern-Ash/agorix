@@ -91,6 +91,35 @@ new review.
 - strict project schema validation;
 - external links controlled.
 
+## Proposed closed group mode (ADR 0010, issue #556)
+
+Group mode is **not active**. It is a closed, same-room exception under review; the prohibitions on
+public sharing, discovery and chat remain. An email-verified adult organizer starts and moderates
+the session. A child joins without an account, real name, email, school, location or free-text field;
+the displayed alias comes from a fixed list. The child can still use the local app without a group.
+
+| Data                                                               | Purpose                                                     | Location and retention target                                                                                                          |
+| ------------------------------------------------------------------ | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Organizer account and verified adult email                         | Authenticate and control group creation                     | Existing adult account lifecycle; never shown to a child or sent to Ori.                                                               |
+| Group ID, generated aliases, device slots and consent attestations | Admit and moderate up to four children                      | Ephemeral session; delete on close or expiry. F1 must set exact TTLs and backup windows.                                               |
+| Program and ordered game inputs                                    | Build and play in the room                                  | Peers only by default; no server project copy. Explicitly exported `.agorix` files remain on the exporting device after group closure. |
+| Optional WebRTC offer, answer and ICE candidates                   | Establish a peer connection when QR exchange is impractical | Short-lived server mailbox if enabled; delete after pairing/expiry. These bundles can reveal network addresses.                        |
+| Optional TURN traffic                                              | Connect peers on restrictive networks                       | Encrypted game packets transit the relay; the provider can observe IP, timing and volume metadata. No child content log.               |
+| Safety decision codes                                              | Explain a rejected share and monitor abuse                  | Counts and coarse reasons only; no image, project text, alias or raw input retained in logs.                                           |
+
+Custom images can be added locally by a child when an adult enables `customImages` (#531). They
+must not be transmitted to another group device until a separate local screening and organizer
+approval pipeline is implemented. A local classifier is an aid, not a promise of safety; it fails
+closed. No child/group identifier or content goes to Ori or a remote provider. The organizer can
+remove a peer, mute reactions, close the group and request local deletion; a previously exported
+file cannot be remotely erased.
+
+Before launch with real children: approve ADR 0010 and the group spec, test on actual tablets and
+school networks, and obtain jurisdiction-specific legal/privacy review of the organizer's authority,
+adult notice or consent, retention and deletion. The first release must publish an understandable
+notice for children and organizers and a way to end participation. This is a design constraint, not
+a claim of legal compliance.
+
 ## Future work
 
 Before real child accounts, remote project storage or public release, perform
