@@ -234,6 +234,30 @@ export function selectStudioArt(
   });
 }
 
+/** Replace only child-created art; bundled assets are never editable. */
+export function updateStudioArt(
+  id: string,
+  assetId: string,
+  dataUrl: string,
+  store: ProjectStore = new ProjectStore(),
+): void {
+  if (!STUDIO_ID.test(id) || !validKidsImageDataUrl(dataUrl))
+    throw new RangeError("invalid studio image");
+  const saved = store.load(id);
+  validateStudioProgram(saved.program);
+  const custom = studioArtAssets(
+    saved.metadata.assets?.filter((asset) => asset.source.startsWith("data:")),
+  );
+  if (!custom.some((asset) => asset.id === assetId)) throw new RangeError("unknown studio art");
+  store.save(id, saved.program, {
+    ...saved.metadata,
+    updatedAt: new Date().toISOString(),
+    assets: (saved.metadata.assets ?? []).map((asset) =>
+      asset.id === assetId ? { ...asset, source: dataUrl } : asset,
+    ),
+  });
+}
+
 export function setStudioActorPosition(
   id: string,
   actorId: string,

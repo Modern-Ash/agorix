@@ -30,6 +30,25 @@ test("drawn costume and backdrop survive adult-approved export and import", asyn
     "background-image",
     /data:image/,
   );
+  const firstCostume = await page
+    .locator(".kids-studio-stage-actor .kids-art-image")
+    .evaluate((element) => getComputedStyle(element).backgroundImage);
+  await page.getByRole("button", { name: "Editar Mi disfraz 1" }).click();
+  await expect(costumeCanvas).toBeVisible();
+  await expect(page.getByRole("button", { name: "Guardar dibujo" })).toBeEnabled();
+  await page.getByRole("button", { name: "Color #ef627d" }).click();
+  await costumeCanvas.scrollIntoViewIfNeeded();
+  const editBounds = await costumeCanvas.boundingBox();
+  expect(editBounds).not.toBeNull();
+  await page.mouse.click(editBounds!.x + 120, editBounds!.y + 120);
+  await page.getByRole("button", { name: "Guardar dibujo" }).click();
+  await expect
+    .poll(() =>
+      page
+        .locator(".kids-studio-stage-actor .kids-art-image")
+        .evaluate((element) => getComputedStyle(element).backgroundImage),
+    )
+    .not.toBe(firstCostume);
   await page.getByRole("button", { name: "Dibujar fondo" }).click();
   await page.getByRole("button", { name: "Guardar dibujo" }).click();
   await expect(page.getByRole("group", { name: "Mis fondos" })).toBeVisible();

@@ -17,6 +17,7 @@ import {
   moveStudioActorLayer,
   saveStudioProject,
   selectStudioArt,
+  updateStudioArt,
   setStudioActorPosition,
   setStudioBackdrop,
 } from "./kidsStudioProjects.js";
@@ -111,6 +112,35 @@ describe("Kids studio projects", () => {
       ),
     ).toThrow();
     expect(store.load(project.id)).toEqual(before);
+  });
+  it("edits only child art while preserving its ID and portable reference", () => {
+    const { store, index } = memory();
+    const project = createStudioProject("nova", "forest", "es", store, index);
+    const actor = "actor:studio-1-nova";
+    const assetId = addStudioArt(project.id, "costume", actor, png, "es", store, index);
+    const second = addStudioArt(project.id, "backdrop", actor, png, "es", store, index);
+    const edited =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==";
+    const before = store.load(project.id);
+    expect(() => updateStudioArt(project.id, "costume:nova", edited, store)).toThrow();
+    expect(() =>
+      updateStudioArt(project.id, assetId, "data:image/svg+xml;base64,PHN2Zz4=", store),
+    ).toThrow();
+    expect(store.load(project.id)).toEqual(before);
+    updateStudioArt(project.id, assetId, edited, store);
+    const saved = store.load(project.id);
+    expect(saved.metadata.assets?.find((asset) => asset.id === assetId)?.source).toBe(edited);
+    expect(saved.metadata.assets?.find((asset) => asset.id === second)?.source).toBe(png);
+    expect(saved.metadata.actors?.items[0]?.costumeId).toBe(assetId);
+    const copy = importStudioProject(
+      exportStudioProject(project.id, store, true),
+      "es",
+      store,
+      index,
+    );
+    expect(store.load(copy.id).metadata.assets?.find((asset) => asset.id === assetId)?.source).toBe(
+      edited,
+    );
   });
   it("saves actors, scripts and a selected backdrop, then exports and imports a portable scene", () => {
     const { store, index } = memory();
