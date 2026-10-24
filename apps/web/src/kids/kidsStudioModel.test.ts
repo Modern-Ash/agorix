@@ -750,4 +750,21 @@ describe("Kids creative studio", () => {
       appendStudioStatement(history, nova, { type: "goToLayer", layer: "middle" as never }),
     ).toThrow();
   });
+  it("glides a character to a stage point and rejects points or durations outside the scene", () => {
+    const nova = "actor:studio-1-nova";
+    let history = createEditorHistory(createStudioProgram("nova"));
+    history = appendStudioStatement(history, nova, { type: "glideTo", x: 200, y: 60, seconds: 2 });
+    const result = runMultiActorProgram(
+      history.current,
+      creativeForStudio(history.current, "forest", "es"),
+    );
+    expect(result.actors[0]?.world.sprite).toMatchObject({ x: 200, y: 60 });
+    for (const bad of [
+      { x: 321, y: 0, seconds: 1 },
+      { x: 0, y: 121, seconds: 1 },
+      { x: 10.5, y: 0, seconds: 1 },
+      { x: 0, y: 0, seconds: 4 },
+    ])
+      expect(() => appendStudioStatement(history, nova, { type: "glideTo", ...bad })).toThrow();
+  });
 });

@@ -167,3 +167,9 @@ Each iteration needs an issue with an observable child journey, success and fail
 - Escena libre adds **Pasar al frente** and **Pasar al fondo**. The canonical `goToLayer` statement moves the running character to the front or back of the stage order for that run, and the stage and each replay frame draw characters in that order. The saved scene order set with the layer buttons is not changed by a run, and the order in which characters run does not change either.
 - The validator, runtime, block adapter and Agorix Code, Python and TypeScript projections derive from the same program. For a single sprite the block is a harmless step. Unit and mobile browser tests cover front, back, run order, the unchanged saved order, accessibility and reopening.
 - Layering relative to one chosen character, graphic effects and next costume remain open.
+
+## Glide to position (next #538 increment)
+
+- Escena libre adds **Deslizar a posición**, reusing the horizontal and vertical fields of Go to position and the 0.5, 1, 2 or 3 second choice of Wait. The canonical `glideTo` statement ends at the target without changing the heading and spends those virtual seconds, sharing the 60-second virtual budget with `wait`; going over it ends the run as budget-exceeded.
+- The run trace records one step with the position before and after; there are no in-between positions, so replay shows the character jumping to the target rather than sliding. The validator, runtime, block adapter and Agorix Code, Python and TypeScript projections derive from the same program. Unit and mobile browser tests cover bounds, virtual time, the shared budget, accessibility and reopening.
+- Animated in-between frames, gliding to another character or a random position, and rotation style remain open.

@@ -227,6 +227,11 @@ function normalizeRandomSeed(seed: number | undefined): number {
   return Math.trunc(seed) >>> 0;
 }
 
+function advanceVirtualClock(state: MutableRunState, seconds: number): void {
+  state.virtualSeconds = Math.round((state.virtualSeconds + seconds) * 1000) / 1000;
+  if (state.virtualSeconds > MAX_VIRTUAL_SECONDS) throw new ExecutionHalt("budget-exceeded");
+}
+
 function addNote(state: MutableRunState, note: string): void {
   if (state.notes.length < 20) state.notes.push(note);
 }
@@ -429,6 +434,10 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
     case "goTo":
       state.world = goToWorld(state.world, statement.x, statement.y);
       break;
+    case "glideTo":
+      state.world = goToWorld(state.world, statement.x, statement.y);
+      advanceVirtualClock(state, statement.seconds);
+      break;
     case "turn":
       state.world = turnWorld(state.world, statement.degrees);
       break;
@@ -500,8 +509,7 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
       break;
     }
     case "wait":
-      state.virtualSeconds = Math.round((state.virtualSeconds + statement.seconds) * 1000) / 1000;
-      if (state.virtualSeconds > MAX_VIRTUAL_SECONDS) throw new ExecutionHalt("budget-exceeded");
+      advanceVirtualClock(state, statement.seconds);
       break;
     case "switchCostume":
       state.world = switchCostumeWorld(state.world, statement.costumeId);

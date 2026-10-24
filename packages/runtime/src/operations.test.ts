@@ -60,6 +60,7 @@ describe("runtime operation allowlist", () => {
       "changeSize",
       "changeVariable",
       "changeVolume",
+      "glideTo",
       "goTo",
       "goToLayer",
       "hide",

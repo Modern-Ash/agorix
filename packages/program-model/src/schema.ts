@@ -218,6 +218,14 @@ export interface GoToStatement {
   readonly y: number;
 }
 
+/** Ends at the target like goTo and spends the given virtual seconds; no in-between positions. */
+export interface GlideToStatement {
+  readonly type: "glideTo";
+  readonly x: number;
+  readonly y: number;
+  readonly seconds: number;
+}
+
 export interface TurnStatement {
   readonly type: "turn";
   readonly degrees: number;
@@ -383,6 +391,7 @@ export interface IfStatement {
 export type Statement =
   | MoveStatement
   | GoToStatement
+  | GlideToStatement
   | TurnStatement
   | PointInDirectionStatement
   | PointTowardsStatement

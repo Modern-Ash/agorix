@@ -445,6 +445,24 @@ describe("layers", () => {
   });
 });
 
+describe("glide", () => {
+  it("projects glideTo", () => {
+    const program = {
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [{ type: "glideTo", x: 120, y: -40, seconds: 2 }],
+        },
+      ],
+    } as unknown as ProjectProgram;
+    const result = projectProgram(program);
+    expect(result.code).toContain("sprite.glideTo(120, -40, 2);");
+    expectValidRanges(result);
+  });
+});
+
 describe("TypeScript LanguageProjection registry", () => {
   it("is selectable by the official typescript id", async () => {
     const { createLanguageProjectionRegistry } = await import("@agorix/language-projection");
