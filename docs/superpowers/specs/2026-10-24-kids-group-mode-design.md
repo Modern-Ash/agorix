@@ -38,12 +38,12 @@ Kids in the same room (a class, or an adult with their children and friends) sho
 
 ### Options considered
 
-| Option | Verdict |
-| --- | --- |
-| Cloud WebSocket relay | Rejected for v1. Not local, needs Internet, routes group traffic through the server, adds a realtime surface to an HTTP-only server. Possible later as an explicit fallback. |
+| Option                                  | Verdict                                                                                                                                                                                 |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cloud WebSocket relay                   | Rejected for v1. Not local, needs Internet, routes group traffic through the server, adds a realtime surface to an HTTP-only server. Possible later as an explicit fallback.            |
 | **WebRTC P2P, star, in-person pairing** | **Recommended.** Browser-native (PWA and Capacitor WebView), no new server, traffic stays on the room network, works with no Internet, proximity is enforced by the pairing act itself. |
-| Local server on the organizer device | Rejected. A browser cannot listen on a port; would need a native Capacitor plugin on one platform. Heavy, uneven across devices. |
-| Bluetooth / Nearby / mDNS discovery | Rejected. Not available across iOS Safari and Android Chrome. |
+| Local server on the organizer device    | Rejected. A browser cannot listen on a port; would need a native Capacitor plugin on one platform. Heavy, uneven across devices.                                                        |
+| Bluetooth / Nearby / mDNS discovery     | Rejected. Not available across iOS Safari and Android Chrome.                                                                                                                           |
 
 ### Why this fits the current architecture
 
@@ -106,7 +106,7 @@ Goal: keep the same-room design but rescue the cases where devices cannot reach 
 
 There is no chat, so there is no live conversation to censor. AI is used as a **pre-filter on content that humans create and that would be shown to the rest of the group**, before anyone else sees it.
 
-**What exists today (verified):** `apps/web/src/kids/kidsImage.ts` is a *local deterministic sanitizer*, not AI: content-type check by bytes, size and pixel caps, decode, resize to 256 px and re-encode (drops EXIF/GPS). It never touches the network. It does not judge what the image shows.
+**What exists today (verified):** `apps/web/src/kids/kidsImage.ts` is a _local deterministic sanitizer_, not AI: content-type check by bytes, size and pixel caps, decode, resize to 256 px and re-encode (drops EXIF/GPS). It never touches the network. It does not judge what the image shows.
 
 **Proposal: pipeline for any content that crosses to other devices in the group**
 
@@ -117,6 +117,7 @@ There is no chat, so there is no live conversation to censor. AI is used as a **
 5. Rejection message to the child is neutral and does not echo the content. No log keeps the content; only a count and a coarse reason code.
 
 **Notes and limits**
+
 - A remote moderation model (cloud) would send children's content to a provider. That is not allowed here; it would need its own ADR, privacy review and an organizer opt-in.
 - Classifiers make mistakes both ways. That is why the AI is a pre-filter and the adult approves, and why the first release keeps shared content to a minimum: custom images are already adult-gated (flag `customImages`), and names come from a list or a short sanitized field.
 - Every threshold, model choice and list above is admin-configurable and stored in the database (see "AI configuration").
@@ -129,13 +130,13 @@ Everything this feature parametrizes with AI must be **editable by an administra
 
 New AI capabilities introduced here, to register in #545:
 
-| Capability | Editable by admin (persisted, versioned) |
-| --- | --- |
-| `group.moderation.image` | local model id/version, enabled flag, thresholds, categories blocked, fail-closed policy |
-| `group.moderation.text` | local model id/version or rule set, enabled flag, thresholds, PII patterns, blocked-term lists per locale |
-| `group.approval-queue` | default (always hold for organizer vs. auto-allow when score is low), retention of reason codes |
-| `group.reactions` | the fixed emoji set per locale |
-| `group.limits` | max group size (default 5), max session duration, per-organizer rate limits, relay enabled flag |
+| Capability               | Editable by admin (persisted, versioned)                                                                  |
+| ------------------------ | --------------------------------------------------------------------------------------------------------- |
+| `group.moderation.image` | local model id/version, enabled flag, thresholds, categories blocked, fail-closed policy                  |
+| `group.moderation.text`  | local model id/version or rule set, enabled flag, thresholds, PII patterns, blocked-term lists per locale |
+| `group.approval-queue`   | default (always hold for organizer vs. auto-allow when score is low), retention of reason codes           |
+| `group.reactions`        | the fixed emoji set per locale                                                                            |
+| `group.limits`           | max group size (default 5), max session duration, per-organizer rate limits, relay enabled flag           |
 
 Secrets (for example TURN credentials) stay in server secrets, not in the editable configuration. An invalid version never affects production, and with no valid configuration the safe default is fail closed (nothing shared, relay off). Models themselves are chosen from an allow-list the admin manages; they run on-device.
 
