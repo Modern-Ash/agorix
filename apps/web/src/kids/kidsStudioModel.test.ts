@@ -14,6 +14,66 @@ import {
 } from "./kidsStudioModel.js";
 
 describe("Kids creative studio", () => {
+  it("accepts bounded insert, replace and seeded integer random while rejecting invalid operands", () => {
+    let history = createEditorHistory(createStudioProgram("nova"));
+    history = addStudioVariable(history, "Dado");
+    history = addStudioList(history, "Números");
+    history = appendStudioStatement(history, "actor:studio-1-nova", {
+      type: "listAdd",
+      listId: "studio-list-1",
+      value: { type: "numericLiteral", value: 2 },
+    });
+    history = appendStudioStatement(history, "actor:studio-1-nova", {
+      type: "listInsertAt",
+      listId: "studio-list-1",
+      index: { type: "numericLiteral", value: 1 },
+      value: { type: "numericLiteral", value: 4 },
+    });
+    history = appendStudioStatement(history, "actor:studio-1-nova", {
+      type: "listReplaceAt",
+      listId: "studio-list-1",
+      index: { type: "numericLiteral", value: 2 },
+      value: { type: "numericLiteral", value: 6 },
+    });
+    history = appendStudioStatement(history, "actor:studio-1-nova", {
+      type: "setVariable",
+      variableId: "studio-var-1",
+      value: {
+        type: "randomInteger",
+        min: { type: "numericLiteral", value: 1 },
+        max: { type: "numericLiteral", value: 6 },
+      },
+    });
+    const creative = creativeForStudio(history.current, "forest", "es");
+    const first = runMultiActorProgram(history.current, creative, { randomSeed: 42 });
+    const second = runMultiActorProgram(history.current, creative, { randomSeed: 42 });
+    expect(first.actors[0]?.world.lists?.["studio-list-1"]?.items).toEqual([4, 6]);
+    expect(first.actors[0]?.world.variables?.["studio-var-1"]?.value).toBe(
+      second.actors[0]?.world.variables?.["studio-var-1"]?.value,
+    );
+    expect(first.actors[0]?.world.variables?.["studio-var-1"]?.value).toBeGreaterThanOrEqual(1);
+    expect(first.actors[0]?.world.variables?.["studio-var-1"]?.value).toBeLessThanOrEqual(6);
+    for (const type of ["listInsertAt", "listReplaceAt"] as const)
+      expect(() =>
+        appendStudioStatement(history, "actor:studio-1-nova", {
+          type,
+          listId: "studio-list-1",
+          index: { type: "numericLiteral", value: 11 },
+          value: { type: "numericLiteral", value: 1 },
+        }),
+      ).toThrow();
+    expect(() =>
+      appendStudioStatement(history, "actor:studio-1-nova", {
+        type: "setVariable",
+        variableId: "studio-var-1",
+        value: {
+          type: "randomInteger",
+          min: { type: "numericLiteral", value: 7 },
+          max: { type: "numericLiteral", value: 1 },
+        },
+      }),
+    ).toThrow();
+  });
   it("reads list values and length, then removes a bounded position", () => {
     let history = createEditorHistory(createStudioProgram("nova"));
     history = addStudioVariable(history, "Resultado");

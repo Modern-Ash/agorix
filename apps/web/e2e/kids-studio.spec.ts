@@ -6,6 +6,54 @@ import { evaluateOriStudioOutput, ORI_STUDIO_VERSION } from "@agorix/ori-agent";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
+test("free scene inserts and replaces list items and uses bounded seeded random", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
+  await page.getByRole("textbox", { name: "Nombre" }).fill("Dado");
+  await page.getByRole("button", { name: "+ Crear variable" }).click();
+  await page.getByRole("textbox", { name: "Nombre" }).fill("Números");
+  await page.getByRole("button", { name: "+ Crear lista" }).click();
+  await page.getByRole("spinbutton", { name: "Número" }).fill("2");
+  await page.getByRole("button", { name: "+ Agregar número" }).click();
+  await page.getByRole("spinbutton", { name: "Número" }).fill("4");
+  await page.getByRole("button", { name: "+ Insertar número" }).click();
+  await page.getByRole("spinbutton", { name: "Posición (desde 1)" }).fill("2");
+  await page.getByRole("spinbutton", { name: "Número" }).fill("6");
+  await page.getByRole("button", { name: "+ Cambiar elemento" }).click();
+  await page.getByRole("spinbutton", { name: "Azar desde" }).fill("3");
+  await page.getByRole("spinbutton", { name: "Azar hasta" }).fill("3");
+  await page.getByRole("button", { name: "+ Guardar azar en variable" }).click();
+  const violations = (
+    await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
+  ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");
+  expect(violations.map((entry) => entry.id)).toEqual([]);
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByText("Números: 4, 6")).toBeVisible();
+  await expect(page.getByText("Dado: 3")).toBeVisible();
+  await page.reload();
+  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  await page
+    .getByRole("article")
+    .filter({ hasText: "Escena libre" })
+    .getByRole("button", { name: "Jugar" })
+    .click();
+  await expect(page.getByText("Insertar número: Números 1 ← 4")).toBeVisible();
+  await expect(page.getByText("Cambiar elemento: Números 2 ← 6")).toBeVisible();
+});
+
 test("free scene exposes bounded list reading, length and removal", async ({ page }) => {
   await page.goto("/kids");
   await page.evaluate(() => {

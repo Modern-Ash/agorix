@@ -261,6 +261,20 @@ export interface ListRemoveAtStatement {
   readonly index: Expression;
 }
 
+export interface ListInsertAtStatement {
+  readonly type: "listInsertAt";
+  readonly listId: string;
+  readonly index: Expression;
+  readonly value: Expression;
+}
+
+export interface ListReplaceAtStatement {
+  readonly type: "listReplaceAt";
+  readonly listId: string;
+  readonly index: Expression;
+  readonly value: Expression;
+}
+
 export interface RepeatStatement {
   readonly type: "repeat";
   readonly count: number;
@@ -297,6 +311,8 @@ export type Statement =
   | HideVariableStatement
   | ListAddStatement
   | ListRemoveAtStatement
+  | ListInsertAtStatement
+  | ListReplaceAtStatement
   | RepeatStatement
   | IfStatement;
 

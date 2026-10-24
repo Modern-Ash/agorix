@@ -343,6 +343,44 @@ export function listRemoveAtWorld(world: WorldState, listId: string, index: numb
   );
 }
 
+/** 1-based insertion before an item; length + 1 appends. Invalid/full lists are unchanged. */
+export function listInsertAtWorld(
+  world: WorldState,
+  listId: string,
+  index: number,
+  value: number,
+): WorldState {
+  if (!Number.isFinite(value)) throw new RangeError(`list item must be finite: ${value}`);
+  const items = world.lists?.[listId]?.items;
+  if (
+    items === undefined ||
+    !Number.isInteger(index) ||
+    index < 1 ||
+    index > items.length + 1 ||
+    items.length >= LIST_MAX_ITEMS
+  )
+    return world;
+  return withList(world, listId, [...items.slice(0, index - 1), value, ...items.slice(index - 1)]);
+}
+
+/** Replaces an existing 1-based position without changing list length. */
+export function listReplaceAtWorld(
+  world: WorldState,
+  listId: string,
+  index: number,
+  value: number,
+): WorldState {
+  if (!Number.isFinite(value)) throw new RangeError(`list item must be finite: ${value}`);
+  const items = world.lists?.[listId]?.items;
+  if (items === undefined || !Number.isInteger(index) || index < 1 || index > items.length)
+    return world;
+  return withList(
+    world,
+    listId,
+    items.map((item, position) => (position === index - 1 ? value : item)),
+  );
+}
+
 export function setListVisibilityWorld(
   world: WorldState,
   listId: string,

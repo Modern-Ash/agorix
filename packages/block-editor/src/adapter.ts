@@ -55,6 +55,8 @@ export type BlockType =
   | "variables_hide"
   | "lists_add"
   | "lists_remove_at"
+  | "lists_insert_at"
+  | "lists_replace_at"
   | "lists_item"
   | "lists_length"
   | "literal_boolean"
@@ -430,6 +432,24 @@ function statementFromBlock(
           mapping,
         ),
       };
+    case "lists_insert_at":
+    case "lists_replace_at":
+      return {
+        type: block.type === "lists_insert_at" ? "listInsertAt" : "listReplaceAt",
+        listId: stringField(block, "listId", path),
+        index: expressionFromBlock(
+          requiredInput(block, "index", path),
+          `${nodeId}/index`,
+          `${path}.inputs.index`,
+          mapping,
+        ),
+        value: expressionFromBlock(
+          requiredInput(block, "value", path),
+          `${nodeId}/value`,
+          `${path}.inputs.value`,
+          mapping,
+        ),
+      };
     case "variables_show":
       return { type: "showVariable", variableId: stringField(block, "variableId", path) };
     case "variables_hide":
@@ -644,6 +664,17 @@ function statementToBlock(
         type: "lists_remove_at",
         fields: { listId: statement.listId },
         inputs: { index: expressionToBlock(statement.index, `${nodeId}/index`, mapping) },
+      };
+    case "listInsertAt":
+    case "listReplaceAt":
+      return {
+        id,
+        type: statement.type === "listInsertAt" ? "lists_insert_at" : "lists_replace_at",
+        fields: { listId: statement.listId },
+        inputs: {
+          index: expressionToBlock(statement.index, `${nodeId}/index`, mapping),
+          value: expressionToBlock(statement.value, `${nodeId}/value`, mapping),
+        },
       };
     case "showVariable":
       return { id, type: "variables_show", fields: { variableId: statement.variableId } };

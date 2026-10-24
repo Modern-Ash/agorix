@@ -18,6 +18,18 @@ describe("list blocks (issue #468)", () => {
               listId: "l",
               index: { type: "listItem", listId: "l", index: { type: "numericLiteral", value: 1 } },
             },
+            {
+              type: "listInsertAt",
+              listId: "l",
+              index: { type: "numericLiteral", value: 2 },
+              value: { type: "numericLiteral", value: 7 },
+            },
+            {
+              type: "listReplaceAt",
+              listId: "l",
+              index: { type: "numericLiteral", value: 1 },
+              value: { type: "numericLiteral", value: 8 },
+            },
           ],
         },
       ],

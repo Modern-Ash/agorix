@@ -46,6 +46,8 @@ export type StudioStatement = Extract<
       | "changeVariable"
       | "listAdd"
       | "listRemoveAt"
+      | "listInsertAt"
+      | "listReplaceAt"
       | "repeat"
       | "if";
   }
@@ -82,6 +84,15 @@ function finiteSmallNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value) && value >= -100 && value <= 100;
 }
 
+function checkedStudioIndex(value: Expression): boolean {
+  return (
+    value.type === "numericLiteral" &&
+    Number.isInteger(value.value) &&
+    value.value >= 1 &&
+    value.value <= 10
+  );
+}
+
 function checkedTrigger(trigger: Trigger): boolean {
   return (
     trigger.type === "greenFlag" ||
@@ -103,10 +114,15 @@ function checkedNumber(value: Expression, program: ProjectProgram, depth = 0): b
   if (value.type === "listItem")
     return (
       program.lists?.some((item) => item.id === value.listId) === true &&
-      value.index.type === "numericLiteral" &&
-      Number.isInteger(value.index.value) &&
-      value.index.value >= 1 &&
-      value.index.value <= 10
+      checkedStudioIndex(value.index)
+    );
+  if (value.type === "randomInteger")
+    return (
+      value.min.type === "numericLiteral" &&
+      value.max.type === "numericLiteral" &&
+      finiteSmallNumber(value.min.value) &&
+      finiteSmallNumber(value.max.value) &&
+      value.min.value <= value.max.value
     );
   if (["add", "subtract", "multiply", "divide"].includes(value.type)) {
     const binary = value as Extract<
@@ -199,10 +215,13 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0): bool
   if (statement.type === "listRemoveAt")
     return (
       program.lists?.some((item) => item.id === statement.listId) === true &&
-      statement.index.type === "numericLiteral" &&
-      Number.isInteger(statement.index.value) &&
-      statement.index.value >= 1 &&
-      statement.index.value <= 10
+      checkedStudioIndex(statement.index)
+    );
+  if (statement.type === "listInsertAt" || statement.type === "listReplaceAt")
+    return (
+      program.lists?.some((item) => item.id === statement.listId) === true &&
+      checkedStudioIndex(statement.index) &&
+      checkedNumber(statement.value, program)
     );
   if (statement.type === "repeat")
     return (

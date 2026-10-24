@@ -50,6 +50,39 @@ describe("lists (issue #468)", () => {
     expect(result.world.lists?.["l"]?.items).toEqual([10, 30]);
   });
 
+  it("inserts before a one-based position and replaces an existing item", () => {
+    const result = run(
+      [
+        { type: "listInsertAt", listId: "l", index: num(2), value: num(15) },
+        { type: "listReplaceAt", listId: "l", index: num(1), value: num(5) },
+      ],
+      [10, 20],
+    );
+    expect(result.world.lists?.["l"]?.items).toEqual([5, 15, 20]);
+    expect(result.trace.map((entry) => entry.statementType)).toEqual([
+      "listInsertAt",
+      "listReplaceAt",
+    ]);
+    expect(
+      run([{ type: "listInsertAt", listId: "l", index: num(1), value: num(3) }]).world.lists?.["l"]
+        ?.items,
+    ).toEqual([3]);
+  });
+
+  it("keeps invalid or full list edits unchanged and records a note", () => {
+    for (const index of [0, -1, 4, 1.5]) {
+      for (const type of ["listInsertAt", "listReplaceAt"] as const) {
+        const result = run([{ type, listId: "l", index: num(index), value: num(8) }], [1, 2]);
+        expect(result.world.lists?.["l"]?.items).toEqual([1, 2]);
+        expect(result.notes?.[0]).toContain("unavailable");
+      }
+    }
+    const full = Array.from({ length: 100 }, (_, i) => i);
+    const result = run([{ type: "listInsertAt", listId: "l", index: num(1), value: num(8) }], full);
+    expect(result.world.lists?.["l"]?.items).toEqual(full);
+    expect(result.notes?.[0]).toContain("unavailable");
+  });
+
   it("an out-of-range index reads 0 or does nothing, records a note and never throws", () => {
     for (const index of [0, -1, 4, 99, 999_999, -999_999]) {
       const read = run([store({ type: "listItem", listId: "l", index: num(index) })], [1, 2, 3]);

@@ -119,9 +119,14 @@ const COPY = {
     changeVariable: "Cambiar valor",
     listAdd: "Agregar número",
     listRemove: "Quitar elemento",
+    listInsert: "Insertar número",
+    listReplace: "Cambiar elemento",
     listRead: "Leer elemento en variable",
     listLength: "Guardar largo en variable",
     listIndex: "Posición (desde 1)",
+    randomMin: "Azar desde",
+    randomMax: "Azar hasta",
+    setRandom: "Guardar azar en variable",
     dataName: "Nombre",
     number: "Número",
     watchers: "Datos al jugar",
@@ -209,9 +214,14 @@ const COPY = {
     changeVariable: "Change value",
     listAdd: "Add number",
     listRemove: "Remove item",
+    listInsert: "Insert number",
+    listReplace: "Replace item",
     listRead: "Read item into variable",
     listLength: "Save length into variable",
     listIndex: "Position (from 1)",
+    randomMin: "Random from",
+    randomMax: "Random to",
+    setRandom: "Save random in variable",
     dataName: "Name",
     number: "Number",
     watchers: "Data after Play",
@@ -263,6 +273,8 @@ function expressionLabel(value: Expression, program: ProjectProgram): string {
     return `${program.lists?.find((item) => item.id === value.listId)?.name ?? "?"}.length`;
   if (value.type === "listItem")
     return `${program.lists?.find((item) => item.id === value.listId)?.name ?? "?"}[${expressionLabel(value.index, program)}]`;
+  if (value.type === "randomInteger")
+    return `🎲(${expressionLabel(value.min, program)}, ${expressionLabel(value.max, program)})`;
   const operators: Partial<Record<Expression["type"], string>> = {
     add: "+",
     subtract: "−",
@@ -336,6 +348,8 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
   const [variableId, setVariableId] = useState("studio-var-1");
   const [listId, setListId] = useState("studio-list-1");
   const [listIndex, setListIndex] = useState(1);
+  const [randomMin, setRandomMin] = useState(1);
+  const [randomMax, setRandomMax] = useState(6);
   const [run, setRun] = useState<MultiActorRunResult | null>(null);
   const [events, setEvents] = useState<readonly RuntimeEvent[]>([{ type: "start" }]);
   const [frame, setFrame] = useState<number | null>(null);
@@ -727,6 +741,9 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
         return `${copy.listAdd}: ${history.current.lists?.find((item) => item.id === statement.listId)?.name ?? "?"} ${expressionLabel(statement.value, history.current)}`;
       case "listRemoveAt":
         return `${copy.listRemove}: ${history.current.lists?.find((item) => item.id === statement.listId)?.name ?? "?"} ${expressionLabel(statement.index, history.current)}`;
+      case "listInsertAt":
+      case "listReplaceAt":
+        return `${statement.type === "listInsertAt" ? copy.listInsert : copy.listReplace}: ${history.current.lists?.find((item) => item.id === statement.listId)?.name ?? "?"} ${expressionLabel(statement.index, history.current)} ← ${expressionLabel(statement.value, history.current)}`;
       case "repeat":
         return `${copy.repeat} ${statement.count}`;
       case "if":
@@ -1755,6 +1772,52 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
                   + {copy.changeVariable}
                 </button>
                 <label>
+                  {copy.randomMin}{" "}
+                  <input
+                    type="number"
+                    min={-100}
+                    max={100}
+                    step={1}
+                    value={randomMin}
+                    onChange={(event) => setRandomMin(Number(event.target.value))}
+                  />
+                </label>
+                <label>
+                  {copy.randomMax}{" "}
+                  <input
+                    type="number"
+                    min={-100}
+                    max={100}
+                    step={1}
+                    value={randomMax}
+                    onChange={(event) => setRandomMax(Number(event.target.value))}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="kids-button"
+                  disabled={
+                    !Number.isInteger(randomMin) ||
+                    !Number.isInteger(randomMax) ||
+                    Math.abs(randomMin) > 100 ||
+                    Math.abs(randomMax) > 100 ||
+                    randomMin > randomMax
+                  }
+                  onClick={() =>
+                    add({
+                      type: "setVariable",
+                      variableId,
+                      value: {
+                        type: "randomInteger",
+                        min: { type: "numericLiteral", value: randomMin },
+                        max: { type: "numericLiteral", value: randomMax },
+                      },
+                    })
+                  }
+                >
+                  + {copy.setRandom}
+                </button>
+                <label>
                   {copy.sourceVariable}{" "}
                   <select
                     value={
@@ -1912,6 +1975,48 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
                   }
                 >
                   + {copy.listRemove}
+                </button>
+                <button
+                  type="button"
+                  className="kids-button"
+                  disabled={
+                    !Number.isInteger(listIndex) ||
+                    listIndex < 1 ||
+                    listIndex > 10 ||
+                    !Number.isInteger(dataValue) ||
+                    Math.abs(dataValue) > 100
+                  }
+                  onClick={() =>
+                    add({
+                      type: "listInsertAt",
+                      listId,
+                      index: { type: "numericLiteral", value: listIndex },
+                      value: { type: "numericLiteral", value: dataValue },
+                    })
+                  }
+                >
+                  + {copy.listInsert}
+                </button>
+                <button
+                  type="button"
+                  className="kids-button"
+                  disabled={
+                    !Number.isInteger(listIndex) ||
+                    listIndex < 1 ||
+                    listIndex > 10 ||
+                    !Number.isInteger(dataValue) ||
+                    Math.abs(dataValue) > 100
+                  }
+                  onClick={() =>
+                    add({
+                      type: "listReplaceAt",
+                      listId,
+                      index: { type: "numericLiteral", value: listIndex },
+                      value: { type: "numericLiteral", value: dataValue },
+                    })
+                  }
+                >
+                  + {copy.listReplace}
                 </button>
                 {history.current.variables?.length ? (
                   <>

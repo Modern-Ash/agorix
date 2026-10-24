@@ -153,6 +153,19 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
           "\n",
       );
       return;
+    case "listInsertAt":
+    case "listReplaceAt":
+      writeMapped(
+        writer,
+        nodeId,
+        indent +
+          `${statement.type === "listInsertAt" ? "insert" : "replace"} item ` +
+          expressionText(writer, statement.index, nodeId + "/index") +
+          ` of ${listName(writer, statement.listId)} with ` +
+          expressionText(writer, statement.value, nodeId + "/value") +
+          "\n",
+      );
+      return;
     case "wait":
       writeMapped(
         writer,

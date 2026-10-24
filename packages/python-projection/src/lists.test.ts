@@ -15,6 +15,18 @@ const program: ProjectProgram = {
         { type: "listAdd", listId: "l", value: { type: "numericLiteral", value: 6 } },
         { type: "listRemoveAt", listId: "l", index: { type: "numericLiteral", value: 1 } },
         {
+          type: "listInsertAt",
+          listId: "l",
+          index: { type: "numericLiteral", value: 2 },
+          value: { type: "numericLiteral", value: 9 },
+        },
+        {
+          type: "listReplaceAt",
+          listId: "l",
+          index: { type: "numericLiteral", value: 1 },
+          value: { type: "numericLiteral", value: 8 },
+        },
+        {
           type: "setVariable",
           variableId: "r",
           value: {
@@ -36,6 +48,8 @@ describe("list projection (issue #468)", () => {
       'show_list("items")',
       "list_add(items, 6)",
       "list_remove_at(items, 1)",
+      "list_insert_at(items, 2, 9)",
+      "list_replace_at(items, 1, 8)",
       "list_item(items, 1)",
       "len(items)",
     ])

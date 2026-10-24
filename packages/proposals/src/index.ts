@@ -1086,6 +1086,12 @@ function variableIdsForStatement(statement: Statement): readonly string[] {
       return variableIdsForExpression(statement.value);
     case "listRemoveAt":
       return variableIdsForExpression(statement.index);
+    case "listInsertAt":
+    case "listReplaceAt":
+      return unique([
+        ...variableIdsForExpression(statement.index),
+        ...variableIdsForExpression(statement.value),
+      ]);
     case "repeat":
       return unique(statement.body.flatMap(variableIdsForStatement));
     case "if":

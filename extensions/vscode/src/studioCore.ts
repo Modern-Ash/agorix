@@ -1654,6 +1654,10 @@ function runtimeFactText(row: InspectorRow): string {
       return "list item added";
     case "listRemoveAt":
       return "list item removed";
+    case "listInsertAt":
+      return "list item inserted";
+    case "listReplaceAt":
+      return "list item changed";
     case "setSize":
       return `size ${before.sprite.size} -> ${after.sprite.size}`;
     case "switchCostume":

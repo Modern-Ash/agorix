@@ -47,6 +47,8 @@ export {
   getVariableWorld,
   listAddWorld,
   listRemoveAtWorld,
+  listInsertAtWorld,
+  listReplaceAtWorld,
   setListVisibilityWorld,
   hideWorld,
   moveWorld,
