@@ -9,6 +9,7 @@ import { kidsTable, type KidsText } from "../useKidsText.js";
 import { KIDS_WORLD_STYLES } from "../worlds.js";
 import type { Locale } from "../../i18n.js";
 import { ListenButton } from "./ListenButton.js";
+import { KidsDrawArt } from "./KidsDrawArt.js";
 import {
   KIDS_GALLERY_BACKDROPS,
   KIDS_GALLERY_CATEGORIES,
@@ -46,6 +47,7 @@ export function CreateScreen({
   const customEnabled = useKidsFlag("customImages");
   const [custom, setCustom] = useState(() => loadKidsCustom());
   const [imageMessage, setImageMessage] = useState("");
+  const [drawingKind, setDrawingKind] = useState<KidsCustomKind | null>(null);
   const [chosenAvatar, setChosenAvatar] = useState<KidsAvatarRef>(emojiSlot(avatar));
   const [chosenWorld, setChosenWorld] = useState<KidsWorldRef>(builtinWorld(world));
   const [characterCategory, setCharacterCategory] = useState<KidsGalleryCategory>("all");
@@ -105,6 +107,27 @@ export function CreateScreen({
     } finally {
       event.target.value = "";
     }
+  }
+
+  function saveDrawing(kind: KidsCustomKind, dataUrl: string) {
+    const result = addKidsCustom(kind, dataUrl);
+    if (!result.ok) {
+      setImageMessage(
+        t(
+          result.reason === "limit"
+            ? "customLimit"
+            : result.reason === "invalidImage"
+              ? "imageErrorOutput"
+              : "imageErrorQuota",
+        ),
+      );
+      return;
+    }
+    setCustom(loadKidsCustom());
+    if (kind === "explorer") setChosenAvatar({ kind: "custom", id: result.item.id });
+    else setChosenWorld({ kind: "custom", id: result.item.id });
+    setImageMessage(t("imageSaved"));
+    setDrawingKind(null);
   }
   return (
     <section className="kids-screen kids-create" aria-labelledby="kids-create-title">
@@ -167,7 +190,25 @@ export function CreateScreen({
             />
           </label>
         ) : null}
+        {customEnabled ? (
+          <button
+            type="button"
+            className="kids-button kids-create-upload"
+            onClick={() => setDrawingKind("explorer")}
+          >
+            {locale === "es" ? "Dibujar explorador" : "Draw character"}
+          </button>
+        ) : null}
       </div>
+      {drawingKind === "explorer" ? (
+        <KidsDrawArt
+          kind="explorer"
+          locale={locale}
+          onSave={(dataUrl) => saveDrawing("explorer", dataUrl)}
+          onCancel={() => setDrawingKind(null)}
+          onError={() => setImageMessage(t("imageErrorOutput"))}
+        />
+      ) : null}
       <div className="kids-gallery-head">
         <h3>{locale === "es" ? "Galería de personajes" : "Character gallery"}</h3>
         <input
@@ -270,7 +311,25 @@ export function CreateScreen({
             />
           </label>
         ) : null}
+        {customEnabled ? (
+          <button
+            type="button"
+            className="kids-button kids-create-upload"
+            onClick={() => setDrawingKind("backdrop")}
+          >
+            {locale === "es" ? "Dibujar fondo" : "Draw backdrop"}
+          </button>
+        ) : null}
       </div>
+      {drawingKind === "backdrop" ? (
+        <KidsDrawArt
+          kind="backdrop"
+          locale={locale}
+          onSave={(dataUrl) => saveDrawing("backdrop", dataUrl)}
+          onCancel={() => setDrawingKind(null)}
+          onError={() => setImageMessage(t("imageErrorOutput"))}
+        />
+      ) : null}
       <div className="kids-gallery-head">
         <h3>{locale === "es" ? "Galería de fondos" : "Backdrop gallery"}</h3>
         <input

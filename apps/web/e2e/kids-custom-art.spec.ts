@@ -65,6 +65,64 @@ test("child adds custom explorer and backdrop from Create without entering Adult
   await expect(page.locator(".kids-world-grid")).toHaveCSS("background-image", /data:image/);
 });
 
+test("child draws an explorer and backdrop, then reopens both in a local project", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await seed(page);
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Dibujar explorador" }).click();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  const explorerCanvas = page.getByRole("img", { name: "Lienzo para dibujar" });
+  const explorerBounds = await explorerCanvas.boundingBox();
+  expect(explorerBounds).not.toBeNull();
+  await page.mouse.move(explorerBounds!.x + 40, explorerBounds!.y + 40);
+  await page.mouse.down();
+  await page.mouse.move(explorerBounds!.x + 150, explorerBounds!.y + 150, { steps: 8 });
+  await page.mouse.up();
+  await page.getByRole("button", { name: "Guardar dibujo" }).click();
+  await expect(page.getByRole("button", { name: "Explorador propio 1" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+
+  await page.getByRole("button", { name: "Dibujar fondo" }).click();
+  const backdropCanvas = page.getByRole("img", { name: "Lienzo para dibujar" });
+  const backdropBounds = await backdropCanvas.boundingBox();
+  expect(backdropBounds).not.toBeNull();
+  await page.mouse.click(backdropBounds!.x + 90, backdropBounds!.y + 90);
+  await page.getByRole("button", { name: "Guardar dibujo" }).click();
+  await expect(page.getByRole("button", { name: "Fondo propio 2" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await page.getByRole("button", { name: "¡Crear!" }).click();
+  await expect(page.locator(".kids-world-avatar")).toHaveCSS("background-image", /data:image/);
+  await expect(page.locator(".kids-world-grid")).toHaveCSS("background-image", /data:image/);
+  await page.reload();
+  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  await page.locator(".kids-project-card").getByRole("button", { name: "Jugar" }).click();
+  await expect(page.locator(".kids-world-avatar")).toHaveCSS("background-image", /data:image/);
+  await expect(page.locator(".kids-world-grid")).toHaveCSS("background-image", /data:image/);
+});
+
+test("a failed canvas export keeps the drawing open and adds no image", async ({ page }) => {
+  await seed(page);
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Dibujar explorador" }).click();
+  await page.evaluate(() => {
+    HTMLCanvasElement.prototype.toBlob = function (callback) {
+      callback(null);
+    };
+  });
+  await page.getByRole("button", { name: "Guardar dibujo" }).click();
+  await expect(page.getByRole("status")).toHaveText(
+    "No pudimos reducir esa imagen a menos de 60 KB.",
+  );
+  await expect(page.getByRole("img", { name: "Lienzo para dibujar" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Explorador propio/ })).toHaveCount(0);
+});
+
 test("child cannot replace bundled images and adult can disable custom image uploads", async ({
   page,
 }) => {
@@ -85,6 +143,8 @@ test("child cannot replace bundled images and adult can disable custom image upl
   await page.getByRole("button", { name: "Crear", exact: true }).click();
   await expect(page.getByLabel("+ Explorador")).toHaveCount(0);
   await expect(page.getByLabel("+ Fondo")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Dibujar explorador" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Dibujar fondo" })).toHaveCount(0);
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
   await expect(page.getByLabel("+ Explorador")).toHaveCount(0);
