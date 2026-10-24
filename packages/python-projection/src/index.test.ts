@@ -536,3 +536,20 @@ describe("Python projection: repeat until", () => {
     expect(result.text).toContain("        move(20)");
   });
 });
+
+describe("Python projection: change size", () => {
+  it("projects change_size", () => {
+    const result = projectPython({
+      schema: SCHEMA_VERSION,
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [{ type: "changeSize", delta: -25 }],
+        },
+      ],
+    });
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toBe(["def on_start():", "    change_size(-25)", ""].join("\n"));
+  });
+});

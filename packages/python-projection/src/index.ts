@@ -249,6 +249,9 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
     case "setSize":
       writeMapped(writer, nodeId, indent + "set_size(" + formatNumber(statement.size) + ")\n");
       return;
+    case "changeSize":
+      writeMapped(writer, nodeId, indent + "change_size(" + formatNumber(statement.delta) + ")\n");
+      return;
     case "switchCostume":
       writeMapped(
         writer,

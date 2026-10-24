@@ -59,6 +59,7 @@ export {
   setVariableVisibilityWorld,
   setVariableWorld,
   setSpriteSizeWorld,
+  changeSpriteSizeWorld,
   showWorld,
   switchBackdropWorld,
   switchCostumeWorld,

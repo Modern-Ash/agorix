@@ -304,6 +304,9 @@ function projectStatement(
     case "setSize":
       write(writer, `${pad}sprite.setSize(${formatNumber(statement.size)});\n`);
       return;
+    case "changeSize":
+      write(writer, `${pad}sprite.changeSize(${formatNumber(statement.delta)});\n`);
+      return;
     case "switchCostume":
       write(writer, `${pad}sprite.switchCostume(${JSON.stringify(statement.costumeId)});\n`);
       return;

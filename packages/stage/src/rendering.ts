@@ -281,7 +281,7 @@ function makeSummary(
   if (step.statementType === "listRemoveAt") return "Removed from a list";
   if (step.statementType === "listInsertAt") return "Inserted into a list";
   if (step.statementType === "listReplaceAt") return "Changed a list item";
-  if (step.statementType === "setSize") {
+  if (step.statementType === "setSize" || step.statementType === "changeSize") {
     return `Sprite size: ${step.observation.world.sprite.size}`;
   }
   if (step.statementType === "switchCostume") {
@@ -349,6 +349,8 @@ function titleForStep(step: ExecutionStep, profile: LearnerTraceProfile): string
       return "Insert into list";
     case "listReplaceAt":
       return "Change list item";
+    case "changeSize":
+      return "Change size";
     case "setSize":
       return "Set size";
     case "switchCostume":

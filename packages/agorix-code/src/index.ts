@@ -200,6 +200,13 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
     case "setSize":
       writeMapped(writer, nodeId, indent + "set size to " + formatNumber(statement.size) + "\n");
       return;
+    case "changeSize":
+      writeMapped(
+        writer,
+        nodeId,
+        indent + "change size by " + formatNumber(statement.delta) + "\n",
+      );
+      return;
     case "switchCostume":
       writeMapped(
         writer,

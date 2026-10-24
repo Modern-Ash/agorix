@@ -236,3 +236,26 @@ describe("repeatUntil with several actors", () => {
     expect(result.actors[1]?.world.sprite.x).toBe(3);
   });
 });
+
+describe("changeSize", () => {
+  it("grows and shrinks from the current size and stays within 1 to 400", () => {
+    const grown = runProgram(
+      program([
+        { type: "changeSize", delta: 50 },
+        { type: "changeSize", delta: -25 },
+      ]),
+      createWorldState(),
+    );
+    expect(grown.world.sprite.size).toBe(125);
+    const floor = runProgram(program([{ type: "changeSize", delta: -100 }]), createWorldState());
+    expect(floor.world.sprite.size).toBe(1);
+    const ceiling = runProgram(
+      program([
+        { type: "setSize", size: 390 },
+        { type: "changeSize", delta: 50 },
+      ]),
+      createWorldState(),
+    );
+    expect(ceiling.world.sprite.size).toBe(400);
+  });
+});

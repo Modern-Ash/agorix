@@ -780,3 +780,23 @@ describe("repeat until blocks", () => {
     expect(back.scripts[0]?.statements).toEqual(untilProgram.scripts[0]?.statements);
   });
 });
+
+describe("change size block", () => {
+  it("round-trips through blocks", () => {
+    const program = {
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [{ type: "changeSize", delta: -25 }],
+        },
+      ],
+    } as unknown as ProjectProgram;
+    const { workspace } = programToWorkspace(program);
+    expect(JSON.stringify(workspace)).toContain("looks_change_size");
+    expect(workspaceToProgram(workspace).program.scripts[0]?.statements).toEqual([
+      { type: "changeSize", delta: -25 },
+    ]);
+  });
+});

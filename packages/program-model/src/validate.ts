@@ -371,6 +371,13 @@ function validateStatement(
       return { type: "show" };
     case "hide":
       return { type: "hide" };
+    case "changeSize": {
+      if (typeof input.delta !== "number") {
+        fail("MISSING_FIELD", `${path}.delta`, "expected a number", input.delta);
+      }
+      checkBounds(input.delta, -100, 100, `${path}.delta`);
+      return { type: "changeSize", delta: input.delta };
+    }
     case "setSize": {
       if (typeof input.size !== "number") {
         fail("MISSING_FIELD", `${path}.size`, "expected a number", input.size);

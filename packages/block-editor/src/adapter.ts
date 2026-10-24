@@ -28,6 +28,7 @@ export type BlockType =
   | "looks_show"
   | "looks_hide"
   | "looks_set_size"
+  | "looks_change_size"
   | "looks_switch_costume"
   | "looks_switch_backdrop"
   | "sound_play"
@@ -408,6 +409,8 @@ function statementFromBlock(
       return { type: "wait", seconds: numberField(block, "seconds", path) };
     case "looks_set_size":
       return { type: "setSize", size: numberField(block, "size", path) };
+    case "looks_change_size":
+      return { type: "changeSize", delta: numberField(block, "delta", path) };
     case "looks_switch_costume":
       return { type: "switchCostume", costumeId: stringField(block, "costumeId", path) };
     case "looks_switch_backdrop":
@@ -700,6 +703,8 @@ function statementToBlock(
       return { id, type: "control_wait", fields: { seconds: statement.seconds } };
     case "setSize":
       return { id, type: "looks_set_size", fields: { size: statement.size } };
+    case "changeSize":
+      return { id, type: "looks_change_size", fields: { delta: statement.delta } };
     case "switchCostume":
       return { id, type: "looks_switch_costume", fields: { costumeId: statement.costumeId } };
     case "switchBackdrop":

@@ -435,3 +435,20 @@ describe("Agorix Code projection: repeat until", () => {
     expect(result.text).toMatch(/^ {2}repeat until .+\n {4}move 20\n/m);
   });
 });
+
+describe("Agorix Code projection: change size", () => {
+  it("projects change size", () => {
+    const result = projectAgorixCode({
+      schema: SCHEMA_VERSION,
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [{ type: "changeSize", delta: -25 }],
+        },
+      ],
+    });
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toBe(["when start", "  change size by -25", ""].join("\n"));
+  });
+});

@@ -57,6 +57,7 @@ describe("runtime operation allowlist", () => {
     expect([...RUNTIME_STATEMENT_OPERATIONS].sort()).toEqual([
       "bounceOnEdge",
       "broadcast",
+      "changeSize",
       "changeVariable",
       "changeVolume",
       "goTo",
