@@ -5,12 +5,12 @@ import {
   type ProjectProgram,
   type Statement,
 } from "@agorix/program-model";
-import type { AdvancedSceneActorId } from "./kidsAdvancedEditorModel.js";
+import type { AdvancedSceneBaseActorId } from "./kidsAdvancedEditorModel.js";
 
 export type ReactStatement = Extract<Statement, { type: "switchCostume" | "playSound" | "turn" }>;
 const FRIEND_SCRIPT = "advanced-react-friend";
 
-function indexFor(program: ProjectProgram, actorId: AdvancedSceneActorId): number {
+function indexFor(program: ProjectProgram, actorId: AdvancedSceneBaseActorId): number {
   return actorId === "actor:ori"
     ? 0
     : program.scripts.findIndex((script) => script.id === FRIEND_SCRIPT);
@@ -30,7 +30,7 @@ function checked(statement: ReactStatement): ReactStatement {
 
 function edit(
   history: EditorHistory,
-  actorId: AdvancedSceneActorId,
+  actorId: AdvancedSceneBaseActorId,
   label: string,
   update: (items: readonly Statement[]) => readonly Statement[],
 ): EditorHistory {
@@ -52,7 +52,7 @@ function edit(
 
 export function addReactStatement(
   history: EditorHistory,
-  actorId: AdvancedSceneActorId,
+  actorId: AdvancedSceneBaseActorId,
   statement: ReactStatement,
 ): EditorHistory {
   checked(statement);
@@ -61,7 +61,7 @@ export function addReactStatement(
 
 export function removeReactStatement(
   history: EditorHistory,
-  actorId: AdvancedSceneActorId,
+  actorId: AdvancedSceneBaseActorId,
   at: number,
 ): EditorHistory {
   const script = history.current.scripts[indexFor(history.current, actorId)];
@@ -74,7 +74,7 @@ export function removeReactStatement(
 
 export function reactActorStatements(
   program: ProjectProgram,
-  actorId: AdvancedSceneActorId,
+  actorId: AdvancedSceneBaseActorId,
 ): readonly Statement[] {
   return program.scripts[indexFor(program, actorId)]?.statements ?? [];
 }

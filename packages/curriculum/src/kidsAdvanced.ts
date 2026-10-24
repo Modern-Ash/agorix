@@ -160,6 +160,12 @@ function starterCreative(stage: KidsAdvancedStage, locale: "es" | "en"): Project
         source: "builtin:costume.spark",
       },
       {
+        id: "asset:costume.explorer",
+        kind: "costume",
+        name: locale === "es" ? "Explorador" : "Explorer",
+        source: "builtin:costume.explorer",
+      },
+      {
         id: "asset:sound.beacon",
         kind: "sound",
         name: locale === "es" ? "Pulso" : "Ping",

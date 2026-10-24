@@ -15,7 +15,7 @@ import { ProjectStore, type ProjectMetadata } from "@agorix/persistence";
 import { acceptProposal, modifyProposal, rejectProposal } from "@agorix/proposals";
 import { validateOriReactProposal, type OriAdvancedDecision } from "@agorix/ori-agent";
 import type { Locale } from "../../i18n.js";
-import type { AdvancedSceneActorId } from "../kidsAdvancedEditorModel.js";
+import type { AdvancedSceneBaseActorId } from "../kidsAdvancedEditorModel.js";
 import { advancedProjectId, completeAdvancedStage } from "../kidsAdvancedProgress.js";
 import { requestAdvancedOri } from "../kidsAdvancedOriRemote.js";
 import {
@@ -33,7 +33,7 @@ interface Props {
   readonly readAloud?: boolean;
   readonly onBack: () => void;
 }
-const ACTORS: readonly AdvancedSceneActorId[] = ["actor:ori", "actor:friend"];
+const ACTORS: readonly AdvancedSceneBaseActorId[] = ["actor:ori", "actor:friend"];
 
 export function AdvancedReactScreen({ locale, readAloud = true, onBack }: Props) {
   const t = useKidsText(locale);
@@ -45,7 +45,7 @@ export function AdvancedReactScreen({ locale, readAloud = true, onBack }: Props)
     createEditorHistory(store.load(id).program),
   );
   const currentProgram = useRef(history.current);
-  const [actorId, setActorId] = useState<AdvancedSceneActorId>("actor:ori");
+  const [actorId, setActorId] = useState<AdvancedSceneBaseActorId>("actor:ori");
   const currentActor = useRef(actorId);
   const [run, setRun] = useState<MultiActorRunResult | null>(null);
   const [completed, setCompleted] = useState(metadata.missionProgress === 1);
@@ -148,7 +148,7 @@ export function AdvancedReactScreen({ locale, readAloud = true, onBack }: Props)
     }
   }
 
-  function tap(id: AdvancedSceneActorId) {
+  function tap(id: AdvancedSceneBaseActorId) {
     const event = { type: "actorClicked" as const, actorId: id };
     try {
       const result = runMultiActorProgram(history.current, creative, { events: [event] });
