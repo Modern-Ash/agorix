@@ -553,4 +553,92 @@ describe("Kids creative studio", () => {
       }),
     ).toThrow();
   });
+  it("runs a whole scene with pointing, bouncing and persisted positions", () => {
+    let history = createEditorHistory(createStudioProgram("nova"));
+    history = addStudioActor(history, "mika");
+    const nova = "actor:studio-1-nova";
+    const friend = "actor:studio-2-mika";
+    for (const statement of [
+      { type: "pointTowards", actorId: friend },
+      { type: "move", steps: 40 },
+      { type: "pointInDirection", degrees: 180 },
+      { type: "move", steps: 120 },
+      { type: "bounceOnEdge" },
+    ] as const)
+      history = appendStudioStatement(history, nova, statement);
+    const creative = creativeForStudio(history.current, "forest", "es");
+    const run = () => runMultiActorProgram(history.current, creative);
+    const result = run();
+    expect(result.outcome).toBe("completed");
+    expect(result.trace.map((entry) => entry.statementType)).toEqual([
+      "pointTowards",
+      "move",
+      "pointInDirection",
+      "move",
+      "bounceOnEdge",
+    ]);
+    expect(result.actors[0]?.world.sprite).toMatchObject({ x: 0, y: 0, heading: 0 });
+    expect(JSON.stringify(run())).toBe(JSON.stringify(result));
+  });
+  it("rejects heading blocks that point outside the scene", () => {
+    const history = createEditorHistory(createStudioProgram("nova"));
+    const nova = "actor:studio-1-nova";
+    expect(() =>
+      appendStudioStatement(history, nova, { type: "pointInDirection", degrees: 30 }),
+    ).toThrow();
+    expect(() =>
+      appendStudioStatement(history, nova, {
+        type: "pointTowards",
+        actorId: "actor:studio-9-mika",
+      }),
+    ).toThrow();
+    expect(() => appendStudioStatement(history, nova, { type: "bounceOnEdge" })).not.toThrow();
+  });
+  it("groups the last blocks into a repeat-until loop that ends on a sensor and survives a rerun", () => {
+    let history = createEditorHistory(createStudioProgram("nova"));
+    history = addStudioActor(history, "mika");
+    const nova = "actor:studio-1-nova";
+    history = appendStudioStatement(history, nova, { type: "pointInDirection", degrees: 0 });
+    history = appendStudioStatement(history, nova, { type: "move", steps: 120 });
+    history = appendStudioStatement(history, nova, { type: "move", steps: 40 });
+    history = wrapStudioTail(history, nova, 1, {
+      type: "repeatUntil",
+      condition: STUDIO_EDGE_CONDITION,
+    });
+    expect(history.current.scripts[0]?.statements.at(-1)?.type).toBe("repeatUntil");
+    const creative = creativeForStudio(history.current, "forest", "es");
+    const result = runMultiActorProgram(history.current, creative);
+    expect(result.outcome).toBe("completed");
+    expect(result.actors[0]?.world.sprite.x).toBe(320);
+    expect(JSON.stringify(runMultiActorProgram(history.current, creative))).toBe(
+      JSON.stringify(result),
+    );
+    const toMika = wrapStudioTail(
+      appendStudioStatement(history, nova, { type: "move", steps: 20 }),
+      nova,
+      1,
+      { type: "repeatUntil", condition: { type: "touchingActor", actorId: "actor:studio-2-mika" } },
+    );
+    expect(toMika.current.scripts[0]?.statements.at(-1)?.type).toBe("repeatUntil");
+  });
+  it("rejects repeat-until with an unsupported condition or an empty body", () => {
+    const history = appendStudioStatement(
+      createEditorHistory(createStudioProgram("nova")),
+      "actor:studio-1-nova",
+      { type: "move", steps: 40 },
+    );
+    expect(() =>
+      wrapStudioTail(history, "actor:studio-1-nova", 1, {
+        type: "repeatUntil",
+        condition: { type: "booleanLiteral", value: false },
+      }),
+    ).toThrow();
+    expect(() =>
+      appendStudioStatement(history, "actor:studio-1-nova", {
+        type: "repeatUntil",
+        condition: STUDIO_EDGE_CONDITION,
+        body: [],
+      }),
+    ).toThrow();
+  });
 });

@@ -352,6 +352,17 @@ function validateStatement(
       checkBounds(input.degrees, TURN_DEGREES_MIN, TURN_DEGREES_MAX, `${path}.degrees`);
       return { type: "turn", degrees: input.degrees };
     }
+    case "pointInDirection": {
+      if (typeof input.degrees !== "number") {
+        fail("MISSING_FIELD", `${path}.degrees`, "expected a number", input.degrees);
+      }
+      checkBounds(input.degrees, -180, 180, `${path}.degrees`);
+      return { type: "pointInDirection", degrees: input.degrees };
+    }
+    case "pointTowards":
+      return { type: "pointTowards", actorId: checkText(input.actorId, `${path}.actorId`) };
+    case "bounceOnEdge":
+      return { type: "bounceOnEdge" };
     case "say":
       return { type: "say", text: checkText(input.text, `${path}.text`) };
     case "think":
@@ -461,6 +472,15 @@ function validateStatement(
       return {
         type: "repeat",
         count: input.count,
+        body: validateStatementArray(input.body, `${path}.body`, state, nextDepth),
+      };
+    }
+    case "repeatUntil": {
+      const nextDepth = depth + 1;
+      checkDepth(nextDepth, `${path}.body`);
+      return {
+        type: "repeatUntil",
+        condition: validateExpression(input.condition, `${path}.condition`, state),
         body: validateStatementArray(input.body, `${path}.body`, state, nextDepth),
       };
     }

@@ -225,3 +225,75 @@ describe("volume statements", () => {
     }
   });
 });
+
+describe("heading statements", () => {
+  const programWith = (statement: unknown) =>
+    ({
+      schema: SCHEMA_VERSION,
+      scripts: [{ id: "main", trigger: { type: "onStart" }, statements: [statement] }],
+    }) as never;
+
+  it("accepts pointInDirection, pointTowards and bounceOnEdge", () => {
+    for (const statement of [
+      { type: "pointInDirection", degrees: 0 },
+      { type: "pointInDirection", degrees: -180 },
+      { type: "pointInDirection", degrees: 180 },
+      { type: "pointTowards", actorId: "actor:studio-1-fox" },
+      { type: "bounceOnEdge" },
+    ]) {
+      expect(() => validateProgram(programWith(statement))).not.toThrow();
+    }
+  });
+
+  it("rejects out-of-range directions and empty targets", () => {
+    for (const degrees of [181, -181, Number.NaN, "90"]) {
+      expect(() => validateProgram(programWith({ type: "pointInDirection", degrees }))).toThrow(
+        ProgramValidationError,
+      );
+    }
+    for (const actorId of ["", undefined, 5]) {
+      expect(() => validateProgram(programWith({ type: "pointTowards", actorId }))).toThrow(
+        ProgramValidationError,
+      );
+    }
+  });
+});
+
+describe("repeatUntil statement", () => {
+  const programWith = (statement: unknown) =>
+    ({
+      schema: SCHEMA_VERSION,
+      scripts: [{ id: "main", trigger: { type: "onStart" }, statements: [statement] }],
+    }) as never;
+  const until = {
+    type: "greaterThan",
+    left: { type: "xPosition" },
+    right: { type: "numericLiteral", value: 100 },
+  };
+
+  it("accepts a condition with a body", () => {
+    expect(() =>
+      validateProgram(
+        programWith({
+          type: "repeatUntil",
+          condition: until,
+          body: [{ type: "move", steps: 40 }],
+        }),
+      ),
+    ).not.toThrow();
+  });
+
+  it("rejects a missing condition, a non-array body and excessive nesting", () => {
+    expect(() =>
+      validateProgram(programWith({ type: "repeatUntil", body: [{ type: "move", steps: 1 }] })),
+    ).toThrow(ProgramValidationError);
+    expect(() =>
+      validateProgram(programWith({ type: "repeatUntil", condition: until, body: "x" })),
+    ).toThrow(ProgramValidationError);
+    let nested: unknown = { type: "move", steps: 1 };
+    for (let i = 0; i < 25; i += 1) {
+      nested = { type: "repeatUntil", condition: until, body: [nested] };
+    }
+    expect(() => validateProgram(programWith(nested))).toThrow(ProgramValidationError);
+  });
+});

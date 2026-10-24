@@ -124,6 +124,23 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
     case "turn":
       writeMapped(writer, nodeId, indent + "turn " + formatNumber(statement.degrees) + "\n");
       return;
+    case "pointInDirection":
+      writeMapped(
+        writer,
+        nodeId,
+        indent + "point in direction " + formatNumber(statement.degrees) + "\n",
+      );
+      return;
+    case "pointTowards":
+      writeMapped(
+        writer,
+        nodeId,
+        indent + "point towards " + JSON.stringify(statement.actorId) + "\n",
+      );
+      return;
+    case "bounceOnEdge":
+      writeMapped(writer, nodeId, indent + "bounce on edge\n");
+      return;
     case "say":
       writeMapped(writer, nodeId, indent + "say " + JSON.stringify(statement.text) + "\n");
       return;
@@ -262,6 +279,19 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
     case "repeat": {
       const start = writer.text.length;
       writer.text += indent + "repeat " + formatNumber(statement.count) + " times\n";
+      statement.body.forEach((child, index) =>
+        writeStatement(writer, child, nodeId + "/body[" + index + "]", depth + 1),
+      );
+      addRange(writer, nodeId, start, writer.text.length);
+      return;
+    }
+    case "repeatUntil": {
+      const start = writer.text.length;
+      writer.text +=
+        indent +
+        "repeat until " +
+        expressionText(writer, statement.condition, nodeId + "/condition") +
+        "\n";
       statement.body.forEach((child, index) =>
         writeStatement(writer, child, nodeId + "/body[" + index + "]", depth + 1),
       );

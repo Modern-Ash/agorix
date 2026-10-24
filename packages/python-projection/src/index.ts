@@ -101,6 +101,9 @@ export function projectPython(program: ProjectProgram): LanguageProjectionResult
         "move",
         "go_to",
         "turn",
+        "point_in_direction",
+        "point_towards",
+        "bounce_on_edge",
         "touching_goal",
         "touching_actor",
         "touching_stage_edge",
@@ -171,6 +174,23 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
       return;
     case "turn":
       writeMapped(writer, nodeId, indent + "turn(" + formatNumber(statement.degrees) + ")\n");
+      return;
+    case "pointInDirection":
+      writeMapped(
+        writer,
+        nodeId,
+        indent + "point_in_direction(" + formatNumber(statement.degrees) + ")\n",
+      );
+      return;
+    case "pointTowards":
+      writeMapped(
+        writer,
+        nodeId,
+        indent + "point_towards(" + JSON.stringify(statement.actorId) + ")\n",
+      );
+      return;
+    case "bounceOnEdge":
+      writeMapped(writer, nodeId, indent + "bounce_on_edge()\n");
       return;
     case "say":
       writeMapped(writer, nodeId, indent + "say(" + JSON.stringify(statement.text) + ")\n");
@@ -308,6 +328,23 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
     case "repeat": {
       const start = writer.text.length;
       writer.text += indent + "for _ in range(" + formatNumber(statement.count) + "):\n";
+      if (statement.body.length === 0) {
+        writer.text += indent + "    pass\n";
+      } else {
+        statement.body.forEach((child, index) =>
+          writeStatement(writer, child, nodeId + "/body[" + index + "]", depth + 1),
+        );
+      }
+      addRange(writer, nodeId, start, writer.text.length);
+      return;
+    }
+    case "repeatUntil": {
+      const start = writer.text.length;
+      writer.text +=
+        indent +
+        "while not (" +
+        expressionText(writer, statement.condition, nodeId + "/condition") +
+        "):\n";
       if (statement.body.length === 0) {
         writer.text += indent + "    pass\n";
       } else {
@@ -526,7 +563,7 @@ function assignedVariableIdentifiers(
           seen.add(identifier);
           identifiers.push(identifier);
         }
-      } else if (statement.type === "repeat") {
+      } else if (statement.type === "repeat" || statement.type === "repeatUntil") {
         visit(statement.body);
       } else if (statement.type === "if") {
         visit(statement.then);
@@ -580,6 +617,9 @@ const PYTHON_PROJECTION_IDENTIFIERS: ReadonlySet<string> = new Set([
   "move",
   "go_to",
   "turn",
+  "point_in_direction",
+  "point_towards",
+  "bounce_on_edge",
   "touching_goal",
   "touching_actor",
   "touching_stage_edge",

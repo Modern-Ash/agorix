@@ -737,7 +737,10 @@ function statementTarget(
       fail("UNSUPPORTED_PATH", nodeId, "statement does not exist");
     }
     const next = parts[partIndex + 1];
-    if (next?.segment === "body" && statement.type === "repeat") {
+    if (
+      next?.segment === "body" &&
+      (statement.type === "repeat" || statement.type === "repeatUntil")
+    ) {
       list = statement.body as Statement[];
     } else if (next?.segment === "then" && statement.type === "if") {
       list = statement.then as Statement[];
@@ -1052,6 +1055,7 @@ function assetIdsForStatement(statement: Statement): readonly string[] {
     case "playSound":
       return [statement.soundId];
     case "repeat":
+    case "repeatUntil":
       return statement.body.flatMap(assetIdsForStatement);
     case "if":
       return [...statement.then, ...(statement.else ?? [])].flatMap(assetIdsForStatement);
@@ -1094,6 +1098,11 @@ function variableIdsForStatement(statement: Statement): readonly string[] {
       ]);
     case "repeat":
       return unique(statement.body.flatMap(variableIdsForStatement));
+    case "repeatUntil":
+      return unique([
+        ...variableIdsForExpression(statement.condition),
+        ...statement.body.flatMap(variableIdsForStatement),
+      ]);
     case "if":
       return unique([
         ...variableIdsForExpression(statement.condition),

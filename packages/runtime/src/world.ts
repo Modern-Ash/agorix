@@ -197,6 +197,65 @@ export function turnWorld(world: WorldState, degrees: number): WorldState {
   });
 }
 
+export function pointInDirectionWorld(world: WorldState, degrees: number): WorldState {
+  if (!Number.isFinite(degrees)) {
+    throw new RangeError(`degrees must be finite: ${degrees}`);
+  }
+  return createWorldState({ ...world, sprite: { ...world.sprite, heading: degrees } });
+}
+
+export interface StagePoint {
+  readonly x: number;
+  readonly y: number;
+}
+
+export interface StageBounds {
+  readonly minX: number;
+  readonly maxX: number;
+  readonly minY: number;
+  readonly maxY: number;
+}
+
+/** The free-scene stage: the same limits that clamp where a child can place an actor. */
+export const DEFAULT_STAGE_BOUNDS: StageBounds = Object.freeze({
+  minX: 0,
+  maxX: 320,
+  minY: -100,
+  maxY: 120,
+});
+
+/** Face a point; a target on the sprite itself leaves the heading unchanged. */
+export function pointTowardsWorld(world: WorldState, target: StagePoint): WorldState {
+  const dx = target.x - world.sprite.x;
+  const dy = target.y - world.sprite.y;
+  if (dx === 0 && dy === 0) return world;
+  return pointInDirectionWorld(world, normalizeCoordinate((Math.atan2(dy, dx) * 180) / Math.PI));
+}
+
+/** Reflect the heading and clamp the sprite back inside the stage when it crossed an edge. */
+export function bounceOnEdgeWorld(world: WorldState, bounds: StageBounds): WorldState {
+  const { x, y } = world.sprite;
+  const outX = x < bounds.minX || x > bounds.maxX;
+  const outY = y < bounds.minY || y > bounds.maxY;
+  if (!outX && !outY) return world;
+  const radians = (world.sprite.heading * Math.PI) / 180;
+  let dx = Math.cos(radians);
+  let dy = Math.sin(radians);
+  if (x < bounds.minX) dx = Math.abs(dx);
+  if (x > bounds.maxX) dx = -Math.abs(dx);
+  if (y < bounds.minY) dy = Math.abs(dy);
+  if (y > bounds.maxY) dy = -Math.abs(dy);
+  return createWorldState({
+    ...world,
+    sprite: {
+      ...world.sprite,
+      x: Math.min(bounds.maxX, Math.max(bounds.minX, x)),
+      y: Math.min(bounds.maxY, Math.max(bounds.minY, y)),
+      heading: normalizeCoordinate((Math.atan2(dy, dx) * 180) / Math.PI),
+    },
+  });
+}
+
 export function sayWorld(world: WorldState, text: string): WorldState {
   return createWorldState({
     ...world,

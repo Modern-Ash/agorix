@@ -205,6 +205,20 @@ export interface TurnStatement {
   readonly degrees: number;
 }
 
+export interface PointInDirectionStatement {
+  readonly type: "pointInDirection";
+  readonly degrees: number;
+}
+
+export interface PointTowardsStatement {
+  readonly type: "pointTowards";
+  readonly actorId: string;
+}
+
+export interface BounceOnEdgeStatement {
+  readonly type: "bounceOnEdge";
+}
+
 export interface SayStatement {
   readonly type: "say";
   readonly text: string;
@@ -322,6 +336,13 @@ export interface RepeatStatement {
   readonly body: readonly Statement[];
 }
 
+/** Checks the condition before every pass; the runtime stops after a fixed number of passes. */
+export interface RepeatUntilStatement {
+  readonly type: "repeatUntil";
+  readonly condition: Expression;
+  readonly body: readonly Statement[];
+}
+
 export interface IfStatement {
   readonly type: "if";
   readonly condition: Expression;
@@ -334,6 +355,9 @@ export type Statement =
   | MoveStatement
   | GoToStatement
   | TurnStatement
+  | PointInDirectionStatement
+  | PointTowardsStatement
+  | BounceOnEdgeStatement
   | SayStatement
   | ThinkStatement
   | ShowStatement
@@ -356,6 +380,7 @@ export type Statement =
   | ListInsertAtStatement
   | ListReplaceAtStatement
   | RepeatStatement
+  | RepeatUntilStatement
   | IfStatement;
 
 // --- Triggers ---------------------------------------------------------------

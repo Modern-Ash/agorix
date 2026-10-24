@@ -258,6 +258,15 @@ function projectStatement(
     case "turn":
       write(writer, `${pad}sprite.turn(${formatNumber(statement.degrees)});\n`);
       return;
+    case "pointInDirection":
+      write(writer, `${pad}sprite.pointInDirection(${formatNumber(statement.degrees)});\n`);
+      return;
+    case "pointTowards":
+      write(writer, `${pad}sprite.pointTowards(${JSON.stringify(statement.actorId)});\n`);
+      return;
+    case "bounceOnEdge":
+      write(writer, `${pad}sprite.bounceOnEdge();\n`);
+      return;
     case "say":
       write(writer, `${pad}sprite.say(${JSON.stringify(statement.text)});\n`);
       return;
@@ -342,6 +351,17 @@ function projectStatement(
       return;
     case "repeat": {
       write(writer, `${pad}repeat(${formatNumber(statement.count)}, () => {\n`);
+      projectStatements(statement.body, nodeId, "body", indent + 1, writer, context);
+      write(writer, `${pad}});\n`);
+      return;
+    }
+    case "repeatUntil": {
+      const condId = `${nodeId}/condition`;
+      const cond = formatExpression(statement.condition, condId, context);
+      const prefix = `${pad}repeatUntil(() => `;
+      const condStart = writer.offset + prefix.length;
+      writer.mapping[condId] = { start: condStart, end: condStart + cond.length };
+      write(writer, `${prefix}${cond}, () => {\n`);
       projectStatements(statement.body, nodeId, "body", indent + 1, writer, context);
       write(writer, `${pad}});\n`);
       return;

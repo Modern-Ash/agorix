@@ -55,6 +55,7 @@ describe("runtime operation allowlist", () => {
 
   it("names every canonical statement, expression and trigger exactly once", () => {
     expect([...RUNTIME_STATEMENT_OPERATIONS].sort()).toEqual([
+      "bounceOnEdge",
       "broadcast",
       "changeVariable",
       "changeVolume",
@@ -68,7 +69,10 @@ describe("runtime operation allowlist", () => {
       "listReplaceAt",
       "move",
       "playSound",
+      "pointInDirection",
+      "pointTowards",
       "repeat",
+      "repeatUntil",
       "say",
       "setSize",
       "setVariable",

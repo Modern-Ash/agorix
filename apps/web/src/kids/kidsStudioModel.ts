@@ -33,6 +33,9 @@ export type StudioStatement = Extract<
       | "move"
       | "goTo"
       | "turn"
+      | "pointInDirection"
+      | "pointTowards"
+      | "bounceOnEdge"
       | "switchCostume"
       | "switchBackdrop"
       | "playSound"
@@ -55,6 +58,7 @@ export type StudioStatement = Extract<
       | "listInsertAt"
       | "listReplaceAt"
       | "repeat"
+      | "repeatUntil"
       | "if";
   }
 >;
@@ -181,7 +185,7 @@ function statementCount(statements: readonly Statement[]): number {
     (sum, statement) =>
       sum +
       1 +
-      (statement.type === "repeat"
+      (statement.type === "repeat" || statement.type === "repeatUntil"
         ? statementCount(statement.body)
         : statement.type === "if"
           ? statementCount(statement.then) + statementCount(statement.else ?? [])
@@ -223,6 +227,13 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0): bool
       statement.y <= 120
     );
   if (statement.type === "turn") return [45, 90, 180, -45, -90, -180].includes(statement.degrees);
+  if (statement.type === "pointInDirection") return [0, 90, 180, -90].includes(statement.degrees);
+  if (statement.type === "pointTowards")
+    return program.scripts.some((script) => {
+      const actor = actorOfScript(script.id);
+      return actor !== null && studioActorId(actor.index, actor.characterId) === statement.actorId;
+    });
+  if (statement.type === "bounceOnEdge") return true;
   if (statement.type === "switchCostume")
     return (
       isGalleryCharacterId(statement.costumeId.slice(8)) &&
@@ -274,6 +285,14 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0): bool
     return (
       depth < MAX_STUDIO_CONTROL_DEPTH &&
       [2, 3, 5].includes(statement.count) &&
+      statement.body.length >= 1 &&
+      statement.body.length <= MAX_STUDIO_BODY &&
+      statement.body.every((item) => checked(item, program, depth + 1))
+    );
+  if (statement.type === "repeatUntil")
+    return (
+      depth < MAX_STUDIO_CONTROL_DEPTH &&
+      checkedCondition(statement.condition, program) &&
       statement.body.length >= 1 &&
       statement.body.length <= MAX_STUDIO_BODY &&
       statement.body.every((item) => checked(item, program, depth + 1))
@@ -469,6 +488,7 @@ export function wrapStudioTail(
   count: number,
   control:
     | { readonly type: "repeat"; readonly times: 2 | 3 | 5 }
+    | { readonly type: "repeatUntil"; readonly condition: Expression }
     | { readonly type: "if"; readonly condition: Expression },
 ): EditorHistory {
   const program = validateStudioProgram(history.current);
@@ -484,7 +504,9 @@ export function wrapStudioTail(
   const statement: Statement =
     control.type === "repeat"
       ? { type: "repeat", count: control.times, body }
-      : { type: "if", condition: control.condition, then: body };
+      : control.type === "repeatUntil"
+        ? { type: "repeatUntil", condition: control.condition, body }
+        : { type: "if", condition: control.condition, then: body };
   if (!checked(statement, program)) throw new RangeError("unsupported studio group");
   const scripts = [...program.scripts];
   scripts[index] = {

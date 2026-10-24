@@ -330,7 +330,7 @@ function validateStatementAssetRefs(
         statement.soundId,
       );
     }
-    if (statement.type === "repeat") {
+    if (statement.type === "repeat" || statement.type === "repeatUntil") {
       validateStatementAssetRefs(statement.body, `${statementPath}.body`, state);
     }
     if (statement.type === "if") {

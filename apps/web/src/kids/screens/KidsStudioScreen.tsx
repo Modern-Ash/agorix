@@ -89,6 +89,13 @@ const COPY = {
     turnRight: "Girar a la derecha",
     moveBackward: "Retroceder",
     turnAmount: "Grados",
+    pointDirection: "Apuntar hacia",
+    pointTowards: "Apuntar a",
+    bounceOnEdge: "Rebotar en el borde",
+    dirRight: "derecha",
+    dirDown: "abajo",
+    dirLeft: "izquierda",
+    dirUp: "arriba",
     costume: "Cambiar disfraz",
     switchBackdrop: "Cambiar fondo",
     sound: "Sonar",
@@ -145,6 +152,9 @@ const COPY = {
     groupIfTouchActor: "Si toca, ejecutar estos bloques",
     ifTouchEdge: "Si toca el borde, mover 1",
     groupIfTouchEdge: "Si toca el borde, ejecutar estos bloques",
+    repeatUntil: "Repetir hasta",
+    groupUntilEdge: "Repetir hasta tocar el borde",
+    groupUntilActor: "Repetir hasta tocar al personaje",
     saveDistance: "Guardar distancia",
     distanceTarget: "Distancia al personaje",
     dataName: "Nombre",
@@ -206,6 +216,13 @@ const COPY = {
     turnRight: "Turn right",
     moveBackward: "Move backward",
     turnAmount: "Degrees",
+    pointDirection: "Point",
+    pointTowards: "Point at",
+    bounceOnEdge: "Bounce on edge",
+    dirRight: "right",
+    dirDown: "down",
+    dirLeft: "left",
+    dirUp: "up",
     costume: "Switch costume",
     switchBackdrop: "Switch backdrop",
     sound: "Sound",
@@ -262,6 +279,9 @@ const COPY = {
     groupIfTouchActor: "If touching, run these blocks",
     ifTouchEdge: "If at edge, move 1",
     groupIfTouchEdge: "If at edge, run these blocks",
+    repeatUntil: "Repeat until",
+    groupUntilEdge: "Repeat until at the edge",
+    groupUntilActor: "Repeat until touching the character",
     saveDistance: "Save distance",
     distanceTarget: "Distance to character",
     dataName: "Name",
@@ -387,6 +407,8 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
   const [targetX, setTargetX] = useState(160);
   const [targetY, setTargetY] = useState(0);
   const [turnAmount, setTurnAmount] = useState(90);
+  const [pointDegrees, setPointDegrees] = useState(0);
+  const [pointTargetId, setPointTargetId] = useState("");
   const [bubbleText, setBubbleText] = useState(locale === "es" ? "¡Hola!" : "Hello!");
   const [spriteSize, setSpriteSize] = useState(100);
   const [waitSeconds, setWaitSeconds] = useState(1);
@@ -776,6 +798,19 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
     };
   }
 
+  const directionOptions = [
+    { degrees: 0, name: copy.dirRight },
+    { degrees: 90, name: copy.dirDown },
+    { degrees: 180, name: copy.dirLeft },
+    { degrees: -90, name: copy.dirUp },
+  ] as const;
+
+  function directionName(degrees: number): string {
+    return directionOptions.find((item) => item.degrees === degrees)?.name ?? `${degrees}°`;
+  }
+
+  const pointTarget = otherActors.find((item) => item.id === pointTargetId) ?? otherActors[0];
+
   function blockLabel(statement: Statement): string {
     switch (statement.type) {
       case "move":
@@ -784,6 +819,12 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
         return `${copy.goTo}: ${statement.x}, ${statement.y}`;
       case "turn":
         return `${statement.degrees < 0 ? copy.turnLeft : copy.turnRight} ${Math.abs(statement.degrees)}°`;
+      case "pointInDirection":
+        return `${copy.pointDirection}: ${directionName(statement.degrees)}`;
+      case "pointTowards":
+        return `${copy.pointTowards}: ${creative.actors?.find((item) => item.id === statement.actorId)?.name ?? "?"}`;
+      case "bounceOnEdge":
+        return copy.bounceOnEdge;
       case "switchCostume":
         return `${copy.costume}: ${galleryCharacterName(characterOfCostume(statement.costumeId, "nova"), locale)}`;
       case "switchBackdrop":
@@ -824,6 +865,8 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
         return `${statement.type === "listInsertAt" ? copy.listInsert : copy.listReplace}: ${history.current.lists?.find((item) => item.id === statement.listId)?.name ?? "?"} ${expressionLabel(statement.index, history.current)} ← ${expressionLabel(statement.value, history.current)}`;
       case "repeat":
         return `${copy.repeat} ${statement.count}`;
+      case "repeatUntil":
+        return `${copy.repeatUntil} ${expressionLabel(statement.condition, history.current, locale)}`;
       case "if":
         return `${copy.ifLabel} ${expressionLabel(statement.condition, history.current, locale)}`;
       default:
@@ -837,7 +880,9 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
         {statements.map((item, index) => (
           <li key={`${key}-${index}`}>
             {blockLabel(item)}
-            {item.type === "repeat" ? nestedBlocks(item.body, `${key}-${index}`) : null}
+            {item.type === "repeat" || item.type === "repeatUntil"
+              ? nestedBlocks(item.body, `${key}-${index}`)
+              : null}
             {item.type === "if" ? nestedBlocks(item.then, `${key}-${index}`) : null}
             {item.type === "if" && item.else ? (
               <>
@@ -851,7 +896,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
     );
   }
 
-  function groupLast(type: "repeat" | "if", overrideCondition?: Expression) {
+  function groupLast(type: "repeat" | "repeatUntil" | "if", overrideCondition?: Expression) {
     try {
       persist(
         wrapStudioTail(
@@ -1492,7 +1537,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
               {script?.statements.map((statement, index) => (
                 <li key={`${script.id}-${index}`} className="kids-program-block">
                   <span>{blockLabel(statement)}</span>
-                  {statement.type === "repeat"
+                  {statement.type === "repeat" || statement.type === "repeatUntil"
                     ? nestedBlocks(statement.body, `${script.id}-${index}`)
                     : null}
                   {statement.type === "if"
@@ -1682,6 +1727,57 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
             >
               + {copy.turnRight}
             </button>
+            <label>
+              {copy.pointDirection}{" "}
+              <select
+                value={pointDegrees}
+                onChange={(event) => setPointDegrees(Number(event.target.value))}
+              >
+                {directionOptions.map((item) => (
+                  <option key={item.degrees} value={item.degrees}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              className="kids-button"
+              onClick={() => add({ type: "pointInDirection", degrees: pointDegrees })}
+            >
+              + {copy.pointDirection}
+            </button>
+            {pointTarget ? (
+              <>
+                <label>
+                  {copy.pointTowards}{" "}
+                  <select
+                    value={pointTarget.id}
+                    onChange={(event) => setPointTargetId(event.target.value)}
+                  >
+                    {otherActors.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  className="kids-button"
+                  onClick={() => add({ type: "pointTowards", actorId: pointTarget.id })}
+                >
+                  + {copy.pointTowards}
+                </button>
+              </>
+            ) : null}
+            <button
+              type="button"
+              className="kids-button"
+              onClick={() => add({ type: "bounceOnEdge" })}
+            >
+              + {copy.bounceOnEdge}
+            </button>
             <h3>{copy.paletteMedia}</h3>
             <label>
               {copy.costume}{" "}
@@ -1867,6 +1963,14 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
             >
               {copy.groupIfTouchEdge}
             </button>
+            <button
+              type="button"
+              className="kids-button"
+              disabled={(script?.statements.length ?? 0) < groupCount}
+              onClick={() => groupLast("repeatUntil", STUDIO_EDGE_CONDITION)}
+            >
+              {copy.groupUntilEdge}
+            </button>
             {targetActorId ? (
               <>
                 <label>
@@ -1902,6 +2006,16 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
                   onClick={() => groupLast("if", { type: "touchingActor", actorId: targetActorId })}
                 >
                   {copy.groupIfTouchActor}
+                </button>
+                <button
+                  type="button"
+                  className="kids-button"
+                  disabled={(script?.statements.length ?? 0) < groupCount}
+                  onClick={() =>
+                    groupLast("repeatUntil", { type: "touchingActor", actorId: targetActorId })
+                  }
+                >
+                  {copy.groupUntilActor}
                 </button>
               </>
             ) : null}

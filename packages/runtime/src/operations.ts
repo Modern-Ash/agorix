@@ -18,6 +18,9 @@ export const RUNTIME_STATEMENT_OPERATIONS = Object.freeze([
   "move",
   "goTo",
   "turn",
+  "pointInDirection",
+  "pointTowards",
+  "bounceOnEdge",
   "say",
   "think",
   "show",
@@ -40,6 +43,7 @@ export const RUNTIME_STATEMENT_OPERATIONS = Object.freeze([
   "listInsertAt",
   "listReplaceAt",
   "repeat",
+  "repeatUntil",
   "if",
 ] as const);
 
@@ -168,6 +172,9 @@ function assertStatementsAllowed(statements: readonly Statement[], path: string)
     const statementPath = `${path}[${i}]`;
     assertAllowedRuntimeOperation("statement", statement.type, statementPath);
     if (statement.type === "repeat") {
+      assertStatementsAllowed(statement.body, `${statementPath}.body`);
+    } else if (statement.type === "repeatUntil") {
+      assertExpressionAllowed(statement.condition, `${statementPath}.condition`);
       assertStatementsAllowed(statement.body, `${statementPath}.body`);
     } else if (statement.type === "if") {
       assertExpressionAllowed(statement.condition, `${statementPath}.condition`);
