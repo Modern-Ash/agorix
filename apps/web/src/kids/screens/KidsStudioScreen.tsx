@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import {
   createEditorHistory,
   recordCanonicalTransaction,
@@ -44,6 +44,7 @@ import {
 } from "../kidsStudioModel.js";
 import {
   listStudioProjects,
+  moveStudioActorLayer,
   saveStudioProject,
   setStudioActorPosition,
   setStudioBackdrop,
@@ -124,6 +125,8 @@ const COPY = {
     noBlocks: "Agregá un bloque para ver qué hace este personaje.",
     stage: "Escenario",
     place: "Ubicar personaje",
+    forward: "Traer adelante",
+    backward: "Enviar atrás",
   },
   en: {
     title: "Free scene",
@@ -189,6 +192,8 @@ const COPY = {
     noBlocks: "Add a block to see what this character does.",
     stage: "Stage",
     place: "Place character",
+    forward: "Bring forward",
+    backward: "Send backward",
   },
 } as const;
 
@@ -254,21 +259,30 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
   const oriPageVisible = useOriPageVisible();
   const [error, setError] = useState(false);
   const [placementRevision, setPlacementRevision] = useState(0);
-  const creative = useMemo(
-    () =>
-      creativeForStudio(
-        history.current,
-        backdropId,
-        locale,
-        Object.fromEntries(
-          (store.load(id).metadata.actors?.items ?? []).map((item) => [
-            item.id,
-            { x: item.x, y: item.y },
-          ]),
-        ),
+  const [dragPreview, setDragPreview] = useState<{ id: string; x: number; y: number } | null>(null);
+  const dragStart = useRef<{
+    id: string;
+    pointerId: number;
+    pointerX: number;
+    pointerY: number;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
+  const suppressStageClick = useRef(false);
+  const creative = useMemo(() => {
+    const saved = store.load(id).metadata;
+    return creativeForStudio(
+      history.current,
+      backdropId,
+      locale,
+      Object.fromEntries(
+        (saved.actors?.items ?? []).map((item) => [item.id, { x: item.x, y: item.y }]),
       ),
-    [history.current, backdropId, locale, placementRevision, store, id],
-  );
+      saved.stage?.actorOrder,
+    );
+  }, [history.current, backdropId, locale, placementRevision, store, id]);
   const actor = creative.actors?.find((item) => item.id === activeActorId) ?? creative.actors?.[0];
   const script = history.current.scripts.find((item) => actor?.scripts?.includes(item.id));
   const currentProgram = useRef(history.current);
@@ -387,6 +401,93 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
         Math.max(-100, Math.min(120, actor.y + dy)),
         store,
       );
+      setPlacementRevision((value) => value + 1);
+      setRun(null);
+      setFrame(null);
+      setError(false);
+    } catch {
+      setError(true);
+    }
+  }
+
+  function changeLayer(direction: "forward" | "backward") {
+    if (!actor) return;
+    try {
+      if (moveStudioActorLayer(id, actor.id, direction, store)) {
+        setPlacementRevision((value) => value + 1);
+        setRun(null);
+        setFrame(null);
+      }
+      setError(false);
+    } catch {
+      setError(true);
+    }
+  }
+
+  function dragPosition(event: PointerEvent<HTMLButtonElement>) {
+    const start = dragStart.current;
+    if (!start || event.pointerId !== start.pointerId) return null;
+    return {
+      id: start.id,
+      x: Math.max(
+        0,
+        Math.min(320, Math.round(start.x + ((event.clientX - start.pointerX) / start.width) * 400)),
+      ),
+      y: Math.max(
+        -100,
+        Math.min(
+          120,
+          Math.round(start.y + ((event.clientY - start.pointerY) / start.height) * 300),
+        ),
+      ),
+    };
+  }
+
+  function beginDrag(
+    event: PointerEvent<HTMLButtonElement>,
+    actorId: string,
+    x: number,
+    y: number,
+  ) {
+    if (actorId !== activeActorId || (event.pointerType === "mouse" && event.button !== 0)) return;
+    const bounds = event.currentTarget.parentElement?.getBoundingClientRect();
+    if (!bounds || bounds.width === 0 || bounds.height === 0) return;
+    dragStart.current = {
+      id: actorId,
+      pointerId: event.pointerId,
+      pointerX: event.clientX,
+      pointerY: event.clientY,
+      x,
+      y,
+      width: bounds.width,
+      height: bounds.height,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function moveDrag(event: PointerEvent<HTMLButtonElement>) {
+    const next = dragPosition(event);
+    if (next && (next.x !== dragStart.current?.x || next.y !== dragStart.current?.y))
+      setDragPreview(next);
+  }
+
+  function endDrag(event: PointerEvent<HTMLButtonElement>) {
+    const next = dragPosition(event);
+    const start = dragStart.current;
+    dragStart.current = null;
+    setDragPreview(null);
+    if (
+      !next ||
+      !start ||
+      Math.hypot(event.clientX - start.pointerX, event.clientY - start.pointerY) < 5
+    )
+      return;
+    suppressStageClick.current = true;
+    window.setTimeout(() => {
+      suppressStageClick.current = false;
+    }, 0);
+    try {
+      setStudioActorPosition(id, next.id, next.x, next.y, store);
       setPlacementRevision((value) => value + 1);
       setRun(null);
       setFrame(null);
@@ -584,8 +685,10 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
                 final?.world.sprite.costumeId,
                 characterOfActor(item.id),
               );
-              const x = final?.world.sprite.x ?? item.x;
-              const y = final?.world.sprite.y ?? item.y;
+              const x =
+                dragPreview?.id === item.id ? dragPreview.x : (final?.world.sprite.x ?? item.x);
+              const y =
+                dragPreview?.id === item.id ? dragPreview.y : (final?.world.sprite.y ?? item.y);
               const sprite = final?.world.sprite;
               if (sprite?.visible === false) return null;
               return (
@@ -596,10 +699,24 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
                   style={{
                     left: `${Math.max(4, Math.min(90, 8 + x / 4))}%`,
                     top: `${Math.max(8, Math.min(82, 40 + y / 3))}%`,
+                    zIndex: (creative.stage?.actorOrder?.indexOf(item.id) ?? 0) + 1,
                   }}
                   aria-label={`${copy.chooseActor}: ${item.name} ${item.id}`}
                   aria-pressed={activeActorId === item.id}
-                  onClick={() => tapActor(item.id)}
+                  onClick={() => {
+                    if (suppressStageClick.current) {
+                      suppressStageClick.current = false;
+                      return;
+                    }
+                    tapActor(item.id);
+                  }}
+                  onPointerDown={(event) => beginDrag(event, item.id, item.x, item.y)}
+                  onPointerMove={moveDrag}
+                  onPointerUp={endDrag}
+                  onPointerCancel={() => {
+                    dragStart.current = null;
+                    setDragPreview(null);
+                  }}
                 >
                   <span
                     className="kids-studio-stage-costume"
@@ -660,6 +777,26 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
               onClick={() => placeActor(20, 0)}
             >
               →
+            </button>
+            <button
+              type="button"
+              className="kids-button"
+              disabled={
+                !actor ||
+                (creative.stage?.actorOrder?.indexOf(actor.id) ?? 0) ===
+                  (creative.stage?.actorOrder?.length ?? 1) - 1
+              }
+              onClick={() => changeLayer("forward")}
+            >
+              {copy.forward}
+            </button>
+            <button
+              type="button"
+              className="kids-button"
+              disabled={!actor || (creative.stage?.actorOrder?.indexOf(actor.id) ?? 0) === 0}
+              onClick={() => changeLayer("backward")}
+            >
+              {copy.backward}
             </button>
           </div>
           <div className="kids-run-controls">

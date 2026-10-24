@@ -74,7 +74,13 @@ export function saveStudioProject(
   const positions = Object.fromEntries(
     (previous?.actors?.items ?? []).map((actor) => [actor.id, { x: actor.x, y: actor.y }]),
   );
-  const creative = creativeForStudio(valid, backdropId, locale, positions);
+  const creative = creativeForStudio(
+    valid,
+    backdropId,
+    locale,
+    positions,
+    previous?.stage?.actorOrder,
+  );
   if (!creative.actors?.some((actor) => actor.id === activeActorId))
     throw new RangeError("active actor is not in studio");
   const now = new Date().toISOString();
@@ -121,6 +127,30 @@ export function setStudioActorPosition(
       items: actors.items.map((actor) => (actor.id === actorId ? { ...actor, x, y } : actor)),
     },
   });
+}
+
+export function moveStudioActorLayer(
+  id: string,
+  actorId: string,
+  direction: "forward" | "backward",
+  store: ProjectStore = new ProjectStore(),
+): boolean {
+  if (!STUDIO_ID.test(id)) throw new RangeError("invalid studio id");
+  const saved = store.load(id);
+  validateStudioProgram(saved.program);
+  const stage = saved.metadata.stage;
+  const order = [...(stage?.actorOrder ?? [])];
+  const index = order.indexOf(actorId);
+  if (index < 0) throw new RangeError("unknown studio actor");
+  const next = index + (direction === "forward" ? 1 : -1);
+  if (next < 0 || next >= order.length) return false;
+  [order[index], order[next]] = [order[next]!, order[index]!];
+  store.save(id, saved.program, {
+    ...saved.metadata,
+    updatedAt: new Date().toISOString(),
+    stage: { ...stage!, actorOrder: order },
+  });
+  return true;
 }
 
 export function createStudioProject(
@@ -205,6 +235,21 @@ export function importStudioProject(
     for (const actor of creative.actors ?? []) {
       const position = importedActors.find((item) => item.id === actor.id);
       if (position) setStudioActorPosition(project.id, actor.id, position.x, position.y, store);
+    }
+    const importedOrder = imported.metadata.stage?.actorOrder ?? [];
+    for (let index = 0; index < importedOrder.length; index++) {
+      const actorId = importedOrder[index]!;
+      if (!creative.actors?.some((item) => item.id === actorId))
+        throw new RangeError("invalid studio actor order");
+      let current = store.load(project.id).metadata.stage?.actorOrder?.indexOf(actorId) ?? -1;
+      while (current >= 0 && current < index) {
+        moveStudioActorLayer(project.id, actorId, "forward", store);
+        current++;
+      }
+      while (current > index) {
+        moveStudioActorLayer(project.id, actorId, "backward", store);
+        current--;
+      }
     }
     storage.setItem(INDEX, JSON.stringify([...previous, project]));
     return project;

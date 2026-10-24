@@ -2676,6 +2676,11 @@
 }
 .kids-studio-stage-actor[aria-pressed="true"] {
   border-color: #5130a8;
+  touch-action: none;
+  cursor: grab;
+}
+.kids-studio-stage-actor[aria-pressed="true"]:active {
+  cursor: grabbing;
 }
 .kids-studio-stage-actor .kids-sprite {
   max-width: 100%;

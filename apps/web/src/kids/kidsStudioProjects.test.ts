@@ -13,6 +13,7 @@ import {
   exportStudioProject,
   importStudioProject,
   listStudioProjects,
+  moveStudioActorLayer,
   saveStudioProject,
   setStudioActorPosition,
   setStudioBackdrop,
@@ -57,6 +58,7 @@ describe("Kids studio projects", () => {
     });
     saveStudioProject(project.id, history.current, "forest", "actor:studio-2-mika", "es", store);
     setStudioActorPosition(project.id, "actor:studio-2-mika", 180, -40, store);
+    expect(moveStudioActorLayer(project.id, "actor:studio-1-nova", "forward", store)).toBe(true);
     setStudioBackdrop(project.id, "moon", "es", store, index);
     expect(store.load(project.id).metadata.stage?.backdropId).toBe("backdrop:moon");
     expect(store.load(project.id).metadata.actors?.items).toHaveLength(2);
@@ -65,6 +67,10 @@ describe("Kids studio projects", () => {
     expect(copy.backdropId).toBe("moon");
     expect(store.load(copy.id).program).toEqual(history.current);
     expect(store.load(copy.id).metadata.actors?.items[1]).toMatchObject({ x: 180, y: -40 });
+    expect(store.load(copy.id).metadata.stage?.actorOrder).toEqual([
+      "actor:studio-2-mika",
+      "actor:studio-1-nova",
+    ]);
     expect(listStudioProjects(index)).toEqual([{ ...project, backdropId: "moon" }, copy]);
   });
 
@@ -76,6 +82,7 @@ describe("Kids studio projects", () => {
       setStudioActorPosition(project.id, "actor:studio-1-nova", 400, 0, store),
     ).toThrow();
     expect(() => setStudioActorPosition(project.id, "actor:missing", 100, 0, store)).toThrow();
+    expect(() => moveStudioActorLayer(project.id, "actor:missing", "forward", store)).toThrow();
     expect(store.load(project.id)).toEqual(before);
   });
 
