@@ -30,16 +30,18 @@ export function KidsSprite({
   className,
   fallback,
   label,
+  imageOverride,
   children,
 }: {
   readonly slot: KidsSpriteSlot;
   readonly className?: string;
   readonly fallback?: string;
   readonly label?: string | undefined;
+  readonly imageOverride?: string | undefined;
   readonly children?: ReactNode;
 }) {
   const enabled = useKidsFlag("customImages");
-  const image = spriteImage(slot, enabled);
+  const image = imageOverride ?? spriteImage(slot, enabled);
   const glyph = fallback ?? (slot === "ori" ? "✦" : slot.kind === "emoji" ? slot.value : "🦊");
   // Only fixed character keys can become accessible names; files never supply alt text.
   const imageLabel = image
@@ -68,6 +70,7 @@ export function KidsBackdrop({
   role,
   tabIndex,
   fallbackBackground,
+  imageOverride,
 }: {
   readonly world: KidsWorldRef;
   readonly baseWorld?: KidsWorld;
@@ -78,9 +81,10 @@ export function KidsBackdrop({
   readonly role?: "img" | "group";
   readonly tabIndex?: number;
   readonly fallbackBackground?: string;
+  readonly imageOverride?: string | undefined;
 }) {
   const enabled = useKidsFlag("customImages");
-  const image = backdropImage(world, enabled);
+  const image = imageOverride ?? backdropImage(world, enabled);
   const fallbackWorld = world.kind === "builtin" ? world.value : (baseWorld ?? "space");
   return (
     <div

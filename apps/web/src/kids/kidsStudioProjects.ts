@@ -4,7 +4,7 @@ import {
   serializeAgorixProject,
   type ProjectMetadata,
 } from "@agorix/persistence";
-import type { ProjectProgram } from "@agorix/program-model";
+import type { ProjectAsset, ProjectProgram } from "@agorix/program-model";
 import type { Locale } from "../i18n.js";
 import {
   isGalleryBackdropId,
@@ -14,8 +14,10 @@ import {
 import {
   createStudioProgram,
   creativeForStudio,
+  studioArtAssets,
   validateStudioProgram,
 } from "./kidsStudioModel.js";
+import { validKidsImageDataUrl } from "./kidsImages.js";
 
 const INDEX = "agorix.kids.studios.v1";
 const STUDIO_ID = /^studio-[1-9][0-9]*$/;
@@ -60,6 +62,16 @@ function nextId(projects: readonly KidsStudioProject[]): string {
   return `studio-${Math.max(0, ...projects.map((item) => Number(item.id.slice(7)))) + 1}`;
 }
 
+function costumeMap(
+  actors: readonly { readonly id: string; readonly costumeId?: string }[] = [],
+): Record<string, string> {
+  return Object.fromEntries(
+    actors
+      .filter((actor) => actor.costumeId !== undefined)
+      .map((actor) => [actor.id, actor.costumeId!]),
+  ) as Record<string, string>;
+}
+
 export function saveStudioProject(
   id: string,
   program: ProjectProgram,
@@ -67,6 +79,7 @@ export function saveStudioProject(
   activeActorId: string,
   locale: Locale,
   store: ProjectStore = new ProjectStore(),
+  backdropOverride?: string,
 ): void {
   if (!STUDIO_ID.test(id)) throw new RangeError("invalid studio id");
   const valid = validateStudioProgram(program);
@@ -74,12 +87,20 @@ export function saveStudioProject(
   const positions = Object.fromEntries(
     (previous?.actors?.items ?? []).map((actor) => [actor.id, { x: actor.x, y: actor.y }]),
   );
+  const artAssets = studioArtAssets(
+    previous?.assets?.filter((asset) => asset.source.startsWith("data:")),
+  );
   const creative = creativeForStudio(
     valid,
     backdropId,
     locale,
     positions,
     previous?.stage?.actorOrder,
+    {
+      assets: artAssets,
+      actorCostumes: costumeMap(previous?.actors?.items),
+      stageBackdropId: backdropOverride ?? previous?.stage?.backdropId,
+    },
   );
   if (!creative.actors?.some((actor) => actor.id === activeActorId))
     throw new RangeError("active actor is not in studio");
@@ -95,6 +116,122 @@ export function saveStudioProject(
     ...(creative.assets === undefined ? {} : { assets: creative.assets }),
   };
   store.save(id, valid, metadata);
+}
+
+export function addStudioArt(
+  id: string,
+  kind: "costume" | "backdrop",
+  actorId: string,
+  dataUrl: string,
+  locale: Locale,
+  store: ProjectStore = new ProjectStore(),
+  storage: StudioStorage | undefined = browserStorage(),
+): string {
+  if (!STUDIO_ID.test(id) || !validKidsImageDataUrl(dataUrl))
+    throw new RangeError("invalid studio image");
+  const saved = store.load(id);
+  const program = validateStudioProgram(saved.program);
+  const metadata = saved.metadata;
+  const backdropId = metadata.stage?.backdropId?.replace(/^backdrop:/, "");
+  const indexBackdrop = listStudioProjects(storage).find((item) => item.id === id)?.backdropId;
+  const fallback = isGalleryBackdropId(backdropId) ? backdropId : indexBackdrop;
+  if (!fallback || !isGalleryBackdropId(fallback)) throw new RangeError("unknown studio backdrop");
+  const custom = studioArtAssets(
+    metadata.assets?.filter((asset) => asset.source.startsWith("data:")),
+  );
+  if (custom.length >= 12) throw new RangeError("studio art limit");
+  const number = Math.max(0, ...custom.map((asset) => Number(asset.id.split("-").at(-1)))) + 1;
+  if (number > 99) throw new RangeError("studio art limit");
+  const asset: ProjectAsset = {
+    id: `${kind}:studio-art-${number}`,
+    kind,
+    name:
+      locale === "es"
+        ? kind === "costume"
+          ? `Mi disfraz ${number}`
+          : `Mi fondo ${number}`
+        : kind === "costume"
+          ? `My costume ${number}`
+          : `My backdrop ${number}`,
+    source: dataUrl,
+  };
+  const positions = Object.fromEntries(
+    (metadata.actors?.items ?? []).map((actor) => [actor.id, { x: actor.x, y: actor.y }]),
+  );
+  const actorCostumes = costumeMap(metadata.actors?.items);
+  if (kind === "costume") {
+    if (!metadata.actors?.items.some((actor) => actor.id === actorId))
+      throw new RangeError("unknown studio actor");
+    actorCostumes[actorId] = asset.id;
+  }
+  const creative = creativeForStudio(
+    program,
+    fallback,
+    locale,
+    positions,
+    metadata.stage?.actorOrder,
+    {
+      assets: [...custom, asset],
+      actorCostumes,
+      stageBackdropId: kind === "backdrop" ? asset.id : metadata.stage?.backdropId,
+    },
+  );
+  store.save(id, program, {
+    ...metadata,
+    updatedAt: new Date().toISOString(),
+    actors: { activeId: metadata.actors?.activeId ?? actorId, items: creative.actors! },
+    stage: creative.stage!,
+    assets: creative.assets!,
+  });
+  return asset.id;
+}
+
+export function selectStudioArt(
+  id: string,
+  assetId: string,
+  actorId: string,
+  locale: Locale,
+  store: ProjectStore = new ProjectStore(),
+  storage: StudioStorage | undefined = browserStorage(),
+): void {
+  if (!STUDIO_ID.test(id)) throw new RangeError("invalid studio id");
+  const saved = store.load(id);
+  const program = validateStudioProgram(saved.program);
+  const metadata = saved.metadata;
+  const custom = studioArtAssets(
+    metadata.assets?.filter((asset) => asset.source.startsWith("data:")),
+  );
+  const asset = custom.find((item) => item.id === assetId);
+  if (!asset) throw new RangeError("unknown studio art");
+  const fallback =
+    listStudioProjects(storage).find((item) => item.id === id)?.backdropId ?? "forest";
+  const actorCostumes = costumeMap(metadata.actors?.items);
+  if (asset.kind === "costume") {
+    if (!metadata.actors?.items.some((actor) => actor.id === actorId))
+      throw new RangeError("unknown studio actor");
+    actorCostumes[actorId] = asset.id;
+  }
+  const creative = creativeForStudio(
+    program,
+    fallback,
+    locale,
+    Object.fromEntries(
+      (metadata.actors?.items ?? []).map((actor) => [actor.id, { x: actor.x, y: actor.y }]),
+    ),
+    metadata.stage?.actorOrder,
+    {
+      assets: custom,
+      actorCostumes,
+      stageBackdropId: asset.kind === "backdrop" ? asset.id : metadata.stage?.backdropId,
+    },
+  );
+  store.save(id, program, {
+    ...metadata,
+    updatedAt: new Date().toISOString(),
+    actors: { activeId: actorId, items: creative.actors! },
+    stage: creative.stage!,
+    assets: creative.assets!,
+  });
 }
 
 export function setStudioActorPosition(
@@ -194,7 +331,7 @@ export function setStudioBackdrop(
   const saved = store.load(id);
   const active = saved.metadata.actors?.activeId ?? "";
   // A quota failure in either store must leave both views on the old backdrop.
-  saveStudioProject(id, saved.program, backdropId, active, locale, store);
+  saveStudioProject(id, saved.program, backdropId, active, locale, store, `backdrop:${backdropId}`);
   try {
     storage.setItem(
       INDEX,
@@ -206,9 +343,13 @@ export function setStudioBackdrop(
   }
 }
 
-export function exportStudioProject(id: string, store: ProjectStore = new ProjectStore()): string {
+export function exportStudioProject(
+  id: string,
+  store: ProjectStore = new ProjectStore(),
+  includeMedia = false,
+): string {
   if (!STUDIO_ID.test(id)) throw new RangeError("invalid studio id");
-  return serializeAgorixProject(store.load(id));
+  return serializeAgorixProject(store.load(id), { includeMedia });
 }
 
 export function importStudioProject(
@@ -220,37 +361,37 @@ export function importStudioProject(
   if (!storage) throw new Error("studio storage unavailable");
   const imported = parseAgorixProject(source).project;
   const program = validateStudioProgram(imported.program);
-  const backdropId = imported.metadata.stage?.backdropId?.replace(/^backdrop:/, "");
-  if (!isGalleryBackdropId(backdropId)) throw new RangeError("invalid studio backdrop");
+  const stageBackdrop = imported.metadata.stage?.backdropId;
+  const galleryBackdrop = stageBackdrop?.replace(/^backdrop:/, "");
+  const backdropId = isGalleryBackdropId(galleryBackdrop) ? galleryBackdrop : "forest";
   const active = imported.metadata.actors?.activeId;
-  const creative = creativeForStudio(program, backdropId, locale);
+  const importedActors = imported.metadata.actors?.items ?? [];
+  const creative = creativeForStudio(
+    program,
+    backdropId,
+    locale,
+    Object.fromEntries(importedActors.map((actor) => [actor.id, { x: actor.x, y: actor.y }])),
+    imported.metadata.stage?.actorOrder,
+    {
+      assets: studioArtAssets(
+        imported.metadata.assets?.filter((asset) => asset.source.startsWith("data:")),
+      ),
+      actorCostumes: costumeMap(importedActors),
+      stageBackdropId: stageBackdrop,
+    },
+  );
   const activeActorId = creative.actors?.some((actor) => actor.id === active)
     ? active!
     : creative.actors![0]!.id;
   const previous = listStudioProjects(storage);
   const project = { id: nextId(previous), backdropId };
   try {
-    saveStudioProject(project.id, program, backdropId, activeActorId, locale, store);
-    const importedActors = imported.metadata.actors?.items ?? [];
-    for (const actor of creative.actors ?? []) {
-      const position = importedActors.find((item) => item.id === actor.id);
-      if (position) setStudioActorPosition(project.id, actor.id, position.x, position.y, store);
-    }
-    const importedOrder = imported.metadata.stage?.actorOrder ?? [];
-    for (let index = 0; index < importedOrder.length; index++) {
-      const actorId = importedOrder[index]!;
-      if (!creative.actors?.some((item) => item.id === actorId))
-        throw new RangeError("invalid studio actor order");
-      let current = store.load(project.id).metadata.stage?.actorOrder?.indexOf(actorId) ?? -1;
-      while (current >= 0 && current < index) {
-        moveStudioActorLayer(project.id, actorId, "forward", store);
-        current++;
-      }
-      while (current > index) {
-        moveStudioActorLayer(project.id, actorId, "backward", store);
-        current--;
-      }
-    }
+    store.save(project.id, program, {
+      ...imported.metadata,
+      actors: { activeId: activeActorId, items: creative.actors! },
+      stage: creative.stage!,
+      assets: creative.assets!,
+    });
     storage.setItem(INDEX, JSON.stringify([...previous, project]));
     return project;
   } catch (error) {

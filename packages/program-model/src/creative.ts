@@ -121,6 +121,22 @@ function nonEmptyString(value: unknown, path: string): string {
   return value;
 }
 
+/** Embedded project art is bounded and excludes scriptable image formats. */
+export function validEmbeddedImageSource(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const match = /^data:image\/(png|webp);base64,([A-Za-z0-9+/]+={0,2})$/.exec(value);
+  if (!match) return false;
+  try {
+    const bytes = atob(match[2]!);
+    if (bytes.length === 0 || bytes.length >= 60 * 1024) return false;
+    return match[1] === "png"
+      ? bytes.startsWith("\x89PNG\r\n\x1a\n")
+      : bytes.startsWith("RIFF") && bytes.slice(8, 12) === "WEBP";
+  } catch {
+    return false;
+  }
+}
+
 function stableId(value: unknown, path: string): string {
   const id = nonEmptyString(value, path);
   if (!STABLE_ID_PATTERN.test(id)) {
@@ -185,7 +201,12 @@ function validateAsset(input: unknown, path: string, state: CreativeValidationSt
     id,
     kind,
     name: nonEmptyString(input.name, `${path}.name`),
-    source: nonEmptyString(input.source, `${path}.source`),
+    source:
+      typeof input.source === "string" && input.source.startsWith("data:")
+        ? kind !== "sound" && validEmbeddedImageSource(input.source)
+          ? input.source
+          : fail(`${path}.source`, "expected bounded PNG/WebP image data", input.source)
+        : nonEmptyString(input.source, `${path}.source`),
     ...(input.tags === undefined
       ? {}
       : { tags: optionalStringArray(input.tags, `${path}.tags`, MAX_TAGS) ?? [] }),

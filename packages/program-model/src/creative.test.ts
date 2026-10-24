@@ -4,6 +4,47 @@ import { ProgramValidationError } from "./validate.js";
 import { validateProjectCreativeState } from "./creative.js";
 
 describe("validateProjectCreativeState", () => {
+  it("accepts bounded PNG art and rejects scriptable or oversized inline sources", () => {
+    const png =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLttAAAAABJRU5ErkJggg==";
+    const emptyProgram = { ...FULL_COVERAGE_PROGRAM, scripts: [] };
+    expect(
+      validateProjectCreativeState(
+        { assets: [{ id: "costume:mine", kind: "costume", name: "Mine", source: png }] },
+        emptyProgram,
+      ).assets?.[0]?.source,
+    ).toBe(png);
+    expect(() =>
+      validateProjectCreativeState(
+        {
+          assets: [
+            {
+              id: "costume:mine",
+              kind: "costume",
+              name: "Mine",
+              source: "data:image/svg+xml;base64,PHN2Zz4=",
+            },
+          ],
+        },
+        emptyProgram,
+      ),
+    ).toThrow(/INVALID_CREATIVE_STATE/);
+    expect(() =>
+      validateProjectCreativeState(
+        {
+          assets: [
+            {
+              id: "costume:mine",
+              kind: "costume",
+              name: "Mine",
+              source: `data:image/png;base64,iVBORw0KGgo${"A".repeat(82_000)}`,
+            },
+          ],
+        },
+        emptyProgram,
+      ),
+    ).toThrow(/INVALID_CREATIVE_STATE/);
+  });
   it("accepts actors, assets and stage references for the shared creative core", () => {
     const creative = validateProjectCreativeState(
       {

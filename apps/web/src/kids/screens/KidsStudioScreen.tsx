@@ -30,6 +30,7 @@ import {
   type KidsGalleryCharacterId,
 } from "../kidsGallery.js";
 import { KIDS_SOUNDS } from "../kidsSoundLibrary.js";
+import { useKidsFlag } from "../kidsFlags.js";
 import { playKidsSound } from "../kidsSoundPlayer.js";
 import {
   addStudioActor,
@@ -43,15 +44,18 @@ import {
   type StudioStatement,
 } from "../kidsStudioModel.js";
 import {
+  addStudioArt,
   listStudioProjects,
   moveStudioActorLayer,
   saveStudioProject,
   setStudioActorPosition,
   setStudioBackdrop,
+  selectStudioArt,
 } from "../kidsStudioProjects.js";
 import { requestStudioOri } from "../kidsStudioOriRemote.js";
 import { useOriPageVisible } from "../kidsOriMotion.js";
 import { KidsBackdrop, KidsSprite } from "./KidsArt.js";
+import { KidsDrawArt } from "./KidsDrawArt.js";
 
 interface Props {
   readonly id: string;
@@ -125,6 +129,10 @@ const COPY = {
     noBlocks: "Agregá un bloque para ver qué hace este personaje.",
     stage: "Escenario",
     place: "Ubicar personaje",
+    drawCostume: "Dibujar disfraz",
+    drawBackdrop: "Dibujar fondo",
+    ownCostumes: "Mis disfraces",
+    ownBackdrops: "Mis fondos",
     forward: "Traer adelante",
     backward: "Enviar atrás",
   },
@@ -192,6 +200,10 @@ const COPY = {
     noBlocks: "Add a block to see what this character does.",
     stage: "Stage",
     place: "Place character",
+    drawCostume: "Draw costume",
+    drawBackdrop: "Draw backdrop",
+    ownCostumes: "My costumes",
+    ownBackdrops: "My backdrops",
     forward: "Bring forward",
     backward: "Send backward",
   },
@@ -258,6 +270,8 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
   const [oriBusy, setOriBusy] = useState(false);
   const oriPageVisible = useOriPageVisible();
   const [error, setError] = useState(false);
+  const customImagesEnabled = useKidsFlag("customImages");
+  const [drawingKind, setDrawingKind] = useState<"costume" | "backdrop" | null>(null);
   const [placementRevision, setPlacementRevision] = useState(0);
   const [dragPreview, setDragPreview] = useState<{ id: string; x: number; y: number } | null>(null);
   const dragStart = useRef<{
@@ -281,6 +295,15 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
         (saved.actors?.items ?? []).map((item) => [item.id, { x: item.x, y: item.y }]),
       ),
       saved.stage?.actorOrder,
+      {
+        assets: saved.assets?.filter((asset) => asset.source.startsWith("data:")),
+        actorCostumes: Object.fromEntries(
+          (saved.actors?.items ?? [])
+            .filter((actor) => actor.costumeId !== undefined)
+            .map((actor) => [actor.id, actor.costumeId!]),
+        ),
+        stageBackdropId: saved.stage?.backdropId,
+      },
     );
   }, [history.current, backdropId, locale, placementRevision, store, id]);
   const actor = creative.actors?.find((item) => item.id === activeActorId) ?? creative.actors?.[0];
@@ -305,6 +328,19 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
   const shownActors = selectedFrame?.actors ?? run?.actors;
   const shownStage = selectedFrame?.stage ?? run?.stage ?? creative.stage;
   const stageBackdrop = backdropOfStage(shownStage?.backdropId, backdropId);
+  const stageArt = customImagesEnabled
+    ? creative.assets?.find(
+        (asset) => asset.id === shownStage?.backdropId && asset.source.startsWith("data:"),
+      )?.source
+    : undefined;
+  const ownCostumes =
+    creative.assets?.filter(
+      (asset) => asset.kind === "costume" && asset.source.startsWith("data:"),
+    ) ?? [];
+  const ownBackdrops =
+    creative.assets?.filter(
+      (asset) => asset.kind === "backdrop" && asset.source.startsWith("data:"),
+    ) ?? [];
   const code =
     language === "python"
       ? projectPython(history.current).text
@@ -418,6 +454,33 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
         setRun(null);
         setFrame(null);
       }
+      setError(false);
+    } catch {
+      setError(true);
+    }
+  }
+
+  function saveDrawing(dataUrl: string) {
+    if (!customImagesEnabled || !drawingKind || !actor) return;
+    try {
+      addStudioArt(id, drawingKind, actor.id, dataUrl, locale, store);
+      setPlacementRevision((value) => value + 1);
+      setDrawingKind(null);
+      setRun(null);
+      setFrame(null);
+      setError(false);
+    } catch {
+      setError(true);
+    }
+  }
+
+  function chooseArt(assetId: string) {
+    if (!actor) return;
+    try {
+      selectStudioArt(id, assetId, actor.id, locale, store);
+      setPlacementRevision((value) => value + 1);
+      setRun(null);
+      setFrame(null);
       setError(false);
     } catch {
       setError(true);
@@ -675,6 +738,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
           <h2>{copy.stage}</h2>
           <KidsBackdrop
             world={{ kind: "gallery", id: stageBackdrop }}
+            imageOverride={stageArt}
             className="kids-studio-stage"
             role="group"
             label={copy.stage}
@@ -690,6 +754,13 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
               const y =
                 dragPreview?.id === item.id ? dragPreview.y : (final?.world.sprite.y ?? item.y);
               const sprite = final?.world.sprite;
+              const costumeArt = customImagesEnabled
+                ? creative.assets?.find(
+                    (asset) =>
+                      asset.id === (sprite?.costumeId ?? item.costumeId) &&
+                      asset.source.startsWith("data:"),
+                  )?.source
+                : undefined;
               if (sprite?.visible === false) return null;
               return (
                 <button
@@ -722,7 +793,11 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
                     className="kids-studio-stage-costume"
                     style={{ transform: `scale(${(sprite?.size ?? 100) / 100})` }}
                   >
-                    <KidsSprite slot={{ kind: "gallery", id: characterId }} label={item.name} />
+                    <KidsSprite
+                      slot={{ kind: "gallery", id: characterId }}
+                      imageOverride={costumeArt}
+                      label={item.name}
+                    />
                   </span>
                   {sprite?.bubble ? (
                     <span className="kids-studio-bubble">
@@ -734,6 +809,63 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
               );
             })}
           </KidsBackdrop>
+          {customImagesEnabled ? (
+            <div className="kids-studio-art-controls">
+              <button
+                type="button"
+                className="kids-button"
+                onClick={() => setDrawingKind("costume")}
+              >
+                {copy.drawCostume}
+              </button>
+              <button
+                type="button"
+                className="kids-button"
+                onClick={() => setDrawingKind("backdrop")}
+              >
+                {copy.drawBackdrop}
+              </button>
+              {ownCostumes.length ? (
+                <div role="group" aria-label={copy.ownCostumes}>
+                  {ownCostumes.map((asset) => (
+                    <button
+                      key={asset.id}
+                      type="button"
+                      className="kids-button"
+                      aria-pressed={actor?.costumeId === asset.id}
+                      onClick={() => chooseArt(asset.id)}
+                    >
+                      {asset.name}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              {ownBackdrops.length ? (
+                <div role="group" aria-label={copy.ownBackdrops}>
+                  {ownBackdrops.map((asset) => (
+                    <button
+                      key={asset.id}
+                      type="button"
+                      className="kids-button"
+                      aria-pressed={creative.stage?.backdropId === asset.id}
+                      onClick={() => chooseArt(asset.id)}
+                    >
+                      {asset.name}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+          {customImagesEnabled && drawingKind ? (
+            <KidsDrawArt
+              kind={drawingKind === "costume" ? "explorer" : "backdrop"}
+              locale={locale}
+              onSave={saveDrawing}
+              onCancel={() => setDrawingKind(null)}
+              onError={() => setError(true)}
+            />
+          ) : null}
           <div
             className="kids-studio-placement"
             role="group"

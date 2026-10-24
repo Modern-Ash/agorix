@@ -50,7 +50,7 @@ export type {
   ProjectCreativeState,
   ProjectStage,
 } from "./creative.js";
-export { validateProjectCreativeState } from "./creative.js";
+export { validateProjectCreativeState, validEmbeddedImageSource } from "./creative.js";
 export { eventForTrigger, migrateLegacyTriggers } from "./events.js";
 export type { ProgramValidationErrorCode } from "./validate.js";
 export { ProgramValidationError, validateProgram } from "./validate.js";

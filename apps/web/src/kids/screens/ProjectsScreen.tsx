@@ -15,6 +15,7 @@ import { KIDS_WORLDS, type KidsAvatar, type KidsWorld } from "../kidsState.js";
 import { kidsTable, type KidsText } from "../useKidsText.js";
 import { KIDS_WORLD_STYLES } from "../worlds.js";
 import { DeleteProjectDialog } from "./DeleteProjectDialog.js";
+import { ExportMediaDialog } from "./ExportMediaDialog.js";
 import { KidsBackdrop, KidsSprite, builtinWorld, emojiSlot } from "./KidsArt.js";
 import { ListenButton } from "./ListenButton.js";
 import {
@@ -52,6 +53,7 @@ export function ProjectsScreen({
   const [studios, setStudios] = useState(() => listStudioProjects());
   const [message, setMessage] = useState("");
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [exportingMedia, setExportingMedia] = useState<string | null>(null);
   const [undo, setUndo] = useState<RemovedFreeProject | null>(null);
 
   useEffect(() => {
@@ -109,6 +111,23 @@ export function ProjectsScreen({
       const anchor = document.createElement("a");
       anchor.href = url; // agora-allowlist: local Blob download from validated .agorix serializer, not outbound navigation
       anchor.download = sanitizeAgorixFilename(name);
+      anchor.click();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+      setMessage(t("saved"));
+    } catch {
+      setMessage(locale === "es" ? "No se pudo exportar." : "Could not export.");
+    }
+  }
+
+  function downloadStudio(id: string, includeMedia: boolean) {
+    try {
+      const blob = new Blob([exportStudioProject(id, store, includeMedia)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url; // agora-allowlist: local Blob download from validated .agorix serializer, not outbound navigation
+      anchor.download = sanitizeAgorixFilename(id);
       anchor.click();
       setTimeout(() => URL.revokeObjectURL(url), 0);
       setMessage(t("saved"));
@@ -186,6 +205,16 @@ export function ProjectsScreen({
           onCancel={() => setDeleting(null)}
         />
       ) : null}
+      {exportingMedia ? (
+        <ExportMediaDialog
+          locale={locale}
+          onConfirm={() => {
+            downloadStudio(exportingMedia, true);
+            setExportingMedia(null);
+          }}
+          onCancel={() => setExportingMedia(null)}
+        />
+      ) : null}
       <div className="kids-project-grid">
         {studios.map((project) => (
           <article className="kids-project-card" key={project.id}>
@@ -206,19 +235,13 @@ export function ProjectsScreen({
                 type="button"
                 className="kids-button"
                 onClick={() => {
-                  try {
-                    const blob = new Blob([exportStudioProject(project.id, store)], {
-                      type: "application/json",
-                    });
-                    const url = URL.createObjectURL(blob);
-                    const anchor = document.createElement("a");
-                    anchor.href = url; // agora-allowlist: local Blob download from validated .agorix serializer, not outbound navigation
-                    anchor.download = sanitizeAgorixFilename(project.id);
-                    anchor.click();
-                    setTimeout(() => URL.revokeObjectURL(url), 0);
-                  } catch {
-                    setMessage(locale === "es" ? "No se pudo exportar." : "Could not export.");
-                  }
+                  if (
+                    store
+                      .load(project.id)
+                      .metadata.assets?.some((asset) => asset.source.startsWith("data:"))
+                  )
+                    setExportingMedia(project.id);
+                  else downloadStudio(project.id, false);
                 }}
               >
                 {locale === "es" ? "Exportar" : "Export"}

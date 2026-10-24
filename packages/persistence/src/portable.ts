@@ -2,6 +2,7 @@ import {
   SCHEMA_VERSION,
   validateProgram,
   validateProjectCreativeState,
+  validEmbeddedImageSource,
   type ProjectProgram,
 } from "@agorix/program-model";
 import {
@@ -217,7 +218,7 @@ export function validateAgorixProjectEnvelope(input: unknown): AgorixProjectEnve
     if (
       asset.kind === "sound" ||
       asset.source !== `embedded:${asset.id}` ||
-      !validInlineImage(input.media[asset.id])
+      !validEmbeddedImageSource(input.media[asset.id])
     ) {
       throw new PersistenceError(
         "SCHEMA_MISMATCH",
@@ -405,21 +406,6 @@ function validateStage(input: unknown): ProjectMetadata["stage"] {
   };
 }
 
-function validInlineImage(source: unknown): source is string {
-  if (typeof source !== "string") return false;
-  const match = /^data:image\/(png|webp);base64,([A-Za-z0-9+/]+={0,2})$/.exec(source);
-  if (!match) return false;
-  try {
-    const bytes = atob(match[2]!);
-    if (bytes.length === 0 || bytes.length >= 60 * 1024) return false;
-    return match[1] === "png"
-      ? bytes.startsWith("\x89PNG\r\n\x1a\n")
-      : bytes.startsWith("RIFF") && bytes.slice(8, 12) === "WEBP";
-  } catch {
-    return false;
-  }
-}
-
 function validateAssets(input: unknown, allowInlineImages: boolean): ProjectMetadata["assets"] {
   if (input === undefined) return undefined;
   if (!Array.isArray(input) || input.length > 128) {
@@ -442,7 +428,7 @@ function validateAssets(input: unknown, allowInlineImages: boolean): ProjectMeta
     if (
       typeof asset.source !== "string" ||
       (asset.source.startsWith("data:")
-        ? !allowInlineImages || asset.kind === "sound" || !validInlineImage(asset.source)
+        ? !allowInlineImages || asset.kind === "sound" || !validEmbeddedImageSource(asset.source)
         : asset.source.length < 1 || asset.source.length > 120)
     ) {
       throw new PersistenceError("SCHEMA_MISMATCH", PORTABLE_PROJECT_ID, `${path}.source invalid`);
