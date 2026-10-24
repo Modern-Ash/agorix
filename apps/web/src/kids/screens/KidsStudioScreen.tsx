@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type PointerEvent } from "react";
 import {
   createEditorHistory,
   recordCanonicalTransaction,
@@ -30,6 +30,7 @@ import {
   type KidsGalleryCharacterId,
 } from "../kidsGallery.js";
 import { KIDS_SOUNDS } from "../kidsSoundLibrary.js";
+import { processKidsImage } from "../kidsImage.js";
 import { useKidsFlag } from "../kidsFlags.js";
 import { playKidsSound } from "../kidsSoundPlayer.js";
 import {
@@ -132,6 +133,8 @@ const COPY = {
     place: "Ubicar personaje",
     drawCostume: "Dibujar disfraz",
     drawBackdrop: "Dibujar fondo",
+    uploadCostume: "Agregar disfraz desde imagen",
+    uploadBackdrop: "Agregar fondo desde imagen",
     ownCostumes: "Mis disfraces",
     ownBackdrops: "Mis fondos",
     edit: "Editar",
@@ -204,6 +207,8 @@ const COPY = {
     place: "Place character",
     drawCostume: "Draw costume",
     drawBackdrop: "Draw backdrop",
+    uploadCostume: "Add costume from image",
+    uploadBackdrop: "Add backdrop from image",
     ownCostumes: "My costumes",
     ownBackdrops: "My backdrops",
     edit: "Edit",
@@ -477,6 +482,22 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
       setError(false);
     } catch {
       setError(true);
+    }
+  }
+
+  async function importImage(kind: "costume" | "backdrop", event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file || !actor || !customImagesEnabled) return;
+    try {
+      addStudioArt(id, kind, actor.id, await processKidsImage(file), locale, store);
+      setPlacementRevision((value) => value + 1);
+      setRun(null);
+      setFrame(null);
+      setError(false);
+    } catch {
+      setError(true);
+    } finally {
+      event.target.value = "";
     }
   }
 
@@ -837,6 +858,24 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
               >
                 {copy.drawBackdrop}
               </button>
+              <label className="kids-button kids-image-file">
+                {copy.uploadCostume}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  aria-label={copy.uploadCostume}
+                  onChange={(event) => void importImage("costume", event)}
+                />
+              </label>
+              <label className="kids-button kids-image-file">
+                {copy.uploadBackdrop}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  aria-label={copy.uploadBackdrop}
+                  onChange={(event) => void importImage("backdrop", event)}
+                />
+              </label>
               {ownCostumes.length ? (
                 <div role="group" aria-label={copy.ownCostumes}>
                   {ownCostumes.map((asset) => (

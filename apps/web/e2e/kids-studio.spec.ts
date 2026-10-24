@@ -1,9 +1,44 @@
 import AxeBuilder from "@axe-core/playwright";
 import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import { expect, test } from "@playwright/test";
 import { evaluateOriStudioOutput, ORI_STUDIO_VERSION } from "@agorix/ori-agent";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
+
+test("a child adds local costume and backdrop images to a free scene", async ({ page }) => {
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
+  const fixture = resolve("e2e/fixtures/kids-solid.png");
+  await page.getByLabel("Agregar disfraz desde imagen").setInputFiles(fixture);
+  await expect(page.getByRole("group", { name: "Mis disfraces" })).toContainText("Mi disfraz 1");
+  await page.getByLabel("Agregar fondo desde imagen").setInputFiles(fixture);
+  await expect(page.getByRole("group", { name: "Mis fondos" })).toContainText("Mi fondo 2");
+  await expect(page.locator(".kids-studio-stage-actor .kids-art-image")).toHaveCSS(
+    "background-image",
+    /data:image/,
+  );
+  await expect(page.locator(".kids-studio-stage")).toHaveCSS("background-image", /data:image/);
+  await page.reload();
+  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  await page
+    .getByRole("article")
+    .filter({ hasText: "Escena libre" })
+    .getByRole("button", { name: "Jugar" })
+    .click();
+  await expect(page.getByRole("group", { name: "Mis disfraces" })).toContainText("Mi disfraz 1");
+  await expect(page.locator(".kids-studio-stage")).toHaveCSS("background-image", /data:image/);
+});
 
 test("drawn costume and backdrop survive adult-approved export and import", async ({ page }) => {
   await page.goto("/kids");
