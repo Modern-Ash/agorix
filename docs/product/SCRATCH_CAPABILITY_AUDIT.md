@@ -82,9 +82,11 @@ Each iteration needs an issue with an observable child journey, success and fail
 ## Stage placement (next #538 increment)
 
 - Escena libre lets the child select a character and place it on the stage with accessible directional controls. The position is part of project metadata and survives program edits, backdrop changes, reload, export and import. Runtime starts from that saved position.
-- This is a bounded first stage control. Direct dragging, layering and richer motion remain open. The matrix above records the original baseline; read these progress sections before treating a row as a current absence.
+- The selected character can also be dragged on the stage with a pointer. Bring forward/send backward controls change the stage order, which survives edits, reload and portable export/import. Directional buttons remain available for keyboard and switch access.
+- Richer motion remains open. The matrix above records the original baseline; read these progress sections before treating a row as a current absence.
 
 ## Child-authored art (next #538 increment)
 
 - Crear now offers a 256 px drawing canvas for a personal explorer or backdrop, with color and brush-size controls for touch and mouse. Saving runs the same local image validation and size bound as uploaded art, then adds a separate custom resource. Bundled gallery art stays immutable, and the adult's custom-image switch controls both upload and drawing.
 - The drawing is available in local free projects; per-actor costume painting and the multi-actor Escena libre asset contract still need a separate design and implementation. A saved custom image is not sent to Ori or a provider.
+- The current portable format limits asset `source` to a short reference and does not embed drawing bytes. Reusing a local custom ID in Escena libre would lose the image on another device, so multi-actor custom art requires a versioned portable asset contract before UI integration.

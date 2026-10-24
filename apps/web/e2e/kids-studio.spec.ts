@@ -37,6 +37,49 @@ test("a child places a character and the stage keeps that position after reopeni
   ).toHaveAttribute("style", placed!);
 });
 
+test("a child drags the selected character and changes its layer", async ({ page }) => {
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
+  await page.getByRole("button", { name: "+ Agregar personaje" }).click();
+  await page.getByRole("group", { name: "Personajes" }).getByRole("button").first().click();
+  const first = page.getByRole("group", { name: "Escenario" }).getByRole("button").first();
+  const before = await first.getAttribute("style");
+  await first.scrollIntoViewIfNeeded();
+  const bounds = await first.boundingBox();
+  expect(bounds).not.toBeNull();
+  await page.mouse.move(bounds!.x + bounds!.width / 2, bounds!.y + bounds!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(bounds!.x + bounds!.width / 2 + 40, bounds!.y + bounds!.height / 2 + 20, {
+    steps: 5,
+  });
+  await expect(first).not.toHaveAttribute("style", before!);
+  await page.mouse.up();
+  const moved = await first.getAttribute("style");
+  expect(moved).not.toBe(before);
+  await page.getByRole("button", { name: "Traer adelante" }).click();
+  await expect(first).toHaveCSS("z-index", "2");
+  await page.reload();
+  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  await page
+    .getByRole("article")
+    .filter({ hasText: "Escena libre" })
+    .getByRole("button", { name: "Jugar" })
+    .click();
+  await expect(
+    page.getByRole("group", { name: "Escenario" }).getByRole("button").first(),
+  ).toHaveAttribute("style", moved!.replace(/z-index: \d+;/, "z-index: 2;"));
+});
+
 test("free scene keeps independent character scripts and reopens the saved stage", async ({
   page,
 }) => {
