@@ -14,6 +14,41 @@ import {
 } from "./kidsStudioModel.js";
 
 describe("Kids creative studio", () => {
+  it("executes bounded sound volume and a variable watcher that the child can hide and show", () => {
+    let history = createEditorHistory(createStudioProgram("nova"));
+    history = addStudioVariable(history, "Puntos");
+    for (const statement of [
+      { type: "setVolume", volume: 40 },
+      { type: "changeVolume", delta: -15 },
+      { type: "hideVariable", variableId: "studio-var-1" },
+      { type: "showVariable", variableId: "studio-var-1" },
+    ] as const)
+      history = appendStudioStatement(history, "actor:studio-1-nova", statement);
+    const result = runMultiActorProgram(
+      history.current,
+      creativeForStudio(history.current, "forest", "es"),
+    );
+    expect(result.actors[0]?.world.sounds?.volume).toBe(25);
+    expect(result.trace.map((entry) => entry.statementType)).toEqual([
+      "setVolume",
+      "changeVolume",
+      "hideVariable",
+      "showVariable",
+    ]);
+    expect(result.actors[0]?.world.variables?.["studio-var-1"]?.visible).toBe(true);
+    expect(() =>
+      appendStudioStatement(history, "actor:studio-1-nova", {
+        type: "setVolume",
+        volume: 101,
+      }),
+    ).toThrow();
+    expect(() =>
+      appendStudioStatement(history, "actor:studio-1-nova", {
+        type: "hideVariable",
+        variableId: "missing",
+      }),
+    ).toThrow();
+  });
   it("accepts bounded insert, replace and seeded integer random while rejecting invalid operands", () => {
     let history = createEditorHistory(createStudioProgram("nova"));
     history = addStudioVariable(history, "Dado");

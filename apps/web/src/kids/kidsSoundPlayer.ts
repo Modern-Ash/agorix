@@ -5,13 +5,14 @@ import { KIDS_CUSTOM_SOUND_ID, soundParameters } from "./kidsSoundLibrary.js";
 interface SoundDependencies {
   readonly createContext?: () => AudioContext;
   readonly loadCustom?: (actor: KidsAvatarRef) => Promise<Blob | undefined>;
+  readonly volume?: number;
 }
 
 function closeWhenEnded(node: OscillatorNode | AudioBufferSourceNode, context: AudioContext): void {
   node.onended = () => void context.close().catch(() => undefined);
 }
 
-function synth(context: AudioContext, id: string): void {
+function synth(context: AudioContext, id: string, volume: number): void {
   const sound = soundParameters(id);
   const oscillator = context.createOscillator();
   const gain = context.createGain();
@@ -21,7 +22,7 @@ function synth(context: AudioContext, id: string): void {
     sound.endHz,
     context.currentTime + sound.duration,
   );
-  gain.gain.setValueAtTime(sound.gain, context.currentTime);
+  gain.gain.setValueAtTime(sound.gain * volume, context.currentTime);
   gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + sound.duration);
   oscillator.connect(gain).connect(context.destination);
   closeWhenEnded(oscillator, context);
@@ -36,6 +37,11 @@ export async function playKidsSound(
   deps: SoundDependencies = {},
 ): Promise<void> {
   let context: AudioContext | undefined;
+  const requestedVolume = deps.volume ?? 100;
+  const volume = Number.isFinite(requestedVolume)
+    ? Math.max(0, Math.min(100, requestedVolume)) / 100
+    : 1;
+  if (volume === 0) return;
   try {
     context = (deps.createContext ?? (() => new AudioContext()))();
     if (id === KIDS_CUSTOM_SOUND_ID) {
@@ -44,8 +50,10 @@ export async function playKidsSound(
         if (blob) {
           const buffer = await context.decodeAudioData(await blob.arrayBuffer());
           const source = context.createBufferSource();
+          const gain = context.createGain();
+          gain.gain.setValueAtTime(volume, context.currentTime);
           source.buffer = buffer;
-          source.connect(context.destination);
+          source.connect(gain).connect(context.destination);
           closeWhenEnded(source, context);
           source.start();
           return;
@@ -53,9 +61,9 @@ export async function playKidsSound(
       } catch {
         // A corrupt or unavailable local asset falls back to the default tone.
       }
-      synth(context, "kids-tone");
+      synth(context, "kids-tone", volume);
     } else {
-      synth(context, id);
+      synth(context, id, volume);
     }
   } catch {
     // Muted or blocked AudioContext must never interrupt the child's run.
