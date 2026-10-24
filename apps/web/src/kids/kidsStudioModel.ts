@@ -36,6 +36,7 @@ export type StudioStatement = Extract<
       | "pointInDirection"
       | "pointTowards"
       | "bounceOnEdge"
+      | "goToLayer"
       | "switchCostume"
       | "switchBackdrop"
       | "playSound"
@@ -236,6 +237,8 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0): bool
       return actor !== null && studioActorId(actor.index, actor.characterId) === statement.actorId;
     });
   if (statement.type === "bounceOnEdge") return true;
+  if (statement.type === "goToLayer")
+    return statement.layer === "front" || statement.layer === "back";
   if (statement.type === "switchCostume")
     return (
       isGalleryCharacterId(statement.costumeId.slice(8)) &&

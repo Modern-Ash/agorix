@@ -444,6 +444,9 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
       }
       break;
     }
+    case "goToLayer":
+      // The stage order belongs to the multi-actor run; for one sprite this is only a step.
+      break;
     case "bounceOnEdge":
       state.world = bounceOnEdgeWorld(state.world, DEFAULT_STAGE_BOUNDS);
       break;

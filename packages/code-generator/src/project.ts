@@ -268,6 +268,9 @@ function projectStatement(
     case "pointTowards":
       write(writer, `${pad}sprite.pointTowards(${JSON.stringify(statement.actorId)});\n`);
       return;
+    case "goToLayer":
+      write(writer, `${pad}sprite.goToLayer(${JSON.stringify(statement.layer)});\n`);
+      return;
     case "bounceOnEdge":
       write(writer, `${pad}sprite.bounceOnEdge();\n`);
       return;

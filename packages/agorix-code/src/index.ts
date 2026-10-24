@@ -138,6 +138,9 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
         indent + "point towards " + JSON.stringify(statement.actorId) + "\n",
       );
       return;
+    case "goToLayer":
+      writeMapped(writer, nodeId, indent + "go to " + statement.layer + " layer\n");
+      return;
     case "bounceOnEdge":
       writeMapped(writer, nodeId, indent + "bounce on edge\n");
       return;

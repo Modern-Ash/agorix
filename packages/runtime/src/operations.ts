@@ -21,6 +21,7 @@ export const RUNTIME_STATEMENT_OPERATIONS = Object.freeze([
   "pointInDirection",
   "pointTowards",
   "bounceOnEdge",
+  "goToLayer",
   "say",
   "think",
   "show",

@@ -326,6 +326,8 @@ function titleForStep(step: ExecutionStep, profile: LearnerTraceProfile): string
       return "Point towards";
     case "bounceOnEdge":
       return "Bounce on edge";
+    case "goToLayer":
+      return "Go to layer";
     case "repeat":
     case "repeatUntil":
       return step.timing === "enter-repeat" ? "Repeat starts" : "Repeat ends";

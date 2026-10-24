@@ -862,3 +862,23 @@ describe("math function block", () => {
     );
   });
 });
+
+describe("layer block", () => {
+  it("round-trips through blocks", () => {
+    const program = {
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [{ type: "goToLayer", layer: "front" }],
+        },
+      ],
+    } as unknown as ProjectProgram;
+    const { workspace } = programToWorkspace(program);
+    expect(JSON.stringify(workspace)).toContain("looks_go_to_layer");
+    expect(workspaceToProgram(workspace).program.scripts[0]?.statements).toEqual([
+      { type: "goToLayer", layer: "front" },
+    ]);
+  });
+});

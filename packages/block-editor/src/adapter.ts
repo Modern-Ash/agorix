@@ -24,6 +24,7 @@ export type BlockType =
   | "motion_point_in_direction"
   | "motion_point_towards"
   | "motion_bounce_on_edge"
+  | "looks_go_to_layer"
   | "looks_say"
   | "looks_think"
   | "looks_show"
@@ -411,6 +412,18 @@ function statementFromBlock(
       return { type: "pointInDirection", degrees: numberField(block, "degrees", path) };
     case "motion_point_towards":
       return { type: "pointTowards", actorId: stringField(block, "actorId", path) };
+    case "looks_go_to_layer": {
+      const layer = stringField(block, "layer", path);
+      if (layer !== "front" && layer !== "back") {
+        throw new BlockEditorAdapterError(
+          "INVALID_FIELD_TYPE",
+          path,
+          'expected "front" or "back"',
+          layer,
+        );
+      }
+      return { type: "goToLayer", layer };
+    }
     case "motion_bounce_on_edge":
       return { type: "bounceOnEdge" };
     case "looks_say":
@@ -714,6 +727,8 @@ function statementToBlock(
       return { id, type: "motion_point_in_direction", fields: { degrees: statement.degrees } };
     case "pointTowards":
       return { id, type: "motion_point_towards", fields: { actorId: statement.actorId } };
+    case "goToLayer":
+      return { id, type: "looks_go_to_layer", fields: { layer: statement.layer } };
     case "bounceOnEdge":
       return { id, type: "motion_bounce_on_edge" };
     case "say":

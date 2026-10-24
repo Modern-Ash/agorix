@@ -104,6 +104,7 @@ export function projectPython(program: ProjectProgram): LanguageProjectionResult
         "point_in_direction",
         "point_towards",
         "bounce_on_edge",
+        "go_to_layer",
         "touching_goal",
         "touching_actor",
         "touching_stage_edge",
@@ -187,6 +188,13 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
         writer,
         nodeId,
         indent + "point_towards(" + JSON.stringify(statement.actorId) + ")\n",
+      );
+      return;
+    case "goToLayer":
+      writeMapped(
+        writer,
+        nodeId,
+        indent + "go_to_layer(" + JSON.stringify(statement.layer) + ")\n",
       );
       return;
     case "bounceOnEdge":
@@ -638,6 +646,7 @@ const PYTHON_PROJECTION_IDENTIFIERS: ReadonlySet<string> = new Set([
   "point_in_direction",
   "point_towards",
   "bounce_on_edge",
+  "go_to_layer",
   "touching_goal",
   "touching_actor",
   "touching_stage_edge",

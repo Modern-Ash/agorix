@@ -339,3 +339,60 @@ describe("mathFunction", () => {
     expect(Object.is(apply("ceiling", -0.5), 0)).toBe(true);
   });
 });
+
+describe("goToLayer", () => {
+  const actor = (id: string, scripts: string[]) => ({
+    id,
+    name: id,
+    x: 0,
+    y: 0,
+    direction: 0,
+    size: 100,
+    visible: true,
+    scripts,
+  });
+  const creative: ProjectCreativeState = {
+    actors: [actor("actor:a", ["a"]), actor("actor:b", ["b"]), actor("actor:c", [])],
+    stage: { actorOrder: ["actor:a", "actor:b", "actor:c"] },
+  };
+  const run = (aLayer: "front" | "back", bLayer: "front" | "back") =>
+    runMultiActorProgram(
+      {
+        schema: SCHEMA_VERSION,
+        scripts: [
+          {
+            id: "a",
+            trigger: { type: "onStart" },
+            statements: [{ type: "goToLayer", layer: aLayer }],
+          },
+          {
+            id: "b",
+            trigger: { type: "onStart" },
+            statements: [
+              { type: "goToLayer", layer: bLayer },
+              { type: "move", steps: 5 },
+            ],
+          },
+        ],
+      },
+      creative,
+    );
+
+  it("moves a character to the front or back of the stage order", () => {
+    expect(run("front", "back").stage.actorOrder).toEqual(["actor:b", "actor:c", "actor:a"]);
+    expect(run("back", "front").stage.actorOrder).toEqual(["actor:a", "actor:c", "actor:b"]);
+  });
+
+  it("does not change who runs first and records the order in each frame", () => {
+    const result = run("front", "back");
+    expect(result.trace.map((entry) => entry.actorId)).toEqual(["actor:a", "actor:b", "actor:b"]);
+    expect(result.actors.find((item) => item.id === "actor:b")?.world.sprite.x).toBe(5);
+    expect(result.frames[0]?.stage.actorOrder).toEqual(["actor:b", "actor:c", "actor:a"]);
+  });
+
+  it("is a harmless step for a lone sprite", () => {
+    const result = runProgram(program([{ type: "goToLayer", layer: "front" }]), createWorldState());
+    expect(result.outcome).toBe("completed");
+    expect(result.stepsUsed).toBe(1);
+  });
+});

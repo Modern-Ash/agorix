@@ -403,6 +403,14 @@ export function runMultiActorProgram(
           if (entry.worldAfter.backdropId !== undefined) {
             stage.backdropId = entry.worldAfter.backdropId;
           }
+          if (entry.statementType === "goToLayer") {
+            const statement = statementAtNodeId(script, entry.nodeId);
+            if (statement?.type === "goToLayer") {
+              const rest = stage.actorOrder.filter((id) => id !== actor.id);
+              stage.actorOrder =
+                statement.layer === "front" ? [...rest, actor.id] : [actor.id, ...rest];
+            }
+          }
           if (entry.statementType === "broadcast") {
             const statement = statementAtNodeId(script, entry.nodeId);
             if (statement?.type === "broadcast") {

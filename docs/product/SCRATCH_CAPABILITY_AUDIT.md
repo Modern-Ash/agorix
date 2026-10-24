@@ -161,3 +161,9 @@ Each iteration needs an issue with an observable child journey, success and fail
 - Escena libre adds **Fijar con función** with absolute value, round, round down and round up, applied to a variable. The canonical `mathFunction` expression rounds half up like Scratch (3.5 becomes 4, −2.5 becomes −2) and never yields negative zero. Division can now be followed by a round to get a whole result.
 - The validator, runtime, block adapter and Agorix Code, Python and TypeScript projections derive from the same program; unknown functions are rejected before a run. Unit and mobile browser tests cover each function, a divide-then-round scene, accessibility and reopening.
 - Square root, trigonometry, text joining and string operators remain open.
+
+## Layer order (next #538 increment)
+
+- Escena libre adds **Pasar al frente** and **Pasar al fondo**. The canonical `goToLayer` statement moves the running character to the front or back of the stage order for that run, and the stage and each replay frame draw characters in that order. The saved scene order set with the layer buttons is not changed by a run, and the order in which characters run does not change either.
+- The validator, runtime, block adapter and Agorix Code, Python and TypeScript projections derive from the same program. For a single sprite the block is a harmless step. Unit and mobile browser tests cover front, back, run order, the unchanged saved order, accessibility and reopening.
+- Layering relative to one chosen character, graphic effects and next costume remain open.

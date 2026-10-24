@@ -376,3 +376,21 @@ describe("mathFunction expression", () => {
     );
   });
 });
+
+describe("goToLayer statement", () => {
+  const programWith = (statement: unknown) =>
+    ({
+      schema: SCHEMA_VERSION,
+      scripts: [{ id: "main", trigger: { type: "onStart" }, statements: [statement] }],
+    }) as never;
+  it("accepts front and back and rejects anything else", () => {
+    for (const layer of ["front", "back"]) {
+      expect(() => validateProgram(programWith({ type: "goToLayer", layer }))).not.toThrow();
+    }
+    for (const layer of ["middle", "", 1, undefined]) {
+      expect(() => validateProgram(programWith({ type: "goToLayer", layer }))).toThrow(
+        ProgramValidationError,
+      );
+    }
+  });
+});

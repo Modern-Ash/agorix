@@ -738,4 +738,16 @@ describe("Kids creative studio", () => {
       }),
     ).toThrow();
   });
+  it("sends a character to the front during a run without changing the saved order", () => {
+    const nova = "actor:studio-1-nova";
+    let history = addStudioActor(createEditorHistory(createStudioProgram("nova")), "mika");
+    history = appendStudioStatement(history, nova, { type: "goToLayer", layer: "front" });
+    const creative = creativeForStudio(history.current, "forest", "es");
+    const result = runMultiActorProgram(history.current, creative);
+    expect(creative.stage?.actorOrder).toEqual([nova, "actor:studio-2-mika"]);
+    expect(result.stage.actorOrder).toEqual(["actor:studio-2-mika", nova]);
+    expect(() =>
+      appendStudioStatement(history, nova, { type: "goToLayer", layer: "middle" as never }),
+    ).toThrow();
+  });
 });
