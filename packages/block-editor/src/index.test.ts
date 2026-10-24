@@ -754,3 +754,29 @@ describe("heading blocks", () => {
     expect(back.scripts[0]?.statements).toEqual(headingProgram.scripts[0]?.statements);
   });
 });
+
+describe("repeat until blocks", () => {
+  const untilProgram = {
+    schema: "agorix/program/v1",
+    scripts: [
+      {
+        id: "main",
+        trigger: { type: "onStart" },
+        statements: [
+          {
+            type: "repeatUntil",
+            condition: { type: "touchingStageEdge", minX: 0, maxX: 320, minY: -100, maxY: 120 },
+            body: [{ type: "move", steps: 20 }],
+          },
+        ],
+      },
+    ],
+  } as unknown as ProjectProgram;
+
+  it("round-trips a repeat-until loop through blocks", () => {
+    const { workspace } = programToWorkspace(untilProgram);
+    expect(JSON.stringify(workspace)).toContain("control_repeat_until");
+    const { program: back } = workspaceToProgram(workspace);
+    expect(back.scripts[0]?.statements).toEqual(untilProgram.scripts[0]?.statements);
+  });
+});

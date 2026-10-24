@@ -475,6 +475,15 @@ function validateStatement(
         body: validateStatementArray(input.body, `${path}.body`, state, nextDepth),
       };
     }
+    case "repeatUntil": {
+      const nextDepth = depth + 1;
+      checkDepth(nextDepth, `${path}.body`);
+      return {
+        type: "repeatUntil",
+        condition: validateExpression(input.condition, `${path}.condition`, state),
+        body: validateStatementArray(input.body, `${path}.body`, state, nextDepth),
+      };
+    }
     case "if": {
       const nextDepth = depth + 1;
       checkDepth(nextDepth, `${path}.then`);

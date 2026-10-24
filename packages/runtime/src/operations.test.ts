@@ -72,6 +72,7 @@ describe("runtime operation allowlist", () => {
       "pointInDirection",
       "pointTowards",
       "repeat",
+      "repeatUntil",
       "say",
       "setSize",
       "setVariable",

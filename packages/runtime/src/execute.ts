@@ -7,7 +7,7 @@ import type {
   Statement,
   Trigger,
 } from "@agorix/program-model";
-import { eventForTrigger, validateProgram } from "@agorix/program-model";
+import { REPEAT_UNTIL_MAX_PASSES, eventForTrigger, validateProgram } from "@agorix/program-model";
 import {
   cloneWorldState,
   createWorldState,
@@ -522,6 +522,18 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
         throw new RuntimeExecutionError(`${path}.count`, String(statement.count));
       }
       for (let i = 0; i < statement.count; i += 1) {
+        executeStatements(statement.body, `${path}.body`, state);
+      }
+      break;
+    }
+    case "repeatUntil": {
+      let passes = 0;
+      while (!coerceBoolean(evaluateExpression(statement.condition, `${path}.condition`, state))) {
+        if (passes >= REPEAT_UNTIL_MAX_PASSES) {
+          addNote(state, `repeatUntil: stopped after ${REPEAT_UNTIL_MAX_PASSES} passes`);
+          break;
+        }
+        passes += 1;
         executeStatements(statement.body, `${path}.body`, state);
       }
       break;

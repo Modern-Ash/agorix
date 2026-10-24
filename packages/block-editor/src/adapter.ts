@@ -35,6 +35,7 @@ export type BlockType =
   | "sound_set_volume"
   | "sound_change_volume"
   | "control_repeat"
+  | "control_repeat_until"
   | "control_wait"
   | "control_if"
   | "sensing_touching_goal"
@@ -487,6 +488,22 @@ function statementFromBlock(
       return { type: "showVariable", variableId: stringField(block, "variableId", path) };
     case "variables_hide":
       return { type: "hideVariable", variableId: stringField(block, "variableId", path) };
+    case "control_repeat_until":
+      return {
+        type: "repeatUntil",
+        condition: expressionFromBlock(
+          requiredInput(block, "condition", path),
+          `${nodeId}/condition`,
+          `${path}.inputs.condition`,
+          mapping,
+        ),
+        body: statementsFromBlocks(
+          statementInput(block, "body", path),
+          `${nodeId}/body`,
+          `${path}.inputs.body`,
+          mapping,
+        ),
+      };
     case "control_repeat":
       return {
         type: "repeat",
@@ -746,6 +763,15 @@ function statementToBlock(
         type: "control_repeat",
         fields: { count: statement.count },
         inputs: { body: statementsToBlocks(statement.body, `${nodeId}/body`, mapping) },
+      };
+    case "repeatUntil":
+      return {
+        id,
+        type: "control_repeat_until",
+        inputs: {
+          condition: expressionToBlock(statement.condition, `${nodeId}/condition`, mapping),
+          body: statementsToBlocks(statement.body, `${nodeId}/body`, mapping),
+        },
       };
     case "if":
       return {

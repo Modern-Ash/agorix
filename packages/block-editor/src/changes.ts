@@ -132,7 +132,7 @@ function mutableStatementsFor(
         "BLOCK_NOT_FOUND",
       );
     }
-    if (current.type === "control_repeat") {
+    if (current.type === "control_repeat" || current.type === "control_repeat_until") {
       list = (current.inputs?.body ?? []) as BlockNode[];
     } else if (current.type === "control_if") {
       list = (current.inputs?.then ?? []) as BlockNode[];

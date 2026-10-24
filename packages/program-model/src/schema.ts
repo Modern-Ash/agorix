@@ -336,6 +336,13 @@ export interface RepeatStatement {
   readonly body: readonly Statement[];
 }
 
+/** Checks the condition before every pass; the runtime stops after a fixed number of passes. */
+export interface RepeatUntilStatement {
+  readonly type: "repeatUntil";
+  readonly condition: Expression;
+  readonly body: readonly Statement[];
+}
+
 export interface IfStatement {
   readonly type: "if";
   readonly condition: Expression;
@@ -373,6 +380,7 @@ export type Statement =
   | ListInsertAtStatement
   | ListReplaceAtStatement
   | RepeatStatement
+  | RepeatUntilStatement
   | IfStatement;
 
 // --- Triggers ---------------------------------------------------------------

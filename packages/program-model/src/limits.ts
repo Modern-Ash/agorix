@@ -25,6 +25,8 @@ export const LIST_MAX_ITEMS = 100;
 
 export const REPEAT_COUNT_MIN = 1;
 export const REPEAT_COUNT_MAX = 1000;
+/** Passes a `repeatUntil` may take before the runtime stops it, so a run always ends. */
+export const REPEAT_UNTIL_MAX_PASSES = 100;
 
 export const NUMERIC_LITERAL_MIN = -1_000_000;
 export const NUMERIC_LITERAL_MAX = 1_000_000;

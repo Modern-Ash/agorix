@@ -412,3 +412,26 @@ describe("Agorix Code projection: heading operations", () => {
     );
   });
 });
+
+describe("Agorix Code projection: repeat until", () => {
+  it("projects the loop with its condition", () => {
+    const result = projectAgorixCode({
+      schema: SCHEMA_VERSION,
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "repeatUntil",
+              condition: { type: "touchingStageEdge", minX: 0, maxX: 320, minY: -100, maxY: 120 },
+              body: [{ type: "move", steps: 20 }],
+            },
+          ],
+        },
+      ],
+    });
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toMatch(/^ {2}repeat until .+\n {4}move 20\n/m);
+  });
+});

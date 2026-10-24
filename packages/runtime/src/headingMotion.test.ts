@@ -116,3 +116,123 @@ describe("heading motion", () => {
     expect(result.world.sprite.heading).toBe(30);
   });
 });
+
+describe("repeatUntil", () => {
+  const xAbove = (value: number) =>
+    ({
+      type: "greaterThan",
+      left: { type: "xPosition" },
+      right: { type: "numericLiteral", value },
+    }) as const;
+
+  it("repeats the body until the condition holds, checking before each pass", () => {
+    const result = runProgram(
+      program([
+        { type: "repeatUntil", condition: xAbove(100), body: [{ type: "move", steps: 40 }] },
+      ]),
+      createWorldState(),
+    );
+    expect(result.outcome).toBe("completed");
+    expect(result.world.sprite.x).toBe(120);
+    expect(result.notes).toBeUndefined();
+  });
+
+  it("does not run the body when the condition already holds", () => {
+    const result = runProgram(
+      program([
+        { type: "repeatUntil", condition: xAbove(-1), body: [{ type: "move", steps: 40 }] },
+      ]),
+      createWorldState(),
+    );
+    expect(result.world.sprite.x).toBe(0);
+  });
+
+  it("stops after 100 passes when the condition never holds and says so", () => {
+    const result = runProgram(
+      program([
+        { type: "repeatUntil", condition: xAbove(1e6), body: [{ type: "move", steps: 1 }] },
+      ]),
+      createWorldState(),
+    );
+    expect(result.outcome).toBe("completed");
+    expect(result.world.sprite.x).toBe(100);
+    expect(result.notes?.[0]).toContain("repeatUntil");
+  });
+
+  it("ends a bounce loop when the sprite reaches the left edge sensor", () => {
+    const result = runProgram(
+      program([
+        { type: "pointInDirection", degrees: 180 },
+        {
+          type: "repeatUntil",
+          condition: { type: "touchingStageEdge", minX: 0, maxX: 320, minY: -100, maxY: 120 },
+          body: [{ type: "move", steps: 20 }],
+        },
+      ]),
+      createWorldState({ sprite: { x: 100, y: 0, heading: 0 } }),
+    );
+    expect(result.world.sprite.x).toBeLessThanOrEqual(12);
+  });
+});
+
+describe("repeatUntil with several actors", () => {
+  it("delivers a broadcast sent from inside the loop body", () => {
+    const creative: ProjectCreativeState = {
+      actors: [
+        {
+          id: "actor:a",
+          name: "A",
+          x: 0,
+          y: 0,
+          direction: 0,
+          size: 100,
+          visible: true,
+          scripts: ["a"],
+        },
+        {
+          id: "actor:b",
+          name: "B",
+          x: 0,
+          y: 0,
+          direction: 0,
+          size: 100,
+          visible: true,
+          scripts: ["b"],
+        },
+      ],
+      stage: { actorOrder: ["actor:a", "actor:b"] },
+    };
+    const result = runMultiActorProgram(
+      {
+        schema: SCHEMA_VERSION,
+        scripts: [
+          {
+            id: "a",
+            trigger: { type: "onStart" },
+            statements: [
+              {
+                type: "repeatUntil",
+                condition: {
+                  type: "greaterThan",
+                  left: { type: "xPosition" },
+                  right: { type: "numericLiteral", value: 5 },
+                },
+                body: [
+                  { type: "move", steps: 10 },
+                  { type: "broadcast", message: "hola" },
+                ],
+              },
+            ],
+          },
+          {
+            id: "b",
+            trigger: { type: "onMessage", message: "hola" },
+            statements: [{ type: "move", steps: 3 }],
+          },
+        ],
+      },
+      creative,
+    );
+    expect(result.actors[1]?.world.sprite.x).toBe(3);
+  });
+});

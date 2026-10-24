@@ -512,3 +512,27 @@ describe("Python projection: heading operations", () => {
     );
   });
 });
+
+describe("Python projection: repeat until", () => {
+  it("projects the loop with its condition", () => {
+    const result = projectPython({
+      schema: SCHEMA_VERSION,
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "repeatUntil",
+              condition: { type: "touchingStageEdge", minX: 0, maxX: 320, minY: -100, maxY: 120 },
+              body: [{ type: "move", steps: 20 }],
+            },
+          ],
+        },
+      ],
+    });
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toContain("while not (");
+    expect(result.text).toContain("        move(20)");
+  });
+});

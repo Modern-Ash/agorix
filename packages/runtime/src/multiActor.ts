@@ -296,11 +296,17 @@ function statementAtNodeId(script: Script, nodeId: string) {
   let statements = script.statements;
   let current = undefined as Script["statements"][number] | undefined;
   for (const { segment, index } of segments) {
-    if (segment !== "statements" && current?.type !== "repeat" && current?.type !== "if") {
+    if (
+      segment !== "statements" &&
+      current?.type !== "repeat" &&
+      current?.type !== "repeatUntil" &&
+      current?.type !== "if"
+    ) {
       return undefined;
     }
     if (segment === "body") {
-      statements = current?.type === "repeat" ? current.body : [];
+      statements =
+        current?.type === "repeat" || current?.type === "repeatUntil" ? current.body : [];
     } else if (segment === "then") {
       statements = current?.type === "if" ? current.then : [];
     } else if (segment === "else") {

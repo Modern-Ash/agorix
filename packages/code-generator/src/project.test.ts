@@ -329,6 +329,32 @@ describe("projectProgram", () => {
   });
 });
 
+describe("repeat until", () => {
+  it("projects the loop with a mapped condition", () => {
+    const program = {
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "a",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "repeatUntil",
+              condition: { type: "touchingStageEdge", minX: 0, maxX: 320, minY: -100, maxY: 120 },
+              body: [{ type: "move", steps: 20 }],
+            },
+          ],
+        },
+      ],
+    } as unknown as ProjectProgram;
+    const result = projectProgram(program);
+    expect(result.code).toContain("repeatUntil(() => ");
+    expect(result.code).toContain("sprite.move(20);");
+    expect(result.mapping["scripts[0]/statements[0]/condition"]).toBeDefined();
+    expectValidRanges(result);
+  });
+});
+
 describe("TypeScript LanguageProjection registry", () => {
   it("is selectable by the official typescript id", async () => {
     const { createLanguageProjectionRegistry } = await import("@agorix/language-projection");
