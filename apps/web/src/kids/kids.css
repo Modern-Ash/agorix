@@ -1861,6 +1861,22 @@
   background-size: 40px 40px;
 }
 
+.kids-advanced-actor-library,
+.kids-advanced-frame-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+.kids-advanced-actor-library .kids-button,
+.kids-advanced-frame-controls .kids-button {
+  min-height: 44px;
+}
+.kids-advanced-scene .kids-block-remove {
+  flex: 0 0 44px;
+}
+
 .kids-advanced-world-title {
   margin: 0.75rem 0 0;
   font-size: 1.1rem;

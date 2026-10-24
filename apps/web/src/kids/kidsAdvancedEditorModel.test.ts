@@ -4,8 +4,10 @@ import { getKidsAdvancedMission, evaluateKidsAdvancedMission } from "@agorix/cur
 import { runMultiActorProgram } from "@agorix/runtime";
 import {
   addAdvancedStatement,
+  addCuratedSceneActor,
   creativeForAdvancedProgram,
   replaceAdvancedStatement,
+  validateAdvancedSceneProgram,
 } from "./kidsAdvancedEditorModel.js";
 
 describe("Kids advanced scene editor", () => {
@@ -53,6 +55,66 @@ describe("Kids advanced scene editor", () => {
       replaceAdvancedStatement(history, "actor:ori", 0, {
         type: "switchCostume",
         costumeId: "asset:costume.spark",
+      }),
+    ).toThrow();
+  });
+
+  it("adds two curated actors with independent scripts and one-cell movement", () => {
+    let history = createEditorHistory(mission.starterProgram);
+    history = addCuratedSceneActor(history, "actor:robot");
+    history = addCuratedSceneActor(history, "actor:frog");
+    expect(() => addCuratedSceneActor(history, "actor:robot")).toThrow();
+    history = addAdvancedStatement(history, "actor:robot", { type: "move", steps: 1 });
+    history = addAdvancedStatement(history, "actor:frog", { type: "move", steps: 1 });
+    const program = validateAdvancedSceneProgram(history.current);
+    const creative = creativeForAdvancedProgram(mission.starterCreative, program);
+    const run = runMultiActorProgram(program, creative);
+    expect(run.actors.find((actor) => actor.id === "actor:robot")?.world.sprite.x).toBe(161);
+    expect(run.actors.find((actor) => actor.id === "actor:frog")?.world.sprite.x).toBe(241);
+    expect(program.scripts[0]?.statements).toHaveLength(0);
+    const undone = undoCanonicalTransaction(
+      undoCanonicalTransaction(undoCanonicalTransaction(history).history).history,
+    ).history;
+    expect(
+      creativeForAdvancedProgram(mission.starterCreative, undone.current).actors?.map(
+        (actor) => actor.id,
+      ),
+    ).toEqual(["actor:ori", "actor:friend", "actor:robot"]);
+  });
+
+  it("switches to each of three safe looks and exposes it in the next runtime frame", () => {
+    let history = createEditorHistory(mission.starterProgram);
+    history = addAdvancedStatement(history, "actor:ori", {
+      type: "switchCostume",
+      costumeId: "asset:costume.explorer",
+    });
+    const run = runMultiActorProgram(
+      history.current,
+      creativeForAdvancedProgram(mission.starterCreative, history.current),
+    );
+    expect(
+      run.frames[0]?.actors.find((actor) => actor.id === "actor:ori")?.world.sprite.costumeId,
+    ).toBe("asset:costume.explorer");
+    history = replaceAdvancedStatement(history, "actor:ori", 0, {
+      type: "switchCostume",
+      costumeId: "asset:costume.spark",
+    });
+    expect(
+      runMultiActorProgram(
+        history.current,
+        creativeForAdvancedProgram(mission.starterCreative, history.current),
+      ).actors[0]?.world.sprite.costumeId,
+    ).toBe("asset:costume.spark");
+    expect(() =>
+      addAdvancedStatement(history, "actor:ori", { type: "move", steps: 500 }),
+    ).toThrow();
+    expect(() =>
+      validateAdvancedSceneProgram({
+        ...history.current,
+        scripts: [
+          ...history.current.scripts,
+          { id: "unsafe", trigger: { type: "greenFlag" }, statements: [] },
+        ],
       }),
     ).toThrow();
   });

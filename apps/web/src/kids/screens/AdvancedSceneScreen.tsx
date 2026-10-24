@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type ChangeEvent } from "react";
 import {
   createEditorHistory,
   recordCanonicalTransaction,
@@ -10,7 +10,13 @@ import { projectAgorixCode } from "@agorix/agorix-code";
 import { projectProgram } from "@agorix/code-generator";
 import { getKidsAdvancedMission, evaluateKidsAdvancedMission } from "@agorix/curriculum";
 import { projectPython } from "@agorix/python-projection";
-import { ProjectStore, type ProjectMetadata } from "@agorix/persistence";
+import {
+  parseAgorixProject,
+  ProjectStore,
+  sanitizeAgorixFilename,
+  serializeAgorixProject,
+  type ProjectMetadata,
+} from "@agorix/persistence";
 import { runMultiActorProgram, type MultiActorRunResult } from "@agorix/runtime";
 import { acceptProposal, rejectProposal, modifyProposal } from "@agorix/proposals";
 import { validateOriAdvancedProposal, type OriAdvancedDecision } from "@agorix/ori-agent";
@@ -18,9 +24,12 @@ import type { Locale } from "../../i18n.js";
 import {
   advancedActorStatements,
   addAdvancedStatement,
+  addCuratedSceneActor,
   creativeForAdvancedProgram,
+  CURATED_SCENE_ACTORS,
   removeAdvancedStatement,
   replaceAdvancedStatement,
+  validateAdvancedSceneProgram,
   type AdvancedSceneActorId,
   type AdvancedSceneStatement,
 } from "../kidsAdvancedEditorModel.js";
@@ -35,7 +44,17 @@ interface Props {
   readonly onBack: () => void;
 }
 
-const ACTORS: readonly AdvancedSceneActorId[] = ["actor:ori", "actor:friend"];
+function actorGlyph(id: AdvancedSceneActorId, costumeId: string | undefined): string {
+  const base =
+    id === "actor:ori"
+      ? "🦊"
+      : id === "actor:friend"
+        ? "🐼"
+        : (CURATED_SCENE_ACTORS.find((actor) => actor.id === id)?.glyph ?? "✦");
+  if (costumeId === "asset:costume.spark") return `✨${base}`;
+  if (costumeId === "asset:costume.explorer") return `🚀${base}`;
+  return base;
+}
 
 function playSceneTone(): void {
   try {
@@ -79,10 +98,16 @@ export function AdvancedSceneScreen({ locale, readAloud = true, onBack }: Props)
       return createEditorHistory(mission.starterProgram);
     }
   });
-  const [actorId, setActorId] = useState<AdvancedSceneActorId>("actor:ori");
+  const [actorId, setActorId] = useState<AdvancedSceneActorId>(() => {
+    const active = metadata.actors?.activeId;
+    return active === "actor:friend" || active === "actor:robot" || active === "actor:frog"
+      ? active
+      : "actor:ori";
+  });
   const currentProgram = useRef(history.current);
   const currentActor = useRef(actorId);
   const [run, setRun] = useState<MultiActorRunResult | null>(null);
+  const [frameIndex, setFrameIndex] = useState<number | null>(null);
   const [completed, setCompleted] = useState(metadata.missionProgress === 1);
   const [language, setLanguage] = useState<"agorix" | "python" | "typescript">("agorix");
   const [error, setError] = useState(false);
@@ -90,9 +115,15 @@ export function AdvancedSceneScreen({ locale, readAloud = true, onBack }: Props)
   const [oriDecision, setOriDecision] = useState<OriAdvancedDecision | null>(null);
   const [oriChanged, setOriChanged] = useState(false);
   const creative = useMemo(
-    () => creativeForAdvancedProgram(mission.starterCreative, history.current),
-    [mission.starterCreative, history.current],
+    () => creativeForAdvancedProgram(mission.starterCreative, history.current, locale),
+    [mission.starterCreative, history.current, locale],
   );
+  const visibleActors =
+    frameIndex === null
+      ? run?.actors
+      : frameIndex < 0
+        ? undefined
+        : run?.frames[frameIndex]?.actors;
   const statements = advancedActorStatements(history.current, actorId);
   const oriOperation = oriDecision?.proposal?.operations[0];
   const oriSuggestedCostume =
@@ -104,25 +135,86 @@ export function AdvancedSceneScreen({ locale, readAloud = true, onBack }: Props)
         ? projectProgram(history.current).code
         : projectAgorixCode(history.current).text;
 
-  function persist(next: EditorHistory) {
-    const nextCreative = creativeForAdvancedProgram(mission.starterCreative, next.current);
+  function persist(next: EditorHistory, selectedActorId: AdvancedSceneActorId = actorId) {
+    const nextCreative = creativeForAdvancedProgram(mission.starterCreative, next.current, locale);
+    const nextActorId = nextCreative.actors?.some((actor) => actor.id === selectedActorId)
+      ? selectedActorId
+      : "actor:ori";
     const nextMetadata: ProjectMetadata = {
       ...metadata,
       updatedAt: new Date().toISOString(),
-      actors: { activeId: actorId, items: nextCreative.actors ?? [] },
+      actors: { activeId: nextActorId, items: nextCreative.actors ?? [] },
       ...(nextCreative.stage === undefined ? {} : { stage: nextCreative.stage }),
       ...(nextCreative.assets === undefined ? {} : { assets: nextCreative.assets }),
     };
     try {
-      store.save(id, next.current, nextMetadata);
+      store.save(id, validateAdvancedSceneProgram(next.current), nextMetadata);
       currentProgram.current = next.current;
+      currentActor.current = nextActorId;
+      setActorId(nextActorId);
       setMetadata(nextMetadata);
       setHistory(next);
       setRun(null);
+      setFrameIndex(null);
       setError(false);
       setOriDecision(null);
     } catch {
       setError(true);
+    }
+  }
+
+  function selectActor(nextActorId: AdvancedSceneActorId) {
+    currentActor.current = nextActorId;
+    setActorId(nextActorId);
+    setOriDecision(null);
+    const nextMetadata: ProjectMetadata = {
+      ...metadata,
+      updatedAt: new Date().toISOString(),
+      actors: { activeId: nextActorId, items: creative.actors ?? [] },
+    };
+    try {
+      store.save(id, history.current, nextMetadata);
+      setMetadata(nextMetadata);
+    } catch {
+      setError(true);
+    }
+  }
+
+  function addActor(id: "actor:robot" | "actor:frog") {
+    try {
+      persist(addCuratedSceneActor(history, id), id);
+    } catch {
+      setError(true);
+    }
+  }
+
+  function exportProject() {
+    try {
+      const blob = new Blob([serializeAgorixProject(store.load(id))], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url; // agora-allowlist: local Blob download from validated project serializer
+      anchor.download = sanitizeAgorixFilename("mi-escena");
+      anchor.click();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    } catch {
+      setError(true);
+    }
+  }
+
+  async function importProject(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const parsed = parseAgorixProject(await file.text()).project;
+      const program = validateAdvancedSceneProgram(parsed.program);
+      persist(
+        recordCanonicalTransaction(history, { label: "import scene", after: program }).history,
+      );
+    } catch {
+      setError(true);
+    } finally {
+      event.target.value = "";
     }
   }
 
@@ -135,6 +227,7 @@ export function AdvancedSceneScreen({ locale, readAloud = true, onBack }: Props)
   }
 
   async function askOri() {
+    if (actorId !== "actor:ori" && actorId !== "actor:friend") return;
     setOriBusy(true);
     setOriDecision(null);
     setOriChanged(false);
@@ -155,6 +248,7 @@ export function AdvancedSceneScreen({ locale, readAloud = true, onBack }: Props)
   }
 
   function decideOri(action: "accept" | "change" | "reject") {
+    if (actorId !== "actor:ori" && actorId !== "actor:friend") return;
     const proposal = oriDecision?.proposal;
     if (!proposal) return;
     try {
@@ -194,6 +288,7 @@ export function AdvancedSceneScreen({ locale, readAloud = true, onBack }: Props)
     try {
       const result = runMultiActorProgram(history.current, creative);
       setRun(result);
+      setFrameIndex(null);
       if (result.trace.some((entry) => entry.statementType === "playSound")) playSceneTone();
       if (evaluateKidsAdvancedMission("scene", result) && completeAdvancedStage("scene", store))
         setCompleted(true);
@@ -213,6 +308,16 @@ export function AdvancedSceneScreen({ locale, readAloud = true, onBack }: Props)
           blocks: "Bloques de",
           costume: "Cambiar disfraz",
           sound: "Tocar sonido",
+          move: "Mover 1",
+          addRobot: "+ Robot",
+          addFrog: "+ Rana",
+          addActor: "Agregar personaje",
+          explorer: "Explorador",
+          start: "Inicio",
+          step: "Paso",
+          stepCount: "Paso {n} de {total}",
+          export: "Exportar .agorix",
+          import: "Importar .agorix",
           play: "Jugar",
           undo: "Deshacer",
           redo: "Rehacer",
@@ -221,12 +326,13 @@ export function AdvancedSceneScreen({ locale, readAloud = true, onBack }: Props)
           world: "Mundo",
           changed: "Cambió de disfraz",
           heard: "Sonó el pulso",
+          moved: "Avanzó {n}",
           success: "¡Escena lograda! Mirá cuál personaje cambió y qué sonido hizo.",
           tryAgain: "Todavía falta un cambio de disfraz y un sonido del mismo personaje.",
           ready: "Elegí un personaje, agregá bloques y jugá la escena.",
           error: "No se pudo guardar o ejecutar esta escena. Probá de nuevo.",
           spark: "Destello",
-          default: "Ori",
+          default: "Original",
           ping: "Pulso",
           remove: "Quitar",
           ori: "Pedirle una idea a Ori",
@@ -243,6 +349,14 @@ export function AdvancedSceneScreen({ locale, readAloud = true, onBack }: Props)
           blocks: "Blocks for",
           costume: "Switch costume",
           sound: "Play sound",
+          move: "Move 1",
+          addRobot: "+ Robot",
+          addFrog: "+ Frog",
+          addActor: "Add character",
+          explorer: "Explorer",
+          start: "Start",
+          step: "Step",
+          stepCount: "Step {n} of {total}",
           play: "Run",
           undo: "Undo",
           redo: "Redo",
@@ -251,12 +365,13 @@ export function AdvancedSceneScreen({ locale, readAloud = true, onBack }: Props)
           world: "World",
           changed: "Costume changed",
           heard: "Ping played",
+          moved: "Moved {n}",
           success: "Scene complete! Which character changed, and what sound did they play?",
           tryAgain: "Try changing a costume and playing a sound for the same character.",
           ready: "Choose a character, add blocks, then run the scene.",
           error: "This scene could not be saved or run. Please try again.",
           spark: "Spark",
-          default: "Ori",
+          default: "Original",
           ping: "Ping",
           remove: "Remove",
           ori: "Ask Ori for an idea",
@@ -265,6 +380,8 @@ export function AdvancedSceneScreen({ locale, readAloud = true, onBack }: Props)
           oriAccept: "Add block",
           oriChange: "Change block",
           oriReject: "Don't use",
+          export: "Export .agorix",
+          import: "Import .agorix",
         };
 
   return (
@@ -305,73 +422,115 @@ export function AdvancedSceneScreen({ locale, readAloud = true, onBack }: Props)
           <p className="kids-editor-goal">{mission.instruction}</p>
           <h2 className="kids-advanced-world-title">{copy.world}</h2>
           <div className="kids-advanced-actors" role="group" aria-label={copy.actors}>
-            {ACTORS.map((id) => {
-              const actor = creative.actors?.find((item) => item.id === id);
-              const final = run?.actors.find((item) => item.id === id);
-              const changed = final?.world.sprite.costumeId === "asset:costume.spark";
+            {creative.actors?.map((actor) => {
+              const id = actor.id as AdvancedSceneActorId;
+              const final = visibleActors?.find((item) => item.id === id);
+              const chosenCostume = final?.world.sprite.costumeId ?? actor.costumeId;
+              const changed = chosenCostume !== actor.costumeId;
               const heard = (final?.world.sounds?.activeSoundIds.length ?? 0) > 0;
+              const distance = final ? final.world.sprite.x - actor.x : 0;
               return (
                 <button
                   key={id}
                   type="button"
                   className="kids-advanced-actor"
                   aria-pressed={actorId === id}
-                  onClick={() => {
-                    currentActor.current = id;
-                    setActorId(id);
-                    setOriDecision(null);
-                  }}
+                  onClick={() => selectActor(id)}
                 >
                   <span className="kids-advanced-actor-glyph" aria-hidden="true">
-                    {id === "actor:ori" ? "🦊" : "🐼"}
+                    {actorGlyph(id, chosenCostume)}
                   </span>
                   <strong>{actor?.name ?? id}</strong>
-                  {changed ? <span>{copy.changed}</span> : null}
+                  {changed ? (
+                    <span>
+                      {copy.changed}:{" "}
+                      {chosenCostume === "asset:costume.explorer" ? copy.explorer : copy.spark}
+                    </span>
+                  ) : null}
                   {heard ? <span>{copy.heard}</span> : null}
+                  {distance !== 0 ? (
+                    <span>{copy.moved.replace("{n}", String(distance))}</span>
+                  ) : null}
                 </button>
               );
             })}
           </div>
-          <p className="kids-note">{copy.result}</p>
-          <div className="kids-advanced-ori">
-            <button
-              type="button"
-              className="kids-button"
-              disabled={oriBusy}
-              onClick={() => void askOri()}
-            >
-              {oriBusy ? copy.oriBusy : copy.ori}
-            </button>
-            {oriDecision?.proposal ? (
-              <div className="kids-advanced-ori-review" aria-label={copy.oriAdd}>
-                <p>{oriDecision.message}</p>
-                <p>
-                  {copy.oriAdd}{" "}
-                  <strong>
-                    + {oriChanged === oriSuggestedCostume ? copy.sound : copy.costume}
-                  </strong>{" "}
-                  {creative.actors?.find((actor) => actor.id === actorId)?.name}
-                </p>
-                <button
-                  type="button"
-                  className="kids-button kids-primary"
-                  onClick={() => decideOri(oriChanged ? "change" : "accept")}
-                >
-                  {copy.oriAccept}
-                </button>
-                <button
-                  type="button"
-                  className="kids-button"
-                  onClick={() => setOriChanged(!oriChanged)}
-                >
-                  {copy.oriChange}
-                </button>
-                <button type="button" className="kids-button" onClick={() => decideOri("reject")}>
-                  {copy.oriReject}
-                </button>
-              </div>
-            ) : null}
+          <div className="kids-advanced-actor-library" role="group" aria-label={copy.addActor}>
+            {CURATED_SCENE_ACTORS.filter(
+              (item) => !creative.actors?.some((actor) => actor.id === item.id),
+            ).map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className="kids-button"
+                onClick={() => addActor(item.id)}
+              >
+                {item.id === "actor:robot" ? copy.addRobot : copy.addFrog}
+              </button>
+            ))}
           </div>
+          {run ? (
+            <div className="kids-advanced-frame-controls">
+              <button type="button" className="kids-button" onClick={() => setFrameIndex(-1)}>
+                {copy.start}
+              </button>
+              <button
+                type="button"
+                className="kids-button"
+                disabled={frameIndex !== null && frameIndex >= run.frames.length - 1}
+                onClick={() => setFrameIndex(frameIndex === null ? 0 : frameIndex + 1)}
+              >
+                {copy.step}
+              </button>
+              <span>
+                {copy.stepCount
+                  .replace("{n}", String(frameIndex === null ? run.frames.length : frameIndex + 1))
+                  .replace("{total}", String(run.frames.length))}
+              </span>
+            </div>
+          ) : null}
+          <p className="kids-note">{copy.result}</p>
+          {actorId === "actor:ori" || actorId === "actor:friend" ? (
+            <div className="kids-advanced-ori">
+              <button
+                type="button"
+                className="kids-button"
+                disabled={oriBusy}
+                onClick={() => void askOri()}
+              >
+                {oriBusy ? copy.oriBusy : copy.ori}
+              </button>
+              {oriDecision?.proposal ? (
+                <div className="kids-advanced-ori-review" aria-label={copy.oriAdd}>
+                  <p>{oriDecision.message}</p>
+                  <p>
+                    {copy.oriAdd}{" "}
+                    <strong>
+                      + {oriChanged === oriSuggestedCostume ? copy.sound : copy.costume}
+                    </strong>{" "}
+                    {creative.actors?.find((actor) => actor.id === actorId)?.name}
+                  </p>
+                  <button
+                    type="button"
+                    className="kids-button kids-primary"
+                    onClick={() => decideOri(oriChanged ? "change" : "accept")}
+                  >
+                    {copy.oriAccept}
+                  </button>
+                  <button
+                    type="button"
+                    className="kids-button"
+                    onClick={() => setOriChanged(!oriChanged)}
+                  >
+                    {copy.oriChange}
+                  </button>
+                  <button type="button" className="kids-button" onClick={() => decideOri("reject")}>
+                    {copy.oriReject}
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           <div className="kids-run-controls">
             <button type="button" className="kids-button kids-primary" onClick={play}>
               {copy.play}
@@ -398,7 +557,13 @@ export function AdvancedSceneScreen({ locale, readAloud = true, onBack }: Props)
               {statements.map((statement, index) => (
                 <li key={`${actorId}-${index}`} className="kids-program-block kids-block-sound">
                   <div className="kids-block-line">
-                    <span>{statement.type === "switchCostume" ? copy.costume : copy.sound}</span>
+                    <span>
+                      {statement.type === "switchCostume"
+                        ? copy.costume
+                        : statement.type === "move"
+                          ? copy.move
+                          : copy.sound}
+                    </span>
                     {statement.type === "switchCostume" ? (
                       <select
                         aria-label={`${copy.costume} ${index + 1}`}
@@ -414,6 +579,7 @@ export function AdvancedSceneScreen({ locale, readAloud = true, onBack }: Props)
                       >
                         <option value="asset:costume.default">{copy.default}</option>
                         <option value="asset:costume.spark">{copy.spark}</option>
+                        <option value="asset:costume.explorer">{copy.explorer}</option>
                       </select>
                     ) : statement.type === "playSound" ? (
                       <select aria-label={`${copy.sound} ${index + 1}`} value={statement.soundId}>
@@ -450,7 +616,28 @@ export function AdvancedSceneScreen({ locale, readAloud = true, onBack }: Props)
               >
                 + {copy.sound}
               </button>
+              <button
+                type="button"
+                className="kids-palette-block kids-block-move"
+                onClick={() => add({ type: "move", steps: 1 })}
+              >
+                + {copy.move}
+              </button>
             </div>
+          </div>
+          <div className="kids-advanced-control-files">
+            <button type="button" className="kids-button" onClick={exportProject}>
+              {copy.export}
+            </button>
+            <label className="kids-button">
+              {copy.import}
+              <input
+                type="file"
+                accept=".agorix,application/json"
+                aria-label={copy.import}
+                onChange={(event) => void importProject(event)}
+              />
+            </label>
           </div>
           <div className="kids-code-languages" role="group" aria-label={copy.code}>
             {(["agorix", "python", "typescript"] as const).map((item) => (

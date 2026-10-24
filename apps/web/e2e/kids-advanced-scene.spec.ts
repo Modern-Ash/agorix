@@ -141,3 +141,68 @@ for (const viewport of [
     expect(controls).toEqual([]);
   });
 }
+
+test("curated actors keep independent move scripts, selection and portable save", async ({
+  page,
+}) => {
+  await seed(page, "es");
+  await page.getByRole("button", { name: /Nivel avanzado/ }).click();
+  await page.getByRole("button", { name: "+ Robot" }).click();
+  await expect(page.getByRole("button", { name: /Robot/ })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "+ Mover 1" }).click();
+  await page.getByRole("button", { name: "+ Rana" }).click();
+  await page.getByRole("button", { name: "+ Mover 1" }).click();
+  await page.getByRole("button", { name: "Jugar" }).click();
+  await expect(page.getByRole("button", { name: /Robot.*Avanzó 1/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Rana.*Avanzó 1/ })).toBeVisible();
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Exportar .agorix" }).click(),
+  ]);
+  const path = await download.path();
+  expect(path).not.toBeNull();
+  await page.getByRole("button", { name: "Deshacer" }).click();
+  await page.getByRole("button", { name: "Deshacer" }).click();
+  await expect(page.getByRole("button", { name: "+ Rana" })).toBeVisible();
+  await page.getByLabel("Importar .agorix").setInputFiles(path!);
+  await expect(page.getByRole("button", { name: /Rana/ })).toHaveAttribute("aria-pressed", "false");
+  await page.getByRole("button", { name: /Rana/ }).click();
+  await page.reload();
+  await page.getByRole("button", { name: /Nivel avanzado/ }).click();
+  await expect(page.getByRole("button", { name: /Rana/ })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Jugar" }).click();
+  await expect(page.getByRole("button", { name: /Robot.*Avanzó 1/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Rana.*Avanzó 1/ })).toBeVisible();
+});
+
+test("the third curated look appears at the costume step", async ({ page }) => {
+  await seed(page, "es");
+  await page.getByRole("button", { name: /Nivel avanzado/ }).click();
+  await page.getByRole("button", { name: "+ Robot" }).click();
+  await page.getByRole("button", { name: "+ Cambiar disfraz" }).click();
+  await page
+    .getByRole("combobox", { name: "Cambiar disfraz 1" })
+    .selectOption("asset:costume.explorer");
+  await page.getByRole("button", { name: "Jugar" }).click();
+  await expect(page.getByRole("button", { name: /Robot.*Explorador/ })).toBeVisible();
+  await page.getByRole("button", { name: "Inicio" }).click();
+  await expect(page.getByRole("button", { name: /Robot.*Explorador/ })).toHaveCount(0);
+  await page.getByRole("button", { name: "Paso" }).click();
+  await expect(page.getByRole("button", { name: /Robot.*Explorador/ })).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  const axe = await new AxeBuilder({ page }).analyze();
+  expect(
+    axe.violations.filter((item) => ["critical", "serious"].includes(item.impact ?? "")),
+  ).toEqual([]);
+});
+
+test("English curated chooser works with keyboard", async ({ page }) => {
+  await seed(page, "en");
+  await page.getByRole("button", { name: /Advanced level/ }).click();
+  const add = page.getByRole("button", { name: "+ Frog" });
+  await add.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("button", { name: /Frog/ })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("heading", { name: "Blocks for Frog" })).toBeVisible();
+});

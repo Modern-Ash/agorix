@@ -10,6 +10,7 @@
   "packageManager": "pnpm@9.15.9",
   "pnpm": {
     "overrides": {
+      "@azure/msal-node": "^7.1.0",
       "source-map-js": "1.2.2",
       "vite": "^7.3.7"
     }
