@@ -36,7 +36,7 @@ The executor selected by Agora remains subject to the full mandatory workflow an
 - The learner creates; AI assists, proposes, challenges and explains.
 - No AI-originated code or program mutation may enter accepted program state invisibly.
 - Every AI-originated programming suggestion is a proposal until the learner accepts, rejects or modifies it.
-- Code is continuously visible in the normal learning flow.
+- Code stays one tap away in the Kids Code tab and synchronized with the canonical program.
 - Runtime evidence, not AI language, proves program behavior and mission completion.
 - The learner must be able to explain one relevant programming concept or change.
 - A project must execute without AI availability.
@@ -81,7 +81,7 @@ Agents MUST NOT:
 
 ## Agorix-specific invariants
 
-- Generated code is continuously visible beside or directly below the visual block program during normal editing.
+- Generated code stays synchronized with the visual blocks and is available from the Code tab during Kids editing. The Kids Blocks tab stays free of textual code in every age band; other editor layouts may show code beside blocks.
 - Visual blocks and generated code never own separate program state; both derive from the canonical program model.
 - Generated textual code is display/learning output in the POC and is never executed.
 - Language projections must preserve semantic correspondence with canonical nodes.

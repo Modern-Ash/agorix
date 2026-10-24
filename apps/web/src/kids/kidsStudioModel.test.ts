@@ -14,6 +14,58 @@ import {
 } from "./kidsStudioModel.js";
 
 describe("Kids creative studio", () => {
+  it("reads list values and length, then removes a bounded position", () => {
+    let history = createEditorHistory(createStudioProgram("nova"));
+    history = addStudioVariable(history, "Resultado");
+    history = addStudioList(history, "Tesoros");
+    for (const value of [7, 9])
+      history = appendStudioStatement(history, "actor:studio-1-nova", {
+        type: "listAdd",
+        listId: "studio-list-1",
+        value: { type: "numericLiteral", value },
+      });
+    history = appendStudioStatement(history, "actor:studio-1-nova", {
+      type: "setVariable",
+      variableId: "studio-var-1",
+      value: {
+        type: "listItem",
+        listId: "studio-list-1",
+        index: { type: "numericLiteral", value: 2 },
+      },
+    });
+    history = appendStudioStatement(history, "actor:studio-1-nova", {
+      type: "listRemoveAt",
+      listId: "studio-list-1",
+      index: { type: "numericLiteral", value: 1 },
+    });
+    history = appendStudioStatement(history, "actor:studio-1-nova", {
+      type: "setVariable",
+      variableId: "studio-var-1",
+      value: { type: "listLength", listId: "studio-list-1" },
+    });
+    const result = runMultiActorProgram(
+      history.current,
+      creativeForStudio(history.current, "forest", "es"),
+    );
+    expect(result.actors[0]?.world.lists?.["studio-list-1"]?.items).toEqual([9]);
+    expect(result.actors[0]?.world.variables?.["studio-var-1"]?.value).toBe(1);
+    expect(result.trace.map((entry) => entry.statementType)).toContain("listRemoveAt");
+    for (const index of [0, 11, 1.5])
+      expect(() =>
+        appendStudioStatement(history, "actor:studio-1-nova", {
+          type: "listRemoveAt",
+          listId: "studio-list-1",
+          index: { type: "numericLiteral", value: index },
+        }),
+      ).toThrow();
+    expect(() =>
+      appendStudioStatement(history, "actor:studio-1-nova", {
+        type: "setVariable",
+        variableId: "studio-var-1",
+        value: { type: "listItem", listId: "missing", index: { type: "numericLiteral", value: 1 } },
+      }),
+    ).toThrow();
+  });
   it("keeps each chosen character's program independent and derives the stage from canonical scripts", () => {
     let history = createEditorHistory(createStudioProgram("nova"));
     history = addStudioActor(history, "mika");

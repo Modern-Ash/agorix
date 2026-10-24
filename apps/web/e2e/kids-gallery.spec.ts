@@ -35,6 +35,8 @@ test("a new child can browse included art, create a project and reopen it", asyn
     "aria-pressed",
     "true",
   );
+  await expect(page.getByLabel("Tu elección")).toContainText("Personaje: Nova");
+  await expect(page.getByLabel("Tu elección")).toContainText("Fondo: Bosque");
 
   const violations = (
     await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()

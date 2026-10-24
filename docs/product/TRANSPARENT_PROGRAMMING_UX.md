@@ -4,6 +4,8 @@ Issue #74 defines how Agorix makes programming causality visible before #75-#78 
 
 Core invariant:
 
+In Kids, the Blocks tab shows only visual programming controls. The adjacent Code tab presents the same canonical program on demand in every age band; switching tabs never changes program state. This is the Kids exception to the desktop side-by-side layout.
+
 ```text
 intention
   -> proposed program change

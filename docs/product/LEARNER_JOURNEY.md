@@ -22,7 +22,7 @@ Desktop/normal viewport:
 Narrow viewport:
 
 - Panels stack vertically: blocks first, generated code immediately below.
-- The generated-code band remains continuously visible, never behind a tab, toggle, advanced-mode switch or hidden "under the rug" surface.
+- In Kids, the Code tab shows the generated program on demand and stays synchronized with Blocks. The Blocks tab stays free of textual code in every age band.
 - Code content may scroll internally for long programs; the code band itself remains visible.
 
 ## 3. Learner intent

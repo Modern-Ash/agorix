@@ -75,3 +75,19 @@ test("each projection reads the same canonical program without changing it", asy
     ).toBe(program);
   }
 });
+
+test("blocks stay free of generated code in every age band while Code stays synchronized", async ({
+  page,
+}) => {
+  await start(page);
+  for (const band of ["6–8", "9–12", "13+"] as const) {
+    await pickBand(page, band);
+    await page.getByRole("button", { name: "Bloques", exact: true }).click();
+    await expect(page.locator(".kids-code-strip, .kids-code-label")).toHaveCount(0);
+    await page.getByRole("button", { name: "+ mover", exact: true }).click();
+    await expect(page.locator(".kids-code-strip, .kids-code-label")).toHaveCount(0);
+    await page.getByRole("button", { name: "Código", exact: true }).click();
+    await expect(page.locator(".kids-code-view")).toContainText("move");
+    await page.getByRole("button", { name: "Volver al mapa" }).click();
+  }
+});

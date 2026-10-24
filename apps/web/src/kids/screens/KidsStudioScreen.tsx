@@ -118,6 +118,10 @@ const COPY = {
     setVariable: "Fijar valor",
     changeVariable: "Cambiar valor",
     listAdd: "Agregar número",
+    listRemove: "Quitar elemento",
+    listRead: "Leer elemento en variable",
+    listLength: "Guardar largo en variable",
+    listIndex: "Posición (desde 1)",
     dataName: "Nombre",
     number: "Número",
     watchers: "Datos al jugar",
@@ -204,6 +208,10 @@ const COPY = {
     setVariable: "Set value",
     changeVariable: "Change value",
     listAdd: "Add number",
+    listRemove: "Remove item",
+    listRead: "Read item into variable",
+    listLength: "Save length into variable",
+    listIndex: "Position (from 1)",
     dataName: "Name",
     number: "Number",
     watchers: "Data after Play",
@@ -253,6 +261,8 @@ function expressionLabel(value: Expression, program: ProjectProgram): string {
     return program.variables?.find((item) => item.id === value.variableId)?.name ?? "?";
   if (value.type === "listLength")
     return `${program.lists?.find((item) => item.id === value.listId)?.name ?? "?"}.length`;
+  if (value.type === "listItem")
+    return `${program.lists?.find((item) => item.id === value.listId)?.name ?? "?"}[${expressionLabel(value.index, program)}]`;
   const operators: Partial<Record<Expression["type"], string>> = {
     add: "+",
     subtract: "−",
@@ -325,6 +335,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
   const [dataValue, setDataValue] = useState(1);
   const [variableId, setVariableId] = useState("studio-var-1");
   const [listId, setListId] = useState("studio-list-1");
+  const [listIndex, setListIndex] = useState(1);
   const [run, setRun] = useState<MultiActorRunResult | null>(null);
   const [events, setEvents] = useState<readonly RuntimeEvent[]>([{ type: "start" }]);
   const [frame, setFrame] = useState<number | null>(null);
@@ -714,6 +725,8 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
         return `${statement.type === "setVariable" ? copy.setVariable : copy.changeVariable}: ${history.current.variables?.find((item) => item.id === statement.variableId)?.name ?? "?"} ${expressionLabel(statement.type === "setVariable" ? statement.value : statement.delta, history.current)}`;
       case "listAdd":
         return `${copy.listAdd}: ${history.current.lists?.find((item) => item.id === statement.listId)?.name ?? "?"} ${expressionLabel(statement.value, history.current)}`;
+      case "listRemoveAt":
+        return `${copy.listRemove}: ${history.current.lists?.find((item) => item.id === statement.listId)?.name ?? "?"} ${expressionLabel(statement.index, history.current)}`;
       case "repeat":
         return `${copy.repeat} ${statement.count}`;
       case "if":
@@ -1875,6 +1888,66 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
                 >
                   + {copy.listAdd}
                 </button>
+                <label>
+                  {copy.listIndex}{" "}
+                  <input
+                    type="number"
+                    min={1}
+                    max={10}
+                    step={1}
+                    value={listIndex}
+                    onChange={(event) => setListIndex(Number(event.target.value))}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="kids-button"
+                  disabled={!Number.isInteger(listIndex) || listIndex < 1 || listIndex > 10}
+                  onClick={() =>
+                    add({
+                      type: "listRemoveAt",
+                      listId,
+                      index: { type: "numericLiteral", value: listIndex },
+                    })
+                  }
+                >
+                  + {copy.listRemove}
+                </button>
+                {history.current.variables?.length ? (
+                  <>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      disabled={!Number.isInteger(listIndex) || listIndex < 1 || listIndex > 10}
+                      onClick={() =>
+                        add({
+                          type: "setVariable",
+                          variableId,
+                          value: {
+                            type: "listItem",
+                            listId,
+                            index: { type: "numericLiteral", value: listIndex },
+                          },
+                        })
+                      }
+                    >
+                      + {copy.listRead}
+                    </button>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      onClick={() =>
+                        add({
+                          type: "setVariable",
+                          variableId,
+                          value: { type: "listLength", listId },
+                        })
+                      }
+                    >
+                      + {copy.listLength}
+                    </button>
+                  </>
+                ) : null}
               </>
             ) : null}
           </div>
