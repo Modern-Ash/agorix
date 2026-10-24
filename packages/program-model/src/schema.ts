@@ -243,6 +243,11 @@ export interface SetSizeStatement {
 }
 
 /** Pauses in virtual time only: ordering in the trace, never a real timer. */
+export interface ChangeSizeStatement {
+  readonly type: "changeSize";
+  readonly delta: number;
+}
+
 export interface WaitStatement {
   readonly type: "wait";
   readonly seconds: number;
@@ -363,6 +368,7 @@ export type Statement =
   | ShowStatement
   | HideStatement
   | SetSizeStatement
+  | ChangeSizeStatement
   | WaitStatement
   | SwitchCostumeStatement
   | SwitchBackdropStatement

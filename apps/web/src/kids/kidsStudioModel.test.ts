@@ -641,4 +641,24 @@ describe("Kids creative studio", () => {
       }),
     ).toThrow();
   });
+  it("runs a bounded size change on the chosen character only", () => {
+    let history = createEditorHistory(createStudioProgram("nova"));
+    history = addStudioActor(history, "mika");
+    history = appendStudioStatement(history, "actor:studio-1-nova", {
+      type: "changeSize",
+      delta: 50,
+    });
+    history = appendStudioStatement(history, "actor:studio-1-nova", {
+      type: "changeSize",
+      delta: -25,
+    });
+    const result = runMultiActorProgram(
+      history.current,
+      creativeForStudio(history.current, "forest", "es"),
+    );
+    expect(result.actors.map((actor) => actor.size)).toEqual([125, 100]);
+    expect(() =>
+      appendStudioStatement(history, "actor:studio-1-nova", { type: "changeSize", delta: 30 }),
+    ).toThrow();
+  });
 });

@@ -28,6 +28,7 @@ import {
   setVariableVisibilityWorld,
   setVariableWorld,
   setSpriteSizeWorld,
+  changeSpriteSizeWorld,
   showWorld,
   stopSoundsWorld,
   setVolumeWorld,
@@ -440,6 +441,9 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
       break;
     case "setSize":
       state.world = setSpriteSizeWorld(state.world, statement.size);
+      break;
+    case "changeSize":
+      state.world = changeSpriteSizeWorld(state.world, statement.delta);
       break;
     case "listAdd": {
       const value = evaluateNumber(statement.value, `${path}.value`, state);

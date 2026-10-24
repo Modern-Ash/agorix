@@ -153,6 +153,7 @@ const COPY = {
     ifTouchEdge: "Si toca el borde, mover 1",
     groupIfTouchEdge: "Si toca el borde, ejecutar estos bloques",
     repeatUntil: "Repetir hasta",
+    growShrink: "Cambiar tamaño",
     groupUntilEdge: "Repetir hasta tocar el borde",
     groupUntilActor: "Repetir hasta tocar al personaje",
     saveDistance: "Guardar distancia",
@@ -280,6 +281,7 @@ const COPY = {
     ifTouchEdge: "If at edge, move 1",
     groupIfTouchEdge: "If at edge, run these blocks",
     repeatUntil: "Repeat until",
+    growShrink: "Change size",
     groupUntilEdge: "Repeat until at the edge",
     groupUntilActor: "Repeat until touching the character",
     saveDistance: "Save distance",
@@ -411,6 +413,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
   const [pointTargetId, setPointTargetId] = useState("");
   const [bubbleText, setBubbleText] = useState(locale === "es" ? "¡Hola!" : "Hello!");
   const [spriteSize, setSpriteSize] = useState(100);
+  const [sizeDelta, setSizeDelta] = useState(25);
   const [waitSeconds, setWaitSeconds] = useState(1);
   const [volume, setVolume] = useState(100);
   const [volumeChange, setVolumeChange] = useState(-10);
@@ -846,6 +849,8 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
         return copy.hide;
       case "setSize":
         return `${copy.size}: ${statement.size}%`;
+      case "changeSize":
+        return `${copy.growShrink}: ${statement.delta > 0 ? "+" : ""}${statement.delta}%`;
       case "wait":
         return `${copy.wait}: ${statement.seconds}s`;
       case "broadcast":
@@ -1614,6 +1619,27 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
               onClick={() => add({ type: "setSize", size: spriteSize })}
             >
               + {copy.size}
+            </button>
+            <label>
+              {copy.growShrink}{" "}
+              <select
+                value={sizeDelta}
+                onChange={(event) => setSizeDelta(Number(event.target.value))}
+              >
+                {[-50, -25, 25, 50].map((delta) => (
+                  <option key={delta} value={delta}>
+                    {delta > 0 ? "+" : ""}
+                    {delta}%
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              className="kids-button"
+              onClick={() => add({ type: "changeSize", delta: sizeDelta })}
+            >
+              + {copy.growShrink}
             </button>
             <label>
               {copy.wait}{" "}
