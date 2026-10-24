@@ -42,7 +42,7 @@ beforeEach(() => {
   writeFileSync(join(bin, "curl"), "#!/bin/sh\nprintf ok\n", { mode: 0o755 });
   writeFileSync(
     join(bin, "node"),
-    '#!/bin/sh\ncase "$*" in\n  *version.json*) exit 1 ;;\n  *readFileSync*) printf "%s" "$AGORIX_TEST_SHA" ;;\n  *check-ori-live.mjs*) exit 1 ;;\n  *) exit 0 ;;\nesac\n',
+    '#!/bin/sh\ncase "$*" in\n  *readFileSync*) cat >/dev/null; printf "%s" "$AGORIX_TEST_SHA" ;;\n  *check-ori-live.mjs*) exit 1 ;;\n  *) cat >/dev/null; exit 0 ;;\nesac\n',
     { mode: 0o755 },
   );
   writeFileSync(
