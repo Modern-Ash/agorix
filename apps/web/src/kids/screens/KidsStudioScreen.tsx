@@ -152,6 +152,9 @@ const COPY = {
     groupIfTouchActor: "Si toca, ejecutar estos bloques",
     ifTouchEdge: "Si toca el borde, mover 1",
     groupIfTouchEdge: "Si toca el borde, ejecutar estos bloques",
+    repeatUntil: "Repetir hasta",
+    groupUntilEdge: "Repetir hasta tocar el borde",
+    groupUntilActor: "Repetir hasta tocar al personaje",
     saveDistance: "Guardar distancia",
     distanceTarget: "Distancia al personaje",
     dataName: "Nombre",
@@ -276,6 +279,9 @@ const COPY = {
     groupIfTouchActor: "If touching, run these blocks",
     ifTouchEdge: "If at edge, move 1",
     groupIfTouchEdge: "If at edge, run these blocks",
+    repeatUntil: "Repeat until",
+    groupUntilEdge: "Repeat until at the edge",
+    groupUntilActor: "Repeat until touching the character",
     saveDistance: "Save distance",
     distanceTarget: "Distance to character",
     dataName: "Name",
@@ -859,6 +865,8 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
         return `${statement.type === "listInsertAt" ? copy.listInsert : copy.listReplace}: ${history.current.lists?.find((item) => item.id === statement.listId)?.name ?? "?"} ${expressionLabel(statement.index, history.current)} ← ${expressionLabel(statement.value, history.current)}`;
       case "repeat":
         return `${copy.repeat} ${statement.count}`;
+      case "repeatUntil":
+        return `${copy.repeatUntil} ${expressionLabel(statement.condition, history.current, locale)}`;
       case "if":
         return `${copy.ifLabel} ${expressionLabel(statement.condition, history.current, locale)}`;
       default:
@@ -872,7 +880,9 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
         {statements.map((item, index) => (
           <li key={`${key}-${index}`}>
             {blockLabel(item)}
-            {item.type === "repeat" ? nestedBlocks(item.body, `${key}-${index}`) : null}
+            {item.type === "repeat" || item.type === "repeatUntil"
+              ? nestedBlocks(item.body, `${key}-${index}`)
+              : null}
             {item.type === "if" ? nestedBlocks(item.then, `${key}-${index}`) : null}
             {item.type === "if" && item.else ? (
               <>
@@ -886,7 +896,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
     );
   }
 
-  function groupLast(type: "repeat" | "if", overrideCondition?: Expression) {
+  function groupLast(type: "repeat" | "repeatUntil" | "if", overrideCondition?: Expression) {
     try {
       persist(
         wrapStudioTail(
@@ -1527,7 +1537,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
               {script?.statements.map((statement, index) => (
                 <li key={`${script.id}-${index}`} className="kids-program-block">
                   <span>{blockLabel(statement)}</span>
-                  {statement.type === "repeat"
+                  {statement.type === "repeat" || statement.type === "repeatUntil"
                     ? nestedBlocks(statement.body, `${script.id}-${index}`)
                     : null}
                   {statement.type === "if"
@@ -1953,6 +1963,14 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
             >
               {copy.groupIfTouchEdge}
             </button>
+            <button
+              type="button"
+              className="kids-button"
+              disabled={(script?.statements.length ?? 0) < groupCount}
+              onClick={() => groupLast("repeatUntil", STUDIO_EDGE_CONDITION)}
+            >
+              {copy.groupUntilEdge}
+            </button>
             {targetActorId ? (
               <>
                 <label>
@@ -1988,6 +2006,16 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
                   onClick={() => groupLast("if", { type: "touchingActor", actorId: targetActorId })}
                 >
                   {copy.groupIfTouchActor}
+                </button>
+                <button
+                  type="button"
+                  className="kids-button"
+                  disabled={(script?.statements.length ?? 0) < groupCount}
+                  onClick={() =>
+                    groupLast("repeatUntil", { type: "touchingActor", actorId: targetActorId })
+                  }
+                >
+                  {copy.groupUntilActor}
                 </button>
               </>
             ) : null}

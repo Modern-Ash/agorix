@@ -285,6 +285,19 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
       addRange(writer, nodeId, start, writer.text.length);
       return;
     }
+    case "repeatUntil": {
+      const start = writer.text.length;
+      writer.text +=
+        indent +
+        "repeat until " +
+        expressionText(writer, statement.condition, nodeId + "/condition") +
+        "\n";
+      statement.body.forEach((child, index) =>
+        writeStatement(writer, child, nodeId + "/body[" + index + "]", depth + 1),
+      );
+      addRange(writer, nodeId, start, writer.text.length);
+      return;
+    }
     case "if": {
       const start = writer.text.length;
       writer.text +=

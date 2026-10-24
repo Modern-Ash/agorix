@@ -355,6 +355,17 @@ function projectStatement(
       write(writer, `${pad}});\n`);
       return;
     }
+    case "repeatUntil": {
+      const condId = `${nodeId}/condition`;
+      const cond = formatExpression(statement.condition, condId, context);
+      const prefix = `${pad}repeatUntil(() => `;
+      const condStart = writer.offset + prefix.length;
+      writer.mapping[condId] = { start: condStart, end: condStart + cond.length };
+      write(writer, `${prefix}${cond}, () => {\n`);
+      projectStatements(statement.body, nodeId, "body", indent + 1, writer, context);
+      write(writer, `${pad}});\n`);
+      return;
+    }
     case "if": {
       const condId = `${nodeId}/condition`;
       const cond = formatExpression(statement.condition, condId, context);

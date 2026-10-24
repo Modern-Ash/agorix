@@ -258,3 +258,42 @@ describe("heading statements", () => {
     }
   });
 });
+
+describe("repeatUntil statement", () => {
+  const programWith = (statement: unknown) =>
+    ({
+      schema: SCHEMA_VERSION,
+      scripts: [{ id: "main", trigger: { type: "onStart" }, statements: [statement] }],
+    }) as never;
+  const until = {
+    type: "greaterThan",
+    left: { type: "xPosition" },
+    right: { type: "numericLiteral", value: 100 },
+  };
+
+  it("accepts a condition with a body", () => {
+    expect(() =>
+      validateProgram(
+        programWith({
+          type: "repeatUntil",
+          condition: until,
+          body: [{ type: "move", steps: 40 }],
+        }),
+      ),
+    ).not.toThrow();
+  });
+
+  it("rejects a missing condition, a non-array body and excessive nesting", () => {
+    expect(() =>
+      validateProgram(programWith({ type: "repeatUntil", body: [{ type: "move", steps: 1 }] })),
+    ).toThrow(ProgramValidationError);
+    expect(() =>
+      validateProgram(programWith({ type: "repeatUntil", condition: until, body: "x" })),
+    ).toThrow(ProgramValidationError);
+    let nested: unknown = { type: "move", steps: 1 };
+    for (let i = 0; i < 25; i += 1) {
+      nested = { type: "repeatUntil", condition: until, body: [nested] };
+    }
+    expect(() => validateProgram(programWith(nested))).toThrow(ProgramValidationError);
+  });
+});

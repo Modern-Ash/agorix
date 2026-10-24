@@ -338,6 +338,23 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
       addRange(writer, nodeId, start, writer.text.length);
       return;
     }
+    case "repeatUntil": {
+      const start = writer.text.length;
+      writer.text +=
+        indent +
+        "while not (" +
+        expressionText(writer, statement.condition, nodeId + "/condition") +
+        "):\n";
+      if (statement.body.length === 0) {
+        writer.text += indent + "    pass\n";
+      } else {
+        statement.body.forEach((child, index) =>
+          writeStatement(writer, child, nodeId + "/body[" + index + "]", depth + 1),
+        );
+      }
+      addRange(writer, nodeId, start, writer.text.length);
+      return;
+    }
     case "if": {
       const start = writer.text.length;
       writer.text +=
@@ -546,7 +563,7 @@ function assignedVariableIdentifiers(
           seen.add(identifier);
           identifiers.push(identifier);
         }
-      } else if (statement.type === "repeat") {
+      } else if (statement.type === "repeat" || statement.type === "repeatUntil") {
         visit(statement.body);
       } else if (statement.type === "if") {
         visit(statement.then);

@@ -183,7 +183,7 @@ function timingForObservation(observation: RuntimeObservation): ExecutionStepTim
   if (observation.kind === "run-complete") {
     return "complete";
   }
-  if (observation.statementType === "repeat") {
+  if (observation.statementType === "repeat" || observation.statementType === "repeatUntil") {
     return observation.kind === "statement-start" ? "enter-repeat" : "complete-repeat";
   }
   if (observation.statementType === "if") {
@@ -256,14 +256,18 @@ function makeSummary(
     step.timing === "evaluate-condition"
   ) {
     if (step.statementType === "if") return "Checking the question";
-    if (step.statementType === "repeat") return "Starting repeat";
+    if (step.statementType === "repeat" || step.statementType === "repeatUntil") {
+      return "Starting repeat";
+    }
     return "Ready to run this instruction";
   }
   if (step.statementType === "if") {
     const changed = delta.x !== 0 || delta.y !== 0 || delta.heading !== 0;
     return changed ? "Question was true" : "Question did not change the world";
   }
-  if (step.statementType === "repeat") return "Repeat finished";
+  if (step.statementType === "repeat" || step.statementType === "repeatUntil") {
+    return "Repeat finished";
+  }
   if (step.statementType === "say") {
     return `Speech bubble: ${step.observation.world.sprite.bubble?.text ?? ""}`;
   }
@@ -323,6 +327,7 @@ function titleForStep(step: ExecutionStep, profile: LearnerTraceProfile): string
     case "bounceOnEdge":
       return "Bounce on edge";
     case "repeat":
+    case "repeatUntil":
       return step.timing === "enter-repeat" ? "Repeat starts" : "Repeat ends";
     case "if":
       return "Question";

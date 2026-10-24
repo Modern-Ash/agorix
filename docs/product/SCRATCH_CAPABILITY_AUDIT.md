@@ -137,3 +137,9 @@ Each iteration needs an issue with an observable child journey, success and fail
 - Escena libre exposes Point in direction (right, down, left, up), Point at another character, and If on edge, bounce. The canonical validator, deterministic runtime, block adapter and Agorix Code, Python and TypeScript projections recognize all three; the run trace names each one.
 - Heading 0 faces right and 90 faces down, matching the stage's y axis. Point at uses the other character's position when the script starts, so a run is reproducible. A target missing from the stage leaves the heading unchanged and records a runtime note. Bounce keeps the character inside the scene limits (x 0–320, y −100–120) and reflects the heading; away from an edge it changes nothing.
 - Free-scene authoring accepts only those four directions and a character that exists in the scene. Tests cover validation, runtime, a whole-scene run, projections and reopen. Movement to coordinates, gliding, rotation style and sensing remain open.
+
+## Repeat until (next #538 increment)
+
+- Escena libre can group the last one to three blocks into **Repetir hasta tocar el borde** or **Repetir hasta tocar al personaje**. The canonical `repeatUntil` statement carries its condition; the validator, deterministic runtime, block adapter, trace and Agorix Code, Python and TypeScript projections derive from the same program.
+- The condition is checked before every pass, so a character that already satisfies it does not run the body. A loop whose condition never becomes true stops after 100 passes with a runtime note, so a run always ends. Broadcasts sent from inside the loop reach the other characters.
+- Only the two sensor conditions already available in the scene are offered. Waiting until a condition holds, forever loops, stop-all and general variable comparisons as loop conditions remain open.
