@@ -21,6 +21,7 @@ import {
   listReplaceAtWorld,
   hideWorld,
   moveWorld,
+  goToWorld,
   playSoundWorld,
   sayWorld,
   setVariableVisibilityWorld,
@@ -358,6 +359,9 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
   switch (statement.type) {
     case "move":
       state.world = moveWorld(state.world, statement.steps);
+      break;
+    case "goTo":
+      state.world = goToWorld(state.world, statement.x, statement.y);
       break;
     case "turn":
       state.world = turnWorld(state.world, statement.degrees);

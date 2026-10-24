@@ -31,10 +31,12 @@ export type StudioStatement = Extract<
   {
     type:
       | "move"
+      | "goTo"
       | "turn"
       | "switchCostume"
       | "switchBackdrop"
       | "playSound"
+      | "stopSounds"
       | "setVolume"
       | "changeVolume"
       | "say"
@@ -186,6 +188,15 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0): bool
       statement.steps !== 0 &&
       Math.abs(statement.steps) <= 200
     );
+  if (statement.type === "goTo")
+    return (
+      Number.isInteger(statement.x) &&
+      statement.x >= 0 &&
+      statement.x <= 320 &&
+      Number.isInteger(statement.y) &&
+      statement.y >= -100 &&
+      statement.y <= 120
+    );
   if (statement.type === "turn") return [45, 90, 180, -45, -90, -180].includes(statement.degrees);
   if (statement.type === "switchCostume")
     return (
@@ -199,6 +210,7 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0): bool
     );
   if (statement.type === "playSound")
     return isKidsSoundId(statement.soundId) && statement.soundId !== "kids:custom";
+  if (statement.type === "stopSounds") return true;
   if (statement.type === "setVolume")
     return Number.isInteger(statement.volume) && statement.volume >= 0 && statement.volume <= 100;
   if (statement.type === "changeVolume")

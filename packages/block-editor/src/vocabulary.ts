@@ -100,6 +100,14 @@ const definitions: readonly ToolboxBlockDefinition[] = [
     createDefaultBlock: (id) => ({ id, type: "motion_move", fields: { steps: 10 } }),
   },
   {
+    type: "motion_go_to",
+    label: "Go to [X, Y]",
+    section: "Move",
+    placement: "statement",
+    accessibleName: "go to coordinates",
+    createDefaultBlock: (id) => ({ id, type: "motion_go_to", fields: { x: 0, y: 0 } }),
+  },
+  {
     type: "motion_turn",
     label: "Turn [N] degrees",
     section: "Move",

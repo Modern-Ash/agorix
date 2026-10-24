@@ -99,6 +99,7 @@ export function projectPython(program: ProjectProgram): LanguageProjectionResult
       structuralNodeIds: Object.keys(writer.mapping),
       supportApi: [
         "move",
+        "go_to",
         "turn",
         "touching_goal",
         "say",
@@ -155,6 +156,13 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
   switch (statement.type) {
     case "move":
       writeMapped(writer, nodeId, indent + "move(" + formatNumber(statement.steps) + ")\n");
+      return;
+    case "goTo":
+      writeMapped(
+        writer,
+        nodeId,
+        indent + "go_to(" + formatNumber(statement.x) + ", " + formatNumber(statement.y) + ")\n",
+      );
       return;
     case "turn":
       writeMapped(writer, nodeId, indent + "turn(" + formatNumber(statement.degrees) + ")\n");
@@ -555,6 +563,7 @@ const PYTHON_RESERVED_WORDS: ReadonlySet<string> = new Set([
 
 const PYTHON_PROJECTION_IDENTIFIERS: ReadonlySet<string> = new Set([
   "move",
+  "go_to",
   "turn",
   "touching_goal",
   "say",

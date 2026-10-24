@@ -114,6 +114,13 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
     case "move":
       writeMapped(writer, nodeId, indent + "move " + formatNumber(statement.steps) + "\n");
       return;
+    case "goTo":
+      writeMapped(
+        writer,
+        nodeId,
+        indent + "go to " + formatNumber(statement.x) + ", " + formatNumber(statement.y) + "\n",
+      );
+      return;
     case "turn":
       writeMapped(writer, nodeId, indent + "turn " + formatNumber(statement.degrees) + "\n");
       return;

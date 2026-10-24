@@ -178,6 +178,10 @@ export function moveWorld(world: WorldState, steps: number): WorldState {
   });
 }
 
+export function goToWorld(world: WorldState, x: number, y: number): WorldState {
+  return createWorldState({ ...world, sprite: { ...world.sprite, x, y } });
+}
+
 export function turnWorld(world: WorldState, degrees: number): WorldState {
   if (!Number.isFinite(degrees)) {
     throw new RangeError(`degrees must be finite: ${degrees}`);

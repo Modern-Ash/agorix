@@ -113,3 +113,9 @@ Each iteration needs an issue with an observable child journey, success and fail
 - Escena libre exposes bounded Set volume and Change volume blocks. They update the canonical program, the deterministic runtime and the generated code. A gallery sound played from the run trace uses the volume recorded at that sound block; the stage shows the final volume after Jugar.
 - A child can add Show variable and Hide variable blocks for a declared variable. The selected actor's watcher follows the runtime visibility state. These blocks survive project reopen and remain subject to the studio's actor and block limits.
 - This increment uses operations already supported by the shared model and runtime. Stop sounds, sensing, movement to coordinates, custom procedures and extensions still need separate visible controls and runtime evidence before claiming parity.
+
+## Stage coordinates and sound stop (next #538 increment)
+
+- Escena libre adds a bounded **Ir a posición** block (horizontal 0–320, vertical −100–120). It is a canonical `goTo` statement with validator, visual adapter, deterministic runtime trace and Agorix Code, Python and TypeScript projections. The actor's heading is preserved; invalid or non-finite coordinates are rejected before mutation. The project reopens with the same block and behavior.
+- **Detener sonidos** is now visible in the same palette. The runtime clears active sounds at that statement, and Web Audio contexts started by the scene are closed when the block executes. A fresh Play run stops any sound left from the previous run. The browser remains functional if audio is unavailable.
+- These blocks do not constitute general sensing or Scratch parity. Sensors need an explicit multi-actor contact, edge and input contract, including coordinate conventions and observable results, before an authoring surface is added. Custom procedures and extensions also remain open under #538.

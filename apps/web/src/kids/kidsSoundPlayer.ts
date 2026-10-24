@@ -8,8 +8,18 @@ interface SoundDependencies {
   readonly volume?: number;
 }
 
+const activeContexts = new Set<AudioContext>();
+
+export function stopKidsSounds(): void {
+  for (const context of activeContexts) void context.close().catch(() => undefined);
+  activeContexts.clear();
+}
+
 function closeWhenEnded(node: OscillatorNode | AudioBufferSourceNode, context: AudioContext): void {
-  node.onended = () => void context.close().catch(() => undefined);
+  node.onended = () => {
+    activeContexts.delete(context);
+    void context.close().catch(() => undefined);
+  };
 }
 
 function synth(context: AudioContext, id: string, volume: number): void {
@@ -44,6 +54,7 @@ export async function playKidsSound(
   if (volume === 0) return;
   try {
     context = (deps.createContext ?? (() => new AudioContext()))();
+    activeContexts.add(context);
     if (id === KIDS_CUSTOM_SOUND_ID) {
       try {
         const blob = await (deps.loadCustom ?? loadKidsAudio)(actor);
@@ -67,6 +78,9 @@ export async function playKidsSound(
     }
   } catch {
     // Muted or blocked AudioContext must never interrupt the child's run.
-    if (context) await context.close().catch(() => undefined);
+    if (context) {
+      activeContexts.delete(context);
+      await context.close().catch(() => undefined);
+    }
   }
 }

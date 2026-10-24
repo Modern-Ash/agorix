@@ -85,6 +85,7 @@ describe("Python projection", () => {
     expect(projectPython(program).metadata).toMatchObject({
       supportApi: [
         "move",
+        "go_to",
         "turn",
         "touching_goal",
         "say",

@@ -58,6 +58,7 @@ describe("runtime operation allowlist", () => {
       "broadcast",
       "changeVariable",
       "changeVolume",
+      "goTo",
       "hide",
       "hideVariable",
       "if",

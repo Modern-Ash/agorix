@@ -159,6 +159,13 @@ export interface MoveStatement {
   readonly steps: number;
 }
 
+/** Places the sprite at a bounded stage coordinate without changing its heading. */
+export interface GoToStatement {
+  readonly type: "goTo";
+  readonly x: number;
+  readonly y: number;
+}
+
 export interface TurnStatement {
   readonly type: "turn";
   readonly degrees: number;
@@ -291,6 +298,7 @@ export interface IfStatement {
 
 export type Statement =
   | MoveStatement
+  | GoToStatement
   | TurnStatement
   | SayStatement
   | ThinkStatement
