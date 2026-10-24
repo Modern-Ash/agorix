@@ -42,7 +42,12 @@ import {
   studioActorId,
   type StudioStatement,
 } from "../kidsStudioModel.js";
-import { listStudioProjects, saveStudioProject, setStudioBackdrop } from "../kidsStudioProjects.js";
+import {
+  listStudioProjects,
+  saveStudioProject,
+  setStudioActorPosition,
+  setStudioBackdrop,
+} from "../kidsStudioProjects.js";
 import { requestStudioOri } from "../kidsStudioOriRemote.js";
 import { useOriPageVisible } from "../kidsOriMotion.js";
 import { KidsBackdrop, KidsSprite } from "./KidsArt.js";
@@ -118,6 +123,7 @@ const COPY = {
     chooseActor: "Elegí un personaje",
     noBlocks: "Agregá un bloque para ver qué hace este personaje.",
     stage: "Escenario",
+    place: "Ubicar personaje",
   },
   en: {
     title: "Free scene",
@@ -182,6 +188,7 @@ const COPY = {
     chooseActor: "Choose a character",
     noBlocks: "Add a block to see what this character does.",
     stage: "Stage",
+    place: "Place character",
   },
 } as const;
 
@@ -246,9 +253,21 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
   const [oriBusy, setOriBusy] = useState(false);
   const oriPageVisible = useOriPageVisible();
   const [error, setError] = useState(false);
+  const [placementRevision, setPlacementRevision] = useState(0);
   const creative = useMemo(
-    () => creativeForStudio(history.current, backdropId, locale),
-    [history.current, backdropId, locale],
+    () =>
+      creativeForStudio(
+        history.current,
+        backdropId,
+        locale,
+        Object.fromEntries(
+          (store.load(id).metadata.actors?.items ?? []).map((item) => [
+            item.id,
+            { x: item.x, y: item.y },
+          ]),
+        ),
+      ),
+    [history.current, backdropId, locale, placementRevision, store, id],
   );
   const actor = creative.actors?.find((item) => item.id === activeActorId) ?? creative.actors?.[0];
   const script = history.current.scripts.find((item) => actor?.scripts?.includes(item.id));
@@ -352,6 +371,25 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
       setActiveActorId(next);
       setOriIdea(null);
       setOriMessage("");
+      setError(false);
+    } catch {
+      setError(true);
+    }
+  }
+
+  function placeActor(dx: number, dy: number) {
+    if (!actor) return;
+    try {
+      setStudioActorPosition(
+        id,
+        actor.id,
+        Math.max(0, Math.min(320, actor.x + dx)),
+        Math.max(-100, Math.min(120, actor.y + dy)),
+        store,
+      );
+      setPlacementRevision((value) => value + 1);
+      setRun(null);
+      setFrame(null);
       setError(false);
     } catch {
       setError(true);
@@ -579,6 +617,51 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
               );
             })}
           </KidsBackdrop>
+          <div
+            className="kids-studio-placement"
+            role="group"
+            aria-label={`${copy.place}: ${actor?.name ?? ""}`}
+          >
+            <span>
+              {copy.place}: {actor?.name}
+            </span>
+            <button
+              type="button"
+              className="kids-button"
+              aria-label={`${copy.place} ←`}
+              disabled={!actor || actor.x <= 0}
+              onClick={() => placeActor(-20, 0)}
+            >
+              ←
+            </button>
+            <button
+              type="button"
+              className="kids-button"
+              aria-label={`${copy.place} ↑`}
+              disabled={!actor || actor.y <= -100}
+              onClick={() => placeActor(0, -20)}
+            >
+              ↑
+            </button>
+            <button
+              type="button"
+              className="kids-button"
+              aria-label={`${copy.place} ↓`}
+              disabled={!actor || actor.y >= 120}
+              onClick={() => placeActor(0, 20)}
+            >
+              ↓
+            </button>
+            <button
+              type="button"
+              className="kids-button"
+              aria-label={`${copy.place} →`}
+              disabled={!actor || actor.x >= 320}
+              onClick={() => placeActor(20, 0)}
+            >
+              →
+            </button>
+          </div>
           <div className="kids-run-controls">
             <button type="button" className="kids-button kids-primary" onClick={play}>
               {copy.run}

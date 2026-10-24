@@ -14,6 +14,7 @@ import {
   importStudioProject,
   listStudioProjects,
   saveStudioProject,
+  setStudioActorPosition,
   setStudioBackdrop,
 } from "./kidsStudioProjects.js";
 
@@ -55,6 +56,7 @@ describe("Kids studio projects", () => {
       value: { type: "numericLiteral", value: 2 },
     });
     saveStudioProject(project.id, history.current, "forest", "actor:studio-2-mika", "es", store);
+    setStudioActorPosition(project.id, "actor:studio-2-mika", 180, -40, store);
     setStudioBackdrop(project.id, "moon", "es", store, index);
     expect(store.load(project.id).metadata.stage?.backdropId).toBe("backdrop:moon");
     expect(store.load(project.id).metadata.actors?.items).toHaveLength(2);
@@ -62,7 +64,19 @@ describe("Kids studio projects", () => {
     expect(copy.id).toBe("studio-2");
     expect(copy.backdropId).toBe("moon");
     expect(store.load(copy.id).program).toEqual(history.current);
+    expect(store.load(copy.id).metadata.actors?.items[1]).toMatchObject({ x: 180, y: -40 });
     expect(listStudioProjects(index)).toEqual([{ ...project, backdropId: "moon" }, copy]);
+  });
+
+  it("rejects positions outside the stage and unknown actors without changing the project", () => {
+    const { store, index } = memory();
+    const project = createStudioProject("nova", "forest", "es", store, index);
+    const before = store.load(project.id);
+    expect(() =>
+      setStudioActorPosition(project.id, "actor:studio-1-nova", 400, 0, store),
+    ).toThrow();
+    expect(() => setStudioActorPosition(project.id, "actor:missing", 100, 0, store)).toThrow();
+    expect(store.load(project.id)).toEqual(before);
   });
 
   it("rejects a foreign program without leaving a broken project card", () => {

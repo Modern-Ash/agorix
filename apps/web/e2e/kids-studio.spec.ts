@@ -4,6 +4,39 @@ import { evaluateOriStudioOutput, ORI_STUDIO_VERSION } from "@agorix/ori-agent";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
+test("a child places a character and the stage keeps that position after reopening", async ({
+  page,
+}) => {
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
+  const actor = page.getByRole("group", { name: "Escenario" }).getByRole("button").first();
+  await expect(actor).toHaveCSS("left", /%|px/);
+  const before = await actor.getAttribute("style");
+  await page.getByRole("button", { name: "Ubicar personaje →" }).click();
+  const placed = await actor.getAttribute("style");
+  expect(placed).not.toBe(before);
+  await page.reload();
+  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  await page
+    .getByRole("article")
+    .filter({ hasText: "Escena libre" })
+    .getByRole("button", { name: "Jugar" })
+    .click();
+  await expect(
+    page.getByRole("group", { name: "Escenario" }).getByRole("button").first(),
+  ).toHaveAttribute("style", placed!);
+});
+
 test("free scene keeps independent character scripts and reopens the saved stage", async ({
   page,
 }) => {

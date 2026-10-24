@@ -2580,6 +2580,7 @@
 .kids-studio-header,
 .kids-studio-header > div,
 .kids-run-controls,
+.kids-studio-placement,
 .kids-studio-add,
 .kids-studio-actors {
   display: flex;
@@ -2589,6 +2590,9 @@
 }
 .kids-studio-header {
   justify-content: space-between;
+}
+.kids-studio-placement {
+  margin-block: 0.75rem;
 }
 .kids-studio-layout {
   display: grid;
