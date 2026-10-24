@@ -1,4 +1,4 @@
-import { LIST_MAX_ITEMS } from "@agorix/program-model";
+import { LIST_MAX_ITEMS, SPRITE_SIZE_MAX, SPRITE_SIZE_MIN } from "@agorix/program-model";
 export interface Position {
   readonly x: number;
   readonly y: number;
@@ -280,6 +280,11 @@ export function hideWorld(world: WorldState): WorldState {
 
 export function setSpriteSizeWorld(world: WorldState, size: number): WorldState {
   return createWorldState({ ...world, sprite: { ...world.sprite, size } });
+}
+
+export function changeSpriteSizeWorld(world: WorldState, delta: number): WorldState {
+  const size = (world.sprite.size ?? 100) + delta;
+  return setSpriteSizeWorld(world, Math.min(SPRITE_SIZE_MAX, Math.max(SPRITE_SIZE_MIN, size)));
 }
 
 export function switchCostumeWorld(world: WorldState, costumeId: string): WorldState {

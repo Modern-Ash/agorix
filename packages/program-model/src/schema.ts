@@ -87,6 +87,13 @@ export interface DivideExpression {
   readonly right: Expression;
 }
 
+/** Floored remainder: the result takes the sign of the right operand. */
+export interface ModuloExpression {
+  readonly type: "modulo";
+  readonly left: Expression;
+  readonly right: Expression;
+}
+
 export interface LessThanExpression {
   readonly type: "lessThan";
   readonly left: Expression;
@@ -173,6 +180,7 @@ export type Expression =
   | SubtractExpression
   | MultiplyExpression
   | DivideExpression
+  | ModuloExpression
   | LessThanExpression
   | GreaterThanExpression
   | LessOrEqualExpression
@@ -243,6 +251,11 @@ export interface SetSizeStatement {
 }
 
 /** Pauses in virtual time only: ordering in the trace, never a real timer. */
+export interface ChangeSizeStatement {
+  readonly type: "changeSize";
+  readonly delta: number;
+}
+
 export interface WaitStatement {
   readonly type: "wait";
   readonly seconds: number;
@@ -363,6 +376,7 @@ export type Statement =
   | ShowStatement
   | HideStatement
   | SetSizeStatement
+  | ChangeSizeStatement
   | WaitStatement
   | SwitchCostumeStatement
   | SwitchBackdropStatement

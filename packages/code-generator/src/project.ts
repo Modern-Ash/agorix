@@ -174,6 +174,8 @@ function formatExpression(
       return `(${formatExpression(expression.left, `${nodeId}/left`, context)} * ${formatExpression(expression.right, `${nodeId}/right`, context)})`;
     case "divide":
       return `(${formatExpression(expression.left, `${nodeId}/left`, context)} / ${formatExpression(expression.right, `${nodeId}/right`, context)})`;
+    case "modulo":
+      return `(${formatExpression(expression.left, `${nodeId}/left`, context)} % ${formatExpression(expression.right, `${nodeId}/right`, context)})`;
     case "lessThan":
       return `(${formatExpression(expression.left, `${nodeId}/left`, context)} < ${formatExpression(expression.right, `${nodeId}/right`, context)})`;
     case "greaterThan":
@@ -303,6 +305,9 @@ function projectStatement(
       return;
     case "setSize":
       write(writer, `${pad}sprite.setSize(${formatNumber(statement.size)});\n`);
+      return;
+    case "changeSize":
+      write(writer, `${pad}sprite.changeSize(${formatNumber(statement.delta)});\n`);
       return;
     case "switchCostume":
       write(writer, `${pad}sprite.switchCostume(${JSON.stringify(statement.costumeId)});\n`);

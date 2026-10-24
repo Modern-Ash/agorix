@@ -28,6 +28,7 @@ export type BlockType =
   | "looks_show"
   | "looks_hide"
   | "looks_set_size"
+  | "looks_change_size"
   | "looks_switch_costume"
   | "looks_switch_backdrop"
   | "sound_play"
@@ -48,6 +49,7 @@ export type BlockType =
   | "operator_subtract"
   | "operator_multiply"
   | "operator_divide"
+  | "operator_modulo"
   | "operator_less_than"
   | "operator_greater_than"
   | "operator_less_or_equal"
@@ -292,6 +294,7 @@ function expressionFromBlock(
     case "operator_subtract":
     case "operator_multiply":
     case "operator_divide":
+    case "operator_modulo":
     case "operator_less_than":
     case "operator_greater_than":
     case "operator_less_or_equal":
@@ -304,6 +307,7 @@ function expressionFromBlock(
         operator_subtract: "subtract",
         operator_multiply: "multiply",
         operator_divide: "divide",
+        operator_modulo: "modulo",
         operator_less_than: "lessThan",
         operator_greater_than: "greaterThan",
         operator_less_or_equal: "lessOrEqual",
@@ -408,6 +412,8 @@ function statementFromBlock(
       return { type: "wait", seconds: numberField(block, "seconds", path) };
     case "looks_set_size":
       return { type: "setSize", size: numberField(block, "size", path) };
+    case "looks_change_size":
+      return { type: "changeSize", delta: numberField(block, "delta", path) };
     case "looks_switch_costume":
       return { type: "switchCostume", costumeId: stringField(block, "costumeId", path) };
     case "looks_switch_backdrop":
@@ -599,6 +605,7 @@ function expressionToBlock(
     case "subtract":
     case "multiply":
     case "divide":
+    case "modulo":
     case "lessThan":
     case "greaterThan":
     case "lessOrEqual":
@@ -611,6 +618,7 @@ function expressionToBlock(
         subtract: "operator_subtract",
         multiply: "operator_multiply",
         divide: "operator_divide",
+        modulo: "operator_modulo",
         lessThan: "operator_less_than",
         greaterThan: "operator_greater_than",
         lessOrEqual: "operator_less_or_equal",
@@ -700,6 +708,8 @@ function statementToBlock(
       return { id, type: "control_wait", fields: { seconds: statement.seconds } };
     case "setSize":
       return { id, type: "looks_set_size", fields: { size: statement.size } };
+    case "changeSize":
+      return { id, type: "looks_change_size", fields: { delta: statement.delta } };
     case "switchCostume":
       return { id, type: "looks_switch_costume", fields: { costumeId: statement.costumeId } };
     case "switchBackdrop":

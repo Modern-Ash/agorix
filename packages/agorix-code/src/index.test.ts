@@ -435,3 +435,48 @@ describe("Agorix Code projection: repeat until", () => {
     expect(result.text).toMatch(/^ {2}repeat until .+\n {4}move 20\n/m);
   });
 });
+
+describe("Agorix Code projection: change size", () => {
+  it("projects change size", () => {
+    const result = projectAgorixCode({
+      schema: SCHEMA_VERSION,
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [{ type: "changeSize", delta: -25 }],
+        },
+      ],
+    });
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toBe(["when start", "  change size by -25", ""].join("\n"));
+  });
+});
+
+describe("Agorix Code projection: modulo", () => {
+  it("projects the remainder operator", () => {
+    const result = projectAgorixCode({
+      schema: SCHEMA_VERSION,
+      variables: [{ id: "n", name: "n", initialValue: 0, visible: true }],
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            {
+              type: "setVariable",
+              variableId: "n",
+              value: {
+                type: "modulo",
+                left: { type: "variable", variableId: "n" },
+                right: { type: "numericLiteral", value: 2 },
+              },
+            },
+          ],
+        },
+      ],
+    });
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toContain(" mod 2)");
+  });
+});

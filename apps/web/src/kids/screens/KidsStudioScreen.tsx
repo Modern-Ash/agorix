@@ -153,6 +153,7 @@ const COPY = {
     ifTouchEdge: "Si toca el borde, mover 1",
     groupIfTouchEdge: "Si toca el borde, ejecutar estos bloques",
     repeatUntil: "Repetir hasta",
+    growShrink: "Cambiar tamaño",
     groupUntilEdge: "Repetir hasta tocar el borde",
     groupUntilActor: "Repetir hasta tocar al personaje",
     saveDistance: "Guardar distancia",
@@ -280,6 +281,7 @@ const COPY = {
     ifTouchEdge: "If at edge, move 1",
     groupIfTouchEdge: "If at edge, run these blocks",
     repeatUntil: "Repeat until",
+    growShrink: "Change size",
     groupUntilEdge: "Repeat until at the edge",
     groupUntilActor: "Repeat until touching the character",
     saveDistance: "Save distance",
@@ -357,6 +359,7 @@ function expressionLabel(
     subtract: "−",
     multiply: "×",
     divide: "÷",
+    modulo: "mod",
     greaterThan: ">",
     lessThan: "<",
     equals: "=",
@@ -411,6 +414,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
   const [pointTargetId, setPointTargetId] = useState("");
   const [bubbleText, setBubbleText] = useState(locale === "es" ? "¡Hola!" : "Hello!");
   const [spriteSize, setSpriteSize] = useState(100);
+  const [sizeDelta, setSizeDelta] = useState(25);
   const [waitSeconds, setWaitSeconds] = useState(1);
   const [volume, setVolume] = useState(100);
   const [volumeChange, setVolumeChange] = useState(-10);
@@ -419,9 +423,9 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
   const [repeatCount, setRepeatCount] = useState(3);
   const [groupCount, setGroupCount] = useState(2);
   const [sourceVariableId, setSourceVariableId] = useState("studio-var-1");
-  const [mathOperator, setMathOperator] = useState<"add" | "subtract" | "multiply" | "divide">(
-    "add",
-  );
+  const [mathOperator, setMathOperator] = useState<
+    "add" | "subtract" | "multiply" | "divide" | "modulo"
+  >("add");
   const [compareOperator, setCompareOperator] = useState<"greaterThan" | "lessThan" | "equals">(
     "greaterThan",
   );
@@ -846,6 +850,8 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
         return copy.hide;
       case "setSize":
         return `${copy.size}: ${statement.size}%`;
+      case "changeSize":
+        return `${copy.growShrink}: ${statement.delta > 0 ? "+" : ""}${statement.delta}%`;
       case "wait":
         return `${copy.wait}: ${statement.seconds}s`;
       case "broadcast":
@@ -1616,6 +1622,27 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
               + {copy.size}
             </button>
             <label>
+              {copy.growShrink}{" "}
+              <select
+                value={sizeDelta}
+                onChange={(event) => setSizeDelta(Number(event.target.value))}
+              >
+                {[-50, -25, 25, 50].map((delta) => (
+                  <option key={delta} value={delta}>
+                    {delta > 0 ? "+" : ""}
+                    {delta}%
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              className="kids-button"
+              onClick={() => add({ type: "changeSize", delta: sizeDelta })}
+            >
+              + {copy.growShrink}
+            </button>
+            <label>
               {copy.wait}{" "}
               <select
                 value={waitSeconds}
@@ -2268,6 +2295,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
                     <option value="subtract">−</option>
                     <option value="multiply">×</option>
                     <option value="divide">÷</option>
+                    <option value="modulo">{locale === "es" ? "resto" : "mod"}</option>
                   </select>
                 </label>
                 <button
@@ -2276,7 +2304,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
                   disabled={
                     !Number.isInteger(dataValue) ||
                     Math.abs(dataValue) > 100 ||
-                    (mathOperator === "divide" && dataValue === 0)
+                    ((mathOperator === "divide" || mathOperator === "modulo") && dataValue === 0)
                   }
                   onClick={() =>
                     add({
@@ -2315,7 +2343,9 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
                   disabled={
                     !Number.isInteger(dataValue) ||
                     Math.abs(dataValue) > 100 ||
-                    (compareCalculation && mathOperator === "divide" && dataValue === 0)
+                    (compareCalculation &&
+                      (mathOperator === "divide" || mathOperator === "modulo") &&
+                      dataValue === 0)
                   }
                   onClick={() =>
                     add({
@@ -2334,7 +2364,9 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
                     (script?.statements.length ?? 0) < groupCount ||
                     !Number.isInteger(dataValue) ||
                     Math.abs(dataValue) > 100 ||
-                    (compareCalculation && mathOperator === "divide" && dataValue === 0)
+                    (compareCalculation &&
+                      (mathOperator === "divide" || mathOperator === "modulo") &&
+                      dataValue === 0)
                   }
                   onClick={() => groupLast("if")}
                 >

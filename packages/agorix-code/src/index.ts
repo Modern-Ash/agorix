@@ -200,6 +200,13 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
     case "setSize":
       writeMapped(writer, nodeId, indent + "set size to " + formatNumber(statement.size) + "\n");
       return;
+    case "changeSize":
+      writeMapped(
+        writer,
+        nodeId,
+        indent + "change size by " + formatNumber(statement.delta) + "\n",
+      );
+      return;
     case "switchCostume":
       writeMapped(
         writer,
@@ -376,6 +383,14 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
         "(" +
         expressionText(writer, expression.left, nodeId + "/left") +
         " / " +
+        expressionText(writer, expression.right, nodeId + "/right") +
+        ")"
+      );
+    case "modulo":
+      return (
+        "(" +
+        expressionText(writer, expression.left, nodeId + "/left") +
+        " mod " +
         expressionText(writer, expression.right, nodeId + "/right") +
         ")"
       );

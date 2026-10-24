@@ -28,6 +28,7 @@ import {
   setVariableVisibilityWorld,
   setVariableWorld,
   setSpriteSizeWorld,
+  changeSpriteSizeWorld,
   showWorld,
   stopSoundsWorld,
   setVolumeWorld,
@@ -310,6 +311,14 @@ function evaluateExpression(
         path,
       );
     }
+    case "modulo": {
+      const divisor = coerceNumber(evaluateExpression(expression.right, `${path}.right`, state));
+      if (divisor === 0) {
+        throw new RuntimeExecutionError(`${path}.right`, "modulo-by-zero");
+      }
+      const dividend = coerceNumber(evaluateExpression(expression.left, `${path}.left`, state));
+      return normalizeRuntimeNumber(((dividend % divisor) + divisor) % divisor, path);
+    }
     case "lessThan":
       return (
         coerceNumber(evaluateExpression(expression.left, `${path}.left`, state)) <
@@ -440,6 +449,9 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
       break;
     case "setSize":
       state.world = setSpriteSizeWorld(state.world, statement.size);
+      break;
+    case "changeSize":
+      state.world = changeSpriteSizeWorld(state.world, statement.delta);
       break;
     case "listAdd": {
       const value = evaluateNumber(statement.value, `${path}.value`, state);

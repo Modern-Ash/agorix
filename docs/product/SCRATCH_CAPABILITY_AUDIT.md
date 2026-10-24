@@ -143,3 +143,15 @@ Each iteration needs an issue with an observable child journey, success and fail
 - Escena libre can group the last one to three blocks into **Repetir hasta tocar el borde** or **Repetir hasta tocar al personaje**. The canonical `repeatUntil` statement carries its condition; the validator, deterministic runtime, block adapter, trace and Agorix Code, Python and TypeScript projections derive from the same program.
 - The condition is checked before every pass, so a character that already satisfies it does not run the body. A loop whose condition never becomes true stops after 100 passes with a runtime note, so a run always ends. Broadcasts sent from inside the loop reach the other characters.
 - Only the two sensor conditions already available in the scene are offered. Waiting until a condition holds, forever loops, stop-all and general variable comparisons as loop conditions remain open.
+
+## Change size (next #538 increment)
+
+- Escena libre adds **Cambiar tamaño** with −50, −25, +25 and +50 percent. The canonical `changeSize` statement accepts any whole step from −100 to 100; the runtime adds it to the character's current size and keeps the result between 1 and 400 percent. Only the selected character changes.
+- The validator, deterministic runtime, block adapter, trace and Agorix Code, Python and TypeScript projections derive from the same program. Unit and mobile browser tests cover validation, clamping, a two-character scene, accessibility and reopening.
+- Next-costume, graphic effects, layer order and sizes from variables remain open.
+
+## Remainder operator (next #538 increment)
+
+- Escena libre adds **resto** (mod) to the calculation menu used to set a variable or compare. The canonical `modulo` expression takes the sign of the right operand, so −7 mod 3 is 2, like Scratch. A zero divisor halts the run with a deterministic `modulo-by-zero` error; the scene accepts only a non-zero whole number as the divisor, the same rule as division.
+- The validator, runtime, block adapter and Agorix Code, Python and TypeScript projections derive from the same program. Unit and mobile browser tests cover signs, zero, a scene run, accessibility and reopening.
+- Rounding, absolute value, text joining and other operators remain open.

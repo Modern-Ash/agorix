@@ -47,6 +47,7 @@ export type StudioStatement = Extract<
       | "show"
       | "hide"
       | "setSize"
+      | "changeSize"
       | "wait"
       | "broadcast"
       | "setVariable"
@@ -147,15 +148,15 @@ function checkedNumber(value: Expression, program: ProjectProgram, depth = 0): b
       finiteSmallNumber(value.max.value) &&
       value.min.value <= value.max.value
     );
-  if (["add", "subtract", "multiply", "divide"].includes(value.type)) {
+  if (["add", "subtract", "multiply", "divide", "modulo"].includes(value.type)) {
     const binary = value as Extract<
       Expression,
-      { type: "add" | "subtract" | "multiply" | "divide" }
+      { type: "add" | "subtract" | "multiply" | "divide" | "modulo" }
     >;
     return (
       checkedNumber(binary.left, program, depth + 1) &&
       checkedNumber(binary.right, program, depth + 1) &&
-      (binary.type !== "divide" ||
+      (!(binary.type === "divide" || binary.type === "modulo") ||
         (binary.right.type === "numericLiteral" && binary.right.value !== 0))
     );
   }
@@ -254,6 +255,7 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0): bool
   if (statement.type === "say" || statement.type === "think")
     return statement.text.trim().length > 0 && statement.text.length <= 80;
   if (statement.type === "show" || statement.type === "hide") return true;
+  if (statement.type === "changeSize") return [-50, -25, 25, 50].includes(statement.delta);
   if (statement.type === "setSize") return [50, 75, 100, 125, 150].includes(statement.size);
   if (statement.type === "wait") return [0.5, 1, 2, 3].includes(statement.seconds);
   if (statement.type === "broadcast")

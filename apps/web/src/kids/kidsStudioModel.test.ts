@@ -641,4 +641,58 @@ describe("Kids creative studio", () => {
       }),
     ).toThrow();
   });
+  it("runs a bounded size change on the chosen character only", () => {
+    let history = createEditorHistory(createStudioProgram("nova"));
+    history = addStudioActor(history, "mika");
+    history = appendStudioStatement(history, "actor:studio-1-nova", {
+      type: "changeSize",
+      delta: 50,
+    });
+    history = appendStudioStatement(history, "actor:studio-1-nova", {
+      type: "changeSize",
+      delta: -25,
+    });
+    const result = runMultiActorProgram(
+      history.current,
+      creativeForStudio(history.current, "forest", "es"),
+    );
+    expect(result.actors.map((actor) => actor.size)).toEqual([125, 100]);
+    expect(() =>
+      appendStudioStatement(history, "actor:studio-1-nova", { type: "changeSize", delta: 30 }),
+    ).toThrow();
+  });
+  it("computes a remainder in a scene and rejects a zero or variable divisor", () => {
+    const nova = "actor:studio-1-nova";
+    let history = addStudioVariable(createEditorHistory(createStudioProgram("nova")), "Resto");
+    history = appendStudioStatement(history, nova, {
+      type: "setVariable",
+      variableId: "studio-var-1",
+      value: { type: "numericLiteral", value: 7 },
+    });
+    history = appendStudioStatement(history, nova, {
+      type: "setVariable",
+      variableId: "studio-var-1",
+      value: {
+        type: "modulo",
+        left: { type: "variable", variableId: "studio-var-1" },
+        right: { type: "numericLiteral", value: 3 },
+      },
+    });
+    const result = runMultiActorProgram(
+      history.current,
+      creativeForStudio(history.current, "forest", "es"),
+    );
+    expect(result.actors[0]?.world.variables?.["studio-var-1"]?.value).toBe(1);
+    for (const right of [
+      { type: "numericLiteral", value: 0 },
+      { type: "variable", variableId: "studio-var-1" },
+    ] as const)
+      expect(() =>
+        appendStudioStatement(history, nova, {
+          type: "setVariable",
+          variableId: "studio-var-1",
+          value: { type: "modulo", left: { type: "numericLiteral", value: 4 }, right },
+        }),
+      ).toThrow();
+  });
 });

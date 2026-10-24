@@ -236,3 +236,65 @@ describe("repeatUntil with several actors", () => {
     expect(result.actors[1]?.world.sprite.x).toBe(3);
   });
 });
+
+describe("changeSize", () => {
+  it("grows and shrinks from the current size and stays within 1 to 400", () => {
+    const grown = runProgram(
+      program([
+        { type: "changeSize", delta: 50 },
+        { type: "changeSize", delta: -25 },
+      ]),
+      createWorldState(),
+    );
+    expect(grown.world.sprite.size).toBe(125);
+    const floor = runProgram(program([{ type: "changeSize", delta: -100 }]), createWorldState());
+    expect(floor.world.sprite.size).toBe(1);
+    const ceiling = runProgram(
+      program([
+        { type: "setSize", size: 390 },
+        { type: "changeSize", delta: 50 },
+      ]),
+      createWorldState(),
+    );
+    expect(ceiling.world.sprite.size).toBe(400);
+  });
+});
+
+describe("modulo", () => {
+  const remainder = (left: number, right: number) =>
+    runProgram(
+      {
+        schema: SCHEMA_VERSION,
+        variables: [{ id: "n", name: "n", initialValue: 0, visible: true }],
+        scripts: [
+          {
+            id: "main",
+            trigger: { type: "onStart" },
+            statements: [
+              {
+                type: "setVariable",
+                variableId: "n",
+                value: {
+                  type: "modulo",
+                  left: { type: "numericLiteral", value: left },
+                  right: { type: "numericLiteral", value: right },
+                },
+              },
+            ],
+          },
+        ],
+      },
+      createWorldState(),
+    ).world.variables?.n?.value;
+
+  it("takes the sign of the divisor, like Scratch", () => {
+    expect(remainder(7, 3)).toBe(1);
+    expect(remainder(-7, 3)).toBe(2);
+    expect(remainder(7, -3)).toBe(-2);
+    expect(remainder(6, 3)).toBe(0);
+  });
+
+  it("fails deterministically on a zero divisor", () => {
+    expect(() => remainder(7, 0)).toThrow(/modulo-by-zero/);
+  });
+});
