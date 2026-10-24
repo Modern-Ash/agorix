@@ -148,6 +148,7 @@ function checkedNumber(value: Expression, program: ProjectProgram, depth = 0): b
       finiteSmallNumber(value.max.value) &&
       value.min.value <= value.max.value
     );
+  if (value.type === "mathFunction") return checkedNumber(value.value, program, depth + 1);
   if (["add", "subtract", "multiply", "divide", "modulo"].includes(value.type)) {
     const binary = value as Extract<
       Expression,

@@ -155,3 +155,9 @@ Each iteration needs an issue with an observable child journey, success and fail
 - Escena libre adds **resto** (mod) to the calculation menu used to set a variable or compare. The canonical `modulo` expression takes the sign of the right operand, so −7 mod 3 is 2, like Scratch. A zero divisor halts the run with a deterministic `modulo-by-zero` error; the scene accepts only a non-zero whole number as the divisor, the same rule as division.
 - The validator, runtime, block adapter and Agorix Code, Python and TypeScript projections derive from the same program. Unit and mobile browser tests cover signs, zero, a scene run, accessibility and reopening.
 - Rounding, absolute value, text joining and other operators remain open.
+
+## Rounding and absolute value (next #538 increment)
+
+- Escena libre adds **Fijar con función** with absolute value, round, round down and round up, applied to a variable. The canonical `mathFunction` expression rounds half up like Scratch (3.5 becomes 4, −2.5 becomes −2) and never yields negative zero. Division can now be followed by a round to get a whole result.
+- The validator, runtime, block adapter and Agorix Code, Python and TypeScript projections derive from the same program; unknown functions are rejected before a run. Unit and mobile browser tests cover each function, a divide-then-round scene, accessibility and reopening.
+- Square root, trigonometry, text joining and string operators remain open.

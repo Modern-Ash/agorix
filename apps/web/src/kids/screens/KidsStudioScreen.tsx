@@ -118,6 +118,12 @@ const COPY = {
     sourceVariable: "Leer variable",
     mathOperator: "Operación",
     calculate: "Fijar con cálculo",
+    mathFunction: "Función",
+    applyFunction: "Fijar con función",
+    fnAbs: "valor absoluto",
+    fnRound: "redondear",
+    fnFloor: "hacia abajo",
+    fnCeiling: "hacia arriba",
     compareOperator: "Comparar",
     compareCalculation: "Comparar con cálculo",
     ifLabel: "Si",
@@ -246,6 +252,12 @@ const COPY = {
     sourceVariable: "Read variable",
     mathOperator: "Operation",
     calculate: "Set from calculation",
+    mathFunction: "Function",
+    applyFunction: "Set with function",
+    fnAbs: "absolute value",
+    fnRound: "round",
+    fnFloor: "round down",
+    fnCeiling: "round up",
     compareOperator: "Compare",
     compareCalculation: "Compare with calculation",
     ifLabel: "If",
@@ -352,6 +364,8 @@ function expressionLabel(
     return `${program.lists?.find((item) => item.id === value.listId)?.name ?? "?"}.length`;
   if (value.type === "listItem")
     return `${program.lists?.find((item) => item.id === value.listId)?.name ?? "?"}[${expressionLabel(value.index, program)}]`;
+  if (value.type === "mathFunction")
+    return `${value.function}(${expressionLabel(value.value, program, locale)})`;
   if (value.type === "randomInteger")
     return `🎲(${expressionLabel(value.min, program)}, ${expressionLabel(value.max, program)})`;
   const operators: Partial<Record<Expression["type"], string>> = {
@@ -433,6 +447,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
   const [sensorTargetId, setSensorTargetId] = useState("");
   const [dataName, setDataName] = useState("");
   const [dataValue, setDataValue] = useState(1);
+  const [mathFn, setMathFn] = useState<"abs" | "round" | "floor" | "ceiling">("round");
   const [variableId, setVariableId] = useState("studio-var-1");
   const [listId, setListId] = useState("studio-list-1");
   const [listIndex, setListIndex] = useState(1);
@@ -2315,6 +2330,35 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
                   }
                 >
                   + {copy.calculate}
+                </button>
+                <label>
+                  {copy.mathFunction}{" "}
+                  <select
+                    value={mathFn}
+                    onChange={(event) => setMathFn(event.target.value as typeof mathFn)}
+                  >
+                    <option value="abs">{copy.fnAbs}</option>
+                    <option value="round">{copy.fnRound}</option>
+                    <option value="floor">{copy.fnFloor}</option>
+                    <option value="ceiling">{copy.fnCeiling}</option>
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  className="kids-button"
+                  onClick={() =>
+                    add({
+                      type: "setVariable",
+                      variableId: selectedVariableId,
+                      value: {
+                        type: "mathFunction",
+                        function: mathFn,
+                        value: { type: "variable", variableId: selectedSourceVariableId },
+                      },
+                    })
+                  }
+                >
+                  + {copy.applyFunction}
                 </button>
                 <label>
                   {copy.compareOperator}{" "}

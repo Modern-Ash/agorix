@@ -298,3 +298,44 @@ describe("modulo", () => {
     expect(() => remainder(7, 0)).toThrow(/modulo-by-zero/);
   });
 });
+
+describe("mathFunction", () => {
+  const apply = (fn: "abs" | "round" | "floor" | "ceiling", value: number) =>
+    runProgram(
+      {
+        schema: SCHEMA_VERSION,
+        variables: [{ id: "n", name: "n", initialValue: 0, visible: true }],
+        scripts: [
+          {
+            id: "main",
+            trigger: { type: "onStart" },
+            statements: [
+              {
+                type: "setVariable",
+                variableId: "n",
+                value: {
+                  type: "mathFunction",
+                  function: fn,
+                  value: { type: "numericLiteral", value },
+                },
+              },
+            ],
+          },
+        ],
+      },
+      createWorldState(),
+    ).world.variables?.n?.value;
+
+  it("applies each function to a number", () => {
+    expect(apply("abs", -2.5)).toBe(2.5);
+    expect(apply("round", 3.5)).toBe(4);
+    expect(apply("round", -2.4)).toBe(-2);
+    expect(apply("floor", -2.5)).toBe(-3);
+    expect(apply("ceiling", 2.1)).toBe(3);
+  });
+
+  it("never produces negative zero", () => {
+    expect(Object.is(apply("round", -0.4), 0)).toBe(true);
+    expect(Object.is(apply("ceiling", -0.5), 0)).toBe(true);
+  });
+});
