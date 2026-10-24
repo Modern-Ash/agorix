@@ -38,6 +38,7 @@ import {
   type TutorAdapterConfig,
 } from "./index.js";
 import type { OriCliService } from "./oriCli.js";
+import type { OriCliDiagnostics } from "./oriCli.js";
 import {
   AiConfigError,
   configDiff,
@@ -70,6 +71,7 @@ interface Health {
   readonly lastErrorClass: ProviderRuntimeErrorCode | null;
   /** Adult diagnostics only; never included in a child's Ori response. */
   readonly lastOriSource: "model" | "fallback" | "refusal" | null;
+  readonly oriMetrics?: Omit<OriCliDiagnostics, "lastErrorClass">;
 }
 
 /**
@@ -113,7 +115,14 @@ export function createTutorServer(options: TutorServerOptions): Server {
     if (cached !== undefined && now() - cached.at < ttl) return cached.health;
     if (options.ori) {
       const ori = await options.ori.health();
-      const value: Health = { ...ori, lastErrorClass, lastOriSource };
+      const diagnostics = options.ori.diagnostics();
+      const oriMetrics = {
+        attempts: diagnostics.attempts,
+        modelResponses: diagnostics.modelResponses,
+        p50Ms: diagnostics.p50Ms,
+        p95Ms: diagnostics.p95Ms,
+      };
+      const value: Health = { ...ori, lastErrorClass, lastOriSource, oriMetrics };
       cached = { at: now(), health: value };
       return value;
     }
@@ -402,8 +411,12 @@ export function createTutorServer(options: TutorServerOptions): Server {
         : options.ori
           ? await options.ori.respond(context)
           : evaluateOriAgentOutput(context, undefined);
-    if (decision.source === "fallback") lastErrorClass = "provider-unavailable";
-    else lastErrorClass = null;
+    if (options.ori)
+      lastErrorClass =
+        policy("mission")?.enabled === false
+          ? "not-configured"
+          : options.ori.diagnostics().lastErrorClass;
+    else lastErrorClass = decision.source === "fallback" ? "provider-unavailable" : null;
     lastOriSource = decision.source;
     cached = undefined;
     return send(response, 200, {

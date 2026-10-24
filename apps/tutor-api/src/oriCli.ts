@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AiCapability, AiPolicy } from "./aiConfig.js";
+import type { ProviderRuntimeErrorCode } from "@agorix/provider-runtime";
 import {
   evaluateOriAgentOutput,
   runOriAgent,
@@ -53,11 +54,20 @@ export interface OriCliHealth {
 }
 export interface OriCliService {
   health(): Promise<OriCliHealth>;
+  diagnostics(): OriCliDiagnostics;
   respond(context: OriAgentContext): Promise<OriAgentDecision>;
   chat(context: OriChatContext): Promise<string>;
   proposeGoal(locale: OriLocale): Promise<OriGoalDecision>;
   advanced(context: OriAdvancedStageContext): Promise<OriAdvancedDecision>;
   studio(context: OriStudioContext): Promise<OriStudioDecision>;
+}
+
+export interface OriCliDiagnostics {
+  readonly lastErrorClass: ProviderRuntimeErrorCode | null;
+  readonly attempts: number;
+  readonly modelResponses: number;
+  readonly p50Ms: number | null;
+  readonly p95Ms: number | null;
 }
 
 const MAX_INPUT_BYTES = 16 * 1024;
@@ -99,6 +109,28 @@ export function createOriCliService(
     string,
     { readonly at: number; readonly provider: "codex" | "opencode" | undefined }
   >();
+  const durations: number[] = [];
+  let attempts = 0;
+  let modelResponses = 0;
+  let lastErrorClass: ProviderRuntimeErrorCode | null = null;
+  function record(
+    duration: number | null,
+    source: OriAgentDecision["source"],
+    error: ProviderRuntimeErrorCode | null,
+  ) {
+    attempts += 1;
+    if (source === "model") modelResponses += 1;
+    if (duration !== null) {
+      durations.push(Math.max(0, Math.round(duration)));
+      if (durations.length > 32) durations.shift();
+    }
+    lastErrorClass = error;
+  }
+  function percentile(fraction: number): number | null {
+    if (!durations.length) return null;
+    const sorted = [...durations].sort((a, b) => a - b);
+    return sorted[Math.ceil(sorted.length * fraction) - 1] ?? null;
+  }
 
   function policyFor(capability: AiCapability): AiPolicy {
     return (
@@ -197,6 +229,15 @@ export function createOriCliService(
   }
 
   return {
+    diagnostics() {
+      return {
+        lastErrorClass,
+        attempts,
+        modelResponses,
+        p50Ms: percentile(0.5),
+        p95Ms: percentile(0.95),
+      };
+    },
     async health() {
       const policy = policyFor("mission");
       const provider = await select(policy);
@@ -207,10 +248,37 @@ export function createOriCliService(
       };
     },
     async respond(context) {
+      const started = now();
       const policy = policyFor("mission");
       const provider = await select(policy);
-      if (!provider) return evaluateOriAgentOutput(context, undefined);
-      return runOriAgent(context, textModel(provider, policy));
+      if (!provider) {
+        const decision = evaluateOriAgentOutput(context, undefined);
+        record(null, decision.source, "provider-unavailable");
+        return decision;
+      }
+      let error: ProviderRuntimeErrorCode | null = null;
+      const model = textModel(provider, policy);
+      const decision = await runOriAgent(context, {
+        generate: async (instructions, input) => {
+          try {
+            return await model.generate(instructions, input);
+          } catch (cause) {
+            error =
+              cause instanceof CliProcessError && cause.code === "timeout"
+                ? "timeout"
+                : cause instanceof CliProcessError && cause.code === "output-too-large"
+                  ? "invalid-response"
+                  : "provider-unavailable";
+            throw cause;
+          }
+        },
+      });
+      record(
+        now() - started,
+        decision.source,
+        decision.source === "fallback" ? (error ?? "invalid-response") : null,
+      );
+      return decision;
     },
     async chat(context) {
       const policy = policyFor("chat");

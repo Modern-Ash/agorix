@@ -173,12 +173,45 @@ describe("Ori host CLI adapter (issue #381)", () => {
         if (result === "timeout") throw new CliProcessError("timeout");
         return "not JSON";
       };
-      const decision = await createOriCliService(oriCliConfigFromEnv({}), { run }).respond(context);
+      const service = createOriCliService(oriCliConfigFromEnv({}), { run });
+      const decision = await service.respond(context);
       expect(decision.source).toBe("fallback");
+      expect(service.diagnostics()).toMatchObject({
+        attempts: 1,
+        modelResponses: 0,
+        lastErrorClass:
+          result === "timeout"
+            ? "timeout"
+            : result === "invalid"
+              ? "invalid-response"
+              : "provider-unavailable",
+      });
       expect(decision.proposal?.operations).toEqual([
         { type: "appendStatement", scriptIndex: 0, statement: { type: "move", steps: 160 } },
       ]);
     }
+  });
+
+  it("keeps bounded aggregate timing and no child content in diagnostics", async () => {
+    let clock = 0;
+    const service = createOriCliService(oriCliConfigFromEnv({}), {
+      now: () => clock,
+      run: async (_bin, args) => {
+        if (args.includes("--version")) return "version";
+        clock += 120;
+        return validOutput;
+      },
+    });
+    expect((await service.respond(context)).source).toBe("model");
+    expect((await service.respond(context)).source).toBe("model");
+    expect(service.diagnostics()).toEqual({
+      lastErrorClass: null,
+      attempts: 2,
+      modelResponses: 2,
+      p50Ms: 120,
+      p95Ms: 120,
+    });
+    expect(JSON.stringify(service.diagnostics())).not.toContain(mission.title);
   });
 
   it("bounds process output and kills an overlong or slow child", async () => {

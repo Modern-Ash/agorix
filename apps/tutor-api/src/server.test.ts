@@ -479,6 +479,7 @@ describe("Ori HTTP boundary (issue #381)", () => {
       providerInUse: "codex",
       lastErrorClass: null,
       lastOriSource: null,
+      oriMetrics: { attempts: 0, modelResponses: 0, p50Ms: null, p95Ms: null },
     });
     const response = await fetch(`${base}/api/tutor/ori`, {
       method: "POST",
