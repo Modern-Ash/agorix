@@ -68,8 +68,13 @@ Each iteration needs an issue with an observable child journey, success and fail
 - The model receives actor count and selected block **types**, not child-authored speech text, image bytes, account details or the whole project. A failed, late or invalid model response produces a local reviewable idea without provider diagnostics in the child UI. The adult Ori switch hides scene suggestions.
 - This makes the free-scene Ori button a real LLM entry point when the host CLI is available. It does not grant Ori open-ended editing, change Scratch-parity gaps above, or remove the offline path. The Web and tutor host were updated after #544 merged.
 
-## General block vocabulary (third iteration, PR in preparation)
+## General block vocabulary (third iteration, merged and deployed)
 
 - Escena libre composes bounded key and message triggers, broadcasts, repeat and conditional blocks, and up to three named variables and lists. The data palette sets or changes numeric values, appends to a list and shows the selected actor's runtime values. A child can inspect the derived code and execution count, then save, reopen or exchange the same canonical program.
 - The browser covers a fresh-session journey with data, repeat, condition, message and key events. Unit tests cover valid and rejected structures, actor isolation and portable import. Ori receives only structural block types and may still propose only a reviewable move or turn; learner data names and values do not enter its input.
 - This increment deliberately bounds each repeat/condition body to one block, messages to three preset names and key events to five keys. General nesting, arbitrary operator composition, custom procedures, paint and extensions remain open in #538.
+
+## Ori presence and motion (#547)
+
+- Ori's existing floating guide now uses subtle motion tied to idle, open/listening and reflection states. The Kids editor distinguishes waiting for an offer, a proposal to review and an observed run. Escena libre and the advanced Ori actions distinguish waiting, reviewable proposal and a message without a proposal. These states come from app events, not a timer that pretends a model is working.
+- Motion stops when the page is hidden and disappears under `prefers-reduced-motion`; text and controls still communicate the state. The mobile guide sits above the onboarding bottom action. Browser checks cover state changes and reduced motion, with visual inspection at 390 × 844 and 1440 × 900.

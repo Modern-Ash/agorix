@@ -21,6 +21,8 @@ import { runMultiActorProgram, type MultiActorRunResult } from "@agorix/runtime"
 import { acceptProposal, rejectProposal, modifyProposal } from "@agorix/proposals";
 import { validateOriAdvancedProposal, type OriAdvancedDecision } from "@agorix/ori-agent";
 import type { Locale } from "../../i18n.js";
+import { useOriPageVisible } from "../kidsOriMotion.js";
+import { KidsSprite } from "./KidsArt.js";
 import {
   advancedActorStatements,
   addAdvancedStatement,
@@ -112,6 +114,7 @@ export function AdvancedSceneScreen({ locale, readAloud = true, onBack }: Props)
   const [language, setLanguage] = useState<"agorix" | "python" | "typescript">("agorix");
   const [error, setError] = useState(false);
   const [oriBusy, setOriBusy] = useState(false);
+  const oriPageVisible = useOriPageVisible();
   const [oriDecision, setOriDecision] = useState<OriAdvancedDecision | null>(null);
   const [oriChanged, setOriChanged] = useState(false);
   const creative = useMemo(
@@ -462,7 +465,17 @@ export function AdvancedSceneScreen({ locale, readAloud = true, onBack }: Props)
               <button
                 key={item.id}
                 type="button"
-                className="kids-button"
+                className="kids-button kids-ori-action"
+                data-ori-state={
+                  oriBusy
+                    ? "thinking"
+                    : oriDecision?.proposal
+                      ? "proposal"
+                      : oriDecision
+                        ? "fallback"
+                        : "idle"
+                }
+                data-ori-paused={!oriPageVisible}
                 onClick={() => addActor(item.id)}
               >
                 {item.id === "actor:robot" ? copy.addRobot : copy.addFrog}
@@ -498,7 +511,8 @@ export function AdvancedSceneScreen({ locale, readAloud = true, onBack }: Props)
                 disabled={oriBusy}
                 onClick={() => void askOri()}
               >
-                {oriBusy ? copy.oriBusy : copy.ori}
+                <KidsSprite slot="ori" />
+                <span>{oriBusy ? copy.oriBusy : copy.ori}</span>
               </button>
               {oriDecision?.proposal ? (
                 <div className="kids-advanced-ori-review" aria-label={copy.oriAdd}>

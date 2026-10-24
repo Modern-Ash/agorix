@@ -34,6 +34,7 @@ test("free scene keeps independent character scripts and reopens the saved stage
   await expect(page.locator(".kids-program-block")).toContainText("Mover 1");
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await expect(page.getByText("2 bloques ejecutados")).toBeVisible();
+  await expect(page.locator(".kids-ori-action")).toHaveAttribute("data-ori-state", "observing");
   await page.getByRole("button", { name: "Pedirle una idea a Ori" }).click();
   await expect(page.getByText("Ori tiene una idea para mirar y decidir.")).toBeVisible();
   await page.getByRole("button", { name: "Usar idea" }).click();
@@ -123,6 +124,7 @@ test("Ori's server idea is reviewed before it changes a free scene", async ({ pa
   await page.route("**/api/tutor/studio/ori", async (route) => {
     const context = route.request().postDataJSON();
     requests.push(context);
+    await new Promise((resolve) => setTimeout(resolve, 250));
     const decision = evaluateOriStudioOutput(context, {
       version: ORI_STUDIO_VERSION,
       kind: "program-suggestion",
@@ -137,9 +139,11 @@ test("Ori's server idea is reviewed before it changes a free scene", async ({ pa
   await page.getByRole("button", { name: "Crear", exact: true }).click();
   await page.getByRole("button", { name: "Crear escena" }).click();
   await page.getByRole("button", { name: "Pedirle una idea a Ori" }).click();
+  await expect(page.locator(".kids-ori-action")).toHaveAttribute("data-ori-state", "thinking");
   await expect(
     page.getByText("Ori tiene una idea para tu escena.", { exact: false }),
   ).toBeVisible();
+  await expect(page.locator(".kids-ori-action")).toHaveAttribute("data-ori-state", "proposal");
   await expect(page.locator(".kids-program-block")).toHaveCount(0);
   await page.getByRole("button", { name: "Usar idea" }).click();
   await expect(page.locator(".kids-program-block")).toContainText("Girar a la izquierda");

@@ -15,6 +15,8 @@ import { ProjectStore, type ProjectMetadata } from "@agorix/persistence";
 import { acceptProposal, modifyProposal, rejectProposal } from "@agorix/proposals";
 import { validateOriReactProposal, type OriAdvancedDecision } from "@agorix/ori-agent";
 import type { Locale } from "../../i18n.js";
+import { useOriPageVisible } from "../kidsOriMotion.js";
+import { KidsSprite } from "./KidsArt.js";
 import type { AdvancedSceneBaseActorId } from "../kidsAdvancedEditorModel.js";
 import { advancedProjectId, completeAdvancedStage } from "../kidsAdvancedProgress.js";
 import { requestAdvancedOri } from "../kidsAdvancedOriRemote.js";
@@ -52,6 +54,7 @@ export function AdvancedReactScreen({ locale, readAloud = true, onBack }: Props)
   const [language, setLanguage] = useState<"agorix" | "python" | "typescript">("agorix");
   const [error, setError] = useState(false);
   const [oriBusy, setOriBusy] = useState(false);
+  const oriPageVisible = useOriPageVisible();
   const [oriDecision, setOriDecision] = useState<OriAdvancedDecision | null>(null);
   const [oriChanged, setOriChanged] = useState(false);
   const creative = useMemo(
@@ -312,11 +315,22 @@ export function AdvancedReactScreen({ locale, readAloud = true, onBack }: Props)
           <div className="kids-advanced-ori">
             <button
               type="button"
-              className="kids-button"
+              className="kids-button kids-ori-action"
+              data-ori-state={
+                oriBusy
+                  ? "thinking"
+                  : oriDecision?.proposal
+                    ? "proposal"
+                    : oriDecision
+                      ? "fallback"
+                      : "idle"
+              }
+              data-ori-paused={!oriPageVisible}
               disabled={oriBusy}
               onClick={() => void askOri()}
             >
-              {oriBusy ? copy.oriBusy : copy.ori}
+              <KidsSprite slot="ori" />
+              <span>{oriBusy ? copy.oriBusy : copy.ori}</span>
             </button>
             {oriDecision?.proposal ? (
               <div className="kids-advanced-ori-review" aria-label={copy.oriAdd}>
