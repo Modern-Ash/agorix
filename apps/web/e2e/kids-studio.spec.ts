@@ -49,3 +49,60 @@ test("free scene keeps independent character scripts and reopens the saved stage
   await expect(page.getByRole("group", { name: "Personajes" }).getByRole("button")).toHaveCount(2);
   await expect(page.locator(".kids-program-block")).toContainText("Mover 1");
 });
+
+test("looks and wait blocks change only the chosen character and survive reload", async ({
+  page,
+}) => {
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
+  await page.getByRole("button", { name: "+ Agregar personaje" }).click();
+  await page.getByRole("textbox", { name: "Decir / Pensar" }).fill("Hola, Nova");
+  await page.getByRole("button", { name: "+ Decir" }).click();
+  await page.getByRole("button", { name: "+ Esperar" }).click();
+  await page.getByRole("button", { name: "+ Esconder" }).click();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByRole("group", { name: "Escenario" }).getByRole("button")).toHaveCount(1);
+  await page.getByRole("button", { name: "Paso" }).click();
+  await expect(page.locator(".kids-studio-bubble")).toHaveText("Hola, Nova");
+  await page.reload();
+  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  await page
+    .getByRole("article")
+    .filter({ hasText: "Escena libre" })
+    .getByRole("button", { name: "Jugar" })
+    .click();
+  await page.getByRole("group", { name: "Personajes" }).getByRole("button").last().click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(3);
+});
+
+test("a tapped character runs its own event script after Play", async ({ page }) => {
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
+  await page.getByRole("button", { name: "+ Agregar personaje" }).click();
+  await page.getByRole("combobox", { name: "Cuando" }).selectOption("onActorClicked");
+  await page.getByRole("button", { name: "+ Girar a la derecha" }).click();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByText("0 bloques ejecutados")).toBeVisible();
+  await page.getByRole("group", { name: "Escenario" }).getByRole("button").last().click();
+  await expect(page.getByText("1 bloque ejecutado")).toBeVisible();
+});
