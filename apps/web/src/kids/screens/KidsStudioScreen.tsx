@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type PointerEvent } from "react";
 import {
   createEditorHistory,
   recordCanonicalTransaction,
@@ -30,6 +30,7 @@ import {
   type KidsGalleryCharacterId,
 } from "../kidsGallery.js";
 import { KIDS_SOUNDS } from "../kidsSoundLibrary.js";
+import { processKidsImage } from "../kidsImage.js";
 import { useKidsFlag } from "../kidsFlags.js";
 import { playKidsSound } from "../kidsSoundPlayer.js";
 import {
@@ -51,6 +52,7 @@ import {
   setStudioActorPosition,
   setStudioBackdrop,
   selectStudioArt,
+  updateStudioArt,
 } from "../kidsStudioProjects.js";
 import { requestStudioOri } from "../kidsStudioOriRemote.js";
 import { useOriPageVisible } from "../kidsOriMotion.js";
@@ -131,8 +133,11 @@ const COPY = {
     place: "Ubicar personaje",
     drawCostume: "Dibujar disfraz",
     drawBackdrop: "Dibujar fondo",
+    uploadCostume: "Agregar disfraz desde imagen",
+    uploadBackdrop: "Agregar fondo desde imagen",
     ownCostumes: "Mis disfraces",
     ownBackdrops: "Mis fondos",
+    edit: "Editar",
     forward: "Traer adelante",
     backward: "Enviar atrás",
   },
@@ -202,8 +207,11 @@ const COPY = {
     place: "Place character",
     drawCostume: "Draw costume",
     drawBackdrop: "Draw backdrop",
+    uploadCostume: "Add costume from image",
+    uploadBackdrop: "Add backdrop from image",
     ownCostumes: "My costumes",
     ownBackdrops: "My backdrops",
+    edit: "Edit",
     forward: "Bring forward",
     backward: "Send backward",
   },
@@ -272,6 +280,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
   const [error, setError] = useState(false);
   const customImagesEnabled = useKidsFlag("customImages");
   const [drawingKind, setDrawingKind] = useState<"costume" | "backdrop" | null>(null);
+  const [editingArtId, setEditingArtId] = useState<string | null>(null);
   const [placementRevision, setPlacementRevision] = useState(0);
   const [dragPreview, setDragPreview] = useState<{ id: string; x: number; y: number } | null>(null);
   const dragStart = useRef<{
@@ -463,14 +472,32 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
   function saveDrawing(dataUrl: string) {
     if (!customImagesEnabled || !drawingKind || !actor) return;
     try {
-      addStudioArt(id, drawingKind, actor.id, dataUrl, locale, store);
+      if (editingArtId) updateStudioArt(id, editingArtId, dataUrl, store);
+      else addStudioArt(id, drawingKind, actor.id, dataUrl, locale, store);
       setPlacementRevision((value) => value + 1);
       setDrawingKind(null);
+      setEditingArtId(null);
       setRun(null);
       setFrame(null);
       setError(false);
     } catch {
       setError(true);
+    }
+  }
+
+  async function importImage(kind: "costume" | "backdrop", event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file || !actor || !customImagesEnabled) return;
+    try {
+      addStudioArt(id, kind, actor.id, await processKidsImage(file), locale, store);
+      setPlacementRevision((value) => value + 1);
+      setRun(null);
+      setFrame(null);
+      setError(false);
+    } catch {
+      setError(true);
+    } finally {
+      event.target.value = "";
     }
   }
 
@@ -814,44 +841,92 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
               <button
                 type="button"
                 className="kids-button"
-                onClick={() => setDrawingKind("costume")}
+                onClick={() => {
+                  setEditingArtId(null);
+                  setDrawingKind("costume");
+                }}
               >
                 {copy.drawCostume}
               </button>
               <button
                 type="button"
                 className="kids-button"
-                onClick={() => setDrawingKind("backdrop")}
+                onClick={() => {
+                  setEditingArtId(null);
+                  setDrawingKind("backdrop");
+                }}
               >
                 {copy.drawBackdrop}
               </button>
+              <label className="kids-button kids-image-file">
+                {copy.uploadCostume}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  aria-label={copy.uploadCostume}
+                  onChange={(event) => void importImage("costume", event)}
+                />
+              </label>
+              <label className="kids-button kids-image-file">
+                {copy.uploadBackdrop}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  aria-label={copy.uploadBackdrop}
+                  onChange={(event) => void importImage("backdrop", event)}
+                />
+              </label>
               {ownCostumes.length ? (
                 <div role="group" aria-label={copy.ownCostumes}>
                   {ownCostumes.map((asset) => (
-                    <button
-                      key={asset.id}
-                      type="button"
-                      className="kids-button"
-                      aria-pressed={actor?.costumeId === asset.id}
-                      onClick={() => chooseArt(asset.id)}
-                    >
-                      {asset.name}
-                    </button>
+                    <span key={asset.id}>
+                      <button
+                        type="button"
+                        className="kids-button"
+                        aria-pressed={actor?.costumeId === asset.id}
+                        onClick={() => chooseArt(asset.id)}
+                      >
+                        {asset.name}
+                      </button>
+                      <button
+                        type="button"
+                        className="kids-button"
+                        aria-label={`${copy.edit} ${asset.name}`}
+                        onClick={() => {
+                          setEditingArtId(asset.id);
+                          setDrawingKind("costume");
+                        }}
+                      >
+                        {copy.edit}
+                      </button>
+                    </span>
                   ))}
                 </div>
               ) : null}
               {ownBackdrops.length ? (
                 <div role="group" aria-label={copy.ownBackdrops}>
                   {ownBackdrops.map((asset) => (
-                    <button
-                      key={asset.id}
-                      type="button"
-                      className="kids-button"
-                      aria-pressed={creative.stage?.backdropId === asset.id}
-                      onClick={() => chooseArt(asset.id)}
-                    >
-                      {asset.name}
-                    </button>
+                    <span key={asset.id}>
+                      <button
+                        type="button"
+                        className="kids-button"
+                        aria-pressed={creative.stage?.backdropId === asset.id}
+                        onClick={() => chooseArt(asset.id)}
+                      >
+                        {asset.name}
+                      </button>
+                      <button
+                        type="button"
+                        className="kids-button"
+                        aria-label={`${copy.edit} ${asset.name}`}
+                        onClick={() => {
+                          setEditingArtId(asset.id);
+                          setDrawingKind("backdrop");
+                        }}
+                      >
+                        {copy.edit}
+                      </button>
+                    </span>
                   ))}
                 </div>
               ) : null}
@@ -861,8 +936,12 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
             <KidsDrawArt
               kind={drawingKind === "costume" ? "explorer" : "backdrop"}
               locale={locale}
+              initialImage={creative.assets?.find((asset) => asset.id === editingArtId)?.source}
               onSave={saveDrawing}
-              onCancel={() => setDrawingKind(null)}
+              onCancel={() => {
+                setDrawingKind(null);
+                setEditingArtId(null);
+              }}
               onError={() => setError(true)}
             />
           ) : null}

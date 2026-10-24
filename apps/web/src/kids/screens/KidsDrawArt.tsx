@@ -20,14 +20,16 @@ interface Props {
   readonly onSave: (dataUrl: string) => void;
   readonly onCancel: () => void;
   readonly onError: () => void;
+  readonly initialImage?: string | undefined;
 }
 
-export function KidsDrawArt({ kind, locale, onSave, onCancel, onError }: Props) {
+export function KidsDrawArt({ kind, locale, onSave, onCancel, onError, initialImage }: Props) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
   const [color, setColor] = useState<string>(COLORS[0]);
   const [brush, setBrush] = useState(8);
   const [busy, setBusy] = useState(false);
+  const [ready, setReady] = useState(!initialImage);
   const es = locale === "es";
 
   function clear() {
@@ -42,7 +44,26 @@ export function KidsDrawArt({ kind, locale, onSave, onCancel, onError }: Props) 
 
   useEffect(() => {
     clear();
-  }, [kind]);
+    if (!initialImage) {
+      setReady(true);
+      return;
+    }
+    setReady(false);
+    let cancelled = false;
+    const image = new Image();
+    image.onload = () => {
+      if (cancelled) return;
+      canvas.current?.getContext("2d")?.drawImage(image, 0, 0, SIDE, SIDE);
+      setReady(true);
+    };
+    image.onerror = () => {
+      if (!cancelled) onError();
+    };
+    image.src = initialImage;
+    return () => {
+      cancelled = true;
+    };
+  }, [kind, initialImage]);
 
   function point(event: PointerEvent<HTMLCanvasElement>) {
     const bounds = event.currentTarget.getBoundingClientRect();
@@ -53,6 +74,7 @@ export function KidsDrawArt({ kind, locale, onSave, onCancel, onError }: Props) 
   }
 
   function start(event: PointerEvent<HTMLCanvasElement>) {
+    if (!ready) return;
     if (event.pointerType === "mouse" && event.button !== 0) return;
     const context = canvas.current?.getContext("2d");
     if (!context) return;
@@ -82,7 +104,7 @@ export function KidsDrawArt({ kind, locale, onSave, onCancel, onError }: Props) 
 
   async function save() {
     const element = canvas.current;
-    if (!element || busy) return;
+    if (!element || busy || !ready) return;
     setBusy(true);
     try {
       const blob = await new Promise<Blob | null>((resolve) =>
@@ -166,7 +188,7 @@ export function KidsDrawArt({ kind, locale, onSave, onCancel, onError }: Props) 
         <button
           type="button"
           className="kids-button kids-primary"
-          disabled={busy}
+          disabled={busy || !ready}
           onClick={() => void save()}
         >
           {es ? "Guardar dibujo" : "Save drawing"}
