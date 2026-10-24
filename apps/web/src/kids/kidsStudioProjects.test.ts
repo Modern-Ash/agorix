@@ -7,6 +7,7 @@ import {
   addStudioVariable,
   appendStudioStatement,
   setStudioTrigger,
+  wrapStudioTail,
 } from "./kidsStudioModel.js";
 import {
   addStudioArt,
@@ -163,6 +164,7 @@ describe("Kids studio projects", () => {
       listId: "studio-list-1",
       value: { type: "numericLiteral", value: 2 },
     });
+    history = wrapStudioTail(history, "actor:studio-2-mika", 2, { type: "repeat", times: 2 });
     saveStudioProject(project.id, history.current, "forest", "actor:studio-2-mika", "es", store);
     setStudioActorPosition(project.id, "actor:studio-2-mika", 180, -40, store);
     expect(moveStudioActorLayer(project.id, "actor:studio-1-nova", "forward", store)).toBe(true);

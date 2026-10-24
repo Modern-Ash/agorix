@@ -10,6 +10,7 @@ import {
   validateStudioProgram,
   addStudioVariable,
   addStudioList,
+  wrapStudioTail,
 } from "./kidsStudioModel.js";
 
 describe("Kids creative studio", () => {
@@ -189,6 +190,111 @@ describe("Kids creative studio", () => {
     ).toBe(100);
     expect(() =>
       setStudioTrigger(history, "actor:studio-1-nova", { type: "onKeyPressed", key: "Escape" }),
+    ).toThrow();
+  });
+
+  it("groups the child's last blocks and evaluates a composed calculation deterministically", () => {
+    const actor = "actor:studio-1-nova";
+    let history = createEditorHistory(createStudioProgram("nova"));
+    history = addStudioVariable(history, "Puntos");
+    history = appendStudioStatement(history, actor, {
+      type: "setVariable",
+      variableId: "studio-var-1",
+      value: { type: "numericLiteral", value: 2 },
+    });
+    history = appendStudioStatement(history, actor, { type: "move", steps: -40 });
+    history = appendStudioStatement(history, actor, { type: "turn", degrees: 45 });
+    history = wrapStudioTail(history, actor, 2, { type: "repeat", times: 3 });
+    expect(history.current.scripts[0]?.statements[1]).toMatchObject({
+      type: "repeat",
+      body: [
+        { type: "move", steps: -40 },
+        { type: "turn", degrees: 45 },
+      ],
+    });
+    history = appendStudioStatement(history, actor, {
+      type: "setVariable",
+      variableId: "studio-var-1",
+      value: {
+        type: "add",
+        left: { type: "variable", variableId: "studio-var-1" },
+        right: { type: "numericLiteral", value: 3 },
+      },
+    });
+    history = appendStudioStatement(history, actor, { type: "move", steps: 40 });
+    history = wrapStudioTail(history, actor, 2, {
+      type: "if",
+      condition: {
+        type: "lessThan",
+        left: { type: "variable", variableId: "studio-var-1" },
+        right: { type: "numericLiteral", value: 6 },
+      },
+    });
+    const result = runMultiActorProgram(
+      history.current,
+      creativeForStudio(history.current, "forest", "es"),
+    );
+    expect(result.actors[0]?.world.variables?.["studio-var-1"]?.value).toBe(5);
+    expect(result.trace.filter((entry) => entry.statementType === "move")).toHaveLength(4);
+    expect(result.trace.filter((entry) => entry.statementType === "turn")).toHaveLength(3);
+    expect(undoCanonicalTransaction(history).history.current.scripts[0]?.statements).toHaveLength(
+      4,
+    );
+  });
+
+  it("rejects oversized, too-deep, or unsafe groups without mutating history", () => {
+    const actor = "actor:studio-1-nova";
+    let history = createEditorHistory(createStudioProgram("nova"));
+    history = addStudioVariable(history, "Puntos");
+    for (let i = 0; i < 4; i++)
+      history = appendStudioStatement(history, actor, { type: "move", steps: 40 });
+    expect(() => wrapStudioTail(history, actor, 4, { type: "repeat", times: 3 })).toThrow();
+    expect(() => wrapStudioTail(history, actor, 2, { type: "repeat", times: 3 })).not.toThrow();
+    expect(history.current.scripts[0]?.statements).toHaveLength(4);
+    expect(() =>
+      appendStudioStatement(history, actor, {
+        type: "setVariable",
+        variableId: "studio-var-1",
+        value: {
+          type: "divide",
+          left: { type: "variable", variableId: "studio-var-1" },
+          right: { type: "numericLiteral", value: 0 },
+        },
+      }),
+    ).toThrow();
+    expect(() =>
+      appendStudioStatement(history, actor, {
+        type: "setVariable",
+        variableId: "studio-var-1",
+        value: {
+          type: "divide",
+          left: { type: "numericLiteral", value: 4 },
+          right: { type: "variable", variableId: "studio-var-1" },
+        },
+      }),
+    ).toThrow();
+    expect(() =>
+      validateStudioProgram({
+        ...history.current,
+        scripts: [
+          {
+            ...history.current.scripts[0]!,
+            statements: [
+              {
+                type: "repeat",
+                count: 3,
+                body: [
+                  {
+                    type: "repeat",
+                    count: 3,
+                    body: [{ type: "repeat", count: 3, body: [{ type: "move", steps: 40 }] }],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
     ).toThrow();
   });
 });

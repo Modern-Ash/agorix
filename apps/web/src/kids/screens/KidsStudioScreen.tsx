@@ -18,6 +18,7 @@ import {
   type ProgramProposal,
 } from "@agorix/proposals";
 import { validateOriStudioProposal } from "@agorix/ori-agent";
+import type { Expression, ProjectProgram, Statement } from "@agorix/program-model";
 import type { Locale } from "../../i18n.js";
 import {
   KIDS_GALLERY_BACKDROPS,
@@ -43,6 +44,7 @@ import {
   setStudioTrigger,
   studioActorId,
   type StudioStatement,
+  wrapStudioTail,
 } from "../kidsStudioModel.js";
 import {
   addStudioArt,
@@ -81,6 +83,8 @@ const COPY = {
     move: "Mover",
     turnLeft: "Girar a la izquierda",
     turnRight: "Girar a la derecha",
+    moveBackward: "Retroceder",
+    turnAmount: "Grados",
     costume: "Cambiar disfraz",
     switchBackdrop: "Cambiar fondo",
     sound: "Sonar",
@@ -91,7 +95,17 @@ const COPY = {
     size: "Tamaño",
     wait: "Esperar",
     repeat: "Repetir",
-    ifScore: "Si variable >",
+    groupCount: "Bloques del final",
+    groupRepeat: "Repetir estos bloques",
+    groupIf: "Si se cumple, ejecutar estos bloques",
+    blocksCount: "bloques",
+    sourceVariable: "Leer variable",
+    mathOperator: "Operación",
+    calculate: "Fijar con cálculo",
+    compareOperator: "Comparar",
+    compareCalculation: "Comparar con cálculo",
+    ifLabel: "Si",
+    elseLabel: "Si no",
     thenMove: "mover 1",
     message: "Enviar mensaje",
     onKey: "Al pulsar",
@@ -155,6 +169,8 @@ const COPY = {
     move: "Move",
     turnLeft: "Turn left",
     turnRight: "Turn right",
+    moveBackward: "Move backward",
+    turnAmount: "Degrees",
     costume: "Switch costume",
     switchBackdrop: "Switch backdrop",
     sound: "Sound",
@@ -165,7 +181,17 @@ const COPY = {
     size: "Size",
     wait: "Wait",
     repeat: "Repeat",
-    ifScore: "If variable >",
+    groupCount: "Last blocks",
+    groupRepeat: "Repeat these blocks",
+    groupIf: "If true, run these blocks",
+    blocksCount: "blocks",
+    sourceVariable: "Read variable",
+    mathOperator: "Operation",
+    calculate: "Set from calculation",
+    compareOperator: "Compare",
+    compareCalculation: "Compare with calculation",
+    ifLabel: "If",
+    elseLabel: "Else",
     thenMove: "move 1",
     message: "Broadcast message",
     onKey: "When key pressed",
@@ -221,6 +247,26 @@ const STUDIO_KEYS = ["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]
 const STUDIO_MESSAGES = ["hola", "vamos", "listo"] as const;
 type StudioEvent = "greenFlag" | "onActorClicked" | "onKeyPressed" | "onMessage";
 
+function expressionLabel(value: Expression, program: ProjectProgram): string {
+  if (value.type === "numericLiteral") return String(value.value);
+  if (value.type === "variable")
+    return program.variables?.find((item) => item.id === value.variableId)?.name ?? "?";
+  if (value.type === "listLength")
+    return `${program.lists?.find((item) => item.id === value.listId)?.name ?? "?"}.length`;
+  const operators: Partial<Record<Expression["type"], string>> = {
+    add: "+",
+    subtract: "−",
+    multiply: "×",
+    divide: "÷",
+    greaterThan: ">",
+    lessThan: "<",
+    equals: "=",
+  };
+  if ("left" in value && "right" in value && operators[value.type])
+    return `(${expressionLabel(value.left, program)} ${operators[value.type]} ${expressionLabel(value.right, program)})`;
+  return "?";
+}
+
 function characterOfActor(id: string): KidsGalleryCharacterId {
   const suffix = id.split("-").at(-1);
   return isGalleryCharacterId(suffix) ? suffix : "nova";
@@ -259,12 +305,22 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
   const [newBackdrop, setNewBackdrop] = useState<KidsGalleryBackdropId>("moon");
   const [newSound, setNewSound] = useState<(typeof KIDS_SOUNDS)[number]["id"]>("kids:pop");
   const [moveCells, setMoveCells] = useState(1);
+  const [turnAmount, setTurnAmount] = useState(90);
   const [bubbleText, setBubbleText] = useState(locale === "es" ? "¡Hola!" : "Hello!");
   const [spriteSize, setSpriteSize] = useState(100);
   const [waitSeconds, setWaitSeconds] = useState(1);
   const [eventKey, setEventKey] = useState<(typeof STUDIO_KEYS)[number]>("Space");
   const [eventMessage, setEventMessage] = useState<(typeof STUDIO_MESSAGES)[number]>("vamos");
   const [repeatCount, setRepeatCount] = useState(3);
+  const [groupCount, setGroupCount] = useState(2);
+  const [sourceVariableId, setSourceVariableId] = useState("studio-var-1");
+  const [mathOperator, setMathOperator] = useState<"add" | "subtract" | "multiply" | "divide">(
+    "add",
+  );
+  const [compareOperator, setCompareOperator] = useState<"greaterThan" | "lessThan" | "equals">(
+    "greaterThan",
+  );
+  const [compareCalculation, setCompareCalculation] = useState(false);
   const [dataName, setDataName] = useState("");
   const [dataValue, setDataValue] = useState(1);
   const [variableId, setVariableId] = useState("studio-var-1");
@@ -317,6 +373,14 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
   }, [history.current, backdropId, locale, placementRevision, store, id]);
   const actor = creative.actors?.find((item) => item.id === activeActorId) ?? creative.actors?.[0];
   const script = history.current.scripts.find((item) => actor?.scripts?.includes(item.id));
+  const selectedVariableId = history.current.variables?.some((item) => item.id === variableId)
+    ? variableId
+    : (history.current.variables?.[0]?.id ?? variableId);
+  const selectedSourceVariableId = history.current.variables?.some(
+    (item) => item.id === sourceVariableId,
+  )
+    ? sourceVariableId
+    : (history.current.variables?.[0]?.id ?? sourceVariableId);
   const currentProgram = useRef(history.current);
   const currentActor = useRef(activeActorId);
   currentProgram.current = history.current;
@@ -599,6 +663,98 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
   function add(statement: StudioStatement) {
     try {
       persist(appendStudioStatement(history, activeActorId, statement));
+    } catch {
+      setError(true);
+    }
+  }
+
+  function calculation(): Expression {
+    return {
+      type: mathOperator,
+      left: { type: "variable", variableId: selectedSourceVariableId },
+      right: { type: "numericLiteral", value: dataValue },
+    };
+  }
+
+  function condition(): Expression {
+    return {
+      type: compareOperator,
+      left: { type: "variable", variableId: selectedVariableId },
+      right: compareCalculation ? calculation() : { type: "numericLiteral", value: dataValue },
+    };
+  }
+
+  function blockLabel(statement: Statement): string {
+    switch (statement.type) {
+      case "move":
+        return `${statement.steps < 0 ? copy.moveBackward : copy.move} ${Math.abs(statement.steps) / 40}`;
+      case "turn":
+        return `${statement.degrees < 0 ? copy.turnLeft : copy.turnRight} ${Math.abs(statement.degrees)}°`;
+      case "switchCostume":
+        return `${copy.costume}: ${galleryCharacterName(characterOfCostume(statement.costumeId, "nova"), locale)}`;
+      case "switchBackdrop":
+        return `${copy.switchBackdrop}: ${galleryBackdropName(backdropOfStage(statement.backdropId, backdropId), locale)}`;
+      case "playSound":
+        return `${copy.sound}: ${KIDS_SOUNDS.find((item) => item.id === statement.soundId)?.[locale] ?? ""}`;
+      case "say":
+      case "think":
+        return `${statement.type === "say" ? copy.say : copy.think}: ${statement.text}`;
+      case "show":
+        return copy.show;
+      case "hide":
+        return copy.hide;
+      case "setSize":
+        return `${copy.size}: ${statement.size}%`;
+      case "wait":
+        return `${copy.wait}: ${statement.seconds}s`;
+      case "broadcast":
+        return `${copy.message}: ${statement.message}`;
+      case "setVariable":
+      case "changeVariable":
+        return `${statement.type === "setVariable" ? copy.setVariable : copy.changeVariable}: ${history.current.variables?.find((item) => item.id === statement.variableId)?.name ?? "?"} ${expressionLabel(statement.type === "setVariable" ? statement.value : statement.delta, history.current)}`;
+      case "listAdd":
+        return `${copy.listAdd}: ${history.current.lists?.find((item) => item.id === statement.listId)?.name ?? "?"} ${expressionLabel(statement.value, history.current)}`;
+      case "repeat":
+        return `${copy.repeat} ${statement.count}`;
+      case "if":
+        return `${copy.ifLabel} ${expressionLabel(statement.condition, history.current)}`;
+      default:
+        return statement.type;
+    }
+  }
+
+  function nestedBlocks(statements: readonly Statement[], key: string) {
+    return (
+      <ol className="kids-studio-nested-blocks">
+        {statements.map((item, index) => (
+          <li key={`${key}-${index}`}>
+            {blockLabel(item)}
+            {item.type === "repeat" ? nestedBlocks(item.body, `${key}-${index}`) : null}
+            {item.type === "if" ? nestedBlocks(item.then, `${key}-${index}`) : null}
+            {item.type === "if" && item.else ? (
+              <>
+                <strong>{copy.elseLabel}</strong>
+                {nestedBlocks(item.else, `${key}-${index}-else`)}
+              </>
+            ) : null}
+          </li>
+        ))}
+      </ol>
+    );
+  }
+
+  function groupLast(type: "repeat" | "if") {
+    try {
+      persist(
+        wrapStudioTail(
+          history,
+          activeActorId,
+          groupCount,
+          type === "repeat"
+            ? { type, times: repeatCount as 2 | 3 | 5 }
+            : { type, condition: condition() },
+        ),
+      );
     } catch {
       setError(true);
     }
@@ -1206,42 +1362,19 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
             <ol>
               {script?.statements.map((statement, index) => (
                 <li key={`${script.id}-${index}`} className="kids-program-block">
-                  <span>
-                    {statement.type === "move"
-                      ? `${copy.move} ${statement.steps / 40}`
-                      : statement.type === "turn"
-                        ? statement.degrees < 0
-                          ? copy.turnLeft
-                          : copy.turnRight
-                        : statement.type === "switchCostume"
-                          ? `${copy.costume}: ${galleryCharacterName(characterOfCostume(statement.costumeId, "nova"), locale)}`
-                          : statement.type === "switchBackdrop"
-                            ? `${copy.switchBackdrop}: ${galleryBackdropName(backdropOfStage(statement.backdropId, backdropId), locale)}`
-                            : statement.type === "playSound"
-                              ? `${copy.sound}: ${KIDS_SOUNDS.find((item) => item.id === statement.soundId)?.[locale] ?? ""}`
-                              : statement.type === "say" || statement.type === "think"
-                                ? `${statement.type === "say" ? copy.say : copy.think}: ${statement.text}`
-                                : statement.type === "show"
-                                  ? copy.show
-                                  : statement.type === "hide"
-                                    ? copy.hide
-                                    : statement.type === "setSize"
-                                      ? `${copy.size}: ${statement.size}%`
-                                      : statement.type === "wait"
-                                        ? `${copy.wait}: ${statement.seconds}s`
-                                        : statement.type === "broadcast"
-                                          ? `${copy.message}: ${statement.message}`
-                                          : statement.type === "setVariable" ||
-                                              statement.type === "changeVariable"
-                                            ? `${statement.type === "setVariable" ? copy.setVariable : copy.changeVariable}: ${history.current.variables?.find((item) => item.id === statement.variableId)?.name} ${statement.type === "setVariable" ? (statement.value.type === "numericLiteral" ? statement.value.value : "") : statement.delta.type === "numericLiteral" ? statement.delta.value : ""}`
-                                            : statement.type === "listAdd"
-                                              ? `${copy.listAdd}: ${history.current.lists?.find((item) => item.id === statement.listId)?.name} ${statement.value.type === "numericLiteral" ? statement.value.value : ""}`
-                                              : statement.type === "repeat"
-                                                ? `${copy.repeat} ${statement.count} → ${statement.body[0]?.type ?? ""}`
-                                                : statement.type === "if"
-                                                  ? `${copy.ifScore} ${statement.condition.type === "greaterThan" && statement.condition.right.type === "numericLiteral" ? statement.condition.right.value : ""} → ${copy.thenMove}`
-                                                  : ""}
-                  </span>
+                  <span>{blockLabel(statement)}</span>
+                  {statement.type === "repeat"
+                    ? nestedBlocks(statement.body, `${script.id}-${index}`)
+                    : null}
+                  {statement.type === "if"
+                    ? nestedBlocks(statement.then, `${script.id}-${index}`)
+                    : null}
+                  {statement.type === "if" && statement.else ? (
+                    <>
+                      <strong>{copy.elseLabel}</strong>
+                      {nestedBlocks(statement.else, `${script.id}-${index}-else`)}
+                    </>
+                  ) : null}
                   <button
                     type="button"
                     className="kids-button"
@@ -1352,14 +1485,34 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
             <button
               type="button"
               className="kids-button"
-              onClick={() => add({ type: "turn", degrees: -90 })}
+              onClick={() => add({ type: "move", steps: -moveCells * 40 })}
+            >
+              + {copy.moveBackward}
+            </button>
+            <label>
+              {copy.turnAmount}{" "}
+              <select
+                value={turnAmount}
+                onChange={(event) => setTurnAmount(Number(event.target.value))}
+              >
+                {[45, 90, 180].map((degrees) => (
+                  <option key={degrees} value={degrees}>
+                    {degrees}°
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              className="kids-button"
+              onClick={() => add({ type: "turn", degrees: -turnAmount })}
             >
               + {copy.turnLeft}
             </button>
             <button
               type="button"
               className="kids-button"
-              onClick={() => add({ type: "turn", degrees: 90 })}
+              onClick={() => add({ type: "turn", degrees: turnAmount })}
             >
               + {copy.turnRight}
             </button>
@@ -1460,6 +1613,27 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
               }
             >
               + {copy.repeat} → {copy.thenMove}
+            </button>
+            <label>
+              {copy.groupCount}{" "}
+              <select
+                value={groupCount}
+                onChange={(event) => setGroupCount(Number(event.target.value))}
+              >
+                {[1, 2, 3].map((count) => (
+                  <option key={count} value={count}>
+                    {count}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              className="kids-button"
+              disabled={(script?.statements.length ?? 0) < groupCount}
+              onClick={() => groupLast("repeat")}
+            >
+              {copy.groupRepeat}
             </button>
             <label>
               {copy.message}{" "}
@@ -1567,23 +1741,104 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
                 >
                   + {copy.changeVariable}
                 </button>
+                <label>
+                  {copy.sourceVariable}{" "}
+                  <select
+                    value={
+                      history.current.variables.some((item) => item.id === sourceVariableId)
+                        ? sourceVariableId
+                        : history.current.variables[0]!.id
+                    }
+                    onChange={(event) => setSourceVariableId(event.target.value)}
+                  >
+                    {history.current.variables.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  {copy.mathOperator}{" "}
+                  <select
+                    value={mathOperator}
+                    onChange={(event) => setMathOperator(event.target.value as typeof mathOperator)}
+                  >
+                    <option value="add">+</option>
+                    <option value="subtract">−</option>
+                    <option value="multiply">×</option>
+                    <option value="divide">÷</option>
+                  </select>
+                </label>
                 <button
                   type="button"
                   className="kids-button"
-                  disabled={!Number.isInteger(dataValue) || Math.abs(dataValue) > 100}
+                  disabled={
+                    !Number.isInteger(dataValue) ||
+                    Math.abs(dataValue) > 100 ||
+                    (mathOperator === "divide" && dataValue === 0)
+                  }
+                  onClick={() =>
+                    add({
+                      type: "setVariable",
+                      variableId: selectedVariableId,
+                      value: calculation(),
+                    })
+                  }
+                >
+                  + {copy.calculate}
+                </button>
+                <label>
+                  {copy.compareOperator}{" "}
+                  <select
+                    value={compareOperator}
+                    onChange={(event) =>
+                      setCompareOperator(event.target.value as typeof compareOperator)
+                    }
+                  >
+                    <option value="greaterThan">&gt;</option>
+                    <option value="lessThan">&lt;</option>
+                    <option value="equals">=</option>
+                  </select>
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={compareCalculation}
+                    onChange={(event) => setCompareCalculation(event.target.checked)}
+                  />
+                  {copy.compareCalculation}
+                </label>
+                <button
+                  type="button"
+                  className="kids-button"
+                  disabled={
+                    !Number.isInteger(dataValue) ||
+                    Math.abs(dataValue) > 100 ||
+                    (compareCalculation && mathOperator === "divide" && dataValue === 0)
+                  }
                   onClick={() =>
                     add({
                       type: "if",
-                      condition: {
-                        type: "greaterThan",
-                        left: { type: "variable", variableId },
-                        right: { type: "numericLiteral", value: dataValue },
-                      },
+                      condition: condition(),
                       then: [{ type: "move", steps: 40 }],
                     })
                   }
                 >
-                  + {copy.ifScore} {dataValue} → {copy.thenMove}
+                  + {copy.ifLabel} {expressionLabel(condition(), history.current)} → {copy.thenMove}
+                </button>
+                <button
+                  type="button"
+                  className="kids-button"
+                  disabled={
+                    (script?.statements.length ?? 0) < groupCount ||
+                    !Number.isInteger(dataValue) ||
+                    Math.abs(dataValue) > 100 ||
+                    (compareCalculation && mathOperator === "divide" && dataValue === 0)
+                  }
+                  onClick={() => groupLast("if")}
+                >
+                  {copy.groupIf}
                 </button>
               </>
             ) : null}

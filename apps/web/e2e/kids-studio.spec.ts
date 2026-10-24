@@ -387,7 +387,7 @@ test("free scene composes data, repeat, message and key events in a fresh sessio
   await page.getByRole("button", { name: "+ Fijar valor" }).click();
   await page.getByRole("button", { name: "+ Agregar número" }).click();
   await page.getByRole("spinbutton", { name: "Número" }).fill("1");
-  await page.getByRole("button", { name: /\+ Si variable >/ }).click();
+  await page.getByRole("button", { name: /\+ Si .* → mover 1/ }).click();
   await page.getByRole("button", { name: "+ Repetir", exact: false }).click();
   await page.getByRole("button", { name: "+ Enviar mensaje" }).click();
   await page.getByRole("button", { name: "+ Agregar personaje" }).click();
@@ -411,4 +411,54 @@ test("free scene composes data, repeat, message and key events in a fresh sessio
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await page.getByRole("button", { name: "Pulsar tecla: Space" }).click();
   await expect(page.getByText(/bloques ejecutados/)).toBeVisible();
+});
+
+test("free scene groups several blocks and runs a child-composed calculation", async ({ page }) => {
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
+  await page.getByRole("textbox", { name: "Nombre" }).fill("Puntos");
+  await page.getByRole("button", { name: "+ Crear variable" }).click();
+  await page.getByRole("spinbutton", { name: "Número" }).fill("2");
+  await page.getByRole("button", { name: "+ Fijar valor" }).click();
+  await page.getByRole("button", { name: "+ Retroceder" }).click();
+  await page.getByRole("combobox", { name: "Grados" }).selectOption("45");
+  await page.getByRole("button", { name: "+ Girar a la derecha" }).click();
+  await page.getByRole("button", { name: "Repetir estos bloques" }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(2);
+  await expect(page.locator(".kids-program-block").last()).toContainText("Retroceder 1");
+  await expect(page.locator(".kids-program-block").last()).toContainText("Girar a la derecha 45°");
+  await page.getByRole("spinbutton", { name: "Número" }).fill("3");
+  await page.getByRole("button", { name: "+ Fijar con cálculo" }).click();
+  await page.getByRole("button", { name: "+ Mover" }).click();
+  await page.getByRole("combobox", { name: "Comparar" }).selectOption("lessThan");
+  await page.getByRole("spinbutton", { name: "Número" }).fill("6");
+  await page.getByRole("button", { name: "Si se cumple, ejecutar estos bloques" }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(3);
+  await expect(page.locator(".kids-program-block").last()).toContainText("Puntos + 3");
+  await expect(page.locator(".kids-program-block").last()).toContainText("Mover 1");
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByText("Puntos: 5")).toBeVisible();
+  await page.reload();
+  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  await page
+    .getByRole("article")
+    .filter({ hasText: "Escena libre" })
+    .getByRole("button", { name: "Jugar" })
+    .click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(3);
+  await expect(page.locator(".kids-code-strip")).toContainText("Puntos");
+  const violations = (
+    await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
+  ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");
+  expect(violations.map((entry) => entry.id)).toEqual([]);
 });

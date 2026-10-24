@@ -6,6 +6,7 @@ import {
   type ProjectCreativeState,
   type ProjectAsset,
   type ProjectProgram,
+  type Expression,
   type Statement,
   type Trigger,
 } from "@agorix/program-model";
@@ -53,6 +54,8 @@ const STUDIO_KEYS = ["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]
 const STUDIO_MESSAGES = ["hola", "vamos", "listo"] as const;
 const DATA_NAME = /^[\p{L}\p{N}][\p{L}\p{N} _-]{0,19}$/u;
 const MAX_STUDIO_BLOCKS = 60;
+const MAX_STUDIO_CONTROL_DEPTH = 2;
+const MAX_STUDIO_BODY = 3;
 const STUDIO_ART_ID = /^(costume|backdrop):studio-art-([1-9][0-9]?)$/;
 
 export interface StudioArt {
@@ -89,14 +92,45 @@ function checkedTrigger(trigger: Trigger): boolean {
   );
 }
 
-function checkedValue(value: unknown): value is { type: "numericLiteral"; value: number } {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "type" in value &&
-    value.type === "numericLiteral" &&
-    "value" in value &&
-    finiteSmallNumber(value.value)
+function checkedNumber(value: Expression, program: ProjectProgram, depth = 0): boolean {
+  if (depth > 2) return false;
+  if (value.type === "numericLiteral") return finiteSmallNumber(value.value);
+  if (value.type === "variable")
+    return program.variables?.some((item) => item.id === value.variableId) === true;
+  if (value.type === "listLength")
+    return program.lists?.some((item) => item.id === value.listId) === true;
+  if (["add", "subtract", "multiply", "divide"].includes(value.type)) {
+    const binary = value as Extract<
+      Expression,
+      { type: "add" | "subtract" | "multiply" | "divide" }
+    >;
+    return (
+      checkedNumber(binary.left, program, depth + 1) &&
+      checkedNumber(binary.right, program, depth + 1) &&
+      (binary.type !== "divide" ||
+        (binary.right.type === "numericLiteral" && binary.right.value !== 0))
+    );
+  }
+  return false;
+}
+
+function checkedCondition(value: Expression, program: ProjectProgram): boolean {
+  if (value.type !== "greaterThan" && value.type !== "lessThan" && value.type !== "equals")
+    return false;
+  return checkedNumber(value.left, program) && checkedNumber(value.right, program);
+}
+
+function statementCount(statements: readonly Statement[]): number {
+  return statements.reduce(
+    (sum, statement) =>
+      sum +
+      1 +
+      (statement.type === "repeat"
+        ? statementCount(statement.body)
+        : statement.type === "if"
+          ? statementCount(statement.then) + statementCount(statement.else ?? [])
+          : 0),
+    0,
   );
 }
 
@@ -116,12 +150,14 @@ function actorOfScript(id: string): { index: number; characterId: KidsGalleryCha
   return { index, characterId: match[2] };
 }
 
-function checked(statement: Statement, program: ProjectProgram, nested = false): boolean {
+function checked(statement: Statement, program: ProjectProgram, depth = 0): boolean {
   if (statement.type === "move")
     return (
-      Number.isInteger(statement.steps / 40) && statement.steps >= 40 && statement.steps <= 200
+      Number.isInteger(statement.steps / 20) &&
+      statement.steps !== 0 &&
+      Math.abs(statement.steps) <= 200
     );
-  if (statement.type === "turn") return statement.degrees === -90 || statement.degrees === 90;
+  if (statement.type === "turn") return [45, 90, 180, -45, -90, -180].includes(statement.degrees);
   if (statement.type === "switchCostume")
     return (
       isGalleryCharacterId(statement.costumeId.slice(8)) &&
@@ -144,35 +180,32 @@ function checked(statement: Statement, program: ProjectProgram, nested = false):
   if (statement.type === "setVariable" || statement.type === "changeVariable")
     return (
       program.variables?.some((item) => item.id === statement.variableId) === true &&
-      checkedValue(statement.type === "setVariable" ? statement.value : statement.delta)
+      checkedNumber(statement.type === "setVariable" ? statement.value : statement.delta, program)
     );
   if (statement.type === "listAdd")
     return (
       program.lists?.some((item) => item.id === statement.listId) === true &&
-      checkedValue(statement.value)
+      checkedNumber(statement.value, program)
     );
   if (statement.type === "repeat")
     return (
-      !nested &&
+      depth < MAX_STUDIO_CONTROL_DEPTH &&
       [2, 3, 5].includes(statement.count) &&
-      statement.body.length === 1 &&
-      checked(statement.body[0]!, program, true)
+      statement.body.length >= 1 &&
+      statement.body.length <= MAX_STUDIO_BODY &&
+      statement.body.every((item) => checked(item, program, depth + 1))
     );
   if (statement.type === "if") {
-    const condition = statement.condition;
-    if (
-      nested ||
-      statement.else ||
-      statement.then.length !== 1 ||
-      condition.type !== "greaterThan" ||
-      condition.left.type !== "variable"
-    )
-      return false;
-    const variableId = condition.left.variableId;
     return (
-      program.variables?.some((item) => item.id === variableId) === true &&
-      checkedValue(condition.right) &&
-      checked(statement.then[0]!, program, true)
+      depth < MAX_STUDIO_CONTROL_DEPTH &&
+      checkedCondition(statement.condition, program) &&
+      statement.then.length >= 1 &&
+      statement.then.length <= MAX_STUDIO_BODY &&
+      statement.then.every((item) => checked(item, program, depth + 1)) &&
+      (statement.else === undefined ||
+        (statement.else.length >= 1 &&
+          statement.else.length <= MAX_STUDIO_BODY &&
+          statement.else.every((item) => checked(item, program, depth + 1))))
     );
   }
   return false;
@@ -205,7 +238,7 @@ export function validateStudioProgram(raw: ProjectProgram): ProjectProgram {
         !actor ||
         actor.index !== position + 1 ||
         !checkedTrigger(script.trigger) ||
-        script.statements.length > MAX_STUDIO_BLOCKS ||
+        statementCount(script.statements) > MAX_STUDIO_BLOCKS ||
         script.statements.some((statement) => !checked(statement, program))
       );
     })
@@ -343,6 +376,40 @@ export function appendStudioStatement(
   scripts[index] = { ...script, statements: [...script.statements, statement] };
   const next = validateStudioProgram({ ...program, scripts });
   return recordCanonicalTransaction(history, { label: `add ${statement.type}`, after: next })
+    .history;
+}
+
+/** Turn the learner's last blocks into one visible, undoable control block. */
+export function wrapStudioTail(
+  history: EditorHistory,
+  actorId: string,
+  count: number,
+  control:
+    | { readonly type: "repeat"; readonly times: 2 | 3 | 5 }
+    | { readonly type: "if"; readonly condition: Expression },
+): EditorHistory {
+  const program = validateStudioProgram(history.current);
+  const index = program.scripts.findIndex((script) => {
+    const actor = actorOfScript(script.id);
+    return actor !== null && studioActorId(actor.index, actor.characterId) === actorId;
+  });
+  const script = program.scripts[index];
+  if (!script || !Number.isInteger(count) || count < 1 || count > MAX_STUDIO_BODY)
+    throw new RangeError("invalid studio group");
+  if (script.statements.length < count) throw new RangeError("not enough studio blocks");
+  const body = script.statements.slice(-count);
+  const statement: Statement =
+    control.type === "repeat"
+      ? { type: "repeat", count: control.times, body }
+      : { type: "if", condition: control.condition, then: body };
+  if (!checked(statement, program)) throw new RangeError("unsupported studio group");
+  const scripts = [...program.scripts];
+  scripts[index] = {
+    ...script,
+    statements: [...script.statements.slice(0, -count), statement],
+  };
+  const next = validateStudioProgram({ ...program, scripts });
+  return recordCanonicalTransaction(history, { label: `group ${control.type}`, after: next })
     .history;
 }
 
