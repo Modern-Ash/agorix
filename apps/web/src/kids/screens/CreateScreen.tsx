@@ -382,6 +382,33 @@ export function CreateScreen({
       <p role="status" className="kids-note">
         {imageMessage}
       </p>
+      <div
+        className="kids-create-selection"
+        aria-label={locale === "es" ? "Tu elección" : "Your selection"}
+      >
+        <div>
+          <KidsSprite slot={chosenAvatar} />
+          <span>
+            {locale === "es" ? "Personaje" : "Character"}:{" "}
+            {chosenAvatar.kind === "gallery"
+              ? galleryCharacterName(chosenAvatar.id, locale)
+              : chosenAvatar.kind === "emoji"
+                ? chosenAvatar.value
+                : t("customExplorer")}
+          </span>
+        </div>
+        <div>
+          <KidsBackdrop world={chosenWorld} className="kids-create-selection-backdrop" />
+          <span>
+            {locale === "es" ? "Fondo" : "Backdrop"}:{" "}
+            {chosenWorld.kind === "gallery"
+              ? galleryBackdropName(chosenWorld.id, locale)
+              : chosenWorld.kind === "builtin"
+                ? worlds[chosenWorld.value]
+                : t("customBackdrop")}
+          </span>
+        </div>
+      </div>
       <button
         type="button"
         className="kids-button kids-primary kids-create-start"

@@ -45,6 +45,7 @@ export type StudioStatement = Extract<
       | "setVariable"
       | "changeVariable"
       | "listAdd"
+      | "listRemoveAt"
       | "repeat"
       | "if";
   }
@@ -99,6 +100,14 @@ function checkedNumber(value: Expression, program: ProjectProgram, depth = 0): b
     return program.variables?.some((item) => item.id === value.variableId) === true;
   if (value.type === "listLength")
     return program.lists?.some((item) => item.id === value.listId) === true;
+  if (value.type === "listItem")
+    return (
+      program.lists?.some((item) => item.id === value.listId) === true &&
+      value.index.type === "numericLiteral" &&
+      Number.isInteger(value.index.value) &&
+      value.index.value >= 1 &&
+      value.index.value <= 10
+    );
   if (["add", "subtract", "multiply", "divide"].includes(value.type)) {
     const binary = value as Extract<
       Expression,
@@ -186,6 +195,14 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0): bool
     return (
       program.lists?.some((item) => item.id === statement.listId) === true &&
       checkedNumber(statement.value, program)
+    );
+  if (statement.type === "listRemoveAt")
+    return (
+      program.lists?.some((item) => item.id === statement.listId) === true &&
+      statement.index.type === "numericLiteral" &&
+      Number.isInteger(statement.index.value) &&
+      statement.index.value >= 1 &&
+      statement.index.value <= 10
     );
   if (statement.type === "repeat")
     return (

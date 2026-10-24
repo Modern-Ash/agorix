@@ -97,3 +97,8 @@ Each iteration needs an issue with an observable child journey, success and fail
 - Escena libre can group the last one to three authored blocks into a repeat or conditional block. Grouping is one undoable canonical transaction; imported projects use the same bounded validation. Control depth is capped at two and a script at 60 statement nodes, while the runtime keeps its deterministic 1,000-step ceiling.
 - A variable can be set from another variable plus, minus, times or divided by a bounded literal; division by zero is rejected. The child can choose greater-than, less-than or equal comparison, optionally against that calculation, and see the resulting expression in the visual stack and generated code.
 - Movement now includes backward steps and 45°, 90° and 180° turns in either direction. The runtime trace, stage, save/reopen and portable import remain the evidence. Glide, pointing, sensing, general expression nesting, custom procedures and extensions remain open.
+
+## Bounded list editing (grouped with Kids selection fix)
+
+- Escena libre now lets a child remove a list item at a chosen one-based position, store an item's value in a variable, and store a list's length in a variable. Positions are limited to 1–10 in the visual palette and validator. The canonical program drives the runtime, code projection, save and reopen path; an empty list stays visibly empty in the watcher.
+- This is a bounded data vocabulary increment under #538. General list indexing by expressions, list insertion and replacement, arbitrary nesting and Scratch's full data palette remain open.

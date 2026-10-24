@@ -19,7 +19,7 @@ The POC is complete when a learner can finish "First Mission: Reach the goal" us
 A learner must be able to:
 
 1. express a simple intent;
-2. work with blocks while textual code is always visible;
+2. work with blocks and inspect synchronized textual code in the Kids Code tab;
 3. receive at least one bounded AI proposal or scaffold;
 4. see exactly what the proposal would change;
 5. accept, reject or modify the proposal before it affects the accepted program;

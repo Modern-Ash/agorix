@@ -99,7 +99,7 @@ UI / Blockly adapter
         |
         v
   program-model
-     |           |       \--> LanguageProjection --> always-visible generated code
+     |           |       \--> LanguageProjection --> synchronized code in Kids Code tab
      v
    runtime
      |

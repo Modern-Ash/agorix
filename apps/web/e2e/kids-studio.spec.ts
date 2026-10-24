@@ -6,6 +6,41 @@ import { evaluateOriStudioOutput, ORI_STUDIO_VERSION } from "@agorix/ori-agent";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
+test("free scene exposes bounded list reading, length and removal", async ({ page }) => {
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
+  await page.getByRole("textbox", { name: "Nombre" }).fill("Cuenta");
+  await page.getByRole("button", { name: "+ Crear variable" }).click();
+  await page.getByRole("textbox", { name: "Nombre" }).fill("Cosas");
+  await page.getByRole("button", { name: "+ Crear lista" }).click();
+  await page.getByRole("spinbutton", { name: "Número" }).fill("7");
+  await page.getByRole("button", { name: "+ Agregar número" }).click();
+  await page.getByRole("button", { name: "+ Leer elemento en variable" }).click();
+  await page.getByRole("button", { name: "+ Guardar largo en variable" }).click();
+  await page.getByRole("button", { name: "+ Quitar elemento" }).click();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByText("Cuenta: 1")).toBeVisible();
+  await expect(page.getByText("Cosas: —")).toBeVisible();
+  await page.reload();
+  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  await page
+    .getByRole("article")
+    .filter({ hasText: "Escena libre" })
+    .getByRole("button", { name: "Jugar" })
+    .click();
+  await expect(page.getByText("Quitar elemento: Cosas 1")).toBeVisible();
+});
+
 test("a child adds local costume and backdrop images to a free scene", async ({ page }) => {
   await page.goto("/kids");
   await page.evaluate(() => {

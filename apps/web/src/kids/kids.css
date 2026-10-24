@@ -318,6 +318,32 @@
 .kids-create-start {
   justify-self: start;
 }
+.kids-create-selection {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-block: 1rem;
+}
+.kids-create-selection > div {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 11rem;
+  padding: 0.5rem 0.75rem;
+  border: 2px solid var(--kids-accent, #158f87);
+  border-radius: 1rem;
+  background: #fff;
+  font-weight: 700;
+}
+.kids-create-selection .kids-art-image,
+.kids-create-selection .kids-art-emoji,
+.kids-create-selection-backdrop {
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: none;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
 .kids-draw-art {
   display: grid;
   justify-items: start;
