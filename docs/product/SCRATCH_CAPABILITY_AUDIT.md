@@ -43,3 +43,9 @@ The Scratch Team's [editor tour](https://scratch.mit.edu/help/studio/tips/ui/tou
 4. **Media creation and extension design:** paint/costume editor, recording/editing policy, custom blocks and safe extensions. Treat public sharing separately under ADR 0009.
 
 Each iteration needs an issue with an observable child journey, success and failure tests, and a fresh-browser default check. A flag-on test alone is insufficient evidence that the capability is shipped to children.
+
+## Progress on iteration 1
+
+- #539 made Ori visible across Kids and enabled the implemented creative tools by default. The owner approved that rollout. Ori still proposes changes for the child to review; it does not edit a project silently.
+- The included gallery adds 12 named characters, 9 backdrops and 12 short synthesized sounds. Characters and backdrops are grouped and searchable from Crear; sounds are previewed and chosen from a sound block in the editor. Gallery choices persist by allowlisted ID, separate from child-added files and adult image overrides. A fresh browser can use the included items without a flag or an LLM.
+- The gallery expands the first creative choice. It does **not** provide Scratch's independent multi-sprite scripts, costume editing, broad block vocabulary, custom procedures or extensions. Those remain the next grouped iterations in #538.

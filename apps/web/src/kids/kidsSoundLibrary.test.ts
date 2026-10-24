@@ -9,17 +9,17 @@ import {
 import { getKidsMission, KIDS_MISSION_IDS } from "@agorix/curriculum";
 
 describe("Kids sound library (issue #461)", () => {
-  it("has six named, bounded deterministic presets and a legacy fallback", () => {
-    expect(KIDS_SOUNDS).toHaveLength(6);
-    expect(new Set(KIDS_SOUNDS.map((item) => item.id)).size).toBe(6);
+  it("has twelve named, bounded deterministic presets and a legacy fallback", () => {
+    expect(KIDS_SOUNDS).toHaveLength(12);
+    expect(new Set(KIDS_SOUNDS.map((item) => item.id)).size).toBe(12);
     for (const item of KIDS_SOUNDS) {
       expect(soundParameters(item.id)).toEqual(item.parameters);
       expect(item.parameters.duration).toBeGreaterThan(0);
       expect(item.parameters.duration).toBeLessThanOrEqual(0.5);
     }
     expect(soundParameters("kids-tone")).toEqual(soundParameters("unknown"));
-    expect(soundChoices(false)).toHaveLength(6);
-    expect(soundChoices(true)).toHaveLength(7);
+    expect(soundChoices(false)).toHaveLength(12);
+    expect(soundChoices(true)).toHaveLength(13);
   });
 
   it("counts each executed sound event with its chosen id, including repeats", () => {

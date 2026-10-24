@@ -5,10 +5,12 @@ import { resolveKidsCustom } from "../kidsCustom.js";
 import type { KidsAvatar, KidsWorld } from "../kidsState.js";
 import type { KidsAvatarRef, KidsWorldRef } from "../kidsProjects.js";
 import { KIDS_WORLD_STYLES } from "../worlds.js";
+import { galleryBackdropArt, galleryCharacterArt } from "../kidsGallery.js";
 
 export type KidsSpriteSlot = "ori" | KidsAvatarRef;
 
 export function spriteImage(slot: KidsSpriteSlot, enabled: boolean): string | undefined {
+  if (slot !== "ori" && slot.kind === "gallery") return galleryCharacterArt(slot.id);
   if (!enabled) return undefined;
   if (slot === "ori") return loadKidsImages().ori;
   if (slot.kind === "custom") return resolveKidsCustom(slot.id, "explorer");
@@ -16,6 +18,7 @@ export function spriteImage(slot: KidsSpriteSlot, enabled: boolean): string | un
 }
 
 export function backdropImage(world: KidsWorldRef, enabled: boolean): string | undefined {
+  if (world.kind === "gallery") return galleryBackdropArt(world.id);
   if (!enabled) return undefined;
   return world.kind === "custom"
     ? resolveKidsCustom(world.id, "backdrop")
@@ -40,7 +43,7 @@ export function KidsSprite({
   const glyph = fallback ?? (slot === "ori" ? "✦" : slot.kind === "emoji" ? slot.value : "🦊");
   // Only fixed character keys can become accessible names; files never supply alt text.
   const imageLabel = image
-    ? (label ?? (slot === "ori" ? "Ori" : slot.kind === "emoji" ? slot.value : "customExplorer"))
+    ? (label ?? (slot === "ori" ? "Ori" : slot.kind === "emoji" ? slot.value : "explorer"))
     : label;
   return (
     <span

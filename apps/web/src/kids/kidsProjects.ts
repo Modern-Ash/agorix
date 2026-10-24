@@ -7,6 +7,12 @@ import {
   type StoredProject,
 } from "@agorix/persistence";
 import { KIDS_AVATARS, KIDS_WORLDS, type KidsAvatar, type KidsWorld } from "./kidsState.js";
+import {
+  isGalleryBackdropId,
+  isGalleryCharacterId,
+  type KidsGalleryBackdropId,
+  type KidsGalleryCharacterId,
+} from "./kidsGallery.js";
 
 const INDEX_KEY = "agorix.kids.projects.v1";
 /** v2 adds custom explorers/backdrops. v1 stays dual-written so an older build loses nothing. */
@@ -185,9 +191,11 @@ export function restoreFreeProject(
 
 export type KidsAvatarRef =
   | { readonly kind: "emoji"; readonly value: KidsAvatar }
+  | { readonly kind: "gallery"; readonly id: KidsGalleryCharacterId }
   | { readonly kind: "custom"; readonly id: string };
 export type KidsWorldRef =
   | { readonly kind: "builtin"; readonly value: KidsWorld }
+  | { readonly kind: "gallery"; readonly id: KidsGalleryBackdropId }
   | { readonly kind: "custom"; readonly id: string };
 
 export interface KidsFreeProjectRef {
@@ -206,6 +214,7 @@ function parseAvatarRef(value: unknown): KidsAvatarRef | undefined {
   if (kind === "emoji" && (KIDS_AVATARS as readonly unknown[]).includes(emoji)) {
     return { kind, value: emoji as KidsAvatar };
   }
+  if (kind === "gallery" && isGalleryCharacterId(id)) return { kind, id };
   if (kind === "custom" && isCustomRefId(id)) return { kind, id };
   return undefined;
 }
@@ -216,6 +225,7 @@ function parseWorldRef(value: unknown): KidsWorldRef | undefined {
   if (kind === "builtin" && (KIDS_WORLDS as readonly unknown[]).includes(world)) {
     return { kind, value: world as KidsWorld };
   }
+  if (kind === "gallery" && isGalleryBackdropId(id)) return { kind, id };
   if (kind === "custom" && isCustomRefId(id)) return { kind, id };
   return undefined;
 }

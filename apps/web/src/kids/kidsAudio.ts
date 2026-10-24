@@ -63,6 +63,7 @@ export async function processKidsAudio(
 
 export function actorAudioKey(actor: KidsAvatarRef): string {
   if (actor.kind === "emoji") return `emoji:${actor.value}`;
+  if (actor.kind === "gallery") return `gallery:${actor.id}`;
   if (!isCustomRefId(actor.id)) throw new RangeError("invalid custom explorer id");
   return `custom:${actor.id}`;
 }
