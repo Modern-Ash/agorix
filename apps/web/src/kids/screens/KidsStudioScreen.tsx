@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   createEditorHistory,
   recordCanonicalTransaction,
@@ -13,12 +13,11 @@ import { ProjectStore } from "@agorix/persistence";
 import { runMultiActorProgram, type MultiActorRunResult, type RuntimeEvent } from "@agorix/runtime";
 import {
   acceptProposal,
-  createProgramProposal,
-  createProposalReview,
   modifyProposal,
   rejectProposal,
   type ProgramProposal,
 } from "@agorix/proposals";
+import { validateOriStudioProposal } from "@agorix/ori-agent";
 import type { Locale } from "../../i18n.js";
 import {
   KIDS_GALLERY_BACKDROPS,
@@ -42,12 +41,14 @@ import {
   type StudioStatement,
 } from "../kidsStudioModel.js";
 import { listStudioProjects, saveStudioProject, setStudioBackdrop } from "../kidsStudioProjects.js";
+import { requestStudioOri } from "../kidsStudioOriRemote.js";
 import { KidsBackdrop, KidsSprite } from "./KidsArt.js";
 
 interface Props {
   readonly id: string;
   readonly locale: Locale;
   readonly onBack: () => void;
+  readonly oriSuggestions: boolean;
 }
 
 const COPY = {
@@ -83,9 +84,9 @@ const COPY = {
     redo: "Rehacer",
     code: "Código",
     idea: "Pedirle una idea a Ori",
-    ideaText: "Ori propone mover este personaje una casilla. Mirá el cambio y decidí.",
+    ideaText: "Mirá el bloque propuesto y decidí.",
     use: "Usar idea",
-    change: "Cambiar a dos casillas",
+    change: "Cambiar idea",
     reject: "No usar",
     facts: "Lo que pasó de verdad",
     saveError: "No pudimos guardar esta escena. Probá de nuevo.",
@@ -125,9 +126,9 @@ const COPY = {
     redo: "Redo",
     code: "Code",
     idea: "Ask Ori for an idea",
-    ideaText: "Ori suggests moving this character one cell. Inspect the change and decide.",
+    ideaText: "Look at the suggested block and decide.",
     use: "Use idea",
-    change: "Change to two cells",
+    change: "Change idea",
     reject: "Don't use",
     facts: "What really happened",
     saveError: "We couldn't save this scene. Try again.",
@@ -158,7 +159,7 @@ function backdropOfStage(
   return isGalleryBackdropId(suffix) ? suffix : fallback;
 }
 
-export function KidsStudioScreen({ id, locale, onBack }: Props) {
+export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) {
   const copy = COPY[locale];
   const [store] = useState(() => new ProjectStore());
   const [history, setHistory] = useState<EditorHistory>(() =>
@@ -183,6 +184,8 @@ export function KidsStudioScreen({ id, locale, onBack }: Props) {
   const [frame, setFrame] = useState<number | null>(null);
   const [language, setLanguage] = useState<"agorix" | "python" | "typescript">("agorix");
   const [oriIdea, setOriIdea] = useState<ProgramProposal | null>(null);
+  const [oriMessage, setOriMessage] = useState("");
+  const [oriBusy, setOriBusy] = useState(false);
   const [error, setError] = useState(false);
   const creative = useMemo(
     () => creativeForStudio(history.current, backdropId, locale),
@@ -190,6 +193,13 @@ export function KidsStudioScreen({ id, locale, onBack }: Props) {
   );
   const actor = creative.actors?.find((item) => item.id === activeActorId) ?? creative.actors?.[0];
   const script = history.current.scripts.find((item) => actor?.scripts?.includes(item.id));
+  const currentProgram = useRef(history.current);
+  const currentActor = useRef(activeActorId);
+  currentProgram.current = history.current;
+  currentActor.current = activeActorId;
+  const proposedOperation = oriIdea?.operations[0];
+  const proposedStatement =
+    proposedOperation?.type === "appendStatement" ? proposedOperation.statement : null;
   const selectedFrame = frame === null ? null : run?.frames[frame];
   const shownActors = selectedFrame?.actors ?? run?.actors;
   const shownStage = selectedFrame?.stage ?? run?.stage ?? creative.stage;
@@ -214,6 +224,7 @@ export function KidsStudioScreen({ id, locale, onBack }: Props) {
       setEvents([{ type: "start" }]);
       setFrame(null);
       setOriIdea(null);
+      setOriMessage("");
       setError(false);
     } catch {
       setError(true);
@@ -225,6 +236,7 @@ export function KidsStudioScreen({ id, locale, onBack }: Props) {
       saveStudioProject(id, history.current, backdropId, next, locale, store);
       setActiveActorId(next);
       setOriIdea(null);
+      setOriMessage("");
       setError(false);
     } catch {
       setError(true);
@@ -256,6 +268,7 @@ export function KidsStudioScreen({ id, locale, onBack }: Props) {
       setEvents([{ type: "start" }]);
       setFrame(null);
       setOriIdea(null);
+      setOriMessage("");
       setError(false);
     } catch {
       setError(true);
@@ -303,37 +316,40 @@ export function KidsStudioScreen({ id, locale, onBack }: Props) {
     selectActor(actorId);
   }
 
-  function askOri() {
+  async function askOri() {
     if (!actor || !script) return;
-    const scriptIndex = history.current.scripts.findIndex((item) => item.id === script.id);
-    const proposal = createProgramProposal({
-      id: `ori-studio-${scriptIndex}-${script.statements.length}`,
-      baseProgram: history.current,
-      source: { kind: "learning-companion", capability: "builder" },
-      purpose: locale === "es" ? "Una idea para tu escena" : "An idea for your scene",
-      rationale: copy.ideaText,
-      affectedActorIds: [actor.id],
-      affectedScriptIds: [script.id],
-      affectedNodeIds: [`scripts[${scriptIndex}]/statements[${script.statements.length}]`],
-      operations: [
-        { type: "appendStatement", scriptIndex, statement: { type: "move", steps: 40 } },
-      ],
-    });
+    const atRequest = history.current;
+    const selected = actor.id;
+    setOriBusy(true);
+    setOriIdea(null);
+    setOriMessage("");
     try {
-      createProposalReview(history.current, proposal, creative);
-      setOriIdea(proposal);
+      const offer = await requestStudioOri({ actorId: selected, locale, program: atRequest });
+      if (
+        JSON.stringify(currentProgram.current) === JSON.stringify(atRequest) &&
+        currentActor.current === selected
+      ) {
+        setOriMessage(offer.message);
+        setOriIdea(offer.proposal ?? null);
+      }
     } catch {
       setError(true);
+    } finally {
+      setOriBusy(false);
     }
   }
 
   function decideOri(decision: "accept" | "change" | "reject") {
     if (!oriIdea) return;
     try {
-      const review = createProposalReview(history.current, oriIdea, creative);
+      const review = validateOriStudioProposal(
+        { actorId: activeActorId, locale, program: history.current },
+        oriIdea,
+      );
       if (decision === "reject") {
         rejectProposal(history.current, review);
         setOriIdea(null);
+        setOriMessage("");
         return;
       }
       if (decision === "accept") {
@@ -348,9 +364,17 @@ export function KidsStudioScreen({ id, locale, onBack }: Props) {
         if (operation?.type !== "appendStatement") throw new Error("invalid Ori proposal");
         const scripts = [...history.current.scripts];
         const target = scripts[operation.scriptIndex]!;
+        const replacement =
+          operation.statement.type === "turn"
+            ? { type: "turn" as const, degrees: -operation.statement.degrees }
+            : operation.statement.type === "move"
+              ? { type: "move" as const, steps: operation.statement.steps === 40 ? 80 : 40 }
+              : (() => {
+                  throw new Error("invalid Ori block");
+                })();
         scripts[operation.scriptIndex] = {
           ...target,
-          statements: [...target.statements, { type: "move", steps: 80 }],
+          statements: [...target.statements, replacement],
         };
         const changed = modifyProposal(history.current, review, { ...history.current, scripts });
         persist(
@@ -778,32 +802,63 @@ export function KidsStudioScreen({ id, locale, onBack }: Props) {
               + {copy.sound}
             </button>
           </div>
-          <div className="kids-studio-ori">
-            <button type="button" className="kids-button" onClick={askOri}>
-              {copy.idea}
-            </button>
-            {oriIdea ? (
-              <div className="kids-ori-proposal">
-                <p>{copy.ideaText}</p>
-                <strong>+ {copy.move} 1</strong>
-                <div>
-                  <button
-                    type="button"
-                    className="kids-button kids-primary"
-                    onClick={() => decideOri("accept")}
-                  >
-                    {copy.use}
-                  </button>
-                  <button type="button" className="kids-button" onClick={() => decideOri("change")}>
-                    {copy.change}
-                  </button>
-                  <button type="button" className="kids-button" onClick={() => decideOri("reject")}>
-                    {copy.reject}
-                  </button>
+          {oriSuggestions ? (
+            <div className="kids-studio-ori">
+              <button
+                type="button"
+                className="kids-button"
+                disabled={oriBusy}
+                onClick={() => void askOri()}
+              >
+                {copy.idea}
+              </button>
+              {!oriBusy && oriMessage && !oriIdea ? (
+                <p role="status" className="kids-note">
+                  {oriMessage}
+                </p>
+              ) : null}
+              {oriBusy ? (
+                <p role="status" className="kids-note">
+                  {locale === "es" ? "Ori está pensando..." : "Ori is thinking..."}
+                </p>
+              ) : null}
+              {oriIdea ? (
+                <div className="kids-ori-proposal">
+                  <p>{oriMessage || copy.ideaText}</p>
+                  <strong>
+                    {proposedStatement?.type === "move"
+                      ? `+ ${copy.move} ${proposedStatement.steps / 40}`
+                      : proposedStatement?.type === "turn"
+                        ? `+ ${proposedStatement.degrees < 0 ? copy.turnLeft : copy.turnRight}`
+                        : ""}
+                  </strong>
+                  <div>
+                    <button
+                      type="button"
+                      className="kids-button kids-primary"
+                      onClick={() => decideOri("accept")}
+                    >
+                      {copy.use}
+                    </button>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      onClick={() => decideOri("change")}
+                    >
+                      {copy.change}
+                    </button>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      onClick={() => decideOri("reject")}
+                    >
+                      {copy.reject}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ) : null}
-          </div>
+              ) : null}
+            </div>
+          ) : null}
           <h2>{copy.code}</h2>
           <div className="kids-code-languages" role="group" aria-label={copy.code}>
             {(["agorix", "python", "typescript"] as const).map((item) => (

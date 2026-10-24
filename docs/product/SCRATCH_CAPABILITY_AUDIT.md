@@ -61,3 +61,9 @@ Each iteration needs an issue with an observable child journey, success and fail
 - The free scene adds child-authored `say`, `think`, `show`, `hide`, size and bounded virtual wait blocks. Speech bubbles, visibility and size are rendered from runtime facts on the selected actor; another actor's state stays independent. The child can switch one character's start event from Jugar to touching that character on the stage, and the event is stored in the canonical script.
 - Unit tests cover bounded statements, actor isolation and event activation. Browser tests cover the rendered result, reload and tapping the character after Jugar.
 - This broadens the visual palette but does not yet provide general repeat/conditions, key/message event composition, variables/lists in free scenes, paint/recording, extensions or a model-backed Ori proposal contract. Those remain in #538.
+
+## Ori for free scenes (PR in preparation)
+
+- Escena libre requests an idea from the same-origin tutor server. The host's configured Codex/OpenCode CLI can generate one bounded move or turn for the selected actor. The shared contract validates the model's JSON, actor, script and operation on the host and again in the browser. The child sees a proposal and may accept, change or reject it; only acceptance or change updates the canonical program in one undoable transaction.
+- The model receives actor count and selected block **types**, not child-authored speech text, image bytes, account details or the whole project. A failed, late or invalid model response produces a local reviewable idea without provider diagnostics in the child UI. The adult Ori switch hides scene suggestions.
+- This makes the free-scene Ori button a real LLM entry point when the host CLI is available. It does not grant Ori open-ended editing, change Scratch-parity gaps above, or remove the offline path. Production needs both the Web deployment and a restart of the tutor host service after merging this PR.

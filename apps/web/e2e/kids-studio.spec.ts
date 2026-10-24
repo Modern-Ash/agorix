@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { evaluateOriStudioOutput, ORI_STUDIO_VERSION } from "@agorix/ori-agent";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -34,7 +35,7 @@ test("free scene keeps independent character scripts and reopens the saved stage
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await expect(page.getByText("2 bloques ejecutados")).toBeVisible();
   await page.getByRole("button", { name: "Pedirle una idea a Ori" }).click();
-  await expect(page.getByText("Ori propone mover este personaje una casilla.")).toBeVisible();
+  await expect(page.getByText("Ori tiene una idea para mirar y decidir.")).toBeVisible();
   await page.getByRole("button", { name: "Usar idea" }).click();
   await expect(page.locator(".kids-program-block")).toHaveCount(2);
   await page.getByRole("button", { name: "Deshacer" }).click();
@@ -105,4 +106,68 @@ test("a tapped character runs its own event script after Play", async ({ page })
   await expect(page.getByText("0 bloques ejecutados")).toBeVisible();
   await page.getByRole("group", { name: "Escenario" }).getByRole("button").last().click();
   await expect(page.getByText("1 bloque ejecutado")).toBeVisible();
+});
+
+test("Ori's server idea is reviewed before it changes a free scene", async ({ page }) => {
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  const requests: unknown[] = [];
+  await page.route("**/api/tutor/studio/ori", async (route) => {
+    const context = route.request().postDataJSON();
+    requests.push(context);
+    const decision = evaluateOriStudioOutput(context, {
+      version: ORI_STUDIO_VERSION,
+      kind: "program-suggestion",
+      actorId: context.actorId,
+      block: { type: "turn", degrees: -90 },
+    });
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ message: decision.message, proposal: decision.proposal }),
+    });
+  });
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
+  await page.getByRole("button", { name: "Pedirle una idea a Ori" }).click();
+  await expect(
+    page.getByText("Ori tiene una idea para tu escena.", { exact: false }),
+  ).toBeVisible();
+  await expect(page.locator(".kids-program-block")).toHaveCount(0);
+  await page.getByRole("button", { name: "Usar idea" }).click();
+  await expect(page.locator(".kids-program-block")).toContainText("Girar a la izquierda");
+  expect(requests).toHaveLength(1);
+  expect(JSON.stringify(requests[0])).toContain("actor:studio-1-nova");
+});
+
+test("the adult Ori switch hides scene suggestions", async ({ page }) => {
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+    localStorage.setItem(
+      "agorix.kids.adults.v1",
+      JSON.stringify({
+        oriSuggestions: false,
+        readAloud: true,
+        dailyLimitMinutes: 30,
+        ageBand: "6-8",
+      }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
+  await expect(page.getByRole("button", { name: "Pedirle una idea a Ori" })).toHaveCount(0);
 });

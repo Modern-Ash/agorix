@@ -298,6 +298,7 @@ export function KidsApp({
             key={state.studioProjectId}
             id={state.studioProjectId}
             locale={state.locale}
+            oriSuggestions={adultSettings.oriSuggestions}
             onBack={() => dispatch({ type: "go", screen: "create" })}
           />
         ) : state.screen === "create" ? (

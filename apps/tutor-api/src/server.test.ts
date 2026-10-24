@@ -520,3 +520,65 @@ describe("Ori HTTP boundary (issue #381)", () => {
     expect((await post(body, "https://evil.example")).status).toBe(403);
   });
 });
+
+describe("Ori free scene HTTP boundary (#538)", () => {
+  const context = {
+    actorId: "actor:studio-1-nova",
+    locale: "es",
+    program: {
+      schema: "agorix/program/v1",
+      scripts: [{ id: "studio-actor-1-nova", trigger: { type: "greenFlag" }, statements: [] }],
+    },
+  };
+
+  it("passes a bounded scene to the real CLI and returns a reviewed actor-scoped proposal", async () => {
+    const inputs: string[] = [];
+    const run: OriCliProcess = async (_bin, args, options) => {
+      if (args.includes("--version")) return "version";
+      inputs.push(options.input);
+      return JSON.stringify({
+        version: "agorix/ori-studio/v1",
+        kind: "program-suggestion",
+        actorId: context.actorId,
+        block: { type: "turn", degrees: -90 },
+      });
+    };
+    const base = await start({}, undefined, createOriCliService(oriCliConfigFromEnv({}), { run }));
+    const post = (body: unknown, origin = base) =>
+      fetch(`${base}/api/tutor/studio/ori`, {
+        method: "POST",
+        headers: { "content-type": "application/json", origin },
+        body: JSON.stringify(body),
+      });
+    const response = await post(context);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      proposal: {
+        affectedActorIds: [context.actorId],
+        operations: [
+          { type: "appendStatement", scriptIndex: 0, statement: { type: "turn", degrees: -90 } },
+        ],
+      },
+    });
+    expect(inputs).toHaveLength(1);
+    expect(inputs[0]).toContain("agorix/ori-studio/v1");
+    expect(await (await fetch(`${base}/api/tutor/health`)).json()).toMatchObject({
+      lastOriSource: "model",
+    });
+    expect((await post({ ...context, actorId: "actor:studio-2-mika" })).status).toBe(400);
+    expect((await post(context, "https://evil.example")).status).toBe(403);
+  });
+
+  it("falls back to a reviewable local idea when the CLI is absent", async () => {
+    const base = await start({});
+    const response = await fetch(`${base}/api/tutor/studio/ori`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(context),
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      proposal: { operations: [{ statement: { type: "move", steps: 40 } }] },
+    });
+  });
+});
