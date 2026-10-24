@@ -1170,8 +1170,6 @@ export function EditorScreen({
                 </ul>
                 {statements.length === 0 ? <p className="kids-note">{t("dragHere")}</p> : null}
               </div>
-              <p className="kids-code-label">{t("codeNote")}</p>
-              <pre className="kids-code-strip">{projectAgorixCode(history.current).text}</pre>
             </>
           ) : (
             <>
