@@ -69,6 +69,7 @@ export interface MultiActorTraceEntry {
   readonly nodeId: string;
   readonly path: string;
   readonly statementType: Statement["type"];
+  readonly conditionResult?: boolean;
   readonly worldBefore: WorldState;
   readonly worldAfter: WorldState;
 }
@@ -378,6 +379,14 @@ export function runMultiActorProgram(
         const result = runProgram(singleScriptProgram(validatedProgram, script), actor.world, {
           maxSteps: maxSteps - stepsUsed,
           event: programEventForRuntimeEvent(event),
+          sensorActors: actors
+            .filter((other) => other.id !== actor.id)
+            .map((other) => ({
+              id: other.id,
+              x: other.world.sprite.x,
+              y: other.world.sprite.y,
+              visible: other.world.sprite.visible ?? true,
+            })),
           ...(randomState === undefined ? {} : { randomSeed: randomState }),
         });
         randomState = result.randomState;
@@ -407,6 +416,9 @@ export function runMultiActorProgram(
             nodeId,
             path: nodeId,
             statementType: entry.statementType,
+            ...(entry.conditionResult === undefined
+              ? {}
+              : { conditionResult: entry.conditionResult }),
             worldBefore: cloneWorldState(entry.worldBefore),
             worldAfter: cloneWorldState(entry.worldAfter),
           };

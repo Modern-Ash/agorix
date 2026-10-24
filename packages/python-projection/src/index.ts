@@ -102,6 +102,9 @@ export function projectPython(program: ProjectProgram): LanguageProjectionResult
         "go_to",
         "turn",
         "touching_goal",
+        "touching_actor",
+        "x_position",
+        "y_position",
         "say",
         "think",
         "show",
@@ -354,6 +357,12 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
   switch (expression.type) {
     case "touchingGoal":
       return "touching_goal()";
+    case "touchingActor":
+      return "touching_actor(" + JSON.stringify(expression.actorId) + ")";
+    case "xPosition":
+      return "x_position()";
+    case "yPosition":
+      return "y_position()";
     case "booleanLiteral":
       return expression.value ? "True" : "False";
     case "numericLiteral":
@@ -566,6 +575,9 @@ const PYTHON_PROJECTION_IDENTIFIERS: ReadonlySet<string> = new Set([
   "go_to",
   "turn",
   "touching_goal",
+  "touching_actor",
+  "x_position",
+  "y_position",
   "say",
   "think",
   "show",

@@ -301,6 +301,12 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
   switch (expression.type) {
     case "touchingGoal":
       return "touching goal";
+    case "touchingActor":
+      return "touching " + JSON.stringify(expression.actorId);
+    case "xPosition":
+      return "x position";
+    case "yPosition":
+      return "y position";
     case "booleanLiteral":
       return expression.value ? "true" : "false";
     case "numericLiteral":

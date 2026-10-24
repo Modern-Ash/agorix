@@ -150,6 +150,12 @@ function formatExpression(
   switch (expression.type) {
     case "touchingGoal":
       return "sprite.touchingGoal()";
+    case "touchingActor":
+      return `sprite.touchingActor(${JSON.stringify(expression.actorId)})`;
+    case "xPosition":
+      return "sprite.x";
+    case "yPosition":
+      return "sprite.y";
     case "booleanLiteral":
       return expression.value ? "true" : "false";
     case "numericLiteral":

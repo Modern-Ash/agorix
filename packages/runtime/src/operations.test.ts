@@ -101,8 +101,11 @@ describe("runtime operation allowlist", () => {
       "random",
       "randomInteger",
       "subtract",
+      "touchingActor",
       "touchingGoal",
       "variable",
+      "xPosition",
+      "yPosition",
     ]);
     expect([...RUNTIME_TRIGGER_OPERATIONS]).toEqual([
       "greenFlag",

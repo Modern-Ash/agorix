@@ -19,6 +19,20 @@ export interface TouchingGoalExpression {
   readonly type: "touchingGoal";
 }
 
+/** True when a visible actor is within the runtime's contact radius. */
+export interface TouchingActorExpression {
+  readonly type: "touchingActor";
+  readonly actorId: string;
+}
+
+export interface XPositionExpression {
+  readonly type: "xPosition";
+}
+
+export interface YPositionExpression {
+  readonly type: "yPosition";
+}
+
 export interface BooleanLiteralExpression {
   readonly type: "booleanLiteral";
   readonly value: boolean;
@@ -132,6 +146,9 @@ export interface ListLengthExpression {
 
 export type Expression =
   | TouchingGoalExpression
+  | TouchingActorExpression
+  | XPositionExpression
+  | YPositionExpression
   | BooleanLiteralExpression
   | NumericLiteralExpression
   | VariableExpression

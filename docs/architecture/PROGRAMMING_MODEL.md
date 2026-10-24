@@ -113,6 +113,12 @@ A script starts from a trigger. `greenFlag` ("When green flag clicked") is the S
 
 `goTo` stores finite `x` and `y` coordinates bounded to −1000…1000 in the canonical program. It places the sprite at that point without changing its heading, and the runtime records the before/after positions in the statement trace. The general block adapter uses `motion_go_to`. Kids Escena libre offers a narrower 0…320 horizontal and −100…120 vertical range matching its stage; values outside that range cannot enter a saved free scene. The Agorix Code, Python and TypeScript projections display the same coordinates and are never executed as the source of truth.
 
+## Bounded scene sensing
+
+`xPosition` and `yPosition` are numeric expressions that read the running sprite's current coordinates. `touchingActor` is a boolean expression with a bounded actor ID; it is true when both sprites are visible and their centers are at most 24 stage units apart. The runtime receives only the other actors' positions and visibility at the start of each script activation. A standalone run, missing actor, hidden actor or self-reference returns false. This gives deterministic results after the active actor moves within its script and after prior actor activations, without querying the DOM or images. Studio limits targets to characters in the scene and shows the last `if` result as yes/no runtime evidence. This is center-based contact, not pixel-perfect costume collision.
+
+The block adapter maps these expressions to `sensing_x_position`, `sensing_y_position` and `sensing_touching_actor`; Agorix Code, Python and TypeScript projections read the same canonical expressions. Sensors never call Ori or a provider.
+
 ## Sound volume
 
 `setVolume` (`volume`, 0 to 100) and `changeVolume` (`delta`, -100 to 100) set and change one global sound volume. The validator rejects values outside those ranges or that are not finite numbers; it never clamps inside the program. At run time the volume lives in `world.sounds.volume`, is clamped to 0-100 and survives `stopSounds`. The key is absent until a volume statement runs (absent means 100), so programs without volume statements keep identical worlds, traces and semantic hashes. The blocks are `sound_set_volume` and `sound_change_volume`; projections read `set volume to 40` (Agorix Code), `set_volume(40)` (Python) and `sound.setVolume(40)` (TypeScript). The App scales its synthetic cue gain by the volume and Studio shows it next to the active sounds.

@@ -22,6 +22,37 @@ import {
 } from "./kidsStudioModel.js";
 
 describe("Kids creative studio", () => {
+  it("lets one character sense its position and a different visible character", () => {
+    let history = createEditorHistory(createStudioProgram("nova"));
+    history = addStudioActor(history, "mika");
+    history = addStudioVariable(history, "Lugar");
+    history = appendStudioStatement(history, "actor:studio-1-nova", { type: "goTo", x: 40, y: 0 });
+    history = appendStudioStatement(history, "actor:studio-1-nova", {
+      type: "setVariable",
+      variableId: "studio-var-1",
+      value: { type: "xPosition" },
+    });
+    history = appendStudioStatement(history, "actor:studio-1-nova", {
+      type: "if",
+      condition: { type: "touchingActor", actorId: "actor:studio-2-mika" },
+      then: [{ type: "say", text: "Juntos" }],
+    });
+    const program = validateStudioProgram(history.current);
+    expect(workspaceToProgram(programToWorkspace(program).workspace).program).toEqual(program);
+    expect(projectAgorixCode(program).text).toContain('touching "actor:studio-2-mika"');
+    expect(projectPython(program).text).toContain('touching_actor("actor:studio-2-mika")');
+    expect(projectProgram(program).code).toContain('sprite.touchingActor("actor:studio-2-mika")');
+    const result = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(result.actors[0]?.world.variables?.["studio-var-1"]?.value).toBe(40);
+    expect(result.actors[0]?.world.sprite.bubble?.text).toBe("Juntos");
+    expect(() =>
+      appendStudioStatement(history, "actor:studio-1-nova", {
+        type: "if",
+        condition: { type: "touchingActor", actorId: "actor:missing" },
+        then: [{ type: "move", steps: 40 }],
+      }),
+    ).toThrow();
+  });
   it("moves to a chosen stage coordinate and stops sounds with canonical runtime evidence", () => {
     let history = createEditorHistory(createStudioProgram("nova"));
     history = appendStudioStatement(history, "actor:studio-1-nova", {

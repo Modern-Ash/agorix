@@ -222,6 +222,12 @@ function validateExpression(input: unknown, path: string, state: ValidationState
   switch (type) {
     case "touchingGoal":
       return { type: "touchingGoal" };
+    case "touchingActor":
+      return { type: "touchingActor", actorId: checkText(input.actorId, `${path}.actorId`) };
+    case "xPosition":
+      return { type: "xPosition" };
+    case "yPosition":
+      return { type: "yPosition" };
     case "booleanLiteral": {
       if (typeof input.value !== "boolean") {
         fail("INVALID_FIELD_TYPE", `${path}.value`, "expected a boolean", input.value);

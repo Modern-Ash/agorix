@@ -35,6 +35,9 @@ export type BlockType =
   | "control_wait"
   | "control_if"
   | "sensing_touching_goal"
+  | "sensing_touching_actor"
+  | "sensing_x_position"
+  | "sensing_y_position"
   | "operator_add"
   | "operator_subtract"
   | "operator_multiply"
@@ -244,6 +247,12 @@ function expressionFromBlock(
   switch (block.type) {
     case "sensing_touching_goal":
       return { type: "touchingGoal" };
+    case "sensing_touching_actor":
+      return { type: "touchingActor", actorId: stringField(block, "actorId", path) };
+    case "sensing_x_position":
+      return { type: "xPosition" };
+    case "sensing_y_position":
+      return { type: "yPosition" };
     case "literal_boolean":
       return { type: "booleanLiteral", value: booleanField(block, "value", path) };
     case "literal_number":
@@ -514,6 +523,12 @@ function expressionToBlock(
   switch (expression.type) {
     case "touchingGoal":
       return { id, type: "sensing_touching_goal" };
+    case "touchingActor":
+      return { id, type: "sensing_touching_actor", fields: { actorId: expression.actorId } };
+    case "xPosition":
+      return { id, type: "sensing_x_position" };
+    case "yPosition":
+      return { id, type: "sensing_y_position" };
     case "booleanLiteral":
       return { id, type: "literal_boolean", fields: { value: expression.value } };
     case "numericLiteral":
