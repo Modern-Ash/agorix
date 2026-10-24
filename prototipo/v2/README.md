@@ -25,7 +25,7 @@ Entrega de Claude Design posterior a `prototipo/handoff/` (v1). Es referencia vi
 | Comparadores ≥ ≤ | #464 | entregado |
 | Operadores aritméticos en la UI | #465 | entregado |
 | Aleatorio | #467 | entregado |
-| Listas | #468, #525 | entregado en avanzado; apagado por defecto |
+| Listas | #468, #525 | entregado en avanzado; visible tras su progresión |
 | Esperar | #466 | entregado |
 | Enviar mensaje | — | ya en program-model (`broadcast`); UI en avanzado |
 | Varios personajes y disfraces | #469 | entregado |
@@ -35,22 +35,23 @@ Entrega de Claude Design posterior a `prototipo/handoff/` (v1). Es referencia vi
 | Zoom del área de bloques | #449 | entregado |
 | Menú contextual | #450 | entregado |
 | Borrar proyectos guardados | #445 | entregado |
-| Tutoriales | #470 | implementado; apagado por defecto |
+| Tutoriales | #470 | implementado; activo por defecto |
 | Lectura en voz alta en pantallas Kids | #528 | entregado; botón manual para texto de interfaz, controlado desde Adultos |
 | Atajos de teclado | #451 | entregado |
 | Compartir y remezclar | #472 | decidido: fuera de Kids (ADR 0009 aceptado) |
 | Diferencias 6b con la versión publicada | #444 | auditoría |
 
-**Implementado ≠ activado por defecto.** El inventario de los 13 flags, su
-evidencia, etapas y condiciones de activación está en
+**Implementado ≠ paridad funcional.** El inventario de los 13 flags, su
+evidencia y condiciones de activación está en
 [`docs/deployment/KIDS_V2_ROLLOUT.md`](../../docs/deployment/KIDS_V2_ROLLOUT.md).
-El dueño del producto aprobó `customImages` como único default antes del
-playtest #389, después de la revisión #501. En un navegador nuevo, Crear muestra
+El 2026-10-24 el dueño del producto decidió activar por defecto las herramientas
+creativas v2 mientras se depura la experiencia completa (#538). La vinculación
+de cuentas sigue separada por dependencia de secretos y correo. En un navegador nuevo, Crear muestra
 `+ Explorador` y `+ Fondo`: el niño puede agregar archivos locales y el adulto
 controla el flag en Adultos. El niño no puede quitar ni reemplazar imágenes que
 vienen con el producto. Una lista explícita vacía en `agorix.kids.flags.v1`
 desactiva la función en ese navegador sin borrar proyectos. #524 sigue abierto
-para el despliegue gradual restante y la validación real con #389/#413.
+para seguir la decisión de defaults y la validación real con #389/#413.
 
 ## Auditoría de las diferencias 6b (issue #444)
 
@@ -76,7 +77,7 @@ Ninguna fila quedó como `gap`, por lo que no se abrieron issues nuevos.
 
 ### Decisión de tema
 
-El sistema oficial es `docs/product/DESIGN_SYSTEM.md`: lienzo crema, tipografías autoalojadas y paleta de tokens de Kids. Ese documento dice explícitamente que Agorix **no debe** adoptar por defecto una identidad de piezas de rompecabezas ni paletas arcoíris permanentes. Por eso la paleta Scratch (#447, #448) quedó detrás del flag `puzzleShape`, apagado por defecto. El verde `#06923e` es solo el color del navegador del sitio.
+El sistema oficial es `docs/product/DESIGN_SYSTEM.md`: lienzo crema, tipografías autoalojadas y paleta de tokens de Kids. Ese documento pide que Agorix conserve una identidad propia aunque use una gramática de bloques familiar. El 2026-10-24 el dueño del producto decidió activar el flag `puzzleShape` junto con las demás herramientas creativas mientras se depura la experiencia (#524, #538); la revisión visual debe reconciliar ese tratamiento de bloques con el diseño oficial. El verde `#06923e` es solo el color del navegador del sitio.
 
 ## Nota sobre el código de vinculación (issue #511)
 

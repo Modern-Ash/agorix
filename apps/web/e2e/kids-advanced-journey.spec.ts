@@ -11,7 +11,7 @@ async function addMove(page: Page, index: number, cells: number) {
 async function runMission(page: Page) {
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Sí", exact: true }).click();
-  await expect(page.getByRole("status")).toContainText("Llegaste");
+  await expect(page.locator(".kids-run-status")).toContainText("Llegaste");
   await page.getByRole("button", { name: "Volver al mapa" }).click();
 }
 

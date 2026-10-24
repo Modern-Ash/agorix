@@ -54,6 +54,7 @@ import { useLinkSync } from "./link/useLinkSync.js";
 import { bandProfile } from "./kidsAgeBand.js";
 import { useKidsText, type KidsText } from "./useKidsText.js";
 import { stopSpeaking } from "./speak.js";
+import { KidsOriGuide } from "./screens/KidsOriGuide.js";
 
 const NAV: readonly {
   readonly screen: KidsScreen;
@@ -351,6 +352,9 @@ export function KidsApp({
           </section>
         )}
       </main>
+      {adultSettings.oriSuggestions && state.screen !== "editor" ? (
+        <KidsOriGuide screen={state.screen} locale={state.locale} aboveNav={showNav} />
+      ) : null}
       {showNav ? (
         <nav className="kids-nav" aria-label={t("map")}>
           {NAV.map((item) => (
