@@ -10,6 +10,10 @@ import {
 import { validateProgram, type ProjectProgram } from "@agorix/program-model";
 import {
   runOriAdvancedStage,
+  createOriStudioInput,
+  runOriStudio,
+  validateOriStudioProposal,
+  type OriStudioContext,
   type OriAdvancedActorId,
   validateOriAdvancedStageProposal,
 } from "@agorix/ori-agent";
@@ -158,6 +162,10 @@ export function createTutorServer(options: TutorServerOptions): Server {
     if (path === "/api/tutor/advanced/ori") {
       if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
       return respondAdvanced(request, response);
+    }
+    if (path === "/api/tutor/studio/ori") {
+      if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
+      return respondStudio(request, response);
     }
     if (path === "/api/tutor/chat") {
       if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
@@ -333,6 +341,48 @@ export function createTutorServer(options: TutorServerOptions): Server {
     } catch {
       return send(response, 400, error("invalid-request"));
     }
+  }
+
+  async function respondStudio(request: IncomingMessage, response: ServerResponse): Promise<void> {
+    if (!(request.headers["content-type"] ?? "").includes("application/json"))
+      return send(response, 415, error("unsupported-media-type"));
+    if (!sameOrigin(request)) return send(response, 403, error("forbidden-origin"));
+    const body = await readBody(request);
+    if (body === "too-large") return send(response, 413, error("payload-too-large"));
+    let context: OriStudioContext;
+    try {
+      const raw = JSON.parse(body) as Record<string, unknown>;
+      if (
+        !raw ||
+        Array.isArray(raw) ||
+        Object.keys(raw).sort().join() !== "actorId,locale,program" ||
+        typeof raw.actorId !== "string" ||
+        raw.actorId.length > 64 ||
+        (raw.locale !== "es" && raw.locale !== "en")
+      )
+        throw new Error("invalid studio request");
+      context = {
+        actorId: raw.actorId,
+        locale: raw.locale,
+        program: validateProgram(raw.program as ProjectProgram),
+      };
+      createOriStudioInput(context);
+    } catch {
+      return send(response, 400, error("invalid-request"));
+    }
+    let decision;
+    try {
+      decision = options.ori ? await options.ori.studio(context) : await runOriStudio(context);
+      if (decision.proposal) validateOriStudioProposal(context, decision.proposal);
+    } catch {
+      decision = await runOriStudio(context);
+    }
+    lastOriSource = decision.source;
+    cached = undefined;
+    return send(response, 200, {
+      message: decision.message,
+      ...(decision.proposal ? { proposal: decision.proposal } : {}),
+    });
   }
 
   async function respondChat(request: IncomingMessage, response: ServerResponse): Promise<void> {
