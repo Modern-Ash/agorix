@@ -1,6 +1,6 @@
 # Agorix Kids: group mode, build and play together in the same room (design draft, no code)
 
-Status: **DRAFT, updated with owner decisions 1 and 2 (2026-10-24)**; items 3 and 4 still open. Tracks issue #556 under epic #555. Decision record: ADR 0010.
+Status: **DRAFT for product-owner approval (2026-10-24)**. The organizer account and limited relay were decided; legal review remains a launch gate. Tracks issue #556 under epic #555. Decision record: ADR 0010.
 
 ## Why
 
@@ -34,7 +34,7 @@ Kids in the same room (a class, or an adult with their children and friends) sho
 
 ## Transport: recommendation
 
-**WebRTC data channels in a star topology, with the organizer's device as the host (sequencer). Pairing is done in person by QR code or short code, with no signaling server.**
+**WebRTC data channels in a star topology, with the organizer's device as the host (sequencer). The default pairing path exchanges complete offer, answer and ICE candidate bundles through in-person QR scans; a short code works only with the optional online signaling mailbox.** A QR alone does not establish a connection until both sides have exchanged these bundles. The throwaway F3 spike must prove that the bundle fits a usable number of QR frames on the target tablets.
 
 ### Options considered
 
@@ -47,16 +47,20 @@ Kids in the same room (a class, or an adult with their children and friends) sho
 
 ### Why this fits the current architecture
 
+The [WebRTC signaling guide](https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API/Signaling_and_video_calling) confirms that offers, answers and ICE candidates need an application-defined exchange; the [WebRTC security RFC](https://datatracker.ietf.org/doc/html/rfc8826) documents the network-address privacy implications. The transport recommendation is a design hypothesis pending the tablet spike, not a verified cross-device result.
+
 - The runtime is deterministic and seeded, so devices need only the **same program, same seed and same ordered inputs** to compute the same game. No state sync, which also means less data on the wire.
 - The host acts as a **lockstep sequencer**: every tick it collects each player's input, assigns a global order and broadcasts the ordered input frame. Clients run the runtime locally. The host is not trusted for secrets because there are none, but it is authoritative for ordering.
 - No server code is required for play. The existing server stays HTTP-only.
 
 ### Pairing and signaling (no server)
 
-1. Organizer starts a session; the host device creates a WebRTC offer and shows it as a **QR code** (and a short fallback code).
-2. Each child device scans it and shows an answer QR back; the host scans it. Done once per child, in the room. Proximity is physical.
+1. Organizer starts a session; the host device waits for ICE gathering to finish, then shows an offer plus candidates as one or more **QR frames**. Offline pairing carries no STUN or TURN candidates.
+2. Each child device scans the offer, gathers its own local candidates and shows answer QR frames; the host scans them. Done once per child, in the room. A short code is only a lookup key for the online mailbox and is never sufficient offline.
 3. Session code and offer expire in minutes; reconnect repeats the scan. Join is rejected once the roster is full or locked by the organizer.
-4. Direct local connection is tried first (host candidates). If it fails (for example Wi-Fi client isolation), the **minimal free-cost relay** below is used.
+4. Direct local connection is tried first (host candidates). If it fails (for example Wi-Fi client isolation), the online relay can be offered only when enabled and Internet is available. There is no promise of connectivity on an isolated school network while offline.
+
+QR scanning uses the camera API, which requires a secure context and user permission. The current Web `Permissions-Policy` explicitly has `camera=()`, so F3 must change that policy only for the group scan surface and verify it in the production headers. A text copy/paste of the full signaling bundle may serve as a supervised fallback on devices without camera permission. WebRTC peers can learn each other's network addresses through ICE; in-person pairing limits the audience but does not eliminate this metadata.
 
 ### Minimal relay (decided: yes, free of cost, minimal)
 
@@ -64,7 +68,7 @@ Goal: keep the same-room design but rescue the cases where devices cannot reach 
 
 - **Signaling mailbox** on the existing `apps/server`: tiny HTTP endpoints (POST/GET with short polling or SSE; no WebSocket), keyed by the session token of the signed-in organizer, holding only the offer/answer text for a few minutes, then deleted. Replaces QR scanning when the QR is impractical. No extra infrastructure, no new cost.
 - **STUN**: a free public STUN service. Carries no game data.
-- **TURN (only if direct fails)**: a provider with a free allowance (candidate: Cloudflare Realtime TURN; alternatives: other free tiers or self-hosted coturn). Availability and limits to be verified before F3. TURN relays only DTLS-encrypted packets, so the relay cannot read inputs.
+- **TURN (only if direct fails)**: Cloudflare Realtime TURN is a candidate with a [shared monthly free allowance and usage-based charges beyond it](https://developers.cloudflare.com/realtime/turn/faq/). It is not a guaranteed zero-cost service. F3 must verify current terms, set a hard operational budget and ensure the relay stays off when credentials or budget controls are absent. TURN relays DTLS-encrypted packets, so it cannot read game inputs, but it sees connection metadata.
 - Limits: tiny session size (max 5 devices), session lifetime cap (for example 2 hours), per-organizer rate limit, so free tiers cannot be exhausted by abuse.
 - Still no game or project content is stored on any server. A separate privacy review is required before enabling the relay (see ADR 0010).
 
@@ -75,19 +79,20 @@ Goal: keep the same-room design but rescue the cases where devices cannot reach 
 - **mDNS-obfuscated ICE candidates** on some browsers. To be validated in a throwaway spike on real tablets before F3.
 - **Lockstep latency**: input delay equal to the slowest device. Acceptable for cooperative and turn-based games on a LAN; first release restricts to those.
 - **Determinism across devices**: confirm identical runs on tablet and web for a shared seed and input log (acceptance test in F3, listed in #556).
+- **Execution model**: the current runtime replays a finite ordered event list; it does not expose an incremental lockstep tick protocol. F3 must define canonical event serialization, frame numbers, input deadlines, missing-player action, version pinning, state digests and resync/rejoin behavior. Re-running from the start for each input is only a spike strategy, not an assumed production design.
 
 ## Organizer role (proposed)
 
 - **Not a new account type for children.** The organizer is an existing adult account (verified email, as in #504) with an `organizer` capability.
 - Capability gives: create/close groups, name teams, lock the roster, remove a child, view the group summary. It does not grant access to a child's data beyond the aggregates already shown in the adults panel.
-- Same role covers a teacher and a parent with friends. For a non-class group, the organizer confirms that each child's adult has consented (checkbox plus short notice; not legal advice; legal review required before launch).
+- Same role covers a teacher and a parent with friends, but the authority to include other children is distinct from owning an adult account. A family/friends organizer records an explicit adult-consent attestation for each participating child before joining; the app does not collect that adult's name or email from a child. A school deployment requires a school-level authorization path and notice, not a teacher checkbox alone. Neither path is enabled for real children until the legal/privacy review approves the jurisdiction-specific flow.
 - **Decided (owner, 2026-10-24): the organizer account is mandatory.** No group can be started without a signed-in, email-verified organizer. Consequence: starting a session needs Internet once (sign-in and a short-lived session token); after that, play can continue on the local network. Offline-only start is out of scope.
 
 ## Group and team model
 
 - **Group**: created by the organizer; ephemeral; closing deletes everything related to it. Children appear as a generated alias (e.g. "Blue Fox") picked from a fixed list; no text input.
 - **Team**: 2 to 4 children inside a group; roles (characters, scene, rules, testing) assigned by the team or organizer.
-- **Persistence**: the team project is a normal `.agorix` project saved on the host device (and optionally each member's device). No server copy.
+- **Persistence**: the team project is a normal `.agorix` project saved on the host device only until the organizer explicitly exports it. Closing deletes ephemeral group/session state but cannot delete a file already exported or a copy on a peer; the UI must explain this boundary. No server copy.
 
 ## Building together
 
@@ -119,7 +124,7 @@ There is no chat, so there is no live conversation to censor. AI is used as a **
 **Notes and limits**
 
 - A remote moderation model (cloud) would send children's content to a provider. That is not allowed here; it would need its own ADR, privacy review and an organizer opt-in.
-- Classifiers make mistakes both ways. That is why the AI is a pre-filter and the adult approves, and why the first release keeps shared content to a minimum: custom images are already adult-gated (flag `customImages`), and names come from a list or a short sanitized field.
+- Classifiers make mistakes both ways. That is why the AI is a pre-filter and the adult approves. The adult controls `customImages`, but a child can add local images when that flag is on (#531); local images must never cross to another device until this group-specific pipeline is implemented and approved. Names remain generated from a fixed list; the first release has no editable name field.
 - Every threshold, model choice and list above is admin-configurable and stored in the database (see "AI configuration").
 - Open technical item for F0: choose the local models (size, license, accuracy on tablets) and measure false positives with children's drawings; start with a throwaway benchmark.
 - Free-text chat remains out of scope. If it were ever wanted: new ADR, default-deny, local model, organizer queue.
@@ -128,7 +133,7 @@ There is no chat, so there is no live conversation to censor. AI is used as a **
 
 Everything this feature parametrizes with AI must be **editable by an administrator and persisted in the database**, through the registry in issue #545 (versioned per capability, revision history, author, date, rollback, explicit publish, admin auth separate from adult accounts). Nothing lives in code constants, process memory or `localStorage`.
 
-New AI capabilities introduced here, to register in #545:
+New AI capabilities introduced here require a **versioned schema migration** of the fixed registry delivered in #545, before any group feature is enabled:
 
 | Capability               | Editable by admin (persisted, versioned)                                                                  |
 | ------------------------ | --------------------------------------------------------------------------------------------------------- |
@@ -142,12 +147,31 @@ Secrets (for example TURN credentials) stay in server secrets, not in the editab
 
 ## Safety and privacy
 
-- No data leaves the room by default: no server round trip for group play.
+- Game inputs stay between peers by default. Organizer sign-in, optional signaling and TURN use the Internet and expose limited connection metadata; they must be described separately in the privacy notice.
 - No chat, no phrases, no free text; no images, names or locations.
 - Organizer can remove a child, lock the roster, end the session.
 - `docs/safety/CHILD_SAFETY_PRIVACY.md` gets a group-mode section (data, purpose, retention, deletion) and "Prohibited" stays unchanged except the explicit ADR 0010 exception.
 - AI pre-filter and approval queue for content shared in the group (see Moderation).
-- Threat model to complete in F0: impersonation of an alias, leaked session code, shared-device mix-ups, a malicious child device sending crafted inputs (host validates every input against the program's declared input schema and rate limits it), emoji used to tease.
+- Threats, controls and deletion boundaries are recorded below and in `docs/safety/CHILD_SAFETY_PRIVACY.md`.
+
+### Threat model and controls
+
+| Threat                                  | Required control                                                                                                                                |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Leaked code or QR, remote join          | Short expiry, one-use join proof, organizer approval, locked roster, 4-child cap; a code proves possession, not physical proximity.             |
+| Alias impersonation or stolen device    | Ephemeral per-device key bound to one slot; reconnect invalidates the old key; organizer sees a reconnect warning and can remove the slot.      |
+| Shared tablet exposes previous group    | Group session memory cleared on close/logout; no silent auto-join; explicit local project export only.                                          |
+| Malformed input or denial of service    | Host validates version, actor, input schema, sequence and rate; bounds frame and project size; disconnects repeated offenders.                  |
+| Bullying with reactions or shared art   | Tiny fixed reaction set with per-peer rate limit and mute; every shared asset held for organizer review, with remove/end controls.              |
+| Personal data in images or project text | Local sanitizer plus on-device pre-filter; fail closed; organizer review; no provider upload or content log.                                    |
+| Host loss or dishonest host             | All peers stop safely; no automatic host migration in v1; frame hashes detect divergence, and reconnect needs organizer approval.               |
+| Network metadata exposure               | Direct peers see ICE addresses; TURN/signaling see IP and timing. No IP in group history; short retention and explicit notice before relay use. |
+
+### Privacy and legal review note
+
+The organizer's verified adult email is used for authentication and abuse control. Group IDs, device slots, aliases, consent attestations, signaling bundles and coarse safety counts serve only the temporary session. The design target is deletion on close or expiry and no content retained in server logs. Local exported `.agorix` files are outside that automatic deletion boundary. Precise TTLs and backup deletion windows are F1 acceptance criteria.
+
+For US deployments, the [FTC's COPPA guidance](https://www.ftc.gov/business-guidance/resources/complying-coppa-frequently-asked-questions) limits school authorization to educational use and recommends authorization by a school or district rather than an individual teacher. For EU deployments, [EDPB guidance](https://www.edpb.europa.eu/topics/key-gdpr-concepts/children_en) calls for extra protection and age-appropriate transparency for children's data; national rules affect the age of digital consent. A lawyer/privacy specialist must decide controller roles, lawful basis, notices, consent and deletion duties for each deployment before real children use group mode. This note is a design input, not legal advice.
 
 ## Phases (from #555)
 
