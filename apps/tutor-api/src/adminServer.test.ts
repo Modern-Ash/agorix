@@ -60,6 +60,7 @@ describe("AI administrator HTTP boundary", () => {
     expect(signed.status).toBe(200);
     const cookie = signed.headers.get("set-cookie")!.split(";")[0]!;
     expect(signed.headers.get("set-cookie")).toContain("HttpOnly");
+    expect(signed.headers.get("set-cookie")).toContain("Secure");
     const { csrf } = (await signed.json()) as { csrf: string };
     const current = (await (await get(cookie)).json()) as {
       current: { revision: number; config: unknown };
@@ -93,14 +94,12 @@ describe("AI administrator HTTP boundary", () => {
     expect((await post("publish", { expectedRevision: 1, config: edited })).status).toBe(409);
     expect((await post("rollback", { expectedRevision: 2, sourceRevision: 1 })).status).toBe(200);
     expect((await get(cookie)).status).toBe(200);
-    expect(
-      (
-        await fetch(`${base}/api/tutor/admin/session`, {
-          method: "DELETE",
-          headers: { origin: base, cookie, "x-agorix-admin-csrf": csrf },
-        })
-      ).status,
-    ).toBe(200);
+    const signedOut = await fetch(`${base}/api/tutor/admin/session`, {
+      method: "DELETE",
+      headers: { origin: base, cookie, "x-agorix-admin-csrf": csrf },
+    });
+    expect(signedOut.status).toBe(200);
+    expect(signedOut.headers.get("set-cookie")).toContain("Secure");
     expect((await get(cookie)).status).toBe(401);
   });
 
