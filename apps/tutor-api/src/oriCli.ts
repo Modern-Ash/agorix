@@ -2,6 +2,7 @@ import { spawn } from "node:child_process"; // agora-allowlist: server-only fixe
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { AiCapability, AiPolicy } from "./aiConfig.js";
 import {
   evaluateOriAgentOutput,
   runOriAgent,
@@ -43,6 +44,7 @@ export type OriCliProcess = (
 export interface OriCliDependencies {
   readonly run?: OriCliProcess;
   readonly now?: () => number;
+  readonly policyFor?: (capability: AiCapability) => AiPolicy;
 }
 export interface OriCliHealth {
   readonly configured: boolean;
@@ -93,15 +95,33 @@ export function createOriCliService(
 ): OriCliService {
   const run = dependencies.run ?? runBoundedProcess;
   const now = dependencies.now ?? Date.now;
-  let cached:
-    { readonly at: number; readonly provider: "codex" | "opencode" | undefined } | undefined;
+  const cached = new Map<
+    string,
+    { readonly at: number; readonly provider: "codex" | "opencode" | undefined }
+  >();
 
-  async function select(): Promise<"codex" | "opencode" | undefined> {
-    if (config.provider === "disabled") return undefined;
-    if (cached && now() - cached.at < PROBE_TTL_MS) return cached.provider;
+  function policyFor(capability: AiCapability): AiPolicy {
+    return (
+      dependencies.policyFor?.(capability) ?? {
+        enabled: true,
+        provider: config.provider,
+        model: config.codexModel,
+        timeoutMs: config.timeoutMs,
+        requestsPerMinute: 6,
+        promptTemplate: "",
+        fallback: "deterministic",
+      }
+    );
+  }
+
+  async function select(policy: AiPolicy): Promise<"codex" | "opencode" | undefined> {
+    if (!policy.enabled || policy.provider === "disabled") return undefined;
+    const previous = cached.get(policy.provider);
+    if (previous && now() - previous.at < PROBE_TTL_MS) return previous.provider;
     const candidates =
-      config.provider === "auto" ? (["codex", "opencode"] as const) : [config.provider];
+      policy.provider === "auto" ? (["codex", "opencode"] as const) : [policy.provider];
     for (const candidate of candidates) {
+      if (candidate !== "codex" && candidate !== "opencode") continue;
       const bin = candidate === "codex" ? config.codexBin : config.opencodeBin;
       try {
         await run(bin, ["--version"], {
@@ -111,24 +131,27 @@ export function createOriCliService(
           cwd: tmpdir(),
           env: safeCliEnv(),
         });
-        cached = { at: now(), provider: candidate };
+        cached.set(policy.provider, { at: now(), provider: candidate });
         return candidate;
       } catch {
         // An absent or unresponsive CLI is normal. The deterministic provider remains available.
       }
     }
-    cached = { at: now(), provider: undefined };
+    cached.set(policy.provider, { at: now(), provider: undefined });
     return undefined;
   }
 
-  function textModel(provider: "codex" | "opencode") {
+  function textModel(provider: "codex" | "opencode", policy: AiPolicy) {
     return {
       generate: async (systemInstructions: string, inputJson: string) => {
         const bin = provider === "codex" ? config.codexBin : config.opencodeBin;
         const directory = mkdtempSync(join(tmpdir(), "agorix-ori-"));
         try {
+          const instructions = policy.promptTemplate
+            ? `${systemInstructions}\n\nADMIN_ADDITIONAL_INSTRUCTIONS:\n${policy.promptTemplate}`
+            : systemInstructions;
           const input =
-            provider === "codex" ? `${systemInstructions}\n\nINPUT_JSON:\n${inputJson}\n` : "";
+            provider === "codex" ? `${instructions}\n\nINPUT_JSON:\n${inputJson}\n` : "";
           if (
             Buffer.byteLength(inputJson) > MAX_INPUT_BYTES ||
             Buffer.byteLength(input) > MAX_INPUT_BYTES
@@ -136,11 +159,11 @@ export function createOriCliService(
             throw new CliProcessError("output-too-large");
           const args =
             provider === "codex"
-              ? codexArgs(directory, config.codexModel)
-              : opencodeArgs(inputJson);
+              ? codexArgs(directory, policy.model)
+              : opencodeArgs(inputJson, policy.provider === "auto" ? undefined : policy.model);
           const output = await run(bin, args, {
             input,
-            timeoutMs: config.timeoutMs,
+            timeoutMs: policy.timeoutMs,
             maxOutputBytes: MAX_OUTPUT_BYTES,
             cwd: directory,
             env: safeCliEnv(
@@ -155,7 +178,7 @@ export function createOriCliService(
                       agent: {
                         "ori-text": {
                           mode: "primary",
-                          prompt: systemInstructions,
+                          prompt: instructions,
                           permission: "deny",
                           tools: { "*": false },
                         },
@@ -175,33 +198,39 @@ export function createOriCliService(
 
   return {
     async health() {
-      const provider = await select();
+      const policy = policyFor("mission");
+      const provider = await select(policy);
       return {
-        configured: config.provider !== "disabled",
+        configured: policy.enabled && policy.provider !== "disabled",
         available: provider !== undefined,
         providerInUse: provider ?? "deterministic",
       };
     },
     async respond(context) {
-      const provider = await select();
+      const policy = policyFor("mission");
+      const provider = await select(policy);
       if (!provider) return evaluateOriAgentOutput(context, undefined);
-      return runOriAgent(context, textModel(provider));
+      return runOriAgent(context, textModel(provider, policy));
     },
     async chat(context) {
-      const provider = await select();
-      return runOriChat(context, provider ? textModel(provider) : undefined);
+      const policy = policyFor("chat");
+      const provider = await select(policy);
+      return runOriChat(context, provider ? textModel(provider, policy) : undefined);
     },
     async proposeGoal(locale) {
-      const provider = await select();
-      return runOriGoalAgent(locale, provider ? textModel(provider) : undefined);
+      const policy = policyFor("goals");
+      const provider = await select(policy);
+      return runOriGoalAgent(locale, provider ? textModel(provider, policy) : undefined);
     },
     async advanced(context) {
-      const provider = await select();
-      return runOriAdvancedStage(context, provider ? textModel(provider) : undefined);
+      const policy = policyFor("advanced");
+      const provider = await select(policy);
+      return runOriAdvancedStage(context, provider ? textModel(provider, policy) : undefined);
     },
     async studio(context) {
-      const provider = await select();
-      return runOriStudio(context, provider ? textModel(provider) : undefined);
+      const policy = policyFor("studio");
+      const provider = await select(policy);
+      return runOriStudio(context, provider ? textModel(provider, policy) : undefined);
     },
   };
 }
@@ -235,8 +264,17 @@ function codexArgs(directory: string, model: string): readonly string[] {
   ];
 }
 
-function opencodeArgs(inputJson: string): readonly string[] {
-  return ["run", "--pure", "--format", "json", "--agent", "ori-text", inputJson];
+function opencodeArgs(inputJson: string, model?: string): readonly string[] {
+  return [
+    "run",
+    "--pure",
+    "--format",
+    "json",
+    ...(model ? ["--model", model] : []),
+    "--agent",
+    "ori-text",
+    inputJson,
+  ];
 }
 
 function parseOpenCodeText(output: string): string {

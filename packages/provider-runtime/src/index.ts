@@ -159,6 +159,8 @@ export interface OpenAICompatibleProviderRuntimeConfig {
   readonly authToken?: string;
   readonly authHeaderName?: string;
   readonly fetch?: ProviderRuntimeFetch;
+  /** Bounded administrator addition after the fixed JSON response contract. */
+  readonly additionalSystemInstructions?: string;
 }
 
 interface OpenAICompatibleChatResponse {
@@ -514,7 +516,10 @@ export function createOpenAICompatibleProviderRuntime(
               {
                 role: "system",
                 content:
-                  "Return only one JSON object matching agorix/learning-companion-response/v1.",
+                  "Return only one JSON object matching agorix/learning-companion-response/v1." +
+                  (config.additionalSystemInstructions
+                    ? `\n${config.additionalSystemInstructions}`
+                    : ""),
               },
               { role: "user", content: createGatewayPrompt(validated) },
             ],
