@@ -46,6 +46,7 @@ import {
   type KidsOriOffer,
 } from "../kidsOri.js";
 import { requestKidsOriOffer } from "../kidsOriRemote.js";
+import { oriMotionStatus, useOriPageVisible } from "../kidsOriMotion.js";
 import {
   addKidsBlock,
   createKidsEditor,
@@ -235,6 +236,7 @@ export function EditorScreen({
   const [step, setStep] = useState(0);
   const [oriMemory, setOriMemory] = useState(loadKidsOriMemory);
   const [oriOpen, setOriOpen] = useState(false);
+  const oriPageVisible = useOriPageVisible();
   const [oriSeenHash, setOriSeenHash] = useState<string | null>(null);
   const [remoteOri, setRemoteOri] = useState<{
     readonly key: string;
@@ -292,6 +294,15 @@ export function EditorScreen({
   const remoteOriKey = `${mission.id}:${locale}:${oriHash}:${oriHintLevel}`;
   const oriWaiting = !freeProjectId && remoteOri?.key !== remoteOriKey;
   const oriOffer = oriWaiting ? undefined : (remoteOri?.offer ?? localOriOffer);
+  const oriMotion = oriWaiting
+    ? "thinking"
+    : oriOpen
+      ? "listening"
+      : played
+        ? "observing"
+        : oriOffer?.proposal
+          ? "proposal"
+          : "idle";
   const oriReview = useMemo(
     () =>
       oriOffer?.proposal ? createProposalReview(history.current, oriOffer.proposal) : undefined,
@@ -1337,6 +1348,8 @@ export function EditorScreen({
           <button
             type="button"
             className="kids-ori-float-trigger"
+            data-ori-state={oriMotion}
+            data-ori-paused={!oriPageVisible}
             aria-label={
               oriOffer?.proposal
                 ? t("openOriProposal")
@@ -1347,7 +1360,7 @@ export function EditorScreen({
             onClick={() => setOriOpen(true)}
           >
             <KidsSprite slot="ori" />
-            <span>{t("oriIdle")}</span>
+            <span>{oriMotion === "idle" ? t("oriIdle") : oriMotionStatus(oriMotion, locale)}</span>
           </button>
           {oriOpen ? (
             <div

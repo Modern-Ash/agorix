@@ -21,6 +21,8 @@ import {
 import { acceptProposal, modifyProposal, rejectProposal } from "@agorix/proposals";
 import { validateOriScoreProposal, type OriAdvancedDecision } from "@agorix/ori-agent";
 import type { Locale } from "../../i18n.js";
+import { useOriPageVisible } from "../kidsOriMotion.js";
+import { KidsSprite } from "./KidsArt.js";
 import { advancedProjectId, completeAdvancedStage } from "../kidsAdvancedProgress.js";
 import { useKidsFlag } from "../kidsFlags.js";
 import { requestAdvancedOri } from "../kidsAdvancedOriRemote.js";
@@ -77,6 +79,7 @@ export function AdvancedScoreScreen({ locale, readAloud = true, onBack }: Props)
   const [listValue, setListValue] = useState("1");
   const [listIndex, setListIndex] = useState("1");
   const [oriBusy, setOriBusy] = useState(false);
+  const oriPageVisible = useOriPageVisible();
   const [oriDecision, setOriDecision] = useState<OriAdvancedDecision | null>(null);
   const [oriChanged, setOriChanged] = useState(false);
   const statements = scoreDataStatements(history.current);
@@ -415,11 +418,22 @@ export function AdvancedScoreScreen({ locale, readAloud = true, onBack }: Props)
           <div className="kids-advanced-ori">
             <button
               type="button"
-              className="kids-button"
+              className="kids-button kids-ori-action"
+              data-ori-state={
+                oriBusy
+                  ? "thinking"
+                  : oriDecision?.proposal
+                    ? "proposal"
+                    : oriDecision
+                      ? "fallback"
+                      : "idle"
+              }
+              data-ori-paused={!oriPageVisible}
               disabled={oriBusy}
               onClick={() => void askOri()}
             >
-              {oriBusy ? copy.oriBusy : copy.ori}
+              <KidsSprite slot="ori" />
+              <span>{oriBusy ? copy.oriBusy : copy.ori}</span>
             </button>
             {oriDecision?.proposal ? (
               <div className="kids-advanced-ori-review" aria-label={copy.oriAdd}>

@@ -44,6 +44,7 @@ import {
 } from "../kidsStudioModel.js";
 import { listStudioProjects, saveStudioProject, setStudioBackdrop } from "../kidsStudioProjects.js";
 import { requestStudioOri } from "../kidsStudioOriRemote.js";
+import { useOriPageVisible } from "../kidsOriMotion.js";
 import { KidsBackdrop, KidsSprite } from "./KidsArt.js";
 
 interface Props {
@@ -243,6 +244,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
   const [oriIdea, setOriIdea] = useState<ProgramProposal | null>(null);
   const [oriMessage, setOriMessage] = useState("");
   const [oriBusy, setOriBusy] = useState(false);
+  const oriPageVisible = useOriPageVisible();
   const [error, setError] = useState(false);
   const creative = useMemo(
     () => creativeForStudio(history.current, backdropId, locale),
@@ -257,6 +259,15 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
   const proposedOperation = oriIdea?.operations[0];
   const proposedStatement =
     proposedOperation?.type === "appendStatement" ? proposedOperation.statement : null;
+  const oriMotion = oriBusy
+    ? "thinking"
+    : oriIdea
+      ? "proposal"
+      : oriMessage
+        ? "fallback"
+        : run
+          ? "observing"
+          : "idle";
   const selectedFrame = frame === null ? null : run?.frames[frame];
   const shownActors = selectedFrame?.actors ?? run?.actors;
   const shownStage = selectedFrame?.stage ?? run?.stage ?? creative.stage;
@@ -1185,11 +1196,14 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
             <div className="kids-studio-ori">
               <button
                 type="button"
-                className="kids-button"
+                className="kids-button kids-ori-action"
+                data-ori-state={oriMotion}
+                data-ori-paused={!oriPageVisible}
                 disabled={oriBusy}
                 onClick={() => void askOri()}
               >
-                {copy.idea}
+                <KidsSprite slot="ori" />
+                <span>{copy.idea}</span>
               </button>
               {!oriBusy && oriMessage && !oriIdea ? (
                 <p role="status" className="kids-note">

@@ -853,6 +853,118 @@
   color: white;
   font-size: 1.5rem;
 }
+.kids-ori-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.kids-ori-action > span:first-child {
+  display: inline-grid;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 2rem;
+  place-items: center;
+  border-radius: 50%;
+  background: #6549bb;
+  color: white;
+}
+.kids-ori-float-trigger > span:first-child,
+.kids-ori-action > span:first-child {
+  transform-origin: center 75%;
+}
+.kids-ori-float-trigger[data-ori-state="idle"] > span:first-child,
+.kids-ori-action[data-ori-state="idle"] > span:first-child {
+  animation: kids-ori-breathe 8s ease-in-out infinite;
+}
+.kids-ori-float-trigger[data-ori-state="thinking"] > span:first-child,
+.kids-ori-action[data-ori-state="thinking"] > span:first-child {
+  animation: kids-ori-think 1.6s ease-in-out infinite;
+}
+.kids-ori-float-trigger[data-ori-state="listening"] > span:first-child,
+.kids-ori-action[data-ori-state="listening"] > span:first-child {
+  animation: kids-ori-listen 0.6s ease-out both;
+}
+.kids-ori-float-trigger[data-ori-state="proposal"] > span:first-child,
+.kids-ori-action[data-ori-state="proposal"] > span:first-child {
+  animation: kids-ori-idea 0.9s ease-out both;
+}
+.kids-ori-float-trigger[data-ori-state="observing"] > span:first-child,
+.kids-ori-action[data-ori-state="observing"] > span:first-child {
+  animation: kids-ori-nod 0.9s ease-in-out both;
+}
+.kids-ori-float-trigger[data-ori-state="fallback"] > span:first-child,
+.kids-ori-action[data-ori-state="fallback"] > span:first-child {
+  animation: kids-ori-settle 0.7s ease-out both;
+}
+.kids-ori-float-trigger[data-ori-paused="true"] > span:first-child,
+.kids-ori-action[data-ori-paused="true"] > span:first-child {
+  animation-play-state: paused;
+}
+@keyframes kids-ori-breathe {
+  0%,
+  40%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  47%,
+  54% {
+    transform: translateY(-2px) scale(1.035);
+  }
+}
+@keyframes kids-ori-think {
+  0%,
+  100% {
+    transform: rotate(-3deg) translateY(0);
+  }
+  50% {
+    transform: rotate(3deg) translateY(-3px);
+  }
+}
+@keyframes kids-ori-listen {
+  from {
+    transform: rotate(0);
+  }
+  to {
+    transform: rotate(-8deg);
+  }
+}
+@keyframes kids-ori-idea {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+  45% {
+    transform: translateY(-5px) scale(1.12);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes kids-ori-nod {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  40% {
+    transform: rotate(7deg);
+  }
+  70% {
+    transform: rotate(-3deg);
+  }
+}
+@keyframes kids-ori-settle {
+  from {
+    transform: translateY(-2px) rotate(-5deg);
+  }
+  to {
+    transform: translateY(0) rotate(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kids-ori-float-trigger > span:first-child,
+  .kids-ori-action > span:first-child {
+    animation: none !important;
+  }
+}
 .kids-ori-float-backdrop {
   position: fixed;
   inset: 0;
@@ -891,6 +1003,9 @@
   line-height: 1.5;
 }
 @media (max-width: 699px) {
+  .kids-ori-guide-zone:not(.kids-ori-guide-above-nav) {
+    bottom: calc(104px + env(safe-area-inset-bottom));
+  }
   .kids-ori-float-zone {
     padding-inline: 0;
   }

@@ -14,7 +14,15 @@ test("Ori accompanies a new learner through onboarding, map, creation and editor
   await page.reload();
 
   await expect(page.getByRole("button", { name: "Hablar con Ori" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Hablar con Ori" })).toHaveAttribute(
+    "data-ori-state",
+    "idle",
+  );
   await page.getByRole("button", { name: "Hablar con Ori" }).click();
+  await expect(page.getByRole("button", { name: "Hablar con Ori" })).toHaveAttribute(
+    "data-ori-state",
+    "listening",
+  );
   await expect(page.getByRole("dialog", { name: "Ori te acompaña" })).toContainText(
     "Elegí cómo querés explorar",
   );
@@ -39,6 +47,39 @@ test("Ori accompanies a new learner through onboarding, map, creation and editor
   await expect(ori).toBeVisible();
   await ori.click();
   await expect(page.getByRole("dialog", { name: /Ori/ })).toBeVisible();
+});
+
+test("Ori pauses offscreen and respects reduced motion", async ({ page }) => {
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+  });
+  await page.reload();
+  const ori = page.getByRole("button", { name: "Hablar con Ori" });
+  await expect(ori).toHaveAttribute("data-ori-state", "idle");
+  await expect
+    .poll(() =>
+      ori
+        .locator("span")
+        .first()
+        .evaluate((node) => getComputedStyle(node).animationName),
+    )
+    .toBe("kids-ori-breathe");
+  await page.evaluate(() => {
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "hidden" });
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  await expect(ori).toHaveAttribute("data-ori-paused", "true");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect
+    .poll(() =>
+      ori
+        .locator("span")
+        .first()
+        .evaluate((node) => getComputedStyle(node).animationName),
+    )
+    .toBe("none");
 });
 
 test("Ori remains visible in an advanced stage without changing the program", async ({ page }) => {
