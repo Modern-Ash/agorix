@@ -198,6 +198,7 @@ test.describe("Kids Ori production fallback", () => {
     });
     await page.goto("/");
     await page.getByRole("button", { name: "Misión 1" }).click();
+    await page.getByRole("button", { name: "Abrir propuesta de Ori" }).click();
     await expect(page.locator(".kids-ori-proposal")).toContainText("mover 4");
     await expect(page.locator(".kids-editor")).not.toContainText(
       /conectad|proveedor|provider|offline/i,
