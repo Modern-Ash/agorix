@@ -6,7 +6,7 @@ import {
 import type { MultiActorRunResult } from "@agorix/runtime";
 import { normalizeLocale } from "./index.js";
 
-export const KIDS_ADVANCED_STAGES = ["scene", "react", "score"] as const;
+export const KIDS_ADVANCED_STAGES = ["scene", "react", "score", "control", "message"] as const;
 export type KidsAdvancedStage = (typeof KIDS_ADVANCED_STAGES)[number];
 
 export interface KidsAdvancedMission {
@@ -37,6 +37,16 @@ const COPY = {
       instruction: "Cambiá el puntaje y mirá el número que muestra el mundo.",
       reflection: "¿Qué número esperabas y cuál mostró el puntaje?",
     },
+    control: {
+      title: "Elegí qué pasa",
+      instruction: "Usá si / si no, azar y esperar. Mirá qué camino siguió el programa.",
+      reflection: "¿Qué condición se cumplió y qué bloque se ejecutó?",
+    },
+    message: {
+      title: "Enviá un mensaje",
+      instruction: "Enviá un mensaje para que otro personaje reaccione.",
+      reflection: "¿Quién envió el mensaje y quién respondió?",
+    },
   },
   en: {
     scene: {
@@ -54,13 +64,23 @@ const COPY = {
       instruction: "Change the score and watch the number shown in the world.",
       reflection: "What number did you expect, and what did the score show?",
     },
+    control: {
+      title: "Choose what happens",
+      instruction: "Use if / else, random and wait. Watch which path the program takes.",
+      reflection: "Which condition was true and which block ran?",
+    },
+    message: {
+      title: "Send a message",
+      instruction: "Send a message so another character responds.",
+      reflection: "Who sent the message and who replied?",
+    },
   },
 } as const;
 
 function starterProgram(stage: KidsAdvancedStage, locale: "es" | "en"): ProjectProgram {
   return {
     schema: SCHEMA_VERSION,
-    ...(stage === "score"
+    ...(["score", "control"].includes(stage)
       ? {
           variables: [
             {
@@ -78,6 +98,20 @@ function starterProgram(stage: KidsAdvancedStage, locale: "es" | "en"): ProjectP
         trigger: stage === "react" ? { type: "onActorClicked" } : { type: "greenFlag" },
         statements: [],
       },
+      ...(stage === "message"
+        ? ([
+            {
+              id: "advanced-message-ori",
+              trigger: { type: "onMessage" as const, message: "go" },
+              statements: [],
+            },
+            {
+              id: "advanced-message-friend",
+              trigger: { type: "onMessage" as const, message: "go" },
+              statements: [],
+            },
+          ] as const)
+        : []),
     ],
   };
 }
@@ -94,7 +128,10 @@ function starterCreative(stage: KidsAdvancedStage, locale: "es" | "en"): Project
         size: 100,
         visible: true,
         costumeId: "asset:costume.default",
-        scripts: [`advanced-${stage}`],
+        scripts:
+          stage === "message"
+            ? ["advanced-message", "advanced-message-ori"]
+            : [`advanced-${stage}`],
       },
       {
         id: "actor:friend",
@@ -105,7 +142,7 @@ function starterCreative(stage: KidsAdvancedStage, locale: "es" | "en"): Project
         size: 100,
         visible: true,
         costumeId: "asset:costume.default",
-        scripts: [],
+        scripts: stage === "message" ? ["advanced-message-friend"] : [],
       },
     ],
     stage: { actorOrder: ["actor:ori", "actor:friend"] },
@@ -195,5 +232,24 @@ export function evaluateKidsAdvancedMission(
           before?.value !== after.value
         );
       });
+    case "control":
+      return (
+        run.trace.some((entry) => entry.statementType === "if") &&
+        run.trace.some((entry) => entry.statementType === "wait") &&
+        run.trace.some((entry) => entry.statementType === "setVariable")
+      );
+    case "message":
+      return (
+        run.trace.some((entry) => entry.statementType === "broadcast") &&
+        ["actor:ori", "actor:friend"].every((actorId) =>
+          run.trace.some(
+            (entry) =>
+              entry.event.type === "message" &&
+              entry.actorId === actorId &&
+              entry.statementType === "move" &&
+              entry.worldBefore.sprite.x !== entry.worldAfter.sprite.x,
+          ),
+        )
+      );
   }
 }

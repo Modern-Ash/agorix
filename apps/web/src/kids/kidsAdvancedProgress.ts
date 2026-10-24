@@ -14,6 +14,7 @@ import {
 import { runMultiActorProgram, type RuntimeEvent } from "@agorix/runtime";
 import { validateProgram } from "@agorix/program-model";
 import { KIDS_WORLDS } from "./kidsState.js";
+import { validateControlStageProgram } from "./kidsAdvancedControlModel.js";
 
 /** Check authored mission projects, never a star count or legacy profile marker. */
 export function advancedEntryUnlocked(store: ProjectStore): boolean {
@@ -110,6 +111,8 @@ export function completeAdvancedStage(
     if (record.stage !== stage) return false;
     if (record.completed && project.metadata.missionProgress === 1) return true;
     if (stage === "react" && childEvent?.type !== "actorClicked") return false;
+    if (stage === "control" || stage === "message")
+      validateControlStageProgram(project.program, stage);
     const run = runMultiActorProgram(
       project.program,
       {
@@ -117,7 +120,10 @@ export function completeAdvancedStage(
         ...(project.metadata.stage === undefined ? {} : { stage: project.metadata.stage }),
         ...(project.metadata.assets === undefined ? {} : { assets: project.metadata.assets }),
       },
-      childEvent === undefined ? {} : { events: [childEvent] },
+      {
+        ...(childEvent === undefined ? {} : { events: [childEvent] }),
+        ...(stage === "control" ? { randomSeed: 42 } : {}),
+      },
     );
     if (!evaluateKidsAdvancedMission(stage, run)) return false;
     store.save(id, project.program, {

@@ -107,6 +107,65 @@ describe("Kids advanced progression", () => {
     );
     expect(completeAdvancedStage("score", reloaded)).toBe(true);
     expect(advancedStageCompleted("score", store(values))).toBe(true);
+    expect(advancedStageUnlocked("control", reloaded)).toBe(true);
+    expect(advancedStageUnlocked("message", reloaded)).toBe(false);
+    const control = ensureAdvancedProject("control", "es", reloaded)!;
+    reloaded.save(
+      "kids.advanced.control",
+      {
+        ...control.program,
+        scripts: [
+          {
+            ...control.program.scripts[0]!,
+            statements: [
+              {
+                type: "if",
+                condition: {
+                  type: "greaterOrEqual",
+                  left: { type: "variable", variableId: "score" },
+                  right: { type: "numericLiteral", value: 0 },
+                },
+                then: [
+                  {
+                    type: "setVariable",
+                    variableId: "score",
+                    value: { type: "numericLiteral", value: 1 },
+                  },
+                ],
+                else: [
+                  {
+                    type: "setVariable",
+                    variableId: "score",
+                    value: { type: "numericLiteral", value: 2 },
+                  },
+                ],
+              },
+              { type: "wait", seconds: 1 },
+            ],
+          },
+        ],
+      },
+      control.metadata,
+    );
+    expect(completeAdvancedStage("control", reloaded)).toBe(true);
+    expect(advancedStageUnlocked("message", store(values))).toBe(true);
+    const message = ensureAdvancedProject("message", "es", reloaded)!;
+    reloaded.save(
+      "kids.advanced.message",
+      {
+        ...message.program,
+        scripts: message.program.scripts.map((script, index) => ({
+          ...script,
+          statements:
+            index === 0
+              ? [{ type: "broadcast" as const, message: "go" }]
+              : [{ type: "move" as const, steps: 1 }],
+        })),
+      },
+      message.metadata,
+    );
+    expect(completeAdvancedStage("message", reloaded)).toBe(true);
+    expect(advancedStageCompleted("message", store(values))).toBe(true);
   });
 
   it("fails closed on invalid stored progress and preserves the original project", () => {

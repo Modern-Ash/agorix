@@ -24,6 +24,10 @@ interface Props {
   readonly onAdvancedReact?: () => void;
   readonly advancedScoreUnlocked?: boolean;
   readonly onAdvancedScore?: () => void;
+  readonly advancedControlUnlocked?: boolean;
+  readonly onAdvancedControl?: () => void;
+  readonly advancedMessageUnlocked?: boolean;
+  readonly onAdvancedMessage?: () => void;
 }
 
 const CONCEPTS = [
@@ -52,6 +56,10 @@ export function MapScreen({
   onAdvancedReact,
   advancedScoreUnlocked = false,
   onAdvancedScore,
+  advancedControlUnlocked = false,
+  onAdvancedControl,
+  advancedMessageUnlocked = false,
+  onAdvancedMessage,
 }: Props) {
   const style = KIDS_WORLD_STYLES[world];
   const image = backdropImage(builtinWorld(world), useKidsFlag("customImages"));
@@ -192,6 +200,16 @@ export function MapScreen({
           {advancedScoreUnlocked ? (
             <button type="button" className="kids-button kids-primary" onClick={onAdvancedScore}>
               {locale === "es" ? "✨ Etapa 3: llevá la cuenta" : "✨ Stage 3: keep score"}
+            </button>
+          ) : null}
+          {advancedControlUnlocked ? (
+            <button type="button" className="kids-button kids-primary" onClick={onAdvancedControl}>
+              {locale === "es" ? "✨ Etapa 4: elegí qué pasa" : "✨ Stage 4: choose what happens"}
+            </button>
+          ) : null}
+          {advancedMessageUnlocked ? (
+            <button type="button" className="kids-button kids-primary" onClick={onAdvancedMessage}>
+              {locale === "es" ? "✨ Etapa 5: enviá un mensaje" : "✨ Stage 5: send a message"}
             </button>
           ) : null}
         </div>

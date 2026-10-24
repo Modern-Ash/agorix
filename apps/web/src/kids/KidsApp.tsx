@@ -40,6 +40,7 @@ import { ParentsScreen } from "./screens/ParentsScreen.js";
 import { AdvancedSceneScreen } from "./screens/AdvancedSceneScreen.js";
 import { AdvancedReactScreen } from "./screens/AdvancedReactScreen.js";
 import { AdvancedScoreScreen } from "./screens/AdvancedScoreScreen.js";
+import { AdvancedControlScreen } from "./screens/AdvancedControlScreen.js";
 import {
   advancedEntryUnlocked,
   advancedStageUnlocked,
@@ -209,6 +210,8 @@ export function KidsApp({
             advancedUnlocked={advancedEntryUnlocked(projectStore)}
             advancedReactUnlocked={advancedStageUnlocked("react", projectStore)}
             advancedScoreUnlocked={advancedStageUnlocked("score", projectStore)}
+            advancedControlUnlocked={advancedStageUnlocked("control", projectStore)}
+            advancedMessageUnlocked={advancedStageUnlocked("message", projectStore)}
             onAdvanced={() => {
               if (ensureAdvancedProject("scene", state.locale, projectStore))
                 dispatch({ type: "openAdvancedScene" });
@@ -220,6 +223,14 @@ export function KidsApp({
             onAdvancedScore={() => {
               if (ensureAdvancedProject("score", state.locale, projectStore))
                 dispatch({ type: "openAdvancedScore" });
+            }}
+            onAdvancedControl={() => {
+              if (ensureAdvancedProject("control", state.locale, projectStore))
+                dispatch({ type: "openAdvancedControl" });
+            }}
+            onAdvancedMessage={() => {
+              if (ensureAdvancedProject("message", state.locale, projectStore))
+                dispatch({ type: "openAdvancedMessage" });
             }}
           />
         ) : state.screen === "editor" ? (
@@ -268,6 +279,13 @@ export function KidsApp({
           />
         ) : state.screen === "advancedScore" ? (
           <AdvancedScoreScreen
+            locale={state.locale}
+            readAloud={adultSettings.readAloud}
+            onBack={() => dispatch({ type: "go", screen: "map" })}
+          />
+        ) : state.screen === "advancedControl" || state.screen === "advancedMessage" ? (
+          <AdvancedControlScreen
+            stage={state.screen === "advancedControl" ? "control" : "message"}
             locale={state.locale}
             readAloud={adultSettings.readAloud}
             onBack={() => dispatch({ type: "go", screen: "map" })}
@@ -373,6 +391,8 @@ function screenTitle(screen: KidsScreen, t: KidsText): string {
     case "advanced":
     case "advancedReact":
     case "advancedScore":
+    case "advancedControl":
+    case "advancedMessage":
       return t("mission");
     case "reflect":
       return t("keepPlaying");

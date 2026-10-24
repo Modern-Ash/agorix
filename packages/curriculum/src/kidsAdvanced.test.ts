@@ -7,8 +7,8 @@ import {
 } from "./kidsAdvanced.js";
 
 describe("Kids advanced guided missions", () => {
-  it("authors three short bilingual, runtime-checkable missions", () => {
-    expect(KIDS_ADVANCED_STAGES).toEqual(["scene", "react", "score"]);
+  it("authors five short bilingual, runtime-checkable missions", () => {
+    expect(KIDS_ADVANCED_STAGES).toEqual(["scene", "react", "score", "control", "message"]);
     for (const stage of KIDS_ADVANCED_STAGES) {
       const es = getKidsAdvancedMission(stage, "es");
       const en = getKidsAdvancedMission(stage, "en");

@@ -1918,6 +1918,64 @@
   min-height: 44px;
 }
 
+.kids-advanced-control .kids-advanced-script {
+  margin: 0.75rem 0;
+  padding: 0.75rem;
+  border: 1px solid var(--kids-border);
+  border-radius: 0.75rem;
+  background: white;
+}
+.kids-advanced-control .kids-advanced-script h3 {
+  margin: 0 0 0.5rem;
+}
+.kids-advanced-control .kids-advanced-script ol {
+  margin: 0;
+  padding-left: 1.5rem;
+}
+.kids-advanced-control .kids-advanced-script li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0.4rem 0;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  background: #fff2d7;
+}
+.kids-control-branches {
+  display: grid;
+  gap: 0.2rem;
+  margin: 0.35rem 0 0 0.75rem;
+  padding-left: 0.5rem;
+  border-left: 3px solid #975500;
+}
+.kids-advanced-control-palette,
+.kids-advanced-control-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+.kids-advanced-control-palette label {
+  display: grid;
+  gap: 0.3rem;
+  flex: 1 1 160px;
+}
+.kids-advanced-control-palette input {
+  min-height: 44px;
+  max-width: 100%;
+  font: inherit;
+}
+.kids-advanced-control-files input {
+  max-width: 190px;
+}
+.kids-advanced-control .kids-code-strip {
+  max-width: 100%;
+}
+.kids-advanced-control .kids-code-strip pre {
+  overflow: auto;
+}
+
 .kids-advanced-react-actor {
   display: grid;
   gap: 0.5rem;
