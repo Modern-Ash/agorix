@@ -398,6 +398,14 @@ function validateStatement(
         listId: assertKnownListId(input.listId, `${path}.listId`, state),
         index: validateExpression(input.index, `${path}.index`, state),
       };
+    case "listInsertAt":
+    case "listReplaceAt":
+      return {
+        type: input.type === "listInsertAt" ? "listInsertAt" : "listReplaceAt",
+        listId: assertKnownListId(input.listId, `${path}.listId`, state),
+        index: validateExpression(input.index, `${path}.index`, state),
+        value: validateExpression(input.value, `${path}.value`, state),
+      };
     case "showVariable":
       return {
         type: "showVariable",

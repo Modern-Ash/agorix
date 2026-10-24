@@ -195,6 +195,21 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
           ")\n",
       );
       return;
+    case "listInsertAt":
+    case "listReplaceAt":
+      writeMapped(
+        writer,
+        nodeId,
+        indent +
+          (statement.type === "listInsertAt" ? "list_insert_at(" : "list_replace_at(") +
+          listIdentifier(writer, statement.listId) +
+          ", " +
+          expressionText(writer, statement.index, nodeId + "/index") +
+          ", " +
+          expressionText(writer, statement.value, nodeId + "/value") +
+          ")\n",
+      );
+      return;
     case "wait":
       writeMapped(writer, nodeId, indent + "wait(" + formatNumber(statement.seconds) + ")\n");
       return;

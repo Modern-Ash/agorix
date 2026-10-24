@@ -36,6 +36,8 @@ export const RUNTIME_STATEMENT_OPERATIONS = Object.freeze([
   "hideVariable",
   "listAdd",
   "listRemoveAt",
+  "listInsertAt",
+  "listReplaceAt",
   "repeat",
   "if",
 ] as const);
@@ -170,6 +172,9 @@ function assertStatementsAllowed(statements: readonly Statement[], path: string)
       assertExpressionAllowed(statement.value, `${statementPath}.value`);
     } else if (statement.type === "listRemoveAt") {
       assertExpressionAllowed(statement.index, `${statementPath}.index`);
+    } else if (statement.type === "listInsertAt" || statement.type === "listReplaceAt") {
+      assertExpressionAllowed(statement.index, `${statementPath}.index`);
+      assertExpressionAllowed(statement.value, `${statementPath}.value`);
     }
   }
 }

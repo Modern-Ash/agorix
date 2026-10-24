@@ -17,6 +17,8 @@ import {
   getVariableWorld,
   listAddWorld,
   listRemoveAtWorld,
+  listInsertAtWorld,
+  listReplaceAtWorld,
   hideWorld,
   moveWorld,
   playSoundWorld,
@@ -387,6 +389,22 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
       const next = listRemoveAtWorld(state.world, statement.listId, index);
       if (next === state.world)
         addNote(state, `list-index-out-of-range:${statement.listId}:${path}`);
+      state.world = next;
+      break;
+    }
+    case "listInsertAt":
+    case "listReplaceAt": {
+      const index = evaluateNumber(statement.index, `${path}.index`, state);
+      const value = evaluateNumber(statement.value, `${path}.value`, state);
+      const next =
+        statement.type === "listInsertAt"
+          ? listInsertAtWorld(state.world, statement.listId, index, value)
+          : listReplaceAtWorld(state.world, statement.listId, index, value);
+      if (next === state.world)
+        addNote(
+          state,
+          `list-${statement.type === "listInsertAt" ? "insert" : "replace"}-unavailable:${statement.listId}:${path}`,
+        );
       state.world = next;
       break;
     }

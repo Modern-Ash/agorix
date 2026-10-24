@@ -16,6 +16,18 @@ describe("list validation (issue #468)", () => {
       { type: "listAdd", listId: "l", value: { type: "numericLiteral", value: 3 } },
       { type: "listRemoveAt", listId: "l", index: { type: "listLength", listId: "l" } },
       {
+        type: "listInsertAt",
+        listId: "l",
+        index: { type: "numericLiteral", value: 2 },
+        value: { type: "numericLiteral", value: 8 },
+      },
+      {
+        type: "listReplaceAt",
+        listId: "l",
+        index: { type: "numericLiteral", value: 1 },
+        value: { type: "numericLiteral", value: 9 },
+      },
+      {
         type: "listAdd",
         listId: "l",
         value: { type: "listItem", listId: "l", index: { type: "numericLiteral", value: 1 } },
@@ -31,6 +43,22 @@ describe("list validation (issue #468)", () => {
   it("rejects unknown list ids, duplicate ids and bad declarations", () => {
     const bad: unknown[] = [
       base({}, [{ type: "listAdd", listId: "nope", value: { type: "numericLiteral", value: 1 } }]),
+      base({ lists: [list] }, [
+        {
+          type: "listInsertAt",
+          listId: "nope",
+          index: { type: "numericLiteral", value: 1 },
+          value: { type: "numericLiteral", value: 1 },
+        },
+      ]),
+      base({ lists: [list] }, [
+        {
+          type: "listReplaceAt",
+          listId: "missing",
+          index: { type: "numericLiteral", value: 1 },
+          value: { type: "numericLiteral", value: 8 },
+        },
+      ]),
       base({ lists: [list, list] }),
       base({ lists: [{ ...list, initialItems: ["x"] }] }),
       base({ lists: [{ ...list, initialItems: [Number.NaN] }] }),

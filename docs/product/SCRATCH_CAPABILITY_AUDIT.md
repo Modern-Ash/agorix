@@ -101,4 +101,9 @@ Each iteration needs an issue with an observable child journey, success and fail
 ## Bounded list editing (grouped with Kids selection fix)
 
 - Escena libre now lets a child remove a list item at a chosen one-based position, store an item's value in a variable, and store a list's length in a variable. Positions are limited to 1–10 in the visual palette and validator. The canonical program drives the runtime, code projection, save and reopen path; an empty list stays visibly empty in the watcher.
-- This is a bounded data vocabulary increment under #538. General list indexing by expressions, list insertion and replacement, arbitrary nesting and Scratch's full data palette remain open.
+- This is a bounded data vocabulary increment under #538. General list indexing by expressions, arbitrary nesting and Scratch's full data palette remain open.
+
+## Insert, replace and integer chance (#538)
+
+- Escena libre now exposes one-based insert and replace at positions 1–10, plus a bounded whole-number random expression for a variable. Insertion before item 1 works on an empty list; position `length + 1` appends. Invalid positions and a full 100-item list leave state unchanged with a runtime note. A seeded run reproduces the same random result.
+- The canonical validator, deterministic runtime, block adapter and Agorix Code, Python and TypeScript projections recognize the two new list operations. Tests cover valid and invalid indexes, full lists, code projection, visual authoring and reopen. More general list expressions, sensing, custom procedures and extensions remain open.

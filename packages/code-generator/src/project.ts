@@ -266,6 +266,13 @@ function projectStatement(
         `${pad}listRemoveAt(${formatListName(context, statement.listId, nodeId)}, ${formatExpression(statement.index, `${nodeId}/index`, context)});\n`,
       );
       return;
+    case "listInsertAt":
+    case "listReplaceAt":
+      write(
+        writer,
+        `${pad}${statement.type}(${formatListName(context, statement.listId, nodeId)}, ${formatExpression(statement.index, `${nodeId}/index`, context)}, ${formatExpression(statement.value, `${nodeId}/value`, context)});\n`,
+      );
+      return;
     case "wait":
       write(writer, `${pad}wait(${formatNumber(statement.seconds)});\n`);
       return;
