@@ -77,4 +77,9 @@ Each iteration needs an issue with an observable child journey, success and fail
 ## Ori presence and motion (#547)
 
 - Ori's existing floating guide now uses subtle motion tied to idle, open/listening and reflection states. The Kids editor distinguishes waiting for an offer, a proposal to review and an observed run. Escena libre and the advanced Ori actions distinguish waiting, reviewable proposal and a message without a proposal. These states come from app events, not a timer that pretends a model is working.
+
+## Stage placement (next #538 increment)
+
+- Escena libre lets the child select a character and place it on the stage with accessible directional controls. The position is part of project metadata and survives program edits, backdrop changes, reload, export and import. Runtime starts from that saved position.
+- This is a bounded first stage control. Direct dragging, layering, richer motion and child-authored costume/backdrop painting remain open. The matrix above records the original baseline; read these progress sections before treating a row as a current absence.
 - Motion stops when the page is hidden and disappears under `prefers-reduced-motion`; text and controls still communicate the state. The mobile guide sits above the onboarding bottom action. Browser checks cover state changes and reduced motion, with visual inspection at 390 × 844 and 1440 × 900.

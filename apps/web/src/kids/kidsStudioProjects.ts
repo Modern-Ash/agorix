@@ -70,11 +70,14 @@ export function saveStudioProject(
 ): void {
   if (!STUDIO_ID.test(id)) throw new RangeError("invalid studio id");
   const valid = validateStudioProgram(program);
-  const creative = creativeForStudio(valid, backdropId, locale);
+  const previous = store.has(id) ? store.load(id).metadata : undefined;
+  const positions = Object.fromEntries(
+    (previous?.actors?.items ?? []).map((actor) => [actor.id, { x: actor.x, y: actor.y }]),
+  );
+  const creative = creativeForStudio(valid, backdropId, locale, positions);
   if (!creative.actors?.some((actor) => actor.id === activeActorId))
     throw new RangeError("active actor is not in studio");
   const now = new Date().toISOString();
-  const previous = store.has(id) ? store.load(id).metadata : undefined;
   const metadata: ProjectMetadata = {
     createdAt: previous?.createdAt ?? now,
     updatedAt: now,
@@ -86,6 +89,38 @@ export function saveStudioProject(
     ...(creative.assets === undefined ? {} : { assets: creative.assets }),
   };
   store.save(id, valid, metadata);
+}
+
+export function setStudioActorPosition(
+  id: string,
+  actorId: string,
+  x: number,
+  y: number,
+  store: ProjectStore = new ProjectStore(),
+): void {
+  if (
+    !STUDIO_ID.test(id) ||
+    !Number.isInteger(x) ||
+    x < 0 ||
+    x > 320 ||
+    !Number.isInteger(y) ||
+    y < -100 ||
+    y > 120
+  )
+    throw new RangeError("invalid studio position");
+  const saved = store.load(id);
+  validateStudioProgram(saved.program);
+  const actors = saved.metadata.actors;
+  if (!actors?.items.some((actor) => actor.id === actorId))
+    throw new RangeError("unknown studio actor");
+  store.save(id, saved.program, {
+    ...saved.metadata,
+    updatedAt: new Date().toISOString(),
+    actors: {
+      ...actors,
+      items: actors.items.map((actor) => (actor.id === actorId ? { ...actor, x, y } : actor)),
+    },
+  });
 }
 
 export function createStudioProject(
@@ -166,6 +201,11 @@ export function importStudioProject(
   const project = { id: nextId(previous), backdropId };
   try {
     saveStudioProject(project.id, program, backdropId, activeActorId, locale, store);
+    const importedActors = imported.metadata.actors?.items ?? [];
+    for (const actor of creative.actors ?? []) {
+      const position = importedActors.find((item) => item.id === actor.id);
+      if (position) setStudioActorPosition(project.id, actor.id, position.x, position.y, store);
+    }
     storage.setItem(INDEX, JSON.stringify([...previous, project]));
     return project;
   } catch (error) {

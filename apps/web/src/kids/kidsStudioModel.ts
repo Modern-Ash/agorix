@@ -203,6 +203,7 @@ export function creativeForStudio(
   raw: ProjectProgram,
   backdropId: KidsGalleryBackdropId,
   locale: Locale,
+  positions: Readonly<Record<string, { readonly x: number; readonly y: number }>> = {},
 ): ProjectCreativeState {
   const program = validateStudioProgram(raw);
   if (!isGalleryBackdropId(backdropId)) throw new RangeError("unknown studio backdrop");
@@ -228,11 +229,19 @@ export function creativeForStudio(
   ];
   const actors = program.scripts.map((script, position) => {
     const actor = actorOfScript(script.id)!;
+    const id = studioActorId(actor.index, actor.characterId);
+    const saved = positions[id];
     return {
-      id: studioActorId(actor.index, actor.characterId),
+      id,
       name: galleryCharacterName(actor.characterId, locale),
-      x: (position % 5) * 60,
-      y: Math.floor(position / 5) * 60,
+      x:
+        saved && Number.isInteger(saved.x) && saved.x >= 0 && saved.x <= 320
+          ? saved.x
+          : (position % 5) * 60,
+      y:
+        saved && Number.isInteger(saved.y) && saved.y >= -100 && saved.y <= 120
+          ? saved.y
+          : Math.floor(position / 5) * 60,
       direction: 0,
       size: 100,
       visible: true,
