@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { playKidsSound } from "./kidsSoundPlayer.js";
+import { playKidsSound, stopKidsSounds } from "./kidsSoundPlayer.js";
 
 const actor = { kind: "emoji", value: "🐸" } as const;
 
@@ -8,6 +8,7 @@ function fakeContext() {
   let buffers = 0;
   let frequency = 0;
   let gainValue = 0;
+  let closed = 0;
   const node = { connect: () => node };
   const context = {
     currentTime: 0,
@@ -42,15 +43,28 @@ function fakeContext() {
       return { ...node, buffer: null, start: () => undefined, onended: null };
     },
     decodeAudioData: async () => ({ duration: 1 }),
-    close: async () => undefined,
+    close: async () => {
+      closed++;
+    },
   };
   return {
     context: context as unknown as AudioContext,
-    counts: () => ({ oscillators, buffers, frequency, gainValue }),
+    counts: () => ({ oscillators, buffers, frequency, gainValue, closed }),
   };
 }
 
 describe("Kids sound playback (issues #461 and #462)", () => {
+  it("stops contexts still sounding, without changing the next playback", async () => {
+    const first = fakeContext();
+    await playKidsSound("kids:bell", actor, { createContext: () => first.context });
+    stopKidsSounds();
+    expect(first.counts().closed).toBe(1);
+    const second = fakeContext();
+    await playKidsSound("kids:pop", actor, { createContext: () => second.context });
+    expect(second.counts().oscillators).toBe(1);
+    stopKidsSounds();
+    expect(second.counts().closed).toBe(1);
+  });
   it("uses the canonical runtime volume for the audible gallery sound", async () => {
     const half = fakeContext();
     await playKidsSound("kids:bell", actor, { createContext: () => half.context, volume: 50 });

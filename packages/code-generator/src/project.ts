@@ -239,6 +239,12 @@ function projectStatement(
     case "move":
       write(writer, `${pad}sprite.move(${formatNumber(statement.steps)});\n`);
       return;
+    case "goTo":
+      write(
+        writer,
+        `${pad}sprite.goTo(${formatNumber(statement.x)}, ${formatNumber(statement.y)});\n`,
+      );
+      return;
     case "turn":
       write(writer, `${pad}sprite.turn(${formatNumber(statement.degrees)});\n`);
       return;

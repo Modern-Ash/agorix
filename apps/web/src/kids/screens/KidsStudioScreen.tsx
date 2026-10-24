@@ -33,7 +33,7 @@ import {
 import { KIDS_SOUNDS } from "../kidsSoundLibrary.js";
 import { processKidsImage } from "../kidsImage.js";
 import { useKidsFlag } from "../kidsFlags.js";
-import { playKidsSound } from "../kidsSoundPlayer.js";
+import { playKidsSound, stopKidsSounds } from "../kidsSoundPlayer.js";
 import {
   addStudioActor,
   addStudioList,
@@ -81,6 +81,9 @@ const COPY = {
     step: "Paso",
     reset: "Volver al inicio",
     move: "Mover",
+    goTo: "Ir a posición",
+    xCoordinate: "Posición horizontal",
+    yCoordinate: "Posición vertical",
     turnLeft: "Girar a la izquierda",
     turnRight: "Girar a la derecha",
     moveBackward: "Retroceder",
@@ -88,6 +91,7 @@ const COPY = {
     costume: "Cambiar disfraz",
     switchBackdrop: "Cambiar fondo",
     sound: "Sonar",
+    stopSounds: "Detener sonidos",
     volume: "Volumen",
     volumeChange: "Cambio de volumen",
     setVolume: "Fijar volumen",
@@ -182,6 +186,9 @@ const COPY = {
     step: "Step",
     reset: "Back to start",
     move: "Move",
+    goTo: "Go to position",
+    xCoordinate: "Horizontal position",
+    yCoordinate: "Vertical position",
     turnLeft: "Turn left",
     turnRight: "Turn right",
     moveBackward: "Move backward",
@@ -189,6 +196,7 @@ const COPY = {
     costume: "Switch costume",
     switchBackdrop: "Switch backdrop",
     sound: "Sound",
+    stopSounds: "Stop sounds",
     volume: "Volume",
     volumeChange: "Volume change",
     setVolume: "Set volume",
@@ -339,6 +347,8 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
   const [newBackdrop, setNewBackdrop] = useState<KidsGalleryBackdropId>("moon");
   const [newSound, setNewSound] = useState<(typeof KIDS_SOUNDS)[number]["id"]>("kids:pop");
   const [moveCells, setMoveCells] = useState(1);
+  const [targetX, setTargetX] = useState(160);
+  const [targetY, setTargetY] = useState(0);
   const [turnAmount, setTurnAmount] = useState(90);
   const [bubbleText, setBubbleText] = useState(locale === "es" ? "¡Hola!" : "Hello!");
   const [spriteSize, setSpriteSize] = useState(100);
@@ -728,6 +738,8 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
     switch (statement.type) {
       case "move":
         return `${statement.steps < 0 ? copy.moveBackward : copy.move} ${Math.abs(statement.steps) / 40}`;
+      case "goTo":
+        return `${copy.goTo}: ${statement.x}, ${statement.y}`;
       case "turn":
         return `${statement.degrees < 0 ? copy.turnLeft : copy.turnRight} ${Math.abs(statement.degrees)}°`;
       case "switchCostume":
@@ -736,6 +748,8 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
         return `${copy.switchBackdrop}: ${galleryBackdropName(backdropOfStage(statement.backdropId, backdropId), locale)}`;
       case "playSound":
         return `${copy.sound}: ${KIDS_SOUNDS.find((item) => item.id === statement.soundId)?.[locale] ?? ""}`;
+      case "stopSounds":
+        return copy.stopSounds;
       case "setVolume":
         return `${copy.setVolume}: ${statement.volume}%`;
       case "changeVolume":
@@ -771,7 +785,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
       case "if":
         return `${copy.ifLabel} ${expressionLabel(statement.condition, history.current)}`;
       default:
-        return statement.type;
+        return "";
     }
   }
 
@@ -833,16 +847,23 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
       setRun(result);
       setEvents([{ type: "start" }]);
       setFrame(null);
-      for (const entry of result.trace
-        .filter((item) => item.statementType === "playSound")
-        .slice(0, 4)) {
+      stopKidsSounds();
+      let soundsPlayed = 0;
+      for (const entry of result.trace) {
+        if (entry.statementType === "stopSounds") {
+          stopKidsSounds();
+          continue;
+        }
+        if (entry.statementType !== "playSound" || soundsPlayed >= 4) continue;
         const owner = creative.actors?.find((item) => item.id === entry.actorId);
-        if (owner)
+        if (owner) {
+          soundsPlayed += 1;
           void playKidsSound(
             entry.worldAfter.sounds?.activeSoundIds.at(-1) ?? "kids:pop",
             { kind: "gallery", id: characterOfActor(owner.id) },
             { volume: entry.worldAfter.sounds?.volume ?? 100 },
           );
+        }
       }
       setError(false);
     } catch {
@@ -1547,6 +1568,43 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
               + {copy.moveBackward}
             </button>
             <label>
+              {copy.xCoordinate}{" "}
+              <input
+                type="number"
+                min={0}
+                max={320}
+                step={1}
+                value={targetX}
+                onChange={(event) => setTargetX(Number(event.target.value))}
+              />
+            </label>
+            <label>
+              {copy.yCoordinate}{" "}
+              <input
+                type="number"
+                min={-100}
+                max={120}
+                step={1}
+                value={targetY}
+                onChange={(event) => setTargetY(Number(event.target.value))}
+              />
+            </label>
+            <button
+              type="button"
+              className="kids-button"
+              disabled={
+                !Number.isInteger(targetX) ||
+                targetX < 0 ||
+                targetX > 320 ||
+                !Number.isInteger(targetY) ||
+                targetY < -100 ||
+                targetY > 120
+              }
+              onClick={() => add({ type: "goTo", x: targetX, y: targetY })}
+            >
+              + {copy.goTo}
+            </button>
+            <label>
               {copy.turnAmount}{" "}
               <select
                 value={turnAmount}
@@ -1647,6 +1705,13 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
               onClick={() => add({ type: "playSound", soundId: newSound })}
             >
               + {copy.sound}
+            </button>
+            <button
+              type="button"
+              className="kids-button"
+              onClick={() => add({ type: "stopSounds" })}
+            >
+              + {copy.stopSounds}
             </button>
             <label>
               {copy.volume}{" "}

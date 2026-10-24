@@ -18,6 +18,7 @@ export type BlockType =
   | "event_on_message"
   | "event_broadcast"
   | "motion_move"
+  | "motion_go_to"
   | "motion_turn"
   | "looks_say"
   | "looks_think"
@@ -360,6 +361,8 @@ function statementFromBlock(
   switch (block.type) {
     case "motion_move":
       return { type: "move", steps: numberField(block, "steps", path) };
+    case "motion_go_to":
+      return { type: "goTo", x: numberField(block, "x", path), y: numberField(block, "y", path) };
     case "motion_turn":
       return { type: "turn", degrees: numberField(block, "degrees", path) };
     case "looks_say":
@@ -609,6 +612,8 @@ function statementToBlock(
   switch (statement.type) {
     case "move":
       return { id, type: "motion_move", fields: { steps: statement.steps } };
+    case "goTo":
+      return { id, type: "motion_go_to", fields: { x: statement.x, y: statement.y } };
     case "turn":
       return { id, type: "motion_turn", fields: { degrees: statement.degrees } };
     case "say":

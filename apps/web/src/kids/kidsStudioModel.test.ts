@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { createEditorHistory, undoCanonicalTransaction } from "@agorix/block-editor";
+import {
+  createEditorHistory,
+  programToWorkspace,
+  undoCanonicalTransaction,
+  workspaceToProgram,
+} from "@agorix/block-editor";
+import { projectAgorixCode } from "@agorix/agorix-code";
+import { projectProgram } from "@agorix/code-generator";
+import { projectPython } from "@agorix/python-projection";
 import { runMultiActorProgram } from "@agorix/runtime";
 import {
   addStudioActor,
@@ -14,6 +22,38 @@ import {
 } from "./kidsStudioModel.js";
 
 describe("Kids creative studio", () => {
+  it("moves to a chosen stage coordinate and stops sounds with canonical runtime evidence", () => {
+    let history = createEditorHistory(createStudioProgram("nova"));
+    history = appendStudioStatement(history, "actor:studio-1-nova", {
+      type: "goTo",
+      x: 240,
+      y: -40,
+    });
+    history = appendStudioStatement(history, "actor:studio-1-nova", {
+      type: "playSound",
+      soundId: "kids:pop",
+    });
+    history = appendStudioStatement(history, "actor:studio-1-nova", { type: "stopSounds" });
+    const program = validateStudioProgram(history.current);
+    expect(workspaceToProgram(programToWorkspace(program).workspace).program).toEqual(program);
+    expect(projectAgorixCode(program).text).toContain("go to 240, -40");
+    expect(projectPython(program).text).toContain("go_to(240, -40)");
+    expect(projectProgram(program).code).toContain("sprite.goTo(240, -40)");
+    const result = runMultiActorProgram(program, creativeForStudio(program, "forest", "es"));
+    expect(result.actors[0]?.world.sprite).toMatchObject({ x: 240, y: -40 });
+    expect(result.actors[0]?.world.sounds?.activeSoundIds).toEqual([]);
+    expect(result.trace.map((entry) => entry.statementType)).toEqual([
+      "goTo",
+      "playSound",
+      "stopSounds",
+    ]);
+    expect(() =>
+      appendStudioStatement(history, "actor:studio-1-nova", { type: "goTo", x: 321, y: 0 }),
+    ).toThrow();
+    expect(() =>
+      appendStudioStatement(history, "actor:studio-1-nova", { type: "goTo", x: 20, y: Number.NaN }),
+    ).toThrow();
+  });
   it("executes bounded sound volume and a variable watcher that the child can hide and show", () => {
     let history = createEditorHistory(createStudioProgram("nova"));
     history = addStudioVariable(history, "Puntos");

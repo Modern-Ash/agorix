@@ -6,6 +6,51 @@ import { evaluateOriStudioOutput, ORI_STUDIO_VERSION } from "@agorix/ori-agent";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
+test("free scene moves to coordinates and stops sound after reopening", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
+  await page.getByRole("spinbutton", { name: "Posición horizontal" }).fill("240");
+  await page.getByRole("spinbutton", { name: "Posición vertical" }).fill("-40");
+  await page.getByRole("button", { name: "+ Ir a posición" }).click();
+  await page.getByRole("button", { name: "+ Sonar" }).click();
+  await page.getByRole("button", { name: "+ Detener sonidos" }).click();
+  await expect(page.locator(".kids-program-block")).toContainText([
+    "Ir a posición: 240, -40",
+    "Sonar",
+    "Detener sonidos",
+  ]);
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.locator(".kids-studio-stage-actor").first()).toHaveAttribute(
+    "style",
+    /left: 68%/,
+  );
+  await page.reload();
+  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  await page
+    .getByRole("article")
+    .filter({ hasText: "Escena libre" })
+    .getByRole("button", { name: "Jugar" })
+    .click();
+  await expect(page.locator(".kids-program-block")).toContainText([
+    "Ir a posición: 240, -40",
+    "Sonar",
+    "Detener sonidos",
+  ]);
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByText("3 bloques ejecutados")).toBeVisible();
+});
+
 test("free scene lets a child compose volume and show or hide a variable after reopening", async ({
   page,
 }) => {

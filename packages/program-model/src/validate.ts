@@ -310,6 +310,14 @@ function validateStatement(
       checkBounds(input.steps, MOVE_STEPS_MIN, MOVE_STEPS_MAX, `${path}.steps`);
       return { type: "move", steps: input.steps };
     }
+    case "goTo": {
+      if (typeof input.x !== "number" || typeof input.y !== "number") {
+        fail("MISSING_FIELD", path, "expected numeric coordinates", input);
+      }
+      checkBounds(input.x, -1000, 1000, `${path}.x`);
+      checkBounds(input.y, -1000, 1000, `${path}.y`);
+      return { type: "goTo", x: input.x, y: input.y };
+    }
     case "turn": {
       if (typeof input.degrees !== "number") {
         fail("MISSING_FIELD", `${path}.degrees`, "expected a number", input.degrees);

@@ -72,6 +72,7 @@ describe("block-editor", () => {
       "When message received",
       "Broadcast message",
       "Move [N] steps",
+      "Go to [X, Y]",
       "Turn [N] degrees",
       "Say [text]",
       "Think [text]",
@@ -106,7 +107,7 @@ describe("block-editor", () => {
       "Show score",
       "Hide score",
     ]);
-    expect(POC_TOOLBOX.flatMap((section) => section.blocks)).toHaveLength(39);
+    expect(POC_TOOLBOX.flatMap((section) => section.blocks)).toHaveLength(40);
   });
 
   it("creates safe defaults for every required POC block", () => {
