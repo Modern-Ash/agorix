@@ -1522,11 +1522,6 @@
   font: inherit;
   cursor: pointer;
 }
-.kids-code-label {
-  margin: 12px 0 5px;
-  font-size: 0.9rem;
-  color: var(--kids-text-secondary);
-}
 .kids-code-strip,
 .kids-code-view {
   overflow: auto;
