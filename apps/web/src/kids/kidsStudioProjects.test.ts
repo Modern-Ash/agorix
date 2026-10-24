@@ -9,15 +9,20 @@ import {
   setStudioTrigger,
 } from "./kidsStudioModel.js";
 import {
+  addStudioArt,
   createStudioProject,
   exportStudioProject,
   importStudioProject,
   listStudioProjects,
   moveStudioActorLayer,
   saveStudioProject,
+  selectStudioArt,
   setStudioActorPosition,
   setStudioBackdrop,
 } from "./kidsStudioProjects.js";
+
+const png =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLttAAAAABJRU5ErkJggg==";
 
 function memory() {
   const data = new Map<string, string>();
@@ -35,6 +40,78 @@ function memory() {
 }
 
 describe("Kids studio projects", () => {
+  it("keeps a child's costume and backdrop in a portable scene only with adult media opt-in", () => {
+    const { store, index } = memory();
+    const project = createStudioProject("nova", "forest", "es", store, index);
+    const costume = addStudioArt(
+      project.id,
+      "costume",
+      "actor:studio-1-nova",
+      png,
+      "es",
+      store,
+      index,
+    );
+    const backdrop = addStudioArt(
+      project.id,
+      "backdrop",
+      "actor:studio-1-nova",
+      png,
+      "es",
+      store,
+      index,
+    );
+    expect(store.load(project.id).metadata.actors?.items[0]?.costumeId).toBe(costume);
+    expect(store.load(project.id).metadata.stage?.backdropId).toBe(backdrop);
+    expect(() => exportStudioProject(project.id, store)).toThrow(/adult opt-in/);
+    const portable = exportStudioProject(project.id, store, true);
+    const copy = importStudioProject(portable, "es", store, index);
+    expect(store.load(copy.id).metadata.actors?.items[0]?.costumeId).toBe(costume);
+    expect(store.load(copy.id).metadata.stage?.backdropId).toBe(backdrop);
+    expect(store.load(copy.id).metadata.assets?.find((item) => item.id === costume)?.source).toBe(
+      png,
+    );
+    const secondCostume = addStudioArt(
+      copy.id,
+      "costume",
+      "actor:studio-1-nova",
+      png,
+      "es",
+      store,
+      index,
+    );
+    selectStudioArt(copy.id, costume, "actor:studio-1-nova", "es", store, index);
+    expect(store.load(copy.id).metadata.actors?.items[0]?.costumeId).toBe(costume);
+    expect(secondCostume).not.toBe(costume);
+    saveStudioProject(
+      copy.id,
+      store.load(copy.id).program,
+      "forest",
+      "actor:studio-1-nova",
+      "es",
+      store,
+    );
+    expect(store.load(copy.id).metadata.stage?.backdropId).toBe(backdrop);
+    expect(store.load(copy.id).metadata.actors?.items[0]?.costumeId).toBe(costume);
+  });
+
+  it("rejects an invalid drawn image without changing the scene", () => {
+    const { store, index } = memory();
+    const project = createStudioProject("nova", "forest", "es", store, index);
+    const before = store.load(project.id);
+    expect(() =>
+      addStudioArt(
+        project.id,
+        "costume",
+        "actor:studio-1-nova",
+        "data:image/svg+xml;base64,PHN2Zz4=",
+        "es",
+        store,
+        index,
+      ),
+    ).toThrow();
+    expect(store.load(project.id)).toEqual(before);
+  });
   it("saves actors, scripts and a selected backdrop, then exports and imports a portable scene", () => {
     const { store, index } = memory();
     const project = createStudioProject("nova", "forest", "es", store, index);

@@ -1,8 +1,66 @@
 import AxeBuilder from "@axe-core/playwright";
+import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
 import { evaluateOriStudioOutput, ORI_STUDIO_VERSION } from "@agorix/ori-agent";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
+
+test("drawn costume and backdrop survive adult-approved export and import", async ({ page }) => {
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
+  await page.getByRole("button", { name: "Dibujar disfraz" }).click();
+  const costumeCanvas = page.getByRole("img", { name: "Lienzo para dibujar" });
+  await costumeCanvas.scrollIntoViewIfNeeded();
+  const bounds = await costumeCanvas.boundingBox();
+  expect(bounds).not.toBeNull();
+  await page.mouse.click(bounds!.x + 80, bounds!.y + 80);
+  await page.getByRole("button", { name: "Guardar dibujo" }).click();
+  await expect(page.getByRole("group", { name: "Mis disfraces" })).toBeVisible();
+  await expect(page.locator(".kids-studio-stage-actor .kids-art-image")).toHaveCSS(
+    "background-image",
+    /data:image/,
+  );
+  await page.getByRole("button", { name: "Dibujar fondo" }).click();
+  await page.getByRole("button", { name: "Guardar dibujo" }).click();
+  await expect(page.getByRole("group", { name: "Mis fondos" })).toBeVisible();
+  await expect(page.locator(".kids-studio-stage")).toHaveCSS("background-image", /data:image/);
+  await page.reload();
+  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  const card = page.getByRole("article").filter({ hasText: "Escena libre" });
+  await card.getByRole("button", { name: "Exportar" }).click();
+  await expect(page.getByRole("dialog")).toContainText("Solo para adultos");
+  await page.getByRole("dialog").getByRole("button", { name: "1", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "2", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Comprobar" }).click();
+  await expect(page.getByRole("dialog")).toContainText("Este archivo incluirá los dibujos");
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Incluir imágenes y exportar" }).click(),
+  ]);
+  const source = await readFile(await download.path()!, "utf8");
+  expect(JSON.parse(source).formatVersion).toBe("2");
+  await page.getByLabel("Importar .agorix").setInputFiles({
+    name: "escena.agorix",
+    mimeType: "application/json",
+    buffer: Buffer.from(source),
+  });
+  await expect(page.getByRole("heading", { name: "Escena libre" })).toBeVisible();
+  await expect(page.locator(".kids-studio-stage-actor .kids-art-image")).toHaveCSS(
+    "background-image",
+    /data:image/,
+  );
+  await expect(page.locator(".kids-studio-stage")).toHaveCSS("background-image", /data:image/);
+});
 
 test("a child places a character and the stage keeps that position after reopening", async ({
   page,

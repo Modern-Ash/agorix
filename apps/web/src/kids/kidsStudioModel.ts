@@ -4,6 +4,7 @@ import {
   validateProgram,
   validateProjectCreativeState,
   type ProjectCreativeState,
+  type ProjectAsset,
   type ProjectProgram,
   type Statement,
   type Trigger,
@@ -19,6 +20,7 @@ import {
   type KidsGalleryCharacterId,
 } from "./kidsGallery.js";
 import { KIDS_SOUNDS, isKidsSoundId } from "./kidsSoundLibrary.js";
+import { validKidsImageDataUrl } from "./kidsImages.js";
 
 const SCRIPT = /^studio-actor-([1-9][0-9]?)-([a-z]+)$/;
 const MAX_STUDIO_ACTORS = 12;
@@ -51,6 +53,26 @@ const STUDIO_KEYS = ["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]
 const STUDIO_MESSAGES = ["hola", "vamos", "listo"] as const;
 const DATA_NAME = /^[\p{L}\p{N}][\p{L}\p{N} _-]{0,19}$/u;
 const MAX_STUDIO_BLOCKS = 60;
+const STUDIO_ART_ID = /^(costume|backdrop):studio-art-([1-9][0-9]?)$/;
+
+export interface StudioArt {
+  readonly assets?: readonly ProjectAsset[] | undefined;
+  readonly actorCostumes?: Readonly<Record<string, string>>;
+  readonly stageBackdropId?: string | undefined;
+}
+
+export function studioArtAssets(assets: readonly ProjectAsset[] = []): readonly ProjectAsset[] {
+  if (
+    assets.length > 12 ||
+    assets.some((asset) => {
+      const match = STUDIO_ART_ID.exec(asset.id);
+      return !match || match[1] !== asset.kind || !validKidsImageDataUrl(asset.source);
+    }) ||
+    new Set(assets.map((asset) => asset.id)).size !== assets.length
+  )
+    throw new RangeError("invalid studio art");
+  return assets;
+}
 
 function finiteSmallNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value) && value >= -100 && value <= 100;
@@ -205,9 +227,11 @@ export function creativeForStudio(
   locale: Locale,
   positions: Readonly<Record<string, { readonly x: number; readonly y: number }>> = {},
   actorOrder: readonly string[] = [],
+  art: StudioArt = {},
 ): ProjectCreativeState {
   const program = validateStudioProgram(raw);
   if (!isGalleryBackdropId(backdropId)) throw new RangeError("unknown studio backdrop");
+  const customAssets = studioArtAssets(art.assets);
   const assets = [
     ...KIDS_GALLERY_CHARACTERS.map((item) => ({
       id: `costume:${item.id}`,
@@ -227,6 +251,7 @@ export function creativeForStudio(
       name: locale === "es" ? item.es : item.en,
       source: `builtin:kids-sound:${item.id}`,
     })),
+    ...customAssets,
   ];
   const actors = program.scripts.map((script, position) => {
     const actor = actorOfScript(script.id)!;
@@ -246,7 +271,11 @@ export function creativeForStudio(
       direction: 0,
       size: 100,
       visible: true,
-      costumeId: `costume:${actor.characterId}`,
+      costumeId: customAssets.some(
+        (asset) => asset.kind === "costume" && asset.id === art.actorCostumes?.[id],
+      )
+        ? art.actorCostumes![id]!
+        : `costume:${actor.characterId}`,
       scripts: [script.id],
     };
   });
@@ -262,7 +291,11 @@ export function creativeForStudio(
       assets,
       actors,
       stage: {
-        backdropId: `backdrop:${backdropId}`,
+        backdropId: customAssets.some(
+          (asset) => asset.kind === "backdrop" && asset.id === art.stageBackdropId,
+        )
+          ? art.stageBackdropId
+          : `backdrop:${backdropId}`,
         actorOrder: order,
         width: 400,
         height: 260,

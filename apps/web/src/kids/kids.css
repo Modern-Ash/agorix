@@ -2636,6 +2636,8 @@
 .kids-studio-header > div,
 .kids-run-controls,
 .kids-studio-placement,
+.kids-studio-art-controls,
+.kids-studio-art-controls [role="group"],
 .kids-studio-add,
 .kids-studio-actors {
   display: flex;
