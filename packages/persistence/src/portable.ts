@@ -15,6 +15,7 @@ import { validateAdvancedProgress } from "./advancedProgress.js";
 
 export const AGORIX_PROJECT_FORMAT = "agorix-project";
 export const AGORIX_PROJECT_FORMAT_VERSION = "1";
+export const AGORIX_PROJECT_MEDIA_FORMAT_VERSION = "2";
 export const AGORIX_PROJECT_EXTENSION = ".agorix";
 export const AGORIX_PROJECT_MEDIA_TYPE = "application/vnd.agorix.project+json";
 export const AGORIX_PROJECT_MAX_BYTES = 1024 * 1024;
@@ -22,6 +23,7 @@ export const AGORIX_PROJECT_MAX_BYTES = 1024 * 1024;
 const PORTABLE_PROJECT_ID = "portable-project";
 
 const ENVELOPE_KEYS = ["format", "formatVersion", "exportedAt", "project"] as const;
+const MEDIA_ENVELOPE_KEYS = [...ENVELOPE_KEYS, "media"] as const;
 const PROJECT_KEYS = ["schemaVersion", "program", "metadata"] as const;
 const METADATA_KEYS = [
   "createdAt",
@@ -74,9 +76,22 @@ export interface AgorixProjectEnvelopeV1 {
   readonly project: StoredProject;
 }
 
+export interface AgorixProjectEnvelopeV2 {
+  readonly format: typeof AGORIX_PROJECT_FORMAT;
+  readonly formatVersion: typeof AGORIX_PROJECT_MEDIA_FORMAT_VERSION;
+  readonly exportedAt: string;
+  /** In-memory project has its embedded image sources rehydrated. */
+  readonly project: StoredProject;
+  readonly media: Readonly<Record<string, string>>;
+}
+
+export type AgorixProjectEnvelope = AgorixProjectEnvelopeV1 | AgorixProjectEnvelopeV2;
+
 export interface SerializeAgorixProjectOptions {
   readonly exportedAt?: string;
   readonly maxBytes?: number;
+  /** Requires an explicit adult decision before child-added media leaves this device. */
+  readonly includeMedia?: boolean;
 }
 
 export interface ParseAgorixProjectOptions {
@@ -91,13 +106,44 @@ export function serializeAgorixProject(
 ): string {
   const exportedAt = options.exportedAt ?? new Date().toISOString();
   assertIsoDate(exportedAt, "$.exportedAt");
-  const project = validatePortableStoredProject(stored);
-  const envelope: AgorixProjectEnvelopeV1 = {
-    format: AGORIX_PROJECT_FORMAT,
-    formatVersion: AGORIX_PROJECT_FORMAT_VERSION,
-    exportedAt,
-    project,
-  };
+  const project = validatePortableStoredProject(stored, true);
+  const media: Record<string, string> = {};
+  const assets = project.metadata.assets?.map((asset) => {
+    if (!asset.source.startsWith("data:image/")) return asset;
+    media[asset.id] = asset.source;
+    return { ...asset, source: `embedded:${asset.id}` };
+  });
+  const hasMedia = Object.keys(media).length > 0;
+  if (hasMedia && options.includeMedia !== true) {
+    throw new PersistenceError(
+      "FORBIDDEN_FIELD",
+      PORTABLE_PROJECT_ID,
+      "embedded media needs explicit adult opt-in",
+    );
+  }
+  if (Object.keys(media).length > 12) {
+    throw new PersistenceError("SCHEMA_MISMATCH", PORTABLE_PROJECT_ID, "too many embedded images");
+  }
+  const portableProject = hasMedia
+    ? validatePortableStoredProject({
+        ...project,
+        metadata: { ...project.metadata, assets },
+      })
+    : project;
+  const envelope = hasMedia
+    ? {
+        format: AGORIX_PROJECT_FORMAT,
+        formatVersion: AGORIX_PROJECT_MEDIA_FORMAT_VERSION,
+        exportedAt,
+        project: portableProject,
+        media,
+      }
+    : {
+        format: AGORIX_PROJECT_FORMAT,
+        formatVersion: AGORIX_PROJECT_FORMAT_VERSION,
+        exportedAt,
+        project,
+      };
   const json = `${JSON.stringify(envelope, null, 2)}\n`;
   assertByteLimit(json, options.maxBytes ?? AGORIX_PROJECT_MAX_BYTES);
   return json;
@@ -106,7 +152,7 @@ export function serializeAgorixProject(
 export function parseAgorixProject(
   source: AgorixProjectSource,
   options: ParseAgorixProjectOptions = {},
-): AgorixProjectEnvelopeV1 {
+): AgorixProjectEnvelope {
   const maxBytes = options.maxBytes ?? AGORIX_PROJECT_MAX_BYTES;
   assertByteLimit(source, maxBytes);
   const text = typeof source === "string" ? source : decodeUtf8(source);
@@ -119,9 +165,10 @@ export function parseAgorixProject(
   return validateAgorixProjectEnvelope(parsed);
 }
 
-export function validateAgorixProjectEnvelope(input: unknown): AgorixProjectEnvelopeV1 {
+export function validateAgorixProjectEnvelope(input: unknown): AgorixProjectEnvelope {
   assertPlainObject(input, "$");
-  assertAllowedKeys(input, ENVELOPE_KEYS, "$");
+  const isMedia = input.formatVersion === AGORIX_PROJECT_MEDIA_FORMAT_VERSION;
+  assertAllowedKeys(input, isMedia ? MEDIA_ENVELOPE_KEYS : ENVELOPE_KEYS, "$");
   assertNoForbiddenPortableKeys(input, "$");
 
   if (input.format !== AGORIX_PROJECT_FORMAT) {
@@ -131,7 +178,7 @@ export function validateAgorixProjectEnvelope(input: unknown): AgorixProjectEnve
       `expected format ${JSON.stringify(AGORIX_PROJECT_FORMAT)}`,
     );
   }
-  if (input.formatVersion !== AGORIX_PROJECT_FORMAT_VERSION) {
+  if (input.formatVersion !== AGORIX_PROJECT_FORMAT_VERSION && !isMedia) {
     throw new PersistenceError(
       "UNSUPPORTED_FORMAT",
       PORTABLE_PROJECT_ID,
@@ -147,15 +194,66 @@ export function validateAgorixProjectEnvelope(input: unknown): AgorixProjectEnve
   }
   assertIsoDate(input.exportedAt, "$.exportedAt");
 
+  const project = validatePortableStoredProject(input.project);
+  if (!isMedia) {
+    return {
+      format: AGORIX_PROJECT_FORMAT,
+      formatVersion: AGORIX_PROJECT_FORMAT_VERSION,
+      exportedAt: input.exportedAt,
+      project,
+    };
+  }
+  assertPlainObject(input.media, "$.media");
+  const assets = project.metadata.assets ?? [];
+  const embedded = assets.filter((asset) => asset.source.startsWith("embedded:"));
+  if (embedded.length > 12 || Object.keys(input.media).length !== embedded.length) {
+    throw new PersistenceError(
+      "SCHEMA_MISMATCH",
+      PORTABLE_PROJECT_ID,
+      "embedded media count invalid",
+    );
+  }
+  for (const asset of embedded) {
+    if (
+      asset.kind === "sound" ||
+      asset.source !== `embedded:${asset.id}` ||
+      !validInlineImage(input.media[asset.id])
+    ) {
+      throw new PersistenceError(
+        "SCHEMA_MISMATCH",
+        PORTABLE_PROJECT_ID,
+        `embedded media invalid for ${asset.id}`,
+      );
+    }
+  }
+  const validatedMedia = input.media as Record<string, string>;
+  const hydrated = validatePortableStoredProject(
+    {
+      ...project,
+      metadata: {
+        ...project.metadata,
+        assets: assets.map((asset) =>
+          asset.source.startsWith("embedded:")
+            ? { ...asset, source: validatedMedia[asset.id] }
+            : asset,
+        ),
+      },
+    },
+    true,
+  );
   return {
     format: AGORIX_PROJECT_FORMAT,
-    formatVersion: AGORIX_PROJECT_FORMAT_VERSION,
+    formatVersion: AGORIX_PROJECT_MEDIA_FORMAT_VERSION,
     exportedAt: input.exportedAt,
-    project: validatePortableStoredProject(input.project),
+    project: hydrated,
+    media: validatedMedia,
   };
 }
 
-export function validatePortableStoredProject(input: unknown): StoredProject {
+export function validatePortableStoredProject(
+  input: unknown,
+  allowInlineImages = false,
+): StoredProject {
   assertPlainObject(input, "$.project");
   assertAllowedKeys(input, PROJECT_KEYS, "$.project");
   assertNoForbiddenPortableKeys(input, "$.project");
@@ -170,7 +268,7 @@ export function validatePortableStoredProject(input: unknown): StoredProject {
 
   assertNoForbiddenProgramKeys(input.program);
   const program = validateProgram(input.program);
-  const metadata = validatePortableMetadata(input.metadata, program);
+  const metadata = validatePortableMetadata(input.metadata, program, allowInlineImages);
   return assertCrossSurfaceCompatibleProject({
     schemaVersion: input.schemaVersion,
     program,
@@ -189,7 +287,11 @@ export function sanitizeAgorixFilename(name: string): string {
   return `${slug || "agorix-project"}${AGORIX_PROJECT_EXTENSION}`;
 }
 
-function validatePortableMetadata(input: unknown, program: ProjectProgram): ProjectMetadata {
+function validatePortableMetadata(
+  input: unknown,
+  program: ProjectProgram,
+  allowInlineImages: boolean,
+): ProjectMetadata {
   assertPlainObject(input, "$.project.metadata");
   assertAllowedKeys(input, METADATA_KEYS, "$.project.metadata");
   assertNoForbiddenPortableKeys(input, "$.project.metadata");
@@ -231,7 +333,7 @@ function validatePortableMetadata(input: unknown, program: ProjectProgram): Proj
     {
       actors: actors?.items,
       stage: validateStage(input.stage),
-      assets: validateAssets(input.assets),
+      assets: validateAssets(input.assets, allowInlineImages),
     },
     program,
   );
@@ -303,7 +405,22 @@ function validateStage(input: unknown): ProjectMetadata["stage"] {
   };
 }
 
-function validateAssets(input: unknown): ProjectMetadata["assets"] {
+function validInlineImage(source: unknown): source is string {
+  if (typeof source !== "string") return false;
+  const match = /^data:image\/(png|webp);base64,([A-Za-z0-9+/]+={0,2})$/.exec(source);
+  if (!match) return false;
+  try {
+    const bytes = atob(match[2]!);
+    if (bytes.length === 0 || bytes.length >= 60 * 1024) return false;
+    return match[1] === "png"
+      ? bytes.startsWith("\x89PNG\r\n\x1a\n")
+      : bytes.startsWith("RIFF") && bytes.slice(8, 12) === "WEBP";
+  } catch {
+    return false;
+  }
+}
+
+function validateAssets(input: unknown, allowInlineImages: boolean): ProjectMetadata["assets"] {
   if (input === undefined) return undefined;
   if (!Array.isArray(input) || input.length > 128) {
     throw new PersistenceError("SCHEMA_MISMATCH", PORTABLE_PROJECT_ID, "assets must be an array");
@@ -322,7 +439,12 @@ function validateAssets(input: unknown): ProjectMetadata["assets"] {
     if (typeof asset.name !== "string" || asset.name.length < 1 || asset.name.length > 120) {
       throw new PersistenceError("SCHEMA_MISMATCH", PORTABLE_PROJECT_ID, `${path}.name invalid`);
     }
-    if (typeof asset.source !== "string" || asset.source.length < 1 || asset.source.length > 120) {
+    if (
+      typeof asset.source !== "string" ||
+      (asset.source.startsWith("data:")
+        ? !allowInlineImages || asset.kind === "sound" || !validInlineImage(asset.source)
+        : asset.source.length < 1 || asset.source.length > 120)
+    ) {
       throw new PersistenceError("SCHEMA_MISMATCH", PORTABLE_PROJECT_ID, `${path}.source invalid`);
     }
     if (
