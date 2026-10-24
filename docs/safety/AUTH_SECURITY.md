@@ -62,10 +62,10 @@ beside `auth-service`; it does not change how usernames, passwords or sessions w
   `AGORIX_LINK_SECRET`. A verified email is required to create one and is re-checked on redemption.
   Because the code is the only thing the child types, a failed guess cannot be attributed to one code,
   so the brute-force limits are on **failures**: 10 per source and 200 per whole server in a 10 minute
-  window (then `429`); successful redemptions never count. These counters live in process memory and
-  reset on restart; with 6 digits and at most 3 live codes per adult the chance that a guess hits is
-  tiny, and the global ceiling bounds a distributed attacker. The source is `X-Real-IP` set by nginx
-  (hashed, never stored); if it is absent every caller shares one bucket.
+  window (then `429`); successful redemptions never count. SQLite/PostgreSQL store the source and
+  global windows durably, so a server restart does not reset the budget. The scheduled retention
+  sweep removes expired windows. The source is `X-Real-IP` set by nginx, hashed before storage; if
+  it is absent every caller shares one bucket. Raw addresses are never stored.
 - **Device token.** 256-bit random, stored as SHA-256, scoped to one link and unable to call any adult
   route (bearer only; the adult session cookie is not accepted on device routes and vice versa).
   Rotated on every use with a 60 second grace so a lost response does not strand the device; idle TTL

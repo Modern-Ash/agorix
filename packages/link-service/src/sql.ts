@@ -84,6 +84,19 @@ export const LINK_SERVICE_MIGRATIONS = [
     postgresql: SCHEMA_SQL,
     sqlite: SCHEMA_SQL,
   },
+  {
+    id: "002_persist_link_redeem_failures",
+    postgresql: `create table if not exists agorix_link_redeem_failures (
+      scope_key text primary key, failure_count integer not null,
+      window_start bigint not null, reset_at bigint not null
+    ); create index if not exists agorix_link_redeem_failures_expiry_idx
+      on agorix_link_redeem_failures (reset_at);`,
+    sqlite: `create table if not exists agorix_link_redeem_failures (
+      scope_key text primary key, failure_count integer not null,
+      window_start bigint not null, reset_at bigint not null
+    ); create index if not exists agorix_link_redeem_failures_expiry_idx
+      on agorix_link_redeem_failures (reset_at);`,
+  },
 ] as const;
 
 function sqlFor(dialect: LinkSqlDialect, sql: string): string {
@@ -110,6 +123,37 @@ export class SqlLinkRepository implements LinkRepository {
     params: readonly LinkSqlValue[] = [],
   ) {
     return this.options.executor.execute<R>(sqlFor(this.options.dialect, sql), params);
+  }
+
+  async getRedeemFailureWindows(sourceKey: string, nowMs: number) {
+    const { rows } = await this.run(
+      `select scope_key, failure_count, reset_at from agorix_link_redeem_failures
+       where scope_key in (?, ?) and reset_at > ?`,
+      ["global", `source:${sourceKey}`, nowMs],
+    );
+    return rows.map((row) => ({
+      scopeKey: str(row["scope_key"]),
+      count: Number(row["failure_count"]),
+      resetAt: Number(row["reset_at"]),
+    }));
+  }
+
+  async recordRedeemFailure(sourceKey: string, nowMs: number, windowMs: number): Promise<void> {
+    const resetAt = nowMs + windowMs;
+    await this.run(
+      `insert into agorix_link_redeem_failures
+        (scope_key, failure_count, window_start, reset_at)
+       values (?, 1, ?, ?), (?, 1, ?, ?)
+       on conflict (scope_key) do update set
+         failure_count = case when reset_at <= excluded.window_start then 1 else failure_count + 1 end,
+         window_start = case when reset_at <= excluded.window_start then excluded.window_start else window_start end,
+         reset_at = case when reset_at <= excluded.window_start then excluded.reset_at else reset_at end`,
+      ["global", nowMs, resetAt, `source:${sourceKey}`, nowMs, resetAt],
+    );
+  }
+
+  async sweepRedeemFailureWindows(nowMs: number): Promise<void> {
+    await this.run("delete from agorix_link_redeem_failures where reset_at <= ?", [nowMs]);
   }
 
   async getEmail(accountId: string): Promise<EmailRow | undefined> {

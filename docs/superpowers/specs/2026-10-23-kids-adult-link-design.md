@@ -109,7 +109,8 @@ Where the build differs from the sketch above, and why:
 
 - **Brute force.** The sketch said "5 wrong attempts invalidate that code". The child types only the
   digits, so a wrong guess cannot be tied to any code. The limits are therefore on failures per source
-  and globally (see `docs/safety/AUTH_SECURITY.md`). Counters are in memory and reset on restart.
+  and globally (see `docs/safety/AUTH_SECURITY.md`). The original counters were in memory; #520
+  persists them in SQL so a restart does not reset the budget.
 - **Email required.** Existing alias-only accounts stay valid; the email is required to **link a
   device**. Requiring it at registration is switched on together with the sign-up screen (#509), so the
   current account flow does not break in between.
