@@ -50,20 +50,26 @@ Each iteration needs an issue with an observable child journey, success and fail
 - The included gallery adds 12 named characters, 9 backdrops and 12 short synthesized sounds. Characters and backdrops are grouped and searchable from Crear; sounds are previewed and chosen from a sound block in the editor. Gallery choices persist by allowlisted ID, separate from child-added files and adult image overrides. A fresh browser can use the included items without a flag or an LLM.
 - The gallery expands the first creative choice. It does **not** provide Scratch's independent multi-sprite scripts, costume editing, broad block vocabulary, custom procedures or extensions. Those remain the next grouped iterations in #538.
 
-## Progress on iteration 2 (PR in preparation)
+## Progress on iteration 2 (merged in main)
 
 - `Crear → Escena libre` lets a child add up to 12 gallery characters, select each character and author a separate canonical script. The stage runs all scripts through the deterministic multi-actor runtime and shows the execution count. The child can switch costumes and backdrops, play gallery sounds, inspect code projections, undo/redo, save, reopen and exchange the scene as `.agorix`.
 - The included art stays immutable. A bounded import validates the program and rebuilds the creative metadata from known asset IDs. The new journey has unit coverage for separate scripts, persistence/import and failed index writes, plus a mobile browser journey with an accessibility check.
 - This is the beginning of the general creative project, not Scratch feature parity. The current block palette is limited to movement, turning, costume/backdrop changes and gallery sound. Actor placement, paint/record tools, composable events/control/data, custom blocks and extensions remain open under #538. Ori's scene suggestion is a local bounded fallback with accept/change/reject; connecting the production LLM to this new free-scene contract also remains open. Do not present this fallback as a model response.
 
-## Next studio vocabulary increment (PR in preparation)
+## Next studio vocabulary increment (merged in main)
 
 - The free scene adds child-authored `say`, `think`, `show`, `hide`, size and bounded virtual wait blocks. Speech bubbles, visibility and size are rendered from runtime facts on the selected actor; another actor's state stays independent. The child can switch one character's start event from Jugar to touching that character on the stage, and the event is stored in the canonical script.
 - Unit tests cover bounded statements, actor isolation and event activation. Browser tests cover the rendered result, reload and tapping the character after Jugar.
 - This broadens the visual palette but does not yet provide general repeat/conditions, key/message event composition, variables/lists in free scenes, paint/recording, extensions or a model-backed Ori proposal contract. Those remain in #538.
 
-## Ori for free scenes (PR in preparation)
+## Ori for free scenes (merged and deployed)
 
 - Escena libre requests an idea from the same-origin tutor server. The host's configured Codex/OpenCode CLI can generate one bounded move or turn for the selected actor. The shared contract validates the model's JSON, actor, script and operation on the host and again in the browser. The child sees a proposal and may accept, change or reject it; only acceptance or change updates the canonical program in one undoable transaction.
 - The model receives actor count and selected block **types**, not child-authored speech text, image bytes, account details or the whole project. A failed, late or invalid model response produces a local reviewable idea without provider diagnostics in the child UI. The adult Ori switch hides scene suggestions.
-- This makes the free-scene Ori button a real LLM entry point when the host CLI is available. It does not grant Ori open-ended editing, change Scratch-parity gaps above, or remove the offline path. Production needs both the Web deployment and a restart of the tutor host service after merging this PR.
+- This makes the free-scene Ori button a real LLM entry point when the host CLI is available. It does not grant Ori open-ended editing, change Scratch-parity gaps above, or remove the offline path. The Web and tutor host were updated after #544 merged.
+
+## General block vocabulary (third iteration, PR in preparation)
+
+- Escena libre composes bounded key and message triggers, broadcasts, repeat and conditional blocks, and up to three named variables and lists. The data palette sets or changes numeric values, appends to a list and shows the selected actor's runtime values. A child can inspect the derived code and execution count, then save, reopen or exchange the same canonical program.
+- The browser covers a fresh-session journey with data, repeat, condition, message and key events. Unit tests cover valid and rejected structures, actor isolation and portable import. Ori receives only structural block types and may still propose only a reviewable move or turn; learner data names and values do not enter its input.
+- This increment deliberately bounds each repeat/condition body to one block, messages to three preset names and key events to five keys. General nesting, arbitrary operator composition, custom procedures, paint and extensions remain open in #538.

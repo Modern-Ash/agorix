@@ -35,14 +35,16 @@ function target(context: OriStudioContext) {
   if (
     program.scripts.length < 1 ||
     program.scripts.length > MAX_SCRIPTS ||
-    (program.variables?.length ?? 0) > 0 ||
-    (program.lists?.length ?? 0) > 0 ||
+    (program.variables?.length ?? 0) > 3 ||
+    (program.lists?.length ?? 0) > 3 ||
     program.scripts.some((script, index) => {
       const match = SCRIPT_ID.exec(script.id);
       return (
         !match ||
         Number(match[1]) !== index + 1 ||
-        !["greenFlag", "onActorClicked"].includes(script.trigger.type) ||
+        !["greenFlag", "onActorClicked", "onKeyPressed", "onMessage"].includes(
+          script.trigger.type,
+        ) ||
         script.statements.length > MAX_STATEMENTS
       );
     })

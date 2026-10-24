@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { createEditorHistory } from "@agorix/block-editor";
 import { ProjectStore, type BrowserStorageAdapter } from "@agorix/persistence";
-import { addStudioActor, appendStudioStatement } from "./kidsStudioModel.js";
+import {
+  addStudioActor,
+  addStudioList,
+  addStudioVariable,
+  appendStudioStatement,
+  setStudioTrigger,
+} from "./kidsStudioModel.js";
 import {
   createStudioProject,
   exportStudioProject,
@@ -32,7 +38,22 @@ describe("Kids studio projects", () => {
     const project = createStudioProject("nova", "forest", "es", store, index);
     let history = createEditorHistory(store.load(project.id).program);
     history = addStudioActor(history, "mika");
+    history = addStudioVariable(history, "Puntos");
+    history = addStudioList(history, "Objetos");
+    history = setStudioTrigger(history, "actor:studio-2-mika", {
+      type: "onMessage",
+      message: "vamos",
+    });
+    history = appendStudioStatement(history, "actor:studio-1-nova", {
+      type: "broadcast",
+      message: "vamos",
+    });
     history = appendStudioStatement(history, "actor:studio-2-mika", { type: "move", steps: 40 });
+    history = appendStudioStatement(history, "actor:studio-2-mika", {
+      type: "listAdd",
+      listId: "studio-list-1",
+      value: { type: "numericLiteral", value: 2 },
+    });
     saveStudioProject(project.id, history.current, "forest", "actor:studio-2-mika", "es", store);
     setStudioBackdrop(project.id, "moon", "es", store, index);
     expect(store.load(project.id).metadata.stage?.backdropId).toBe("backdrop:moon");

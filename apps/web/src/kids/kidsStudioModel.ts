@@ -6,6 +6,7 @@ import {
   type ProjectCreativeState,
   type ProjectProgram,
   type Statement,
+  type Trigger,
 } from "@agorix/program-model";
 import type { Locale } from "../i18n.js";
 import {
@@ -36,9 +37,46 @@ export type StudioStatement = Extract<
       | "show"
       | "hide"
       | "setSize"
-      | "wait";
+      | "wait"
+      | "broadcast"
+      | "setVariable"
+      | "changeVariable"
+      | "listAdd"
+      | "repeat"
+      | "if";
   }
 >;
+
+const STUDIO_KEYS = ["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"] as const;
+const STUDIO_MESSAGES = ["hola", "vamos", "listo"] as const;
+const DATA_NAME = /^[\p{L}\p{N}][\p{L}\p{N} _-]{0,19}$/u;
+const MAX_STUDIO_BLOCKS = 60;
+
+function finiteSmallNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= -100 && value <= 100;
+}
+
+function checkedTrigger(trigger: Trigger): boolean {
+  return (
+    trigger.type === "greenFlag" ||
+    trigger.type === "onActorClicked" ||
+    (trigger.type === "onKeyPressed" &&
+      STUDIO_KEYS.includes(trigger.key as (typeof STUDIO_KEYS)[number])) ||
+    (trigger.type === "onMessage" &&
+      STUDIO_MESSAGES.includes(trigger.message as (typeof STUDIO_MESSAGES)[number]))
+  );
+}
+
+function checkedValue(value: unknown): value is { type: "numericLiteral"; value: number } {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "type" in value &&
+    value.type === "numericLiteral" &&
+    "value" in value &&
+    finiteSmallNumber(value.value)
+  );
+}
 
 export function studioActorId(index: number, characterId: KidsGalleryCharacterId): string {
   return `actor:studio-${index}-${characterId}`;
@@ -56,7 +94,7 @@ function actorOfScript(id: string): { index: number; characterId: KidsGalleryCha
   return { index, characterId: match[2] };
 }
 
-function checked(statement: Statement): boolean {
+function checked(statement: Statement, program: ProjectProgram, nested = false): boolean {
   if (statement.type === "move")
     return (
       Number.isInteger(statement.steps / 40) && statement.steps >= 40 && statement.steps <= 200
@@ -79,6 +117,42 @@ function checked(statement: Statement): boolean {
   if (statement.type === "show" || statement.type === "hide") return true;
   if (statement.type === "setSize") return [50, 75, 100, 125, 150].includes(statement.size);
   if (statement.type === "wait") return [0.5, 1, 2, 3].includes(statement.seconds);
+  if (statement.type === "broadcast")
+    return STUDIO_MESSAGES.includes(statement.message as (typeof STUDIO_MESSAGES)[number]);
+  if (statement.type === "setVariable" || statement.type === "changeVariable")
+    return (
+      program.variables?.some((item) => item.id === statement.variableId) === true &&
+      checkedValue(statement.type === "setVariable" ? statement.value : statement.delta)
+    );
+  if (statement.type === "listAdd")
+    return (
+      program.lists?.some((item) => item.id === statement.listId) === true &&
+      checkedValue(statement.value)
+    );
+  if (statement.type === "repeat")
+    return (
+      !nested &&
+      [2, 3, 5].includes(statement.count) &&
+      statement.body.length === 1 &&
+      checked(statement.body[0]!, program, true)
+    );
+  if (statement.type === "if") {
+    const condition = statement.condition;
+    if (
+      nested ||
+      statement.else ||
+      statement.then.length !== 1 ||
+      condition.type !== "greaterThan" ||
+      condition.left.type !== "variable"
+    )
+      return false;
+    const variableId = condition.left.variableId;
+    return (
+      program.variables?.some((item) => item.id === variableId) === true &&
+      checkedValue(condition.right) &&
+      checked(statement.then[0]!, program, true)
+    );
+  }
   return false;
 }
 
@@ -87,15 +161,30 @@ export function validateStudioProgram(raw: ProjectProgram): ProjectProgram {
   if (
     program.scripts.length < 1 ||
     program.scripts.length > MAX_STUDIO_ACTORS ||
-    (program.variables?.length ?? 0) > 0 ||
-    (program.lists?.length ?? 0) > 0 ||
+    (program.variables?.length ?? 0) > 3 ||
+    (program.lists?.length ?? 0) > 3 ||
+    program.variables?.some(
+      (item, index) =>
+        item.id !== `studio-var-${index + 1}` ||
+        !DATA_NAME.test(item.name) ||
+        item.initialValue !== 0 ||
+        !item.visible,
+    ) ||
+    program.lists?.some(
+      (item, index) =>
+        item.id !== `studio-list-${index + 1}` ||
+        !DATA_NAME.test(item.name) ||
+        item.initialItems.length !== 0 ||
+        !item.visible,
+    ) ||
     program.scripts.some((script, position) => {
       const actor = actorOfScript(script.id);
       return (
         !actor ||
         actor.index !== position + 1 ||
-        !["greenFlag", "onActorClicked"].includes(script.trigger.type) ||
-        script.statements.some((statement) => !checked(statement))
+        !checkedTrigger(script.trigger) ||
+        script.statements.length > MAX_STUDIO_BLOCKS ||
+        script.statements.some((statement) => !checked(statement, program))
       );
     })
   )
@@ -193,7 +282,7 @@ export function appendStudioStatement(
   statement: StudioStatement,
 ): EditorHistory {
   const program = validateStudioProgram(history.current);
-  if (!checked(statement)) throw new RangeError("unsupported studio block or asset");
+  if (!checked(statement, program)) throw new RangeError("unsupported studio block or asset");
   const index = program.scripts.findIndex((script) => {
     const actor = actorOfScript(script.id);
     return actor !== null && studioActorId(actor.index, actor.characterId) === actorId;
@@ -210,19 +299,67 @@ export function appendStudioStatement(
 export function setStudioTrigger(
   history: EditorHistory,
   actorId: string,
-  trigger: "greenFlag" | "onActorClicked",
+  trigger: Trigger | "greenFlag" | "onActorClicked",
 ): EditorHistory {
   const program = validateStudioProgram(history.current);
+  const resolved = typeof trigger === "string" ? ({ type: trigger } as Trigger) : trigger;
+  if (!checkedTrigger(resolved)) throw new RangeError("unsupported studio event");
   const index = program.scripts.findIndex((script) => {
     const actor = actorOfScript(script.id);
     return actor !== null && studioActorId(actor.index, actor.characterId) === actorId;
   });
   if (index < 0) throw new RangeError("unknown studio actor");
   const scripts = [...program.scripts];
-  scripts[index] = { ...scripts[index]!, trigger: { type: trigger } };
+  scripts[index] = { ...scripts[index]!, trigger: resolved };
   return recordCanonicalTransaction(history, {
     label: "set studio event",
     after: validateStudioProgram({ ...program, scripts }),
+  }).history;
+}
+
+export function addStudioVariable(history: EditorHistory, name: string): EditorHistory {
+  const program = validateStudioProgram(history.current);
+  if (
+    !DATA_NAME.test(name) ||
+    (program.variables?.length ?? 0) >= 3 ||
+    program.variables?.some((item) => item.name.toLocaleLowerCase() === name.toLocaleLowerCase())
+  )
+    throw new RangeError("invalid studio variable");
+  const variables = [
+    ...(program.variables ?? []),
+    {
+      id: `studio-var-${(program.variables?.length ?? 0) + 1}`,
+      name,
+      initialValue: 0,
+      visible: true,
+    },
+  ];
+  return recordCanonicalTransaction(history, {
+    label: "add studio variable",
+    after: validateStudioProgram({ ...program, variables }),
+  }).history;
+}
+
+export function addStudioList(history: EditorHistory, name: string): EditorHistory {
+  const program = validateStudioProgram(history.current);
+  if (
+    !DATA_NAME.test(name) ||
+    (program.lists?.length ?? 0) >= 3 ||
+    program.lists?.some((item) => item.name.toLocaleLowerCase() === name.toLocaleLowerCase())
+  )
+    throw new RangeError("invalid studio list");
+  const lists = [
+    ...(program.lists ?? []),
+    {
+      id: `studio-list-${(program.lists?.length ?? 0) + 1}`,
+      name,
+      initialItems: [],
+      visible: true,
+    },
+  ];
+  return recordCanonicalTransaction(history, {
+    label: "add studio list",
+    after: validateStudioProgram({ ...program, lists }),
   }).history;
 }
 
