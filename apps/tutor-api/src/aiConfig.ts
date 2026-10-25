@@ -4,7 +4,9 @@ import { DatabaseSync } from "node:sqlite";
 import type { TutorAdapterConfig } from "./index.js";
 import type { OriCliConfig } from "./oriCli.js";
 
-export const AI_CONFIG_SCHEMA = "agorix/ai-config/v1" as const;
+export const AI_CONFIG_SCHEMA = "agorix/ai-config/v2" as const;
+/** Stored revisions and older admin clients may still carry v1: it is migrated when read. */
+export const AI_CONFIG_SCHEMA_V1 = "agorix/ai-config/v1" as const;
 export const AI_CAPABILITIES = [
   "mission",
   "advanced",
@@ -27,9 +29,94 @@ export interface AiPolicy {
   readonly fallback: "deterministic";
 }
 
+export const GROUP_BLOCK_CATEGORIES = [
+  "violence",
+  "sexual",
+  "hate",
+  "self-harm",
+  "personal-data",
+  "other",
+] as const;
+export const GROUP_PII_PATTERNS = ["phone", "email", "address", "url"] as const;
+/** Same fixed ids as `REACTION_IDS` in `@agorix/team-project`; the admin picks a subset per locale. */
+export const GROUP_REACTION_IDS = ["like", "party", "think", "heart"] as const;
+export type GroupBlockCategory = (typeof GROUP_BLOCK_CATEGORIES)[number];
+export type GroupPiiPattern = (typeof GROUP_PII_PATTERNS)[number];
+export type GroupReactionId = (typeof GROUP_REACTION_IDS)[number];
+
+/**
+ * Closed-group settings (ADR 0010, issue #567). Everything is on-device or limits: no credential
+ * lives here. `onUnavailable` is fixed to "block": a weaker policy would need its own ADR.
+ */
+export interface GroupConfig {
+  readonly moderation: {
+    readonly image: {
+      readonly enabled: boolean;
+      readonly modelId: string;
+      /** Score at or above this is unsafe. */
+      readonly unsafeThreshold: number;
+      /** Score at or above this (and below unsafe) is uncertain, which also blocks. */
+      readonly uncertainThreshold: number;
+      readonly blockedCategories: readonly GroupBlockCategory[];
+      readonly onUnavailable: "block";
+    };
+    readonly text: {
+      readonly enabled: boolean;
+      readonly ruleSet: string;
+      readonly blockedTerms: { readonly es: readonly string[]; readonly en: readonly string[] };
+      readonly piiPatterns: readonly GroupPiiPattern[];
+      readonly onUnavailable: "block";
+    };
+  };
+  readonly approvalQueue: {
+    /** True: every shared item waits for the organizer, whatever the model says. */
+    readonly holdAll: boolean;
+    /** Minutes a coarse rejection reason is kept; never the content. */
+    readonly reasonRetentionMinutes: number;
+  };
+  readonly reactions: {
+    readonly es: readonly GroupReactionId[];
+    readonly en: readonly GroupReactionId[];
+  };
+  readonly limits: {
+    readonly maxChildren: number;
+    readonly maxSessionMinutes: number;
+    readonly joinCodeMinutes: number;
+    /** The optional signalling mailbox and TURN. Off until the privacy review. */
+    readonly relayEnabled: boolean;
+  };
+}
+
 export interface AiConfig {
   readonly schema: typeof AI_CONFIG_SCHEMA;
   readonly capabilities: Readonly<Record<AiCapability, AiPolicy>>;
+  readonly group: GroupConfig;
+}
+
+/** Safe defaults: fail closed, hold everything for the organizer, relay off. */
+export function defaultGroupConfig(): GroupConfig {
+  return {
+    moderation: {
+      image: {
+        enabled: true,
+        modelId: "local-image-classifier",
+        unsafeThreshold: 0.5,
+        uncertainThreshold: 0.2,
+        blockedCategories: [...GROUP_BLOCK_CATEGORIES],
+        onUnavailable: "block",
+      },
+      text: {
+        enabled: true,
+        ruleSet: "local-text-rules",
+        blockedTerms: { es: [], en: [] },
+        piiPatterns: [...GROUP_PII_PATTERNS],
+        onUnavailable: "block",
+      },
+    },
+    approvalQueue: { holdAll: true, reasonRetentionMinutes: 10 },
+    reactions: { es: [...GROUP_REACTION_IDS], en: [...GROUP_REACTION_IDS] },
+    limits: { maxChildren: 4, maxSessionMinutes: 120, joinCodeMinutes: 10, relayEnabled: false },
+  };
 }
 
 export interface AiRevision {
@@ -67,6 +154,7 @@ export function defaultAiConfig(ori: OriCliConfig, tutor: TutorAdapterConfig): A
   });
   return {
     schema: AI_CONFIG_SCHEMA,
+    group: defaultGroupConfig(),
     capabilities: {
       mission: forOri("mission"),
       advanced: forOri("advanced"),
@@ -90,19 +178,148 @@ function keys(value: Record<string, unknown>): string {
   return Object.keys(value).sort().join(",");
 }
 
-export function validateAiConfig(raw: unknown): AiConfig {
+function plain(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new AiConfigError("invalid-config");
+  }
+  return value as Record<string, unknown>;
+}
+
+function bool(value: unknown): boolean {
+  if (typeof value !== "boolean") throw new AiConfigError("invalid-config");
+  return value;
+}
+
+function integer(value: unknown, min: number, max: number): number {
+  if (!Number.isInteger(value) || (value as number) < min || (value as number) > max) {
+    throw new AiConfigError("invalid-config");
+  }
+  return value as number;
+}
+
+/** A score threshold with at most three decimals, so a revision diff stays readable. */
+function threshold(value: unknown, min: number, max: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < min || value > max) {
+    throw new AiConfigError("invalid-config");
+  }
+  if (Math.round(value * 1000) / 1000 !== value) throw new AiConfigError("invalid-config");
+  return value;
+}
+
+function name(value: unknown): string {
+  if (typeof value !== "string" || !/^[A-Za-z0-9._:@/+-]{1,80}$/.test(value)) {
+    throw new AiConfigError("invalid-config");
+  }
+  return value;
+}
+
+function pick<T extends string>(value: unknown, allowed: readonly T[], max: number): T[] {
+  if (!Array.isArray(value) || value.length > max) throw new AiConfigError("invalid-config");
+  const out: T[] = [];
+  for (const item of value) {
+    if (typeof item !== "string" || !(allowed as readonly string[]).includes(item)) {
+      throw new AiConfigError("invalid-config");
+    }
+    if (out.includes(item as T)) throw new AiConfigError("invalid-config");
+    out.push(item as T);
+  }
+  return out;
+}
+
+function terms(value: unknown): string[] {
+  if (!Array.isArray(value) || value.length > 200) throw new AiConfigError("invalid-config");
+  const seen = new Set<string>();
+  return value.map((item) => {
+    if (typeof item !== "string") throw new AiConfigError("invalid-config");
+    const term = item.trim();
+    const key = term.toLocaleLowerCase();
+    if (
+      term.length < 1 ||
+      term.length > 32 ||
+      term !== item ||
+      [...term].some((char) => char.charCodeAt(0) < 32) ||
+      seen.has(key)
+    ) {
+      throw new AiConfigError("invalid-config");
+    }
+    seen.add(key);
+    return term;
+  });
+}
+
+export function validateGroupConfig(raw: unknown): GroupConfig {
+  const root = plain(raw);
+  if (keys(root) !== "approvalQueue,limits,moderation,reactions") {
+    throw new AiConfigError("invalid-config");
+  }
+  const moderation = plain(root.moderation);
+  if (keys(moderation) !== "image,text") throw new AiConfigError("invalid-config");
+  const image = plain(moderation.image);
+  if (
+    keys(image) !==
+    "blockedCategories,enabled,modelId,onUnavailable,uncertainThreshold,unsafeThreshold"
+  ) {
+    throw new AiConfigError("invalid-config");
+  }
+  const unsafeThreshold = threshold(image.unsafeThreshold, 0.001, 1);
+  const uncertainThreshold = threshold(image.uncertainThreshold, 0, 1);
+  if (image.onUnavailable !== "block" || uncertainThreshold > unsafeThreshold) {
+    throw new AiConfigError("invalid-config");
+  }
+  const text = plain(moderation.text);
+  if (keys(text) !== "blockedTerms,enabled,onUnavailable,piiPatterns,ruleSet") {
+    throw new AiConfigError("invalid-config");
+  }
+  if (text.onUnavailable !== "block") throw new AiConfigError("invalid-config");
+  const blockedTerms = plain(text.blockedTerms);
+  if (keys(blockedTerms) !== "en,es") throw new AiConfigError("invalid-config");
+  const queue = plain(root.approvalQueue);
+  if (keys(queue) !== "holdAll,reasonRetentionMinutes") throw new AiConfigError("invalid-config");
+  const reactions = plain(root.reactions);
+  if (keys(reactions) !== "en,es") throw new AiConfigError("invalid-config");
+  const limits = plain(root.limits);
+  if (keys(limits) !== "joinCodeMinutes,maxChildren,maxSessionMinutes,relayEnabled") {
+    throw new AiConfigError("invalid-config");
+  }
+  return {
+    moderation: {
+      image: {
+        enabled: bool(image.enabled),
+        modelId: name(image.modelId),
+        unsafeThreshold,
+        uncertainThreshold,
+        blockedCategories: pick(image.blockedCategories, GROUP_BLOCK_CATEGORIES, 6),
+        onUnavailable: "block",
+      },
+      text: {
+        enabled: bool(text.enabled),
+        ruleSet: name(text.ruleSet),
+        blockedTerms: { es: terms(blockedTerms.es), en: terms(blockedTerms.en) },
+        piiPatterns: pick(text.piiPatterns, GROUP_PII_PATTERNS, 4),
+        onUnavailable: "block",
+      },
+    },
+    approvalQueue: {
+      holdAll: bool(queue.holdAll),
+      reasonRetentionMinutes: integer(queue.reasonRetentionMinutes, 0, 60),
+    },
+    reactions: {
+      es: pick(reactions.es, GROUP_REACTION_IDS, 4),
+      en: pick(reactions.en, GROUP_REACTION_IDS, 4),
+    },
+    limits: {
+      maxChildren: integer(limits.maxChildren, 1, 4),
+      maxSessionMinutes: integer(limits.maxSessionMinutes, 15, 240),
+      joinCodeMinutes: integer(limits.joinCodeMinutes, 1, 10),
+      relayEnabled: bool(limits.relayEnabled),
+    },
+  };
+}
+
+function validateCapabilities(raw: unknown): Record<AiCapability, AiPolicy> {
   if (!raw || typeof raw !== "object" || Array.isArray(raw))
     throw new AiConfigError("invalid-config");
-  const root = raw as Record<string, unknown>;
-  if (
-    keys(root) !== "capabilities,schema" ||
-    root.schema !== AI_CONFIG_SCHEMA ||
-    !root.capabilities ||
-    typeof root.capabilities !== "object" ||
-    Array.isArray(root.capabilities)
-  )
-    throw new AiConfigError("invalid-config");
-  const capabilities = root.capabilities as Record<string, unknown>;
+  const capabilities = raw as Record<string, unknown>;
   if (keys(capabilities) !== [...AI_CAPABILITIES].sort().join(","))
     throw new AiConfigError("invalid-config");
   const result = {} as Record<AiCapability, AiPolicy>;
@@ -148,15 +365,45 @@ export function validateAiConfig(raw: unknown): AiConfig {
       fallback: "deterministic",
     };
   }
-  return { schema: AI_CONFIG_SCHEMA, capabilities: result };
+  return result;
 }
 
-export function configDiff(before: AiConfig, after: AiConfig): readonly AiCapability[] {
-  return AI_CAPABILITIES.filter(
+/**
+ * Validates a registry and returns it as v2. A v1 document (an older stored revision or an older
+ * admin client) carries no group section, so it takes `groupFallback`: the defaults when reading old
+ * history, the current group settings when an old client publishes, so it cannot reset them.
+ */
+export function validateAiConfig(
+  raw: unknown,
+  groupFallback: GroupConfig = defaultGroupConfig(),
+): AiConfig {
+  const root = plain(raw);
+  if (root.schema === AI_CONFIG_SCHEMA_V1) {
+    if (keys(root) !== "capabilities,schema") throw new AiConfigError("invalid-config");
+    return {
+      schema: AI_CONFIG_SCHEMA,
+      capabilities: validateCapabilities(root.capabilities),
+      group: structuredClone(groupFallback),
+    };
+  }
+  if (root.schema !== AI_CONFIG_SCHEMA || keys(root) !== "capabilities,group,schema") {
+    throw new AiConfigError("invalid-config");
+  }
+  return {
+    schema: AI_CONFIG_SCHEMA,
+    capabilities: validateCapabilities(root.capabilities),
+    group: validateGroupConfig(root.group),
+  };
+}
+
+export function configDiff(before: AiConfig, after: AiConfig): readonly (AiCapability | "group")[] {
+  const changed: (AiCapability | "group")[] = AI_CAPABILITIES.filter(
     (capability) =>
       JSON.stringify(before.capabilities[capability]) !==
       JSON.stringify(after.capabilities[capability]),
   );
+  if (JSON.stringify(before.group) !== JSON.stringify(after.group)) changed.push("group");
+  return changed;
 }
 
 function assertAuthor(author: string): void {
@@ -202,7 +449,13 @@ export function createMemoryAiConfigRepository(
     current: () => structuredClone(revisions.at(-1)!),
     history: () => structuredClone([...revisions].reverse()),
     publish: (raw, expected, author) =>
-      append(validateAiConfig(raw), expected, author, "publish", null),
+      append(
+        validateAiConfig(raw, revisions.at(-1)!.config.group),
+        expected,
+        author,
+        "publish",
+        null,
+      ),
     rollback: (source, expected, author) => {
       const found = revisions.find((item) => item.revision === source);
       if (!found) throw new AiConfigError("revision-not-found");
@@ -282,7 +535,7 @@ export function openSqliteAiConfigRepository(
         db.prepare("SELECT * FROM ai_config_revisions ORDER BY revision DESC").all() as unknown[]
       ).map(row),
     publish: (raw, expected, author) =>
-      append(validateAiConfig(raw), expected, author, "publish", null),
+      append(validateAiConfig(raw, current().config.group), expected, author, "publish", null),
     rollback: (source, expected, author) => {
       const found = db.prepare("SELECT * FROM ai_config_revisions WHERE revision = ?").get(source);
       if (!found) throw new AiConfigError("revision-not-found");
