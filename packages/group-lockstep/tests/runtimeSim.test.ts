@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { SCHEMA_VERSION, type ProjectProgram } from "@agorix/program-model";
-import { RuntimeSim } from "../src/index.js";
+import type { MultiActorRunResult } from "@agorix/runtime";
+import { RuntimeSim, type RuntimeFrame } from "../src/index.js";
 
 const program: ProjectProgram = {
   schema: SCHEMA_VERSION,
@@ -37,7 +38,7 @@ const sim = (onFrame?: ConstructorParameters<typeof RuntimeSim>[0]["onFrame"]) =
 
 describe("RuntimeSim", () => {
   it("maps ordered inputs to runtime events and reports each applied frame", () => {
-    const onFrame = vi.fn();
+    const onFrame = vi.fn<(frame: RuntimeFrame, result: MultiActorRunResult) => void>();
     const game = sim(onFrame);
     game.apply({ n: 0, inputs: ["right", null] });
     game.apply({ n: 1, inputs: ["other", "right"] });
