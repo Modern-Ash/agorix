@@ -227,3 +227,7 @@ Each iteration needs an issue with an observable child journey, success and fail
 - The Crear and Escena libre drawing canvas now has six tools: brush, eraser, bucket fill, line, rectangle and circle, plus undo and redo (the last 20 steps), flip and clear. Shapes preview while dragging and commit on release; the eraser makes pixels transparent on a character and white on a backdrop. Fill treats near colours as one area (small tolerance) so soft brush edges leave no halo, and its work is bounded by the 256 × 256 canvas.
 - Nothing changes in what is stored: the result still goes through the same local image validation and 60 KB bound, stays on the device and is never sent to Ori or a provider. Pixel helpers live in `kidsPaint.ts` with unit tests; a mobile browser test with axe covers fill, undo/redo, eraser, rectangle, flip and clear.
 - Still open: selecting and moving parts of a drawing, text, layers, vector shapes, and a camera or recording tool.
+
+## Extensions (#737)
+
+- ADR 0011 (proposed, awaiting owner approval) defines safe extensions as first-party, versioned, deterministic capability packs declared per project and switched by adults; network, camera, microphone, hardware, speech and third-party code are out. Pen and Music are the first candidates, each as its own issue. Nothing is implemented until the ADR is accepted.
