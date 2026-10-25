@@ -7,6 +7,8 @@ import {
   type ProjectAsset,
   type ProjectProgram,
   type Procedure,
+  type ProcedureParam,
+  type ProcedureParamId,
   type Expression,
   type Statement,
   type Trigger,
@@ -129,8 +131,16 @@ function checkedTrigger(trigger: Trigger): boolean {
   );
 }
 
-function checkedNumber(value: Expression, program: ProjectProgram, depth = 0): boolean {
+const PARAM_IDS: readonly ProcedureParamId[] = ["p1", "p2", "p3"];
+
+/** A bound field or `param` expression may only name one of the enclosing custom block's numbers. */
+function paramInScope(id: ProcedureParamId | undefined, arity: number): boolean {
+  return id === undefined || PARAM_IDS.indexOf(id) < arity;
+}
+
+function checkedNumber(value: Expression, program: ProjectProgram, depth = 0, arity = 0): boolean {
   if (depth > 2) return false;
+  if (value.type === "param") return arity > 0 && paramInScope(value.paramId, arity);
   if (value.type === "numericLiteral") return finiteSmallNumber(value.value);
   if (value.type === "xPosition" || value.type === "yPosition") return true;
   if (value.type === "distanceToActor")
@@ -155,15 +165,15 @@ function checkedNumber(value: Expression, program: ProjectProgram, depth = 0): b
       finiteSmallNumber(value.max.value) &&
       value.min.value <= value.max.value
     );
-  if (value.type === "mathFunction") return checkedNumber(value.value, program, depth + 1);
+  if (value.type === "mathFunction") return checkedNumber(value.value, program, depth + 1, arity);
   if (["add", "subtract", "multiply", "divide", "modulo"].includes(value.type)) {
     const binary = value as Extract<
       Expression,
       { type: "add" | "subtract" | "multiply" | "divide" | "modulo" }
     >;
     return (
-      checkedNumber(binary.left, program, depth + 1) &&
-      checkedNumber(binary.right, program, depth + 1) &&
+      checkedNumber(binary.left, program, depth + 1, arity) &&
+      checkedNumber(binary.right, program, depth + 1, arity) &&
       (!(binary.type === "divide" || binary.type === "modulo") ||
         (binary.right.type === "numericLiteral" && binary.right.value !== 0))
     );
@@ -171,7 +181,7 @@ function checkedNumber(value: Expression, program: ProjectProgram, depth = 0): b
   return false;
 }
 
-function checkedCondition(value: Expression, program: ProjectProgram): boolean {
+function checkedCondition(value: Expression, program: ProjectProgram, arity = 0): boolean {
   if (value.type === "touchingStageEdge")
     return (
       value.minX === STUDIO_EDGE_CONDITION.minX &&
@@ -186,10 +196,35 @@ function checkedCondition(value: Expression, program: ProjectProgram): boolean {
     });
   if (value.type !== "greaterThan" && value.type !== "lessThan" && value.type !== "equals")
     return false;
-  return checkedNumber(value.left, program) && checkedNumber(value.right, program);
+  return (
+    checkedNumber(value.left, program, 0, arity) && checkedNumber(value.right, program, 0, arity)
+  );
 }
 
 const MAX_STUDIO_PROCEDURES = 20;
+
+function checkedParams(params: readonly ProcedureParam[] | undefined): boolean {
+  return (
+    params === undefined ||
+    (params.length >= 1 &&
+      params.length <= PARAM_IDS.length &&
+      params.every((item, index) => item.id === PARAM_IDS[index] && DATA_NAME.test(item.name)))
+  );
+}
+
+/** A call's fixed numbers: small, finite, and in half steps, so every unit picker can offer them. */
+function checkedArgs(args: readonly Expression[] | undefined): boolean {
+  return (
+    args === undefined ||
+    (args.length <= PARAM_IDS.length &&
+      args.every(
+        (item) =>
+          item.type === "numericLiteral" &&
+          Number.isInteger(item.value * 2) &&
+          Math.abs(item.value) <= 200,
+      ))
+  );
+}
 
 function checkedProcedures(
   procedures: readonly Procedure[] | undefined,
@@ -205,8 +240,9 @@ function checkedProcedures(
         item.id.startsWith(`proc-${actorIndex}-`) &&
         /^proc-[1-9][0-9]?-[1-9][0-9]?$/.test(item.id) &&
         DATA_NAME.test(item.name) &&
+        checkedParams(item.params) &&
         item.body.length >= 1 &&
-        item.body.every((statement) => checked(statement, program)),
+        item.body.every((statement) => checked(statement, program, 0, item.params?.length ?? 0)),
     )
   );
 }
@@ -241,9 +277,10 @@ function actorOfScript(id: string): { index: number; characterId: KidsGalleryCha
   return { index, characterId: match[2] };
 }
 
-function checked(statement: Statement, program: ProjectProgram, depth = 0): boolean {
+function checked(statement: Statement, program: ProjectProgram, depth = 0, arity = 0): boolean {
   if (statement.type === "move")
     return (
+      paramInScope(statement.stepsFrom, arity) &&
       Number.isInteger(statement.steps / 20) &&
       statement.steps !== 0 &&
       Math.abs(statement.steps) <= 200
@@ -262,7 +299,11 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0): bool
       statement.y >= -100 &&
       statement.y <= 120
     );
-  if (statement.type === "turn") return [45, 90, 180, -45, -90, -180].includes(statement.degrees);
+  if (statement.type === "turn")
+    return (
+      paramInScope(statement.degreesFrom, arity) &&
+      [45, 90, 180, -45, -90, -180].includes(statement.degrees)
+    );
   if (statement.type === "pointInDirection") return [0, 90, 180, -90].includes(statement.degrees);
   if (statement.type === "pointTowards")
     return program.scripts.some((script) => {
@@ -308,20 +349,26 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0): bool
   if (statement.type === "show" || statement.type === "hide") return true;
   if (statement.type === "changeSize") return [-50, -25, 25, 50].includes(statement.delta);
   if (statement.type === "setSize") return [50, 75, 100, 125, 150].includes(statement.size);
-  if (statement.type === "wait") return [0.5, 1, 2, 3].includes(statement.seconds);
+  if (statement.type === "wait")
+    return paramInScope(statement.secondsFrom, arity) && [0.5, 1, 2, 3].includes(statement.seconds);
   if (statement.type === "broadcast")
     return STUDIO_MESSAGES.includes(statement.message as (typeof STUDIO_MESSAGES)[number]);
   if (statement.type === "setVariable" || statement.type === "changeVariable")
     return (
       program.variables?.some((item) => item.id === statement.variableId) === true &&
-      checkedNumber(statement.type === "setVariable" ? statement.value : statement.delta, program)
+      checkedNumber(
+        statement.type === "setVariable" ? statement.value : statement.delta,
+        program,
+        0,
+        arity,
+      )
     );
   if (statement.type === "showVariable" || statement.type === "hideVariable")
     return program.variables?.some((item) => item.id === statement.variableId) === true;
   if (statement.type === "listAdd")
     return (
       program.lists?.some((item) => item.id === statement.listId) === true &&
-      checkedNumber(statement.value, program)
+      checkedNumber(statement.value, program, 0, arity)
     );
   if (statement.type === "listRemoveAt")
     return (
@@ -332,37 +379,40 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0): bool
     return (
       program.lists?.some((item) => item.id === statement.listId) === true &&
       checkedStudioIndex(statement.index) &&
-      checkedNumber(statement.value, program)
+      checkedNumber(statement.value, program, 0, arity)
     );
   if (statement.type === "repeat")
     return (
       depth < MAX_STUDIO_CONTROL_DEPTH &&
+      paramInScope(statement.countFrom, arity) &&
       [2, 3, 5].includes(statement.count) &&
       statement.body.length >= 1 &&
       statement.body.length <= MAX_STUDIO_BODY &&
-      statement.body.every((item) => checked(item, program, depth + 1))
+      statement.body.every((item) => checked(item, program, depth + 1, arity))
     );
   if (statement.type === "callProcedure")
-    return /^proc-[1-9][0-9]?-[1-9][0-9]?$/.test(statement.procedureId);
+    return (
+      /^proc-[1-9][0-9]?-[1-9][0-9]?$/.test(statement.procedureId) && checkedArgs(statement.args)
+    );
   if (statement.type === "repeatUntil")
     return (
       depth < MAX_STUDIO_CONTROL_DEPTH &&
-      checkedCondition(statement.condition, program) &&
+      checkedCondition(statement.condition, program, arity) &&
       statement.body.length >= 1 &&
       statement.body.length <= MAX_STUDIO_BODY &&
-      statement.body.every((item) => checked(item, program, depth + 1))
+      statement.body.every((item) => checked(item, program, depth + 1, arity))
     );
   if (statement.type === "if") {
     return (
       depth < MAX_STUDIO_CONTROL_DEPTH &&
-      checkedCondition(statement.condition, program) &&
+      checkedCondition(statement.condition, program, arity) &&
       statement.then.length >= 1 &&
       statement.then.length <= MAX_STUDIO_BODY &&
-      statement.then.every((item) => checked(item, program, depth + 1)) &&
+      statement.then.every((item) => checked(item, program, depth + 1, arity)) &&
       (statement.else === undefined ||
         (statement.else.length >= 1 &&
           statement.else.length <= MAX_STUDIO_BODY &&
-          statement.else.every((item) => checked(item, program, depth + 1))))
+          statement.else.every((item) => checked(item, program, depth + 1, arity))))
     );
   }
   return false;
@@ -616,28 +666,165 @@ function scriptCalls(script: ProjectProgram["scripts"][number], procedureId: str
   );
 }
 
-function replaceCalls(
-  statements: readonly Statement[],
-  procedureId: string,
+const FROM_FIELDS = {
+  stepsFrom: "steps",
+  degreesFrom: "degrees",
+  secondsFrom: "seconds",
+  countFrom: "count",
+} as const;
+
+// Same limits as the runtime clamp, so inlining a call keeps the exact behaviour it had.
+const FROM_LIMITS = {
+  steps: { min: -1000, max: 1000, round: false },
+  degrees: { min: -1000, max: 1000, round: false },
+  seconds: { min: 0.1, max: 5, round: false },
+  count: { min: 1, max: 1000, round: true },
+} as const;
+
+type Json = unknown;
+
+function isRecord(value: Json): value is Record<string, Json> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/** Rebuild a tree of statements, letting `visit` replace any object (return undefined to recurse). */
+function deepMap(node: Json, visit: (item: Record<string, Json>) => Json | undefined): Json {
+  if (Array.isArray(node)) return node.map((item) => deepMap(item, visit));
+  if (!isRecord(node)) return node;
+  const replaced = visit(node);
+  if (replaced !== undefined) return replaced;
+  return Object.fromEntries(
+    Object.entries(node).map(([key, value]) => [key, deepMap(value, visit)]),
+  );
+}
+
+/** Rewrite every `…From` field and `param` expression of a body; null unbinds a number. */
+function remapParams(
   body: readonly Statement[],
+  next: (id: ProcedureParamId) => ProcedureParamId | null,
 ): Statement[] {
+  const visit = (item: Record<string, Json>): Json | undefined => {
+    if (item.type === "param") {
+      const id = next(item.paramId as ProcedureParamId);
+      return id === null ? { type: "numericLiteral", value: 0 } : { ...item, paramId: id };
+    }
+    if (!Object.keys(item).some((key) => key in FROM_FIELDS)) return undefined;
+    const copy: Record<string, Json> = {};
+    for (const [key, value] of Object.entries(item)) {
+      if (key in FROM_FIELDS) {
+        const id = next(value as ProcedureParamId);
+        if (id !== null) copy[key] = id;
+      } else copy[key] = deepMap(value, visit);
+    }
+    return copy;
+  };
+  return deepMap(body, visit) as Statement[];
+}
+
+function clampField(field: keyof typeof FROM_LIMITS, value: number): number {
+  const limits = FROM_LIMITS[field];
+  const bounded = Math.min(limits.max, Math.max(limits.min, value));
+  return limits.round ? Math.round(bounded) : bounded;
+}
+
+/** The body of a custom block as one call sees it: each number replaced by the call's own value. */
+function bodyForCall(procedure: Procedure, call: { args?: readonly Expression[] }): Statement[] {
+  const values = call.args?.map((item) => (item.type === "numericLiteral" ? item.value : 0));
+  if (!values) return [...procedure.body];
+  const valueOf = (id: ProcedureParamId) => values[PARAM_IDS.indexOf(id)] ?? 0;
+  const visit = (item: Record<string, Json>): Json | undefined => {
+    if (item.type === "param")
+      return { type: "numericLiteral", value: valueOf(item.paramId as ProcedureParamId) };
+    if (!Object.keys(item).some((key) => key in FROM_FIELDS)) return undefined;
+    const copy: Record<string, Json> = {};
+    for (const [key, value] of Object.entries(item))
+      if (!(key in FROM_FIELDS)) copy[key] = deepMap(value, visit);
+    for (const [key, value] of Object.entries(item)) {
+      if (!(key in FROM_FIELDS)) continue;
+      const field = FROM_FIELDS[key as keyof typeof FROM_FIELDS];
+      copy[field] = clampField(field, valueOf(value as ProcedureParamId));
+    }
+    return copy;
+  };
+  return deepMap(procedure.body, visit) as Statement[];
+}
+
+function replaceCalls(statements: readonly Statement[], procedure: Procedure): Statement[] {
   return statements.flatMap((statement): Statement[] => {
     if (statement.type === "callProcedure")
-      return statement.procedureId === procedureId ? [...body] : [statement];
+      return statement.procedureId === procedure.id
+        ? bodyForCall(procedure, statement)
+        : [statement];
     if (statement.type === "repeat" || statement.type === "repeatUntil")
-      return [{ ...statement, body: replaceCalls(statement.body, procedureId, body) }];
+      return [{ ...statement, body: replaceCalls(statement.body, procedure) }];
     if (statement.type === "if")
       return [
         {
           ...statement,
-          then: replaceCalls(statement.then, procedureId, body),
+          then: replaceCalls(statement.then, procedure),
           ...(statement.else === undefined
             ? {}
-            : { else: replaceCalls(statement.else, procedureId, body) }),
+            : { else: replaceCalls(statement.else, procedure) }),
         },
       ];
     return [statement];
   });
+}
+
+/** Apply `change` to every call of a custom block, wherever the character's blocks keep it. */
+function mapCalls(
+  statements: readonly Statement[],
+  procedureId: string,
+  change: (call: Extract<Statement, { type: "callProcedure" }>) => Statement,
+): Statement[] {
+  return statements.map((statement): Statement => {
+    if (statement.type === "callProcedure")
+      return statement.procedureId === procedureId ? change(statement) : statement;
+    if (statement.type === "repeat" || statement.type === "repeatUntil")
+      return { ...statement, body: mapCalls(statement.body, procedureId, change) };
+    if (statement.type === "if")
+      return {
+        ...statement,
+        then: mapCalls(statement.then, procedureId, change),
+        ...(statement.else === undefined
+          ? {}
+          : { else: mapCalls(statement.else, procedureId, change) }),
+      };
+    return statement;
+  });
+}
+
+function mapScriptCalls(
+  script: ProjectProgram["scripts"][number],
+  procedureId: string,
+  change: (call: Extract<Statement, { type: "callProcedure" }>) => Statement,
+): ProjectProgram["scripts"][number] {
+  return {
+    ...script,
+    statements: mapCalls(script.statements, procedureId, change),
+    ...(script.procedures === undefined
+      ? {}
+      : {
+          procedures: script.procedures.map((item) => ({
+            ...item,
+            body: mapCalls(item.body, procedureId, change),
+          })),
+        }),
+  };
+}
+
+function withArgs(
+  call: Extract<Statement, { type: "callProcedure" }>,
+  args: readonly number[],
+): Statement {
+  const rest = withoutKey(call, "args");
+  return args.length === 0
+    ? rest
+    : { ...rest, args: args.map((value) => ({ type: "numericLiteral", value }) as const) };
+}
+
+function argValues(call: Extract<Statement, { type: "callProcedure" }>): number[] {
+  return (call.args ?? []).map((item) => (item.type === "numericLiteral" ? item.value : 0));
 }
 
 function withScript(
@@ -665,9 +852,11 @@ export function createStudioProcedure(
   actorId: string,
   count: number,
   name: string,
+  numbers: readonly string[] = [],
 ): EditorHistory {
   return withScript(history, actorId, "create custom block", (script, actorIndex) => {
     const procedures = script.procedures ?? [];
+    if (numbers.length > PARAM_IDS.length) throw new RangeError("custom block number limit");
     if (!Number.isInteger(count) || count < 1 || script.statements.length < count)
       throw new RangeError("invalid custom block group");
     if (procedures.length >= MAX_STUDIO_PROCEDURES) throw new RangeError("custom block limit");
@@ -677,10 +866,23 @@ export function createStudioProcedure(
     const id = `proc-${actorIndex}-${n}`;
     return {
       ...script,
-      procedures: [...procedures, { id, name, body: script.statements.slice(-count) }],
+      procedures: [
+        ...procedures,
+        {
+          id,
+          name,
+          ...(numbers.length === 0
+            ? {}
+            : { params: numbers.map((title, index) => ({ id: PARAM_IDS[index]!, name: title })) }),
+          body: script.statements.slice(-count),
+        },
+      ],
       statements: [
         ...script.statements.slice(0, -count),
-        { type: "callProcedure", procedureId: id },
+        withArgs(
+          { type: "callProcedure", procedureId: id },
+          numbers.map(() => 0),
+        ),
       ],
     };
   });
@@ -699,6 +901,311 @@ export function renameStudioProcedure(
       ...script,
       procedures: script.procedures.map((item) =>
         item.id === procedureId ? { ...item, name } : item,
+      ),
+    };
+  });
+}
+
+export type StudioNumberUnit = "steps" | "degrees" | "seconds" | "count" | "number";
+
+/** Values a child can pick for a call's number, by the unit of the first block that uses it. */
+export const STUDIO_NUMBER_CHOICES: Readonly<Record<StudioNumberUnit, readonly number[]>> =
+  Object.freeze({
+    steps: [-200, -100, -60, -40, -20, 20, 40, 60, 100, 200],
+    degrees: [-180, -90, -45, 45, 90, 180],
+    seconds: [0.5, 1, 2, 3],
+    count: [2, 3, 5],
+    number: [-50, -10, -5, -1, 0, 1, 5, 10, 50],
+  });
+
+export const STUDIO_NUMBER_DEFAULTS: Readonly<Record<StudioNumberUnit, number>> = Object.freeze({
+  steps: 40,
+  degrees: 90,
+  seconds: 1,
+  count: 2,
+  number: 1,
+});
+
+const SLOT_UNIT: Readonly<Record<string, StudioNumberUnit>> = {
+  stepsFrom: "steps",
+  degreesFrom: "degrees",
+  secondsFrom: "seconds",
+  countFrom: "count",
+};
+
+/** The unit of each of a custom block's numbers, from the first block in it that uses the number. */
+export function studioProcedureNumberUnits(procedure: Procedure): StudioNumberUnit[] {
+  const units: (StudioNumberUnit | undefined)[] = (procedure.params ?? []).map(() => undefined);
+  deepMap(procedure.body, (item) => {
+    if (item.type === "param") {
+      const at = PARAM_IDS.indexOf(item.paramId as ProcedureParamId);
+      if (at >= 0 && units[at] === undefined) units[at] = "number";
+    }
+    for (const [key, value] of Object.entries(item)) {
+      const unit = SLOT_UNIT[key];
+      const at = PARAM_IDS.indexOf(value as ProcedureParamId);
+      if (unit && at >= 0 && units[at] === undefined) units[at] = unit;
+    }
+    return undefined;
+  });
+  return units.map((unit) => unit ?? "number");
+}
+
+/** Add one titled number to a custom block; every call of it starts with 0 for the new number. */
+export function addStudioProcedureNumber(
+  history: EditorHistory,
+  actorId: string,
+  procedureId: string,
+  title: string,
+): EditorHistory {
+  return withScript(history, actorId, "add custom block number", (script) => {
+    const procedure = script.procedures?.find((item) => item.id === procedureId);
+    if (!procedure) throw new RangeError("unknown custom block");
+    const params = procedure.params ?? [];
+    if (params.length >= PARAM_IDS.length) throw new RangeError("custom block number limit");
+    const changed = mapScriptCalls(script, procedureId, (call) =>
+      withArgs(call, [...argValues(call), 0]),
+    );
+    return {
+      ...changed,
+      procedures: (changed.procedures ?? []).map((item) =>
+        item.id === procedureId
+          ? { ...item, params: [...params, { id: PARAM_IDS[params.length]!, name: title }] }
+          : item,
+      ),
+    };
+  });
+}
+
+/**
+ * Remove one of a custom block's numbers. Blocks that used it keep their fixed value, later numbers
+ * move up one place and every call drops that number.
+ */
+export function removeStudioProcedureNumber(
+  history: EditorHistory,
+  actorId: string,
+  procedureId: string,
+  paramId: ProcedureParamId,
+): EditorHistory {
+  return withScript(history, actorId, "remove custom block number", (script) => {
+    const procedure = script.procedures?.find((item) => item.id === procedureId);
+    const at = PARAM_IDS.indexOf(paramId);
+    if (!procedure || at < 0 || at >= (procedure.params?.length ?? 0))
+      throw new RangeError("unknown custom block number");
+    const changed = mapScriptCalls(script, procedureId, (call) =>
+      withArgs(
+        call,
+        argValues(call).filter((_value, index) => index !== at),
+      ),
+    );
+    const remaining = (procedure.params ?? [])
+      .filter((_item, index) => index !== at)
+      .map((item, index): ProcedureParam => ({ id: PARAM_IDS[index]!, name: item.name }));
+    return {
+      ...changed,
+      procedures: (changed.procedures ?? []).map((item) => {
+        if (item.id !== procedureId) return item;
+        const rest = withoutKey(item, "params");
+        return {
+          ...rest,
+          ...(remaining.length === 0 ? {} : { params: remaining }),
+          body: remapParams(item.body, (id) => {
+            const index = PARAM_IDS.indexOf(id);
+            if (index === at) return null;
+            return index > at ? PARAM_IDS[index - 1]! : id;
+          }),
+        };
+      }),
+    };
+  });
+}
+
+export type StudioBlockPath = readonly (number | "else")[];
+
+function updateAt(
+  list: readonly Statement[],
+  path: StudioBlockPath,
+  change: (statement: Statement) => Statement,
+): Statement[] {
+  const [head, ...rest] = path;
+  if (typeof head !== "number" || head < 0 || head >= list.length)
+    throw new RangeError("unknown block");
+  return list.map((item, index): Statement => {
+    if (index !== head) return item;
+    if (rest.length === 0) return change(item);
+    if (item.type === "repeat" || item.type === "repeatUntil")
+      return { ...item, body: updateAt(item.body, rest, change) };
+    if (item.type === "if") {
+      if (rest[0] === "else" && item.else)
+        return { ...item, else: updateAt(item.else, rest.slice(1), change) };
+      return { ...item, then: updateAt(item.then, rest, change) };
+    }
+    throw new RangeError("unknown block");
+  });
+}
+
+function withoutKey<T extends object>(value: T, key: string): T {
+  return Object.fromEntries(Object.entries(value).filter(([name]) => name !== key)) as T;
+}
+
+/** The number a block inside a custom block currently follows, if any. */
+export function studioBlockNumber(statement: Statement): ProcedureParamId | null {
+  switch (statement.type) {
+    case "move":
+      return statement.stepsFrom ?? null;
+    case "turn":
+      return statement.degreesFrom ?? null;
+    case "wait":
+      return statement.secondsFrom ?? null;
+    case "repeat":
+      return statement.countFrom ?? null;
+    case "setVariable":
+    case "listAdd":
+      return statement.value.type === "param" ? statement.value.paramId : null;
+    case "changeVariable":
+      return statement.delta.type === "param" ? statement.delta.paramId : null;
+    default:
+      return null;
+  }
+}
+
+/** Whether a block has a number slot that can follow one of the custom block's numbers. */
+export function studioBlockHasNumberSlot(statement: Statement): boolean {
+  switch (statement.type) {
+    case "move":
+    case "turn":
+    case "wait":
+    case "repeat":
+      return true;
+    case "setVariable":
+    case "listAdd":
+      return statement.value.type === "numericLiteral" || statement.value.type === "param";
+    case "changeVariable":
+      return statement.delta.type === "numericLiteral" || statement.delta.type === "param";
+    default:
+      return false;
+  }
+}
+
+function bindStatement(statement: Statement, paramId: ProcedureParamId | null): Statement {
+  const expression = (): Expression =>
+    paramId === null ? { type: "numericLiteral", value: 0 } : { type: "param", paramId };
+  switch (statement.type) {
+    case "move":
+      return paramId === null
+        ? withoutKey(statement, "stepsFrom")
+        : { ...statement, stepsFrom: paramId };
+    case "turn":
+      return paramId === null
+        ? withoutKey(statement, "degreesFrom")
+        : { ...statement, degreesFrom: paramId };
+    case "wait":
+      return paramId === null
+        ? withoutKey(statement, "secondsFrom")
+        : { ...statement, secondsFrom: paramId };
+    case "repeat":
+      return paramId === null
+        ? withoutKey(statement, "countFrom")
+        : { ...statement, countFrom: paramId };
+    case "setVariable":
+    case "listAdd":
+      return { ...statement, value: expression() };
+    case "changeVariable":
+      return { ...statement, delta: expression() };
+    default:
+      throw new RangeError("this block has no number slot");
+  }
+}
+
+function fixedValue(statement: Statement): number {
+  switch (statement.type) {
+    case "move":
+      return statement.steps;
+    case "turn":
+      return statement.degrees;
+    case "wait":
+      return statement.seconds;
+    case "repeat":
+      return statement.count;
+    case "setVariable":
+    case "listAdd":
+      return statement.value.type === "numericLiteral" ? statement.value.value : 0;
+    case "changeVariable":
+      return statement.delta.type === "numericLiteral" ? statement.delta.value : 0;
+    default:
+      return 0;
+  }
+}
+
+function usesNumber(body: readonly Statement[], paramId: ProcedureParamId): boolean {
+  let used = false;
+  remapParams(body, (id) => {
+    if (id === paramId) used = true;
+    return id;
+  });
+  return used;
+}
+
+/**
+ * Make a block inside a custom block follow one of its numbers (or go back to its fixed value with
+ * null). The first block to use a number gives every call that block's value, so nothing changes
+ * until the child picks a different number in a call.
+ */
+export function bindStudioProcedureBlock(
+  history: EditorHistory,
+  actorId: string,
+  procedureId: string,
+  path: StudioBlockPath,
+  paramId: ProcedureParamId | null,
+): EditorHistory {
+  return withScript(history, actorId, "set custom block number", (script) => {
+    const procedure = script.procedures?.find((item) => item.id === procedureId);
+    if (!procedure) throw new RangeError("unknown custom block");
+    const at = paramId === null ? -1 : PARAM_IDS.indexOf(paramId);
+    if (paramId !== null && at >= (procedure.params?.length ?? 0))
+      throw new RangeError("unknown custom block number");
+    let seed = 0;
+    const body = updateAt(procedure.body, path, (statement) => {
+      if (!studioBlockHasNumberSlot(statement))
+        throw new RangeError("this block has no number slot");
+      seed = fixedValue(statement);
+      return bindStatement(statement, paramId);
+    });
+    const first = paramId !== null && !usesNumber(procedure.body, paramId);
+    const changed = first
+      ? mapScriptCalls(script, procedureId, (call) =>
+          withArgs(
+            call,
+            argValues(call).map((value, index) => (index === at ? seed : value)),
+          ),
+        )
+      : script;
+    return {
+      ...changed,
+      procedures: (changed.procedures ?? []).map((item) =>
+        item.id === procedureId ? { ...item, body } : item,
+      ),
+    };
+  });
+}
+
+/** Choose the numbers for one use of a custom block in the character's blocks. */
+export function setStudioCallNumbers(
+  history: EditorHistory,
+  actorId: string,
+  index: number,
+  values: readonly number[],
+): EditorHistory {
+  return withScript(history, actorId, "set custom block numbers", (script) => {
+    const call = script.statements[index];
+    if (call?.type !== "callProcedure") throw new RangeError("not a custom block");
+    const arity =
+      script.procedures?.find((item) => item.id === call.procedureId)?.params?.length ?? 0;
+    if (values.length !== arity) throw new RangeError("wrong number of values");
+    return {
+      ...script,
+      statements: script.statements.map((item, position) =>
+        position === index ? withArgs(call, values) : item,
       ),
     };
   });
@@ -738,12 +1245,12 @@ export function deleteStudioProcedure(
     const rest = (script.procedures ?? []).filter((item) => item.id !== procedureId);
     const inlined = rest.map((item) => ({
       ...item,
-      body: replaceCalls(item.body, procedureId, procedure.body),
+      body: replaceCalls(item.body, procedure),
     }));
     return {
       id: script.id,
       trigger: script.trigger,
-      statements: replaceCalls(script.statements, procedureId, procedure.body),
+      statements: replaceCalls(script.statements, procedure),
       ...(inlined.length === 0 ? {} : { procedures: inlined }),
     };
   });
