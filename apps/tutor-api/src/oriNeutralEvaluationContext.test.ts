@@ -16,7 +16,12 @@ describe("Ori neutral evaluation context separation", () => {
     const context = createOriSharedPedagogicalContexts()[0]!;
     const result = separateOriEvaluationContext(context);
     expect(Object.keys(result!.neutral).sort()).toEqual([
-      "hintLevel", "missionId", "missionIndex", "programFingerprint", "schema", "scriptCount",
+      "hintLevel",
+      "missionId",
+      "missionIndex",
+      "programFingerprint",
+      "schema",
+      "scriptCount",
     ]);
     expect(JSON.stringify(result!.neutral)).not.toContain("deterministicKind");
     expect(JSON.stringify(result!.neutral)).not.toContain("deterministic-evidence");

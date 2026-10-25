@@ -23,9 +23,7 @@ export interface OriSeparatedEvaluationContext {
   readonly neutral: OriNeutralEvaluationContext;
   readonly evidence: OriTutorSpecificEvidence;
 }
-export function separateOriEvaluationContext(
-  value: unknown,
-): OriSeparatedEvaluationContext | null {
+export function separateOriEvaluationContext(value: unknown): OriSeparatedEvaluationContext | null {
   const context = validateOriSharedPedagogicalContext(value);
   if (!context) return null;
   const neutral: OriNeutralEvaluationContext = Object.freeze({
