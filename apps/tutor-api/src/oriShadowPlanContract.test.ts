@@ -18,7 +18,7 @@ function producerFixture(missionIndex: number, hintLevel: number, scriptCount: n
     schema: "ori/shadow-plan/v1",
     kind: "pedagogical-plan",
     stage: hintLevel,
-    steps: stages[hintLevel - 1],
+    steps: stages[hintLevel - 1]!,
     hint: scriptCount === 0
       ? "¿Qué acción pequeña querés probar primero?"
       : "¿Qué esperás que pase si ejecutás tu programa?",
