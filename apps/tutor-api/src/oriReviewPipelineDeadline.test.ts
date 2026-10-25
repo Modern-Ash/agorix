@@ -46,21 +46,24 @@ async function serve(deadlineMs: number, enabled = true) {
 }
 function post(port: number, body: string, finish = true) {
   return new Promise<number | "closed">((resolve, reject) => {
-    const req = httpRequest({
-      hostname: "127.0.0.1",
-      port,
-      method: "POST",
-      path: "/internal/ori-review",
-      headers: {
-        host: "127.0.0.1",
-        origin: "https://127.0.0.1",
-        "content-type": "application/json",
-        "x-agorix-admin-csrf": "synthetic",
+    const req = httpRequest(
+      {
+        hostname: "127.0.0.1",
+        port,
+        method: "POST",
+        path: "/internal/ori-review",
+        headers: {
+          host: "127.0.0.1",
+          origin: "https://127.0.0.1",
+          "content-type": "application/json",
+          "x-agorix-admin-csrf": "synthetic",
+        },
       },
-    }, (res) => {
-      res.resume();
-      res.on("end", () => resolve(res.statusCode ?? 0));
-    });
+      (res) => {
+        res.resume();
+        res.on("end", () => resolve(res.statusCode ?? 0));
+      },
+    );
     req.on("error", (error: NodeJS.ErrnoException) => {
       if (error.code === "ECONNRESET") resolve("closed");
       else reject(error);
@@ -71,12 +74,18 @@ function post(port: number, body: string, finish = true) {
   });
 }
 afterEach(async () => {
-  await Promise.all(servers.splice(0).map((server) => new Promise<void>((resolve) => server.close(() => resolve()))));
+  await Promise.all(
+    servers
+      .splice(0)
+      .map((server) => new Promise<void>((resolve) => server.close(() => resolve()))),
+  );
 });
 describe("Ori pipeline body deadline over real HTTP", () => {
   it("accepts a complete request before deadline", async () => {
     const server = await serve(1000);
-    expect(await post(server.port, JSON.stringify({ missionIndex: 1, hintLevel: 2, scriptCount: 1 }))).toBe(200);
+    expect(
+      await post(server.port, JSON.stringify({ missionIndex: 1, hintLevel: 2, scriptCount: 1 })),
+    ).toBe(200);
     expect(server.calls()).toBe(1);
   });
   it("does not invoke Ori when a body stalls beyond deadline", async () => {
