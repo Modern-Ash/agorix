@@ -7,6 +7,7 @@ import { join } from "node:path";
 import { homedir } from "node:os";
 import { defaultAiConfig, openSqliteAiConfigRepository } from "./aiConfig.js";
 import { AdminAuth } from "./adminAuth.js";
+import { oriExternalShadowEnabled } from "./oriExternalShadow.js";
 
 // Entry point (issue #348): `node dist/main.js`. Binds loopback unless the deployment
 // explicitly sets AGORIX_TUTOR_HOST (for example inside a container network).
@@ -29,6 +30,7 @@ const server = createTutorServer({
   config,
   aiConfig,
   adminAuth,
+  oriExternalShadowEnabled: oriExternalShadowEnabled(process.env),
   ori: createOriCliService(oriConfig, {
     policyFor: (capability) => aiConfig.current().config.capabilities[capability],
   }),
