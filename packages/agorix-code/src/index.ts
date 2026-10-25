@@ -175,7 +175,12 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
       writeMapped(
         writer,
         nodeId,
-        indent + "change " + statement.effect + " effect by " + formatNumber(statement.delta) + "\n",
+        indent +
+          "change " +
+          statement.effect +
+          " effect by " +
+          formatNumber(statement.delta) +
+          "\n",
       );
       return;
     case "clearEffects":
