@@ -37,3 +37,10 @@ CI runs `node scripts/ori-educator-pilot-smoke.mjs` after the build to verify fi
 ## Limitations
 
 This protocol does not claim statistical significance or demonstrated learning outcomes. The current code does not collect educator ratings or enforce independence of human reviewers. Pilot data must not contain child identifiers, programs or sensitive information. The resulting report is a decision-support artifact, not a substitute for ethical review or safeguards.
+
+## Material para educadores
+
+- [Guía de evaluación y rúbrica en español](./ORI_EDUCATOR_REVIEW_PACK.md)
+- [Planilla ciega A/B imprimible](./ORI_EDUCATOR_RATING_SHEET.md)
+
+Estos documentos son materiales de evaluación humana; no constituyen evidencia de que el piloto ya se haya realizado.
