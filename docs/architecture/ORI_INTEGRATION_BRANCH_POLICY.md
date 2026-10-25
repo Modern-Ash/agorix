@@ -43,6 +43,6 @@ pnpm exec prettier --write <changed-files>
 pnpm format:check
 ```
 
-Do not approximate Prettier formatting manually. The `Ori Feature Autoformat` workflow also runs on pushes to `feature/ori-*`, formats changed files, and commits any formatting corrections back to that feature branch. It never targets `main`, `development` or `integration/ori` directly. GitHub's separate `Formatting` CI job remains mandatory; a red formatting check blocks approval.
+Do not approximate Prettier formatting manually. The `Ori Feature Autoformat` workflow is introduced separately by PR #662 and will run on pushes to `feature/ori-*` after that infrastructure PR is merged into `integration/ori`. It formats changed files and commits corrections to the feature branch. It never targets `main`, `development` or `integration/ori` directly. GitHub's separate `Formatting` CI job remains mandatory; a red formatting check blocks approval.
 
 Wait for the autoformat commit and the subsequent CI result before declaring a PR ready. The formatter workflow requires repository Actions write permission and may be blocked by branch protection; investigate that explicitly rather than disabling formatting checks.
