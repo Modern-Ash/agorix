@@ -51,13 +51,18 @@ try {
     throw new Error("Production CLI unexpectedly overwrote a report");
   const invalidSource = join(directory, "invalid.json");
   const invalidOutput = join(directory, "invalid-report.json");
-  writeFileSync(invalidSource, JSON.stringify({ ...input, submissions: input.submissions.slice(0, 1) }));
+  writeFileSync(
+    invalidSource,
+    JSON.stringify({ ...input, submissions: input.submissions.slice(0, 1) }),
+  );
   const invalid = execute(invalidSource, invalidOutput);
   if (invalid.status === 0 || existsSync(invalidOutput))
     throw new Error("Production CLI accepted incomplete ratings");
   process.stdout.write("Production educator CLI smoke passed.\n");
 } catch (error) {
-  process.stderr.write(`Production educator CLI smoke failed: ${error instanceof Error ? error.message : "unknown error"}\n`);
+  process.stderr.write(
+    `Production educator CLI smoke failed: ${error instanceof Error ? error.message : "unknown error"}\n`,
+  );
   process.exitCode = 1;
 } finally {
   rmSync(directory, { recursive: true, force: true });
