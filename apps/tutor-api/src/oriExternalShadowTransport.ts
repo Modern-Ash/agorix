@@ -1,3 +1,4 @@
+import { validateOriShadowPlan } from "./oriShadowPlanValidation.js";
 import type { OriExternalShadow, OriExternalShadowInput } from "./oriExternalShadow.js";
 
 /**
@@ -39,7 +40,32 @@ export function createOriShadowTransport(
       });
       // Shadow response must not influence existing tutor output.
       if (!response.ok) return;
-      // Do not consume untrusted response bodies or leak them to the tutor.
+      // Experimental plan validation is shadow-only and cannot affect Kids.
+      if (url.pathname === "/v1/plan" && response.body) {
+        const reader = response.body.getReader();
+        const chunks: Uint8Array[] = [];
+        let size = 0;
+        try {
+          while (true) {
+            const part = await reader.read();
+            if (part.done) break;
+            size += part.value.byteLength;
+            if (size > 4096) return;
+            chunks.push(part.value);
+          }
+          const body = new Uint8Array(size);
+          let offset = 0;
+          for (const chunk of chunks) {
+            body.set(chunk, offset);
+            offset += chunk.byteLength;
+          }
+          validateOriShadowPlan(JSON.parse(new TextDecoder().decode(body)));
+        } catch {
+          // Reject malformed shadow responses without affecting the tutor.
+        } finally {
+          void reader.cancel().catch(() => undefined);
+        }
+      }
     } finally {
       clearTimeout(timer);
     }
