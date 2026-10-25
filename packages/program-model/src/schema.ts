@@ -380,6 +380,12 @@ export interface RepeatUntilStatement {
   readonly body: readonly Statement[];
 }
 
+/** Runs the script's own custom block with that id; recursion is bounded at run time. */
+export interface CallProcedureStatement {
+  readonly type: "callProcedure";
+  readonly procedureId: string;
+}
+
 export interface IfStatement {
   readonly type: "if";
   readonly condition: Expression;
@@ -421,6 +427,7 @@ export type Statement =
   | ListReplaceAtStatement
   | RepeatStatement
   | RepeatUntilStatement
+  | CallProcedureStatement
   | IfStatement;
 
 // --- Triggers ---------------------------------------------------------------
@@ -473,11 +480,20 @@ export interface ProgramList {
   readonly visible: boolean;
 }
 
+/** A named group of blocks a character can reuse; it belongs to one script. */
+export interface Procedure {
+  readonly id: string;
+  readonly name: string;
+  readonly body: readonly Statement[];
+}
+
 export interface Script {
   /** Stable across editor round-trips when structure is unchanged (caller-supplied). */
   readonly id: string;
   readonly trigger: Trigger;
   readonly statements: readonly Statement[];
+  /** Absent in every program written before custom blocks existed. */
+  readonly procedures?: readonly Procedure[];
 }
 
 export interface ProjectProgram {

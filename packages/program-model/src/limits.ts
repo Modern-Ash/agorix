@@ -34,5 +34,12 @@ export const NUMERIC_LITERAL_MAX = 1_000_000;
 /** Total statement + expression nodes allowed across the whole program. */
 export const MAX_PROGRAM_NODES = 500;
 
+/** Custom blocks ("procedures") of one script, i.e. of one character. */
+export const PROCEDURES_MAX_PER_SCRIPT = 20;
+export const PROCEDURE_BODY_MAX = 20;
+export const PROCEDURE_NAME_MAX_LENGTH = 20;
+/** Active calls above this depth end the run as budget-exceeded; recursion is allowed below it. */
+export const PROCEDURE_MAX_CALL_DEPTH = 16;
+
 /** Max nesting depth of repeat/if bodies (a script's top level counts as depth 1). */
 export const MAX_NESTING_DEPTH = 20;

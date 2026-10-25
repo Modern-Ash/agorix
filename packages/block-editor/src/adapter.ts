@@ -26,6 +26,7 @@ export type BlockType =
   | "motion_bounce_on_edge"
   | "motion_glide_to"
   | "looks_go_to_layer"
+  | "procedures_call"
   | "looks_say"
   | "looks_think"
   | "looks_show"
@@ -97,11 +98,19 @@ export interface BlockNode {
   };
 }
 
+/** A character's custom block: its id and name come from the program, its body is blocks. */
+export interface BlockProcedure {
+  readonly id: string;
+  readonly name: string;
+  readonly body: readonly BlockNode[];
+}
+
 export interface BlockScript {
   readonly id: string;
   readonly programId?: string;
   readonly trigger: BlockNode;
   readonly statements: readonly BlockNode[];
+  readonly procedures?: readonly BlockProcedure[];
 }
 
 export interface BlockWorkspaceSnapshot {
@@ -432,6 +441,8 @@ function statementFromBlock(
         y: numberField(block, "y", path),
         seconds: numberField(block, "seconds", path),
       };
+    case "procedures_call":
+      return { type: "callProcedure", procedureId: stringField(block, "procedureId", path) };
     case "motion_bounce_on_edge":
       return { type: "bounceOnEdge" };
     case "looks_say":
@@ -743,6 +754,8 @@ function statementToBlock(
       return { id, type: "motion_point_towards", fields: { actorId: statement.actorId } };
     case "goToLayer":
       return { id, type: "looks_go_to_layer", fields: { layer: statement.layer } };
+    case "callProcedure":
+      return { id, type: "procedures_call", fields: { procedureId: statement.procedureId } };
     case "bounceOnEdge":
       return { id, type: "motion_bounce_on_edge" };
     case "say":
@@ -874,6 +887,23 @@ function scriptFromBlocks(
       `scripts[${index}].statements`,
       mapping,
     ),
+    ...(script.procedures === undefined
+      ? {}
+      : {
+          procedures: script.procedures.map((procedure, procedureIndex) => ({
+            id: procedure.id,
+            name: procedure.name,
+            body: statementsFromBlocks(
+              ensureBlockArray(
+                procedure.body,
+                `scripts[${index}].procedures[${procedureIndex}].body`,
+              ),
+              `${scriptId}/procedures[${procedureIndex}]/body`,
+              `scripts[${index}].procedures[${procedureIndex}].body`,
+              mapping,
+            ),
+          })),
+        }),
   };
 }
 
@@ -948,6 +978,19 @@ export function programToWorkspace(program: ProjectProgram): ProgramToWorkspaceR
         programId: script.id,
         trigger: triggerToBlock(script.trigger, triggerId),
         statements: statementsToBlocks(script.statements, `${scriptId}/statements`, mapping),
+        ...(script.procedures === undefined
+          ? {}
+          : {
+              procedures: script.procedures.map((procedure, procedureIndex) => ({
+                id: procedure.id,
+                name: procedure.name,
+                body: statementsToBlocks(
+                  procedure.body,
+                  `${scriptId}/procedures[${procedureIndex}]/body`,
+                  mapping,
+                ),
+              })),
+            }),
       };
     }),
   };

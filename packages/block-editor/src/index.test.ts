@@ -902,3 +902,24 @@ describe("glide block", () => {
     ]);
   });
 });
+
+describe("custom block workspace", () => {
+  it("round-trips procedures and calls through blocks", () => {
+    const program = {
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [{ type: "callProcedure", procedureId: "proc-1" }],
+          procedures: [{ id: "proc-1", name: "Saltar", body: [{ type: "move", steps: 10 }] }],
+        },
+      ],
+    } as unknown as ProjectProgram;
+    const { workspace } = programToWorkspace(program);
+    expect(JSON.stringify(workspace)).toContain("procedures_call");
+    const { program: back } = workspaceToProgram(workspace);
+    expect(back.scripts[0]?.procedures).toEqual(program.scripts[0]?.procedures);
+    expect(back.scripts[0]?.statements).toEqual(program.scripts[0]?.statements);
+  });
+});

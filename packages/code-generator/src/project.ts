@@ -2,11 +2,13 @@ import type {
   Expression,
   ProgramList,
   ProgramVariable,
+  Procedure,
   ProjectProgram,
   Script,
   Statement,
   Trigger,
 } from "@agorix/program-model";
+import { procedureIdentifiers } from "@agorix/program-model";
 import {
   createUnsupportedNodeDiagnostic,
   firstRangeMapping,
@@ -74,6 +76,8 @@ export function formatNumber(value: number): string {
 interface ProjectionContext {
   readonly variableNames: ReadonlyMap<string, string>;
   readonly variableLabels: ReadonlyMap<string, string>;
+  /** Custom-block identifiers of the script being projected. */
+  procedureNames?: ReadonlyMap<string, string>;
 }
 
 function safeIdentifier(value: string, fallback: string): string {
@@ -277,6 +281,12 @@ function projectStatement(
     case "goToLayer":
       write(writer, `${pad}sprite.goToLayer(${JSON.stringify(statement.layer)});\n`);
       return;
+    case "callProcedure":
+      write(
+        writer,
+        `${pad}${context.procedureNames?.get(statement.procedureId) ?? "my_block"}();\n`,
+      );
+      return;
     case "bounceOnEdge":
       write(writer, `${pad}sprite.bounceOnEdge();\n`);
       return;
@@ -425,6 +435,22 @@ function projectTrigger(trigger: Trigger, nodeId: string): string {
   }
 }
 
+function projectProcedure(
+  procedure: Procedure,
+  identifier: string,
+  scriptIndex: number,
+  procedureIndex: number,
+  writer: Writer,
+  context: ProjectionContext,
+): void {
+  const path = `scripts[${scriptIndex}]/procedures[${procedureIndex}]`;
+  const start = writer.offset;
+  write(writer, `function ${identifier}() {\n`);
+  projectStatements(procedure.body, path, "body", 1, writer, context);
+  write(writer, "}\n\n");
+  writer.mapping[path] = { start, end: writer.offset };
+}
+
 function projectScript(
   script: Script,
   index: number,
@@ -480,6 +506,12 @@ function projectText(program: ProjectProgram): {
     if (i > 0) {
       write(writer, "\n");
     }
+    const procedures = script.procedures ?? [];
+    const identifiers = procedureIdentifiers(procedures);
+    context.procedureNames = new Map(procedures.map((item, k) => [item.id, identifiers[k]!]));
+    procedures.forEach((procedure, k) =>
+      projectProcedure(procedure, identifiers[k]!, i, k, writer, context),
+    );
     projectScript(script, i, writer, context);
   }
   return { text: writer.parts.join(""), mapping: singleRangeMapping(writer.mapping) };

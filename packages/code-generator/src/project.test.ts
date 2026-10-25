@@ -463,6 +463,36 @@ describe("glide", () => {
   });
 });
 
+describe("custom blocks", () => {
+  it("declares a function per custom block and calls it", () => {
+    const program = {
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [{ type: "callProcedure", procedureId: "proc-1" }],
+          procedures: [{ id: "proc-1", name: "Saltar", body: [{ type: "move", steps: 10 }] }],
+        },
+      ],
+    } as unknown as ProjectProgram;
+    const result = projectProgram(program);
+    expect(result.code).toBe(
+      [
+        "function my_saltar() {",
+        "  sprite.move(10);",
+        "}",
+        "",
+        "whenStarted(() => {",
+        "  my_saltar();",
+        "});",
+        "",
+      ].join("\n"),
+    );
+    expectValidRanges(result);
+  });
+});
+
 describe("TypeScript LanguageProjection registry", () => {
   it("is selectable by the official typescript id", async () => {
     const { createLanguageProjectionRegistry } = await import("@agorix/language-projection");

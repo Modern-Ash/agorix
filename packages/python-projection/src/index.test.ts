@@ -645,3 +645,24 @@ describe("Python projection: glide", () => {
     expect(result.text).toContain("glide_to(120, -40, 2)");
   });
 });
+
+describe("Python projection: custom blocks", () => {
+  it("defines each custom block before the script and calls it", () => {
+    const result = projectPython({
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [{ type: "callProcedure", procedureId: "proc-1" }],
+          procedures: [{ id: "proc-1", name: "Saltar", body: [{ type: "move", steps: 10 }] }],
+        },
+      ],
+    });
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toBe(
+      ["def my_saltar():", "    move(10)", "", "def on_start():", "    my_saltar()", ""].join("\n"),
+    );
+    expect(result.mapping["scripts[0]/procedures[0]/body[0]"]).toBeDefined();
+  });
+});

@@ -352,6 +352,7 @@ export function validateStudioProgram(raw: ProjectProgram): ProjectProgram {
         !actor ||
         actor.index !== position + 1 ||
         !checkedTrigger(script.trigger) ||
+        script.procedures !== undefined ||
         statementCount(script.statements) > MAX_STUDIO_BLOCKS ||
         script.statements.some((statement) => !checked(statement, program))
       );

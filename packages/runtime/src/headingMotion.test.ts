@@ -423,3 +423,140 @@ describe("glideTo", () => {
     expect(result.outcome).toBe("budget-exceeded");
   });
 });
+
+describe("procedures", () => {
+  const withProcs = (
+    procedures: NonNullable<ProjectProgram["scripts"][number]["procedures"]>,
+    statements: Statement[],
+  ): ProjectProgram => ({
+    schema: SCHEMA_VERSION,
+    variables: [{ id: "n", name: "n", initialValue: 0, visible: true }],
+    scripts: [{ id: "main", trigger: { type: "onStart" }, statements, procedures }],
+  });
+  const call = { type: "callProcedure", procedureId: "proc-1" } as const;
+
+  it("runs the body at the call and reports inner steps under the procedure path", () => {
+    const result = runProgram(
+      withProcs(
+        [
+          {
+            id: "proc-1",
+            name: "Salto",
+            body: [
+              { type: "move", steps: 10 },
+              { type: "turn", degrees: 90 },
+            ],
+          },
+        ],
+        [call, call],
+      ),
+      createWorldState(),
+    );
+    expect(result.outcome).toBe("completed");
+    expect(result.world.sprite).toMatchObject({ x: 10, y: 10, heading: 180 });
+    expect(result.trace.map((entry) => entry.nodeId)).toEqual([
+      "scripts[0]/procedures[0]/body[0]",
+      "scripts[0]/procedures[0]/body[1]",
+      "scripts[0]/statements[0]",
+      "scripts[0]/procedures[0]/body[0]",
+      "scripts[0]/procedures[0]/body[1]",
+      "scripts[0]/statements[1]",
+    ]);
+  });
+
+  it("matches the same blocks written inline", () => {
+    const body: Statement[] = [
+      { type: "move", steps: 10 },
+      { type: "turn", degrees: 90 },
+    ];
+    const viaCall = runProgram(
+      withProcs([{ id: "proc-1", name: "Salto", body }], [call, call]),
+      createWorldState(),
+    );
+    const inline = runProgram(withProcs([], [...body, ...body]), createWorldState());
+    expect(viaCall.world).toEqual(inline.world);
+  });
+
+  it("supports recursion that ends", () => {
+    const result = runProgram(
+      withProcs(
+        [
+          {
+            id: "proc-1",
+            name: "Contar",
+            body: [
+              {
+                type: "changeVariable",
+                variableId: "n",
+                delta: { type: "numericLiteral", value: 1 },
+              },
+              {
+                type: "if",
+                condition: {
+                  type: "lessThan",
+                  left: { type: "variable", variableId: "n" },
+                  right: { type: "numericLiteral", value: 5 },
+                },
+                then: [call],
+              },
+            ],
+          },
+        ],
+        [call],
+      ),
+      createWorldState(),
+    );
+    expect(result.outcome).toBe("completed");
+    expect(result.world.variables?.n?.value).toBe(5);
+  });
+
+  it("stops runaway recursion as budget-exceeded", () => {
+    const result = runProgram(
+      withProcs(
+        [{ id: "proc-1", name: "Infinito", body: [{ type: "move", steps: 1 }, call] }],
+        [call],
+      ),
+      createWorldState(),
+    );
+    expect(result.outcome).toBe("budget-exceeded");
+    expect(result.world.sprite.x).toBe(16);
+  });
+
+  it("delivers a broadcast sent from inside a procedure body in a multi-actor run", () => {
+    const actor = (id: string, scripts: string[]) => ({
+      id,
+      name: id,
+      x: 0,
+      y: 0,
+      direction: 0,
+      size: 100,
+      visible: true,
+      scripts,
+    });
+    const result = runMultiActorProgram(
+      {
+        schema: SCHEMA_VERSION,
+        scripts: [
+          {
+            id: "a",
+            trigger: { type: "onStart" },
+            statements: [call],
+            procedures: [
+              { id: "proc-1", name: "Avisar", body: [{ type: "broadcast", message: "hola" }] },
+            ],
+          },
+          {
+            id: "b",
+            trigger: { type: "onMessage", message: "hola" },
+            statements: [{ type: "move", steps: 3 }],
+          },
+        ],
+      },
+      {
+        actors: [actor("actor:a", ["a"]), actor("actor:b", ["b"])],
+        stage: { actorOrder: ["actor:a", "actor:b"] },
+      },
+    );
+    expect(result.actors[1]?.world.sprite.x).toBe(3);
+  });
+});
