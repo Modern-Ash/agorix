@@ -16,8 +16,7 @@ export function exportOriBlindReviewJson(
   if (
     Object.keys(educator).sort().join(",") !==
       "A,B,eligibleForEfficacyClaim,equalInputContextProven,missionId,schema" ||
-    Object.keys(coordinator).sort().join(",") !==
-      "deterministicCandidate,missionId,oriCandidate" ||
+    Object.keys(coordinator).sort().join(",") !== "deterministicCandidate,missionId,oriCandidate" ||
     educator.schema !== "agorix/ori-blind-messages/v1" ||
     educator.equalInputContextProven !== false ||
     educator.eligibleForEfficacyClaim !== false ||

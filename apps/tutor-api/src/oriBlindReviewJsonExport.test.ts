@@ -31,23 +31,35 @@ describe("Ori offline blind review JSON export", () => {
     expect(JSON.parse(result!.educatorJson).eligibleForEfficacyClaim).toBe(false);
   });
   it("rejects mismatched mission IDs", () => {
-    expect(exportOriBlindReviewJson({
-      ...capture, coordinator: { ...capture.coordinator, missionId: "other" },
-    })).toBeNull();
+    expect(
+      exportOriBlindReviewJson({
+        ...capture,
+        coordinator: { ...capture.coordinator, missionId: "other" },
+      }),
+    ).toBeNull();
   });
   it("rejects malformed or duplicate source mappings", () => {
-    expect(exportOriBlindReviewJson({
-      ...capture, coordinator: { ...capture.coordinator, deterministicCandidate: "A" },
-    })).toBeNull();
+    expect(
+      exportOriBlindReviewJson({
+        ...capture,
+        coordinator: { ...capture.coordinator, deterministicCandidate: "A" },
+      }),
+    ).toBeNull();
   });
   it("rejects unexpected educator fields", () => {
-    expect(exportOriBlindReviewJson({
-      ...capture, educator: { ...capture.educator, childId: "synthetic" },
-    })).toBeNull();
+    expect(
+      exportOriBlindReviewJson({
+        ...capture,
+        educator: { ...capture.educator, childId: "synthetic" },
+      }),
+    ).toBeNull();
   });
   it("rejects false efficacy claims", () => {
-    expect(exportOriBlindReviewJson({
-      ...capture, educator: { ...capture.educator, eligibleForEfficacyClaim: true },
-    } as unknown as OriSeparatedBlindMessages)).toBeNull();
+    expect(
+      exportOriBlindReviewJson({
+        ...capture,
+        educator: { ...capture.educator, eligibleForEfficacyClaim: true },
+      } as unknown as OriSeparatedBlindMessages),
+    ).toBeNull();
   });
 });
