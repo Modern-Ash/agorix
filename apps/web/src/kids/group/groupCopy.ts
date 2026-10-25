@@ -112,6 +112,9 @@ const es = {
   galleryEntry: "Versión {v} · hecho por {who}",
   galleryWithdraw: "Retirar ahora",
   galleryFull: "Retirá un proyecto antes de mostrar otro.",
+  settingsDefault:
+    "Usando los valores más estrictos: no se pudo leer la configuración del administrador.",
+  settingsFromAdmin: "Configuración del administrador: revisión {n}.",
   errors: {
     unavailable: "Los grupos no están disponibles ahora.",
     offline: "Sin conexión. Probá de nuevo.",
@@ -239,6 +242,8 @@ const en: typeof es = {
   galleryEntry: "Version {v} · made by {who}",
   galleryWithdraw: "Withdraw now",
   galleryFull: "Withdraw a project before showing another.",
+  settingsDefault: "Using the strictest values: the administrator's settings could not be read.",
+  settingsFromAdmin: "Administrator settings: revision {n}.",
   errors: {
     unavailable: "Groups are not available right now.",
     offline: "No connection. Try again.",

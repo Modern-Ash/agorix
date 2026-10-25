@@ -46,6 +46,9 @@ services:
       AGORIX_MAIL_FROM: ${AGORIX_MAIL_FROM-}
       # Optional closed groups (ADR 0010); needs the adult link above. Empty means off.
       AGORIX_GROUP_SECRET: ${AGORIX_GROUP_SECRET-}
+      # Where the project server reads the admin registry's public group limits
+      # (an http(s) URL or unix:/absolute.sock). Empty keeps the code defaults.
+      AGORIX_GROUP_CONFIG_URL: ${AGORIX_GROUP_CONFIG_URL-}
     volumes:
       - agorix-project-data:/data
       - agorix-project-backups:/backups

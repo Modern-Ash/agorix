@@ -149,8 +149,12 @@ limits (children per group, session minutes, join-code lifetime, relay flag). St
 read as v2 with safe defaults and are not rewritten; a v1 document published by an older admin client
 keeps the current group settings instead of resetting them. `onUnavailable` is fixed to `block` and has
 no control in the console: a weaker policy needs its own ADR. The console has a "Modo grupo" section.
-**Not yet wired:** the group server does not yet read the limits and the organizer's device does not
-yet fetch the moderation parameters; until then the defaults in code apply.
+**Wired:** the tutor service serves the group section read-only at `GET /api/tutor/group-config`; the
+project server follows the three limits (`AGORIX_GROUP_CONFIG_URL`, clamped to the hard caps) and the
+organizer's device follows the moderation, hold-all and reaction settings, falling back to the
+strictest defaults. **Still open:** the on-device classifier itself (its score feeds the admin
+thresholds; with none, nothing is shared) and the relay flag, which has no consumer until the optional
+signalling mailbox exists.
 
 Secrets (for example TURN credentials) stay in server secrets, not in the editable configuration. An invalid version never affects production, and with no valid configuration the safe default is fail closed (nothing shared, relay off). Models themselves are chosen from an allow-list the admin manages; they run on-device.
 

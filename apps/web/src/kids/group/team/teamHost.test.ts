@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { createProgramProposal } from "@agorix/proposals";
 import { parseAgorixProject } from "@agorix/persistence";
-import { TeamHost, defaultSanitize, starterTeamProgram, type HostMember } from "./teamHost.js";
+import { DEFAULT_GROUP_SETTINGS, type GroupSettings } from "../groupSettings.js";
+import {
+  TeamHost,
+  defaultSanitize,
+  makeSanitizer,
+  starterTeamProgram,
+  type HostMember,
+} from "./teamHost.js";
 
 // Issue #567: the host validates everything that arrives from other devices.
 const MEMBERS: readonly HostMember[] = [
@@ -261,5 +268,113 @@ describe("TeamHost closed gallery and organizer view", () => {
     expect(
       await h.handle("slt_a", { type: "react", reaction: "like", target: { kind: "game" } }),
     ).toEqual({ ok: false, code: "SILENCED" });
+  });
+});
+
+describe("TeamHost follows the admin settings", () => {
+  const settings = (
+    patch: (s: { -readonly [K in keyof GroupSettings]: GroupSettings[K] }) => void,
+  ): GroupSettings => {
+    const copy = structuredClone(DEFAULT_GROUP_SETTINGS) as {
+      -readonly [K in keyof GroupSettings]: GroupSettings[K];
+    };
+    patch(copy);
+    return copy;
+  };
+
+  it("only allows the reactions the admin enabled for the organizer's language", async () => {
+    const { h } = host({
+      settings: settings((s) => void (s.reactions = { es: ["like"], en: ["like", "party"] })),
+      locale: "es",
+    });
+    expect(
+      await h.handle("slt_a", { type: "react", reaction: "like", target: { kind: "game" } }),
+    ).toEqual({ ok: true });
+    expect(
+      await h.handle("slt_a", { type: "react", reaction: "party", target: { kind: "game" } }),
+    ).toEqual({ ok: false, code: "REACTION_NOT_ALLOWED" });
+    const en = host({
+      settings: settings((s) => void (s.reactions = { es: ["like"], en: ["like", "party"] })),
+      locale: "en",
+    });
+    expect(
+      (await en.h.handle("slt_a", { type: "react", reaction: "party", target: { kind: "game" } }))
+        .ok,
+    ).toBe(true);
+  });
+
+  it("blocks admin terms and the enabled personal-data patterns in names", () => {
+    const sanitize = makeSanitizer(
+      settings((s) => {
+        s.text = {
+          enabled: true,
+          blockedTerms: { es: ["Tonto"], en: ["silly"] },
+          piiPatterns: ["address", "url"],
+        };
+      }),
+      "es",
+    );
+    expect(sanitize("name", "Mi robot")).toBe("Mi robot");
+    expect(sanitize("name", "el TONTO feliz")).toBeUndefined();
+    expect(sanitize("name", "silly bot")).toBe("silly bot");
+    expect(sanitize("name", "Calle 123")).toBeUndefined();
+    expect(sanitize("name", "mi sitio.com")).toBeUndefined();
+    // phone and email checks were switched off by this admin, but the charset rule still holds
+    expect(sanitize("name", "ana@mail")).toBeUndefined();
+    expect(defaultSanitize("name", "Calle 123")).toBeUndefined();
+  });
+
+  it("applies the admin thresholds to a score and blocks a broken model", async () => {
+    const mk = (score: () => Promise<number>) =>
+      host({ score, settings: settings((s) => void (s.holdAll = true)) }).h;
+    const share = (h: TeamHost) =>
+      h.handle("slt_a", { type: "share", kind: "name", payload: "Mi robot" });
+    expect(await share(mk(async () => 0.05))).toMatchObject({ ok: true, queued: true });
+    expect(await share(mk(async () => 0.3))).toMatchObject({ ok: true, shared: false });
+    expect(await share(mk(async () => 0.9))).toMatchObject({ ok: true, shared: false });
+    expect(await share(mk(async () => Number.NaN))).toMatchObject({ ok: true, shared: false });
+    expect(
+      await share(
+        mk(async () => {
+          throw new Error("model crashed");
+        }),
+      ),
+    ).toMatchObject({ ok: true, shared: false });
+  });
+
+  it("releases safe content without the queue only when the admin turned hold-all off", async () => {
+    const open = host({
+      score: async () => 0,
+      settings: settings((s) => void (s.holdAll = false)),
+    }).h;
+    expect(
+      await open.handle("slt_a", { type: "share", kind: "name", payload: "Mi robot" }),
+    ).toMatchObject({ ok: true, approved: true });
+    expect(open.contentQueue()).toEqual([]);
+    const unsafe = host({
+      score: async () => 0.9,
+      settings: settings((s) => void (s.holdAll = false)),
+    }).h;
+    expect(
+      await unsafe.handle("slt_a", { type: "share", kind: "name", payload: "Mi robot" }),
+    ).toMatchObject({ ok: true, shared: false });
+  });
+
+  it("skips the model for a kind the admin switched off, but never the sanitizer", async () => {
+    let calls = 0;
+    const { h } = host({
+      score: async () => {
+        calls += 1;
+        return 1;
+      },
+      settings: settings((s) => void (s.text = { ...s.text, enabled: false })),
+    });
+    expect(
+      await h.handle("slt_a", { type: "share", kind: "name", payload: "Mi robot" }),
+    ).toMatchObject({ ok: true, queued: true });
+    expect(calls).toBe(0);
+    expect(
+      await h.handle("slt_a", { type: "share", kind: "name", payload: "llamame 555 1234 56" }),
+    ).toMatchObject({ ok: true, shared: false });
   });
 });

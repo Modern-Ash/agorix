@@ -47,6 +47,17 @@ device joins with `POST /v1/group/join` and then uses its device key as a bearer
 values are in `docs/safety/CHILD_SAFETY_PRIVACY.md`. Do not enable it for real children before the legal
 and privacy review in #556.
 
+Group limits (children per group, minutes per group, minutes per join code) follow the admin
+registry. Set `AGORIX_GROUP_CONFIG_URL` to the tutor service's public `GET /api/tutor/group-config`
+(an `http(s)` URL, or `unix:/absolute/path.sock`); the server reads it once at start and then every
+minute. Only the three limits are used and only when all are in range; a failed, malformed or
+oversized response changes nothing, so the last good values (the code defaults before the first
+success) stay in force, and they are clamped to the ADR 0010 hard caps (at most four children, four
+hours per group, ten minutes per code). Existing groups and codes keep their dates. The log carries a
+revision number or a failure kind, never the payload. The organizer's device reads the same endpoint
+through nginx (`/api/tutor/`) for the moderation and reaction settings and uses the strictest
+defaults when it cannot.
+
 ### Verification email (SMTP)
 
 Without a mail transport the link routes work but nobody receives the verification link, so configure one:

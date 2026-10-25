@@ -14,7 +14,7 @@ import {
   MailDeliveryError,
   SqlLinkRepository,
 } from "@agorix/link-service";
-import { readGroupConfig } from "./groupConfig.js";
+import { readGroupConfig, readGroupConfigSource, startGroupConfigSync } from "./groupConfig.js";
 import { readLinkConfig } from "./linkConfig.js";
 import { createProjectApi } from "@agorix/project-api";
 import { InMemoryProjectRepository, SqlProjectRepository } from "@agorix/project-repository";
@@ -101,6 +101,20 @@ const group =
     : undefined;
 if (group) {
   process.stdout.write("closed groups enabled\n");
+  const configSource = readGroupConfigSource(process.env);
+  if (configSource) {
+    // Limits follow the admin registry; without it the code defaults (already within ADR 0010) apply.
+    startGroupConfigSync({
+      source: configSource,
+      apply: (limits) =>
+        group.updatePolicy({
+          maxChildren: limits.maxChildren,
+          groupTtlMs: limits.maxSessionMinutes * 60_000,
+          joinCodeTtlMs: limits.joinCodeMinutes * 60_000,
+        }),
+      log: (line) => process.stdout.write(`${line}\n`),
+    });
+  }
   const sweep = setInterval(
     () => {
       void group

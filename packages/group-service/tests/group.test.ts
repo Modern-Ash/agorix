@@ -260,4 +260,43 @@ describe.each<Backend>(["memory", "sqlite"])("group service (%s)", (backend) => 
       expect(dump).not.toContain(pending.deviceToken);
     });
   });
+
+  describe("policy from the registry", () => {
+    it("lowers the child cap and shortens new groups and codes", async () => {
+      const ctx = build();
+      ctx.service.updatePolicy({
+        maxChildren: 1,
+        groupTtlMs: 30 * 60_000,
+        joinCodeTtlMs: 2 * 60_000,
+      });
+      const { accountId, group } = await organizerWithGroup(ctx);
+      expect(Date.parse(group.expiresAt) - ctx.clock.now().getTime()).toBe(30 * 60_000);
+      const issued = await ctx.service.issueJoinCode(accountId, group.groupId);
+      expect(Date.parse(issued.expiresAt) - ctx.clock.now().getTime()).toBe(2 * 60_000);
+      await ctx.service.redeemJoinCode(issued.code, "s1");
+      const next = await ctx.service.issueJoinCode(accountId, group.groupId);
+      expect(await code(ctx.service.redeemJoinCode(next.code, "s2"))).toBe("GROUP_FULL");
+    });
+
+    it("never goes past the hard caps, and ignores nonsense", async () => {
+      const ctx = build();
+      ctx.service.updatePolicy({
+        maxChildren: 50,
+        groupTtlMs: 99 * 3_600_000,
+        joinCodeTtlMs: 99 * 3_600_000,
+      });
+      const { accountId, group } = await organizerWithGroup(ctx);
+      expect(Date.parse(group.expiresAt) - ctx.clock.now().getTime()).toBe(4 * 3_600_000);
+      const issued = await ctx.service.issueJoinCode(accountId, group.groupId);
+      expect(Date.parse(issued.expiresAt) - ctx.clock.now().getTime()).toBe(10 * 60_000);
+      for (let i = 0; i < 4; i += 1) await admit(ctx, accountId, group.groupId, `s${i}`);
+      const extra = await ctx.service.issueJoinCode(accountId, group.groupId);
+      expect(await code(ctx.service.redeemJoinCode(extra.code, "s9"))).toBe("GROUP_FULL");
+
+      const other = build();
+      other.service.updatePolicy({ maxChildren: Number.NaN, groupTtlMs: -5, joinCodeTtlMs: 0 });
+      const mine = await organizerWithGroup(other);
+      expect(Date.parse(mine.group.expiresAt) - other.clock.now().getTime()).toBe(15 * 60_000);
+    });
+  });
 });

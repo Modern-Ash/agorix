@@ -187,6 +187,14 @@ export function createTutorServer(options: TutorServerOptions): Server {
   async function handle(request: IncomingMessage, response: ServerResponse): Promise<void> {
     const path = new URL(request.url ?? "/", "http://local").pathname;
     if (path.startsWith("/api/tutor/admin/")) return adminRoute(path, request, response);
+    if (path === "/api/tutor/group-config") {
+      // Public and read-only on purpose: the closed-group parameters hold no secret, and the group
+      // server and the organizer's device both need them. Admin credentials never apply here.
+      if (request.method !== "GET") return send(response, 405, error("method-not-allowed"));
+      if (!options.aiConfig) return send(response, 503, error("config-unavailable"));
+      const { revision, config } = options.aiConfig.current();
+      return send(response, 200, { revision, group: config.group });
+    }
     if (path === "/api/tutor/health") {
       if (request.method !== "GET") return send(response, 405, error("method-not-allowed"));
       return send(response, 200, await health());

@@ -1,11 +1,13 @@
 import { SCHEMA_VERSION, type ProjectProgram } from "@agorix/program-model";
 import { serializeAgorixProject } from "@agorix/persistence";
+import { DEFAULT_GROUP_SETTINGS, type GroupSettings } from "../groupSettings.js";
 import { ProposalValidationError, parseProgramProposal } from "@agorix/proposals";
 import {
   ContentGate,
   GalleryError,
   GateError,
   GroupGallery,
+  verdictFromScore,
   REACTION_IDS,
   TeamError,
   TeamSession,
@@ -39,6 +41,7 @@ export type HostReply =
       readonly ok: true;
       readonly status?: string;
       readonly queued?: boolean;
+      readonly approved?: boolean;
       readonly shared?: false;
       readonly notice?: string;
       readonly gallery?: readonly GalleryEntry[];
@@ -50,8 +53,17 @@ export interface TeamHostOptions {
   readonly members: readonly HostMember[];
   readonly mode: "turns" | "blocks";
   readonly program?: ProjectProgram;
+  /** Admin registry values (see `loadGroupSettings`). Absent means the strictest defaults. */
+  readonly settings?: GroupSettings;
+  /** The organizer's interface language, which picks the reaction set and the blocked terms. */
+  readonly locale?: "es" | "en";
   /** On-device classifier. Absent means "unavailable", so nothing is ever shared. */
   readonly classify?: (kind: ContentKind, payload: string) => Promise<LocalVerdict>;
+  /**
+   * On-device model returning a harm score from 0 to 1. The host applies the admin thresholds to
+   * it. A throw, NaN or out-of-range score blocks. Ignored when `classify` is given.
+   */
+  readonly score?: (kind: ContentKind, payload: string) => Promise<number>;
   readonly now?: () => Date;
   readonly messagesPerWindow?: number;
   readonly windowMs?: number;
@@ -87,14 +99,38 @@ export function starterTeamProgram(members: readonly HostMember[]): ProjectProgr
   };
 }
 
-/** Deterministic first gate for anything that would reach another device. */
-export function defaultSanitize(kind: ContentKind, payload: string): string | undefined {
-  if (kind === "name") {
+const EMAIL_LIKE = /\S+@\S+/;
+const URL_LIKE = /(?:https?:|www\.|\.(?:com|net|org|ar|io)\b)/i;
+/** A number next to a word, as in "Calle 123" or "av 9 de julio". */
+const ADDRESS_LIKE = /\d+\s+\p{L}|\p{L}+\s+\d+/u;
+
+/**
+ * Deterministic first gate for anything that would reach another device. Names must be short,
+ * letters and digits only, and must not hold a phone number, an address, an address of the web, an
+ * email or a term the admin blocked. Images must be a plain png, jpeg or webp data URL.
+ */
+export function makeSanitizer(
+  settings: Pick<GroupSettings, "text"> = DEFAULT_GROUP_SETTINGS,
+  locale: "es" | "en" = "es",
+): (kind: ContentKind, payload: string) => string | undefined {
+  const blocked = settings.text.blockedTerms[locale].map((term) => term.toLocaleLowerCase());
+  const checks = new Set(settings.text.piiPatterns);
+  return (kind, payload) => {
+    if (kind === "image") return IMAGE.test(payload) ? payload : undefined;
     const name = payload.trim();
-    return NAME.test(name) && !PHONE_LIKE.test(name) ? name : undefined;
-  }
-  return IMAGE.test(payload) ? payload : undefined;
+    if (!NAME.test(name)) return undefined;
+    if (checks.has("phone") && PHONE_LIKE.test(name)) return undefined;
+    if (checks.has("email") && EMAIL_LIKE.test(name)) return undefined;
+    if (checks.has("url") && URL_LIKE.test(name)) return undefined;
+    if (checks.has("address") && ADDRESS_LIKE.test(name)) return undefined;
+    const folded = name.toLocaleLowerCase();
+    if (blocked.some((term) => folded.includes(term))) return undefined;
+    return name;
+  };
 }
+
+/** Strictest sanitizer: every personal-data check on, no admin terms. */
+export const defaultSanitize = makeSanitizer(DEFAULT_GROUP_SETTINGS);
 
 class Invalid extends Error {}
 class TooLarge extends Invalid {}
@@ -118,6 +154,7 @@ export class TeamHost {
   private readonly windowMs: number;
   private readonly toBlock: number;
   private readonly aliases = new Map<string, string>();
+  private readonly allowedReactions: ReadonlySet<string>;
 
   constructor(options: TeamHostOptions) {
     this.now = options.now ?? (() => new Date());
@@ -146,10 +183,26 @@ export class TeamHost {
       // Admission is the session roster itself: an expelled device loses the gallery at once.
       isAdmitted: (slotId) => this.session.members().some((member) => member.slotId === slotId),
     });
+    const settings = options.settings ?? DEFAULT_GROUP_SETTINGS;
+    const locale = options.locale ?? "es";
+    this.allowedReactions = new Set(settings.reactions[locale]);
+    const thresholds = { unsafe: settings.image.unsafe, uncertain: settings.image.uncertain };
+    const model = options.score;
+    const classify =
+      options.classify ??
+      (model
+        ? async (kind: ContentKind, payload: string) =>
+            verdictFromScore(await model(kind, payload), thresholds)
+        : async () => "unavailable" as const);
     this.gate = new ContentGate({
       clock: { now: this.now },
-      sanitize: defaultSanitize,
-      classify: options.classify ?? (async () => "unavailable"),
+      sanitize: makeSanitizer(settings, locale),
+      // A kind the admin switched off skips the model, never the sanitizer or the approval rule.
+      classify: async (kind, payload) =>
+        (kind === "image" ? settings.image.enabled : settings.text.enabled)
+          ? classify(kind, payload)
+          : "safe",
+      holdAll: settings.holdAll,
     });
   }
 
@@ -227,6 +280,9 @@ export class TeamHost {
         this.session.passTurn(slotId);
         return { ok: true };
       case "react":
+        if (!this.allowedReactions.has(message.reaction)) {
+          return { ok: false, code: "REACTION_NOT_ALLOWED" };
+        }
         this.session.react(slotId, message.reaction, message.target);
         return { ok: true };
       case "gallery":
@@ -240,9 +296,9 @@ export class TeamHost {
           message.kind,
           message.payload,
         );
-        return result.status === "queued"
-          ? { ok: true, queued: true }
-          : { ok: true, shared: false, notice: result.notice };
+        if (result.status === "queued") return { ok: true, queued: true };
+        if (result.status === "approved") return { ok: true, queued: false, approved: true };
+        return { ok: true, shared: false, notice: result.notice };
       }
     }
   }

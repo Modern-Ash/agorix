@@ -4,6 +4,7 @@ import {
   GateError,
   type ContentKind,
   type GateOptions,
+  verdictFromScore,
   type LocalVerdict,
 } from "../src/index.js";
 import { FakeClock } from "./support.js";
@@ -130,5 +131,37 @@ describe("content gate", () => {
     gate.clear();
     expect(() => gate.sharedPayload(itemId)).toThrow(GateError);
     expect(gate.queue()).toEqual([]);
+  });
+});
+
+describe("hold-all setting and score thresholds", () => {
+  it("holds everything by default and releases safe content directly when the admin turns it off", async () => {
+    const held = build("safe");
+    expect((await held.submit("slt_a", "Zorro Azul", "name", "ok")).status).toBe("queued");
+
+    const open = build("safe", { holdAll: false });
+    const result = await open.submit("slt_a", "Zorro Azul", "name", "ok");
+    expect(result.status).toBe("approved");
+    expect(open.queue()).toEqual([]);
+    expect(open.sharedPayload((result as { itemId: string }).itemId)).toBe("clean:ok");
+  });
+
+  it("never auto-approves content that is not safe, even with hold-all off", async () => {
+    for (const verdict of ["unsafe", "uncertain", "unavailable", "throws"] as const) {
+      const gate = build(verdict, { holdAll: false });
+      expect((await gate.submit("slt_a", "Zorro Azul", "name", "ok")).status).toBe("rejected");
+    }
+  });
+
+  it("maps scores to verdicts and treats a broken score as uncertain", () => {
+    const t = { unsafe: 0.5, uncertain: 0.2 };
+    expect(verdictFromScore(0.05, t)).toBe("safe");
+    expect(verdictFromScore(0.2, t)).toBe("uncertain");
+    expect(verdictFromScore(0.49, t)).toBe("uncertain");
+    expect(verdictFromScore(0.5, t)).toBe("unsafe");
+    expect(verdictFromScore(1, t)).toBe("unsafe");
+    for (const broken of [Number.NaN, -0.1, 1.1, Infinity, "0.1", null, undefined]) {
+      expect(verdictFromScore(broken, t), String(broken)).toBe("uncertain");
+    }
   });
 });

@@ -75,7 +75,7 @@ export class GroupService {
   private readonly repo: GroupRepository;
   private readonly adults: AdultDirectory;
   private readonly secret: string;
-  private readonly policy: GroupPolicy;
+  private policy: GroupPolicy;
   private readonly clock: Clock;
   private readonly random: RandomSource;
 
@@ -87,6 +87,26 @@ export class GroupService {
     this.policy = { ...DEFAULT_GROUP_POLICY, ...options.policy };
     this.clock = options.clock ?? { now: () => new Date() };
     this.random = options.random ?? { bytes: (length) => randomBytes(length) };
+  }
+
+  /**
+   * Applies limits from the admin registry. Whatever arrives is clamped to hard caps, so a wrong or
+   * hostile configuration can never allow more than ADR 0010: at most four children, two to four
+   * hours per group and ten minutes per code. Groups and codes that already exist keep their dates.
+   */
+  updatePolicy(
+    next: Partial<Pick<GroupPolicy, "maxChildren" | "groupTtlMs" | "joinCodeTtlMs">>,
+  ): void {
+    const clamp = (value: number | undefined, min: number, max: number, fallback: number) =>
+      value === undefined || !Number.isFinite(value)
+        ? fallback
+        : Math.min(max, Math.max(min, Math.trunc(value)));
+    this.policy = {
+      ...this.policy,
+      maxChildren: clamp(next.maxChildren, 1, 4, this.policy.maxChildren),
+      groupTtlMs: clamp(next.groupTtlMs, 15 * 60_000, 4 * 60 * 60_000, this.policy.groupTtlMs),
+      joinCodeTtlMs: clamp(next.joinCodeTtlMs, 60_000, 10 * 60_000, this.policy.joinCodeTtlMs),
+    };
   }
 
   // ---- organizer capability ---------------------------------------------------------------

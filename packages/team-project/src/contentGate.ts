@@ -28,6 +28,11 @@ export interface GateOptions {
   /** On-device model. No network: nothing is sent to any provider. */
   readonly classify: (kind: ContentKind, payload: string) => Promise<LocalVerdict>;
   readonly clock?: Clock;
+  /**
+   * Admin setting. False lets content the model called safe go straight to approved; the default
+   * (true) holds everything for the organizer. Content that is not safe never gets here either way.
+   */
+  readonly holdAll?: boolean;
   readonly maxQueuedPerMember?: number;
   readonly maxPayloadChars?: number;
 }
@@ -42,6 +47,7 @@ export interface QueuedItem {
 
 export type SubmitResult =
   | { readonly status: "queued"; readonly itemId: string }
+  | { readonly status: "approved"; readonly itemId: string }
   | {
       readonly status: "rejected";
       /** Neutral and identical for every reason: it never describes or echoes the content. */
@@ -107,8 +113,16 @@ export class ContentGate {
     if (verdict !== "safe") return this.reject(verdict === "unsafe" ? "unsafe" : verdict);
 
     const itemId = `item_${++this.counter}`;
-    this.entries.set(itemId, { itemId, slotId, alias, kind, payload: clean, status: "queued" });
-    return { status: "queued", itemId };
+    const auto = this.options.holdAll === false;
+    this.entries.set(itemId, {
+      itemId,
+      slotId,
+      alias,
+      kind,
+      payload: clean,
+      status: auto ? "approved" : "queued",
+    });
+    return { status: auto ? "approved" : "queued", itemId };
   }
 
   /** What waits for the organizer. No content: they open one item at a time with `inspect`. */
@@ -167,4 +181,24 @@ export class ContentGate {
     this.counts[reason] += 1;
     return { status: "rejected", notice: NEUTRAL_NOTICE };
   }
+}
+
+export interface ScoreThresholds {
+  /** A score at or above this is unsafe. */
+  readonly unsafe: number;
+  /** A score at or above this, and below unsafe, is uncertain. Both block. */
+  readonly uncertain: number;
+}
+
+/**
+ * Turns a model score (0 harmless, 1 certainly harmful) into a verdict. A score that is missing,
+ * not a number or outside 0..1 is "uncertain": a broken model never reads as safe.
+ */
+export function verdictFromScore(score: unknown, thresholds: ScoreThresholds): LocalVerdict {
+  if (typeof score !== "number" || !Number.isFinite(score) || score < 0 || score > 1) {
+    return "uncertain";
+  }
+  if (score >= thresholds.unsafe) return "unsafe";
+  if (score >= thresholds.uncertain) return "uncertain";
+  return "safe";
 }

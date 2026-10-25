@@ -135,3 +135,49 @@ describe("AI administrator HTTP boundary", () => {
     expect(await response.json()).toHaveProperty("message");
   });
 });
+
+describe("public group configuration", () => {
+  it("serves only the group section, read-only, without any credential", async () => {
+    const { base, repository } = await start();
+    const response = await fetch(`${base}/api/tutor/group-config`);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    const body = (await response.json()) as { revision: number; group: unknown };
+    expect(Object.keys(body).sort()).toEqual(["group", "revision"]);
+    expect(body.group).toEqual(repository.current().config.group);
+    // The project server and the organizer's device read exactly these fields (contract).
+    const group = body.group as {
+      limits: Record<string, unknown>;
+      moderation: { image: Record<string, unknown>; text: Record<string, unknown> };
+      approvalQueue: Record<string, unknown>;
+      reactions: Record<string, unknown>;
+    };
+    expect(Object.keys(group.limits).sort()).toEqual([
+      "joinCodeMinutes",
+      "maxChildren",
+      "maxSessionMinutes",
+      "relayEnabled",
+    ]);
+    expect(group.moderation.image).toHaveProperty("unsafeThreshold");
+    expect(group.moderation.image).toHaveProperty("uncertainThreshold");
+    expect(group.moderation.text).toHaveProperty("piiPatterns");
+    expect(group.approvalQueue).toHaveProperty("holdAll");
+    expect(Object.keys(group.reactions).sort()).toEqual(["en", "es"]);
+    expect(JSON.stringify(body)).not.toMatch(/provider|promptTemplate|password|secret/i);
+    expect((await fetch(`${base}/api/tutor/group-config`, { method: "POST" })).status).toBe(405);
+    expect((await fetch(`${base}/api/tutor/group-config`, { method: "DELETE" })).status).toBe(405);
+  });
+
+  it("follows a published revision", async () => {
+    const { base, repository } = await start();
+    const edited = structuredClone(repository.current().config);
+    (edited.group.limits as { maxChildren: number }).maxChildren = 2;
+    repository.publish(edited, 1, "operator");
+    const body = (await (await fetch(`${base}/api/tutor/group-config`)).json()) as {
+      revision: number;
+      group: { limits: { maxChildren: number } };
+    };
+    expect(body.revision).toBe(2);
+    expect(body.group.limits.maxChildren).toBe(2);
+  });
+});
