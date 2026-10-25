@@ -25,7 +25,8 @@ export async function captureOriLiveComparison(
       KIDS_MISSION_IDS[oriInput.missionIndex] !== baseline.missionId ||
       oriInput.scriptCount !== tutorRequest.program.scripts.length ||
       oriInput.hintLevel !== baseline.hintLevel
-    ) return null;
+    )
+      return null;
     const preview = await createOriLearnerHintPreview(consumer, true)(oriInput);
     const comparison = prepareOriSingleMessageComparison(baseline, preview, oriFirst);
     if (!comparison) return null;
