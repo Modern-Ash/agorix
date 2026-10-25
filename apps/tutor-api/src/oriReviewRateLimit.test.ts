@@ -5,7 +5,11 @@ describe("Ori adult review rate limiter", () => {
   it("allows only the configured number of requests per window", () => {
     const limiter = createOriReviewRateLimiter(3, 1000, () => 5000);
     expect([1, 2, 3, 4, 5].map(() => limiter.allow("operator"))).toEqual([
-      true, true, true, false, false,
+      true,
+      true,
+      true,
+      false,
+      false,
     ]);
   });
   it("recovers capacity after a complete window", () => {
