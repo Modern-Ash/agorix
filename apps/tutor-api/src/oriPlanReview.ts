@@ -21,8 +21,7 @@ export function createOriPlanReview(
       return Object.freeze({ status: "unavailable", plan: null, appliedChanges: false });
     try {
       const plan = await consumer.evaluate(input);
-      if (!plan)
-        return Object.freeze({ status: "unavailable", plan: null, appliedChanges: false });
+      if (!plan) return Object.freeze({ status: "unavailable", plan: null, appliedChanges: false });
       return Object.freeze({ status: "ready", plan, appliedChanges: false });
     } catch {
       return Object.freeze({ status: "unavailable", plan: null, appliedChanges: false });
