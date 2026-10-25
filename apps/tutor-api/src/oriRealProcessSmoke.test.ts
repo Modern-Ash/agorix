@@ -5,6 +5,10 @@ import { describe, expect, it } from "vitest";
 import { createOriShadowTransport } from "./oriExternalShadowTransport.js";
 import { createOriPlanConsumer } from "./oriPlanConsumer.js";
 import { createOriLearnerHintPreview } from "./oriLearnerHintPreview.js";
+import { captureOriLiveComparison } from "./oriLiveComparisonCapture.js";
+import { getKidsMission, KIDS_MISSION_IDS } from "@agorix/curriculum";
+import { createWorldState, runProgram } from "@agorix/runtime";
+import { createTutorRequest } from "@agorix/tutor-contract";
 
 /**
  * Optional cross-repository smoke. Requires ORI_REPO_PATH pointing to a local
@@ -115,6 +119,39 @@ describe.skipIf(!runnable)("real Ori process to Agorix consumer contract", () =>
         "requiresLearnerApproval",
         "status",
       ]);
+
+      // Actual dual-producer capture: canonical synthetic Kids program and real Ori HTTP process.
+      const mission = getKidsMission(KIDS_MISSION_IDS[1]!, "es");
+      const program = mission.starterProject;
+      const runtime = runProgram(program, createWorldState(mission.starterStage), {
+        collectObservations: true,
+      });
+      const tutorRequest = createTutorRequest({
+        mission: { id: mission.id, version: mission.version, concepts: mission.concepts },
+        program,
+        runtime: {
+          outcome: runtime.outcome,
+          stepsUsed: runtime.stepsUsed,
+          finalWorld: runtime.world,
+          observations: runtime.observations,
+        },
+        hintHistory: [{ level: 1 }],
+        reading: { locale: "es-AR", readingLevel: "middle-grade" },
+      });
+      const dualInput = {
+        missionIndex: 1,
+        hintLevel: 2 as const,
+        scriptCount: program.scripts.length,
+      };
+      const dual = await captureOriLiveComparison(tutorRequest, dualInput, consumer, true);
+      expect(dual).not.toBeNull();
+      expect(dual?.educator.A).toBe(accepted?.hint);
+      expect(dual?.educator.B.length).toBeGreaterThan(8);
+      expect(dual?.coordinator.oriCandidate).toBe("A");
+      expect(dual?.educator.equalInputContextProven).toBe(false);
+      expect(dual?.educator.eligibleForEfficacyClaim).toBe(false);
+      expect(JSON.stringify(dual?.educator)).not.toContain("oriCandidate");
+      expect(JSON.stringify(program)).toBe(JSON.stringify(mission.starterProject));
 
       // The consumer is not connected to the child-facing tutor response.
     } finally {
