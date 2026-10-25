@@ -1,0 +1,298 @@
+<!doctype html>
+<!-- THROWAWAY SPIKE for issue #568. Not shipped, not imported by any package. -->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>WebRTC LAN spike</title>
+<style>
+  body {
+    font: 16px system-ui;
+    margin: 12px;
+  }
+  textarea {
+    width: 100%;
+    height: 5em;
+    font: 12px monospace;
+  }
+  button {
+    font-size: 16px;
+    padding: 8px 12px;
+    margin: 4px 4px 4px 0;
+  }
+  pre {
+    background: #eee;
+    padding: 8px;
+    overflow: auto;
+  }
+</style>
+<h1>WebRTC LAN spike</h1>
+<p id="role">role: none</p>
+<div>
+  <button id="host">I am the host (organizer)</button>
+  <button id="guest">I am a guest (child)</button>
+</div>
+<div id="hostUi" hidden>
+  <p>Host: make one offer per child, send it, paste each child's answer.</p>
+  <button id="mk">New offer</button>
+  <textarea id="offerOut" readonly></textarea>
+  <textarea id="answerIn" placeholder="paste the child's answer"></textarea>
+  <button id="acc">Accept answer</button>
+  <button id="start">Start 300-tick lockstep</button>
+</div>
+<div id="guestUi" hidden>
+  <p>Guest: paste the host's offer, send the answer back.</p>
+  <textarea id="offerIn" placeholder="paste the host's offer"></textarea>
+  <button id="join">Join</button>
+  <textarea id="answerOut" readonly></textarea>
+</div>
+<pre id="log"></pre>
+<script>
+  const enc = new TextEncoder();
+  const log = (m) => (document.getElementById("log").textContent += m + "\n");
+  const b64u = (bytes) =>
+    btoa(String.fromCharCode(...bytes))
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+  const unb64u = (s) =>
+    Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
+  async function gzipLen(str) {
+    const cs = new CompressionStream("gzip");
+    const w = cs.writable.getWriter();
+    w.write(enc.encode(str));
+    w.close();
+    return b64u(new Uint8Array(await new Response(cs.readable).arrayBuffer())).length;
+  }
+  function waitIce(pc) {
+    return new Promise((resolve) => {
+      if (pc.iceGatheringState === "complete") return resolve();
+      pc.addEventListener("icegatheringstatechange", () => {
+        if (pc.iceGatheringState === "complete") resolve();
+      });
+      setTimeout(resolve, 8000);
+    });
+  }
+  // Minimal bundle: only what a data-channel-only connection needs. Everything else is a template.
+  function compact(sdp) {
+    const get = (re) => (sdp.match(re) || [])[1];
+    const fp = get(/a=fingerprint:sha-256 ([0-9A-F:]+)/i);
+    const candidates = [
+      ...sdp.matchAll(/a=candidate:(\S+) 1 udp (\d+) (\S+) (\d+) typ (\w+)/g),
+    ].map((m) => [m[1], Number(m[2]), m[3], Number(m[4]), m[5]]);
+    return {
+      u: get(/a=ice-ufrag:(\S+)/),
+      p: get(/a=ice-pwd:(\S+)/),
+      f: b64u(Uint8Array.from(fp.split(":").map((h) => parseInt(h, 16)))),
+      c: candidates,
+    };
+  }
+  function expand(bundle, setup) {
+    const fp = [...unb64u(bundle.f)]
+      .map((b) => b.toString(16).toUpperCase().padStart(2, "0"))
+      .join(":");
+    return [
+      "v=0",
+      "o=- 4611731400430051336 2 IN IP4 127.0.0.1",
+      "s=-",
+      "t=0 0",
+      "a=group:BUNDLE 0",
+      "a=msid-semantic: WMS",
+      "m=application 9 UDP/DTLS/SCTP webrtc-datachannel",
+      "c=IN IP4 0.0.0.0",
+      `a=ice-ufrag:${bundle.u}`,
+      `a=ice-pwd:${bundle.p}`,
+      `a=fingerprint:sha-256 ${fp}`,
+      `a=setup:${setup}`,
+      "a=mid:0",
+      "a=sctp-port:5000",
+      "a=max-message-size:262144",
+      ...bundle.c.map(
+        ([fnd, pri, addr, port, typ]) =>
+          `a=candidate:${fnd} 1 udp ${pri} ${addr} ${port} typ ${typ}`,
+      ),
+      "",
+    ].join("\r\n");
+  }
+  async function report(sdp) {
+    const bundle = compact(sdp);
+    const json = JSON.stringify(bundle);
+    return {
+      bundle: b64u(enc.encode(json)),
+      fullSdpChars: sdp.length,
+      fullSdpGzipB64: await gzipLen(sdp),
+      compactChars: b64u(enc.encode(json)).length,
+      compactGzipB64: await gzipLen(json),
+      candidates: bundle.c.length,
+      candidateTypes: [...new Set(bundle.c.map((c) => c[4]))],
+      mdns: bundle.c.some((c) => c[2].endsWith(".local")),
+    };
+  }
+  const decode = (b) => JSON.parse(new TextDecoder().decode(unb64u(b)));
+  const fnv = (h, n) => {
+    h ^= n >>> 0;
+    return Math.imul(h, 16777619) >>> 0;
+  };
+
+  const S = {
+    role: null,
+    peers: {},
+    link: null,
+    digest: 2166136261,
+    frames: 0,
+    events: [],
+    rtts: [],
+  };
+  const peerCfg = { iceServers: [] }; // offline: no STUN, no TURN
+  const now = () => performance.now();
+
+  function track(pc, id) {
+    pc.addEventListener("connectionstatechange", () =>
+      S.events.push({ at: now(), id, state: pc.connectionState }),
+    );
+  }
+
+  const spike = {
+    role: () => S.role,
+    // ---- host ----
+    async hostOffer(id) {
+      S.role = "host";
+      const pc = new RTCPeerConnection(peerCfg);
+      track(pc, id);
+      const dc = pc.createDataChannel("g", { ordered: true });
+      S.peers[id] = { pc, dc, got: new Map(), t0: now() };
+      dc.onmessage = (e) => spike._hostMsg(id, JSON.parse(e.data));
+      dc.onclose = () => S.events.push({ at: now(), id, state: "channel-closed" });
+      await pc.setLocalDescription(await pc.createOffer());
+      await waitIce(pc);
+      return report(pc.localDescription.sdp);
+    },
+    async hostAccept(id, bundle) {
+      await S.peers[id].pc.setRemoteDescription({
+        type: "answer",
+        sdp: expand(decode(bundle), "active"),
+      });
+      await new Promise((resolve) => {
+        const dc = S.peers[id].dc;
+        if (dc.readyState === "open") return resolve();
+        dc.addEventListener("open", resolve);
+        setTimeout(resolve, 10000);
+      });
+      S.peers[id].connectMs = now() - S.peers[id].t0;
+      return {
+        open: S.peers[id].dc.readyState === "open",
+        connectMs: Math.round(S.peers[id].connectMs),
+      };
+    },
+    _hostMsg(id, m) {
+      if (m.t === "in") S.peers[id].got.set(m.n, m.v);
+      if (m.t === "digest") S.peers[id].digest = m.d;
+    },
+    async lockstep(ticks, seed, frameTimeoutMs = 300) {
+      const ids = Object.keys(S.peers).sort();
+      S.digest = 2166136261;
+      S.rtts = [];
+      for (const id of ids) S.peers[id].got.clear();
+      let absent = 0;
+      for (let n = 0; n < ticks; n += 1) {
+        const t0 = now();
+        for (const id of ids)
+          if (S.peers[id].dc.readyState === "open")
+            S.peers[id].dc.send(JSON.stringify({ t: "tick", n }));
+        const deadline = t0 + frameTimeoutMs;
+        while (
+          now() < deadline &&
+          ids.some((id) => S.peers[id].dc.readyState === "open" && !S.peers[id].got.has(n))
+        ) {
+          await new Promise((r) => setTimeout(r, 0));
+        }
+        const inputs = ids.map((id) => {
+          if (S.peers[id].got.has(n)) return S.peers[id].got.get(n);
+          absent += 1;
+          return -1; // safe action for an absent player, decided by the host
+        });
+        S.rtts.push(now() - t0);
+        const frame = { t: "frame", n, inputs, seed };
+        spike._apply(frame);
+        for (const id of ids)
+          if (S.peers[id].dc.readyState === "open") S.peers[id].dc.send(JSON.stringify(frame));
+      }
+      for (const id of ids)
+        if (S.peers[id].dc.readyState === "open") S.peers[id].dc.send(JSON.stringify({ t: "end" }));
+      await new Promise((r) => setTimeout(r, 400));
+      const sorted = [...S.rtts].sort((a, b) => a - b);
+      return {
+        ticks,
+        absentInputs: absent,
+        hostDigest: S.digest,
+        guestDigests: Object.fromEntries(ids.map((id) => [id, S.peers[id].digest ?? null])),
+        rttP50: +sorted[Math.floor(sorted.length * 0.5)].toFixed(2),
+        rttP95: +sorted[Math.floor(sorted.length * 0.95)].toFixed(2),
+        rttMax: +sorted[sorted.length - 1].toFixed(2),
+      };
+    },
+    events: () => S.events,
+    nowMs: () => now(),
+    peerStates: () =>
+      Object.fromEntries(Object.entries(S.peers).map(([id, p]) => [id, p.pc.connectionState])),
+    // ---- guest ----
+    async guestJoin(offerBundle) {
+      S.role = "guest";
+      const pc = new RTCPeerConnection(peerCfg);
+      track(pc, "host");
+      S.link = { pc, dc: null };
+      pc.ondatachannel = (e) => {
+        S.link.dc = e.channel;
+        e.channel.onmessage = (ev) => spike._guestMsg(JSON.parse(ev.data));
+        e.channel.onclose = () => S.events.push({ at: now(), id: "host", state: "channel-closed" });
+      };
+      await pc.setRemoteDescription({ type: "offer", sdp: expand(decode(offerBundle), "actpass") });
+      await pc.setLocalDescription(await pc.createAnswer());
+      await waitIce(pc);
+      return report(pc.localDescription.sdp);
+    },
+    _guestMsg(m) {
+      if (m.t === "tick") {
+        // Deterministic per-slot "input": a pure function of the tick, so every run can be replayed.
+        S.link.dc.send(JSON.stringify({ t: "in", n: m.n, v: (m.n * 2654435761) % 1000 }));
+      } else if (m.t === "frame") spike._apply(m);
+      else if (m.t === "end") S.link.dc.send(JSON.stringify({ t: "digest", d: S.digest }));
+    },
+    _apply(frame) {
+      if (frame.n === 0) S.digest = 2166136261; // a new match starts from the shared seed
+      S.digest = fnv(S.digest, frame.seed);
+      for (const v of frame.inputs) S.digest = fnv(S.digest, v + 2);
+      S.frames += 1;
+    },
+    digest: () => S.digest,
+  };
+  window.spike = spike;
+
+  // Manual pairing UI for real devices (copy / paste the bundle strings).
+  const $ = (id) => document.getElementById(id);
+  $("host").onclick = () => {
+    $("hostUi").hidden = false;
+    $("role").textContent = "role: host";
+  };
+  $("guest").onclick = () => {
+    $("guestUi").hidden = false;
+    $("role").textContent = "role: guest";
+  };
+  let hostCount = 0;
+  $("mk").onclick = async () => {
+    const id = `g${++hostCount}`;
+    const r = await spike.hostOffer(id);
+    $("offerOut").value = r.bundle;
+    log(
+      `offer for ${id}: ${r.compactChars} chars (full SDP ${r.fullSdpChars}), mDNS=${r.mdns}, types=${r.candidateTypes}`,
+    );
+  };
+  $("acc").onclick = async () => {
+    const id = `g${hostCount}`;
+    log(`${id}: ${JSON.stringify(await spike.hostAccept(id, $("answerIn").value.trim()))}`);
+  };
+  $("start").onclick = async () => log(JSON.stringify(await spike.lockstep(300, 12345)));
+  $("join").onclick = async () => {
+    const r = await spike.guestJoin($("offerIn").value.trim());
+    $("answerOut").value = r.bundle;
+    log(`answer: ${r.compactChars} chars, mDNS=${r.mdns}, types=${r.candidateTypes}`);
+  };
+</script>
