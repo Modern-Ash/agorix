@@ -17,12 +17,13 @@ export interface OriRestrictedMessageKey {
   readonly oriCandidate: "A" | "B";
   readonly deterministicCandidate: "A" | "B";
 }
-export function separateOriSingleMessageComparison(
-  value: OriSingleMessageComparison,
-): {
+export interface OriSeparatedBlindMessages {
   readonly educator: OriEducatorBlindMessages;
   readonly coordinator: OriRestrictedMessageKey;
-} | null {
+}
+export function separateOriSingleMessageComparison(
+  value: OriSingleMessageComparison,
+): OriSeparatedBlindMessages | null {
   if (
     !value ||
     value.schema !== "agorix/ori-single-message-comparison/v1" ||
