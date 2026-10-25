@@ -1239,8 +1239,26 @@ function assertOperation(operation: ProposalOperation, path: string): void {
   }
 }
 
+/** Ids of the child's own blocks a statement calls, including inside repeat and if bodies. */
+function procedureIdsForStatement(statement: Statement): readonly string[] {
+  switch (statement.type) {
+    case "callProcedure":
+      return [statement.procedureId];
+    case "repeat":
+    case "repeatUntil":
+      return statement.body.flatMap(procedureIdsForStatement);
+    case "if":
+      return [...statement.then, ...(statement.else ?? [])].flatMap(procedureIdsForStatement);
+    default:
+      return [];
+  }
+}
+
 function probeProgramForStatement(statement: Statement): ProjectProgram {
   const variableIds = variableIdsForStatement(statement);
+  // A call is checked here only for shape; whether the block really exists is checked against the
+  // actual script when the proposal is applied (validateProgram of the candidate program).
+  const procedureIds = [...new Set(procedureIdsForStatement(statement))];
   return {
     schema: "agorix/program/v1",
     ...(variableIds.length === 0
@@ -1253,7 +1271,22 @@ function probeProgramForStatement(statement: Statement): ProjectProgram {
             visible: true,
           })),
         }),
-    scripts: [{ id: "probe", trigger: { type: "onStart" }, statements: [statement] }],
+    scripts: [
+      {
+        id: "probe",
+        trigger: { type: "onStart" },
+        statements: [statement],
+        ...(procedureIds.length === 0
+          ? {}
+          : {
+              procedures: procedureIds.map((id) => ({
+                id,
+                name: id,
+                body: [{ type: "hide" as const }],
+              })),
+            }),
+      },
+    ],
   };
 }
 

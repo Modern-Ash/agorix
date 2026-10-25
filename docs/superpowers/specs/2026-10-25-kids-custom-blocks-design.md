@@ -61,6 +61,8 @@ Ori may propose a `callProcedure` for a block that exists, as an ordinary review
 
 ## Rollout
 
+Status: slices 1 to 3 shipped (#642, #645); slice 4 (Ori proposal support) ships with the change that adds "Ori suggests using a block the child made" to `SCRATCH_CAPABILITY_AUDIT.md`. Parameters remain a later slice.
+
 Delivered in slices that each keep `main` green: (1) model, validator and runtime; (2) projections and blocks; (3) Studio authoring; (4) Ori proposal support and docs. Each slice updates `SCRATCH_CAPABILITY_AUDIT.md` and distinguishes implemented code from what a child sees by default.
 
 ## Owner decisions (2026-10-25)

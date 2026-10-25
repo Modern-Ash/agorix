@@ -553,6 +553,12 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
   const proposedOperation = oriIdea?.operations[0];
   const proposedStatement =
     proposedOperation?.type === "appendStatement" ? proposedOperation.statement : null;
+  // "Change" swaps a suggested move/turn for its sibling, and a suggested own block for another one.
+  const otherOwnBlock =
+    proposedStatement?.type === "callProcedure"
+      ? (script?.procedures ?? []).find((item) => item.id !== proposedStatement.procedureId)
+      : undefined;
+  const canChangeIdea = proposedStatement?.type !== "callProcedure" || otherOwnBlock !== undefined;
   const oriMotion = oriBusy
     ? "thinking"
     : oriIdea
@@ -1099,9 +1105,11 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
             ? { type: "turn" as const, degrees: -operation.statement.degrees }
             : operation.statement.type === "move"
               ? { type: "move" as const, steps: operation.statement.steps === 40 ? 80 : 40 }
-              : (() => {
-                  throw new Error("invalid Ori block");
-                })();
+              : operation.statement.type === "callProcedure" && otherOwnBlock !== undefined
+                ? { type: "callProcedure" as const, procedureId: otherOwnBlock.id }
+                : (() => {
+                    throw new Error("invalid Ori block");
+                  })();
         scripts[operation.scriptIndex] = {
           ...target,
           statements: [...target.statements, replacement],
@@ -2770,7 +2778,9 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
                       ? `+ ${copy.move} ${proposedStatement.steps / 40}`
                       : proposedStatement?.type === "turn"
                         ? `+ ${proposedStatement.degrees < 0 ? copy.turnLeft : copy.turnRight}`
-                        : ""}
+                        : proposedStatement?.type === "callProcedure"
+                          ? `+ ${copy.useBlock}: ${script?.procedures?.find((item) => item.id === proposedStatement.procedureId)?.name ?? "?"}`
+                          : ""}
                   </strong>
                   <div>
                     <button
@@ -2780,13 +2790,15 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
                     >
                       {copy.use}
                     </button>
-                    <button
-                      type="button"
-                      className="kids-button"
-                      onClick={() => decideOri("change")}
-                    >
-                      {copy.change}
-                    </button>
+                    {canChangeIdea ? (
+                      <button
+                        type="button"
+                        className="kids-button"
+                        onClick={() => decideOri("change")}
+                      >
+                        {copy.change}
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       className="kids-button"
