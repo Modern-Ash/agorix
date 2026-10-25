@@ -7,6 +7,8 @@ import type {
   ProjectProgram,
   Procedure,
   Script,
+  GraphicEffect,
+  GraphicEffect,
   Statement,
   Trigger,
 } from "./schema.js";
@@ -208,6 +210,19 @@ function validateUnaryExpression(
   };
 }
 
+const EFFECT_RANGES: Readonly<Record<GraphicEffect, readonly [number, number]>> = {
+  color: [0, 200],
+  ghost: [0, 100],
+  brightness: [-100, 100],
+};
+
+function checkEffect(value: unknown, path: string): GraphicEffect {
+  if (typeof value !== "string" || !Object.prototype.hasOwnProperty.call(EFFECT_RANGES, value)) {
+    fail("INVALID_FIELD_TYPE", path, "expected color, ghost or brightness", value);
+  }
+  return value as GraphicEffect;
+}
+
 const MATH_FUNCTIONS: readonly string[] = ["abs", "round", "floor", "ceiling"];
 
 function validateMathFunctionExpression(
@@ -407,6 +422,25 @@ function validateStatement(
     }
     case "pointTowards":
       return { type: "pointTowards", actorId: checkText(input.actorId, `${path}.actorId`) };
+    case "setEffect": {
+      const effect = checkEffect(input.effect, path + ".effect");
+      if (typeof input.value !== "number" || !Number.isFinite(input.value)) {
+        fail("MISSING_FIELD", path + ".value", "expected a number", input.value);
+      }
+      const [min, max] = EFFECT_RANGES[effect];
+      checkBounds(input.value, min, max, path + ".value");
+      return { type: "setEffect", effect, value: input.value };
+    }
+    case "changeEffect": {
+      const effect = checkEffect(input.effect, path + ".effect");
+      if (typeof input.delta !== "number" || !Number.isFinite(input.delta)) {
+        fail("MISSING_FIELD", path + ".delta", "expected a number", input.delta);
+      }
+      checkBounds(input.delta, -200, 200, path + ".delta");
+      return { type: "changeEffect", effect, delta: input.delta };
+    }
+    case "clearEffects":
+      return { type: "clearEffects" };
     case "goToLayer":
       if (input.layer !== "front" && input.layer !== "back") {
         fail("INVALID_FIELD_TYPE", `${path}.layer`, 'expected "front" or "back"', input.layer);

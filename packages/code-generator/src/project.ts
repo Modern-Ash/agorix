@@ -278,6 +278,21 @@ function projectStatement(
     case "pointTowards":
       write(writer, `${pad}sprite.pointTowards(${JSON.stringify(statement.actorId)});\n`);
       return;
+    case "setEffect":
+      write(
+        writer,
+        `${pad}sprite.setEffect(${JSON.stringify(statement.effect)}, ${formatNumber(statement.value)});\n`,
+      );
+      return;
+    case "changeEffect":
+      write(
+        writer,
+        `${pad}sprite.changeEffect(${JSON.stringify(statement.effect)}, ${formatNumber(statement.delta)});\n`,
+      );
+      return;
+    case "clearEffects":
+      write(writer, `${pad}sprite.clearEffects();\n`);
+      return;
     case "goToLayer":
       write(writer, `${pad}sprite.goToLayer(${JSON.stringify(statement.layer)});\n`);
       return;

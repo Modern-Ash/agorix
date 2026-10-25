@@ -34,6 +34,9 @@ import {
   setVariableVisibilityWorld,
   setVariableWorld,
   setSpriteSizeWorld,
+  setEffectWorld,
+  changeEffectWorld,
+  clearEffectsWorld,
   changeSpriteSizeWorld,
   showWorld,
   stopSoundsWorld,
@@ -464,6 +467,15 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
       }
       break;
     }
+    case "setEffect":
+      state.world = setEffectWorld(state.world, statement.effect, statement.value);
+      break;
+    case "changeEffect":
+      state.world = changeEffectWorld(state.world, statement.effect, statement.delta);
+      break;
+    case "clearEffects":
+      state.world = clearEffectsWorld(state.world);
+      break;
     case "goToLayer":
       // The stage order belongs to the multi-actor run; for one sprite this is only a step.
       break;

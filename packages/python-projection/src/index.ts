@@ -220,6 +220,23 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
         indent + "point_towards(" + JSON.stringify(statement.actorId) + ")\n",
       );
       return;
+    case "setEffect":
+      writeMapped(
+        writer,
+        nodeId,
+        indent + "set_effect(" + JSON.stringify(statement.effect) + ", " + formatNumber(statement.value) + ")\n",
+      );
+      return;
+    case "changeEffect":
+      writeMapped(
+        writer,
+        nodeId,
+        indent + "change_effect(" + JSON.stringify(statement.effect) + ", " + formatNumber(statement.delta) + ")\n",
+      );
+      return;
+    case "clearEffects":
+      writeMapped(writer, nodeId, indent + "clear_effects()\n");
+      return;
     case "goToLayer":
       writeMapped(
         writer,

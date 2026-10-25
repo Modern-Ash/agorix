@@ -509,3 +509,37 @@ describe("procedureIdentifiers", () => {
     ).toEqual(["my_saltar_alto", "my_saltar_alto_2", "my_nandu", "my_block_4", "my_class"]);
   });
 });
+
+describe("graphic effect statements", () => {
+  const programWith = (statement: unknown) =>
+    ({
+      schema: SCHEMA_VERSION,
+      scripts: [{ id: "main", trigger: { type: "onStart" }, statements: [statement] }],
+    }) as never;
+  it("accepts each effect in its own range and clearEffects", () => {
+    for (const statement of [
+      { type: "setEffect", effect: "color", value: 200 },
+      { type: "setEffect", effect: "ghost", value: 100 },
+      { type: "setEffect", effect: "brightness", value: -100 },
+      { type: "changeEffect", effect: "ghost", delta: -25 },
+      { type: "clearEffects" },
+    ]) {
+      expect(() => validateProgram(programWith(statement))).not.toThrow();
+    }
+  });
+  it("rejects unknown effects and out-of-range or non-numeric values", () => {
+    for (const statement of [
+      { type: "setEffect", effect: "blur", value: 10 },
+      { type: "setEffect", effect: "ghost", value: 101 },
+      { type: "setEffect", effect: "ghost", value: -1 },
+      { type: "setEffect", effect: "color", value: 201 },
+      { type: "setEffect", effect: "brightness", value: 101 },
+      { type: "setEffect", effect: "ghost", value: "5" },
+      { type: "setEffect", effect: "ghost", value: Number.NaN },
+      { type: "changeEffect", effect: "ghost", delta: 201 },
+      { type: "changeEffect", effect: "ghost" },
+    ]) {
+      expect(() => validateProgram(programWith(statement))).toThrow(ProgramValidationError);
+    }
+  });
+});

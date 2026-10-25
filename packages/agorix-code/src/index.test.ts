@@ -563,3 +563,32 @@ describe("Agorix Code projection: custom blocks", () => {
     expect(result.mapping["scripts[0]/procedures[0]/body[0]"]).toBeDefined();
   });
 });
+
+describe("Agorix Code projection: graphic effects", () => {
+  it("projects the three effect statements", () => {
+    const result = projectAgorixCode({
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            { type: "setEffect", effect: "ghost", value: 50 },
+            { type: "changeEffect", effect: "color", delta: 25 },
+            { type: "clearEffects" },
+          ],
+        },
+      ],
+    });
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toBe(
+      [
+        "when start",
+        "  set ghost effect to 50",
+        "  change color effect by 25",
+        "  clear graphic effects",
+        "",
+      ].join("\n"),
+    );
+  });
+});

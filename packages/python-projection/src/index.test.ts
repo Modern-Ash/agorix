@@ -666,3 +666,32 @@ describe("Python projection: custom blocks", () => {
     expect(result.mapping["scripts[0]/procedures[0]/body[0]"]).toBeDefined();
   });
 });
+
+describe("Python projection: graphic effects", () => {
+  it("projects the three effect calls", () => {
+    const result = projectPython({
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            { type: "setEffect", effect: "ghost", value: 50 },
+            { type: "changeEffect", effect: "color", delta: 25 },
+            { type: "clearEffects" },
+          ],
+        },
+      ],
+    });
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toBe(
+      [
+        "def on_start():",
+        '    set_effect("ghost", 50)',
+        '    change_effect("color", 25)',
+        "    clear_effects()",
+        "",
+      ].join("\n"),
+    );
+  });
+});

@@ -913,4 +913,31 @@ describe("Kids creative studio", () => {
       expect(() => createStudioProcedure(history, nova, 1, "Uno más")).toThrow();
     });
   });
+  it("applies a bounded effect to one character and rejects values outside the choices", () => {
+    const nova = "actor:studio-1-nova";
+    let history = addStudioActor(createEditorHistory(createStudioProgram("nova")), "mika");
+    history = appendStudioStatement(history, nova, {
+      type: "setEffect",
+      effect: "ghost",
+      value: 50,
+    });
+    history = appendStudioStatement(history, nova, {
+      type: "changeEffect",
+      effect: "color",
+      delta: 25,
+    });
+    const result = runMultiActorProgram(
+      history.current,
+      creativeForStudio(history.current, "forest", "es"),
+    );
+    expect(result.actors[0]?.world.sprite.effects).toEqual({ color: 25, ghost: 50, brightness: 0 });
+    expect(result.actors[1]?.world.sprite.effects).toBeUndefined();
+    history = appendStudioStatement(history, nova, { type: "clearEffects" });
+    for (const bad of [
+      { type: "setEffect", effect: "ghost", value: 30 },
+      { type: "setEffect", effect: "blur", value: 50 },
+      { type: "changeEffect", effect: "ghost", delta: 40 },
+    ] as const)
+      expect(() => appendStudioStatement(history, nova, bad as never)).toThrow();
+  });
 });

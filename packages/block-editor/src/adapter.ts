@@ -2,6 +2,7 @@ import {
   SCHEMA_VERSION,
   validateProgram,
   type Expression,
+  type GraphicEffect,
   type MathFunction,
   type ProgramList,
   ProgramVariable,
@@ -26,6 +27,9 @@ export type BlockType =
   | "motion_bounce_on_edge"
   | "motion_glide_to"
   | "looks_go_to_layer"
+  | "looks_set_effect"
+  | "looks_change_effect"
+  | "looks_clear_effects"
   | "procedures_call"
   | "looks_say"
   | "looks_think"
@@ -422,6 +426,20 @@ function statementFromBlock(
       return { type: "pointInDirection", degrees: numberField(block, "degrees", path) };
     case "motion_point_towards":
       return { type: "pointTowards", actorId: stringField(block, "actorId", path) };
+    case "looks_set_effect":
+      return {
+        type: "setEffect",
+        effect: stringField(block, "effect", path),
+        value: numberField(block, "value", path),
+      };
+    case "looks_change_effect":
+      return {
+        type: "changeEffect",
+        effect: stringField(block, "effect", path),
+        delta: numberField(block, "delta", path),
+      };
+    case "looks_clear_effects":
+      return { type: "clearEffects" };
     case "looks_go_to_layer": {
       const layer = stringField(block, "layer", path);
       if (layer !== "front" && layer !== "back") {
@@ -752,6 +770,20 @@ function statementToBlock(
       return { id, type: "motion_point_in_direction", fields: { degrees: statement.degrees } };
     case "pointTowards":
       return { id, type: "motion_point_towards", fields: { actorId: statement.actorId } };
+    case "setEffect":
+      return {
+        id,
+        type: "looks_set_effect",
+        fields: { effect: statement.effect, value: statement.value },
+      };
+    case "changeEffect":
+      return {
+        id,
+        type: "looks_change_effect",
+        fields: { effect: statement.effect, delta: statement.delta },
+      };
+    case "clearEffects":
+      return { id, type: "looks_clear_effects" };
     case "goToLayer":
       return { id, type: "looks_go_to_layer", fields: { layer: statement.layer } };
     case "callProcedure":
