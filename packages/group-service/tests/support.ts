@@ -66,10 +66,13 @@ function sqliteBackend(): { repository: GroupRepository; inspect: Inspector } {
   db.exec("insert into agorix_accounts values ('org-1'), ('org-2')");
   for (const migration of GROUP_SERVICE_MIGRATIONS) db.exec(migration.sqlite);
   const executor = {
-    async execute(sql: string, params: readonly GroupSqlValue[] = []) {
+    async execute<R extends Record<string, unknown>>(
+      sql: string,
+      params: readonly GroupSqlValue[] = [],
+    ) {
       const statement = db.prepare(sql);
       if (statement.columns().length > 0) {
-        const rows = statement.all(...params) as Record<string, unknown>[];
+        const rows = statement.all(...params) as R[];
         return { rows, rowCount: rows.length };
       }
       return { rows: [], rowCount: Number(statement.run(...params).changes) };
