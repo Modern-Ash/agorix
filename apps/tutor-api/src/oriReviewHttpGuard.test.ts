@@ -34,8 +34,9 @@ describe("Ori future adult review HTTP preflight", () => {
     ["invalid host", { host: "agorix.example/path" }],
     ["unexpected origin path", { origin: "https://agorix.example/other" }],
   ])("rejects %s", (_label, headers) => {
-    expect(checkOriReviewHttpRequest(request({ headers: { ...request().headers, ...headers } }), auth))
-      .toMatchObject({ status: 403 });
+    expect(
+      checkOriReviewHttpRequest(request({ headers: { ...request().headers, ...headers } }), auth),
+    ).toMatchObject({ status: 403 });
   });
   it("rejects missing session", () => {
     const denied = { read: () => null } as unknown as AdminAuth;
@@ -50,8 +51,12 @@ describe("Ori future adult review HTTP preflight", () => {
   it.each(["text/plain", "application/x-www-form-urlencoded", "application/json; charset=latin1"])(
     "rejects content type %s",
     (type) => {
-      expect(checkOriReviewHttpRequest(request({ headers: { ...request().headers, "content-type": type } }), auth))
-        .toMatchObject({ status: 415 });
+      expect(
+        checkOriReviewHttpRequest(
+          request({ headers: { ...request().headers, "content-type": type } }),
+          auth,
+        ),
+      ).toMatchObject({ status: 415 });
     },
   );
 });

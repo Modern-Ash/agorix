@@ -22,7 +22,8 @@ export function checkOriReviewHttpRequest(
     typeof origin !== "string" ||
     typeof host !== "string" ||
     !/^[a-zA-Z0-9.\-]+(?::[0-9]{1,5})?$/.test(host)
-  ) return { allowed: false, status: 403, reason: "invalid-origin" };
+  )
+    return { allowed: false, status: 403, reason: "invalid-origin" };
   let parsed: URL;
   try {
     parsed = new URL(origin);
@@ -37,7 +38,8 @@ export function checkOriReviewHttpRequest(
     parsed.pathname !== "/" ||
     parsed.search !== "" ||
     parsed.hash !== ""
-  ) return { allowed: false, status: 403, reason: "invalid-origin" };
+  )
+    return { allowed: false, status: 403, reason: "invalid-origin" };
   const type = request.headers["content-type"];
   if (typeof type !== "string" || !/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(type))
     return { allowed: false, status: 415, reason: "unsupported-media-type" };
@@ -46,6 +48,7 @@ export function checkOriReviewHttpRequest(
   if (
     typeof request.headers["x-agorix-admin-csrf"] !== "string" ||
     request.headers["x-agorix-admin-csrf"] !== session.csrf
-  ) return { allowed: false, status: 403, reason: "invalid-csrf" };
+  )
+    return { allowed: false, status: 403, reason: "invalid-csrf" };
   return { allowed: true };
 }
