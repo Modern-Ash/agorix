@@ -45,6 +45,6 @@ describe("Ori authenticated admin session gate", () => {
   it("fails closed if session reader throws", async () => {
     const auth = { read: () => { throw new Error("synthetic auth failure"); } } as unknown as AdminAuth;
     const guarded = createAdminSessionOriReview(auth, async () => valid, true, [1]);
-    await expect(guarded(request, input)).rejects.toThrow("synthetic auth failure");
+    expect((await guarded(request, input)).status).toBe("unavailable");
   });
 });
