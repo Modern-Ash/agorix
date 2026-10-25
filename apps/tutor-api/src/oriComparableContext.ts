@@ -24,17 +24,29 @@ export function validateOriComparableContext(
   for (const entry of cases) {
     if (!entry || typeof entry !== "object" || seen.has(entry.fixtureId)) return null;
     const fixture = fixtures.get(entry.fixtureId);
-    if (!fixture || entry.missionIndex !== fixture.missionIndex || entry.hintLevel !== fixture.hintLevel)
+    if (
+      !fixture ||
+      entry.missionIndex !== fixture.missionIndex ||
+      entry.hintLevel !== fixture.hintLevel
+    )
       return null;
     if (
       !Number.isSafeInteger(entry.missionIndex) ||
       entry.missionIndex < 0 ||
       entry.missionIndex >= KIDS_MISSION_IDS.length ||
       KIDS_MISSION_IDS[entry.missionIndex] !== entry.missionId
-    ) return null;
-    if (!Number.isSafeInteger(entry.scriptCount) || entry.scriptCount < 0 || entry.scriptCount > 1000)
+    )
       return null;
-    if (typeof entry.programFingerprint !== "string" || !/^[a-f0-9]{64}$/.test(entry.programFingerprint))
+    if (
+      !Number.isSafeInteger(entry.scriptCount) ||
+      entry.scriptCount < 0 ||
+      entry.scriptCount > 1000
+    )
+      return null;
+    if (
+      typeof entry.programFingerprint !== "string" ||
+      !/^[a-f0-9]{64}$/.test(entry.programFingerprint)
+    )
       return null;
     seen.add(entry.fixtureId);
     validated.push(Object.freeze({ ...entry }));

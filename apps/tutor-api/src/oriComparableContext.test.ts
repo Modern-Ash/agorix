@@ -15,16 +15,22 @@ describe("Ori comparable teaching context gate", () => {
     expect(validateOriComparableContext([valid])).toEqual([valid]);
   });
   it("rejects pedagogical fixtures with no canonical Kids mission", () => {
-    expect(validateOriComparableContext([{ ...valid, fixtureId: "events-01", missionIndex: 4 }])).toBeNull();
+    expect(
+      validateOriComparableContext([{ ...valid, fixtureId: "events-01", missionIndex: 4 }]),
+    ).toBeNull();
   });
   it("rejects wrong mission ID even when index is in range", () => {
-    expect(validateOriComparableContext([{ ...valid, missionId: KIDS_MISSION_IDS[0]! }])).toBeNull();
+    expect(
+      validateOriComparableContext([{ ...valid, missionId: KIDS_MISSION_IDS[0]! }]),
+    ).toBeNull();
   });
   it("rejects wrong hint level", () => {
     expect(validateOriComparableContext([{ ...valid, hintLevel: 3 }])).toBeNull();
   });
   it("rejects missing or malformed program fingerprint", () => {
-    expect(validateOriComparableContext([{ ...valid, programFingerprint: "synthetic" }])).toBeNull();
+    expect(
+      validateOriComparableContext([{ ...valid, programFingerprint: "synthetic" }]),
+    ).toBeNull();
   });
   it("rejects duplicate and empty cases", () => {
     expect(validateOriComparableContext([valid, valid])).toBeNull();
