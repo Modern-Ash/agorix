@@ -29,19 +29,25 @@ const result: OriPlanReviewResult = {
 describe("Ori adult review policy gate", () => {
   it.each(["learner", "anonymous"] as const)("rejects %s roles", async (role) => {
     let calls = 0;
-    const review = createAuthorizedOriPlanReview(async () => {
-      calls++;
-      return result;
-    }, { ...allowed, role });
+    const review = createAuthorizedOriPlanReview(
+      async () => {
+        calls++;
+        return result;
+      },
+      { ...allowed, role },
+    );
     expect((await review(input)).status).toBe("unavailable");
     expect(calls).toBe(0);
   });
   it("does not call provider while disabled", async () => {
     let calls = 0;
-    const review = createAuthorizedOriPlanReview(async () => {
-      calls++;
-      return result;
-    }, { ...allowed, enabled: false });
+    const review = createAuthorizedOriPlanReview(
+      async () => {
+        calls++;
+        return result;
+      },
+      { ...allowed, enabled: false },
+    );
     expect((await review(input)).plan).toBeNull();
     expect(calls).toBe(0);
   });
@@ -49,10 +55,13 @@ describe("Ori adult review policy gate", () => {
     expect(mayReviewOriPlan(allowed, input)).toBe(true);
     expect(mayReviewOriPlan(allowed, { ...input, missionIndex: 2 })).toBe(false);
   });
-  it.each(["educator", "administrator"] as const)("permits %s for an authorized mission", async (role) => {
-    const review = createAuthorizedOriPlanReview(async () => result, { ...allowed, role });
-    expect((await review(input)).status).toBe("ready");
-  });
+  it.each(["educator", "administrator"] as const)(
+    "permits %s for an authorized mission",
+    async (role) => {
+      const review = createAuthorizedOriPlanReview(async () => result, { ...allowed, role });
+      expect((await review(input)).status).toBe("ready");
+    },
+  );
   it("fails closed on unexpected review errors", async () => {
     const review = createAuthorizedOriPlanReview(async () => {
       throw new Error("synthetic failure");
