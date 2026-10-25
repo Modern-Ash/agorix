@@ -164,6 +164,7 @@ import { BUILD_INFO, formatBuildInfo } from "./buildInfo.js";
 import { initialLocale, saveLocalePreference } from "./localePreference.js";
 import { PredictionChip, PredictionComparison } from "./PredictionChip.js";
 import { AgentCompanion, companionMood } from "./AgentCompanion.js";
+import { OriReviewPanel } from "./OriReviewPanel.js";
 import { ModelComparison } from "./ModelComparison.js";
 import { GhostAddedBlocks } from "./GhostBlocks.js";
 import { ghostMarksFor, type GhostMarkKind } from "./ghostMarks.js";
@@ -5072,6 +5073,7 @@ export function App({
                 </div>
               </div>
             )}
+            {import.meta.env.VITE_ORI_EXPERIMENTAL_REVIEW === "1" ? <OriReviewPanel /> : null}
             <details className="ai-more-help">
               <summary>{t(locale, "aiMoreHelp")}</summary>
               <div className="tutor-actions">
