@@ -22,8 +22,7 @@ export function createOriReviewRateLimiter(
   const buckets = new Map<string, { since: number; count: number }>();
   return Object.freeze({
     allow(principal: string): boolean {
-      if (typeof principal !== "string" || !/^[a-zA-Z0-9_-]{1,64}$/.test(principal))
-        return false;
+      if (typeof principal !== "string" || !/^[a-zA-Z0-9_-]{1,64}$/.test(principal)) return false;
       const stamp = now();
       if (!Number.isSafeInteger(stamp) || stamp < 0) return false;
       const previous = buckets.get(principal);
