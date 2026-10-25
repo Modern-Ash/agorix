@@ -9,17 +9,27 @@ describe("external Ori shadow boundary", () => {
   });
   it("never invokes callback when disabled", async () => {
     let calls = 0;
-    dispatchOriExternalShadow(false, async () => { calls++; }, { missionIndex: 0, hintLevel: 1, scriptCount: 1 });
+    dispatchOriExternalShadow(
+      false,
+      async () => {
+        calls++;
+      },
+      { missionIndex: 0, hintLevel: 1, scriptCount: 1 },
+    );
     await Promise.resolve();
     expect(calls).toBe(0);
   });
   it("passes only minimized metadata and ignores callback failures", async () => {
     const received: unknown[] = [];
-    dispatchOriExternalShadow(true, async (input) => {
-      received.push(input);
-      throw new Error("provider unavailable");
-    }, { missionIndex: 1, hintLevel: 2, scriptCount: 3 });
-    await new Promise(resolve => setTimeout(resolve, 0));
+    dispatchOriExternalShadow(
+      true,
+      async (input) => {
+        received.push(input);
+        throw new Error("provider unavailable");
+      },
+      { missionIndex: 1, hintLevel: 2, scriptCount: 3 },
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
     expect(received).toEqual([{ missionIndex: 1, hintLevel: 2, scriptCount: 3 }]);
   });
 });

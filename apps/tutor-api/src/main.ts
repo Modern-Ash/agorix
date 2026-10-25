@@ -29,7 +29,8 @@ const adminAuth = new AdminAuth(
 
 const shadowEnabled = oriExternalShadowEnabled(process.env);
 const shadowEndpoint = process.env["AGORIX_ORI_EXTERNAL_SHADOW_URL"];
-const shadow = shadowEnabled && shadowEndpoint ? createOriShadowTransport(shadowEndpoint) : undefined;
+const shadow =
+  shadowEnabled && shadowEndpoint ? createOriShadowTransport(shadowEndpoint) : undefined;
 
 const server = createTutorServer({
   config,

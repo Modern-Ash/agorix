@@ -14,8 +14,12 @@ export function createOriShadowTransport(
     url.protocol !== "http:" ||
     !["127.0.0.1", "localhost", "[::1]"].includes(url.hostname) ||
     url.pathname !== "/v0/shadow" ||
-    url.username !== "" || url.password !== "" || url.search !== "" || url.hash !== ""
-  ) throw new Error("Ori shadow endpoint must be loopback /v0/shadow");
+    url.username !== "" ||
+    url.password !== "" ||
+    url.search !== "" ||
+    url.hash !== ""
+  )
+    throw new Error("Ori shadow endpoint must be loopback /v0/shadow");
 
   return async (input: OriExternalShadowInput): Promise<void> => {
     const controller = new AbortController();

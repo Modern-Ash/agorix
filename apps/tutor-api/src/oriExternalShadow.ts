@@ -23,7 +23,9 @@ export function dispatchOriExternalShadow(
   // Fire-and-forget by design: no external result can change the existing
   // deterministic or CLI-backed tutor response. Failures are swallowed.
   try {
-    void Promise.resolve().then(() => shadow(Object.freeze({ ...input }))).catch(() => undefined);
+    void Promise.resolve()
+      .then(() => shadow(Object.freeze({ ...input })))
+      .catch(() => undefined);
   } catch {
     // The existing tutor path must remain unaffected.
   }

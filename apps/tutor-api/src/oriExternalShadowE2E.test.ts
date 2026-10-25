@@ -21,16 +21,26 @@ describe("Agorix to Ori shadow transport e2e", () => {
       const shadow = createOriShadowTransport(`http://127.0.0.1:${port}/v0/shadow`);
       const originalTutorResponse = { message: "Existing safe fallback" };
       await shadow({ missionIndex: 0, hintLevel: 2, scriptCount: 1 });
-      expect(seen).toEqual([{ path: "/v0/shadow", body: { missionIndex: 0, hintLevel: 2, scriptCount: 1 } }]);
+      expect(seen).toEqual([
+        { path: "/v0/shadow", body: { missionIndex: 0, hintLevel: 2, scriptCount: 1 } },
+      ]);
       expect(originalTutorResponse).toEqual({ message: "Existing safe fallback" });
     } finally {
-      await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
     }
   });
 
   it("does not invoke network when feature is disabled", async () => {
     let invoked = false;
-    dispatchOriExternalShadow(false, async () => { invoked = true; }, { missionIndex: 0, hintLevel: 1, scriptCount: 1 });
+    dispatchOriExternalShadow(
+      false,
+      async () => {
+        invoked = true;
+      },
+      { missionIndex: 0, hintLevel: 1, scriptCount: 1 },
+    );
     await Promise.resolve();
     expect(invoked).toBe(false);
   });
@@ -38,7 +48,7 @@ describe("Agorix to Ori shadow transport e2e", () => {
   it("network failures do not propagate into tutor flow", async () => {
     const shadow = createOriShadowTransport("http://127.0.0.1:1/v0/shadow");
     dispatchOriExternalShadow(true, shadow, { missionIndex: 0, hintLevel: 1, scriptCount: 1 });
-    await new Promise(resolve => setTimeout(resolve, 20));
+    await new Promise((resolve) => setTimeout(resolve, 20));
     expect(true).toBe(true);
   });
 });

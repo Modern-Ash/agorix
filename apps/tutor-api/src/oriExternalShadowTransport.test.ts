@@ -8,7 +8,8 @@ describe("Ori loopback shadow transport", () => {
       "http://10.0.0.1:8000/v0/shadow",
       "http://user:pass@localhost:8000/v0/shadow",
       "http://localhost:8000/other",
-    ]) expect(() => createOriShadowTransport(url)).toThrow();
+    ])
+      expect(() => createOriShadowTransport(url)).toThrow();
   });
   it("sends only minimized metadata and ignores response content", async () => {
     let body = "";

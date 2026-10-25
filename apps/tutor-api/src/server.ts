@@ -400,11 +400,15 @@ export function createTutorServer(options: TutorServerOptions): Server {
     const missionIndex = KIDS_MISSION_IDS.indexOf(
       input.missionId as (typeof KIDS_MISSION_IDS)[number],
     ) as 0 | 1 | 2;
-    dispatchOriExternalShadow(options.oriExternalShadowEnabled === true, options.oriExternalShadow, {
-      missionIndex,
-      hintLevel: input.hintLevel,
-      scriptCount: input.program.scripts.length,
-    });
+    dispatchOriExternalShadow(
+      options.oriExternalShadowEnabled === true,
+      options.oriExternalShadow,
+      {
+        missionIndex,
+        hintLevel: input.hintLevel,
+        scriptCount: input.program.scripts.length,
+      },
+    );
     const mission = getKidsMission(input.missionId, input.locale);
     const context = {
       mission,
