@@ -59,6 +59,10 @@ describe("Ori offline live comparison capture", () => {
       evaluate: async () => { throw new Error("synthetic failure"); },
     }, true)).toBeNull();
   });
+  it("rejects mismatched mission and hint level", async () => {
+    expect(await captureOriLiveComparison(tutorRequest, { ...oriInput, missionIndex: 2 }, consumer, true)).toBeNull();
+    expect(await captureOriLiveComparison(tutorRequest, { ...oriInput, hintLevel: 2 }, consumer, true)).toBeNull();
+  });
   it("rejects invalid tutor input", async () => {
     expect(await captureOriLiveComparison({
       ...tutorRequest, mission: { ...tutorRequest.mission, id: "" },
