@@ -65,7 +65,11 @@ export function createOriPlanConsumer(
           const plan = validateOriShadowPlan(
             JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(raw)),
           );
-          if (!plan || plan.stage !== input.hintLevel || plan.context.missionStage !== input.missionIndex)
+          if (
+            !plan ||
+            plan.stage !== input.hintLevel ||
+            plan.context.missionStage !== input.missionIndex
+          )
             return null;
           // Return only the whitelisted validated schema. Never trust extra fields.
           return Object.freeze({

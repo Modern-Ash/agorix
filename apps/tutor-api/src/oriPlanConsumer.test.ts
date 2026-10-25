@@ -17,7 +17,9 @@ function consumer(body: unknown, status = 200) {
   return createOriPlanConsumer(
     endpoint,
     (async () =>
-      new Response(typeof body === "string" ? body : JSON.stringify(body), { status })) as typeof fetch,
+      new Response(typeof body === "string" ? body : JSON.stringify(body), {
+        status,
+      })) as typeof fetch,
   );
 }
 describe("Ori plan read-only consumer", () => {
@@ -62,12 +64,9 @@ describe("Ori plan read-only consumer", () => {
     }
   });
   it("does not propagate provider failures", async () => {
-    const failing = createOriPlanConsumer(
-      endpoint,
-      (async () => {
-        throw new Error("offline");
-      }) as typeof fetch,
-    );
+    const failing = createOriPlanConsumer(endpoint, (async () => {
+      throw new Error("offline");
+    }) as typeof fetch);
     expect(await failing.evaluate(input)).toBeNull();
   });
 });
