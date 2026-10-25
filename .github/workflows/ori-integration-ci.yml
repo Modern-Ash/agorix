@@ -99,6 +99,9 @@ jobs:
       - name: Smoke test actual compiled educator report CLI
         working-directory: apps/tutor-api
         run: node scripts/ori-educator-production-smoke.mjs
+      - name: Five-scenario synthetic educator pilot smoke
+        working-directory: apps/tutor-api
+        run: node scripts/ori-educator-pilot-smoke.mjs
 
   ori-interoperability:
     name: Real Ori process interoperability
