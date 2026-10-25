@@ -24,7 +24,7 @@ describe("Agorix to Ori shadow transport e2e", () => {
       expect(seen).toEqual([{ path: "/v0/shadow", body: { missionIndex: 0, hintLevel: 2, scriptCount: 1 } }]);
       expect(originalTutorResponse).toEqual({ message: "Existing safe fallback" });
     } finally {
-      await new Promise<void>((resolve) => server.close(resolve));
+      await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
     }
   });
 
