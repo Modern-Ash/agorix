@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import process from "node:process";
 
 const [, , inputPath, outputPath] = process.argv;
 if (!inputPath || !outputPath || process.argv.length !== 4) {
