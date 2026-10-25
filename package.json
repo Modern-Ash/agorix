@@ -26,7 +26,8 @@
     "deploy:web": "bash scripts/deploy-web.sh",
     "rollback:web": "bash scripts/rollback-web.sh",
     "test:ori:interop": "node scripts/verify-ori-interop.mjs",
-    "test:ori:runtime": "node scripts/verify-ori-runtime-integration.mjs"
+    "test:ori:runtime": "node scripts/verify-ori-runtime-integration.mjs",
+    "test:ori:browser-live": "pnpm --filter @agorix/tutor-api build && pnpm --filter @agorix/web build && pnpm --filter @agorix/web test:e2e -- ori-live-runtime.spec.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",
