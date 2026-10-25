@@ -544,6 +544,15 @@ importers:
         specifier: ^24.1.3
         version: 24.1.3
 
+  packages/team-project:
+    dependencies:
+      '@agorix/program-model':
+        specifier: workspace:*
+        version: link:../program-model
+      '@agorix/proposals':
+        specifier: workspace:*
+        version: link:../proposals
+
   packages/tutor-contract:
     dependencies:
       '@agorix/curriculum':
