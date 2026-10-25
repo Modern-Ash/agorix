@@ -56,7 +56,7 @@ export type {
   VariableExpression,
 } from "./schema.js";
 export { SCHEMA_VERSION } from "./schema.js";
-export { procedureIdentifiers } from "./procedures.js";
+export { paramIdentifiers, procedureIdentifiers } from "./procedures.js";
 export type {
   ProjectActor,
   ProjectAsset,

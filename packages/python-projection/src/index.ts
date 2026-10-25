@@ -7,6 +7,7 @@ import {
   type TextRange,
 } from "@agorix/language-projection";
 import {
+  paramIdentifiers,
   procedureIdentifiers,
   validateProgram,
   type Expression,
@@ -29,6 +30,7 @@ interface Writer {
   variableNames: ReadonlyMap<string, string>;
   listNames: ReadonlyMap<string, string>;
   procedureNames?: ReadonlyMap<string, string>;
+  paramNames?: ReadonlyMap<string, string> | undefined;
 }
 
 export function projectPython(program: ProjectProgram): LanguageProjectionResult {
@@ -85,11 +87,15 @@ export function projectPython(program: ProjectProgram): LanguageProjectionResult
     procedures.forEach((procedure, procedureIndex) => {
       const procedureId = scriptId + "/procedures[" + procedureIndex + "]";
       const start = writer.text.length;
-      writer.text += "def " + names[procedureIndex] + "():\n";
+      const params = procedure.params ?? [];
+      const identifiers = paramIdentifiers(params);
+      writer.paramNames = new Map(params.map((item, k) => [item.id, identifiers[k]!]));
+      writer.text += "def " + names[procedureIndex] + "(" + identifiers.join(", ") + "):\n";
       procedure.body.forEach((statement, index) =>
         writeStatement(writer, statement, procedureId + "/body[" + index + "]", 1),
       );
       addRange(writer, procedureId, start, writer.text.length);
+      writer.paramNames = undefined;
       writer.text += "\n";
     });
     writeMapped(writer, scriptId, triggerText(script.trigger));
@@ -180,7 +186,16 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
   const indent = "    ".repeat(depth);
   switch (statement.type) {
     case "move":
-      writeMapped(writer, nodeId, indent + "move(" + formatNumber(statement.steps) + ")\n");
+      writeMapped(
+        writer,
+        nodeId,
+        indent +
+          "move(" +
+          (statement.stepsFrom === undefined
+            ? formatNumber(statement.steps)
+            : paramText(writer, statement.stepsFrom)) +
+          ")\n",
+      );
       return;
     case "glideTo":
       writeMapped(
@@ -204,7 +219,16 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
       );
       return;
     case "turn":
-      writeMapped(writer, nodeId, indent + "turn(" + formatNumber(statement.degrees) + ")\n");
+      writeMapped(
+        writer,
+        nodeId,
+        indent +
+          "turn(" +
+          (statement.degreesFrom === undefined
+            ? formatNumber(statement.degrees)
+            : paramText(writer, statement.degreesFrom)) +
+          ")\n",
+      );
       return;
     case "pointInDirection":
       writeMapped(
@@ -258,7 +282,11 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
       writeMapped(
         writer,
         nodeId,
-        indent + (writer.procedureNames?.get(statement.procedureId) ?? "my_block") + "()\n",
+        indent +
+          (writer.procedureNames?.get(statement.procedureId) ?? "my_block") +
+          "(" +
+          (statement.args ?? []).map((arg) => formatNumber(arg.value)).join(", ") +
+          ")\n",
       );
       return;
     case "bounceOnEdge":
@@ -316,7 +344,16 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
       );
       return;
     case "wait":
-      writeMapped(writer, nodeId, indent + "wait(" + formatNumber(statement.seconds) + ")\n");
+      writeMapped(
+        writer,
+        nodeId,
+        indent +
+          "wait(" +
+          (statement.secondsFrom === undefined
+            ? formatNumber(statement.seconds)
+            : paramText(writer, statement.secondsFrom)) +
+          ")\n",
+      );
       return;
     case "setSize":
       writeMapped(writer, nodeId, indent + "set_size(" + formatNumber(statement.size) + ")\n");
@@ -402,7 +439,13 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
       return;
     case "repeat": {
       const start = writer.text.length;
-      writer.text += indent + "for _ in range(" + formatNumber(statement.count) + "):\n";
+      writer.text +=
+        indent +
+        "for _ in range(" +
+        (statement.countFrom === undefined
+          ? formatNumber(statement.count)
+          : "round(" + paramText(writer, statement.countFrom) + ")") +
+        "):\n";
       if (statement.body.length === 0) {
         writer.text += indent + "    pass\n";
       } else {
@@ -602,6 +645,8 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       );
     case "listLength":
       return "len(" + listIdentifier(writer, expression.listId) + ")";
+    case "param":
+      return paramText(writer, expression.paramId);
     case "randomInteger":
       return (
         "random_integer(" +
@@ -760,6 +805,10 @@ function safeIdentifier(value: string, fallback: string): string {
   const valid = /^[A-Za-z_]/.test(identifier) ? identifier : `v${identifier}`;
   const forbidden = PYTHON_RESERVED_WORDS.has(valid) || PYTHON_PROJECTION_IDENTIFIERS.has(valid);
   return forbidden ? `${valid}_` : valid;
+}
+
+function paramText(writer: Writer, id: string): string {
+  return writer.paramNames?.get(id) ?? "n_unknown";
 }
 
 function listIdentifier(writer: Writer, listId: string): string {

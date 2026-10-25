@@ -685,6 +685,10 @@ function collectBlockIds(block: BlockNode, ids: Set<string>): void {
   if (block.inputs?.value !== undefined) collectBlockIds(block.inputs.value, ids);
   if (block.inputs?.delta !== undefined) collectBlockIds(block.inputs.delta, ids);
   if (block.inputs?.index !== undefined) collectBlockIds(block.inputs.index, ids);
+  for (const name of ["arg1", "arg2", "arg3"] as const) {
+    const arg = block.inputs?.[name];
+    if (arg !== undefined) collectBlockIds(arg, ids);
+  }
 }
 
 function workspaceBlockIds(workspace: BlockWorkspaceSnapshot): Set<string> {
@@ -735,6 +739,9 @@ function cloneBlockTreeWithFreshIds(
             ...(current.inputs.value === undefined ? {} : { value: clone(current.inputs.value) }),
             ...(current.inputs.delta === undefined ? {} : { delta: clone(current.inputs.delta) }),
             ...(current.inputs.index === undefined ? {} : { index: clone(current.inputs.index) }),
+            ...(current.inputs.arg1 === undefined ? {} : { arg1: clone(current.inputs.arg1) }),
+            ...(current.inputs.arg2 === undefined ? {} : { arg2: clone(current.inputs.arg2) }),
+            ...(current.inputs.arg3 === undefined ? {} : { arg3: clone(current.inputs.arg3) }),
           };
     return {
       ...current,
