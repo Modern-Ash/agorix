@@ -27,7 +27,9 @@ try {
     throw new Error("Report exposed restricted evaluation data");
   process.stdout.write("Five-scenario synthetic educator pilot smoke passed.\n");
 } catch (error) {
-  process.stderr.write(`Pilot smoke failed: ${error instanceof Error ? error.message : "unknown error"}\n`);
+  process.stderr.write(
+    `Pilot smoke failed: ${error instanceof Error ? error.message : "unknown error"}\n`,
+  );
   process.exitCode = 1;
 } finally {
   rmSync(directory, { recursive: true, force: true });

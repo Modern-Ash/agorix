@@ -38,7 +38,9 @@ if (!destination || process.argv.length !== 3) {
       flag: "wx",
       mode: 0o600,
     });
-    process.stdout.write("Synthetic educator pilot fixture created. Not real evaluation evidence.\n");
+    process.stdout.write(
+      "Synthetic educator pilot fixture created. Not real evaluation evidence.\n",
+    );
   } catch {
     process.stderr.write("Unable to create pilot fixture; destination must not exist.\n");
     process.exitCode = 1;
