@@ -16,6 +16,7 @@
     "@agorix/agorix-code": "workspace:*",
     "@agorix/auth-service": "workspace:*",
     "@agorix/group-service": "workspace:*",
+    "@agorix/group-lockstep": "workspace:*",
     "@agorix/link-service": "workspace:*",
     "@agorix/block-editor": "workspace:*",
     "@agorix/code-generator": "workspace:*",

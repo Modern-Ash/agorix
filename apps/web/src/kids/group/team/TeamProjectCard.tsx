@@ -4,6 +4,8 @@ import { TEAM_ROLES, type TeamRole } from "@agorix/team-project";
 import type { GroupSlot } from "../groupApi.js";
 import { groupText, type GroupCopyKey } from "../groupCopy.js";
 import { DEFAULT_GROUP_SETTINGS, loadGroupSettings, type GroupSettings } from "../groupSettings.js";
+import { HostTeamLink } from "./teamLink.js";
+import { HostTeamPlay } from "./GroupPlayCard.js";
 import { TeamHost, type HostMember, type HostSnapshot } from "./teamHost.js";
 
 interface Props {
@@ -26,6 +28,22 @@ const ROLE_KEY: Record<TeamRole, GroupCopyKey> = {
 
 const SAFE_IMAGE = /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/;
 
+interface SlotLink {
+  readonly answer: string;
+  readonly offer: string | undefined;
+  readonly connected: boolean;
+  readonly busy: boolean;
+  readonly error: boolean;
+}
+
+const EMPTY_LINK: SlotLink = {
+  answer: "",
+  offer: undefined,
+  connected: false,
+  busy: false,
+  error: false,
+};
+
 /**
  * The organizer's view of the team project: who plays which role, whose turn it is, the attributed
  * history, changes waiting for the team, content waiting for approval, rollback and export. The
@@ -42,8 +60,10 @@ export function TeamProjectCard({ locale, slots, onHost }: Props) {
   const [silenced, setSilenced] = useState<ReadonlySet<string>>(new Set());
   const [message, setMessage] = useState("");
   const [viewing, setViewing] = useState<{ itemId: string; text: string } | null>(null);
+  const [links, setLinks] = useState<Record<string, SlotLink>>({});
   const [, redraw] = useState(0);
   const hostRef = useRef<TeamHost | null>(null);
+  const linkRef = useRef<HostTeamLink | null>(null);
   const t = (key: GroupCopyKey, values?: Record<string, string | number>) =>
     groupText(locale, key, values);
 
@@ -81,6 +101,14 @@ export function TeamProjectCard({ locale, slots, onHost }: Props) {
     return () => hostRef.current?.close();
   }, [host]);
 
+  useEffect(
+    () => () => {
+      linkRef.current?.close();
+      linkRef.current = null;
+    },
+    [],
+  );
+
   function start() {
     const next = new TeamHost({ members, mode, settings, locale });
     next.subscribe(() => {
@@ -91,6 +119,10 @@ export function TeamProjectCard({ locale, slots, onHost }: Props) {
       const alias = members.find((member) => member.slotId === slotId)?.alias ?? "";
       setMessage(t("blockedNotice", { alias }));
     });
+    const link = new HostTeamLink({ host: next });
+    linkRef.current?.close();
+    linkRef.current = link;
+    setLinks({});
     setHost(next);
     setSnapshot(next.snapshot());
     setReactionsOn(true);
@@ -99,11 +131,46 @@ export function TeamProjectCard({ locale, slots, onHost }: Props) {
   }
 
   function end() {
+    linkRef.current?.close();
+    linkRef.current = null;
+    setLinks({});
     host?.close();
     setHost(null);
     setSnapshot(null);
     setViewing(null);
     onHost?.(null);
+  }
+
+  function updateLink(slotId: string, patch: Partial<SlotLink>) {
+    setLinks((current) => ({
+      ...current,
+      [slotId]: { ...(current[slotId] ?? EMPTY_LINK), ...patch },
+    }));
+  }
+
+  async function invite(slotId: string) {
+    const link = linkRef.current;
+    if (link === null) return;
+    updateLink(slotId, { busy: true, error: false });
+    try {
+      const offer = await link.invite(slotId);
+      updateLink(slotId, { offer, answer: "", connected: false, busy: false });
+    } catch {
+      updateLink(slotId, { busy: false, error: true, offer: undefined, answer: "" });
+    }
+  }
+
+  async function connect(slotId: string) {
+    const link = linkRef.current;
+    const answer = links[slotId]?.answer.trim() ?? "";
+    if (link === null || answer === "") return;
+    updateLink(slotId, { busy: true, error: false });
+    try {
+      await link.accept(slotId, answer);
+      updateLink(slotId, { connected: true, busy: false });
+    } catch {
+      updateLink(slotId, { busy: false, error: true, offer: undefined, answer: "" });
+    }
   }
 
   function download() {
@@ -186,6 +253,67 @@ export function TeamProjectCard({ locale, slots, onHost }: Props) {
       ) : (
         <>
           <p role="status">{t("waitingDevices")}</p>
+          <details className="kids-link-privacy">
+            <summary>{t("teamConnectTitle")}</summary>
+            <p>{t("teamConnectNote")}</p>
+            {snapshot.members.map((member) => {
+              const state = links[member.slotId] ?? EMPTY_LINK;
+              return (
+                <div key={member.slotId}>
+                  <h5>{member.alias}</h5>
+                  {state.connected ? (
+                    <p role="status">{t("teamConnected", { alias: member.alias })}</p>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        disabled={state.busy || state.offer !== undefined}
+                        onClick={() => void invite(member.slotId)}
+                      >
+                        {t("teamInvite", { alias: member.alias })}
+                      </button>
+                      {state.offer !== undefined ? (
+                        <textarea
+                          readOnly
+                          rows={3}
+                          value={state.offer}
+                          aria-label={t("teamOffer", { alias: member.alias })}
+                        />
+                      ) : null}
+                      {state.offer !== undefined ? (
+                        <>
+                          <textarea
+                            rows={3}
+                            value={state.answer}
+                            aria-label={t("teamAnswer", { alias: member.alias })}
+                            onChange={(event) =>
+                              updateLink(member.slotId, { answer: event.target.value })
+                            }
+                          />
+                          <button
+                            type="button"
+                            disabled={state.busy || state.answer.trim() === ""}
+                            onClick={() => void connect(member.slotId)}
+                          >
+                            {t("teamConnect")}
+                          </button>
+                        </>
+                      ) : null}
+                    </>
+                  )}
+                  {state.error ? <p role="alert">{t("teamLinkError")}</p> : null}
+                </div>
+              );
+            })}
+          </details>
+          {linkRef.current !== null ? (
+            <HostTeamPlay
+              key={members.map((member) => member.slotId).join(",")}
+              locale={locale}
+              link={linkRef.current}
+              players={members}
+            />
+          ) : null}
           <p>
             <strong>
               {snapshot.turn === undefined

@@ -43,9 +43,9 @@ template, so only ICE ufrag and pwd, the DTLS fingerprint and the candidates tra
    `Permissions-Policy: camera=()`; scanning needs `camera=(self)` scoped to the scan route only
    (separate `location` in nginx), plus HTTPS. Pair by copy/paste of the same string as the supervised
    fallback.
-5. **The real runtime.** The stand-in game proves ordering and digest agreement over the transport,
-   not that `@agorix/runtime` produces identical worlds on tablets. The runtime still replays a
-   finite event list; an incremental lockstep entry point is F3 implementation work.
+5. **The real runtime on tablets.** The stand-in game proves ordering and digest agreement over the
+   transport; the incremental `RuntimeSession`/`RuntimeSim` now backs the product game, but identical
+   worlds on real tablet runtimes remain unmeasured until the device gate runs.
 6. **More than one candidate.** The test machine exposed one host candidate. Phones and tablets
    usually expose IPv4 and IPv6 and sometimes several interfaces, so real bundles will be larger. By
    estimate (not measured), ten candidates would stay near 1,100 characters, still one or two QR frames.
@@ -71,12 +71,38 @@ template, so only ICE ufrag and pwd, the DTLS fingerprint and the candidates tra
    whether the offer shows `mDNS=true`, whether pairing opened, and the digest line. Repeat once with a
    tablet on cellular and once with Wi-Fi client isolation on, to see the failure.
 
+The spike page itself only pairs by copy/paste over plain HTTP. Camera and QR are a separate check
+that needs HTTPS (the scan route in the deployed app, or a local HTTPS tunnel); plain `http://` on a
+LAN address is not a secure context, so `getUserMedia` will not answer there.
+
+## Real-device gate results
+
+One row per attempt, including failures. The gate passes only with at least one Android tablet and
+one iOS tablet, on the target school network, with a successful 300-tick digest match on each.
+
+| Date | Device | OS / browser | Network | mDNS in offer | Pairing opened | 300-tick digest match | Camera / QR | Notes |
+| ---- | ------ | ------------ | ------- | ------------- | -------------- | --------------------- | ----------- | ----- |
+|      |        |              |         |               |                |                       |             |       |
+
+## Implementation status (2026-10-25)
+
+The product owner explicitly waived the hardware gate to continue F3. The code now has the
+browser-safe compact bundle, host/guest lockstep, an incremental runtime session, a WebRTC
+request/reply transport that also multiplexes lockstep frames on the same ordered channel, and
+copy/paste pairing in the Adults panel, plus a built-in four-player cooperative play surface: the
+organizer starts only when every approved device is connected, children steer their own token at a
+paced 10 fps, digests are checked every 20 frames, and the organizer can pause, continue without
+absent players or stop. This does **not** close the gate below: no Android/iOS tablet or target
+school network has been tested, and camera/QR pairing is not implemented (the supervised copy/paste
+fallback is). Treat the table as still open.
+
 ## Recommendation
 
 The ADR's transport is **viable at the protocol level**: offline pairing works, bundles fit one QR,
 lockstep stays in agreement, loss and recovery are safe and cheap. It is **not proven** for the
 product, because the decisive risks (cross-device mDNS, isolated networks, tablet browsers, camera)
-need real devices. Do not start F3 implementation until the checklist above is run on at least one
-iOS and one Android tablet. If `.local` candidates fail across devices on the target networks, the
-fallback is the optional signalling mailbox with host candidates reported as plain IPs, which the
-ADR already accepts behind a privacy review.
+need real devices. F3 implementation continued under an explicit product-owner waiver, but F3 must
+not be accepted until the checklist above runs on at least one iOS and one Android tablet. If
+`.local` candidates fail across devices on the target networks, the fallback is the optional
+signalling mailbox with host candidates reported as plain IPs, which the ADR already accepts behind
+a privacy review.
