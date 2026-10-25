@@ -20,7 +20,7 @@ test.describe("Ori experimental review-only journey", () => {
     await page.goto("/");
     const panel = page.getByTestId("ori-review-panel");
     await expect(panel).toBeVisible();
-    await panel.getByRole("button", { name: "Pedir una pista" }).click();
+    await panel.getByRole("button", { name: "Necesito ayuda" }).click();
     await expect(panel.getByText("¿Qué podrías probar primero?")).toBeVisible();
     await expect(panel.getByText("Solo para revisión. No se aplicaron cambios.")).toBeVisible();
     expect(requests).toBe(1);
