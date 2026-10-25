@@ -13,7 +13,7 @@ export function createOriShadowTransport(
   if (
     url.protocol !== "http:" ||
     !["127.0.0.1", "localhost", "[::1]"].includes(url.hostname) ||
-    url.pathname !== "/v0/shadow" ||
+    !["/v0/shadow", "/v1/plan"].includes(url.pathname) ||
     url.username !== "" ||
     url.password !== "" ||
     url.search !== "" ||
