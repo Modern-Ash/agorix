@@ -19,32 +19,35 @@ export interface OriEvaluationAlignment {
   readonly blockers: readonly string[];
 }
 export function buildOriEvaluationAlignmentMatrix(): readonly OriEvaluationAlignment[] {
-  return Object.freeze(oriPedagogicalFixtures.map((fixture) => {
-    const missionId = KIDS_MISSION_IDS[fixture.missionIndex] ?? null;
-    const shared = createOriSharedPedagogicalContexts(fixture.hintLevel).find(
-      (context) => context.missionIndex === fixture.missionIndex,
-    );
-    const separated = shared ? separateOriEvaluationContext(shared) : null;
-    const metadataAligned = missionId !== null &&
-      separated !== null &&
-      separated.neutral.missionId === missionId &&
-      separated.neutral.hintLevel === fixture.hintLevel;
-    const blockers = [
-      ...(missionId === null ? ["no-canonical-kids-mission"] : []),
-      ...(!metadataAligned && missionId !== null ? ["hint-level-or-context-mismatch"] : []),
-      "ori-shadow-does-not-receive-full-program",
-      "deterministic-offer-is-not-text-hint",
-    ];
-    return Object.freeze({
-      fixtureId: fixture.id,
-      topic: fixture.topic,
-      missionIndex: fixture.missionIndex,
-      canonicalMissionId: missionId,
-      metadataAligned,
-      sameProgramContextProven: false as const,
-      comparableTextOutputsProven: false as const,
-      eligibleForBlindStudy: false as const,
-      blockers: Object.freeze(blockers),
-    });
-  }));
+  return Object.freeze(
+    oriPedagogicalFixtures.map((fixture) => {
+      const missionId = KIDS_MISSION_IDS[fixture.missionIndex] ?? null;
+      const shared = createOriSharedPedagogicalContexts(fixture.hintLevel).find(
+        (context) => context.missionIndex === fixture.missionIndex,
+      );
+      const separated = shared ? separateOriEvaluationContext(shared) : null;
+      const metadataAligned =
+        missionId !== null &&
+        separated !== null &&
+        separated.neutral.missionId === missionId &&
+        separated.neutral.hintLevel === fixture.hintLevel;
+      const blockers = [
+        ...(missionId === null ? ["no-canonical-kids-mission"] : []),
+        ...(!metadataAligned && missionId !== null ? ["hint-level-or-context-mismatch"] : []),
+        "ori-shadow-does-not-receive-full-program",
+        "deterministic-offer-is-not-text-hint",
+      ];
+      return Object.freeze({
+        fixtureId: fixture.id,
+        topic: fixture.topic,
+        missionIndex: fixture.missionIndex,
+        canonicalMissionId: missionId,
+        metadataAligned,
+        sameProgramContextProven: false as const,
+        comparableTextOutputsProven: false as const,
+        eligibleForBlindStudy: false as const,
+        blockers: Object.freeze(blockers),
+      });
+    }),
+  );
 }

@@ -6,7 +6,11 @@ describe("Ori pedagogical alignment matrix", () => {
   it("covers all five Scratch-inspired fixtures", () => {
     const matrix = buildOriEvaluationAlignmentMatrix();
     expect(matrix.map((row) => row.fixtureId)).toEqual([
-      "movement-01", "sequence-01", "loops-01", "events-01", "debugging-01",
+      "movement-01",
+      "sequence-01",
+      "loops-01",
+      "events-01",
+      "debugging-01",
     ]);
   });
   it("maps only actual canonical Kids mission indices", () => {

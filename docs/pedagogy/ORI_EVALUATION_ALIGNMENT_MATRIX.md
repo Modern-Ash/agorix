@@ -2,13 +2,13 @@
 
 Esta matriz utiliza las cinco actividades sintéticas y las misiones canónicas reales de Kids para indicar qué comparaciones están técnicamente justificadas y cuáles todavía no.
 
-| Escenario | Índice | Misión Kids canónica | Alineación de metadatos | Comparación A/B lista |
-| --- | ---: | --- | --- | --- |
-| Movimiento | 1 | Sí, índice 1 | Sí, con nivel del escenario | No |
-| Secuencias | 2 | Sí, índice 2 | Sí, con nivel del escenario | No |
-| Bucles | 3 | No | No | No |
-| Eventos | 4 | No | No | No |
-| Depuración | 5 | No | No | No |
+| Escenario  | Índice | Misión Kids canónica | Alineación de metadatos     | Comparación A/B lista |
+| ---------- | -----: | -------------------- | --------------------------- | --------------------- |
+| Movimiento |      1 | Sí, índice 1         | Sí, con nivel del escenario | No                    |
+| Secuencias |      2 | Sí, índice 2         | Sí, con nivel del escenario | No                    |
+| Bucles     |      3 | No                   | No                          | No                    |
+| Eventos    |      4 | No                   | No                          | No                    |
+| Depuración |      5 | No                   | No                          | No                    |
 
 La matriz se calcula desde `KIDS_MISSION_IDS` y `oriPedagogicalFixtures`; los resultados anteriores reflejan la situación actual, no un mapeo pedagógico validado.
 
