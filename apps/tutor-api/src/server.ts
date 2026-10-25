@@ -303,8 +303,9 @@ export function createTutorServer(options: TutorServerOptions): Server {
       }
       if (Object.keys(raw).sort().join() !== "config,expectedRevision")
         throw new AiConfigError("invalid-config");
-      const config = validateAiConfig(raw.config);
       const current = repository.current();
+      // An older client posting v1 keeps the current group settings instead of resetting them.
+      const config = validateAiConfig(raw.config, current.config.group);
       if (current.revision !== expected) throw new AiConfigError("revision-conflict");
       if (path === "/api/tutor/admin/preview")
         return send(response, 200, {

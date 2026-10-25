@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import "@fontsource/epilogue/700.css";
 import "@fontsource/atkinson-hyperlegible/400.css";
 import "./aiAdmin.css";
+import { GroupSettings, type GroupConfig } from "./GroupSettings.js";
 
 type Capability = "mission" | "advanced" | "studio" | "chat" | "goals" | "legacy";
 type Policy = {
@@ -13,7 +14,8 @@ type Policy = {
   promptTemplate: string;
   fallback: "deterministic";
 };
-type Config = { schema: string; capabilities: Record<Capability, Policy> };
+type Config = { schema: string; capabilities: Record<Capability, Policy>; group?: GroupConfig };
+type Section = Capability | "group";
 type Revision = {
   revision: number;
   author: string;
@@ -32,6 +34,7 @@ const names: Record<Capability, string> = {
   legacy: "Tutor clásico",
 };
 const keys = Object.keys(names) as Capability[];
+const sectionNames: Record<Section, string> = { ...names, group: "Modo grupo" };
 
 async function api<T>(path: string, method = "GET", body?: unknown, csrf?: string): Promise<T> {
   const response = await fetch(`/api/tutor/admin/${path}`, {
@@ -56,8 +59,9 @@ export function AiAdminApp() {
   const [current, setCurrent] = useState<Revision | null>(null);
   const [draft, setDraft] = useState<Config | null>(null);
   const [history, setHistory] = useState<History[]>([]);
-  const [selected, setSelected] = useState<Capability>("mission");
-  const [preview, setPreview] = useState<Capability[] | null>(null);
+  const [section, setSection] = useState<Section>("mission");
+  const selected: Capability = section === "group" ? "mission" : section;
+  const [preview, setPreview] = useState<Section[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -154,13 +158,22 @@ export function AiAdminApp() {
               {keys.map((key) => (
                 <button
                   key={key}
-                  className={selected === key ? "selected" : ""}
-                  onClick={() => setSelected(key)}
+                  className={section === key ? "selected" : ""}
+                  onClick={() => setSection(key)}
                 >
                   <span>{names[key]}</span>
                   <small>{draft?.capabilities[key].enabled ? "Activa" : "En pausa"}</small>
                 </button>
               ))}
+              {draft?.group && (
+                <button
+                  className={section === "group" ? "selected" : ""}
+                  onClick={() => setSection("group")}
+                >
+                  <span>{sectionNames.group}</span>
+                  <small>Sala compartida</small>
+                </button>
+              )}
             </nav>
             <button
               className="ai-admin-logout"
@@ -182,13 +195,24 @@ export function AiAdminApp() {
                 <p className="ai-admin-kicker">
                   REVISIÓN {current?.revision ?? "—"} · {current?.author ?? ""}
                 </p>
-                <h2>{names[selected]}</h2>
+                <h2>{sectionNames[section]}</h2>
               </div>
-              <span className="ai-admin-status">
-                {draft?.capabilities[selected].enabled ? "● Disponible" : "○ En pausa"}
-              </span>
+              {section !== "group" && (
+                <span className="ai-admin-status">
+                  {draft?.capabilities[selected].enabled ? "● Disponible" : "○ En pausa"}
+                </span>
+              )}
             </div>
-            {draft && (
+            {draft && section === "group" && draft.group && (
+              <GroupSettings
+                group={draft.group}
+                onChange={(group) => {
+                  setDraft({ ...draft, group });
+                  setPreview(null);
+                }}
+              />
+            )}
+            {draft && section !== "group" && (
               <div className="ai-admin-card">
                 <p className="ai-admin-note">
                   Los cambios quedan en borrador hasta que los revises y publiques. La clave del
@@ -266,7 +290,7 @@ export function AiAdminApp() {
                 disabled={!changed || busy || !current || !draft}
                 onClick={() =>
                   void action(async () => {
-                    const result = await api<{ changed: Capability[] }>(
+                    const result = await api<{ changed: Section[] }>(
                       "preview",
                       "POST",
                       { expectedRevision: current!.revision, config: draft },
@@ -309,7 +333,7 @@ export function AiAdminApp() {
             </div>
             {preview && (
               <p className="ai-admin-preview">
-                Impacta: {preview.map((key) => names[key]).join(", ") || "sin diferencias"}
+                Impacta: {preview.map((key) => sectionNames[key]).join(", ") || "sin diferencias"}
               </p>
             )}
             {message && (

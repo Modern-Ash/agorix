@@ -143,6 +143,15 @@ New AI capabilities introduced here require a **versioned schema migration** of 
 | `group.reactions`        | the fixed emoji set per locale                                                                            |
 | `group.limits`           | max group size (default 5), max session duration, per-organizer rate limits, relay enabled flag           |
 
+**Status (issue #567):** the registry is now `agorix/ai-config/v2` with a `group` section holding the
+image and text moderation parameters, the approval-queue default, the reaction sets per locale and the
+limits (children per group, session minutes, join-code lifetime, relay flag). Stored v1 revisions are
+read as v2 with safe defaults and are not rewritten; a v1 document published by an older admin client
+keeps the current group settings instead of resetting them. `onUnavailable` is fixed to `block` and has
+no control in the console: a weaker policy needs its own ADR. The console has a "Modo grupo" section.
+**Not yet wired:** the group server does not yet read the limits and the organizer's device does not
+yet fetch the moderation parameters; until then the defaults in code apply.
+
 Secrets (for example TURN credentials) stay in server secrets, not in the editable configuration. An invalid version never affects production, and with no valid configuration the safe default is fail closed (nothing shared, relay off). Models themselves are chosen from an allow-list the admin manages; they run on-device.
 
 ## Safety and privacy
