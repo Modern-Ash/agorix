@@ -19,10 +19,7 @@ export interface OriRestrictedMessageKey {
 }
 export function separateOriSingleMessageComparison(
   value: OriSingleMessageComparison,
-): {
-  readonly educator: OriEducatorBlindMessages;
-  readonly coordinator: OriRestrictedMessageKey;
-} | null {
+): { readonly educator: OriEducatorBlindMessages; readonly coordinator: OriRestrictedMessageKey } | null {
   if (
     !value ||
     value.schema !== "agorix/ori-single-message-comparison/v1" ||
