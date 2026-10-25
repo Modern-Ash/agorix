@@ -31,3 +31,8 @@ flowchart TD
 5. Keep the existing endpoint response contract and rollback available.
 
 **This stage deliberately cannot apply or propose edits through the external agent.**
+
+## Transport increment
+`apps/tutor-api/src/oriExternalShadowTransport.ts` now implements a bounded 750ms loopback HTTP POST to Ori's synthetic `/v0/shadow` endpoint. It is configured only when **both** `AGORIX_ORI_EXTERNAL_SHADOW=true` and `AGORIX_ORI_EXTERNAL_SHADOW_URL=http://127.0.0.1:<port>/v0/shadow` are set. Responses are discarded and failures cannot change the learner-facing tutor decision.
+
+The counterpart synthetic endpoint is developed in `Modern-Ash/ori` PR #46. **No deployment or real child data testing is authorized**. The transport currently has no authentication and must not be exposed beyond a trusted loopback test environment. Future production integration requires identity, CSRF, bounded concurrency, retry policies and safeguarding review.
