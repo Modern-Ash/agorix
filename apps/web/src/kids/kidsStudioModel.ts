@@ -39,6 +39,9 @@ export type StudioStatement = Extract<
       | "pointTowards"
       | "bounceOnEdge"
       | "goToLayer"
+      | "setEffect"
+      | "changeEffect"
+      | "clearEffects"
       | "switchCostume"
       | "switchBackdrop"
       | "playSound"
@@ -267,6 +270,20 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0): bool
       return actor !== null && studioActorId(actor.index, actor.characterId) === statement.actorId;
     });
   if (statement.type === "bounceOnEdge") return true;
+  if (statement.type === "setEffect")
+    return (
+      statement.effect === "brightness"
+        ? [-50, -25, 0, 25, 50]
+        : statement.effect === "color" || statement.effect === "ghost"
+          ? [0, 25, 50, 75, 100]
+          : []
+    ).includes(statement.value);
+  if (statement.type === "changeEffect")
+    return (
+      ["color", "ghost", "brightness"].includes(statement.effect) &&
+      [-25, 25].includes(statement.delta)
+    );
+  if (statement.type === "clearEffects") return true;
   if (statement.type === "goToLayer")
     return statement.layer === "front" || statement.layer === "back";
   if (statement.type === "switchCostume")

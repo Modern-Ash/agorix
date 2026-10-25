@@ -328,6 +328,11 @@ function titleForStep(step: ExecutionStep, profile: LearnerTraceProfile): string
       return "Bounce on edge";
     case "goToLayer":
       return "Go to layer";
+    case "setEffect":
+    case "changeEffect":
+      return "Graphic effect";
+    case "clearEffects":
+      return "Clear effects";
     case "glideTo":
       return "Glide";
     case "callProcedure":

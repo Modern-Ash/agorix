@@ -164,6 +164,28 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
         indent + "point towards " + JSON.stringify(statement.actorId) + "\n",
       );
       return;
+    case "setEffect":
+      writeMapped(
+        writer,
+        nodeId,
+        indent + "set " + statement.effect + " effect to " + formatNumber(statement.value) + "\n",
+      );
+      return;
+    case "changeEffect":
+      writeMapped(
+        writer,
+        nodeId,
+        indent +
+          "change " +
+          statement.effect +
+          " effect by " +
+          formatNumber(statement.delta) +
+          "\n",
+      );
+      return;
+    case "clearEffects":
+      writeMapped(writer, nodeId, indent + "clear graphic effects\n");
+      return;
     case "goToLayer":
       writeMapped(writer, nodeId, indent + "go to " + statement.layer + " layer\n");
       return;

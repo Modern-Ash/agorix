@@ -251,6 +251,25 @@ export interface GoToLayerStatement {
   readonly layer: "front" | "back";
 }
 
+export type GraphicEffect = "color" | "ghost" | "brightness";
+
+/** Sets one graphic effect of the running character. */
+export interface SetEffectStatement {
+  readonly type: "setEffect";
+  readonly effect: GraphicEffect;
+  readonly value: number;
+}
+
+export interface ChangeEffectStatement {
+  readonly type: "changeEffect";
+  readonly effect: GraphicEffect;
+  readonly delta: number;
+}
+
+export interface ClearEffectsStatement {
+  readonly type: "clearEffects";
+}
+
 export interface SayStatement {
   readonly type: "say";
   readonly text: string;
@@ -403,6 +422,9 @@ export type Statement =
   | PointTowardsStatement
   | BounceOnEdgeStatement
   | GoToLayerStatement
+  | SetEffectStatement
+  | ChangeEffectStatement
+  | ClearEffectsStatement
   | SayStatement
   | ThinkStatement
   | ShowStatement

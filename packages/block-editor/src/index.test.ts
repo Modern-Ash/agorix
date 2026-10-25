@@ -923,3 +923,27 @@ describe("custom block workspace", () => {
     expect(back.scripts[0]?.statements).toEqual(program.scripts[0]?.statements);
   });
 });
+
+describe("graphic effect blocks", () => {
+  it("round-trips through blocks", () => {
+    const program = {
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            { type: "setEffect", effect: "ghost", value: 50 },
+            { type: "changeEffect", effect: "color", delta: 25 },
+            { type: "clearEffects" },
+          ],
+        },
+      ],
+    } as unknown as ProjectProgram;
+    const { workspace } = programToWorkspace(program);
+    expect(JSON.stringify(workspace)).toContain("looks_set_effect");
+    expect(workspaceToProgram(workspace).program.scripts[0]?.statements).toEqual(
+      program.scripts[0]?.statements,
+    );
+  });
+});

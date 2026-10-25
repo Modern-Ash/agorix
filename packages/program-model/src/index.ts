@@ -9,6 +9,7 @@ export type {
   DivideExpression,
   EqualsExpression,
   Expression,
+  GraphicEffect,
   MathFunction,
   GreenFlagTrigger,
   HideVariableStatement,

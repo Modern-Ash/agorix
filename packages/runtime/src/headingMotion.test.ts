@@ -560,3 +560,46 @@ describe("procedures", () => {
     expect(result.actors[1]?.world.sprite.x).toBe(3);
   });
 });
+
+describe("graphic effects", () => {
+  const run = (statements: Statement[]) =>
+    runProgram(program(statements), createWorldState()).world.sprite.effects;
+
+  it("sets and changes each effect and keeps unchanged sprites free of effects", () => {
+    expect(run([{ type: "setEffect", effect: "ghost", value: 40 }])).toEqual({
+      color: 0,
+      ghost: 40,
+      brightness: 0,
+    });
+    expect(
+      run([
+        { type: "setEffect", effect: "brightness", value: -30 },
+        { type: "changeEffect", effect: "brightness", delta: 10 },
+      ]),
+    ).toEqual({ color: 0, ghost: 0, brightness: -20 });
+    expect(run([{ type: "move", steps: 1 }])).toBeUndefined();
+  });
+
+  it("clamps ghost and brightness and wraps color like Scratch", () => {
+    expect(run([{ type: "changeEffect", effect: "ghost", delta: 150 }])?.ghost).toBe(100);
+    expect(run([{ type: "changeEffect", effect: "ghost", delta: -50 }])).toBeUndefined();
+    expect(run([{ type: "changeEffect", effect: "brightness", delta: 200 }])?.brightness).toBe(100);
+    expect(
+      run([
+        { type: "setEffect", effect: "color", value: 190 },
+        { type: "changeEffect", effect: "color", delta: 30 },
+      ])?.color,
+    ).toBe(20);
+    expect(run([{ type: "changeEffect", effect: "color", delta: -30 }])?.color).toBe(170);
+  });
+
+  it("clears every effect", () => {
+    expect(
+      run([
+        { type: "setEffect", effect: "ghost", value: 40 },
+        { type: "setEffect", effect: "color", value: 40 },
+        { type: "clearEffects" },
+      ]),
+    ).toBeUndefined();
+  });
+});

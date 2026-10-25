@@ -493,6 +493,30 @@ describe("custom blocks", () => {
   });
 });
 
+describe("graphic effects", () => {
+  it("projects the three effect calls", () => {
+    const program = {
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [
+            { type: "setEffect", effect: "ghost", value: 50 },
+            { type: "changeEffect", effect: "color", delta: 25 },
+            { type: "clearEffects" },
+          ],
+        },
+      ],
+    } as unknown as ProjectProgram;
+    const result = projectProgram(program);
+    expect(result.code).toContain('sprite.setEffect("ghost", 50);');
+    expect(result.code).toContain('sprite.changeEffect("color", 25);');
+    expect(result.code).toContain("sprite.clearEffects();");
+    expectValidRanges(result);
+  });
+});
+
 describe("TypeScript LanguageProjection registry", () => {
   it("is selectable by the official typescript id", async () => {
     const { createLanguageProjectionRegistry } = await import("@agorix/language-projection");

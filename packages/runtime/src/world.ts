@@ -10,6 +10,14 @@ export interface SpriteState extends Position {
   readonly size?: number;
   readonly costumeId?: string;
   readonly bubble?: LooksBubble;
+  /** Absent while every effect is zero, so sprites without effects look exactly as before. */
+  readonly effects?: SpriteEffects;
+}
+
+export interface SpriteEffects {
+  readonly color: number;
+  readonly ghost: number;
+  readonly brightness: number;
 }
 
 export interface LooksBubble {
@@ -138,6 +146,7 @@ export function createWorldState(input: WorldStateInput = {}): WorldState {
       visible: input.sprite?.visible ?? true,
       size: normalizeCoordinate(input.sprite?.size ?? 100),
       ...(input.sprite?.costumeId === undefined ? {} : { costumeId: input.sprite.costumeId }),
+      ...normalizeEffects(input.sprite?.effects),
       ...(input.sprite?.bubble === undefined
         ? {}
         : {
@@ -195,6 +204,51 @@ export function turnWorld(world: WorldState, degrees: number): WorldState {
       heading: world.sprite.heading + degrees,
     },
   });
+}
+
+function normalizeEffects(
+  effects: Partial<SpriteEffects> | undefined,
+): { effects: SpriteEffects } | Record<string, never> {
+  if (effects === undefined) return {};
+  const color = normalizeCoordinate(effects.color ?? 0);
+  const ghost = normalizeCoordinate(effects.ghost ?? 0);
+  const brightness = normalizeCoordinate(effects.brightness ?? 0);
+  return color === 0 && ghost === 0 && brightness === 0
+    ? {}
+    : { effects: { color, ghost, brightness } };
+}
+
+function boundedEffect(effect: keyof SpriteEffects, value: number): number {
+  if (effect === "color") return ((value % 200) + 200) % 200;
+  if (effect === "ghost") return Math.min(100, Math.max(0, value));
+  return Math.min(100, Math.max(-100, value));
+}
+
+export function setEffectWorld(
+  world: WorldState,
+  effect: keyof SpriteEffects,
+  value: number,
+): WorldState {
+  if (!Number.isFinite(value)) throw new RangeError(`effect value must be finite: ${value}`);
+  const current = world.sprite.effects ?? { color: 0, ghost: 0, brightness: 0 };
+  return createWorldState({
+    ...world,
+    sprite: { ...world.sprite, effects: { ...current, [effect]: boundedEffect(effect, value) } },
+  });
+}
+
+export function changeEffectWorld(
+  world: WorldState,
+  effect: keyof SpriteEffects,
+  delta: number,
+): WorldState {
+  return setEffectWorld(world, effect, (world.sprite.effects?.[effect] ?? 0) + delta);
+}
+
+export function clearEffectsWorld(world: WorldState): WorldState {
+  const { effects: _effects, ...sprite } = world.sprite;
+  void _effects;
+  return createWorldState({ ...world, sprite });
 }
 
 export function pointInDirectionWorld(world: WorldState, degrees: number): WorldState {
