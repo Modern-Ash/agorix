@@ -19,6 +19,7 @@ export {
   type TeamRole,
   type TeamSessionOptions,
   type TeamSnapshot,
+  type TeamSummary,
 } from "./types.js";
 export {
   ContentGate,
@@ -32,3 +33,11 @@ export {
   type RejectionReason,
   type SubmitResult,
 } from "./contentGate.js";
+export {
+  GalleryError,
+  GroupGallery,
+  type GalleryEntry,
+  type GalleryErrorCode,
+  type GalleryMeta,
+  type GalleryOptions,
+} from "./gallery.js";

@@ -3,17 +3,21 @@ import { serializeAgorixProject } from "@agorix/persistence";
 import { ProposalValidationError, parseProgramProposal } from "@agorix/proposals";
 import {
   ContentGate,
+  GalleryError,
   GateError,
+  GroupGallery,
   REACTION_IDS,
   TeamError,
   TeamSession,
   type ContentKind,
+  type GalleryEntry,
   type HistoryEntry,
   type LocalVerdict,
   type PendingChange,
   type QueuedItem,
   type ReactionId,
   type ReactionTarget,
+  type TeamSummary,
   type TeamMember,
 } from "@agorix/team-project";
 
@@ -26,7 +30,9 @@ export type TeamMessage =
   | { readonly type: "withdraw"; readonly changeId: string }
   | { readonly type: "pass" }
   | { readonly type: "react"; readonly reaction: ReactionId; readonly target: ReactionTarget }
-  | { readonly type: "share"; readonly kind: ContentKind; readonly payload: string };
+  | { readonly type: "share"; readonly kind: ContentKind; readonly payload: string }
+  | { readonly type: "gallery" }
+  | { readonly type: "gallery-open"; readonly entryId: string };
 
 export type HostReply =
   | {
@@ -35,6 +41,8 @@ export type HostReply =
       readonly queued?: boolean;
       readonly shared?: false;
       readonly notice?: string;
+      readonly gallery?: readonly GalleryEntry[];
+      readonly program?: ProjectProgram;
     }
   | { readonly ok: false; readonly code: string };
 
@@ -99,6 +107,7 @@ class TooLarge extends Invalid {}
 export class TeamHost {
   private readonly session: TeamSession;
   private readonly gate: ContentGate;
+  private readonly gallery: GroupGallery;
   private readonly listeners = new Set<() => void>();
   private readonly blockedListeners = new Set<(slotId: string) => void>();
   private readonly recent = new Map<string, number[]>();
@@ -131,6 +140,11 @@ export class TeamHost {
               ),
             },
       clock: { now: this.now },
+    });
+    this.gallery = new GroupGallery({
+      clock: { now: this.now },
+      // Admission is the session roster itself: an expelled device loses the gallery at once.
+      isAdmitted: (slotId) => this.session.members().some((member) => member.slotId === slotId),
     });
     this.gate = new ContentGate({
       clock: { now: this.now },
@@ -186,6 +200,7 @@ export class TeamHost {
       if (error instanceof Invalid) return this.violation(slotId, "INVALID");
       if (error instanceof TeamError) return { ok: false, code: error.code };
       if (error instanceof GateError) return { ok: false, code: error.code };
+      if (error instanceof GalleryError) return { ok: false, code: error.code };
       return this.violation(slotId, "INVALID");
     }
   }
@@ -214,6 +229,10 @@ export class TeamHost {
       case "react":
         this.session.react(slotId, message.reaction, message.target);
         return { ok: true };
+      case "gallery":
+        return { ok: true, gallery: this.gallery.list(slotId) };
+      case "gallery-open":
+        return { ok: true, program: this.gallery.open(message.entryId, slotId) };
       case "share": {
         const result = await this.gate.submit(
           slotId,
@@ -283,6 +302,12 @@ export class TeamHost {
         }
         throw new Invalid();
       }
+      case "gallery":
+        only();
+        return { type: "gallery" };
+      case "gallery-open":
+        only("entryId");
+        return { type: "gallery-open", entryId: id(message["entryId"]) };
       case "share": {
         only("kind", "payload");
         if (message["kind"] !== "image" && message["kind"] !== "name") throw new Invalid();
@@ -334,6 +359,38 @@ export class TeamHost {
     this.notify();
   }
 
+  /** Organizer: stop one device's reactions for everyone. */
+  silence(slotId: string, silenced: boolean): void {
+    this.session.silence(slotId, silenced);
+    this.notify();
+  }
+
+  summary(): TeamSummary {
+    return this.session.summary();
+  }
+
+  /** Organizer: show a snapshot of the team project to the admitted devices. */
+  publishToGallery(): string {
+    const summary = this.session.summary();
+    const id = this.gallery.publish(this.session.program, {
+      teamId: "equipo-1",
+      version: this.session.seq,
+      contributors: summary.members.filter((member) => member.applied > 0).map((m) => m.alias),
+    });
+    this.notify();
+    return id;
+  }
+
+  /** Organizer: takes effect at once on every device. */
+  withdrawFromGallery(entryId: string): void {
+    this.gallery.withdraw(entryId);
+    this.notify();
+  }
+
+  galleryEntries(): readonly GalleryEntry[] {
+    return this.gallery.listAll();
+  }
+
   setReactionsEnabled(enabled: boolean): void {
     this.session.setReactionsEnabled(enabled);
     this.notify();
@@ -370,6 +427,7 @@ export class TeamHost {
   /** Group closed: forget the content, the queue and the listeners. */
   close(): void {
     this.gate.clear();
+    this.gallery.clear();
     this.listeners.clear();
     this.blockedListeners.clear();
   }

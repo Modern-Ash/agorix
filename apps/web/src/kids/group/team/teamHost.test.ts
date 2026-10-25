@@ -194,3 +194,72 @@ describe("TeamHost organizer actions", () => {
     expect(await h.handle("slt_c", { type: "pass" })).toEqual({ ok: false, code: "NOT_A_MEMBER" });
   });
 });
+
+describe("TeamHost closed gallery and organizer view", () => {
+  async function withApplied() {
+    const ctx = host();
+    await ctx.h.handle("slt_a", { type: "propose", proposal: proposal(ctx.h, "p1") });
+    await ctx.h.handle("slt_b", { type: "vote", changeId: "p1", decision: "accept" });
+    await ctx.h.handle("slt_c", { type: "vote", changeId: "p1", decision: "accept" });
+    return ctx;
+  }
+
+  it("shows a published snapshot to admitted devices only, and withdraws it at once", async () => {
+    const { h } = await withApplied();
+    const id = h.publishToGallery();
+    const listed = await h.handle("slt_c", { type: "gallery" });
+    expect(listed).toMatchObject({ ok: true });
+    expect(listed.ok && listed.gallery?.[0]).toMatchObject({
+      entryId: id,
+      teamId: "equipo-1",
+      contributors: ["Zorro Azul"],
+    });
+    const opened = await h.handle("slt_c", { type: "gallery-open", entryId: id });
+    expect(opened.ok && opened.program?.scripts[0]?.statements).toHaveLength(1);
+
+    expect(await h.handle("slt_zzz", { type: "gallery" })).toEqual({
+      ok: false,
+      code: "NOT_A_MEMBER",
+    });
+
+    h.withdrawFromGallery(id);
+    expect(await h.handle("slt_c", { type: "gallery-open", entryId: id })).toEqual({
+      ok: false,
+      code: "NOT_FOUND",
+    });
+  });
+
+  it("closes the gallery for an expelled device and clears it on close", async () => {
+    const { h } = await withApplied();
+    const id = h.publishToGallery();
+    h.removeMember("slt_c");
+    expect(await h.handle("slt_c", { type: "gallery" })).toEqual({
+      ok: false,
+      code: "NOT_A_MEMBER",
+    });
+    h.close();
+    expect(h.galleryEntries()).toEqual([]);
+    expect(() => h.withdrawFromGallery(id)).toThrow();
+  });
+
+  it("validates gallery messages strictly", async () => {
+    const { h } = host();
+    for (const message of [
+      { type: "gallery", extra: 1 },
+      { type: "gallery-open" },
+      { type: "gallery-open", entryId: 5 },
+    ]) {
+      expect((await h.handle("slt_a", message)).ok).toBe(false);
+    }
+  });
+
+  it("gives the organizer aliases and counts, and can silence one device", async () => {
+    const { h } = await withApplied();
+    expect(h.summary().totals.applied).toBe(1);
+    expect(h.summary().members.find((m) => m.alias === "Zorro Azul")?.applied).toBe(1);
+    h.silence("slt_a", true);
+    expect(
+      await h.handle("slt_a", { type: "react", reaction: "like", target: { kind: "game" } }),
+    ).toEqual({ ok: false, code: "SILENCED" });
+  });
+});
