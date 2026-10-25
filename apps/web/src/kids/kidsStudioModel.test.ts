@@ -20,6 +20,11 @@ import {
   addStudioVariable,
   addStudioList,
   wrapStudioTail,
+  createStudioProcedure,
+  removeStudioStatement,
+  renameStudioProcedure,
+  deleteStudioProcedure,
+  studioProcedureUses,
 } from "./kidsStudioModel.js";
 
 describe("Kids creative studio", () => {
@@ -767,18 +772,145 @@ describe("Kids creative studio", () => {
     ])
       expect(() => appendStudioStatement(history, nova, { type: "glideTo", ...bad })).toThrow();
   });
-  it("does not yet accept custom blocks in a free scene", () => {
-    const history = createEditorHistory(createStudioProgram("nova"));
-    expect(() =>
-      validateStudioProgram({
+  describe("custom blocks", () => {
+    const nova = "actor:studio-1-nova";
+    const mika = "actor:studio-2-mika";
+    const build = () => {
+      let history = addStudioActor(createEditorHistory(createStudioProgram("nova")), "mika");
+      history = appendStudioStatement(history, nova, { type: "move", steps: 40 });
+      history = appendStudioStatement(history, nova, { type: "turn", degrees: 90 });
+      return createStudioProcedure(history, nova, 2, "Cuadrado");
+    };
+
+    it("turns the last blocks into one block and a call, and undo restores them", () => {
+      const history = build();
+      const script = history.current.scripts[0]!;
+      expect(script.procedures).toEqual([
+        {
+          id: "proc-1-1",
+          name: "Cuadrado",
+          body: [
+            { type: "move", steps: 40 },
+            { type: "turn", degrees: 90 },
+          ],
+        },
+      ]);
+      expect(script.statements).toEqual([{ type: "callProcedure", procedureId: "proc-1-1" }]);
+      const undone = undoCanonicalTransaction(history).history;
+      expect(undone.current.scripts[0]?.procedures).toBeUndefined();
+      expect(undone.current.scripts[0]?.statements).toHaveLength(2);
+    });
+
+    it("runs the same as the blocks it replaced and lets the child call it again", () => {
+      let history = build();
+      history = appendStudioStatement(history, nova, {
+        type: "callProcedure",
+        procedureId: "proc-1-1",
+      });
+      const creative = creativeForStudio(history.current, "forest", "es");
+      const result = runMultiActorProgram(history.current, creative);
+      expect(result.outcome).toBe("completed");
+      expect(result.actors[0]?.world.sprite).toMatchObject({ x: 40, y: 40, heading: 180 });
+      expect(result.actors[1]?.world.sprite.x).toBe(60);
+    });
+
+    it("keeps a character's blocks private to that character", () => {
+      const history = build();
+      expect(() =>
+        appendStudioStatement(history, mika, { type: "callProcedure", procedureId: "proc-1-1" }),
+      ).toThrow();
+    });
+
+    it("renames, and rejects names outside the allowed set", () => {
+      const history = renameStudioProcedure(build(), nova, "proc-1-1", "Vuelta");
+      expect(history.current.scripts[0]?.procedures?.[0]?.name).toBe("Vuelta");
+      for (const bad of ["", "<b>", "x".repeat(21)]) {
+        expect(() => renameStudioProcedure(history, nova, "proc-1-1", bad)).toThrow();
+        expect(() => createStudioProcedure(history, nova, 1, bad)).toThrow();
+      }
+    });
+
+    it("refuses to delete a block in use, and inlining restores the blocks in place", () => {
+      let history = build();
+      history = appendStudioStatement(history, nova, {
+        type: "callProcedure",
+        procedureId: "proc-1-1",
+      });
+      expect(studioProcedureUses(history.current, nova, "proc-1-1")).toBe(2);
+      expect(() => deleteStudioProcedure(history, nova, "proc-1-1", "refuse")).toThrow();
+      const inlined = deleteStudioProcedure(history, nova, "proc-1-1", "inline");
+      const script = inlined.current.scripts[0]!;
+      expect(script.procedures).toBeUndefined();
+      expect(script.statements.map((statement) => statement.type)).toEqual([
+        "move",
+        "turn",
+        "move",
+        "turn",
+      ]);
+      const before = runMultiActorProgram(
+        history.current,
+        creativeForStudio(history.current, "forest", "es"),
+      );
+      const after = runMultiActorProgram(
+        inlined.current,
+        creativeForStudio(inlined.current, "forest", "es"),
+      );
+      expect(after.actors[0]?.world).toEqual(before.actors[0]?.world);
+    });
+
+    it("deletes a block nobody calls", () => {
+      let history = build();
+      history = removeStudioStatement(history, nova, 0);
+      expect(studioProcedureUses(history.current, nova, "proc-1-1")).toBe(0);
+      const deleted = deleteStudioProcedure(history, nova, "proc-1-1", "refuse");
+      expect(deleted.current.scripts[0]?.procedures).toBeUndefined();
+    });
+
+    it("refuses to delete a block that another block uses", () => {
+      let history = build();
+      history = appendStudioStatement(history, nova, {
+        type: "callProcedure",
+        procedureId: "proc-1-1",
+      });
+      const recursive = createStudioProcedure(history, nova, 1, "Otra");
+      expect(recursive.current.scripts[0]?.procedures).toHaveLength(2);
+      expect(() => deleteStudioProcedure(recursive, nova, "proc-1-2", "refuse")).toThrow();
+    });
+
+    it("will not inline a block that calls itself", () => {
+      const history = build();
+      const looped = {
         ...history.current,
         scripts: [
           {
             ...history.current.scripts[0]!,
-            procedures: [{ id: "proc-1", name: "Saltar", body: [{ type: "move", steps: 20 }] }],
+            procedures: [
+              {
+                id: "proc-1-1",
+                name: "Cuadrado",
+                body: [
+                  { type: "move" as const, steps: 40 },
+                  { type: "callProcedure" as const, procedureId: "proc-1-1" },
+                ],
+              },
+            ],
           },
+          ...history.current.scripts.slice(1),
         ],
-      }),
-    ).toThrow();
+      };
+      expect(() =>
+        deleteStudioProcedure(createEditorHistory(looped), nova, "proc-1-1", "inline"),
+      ).toThrow();
+    });
+
+    it("limits a character to 20 blocks", () => {
+      let history = createEditorHistory(createStudioProgram("nova"));
+      for (let i = 0; i < 20; i += 1) {
+        history = appendStudioStatement(history, nova, { type: "move", steps: 20 });
+        history = createStudioProcedure(history, nova, 1, `Bloque ${i + 1}`);
+      }
+      history = appendStudioStatement(history, nova, { type: "move", steps: 20 });
+      expect(() => createStudioProcedure(history, nova, 1, "Uno más")).toThrow();
+    });
   });
 });

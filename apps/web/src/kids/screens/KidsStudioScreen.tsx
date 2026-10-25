@@ -41,8 +41,12 @@ import {
   STUDIO_EDGE_CONDITION,
   appendStudioStatement,
   creativeForStudio,
+  createStudioProcedure,
+  deleteStudioProcedure,
   removeStudioStatement,
+  renameStudioProcedure,
   setStudioTrigger,
+  studioProcedureUses,
   studioActorId,
   type StudioStatement,
   wrapStudioTail,
@@ -115,6 +119,16 @@ const COPY = {
     wait: "Esperar",
     repeat: "Repetir",
     groupCount: "Bloques del final",
+    myBlocks: "Mis bloques",
+    myBlockName: "Título del bloque",
+    makeBlock: "Crear bloque con estos bloques",
+    useBlock: "Usar",
+    renameBlock: "Cambiar nombre",
+    deleteBlock: "Borrar bloque",
+    inlineAndDelete: "Reemplazar usos y borrar",
+    keepBlock: "Conservar",
+    blockInUse: "Este bloque se usa",
+    times: "veces",
     groupRepeat: "Repetir estos bloques",
     groupIf: "Si se cumple, ejecutar estos bloques",
     blocksCount: "bloques",
@@ -252,6 +266,16 @@ const COPY = {
     wait: "Wait",
     repeat: "Repeat",
     groupCount: "Last blocks",
+    myBlocks: "My blocks",
+    myBlockName: "Block title",
+    makeBlock: "Make a block from these blocks",
+    useBlock: "Use",
+    renameBlock: "Rename",
+    deleteBlock: "Delete block",
+    inlineAndDelete: "Replace uses and delete",
+    keepBlock: "Keep",
+    blockInUse: "This block is used",
+    times: "times",
     groupRepeat: "Repeat these blocks",
     groupIf: "If true, run these blocks",
     blocksCount: "blocks",
@@ -442,6 +466,9 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
   const [eventMessage, setEventMessage] = useState<(typeof STUDIO_MESSAGES)[number]>("vamos");
   const [repeatCount, setRepeatCount] = useState(3);
   const [groupCount, setGroupCount] = useState(2);
+  const [blockName, setBlockName] = useState("");
+  const [blockRenames, setBlockRenames] = useState<Record<string, string>>({});
+  const [blockToDelete, setBlockToDelete] = useState<string | null>(null);
   const [sourceVariableId, setSourceVariableId] = useState("studio-var-1");
   const [mathOperator, setMathOperator] = useState<
     "add" | "subtract" | "multiply" | "divide" | "modulo"
@@ -896,6 +923,8 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
         return `${statement.type === "listInsertAt" ? copy.listInsert : copy.listReplace}: ${history.current.lists?.find((item) => item.id === statement.listId)?.name ?? "?"} ${expressionLabel(statement.index, history.current)} ← ${expressionLabel(statement.value, history.current)}`;
       case "repeat":
         return `${copy.repeat} ${statement.count}`;
+      case "callProcedure":
+        return `${copy.useBlock}: ${script?.procedures?.find((item) => item.id === statement.procedureId)?.name ?? "?"}`;
       case "repeatUntil":
         return `${copy.repeatUntil} ${expressionLabel(statement.condition, history.current, locale)}`;
       case "if":
@@ -925,6 +954,15 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
         ))}
       </ol>
     );
+  }
+
+  function authorBlock(change: () => EditorHistory) {
+    try {
+      persist(change());
+      setBlockToDelete(null);
+    } catch {
+      setError(true);
+    }
   }
 
   function groupLast(type: "repeat" | "repeatUntil" | "if", overrideCondition?: Expression) {
@@ -2023,6 +2061,112 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
             >
               {copy.groupRepeat}
             </button>
+            <h3>{copy.myBlocks}</h3>
+            <label>
+              {copy.myBlockName}
+              <input
+                type="text"
+                maxLength={20}
+                value={blockName}
+                onChange={(event) => setBlockName(event.target.value)}
+              />
+            </label>
+            <button
+              type="button"
+              className="kids-button"
+              disabled={!blockName.trim() || (script?.statements.length ?? 0) < groupCount}
+              onClick={() => {
+                authorBlock(() =>
+                  createStudioProcedure(history, activeActorId, groupCount, blockName.trim()),
+                );
+                setBlockName("");
+              }}
+            >
+              {copy.makeBlock}
+            </button>
+            <ul className="kids-studio-my-blocks">
+              {script?.procedures?.map((item) => {
+                const uses = studioProcedureUses(history.current, activeActorId, item.id);
+                const draft = blockRenames[item.id] ?? item.name;
+                return (
+                  <li key={item.id}>
+                    <strong>{item.name}</strong>
+                    {nestedBlocks(item.body, item.id)}
+                    <button
+                      type="button"
+                      className="kids-button"
+                      onClick={() =>
+                        add({ type: "callProcedure", procedureId: item.id } as StudioStatement)
+                      }
+                    >
+                      + {copy.useBlock}: {item.name}
+                    </button>
+                    <label>
+                      {copy.renameBlock}: {item.name}
+                      <input
+                        type="text"
+                        maxLength={20}
+                        value={draft}
+                        onChange={(event) =>
+                          setBlockRenames({ ...blockRenames, [item.id]: event.target.value })
+                        }
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      disabled={!draft.trim() || draft.trim() === item.name}
+                      onClick={() =>
+                        authorBlock(() =>
+                          renameStudioProcedure(history, activeActorId, item.id, draft.trim()),
+                        )
+                      }
+                    >
+                      {copy.renameBlock}
+                    </button>
+                    {blockToDelete === item.id ? (
+                      <div role="group" aria-label={`${copy.deleteBlock}: ${item.name}`}>
+                        <p>
+                          {copy.blockInUse} {uses} {copy.times}.
+                        </p>
+                        <button
+                          type="button"
+                          className="kids-button"
+                          onClick={() =>
+                            authorBlock(() =>
+                              deleteStudioProcedure(history, activeActorId, item.id, "inline"),
+                            )
+                          }
+                        >
+                          {copy.inlineAndDelete}
+                        </button>
+                        <button
+                          type="button"
+                          className="kids-button"
+                          onClick={() => setBlockToDelete(null)}
+                        >
+                          {copy.keepBlock}
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className="kids-button"
+                        onClick={() =>
+                          uses > 0
+                            ? setBlockToDelete(item.id)
+                            : authorBlock(() =>
+                                deleteStudioProcedure(history, activeActorId, item.id, "refuse"),
+                              )
+                        }
+                      >
+                        {copy.deleteBlock}: {item.name}
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
             <button
               type="button"
               className="kids-button"
