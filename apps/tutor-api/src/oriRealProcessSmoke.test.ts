@@ -81,8 +81,9 @@ describe.skipIf(!runnable)("real Ori process to Agorix consumer contract", () =>
       expect(Object.isFrozen(accepted)).toBe(true);
       expect(Object.isFrozen(accepted?.steps)).toBe(true);
       expect(Object.isFrozen(accepted?.context)).toBe(true);
-      // The host must not accept a plan for a different mission or hint level.
-      expect(await consumer.evaluate({ missionIndex: 1, hintLevel: 3, scriptCount: 1 })).not.toBeNull();
+      // Ori generates the plan for the requested stage; verify another stage independently.
+      const stageThree = await consumer.evaluate({ missionIndex: 1, hintLevel: 3, scriptCount: 1 });
+      expect(stageThree?.stage).toBe(3);
       // The consumer is not connected to the child-facing tutor response.
 
     } finally {
