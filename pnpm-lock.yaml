@@ -183,6 +183,9 @@ importers:
       '@agorix/stage':
         specifier: workspace:*
         version: link:../../packages/stage
+      '@agorix/team-project':
+        specifier: workspace:*
+        version: link:../../packages/team-project
       '@agorix/tutor-contract':
         specifier: workspace:*
         version: link:../../packages/tutor-contract

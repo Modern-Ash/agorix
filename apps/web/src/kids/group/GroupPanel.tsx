@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import type { Locale } from "../../i18n.js";
 import { GroupOrganizerCard } from "./GroupOrganizerCard.js";
 import { GroupThisDeviceCard } from "./GroupThisDeviceCard.js";
-import { createGroupApi, type GroupApi } from "./groupApi.js";
+import { createGroupApi, type GroupApi, type OrganizerView } from "./groupApi.js";
+import { TeamProjectCard } from "./team/TeamProjectCard.js";
 import { groupText } from "./groupCopy.js";
 
 interface Props {
@@ -19,6 +20,7 @@ interface Props {
 export function GroupPanel({ locale, api: provided }: Props) {
   const api = useMemo(() => provided ?? createGroupApi(), [provided]);
   const [available, setAvailable] = useState<boolean | null>(null);
+  const [view, setView] = useState<OrganizerView>({ group: null, slots: [] });
 
   useEffect(() => {
     let cancelled = false;
@@ -40,7 +42,8 @@ export function GroupPanel({ locale, api: provided }: Props) {
         <summary>{groupText(locale, "privacyTitle")}</summary>
         <p>{groupText(locale, "privacyNote")}</p>
       </details>
-      <GroupOrganizerCard locale={locale} api={api} />
+      <GroupOrganizerCard locale={locale} api={api} onView={setView} />
+      {view.group !== null ? <TeamProjectCard locale={locale} slots={view.slots} /> : null}
       <GroupThisDeviceCard locale={locale} api={api} />
     </section>
   );

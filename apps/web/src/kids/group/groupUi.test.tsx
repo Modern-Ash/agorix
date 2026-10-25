@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { GroupOrganizerCard } from "./GroupOrganizerCard.js";
 import { GroupThisDeviceCard } from "./GroupThisDeviceCard.js";
+import { TeamProjectCard } from "./team/TeamProjectCard.js";
 import type { GroupApi } from "./groupApi.js";
 import { assertGroupCatalogComplete, groupError, groupText } from "./groupCopy.js";
 import {
@@ -92,5 +93,44 @@ describe("group device key", () => {
     expect(saveGroupDevice(TOKEN, throwing)).toBe(false);
     expect(loadGroupDevice(throwing)).toBeNull();
     expect(() => clearGroupDevice(throwing)).not.toThrow();
+  });
+});
+
+describe("TeamProjectCard", () => {
+  const slot = (id: string, alias: string, status: "pending" | "approved") => ({
+    slotId: id,
+    alias,
+    status,
+    reconnects: 0,
+  });
+
+  it("asks for at least two approved children before offering a team", () => {
+    const html = renderToStaticMarkup(
+      <TeamProjectCard
+        locale="es"
+        slots={[slot("slt_a", "Zorro Azul", "approved"), slot("slt_b", "Gato Verde", "pending")]}
+      />,
+    );
+    expect(html).toContain("Aprobá al menos 2 niños");
+    expect(html).not.toContain("<select");
+  });
+
+  it("offers a mode and a fixed role per approved child, and never lists pending ones", () => {
+    const html = renderToStaticMarkup(
+      <TeamProjectCard
+        locale="en"
+        slots={[
+          slot("slt_a", "Zorro Azul", "approved"),
+          slot("slt_b", "Gato Verde", "approved"),
+          slot("slt_c", "Búho Rojo", "pending"),
+        ]}
+      />,
+    );
+    expect(html).toContain("Role of Zorro Azul");
+    expect(html).toContain("Role of Gato Verde");
+    expect(html).not.toContain("Búho Rojo");
+    expect(html.match(/<select/g)).toHaveLength(2);
+    expect(html).toContain("Testing (does not edit)");
+    expect(html).not.toContain('<input type="text"');
   });
 });

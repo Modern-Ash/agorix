@@ -15,6 +15,8 @@ interface Props {
   readonly locale: Locale;
   readonly api: GroupApi;
   readonly pollMs?: number;
+  /** Lets the panel show things that depend on the roster, such as the team project. */
+  readonly onView?: (view: OrganizerView) => void;
 }
 
 type Phase = "loading" | "signin" | "not-organizer" | "ready";
@@ -24,7 +26,7 @@ type Phase = "loading" | "signin" | "not-organizer" | "ready";
  * responsible adult's consent in a household group), set teams, lock, remove and close. Codes are
  * held in memory only. Nothing here reads or writes text that a child typed, because there is none.
  */
-export function GroupOrganizerCard({ locale, api, pollMs = 4000 }: Props) {
+export function GroupOrganizerCard({ locale, api, pollMs = 4000, onView }: Props) {
   const [phase, setPhase] = useState<Phase>("loading");
   const [view, setView] = useState<OrganizerView>({ group: null, slots: [] });
   const [message, setMessage] = useState("");
@@ -44,12 +46,14 @@ export function GroupOrganizerCard({ locale, api, pollMs = 4000 }: Props) {
 
   const load = useCallback(async () => {
     try {
-      setView(await api.current());
+      const next = await api.current();
+      setView(next);
+      onView?.(next);
       setPhase("ready");
     } catch (error) {
       fail(error);
     }
-  }, [api, fail]);
+  }, [api, fail, onView]);
 
   useEffect(() => {
     void load();
