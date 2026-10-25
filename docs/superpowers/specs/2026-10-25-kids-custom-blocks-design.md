@@ -122,7 +122,7 @@ Number titles are child-entered text: validated, never executed, never sent to O
 
 ### Slices (each keeps `main` green)
 
-A. model, validator and runtime (with the equivalence and clamping tests). B. projections and blocks. C. Studio authoring. D. docs and audit; Ori arguments stay open.
+A. model, validator and runtime (with the equivalence and clamping tests). B. projections and blocks. C. Studio authoring. D. docs and audit; Ori arguments stay open. **Status: A–D implemented in PR #726; when Ori suggestions of own blocks (PR #725) merge, they must list only blocks without numbers.**
 
 ### Owner decisions (2026-10-25)
 
