@@ -8,7 +8,12 @@ const key: OriBlindComparisonKey = {
   oriCandidate: "A",
   deterministicCandidate: "B",
 };
-function rating(reviewerId: string, candidate: "A" | "B", score: 1 | 2 | 3 | 4 | 5, unsafe = false): OriEducatorSubmission {
+function rating(
+  reviewerId: string,
+  candidate: "A" | "B",
+  score: 1 | 2 | 3 | 4 | 5,
+  unsafe = false,
+): OriEducatorSubmission {
   return {
     reviewerId,
     rating: {
@@ -47,32 +52,38 @@ describe("Ori paired educator rating analysis", () => {
   });
   it("handles reversed A/B assignment", () => {
     const reverse = { ...key, oriCandidate: "B" as const, deterministicCandidate: "A" as const };
-    expect(compareOriEducatorRatings(reverse, [
-      rating("reviewer1", "A", 5),
-      rating("reviewer1", "B", 3),
-    ])?.difference).toBe(-2);
+    expect(
+      compareOriEducatorRatings(reverse, [rating("reviewer1", "A", 5), rating("reviewer1", "B", 3)])
+        ?.difference,
+    ).toBe(-2);
   });
   it("propagates safety flags regardless of numeric score", () => {
-    expect(compareOriEducatorRatings(key, [
-      rating("reviewer1", "A", 5, true),
-      rating("reviewer1", "B", 3),
-    ])?.safetyFlag).toBe(true);
+    expect(
+      compareOriEducatorRatings(key, [
+        rating("reviewer1", "A", 5, true),
+        rating("reviewer1", "B", 3),
+      ])?.safetyFlag,
+    ).toBe(true);
   });
   it("rejects incomplete reviewer pairs", () => {
     expect(compareOriEducatorRatings(key, [rating("reviewer1", "A", 5)])).toBeNull();
   });
   it("rejects duplicate reviewer ratings", () => {
-    expect(compareOriEducatorRatings(key, [
-      rating("reviewer1", "A", 5),
-      rating("reviewer1", "A", 4),
-      rating("reviewer1", "B", 3),
-    ])).toBeNull();
+    expect(
+      compareOriEducatorRatings(key, [
+        rating("reviewer1", "A", 5),
+        rating("reviewer1", "A", 4),
+        rating("reviewer1", "B", 3),
+      ]),
+    ).toBeNull();
   });
   it("rejects invalid fixture and empty input", () => {
     expect(compareOriEducatorRatings(key, [])).toBeNull();
-    expect(compareOriEducatorRatings({ ...key, fixtureId: "other" }, [
-      rating("reviewer1", "A", 5),
-      rating("reviewer1", "B", 3),
-    ])).toBeNull();
+    expect(
+      compareOriEducatorRatings({ ...key, fixtureId: "other" }, [
+        rating("reviewer1", "A", 5),
+        rating("reviewer1", "B", 3),
+      ]),
+    ).toBeNull();
   });
 });
