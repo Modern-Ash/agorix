@@ -1,3 +1,4 @@
+import type { OriShadowMetrics } from "./oriShadowMetrics.js";
 import { validateOriShadowPlan } from "./oriShadowPlanValidation.js";
 import type { OriExternalShadow, OriExternalShadowInput } from "./oriExternalShadow.js";
 
@@ -9,6 +10,7 @@ import type { OriExternalShadow, OriExternalShadowInput } from "./oriExternalSha
 export function createOriShadowTransport(
   endpoint: string,
   fetchImpl: typeof fetch = fetch,
+  metrics?: OriShadowMetrics,
 ): OriExternalShadow {
   const url = new URL(endpoint);
   if (
@@ -39,8 +41,16 @@ export function createOriShadowTransport(
         signal: controller.signal,
       });
       // Shadow response must not influence existing tutor output.
-      if (!response.ok) return;
+      if (!response.ok) {
+        metrics?.record("http-error");
+        return;
+      }
+      if (url.pathname === "/v0/shadow") metrics?.record("valid");
       // Experimental plan validation is shadow-only and cannot affect Kids.
+      if (url.pathname === "/v1/plan" && !response.body) {
+        metrics?.record("invalid-contract");
+        return;
+      }
       if (url.pathname === "/v1/plan" && response.body) {
         const reader = response.body.getReader();
         const chunks: Uint8Array[] = [];
@@ -50,7 +60,10 @@ export function createOriShadowTransport(
             const part = await reader.read();
             if (part.done) break;
             size += part.value.byteLength;
-            if (size > 4096) return;
+            if (size > 4096) {
+              metrics?.record("oversized");
+              return;
+            }
             chunks.push(part.value);
           }
           const body = new Uint8Array(size);
@@ -59,13 +72,19 @@ export function createOriShadowTransport(
             body.set(chunk, offset);
             offset += chunk.byteLength;
           }
-          validateOriShadowPlan(JSON.parse(new TextDecoder().decode(body)));
-        } catch {
+          const plan = validateOriShadowPlan(JSON.parse(new TextDecoder().decode(body)));
+          metrics?.record(plan === null ? "invalid-contract" : "valid");
+        } catch (error) {
+          if (controller.signal.aborted) metrics?.record("timeout");
+          else metrics?.record("invalid-contract");
           // Reject malformed shadow responses without affecting the tutor.
         } finally {
           void reader.cancel().catch(() => undefined);
         }
       }
+    } catch (error) {
+      metrics?.record(controller.signal.aborted ? "timeout" : "network-error");
+      throw error;
     } finally {
       clearTimeout(timer);
     }
