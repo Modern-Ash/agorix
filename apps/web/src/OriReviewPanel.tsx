@@ -1,3 +1,4 @@
+import { requestOriContextPreview } from "./oriContextClient.js";
 import { useState } from "react";
 import { requestOriReviewPreview, type OriReviewPreview } from "./oriReviewClient.js";
 
@@ -13,6 +14,7 @@ export interface OriLearnerContext {
   readonly scriptCount: number;
   readonly hintCount: number;
   readonly hasRunEvidence: boolean;
+  readonly outcome?: "not-run" | "completed" | "failed" | "stopped";
 }
 
 export function describeOriLearningContext(context: OriLearnerContext): string {
@@ -39,7 +41,12 @@ export function OriReviewPanel({ context }: { readonly context?: OriLearnerConte
     setReflection(null);
     setResult(null);
     setLoading(true);
-    try { setResult(await requestOriReviewPreview(intent)); }
+    try {
+      const contextual = context?.outcome
+        ? await requestOriContextPreview({intent:intent as "help"|"repeat"|"turn"|"move"|"debug",context:{scriptCount:context.scriptCount,hintCount:context.hintCount,outcome:context.outcome}})
+        : null;
+      setResult(contextual?.status === "ready" ? contextual : await requestOriReviewPreview(intent));
+    }
     finally { setLoading(false); }
   };
   return (
