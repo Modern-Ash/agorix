@@ -15,7 +15,8 @@ function workspace() {
   return directory;
 }
 afterEach(() => {
-  for (const directory of directories.splice(0)) rmSync(directory, { recursive: true, force: true });
+  for (const directory of directories.splice(0))
+    rmSync(directory, { recursive: true, force: true });
 });
 async function prepare(directory: string) {
   const entry = resolve(sourceDir, "../scripts/ori-educator-report.mjs");
@@ -27,14 +28,16 @@ async function prepare(directory: string) {
     platform: "node",
     format: "esm",
     packages: "external",
-    plugins: [{
-      name: "redirect-local-report-import",
-      setup(plugin) {
-        plugin.onResolve({ filter: /\.\.\/dist\/oriEducatorReportJson\.js$/ }, () => ({
-          path: resolve(sourceDir, "oriEducatorReportJson.ts"),
-        }));
+    plugins: [
+      {
+        name: "redirect-local-report-import",
+        setup(plugin) {
+          plugin.onResolve({ filter: /\.\.\/dist\/oriEducatorReportJson\.js$/ }, () => ({
+            path: resolve(sourceDir, "oriEducatorReportJson.ts"),
+          }));
+        },
       },
-    }],
+    ],
   });
   return output;
 }
@@ -77,7 +80,10 @@ describe("Ori educator report CLI smoke", () => {
     const executable = await prepare(directory);
     const input = join(directory, "invalid.json");
     const output = join(directory, "report.json");
-    writeFileSync(input, JSON.stringify({ ...fixture, submissions: fixture.submissions.slice(0, 1) }));
+    writeFileSync(
+      input,
+      JSON.stringify({ ...fixture, submissions: fixture.submissions.slice(0, 1) }),
+    );
     const result = spawnSync(process.execPath, [executable, input, output], { encoding: "utf8" });
     expect(result.status).toBe(1);
     expect(existsSync(output)).toBe(false);
