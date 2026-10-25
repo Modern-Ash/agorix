@@ -6,6 +6,7 @@ import { createOriShadowTransport } from "./oriExternalShadowTransport.js";
 import { createOriPlanConsumer } from "./oriPlanConsumer.js";
 import { createOriLearnerHintPreview } from "./oriLearnerHintPreview.js";
 import { captureOriLiveComparison } from "./oriLiveComparisonCapture.js";
+import { exportOriBlindReviewJson } from "./oriBlindReviewJsonExport.js";
 import { getKidsMission, KIDS_MISSION_IDS } from "@agorix/curriculum";
 import { createWorldState, runProgram } from "@agorix/runtime";
 import { createTutorRequest } from "@agorix/tutor-contract";
@@ -151,6 +152,19 @@ describe.skipIf(!runnable)("real Ori process to Agorix consumer contract", () =>
       expect(dual?.educator.equalInputContextProven).toBe(false);
       expect(dual?.educator.eligibleForEfficacyClaim).toBe(false);
       expect(JSON.stringify(dual?.educator)).not.toContain("oriCandidate");
+      // Export real-process A/B results without exposing the coordinator source key.
+      const exported = dual ? exportOriBlindReviewJson(dual) : null;
+      expect(exported).not.toBeNull();
+      const educatorDocument = JSON.parse(exported!.educatorJson) as Record<string, unknown>;
+      const coordinatorDocument = JSON.parse(exported!.coordinatorJson) as Record<string, unknown>;
+      expect(educatorDocument["A"]).toBe(accepted?.hint);
+      expect(educatorDocument["equalInputContextProven"]).toBe(false);
+      expect(educatorDocument["eligibleForEfficacyClaim"]).toBe(false);
+      expect(coordinatorDocument["oriCandidate"]).toBe("A");
+      expect(exported!.educatorJson).not.toContain("oriCandidate");
+      expect(exported!.educatorJson).not.toContain("deterministicCandidate");
+      expect(exported!.educatorJson).not.toContain("coordinator");
+
       expect(JSON.stringify(program)).toBe(JSON.stringify(mission.starterProject));
 
       // The consumer is not connected to the child-facing tutor response.
