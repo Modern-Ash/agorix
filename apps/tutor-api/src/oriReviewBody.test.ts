@@ -58,4 +58,33 @@ describe("Ori bounded streaming body reader", () => {
     });
     expect(await readOriReviewBody(parts(bytes(payload)))).toBeNull();
   });
+  it("rejects a pre-aborted signal without reading request data", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    let consumed = false;
+    async function* unread() {
+      consumed = true;
+      yield bytes(valid);
+    }
+    expect(await readOriReviewBody(unread(), 512, controller.signal)).toBeNull();
+    expect(consumed).toBe(false);
+  });
+  it("rejects abort between streaming chunks", async () => {
+    const controller = new AbortController();
+    async function* interrupted() {
+      yield bytes(valid.slice(0, 5));
+      controller.abort();
+      yield bytes(valid.slice(5));
+    }
+    expect(await readOriReviewBody(interrupted(), 512, controller.signal)).toBeNull();
+  });
+  it("rejects an abort immediately after the final chunk", async () => {
+    const controller = new AbortController();
+    async function* interrupted() {
+      yield bytes(valid);
+      controller.abort();
+    }
+    expect(await readOriReviewBody(interrupted(), 512, controller.signal)).toBeNull();
+  });
+
 });
