@@ -132,6 +132,9 @@ importers:
       '@agorix/curriculum':
         specifier: workspace:*
         version: link:../../packages/curriculum
+      '@agorix/group-lockstep':
+        specifier: workspace:*
+        version: link:../../packages/group-lockstep
       '@agorix/group-service':
         specifier: workspace:*
         version: link:../../packages/group-service
@@ -348,6 +351,15 @@ importers:
         version: link:../program-model
 
   packages/curriculum:
+    dependencies:
+      '@agorix/program-model':
+        specifier: workspace:*
+        version: link:../program-model
+      '@agorix/runtime':
+        specifier: workspace:*
+        version: link:../runtime
+
+  packages/group-lockstep:
     dependencies:
       '@agorix/program-model':
         specifier: workspace:*
