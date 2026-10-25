@@ -32,6 +32,7 @@
     "@agorix/project-api": "workspace:*",
     "@agorix/project-repository": "workspace:*",
     "@agorix/proposals": "workspace:*",
+    "@agorix/team-project": "workspace:*",
     "@agorix/python-projection": "workspace:*",
     "@agorix/runtime": "workspace:*",
     "@agorix/stage": "workspace:*",

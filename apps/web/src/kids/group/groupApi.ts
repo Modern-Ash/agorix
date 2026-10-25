@@ -1,3 +1,4 @@
+import { enqueueAdult } from "../adultQueue.js";
 import type { FetchLike } from "../../accounts/httpClient.js";
 
 export const GROUP_TEAMS = ["equipo-1", "equipo-2", "equipo-3", "equipo-4"] as const;
@@ -101,8 +102,6 @@ function record(value: unknown): Record<string, unknown> {
 export function createGroupApi(options: { readonly fetch?: FetchLike } = {}): GroupApi {
   const doFetch: FetchLike =
     options.fetch ?? ((input, init) => globalThis.fetch(input, init) as ReturnType<FetchLike>);
-  // The adult session rotates on every request, so adult calls must never overlap.
-  let adultTail: Promise<unknown> = Promise.resolve();
 
   async function raw(
     method: string,
@@ -138,10 +137,7 @@ export function createGroupApi(options: { readonly fetch?: FetchLike } = {}): Gr
   }
 
   function adult(method: string, url: string, body?: unknown): Promise<Parsed> {
-    const run = () => raw(method, url, body, {});
-    const next = adultTail.then(run, run);
-    adultTail = next.catch(() => undefined);
-    return next;
+    return enqueueAdult(() => raw(method, url, body, {}));
   }
 
   const group = (groupId: string) => `/v1/group/${encodeURIComponent(groupId)}`;
