@@ -30,3 +30,5 @@ export {
   type SlotRow,
   type TeamId,
 } from "./types.js";
+export { GROUP_SERVICE_MIGRATIONS, SqlGroupRepository } from "./sql.js";
+export type { GroupSqlDialect, GroupSqlExecutor, GroupSqlRow, GroupSqlValue } from "./sql.js";

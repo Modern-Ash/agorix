@@ -1,4 +1,15 @@
-import { GroupService, InMemoryGroupRepository, type AdultDirectory } from "../src/index.js";
+import { DatabaseSync } from "node:sqlite";
+import {
+  GROUP_SERVICE_MIGRATIONS,
+  GroupService,
+  InMemoryGroupRepository,
+  SqlGroupRepository,
+  type AdultDirectory,
+  type GroupRepository,
+  type GroupSqlValue,
+} from "../src/index.js";
+
+export type Backend = "memory" | "sqlite";
 
 export const SECRET = "g".repeat(40);
 
@@ -34,9 +45,63 @@ export class FakeAdults implements AdultDirectory {
   }
 }
 
-export function build(policy: ConstructorParameters<typeof GroupService>[0]["policy"] = {}) {
-  const clock = new FakeClock();
+/** What is left behind in storage, read straight from the backing store. */
+export interface Inspector {
+  sizes(): Promise<{ groups: number; slots: number; codes: number; devices: number }>;
+  dump(): Promise<unknown>;
+}
+
+function memoryBackend(): { repository: GroupRepository; inspect: Inspector } {
   const repository = new InMemoryGroupRepository();
+  return {
+    repository,
+    inspect: { sizes: async () => repository.sizes(), dump: async () => repository.dump() },
+  };
+}
+
+function sqliteBackend(): { repository: GroupRepository; inspect: Inspector } {
+  const db = new DatabaseSync(":memory:");
+  db.exec("pragma foreign_keys = on");
+  db.exec("create table agorix_accounts (account_id text primary key)");
+  db.exec("insert into agorix_accounts values ('org-1'), ('org-2')");
+  for (const migration of GROUP_SERVICE_MIGRATIONS) db.exec(migration.sqlite);
+  const executor = {
+    async execute(sql: string, params: readonly GroupSqlValue[] = []) {
+      const statement = db.prepare(sql);
+      if (statement.columns().length > 0) {
+        const rows = statement.all(...params) as Record<string, unknown>[];
+        return { rows, rowCount: rows.length };
+      }
+      return { rows: [], rowCount: Number(statement.run(...params).changes) };
+    },
+  };
+  const count = (table: string) =>
+    Number((db.prepare(`select count(*) as n from ${table}`).get() as { n: number }).n);
+  return {
+    repository: new SqlGroupRepository({ executor, dialect: "sqlite" }),
+    inspect: {
+      sizes: async () => ({
+        groups: count("agorix_groups"),
+        slots: count("agorix_group_slots"),
+        codes: count("agorix_group_codes"),
+        devices: count("agorix_group_devices"),
+      }),
+      dump: async () => ({
+        groups: db.prepare("select * from agorix_groups").all(),
+        slots: db.prepare("select * from agorix_group_slots").all(),
+        codes: db.prepare("select * from agorix_group_codes").all(),
+        devices: db.prepare("select * from agorix_group_devices").all(),
+      }),
+    },
+  };
+}
+
+export function build(
+  backend: Backend,
+  policy: ConstructorParameters<typeof GroupService>[0]["policy"] = {},
+) {
+  const clock = new FakeClock();
+  const { repository, inspect } = backend === "memory" ? memoryBackend() : sqliteBackend();
   const adults = new FakeAdults();
   const service = new GroupService({
     repository,
@@ -46,7 +111,7 @@ export function build(policy: ConstructorParameters<typeof GroupService>[0]["pol
     random: counterRandom(),
     policy,
   });
-  return { clock, repository, adults, service };
+  return { clock, repository, inspect, adults, service };
 }
 
 export async function organizerWithGroup(ctx: ReturnType<typeof build>, accountId = "org-1") {

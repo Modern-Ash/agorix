@@ -64,6 +64,9 @@ importers:
       '@agorix/auth-service':
         specifier: workspace:*
         version: link:../../packages/auth-service
+      '@agorix/group-service':
+        specifier: workspace:*
+        version: link:../../packages/group-service
       '@agorix/link-service':
         specifier: workspace:*
         version: link:../../packages/link-service

@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@agorix/auth-service": "workspace:*",
+    "@agorix/group-service": "workspace:*",
     "@agorix/link-service": "workspace:*",
     "@agorix/persistence": "workspace:*",
     "@agorix/project-api": "workspace:*",
