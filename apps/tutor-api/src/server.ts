@@ -1,5 +1,5 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import { dispatchOriExternalShadow, type OriExternalShadow } from "./oriExternalShadow.js";
+import { createOriExternalShadowDispatcher, type OriExternalShadow } from "./oriExternalShadow.js";
 import { validateTutorRequest } from "@agorix/tutor-contract";
 import {
   createFreeWorldMission,
@@ -94,6 +94,7 @@ export function createTutorServer(options: TutorServerOptions): Server {
   let lastOriSource: Health["lastOriSource"] = null;
   const chatRate = new Map<string, { count: number; start: number }>();
   const advancedStages = options.advancedStages ?? createMemoryAdvancedStageRepository(now);
+  const oriShadowDispatcher = createOriExternalShadowDispatcher();
 
   function policy(capability: AiCapability): AiPolicy | undefined {
     return options.aiConfig?.current().config.capabilities[capability];
