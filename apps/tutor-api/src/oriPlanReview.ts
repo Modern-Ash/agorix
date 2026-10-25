@@ -4,6 +4,7 @@ import type { OriShadowPlan } from "./oriShadowPlanValidation.js";
 
 /**
  * Internal adult-review boundary. Never expose the returned plan in Kids.
+ * Formatting baseline is enforced by repository Prettier.
  * This does not authenticate an adult: callers must enforce that separately.
  */
 export interface OriPlanReviewResult {
