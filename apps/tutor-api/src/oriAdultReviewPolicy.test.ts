@@ -60,3 +60,28 @@ describe("Ori adult review policy gate", () => {
     expect((await review(input)).plan).toBeNull();
   });
 });
+
+describe("Ori adult review fail-closed contract", () => {
+  it.each([
+    ["unexpected status", { ...result, status: "ready-to-apply" }],
+    ["applied changes", { ...result, appliedChanges: true }],
+    ["unexpected proposal", { ...result, plan: { ...result.plan, proposal: { apply: true } } }],
+    ["mismatched stage", { ...result, plan: { ...result.plan, stage: 3 } }],
+    ["mismatched mission", { ...result, plan: { ...result.plan, context: { missionStage: 2 } } }],
+    ["missing plan", { ...result, plan: null }],
+  ])("rejects %s", async (_case, response) => {
+    const review = createAuthorizedOriPlanReview(
+      async () => response as unknown as OriPlanReviewResult,
+      allowed,
+    );
+    expect(await review(input)).toEqual({
+      status: "unavailable",
+      plan: null,
+      appliedChanges: false,
+    });
+  });
+  it("rejects malformed mission allowlist at runtime", () => {
+    const malformed = { ...allowed, authorizedMissionIndices: null };
+    expect(mayReviewOriPlan(malformed as unknown as OriAdultReviewPolicy, input)).toBe(false);
+  });
+});
