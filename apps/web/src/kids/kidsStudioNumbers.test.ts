@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { createEditorHistory, undoCanonicalTransaction } from "@agorix/block-editor";
 import { runMultiActorProgram } from "@agorix/runtime";
 import {
-  addStudioActor,
   addStudioProcedureNumber,
   addStudioVariable,
   appendStudioStatement,

@@ -817,7 +817,7 @@ function withArgs(
   call: Extract<Statement, { type: "callProcedure" }>,
   args: readonly number[],
 ): Statement {
-  const { args: _old, ...rest } = call;
+  const rest = withoutKey(call, "args");
   return args.length === 0
     ? rest
     : { ...rest, args: args.map((value) => ({ type: "numericLiteral", value }) as const) };
@@ -1005,7 +1005,7 @@ export function removeStudioProcedureNumber(
       ...changed,
       procedures: (changed.procedures ?? []).map((item) => {
         if (item.id !== procedureId) return item;
-        const { params: _params, ...rest } = item;
+        const rest = withoutKey(item, "params");
         return {
           ...rest,
           ...(remaining.length === 0 ? {} : { params: remaining }),
@@ -1045,8 +1045,7 @@ function updateAt(
 }
 
 function withoutKey<T extends object>(value: T, key: string): T {
-  const { [key]: _dropped, ...rest } = value as Record<string, unknown>;
-  return rest as T;
+  return Object.fromEntries(Object.entries(value).filter(([name]) => name !== key)) as T;
 }
 
 /** The number a block inside a custom block currently follows, if any. */
