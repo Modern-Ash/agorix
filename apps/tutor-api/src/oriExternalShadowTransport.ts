@@ -35,6 +35,7 @@ export function createOriShadowTransport(
       });
       // Shadow response must not influence existing tutor output.
       if (!response.ok) return;
+      // Do not consume untrusted response bodies or leak them to the tutor.
     } finally {
       clearTimeout(timer);
     }
