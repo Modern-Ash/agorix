@@ -526,6 +526,10 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return "x_position()";
     case "yPosition":
       return "y_position()";
+    case "timer":
+      return "timer()";
+    case "keyDown":
+      return "key_down(" + JSON.stringify(expression.key) + ")";
     case "booleanLiteral":
       return expression.value ? "True" : "False";
     case "numericLiteral":

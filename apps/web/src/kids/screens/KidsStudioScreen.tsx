@@ -207,6 +207,13 @@ const COPY = {
     groupUntilEdge: "Repetir hasta tocar el borde",
     groupUntilActor: "Repetir hasta tocar al personaje",
     saveDistance: "Guardar distancia",
+    saveTimer: "Guardar el tiempo",
+    senseKey: "Tecla a sentir",
+    heldKeys: "Teclas mantenidas al jugar",
+    ifKeyDown: "Si la tecla está pulsada, mover 1",
+    groupIfKeyDown: "Si la tecla está pulsada, ejecutar estos bloques",
+    timerSeconds: "Segundos del temporizador",
+    groupUntilTimer: "Repetir estos bloques hasta pasar los segundos (usá Esperar)",
     distanceTarget: "Distancia al personaje",
     dataName: "Nombre",
     number: "Número",
@@ -362,6 +369,13 @@ const COPY = {
     groupUntilEdge: "Repeat until at the edge",
     groupUntilActor: "Repeat until touching the character",
     saveDistance: "Save distance",
+    saveTimer: "Save the time",
+    senseKey: "Key to sense",
+    heldKeys: "Keys held while playing",
+    ifKeyDown: "If the key is down, move 1",
+    groupIfKeyDown: "If the key is down, run these blocks",
+    timerSeconds: "Timer seconds",
+    groupUntilTimer: "Repeat these blocks until the seconds pass (use Wait)",
     distanceTarget: "Distance to character",
     dataName: "Name",
     number: "Number",
@@ -420,6 +434,9 @@ function expressionLabel(
     return `${locale === "es" ? "tocando" : "touching"} ${galleryCharacterName(characterOfActor(value.actorId), locale)}`;
   if (value.type === "touchingStageEdge")
     return locale === "es" ? "tocando borde" : "touching edge";
+  if (value.type === "timer") return locale === "es" ? "tiempo" : "timer";
+  if (value.type === "keyDown")
+    return `${locale === "es" ? "tecla" : "key"} ${value.key} ${locale === "es" ? "pulsada" : "down"}`;
   if (value.type === "distanceToActor")
     return `${locale === "es" ? "distancia a" : "distance to"} ${galleryCharacterName(characterOfActor(value.actorId), locale)}`;
   if (value.type === "numericLiteral") return String(value.value);
@@ -517,6 +534,9 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
   );
   const [compareCalculation, setCompareCalculation] = useState(false);
   const [sensorTargetId, setSensorTargetId] = useState("");
+  const [senseKey, setSenseKey] = useState<(typeof STUDIO_KEYS)[number]>("Space");
+  const [timerSeconds, setTimerSeconds] = useState(3);
+  const [heldKeys, setHeldKeys] = useState<string[]>([]);
   const [dataName, setDataName] = useState("");
   const [dataValue, setDataValue] = useState(1);
   const [mathFn, setMathFn] = useState<"abs" | "round" | "floor" | "ceiling">("round");
@@ -635,7 +655,9 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
   function fireKey(key: string) {
     if (!run || !STUDIO_KEYS.includes(key as (typeof STUDIO_KEYS)[number])) return;
     const nextEvents: readonly RuntimeEvent[] = [...events, { type: "keyPressed", key }];
-    setRun(runMultiActorProgram(history.current, creative, { events: nextEvents }));
+    setRun(
+      runMultiActorProgram(history.current, creative, { events: nextEvents, keysDown: heldKeys }),
+    );
     setEvents(nextEvents);
     setFrame(null);
   }
@@ -1210,7 +1232,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
 
   function play() {
     try {
-      const result = runMultiActorProgram(history.current, creative);
+      const result = runMultiActorProgram(history.current, creative, { keysDown: heldKeys });
       setRun(result);
       setEvents([{ type: "start" }]);
       setFrame(null);
@@ -1251,7 +1273,9 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
       return;
     }
     const nextEvents: readonly RuntimeEvent[] = [...events, { type: "actorClicked", actorId }];
-    setRun(runMultiActorProgram(history.current, creative, { events: nextEvents }));
+    setRun(
+      runMultiActorProgram(history.current, creative, { events: nextEvents, keysDown: heldKeys }),
+    );
     setEvents(nextEvents);
     setFrame(null);
     selectActor(actorId);
@@ -2547,6 +2571,88 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
             >
               {copy.groupUntilEdge}
             </button>
+            <label>
+              {copy.senseKey}{" "}
+              <select
+                value={senseKey}
+                onChange={(event) =>
+                  setSenseKey(event.target.value as (typeof STUDIO_KEYS)[number])
+                }
+              >
+                {STUDIO_KEYS.map((key) => (
+                  <option key={key} value={key}>
+                    {key}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div role="group" aria-label={copy.heldKeys}>
+              <strong>{copy.heldKeys}</strong>
+              {STUDIO_KEYS.map((key) => (
+                <label key={key}>
+                  <input
+                    type="checkbox"
+                    checked={heldKeys.includes(key)}
+                    onChange={(event) =>
+                      setHeldKeys(
+                        event.target.checked
+                          ? [...heldKeys, key]
+                          : heldKeys.filter((item) => item !== key),
+                      )
+                    }
+                  />{" "}
+                  {key}
+                </label>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="kids-button"
+              onClick={() =>
+                add({
+                  type: "if",
+                  condition: { type: "keyDown", key: senseKey },
+                  then: [{ type: "move", steps: 40 }],
+                })
+              }
+            >
+              + {copy.ifKeyDown}
+            </button>
+            <button
+              type="button"
+              className="kids-button"
+              disabled={(script?.statements.length ?? 0) < groupCount}
+              onClick={() => groupLast("if", { type: "keyDown", key: senseKey })}
+            >
+              {copy.groupIfKeyDown}
+            </button>
+            <label>
+              {copy.timerSeconds}{" "}
+              <select
+                value={timerSeconds}
+                onChange={(event) => setTimerSeconds(Number(event.target.value))}
+              >
+                {[1, 2, 3, 5, 10].map((seconds) => (
+                  <option key={seconds} value={seconds}>
+                    {seconds}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              className="kids-button"
+              disabled={(script?.statements.length ?? 0) < groupCount}
+              onClick={() =>
+                groupLast("repeatUntil", {
+                  type: "greaterThan",
+                  left: { type: "timer" },
+                  right: { type: "numericLiteral", value: timerSeconds },
+                } as Expression)
+              }
+            >
+              {copy.groupUntilTimer}
+            </button>
             {targetActorId ? (
               <>
                 <label>
@@ -2743,6 +2849,19 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
                     </button>
                   </>
                 ) : null}
+                <button
+                  type="button"
+                  className="kids-button"
+                  onClick={() =>
+                    add({
+                      type: "setVariable",
+                      variableId: selectedVariableId,
+                      value: { type: "timer" },
+                    })
+                  }
+                >
+                  + {copy.saveTimer}
+                </button>
                 <button
                   type="button"
                   className="kids-button"

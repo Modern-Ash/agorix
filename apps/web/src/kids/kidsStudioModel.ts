@@ -142,7 +142,8 @@ function checkedNumber(value: Expression, program: ProjectProgram, depth = 0, ar
   if (depth > 2) return false;
   if (value.type === "param") return arity > 0 && paramInScope(value.paramId, arity);
   if (value.type === "numericLiteral") return finiteSmallNumber(value.value);
-  if (value.type === "xPosition" || value.type === "yPosition") return true;
+  if (value.type === "xPosition" || value.type === "yPosition" || value.type === "timer")
+    return true;
   if (value.type === "distanceToActor")
     return program.scripts.some((script) => {
       const target = actorOfScript(script.id);
@@ -182,6 +183,8 @@ function checkedNumber(value: Expression, program: ProjectProgram, depth = 0, ar
 }
 
 function checkedCondition(value: Expression, program: ProjectProgram, arity = 0): boolean {
+  if (value.type === "keyDown")
+    return STUDIO_KEYS.includes(value.key as (typeof STUDIO_KEYS)[number]);
   if (value.type === "touchingStageEdge")
     return (
       value.minX === STUDIO_EDGE_CONDITION.minX &&

@@ -44,6 +44,17 @@ export interface XPositionExpression {
   readonly type: "xPosition";
 }
 
+/** Virtual seconds this script has waited so far in the current run; never a wall clock. */
+export interface TimerExpression {
+  readonly type: "timer";
+}
+
+/** True while the key is held: the key that started this script, or a key given to the run. */
+export interface KeyDownExpression {
+  readonly type: "keyDown";
+  readonly key: string;
+}
+
 export interface YPositionExpression {
   readonly type: "yPosition";
 }
@@ -187,6 +198,8 @@ export type Expression =
   | TouchingStageEdgeExpression
   | DistanceToActorExpression
   | XPositionExpression
+  | TimerExpression
+  | KeyDownExpression
   | YPositionExpression
   | BooleanLiteralExpression
   | NumericLiteralExpression

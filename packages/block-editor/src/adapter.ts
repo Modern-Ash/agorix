@@ -58,6 +58,8 @@ export type BlockType =
   | "sensing_distance_to_actor"
   | "sensing_x_position"
   | "sensing_y_position"
+  | "sensing_timer"
+  | "sensing_key_down"
   | "operator_add"
   | "operator_subtract"
   | "operator_multiply"
@@ -329,6 +331,10 @@ function expressionFromBlock(
       return { type: "xPosition" };
     case "sensing_y_position":
       return { type: "yPosition" };
+    case "sensing_timer":
+      return { type: "timer" };
+    case "sensing_key_down":
+      return { type: "keyDown", key: stringField(block, "key", path) };
     case "literal_boolean":
       return { type: "booleanLiteral", value: booleanField(block, "value", path) };
     case "literal_number":
@@ -709,6 +715,10 @@ function expressionToBlock(
       return { id, type: "sensing_x_position" };
     case "yPosition":
       return { id, type: "sensing_y_position" };
+    case "timer":
+      return { id, type: "sensing_timer" };
+    case "keyDown":
+      return { id, type: "sensing_key_down", fields: { key: expression.key } };
     case "booleanLiteral":
       return { id, type: "literal_boolean", fields: { value: expression.value } };
     case "numericLiteral":
