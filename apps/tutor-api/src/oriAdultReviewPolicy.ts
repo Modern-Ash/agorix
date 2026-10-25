@@ -1,5 +1,6 @@
 import type { OriExternalShadowInput } from "./oriExternalShadow.js";
 import type { OriPlanReviewResult } from "./oriPlanReview.js";
+import { validateOriShadowPlan } from "./oriShadowPlanValidation.js";
 
 /**
  * Host-owned authorization boundary for future adult-only diagnostics.
@@ -18,6 +19,7 @@ export function mayReviewOriPlan(
     policy.enabled === true &&
     (policy.role === "educator" || policy.role === "administrator") &&
     Number.isSafeInteger(input.missionIndex) &&
+    Array.isArray(policy.authorizedMissionIndices) &&
     policy.authorizedMissionIndices.includes(input.missionIndex)
   );
 }
@@ -34,7 +36,19 @@ export function createAuthorizedOriPlanReview(
       });
     }
     try {
-      return await review(input);
+      const result = await review(input);
+      const plan = result?.plan;
+      if (
+        result?.status !== "ready" ||
+        result.appliedChanges !== false ||
+        !plan ||
+        !validateOriShadowPlan(plan) ||
+        plan.stage !== input.hintLevel ||
+        plan.context.missionStage !== input.missionIndex
+      ) {
+        return Object.freeze({ status: "unavailable", plan: null, appliedChanges: false });
+      }
+      return Object.freeze({ status: "ready", plan, appliedChanges: false });
     } catch {
       return Object.freeze({
         status: "unavailable",
