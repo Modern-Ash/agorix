@@ -49,8 +49,25 @@ describe.skipIf(!runnable)("real Ori process to Agorix consumer contract", () =>
         }
       }
       expect(ready).toBe(true);
-      const transport = createOriShadowTransport(url);
+      let actualRequests = 0;
+      let validatedResponses = 0;
+      const observedFetch: typeof fetch = async (input, init) => {
+        actualRequests++;
+        const response = await fetch(input, init);
+        if (response.ok) {
+          const payload: unknown = await response.clone().json();
+          const { validateOriShadowPlan } = await import("./oriShadowPlanValidation.js");
+          if (validateOriShadowPlan(payload) === null) {
+            throw new Error("Ori transport returned incompatible shadow-plan contract");
+          }
+          validatedResponses++;
+        }
+        return response;
+      };
+      const transport = createOriShadowTransport(url, observedFetch);
       expect(await transport({ missionIndex: 1, hintLevel: 2, scriptCount: 1 })).toBeUndefined();
+      expect(actualRequests).toBe(1);
+      expect(validatedResponses).toBe(1);
     } finally {
       if (child.exitCode === null) {
         child.kill("SIGTERM");
