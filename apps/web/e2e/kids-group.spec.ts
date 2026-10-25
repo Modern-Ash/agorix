@@ -114,6 +114,22 @@ test("organizer runs a group of two children and starts a team project", async (
   page,
   browser,
 }) => {
+  // The organizer's device follows the admin registry (served by tutor-api in production).
+  await page.route("**/api/tutor/group-config", (route) =>
+    route.fulfill({
+      json: {
+        revision: 7,
+        group: {
+          moderation: {
+            image: { enabled: true, unsafeThreshold: 0.5, uncertainThreshold: 0.2 },
+            text: { enabled: true, blockedTerms: { es: [], en: [] }, piiPatterns: ["phone"] },
+          },
+          approvalQueue: { holdAll: true },
+          reactions: { es: ["like"], en: ["like"] },
+        },
+      },
+    }),
+  );
   await verifiedOrganizerAdults(page);
   await expect(page.getByRole("heading", { name: "Grupo en la misma sala" })).toBeVisible();
   await page.getByRole("button", { name: "Quiero organizar un grupo" }).click();
@@ -151,6 +167,7 @@ test("organizer runs a group of two children and starts a team project", async (
   await expect(page.getByRole("heading", { name: "Proyecto del equipo" })).toBeVisible({
     timeout: 15_000,
   });
+  await expect(page.getByText("Configuración del administrador: revisión 7.")).toBeVisible();
   await page.getByRole("button", { name: "Empezar el proyecto" }).click();
   await expect(page.getByText(/^Turno de /)).toBeVisible();
   await expect(page.getByText("Nada por decidir.")).toBeVisible();

@@ -3,6 +3,7 @@ import type { Locale } from "../../../i18n.js";
 import { TEAM_ROLES, type TeamRole } from "@agorix/team-project";
 import type { GroupSlot } from "../groupApi.js";
 import { groupText, type GroupCopyKey } from "../groupCopy.js";
+import { DEFAULT_GROUP_SETTINGS, loadGroupSettings, type GroupSettings } from "../groupSettings.js";
 import { TeamHost, type HostMember, type HostSnapshot } from "./teamHost.js";
 
 interface Props {
@@ -36,6 +37,7 @@ export function TeamProjectCard({ locale, slots, onHost }: Props) {
   const [snapshot, setSnapshot] = useState<HostSnapshot | null>(null);
   const [mode, setMode] = useState<"turns" | "blocks">("turns");
   const [roles, setRoles] = useState<Record<string, TeamRole>>({});
+  const [settings, setSettings] = useState<GroupSettings>(DEFAULT_GROUP_SETTINGS);
   const [reactionsOn, setReactionsOn] = useState(true);
   const [silenced, setSilenced] = useState<ReadonlySet<string>>(new Set());
   const [message, setMessage] = useState("");
@@ -54,6 +56,17 @@ export function TeamProjectCard({ locale, slots, onHost }: Props) {
   }));
   const hasEditor = members.some((member) => member.role !== "testing");
 
+  // The admin registry's moderation and reaction settings; any failure leaves the strict defaults.
+  useEffect(() => {
+    let cancelled = false;
+    void loadGroupSettings().then((loaded) => {
+      if (!cancelled) setSettings(loaded);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Keep the host in step with the roster: an expelled child leaves the team at once.
   useEffect(() => {
     if (host === null) return;
@@ -69,7 +82,7 @@ export function TeamProjectCard({ locale, slots, onHost }: Props) {
   }, [host]);
 
   function start() {
-    const next = new TeamHost({ members, mode });
+    const next = new TeamHost({ members, mode, settings, locale });
     next.subscribe(() => {
       setSnapshot(next.snapshot());
       redraw((value) => value + 1);
@@ -115,6 +128,13 @@ export function TeamProjectCard({ locale, slots, onHost }: Props) {
     <section className="kids-link-card" aria-labelledby="kids-team-title">
       <h3 id="kids-team-title">{t("teamTitle")}</h3>
       <p>{t("teamIntro")}</p>
+      <p>
+        <small>
+          {settings.revision === null
+            ? t("settingsDefault")
+            : t("settingsFromAdmin", { n: settings.revision })}
+        </small>
+      </p>
       {host === null || snapshot === null || summary === undefined ? (
         approved.length < 2 ? (
           <p>{t("teamNeed")}</p>

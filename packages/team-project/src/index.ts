@@ -25,12 +25,14 @@ export {
   ContentGate,
   GateError,
   NEUTRAL_NOTICE,
+  verdictFromScore,
   type ContentKind,
   type GateErrorCode,
   type GateOptions,
   type LocalVerdict,
   type QueuedItem,
   type RejectionReason,
+  type ScoreThresholds,
   type SubmitResult,
 } from "./contentGate.js";
 export {
