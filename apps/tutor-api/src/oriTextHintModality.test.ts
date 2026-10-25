@@ -28,7 +28,12 @@ describe("Ori text-only pedagogical hint modality", () => {
     ).toBeNull();
   });
   it("rejects executable proposal fields", () => {
-    expect(toOriTextHintCandidate({ ...valid, proposal: { apply: true } } as unknown as OriLearnerHintPreview)).toBeNull();
+    expect(
+      toOriTextHintCandidate({
+        ...valid,
+        proposal: { apply: true },
+      } as unknown as OriLearnerHintPreview),
+    ).toBeNull();
   });
   it("rejects claimed mutation or missing approval", () => {
     expect(
@@ -45,7 +50,12 @@ describe("Ori text-only pedagogical hint modality", () => {
     ).toBeNull();
   });
   it("rejects extra learner data and excessive text", () => {
-    expect(toOriTextHintCandidate({ ...valid, childId: "synthetic" } as unknown as OriLearnerHintPreview)).toBeNull();
+    expect(
+      toOriTextHintCandidate({
+        ...valid,
+        childId: "synthetic",
+      } as unknown as OriLearnerHintPreview),
+    ).toBeNull();
     expect(toOriTextHintCandidate({ ...valid, hint: "x".repeat(181) })).toBeNull();
   });
 });
