@@ -31,6 +31,8 @@ test.describe("Ori educational intent chooser", () => {
       await expect(panel.getByText("Solo para revisión. No se aplicaron cambios.")).toBeVisible();
     }
     expect(requests).toEqual(actions.map(([, intent]) => intent));
+    await expect(panel.getByRole("button", { name: "Ya revisé esta pista" })).toBeDisabled();
+    await panel.getByLabel("Voy a probar una idea").check();
     await panel.getByRole("button", { name: "Ya revisé esta pista" }).click();
     await expect(panel.getByRole("button", { name: "Pista revisada" })).toBeDisabled();
   });
