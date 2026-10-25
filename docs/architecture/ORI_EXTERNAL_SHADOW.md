@@ -42,6 +42,7 @@ flowchart TD
 The counterpart synthetic endpoint is developed in `Modern-Ash/ori` PR #46. **No deployment or real child data testing is authorized**. The transport currently has no authentication and must not be exposed beyond a trusted loopback test environment. Future production integration requires identity, CSRF, bounded concurrency, retry policies and safeguarding review.
 
 ## Metadata-only plan evaluation (Ori PR #47)
+
 The loopback transport now also accepts `/v1/plan`, an experimental Ori endpoint returning generic pedagogical steps based solely on mission index, hint level and script count. **Agorix intentionally discards that response**; there is no child-facing plan, model call, program edit or change to the existing tutor API envelope.
 
 To test in a trusted local environment only, use `AGORIX_ORI_EXTERNAL_SHADOW_URL=http://127.0.0.1:<port>/v1/plan` with the existing disabled-by-default flag. The reference Ori server must be started separately. Do not enable in production.
