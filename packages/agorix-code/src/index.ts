@@ -28,6 +28,8 @@ interface Writer {
   variableLabels: ReadonlyMap<string, string>;
   listLabels: ReadonlyMap<string, string>;
   procedureNames?: ReadonlyMap<string, string>;
+  /** Titles of the numbers of the custom block being written, by id. */
+  paramNames?: ReadonlyMap<string, string> | undefined;
 }
 
 export function projectAgorixCode(program: ProjectProgram): LanguageProjectionResult {
@@ -81,10 +83,17 @@ export function projectAgorixCode(program: ProjectProgram): LanguageProjectionRe
     procedures.forEach((procedure, procedureIndex) => {
       const procedureId = scriptId + "/procedures[" + procedureIndex + "]";
       const start = writer.text.length;
-      writer.text += "define " + procedure.name + "\n";
+      const params = procedure.params ?? [];
+      writer.paramNames = new Map(params.map((item) => [item.id, item.name]));
+      writer.text +=
+        "define " +
+        procedure.name +
+        (params.length === 0 ? "" : " with " + params.map((item) => item.name).join(", ")) +
+        "\n";
       procedure.body.forEach((statement, index) =>
         writeStatement(writer, statement, procedureId + "/body[" + index + "]", 1),
       );
+      writer.paramNames = undefined;
       addRange(writer, procedureId, start, writer.text.length);
     });
     writeMapped(writer, scriptId, triggerText(script.trigger));
@@ -124,7 +133,16 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
   const indent = "  ".repeat(depth);
   switch (statement.type) {
     case "move":
-      writeMapped(writer, nodeId, indent + "move " + formatNumber(statement.steps) + "\n");
+      writeMapped(
+        writer,
+        nodeId,
+        indent +
+          "move " +
+          (statement.stepsFrom === undefined
+            ? formatNumber(statement.steps)
+            : paramText(writer, statement.stepsFrom)) +
+          "\n",
+      );
       return;
     case "glideTo":
       writeMapped(
@@ -148,7 +166,16 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
       );
       return;
     case "turn":
-      writeMapped(writer, nodeId, indent + "turn " + formatNumber(statement.degrees) + "\n");
+      writeMapped(
+        writer,
+        nodeId,
+        indent +
+          "turn " +
+          (statement.degreesFrom === undefined
+            ? formatNumber(statement.degrees)
+            : paramText(writer, statement.degreesFrom)) +
+          "\n",
+      );
       return;
     case "pointInDirection":
       writeMapped(
@@ -193,7 +220,13 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
       writeMapped(
         writer,
         nodeId,
-        indent + "call " + (writer.procedureNames?.get(statement.procedureId) ?? "?") + "\n",
+        indent +
+          "call " +
+          (writer.procedureNames?.get(statement.procedureId) ?? "?") +
+          (statement.args === undefined
+            ? ""
+            : " with " + statement.args.map((arg) => formatNumber(arg.value)).join(", ")) +
+          "\n",
       );
       return;
     case "bounceOnEdge":
@@ -252,7 +285,12 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
       writeMapped(
         writer,
         nodeId,
-        indent + "wait " + formatNumber(statement.seconds) + " seconds\n",
+        indent +
+          "wait " +
+          (statement.secondsFrom === undefined
+            ? formatNumber(statement.seconds)
+            : paramText(writer, statement.secondsFrom)) +
+          " seconds\n",
       );
       return;
     case "setSize":
@@ -343,7 +381,13 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
       return;
     case "repeat": {
       const start = writer.text.length;
-      writer.text += indent + "repeat " + formatNumber(statement.count) + " times\n";
+      writer.text +=
+        indent +
+        "repeat " +
+        (statement.countFrom === undefined
+          ? formatNumber(statement.count)
+          : paramText(writer, statement.countFrom)) +
+        " times\n";
       statement.body.forEach((child, index) =>
         writeStatement(writer, child, nodeId + "/body[" + index + "]", depth + 1),
       );
@@ -523,6 +567,8 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       );
     case "listLength":
       return "length of " + listName(writer, expression.listId);
+    case "param":
+      return paramText(writer, expression.paramId);
     case "randomInteger":
       return (
         "random whole number " +
@@ -553,6 +599,10 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
 
 function variableName(writer: Writer, variableId: string): string {
   return JSON.stringify(writer.variableLabels.get(variableId) ?? variableId);
+}
+
+function paramText(writer: Writer, id: string): string {
+  return writer.paramNames?.get(id) ?? "?";
 }
 
 function listName(writer: Writer, listId: string): string {

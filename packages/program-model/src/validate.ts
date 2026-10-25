@@ -6,6 +6,8 @@ import type {
   ProgramVariable,
   ProjectProgram,
   Procedure,
+  ProcedureParam,
+  ProcedureParamId,
   Script,
   GraphicEffect,
   Statement,
@@ -25,6 +27,7 @@ import {
   PROCEDURES_MAX_PER_SCRIPT,
   PROCEDURE_BODY_MAX,
   PROCEDURE_NAME_MAX_LENGTH,
+  PROCEDURE_PARAMS_MAX,
   REPEAT_COUNT_MAX,
   REPEAT_COUNT_MIN,
   SPRITE_SIZE_MAX,
@@ -128,6 +131,10 @@ interface ValidationState {
   listIds: Set<string>;
   /** Custom blocks of the script being validated. */
   procedureIds: Set<string>;
+  /** Numbers each custom block of the current script declares, by block id. */
+  procedureArity: Map<string, number>;
+  /** Numbers declared by the custom block whose body is being checked (undefined elsewhere). */
+  currentParams: ReadonlySet<ProcedureParamId> | undefined;
 }
 
 function countNode(state: ValidationState, path: string): void {
@@ -343,6 +350,13 @@ function validateExpression(input: unknown, path: string, state: ValidationState
       return validateMathFunctionExpression(input, path, state);
     case "randomInteger":
       return validateRandomExpression(input, path, state, "randomInteger");
+    case "param": {
+      const paramId = optionalParamRef(input, "paramId", path, state);
+      if (paramId === undefined) {
+        fail("MISSING_FIELD", `${path}.paramId`, "expected a custom block number", input.paramId);
+      }
+      return { type: "param", paramId };
+    }
     default:
       return fail(
         "UNKNOWN_EXPRESSION_TYPE",
@@ -382,7 +396,12 @@ function validateStatement(
         fail("MISSING_FIELD", `${path}.steps`, "expected a number", input.steps);
       }
       checkBounds(input.steps, MOVE_STEPS_MIN, MOVE_STEPS_MAX, `${path}.steps`);
-      return { type: "move", steps: input.steps };
+      const stepsFrom = optionalParamRef(input, "stepsFrom", path, state);
+      return {
+        type: "move",
+        steps: input.steps,
+        ...(stepsFrom === undefined ? {} : { stepsFrom }),
+      };
     }
     case "goTo": {
       if (typeof input.x !== "number" || typeof input.y !== "number") {
@@ -410,7 +429,12 @@ function validateStatement(
         fail("MISSING_FIELD", `${path}.degrees`, "expected a number", input.degrees);
       }
       checkBounds(input.degrees, TURN_DEGREES_MIN, TURN_DEGREES_MAX, `${path}.degrees`);
-      return { type: "turn", degrees: input.degrees };
+      const degreesFrom = optionalParamRef(input, "degreesFrom", path, state);
+      return {
+        type: "turn",
+        degrees: input.degrees,
+        ...(degreesFrom === undefined ? {} : { degreesFrom }),
+      };
     }
     case "pointInDirection": {
       if (typeof input.degrees !== "number") {
@@ -474,7 +498,12 @@ function validateStatement(
         fail("MISSING_FIELD", `${path}.seconds`, "expected a number", input.seconds);
       }
       checkBounds(input.seconds, WAIT_SECONDS_MIN, WAIT_SECONDS_MAX, `${path}.seconds`);
-      return { type: "wait", seconds: input.seconds };
+      const secondsFrom = optionalParamRef(input, "secondsFrom", path, state);
+      return {
+        type: "wait",
+        seconds: input.seconds,
+        ...(secondsFrom === undefined ? {} : { secondsFrom }),
+      };
     }
     case "switchCostume":
       return { type: "switchCostume", costumeId: checkText(input.costumeId, `${path}.costumeId`) };
@@ -560,9 +589,11 @@ function validateStatement(
       checkBounds(input.count, REPEAT_COUNT_MIN, REPEAT_COUNT_MAX, `${path}.count`);
       const nextDepth = depth + 1;
       checkDepth(nextDepth, `${path}.body`);
+      const countFrom = optionalParamRef(input, "countFrom", path, state);
       return {
         type: "repeat",
         count: input.count,
+        ...(countFrom === undefined ? {} : { countFrom }),
         body: validateStatementArray(input.body, `${path}.body`, state, nextDepth),
       };
     }
@@ -575,7 +606,39 @@ function validateStatement(
           input.procedureId,
         );
       }
-      return { type: "callProcedure", procedureId: input.procedureId };
+      const arity = state.procedureArity.get(input.procedureId) ?? 0;
+      if (arity === 0) {
+        if (input.args !== undefined) {
+          fail(
+            "INVALID_FIELD_TYPE",
+            `${path}.args`,
+            "this custom block takes no numbers",
+            input.args,
+          );
+        }
+        return { type: "callProcedure", procedureId: input.procedureId };
+      }
+      if (!Array.isArray(input.args) || input.args.length !== arity) {
+        fail(
+          "INVALID_FIELD_TYPE",
+          `${path}.args`,
+          `expected exactly ${arity} number(s) for this custom block`,
+          input.args,
+        );
+      }
+      const args = input.args.map((arg, index) => {
+        const value = validateExpression(arg, `${path}.args[${index}]`, state);
+        if (value.type !== "numericLiteral") {
+          fail(
+            "INVALID_FIELD_TYPE",
+            `${path}.args[${index}]`,
+            "expected a fixed number",
+            (arg as { type?: unknown } | null)?.type,
+          );
+        }
+        return value;
+      });
+      return { type: "callProcedure", procedureId: input.procedureId, args };
     }
     case "repeatUntil": {
       const nextDepth = depth + 1;
@@ -714,6 +777,68 @@ function validateList(input: unknown, path: string, state: ValidationState): Pro
 }
 
 const PROCEDURE_NAME = /^[\p{L}\p{N}][\p{L}\p{N} _-]{0,19}$/u;
+const PARAM_IDS: readonly ProcedureParamId[] = ["p1", "p2", "p3"];
+
+/** `<field>From`: take the value from one of the enclosing custom block's numbers. */
+function optionalParamRef(
+  input: Record<string, unknown>,
+  key: string,
+  path: string,
+  state: ValidationState,
+): ProcedureParamId | undefined {
+  const value = input[key];
+  if (value === undefined) return undefined;
+  if (
+    typeof value !== "string" ||
+    !(PARAM_IDS as readonly string[]).includes(value) ||
+    !state.currentParams?.has(value as ProcedureParamId)
+  ) {
+    fail(
+      "INVALID_REFERENCE",
+      `${path}.${key}`,
+      "expected one of the numbers of the custom block this is inside",
+      value,
+    );
+  }
+  return value as ProcedureParamId;
+}
+
+function validateProcedureParams(
+  input: unknown,
+  path: string,
+): readonly ProcedureParam[] | undefined {
+  if (input === undefined) return undefined;
+  if (!Array.isArray(input)) fail("INVALID_FIELD_TYPE", path, "expected an array", input);
+  if (input.length < 1 || input.length > PROCEDURE_PARAMS_MAX) {
+    fail("PROGRAM_TOO_LARGE", path, `expected 1 to ${PROCEDURE_PARAMS_MAX} numbers`, input.length);
+  }
+  const seen = new Set<string>();
+  return input.map((item, index) => {
+    const itemPath = `${path}[${index}]`;
+    if (!isPlainObject(item)) fail("INVALID_FIELD_TYPE", itemPath, "expected an object", item);
+    const unknownKey = Object.keys(item).find((key) => key !== "id" && key !== "name");
+    if (unknownKey !== undefined) {
+      fail("INVALID_FIELD_TYPE", `${itemPath}.${unknownKey}`, "unexpected field", item[unknownKey]);
+    }
+    // Ids are positional (p1, p2, p3 with no gaps) so a call's arguments line up by index.
+    if (item.id !== PARAM_IDS[index]) {
+      fail("INVALID_FIELD_TYPE", `${itemPath}.id`, `expected "${PARAM_IDS[index]}"`, item.id);
+    }
+    if (typeof item.name !== "string" || !PROCEDURE_NAME.test(item.name)) {
+      fail(
+        "INVALID_FIELD_TYPE",
+        `${itemPath}.name`,
+        `expected 1 to ${PROCEDURE_NAME_MAX_LENGTH} letters, digits, spaces, "_" or "-"`,
+        item.name,
+      );
+    }
+    if (seen.has(item.name.toLowerCase())) {
+      fail("INVALID_FIELD_TYPE", `${itemPath}.name`, "expected a unique number title", item.name);
+    }
+    seen.add(item.name.toLowerCase());
+    return { id: PARAM_IDS[index]!, name: item.name };
+  });
+}
 
 function validateProcedure(input: unknown, path: string, state: ValidationState): Procedure {
   countNode(state, path);
@@ -733,7 +858,14 @@ function validateProcedure(input: unknown, path: string, state: ValidationState)
   }
   recordId(state, input.id, `${path}.id`);
   state.procedureIds.add(input.id);
-  return { id: input.id, name: input.name, body: [] };
+  const params = validateProcedureParams(input.params, `${path}.params`);
+  state.procedureArity.set(input.id, params?.length ?? 0);
+  return {
+    id: input.id,
+    name: input.name,
+    ...(params === undefined ? {} : { params }),
+    body: [],
+  };
 }
 
 function validateScript(input: unknown, path: string, state: ValidationState): Script {
@@ -746,6 +878,7 @@ function validateScript(input: unknown, path: string, state: ValidationState): S
   }
   recordId(state, input.id, `${path}.id`);
   state.procedureIds = new Set();
+  state.procedureArity = new Map();
   let procedures: Procedure[] | undefined;
   if (input.procedures !== undefined) {
     if (!Array.isArray(input.procedures)) {
@@ -765,7 +898,9 @@ function validateScript(input: unknown, path: string, state: ValidationState): S
     procedures = headers.map((header, index) => {
       const raw = (input.procedures as Record<string, unknown>[])[index]!;
       const bodyPath = `${path}.procedures[${index}].body`;
+      state.currentParams = new Set((header.params ?? []).map((param) => param.id));
       const body = validateStatementArray(raw.body, bodyPath, state, 2);
+      state.currentParams = undefined;
       if (body.length < 1 || body.length > PROCEDURE_BODY_MAX) {
         fail(
           "PROGRAM_TOO_LARGE",
@@ -813,6 +948,8 @@ export function validateProgram(input: unknown): ProjectProgram {
     variableIds: new Set(),
     listIds: new Set(),
     procedureIds: new Set(),
+    procedureArity: new Map(),
+    currentParams: undefined,
   };
   const variables =
     input.variables === undefined

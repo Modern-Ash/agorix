@@ -36,6 +36,9 @@ export type {
   RepeatStatement,
   CallProcedureStatement,
   Procedure,
+  ProcedureParam,
+  ProcedureParamId,
+  ParamExpression,
   RepeatUntilStatement,
   Script,
   SchemaVersion,
@@ -53,7 +56,7 @@ export type {
   VariableExpression,
 } from "./schema.js";
 export { SCHEMA_VERSION } from "./schema.js";
-export { procedureIdentifiers } from "./procedures.js";
+export { paramIdentifiers, procedureIdentifiers } from "./procedures.js";
 export type {
   ProjectActor,
   ProjectAsset,
@@ -72,6 +75,7 @@ export {
   PROCEDURE_BODY_MAX,
   PROCEDURE_NAME_MAX_LENGTH,
   PROCEDURE_MAX_CALL_DEPTH,
+  PROCEDURE_PARAMS_MAX,
   EVENT_KEY_MAX_LENGTH,
   EVENT_MESSAGE_MAX_LENGTH,
   LOOKS_TEXT_MAX_LENGTH,

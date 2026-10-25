@@ -4,6 +4,9 @@ import {
   type Expression,
   type GraphicEffect,
   type MathFunction,
+  type NumericLiteralExpression,
+  type ProcedureParam,
+  type ProcedureParamId,
   type ProgramList,
   ProgramVariable,
   type ProjectProgram,
@@ -31,6 +34,7 @@ export type BlockType =
   | "looks_change_effect"
   | "looks_clear_effects"
   | "procedures_call"
+  | "procedures_param"
   | "looks_say"
   | "looks_think"
   | "looks_show"
@@ -99,6 +103,10 @@ export interface BlockNode {
     readonly max?: BlockNode;
     readonly delta?: BlockNode;
     readonly index?: BlockNode;
+    /** The numbers of a custom block call, in order. */
+    readonly arg1?: BlockNode;
+    readonly arg2?: BlockNode;
+    readonly arg3?: BlockNode;
   };
 }
 
@@ -106,6 +114,7 @@ export interface BlockNode {
 export interface BlockProcedure {
   readonly id: string;
   readonly name: string;
+  readonly params?: readonly ProcedureParam[];
   readonly body: readonly BlockNode[];
 }
 
@@ -212,6 +221,37 @@ function numberField(block: BlockNode, name: string, path: string): number {
   return value;
 }
 
+/** `<field>From`: a custom block number that replaces the fixed value; the program validator checks it. */
+function paramFrom(block: BlockNode, name: string): { [key: string]: ProcedureParamId } {
+  const value = block.fields?.[name];
+  return typeof value === "string" ? { [name]: value as ProcedureParamId } : {};
+}
+
+/** The numbers of a call, read from `arg1` to `arg3` while they are present. */
+function callArgs(
+  block: BlockNode,
+  nodeId: string,
+  path: string,
+  mapping: BlockMappingEntry[],
+): { args?: NumericLiteralExpression[] } {
+  const args: NumericLiteralExpression[] = [];
+  for (const name of ["arg1", "arg2", "arg3"] as const) {
+    const input = block.inputs?.[name];
+    if (input === undefined) break;
+    const expression = expressionFromBlock(
+      ensureBlock(input, `${path}.inputs.${name}`),
+      `${nodeId}/args[${args.length}]`,
+      `${path}.inputs.${name}`,
+      mapping,
+    );
+    if (expression.type !== "numericLiteral") {
+      fail("INVALID_FIELD_TYPE", `${path}.inputs.${name}`, "expected a fixed number", name);
+    }
+    args.push(expression);
+  }
+  return args.length === 0 ? {} : { args };
+}
+
 function stringField(block: BlockNode, name: string, path: string): string {
   const value = block.fields?.[name];
   if (typeof value !== "string") {
@@ -307,6 +347,8 @@ function expressionFromBlock(
       };
     case "lists_length":
       return { type: "listLength", listId: stringField(block, "listId", path) };
+    case "procedures_param":
+      return { type: "param", paramId: stringField(block, "paramId", path) as ProcedureParamId };
     case "operator_add":
     case "operator_subtract":
     case "operator_multiply":
@@ -417,11 +459,19 @@ function statementFromBlock(
   mapBlock(mapping, block.id, nodeId, "statement");
   switch (block.type) {
     case "motion_move":
-      return { type: "move", steps: numberField(block, "steps", path) };
+      return {
+        type: "move",
+        steps: numberField(block, "steps", path),
+        ...paramFrom(block, "stepsFrom"),
+      };
     case "motion_go_to":
       return { type: "goTo", x: numberField(block, "x", path), y: numberField(block, "y", path) };
     case "motion_turn":
-      return { type: "turn", degrees: numberField(block, "degrees", path) };
+      return {
+        type: "turn",
+        degrees: numberField(block, "degrees", path),
+        ...paramFrom(block, "degreesFrom"),
+      };
     case "motion_point_in_direction":
       return { type: "pointInDirection", degrees: numberField(block, "degrees", path) };
     case "motion_point_towards":
@@ -460,7 +510,11 @@ function statementFromBlock(
         seconds: numberField(block, "seconds", path),
       };
     case "procedures_call":
-      return { type: "callProcedure", procedureId: stringField(block, "procedureId", path) };
+      return {
+        type: "callProcedure",
+        procedureId: stringField(block, "procedureId", path),
+        ...callArgs(block, nodeId, path, mapping),
+      };
     case "motion_bounce_on_edge":
       return { type: "bounceOnEdge" };
     case "looks_say":
@@ -472,7 +526,11 @@ function statementFromBlock(
     case "looks_hide":
       return { type: "hide" };
     case "control_wait":
-      return { type: "wait", seconds: numberField(block, "seconds", path) };
+      return {
+        type: "wait",
+        seconds: numberField(block, "seconds", path),
+        ...paramFrom(block, "secondsFrom"),
+      };
     case "looks_set_size":
       return { type: "setSize", size: numberField(block, "size", path) };
     case "looks_change_size":
@@ -577,6 +635,7 @@ function statementFromBlock(
       return {
         type: "repeat",
         count: numberField(block, "count", path),
+        ...paramFrom(block, "countFrom"),
         body: statementsFromBlocks(
           statementInput(block, "body", path),
           `${nodeId}/body`,
@@ -664,6 +723,8 @@ function expressionToBlock(
       };
     case "listLength":
       return { id, type: "lists_length", fields: { listId: expression.listId } };
+    case "param":
+      return { id, type: "procedures_param", fields: { paramId: expression.paramId } };
     case "add":
     case "subtract":
     case "multiply":
@@ -755,7 +816,14 @@ function statementToBlock(
   mapBlock(mapping, id, nodeId, "statement");
   switch (statement.type) {
     case "move":
-      return { id, type: "motion_move", fields: { steps: statement.steps } };
+      return {
+        id,
+        type: "motion_move",
+        fields: {
+          steps: statement.steps,
+          ...(statement.stepsFrom === undefined ? {} : { stepsFrom: statement.stepsFrom }),
+        },
+      };
     case "glideTo":
       return {
         id,
@@ -765,7 +833,14 @@ function statementToBlock(
     case "goTo":
       return { id, type: "motion_go_to", fields: { x: statement.x, y: statement.y } };
     case "turn":
-      return { id, type: "motion_turn", fields: { degrees: statement.degrees } };
+      return {
+        id,
+        type: "motion_turn",
+        fields: {
+          degrees: statement.degrees,
+          ...(statement.degreesFrom === undefined ? {} : { degreesFrom: statement.degreesFrom }),
+        },
+      };
     case "pointInDirection":
       return { id, type: "motion_point_in_direction", fields: { degrees: statement.degrees } };
     case "pointTowards":
@@ -787,7 +862,21 @@ function statementToBlock(
     case "goToLayer":
       return { id, type: "looks_go_to_layer", fields: { layer: statement.layer } };
     case "callProcedure":
-      return { id, type: "procedures_call", fields: { procedureId: statement.procedureId } };
+      return {
+        id,
+        type: "procedures_call",
+        fields: { procedureId: statement.procedureId },
+        ...(statement.args === undefined
+          ? {}
+          : {
+              inputs: Object.fromEntries(
+                statement.args.map((arg, index) => [
+                  `arg${index + 1}`,
+                  expressionToBlock(arg, `${nodeId}/args[${index}]`, mapping),
+                ]),
+              ),
+            }),
+      };
     case "bounceOnEdge":
       return { id, type: "motion_bounce_on_edge" };
     case "say":
@@ -799,7 +888,14 @@ function statementToBlock(
     case "hide":
       return { id, type: "looks_hide" };
     case "wait":
-      return { id, type: "control_wait", fields: { seconds: statement.seconds } };
+      return {
+        id,
+        type: "control_wait",
+        fields: {
+          seconds: statement.seconds,
+          ...(statement.secondsFrom === undefined ? {} : { secondsFrom: statement.secondsFrom }),
+        },
+      };
     case "setSize":
       return { id, type: "looks_set_size", fields: { size: statement.size } };
     case "changeSize":
@@ -865,7 +961,10 @@ function statementToBlock(
       return {
         id,
         type: "control_repeat",
-        fields: { count: statement.count },
+        fields: {
+          count: statement.count,
+          ...(statement.countFrom === undefined ? {} : { countFrom: statement.countFrom }),
+        },
         inputs: { body: statementsToBlocks(statement.body, `${nodeId}/body`, mapping) },
       };
     case "repeatUntil":
@@ -925,6 +1024,7 @@ function scriptFromBlocks(
           procedures: script.procedures.map((procedure, procedureIndex) => ({
             id: procedure.id,
             name: procedure.name,
+            ...(procedure.params === undefined ? {} : { params: procedure.params }),
             body: statementsFromBlocks(
               ensureBlockArray(
                 procedure.body,
@@ -1016,6 +1116,7 @@ export function programToWorkspace(program: ProjectProgram): ProgramToWorkspaceR
               procedures: script.procedures.map((procedure, procedureIndex) => ({
                 id: procedure.id,
                 name: procedure.name,
+                ...(procedure.params === undefined ? {} : { params: procedure.params }),
                 body: statementsToBlocks(
                   procedure.body,
                   `${scriptId}/procedures[${procedureIndex}]/body`,

@@ -82,6 +82,7 @@ export const RUNTIME_EXPRESSION_OPERATIONS = Object.freeze([
   "randomInteger",
   "listItem",
   "listLength",
+  "param",
 ] as const);
 
 export const RUNTIME_TRIGGER_OPERATIONS = Object.freeze([
@@ -170,6 +171,7 @@ function assertExpressionAllowed(expression: Expression, path: string): void {
     case "numericLiteral":
     case "variable":
     case "listLength":
+    case "param":
       return;
   }
 }

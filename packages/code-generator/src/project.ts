@@ -8,7 +8,7 @@ import type {
   Statement,
   Trigger,
 } from "@agorix/program-model";
-import { procedureIdentifiers } from "@agorix/program-model";
+import { paramIdentifiers, procedureIdentifiers } from "@agorix/program-model";
 import {
   createUnsupportedNodeDiagnostic,
   firstRangeMapping,
@@ -78,6 +78,7 @@ interface ProjectionContext {
   readonly variableLabels: ReadonlyMap<string, string>;
   /** Custom-block identifiers of the script being projected. */
   procedureNames?: ReadonlyMap<string, string>;
+  paramNames?: ReadonlyMap<string, string> | undefined;
 }
 
 function safeIdentifier(value: string, fallback: string): string {
@@ -124,6 +125,10 @@ function createProjectionContext(
     variableLabels.set(variable.id, variable.name);
   }
   return { variableNames, variableLabels };
+}
+
+function paramText(context: ProjectionContext, id: string): string {
+  return context.paramNames?.get(id) ?? "n_unknown";
 }
 
 function formatListName(context: ProjectionContext, listId: string, nodeId: string): string {
@@ -204,6 +209,8 @@ function formatExpression(
       return `listItem(${formatListName(context, expression.listId, nodeId)}, ${formatExpression(expression.index, `${nodeId}/index`, context)})`;
     case "listLength":
       return `${formatListName(context, expression.listId, nodeId)}.length`;
+    case "param":
+      return paramText(context, expression.paramId);
     case "random":
       return `random(${formatExpression(expression.min, `${nodeId}/min`, context)}, ${formatExpression(expression.max, `${nodeId}/max`, context)})`;
     default: {
@@ -255,7 +262,10 @@ function projectStatement(
 ): void {
   switch (statement.type) {
     case "move":
-      write(writer, `${pad}sprite.move(${formatNumber(statement.steps)});\n`);
+      write(
+        writer,
+        `${pad}sprite.move(${statement.stepsFrom === undefined ? formatNumber(statement.steps) : paramText(context, statement.stepsFrom)});\n`,
+      );
       return;
     case "glideTo":
       write(
@@ -270,7 +280,10 @@ function projectStatement(
       );
       return;
     case "turn":
-      write(writer, `${pad}sprite.turn(${formatNumber(statement.degrees)});\n`);
+      write(
+        writer,
+        `${pad}sprite.turn(${statement.degreesFrom === undefined ? formatNumber(statement.degrees) : paramText(context, statement.degreesFrom)});\n`,
+      );
       return;
     case "pointInDirection":
       write(writer, `${pad}sprite.pointInDirection(${formatNumber(statement.degrees)});\n`);
@@ -299,7 +312,7 @@ function projectStatement(
     case "callProcedure":
       write(
         writer,
-        `${pad}${context.procedureNames?.get(statement.procedureId) ?? "my_block"}();\n`,
+        `${pad}${context.procedureNames?.get(statement.procedureId) ?? "my_block"}(${(statement.args ?? []).map((arg) => formatNumber(arg.value)).join(", ")});\n`,
       );
       return;
     case "bounceOnEdge":
@@ -337,7 +350,10 @@ function projectStatement(
       );
       return;
     case "wait":
-      write(writer, `${pad}wait(${formatNumber(statement.seconds)});\n`);
+      write(
+        writer,
+        `${pad}wait(${statement.secondsFrom === undefined ? formatNumber(statement.seconds) : paramText(context, statement.secondsFrom)});\n`,
+      );
       return;
     case "setSize":
       write(writer, `${pad}sprite.setSize(${formatNumber(statement.size)});\n`);
@@ -391,7 +407,10 @@ function projectStatement(
       );
       return;
     case "repeat": {
-      write(writer, `${pad}repeat(${formatNumber(statement.count)}, () => {\n`);
+      write(
+        writer,
+        `${pad}repeat(${statement.countFrom === undefined ? formatNumber(statement.count) : `Math.round(${paramText(context, statement.countFrom)})`}, () => {\n`,
+      );
       projectStatements(statement.body, nodeId, "body", indent + 1, writer, context);
       write(writer, `${pad}});\n`);
       return;
@@ -460,8 +479,12 @@ function projectProcedure(
 ): void {
   const path = `scripts[${scriptIndex}]/procedures[${procedureIndex}]`;
   const start = writer.offset;
-  write(writer, `function ${identifier}() {\n`);
+  const params = procedure.params ?? [];
+  const identifiers = paramIdentifiers(params);
+  context.paramNames = new Map(params.map((item, k) => [item.id, identifiers[k]!]));
+  write(writer, `function ${identifier}(${identifiers.join(", ")}) {\n`);
   projectStatements(procedure.body, path, "body", 1, writer, context);
+  context.paramNames = undefined;
   write(writer, "}\n\n");
   writer.mapping[path] = { start, end: writer.offset };
 }
