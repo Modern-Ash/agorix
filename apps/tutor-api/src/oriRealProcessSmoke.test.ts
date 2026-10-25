@@ -10,7 +10,10 @@ import { createOriShadowTransport } from "./oriExternalShadowTransport.js";
  * CI without this checkout skips it, preserving independent repository builds.
  */
 const oriPath = process.env["ORI_REPO_PATH"];
-const runnable = !!oriPath && existsSync(resolve(oriPath, "examples/shadow-api/serve.mjs"));
+const runnable = !!oriPath;
+if (runnable && !existsSync(resolve(oriPath, "examples/shadow-api/serve.mjs"))) {
+  throw new Error("ORI_REPO_PATH is set but Ori reference server is missing");
+}
 
 describe.skipIf(!runnable)("real Ori process to Agorix consumer contract", () => {
   it("sends synthetic metadata to a separately running Ori process", async () => {
@@ -34,11 +37,14 @@ describe.skipIf(!runnable)("real Ori process to Agorix consumer contract", () =>
           if (response.ok) {
             const data: unknown = await response.json();
             const { validateOriShadowPlan } = await import("./oriShadowPlanValidation.js");
-            expect(validateOriShadowPlan(data)).not.toBeNull();
+            if (validateOriShadowPlan(data) === null) {
+              throw new Error("Ori returned incompatible shadow-plan contract");
+            }
             ready = true;
             break;
           }
-        } catch {
+        } catch (error) {
+          if (error instanceof Error && error.message.includes("incompatible shadow-plan")) throw error;
           await new Promise((resolveWait) => setTimeout(resolveWait, 50));
         }
       }
@@ -46,7 +52,14 @@ describe.skipIf(!runnable)("real Ori process to Agorix consumer contract", () =>
       const transport = createOriShadowTransport(url);
       expect(await transport({ missionIndex: 1, hintLevel: 2, scriptCount: 1 })).toBeUndefined();
     } finally {
-      child.kill("SIGTERM");
+      if (child.exitCode === null) {
+        child.kill("SIGTERM");
+        await Promise.race([
+          new Promise<void>((resolveExit) => child.once("exit", () => resolveExit())),
+          new Promise<void>((resolveWait) => setTimeout(resolveWait, 1000)),
+        ]);
+        if (child.exitCode === null) child.kill("SIGKILL");
+      }
     }
   }, 10_000);
 });
