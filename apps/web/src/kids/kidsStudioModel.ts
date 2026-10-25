@@ -1,5 +1,6 @@
 import { recordCanonicalTransaction, type EditorHistory } from "@agorix/block-editor";
 import {
+  PEN_COLORS,
   SCHEMA_VERSION,
   validateProgram,
   validateProjectCreativeState,
@@ -69,6 +70,11 @@ export type StudioStatement = Extract<
       | "repeat"
       | "repeatUntil"
       | "callProcedure"
+      | "penDown"
+      | "penUp"
+      | "setPenColor"
+      | "setPenSize"
+      | "clearPen"
       | "if";
   }
 >;
@@ -84,6 +90,8 @@ export const STUDIO_EDGE_CONDITION = {
 } as const;
 const DATA_NAME = /^[\p{L}\p{N}][\p{L}\p{N} _-]{0,19}$/u;
 const MAX_STUDIO_BLOCKS = 60;
+/** Pen widths a child can pick; the model accepts 1 to 24, the Studio offers four. */
+export const STUDIO_PEN_SIZES: readonly number[] = [4, 8, 12, 20];
 const MAX_STUDIO_CONTROL_DEPTH = 2;
 const MAX_STUDIO_BODY = 3;
 const STUDIO_ART_ID = /^(costume|backdrop):studio-art-([1-9][0-9]?)$/;
@@ -329,6 +337,11 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0, arity
       [-25, 25].includes(statement.delta)
     );
   if (statement.type === "clearEffects") return true;
+  if (statement.type === "penDown" || statement.type === "penUp" || statement.type === "clearPen")
+    return true;
+  if (statement.type === "setPenColor")
+    return (PEN_COLORS as readonly string[]).includes(statement.color);
+  if (statement.type === "setPenSize") return STUDIO_PEN_SIZES.includes(statement.size);
   if (statement.type === "goToLayer")
     return statement.layer === "front" || statement.layer === "back";
   if (statement.type === "switchCostume")
@@ -426,6 +439,8 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0, arity
 export function validateStudioProgram(raw: ProjectProgram): ProjectProgram {
   const program = validateProgram(raw);
   if (
+    (program.extensions !== undefined &&
+      (program.extensions.length !== 1 || program.extensions[0] !== "pen")) ||
     program.scripts.length < 1 ||
     program.scripts.length > MAX_STUDIO_ACTORS ||
     (program.variables?.length ?? 0) > 3 ||
@@ -589,7 +604,15 @@ export function appendStudioStatement(
   const scripts = [...program.scripts];
   const script = scripts[index]!;
   scripts[index] = { ...script, statements: [...script.statements, statement] };
-  const next = validateStudioProgram({ ...program, scripts });
+  // A pen block makes the project declare the pen extension (ADR 0011).
+  const usesPen = ["penDown", "penUp", "setPenColor", "setPenSize", "clearPen"].includes(
+    statement.type,
+  );
+  const next = validateStudioProgram({
+    ...program,
+    ...(usesPen && program.extensions === undefined ? { extensions: ["pen" as const] } : {}),
+    scripts,
+  });
   return recordCanonicalTransaction(history, { label: `add ${statement.type}`, after: next })
     .history;
 }

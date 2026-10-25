@@ -128,3 +128,7 @@ The block adapter maps these expressions to `sensing_x_position`, `sensing_y_pos
 ## Sound volume
 
 `setVolume` (`volume`, 0 to 100) and `changeVolume` (`delta`, -100 to 100) set and change one global sound volume. The validator rejects values outside those ranges or that are not finite numbers; it never clamps inside the program. At run time the volume lives in `world.sounds.volume`, is clamped to 0-100 and survives `stopSounds`. The key is absent until a volume statement runs (absent means 100), so programs without volume statements keep identical worlds, traces and semantic hashes. The blocks are `sound_set_volume` and `sound_change_volume`; projections read `set volume to 40` (Agorix Code), `set_volume(40)` (Python) and `sound.setVolume(40)` (TypeScript). The App scales its synthetic cue gain by the volume and Studio shows it next to the active sounds.
+
+## Extensions (ADR 0011)
+
+`ProjectProgram.extensions` lists the first-party capability packs a project uses (`"pen"`; at most four, unique, from a fixed list). The validator rejects an unknown id and a program that uses a pack's statements without declaring it. The pen pack adds `penDown`, `penUp`, `setPenColor` (one of `dark`, `red`, `orange`, `green`, `blue`, `purple`), `setPenSize` (whole number 1 to 24) and `clearPen`. The world gains an optional `pen` (down, colour, size, at most 400 line pieces) only after a pen statement ran; a leaf movement statement (`move`, `goTo`, `glideTo`, `bounceOnEdge`) with the pen down appends one piece from the old to the new position.

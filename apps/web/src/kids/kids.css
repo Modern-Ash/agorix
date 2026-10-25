@@ -2734,6 +2734,14 @@
   border-radius: 1rem;
   overflow: hidden;
 }
+.kids-studio-pen {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
 .kids-studio-stage-actor {
   position: absolute;
   z-index: 1;

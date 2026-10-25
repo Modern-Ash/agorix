@@ -9,6 +9,8 @@ import {
   type ProcedureParam,
   type ProcedureParamId,
   type ProgramList,
+  type ExtensionId,
+  type PenColor,
   ProgramVariable,
   type ProjectProgram,
   type Script,
@@ -34,6 +36,11 @@ export type BlockType =
   | "looks_set_effect"
   | "looks_change_effect"
   | "looks_clear_effects"
+  | "pen_down"
+  | "pen_up"
+  | "pen_set_color"
+  | "pen_set_size"
+  | "pen_clear"
   | "procedures_call"
   | "procedures_param"
   | "looks_say"
@@ -132,6 +139,7 @@ export interface BlockScript {
 export interface BlockWorkspaceSnapshot {
   readonly variables?: readonly ProgramVariable[];
   readonly lists?: readonly ProgramList[];
+  readonly extensions?: readonly ExtensionId[];
   readonly scripts: readonly BlockScript[];
 }
 
@@ -497,6 +505,16 @@ function statementFromBlock(
       };
     case "looks_clear_effects":
       return { type: "clearEffects" };
+    case "pen_down":
+      return { type: "penDown" };
+    case "pen_up":
+      return { type: "penUp" };
+    case "pen_clear":
+      return { type: "clearPen" };
+    case "pen_set_color":
+      return { type: "setPenColor", color: stringField(block, "color", path) as PenColor };
+    case "pen_set_size":
+      return { type: "setPenSize", size: numberField(block, "size", path) };
     case "looks_go_to_layer": {
       const layer = stringField(block, "layer", path);
       if (layer !== "front" && layer !== "back") {
@@ -870,6 +888,16 @@ function statementToBlock(
       };
     case "clearEffects":
       return { id, type: "looks_clear_effects" };
+    case "penDown":
+      return { id, type: "pen_down" };
+    case "penUp":
+      return { id, type: "pen_up" };
+    case "clearPen":
+      return { id, type: "pen_clear" };
+    case "setPenColor":
+      return { id, type: "pen_set_color", fields: { color: statement.color } };
+    case "setPenSize":
+      return { id, type: "pen_set_size", fields: { size: statement.size } };
     case "goToLayer":
       return { id, type: "looks_go_to_layer", fields: { layer: statement.layer } };
     case "callProcedure":
@@ -1099,6 +1127,7 @@ export function workspaceToProgram(workspace: BlockWorkspaceSnapshot): Workspace
     schema: SCHEMA_VERSION,
     ...(workspace.variables === undefined ? {} : { variables: workspace.variables }),
     ...(workspace.lists === undefined ? {} : { lists: workspace.lists }),
+    ...(workspace.extensions === undefined ? {} : { extensions: workspace.extensions }),
     scripts: workspace.scripts.map((script, index) => scriptFromBlocks(script, index, mapping)),
   });
   return { program, mapping };
@@ -1110,6 +1139,7 @@ export function programToWorkspace(program: ProjectProgram): ProgramToWorkspaceR
   const workspace: BlockWorkspaceSnapshot = {
     ...(validated.variables === undefined ? {} : { variables: validated.variables }),
     ...(validated.lists === undefined ? {} : { lists: validated.lists }),
+    ...(validated.extensions === undefined ? {} : { extensions: validated.extensions }),
     scripts: validated.scripts.map((script, index) => {
       const scriptId = `scripts[${index}]`;
       const blockId = blockIdFor(scriptId);

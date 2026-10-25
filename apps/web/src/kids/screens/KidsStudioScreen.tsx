@@ -18,6 +18,7 @@ import {
   type ProgramProposal,
 } from "@agorix/proposals";
 import { validateOriStudioProposal } from "@agorix/ori-agent";
+import { PEN_COLORS, type PenColor } from "@agorix/program-model";
 import type {
   Expression,
   Procedure,
@@ -53,6 +54,7 @@ import {
   STUDIO_EDGE_CONDITION,
   STUDIO_NUMBER_CHOICES,
   STUDIO_NUMBER_DEFAULTS,
+  STUDIO_PEN_SIZES,
   studioBlockHasNumberSlot,
   studioBlockNumber,
   studioProcedureNumberUnits,
@@ -210,6 +212,20 @@ const COPY = {
     saveTimer: "Guardar el tiempo",
     senseKey: "Tecla a sentir",
     heldKeys: "Teclas mantenidas al jugar",
+    penTitle: "Lápiz",
+    penDown: "Bajar el lápiz",
+    penUp: "Subir el lápiz",
+    penColor: "Color del lápiz",
+    penSize: "Grosor del lápiz",
+    clearPen: "Borrar los trazos",
+    penColors: {
+      dark: "oscuro",
+      red: "rojo",
+      orange: "naranja",
+      green: "verde",
+      blue: "azul",
+      purple: "violeta",
+    },
     ifKeyDown: "Si la tecla está pulsada, mover 1",
     groupIfKeyDown: "Si la tecla está pulsada, ejecutar estos bloques",
     timerSeconds: "Segundos del temporizador",
@@ -372,6 +388,20 @@ const COPY = {
     saveTimer: "Save the time",
     senseKey: "Key to sense",
     heldKeys: "Keys held while playing",
+    penTitle: "Pen",
+    penDown: "Pen down",
+    penUp: "Pen up",
+    penColor: "Pen color",
+    penSize: "Pen size",
+    clearPen: "Clear drawing lines",
+    penColors: {
+      dark: "dark",
+      red: "red",
+      orange: "orange",
+      green: "green",
+      blue: "blue",
+      purple: "purple",
+    },
     ifKeyDown: "If the key is down, move 1",
     groupIfKeyDown: "If the key is down, run these blocks",
     timerSeconds: "Timer seconds",
@@ -421,6 +451,18 @@ const COPY = {
 
 const STUDIO_KEYS = ["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"] as const;
 const STUDIO_MESSAGES = ["hola", "vamos", "listo"] as const;
+const PEN_HEX: Record<PenColor, string> = {
+  dark: "#252342",
+  red: "#ef627d",
+  orange: "#ffb14a",
+  green: "#61b992",
+  blue: "#548de4",
+  purple: "#a17ad6",
+};
+/** The stage position of a coordinate, in percent, matching where an actor is drawn. */
+const stageX = (x: number) => Math.max(4, Math.min(90, 8 + x / 4));
+const stageY = (y: number) => Math.max(8, Math.min(82, 40 + y / 3));
+
 type StudioEvent = "greenFlag" | "onActorClicked" | "onKeyPressed" | "onMessage";
 
 function expressionLabel(
@@ -537,6 +579,9 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
   const [senseKey, setSenseKey] = useState<(typeof STUDIO_KEYS)[number]>("Space");
   const [timerSeconds, setTimerSeconds] = useState(3);
   const [heldKeys, setHeldKeys] = useState<string[]>([]);
+  const [penColor, setPenColor] = useState<PenColor>("dark");
+  const [penSize, setPenSize] = useState(8);
+  const penEnabled = useKidsFlag("extensionPen");
   const [dataName, setDataName] = useState("");
   const [dataValue, setDataValue] = useState(1);
   const [mathFn, setMathFn] = useState<"abs" | "round" | "floor" | "ceiling">("round");
@@ -990,6 +1035,16 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
         return `${statement.type === "listInsertAt" ? copy.listInsert : copy.listReplace}: ${history.current.lists?.find((item) => item.id === statement.listId)?.name ?? "?"} ${expressionLabel(statement.index, history.current)} ← ${expressionLabel(statement.value, history.current)}`;
       case "repeat":
         return `${copy.repeat} ${statement.count}`;
+      case "penDown":
+        return copy.penDown;
+      case "penUp":
+        return copy.penUp;
+      case "clearPen":
+        return copy.clearPen;
+      case "setPenColor":
+        return `${copy.penColor}: ${copy.penColors[statement.color]}`;
+      case "setPenSize":
+        return `${copy.penSize}: ${statement.size}`;
       case "callProcedure": {
         const procedure = script?.procedures?.find((item) => item.id === statement.procedureId);
         const numbers = (procedure?.params ?? [])
@@ -1393,6 +1448,30 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
             role="group"
             label={copy.stage}
           >
+            {shownActors?.some((entry) => entry.world.pen?.segments.length) ? (
+              <svg
+                className="kids-studio-pen"
+                viewBox="0 0 100 100"
+                preserveAspectRatio="none"
+                aria-hidden="true"
+              >
+                {shownActors.flatMap((entry) =>
+                  (entry.world.pen?.segments ?? []).map((segment, index) => (
+                    <line
+                      key={`${entry.id}-${index}`}
+                      x1={stageX(segment.x1)}
+                      y1={stageY(segment.y1)}
+                      x2={stageX(segment.x2)}
+                      y2={stageY(segment.y2)}
+                      stroke={PEN_HEX[segment.color]}
+                      strokeWidth={segment.size / 2}
+                      strokeLinecap="round"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  )),
+                )}
+              </svg>
+            ) : null}
             {creative.actors?.map((item) => {
               const final = shownActors?.find((entry) => entry.id === item.id);
               const characterId = characterOfCostume(
@@ -2653,6 +2732,72 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
             >
               {copy.groupUntilTimer}
             </button>
+            {penEnabled ? (
+              <div role="group" aria-label={copy.penTitle}>
+                <strong>{copy.penTitle}</strong>
+                <button
+                  type="button"
+                  className="kids-button"
+                  onClick={() => add({ type: "penDown" })}
+                >
+                  + {copy.penDown}
+                </button>
+                <button
+                  type="button"
+                  className="kids-button"
+                  onClick={() => add({ type: "penUp" })}
+                >
+                  + {copy.penUp}
+                </button>
+                <label>
+                  {copy.penColor}{" "}
+                  <select
+                    value={penColor}
+                    onChange={(event) => setPenColor(event.target.value as PenColor)}
+                  >
+                    {PEN_COLORS.map((color) => (
+                      <option key={color} value={color}>
+                        {copy.penColors[color]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  className="kids-button"
+                  onClick={() => add({ type: "setPenColor", color: penColor })}
+                >
+                  + {copy.penColor}
+                </button>
+                <label>
+                  {copy.penSize}{" "}
+                  <select
+                    value={penSize}
+                    onChange={(event) => setPenSize(Number(event.target.value))}
+                  >
+                    {STUDIO_PEN_SIZES.map((size) => (
+                      <option key={size} value={size}>
+                        {size}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  className="kids-button"
+                  onClick={() => add({ type: "setPenSize", size: penSize })}
+                >
+                  + {copy.penSize}
+                </button>
+                <button
+                  type="button"
+                  className="kids-button"
+                  onClick={() => add({ type: "clearPen" })}
+                >
+                  + {copy.clearPen}
+                </button>
+              </div>
+            ) : null}
             {targetActorId ? (
               <>
                 <label>

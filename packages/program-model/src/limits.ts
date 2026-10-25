@@ -40,6 +40,12 @@ export const PROCEDURE_BODY_MAX = 20;
 export const PROCEDURE_NAME_MAX_LENGTH = 20;
 /** A custom block takes at most this many numbers (ids p1 to p3). */
 export const PROCEDURE_PARAMS_MAX = 3;
+
+/** Most extension packs one project may declare (ADR 0011). */
+export const EXTENSIONS_MAX = 4;
+
+/** Widest pen the extension allows, in stage units. */
+export const PEN_SIZE_MAX = 24;
 /** Active calls above this depth end the run as budget-exceeded; recursion is allowed below it. */
 export const PROCEDURE_MAX_CALL_DEPTH = 16;
 
