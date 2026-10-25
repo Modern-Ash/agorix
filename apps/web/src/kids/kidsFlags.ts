@@ -15,6 +15,7 @@ export const KIDS_V2_FEATURES = [
   "advancedOps",
   "adultLink",
   "groupMode",
+  "extensionPen",
 ] as const;
 
 export type KidsV2Feature = (typeof KIDS_V2_FEATURES)[number];

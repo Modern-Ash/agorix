@@ -1,5 +1,7 @@
-import { SCHEMA_VERSION } from "./schema.js";
+import { EXTENSION_IDS, PEN_COLORS, SCHEMA_VERSION } from "./schema.js";
 import type {
+  ExtensionId,
+  PenColor,
   Expression,
   MathFunction,
   ProgramList,
@@ -14,6 +16,8 @@ import type {
   Trigger,
 } from "./schema.js";
 import {
+  EXTENSIONS_MAX,
+  PEN_SIZE_MAX,
   MAX_NESTING_DEPTH,
   EVENT_KEY_MAX_LENGTH,
   EVENT_MESSAGE_MAX_LENGTH,
@@ -135,6 +139,8 @@ interface ValidationState {
   procedureArity: Map<string, number>;
   /** Numbers declared by the custom block whose body is being checked (undefined elsewhere). */
   currentParams: ReadonlySet<ProcedureParamId> | undefined;
+  /** Extension packs whose blocks the program uses, checked against its declared list. */
+  usedExtensions: Set<ExtensionId>;
 }
 
 function countNode(state: ValidationState, path: string): void {
@@ -473,6 +479,35 @@ function validateStatement(
     }
     case "clearEffects":
       return { type: "clearEffects" };
+    case "penDown":
+    case "penUp":
+    case "clearPen":
+      state.usedExtensions.add("pen");
+      return { type: input.type as "penDown" | "penUp" | "clearPen" };
+    case "setPenColor": {
+      state.usedExtensions.add("pen");
+      if (!(PEN_COLORS as readonly unknown[]).includes(input.color)) {
+        fail("INVALID_FIELD_TYPE", `${path}.color`, "expected a pen colour", input.color);
+      }
+      return { type: "setPenColor", color: input.color as PenColor };
+    }
+    case "setPenSize": {
+      state.usedExtensions.add("pen");
+      if (
+        typeof input.size !== "number" ||
+        !Number.isInteger(input.size) ||
+        input.size < 1 ||
+        input.size > PEN_SIZE_MAX
+      ) {
+        fail(
+          "INVALID_FIELD_TYPE",
+          `${path}.size`,
+          `expected a whole number 1 to ${PEN_SIZE_MAX}`,
+          input.size,
+        );
+      }
+      return { type: "setPenSize", size: input.size };
+    }
     case "goToLayer":
       if (input.layer !== "front" && input.layer !== "back") {
         fail("INVALID_FIELD_TYPE", `${path}.layer`, 'expected "front" or "back"', input.layer);
@@ -959,6 +994,7 @@ export function validateProgram(input: unknown): ProjectProgram {
     procedureIds: new Set(),
     procedureArity: new Map(),
     currentParams: undefined,
+    usedExtensions: new Set(),
   };
   const variables =
     input.variables === undefined
@@ -977,10 +1013,61 @@ export function validateProgram(input: unknown): ProjectProgram {
   const scripts = input.scripts.map((item, index) =>
     validateScript(item, `$.scripts[${index}]`, state),
   );
+  const extensions = validateExtensions(input.extensions, state.usedExtensions);
   return {
     schema: SCHEMA_VERSION,
     ...(variables === undefined ? {} : { variables }),
     ...(lists === undefined ? {} : { lists }),
+    ...(extensions === undefined ? {} : { extensions }),
     scripts,
   };
+}
+
+function validateExtensions(
+  input: unknown,
+  used: ReadonlySet<ExtensionId>,
+): readonly ExtensionId[] | undefined {
+  if (input === undefined) {
+    if (used.size > 0) {
+      fail(
+        "INVALID_REFERENCE",
+        "$.extensions",
+        "the program uses an extension it does not declare",
+        [...used],
+      );
+    }
+    return undefined;
+  }
+  if (!Array.isArray(input) || input.length < 1 || input.length > EXTENSIONS_MAX) {
+    fail(
+      "INVALID_FIELD_TYPE",
+      "$.extensions",
+      `expected 1 to ${EXTENSIONS_MAX} extension ids`,
+      input,
+    );
+  }
+  const seen = new Set<string>();
+  const declared = input.map((item, index) => {
+    if (!(EXTENSION_IDS as readonly unknown[]).includes(item) || seen.has(item as string)) {
+      fail(
+        "INVALID_FIELD_TYPE",
+        `$.extensions[${index}]`,
+        "expected a known, unique extension id",
+        item,
+      );
+    }
+    seen.add(item as string);
+    return item as ExtensionId;
+  });
+  for (const id of used) {
+    if (!seen.has(id)) {
+      fail(
+        "INVALID_REFERENCE",
+        "$.extensions",
+        `the program uses the ${id} extension it does not declare`,
+        id,
+      );
+    }
+  }
+  return declared;
 }

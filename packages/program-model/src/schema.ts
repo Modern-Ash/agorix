@@ -295,6 +295,36 @@ export interface ChangeEffectStatement {
   readonly delta: number;
 }
 
+/** The pen extension (ADR 0011): a closed palette, so a drawing never carries a free colour. */
+export const PEN_COLORS = ["dark", "red", "orange", "green", "blue", "purple"] as const;
+export type PenColor = (typeof PEN_COLORS)[number];
+
+export interface PenDownStatement {
+  readonly type: "penDown";
+}
+
+export interface PenUpStatement {
+  readonly type: "penUp";
+}
+
+export interface SetPenColorStatement {
+  readonly type: "setPenColor";
+  readonly color: PenColor;
+}
+
+export interface SetPenSizeStatement {
+  readonly type: "setPenSize";
+  readonly size: number;
+}
+
+export interface ClearPenStatement {
+  readonly type: "clearPen";
+}
+
+/** First-party extension packs a project may use; each needs its own ADR 0011 review. */
+export const EXTENSION_IDS = ["pen"] as const;
+export type ExtensionId = (typeof EXTENSION_IDS)[number];
+
 export interface ClearEffectsStatement {
   readonly type: "clearEffects";
 }
@@ -462,6 +492,11 @@ export type Statement =
   | SetEffectStatement
   | ChangeEffectStatement
   | ClearEffectsStatement
+  | PenDownStatement
+  | PenUpStatement
+  | SetPenColorStatement
+  | SetPenSizeStatement
+  | ClearPenStatement
   | SayStatement
   | ThinkStatement
   | ShowStatement
@@ -567,5 +602,7 @@ export interface ProjectProgram {
   readonly variables?: readonly ProgramVariable[];
   /** Optional: absent in every program written before lists existed. */
   readonly lists?: readonly ProgramList[];
+  /** Extension packs the project uses (ADR 0011); absent when it uses none. */
+  readonly extensions?: readonly ExtensionId[];
   readonly scripts: readonly Script[];
 }

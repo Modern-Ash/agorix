@@ -1,4 +1,11 @@
-import { LIST_MAX_ITEMS, SPRITE_SIZE_MAX, SPRITE_SIZE_MIN } from "@agorix/program-model";
+import {
+  LIST_MAX_ITEMS,
+  PEN_COLORS,
+  PEN_SIZE_MAX,
+  SPRITE_SIZE_MAX,
+  SPRITE_SIZE_MIN,
+  type PenColor,
+} from "@agorix/program-model";
 export interface Position {
   readonly x: number;
   readonly y: number;
@@ -41,6 +48,26 @@ export interface SoundState {
   readonly volume?: number;
 }
 
+/** Most line pieces a world keeps for the pen; past that, new drawing is skipped and noted. */
+export const PEN_SEGMENTS_MAX = 400;
+
+export interface PenSegment {
+  readonly x1: number;
+  readonly y1: number;
+  readonly x2: number;
+  readonly y2: number;
+  readonly color: PenColor;
+  readonly size: number;
+}
+
+/** Present only after a pen block ran, so every other world is unchanged (ADR 0011). */
+export interface PenState {
+  readonly down: boolean;
+  readonly color: PenColor;
+  readonly size: number;
+  readonly segments: readonly PenSegment[];
+}
+
 export interface WorldState {
   readonly sprite: SpriteState;
   readonly goal: Position;
@@ -49,6 +76,7 @@ export interface WorldState {
   /** Present only for programs that declare lists, so every other world is unchanged. */
   readonly lists?: Readonly<Record<string, ListState>>;
   readonly sounds?: SoundState;
+  readonly pen?: PenState;
 }
 
 export interface WorldStateInput {
@@ -58,6 +86,7 @@ export interface WorldStateInput {
   readonly variables?: Readonly<Record<string, Partial<VariableState> | undefined>>;
   readonly lists?: Readonly<Record<string, Partial<ListState> | undefined>>;
   readonly sounds?: Partial<SoundState>;
+  readonly pen?: Partial<PenState>;
 }
 
 const COORDINATE_SCALE = 1_000_000_000;
@@ -124,6 +153,31 @@ function clampVolume(value: number): number {
   return Math.min(100, Math.max(0, normalizeCoordinate(value)));
 }
 
+function normalizePen(input: Partial<PenState> | undefined): PenState | undefined {
+  if (input === undefined) return undefined;
+  const color = input.color ?? "dark";
+  if (!(PEN_COLORS as readonly string[]).includes(color)) {
+    throw new RangeError(`unknown pen colour: ${color}`);
+  }
+  const size = input.size ?? 4;
+  if (!Number.isInteger(size) || size < 1 || size > PEN_SIZE_MAX) {
+    throw new RangeError(`pen size out of range: ${size}`);
+  }
+  return {
+    down: input.down ?? false,
+    color,
+    size,
+    segments: (input.segments ?? []).slice(0, PEN_SEGMENTS_MAX).map((item) => ({
+      x1: normalizeCoordinate(item.x1),
+      y1: normalizeCoordinate(item.y1),
+      x2: normalizeCoordinate(item.x2),
+      y2: normalizeCoordinate(item.y2),
+      color: item.color,
+      size: item.size,
+    })),
+  };
+}
+
 function normalizeSounds(input: Partial<SoundState> | undefined): SoundState | undefined {
   if (input === undefined || (input.activeSoundIds === undefined && input.volume === undefined)) {
     return undefined;
@@ -138,6 +192,7 @@ export function createWorldState(input: WorldStateInput = {}): WorldState {
   const variables = normalizeVariables(input.variables);
   const lists = normalizeLists(input.lists);
   const sounds = normalizeSounds(input.sounds);
+  const pen = normalizePen(input.pen);
   return {
     sprite: {
       x: normalizeCoordinate(input.sprite?.x ?? 0),
@@ -164,6 +219,7 @@ export function createWorldState(input: WorldStateInput = {}): WorldState {
     ...(variables === undefined ? {} : { variables }),
     ...(lists === undefined ? {} : { lists }),
     ...(sounds === undefined ? {} : { sounds }),
+    ...(pen === undefined ? {} : { pen }),
   };
 }
 
@@ -249,6 +305,67 @@ export function clearEffectsWorld(world: WorldState): WorldState {
   const { effects: _effects, ...sprite } = world.sprite;
   void _effects;
   return createWorldState({ ...world, sprite });
+}
+
+function withPen(world: WorldState, change: Partial<PenState>): WorldState {
+  return createWorldState({ ...world, pen: { ...normalizePen(world.pen)!, ...change } });
+}
+
+function dot(world: WorldState, pen: PenState): readonly PenSegment[] {
+  const { x, y } = world.sprite;
+  return [...pen.segments, { x1: x, y1: y, x2: x, y2: y, color: pen.color, size: pen.size }];
+}
+
+/** Put the pen down; it leaves a dot where the sprite is. */
+export function penDownWorld(world: WorldState): WorldState {
+  const pen = normalizePen(world.pen ?? {})!;
+  if (pen.down) return withPen(world, {});
+  return withPen(world, {
+    down: true,
+    segments: pen.segments.length < PEN_SEGMENTS_MAX ? dot(world, pen) : pen.segments,
+  });
+}
+
+export function penUpWorld(world: WorldState): WorldState {
+  return withPen({ ...world, pen: normalizePen(world.pen ?? {})! }, { down: false });
+}
+
+export function setPenColorWorld(world: WorldState, color: PenColor): WorldState {
+  return withPen({ ...world, pen: normalizePen(world.pen ?? {})! }, { color });
+}
+
+export function setPenSizeWorld(world: WorldState, size: number): WorldState {
+  return withPen({ ...world, pen: normalizePen(world.pen ?? {})! }, { size });
+}
+
+export function clearPenWorld(world: WorldState): WorldState {
+  return withPen({ ...world, pen: normalizePen(world.pen ?? {})! }, { segments: [] });
+}
+
+/**
+ * After the sprite moved from `before`, add the line it drew if the pen is down. Returns the same
+ * world when nothing was drawn, and `full: true` when the segment limit stopped it.
+ */
+export function drawPenTrail(
+  before: WorldState,
+  after: WorldState,
+): { readonly world: WorldState; readonly full: boolean } {
+  const pen = after.pen;
+  if (!pen?.down || (before.sprite.x === after.sprite.x && before.sprite.y === after.sprite.y))
+    return { world: after, full: false };
+  if (pen.segments.length >= PEN_SEGMENTS_MAX) return { world: after, full: true };
+  const segment: PenSegment = {
+    x1: before.sprite.x,
+    y1: before.sprite.y,
+    x2: after.sprite.x,
+    y2: after.sprite.y,
+    color: pen.color,
+    size: pen.size,
+  };
+  return {
+    world: createWorldState({ ...after, pen: { ...pen, segments: [...pen.segments, segment] } }),
+    full: false,
+  };
 }
 
 export function pointInDirectionWorld(world: WorldState, degrees: number): WorldState {

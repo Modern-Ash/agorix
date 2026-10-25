@@ -40,6 +40,13 @@ export type {
   ProcedureParamId,
   ParamExpression,
   TimerExpression,
+  ExtensionId,
+  PenColor,
+  PenDownStatement,
+  PenUpStatement,
+  SetPenColorStatement,
+  SetPenSizeStatement,
+  ClearPenStatement,
   KeyDownExpression,
   RepeatUntilStatement,
   Script,
@@ -57,7 +64,7 @@ export type {
   BounceOnEdgeStatement,
   VariableExpression,
 } from "./schema.js";
-export { SCHEMA_VERSION } from "./schema.js";
+export { EXTENSION_IDS, PEN_COLORS, SCHEMA_VERSION } from "./schema.js";
 export { paramIdentifiers, procedureIdentifiers } from "./procedures.js";
 export type {
   ProjectActor,
@@ -78,6 +85,8 @@ export {
   PROCEDURE_NAME_MAX_LENGTH,
   PROCEDURE_MAX_CALL_DEPTH,
   PROCEDURE_PARAMS_MAX,
+  EXTENSIONS_MAX,
+  PEN_SIZE_MAX,
   EVENT_KEY_MAX_LENGTH,
   EVENT_MESSAGE_MAX_LENGTH,
   LOOKS_TEXT_MAX_LENGTH,

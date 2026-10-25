@@ -213,6 +213,21 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
     case "clearEffects":
       writeMapped(writer, nodeId, indent + "clear graphic effects\n");
       return;
+    case "penDown":
+      writeMapped(writer, nodeId, indent + "pen down\n");
+      return;
+    case "penUp":
+      writeMapped(writer, nodeId, indent + "pen up\n");
+      return;
+    case "clearPen":
+      writeMapped(writer, nodeId, indent + "clear pen\n");
+      return;
+    case "setPenColor":
+      writeMapped(writer, nodeId, indent + "set pen color " + statement.color + "\n");
+      return;
+    case "setPenSize":
+      writeMapped(writer, nodeId, indent + "set pen size " + statement.size + "\n");
+      return;
     case "goToLayer":
       writeMapped(writer, nodeId, indent + "go to " + statement.layer + " layer\n");
       return;

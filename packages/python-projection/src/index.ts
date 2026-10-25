@@ -271,6 +271,25 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
     case "clearEffects":
       writeMapped(writer, nodeId, indent + "clear_effects()\n");
       return;
+    case "penDown":
+      writeMapped(writer, nodeId, indent + "pen_down()\n");
+      return;
+    case "penUp":
+      writeMapped(writer, nodeId, indent + "pen_up()\n");
+      return;
+    case "clearPen":
+      writeMapped(writer, nodeId, indent + "clear_pen()\n");
+      return;
+    case "setPenColor":
+      writeMapped(
+        writer,
+        nodeId,
+        indent + "set_pen_color(" + JSON.stringify(statement.color) + ")\n",
+      );
+      return;
+    case "setPenSize":
+      writeMapped(writer, nodeId, indent + "set_pen_size(" + statement.size + ")\n");
+      return;
     case "goToLayer":
       writeMapped(
         writer,

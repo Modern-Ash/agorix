@@ -310,6 +310,21 @@ function projectStatement(
     case "clearEffects":
       write(writer, `${pad}sprite.clearEffects();\n`);
       return;
+    case "penDown":
+      write(writer, `${pad}pen.down();\n`);
+      return;
+    case "penUp":
+      write(writer, `${pad}pen.up();\n`);
+      return;
+    case "clearPen":
+      write(writer, `${pad}pen.clear();\n`);
+      return;
+    case "setPenColor":
+      write(writer, `${pad}pen.setColor(${JSON.stringify(statement.color)});\n`);
+      return;
+    case "setPenSize":
+      write(writer, `${pad}pen.setSize(${statement.size});\n`);
+      return;
     case "goToLayer":
       write(writer, `${pad}sprite.goToLayer(${JSON.stringify(statement.layer)});\n`);
       return;

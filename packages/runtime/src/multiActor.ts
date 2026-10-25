@@ -355,6 +355,7 @@ function singleScriptProgram(program: ProjectProgram, script: Script): ProjectPr
     schema: program.schema,
     ...(program.variables === undefined ? {} : { variables: program.variables }),
     ...(program.lists === undefined ? {} : { lists: program.lists }),
+    ...(program.extensions === undefined ? {} : { extensions: program.extensions }),
     scripts: [script],
   };
 }

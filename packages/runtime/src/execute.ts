@@ -46,6 +46,12 @@ import {
   setEffectWorld,
   changeEffectWorld,
   clearEffectsWorld,
+  penDownWorld,
+  penUpWorld,
+  setPenColorWorld,
+  setPenSizeWorld,
+  clearPenWorld,
+  drawPenTrail,
   changeSpriteSizeWorld,
   showWorld,
   stopSoundsWorld,
@@ -527,6 +533,21 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
     case "clearEffects":
       state.world = clearEffectsWorld(state.world);
       break;
+    case "penDown":
+      state.world = penDownWorld(state.world);
+      break;
+    case "penUp":
+      state.world = penUpWorld(state.world);
+      break;
+    case "setPenColor":
+      state.world = setPenColorWorld(state.world, statement.color);
+      break;
+    case "setPenSize":
+      state.world = setPenSizeWorld(state.world, statement.size);
+      break;
+    case "clearPen":
+      state.world = clearPenWorld(state.world);
+      break;
     case "goToLayer":
       // The stage order belongs to the multi-actor run; for one sprite this is only a step.
       break;
@@ -712,6 +733,18 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
       const unknown = statement as { type?: unknown };
       throw new RuntimeExecutionError(path, String(unknown.type));
     }
+  }
+
+  if (
+    statement.type === "move" ||
+    statement.type === "goTo" ||
+    statement.type === "glideTo" ||
+    statement.type === "bounceOnEdge"
+  ) {
+    // Only the statement that moved the sprite draws; a loop around it must not draw twice.
+    const trail = drawPenTrail(before, state.world);
+    state.world = trail.world;
+    if (trail.full) addNote(state, "pen: drawing limit reached");
   }
 
   state.stepsUsed += 1;

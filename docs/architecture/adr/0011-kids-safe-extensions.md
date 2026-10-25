@@ -2,7 +2,7 @@
 
 ## Status
 
-**Proposed** on 2026-10-25 (issue #737, from #538). Becomes Accepted only after product owner approval. It adds no code; each pack below needs its own issue, spec and PR.
+**Accepted** on 2026-10-25 (issue #737, from #538): the product owner merged it and asked to continue. It adds no code by itself; each pack below needs its own issue, spec and PR. The Pen pack is the first, implemented in the PR that updates this status.
 
 ## Context
 
