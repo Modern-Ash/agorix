@@ -26,15 +26,21 @@ describe("Ori single-message blind export", () => {
     expect(result?.educator.eligibleForEfficacyClaim).toBe(false);
   });
   it("rejects invalid mapping or missing candidate text", () => {
-    expect(separateOriSingleMessageComparison({
-      ...comparison, provenance: { oriCandidate: "A", deterministicCandidate: "A" },
-    })).toBeNull();
+    expect(
+      separateOriSingleMessageComparison({
+        ...comparison,
+        provenance: { oriCandidate: "A", deterministicCandidate: "A" },
+      }),
+    ).toBeNull();
     expect(separateOriSingleMessageComparison({ ...comparison, A: "" })).toBeNull();
   });
   it("rejects fabricated equal-context claims", () => {
-    expect(separateOriSingleMessageComparison({
-      ...comparison, equalInputContextProven: true,
-    } as unknown as OriSingleMessageComparison)).toBeNull();
+    expect(
+      separateOriSingleMessageComparison({
+        ...comparison,
+        equalInputContextProven: true,
+      } as unknown as OriSingleMessageComparison),
+    ).toBeNull();
   });
   it("returns frozen educator and coordinator objects", () => {
     const result = separateOriSingleMessageComparison(comparison);

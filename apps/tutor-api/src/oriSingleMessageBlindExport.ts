@@ -19,15 +19,30 @@ export interface OriRestrictedMessageKey {
 }
 export function separateOriSingleMessageComparison(
   value: OriSingleMessageComparison,
-): { readonly educator: OriEducatorBlindMessages; readonly coordinator: OriRestrictedMessageKey } | null {
-  if (!value || value.schema !== "agorix/ori-single-message-comparison/v1" ||
-      value.equalInputContextProven !== false || value.eligibleForEfficacyClaim !== false ||
-      !value.provenance || value.provenance.oriCandidate === value.provenance.deterministicCandidate ||
-      !["A", "B"].includes(value.provenance.oriCandidate) ||
-      !["A", "B"].includes(value.provenance.deterministicCandidate) ||
-      typeof value.missionId !== "string" || value.missionId.length < 1 || value.missionId.length > 80 ||
-      typeof value.A !== "string" || value.A.trim().length < 8 || value.A.length > 500 ||
-      typeof value.B !== "string" || value.B.trim().length < 8 || value.B.length > 500) return null;
+): {
+  readonly educator: OriEducatorBlindMessages;
+  readonly coordinator: OriRestrictedMessageKey;
+} | null {
+  if (
+    !value ||
+    value.schema !== "agorix/ori-single-message-comparison/v1" ||
+    value.equalInputContextProven !== false ||
+    value.eligibleForEfficacyClaim !== false ||
+    !value.provenance ||
+    value.provenance.oriCandidate === value.provenance.deterministicCandidate ||
+    !["A", "B"].includes(value.provenance.oriCandidate) ||
+    !["A", "B"].includes(value.provenance.deterministicCandidate) ||
+    typeof value.missionId !== "string" ||
+    value.missionId.length < 1 ||
+    value.missionId.length > 80 ||
+    typeof value.A !== "string" ||
+    value.A.trim().length < 8 ||
+    value.A.length > 500 ||
+    typeof value.B !== "string" ||
+    value.B.trim().length < 8 ||
+    value.B.length > 500
+  )
+    return null;
   return Object.freeze({
     educator: Object.freeze({
       schema: "agorix/ori-blind-messages/v1",
