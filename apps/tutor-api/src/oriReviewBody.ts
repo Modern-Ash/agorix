@@ -20,7 +20,10 @@ export async function readOriReviewBody(
       if (total > maxBytes) return null;
       chunks.push(chunk);
     }
-    const raw = Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)), total);
+    const raw = Buffer.concat(
+      chunks.map((chunk) => Buffer.from(chunk)),
+      total,
+    );
     const text = new TextDecoder("utf-8", { fatal: true }).decode(raw);
     return parseOriReviewInput(text, maxBytes);
   } catch {

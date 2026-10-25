@@ -9,8 +9,12 @@ const bytes = (value: string) => new TextEncoder().encode(value);
 describe("Ori bounded streaming body reader", () => {
   it("accepts a valid body split into arbitrary chunks", async () => {
     const data = bytes(valid);
-    expect(await readOriReviewBody(parts(data.slice(0, 1), data.slice(1, 8), data.slice(8)))).toEqual({
-      missionIndex: 1, hintLevel: 2, scriptCount: 3,
+    expect(
+      await readOriReviewBody(parts(data.slice(0, 1), data.slice(1, 8), data.slice(8))),
+    ).toEqual({
+      missionIndex: 1,
+      hintLevel: 2,
+      scriptCount: 3,
     });
   });
   it("rejects an oversized body without consuming further chunks", async () => {
@@ -25,7 +29,9 @@ describe("Ori bounded streaming body reader", () => {
     expect(consumed).toBe(1);
   });
   it("rejects a body that exceeds the cap cumulatively", async () => {
-    expect(await readOriReviewBody(parts(bytes("x".repeat(300)), bytes("x".repeat(213))))).toBeNull();
+    expect(
+      await readOriReviewBody(parts(bytes("x".repeat(300)), bytes("x".repeat(213)))),
+    ).toBeNull();
   });
   it("rejects malformed UTF-8", async () => {
     expect(await readOriReviewBody(parts(new Uint8Array([0xff, 0xfe])))).toBeNull();
@@ -44,7 +50,12 @@ describe("Ori bounded streaming body reader", () => {
     await expect(readOriReviewBody(parts(bytes(valid)), limit)).rejects.toThrow();
   });
   it("rejects unexpected child data even when small", async () => {
-    const payload = JSON.stringify({ missionIndex: 1, hintLevel: 2, scriptCount: 3, childId: "synthetic" });
+    const payload = JSON.stringify({
+      missionIndex: 1,
+      hintLevel: 2,
+      scriptCount: 3,
+      childId: "synthetic",
+    });
     expect(await readOriReviewBody(parts(bytes(payload)))).toBeNull();
   });
 });
