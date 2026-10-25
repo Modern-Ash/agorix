@@ -88,7 +88,7 @@ describe("custom block numbers in blocks", () => {
 
   it("rejects a bound field that points outside its block, and a call with a non-number argument", () => {
     const { workspace } = programToWorkspace(program);
-    const tampered = structuredClone(workspace) as {
+    const tampered = structuredClone(workspace) as unknown as {
       scripts: { statements: { fields?: Record<string, unknown> }[] }[];
     };
     tampered.scripts[0]!.statements.push({
@@ -97,7 +97,7 @@ describe("custom block numbers in blocks", () => {
       fields: { steps: 40, stepsFrom: "p1" },
     } as never);
     expect(() => workspaceToProgram(tampered as never)).toThrow();
-    const bad = structuredClone(workspace) as {
+    const bad = structuredClone(workspace) as unknown as {
       scripts: { statements: { inputs?: Record<string, unknown> }[] }[];
     };
     bad.scripts[0]!.statements[0]!.inputs = {

@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import { resolve } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 
@@ -272,4 +273,82 @@ test("child-added explorer and backdrop persist; adult removal falls back", asyn
   await expect(cards.nth(1).locator(".kids-art-image")).toHaveCount(0);
   await expect(cards.nth(1).locator(".kids-project-thumb")).toHaveCSS("background-image", "none");
   await expect(cards.nth(1).locator(".kids-project-thumb")).toContainText("🦊");
+});
+
+test("drawing tools fill, draw shapes, erase, flip, undo and redo on touch width", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await seed(page);
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Dibujar explorador" }).click();
+  const canvas = page.locator("canvas.kids-draw-canvas");
+  const pixel = (x: number, y: number) =>
+    canvas.evaluate(
+      (element, [px, py]) =>
+        Array.from(
+          (element as HTMLCanvasElement)
+            .getContext("2d")!
+            .getImageData(px as number, py as number, 1, 1).data,
+        ),
+      [x, y],
+    );
+  // The page scrolls when a tool button is pressed, so measure the canvas right before touching it.
+  const at = async (x: number, y: number) => {
+    await canvas.scrollIntoViewIfNeeded();
+    const box = (await canvas.boundingBox())!;
+    return { x: box.x + (x * box.width) / 256, y: box.y + (y * box.height) / 256 };
+  };
+  const drag = async (fromX: number, fromY: number, toX: number, toY: number) => {
+    const from = await at(fromX, fromY);
+    const to = await at(toX, toY);
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(to.x, to.y, { steps: 6 });
+    await page.mouse.up();
+  };
+
+  await page.getByRole("button", { name: "Color #ef627d" }).click();
+  await page.getByRole("button", { name: "Rellenar" }).click();
+  await expect(page.getByRole("button", { name: "Rellenar" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  const middle = await at(128, 128);
+  await page.mouse.click(middle.x, middle.y);
+  expect(await pixel(128, 128)).toEqual([239, 98, 125, 255]);
+
+  await page.getByRole("button", { name: "Deshacer trazo" }).click();
+  expect((await pixel(128, 128))[3]).toBe(0);
+  await page.getByRole("button", { name: "Rehacer trazo" }).click();
+  expect(await pixel(128, 128)).toEqual([239, 98, 125, 255]);
+
+  await page.getByRole("button", { name: "Goma" }).click();
+  await drag(100, 128, 156, 128);
+  expect((await pixel(128, 128))[3]).toBe(0);
+
+  await page.getByRole("button", { name: "Color #548de4" }).click();
+  await page.getByRole("button", { name: "Rectángulo" }).click();
+  await drag(20, 20, 60, 60);
+  expect(await pixel(40, 20)).toEqual([84, 141, 228, 255]);
+  expect((await pixel(40, 40))[3]).toBe(255);
+
+  await page.getByRole("button", { name: "Voltear dibujo" }).click();
+  expect(await pixel(255 - 40, 20)).toEqual([84, 141, 228, 255]);
+
+  await page.getByRole("button", { name: "Borrar dibujo" }).click();
+  expect((await pixel(128, 40))[3]).toBe(0);
+  await page.getByRole("button", { name: "Deshacer trazo" }).click();
+  expect(await pixel(255 - 40, 20)).toEqual([84, 141, 228, 255]);
+
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  const violations = (
+    await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
+  ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");
+  expect(violations.map((entry) => entry.id)).toEqual([]);
+  await page.getByRole("button", { name: "Guardar dibujo" }).click();
+  await expect(page.getByRole("button", { name: "Explorador propio 1" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
 });
