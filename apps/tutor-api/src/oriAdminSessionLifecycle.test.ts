@@ -71,7 +71,9 @@ describe("Ori review with real AdminAuth session lifecycle", () => {
       [1],
     );
     expect((await guarded(request(cookie), input)).status).toBe("ready");
-    expect((await guarded(request(cookie), { ...input, missionIndex: 2 })).status).toBe("unavailable");
+    expect((await guarded(request(cookie), { ...input, missionIndex: 2 })).status).toBe(
+      "unavailable",
+    );
     expect(calls).toBe(1);
   });
 
