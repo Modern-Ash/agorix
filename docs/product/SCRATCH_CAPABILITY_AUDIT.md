@@ -193,7 +193,7 @@ Each iteration needs an issue with an observable child journey, success and fail
 - When the selected character has blocks of its own, **Pedirle una idea a Ori** may offer to use one of them (**+ Usar: <name>**) as the next block. It is an ordinary reviewable idea: nothing changes until the child chooses **Usar idea**, **Cambiar idea** (swaps to the character's other block; hidden when there is only one) or **No usar**. The same host checks as every other idea apply on the server and again in the browser.
 - Ori is told only the block **ids** and the kinds of blocks inside (for example `move`, `turn`), never the child's titles, texts or names; the card shows the title locally. Ori can only name an id that the selected character already has: another character's id, an unknown id, extra fields and any attempt to create, rename or delete a block fall back to the safe local idea. The no-AI path is unchanged (move or turn only).
 - The proposal check accepts a call to the child's own block, also inside a repeat, and still validates it against the real script when the idea is applied. Unit tests cover the contract, forged proposals, the model input and the tutor-api route with the real CLI wrapper; a mobile browser test with axe covers review, change, refuse and playing the result.
-- Blocks shared between characters remain open (#734). Visible by default like the other creative tools (#539); the adult Ori switch still controls whether suggestions appear.
+- Blocks live-shared between characters remain open; a character can be given a copy (see below). Visible by default like the other creative tools (#539); the adult Ori switch still controls whether suggestions appear.
 
 ## Numbers in Mis bloques (parameters, fifth slice of #538 iteration 4)
 
@@ -207,6 +207,12 @@ Each iteration needs an issue with an observable child journey, success and fail
 - Inside a custom block, a use of another block can take one of the outer block's own numbers instead of a fixed one (`callProcedure.args` accepts a `param` expression of the enclosing block). The runtime reads it from the caller's frame before opening the new one, so the inner block runs with the caller's value; trace entries show the value passed. A passed number outside a custom block, or one the outer block does not declare, is rejected by the validator.
 - Agorix Code, Python, TypeScript and the block adapter show the outer number's name in the call. In Escena libre each inner use has a picker listing fixed values and **Número: <outer number>**; a number takes the unit of the inner block it is handed to. **Reemplazar usos y borrar** keeps the link when it inlines an inner block into a block that has numbers.
 - Unit tests cover run, validation, projections, round trip, authoring, units and inlining; a mobile browser test with axe covers the journey and reopening.
+
+## Copying a block to another character (#734)
+
+- In **Mis bloques** a child picks another character and presses **Copiar bloque a**. That character gets its own copy of the block and of every block it uses, with new ids (`proc-<character>-<n>`), the same numbers and the same inner links. Copies are independent: renaming, editing or deleting one never changes the other, so a block can never reach into a character that did not receive it. Undo removes the copy; the 20-block and 60-block limits still apply.
+- This is deliberately a copy, not a live shared library: the canonical program keeps every block inside one character's script, so runtime, projections, block editor and the privacy rule (Ori only sees ids of the selected character's own blocks) are unchanged. A live shared library would change that model and is not planned.
+- Unit tests cover the closure of used blocks, ids, numbers, independence, undo and limits; a mobile browser test with axe covers copy, use, reopen.
 
 ## Drawing tools (#538 media creation)
 

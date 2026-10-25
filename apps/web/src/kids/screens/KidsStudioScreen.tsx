@@ -59,6 +59,7 @@ import {
   type StudioBlockPath,
   appendStudioStatement,
   creativeForStudio,
+  copyStudioProcedure,
   createStudioProcedure,
   deleteStudioProcedure,
   removeStudioStatement,
@@ -154,6 +155,7 @@ const COPY = {
     followsNumber: "Valor de",
     fixedNumber: "Fijo",
     numberFor: "Número",
+    copyBlockTo: "Copiar bloque a",
     groupRepeat: "Repetir estos bloques",
     groupIf: "Si se cumple, ejecutar estos bloques",
     blocksCount: "bloques",
@@ -308,6 +310,7 @@ const COPY = {
     followsNumber: "Value of",
     fixedNumber: "Fixed",
     numberFor: "Number",
+    copyBlockTo: "Copy block to",
     groupRepeat: "Repeat these blocks",
     groupIf: "If true, run these blocks",
     blocksCount: "blocks",
@@ -501,6 +504,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
   const [blockName, setBlockName] = useState("");
   const [blockNumbers, setBlockNumbers] = useState<string[]>([]);
   const [numberTitle, setNumberTitle] = useState("");
+  const [copyTargets, setCopyTargets] = useState<Record<string, string>>({});
   const [numberTitles, setNumberTitles] = useState<Record<string, string>>({});
   const [blockRenames, setBlockRenames] = useState<Record<string, string>>({});
   const [blockToDelete, setBlockToDelete] = useState<string | null>(null);
@@ -2413,6 +2417,41 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
                     >
                       + {copy.useBlock}: {item.name}
                     </button>
+                    {otherActors.length > 0 ? (
+                      <>
+                        <label>
+                          {copy.copyBlockTo} ({item.name})
+                          <select
+                            value={copyTargets[item.id] ?? otherActors[0]?.id ?? ""}
+                            onChange={(event) =>
+                              setCopyTargets({ ...copyTargets, [item.id]: event.target.value })
+                            }
+                          >
+                            {otherActors.map((other) => (
+                              <option key={other.id} value={other.id}>
+                                {other.name}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <button
+                          type="button"
+                          className="kids-button"
+                          onClick={() =>
+                            authorBlock(() =>
+                              copyStudioProcedure(
+                                history,
+                                activeActorId,
+                                item.id,
+                                copyTargets[item.id] ?? otherActors[0]?.id ?? "",
+                              ),
+                            )
+                          }
+                        >
+                          {copy.copyBlockTo}: {item.name}
+                        </button>
+                      </>
+                    ) : null}
                     <label>
                       {copy.renameBlock}: {item.name}
                       <input

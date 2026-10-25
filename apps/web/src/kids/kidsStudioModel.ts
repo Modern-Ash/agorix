@@ -1412,3 +1412,72 @@ export function setStudioProcedureCallNumbers(
     };
   });
 }
+
+function called(statements: readonly Statement[]): string[] {
+  return statements.flatMap((statement): string[] => {
+    if (statement.type === "callProcedure") return [statement.procedureId];
+    if (statement.type === "repeat" || statement.type === "repeatUntil")
+      return called(statement.body);
+    if (statement.type === "if")
+      return [...called(statement.then), ...called(statement.else ?? [])];
+    return [];
+  });
+}
+
+/**
+ * Give another character its own copy of a custom block, together with every block it uses. The
+ * copies are independent: changing one later never changes the other.
+ */
+export function copyStudioProcedure(
+  history: EditorHistory,
+  fromActorId: string,
+  procedureId: string,
+  toActorId: string,
+): EditorHistory {
+  if (fromActorId === toActorId) throw new RangeError("choose another character");
+  const program = validateStudioProgram(history.current);
+  const from = program.scripts[scriptIndexOfActor(program, fromActorId)];
+  const toIndex = scriptIndexOfActor(program, toActorId);
+  const to = program.scripts[toIndex];
+  if (!from || !to) throw new RangeError("unknown studio actor");
+  const source = from.procedures ?? [];
+  const wanted: string[] = [];
+  const visit = (id: string) => {
+    if (wanted.includes(id)) return;
+    const found = source.find((item) => item.id === id);
+    if (!found) throw new RangeError("unknown custom block");
+    wanted.push(id);
+    called(found.body).forEach(visit);
+  };
+  visit(procedureId);
+  const existing = to.procedures ?? [];
+  if (existing.length + wanted.length > MAX_STUDIO_PROCEDURES)
+    throw new RangeError("custom block limit");
+  const actorIndex = toIndex + 1;
+  const taken = new Set(existing.map((item) => item.id));
+  const renamed = new Map<string, string>();
+  let n = 1;
+  for (const id of wanted) {
+    while (taken.has(`proc-${actorIndex}-${n}`)) n += 1;
+    renamed.set(id, `proc-${actorIndex}-${n}`);
+    taken.add(`proc-${actorIndex}-${n}`);
+  }
+  const copies = wanted.map((id): Procedure => {
+    const item = source.find((entry) => entry.id === id)!;
+    const body = deepMap(item.body, (node) =>
+      node.type === "callProcedure"
+        ? {
+            ...node,
+            procedureId: renamed.get(node.procedureId as string) ?? node.procedureId,
+          }
+        : undefined,
+    ) as Statement[];
+    return { ...item, id: renamed.get(id)!, body };
+  });
+  const scripts = [...program.scripts];
+  scripts[toIndex] = { ...to, procedures: [...existing, ...copies] };
+  return recordCanonicalTransaction(history, {
+    label: "copy custom block",
+    after: validateStudioProgram({ ...program, scripts }),
+  }).history;
+}
