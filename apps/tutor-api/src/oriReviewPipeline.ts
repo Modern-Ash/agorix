@@ -3,7 +3,7 @@ import type { AdminAuth } from "./adminAuth.js";
 import type { OriPlanReviewResult } from "./oriPlanReview.js";
 import type { OriExternalShadowInput } from "./oriExternalShadow.js";
 import { checkOriReviewHttpRequest } from "./oriReviewHttpGuard.js";
-import { readOriReviewBody } from "./oriReviewBody.js";
+import { readOriReviewBodyWithDeadline } from "./oriReviewDeadline.js";
 import type { OriReviewRateLimiter } from "./oriReviewRateLimit.js";
 import { validateOriShadowPlan } from "./oriShadowPlanValidation.js";
 
@@ -22,6 +22,7 @@ export function createOriReviewPipeline(
   limiter: OriReviewRateLimiter,
   review: (input: OriExternalShadowInput) => Promise<OriPlanReviewResult>,
   enabled = false,
+  bodyDeadlineMs = 1000,
 ): (request: IncomingMessage) => Promise<OriReviewPipelineResult> {
   return async (request) => {
     if (!enabled) return { status: 503, body: { error: "unavailable" } };
@@ -36,7 +37,7 @@ export function createOriReviewPipeline(
     }
     if (!session) return { status: 401, body: { error: "unauthorized" } };
     if (!limiter.allow(session.author)) return { status: 429, body: { error: "rate-limited" } };
-    const input = await readOriReviewBody(request);
+    const input = await readOriReviewBodyWithDeadline(request, bodyDeadlineMs);
     if (!input) return { status: 400, body: { error: "invalid-request" } };
     try {
       const result = await review(input);
