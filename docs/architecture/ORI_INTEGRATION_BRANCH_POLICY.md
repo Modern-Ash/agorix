@@ -32,3 +32,17 @@ The other coding agent owns its functional workstream; Ori integration must not 
 ## Caveat
 
 This policy is documented, not a GitHub branch-protection rule. Repository administrators should configure branch protections and required status checks for enforceable safeguards.
+
+## Mandatory formatting contract for coding agents
+
+Before pushing a change to an Ori integration feature branch, run the repository's canonical formatter and then check the entire repository:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm exec prettier --write <changed-files>
+pnpm format:check
+```
+
+Do not approximate Prettier formatting manually. The `Ori Feature Autoformat` workflow also runs on pushes to `feature/ori-*`, formats changed files, and commits any formatting corrections back to that feature branch. It never targets `main`, `development` or `integration/ori` directly. GitHub's separate `Formatting` CI job remains mandatory; a red formatting check blocks approval.
+
+Wait for the autoformat commit and the subsequent CI result before declaring a PR ready. The formatter workflow requires repository Actions write permission and may be blocked by branch protection; investigate that explicitly rather than disabling formatting checks.
