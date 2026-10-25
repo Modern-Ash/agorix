@@ -1,4 +1,5 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import { dispatchOriExternalShadow, type OriExternalShadow } from "./oriExternalShadow.js";
 import { validateTutorRequest } from "@agorix/tutor-contract";
 import {
   createFreeWorldMission,
@@ -62,6 +63,8 @@ export interface TutorServerOptions {
   readonly advancedStages?: AdvancedStageRepository;
   readonly aiConfig?: AiConfigRepository;
   readonly adminAuth?: AdminAuth;
+  readonly oriExternalShadow?: OriExternalShadow;
+  readonly oriExternalShadowEnabled?: boolean;
 }
 
 interface Health {
@@ -397,6 +400,15 @@ export function createTutorServer(options: TutorServerOptions): Server {
     const missionIndex = KIDS_MISSION_IDS.indexOf(
       input.missionId as (typeof KIDS_MISSION_IDS)[number],
     ) as 0 | 1 | 2;
+    dispatchOriExternalShadow(
+      options.oriExternalShadowEnabled === true,
+      options.oriExternalShadow,
+      {
+        missionIndex,
+        hintLevel: input.hintLevel,
+        scriptCount: input.program.scripts.length,
+      },
+    );
     const mission = getKidsMission(input.missionId, input.locale);
     const context = {
       mission,
