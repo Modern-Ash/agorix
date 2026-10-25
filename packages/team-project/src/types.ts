@@ -59,7 +59,8 @@ export type TeamErrorCode =
   | "NOTHING_TO_ROLL_BACK"
   | "INVALID_INPUT"
   | "RATE_LIMITED"
-  | "REACTIONS_OFF";
+  | "REACTIONS_OFF"
+  | "SILENCED";
 
 /** Fixed messages: neither a program nor a child's content is ever echoed. */
 export class TeamError extends Error {
@@ -127,4 +128,21 @@ export interface TeamSessionOptions {
   readonly mode: EditMode;
   readonly policy?: Partial<TeamPolicy>;
   readonly clock?: Clock;
+}
+
+/** The organizer's aggregate view: aliases and counts only, never a slot id or any child text. */
+export interface TeamSummary {
+  readonly turn: string | undefined;
+  readonly totals: {
+    readonly applied: number;
+    readonly rolledBack: number;
+    readonly pending: number;
+    readonly stale: number;
+  };
+  readonly members: readonly {
+    readonly alias: string;
+    readonly role: TeamRole;
+    readonly applied: number;
+    readonly openChange: boolean;
+  }[];
 }
