@@ -4,6 +4,7 @@ import type { OriShadowPlan } from "./oriShadowPlanValidation.js";
 
 /**
  * Internal adult-review boundary. Never expose the returned plan in Kids.
+ * Formatting baseline is enforced by repository Prettier.
  * This does not authenticate an adult: callers must enforce that separately.
  */
 export interface OriPlanReviewResult {
@@ -20,8 +21,7 @@ export function createOriPlanReview(
       return Object.freeze({ status: "unavailable", plan: null, appliedChanges: false });
     try {
       const plan = await consumer.evaluate(input);
-      if (!plan)
-        return Object.freeze({ status: "unavailable", plan: null, appliedChanges: false });
+      if (!plan) return Object.freeze({ status: "unavailable", plan: null, appliedChanges: false });
       return Object.freeze({ status: "ready", plan, appliedChanges: false });
     } catch {
       return Object.freeze({ status: "unavailable", plan: null, appliedChanges: false });
