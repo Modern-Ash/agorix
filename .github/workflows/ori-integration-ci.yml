@@ -96,6 +96,9 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+      - name: Smoke test actual compiled educator report CLI
+        working-directory: apps/tutor-api
+        run: node scripts/ori-educator-production-smoke.mjs
 
   ori-interoperability:
     name: Real Ori process interoperability
