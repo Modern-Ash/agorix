@@ -1,0 +1,48 @@
+name: Ori Feature Autoformat
+
+on:
+  push:
+    branches:
+      - 'feature/ori-*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ori-autoformat-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prettier:
+    if: github.repository == 'Modern-Ash/agorix' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format changed files
+        run: |
+          git fetch --no-tags origin integration/ori
+          git diff --name-only --diff-filter=ACMR -z origin/integration/ori...HEAD > /tmp/ori-changed-files
+          if [ -s /tmp/ori-changed-files ]; then
+            xargs -0 -r pnpm exec prettier --write --ignore-unknown < /tmp/ori-changed-files
+          fi
+      - name: Commit formatting changes
+        run: |
+          if ! git diff --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -u
+            git commit -m "style: autoformat Ori feature branch"
+            git push
+          fi
