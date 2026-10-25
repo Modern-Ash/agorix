@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { createServer, request as httpRequest, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import {
+  createServer,
+  request as httpRequest,
+  type IncomingMessage,
+  type Server,
+  type ServerResponse,
+} from "node:http";
 import type { AddressInfo } from "node:net";
 import { AdminAuth, hashAdminPassword } from "./adminAuth.js";
 import { createOriReviewHttpHandler } from "./oriReviewHttpHandler.js";
@@ -89,7 +95,9 @@ async function call(port: number, cookie?: string, csrf?: string, origin = "http
 
 afterEach(async () => {
   await Promise.all(
-    servers.splice(0).map((server) => new Promise<void>((resolve) => server.close(() => resolve()))),
+    servers
+      .splice(0)
+      .map((server) => new Promise<void>((resolve) => server.close(() => resolve()))),
   );
 });
 
