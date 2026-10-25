@@ -22,7 +22,8 @@ export function checkOriReviewHttpRequest(
   if (
     typeof origin !== "string" ||
     typeof host !== "string" ||
-    (!/^[a-zA-Z0-9.-]+(?::[0-9]{1,5})?$/.test(host) || !trustedHosts.includes(host))
+    !/^[a-zA-Z0-9.-]+(?::[0-9]{1,5})?$/.test(host) ||
+    !trustedHosts.includes(host)
   )
     return { allowed: false, status: 403, reason: "invalid-origin" };
   let parsed: URL;
