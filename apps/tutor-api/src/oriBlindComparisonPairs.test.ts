@@ -17,7 +17,9 @@ describe("Ori blinded pedagogical comparison pairs", () => {
     expect(bundle?.pair.A).toEqual(ori);
     expect(bundle?.pair.B).toEqual(deterministic);
     expect(bundle?.key).toEqual({
-      fixtureId: fixture.id, oriCandidate: "A", deterministicCandidate: "B",
+      fixtureId: fixture.id,
+      oriCandidate: "A",
+      deterministicCandidate: "B",
     });
   });
   it("places Ori in B when explicitly selected", () => {
@@ -33,10 +35,19 @@ describe("Ori blinded pedagogical comparison pairs", () => {
     expect(JSON.stringify(bundle!.pair)).not.toContain("deterministicCandidate");
   });
   it("rejects invalid or empty hints", () => {
-    expect(prepareOriBlindComparisonPair(fixture, { ...ori, hint: "" }, deterministic, true)).toBeNull();
+    expect(
+      prepareOriBlindComparisonPair(fixture, { ...ori, hint: "" }, deterministic, true),
+    ).toBeNull();
   });
   it("rejects oversized content", () => {
-    expect(prepareOriBlindComparisonPair(fixture, { ...ori, hint: "x".repeat(181) }, deterministic, true)).toBeNull();
+    expect(
+      prepareOriBlindComparisonPair(
+        fixture,
+        { ...ori, hint: "x".repeat(181) },
+        deterministic,
+        true,
+      ),
+    ).toBeNull();
   });
   it("copies and freezes candidate output", () => {
     const bundle = prepareOriBlindComparisonPair(fixture, ori, deterministic, true);

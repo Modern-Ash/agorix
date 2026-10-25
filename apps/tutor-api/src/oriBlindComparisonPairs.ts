@@ -39,8 +39,7 @@ export function prepareOriBlindComparisonPair(
   deterministic: OriHintCandidate,
   oriFirst: boolean,
 ): OriBlindComparisonBundle | null {
-  if (!/^[a-z0-9-]{1,64}$/.test(fixture.id) || !valid(ori) || !valid(deterministic))
-    return null;
+  if (!/^[a-z0-9-]{1,64}$/.test(fixture.id) || !valid(ori) || !valid(deterministic)) return null;
   if (typeof oriFirst !== "boolean") return null;
   const A = Object.freeze({ ...(oriFirst ? ori : deterministic) });
   const B = Object.freeze({ ...(oriFirst ? deterministic : ori) });
