@@ -1,3 +1,4 @@
+import { validateOriContextInput, type OriContextInput } from "./oriContextPreview.js";
 import type { OriRuntimePreview } from "./oriRuntimePreview.js";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { createOriExternalShadowDispatcher, type OriExternalShadow } from "./oriExternalShadow.js";
@@ -68,6 +69,8 @@ export interface TutorServerOptions {
   readonly oriExternalShadowEnabled?: boolean;
   readonly oriRuntimePreview?: (intent: string) => Promise<OriRuntimePreview>;
   readonly oriRuntimePreviewEnabled?: boolean;
+  readonly oriContextPreview?: (input: OriContextInput) => Promise<OriRuntimePreview>;
+  readonly oriContextPreviewEnabled?: boolean;
 }
 
 interface Health {
@@ -191,6 +194,22 @@ export function createTutorServer(options: TutorServerOptions): Server {
   async function handle(request: IncomingMessage, response: ServerResponse): Promise<void> {
     const path = new URL(request.url ?? "/", "http://local").pathname;
     if (path.startsWith("/api/tutor/admin/")) return adminRoute(path, request, response);
+    if (path === "/api/tutor/ori/context-preview") {
+      if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
+      if (!options.oriContextPreviewEnabled || !options.oriContextPreview)
+        return send(response, 404, error("not-found"));
+      if (!sameOrigin(request)) return send(response, 403, error("forbidden-origin"));
+      if (!(request.headers["content-type"] ?? "").includes("application/json"))
+        return send(response, 415, error("unsupported-media-type"));
+      if (!allowed(request, "chat")) return send(response, 429, error("rate-limited"));
+      const body = await readBody(request);
+      if (body === "too-large") return send(response, 413, error("payload-too-large"));
+      let input: OriContextInput | null;
+      try { input = validateOriContextInput(JSON.parse(body)); }
+      catch { input = null; }
+      if (!input) return send(response, 400, error("invalid-request"));
+      return send(response, 200, await options.oriContextPreview(input));
+    }
     if (path === "/api/tutor/ori/runtime-preview") {
       if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
       if (!options.oriRuntimePreviewEnabled || !options.oriRuntimePreview)
