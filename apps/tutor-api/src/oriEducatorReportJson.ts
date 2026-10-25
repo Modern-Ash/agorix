@@ -24,7 +24,11 @@ export function parseOriEducatorReportJson(
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const record = value as Record<string, unknown>;
   if (Object.keys(record).sort().join(",") !== "keys,submissions") return null;
-  return buildOriEducatorOfflineReport(record as unknown as OriEducatorReportInput);
+  try {
+    return buildOriEducatorOfflineReport(record as unknown as OriEducatorReportInput);
+  } catch {
+    return null;
+  }
 }
 export function serializeOriEducatorReport(report: OriEducatorOfflineReport): string {
   return JSON.stringify(report, null, 2) + "\n";
