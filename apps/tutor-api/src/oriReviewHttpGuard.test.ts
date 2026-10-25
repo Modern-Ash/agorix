@@ -55,6 +55,7 @@ describe("Ori future adult review HTTP preflight", () => {
         checkOriReviewHttpRequest(
           request({ headers: { ...request().headers, "content-type": type } }),
           auth,
+          ["agorix.example"],
         ),
       ).toMatchObject({ status: 415 });
     },
