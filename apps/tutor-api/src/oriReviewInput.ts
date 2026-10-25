@@ -4,10 +4,7 @@ import type { OriExternalShadowInput } from "./oriExternalShadow.js";
  * Strict parser for a future adult-only Ori review request.
  * Does not register a route or accept child data.
  */
-export function parseOriReviewInput(
-  raw: string,
-  maxBytes = 512,
-): OriExternalShadowInput | null {
+export function parseOriReviewInput(raw: string, maxBytes = 512): OriExternalShadowInput | null {
   if (!Number.isSafeInteger(maxBytes) || maxBytes < 64 || maxBytes > 4096)
     throw new RangeError("Invalid Ori review body limit");
   if (Buffer.byteLength(raw, "utf8") > maxBytes) return null;
@@ -30,7 +27,8 @@ export function parseOriReviewInput(
     !Number.isSafeInteger(record.scriptCount) ||
     (record.scriptCount as number) < 0 ||
     (record.scriptCount as number) > 1000
-  ) return null;
+  )
+    return null;
   return Object.freeze({
     missionIndex: record.missionIndex as number,
     hintLevel: record.hintLevel as 1 | 2 | 3 | 4 | 5,
