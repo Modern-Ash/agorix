@@ -349,6 +349,48 @@ test("free scene copies a custom block to another character and keeps both after
   );
 });
 
+test("free scene senses a held key and the timer, and keeps both after reopening", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
+  await page.getByLabel("Tecla a sentir").selectOption("ArrowRight");
+  await page.getByRole("button", { name: "+ Si la tecla está pulsada, mover 1" }).click();
+  await page.getByRole("button", { name: "+ Esperar", exact: true }).click();
+  await page.getByLabel("Segundos del temporizador").selectOption("2");
+  await page.getByRole("button", { name: /^Repetir hasta pasar los segundos/ }).click();
+  await expect(page.locator(".kids-program-block").first()).toContainText("tiempo");
+  await page.getByRole("checkbox", { name: "ArrowRight" }).check();
+  const violations = (
+    await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
+  ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");
+  expect(violations.map((entry) => entry.id)).toEqual([]);
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByText(/bloques ejecutados/).first()).toBeVisible();
+  await page.reload();
+  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  await page
+    .getByRole("article")
+    .filter({ hasText: "Escena libre" })
+    .getByRole("button", { name: "Jugar" })
+    .click();
+  await expect(page.locator(".kids-program-block").first()).toContainText(
+    "tecla ArrowRight pulsada",
+  );
+  await expect(page.locator(".kids-program-block").last()).toContainText("tiempo");
+});
+
 test("free scene grows and shrinks a character and keeps the size blocks after reopening", async ({
   page,
 }) => {

@@ -214,6 +214,14 @@ Each iteration needs an issue with an observable child journey, success and fail
 - This is deliberately a copy, not a live shared library: the canonical program keeps every block inside one character's script, so runtime, projections, block editor and the privacy rule (Ori only sees ids of the selected character's own blocks) are unchanged. A live shared library would change that model and is not planned.
 - Unit tests cover the closure of used blocks, ids, numbers, independence, undo and limits; a mobile browser test with axe covers copy, use, reopen.
 
+## Timer and key sensors (#733)
+
+- Two new canonical expressions: `timer` (the virtual seconds the running script has waited so far; never a wall clock) and `keyDown` (a key name of letters and digits, true while that key is held). A script started by a key counts that key as held; a run may also be given a set of held keys (`keysDown`, constant for the whole run). Both are evaluated by the deterministic runtime, appear in the trace like any condition, and give the same result for the same program and inputs.
+- Agorix Code (`timer`, `key X is down`), Python (`timer()`, `key_down("X")`), TypeScript and the block adapter (**Timer**, **Key [K] is down**) derive from the same program.
+- In Escena libre the child picks one of the five keys and adds **Si la tecla está pulsada**, groups blocks the same way, saves the time in a variable, or groups blocks to repeat until a number of seconds passes (the blocks must include **Esperar** for time to advance). **Teclas mantenidas al jugar** chooses which keys count as held during Jugar.
+- Deliberately not added: the **pointer position**, which needs live per-frame input that only the same-room lockstep session supplies (a follow-up for that surface), and **answer**, because it would store free text typed by a child.
+- Unit tests cover the runtime, validation, projections, round trip and Studio limits; a mobile browser test with axe covers the journey and reopening.
+
 ## Drawing tools (#538 media creation)
 
 - The Crear and Escena libre drawing canvas now has six tools: brush, eraser, bucket fill, line, rectangle and circle, plus undo and redo (the last 20 steps), flip and clear. Shapes preview while dragging and commit on release; the eraser makes pixels transparent on a character and white on a backdrop. Fill treats near colours as one area (small tolerance) so soft brush edges leave no halo, and its work is bounded by the 256 × 256 canvas.

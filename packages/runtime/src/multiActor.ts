@@ -91,6 +91,8 @@ export interface MultiActorExecutionOptions extends Pick<ExecutionOptions, "maxS
   readonly goal?: WorldState["goal"];
   readonly events?: readonly RuntimeEvent[];
   readonly randomSeed?: number;
+  /** Keys held for the whole run, read by `keyDown`. */
+  readonly keysDown?: readonly string[];
   /** Restore actor worlds from a session snapshot; program variables and lists live here. */
   readonly initialWorlds?: Readonly<Record<string, WorldState>>;
   /** Restore stage actor order and backdrop from a session snapshot. */
@@ -439,6 +441,7 @@ export function runMultiActorProgram(
               visible: other.world.sprite.visible ?? true,
             })),
           ...(randomState === undefined ? {} : { randomSeed: randomState }),
+          ...(options.keysDown === undefined ? {} : { keysDown: options.keysDown }),
         });
         randomState = result.randomState;
         outcome = mergeOutcome(outcome, result.outcome);

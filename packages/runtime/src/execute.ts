@@ -86,6 +86,8 @@ export interface ExecutionOptions {
   readonly collectObservations?: boolean;
   readonly randomSeed?: number;
   readonly event?: ProgramEvent;
+  /** Keys held for the whole run, for `keyDown`; at most 12. The key that started a script counts too. */
+  readonly keysDown?: readonly string[];
   /** Other actors at activation start; never includes the running actor. */
   readonly sensorActors?: readonly {
     readonly id: string;
@@ -307,6 +309,13 @@ function evaluateExpression(
       return state.world.sprite.x;
     case "yPosition":
       return state.world.sprite.y;
+    case "timer":
+      return state.virtualSeconds;
+    case "keyDown":
+      return (
+        state.event === `key:${expression.key}` ||
+        state.options.keysDown?.includes(expression.key) === true
+      );
     case "booleanLiteral":
       return expression.value;
     case "numericLiteral":

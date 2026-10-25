@@ -39,6 +39,8 @@ export type {
   ProcedureParam,
   ProcedureParamId,
   ParamExpression,
+  TimerExpression,
+  KeyDownExpression,
   RepeatUntilStatement,
   Script,
   SchemaVersion,

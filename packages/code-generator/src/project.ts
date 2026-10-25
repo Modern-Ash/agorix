@@ -169,6 +169,10 @@ function formatExpression(
       return "sprite.x";
     case "yPosition":
       return "sprite.y";
+    case "timer":
+      return "timer()";
+    case "keyDown":
+      return `keyDown(${JSON.stringify(expression.key)})`;
     case "booleanLiteral":
       return expression.value ? "true" : "false";
     case "numericLiteral":
