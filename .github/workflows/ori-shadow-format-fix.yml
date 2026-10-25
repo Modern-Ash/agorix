@@ -1,0 +1,43 @@
+name: Format Ori shadow integration
+on:
+  push:
+    branches:
+      - fix/ori-shadow-transport-rebased
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format only Ori shadow files
+        run: |
+          pnpm exec prettier --write \
+            apps/tutor-api/src/main.ts \
+            apps/tutor-api/src/server.ts \
+            apps/tutor-api/src/oriExternalShadow.ts \
+            apps/tutor-api/src/oriExternalShadow.test.ts \
+            apps/tutor-api/src/oriExternalShadowTransport.ts \
+            apps/tutor-api/src/oriExternalShadowTransport.test.ts \
+            apps/tutor-api/src/oriExternalShadowE2E.test.ts \
+            docs/architecture/ORI_EXTERNAL_SHADOW.md
+      - name: Commit formatting to PR branch
+        run: |
+          if ! git diff --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add apps/tutor-api/src/main.ts apps/tutor-api/src/server.ts apps/tutor-api/src/oriExternalShadow.ts apps/tutor-api/src/oriExternalShadow.test.ts apps/tutor-api/src/oriExternalShadowTransport.ts apps/tutor-api/src/oriExternalShadowTransport.test.ts apps/tutor-api/src/oriExternalShadowE2E.test.ts docs/architecture/ORI_EXTERNAL_SHADOW.md
+            git commit -m "style: format Ori shadow integration"
+            git push
+          fi
