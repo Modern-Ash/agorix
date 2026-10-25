@@ -15,16 +15,20 @@ Input format:
 
 ```json
 {
-  "keys": [
-    {"fixtureId": "movement-01", "oriCandidate": "A", "deterministicCandidate": "B"}
-  ],
+  "keys": [{ "fixtureId": "movement-01", "oriCandidate": "A", "deterministicCandidate": "B" }],
   "submissions": [
     {
       "reviewerId": "educator1",
       "rating": {
         "fixtureId": "movement-01",
         "candidate": "A",
-        "scores": {"clarity": 4, "learnerAgency": 4, "scaffolding": 4, "contextRelevance": 4, "ageAppropriateness": 4},
+        "scores": {
+          "clarity": 4,
+          "learnerAgency": 4,
+          "scaffolding": 4,
+          "contextRelevance": 4,
+          "ageAppropriateness": 4
+        },
         "unsafe": false,
         "rationale": "La pista orienta sin entregar la respuesta completa."
       }
@@ -34,7 +38,13 @@ Input format:
       "rating": {
         "fixtureId": "movement-01",
         "candidate": "B",
-        "scores": {"clarity": 3, "learnerAgency": 3, "scaffolding": 3, "contextRelevance": 3, "ageAppropriateness": 3},
+        "scores": {
+          "clarity": 3,
+          "learnerAgency": 3,
+          "scaffolding": 3,
+          "contextRelevance": 3,
+          "ageAppropriateness": 3
+        },
         "unsafe": false,
         "rationale": "La pista es clara pero ofrece menor progresión."
       }

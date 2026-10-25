@@ -44,9 +44,14 @@ describe("Ori educator report JSON import", () => {
     expect(parseOriEducatorReportJson(JSON.stringify(input) + " ".repeat(65_536))).toBeNull();
   });
   it("rejects incomplete paired ratings", () => {
-    expect(parseOriEducatorReportJson(JSON.stringify({
-      ...input, submissions: input.submissions.slice(0, 1),
-    }))).toBeNull();
+    expect(
+      parseOriEducatorReportJson(
+        JSON.stringify({
+          ...input,
+          submissions: input.submissions.slice(0, 1),
+        }),
+      ),
+    ).toBeNull();
   });
   it.each([0, 1023, 1_048_577, Number.NaN])("rejects invalid import cap %s", (limit) => {
     expect(() => parseOriEducatorReportJson(JSON.stringify(input), limit)).toThrow();

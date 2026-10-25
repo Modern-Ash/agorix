@@ -10,12 +10,14 @@ if (!inputPath || !outputPath || process.argv.length !== 4) {
   try {
     const file = await readFile(resolve(inputPath));
     if (file.byteLength > 65_536) throw new Error("Input exceeds 64 KiB");
-    const { parseOriEducatorReportJson, serializeOriEducatorReport } = await import(
-      "../dist/oriEducatorReportJson.js"
-    );
+    const { parseOriEducatorReportJson, serializeOriEducatorReport } =
+      await import("../dist/oriEducatorReportJson.js");
     const report = parseOriEducatorReportJson(file.toString("utf8"));
     if (!report) throw new Error("Invalid or incomplete educator evaluation");
-    await writeFile(resolve(outputPath), serializeOriEducatorReport(report), { flag: "wx", mode: 0o600 });
+    await writeFile(resolve(outputPath), serializeOriEducatorReport(report), {
+      flag: "wx",
+      mode: 0o600,
+    });
     process.stdout.write("Educator report written. No source keys or reviewer IDs exported.\n");
   } catch {
     process.stderr.write("Unable to generate educator report. Check input and output paths.\n");
