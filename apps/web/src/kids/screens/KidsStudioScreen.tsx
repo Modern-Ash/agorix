@@ -48,6 +48,8 @@ import {
   bindStudioProcedureBlock,
   removeStudioProcedureNumber,
   setStudioCallNumbers,
+  setStudioProcedureCallNumbers,
+  type StudioCallValue,
   STUDIO_EDGE_CONDITION,
   STUDIO_NUMBER_CHOICES,
   STUDIO_NUMBER_DEFAULTS,
@@ -902,7 +904,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
 
   const pointTarget = otherActors.find((item) => item.id === pointTargetId) ?? otherActors[0];
 
-  function blockLabel(statement: Statement): string {
+  function blockLabel(statement: Statement, owner?: Procedure): string {
     switch (statement.type) {
       case "move":
         return `${statement.steps < 0 ? copy.moveBackward : copy.move} ${Math.abs(statement.steps) / 40}`;
@@ -967,7 +969,13 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
         const numbers = (procedure?.params ?? [])
           .map((param, index) => {
             const arg = statement.args?.[index];
-            return `${param.name}: ${arg?.type === "numericLiteral" ? arg.value : 0}`;
+            const value =
+              arg?.type === "param"
+                ? (owner?.params?.find((item) => item.id === arg.paramId)?.name ?? "?")
+                : arg?.type === "numericLiteral"
+                  ? arg.value
+                  : 0;
+            return `${param.name}: ${value}`;
           })
           .join(", ");
         return `${copy.useBlock}: ${procedure?.name ?? "?"}${numbers ? ` (${numbers})` : ""}`;
@@ -1014,8 +1022,9 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
           const here: StudioBlockPath = [...path, index];
           return (
             <li key={`${procedure.id}-${here.join("-")}`}>
-              {blockLabel(item)}
-              {studioBlockHasNumberSlot(item) ? (
+              {blockLabel(item, procedure)}
+              {item.type === "callProcedure" ? calleeNumbers(procedure, item, here) : null}
+              {procedure.params && studioBlockHasNumberSlot(item) ? (
                 <select
                   aria-label={`${copy.followsNumber}: ${blockLabel(item)}`}
                   value={studioBlockNumber(item) ?? ""}
@@ -1056,11 +1065,67 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
     );
   }
 
+  /** Pickers for a use of one custom block inside another: a fixed number, or the outer block's own. */
+  function calleeNumbers(owner: Procedure, statement: Statement, path: StudioBlockPath) {
+    if (statement.type !== "callProcedure") return null;
+    const callee = script?.procedures?.find((item) => item.id === statement.procedureId);
+    if (!callee?.params) return null;
+    const units = studioProcedureNumberUnits(callee, script?.procedures);
+    const values: StudioCallValue[] = callee.params.map((_param, at) => {
+      const arg = statement.args?.[at];
+      return arg?.type === "param" ? arg.paramId : arg?.type === "numericLiteral" ? arg.value : 0;
+    });
+    return callee.params.map((param, at) => {
+      const choices = STUDIO_NUMBER_CHOICES[units[at] ?? "number"];
+      const current = values[at] ?? 0;
+      return (
+        <label key={param.id}>
+          {copy.numberFor} {param.name} ({callee.name})
+          <select
+            value={String(current)}
+            onChange={(event) => {
+              const picked = event.target.value;
+              authorBlock(() =>
+                setStudioProcedureCallNumbers(
+                  history,
+                  activeActorId,
+                  owner.id,
+                  path,
+                  values.map((value, position) =>
+                    position === at
+                      ? /^p[1-3]$/.test(picked)
+                        ? (picked as ProcedureParamId)
+                        : Number(picked)
+                      : value,
+                  ),
+                ),
+              );
+            }}
+          >
+            {(typeof current === "string" || choices.includes(current)
+              ? choices
+              : [current, ...choices]
+            ).map((choice) => (
+              <option key={choice} value={choice}>
+                {choice}
+              </option>
+            ))}
+            {owner.params?.map((outer) => (
+              <option key={outer.id} value={outer.id}>
+                {copy.numberFor}: {outer.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      );
+    });
+  }
+
   function callNumbers(statement: Statement, index: number) {
     if (statement.type !== "callProcedure") return null;
     const procedure = script?.procedures?.find((item) => item.id === statement.procedureId);
     if (!procedure?.params) return null;
-    const units = studioProcedureNumberUnits(procedure);
+    const units = studioProcedureNumberUnits(procedure, script?.procedures);
     const values = procedure.params.map((_param, at) => {
       const arg = statement.args?.[at];
       return arg?.type === "numericLiteral" ? arg.value : 0;
@@ -2278,9 +2343,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
                 return (
                   <li key={item.id}>
                     <strong>{item.name}</strong>
-                    {item.params
-                      ? procedureBlocks(item, item.body, [])
-                      : nestedBlocks(item.body, item.id)}
+                    {procedureBlocks(item, item.body, [])}
                     {item.params?.map((param) => (
                       <button
                         key={param.id}
@@ -2333,7 +2396,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
                       type="button"
                       className="kids-button"
                       onClick={() => {
-                        const units = studioProcedureNumberUnits(item);
+                        const units = studioProcedureNumberUnits(item, script?.procedures);
                         add({
                           type: "callProcedure",
                           procedureId: item.id,

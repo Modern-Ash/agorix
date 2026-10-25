@@ -12,6 +12,7 @@ import {
   deleteStudioProcedure,
   removeStudioProcedureNumber,
   setStudioCallNumbers,
+  setStudioProcedureCallNumbers,
   studioBlockNumber,
   studioProcedureNumberUnits,
   validateStudioProgram,
@@ -144,5 +145,50 @@ describe("Mis bloques numbers", () => {
     expect(history.current.scripts[0]?.procedures).toBeUndefined();
     expect(history.current.scripts[0]?.statements[0]).toEqual({ type: "move", steps: 100 });
     expect(xOf(history)).toBe(before);
+  });
+
+  describe("passing a number to another block", () => {
+    function nested() {
+      let history = bindStudioProcedureBlock(stepsBlock(), nova, "proc-1-1", [0], "p1");
+      history = appendStudioStatement(history, nova, { type: "say", text: "Hola" });
+      history = createStudioProcedure(history, nova, 2, "Doble", ["Base"]);
+      return history;
+    }
+
+    it("hands the outer number to the inner block, and the inner call follows it", () => {
+      let history = nested();
+      const inner = history.current.scripts[0]!.procedures![1]!;
+      expect(inner.body[0]).toMatchObject({ type: "callProcedure", procedureId: "proc-1-1" });
+      history = setStudioProcedureCallNumbers(history, nova, "proc-1-2", [0], ["p1"]);
+      history = setStudioCallNumbers(history, nova, 0, [100]);
+      const none = setStudioProcedureCallNumbers(nested(), nova, "proc-1-2", [0], ["p1"]);
+      expect(xOf(history) - xOf(setStudioCallNumbers(none, nova, 0, [20]))).toBe(80);
+    });
+
+    it("gives the outer number the unit of the inner one it is handed to", () => {
+      const history = setStudioProcedureCallNumbers(nested(), nova, "proc-1-2", [0], ["p1"]);
+      const procedures = history.current.scripts[0]!.procedures!;
+      expect(studioProcedureNumberUnits(procedures[1]!, procedures)).toEqual(["steps"]);
+      expect(studioProcedureNumberUnits(procedures[1]!)).toEqual(["number"]);
+    });
+
+    it("rejects a number the outer block does not have", () => {
+      const history = nested();
+      expect(() => setStudioProcedureCallNumbers(history, nova, "proc-1-2", [0], ["p3"])).toThrow();
+      expect(() => setStudioProcedureCallNumbers(history, nova, "proc-1-2", [1], [20])).toThrow();
+    });
+
+    it("keeps the link when the inner block is inlined", () => {
+      let history = nested();
+      history = setStudioProcedureCallNumbers(history, nova, "proc-1-2", [0], ["p1"]);
+      history = setStudioCallNumbers(history, nova, 0, [100]);
+      const before = xOf(history);
+      history = deleteStudioProcedure(history, nova, "proc-1-1", "inline");
+      expect(history.current.scripts[0]?.procedures?.[0]?.body[0]).toMatchObject({
+        type: "move",
+        stepsFrom: "p1",
+      });
+      expect(xOf(history)).toBe(before);
+    });
   });
 });

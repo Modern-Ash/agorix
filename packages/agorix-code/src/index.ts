@@ -225,7 +225,10 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
           (writer.procedureNames?.get(statement.procedureId) ?? "?") +
           (statement.args === undefined
             ? ""
-            : " with " + statement.args.map((arg) => formatNumber(arg.value)).join(", ")) +
+            : " with " +
+              statement.args
+                .map((arg, index) => expressionText(writer, arg, `${nodeId}/args[${index}]`))
+                .join(", ")) +
           "\n",
       );
       return;
