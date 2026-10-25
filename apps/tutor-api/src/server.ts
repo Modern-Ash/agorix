@@ -401,7 +401,7 @@ export function createTutorServer(options: TutorServerOptions): Server {
     const missionIndex = KIDS_MISSION_IDS.indexOf(
       input.missionId as (typeof KIDS_MISSION_IDS)[number],
     ) as 0 | 1 | 2;
-    dispatchOriExternalShadow(
+    oriShadowDispatcher.dispatch(
       options.oriExternalShadowEnabled === true,
       options.oriExternalShadow,
       {
