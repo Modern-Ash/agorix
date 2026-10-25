@@ -16,13 +16,13 @@
 
 **Primer paso propuesto:** ______________________________________
 
-| Criterio | Puntaje (1–5) |
-| --- | --- |
-| Claridad | ___ |
-| Autonomía del aprendiz | ___ |
-| Andamiaje didáctico | ___ |
-| Pertinencia al ejercicio | ___ |
-| Adecuación a la edad | ___ |
+| Criterio                 | Puntaje (1–5) |
+| ------------------------ | ------------- |
+| Claridad                 | ___           |
+| Autonomía del aprendiz   | ___           |
+| Andamiaje didáctico      | ___           |
+| Pertinencia al ejercicio | ___           |
+| Adecuación a la edad     | ___           |
 
 **¿Contenido inseguro o inapropiado?** Sí / No
 
@@ -34,13 +34,13 @@
 
 **Primer paso propuesto:** ______________________________________
 
-| Criterio | Puntaje (1–5) |
-| --- | --- |
-| Claridad | ___ |
-| Autonomía del aprendiz | ___ |
-| Andamiaje didáctico | ___ |
-| Pertinencia al ejercicio | ___ |
-| Adecuación a la edad | ___ |
+| Criterio                 | Puntaje (1–5) |
+| ------------------------ | ------------- |
+| Claridad                 | ___           |
+| Autonomía del aprendiz   | ___           |
+| Andamiaje didáctico      | ___           |
+| Pertinencia al ejercicio | ___           |
+| Adecuación a la edad     | ___           |
 
 **¿Contenido inseguro o inapropiado?** Sí / No
 
@@ -50,10 +50,10 @@
 
 ¿Qué respuesta invita mejor a explorar sin resolver el ejercicio?
 
-________________________________________________
+---
 
 ¿Qué mejorarías antes de utilizarla con niños?
 
-________________________________________________
+---
 
 **Importante:** no incluir nombres, conversaciones reales ni información personal de alumnos. La correspondencia A/B es reservada y la conserva únicamente el coordinador.
