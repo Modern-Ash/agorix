@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import { buildOriEducatorOfflineReport } from "./oriEducatorOfflineReport.js";
 import type { OriEducatorSubmission } from "./oriEducatorRatingAnalysis.js";
 
-function submission(fixtureId: string, candidate: "A" | "B", score: 1 | 2 | 3 | 4 | 5, unsafe = false): OriEducatorSubmission {
+function submission(
+  fixtureId: string,
+  candidate: "A" | "B",
+  score: 1 | 2 | 3 | 4 | 5,
+  unsafe = false,
+): OriEducatorSubmission {
   return {
     reviewerId: "educator1",
     rating: {
@@ -46,17 +51,24 @@ describe("Ori educator offline report", () => {
     expect(report?.safetyFlag).toBe(true);
   });
   it("rejects missing ratings for any fixture", () => {
-    expect(buildOriEducatorOfflineReport({ keys, submissions: submissions.slice(0, 2) })).toBeNull();
+    expect(
+      buildOriEducatorOfflineReport({ keys, submissions: submissions.slice(0, 2) }),
+    ).toBeNull();
   });
   it("rejects unknown fixtures instead of silently ignoring them", () => {
-    expect(buildOriEducatorOfflineReport({
-      keys, submissions: [...submissions, submission("events-01", "A", 4)],
-    })).toBeNull();
+    expect(
+      buildOriEducatorOfflineReport({
+        keys,
+        submissions: [...submissions, submission("events-01", "A", 4)],
+      }),
+    ).toBeNull();
   });
   it("rejects duplicate source keys", () => {
     expect(buildOriEducatorOfflineReport({ keys: [keys[0]!, keys[0]!], submissions })).toBeNull();
   });
   it("rejects incomplete pairs", () => {
-    expect(buildOriEducatorOfflineReport({ keys, submissions: submissions.slice(0, 3) })).toBeNull();
+    expect(
+      buildOriEducatorOfflineReport({ keys, submissions: submissions.slice(0, 3) }),
+    ).toBeNull();
   });
 });
