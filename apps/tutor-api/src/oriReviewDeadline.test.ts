@@ -41,13 +41,13 @@ describe("Ori review HTTP body deadline", () => {
     const request = stream();
     const controller = new AbortController();
     controller.abort();
-    expect(await readOriReviewBodyWithDeadline(request, 1000, 512, controller.signal)).toBeNull();
+    expect(await readOriReviewBodyWithDeadline(request as unknown as IncomingMessage, 1000, 512, controller.signal)).toBeNull();
     request.destroy();
   });
   it("rejects an oversized body", async () => {
     const request = stream();
     request.end("x".repeat(513));
-    expect(await readOriReviewBodyWithDeadline(request)).toBeNull();
+    expect(await readOriReviewBodyWithDeadline(request as unknown as IncomingMessage)).toBeNull();
   });
   it.each([0, -1, 10_001, 1.5, Number.NaN])("rejects invalid deadline %s", async (value) => {
     const request = stream();
