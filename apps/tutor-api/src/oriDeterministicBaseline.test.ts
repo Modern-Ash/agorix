@@ -10,7 +10,9 @@ describe("real Agorix Kids deterministic baseline", () => {
     expect(records.every((record) => record.source === "agorix-deterministic-rule")).toBe(true);
   });
   it("does not modify any starter project", () => {
-    expect(captureOriDeterministicBaseline().every((record) => record.starterProgramUnchanged)).toBe(true);
+    expect(
+      captureOriDeterministicBaseline().every((record) => record.starterProgramUnchanged),
+    ).toBe(true);
   });
   it("produces reproducible structured offers", () => {
     expect(captureOriDeterministicBaseline()).toEqual(captureOriDeterministicBaseline());
