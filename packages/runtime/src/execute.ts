@@ -1,5 +1,6 @@
 import type {
   Expression,
+  ProcedureParamId,
   ProgramList,
   ProgramVariable,
   ProgramEvent,
@@ -9,8 +10,16 @@ import type {
   Trigger,
 } from "@agorix/program-model";
 import {
+  MOVE_STEPS_MAX,
+  MOVE_STEPS_MIN,
   PROCEDURE_MAX_CALL_DEPTH,
+  REPEAT_COUNT_MAX,
+  REPEAT_COUNT_MIN,
   REPEAT_UNTIL_MAX_PASSES,
+  TURN_DEGREES_MAX,
+  TURN_DEGREES_MIN,
+  WAIT_SECONDS_MAX,
+  WAIT_SECONDS_MIN,
   eventForTrigger,
   validateProgram,
 } from "@agorix/program-model";
@@ -95,6 +104,8 @@ export interface ExecutionTraceEntry {
   readonly soundId?: string;
   /** Deterministic outcome of an if condition, available for learner-facing evidence. */
   readonly conditionResult?: boolean;
+  /** The numbers a custom block call received; present only for calls to blocks that take numbers. */
+  readonly args?: readonly number[];
   readonly worldBefore: WorldState;
   readonly worldAfter: WorldState;
   readonly actorId?: string;
@@ -163,6 +174,8 @@ interface MutableRunState {
   script?: Script;
   scriptIndex: number;
   callDepth: number;
+  /** One entry per active custom-block call that took numbers; the last one is the current call. */
+  readonly paramFrames: (readonly number[])[];
   /** Short machine notes (capped), e.g. a list read out of range; surfaced only when non-empty. */
   readonly notes: string[];
 }
@@ -405,6 +418,8 @@ function evaluateExpression(
       }
       return item;
     }
+    case "param":
+      return paramValue(state, expression.paramId);
     case "randomInteger": {
       const min = coerceNumber(evaluateExpression(expression.min, `${path}.min`, state));
       const max = coerceNumber(evaluateExpression(expression.max, `${path}.max`, state));
@@ -426,12 +441,25 @@ function evaluateNumber(expression: Expression, path: string, state: MutableRunS
   return coerceNumber(evaluateExpression(expression, path, state));
 }
 
+/** Out of range or not a number: use the nearest allowed value, never stop the run. */
+function clampToRange(value: number, min: number, max: number): number {
+  if (Number.isNaN(value)) return Math.min(max, Math.max(min, 0));
+  return Math.min(max, Math.max(min, value));
+}
+
+/** The value a custom block received for `id` in the current call (0 outside any call). */
+function paramValue(state: MutableRunState, id: ProcedureParamId): number {
+  const frame = state.paramFrames[state.paramFrames.length - 1];
+  return frame?.[Number(id.slice(1)) - 1] ?? 0;
+}
+
 function executeStatement(statement: Statement, path: string, state: MutableRunState): void {
   assertStatementBoundary(path, state);
   assertAllowedRuntimeOperation("statement", statement.type, path);
   const nodeId = nodeIdFromPath(path);
   const before = cloneWorldState(state.world);
   let conditionResult: boolean | undefined;
+  let callArgs: readonly number[] | undefined;
   recordObservation(state, {
     kind: "statement-start",
     step: state.stepsUsed + 1,
@@ -443,7 +471,12 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
 
   switch (statement.type) {
     case "move":
-      state.world = moveWorld(state.world, statement.steps);
+      state.world = moveWorld(
+        state.world,
+        statement.stepsFrom === undefined
+          ? statement.steps
+          : clampToRange(paramValue(state, statement.stepsFrom), MOVE_STEPS_MIN, MOVE_STEPS_MAX),
+      );
       break;
     case "goTo":
       state.world = goToWorld(state.world, statement.x, statement.y);
@@ -453,7 +486,16 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
       advanceVirtualClock(state, statement.seconds);
       break;
     case "turn":
-      state.world = turnWorld(state.world, statement.degrees);
+      state.world = turnWorld(
+        state.world,
+        statement.degreesFrom === undefined
+          ? statement.degrees
+          : clampToRange(
+              paramValue(state, statement.degreesFrom),
+              TURN_DEGREES_MIN,
+              TURN_DEGREES_MAX,
+            ),
+      );
       break;
     case "pointInDirection":
       state.world = pointInDirectionWorld(state.world, statement.degrees);
@@ -532,7 +574,16 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
       break;
     }
     case "wait":
-      advanceVirtualClock(state, statement.seconds);
+      advanceVirtualClock(
+        state,
+        statement.secondsFrom === undefined
+          ? statement.seconds
+          : clampToRange(
+              paramValue(state, statement.secondsFrom),
+              WAIT_SECONDS_MIN,
+              WAIT_SECONDS_MAX,
+            ),
+      );
       break;
     case "switchCostume":
       state.world = switchCostumeWorld(state.world, statement.costumeId);
@@ -579,7 +630,17 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
       if (!Number.isInteger(statement.count)) {
         throw new RuntimeExecutionError(`${path}.count`, String(statement.count));
       }
-      for (let i = 0; i < statement.count; i += 1) {
+      const times =
+        statement.countFrom === undefined
+          ? statement.count
+          : Math.round(
+              clampToRange(
+                paramValue(state, statement.countFrom),
+                REPEAT_COUNT_MIN,
+                REPEAT_COUNT_MAX,
+              ),
+            );
+      for (let i = 0; i < times; i += 1) {
         executeStatements(statement.body, `${path}.body`, state);
       }
       break;
@@ -596,6 +657,11 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
         throw new ExecutionHalt("budget-exceeded");
       }
       state.callDepth += 1;
+      const takesNumbers = (procedure.params?.length ?? 0) > 0;
+      if (takesNumbers) {
+        callArgs = (statement.args ?? []).map((arg) => arg.value);
+        state.paramFrames.push(callArgs);
+      }
       try {
         executeStatements(
           procedure.body,
@@ -604,6 +670,7 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
         );
       } finally {
         state.callDepth -= 1;
+        if (takesNumbers) state.paramFrames.pop();
       }
       break;
     }
@@ -644,6 +711,7 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
     statementType: statement.type,
     ...(statement.type === "playSound" ? { soundId: statement.soundId } : {}),
     ...(conditionResult === undefined ? {} : { conditionResult }),
+    ...(callArgs === undefined ? {} : { args: callArgs }),
     worldBefore: before,
     worldAfter,
   });
@@ -743,6 +811,7 @@ export function runProgram(
     virtualSeconds: 0,
     scriptIndex: 0,
     callDepth: 0,
+    paramFrames: [],
     notes: [],
   };
 

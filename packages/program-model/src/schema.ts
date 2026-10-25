@@ -157,6 +157,12 @@ export interface RandomExpression {
 }
 
 /** Whole number in [min, max], both ends possible. Same seeded stream as `random`. */
+/** The number a custom block received for `paramId`; valid only inside that block's body. */
+export interface ParamExpression {
+  readonly type: "param";
+  readonly paramId: ProcedureParamId;
+}
+
 export interface RandomIntegerExpression {
   readonly type: "randomInteger";
   readonly min: Expression;
@@ -196,6 +202,7 @@ export type Expression =
   | LessOrEqualExpression
   | GreaterOrEqualExpression
   | RandomIntegerExpression
+  | ParamExpression
   | ListItemExpression
   | ListLengthExpression
   | EqualsExpression
@@ -206,9 +213,17 @@ export type Expression =
 
 // --- Statements -----------------------------------------------------------
 
+/** The numbers a custom block can take; positional, so a call's `args[i]` fills `params[i]`. */
+export type ProcedureParamId = "p1" | "p2" | "p3";
+
 export interface MoveStatement {
   readonly type: "move";
   readonly steps: number;
+  /**
+   * Inside a custom block: take the steps from that block's number instead. `steps` stays as the
+   * fixed value for anything that reads only the fixed program (and must itself be valid).
+   */
+  readonly stepsFrom?: ProcedureParamId;
 }
 
 /** Places the sprite at a bounded stage coordinate without changing its heading. */
@@ -229,6 +244,7 @@ export interface GlideToStatement {
 export interface TurnStatement {
   readonly type: "turn";
   readonly degrees: number;
+  readonly degreesFrom?: ProcedureParamId;
 }
 
 export interface PointInDirectionStatement {
@@ -302,6 +318,7 @@ export interface ChangeSizeStatement {
 export interface WaitStatement {
   readonly type: "wait";
   readonly seconds: number;
+  readonly secondsFrom?: ProcedureParamId;
 }
 
 export interface SwitchCostumeStatement {
@@ -389,6 +406,7 @@ export interface ListReplaceAtStatement {
 export interface RepeatStatement {
   readonly type: "repeat";
   readonly count: number;
+  readonly countFrom?: ProcedureParamId;
   readonly body: readonly Statement[];
 }
 
@@ -403,6 +421,11 @@ export interface RepeatUntilStatement {
 export interface CallProcedureStatement {
   readonly type: "callProcedure";
   readonly procedureId: string;
+  /**
+   * The numbers for this use, one per number the block declares (absent when it declares none).
+   * Fixed numbers in version 2; a later version may allow other expressions.
+   */
+  readonly args?: readonly NumericLiteralExpression[];
 }
 
 export interface IfStatement {
@@ -506,7 +529,14 @@ export interface ProgramList {
 export interface Procedure {
   readonly id: string;
   readonly name: string;
+  /** Up to three numbers; titles are child text and never leave the program. */
+  readonly params?: readonly ProcedureParam[];
   readonly body: readonly Statement[];
+}
+
+export interface ProcedureParam {
+  readonly id: ProcedureParamId;
+  readonly name: string;
 }
 
 export interface Script {

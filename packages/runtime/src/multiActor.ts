@@ -70,6 +70,7 @@ export interface MultiActorTraceEntry {
   readonly path: string;
   readonly statementType: Statement["type"];
   readonly conditionResult?: boolean;
+  readonly args?: readonly number[];
   readonly worldBefore: WorldState;
   readonly worldAfter: WorldState;
 }
@@ -477,6 +478,7 @@ export function runMultiActorProgram(
             ...(entry.conditionResult === undefined
               ? {}
               : { conditionResult: entry.conditionResult }),
+            ...(entry.args === undefined ? {} : { args: entry.args }),
             worldBefore: cloneWorldState(entry.worldBefore),
             worldAfter: cloneWorldState(entry.worldAfter),
           };

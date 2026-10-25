@@ -71,9 +71,9 @@ Delivered in slices that each keep `main` green: (1) model, validator and runtim
 
 The acyclic-graph rule drafted above is dropped because recursion is allowed; the depth cap replaces it.
 
-## Parameters (version 2) — proposed 2026-10-25, **awaiting owner sign-off**
+## Parameters (version 2) — approved by the owner on 2026-10-25
 
-Decision 2 above promised "up to three numbers" for a later slice. This section is the design for it. Nothing here is built yet.
+Decision 2 above promised "up to three numbers" for a later slice. This section is the design for it. Decisions are recorded at the end; slices ship in the order below.
 
 ### Child journey
 
@@ -122,8 +122,14 @@ Number titles are child-entered text: validated, never executed, never sent to O
 
 A. model, validator and runtime (with the equivalence and clamping tests). B. projections and blocks. C. Studio authoring. D. docs and audit; Ori arguments stay open.
 
-### Questions for the owner (recommended answer first)
+### Owner decisions (2026-10-25)
 
-1. **Which fields accept a number in version 2?** Recommended: `move.steps`, `turn.degrees`, `wait.seconds` plus every expression slot. Alternative: only expression slots (smaller, but then a number cannot change how far a character moves).
-2. **What happens when a number is out of range?** Recommended: clamp to the allowed range and keep running. Alternative: stop the run with a child-readable message.
-3. **Where can a call get its numbers from in version 2?** Recommended: fixed numbers, the enclosing block's own numbers and variables. Alternative: fixed numbers only.
+1. **Fields that accept a number: the recommended set, "the more interactive the better".** `move.steps`, `turn.degrees`, `wait.seconds`, every expression slot, and, because the owner asked for more interactivity, also `repeat.count` (a block that draws a shape needs "how many times"). Rounded to a whole number and kept between 1 and 1000.
+2. **Out of range: clamp and keep running**, as in the Runtime section.
+3. **Where a call gets its numbers: fixed numbers only in version 2.** The model stores them as `args: numericLiteral[]`, so a later version can allow other expressions without changing saved projects. A block therefore cannot pass its own number to another block yet.
+
+### Model notes from the build
+
+- A bound field keeps its fixed value (`steps: 40, stepsFrom: "p1"`). The fixed value stays valid and is what any consumer that ignores numbers reads, so this change adds no union type to existing fields.
+- A bound field takes the value **in its own unit** (steps, degrees, seconds, repetitions). The Studio call picker shows the unit of the first field that uses the number.
+- Number ids are positional (`p1`, `p2`, `p3` with no gaps) so `args[i]` fills `params[i]`.
