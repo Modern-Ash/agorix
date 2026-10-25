@@ -5073,7 +5073,7 @@ export function App({
                 </div>
               </div>
             )}
-            {import.meta.env.VITE_ORI_EXPERIMENTAL_REVIEW === "1" ? <OriReviewPanel /> : null}
+            {(import.meta as ImportMeta & { env?: { VITE_ORI_EXPERIMENTAL_REVIEW?: string } }).env?.VITE_ORI_EXPERIMENTAL_REVIEW === "1" ? <OriReviewPanel /> : null}
             <details className="ai-more-help">
               <summary>{t(locale, "aiMoreHelp")}</summary>
               <div className="tutor-actions">
