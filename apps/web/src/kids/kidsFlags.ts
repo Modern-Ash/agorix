@@ -14,6 +14,7 @@ export const KIDS_V2_FEATURES = [
   "tutorial",
   "advancedOps",
   "adultLink",
+  "groupMode",
 ] as const;
 
 export type KidsV2Feature = (typeof KIDS_V2_FEATURES)[number];
@@ -21,9 +22,10 @@ export type KidsV2Feature = (typeof KIDS_V2_FEATURES)[number];
 export const KIDS_FLAGS_KEY = "agorix.kids.flags.v1";
 const FLAGS_CHANGED = "agorix:kids-flags-changed";
 // Creative Kids tools are visible by default. Account linking needs a live
-// verification service and remains a separate operational release.
+// verification service and remains a separate operational release. Closed groups (ADR 0010)
+// stay off until the legal and privacy review of #556.
 const DEFAULT_FEATURES: readonly KidsV2Feature[] = KIDS_V2_FEATURES.filter(
-  (feature) => feature !== "adultLink",
+  (feature) => feature !== "adultLink" && feature !== "groupMode",
 );
 
 export interface KidsFlagSources {

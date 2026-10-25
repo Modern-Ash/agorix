@@ -7,6 +7,7 @@
  */
 import { AuthService } from "@agorix/auth-service";
 import { InMemoryAccountRepository, InMemorySessionRepository } from "@agorix/auth-service";
+import { GroupService, InMemoryGroupRepository } from "@agorix/group-service";
 import {
   InMemoryLinkRepository,
   LinkService,
@@ -53,9 +54,16 @@ export function createDevBackend(options: DevBackendOptions = {}): DevBackend {
       redeemFailuresGlobal: 10_000,
     },
   });
+  const group = new GroupService({
+    repository: new InMemoryGroupRepository(),
+    adults: { hasVerifiedEmail: async (id) => (await link.emailStatus(id)).verified },
+    secret: "d".repeat(40),
+    policy: { redeemFailuresPerSource: 10_000, redeemFailuresGlobal: 10_000 },
+  });
   const api = createProjectApi({
     auth,
     link,
+    group,
     requireEmail: options.requireEmail === true,
     projects: new InMemoryProjectRepository(),
     allowedOrigins: [],

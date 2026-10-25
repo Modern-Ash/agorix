@@ -366,9 +366,7 @@ export function createProjectApi(options: ProjectApiOptions): ProjectApi {
       pattern: /^\/v1\/group$/,
       handler: async (ctx) => {
         const view = await requireGroup().myGroup(ctx.ownerId);
-        return view === undefined
-          ? { status: 404, body: errorBody(new ApiError(404, "NOT_FOUND", "Not found")) }
-          : { status: 200, body: view };
+        return { status: 200, body: view ?? { group: null, slots: [] } };
       },
     },
     {
