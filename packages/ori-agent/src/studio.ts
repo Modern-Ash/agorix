@@ -64,9 +64,14 @@ function target(context: OriStudioContext) {
 
 const PROCEDURE_ID = /^proc-[1-9][0-9]*-[1-9][0-9]*$/;
 
-/** The child's own blocks of this character, by id only. Ori never sees or chooses a title. */
+/**
+ * The child's own blocks of this character, by id only. Ori never sees or chooses a title. Blocks
+ * with numbers are left out: Ori cannot pick the child's values, and a call needs them.
+ */
 function procedureIds(script: Script): readonly string[] {
-  return (script.procedures ?? []).map((procedure) => procedure.id);
+  return (script.procedures ?? [])
+    .filter((procedure) => procedure.params === undefined)
+    .map((procedure) => procedure.id);
 }
 
 function allowed(statement: Statement, script: Script): boolean {
@@ -89,10 +94,12 @@ export function createOriStudioInput(context: OriStudioContext) {
     actorCount: selected.program.scripts.length,
     selectedBlocks: selected.script.statements.map((statement) => statement.type),
     // Ids and the kinds of blocks inside only: the child's titles are their own text.
-    procedures: (selected.script.procedures ?? []).map((procedure) => ({
-      id: procedure.id,
-      blocks: procedure.body.map((statement) => statement.type),
-    })),
+    procedures: (selected.script.procedures ?? [])
+      .filter((procedure) => procedure.params === undefined)
+      .map((procedure) => ({
+        id: procedure.id,
+        blocks: procedure.body.map((statement) => statement.type),
+      })),
     allowedBlocks: [
       { type: "move", steps: 40 },
       { type: "move", steps: 80 },

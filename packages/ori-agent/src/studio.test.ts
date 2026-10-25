@@ -178,6 +178,37 @@ describe("Ori free scene contract", () => {
       expect(text).not.toMatch(/Mi baile secreto|Salto|Bloque de Nova|Mi secreto|proc-1-1/);
     });
 
+    it("never offers a block with numbers, because Ori cannot choose the child's values", () => {
+      const numbered = {
+        ...withBlocks,
+        program: {
+          ...withBlocks.program,
+          scripts: withBlocks.program.scripts.map((script, index) =>
+            index === 1
+              ? {
+                  ...script,
+                  procedures: [
+                    ...(script.procedures ?? []),
+                    {
+                      id: "proc-2-3",
+                      name: "Con largo",
+                      params: [{ id: "p1" as const, name: "Largo" }],
+                      body: [{ type: "move" as const, steps: 40, stepsFrom: "p1" as const }],
+                    },
+                  ],
+                }
+              : script,
+          ),
+        },
+      };
+      const input = createOriStudioInput(numbered);
+      expect(input.procedures.map((item) => item.id)).toEqual(["proc-2-1", "proc-2-2"]);
+      expect(JSON.stringify(input)).not.toMatch(/proc-2-3|Largo|Con largo/);
+      expect(suggest({ type: "callProcedure", procedureId: "proc-2-3" }, numbered).source).not.toBe(
+        "model",
+      );
+    });
+
     it("turns a valid reuse into one reviewable proposal that changes nothing by itself", () => {
       const decision = suggest({ type: "callProcedure", procedureId: "proc-2-2" });
       expect(decision.source).toBe("model");
