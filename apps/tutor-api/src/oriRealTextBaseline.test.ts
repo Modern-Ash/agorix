@@ -39,8 +39,11 @@ describe("real deterministic text tutor baseline", () => {
     expect("nextStep" in result).toBe(false);
   });
   it("rejects an invalid request rather than producing fake evidence", () => {
-    expect(() => captureOriRealTextBaseline({
-      ...request, mission: { ...request.mission, id: "" },
-    })).toThrow();
+    expect(() =>
+      captureOriRealTextBaseline({
+        ...request,
+        mission: { ...request.mission, id: "" },
+      }),
+    ).toThrow();
   });
 });
