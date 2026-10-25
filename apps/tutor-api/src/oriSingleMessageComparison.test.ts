@@ -34,18 +34,34 @@ describe("Ori exploratory single-message comparison", () => {
     expect(result?.provenance.oriCandidate).toBe("B");
   });
   it("rejects unavailable Ori preview", () => {
-    expect(prepareOriSingleMessageComparison(baseline, { ...preview, status: "unavailable" }, true)).toBeNull();
+    expect(
+      prepareOriSingleMessageComparison(baseline, { ...preview, status: "unavailable" }, true),
+    ).toBeNull();
   });
   it("rejects claimed program mutation", () => {
-    expect(prepareOriSingleMessageComparison(baseline, { ...preview, appliedChanges: true } as unknown as OriLearnerHintPreview, true)).toBeNull();
+    expect(
+      prepareOriSingleMessageComparison(
+        baseline,
+        { ...preview, appliedChanges: true } as unknown as OriLearnerHintPreview,
+        true,
+      ),
+    ).toBeNull();
   });
   it("rejects invalid or unverified baseline", () => {
-    expect(prepareOriSingleMessageComparison({ ...baseline, programUnchanged: false }, preview, true)).toBeNull();
+    expect(
+      prepareOriSingleMessageComparison({ ...baseline, programUnchanged: false }, preview, true),
+    ).toBeNull();
   });
   it("does not expose a full Ori plan or nextStep in the comparison", () => {
     const result = prepareOriSingleMessageComparison(baseline, preview, true);
     expect(Object.keys(result!).sort()).toEqual([
-      "A", "B", "eligibleForEfficacyClaim", "equalInputContextProven", "missionId", "provenance", "schema",
+      "A",
+      "B",
+      "eligibleForEfficacyClaim",
+      "equalInputContextProven",
+      "missionId",
+      "provenance",
+      "schema",
     ]);
     expect(JSON.stringify(result)).not.toContain("nextStep");
   });
