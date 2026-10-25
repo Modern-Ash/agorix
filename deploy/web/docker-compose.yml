@@ -44,6 +44,8 @@ services:
       AGORIX_LINK_SECRET: ${AGORIX_LINK_SECRET-}
       AGORIX_MAIL_SMTP_URL: ${AGORIX_MAIL_SMTP_URL-}
       AGORIX_MAIL_FROM: ${AGORIX_MAIL_FROM-}
+      # Optional closed groups (ADR 0010); needs the adult link above. Empty means off.
+      AGORIX_GROUP_SECRET: ${AGORIX_GROUP_SECRET-}
     volumes:
       - agorix-project-data:/data
       - agorix-project-backups:/backups

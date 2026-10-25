@@ -1,4 +1,5 @@
 import { AuthService, SqlAccountRepository, SqlSessionRepository } from "@agorix/auth-service";
+import { SqlGroupRepository } from "@agorix/group-service";
 import { SqlLinkRepository } from "@agorix/link-service";
 import { SqlProjectRepository } from "@agorix/project-repository";
 import type { SQLiteStore } from "./sqlite.js";
@@ -12,6 +13,7 @@ export async function deleteSQLiteAccount(
 ): Promise<void> {
   await auth.verifyDeletionPassword(accountId, password);
   await store.transaction(async (executor) => {
+    await new SqlGroupRepository({ executor, dialect: "sqlite" }).deleteOrganizerData(accountId);
     await new SqlLinkRepository({ executor, dialect: "sqlite" }).deleteAccountData(accountId);
     await new SqlProjectRepository({ executor, dialect: "sqlite" }).deleteByOwner(accountId);
     await new SqlSessionRepository({ executor, dialect: "sqlite" }).deleteForAccount(accountId);

@@ -7,12 +7,14 @@ import {
   SqlAccountRepository,
   SqlSessionRepository,
 } from "@agorix/auth-service";
+import { GroupService, InMemoryGroupRepository, SqlGroupRepository } from "@agorix/group-service";
 import {
   InMemoryLinkRepository,
   LinkService,
   MailDeliveryError,
   SqlLinkRepository,
 } from "@agorix/link-service";
+import { readGroupConfig } from "./groupConfig.js";
 import { readLinkConfig } from "./linkConfig.js";
 import { createProjectApi } from "@agorix/project-api";
 import { InMemoryProjectRepository, SqlProjectRepository } from "@agorix/project-repository";
@@ -86,9 +88,34 @@ if (link) {
   );
   purge.unref();
 }
+const { secret: groupSecret } = readGroupConfig(process.env, link !== undefined);
+const group =
+  groupSecret && link
+    ? new GroupService({
+        repository: sqlite
+          ? new SqlGroupRepository({ executor: sqlite, dialect: "sqlite" })
+          : new InMemoryGroupRepository(),
+        adults: { hasVerifiedEmail: async (id) => (await link.emailStatus(id)).verified },
+        secret: groupSecret,
+      })
+    : undefined;
+if (group) {
+  process.stdout.write("closed groups enabled\n");
+  const sweep = setInterval(
+    () => {
+      void group
+        .sweepExpired()
+        .then((count) => process.stdout.write(`group sweep ${count}\n`))
+        .catch(() => process.stdout.write("group sweep failed\n"));
+    },
+    10 * 60 * 1000,
+  );
+  sweep.unref();
+}
 const api = createProjectApi({
   auth,
   ...(link ? { link, requireEmail: true } : {}),
+  ...(group ? { group } : {}),
   projects,
   ...(sqlite
     ? {

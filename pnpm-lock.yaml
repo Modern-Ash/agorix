@@ -43,6 +43,9 @@ importers:
       '@agorix/auth-service':
         specifier: workspace:*
         version: link:../../packages/auth-service
+      '@agorix/group-service':
+        specifier: workspace:*
+        version: link:../../packages/group-service
       '@agorix/link-service':
         specifier: workspace:*
         version: link:../../packages/link-service
@@ -64,6 +67,9 @@ importers:
       '@agorix/auth-service':
         specifier: workspace:*
         version: link:../../packages/auth-service
+      '@agorix/group-service':
+        specifier: workspace:*
+        version: link:../../packages/group-service
       '@agorix/link-service':
         specifier: workspace:*
         version: link:../../packages/link-service
@@ -343,6 +349,8 @@ importers:
       '@agorix/runtime':
         specifier: workspace:*
         version: link:../runtime
+
+  packages/group-service: {}
 
   packages/interaction-core:
     dependencies:

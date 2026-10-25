@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { AuthPublicError, type AuthService } from "@agorix/auth-service";
+import { GroupError, type GroupService } from "@agorix/group-service";
 import { LinkError, normalizeEmail, type LinkService } from "@agorix/link-service";
 import { PlatformContractError } from "@agorix/platform-contract";
 import {
@@ -98,6 +99,24 @@ export type LinkApiService = Pick<
   | "deleteAccountData"
 >;
 
+/** The closed-group surface (issue #566). Omit it and every `/v1/group` route is a 404. */
+export type GroupApiService = Pick<
+  GroupService,
+  | "grantOrganizer"
+  | "isOrganizer"
+  | "createGroup"
+  | "myGroup"
+  | "setLocked"
+  | "closeGroup"
+  | "issueJoinCode"
+  | "issueReconnectCode"
+  | "redeemJoinCode"
+  | "approve"
+  | "removeSlot"
+  | "assignTeam"
+  | "deviceView"
+>;
+
 export const DEVICE_AUTH_SCHEME = "Bearer";
 /** Set by the reverse proxy from the real connection; absent means one shared "unknown" bucket. */
 export const CLIENT_ADDRESS_HEADER = "x-real-ip";
@@ -113,6 +132,8 @@ export interface ProjectApiOptions {
    */
   readonly requireEmail?: boolean;
   readonly link?: LinkApiService;
+  /** Closed same-room groups (ADR 0010). Off unless provided. */
+  readonly group?: GroupApiService;
   readonly projects: ProjectRepository;
   /** Optional durable delete coordinator, used by the SQLite server for an all-or-nothing delete. */
   readonly deleteAccount?: (accountId: string, password: string) => Promise<void>;
@@ -319,6 +340,135 @@ export function createProjectApi(options: ProjectApiOptions): ProjectApi {
       handler: async () => ({ status: 404, body: null }),
     },
     {
+      name: "group.organizer.enable",
+      method: "POST",
+      pattern: /^\/v1\/group\/organizer$/,
+      handler: async (ctx) => {
+        await requireGroup().grantOrganizer(ctx.ownerId);
+        return { status: 204, body: null };
+      },
+    },
+    {
+      name: "group.create",
+      method: "POST",
+      pattern: /^\/v1\/group$/,
+      handler: async (ctx) => {
+        const body = readBody(ctx.request, SMALL_BODY_BYTES, ["authority"]);
+        return {
+          status: 201,
+          body: await requireGroup().createGroup(ctx.ownerId, parseAuthority(body["authority"])),
+        };
+      },
+    },
+    {
+      name: "group.get",
+      method: "GET",
+      pattern: /^\/v1\/group$/,
+      handler: async (ctx) => {
+        const view = await requireGroup().myGroup(ctx.ownerId);
+        return view === undefined
+          ? { status: 404, body: errorBody(new ApiError(404, "NOT_FOUND", "Not found")) }
+          : { status: 200, body: view };
+      },
+    },
+    {
+      name: "group.update",
+      method: "PATCH",
+      pattern: /^\/v1\/group\/([^/]+)$/,
+      handler: async (ctx) => {
+        const body = readBody(ctx.request, SMALL_BODY_BYTES, ["locked"]);
+        if (typeof body["locked"] !== "boolean") {
+          throw new ApiError(400, "VALIDATION", "Invalid request", false, "INVALID_BODY");
+        }
+        await requireGroup().setLocked(ctx.ownerId, groupIdParam(ctx), body["locked"]);
+        return { status: 204, body: null };
+      },
+    },
+    {
+      name: "group.close",
+      method: "DELETE",
+      pattern: /^\/v1\/group\/([^/]+)$/,
+      handler: async (ctx) => {
+        await requireGroup().closeGroup(ctx.ownerId, groupIdParam(ctx));
+        return { status: 204, body: null };
+      },
+    },
+    {
+      name: "group.codes.create",
+      method: "POST",
+      pattern: /^\/v1\/group\/([^/]+)\/codes$/,
+      handler: async (ctx) => ({
+        status: 201,
+        body: await requireGroup().issueJoinCode(ctx.ownerId, groupIdParam(ctx)),
+      }),
+    },
+    {
+      name: "group.slots.approve",
+      method: "POST",
+      pattern: /^\/v1\/group\/([^/]+)\/slots\/([^/]+)\/approve$/,
+      handler: async (ctx) => {
+        const body = readBody(ctx.request, SMALL_BODY_BYTES, ["consentAttested"]);
+        if (typeof body["consentAttested"] !== "boolean") {
+          throw new ApiError(400, "VALIDATION", "Invalid request", false, "INVALID_BODY");
+        }
+        return {
+          status: 200,
+          body: await requireGroup().approve(ctx.ownerId, groupIdParam(ctx), slotIdParam(ctx), {
+            consentAttested: body["consentAttested"],
+          }),
+        };
+      },
+    },
+    {
+      name: "group.slots.reconnect",
+      method: "POST",
+      pattern: /^\/v1\/group\/([^/]+)\/slots\/([^/]+)\/reconnect$/,
+      handler: async (ctx) => ({
+        status: 201,
+        body: await requireGroup().issueReconnectCode(
+          ctx.ownerId,
+          groupIdParam(ctx),
+          slotIdParam(ctx),
+        ),
+      }),
+    },
+    {
+      name: "group.slots.team",
+      method: "PATCH",
+      pattern: /^\/v1\/group\/([^/]+)\/slots\/([^/]+)$/,
+      handler: async (ctx) => {
+        const body = readBody(ctx.request, SMALL_BODY_BYTES, ["team"]);
+        await requireGroup().assignTeam(
+          ctx.ownerId,
+          groupIdParam(ctx),
+          slotIdParam(ctx),
+          requireString(body, "team"),
+        );
+        return { status: 204, body: null };
+      },
+    },
+    {
+      name: "group.slots.remove",
+      method: "DELETE",
+      pattern: /^\/v1\/group\/([^/]+)\/slots\/([^/]+)$/,
+      handler: async (ctx) => {
+        await requireGroup().removeSlot(ctx.ownerId, groupIdParam(ctx), slotIdParam(ctx));
+        return { status: 204, body: null };
+      },
+    },
+    {
+      name: "group.join",
+      method: "POST",
+      pattern: /^\/v1\/group\/join$/,
+      handler: async () => ({ status: 404, body: null }),
+    },
+    {
+      name: "group.device.get",
+      method: "GET",
+      pattern: /^\/v1\/group\/device$/,
+      handler: async () => ({ status: 404, body: null }),
+    },
+    {
       name: "projects.list",
       method: "GET",
       pattern: /^\/v1\/projects$/,
@@ -432,6 +582,23 @@ export function createProjectApi(options: ProjectApiOptions): ProjectApi {
   function requireLink(): LinkApiService {
     if (options.link === undefined) throw new ApiError(404, "NOT_FOUND", "Not found");
     return options.link;
+  }
+
+  function requireGroup(): GroupApiService {
+    if (options.group === undefined) throw new ApiError(404, "NOT_FOUND", "Not found");
+    return options.group;
+  }
+
+  function groupIdParam(ctx: Context): string {
+    const id = ctx.params[0] ?? "";
+    if (!/^grp_[A-Za-z0-9_-]{1,64}$/.test(id)) throw new ApiError(404, "NOT_FOUND", "Not found");
+    return id;
+  }
+
+  function slotIdParam(ctx: Context): string {
+    const id = ctx.params[1] ?? "";
+    if (!/^slt_[A-Za-z0-9_-]{1,64}$/.test(id)) throw new ApiError(404, "NOT_FOUND", "Not found");
+    return id;
   }
 
   function linkIdParam(ctx: Context): string {
@@ -568,6 +735,32 @@ export function createProjectApi(options: ProjectApiOptions): ProjectApi {
           { deviceToken: redeemed.deviceToken, expiresAt: redeemed.expiresAt },
           extraHeaders,
         );
+      }
+
+      if (url.pathname === "/v1/group/join" && method === "POST") {
+        const body = readBody(request, SMALL_BODY_BYTES, ["code"]);
+        const joined = await requireGroup().redeemJoinCode(
+          requireString(body, "code"),
+          sourceKeyFor(request),
+        );
+        options.log?.({ route: routeName, status: 201 });
+        return respond(201, { deviceToken: joined.deviceToken }, extraHeaders);
+      }
+
+      if (url.pathname === "/v1/group/device" && method === "GET") {
+        const token = readBearer(request);
+        if (token === undefined)
+          throw new ApiError(401, "UNAUTHENTICATED", "Authentication required");
+        try {
+          const view = await requireGroup().deviceView(token);
+          options.log?.({ route: routeName, status: 200 });
+          return respond(200, view, extraHeaders);
+        } catch (error) {
+          if (error instanceof GroupError && error.code === "INVALID_OR_EXPIRED") {
+            throw new ApiError(401, "UNAUTHENTICATED", "Authentication required");
+          }
+          throw error;
+        }
       }
 
       if (url.pathname === "/v1/link/summary" && method === "PUT") {
@@ -763,6 +956,26 @@ async function resolveDeviceOrFail(link: LinkApiService, request: ApiRequest) {
   }
 }
 
+function parseAuthority(value: unknown): {
+  authority: { kind: "household" } | { kind: "classroom"; authorizationRef: string };
+} {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new ApiError(400, "VALIDATION", "Invalid request", false, "INVALID_BODY");
+  }
+  const input = value as Record<string, unknown>;
+  if (input["kind"] === "household" && Object.keys(input).length === 1) {
+    return { authority: { kind: "household" } };
+  }
+  if (
+    input["kind"] === "classroom" &&
+    typeof input["authorizationRef"] === "string" &&
+    Object.keys(input).length === 2
+  ) {
+    return { authority: { kind: "classroom", authorizationRef: input["authorizationRef"] } };
+  }
+  throw new ApiError(400, "VALIDATION", "Invalid request", false, "INVALID_BODY");
+}
+
 /** Opaque, hashed caller identity for rate limits. The address itself is never kept. */
 function sourceKeyFor(request: ApiRequest): string {
   const address = request.headers[CLIENT_ADDRESS_HEADER]?.trim().slice(0, 64) || "unknown";
@@ -838,6 +1051,25 @@ async function toApiError(
         return new ApiError(429, "RATE_LIMITED", "Too many attempts", true);
       case "NOT_FOUND":
         return notFound();
+    }
+  }
+  if (error instanceof GroupError) {
+    switch (error.code) {
+      case "NOT_ORGANIZER":
+        return new ApiError(403, "VALIDATION", "Not allowed", false, "NOT_ORGANIZER");
+      case "ALREADY_HAS_GROUP":
+      case "GROUP_FULL":
+      case "GROUP_LOCKED":
+        return new ApiError(409, "VALIDATION", "Not available", false, error.code);
+      case "AUTHORITY_REQUIRED":
+      case "CONSENT_REQUIRED":
+      case "INVALID_INPUT":
+      case "INVALID_OR_EXPIRED":
+        return new ApiError(400, "VALIDATION", "Invalid request", false, error.code);
+      case "RATE_LIMITED":
+        return new ApiError(429, "RATE_LIMITED", "Too many attempts", true);
+      case "NOT_FOUND":
+        return new ApiError(404, "NOT_FOUND", "Not found");
     }
   }
   if (error instanceof PlatformContractError && routeName.startsWith("auth.")) {

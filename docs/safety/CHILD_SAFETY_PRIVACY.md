@@ -114,6 +114,25 @@ closed. No child/group identifier or content goes to Ori or a remote provider. T
 remove a peer, mute reactions, close the group and request local deletion; a previously exported
 file cannot be remotely erased.
 
+### F1 retention (domain package `@agorix/group-service`, issue #566)
+
+These values are the defaults of `DEFAULT_GROUP_POLICY`; the package is not wired to any endpoint
+and the feature stays off.
+
+- **Group lifetime:** 2 hours, then the group, its slots, codes and device keys are deleted. Expired
+  groups are also deleted on first access, so an unswept row is never readable.
+- **Join proof:** a 6-character code valid for 10 minutes, usable once, at most 3 live codes per
+  group. It proves possession, not proximity or permission: the child stays `pending` until the
+  organizer approves. Failed guesses are rate limited per source and globally; the source key is an
+  HMAC, never a raw address.
+- **Stored as hashes:** codes and child device keys are stored only as HMACs. No email, name, school
+  or free text of a child exists in any row; aliases and teams come from fixed lists.
+- **Consent record:** in a `household` group the organizer must attest the responsible adult's
+  consent per child; the timestamp lives with the slot and is deleted with it. A `classroom` group
+  needs an opaque institutional authorization reference, not a teacher checkbox alone.
+- **Close or expiry:** hard delete, no soft-delete column. Database backup windows are not set by
+  this package and remain an open item for the activation review.
+
 Before launch with real children: approve ADR 0010 and the group spec, test on actual tablets and
 school networks, and obtain jurisdiction-specific legal/privacy review of the organizer's authority,
 adult notice or consent, retention and deletion. The first release must publish an understandable

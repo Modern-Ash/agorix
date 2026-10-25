@@ -36,6 +36,17 @@ Set `AGORIX_LINK_SECRET` (at least 32 characters, from the host secret store) to
 email and child device link routes (`/v1/account/email*`, `/v1/link/*`). Without it those routes return 404. nginx must pass the real client address in `X-Real-IP` (already configured for `/v1/`); the link
 rate limits hash it and never store it. See `docs/safety/AUTH_SECURITY.md`.
 
+## Closed groups (optional, off by default)
+
+Set `AGORIX_GROUP_SECRET` (at least 32 characters, from the host secret store) to enable the organizer
+and closed-group routes (`/v1/group*`, ADR 0010, issue #566). It requires `AGORIX_LINK_SECRET`, because
+an organizer needs a verified adult email; startup fails on a short secret or a missing link secret.
+Without it every `/v1/group*` route returns 404. Organizer routes use the adult session cookie; a child
+device joins with `POST /v1/group/join` and then uses its device key as a bearer token on
+`GET /v1/group/device`. Expired groups are deleted every ten minutes and on first access. The retention
+values are in `docs/safety/CHILD_SAFETY_PRIVACY.md`. Do not enable it for real children before the legal
+and privacy review in #556.
+
 ### Verification email (SMTP)
 
 Without a mail transport the link routes work but nobody receives the verification link, so configure one:

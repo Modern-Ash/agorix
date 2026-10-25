@@ -8,6 +8,7 @@ import {
   type AuthSqlRow,
   type AuthSqlValue,
 } from "@agorix/auth-service";
+import { GROUP_SERVICE_MIGRATIONS } from "@agorix/group-service";
 import { LINK_SERVICE_MIGRATIONS } from "@agorix/link-service";
 import {
   PROJECT_REPOSITORY_MIGRATIONS,
@@ -20,6 +21,7 @@ const MIGRATIONS = [
   ...AUTH_SERVICE_MIGRATIONS,
   ...PROJECT_REPOSITORY_MIGRATIONS,
   ...LINK_SERVICE_MIGRATIONS,
+  ...GROUP_SERVICE_MIGRATIONS,
 ];
 const MIGRATION_TABLE_SQL = `create table if not exists agorix_schema_migrations (
   id text primary key,

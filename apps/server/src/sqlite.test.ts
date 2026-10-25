@@ -11,6 +11,7 @@ import {
   type Mailer,
   type MailMessage,
 } from "@agorix/link-service";
+import { GroupService, SqlGroupRepository } from "@agorix/group-service";
 import { SqlProjectRepository } from "@agorix/project-repository";
 import { deleteSQLiteAccount } from "./deleteAccount.js";
 import { openSQLiteStore } from "./sqlite.js";
@@ -110,6 +111,7 @@ describe("SQLite production store", () => {
     expect(store.appliedMigrations()).toEqual([
       "001_create_agorix_projects",
       "001_create_auth_accounts_and_sessions",
+      "001_create_group_service",
       "001_create_link_service",
       "002_persist_link_redeem_failures",
     ]);
@@ -342,6 +344,18 @@ describe("SQLite production store", () => {
     await projects.create(account.accountId, "A2", storedProject);
     await projects.create(keep.account.accountId, "B1", storedProject);
     await link.addEmail(account.accountId, "ada@example.com");
+    const groups = new GroupService({
+      repository: new SqlGroupRepository({ executor: store, dialect: "sqlite" }),
+      adults: { hasVerifiedEmail: async () => true },
+      secret: "g".repeat(40),
+    });
+    await groups.grantOrganizer(account.accountId);
+    const group = await groups.createGroup(account.accountId, {
+      authority: { kind: "household" },
+    });
+    const { code: joinCode } = await groups.issueJoinCode(account.accountId, group.groupId);
+    await groups.redeemJoinCode(joinCode, "test-source");
+    await groups.issueJoinCode(account.accountId, group.groupId);
 
     await expect(
       deleteSQLiteAccount(store, auth, account.accountId, "wrong password here"),
@@ -371,9 +385,18 @@ describe("SQLite production store", () => {
       ["agorix_email_verifications", "account_id"],
       ["agorix_link_codes", "account_id"],
       ["agorix_device_links", "account_id"],
+      ["agorix_group_organizers", "account_id"],
+      ["agorix_groups", "organizer_id"],
     ] as const) {
       expect(count(table, column, account.accountId), table).toBe(0);
       expect(count(table, column, keep.account.accountId) >= 0).toBe(true);
+    }
+    for (const table of [
+      "agorix_group_slots",
+      "agorix_group_codes",
+      "agorix_group_devices",
+    ] as const) {
+      expect(Number(raw.prepare(`select count(*) as n from ${table}`).get()?.["n"]), table).toBe(0);
     }
     expect(count("agorix_accounts", "account_id", keep.account.accountId)).toBe(1);
     expect(count("agorix_projects", "owner_id", keep.account.accountId)).toBe(1);
