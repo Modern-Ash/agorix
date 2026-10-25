@@ -16,16 +16,25 @@ const plan = {
 describe("Ori adult-only plan review boundary", () => {
   it("never calls Ori while disabled", async () => {
     let calls = 0;
-    const consumer: OriPlanConsumer = { evaluate: async () => { calls++; return plan; } };
+    const consumer: OriPlanConsumer = {
+      evaluate: async () => {
+        calls++;
+        return plan;
+      },
+    };
     expect(await createOriPlanReview(consumer, false)(input)).toEqual({
-      status: "unavailable", plan: null, appliedChanges: false,
+      status: "unavailable",
+      plan: null,
+      appliedChanges: false,
     });
     expect(calls).toBe(0);
   });
   it("returns a validated internal plan for explicit review", async () => {
     const consumer: OriPlanConsumer = { evaluate: async () => plan };
     expect(await createOriPlanReview(consumer, true)(input)).toEqual({
-      status: "ready", plan, appliedChanges: false,
+      status: "ready",
+      plan,
+      appliedChanges: false,
     });
   });
   it("fails closed on unavailable producer", async () => {
@@ -33,7 +42,11 @@ describe("Ori adult-only plan review boundary", () => {
     expect((await createOriPlanReview(consumer, true)(input)).status).toBe("unavailable");
   });
   it("isolates unexpected consumer errors", async () => {
-    const consumer: OriPlanConsumer = { evaluate: async () => { throw new Error("synthetic provider failure"); } };
+    const consumer: OriPlanConsumer = {
+      evaluate: async () => {
+        throw new Error("synthetic provider failure");
+      },
+    };
     expect((await createOriPlanReview(consumer, true)(input)).plan).toBeNull();
   });
 });
