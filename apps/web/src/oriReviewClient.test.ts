@@ -1,8 +1,8 @@
 import {describe,it,expect} from "vitest";
 import {requestOriReviewPreview} from "./oriReviewClient.js";
-const fake=(payload:unknown,status=200)=>async()=>({
+const fake=(payload:unknown,status=200):typeof fetch=>(async()=>({
   ok:status===200,status,headers:{get:()=>"application/json"},json:async()=>payload
-}) as unknown as typeof fetch;
+} as Response)) as typeof fetch;
 describe("Ori experimental review client",()=>{
   it("accepts a read-only approved preview",async()=>{
     const value=await requestOriReviewPreview("help",fake({status:"ready",hint:"¿Qué probaste?",nextStep:"Observá",requiresLearnerApproval:true,appliedChanges:false}));
