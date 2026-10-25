@@ -1,4 +1,5 @@
 import type { TutorRequest } from "@agorix/tutor-contract";
+import { KIDS_MISSION_IDS } from "@agorix/curriculum";
 import type { OriExternalShadowInput } from "./oriExternalShadow.js";
 import type { OriPlanConsumer } from "./oriPlanConsumer.js";
 import { captureOriRealTextBaseline } from "./oriRealTextBaseline.js";
@@ -20,6 +21,11 @@ export async function captureOriLiveComparison(
   if (typeof oriFirst !== "boolean") return null;
   try {
     const baseline = captureOriRealTextBaseline(tutorRequest);
+    if (
+      KIDS_MISSION_IDS[oriInput.missionIndex] !== baseline.missionId ||
+      oriInput.scriptCount !== tutorRequest.program.scripts.length ||
+      oriInput.hintLevel !== baseline.hintLevel
+    ) return null;
     const preview = await createOriLearnerHintPreview(consumer, true)(oriInput);
     const comparison = prepareOriSingleMessageComparison(baseline, preview, oriFirst);
     if (!comparison) return null;
