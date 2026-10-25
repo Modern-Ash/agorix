@@ -17,8 +17,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  quality:
-    name: Ori integration quality and regression
+  format:
+    name: Formatting
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -31,16 +31,71 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Format
-        run: pnpm format:check
-      - name: Lint
-        run: pnpm lint
-      - name: Typecheck
-        run: pnpm exec tsc --noEmit
-      - name: Full unit and regression suite
-        run: pnpm test
-      - name: Build
-        run: pnpm build
+      - run: pnpm format:check
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+
+  typecheck:
+    name: TypeScript
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec tsc --noEmit
+
+  unit-tests:
+    name: Full unit and regression tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
 
   ori-interoperability:
     name: Real Ori process interoperability
@@ -51,12 +106,21 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: agorix
+      - name: Verify Ori read credential configured
+        env:
+          ORI_READ_TOKEN: ${{ secrets.ORI_READ_TOKEN }}
+        run: |
+          if [ -z "$ORI_READ_TOKEN" ]; then
+            echo "::error::Configure ORI_READ_TOKEN as a fine-grained read-only GitHub token with access to Modern-Ash/ori."
+            exit 1
+          fi
       - name: Checkout Ori main
         uses: actions/checkout@v4
         with:
           repository: Modern-Ash/ori
           ref: main
           path: ori
+          token: ${{ secrets.ORI_READ_TOKEN }}
           persist-credentials: false
       - uses: pnpm/action-setup@v4
         with:
