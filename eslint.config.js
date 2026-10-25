@@ -50,11 +50,15 @@ export default tseslint.config(
   },
   {
     // Repo tooling runs in Node, not the browser.
-    files: ["scripts/**/*.mjs"],
+    files: ["scripts/**/*.mjs", "spikes/**/*.mjs"],
     languageOptions: {
       globals: {
         process: "readonly",
         URL: "readonly",
+        console: "readonly",
+        window: "readonly",
+        performance: "readonly",
+        setTimeout: "readonly",
       },
     },
   },
