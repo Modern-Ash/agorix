@@ -5,6 +5,7 @@ import {
   type GraphicEffect,
   type MathFunction,
   type NumericLiteralExpression,
+  type ParamExpression,
   type ProcedureParam,
   type ProcedureParamId,
   type ProgramList,
@@ -233,8 +234,8 @@ function callArgs(
   nodeId: string,
   path: string,
   mapping: BlockMappingEntry[],
-): { args?: NumericLiteralExpression[] } {
-  const args: NumericLiteralExpression[] = [];
+): { args?: (NumericLiteralExpression | ParamExpression)[] } {
+  const args: (NumericLiteralExpression | ParamExpression)[] = [];
   for (const name of ["arg1", "arg2", "arg3"] as const) {
     const input = block.inputs?.[name];
     if (input === undefined) break;
@@ -244,8 +245,8 @@ function callArgs(
       `${path}.inputs.${name}`,
       mapping,
     );
-    if (expression.type !== "numericLiteral") {
-      fail("INVALID_FIELD_TYPE", `${path}.inputs.${name}`, "expected a fixed number", name);
+    if (expression.type !== "numericLiteral" && expression.type !== "param") {
+      fail("INVALID_FIELD_TYPE", `${path}.inputs.${name}`, "expected a number", name);
     }
     args.push(expression);
   }

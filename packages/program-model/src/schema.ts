@@ -423,9 +423,10 @@ export interface CallProcedureStatement {
   readonly procedureId: string;
   /**
    * The numbers for this use, one per number the block declares (absent when it declares none).
-   * Fixed numbers in version 2; a later version may allow other expressions.
+   * A fixed number, or (inside a custom block) one of that block's own numbers, so a block can
+   * hand its number on to another block.
    */
-  readonly args?: readonly NumericLiteralExpression[];
+  readonly args?: readonly (NumericLiteralExpression | ParamExpression)[];
 }
 
 export interface IfStatement {

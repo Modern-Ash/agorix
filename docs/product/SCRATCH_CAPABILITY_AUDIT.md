@@ -193,7 +193,7 @@ Each iteration needs an issue with an observable child journey, success and fail
 - When the selected character has blocks of its own, **Pedirle una idea a Ori** may offer to use one of them (**+ Usar: <name>**) as the next block. It is an ordinary reviewable idea: nothing changes until the child chooses **Usar idea**, **Cambiar idea** (swaps to the character's other block; hidden when there is only one) or **No usar**. The same host checks as every other idea apply on the server and again in the browser.
 - Ori is told only the block **ids** and the kinds of blocks inside (for example `move`, `turn`), never the child's titles, texts or names; the card shows the title locally. Ori can only name an id that the selected character already has: another character's id, an unknown id, extra fields and any attempt to create, rename or delete a block fall back to the safe local idea. The no-AI path is unchanged (move or turn only).
 - The proposal check accepts a call to the child's own block, also inside a repeat, and still validates it against the real script when the idea is applied. Unit tests cover the contract, forged proposals, the model input and the tutor-api route with the real CLI wrapper; a mobile browser test with axe covers review, change, refuse and playing the result.
-- Blocks shared between characters remain open. Visible by default like the other creative tools (#539); the adult Ori switch still controls whether suggestions appear.
+- Blocks shared between characters remain open (#734). Visible by default like the other creative tools (#539); the adult Ori switch still controls whether suggestions appear.
 
 ## Numbers in Mis bloques (parameters, fifth slice of #538 iteration 4)
 
@@ -201,6 +201,12 @@ Each iteration needs an issue with an observable child journey, success and fail
 - The runtime keeps a frame per call and **clamps** an out-of-range value instead of stopping: steps and turns to ±1000, waits to 0.1–5 seconds, repeats to 1–1000 (rounded). Trace entries of numbered calls include `args`. Agorix Code (`define X with a, b` / `call X with 1, 2`), Python, TypeScript and the block adapter derive from the same program.
 - In Escena libre the child adds numbers when making a block (or later), picks **Fijo** or a number on each block inside it, and chooses the value at every use. The first block to follow a number gives every existing call that block's value, so behaviour does not change until the child picks another. **Reemplazar usos y borrar** writes each call's own values into the copied blocks. Number titles are child-entered text and are never sent to Ori; Ori suggests only blocks without numbers.
 - Unit tests cover validation, clamping, equivalence with the fixed blocks, projections, block round-trip, authoring, undo, removing a number and inlining; a mobile browser test with axe covers create, bind, pick per use, play and reopen.
+
+## Handing a number on to another block (Mis bloques version 3, #735)
+
+- Inside a custom block, a use of another block can take one of the outer block's own numbers instead of a fixed one (`callProcedure.args` accepts a `param` expression of the enclosing block). The runtime reads it from the caller's frame before opening the new one, so the inner block runs with the caller's value; trace entries show the value passed. A passed number outside a custom block, or one the outer block does not declare, is rejected by the validator.
+- Agorix Code, Python, TypeScript and the block adapter show the outer number's name in the call. In Escena libre each inner use has a picker listing fixed values and **Número: <outer number>**; a number takes the unit of the inner block it is handed to. **Reemplazar usos y borrar** keeps the link when it inlines an inner block into a block that has numbers.
+- Unit tests cover run, validation, projections, round trip, authoring, units and inlining; a mobile browser test with axe covers the journey and reopening.
 
 ## Drawing tools (#538 media creation)
 

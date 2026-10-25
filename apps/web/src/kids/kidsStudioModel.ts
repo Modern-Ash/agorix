@@ -213,15 +213,16 @@ function checkedParams(params: readonly ProcedureParam[] | undefined): boolean {
 }
 
 /** A call's fixed numbers: small, finite, and in half steps, so every unit picker can offer them. */
-function checkedArgs(args: readonly Expression[] | undefined): boolean {
+function checkedArgs(args: readonly Expression[] | undefined, arity: number): boolean {
   return (
     args === undefined ||
     (args.length <= PARAM_IDS.length &&
-      args.every(
-        (item) =>
-          item.type === "numericLiteral" &&
-          Number.isInteger(item.value * 2) &&
-          Math.abs(item.value) <= 200,
+      args.every((item) =>
+        item.type === "param"
+          ? arity > 0 && paramInScope(item.paramId, arity)
+          : item.type === "numericLiteral" &&
+            Number.isInteger(item.value * 2) &&
+            Math.abs(item.value) <= 200,
       ))
   );
 }
@@ -392,7 +393,8 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0, arity
     );
   if (statement.type === "callProcedure")
     return (
-      /^proc-[1-9][0-9]?-[1-9][0-9]?$/.test(statement.procedureId) && checkedArgs(statement.args)
+      /^proc-[1-9][0-9]?-[1-9][0-9]?$/.test(statement.procedureId) &&
+      checkedArgs(statement.args, arity)
     );
   if (statement.type === "repeatUntil")
     return (
@@ -729,12 +731,19 @@ function clampField(field: keyof typeof FROM_LIMITS, value: number): number {
 
 /** The body of a custom block as one call sees it: each number replaced by the call's own value. */
 function bodyForCall(procedure: Procedure, call: { args?: readonly Expression[] }): Statement[] {
-  const values = call.args?.map((item) => (item.type === "numericLiteral" ? item.value : 0));
-  if (!values) return [...procedure.body];
-  const valueOf = (id: ProcedureParamId) => values[PARAM_IDS.indexOf(id)] ?? 0;
+  // Each of the block's numbers becomes the call's value: a fixed number, or the caller's own number.
+  const bound = call.args?.map((item) =>
+    item.type === "param" ? item.paramId : (item as { value: number }).value,
+  );
+  if (!bound) return [...procedure.body];
+  const boundTo = (id: ProcedureParamId) => bound[PARAM_IDS.indexOf(id)] ?? 0;
   const visit = (item: Record<string, Json>): Json | undefined => {
-    if (item.type === "param")
-      return { type: "numericLiteral", value: valueOf(item.paramId as ProcedureParamId) };
+    if (item.type === "param") {
+      const value = boundTo(item.paramId as ProcedureParamId);
+      return typeof value === "string"
+        ? { type: "param", paramId: value }
+        : { type: "numericLiteral", value };
+    }
     if (!Object.keys(item).some((key) => key in FROM_FIELDS)) return undefined;
     const copy: Record<string, Json> = {};
     for (const [key, value] of Object.entries(item))
@@ -742,7 +751,10 @@ function bodyForCall(procedure: Procedure, call: { args?: readonly Expression[] 
     for (const [key, value] of Object.entries(item)) {
       if (!(key in FROM_FIELDS)) continue;
       const field = FROM_FIELDS[key as keyof typeof FROM_FIELDS];
-      copy[field] = clampField(field, valueOf(value as ProcedureParamId));
+      const target = boundTo(value as ProcedureParamId);
+      // A number handed on stays a follower (the fixed value is its default); a fixed one replaces it.
+      if (typeof target === "string") copy[key] = target;
+      else copy[field] = clampField(field, target);
     }
     return copy;
   };
@@ -813,18 +825,28 @@ function mapScriptCalls(
   };
 }
 
+/** What a call gives one number: a fixed value, or the id of the calling block's own number. */
+export type StudioCallValue = number | ProcedureParamId;
+
 function withArgs(
   call: Extract<Statement, { type: "callProcedure" }>,
-  args: readonly number[],
+  args: readonly StudioCallValue[],
 ): Statement {
   const rest = withoutKey(call, "args");
   return args.length === 0
     ? rest
-    : { ...rest, args: args.map((value) => ({ type: "numericLiteral", value }) as const) };
+    : {
+        ...rest,
+        args: args.map((value) =>
+          typeof value === "string"
+            ? ({ type: "param", paramId: value } as const)
+            : ({ type: "numericLiteral", value } as const),
+        ),
+      };
 }
 
-function argValues(call: Extract<Statement, { type: "callProcedure" }>): number[] {
-  return (call.args ?? []).map((item) => (item.type === "numericLiteral" ? item.value : 0));
+function argValues(call: Extract<Statement, { type: "callProcedure" }>): StudioCallValue[] {
+  return (call.args ?? []).map((item) => (item.type === "param" ? item.paramId : item.value));
 }
 
 function withScript(
@@ -933,18 +955,32 @@ const SLOT_UNIT: Readonly<Record<string, StudioNumberUnit>> = {
   countFrom: "count",
 };
 
-/** The unit of each of a custom block's numbers, from the first block in it that uses the number. */
-export function studioProcedureNumberUnits(procedure: Procedure): StudioNumberUnit[] {
+/**
+ * The unit of each of a custom block's numbers, from the first block in it that uses the number, or
+ * the number of another block it is handed on to (`all` are the character's blocks).
+ */
+export function studioProcedureNumberUnits(
+  procedure: Procedure,
+  all: readonly Procedure[] = [],
+  depth = 0,
+): StudioNumberUnit[] {
   const units: (StudioNumberUnit | undefined)[] = (procedure.params ?? []).map(() => undefined);
+  const claim = (id: unknown, unit: StudioNumberUnit) => {
+    const at = PARAM_IDS.indexOf(id as ProcedureParamId);
+    if (at >= 0 && at < units.length && units[at] === undefined) units[at] = unit;
+  };
   deepMap(procedure.body, (item) => {
-    if (item.type === "param") {
-      const at = PARAM_IDS.indexOf(item.paramId as ProcedureParamId);
-      if (at >= 0 && units[at] === undefined) units[at] = "number";
+    if (item.type === "param") claim(item.paramId, "number");
+    if (item.type === "callProcedure" && Array.isArray(item.args) && depth < 4) {
+      const callee = all.find((entry) => entry.id === item.procedureId);
+      const inner = callee ? studioProcedureNumberUnits(callee, all, depth + 1) : [];
+      item.args.forEach((arg, index) => {
+        if (isRecord(arg) && arg.type === "param") claim(arg.paramId, inner[index] ?? "number");
+      });
     }
     for (const [key, value] of Object.entries(item)) {
       const unit = SLOT_UNIT[key];
-      const at = PARAM_IDS.indexOf(value as ProcedureParamId);
-      if (unit && at >= 0 && units[at] === undefined) units[at] = unit;
+      if (unit) claim(value, unit);
     }
     return undefined;
   });
@@ -1176,7 +1212,9 @@ export function bindStudioProcedureBlock(
       ? mapScriptCalls(script, procedureId, (call) =>
           withArgs(
             call,
-            argValues(call).map((value, index) => (index === at ? seed : value)),
+            argValues(call).map((value, index) =>
+              index === at && typeof value === "number" ? seed : value,
+            ),
           ),
         )
       : script;
@@ -1343,4 +1381,34 @@ export function removeStudioStatement(
   };
   const next = validateStudioProgram({ ...program, scripts });
   return recordCanonicalTransaction(history, { label: "remove studio block", after: next }).history;
+}
+
+/**
+ * Choose the numbers for a use of one custom block inside another. Each value is a fixed number or
+ * the id of one of the enclosing block's own numbers, which hands that number on.
+ */
+export function setStudioProcedureCallNumbers(
+  history: EditorHistory,
+  actorId: string,
+  procedureId: string,
+  path: StudioBlockPath,
+  values: readonly StudioCallValue[],
+): EditorHistory {
+  return withScript(history, actorId, "set custom block numbers", (script) => {
+    const owner = script.procedures?.find((item) => item.id === procedureId);
+    if (!owner) throw new RangeError("unknown custom block");
+    const body = updateAt(owner.body, path, (statement) => {
+      if (statement.type !== "callProcedure") throw new RangeError("not a custom block");
+      const arity =
+        script.procedures?.find((item) => item.id === statement.procedureId)?.params?.length ?? 0;
+      if (values.length !== arity) throw new RangeError("wrong number of values");
+      return withArgs(statement, values);
+    });
+    return {
+      ...script,
+      procedures: (script.procedures ?? []).map((item) =>
+        item.id === procedureId ? { ...item, body } : item,
+      ),
+    };
+  });
 }

@@ -628,11 +628,11 @@ function validateStatement(
       }
       const args = input.args.map((arg, index) => {
         const value = validateExpression(arg, `${path}.args[${index}]`, state);
-        if (value.type !== "numericLiteral") {
+        if (value.type !== "numericLiteral" && value.type !== "param") {
           fail(
             "INVALID_FIELD_TYPE",
             `${path}.args[${index}]`,
-            "expected a fixed number",
+            "expected a fixed number or one of this block's numbers",
             (arg as { type?: unknown } | null)?.type,
           );
         }

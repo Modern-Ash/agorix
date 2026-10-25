@@ -285,7 +285,9 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
         indent +
           (writer.procedureNames?.get(statement.procedureId) ?? "my_block") +
           "(" +
-          (statement.args ?? []).map((arg) => formatNumber(arg.value)).join(", ") +
+          (statement.args ?? [])
+            .map((arg, index) => expressionText(writer, arg, `${nodeId}/args[${index}]`))
+            .join(", ") +
           ")\n",
       );
       return;

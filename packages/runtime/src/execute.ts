@@ -659,7 +659,10 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
       state.callDepth += 1;
       const takesNumbers = (procedure.params?.length ?? 0) > 0;
       if (takesNumbers) {
-        callArgs = (statement.args ?? []).map((arg) => arg.value);
+        // Read before the new frame exists, so a number passed on is the caller's own.
+        callArgs = (statement.args ?? []).map((arg) =>
+          arg.type === "param" ? paramValue(state, arg.paramId) : arg.value,
+        );
         state.paramFrames.push(callArgs);
       }
       try {
