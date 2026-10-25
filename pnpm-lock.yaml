@@ -344,6 +344,8 @@ importers:
         specifier: workspace:*
         version: link:../runtime
 
+  packages/group-service: {}
+
   packages/interaction-core:
     dependencies:
       '@agorix/block-editor':
