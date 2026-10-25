@@ -22,3 +22,9 @@ The test starts Ori on a random loopback port, posts synthetic metadata, checks 
 
 ## Remaining limitations
 This verifies transport and schema interoperability, not pedagogical effectiveness, child safety, authentication, mission-specific correctness or production readiness. A later review must decide whether to allow plans to influence Kids; default remains shadow-only.
+
+## Reliability hardening
+
+The optional cross-repository test now fails explicitly if `ORI_REPO_PATH` is configured but does not point to a checkout containing Ori's reference server. It also fails immediately if the real Ori producer returns an incompatible plan contract, instead of treating that mismatch as a transient startup error. The spawned process is terminated and awaited, with a forced-stop fallback.
+
+A green default Agorix CI run **does not prove cross-repository interoperability** when `ORI_REPO_PATH` is absent: the optional test is skipped. To claim the two repositories interoperate, run the explicit command above and retain its output and both commit SHAs as evidence.
