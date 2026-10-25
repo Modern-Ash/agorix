@@ -31,21 +31,29 @@ describe("Ori educator blind comparison rubric", () => {
     });
   });
   it("rejects invalid scores", () => {
-    expect(summarizeOriEducatorRating({
-      ...rating,
-      scores: { ...rating.scores, clarity: 6 },
-    } as unknown as OriEducatorRating)).toBeNull();
+    expect(
+      summarizeOriEducatorRating({
+        ...rating,
+        scores: { ...rating.scores, clarity: 6 },
+      } as unknown as OriEducatorRating),
+    ).toBeNull();
   });
   it("rejects missing dimensions", () => {
     const scores = { clarity: 4 };
-    expect(summarizeOriEducatorRating({
-      ...rating, scores,
-    } as unknown as OriEducatorRating)).toBeNull();
+    expect(
+      summarizeOriEducatorRating({
+        ...rating,
+        scores,
+      } as unknown as OriEducatorRating),
+    ).toBeNull();
   });
   it("rejects extra dimensions", () => {
-    expect(summarizeOriEducatorRating({
-      ...rating, scores: { ...rating.scores, hiddenMetric: 5 },
-    } as unknown as OriEducatorRating)).toBeNull();
+    expect(
+      summarizeOriEducatorRating({
+        ...rating,
+        scores: { ...rating.scores, hiddenMetric: 5 },
+      } as unknown as OriEducatorRating),
+    ).toBeNull();
   });
   it("rejects ratings without an explanatory rationale", () => {
     expect(summarizeOriEducatorRating({ ...rating, rationale: "OK" })).toBeNull();

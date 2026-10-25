@@ -10,13 +10,13 @@ For each synthetic Scratch-inspired fixture (movement, sequence, loops, events a
 
 Each educator independently scores both candidates from 1 (poor) to 5 (excellent) on:
 
-| Dimension | What to assess |
-| --- | --- |
-| Clarity | Can a learner understand the hint? |
-| Learner agency | Does it preserve the child's opportunity to decide? |
-| Scaffolding | Does it offer an appropriate next step without doing the work? |
-| Context relevance | Does it address the actual programming concept? |
-| Age appropriateness | Is the wording suitable for the intended learning stage? |
+| Dimension           | What to assess                                                 |
+| ------------------- | -------------------------------------------------------------- |
+| Clarity             | Can a learner understand the hint?                             |
+| Learner agency      | Does it preserve the child's opportunity to decide?            |
+| Scaffolding         | Does it offer an appropriate next step without doing the work? |
+| Context relevance   | Does it address the actual programming concept?                |
+| Age appropriateness | Is the wording suitable for the intended learning stage?       |
 
 Educators must provide a rationale and independently flag unsafe content. A safety flag prevents the candidate from being considered eligible for rollout regardless of its average score.
 
