@@ -89,12 +89,15 @@ one iOS tablet, on the target school network, with a successful 300-tick digest 
 The product owner explicitly waived the hardware gate to continue F3. The code now has the
 browser-safe compact bundle, host/guest lockstep, an incremental runtime session, a WebRTC
 request/reply transport that also multiplexes lockstep frames on the same ordered channel, and
-copy/paste pairing in the Adults panel, plus a built-in four-player cooperative play surface: the
-organizer starts only when every approved device is connected, children steer their own token at a
-paced 10 fps, digests are checked every 20 frames, and the organizer can pause, continue without
-absent players or stop. This does **not** close the gate below: no Android/iOS tablet or target
-school network has been tested, and camera/QR pairing is not implemented (the supervised copy/paste
-fallback is). Treat the table as still open.
+pairing in the Adults panel, plus a built-in four-player cooperative play surface: the organizer
+starts only when every approved device is connected, children steer their own token at a paced
+10 fps, digests are checked every 20 frames, and the organizer can pause, continue without absent
+players or stop. Pairing shows the compact bundle as one QR and reads a still photo through the
+operating system's camera picker (`<input capture>`); `jsqr` decodes it locally in a lazy chunk and
+validates the bundle before use. The page never calls `getUserMedia`, so `camera=()` stays closed
+and no route-specific Permissions-Policy change is needed. This does **not** close the gate below:
+no Android/iOS tablet or target school network has been tested, and the OS-camera QR path still
+needs the HTTPS/device check. Treat the table as still open.
 
 ## Recommendation
 

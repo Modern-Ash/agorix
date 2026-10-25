@@ -6,6 +6,7 @@ import { groupText, type GroupCopyKey } from "../groupCopy.js";
 import { DEFAULT_GROUP_SETTINGS, loadGroupSettings, type GroupSettings } from "../groupSettings.js";
 import { HostTeamLink } from "./teamLink.js";
 import { HostTeamPlay } from "./GroupPlayCard.js";
+import { PairingQr, PairingScan } from "./PairingQr.js";
 import { TeamHost, type HostMember, type HostSnapshot } from "./teamHost.js";
 
 interface Props {
@@ -273,15 +274,27 @@ export function TeamProjectCard({ locale, slots, onHost }: Props) {
                         {t("teamInvite", { alias: member.alias })}
                       </button>
                       {state.offer !== undefined ? (
-                        <textarea
-                          readOnly
-                          rows={3}
-                          value={state.offer}
-                          aria-label={t("teamOffer", { alias: member.alias })}
-                        />
+                        <>
+                          <textarea
+                            readOnly
+                            rows={3}
+                            value={state.offer}
+                            aria-label={t("teamOffer", { alias: member.alias })}
+                          />
+                          <PairingQr
+                            value={state.offer}
+                            label={t("teamOfferQr", { alias: member.alias })}
+                          />
+                        </>
                       ) : null}
                       {state.offer !== undefined ? (
                         <>
+                          <PairingScan
+                            label={t("teamScanAnswer", { alias: member.alias })}
+                            hint={t("teamScanHint")}
+                            errorText={t("teamScanError")}
+                            onValue={(value) => updateLink(member.slotId, { answer: value })}
+                          />
                           <textarea
                             rows={3}
                             value={state.answer}
