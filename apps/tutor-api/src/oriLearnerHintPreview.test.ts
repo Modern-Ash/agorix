@@ -16,7 +16,12 @@ const plan = {
 describe("Ori learner hint preview", () => {
   it("does not invoke Ori while disabled", async () => {
     let calls = 0;
-    const consumer: OriPlanConsumer = { evaluate: async () => { calls++; return plan; } };
+    const consumer: OriPlanConsumer = {
+      evaluate: async () => {
+        calls++;
+        return plan;
+      },
+    };
     expect(await createOriLearnerHintPreview(consumer)(input)).toEqual({
       status: "unavailable",
       requiresLearnerApproval: true,
@@ -47,7 +52,11 @@ describe("Ori learner hint preview", () => {
     expect((await createOriLearnerHintPreview(consumer, true)(input)).status).toBe("unavailable");
   });
   it("returns unavailable on provider failure", async () => {
-    const consumer: OriPlanConsumer = { evaluate: async () => { throw new Error("synthetic"); } };
+    const consumer: OriPlanConsumer = {
+      evaluate: async () => {
+        throw new Error("synthetic");
+      },
+    };
     expect((await createOriLearnerHintPreview(consumer, true)(input)).status).toBe("unavailable");
   });
 });

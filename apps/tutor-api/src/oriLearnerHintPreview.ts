@@ -31,7 +31,8 @@ export function createOriLearnerHintPreview(
         !validateOriShadowPlan(plan) ||
         plan.stage !== input.hintLevel ||
         plan.context.missionStage !== input.missionIndex
-      ) return unavailable;
+      )
+        return unavailable;
       return Object.freeze({
         status: "ready",
         hint: plan.hint,
