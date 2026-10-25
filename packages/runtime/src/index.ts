@@ -15,6 +15,15 @@ export {
   type SanitizedTutorContext,
 } from "./execute.js";
 export {
+  DEFAULT_SESSION_STEPS,
+  RUNTIME_SESSION_VERSION,
+  RuntimeSession,
+  type RuntimeSessionOptions,
+  type RuntimeSessionSnapshot,
+  type RuntimeSessionState,
+  type RuntimeStepOptions,
+} from "./session.js";
+export {
   runMultiActorProgram,
   type MultiActorExecutionOptions,
   type MultiActorFrame,

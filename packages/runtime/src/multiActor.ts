@@ -82,12 +82,18 @@ export interface MultiActorRunResult {
   readonly trace: readonly MultiActorTraceEntry[];
   readonly activations: readonly MultiActorScriptActivation[];
   readonly stepsUsed: number;
+  /** Ending PRNG state, so an incremental session can continue the same deterministic stream. */
+  readonly randomState?: number;
 }
 
 export interface MultiActorExecutionOptions extends Pick<ExecutionOptions, "maxSteps"> {
   readonly goal?: WorldState["goal"];
   readonly events?: readonly RuntimeEvent[];
   readonly randomSeed?: number;
+  /** Restore actor worlds from a session snapshot; program variables and lists live here. */
+  readonly initialWorlds?: Readonly<Record<string, WorldState>>;
+  /** Restore stage actor order and backdrop from a session snapshot. */
+  readonly initialStage?: MultiActorRuntimeStage;
 }
 
 interface RuntimeActorMutable {
@@ -181,21 +187,31 @@ function actorsForCreative(
   creative: ProjectCreativeState,
   stage: RuntimeStageMutable,
   goal: WorldState["goal"] | undefined,
+  initialWorlds: Readonly<Record<string, WorldState>> | undefined,
 ): RuntimeActorMutable[] {
   const actorInputs = creative.actors?.length ? creative.actors : [defaultActor()];
   const byId = new Map(
-    actorInputs.map((actor) => [
-      actor.id,
-      {
-        id: actor.id,
-        name: actor.name,
-        world: actorWorld(actor, creative.stage, goal),
-        visible: actor.visible,
-        size: actor.size,
-        ...(actor.costumeId === undefined ? {} : { costumeId: actor.costumeId }),
-        ...(actor.scripts === undefined ? {} : { scriptIds: actor.scripts }),
-      },
-    ]),
+    actorInputs.map((actor) => {
+      const restored = initialWorlds?.[actor.id];
+      const world =
+        restored === undefined
+          ? actorWorld(actor, creative.stage, goal)
+          : cloneWorldState(restored);
+      return [
+        actor.id,
+        {
+          id: actor.id,
+          name: actor.name,
+          world,
+          visible: world.sprite.visible ?? actor.visible,
+          size: world.sprite.size ?? actor.size,
+          ...(world.sprite.costumeId === undefined && actor.costumeId === undefined
+            ? {}
+            : { costumeId: world.sprite.costumeId ?? actor.costumeId }),
+          ...(actor.scripts === undefined ? {} : { scriptIds: actor.scripts }),
+        },
+      ];
+    }),
   );
   return stage.actorOrder.flatMap((id) => {
     const actor = byId.get(id);
@@ -364,8 +380,22 @@ export function runMultiActorProgram(
 ): MultiActorRunResult {
   const validatedProgram = validateProgram(program);
   const creative = validateProjectCreativeState(creativeInput, validatedProgram);
-  const stage = stageForCreative(creative);
-  const actors = actorsForCreative(creative, stage, options.goal);
+  const stage =
+    options.initialStage === undefined
+      ? stageForCreative(creative)
+      : {
+          actorOrder: [...options.initialStage.actorOrder],
+          ...(options.initialStage.backdropId === undefined
+            ? {}
+            : { backdropId: options.initialStage.backdropId }),
+          ...(options.initialStage.width === undefined
+            ? {}
+            : { width: options.initialStage.width }),
+          ...(options.initialStage.height === undefined
+            ? {}
+            : { height: options.initialStage.height }),
+        };
+  const actors = actorsForCreative(creative, stage, options.goal, options.initialWorlds);
   const maxSteps = normalizeMaxSteps(options.maxSteps);
   let stepsUsed = 0;
   let outcome: RunOutcome = "completed";
@@ -479,5 +509,6 @@ export function runMultiActorProgram(
     trace,
     activations,
     stepsUsed,
+    ...(randomState === undefined ? {} : { randomState }),
   };
 }
