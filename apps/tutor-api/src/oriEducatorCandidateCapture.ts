@@ -39,14 +39,19 @@ export async function captureOriEducatorCandidates(
     let plan;
     try {
       plan = await consumer.evaluate({
-      missionIndex: fixture.missionIndex,
-      hintLevel: fixture.hintLevel,
-      scriptCount: 1,
+        missionIndex: fixture.missionIndex,
+        hintLevel: fixture.hintLevel,
+        scriptCount: 1,
       });
     } catch {
       return null;
     }
-    if (!plan || !validateOriShadowPlan(plan) || plan.stage !== fixture.hintLevel || plan.context.missionStage !== fixture.missionIndex)
+    if (
+      !plan ||
+      !validateOriShadowPlan(plan) ||
+      plan.stage !== fixture.hintLevel ||
+      plan.context.missionStage !== fixture.missionIndex
+    )
       return null;
     const ori: OriHintCandidate = { hint: plan.hint, nextStep: plan.steps[0] };
     const existing: OriHintCandidate = { hint: baseline.hint, nextStep: baseline.nextStep };

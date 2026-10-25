@@ -32,9 +32,9 @@ describe("Ori educator candidate capture", () => {
     expect(await captureOriEducatorCandidates(consumer, baseline.slice(0, 4))).toBeNull();
   });
   it("rejects duplicate fixture IDs", async () => {
-    expect(await captureOriEducatorCandidates(consumer, [
-      ...baseline.slice(0, 4), baseline[0]!,
-    ])).toBeNull();
+    expect(
+      await captureOriEducatorCandidates(consumer, [...baseline.slice(0, 4), baseline[0]!]),
+    ).toBeNull();
   });
   it("rejects unavailable Ori output without emitting partial batches", async () => {
     const unavailable: OriPlanConsumer = { evaluate: async () => null };
