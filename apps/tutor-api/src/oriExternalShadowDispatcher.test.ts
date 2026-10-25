@@ -3,7 +3,7 @@ import { createOriExternalShadowDispatcher } from "./oriExternalShadow.js";
 
 describe("Ori shadow backpressure", () => {
   it("caps concurrent calls and skips excess work without queueing", async () => {
-    let release: (() => void) | undefined;
+    let release!: () => void;
     const gate = new Promise<void>((resolve) => { release = resolve; });
     let calls = 0;
     const shadow = async () => { calls++; await gate; };
@@ -14,7 +14,7 @@ describe("Ori shadow backpressure", () => {
     await Promise.resolve();
     expect(calls).toBe(1);
     expect(dispatcher.inFlight).toBe(1);
-    release?.();
+    release();
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(dispatcher.inFlight).toBe(0);
     dispatcher.dispatch(true, shadow, input);
