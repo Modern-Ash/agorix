@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import { GroupOrganizerCard } from "./GroupOrganizerCard.js";
 import { GroupThisDeviceCard } from "./GroupThisDeviceCard.js";
 import { TeamProjectCard } from "./team/TeamProjectCard.js";
+import { GuestTeamPlay, HostTeamPlay } from "./team/GroupPlayCard.js";
+import { GuestTeamLink, HostTeamLink } from "./team/teamLink.js";
 import type { GroupApi } from "./groupApi.js";
 import { assertGroupCatalogComplete, groupError, groupText } from "./groupCopy.js";
 import {
@@ -58,6 +60,35 @@ describe("group cards", () => {
     expect(html).toContain('maxLength="6"');
     expect(html).toContain('autoComplete="off"');
     expect(html.match(/<input/g)).toHaveLength(1);
+  });
+});
+
+describe("team play card", () => {
+  it("waits for every approved device before the host can start", () => {
+    const link = new HostTeamLink({ host: { handle: async () => ({ ok: true }) } });
+    const html = renderToStaticMarkup(
+      <HostTeamPlay
+        locale="es"
+        link={link}
+        players={[
+          { slotId: "slot-1", alias: "Zorro Azul" },
+          { slotId: "slot-2", alias: "Luna Verde" },
+        ]}
+      />,
+    );
+    expect(html).toContain("Juego en equipo");
+    expect(html).toContain("0 de 2");
+    expect(html).toContain("disabled");
+    expect(html).not.toContain("kids-team-play-stage");
+  });
+
+  it("shows the child a connecting stage with disabled controls", () => {
+    const link = new GuestTeamLink();
+    const html = renderToStaticMarkup(<GuestTeamPlay locale="en" link={link} />);
+    expect(html).toContain("Team game");
+    expect(html).toContain("Connecting the game");
+    expect(html).toContain("kids-team-play-stage");
+    expect(html).toContain("disabled");
   });
 });
 
