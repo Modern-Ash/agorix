@@ -5,6 +5,7 @@ import type { OriExternalShadowInput } from "./oriExternalShadow.js";
 import { checkOriReviewHttpRequest } from "./oriReviewHttpGuard.js";
 import { readOriReviewBody } from "./oriReviewBody.js";
 import type { OriReviewRateLimiter } from "./oriReviewRateLimit.js";
+import { validateOriShadowPlan } from "./oriShadowPlanValidation.js";
 
 /**
  * Internal adult-review pipeline. Not registered as an HTTP route.
@@ -41,7 +42,14 @@ export function createOriReviewPipeline(
     if (!input) return { status: 400, body: { error: "invalid-request" } };
     try {
       const result = await review(input);
-      if (result.status !== "ready" || !result.plan)
+      if (
+        result?.status !== "ready" ||
+        result.appliedChanges !== false ||
+        !result.plan ||
+        !validateOriShadowPlan(result.plan) ||
+        result.plan.stage !== input.hintLevel ||
+        result.plan.context.missionStage !== input.missionIndex
+      )
         return { status: 503, body: { error: "unavailable" } };
       return { status: 200, body: result };
     } catch {
