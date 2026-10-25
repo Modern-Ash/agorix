@@ -1,3 +1,4 @@
+import { createOriRuntimePreview } from "./oriRuntimePreview.js";
 import { configFromEnv } from "./index.js";
 import { createTutorServer } from "./server.js";
 import { createOriCliService, oriCliConfigFromEnv } from "./oriCli.js";
@@ -32,9 +33,17 @@ const shadowEndpoint = process.env["AGORIX_ORI_EXTERNAL_SHADOW_URL"];
 const shadow =
   shadowEnabled && shadowEndpoint ? createOriShadowTransport(shadowEndpoint) : undefined;
 
+const experimentalOriEnabled = process.env["AGORIX_ORI_RUNTIME_PREVIEW"] === "1";
+const oriRoot = process.env["ORI_REPO_PATH"];
+const oriRuntimePreview = experimentalOriEnabled && oriRoot
+  ? createOriRuntimePreview({oriRoot,enabled:true})
+  : undefined;
+
 const server = createTutorServer({
   config,
   aiConfig,
+  oriRuntimePreviewEnabled: experimentalOriEnabled && !!oriRuntimePreview,
+  ...(oriRuntimePreview ? {oriRuntimePreview} : {}),
   adminAuth,
   oriExternalShadowEnabled: shadowEnabled,
   ...(shadow ? { oriExternalShadow: shadow } : {}),
