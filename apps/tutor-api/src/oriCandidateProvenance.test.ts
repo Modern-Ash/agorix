@@ -25,15 +25,25 @@ describe("Ori baseline evidence gate", () => {
     expect(validateOriBaselineEvidence([...evidence.slice(0, 4), evidence[0]!])).toBeNull();
   });
   it("rejects mismatched mission and hint level", () => {
-    expect(validateOriBaselineEvidence([{ ...evidence[0]!, missionIndex: 99 }, ...evidence.slice(1)])).toBeNull();
-    expect(validateOriBaselineEvidence([{ ...evidence[0]!, hintLevel: 5 }, ...evidence.slice(1)])).toBeNull();
+    expect(
+      validateOriBaselineEvidence([{ ...evidence[0]!, missionIndex: 99 }, ...evidence.slice(1)]),
+    ).toBeNull();
+    expect(
+      validateOriBaselineEvidence([{ ...evidence[0]!, hintLevel: 5 }, ...evidence.slice(1)]),
+    ).toBeNull();
   });
   it("rejects unsupported source claims", () => {
     const forged = { ...evidence[0]!, source: "unknown" };
-    expect(validateOriBaselineEvidence([forged, ...evidence.slice(1)] as OriBaselineEvidence[])).toBeNull();
+    expect(
+      validateOriBaselineEvidence([forged, ...evidence.slice(1)] as OriBaselineEvidence[]),
+    ).toBeNull();
   });
   it("rejects missing capture reference and invalid text", () => {
-    expect(validateOriBaselineEvidence([{ ...evidence[0]!, captureRef: "" }, ...evidence.slice(1)])).toBeNull();
-    expect(validateOriBaselineEvidence([{ ...evidence[0]!, hint: "" }, ...evidence.slice(1)])).toBeNull();
+    expect(
+      validateOriBaselineEvidence([{ ...evidence[0]!, captureRef: "" }, ...evidence.slice(1)]),
+    ).toBeNull();
+    expect(
+      validateOriBaselineEvidence([{ ...evidence[0]!, hint: "" }, ...evidence.slice(1)]),
+    ).toBeNull();
   });
 });

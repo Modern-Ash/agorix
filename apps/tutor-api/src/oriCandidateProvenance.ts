@@ -27,7 +27,10 @@ export function validateOriBaselineEvidence(
     if (!fixture || record.source !== "agorix-deterministic-tutor") return null;
     if (record.missionIndex !== fixture.missionIndex || record.hintLevel !== fixture.hintLevel)
       return null;
-    if (typeof record.captureRef !== "string" || !/^[a-zA-Z0-9._/-]{8,128}$/.test(record.captureRef))
+    if (
+      typeof record.captureRef !== "string" ||
+      !/^[a-zA-Z0-9._/-]{8,128}$/.test(record.captureRef)
+    )
       return null;
     if (
       typeof record.hint !== "string" ||
@@ -36,13 +39,16 @@ export function validateOriBaselineEvidence(
       typeof record.nextStep !== "string" ||
       record.nextStep.trim().length < 8 ||
       record.nextStep.length > 140
-    ) return null;
+    )
+      return null;
     seen.add(record.fixtureId);
-    output.push(Object.freeze({
-      fixtureId: record.fixtureId,
-      hint: record.hint,
-      nextStep: record.nextStep,
-    }));
+    output.push(
+      Object.freeze({
+        fixtureId: record.fixtureId,
+        hint: record.hint,
+        nextStep: record.nextStep,
+      }),
+    );
   }
   return Object.freeze(output);
 }
