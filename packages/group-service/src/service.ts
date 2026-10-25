@@ -134,6 +134,16 @@ export class GroupService {
     return { group: this.groupView(group), slots: slots.map(slotView) };
   }
 
+  /** The organizer's live group, if any. An expired one is deleted and reads as none. */
+  async myGroup(accountId: string): Promise<OrganizerGroupView | undefined> {
+    if (!(await this.isOrganizer(accountId))) throw this.notOrganizer();
+    const group = await this.repo.findGroupByOrganizer(accountId);
+    if (group === undefined || (await this.liveGroup(group.groupId)) === undefined) {
+      return undefined;
+    }
+    return this.organizerView(accountId, group.groupId);
+  }
+
   async setLocked(accountId: string, groupId: string, locked: boolean): Promise<void> {
     const group = await this.ownedGroup(accountId, groupId);
     await this.repo.putGroup({ ...group, locked });
