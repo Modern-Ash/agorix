@@ -16,10 +16,12 @@ export function createOriPlanReview(
   enabled: boolean,
 ): (input: OriExternalShadowInput) => Promise<OriPlanReviewResult> {
   return async (input) => {
-    if (!enabled) return Object.freeze({ status: "unavailable", plan: null, appliedChanges: false });
+    if (!enabled)
+      return Object.freeze({ status: "unavailable", plan: null, appliedChanges: false });
     try {
       const plan = await consumer.evaluate(input);
-      if (!plan) return Object.freeze({ status: "unavailable", plan: null, appliedChanges: false });
+      if (!plan)
+        return Object.freeze({ status: "unavailable", plan: null, appliedChanges: false });
       return Object.freeze({ status: "ready", plan, appliedChanges: false });
     } catch {
       return Object.freeze({ status: "unavailable", plan: null, appliedChanges: false });
