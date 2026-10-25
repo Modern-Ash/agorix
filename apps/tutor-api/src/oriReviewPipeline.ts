@@ -26,8 +26,7 @@ export function createOriReviewPipeline(
   return async (request) => {
     if (!enabled) return { status: 503, body: { error: "unavailable" } };
     const preflight = checkOriReviewHttpRequest(request, auth, trustedHosts);
-    if (!preflight.allowed)
-      return { status: preflight.status, body: { error: preflight.reason } };
+    if (!preflight.allowed) return { status: preflight.status, body: { error: preflight.reason } };
     // The identity is derived exclusively from the authenticated server session.
     let session;
     try {
@@ -36,8 +35,7 @@ export function createOriReviewPipeline(
       return { status: 401, body: { error: "unauthorized" } };
     }
     if (!session) return { status: 401, body: { error: "unauthorized" } };
-    if (!limiter.allow(session.author))
-      return { status: 429, body: { error: "rate-limited" } };
+    if (!limiter.allow(session.author)) return { status: 429, body: { error: "rate-limited" } };
     const input = await readOriReviewBody(request);
     if (!input) return { status: 400, body: { error: "invalid-request" } };
     try {
