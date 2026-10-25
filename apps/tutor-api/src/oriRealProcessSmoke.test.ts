@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { existsSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { createOriShadowTransport } from "./oriExternalShadowTransport.js";
+import { createOriPlanConsumer } from "./oriPlanConsumer.js";
 
 /**
  * Optional cross-repository smoke. Requires ORI_REPO_PATH pointing to a local
@@ -69,6 +70,30 @@ describe.skipIf(!runnable)("real Ori process to Agorix consumer contract", () =>
       expect(await transport({ missionIndex: 1, hintLevel: 2, scriptCount: 1 })).toBeUndefined();
       expect(actualRequests).toBe(1);
       expect(validatedResponses).toBe(1);
+      // Exercise the actual read-only consumer against the real Ori process.
+      const consumer = createOriPlanConsumer(url);
+      const accepted = await consumer.evaluate({
+        missionIndex: 1,
+        hintLevel: 2,
+        scriptCount: 1,
+      });
+      expect(accepted?.schema).toBe("ori/shadow-plan/v1");
+      expect(accepted?.stage).toBe(2);
+      expect(accepted?.context.missionStage).toBe(1);
+      expect(accepted?.steps).toHaveLength(3);
+      expect(accepted?.appliedChanges).toBe(false);
+      expect(Object.isFrozen(accepted)).toBe(true);
+      expect(Object.isFrozen(accepted?.steps)).toBe(true);
+      expect(Object.isFrozen(accepted?.context)).toBe(true);
+      // Ori generates the plan for the requested stage; verify another stage independently.
+      const stageThree = await consumer.evaluate({
+        missionIndex: 1,
+        hintLevel: 3,
+        scriptCount: 1,
+      });
+      expect(stageThree?.stage).toBe(3);
+      // The consumer is not connected to the child-facing tutor response.
+
     } finally {
       if (child.exitCode === null) {
         child.kill("SIGTERM");
