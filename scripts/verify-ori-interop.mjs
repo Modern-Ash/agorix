@@ -1,3 +1,4 @@
+import console from "node:console";
 /**
  * Explicit cross-repository verification entrypoint.
  * Unlike default Vitest, this command MUST fail when Ori is not configured.
