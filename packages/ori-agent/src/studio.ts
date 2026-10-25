@@ -1,4 +1,9 @@
-import { validateProgram, type ProjectProgram, type Statement } from "@agorix/program-model";
+import {
+  validateProgram,
+  type ProjectProgram,
+  type Script,
+  type Statement,
+} from "@agorix/program-model";
 import {
   createProgramProposal,
   createProposalReview,
@@ -57,10 +62,21 @@ function target(context: OriStudioContext) {
   return { program, index, script: program.scripts[index]! };
 }
 
-function allowed(statement: Statement): boolean {
+const PROCEDURE_ID = /^proc-[1-9][0-9]*-[1-9][0-9]*$/;
+
+/** The child's own blocks of this character, by id only. Ori never sees or chooses a title. */
+function procedureIds(script: Script): readonly string[] {
+  return (script.procedures ?? []).map((procedure) => procedure.id);
+}
+
+function allowed(statement: Statement, script: Script): boolean {
   return (
     (statement.type === "move" && [40, 80, 120, 160, 200].includes(statement.steps)) ||
-    (statement.type === "turn" && [-90, 90].includes(statement.degrees))
+    (statement.type === "turn" && [-90, 90].includes(statement.degrees)) ||
+    // Using a block the child already made. Ori cannot create, rename or delete one.
+    (statement.type === "callProcedure" &&
+      PROCEDURE_ID.test(statement.procedureId) &&
+      procedureIds(script).includes(statement.procedureId))
   );
 }
 
@@ -72,17 +88,26 @@ export function createOriStudioInput(context: OriStudioContext) {
     actorId: context.actorId,
     actorCount: selected.program.scripts.length,
     selectedBlocks: selected.script.statements.map((statement) => statement.type),
+    // Ids and the kinds of blocks inside only: the child's titles are their own text.
+    procedures: (selected.script.procedures ?? []).map((procedure) => ({
+      id: procedure.id,
+      blocks: procedure.body.map((statement) => statement.type),
+    })),
     allowedBlocks: [
       { type: "move", steps: 40 },
       { type: "move", steps: 80 },
       { type: "turn", degrees: -90 },
       { type: "turn", degrees: 90 },
+      ...procedureIds(selected.script).map((procedureId) => ({
+        type: "callProcedure",
+        procedureId,
+      })),
     ],
-  } as const;
+  };
 }
 
 export function getOriStudioInstructions(locale: "es" | "en"): string {
-  const contract = `Contract ${ORI_STUDIO_VERSION}. Return exactly one JSON object: {"version":"${ORI_STUDIO_VERSION}","kind":"program-suggestion","actorId":"<input.actorId>","block":{"type":"move","steps":40|80|120|160|200}} or use {"type":"turn","degrees":-90|90}; alternatively {"version":"${ORI_STUDIO_VERSION}","kind":"refusal"}. No other keys, prose, links, tools or personal data. Use only the selected actor. Never claim the program ran. The child reviews before any change.`;
+  const contract = `Contract ${ORI_STUDIO_VERSION}. Return exactly one JSON object: {"version":"${ORI_STUDIO_VERSION}","kind":"program-suggestion","actorId":"<input.actorId>","block":{"type":"move","steps":40|80|120|160|200}} or use {"type":"turn","degrees":-90|90} or, only when input.procedures is not empty, {"type":"callProcedure","procedureId":"<one id from input.procedures>"} to reuse a block the child made; alternatively {"version":"${ORI_STUDIO_VERSION}","kind":"refusal"}. No other keys, prose, links, tools or personal data. Use only the selected actor. Never claim the program ran. The child reviews before any change.`;
   return locale === "es"
     ? `Sos Ori. Sugerí un solo movimiento o giro para el personaje elegido en Agorix. El niño decide y el programa prueba. ${contract}`
     : `You are Ori. Suggest one move or turn for the selected Agorix character. The child decides and the program proves. ${contract}`;
@@ -90,7 +115,7 @@ export function getOriStudioInstructions(locale: "es" | "en"): string {
 
 function proposalFor(context: OriStudioContext, statement: Statement): ProgramProposal {
   const selected = target(context);
-  if (!allowed(statement)) throw new Error("unsupported studio idea");
+  if (!allowed(statement, selected.script)) throw new Error("unsupported studio idea");
   const proposal = createProgramProposal({
     id: `ori-studio-${selected.index}-${selected.script.statements.length}`,
     baseProgram: selected.program,
@@ -122,7 +147,7 @@ export function validateOriStudioProposal(context: OriStudioContext, raw: unknow
     proposal.operations.length !== 1 ||
     operation?.type !== "appendStatement" ||
     operation.scriptIndex !== selected.index ||
-    !allowed(operation.statement) ||
+    !allowed(operation.statement, selected.script) ||
     proposal.affectedActorIds?.join() !== context.actorId ||
     proposal.affectedScriptIds?.join() !== selected.script.id ||
     proposal.affectedNodeIds.join() !==
@@ -191,9 +216,14 @@ export function evaluateOriStudioOutput(
             Object.keys(block).sort().join() === "degrees,type" &&
             [-90, 90].includes(block.degrees as number)
           ? { type: "turn", degrees: block.degrees as number }
-          : (() => {
-              throw new Error("unsupported block");
-            })();
+          : block.type === "callProcedure" &&
+              Object.keys(block).sort().join() === "procedureId,type" &&
+              typeof block.procedureId === "string" &&
+              procedureIds(target(context).script).includes(block.procedureId)
+            ? { type: "callProcedure", procedureId: block.procedureId }
+            : (() => {
+                throw new Error("unsupported block");
+              })();
     return {
       source: "model",
       message:

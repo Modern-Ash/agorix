@@ -582,4 +582,71 @@ describe("Ori free scene HTTP boundary (#538)", () => {
       proposal: { operations: [{ statement: { type: "move", steps: 40 } }] },
     });
   });
+
+  it("lets the real CLI path reuse the child's own block and keeps its title out of the model input", async () => {
+    const withBlock = {
+      ...context,
+      program: {
+        schema: "agorix/program/v1",
+        scripts: [
+          {
+            id: "studio-actor-1-nova",
+            trigger: { type: "greenFlag" },
+            statements: [{ type: "say", text: "Mi secreto" }],
+            procedures: [
+              { id: "proc-1-1", name: "Mi baile secreto", body: [{ type: "move", steps: 40 }] },
+            ],
+          },
+        ],
+      },
+    };
+    const inputs: string[] = [];
+    const run: OriCliProcess = async (_bin, args, options) => {
+      if (args.includes("--version")) return "version";
+      inputs.push(options.input);
+      return JSON.stringify({
+        version: "agorix/ori-studio/v1",
+        kind: "program-suggestion",
+        actorId: context.actorId,
+        block: { type: "callProcedure", procedureId: "proc-1-1" },
+      });
+    };
+    const base = await start({}, undefined, createOriCliService(oriCliConfigFromEnv({}), { run }));
+    const post = (body: unknown) =>
+      fetch(`${base}/api/tutor/studio/ori`, {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: base },
+        body: JSON.stringify(body),
+      });
+    const response = await post(withBlock);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      proposal: {
+        operations: [
+          {
+            type: "appendStatement",
+            scriptIndex: 0,
+            statement: { type: "callProcedure", procedureId: "proc-1-1" },
+          },
+        ],
+      },
+    });
+    expect(inputs[0]).toContain("proc-1-1");
+    expect(inputs[0]).not.toMatch(/Mi baile secreto|Mi secreto/);
+
+    // A block id the character does not have never reaches the child: a safe local idea instead.
+    const foreign = await fetch(`${base}/api/tutor/studio/ori`, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: base },
+      body: JSON.stringify({
+        ...withBlock,
+        program: {
+          ...withBlock.program,
+          scripts: [{ ...withBlock.program.scripts[0], procedures: [] }],
+        },
+      }),
+    });
+    expect(foreign.status).toBe(200);
+    expect(JSON.stringify(await foreign.json())).not.toContain("callProcedure");
+  });
 });

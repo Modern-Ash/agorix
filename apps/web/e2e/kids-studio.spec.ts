@@ -1046,3 +1046,109 @@ test("free scene groups several blocks and runs a child-composed calculation", a
   ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");
   expect(violations.map((entry) => entry.id)).toEqual([]);
 });
+
+test("Ori suggests using a block the child made; the child reviews, changes and plays it", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  const contexts: { program: { scripts: { procedures?: { id: string; name: string }[] }[] } }[] =
+    [];
+  await page.route("**/api/tutor/studio/ori", async (route) => {
+    const context = route.request().postDataJSON();
+    contexts.push(context);
+    const first = context.program.scripts[0].procedures?.[0]?.id;
+    const decision = evaluateOriStudioOutput(context, {
+      version: ORI_STUDIO_VERSION,
+      kind: "program-suggestion",
+      actorId: context.actorId,
+      block: first ? { type: "callProcedure", procedureId: first } : { type: "move", steps: 40 },
+    });
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ message: decision.message, proposal: decision.proposal }),
+    });
+  });
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
+
+  // Two blocks of the child's own.
+  await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  await page.getByRole("button", { name: "+ Girar a la derecha" }).click();
+  await page.getByRole("textbox", { name: "Título del bloque" }).fill("Cuadrado");
+  await page.getByRole("button", { name: "Crear bloque con estos bloques" }).click();
+  await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  await page.getByRole("button", { name: "+ Girar a la izquierda" }).click();
+  await page.getByRole("textbox", { name: "Título del bloque" }).fill("Vuelta");
+  await page.getByRole("button", { name: "Crear bloque con estos bloques" }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(2);
+  const before = await page.locator(".kids-program-block").allInnerTexts();
+
+  // Ori proposes to use one of them: nothing changes until the child decides.
+  await page.getByRole("button", { name: "Pedirle una idea a Ori" }).click();
+  await expect(page.locator(".kids-ori-proposal")).toContainText("+ Usar: Cuadrado");
+  expect(await page.locator(".kids-program-block").allInnerTexts()).toEqual(before);
+  const violations = (
+    await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
+  ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");
+  expect(violations.map((entry) => entry.id)).toEqual([]);
+
+  // The child changes it to their other block, then uses it.
+  await page.getByRole("button", { name: "Cambiar idea" }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(3);
+  await expect(page.locator(".kids-program-block").last()).toContainText("Usar: Vuelta");
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByText(/bloques ejecutados/)).toBeVisible();
+
+  // What Ori suggested is only the id of a block the character already has.
+  expect(contexts).toHaveLength(1);
+});
+
+test("Ori's block idea can be refused and a lone block cannot be swapped", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.route("**/api/tutor/studio/ori", async (route) => {
+    const context = route.request().postDataJSON();
+    const id = context.program.scripts[0].procedures?.[0]?.id;
+    const decision = evaluateOriStudioOutput(context, {
+      version: ORI_STUDIO_VERSION,
+      kind: "program-suggestion",
+      actorId: context.actorId,
+      block: { type: "callProcedure", procedureId: id },
+    });
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ message: decision.message, proposal: decision.proposal }),
+    });
+  });
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
+  await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  await page.getByRole("button", { name: "+ Girar a la derecha" }).click();
+  await page.getByRole("textbox", { name: "Título del bloque" }).fill("Paso");
+  await page.getByRole("button", { name: "Crear bloque con estos bloques" }).click();
+  await page.getByRole("button", { name: "Pedirle una idea a Ori" }).click();
+  await expect(page.locator(".kids-ori-proposal")).toContainText("+ Usar: Paso");
+  await expect(page.getByRole("button", { name: "Cambiar idea" })).toHaveCount(0);
+  await page.getByRole("button", { name: "No usar" }).click();
+  await expect(page.locator(".kids-ori-proposal")).toHaveCount(0);
+  await expect(page.locator(".kids-program-block")).toHaveCount(1);
+});

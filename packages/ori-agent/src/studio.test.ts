@@ -118,4 +118,144 @@ describe("Ori free scene contract", () => {
       validateOriStudioProposal(expanded, decision.proposal).candidateProgram.variables,
     ).toEqual(expanded.program.variables);
   });
+
+  describe("reusing the child's own blocks (Mis bloques, #538 slice 4)", () => {
+    const withBlocks: OriStudioContext = {
+      ...context,
+      program: {
+        ...context.program,
+        scripts: [
+          {
+            id: "studio-actor-1-nova",
+            trigger: { type: "greenFlag" as const },
+            statements: [{ type: "say" as const, text: "Mi secreto" }],
+            procedures: [
+              {
+                id: "proc-1-1",
+                name: "Bloque de Nova",
+                body: [{ type: "move" as const, steps: 40 }],
+              },
+            ],
+          },
+          {
+            id: "studio-actor-2-mika",
+            trigger: { type: "onActorClicked" as const },
+            statements: [],
+            procedures: [
+              {
+                id: "proc-2-1",
+                name: "Mi baile secreto",
+                body: [
+                  { type: "move" as const, steps: 40 },
+                  { type: "turn" as const, degrees: 90 },
+                ],
+              },
+              { id: "proc-2-2", name: "Salto", body: [{ type: "turn" as const, degrees: -90 }] },
+            ],
+          },
+        ],
+      },
+    };
+    const suggest = (block: Record<string, unknown>, ctx = withBlocks) =>
+      evaluateOriStudioOutput(ctx, {
+        version: ORI_STUDIO_VERSION,
+        kind: "program-suggestion",
+        actorId: ctx.actorId,
+        block,
+      });
+
+    it("sends block ids and the kinds of blocks inside, never a title or the child's text", () => {
+      const input = createOriStudioInput(withBlocks);
+      expect(input.procedures).toEqual([
+        { id: "proc-2-1", blocks: ["move", "turn"] },
+        { id: "proc-2-2", blocks: ["turn"] },
+      ]);
+      expect(input.allowedBlocks).toContainEqual({
+        type: "callProcedure",
+        procedureId: "proc-2-1",
+      });
+      const text = JSON.stringify(input);
+      expect(text).not.toMatch(/Mi baile secreto|Salto|Bloque de Nova|Mi secreto|proc-1-1/);
+    });
+
+    it("turns a valid reuse into one reviewable proposal that changes nothing by itself", () => {
+      const decision = suggest({ type: "callProcedure", procedureId: "proc-2-2" });
+      expect(decision.source).toBe("model");
+      expect(decision.proposal?.operations[0]).toMatchObject({
+        type: "appendStatement",
+        scriptIndex: 1,
+        statement: { type: "callProcedure", procedureId: "proc-2-2" },
+      });
+      const review = validateOriStudioProposal(withBlocks, decision.proposal);
+      expect(review.candidateProgram.scripts[1]?.statements).toEqual([
+        { type: "callProcedure", procedureId: "proc-2-2" },
+      ]);
+      expect(withBlocks.program.scripts[1]?.statements).toEqual([]);
+      expect(review.candidateProgram.scripts[1]?.procedures).toEqual(
+        withBlocks.program.scripts[1]?.procedures,
+      );
+    });
+
+    it("rejects an unknown block, another character's block, extra keys and a made-up kind", () => {
+      for (const block of [
+        { type: "callProcedure", procedureId: "proc-2-9" },
+        { type: "callProcedure", procedureId: "proc-1-1" },
+        { type: "callProcedure", procedureId: "../etc" },
+        { type: "callProcedure", procedureId: 5 },
+        { type: "callProcedure", procedureId: "proc-2-1", name: "Mi baile secreto" },
+        { type: "callProcedure" },
+        { type: "defineProcedure", procedureId: "proc-2-3", body: [] },
+      ]) {
+        expect(suggest(block).source, JSON.stringify(block)).toBe("fallback");
+      }
+    });
+
+    it("cannot reuse a block when the character has none, and the no-AI path is unchanged", () => {
+      expect(suggest({ type: "callProcedure", procedureId: "proc-2-1" }, context).source).toBe(
+        "fallback",
+      );
+      const fallback = evaluateOriStudioOutput(withBlocks, undefined);
+      expect(fallback.source).toBe("fallback");
+      expect(fallback.proposal?.operations[0]).toMatchObject({
+        statement: { type: "move", steps: 40 },
+      });
+    });
+
+    it("a forged proposal that calls a missing or foreign block is refused", () => {
+      const good = suggest({ type: "callProcedure", procedureId: "proc-2-1" });
+      const forge = (procedureId: string) => ({
+        ...good.proposal!,
+        operations: [
+          {
+            type: "appendStatement",
+            scriptIndex: 1,
+            statement: { type: "callProcedure", procedureId },
+          },
+        ],
+      });
+      expect(() => validateOriStudioProposal(withBlocks, forge("proc-1-1"))).toThrow();
+      expect(() => validateOriStudioProposal(withBlocks, forge("proc-2-7"))).toThrow();
+      expect(() => validateOriStudioProposal(withBlocks, forge("proc-2-2"))).not.toThrow();
+    });
+
+    it("the model contract tells Ori how to reuse a block and that it cannot make one", async () => {
+      let seenInstructions = "";
+      let seenInput = "";
+      await runOriStudio(withBlocks, {
+        generate: async (instructions: string, input: string) => {
+          seenInstructions = instructions;
+          seenInput = input;
+          return JSON.stringify({
+            version: ORI_STUDIO_VERSION,
+            kind: "program-suggestion",
+            actorId: withBlocks.actorId,
+            block: { type: "callProcedure", procedureId: "proc-2-1" },
+          });
+        },
+      });
+      expect(seenInstructions).toContain("callProcedure");
+      expect(seenInstructions).toContain("input.procedures");
+      expect(seenInput).not.toMatch(/Mi baile secreto/);
+    });
+  });
 });
