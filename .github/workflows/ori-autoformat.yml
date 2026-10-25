@@ -3,7 +3,7 @@ name: Ori Feature Autoformat
 on:
   push:
     branches:
-      - 'feature/ori-*'
+      - "feature/ori-*"
 
 permissions:
   contents: write
@@ -33,7 +33,7 @@ jobs:
       - name: Format changed files
         run: |
           git fetch --no-tags origin integration/ori
-          git diff --name-only --diff-filter=ACMR -z origin/integration/ori...HEAD > /tmp/ori-changed-files
+          git diff --name-only --diff-filter=ACMR -z origin/integration/ori...HEAD -- ":(exclude).github/workflows/**" > /tmp/ori-changed-files
           if [ -s /tmp/ori-changed-files ]; then
             xargs -0 -r pnpm exec prettier --write --ignore-unknown < /tmp/ori-changed-files
           fi
