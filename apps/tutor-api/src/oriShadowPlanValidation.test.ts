@@ -18,7 +18,9 @@ describe("Ori shadow plan schema", () => {
     expect(validateOriShadowPlan({ ...valid, proposal: { operation: "append" } })).toBeNull();
     expect(validateOriShadowPlan({ ...valid, appliedChanges: true })).toBeNull();
     expect(validateOriShadowPlan({ ...valid, childMessage: "private" })).toBeNull();
-    expect(validateOriShadowPlan({ ...valid, context: { missionStage: 1, identity: "child" } })).toBeNull();
+    expect(
+      validateOriShadowPlan({ ...valid, context: { missionStage: 1, identity: "child" } }),
+    ).toBeNull();
   });
   it("rejects invalid stage, oversized text and malformed steps", () => {
     expect(validateOriShadowPlan({ ...valid, stage: 6 })).toBeNull();
@@ -30,10 +32,11 @@ describe("Ori shadow plan schema", () => {
 describe("Ori plan shadow transport", () => {
   it("reads a valid plan without returning it to the tutor", async () => {
     const { createOriShadowTransport } = await import("./oriExternalShadowTransport.js");
-    const mockFetch = (async () => new Response(JSON.stringify(valid), {
-      status: 200,
-      headers: { "content-type": "application/json" },
-    })) as typeof fetch;
+    const mockFetch = (async () =>
+      new Response(JSON.stringify(valid), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })) as typeof fetch;
     const transport = createOriShadowTransport("http://127.0.0.1:1234/v1/plan", mockFetch);
     expect(await transport({ missionIndex: 1, hintLevel: 2, scriptCount: 1 })).toBeUndefined();
   });

@@ -58,13 +58,16 @@ describe("Ori shadow metrics extended adversarial matrix", () => {
     expect(snapshot.oversized).toBe(bytes > 4096 ? 1 : 0);
     expect(snapshot["invalid-contract"]).toBe(bytes > 4096 ? 0 : 1);
   });
-  it.each([400, 401, 403, 404, 429, 500, 503])("classifies HTTP %i without parsing body", async (status) => {
-    const metrics = createOriShadowMetrics();
-    const fetchMock = (async () => new Response("untrusted", { status })) as typeof fetch;
-    await createOriShadowTransport(endpoint, fetchMock, metrics)(input);
-    expect(metrics.snapshot()["http-error"]).toBe(1);
-    expect(metrics.snapshot()["invalid-contract"]).toBe(0);
-  });
+  it.each([400, 401, 403, 404, 429, 500, 503])(
+    "classifies HTTP %i without parsing body",
+    async (status) => {
+      const metrics = createOriShadowMetrics();
+      const fetchMock = (async () => new Response("untrusted", { status })) as typeof fetch;
+      await createOriShadowTransport(endpoint, fetchMock, metrics)(input);
+      expect(metrics.snapshot()["http-error"]).toBe(1);
+      expect(metrics.snapshot()["invalid-contract"]).toBe(0);
+    },
+  );
   it("counts independent calls and snapshots cannot mutate internal counters", async () => {
     const { transport, metrics } = transportWith(JSON.stringify(valid));
     for (let i = 0; i < 10; i++) await transport(input);
@@ -78,7 +81,12 @@ describe("Ori shadow metrics extended adversarial matrix", () => {
     metrics.record("valid");
     const snapshot = metrics.snapshot();
     expect(Object.keys(snapshot).sort()).toEqual([
-      "http-error", "invalid-contract", "network-error", "oversized", "timeout", "valid",
+      "http-error",
+      "invalid-contract",
+      "network-error",
+      "oversized",
+      "timeout",
+      "valid",
     ]);
     expect(Object.values(snapshot).every(Number.isInteger)).toBe(true);
   });

@@ -25,16 +25,24 @@ export function createOriExternalShadowDispatcher(maxInFlight = 2) {
   }
   let inFlight = 0;
   return Object.freeze({
-    dispatch(enabled: boolean, shadow: OriExternalShadow | undefined, input: OriExternalShadowInput): void {
+    dispatch(
+      enabled: boolean,
+      shadow: OriExternalShadow | undefined,
+      input: OriExternalShadowInput,
+    ): void {
       if (!enabled || !shadow || inFlight >= maxInFlight) return;
       inFlight++;
       // Async boundary ensures callback exceptions never alter the tutor response.
       void Promise.resolve()
         .then(() => shadow(Object.freeze({ ...input })))
         .catch(() => undefined)
-        .finally(() => { inFlight--; });
+        .finally(() => {
+          inFlight--;
+        });
     },
-    get inFlight(): number { return inFlight; },
+    get inFlight(): number {
+      return inFlight;
+    },
   });
 }
 

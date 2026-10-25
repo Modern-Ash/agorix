@@ -19,9 +19,10 @@ function producerFixture(missionIndex: number, hintLevel: number, scriptCount: n
     kind: "pedagogical-plan",
     stage: hintLevel,
     steps: stages[hintLevel - 1]!,
-    hint: scriptCount === 0
-      ? "¿Qué acción pequeña querés probar primero?"
-      : "¿Qué esperás que pase si ejecutás tu programa?",
+    hint:
+      scriptCount === 0
+        ? "¿Qué acción pequeña querés probar primero?"
+        : "¿Qué esperás que pase si ejecutás tu programa?",
     requiresLearnerApproval: false,
     appliedChanges: false,
     context: { missionStage: missionIndex },
@@ -38,10 +39,8 @@ describe("Ori producer/Agorix consumer shadow-plan parity", () => {
   });
 
   it("accepts empty and nonempty synthetic programs", () => {
-    expect(validateOriShadowPlan(producerFixture(1, 1, 0))?.hint)
-      .toContain("acción pequeña");
-    expect(validateOriShadowPlan(producerFixture(1, 1, 2))?.hint)
-      .toContain("ejecutás");
+    expect(validateOriShadowPlan(producerFixture(1, 1, 0))?.hint).toContain("acción pequeña");
+    expect(validateOriShadowPlan(producerFixture(1, 1, 2))?.hint).toContain("ejecutás");
   });
 
   it("rejects changed schema and added privileged fields", () => {

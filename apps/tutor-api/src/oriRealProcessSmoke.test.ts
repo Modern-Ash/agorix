@@ -44,7 +44,8 @@ describe.skipIf(!runnable)("real Ori process to Agorix consumer contract", () =>
             break;
           }
         } catch (error) {
-          if (error instanceof Error && error.message.includes("incompatible shadow-plan")) throw error;
+          if (error instanceof Error && error.message.includes("incompatible shadow-plan"))
+            throw error;
           await new Promise((resolveWait) => setTimeout(resolveWait, 50));
         }
       }

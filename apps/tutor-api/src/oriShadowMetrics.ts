@@ -3,14 +3,14 @@
  * No raw learner messages, programs, IP addresses or model outputs.
  */
 export type OriShadowOutcome =
-  | "valid"
-  | "invalid-contract"
-  | "oversized"
-  | "http-error"
-  | "timeout"
-  | "network-error";
+  "valid" | "invalid-contract" | "oversized" | "http-error" | "timeout" | "network-error";
 const OUTCOMES: readonly OriShadowOutcome[] = [
-  "valid", "invalid-contract", "oversized", "http-error", "timeout", "network-error",
+  "valid",
+  "invalid-contract",
+  "oversized",
+  "http-error",
+  "timeout",
+  "network-error",
 ];
 export interface OriShadowMetrics {
   readonly record: (outcome: OriShadowOutcome) => void;
@@ -18,7 +18,8 @@ export interface OriShadowMetrics {
 }
 export function createOriShadowMetrics(): OriShadowMetrics {
   const counts = Object.fromEntries(OUTCOMES.map((outcome) => [outcome, 0])) as Record<
-    OriShadowOutcome, number
+    OriShadowOutcome,
+    number
   >;
   return Object.freeze({
     record(outcome: OriShadowOutcome): void {

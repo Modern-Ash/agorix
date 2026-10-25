@@ -12,9 +12,14 @@ async function flush(): Promise<void> {
 describe("Ori shadow isolation and resilience", () => {
   it.each([1, 2, 4, 8])("enforces max in-flight %i and drops excess", async (limit) => {
     let release!: () => void;
-    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
     let started = 0;
-    const shadow = async () => { started++; await gate; };
+    const shadow = async () => {
+      started++;
+      await gate;
+    };
     const dispatcher = createOriExternalShadowDispatcher(limit);
     for (let i = 0; i < limit + 10; i++) dispatcher.dispatch(true, shadow, input);
     await Promise.resolve();
@@ -27,28 +32,55 @@ describe("Ori shadow isolation and resilience", () => {
   it("disabled requests never invoke transport", async () => {
     let called = 0;
     const dispatcher = createOriExternalShadowDispatcher();
-    dispatcher.dispatch(false, async () => { called++; }, input);
+    dispatcher.dispatch(
+      false,
+      async () => {
+        called++;
+      },
+      input,
+    );
     await flush();
     expect(called).toBe(0);
     expect(dispatcher.inFlight).toBe(0);
   });
   it("releases concurrency budget after synchronous throw", async () => {
     const dispatcher = createOriExternalShadowDispatcher(1);
-    dispatcher.dispatch(true, () => { throw new Error("synthetic failure"); }, input);
+    dispatcher.dispatch(
+      true,
+      () => {
+        throw new Error("synthetic failure");
+      },
+      input,
+    );
     await flush();
     expect(dispatcher.inFlight).toBe(0);
   });
   it("releases concurrency budget after asynchronous rejection", async () => {
     const dispatcher = createOriExternalShadowDispatcher(1);
-    dispatcher.dispatch(true, async () => { throw new Error("synthetic rejection"); }, input);
+    dispatcher.dispatch(
+      true,
+      async () => {
+        throw new Error("synthetic rejection");
+      },
+      input,
+    );
     await flush();
     expect(dispatcher.inFlight).toBe(0);
   });
   it("tracks transport failures but does not alter caller response", async () => {
     const metrics = createOriShadowMetrics();
-    const tutorResponse = Object.freeze({ message: "Respuesta determinista", appliedChanges: false });
+    const tutorResponse = Object.freeze({
+      message: "Respuesta determinista",
+      appliedChanges: false,
+    });
     const dispatcher = createOriExternalShadowDispatcher(1);
-    const transport = createOriShadowTransport(endpoint, (async () => { throw new Error("offline"); }) as typeof fetch, metrics);
+    const transport = createOriShadowTransport(
+      endpoint,
+      (async () => {
+        throw new Error("offline");
+      }) as typeof fetch,
+      metrics,
+    );
     dispatcher.dispatch(true, transport, input);
     await flush();
     expect(tutorResponse).toEqual({ message: "Respuesta determinista", appliedChanges: false });
@@ -58,7 +90,11 @@ describe("Ori shadow isolation and resilience", () => {
     const metrics = createOriShadowMetrics();
     const fetchMock = (async (_url: RequestInfo | URL, init?: RequestInit) => {
       return new Promise<Response>((_resolve, reject) => {
-        init?.signal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")), { once: true });
+        init?.signal?.addEventListener(
+          "abort",
+          () => reject(new DOMException("Aborted", "AbortError")),
+          { once: true },
+        );
       });
     }) as typeof fetch;
     const transport = createOriShadowTransport(endpoint, fetchMock, metrics);

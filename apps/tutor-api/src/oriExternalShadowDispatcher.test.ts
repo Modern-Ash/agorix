@@ -4,9 +4,14 @@ import { createOriExternalShadowDispatcher } from "./oriExternalShadow.js";
 describe("Ori shadow backpressure", () => {
   it("caps concurrent calls and skips excess work without queueing", async () => {
     let release!: () => void;
-    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
     let calls = 0;
-    const shadow = async () => { calls++; await gate; };
+    const shadow = async () => {
+      calls++;
+      await gate;
+    };
     const dispatcher = createOriExternalShadowDispatcher(1);
     const input = { missionIndex: 0, hintLevel: 1 as const, scriptCount: 1 };
     dispatcher.dispatch(true, shadow, input);
@@ -25,7 +30,13 @@ describe("Ori shadow backpressure", () => {
   it("recovers capacity after callback rejection", async () => {
     const dispatcher = createOriExternalShadowDispatcher(1);
     const input = { missionIndex: 0, hintLevel: 1 as const, scriptCount: 1 };
-    dispatcher.dispatch(true, async () => { throw new Error("offline"); }, input);
+    dispatcher.dispatch(
+      true,
+      async () => {
+        throw new Error("offline");
+      },
+      input,
+    );
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(dispatcher.inFlight).toBe(0);
   });
@@ -33,9 +44,17 @@ describe("Ori shadow backpressure", () => {
   it("rejects invalid limits and never calls when disabled", async () => {
     expect(() => createOriExternalShadowDispatcher(0)).toThrow();
     let calls = 0;
-    createOriExternalShadowDispatcher().dispatch(false, async () => { calls++; }, {
-      missionIndex: 0, hintLevel: 1, scriptCount: 1,
-    });
+    createOriExternalShadowDispatcher().dispatch(
+      false,
+      async () => {
+        calls++;
+      },
+      {
+        missionIndex: 0,
+        hintLevel: 1,
+        scriptCount: 1,
+      },
+    );
     await Promise.resolve();
     expect(calls).toBe(0);
   });
