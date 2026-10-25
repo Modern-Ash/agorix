@@ -1,10 +1,13 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { build } from "esbuild";
+import process from "node:process";
+import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve, join } from "node:path";
 
+const sourceDir = resolve(fileURLToPath(new URL(".", import.meta.url)));
 const directories: string[] = [];
 function workspace() {
   const directory = mkdtempSync(join(tmpdir(), "ori-educator-cli-"));
@@ -15,7 +18,7 @@ afterEach(() => {
   for (const directory of directories.splice(0)) rmSync(directory, { recursive: true, force: true });
 });
 async function prepare(directory: string) {
-  const entry = resolve(import.meta.dirname, "../scripts/ori-educator-report.mjs");
+  const entry = resolve(sourceDir, "../scripts/ori-educator-report.mjs");
   const output = join(directory, "report-cli.mjs");
   await build({
     entryPoints: [entry],
@@ -28,7 +31,7 @@ async function prepare(directory: string) {
       name: "redirect-local-report-import",
       setup(plugin) {
         plugin.onResolve({ filter: /\.\.\/dist\/oriEducatorReportJson\.js$/ }, () => ({
-          path: resolve(import.meta.dirname, "oriEducatorReportJson.ts"),
+          path: resolve(sourceDir, "oriEducatorReportJson.ts"),
         }));
       },
     }],
