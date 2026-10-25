@@ -1,5 +1,7 @@
+import { validateOriContextInput, type OriContextInput } from "./oriContextPreview.js";
+import type { OriRuntimePreview } from "./oriRuntimePreview.js";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import { dispatchOriExternalShadow, type OriExternalShadow } from "./oriExternalShadow.js";
+import { createOriExternalShadowDispatcher, type OriExternalShadow } from "./oriExternalShadow.js";
 import { validateTutorRequest } from "@agorix/tutor-contract";
 import {
   createFreeWorldMission,
@@ -65,6 +67,10 @@ export interface TutorServerOptions {
   readonly adminAuth?: AdminAuth;
   readonly oriExternalShadow?: OriExternalShadow;
   readonly oriExternalShadowEnabled?: boolean;
+  readonly oriRuntimePreview?: (intent: string) => Promise<OriRuntimePreview>;
+  readonly oriRuntimePreviewEnabled?: boolean;
+  readonly oriContextPreview?: (input: OriContextInput) => Promise<OriRuntimePreview>;
+  readonly oriContextPreviewEnabled?: boolean;
 }
 
 interface Health {
@@ -94,6 +100,7 @@ export function createTutorServer(options: TutorServerOptions): Server {
   let lastOriSource: Health["lastOriSource"] = null;
   const chatRate = new Map<string, { count: number; start: number }>();
   const advancedStages = options.advancedStages ?? createMemoryAdvancedStageRepository(now);
+  const oriShadowDispatcher = createOriExternalShadowDispatcher();
 
   function policy(capability: AiCapability): AiPolicy | undefined {
     return options.aiConfig?.current().config.capabilities[capability];
@@ -194,6 +201,53 @@ export function createTutorServer(options: TutorServerOptions): Server {
       if (!options.aiConfig) return send(response, 503, error("config-unavailable"));
       const { revision, config } = options.aiConfig.current();
       return send(response, 200, { revision, group: config.group });
+    }
+    if (path === "/api/tutor/ori/context-preview") {
+      if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
+      if (!options.oriContextPreviewEnabled || !options.oriContextPreview)
+        return send(response, 404, error("not-found"));
+      if (!sameOrigin(request)) return send(response, 403, error("forbidden-origin"));
+      if (!(request.headers["content-type"] ?? "").includes("application/json"))
+        return send(response, 415, error("unsupported-media-type"));
+      if (!allowed(request, "chat")) return send(response, 429, error("rate-limited"));
+      const body = await readBody(request);
+      if (body === "too-large") return send(response, 413, error("payload-too-large"));
+      let input: OriContextInput | null;
+      try {
+        input = validateOriContextInput(JSON.parse(body));
+      } catch {
+        input = null;
+      }
+      if (!input) return send(response, 400, error("invalid-request"));
+      return send(response, 200, await options.oriContextPreview(input));
+    }
+    if (path === "/api/tutor/ori/runtime-preview") {
+      if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
+      if (!options.oriRuntimePreviewEnabled || !options.oriRuntimePreview)
+        return send(response, 404, error("not-found"));
+      if (!sameOrigin(request)) return send(response, 403, error("forbidden-origin"));
+      if (!(request.headers["content-type"] ?? "").includes("application/json"))
+        return send(response, 415, error("unsupported-media-type"));
+      if (!allowed(request, "chat")) return send(response, 429, error("rate-limited"));
+      const body = await readBody(request);
+      if (body === "too-large") return send(response, 413, error("payload-too-large"));
+      let intent: string;
+      try {
+        const value: unknown = JSON.parse(body);
+        if (!value || typeof value !== "object" || Array.isArray(value)) throw Error("invalid");
+        const data = value as Record<string, unknown>;
+        if (
+          Object.keys(data).length !== 1 ||
+          typeof data["intent"] !== "string" ||
+          !["help", "repeat", "turn", "move", "debug"].includes(data["intent"])
+        )
+          throw Error("invalid");
+        intent = data["intent"];
+      } catch {
+        return send(response, 400, error("invalid-request"));
+      }
+      const result = await options.oriRuntimePreview(intent);
+      return send(response, 200, result);
     }
     if (path === "/api/tutor/health") {
       if (request.method !== "GET") return send(response, 405, error("method-not-allowed"));
@@ -409,7 +463,7 @@ export function createTutorServer(options: TutorServerOptions): Server {
     const missionIndex = KIDS_MISSION_IDS.indexOf(
       input.missionId as (typeof KIDS_MISSION_IDS)[number],
     ) as 0 | 1 | 2;
-    dispatchOriExternalShadow(
+    oriShadowDispatcher.dispatch(
       options.oriExternalShadowEnabled === true,
       options.oriExternalShadow,
       {

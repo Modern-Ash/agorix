@@ -11,6 +11,10 @@ describe("Ori loopback shadow transport", () => {
     ])
       expect(() => createOriShadowTransport(url)).toThrow();
   });
+  it("permits only local shadow and plan paths", () => {
+    expect(() => createOriShadowTransport("http://127.0.0.1:1234/v1/plan")).not.toThrow();
+    expect(() => createOriShadowTransport("http://127.0.0.1:1234/v1/admin")).toThrow();
+  });
   it("sends only minimized metadata and ignores response content", async () => {
     let body = "";
     const fetchMock = (async (_url: string | URL | Request, options?: RequestInit) => {
