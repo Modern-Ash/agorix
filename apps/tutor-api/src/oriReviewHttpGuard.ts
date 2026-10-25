@@ -12,6 +12,7 @@ export type OriReviewHttpDecision =
 export function checkOriReviewHttpRequest(
   request: IncomingMessage,
   auth: AdminAuth,
+  trustedHosts: readonly string[] = [],
 ): OriReviewHttpDecision {
   if (request.method !== "POST")
     return { allowed: false, status: 405, reason: "method-not-allowed" };
@@ -21,7 +22,8 @@ export function checkOriReviewHttpRequest(
   if (
     typeof origin !== "string" ||
     typeof host !== "string" ||
-    !/^[a-zA-Z0-9.\-]+(?::[0-9]{1,5})?$/.test(host)
+    !/^[a-zA-Z0-9.-]+(?::[0-9]{1,5})?$/.test(host) ||
+    !trustedHosts.includes(host)
   )
     return { allowed: false, status: 403, reason: "invalid-origin" };
   let parsed: URL;
@@ -43,7 +45,12 @@ export function checkOriReviewHttpRequest(
   const type = request.headers["content-type"];
   if (typeof type !== "string" || !/^application\/json(?:\s*;\s*charset=utf-8)?$/i.test(type))
     return { allowed: false, status: 415, reason: "unsupported-media-type" };
-  const session = auth.read(request);
+  let session;
+  try {
+    session = auth.read(request);
+  } catch {
+    return { allowed: false, status: 401, reason: "unauthorized" };
+  }
   if (!session) return { allowed: false, status: 401, reason: "unauthorized" };
   if (
     typeof request.headers["x-agorix-admin-csrf"] !== "string" ||
