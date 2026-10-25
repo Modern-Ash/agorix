@@ -5073,7 +5073,7 @@ export function App({
                 </div>
               </div>
             )}
-            {(import.meta as ImportMeta & { env?: { VITE_ORI_EXPERIMENTAL_REVIEW?: string } }).env?.VITE_ORI_EXPERIMENTAL_REVIEW === "1" ? <OriReviewPanel context={{ scriptCount: model.program.scripts.length, hintCount: hintHistory.length, hasRunEvidence: lastRunResult !== undefined }} /> : null}
+            {(import.meta as ImportMeta & { env?: { VITE_ORI_EXPERIMENTAL_REVIEW?: string } }).env?.VITE_ORI_EXPERIMENTAL_REVIEW === "1" ? <OriReviewPanel context={{ scriptCount: model.program.scripts.length, hintCount: hintHistory.length, hasRunEvidence: lastRunResult !== undefined, outcome: lastRunResult === undefined ? "not-run" : lastRunResult.outcome === "completed" ? "completed" : "failed" }} /> : null}
             <details className="ai-more-help">
               <summary>{t(locale, "aiMoreHelp")}</summary>
               <div className="tutor-actions">
