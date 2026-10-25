@@ -285,7 +285,9 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
         indent +
           (writer.procedureNames?.get(statement.procedureId) ?? "my_block") +
           "(" +
-          (statement.args ?? []).map((arg) => formatNumber(arg.value)).join(", ") +
+          (statement.args ?? [])
+            .map((arg, index) => expressionText(writer, arg, `${nodeId}/args[${index}]`))
+            .join(", ") +
           ")\n",
       );
       return;
@@ -524,6 +526,10 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return "x_position()";
     case "yPosition":
       return "y_position()";
+    case "timer":
+      return "timer()";
+    case "keyDown":
+      return "key_down(" + JSON.stringify(expression.key) + ")";
     case "booleanLiteral":
       return expression.value ? "True" : "False";
     case "numericLiteral":

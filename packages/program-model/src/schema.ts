@@ -44,6 +44,17 @@ export interface XPositionExpression {
   readonly type: "xPosition";
 }
 
+/** Virtual seconds this script has waited so far in the current run; never a wall clock. */
+export interface TimerExpression {
+  readonly type: "timer";
+}
+
+/** True while the key is held: the key that started this script, or a key given to the run. */
+export interface KeyDownExpression {
+  readonly type: "keyDown";
+  readonly key: string;
+}
+
 export interface YPositionExpression {
   readonly type: "yPosition";
 }
@@ -187,6 +198,8 @@ export type Expression =
   | TouchingStageEdgeExpression
   | DistanceToActorExpression
   | XPositionExpression
+  | TimerExpression
+  | KeyDownExpression
   | YPositionExpression
   | BooleanLiteralExpression
   | NumericLiteralExpression
@@ -423,9 +436,10 @@ export interface CallProcedureStatement {
   readonly procedureId: string;
   /**
    * The numbers for this use, one per number the block declares (absent when it declares none).
-   * Fixed numbers in version 2; a later version may allow other expressions.
+   * A fixed number, or (inside a custom block) one of that block's own numbers, so a block can
+   * hand its number on to another block.
    */
-  readonly args?: readonly NumericLiteralExpression[];
+  readonly args?: readonly (NumericLiteralExpression | ParamExpression)[];
 }
 
 export interface IfStatement {

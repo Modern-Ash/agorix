@@ -300,6 +300,15 @@ function validateExpression(input: unknown, path: string, state: ValidationState
       return { type: "xPosition" };
     case "yPosition":
       return { type: "yPosition" };
+    case "timer":
+      return { type: "timer" };
+    case "keyDown": {
+      const key = checkText(input.key, `${path}.key`);
+      if (!/^[A-Za-z0-9]{1,20}$/.test(key)) {
+        fail("INVALID_FIELD_TYPE", `${path}.key`, "expected a key name of letters and digits", key);
+      }
+      return { type: "keyDown", key };
+    }
     case "booleanLiteral": {
       if (typeof input.value !== "boolean") {
         fail("INVALID_FIELD_TYPE", `${path}.value`, "expected a boolean", input.value);
@@ -628,11 +637,11 @@ function validateStatement(
       }
       const args = input.args.map((arg, index) => {
         const value = validateExpression(arg, `${path}.args[${index}]`, state);
-        if (value.type !== "numericLiteral") {
+        if (value.type !== "numericLiteral" && value.type !== "param") {
           fail(
             "INVALID_FIELD_TYPE",
             `${path}.args[${index}]`,
-            "expected a fixed number",
+            "expected a fixed number or one of this block's numbers",
             (arg as { type?: unknown } | null)?.type,
           );
         }

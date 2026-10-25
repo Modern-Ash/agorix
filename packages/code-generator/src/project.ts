@@ -169,6 +169,10 @@ function formatExpression(
       return "sprite.x";
     case "yPosition":
       return "sprite.y";
+    case "timer":
+      return "timer()";
+    case "keyDown":
+      return `keyDown(${JSON.stringify(expression.key)})`;
     case "booleanLiteral":
       return expression.value ? "true" : "false";
     case "numericLiteral":
@@ -312,7 +316,7 @@ function projectStatement(
     case "callProcedure":
       write(
         writer,
-        `${pad}${context.procedureNames?.get(statement.procedureId) ?? "my_block"}(${(statement.args ?? []).map((arg) => formatNumber(arg.value)).join(", ")});\n`,
+        `${pad}${context.procedureNames?.get(statement.procedureId) ?? "my_block"}(${(statement.args ?? []).map((arg, index) => formatExpression(arg, `${nodeId}/args[${index}]`, context)).join(", ")});\n`,
       );
       return;
     case "bounceOnEdge":

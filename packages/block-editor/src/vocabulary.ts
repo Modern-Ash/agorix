@@ -309,6 +309,26 @@ const definitions: readonly ToolboxBlockDefinition[] = [
     createDefaultBlock: (id) => ({ id, type: "sensing_y_position" }),
   },
   {
+    type: "sensing_timer",
+    label: "Timer",
+    section: "Check",
+    placement: "expression",
+    accessibleName: "timer in seconds",
+    createDefaultBlock: (id) => ({ id, type: "sensing_timer" }),
+  },
+  {
+    type: "sensing_key_down",
+    label: "Key [K] is down",
+    section: "Check",
+    placement: "expression",
+    accessibleName: "key is down",
+    createDefaultBlock: (id) => ({
+      id,
+      type: "sensing_key_down",
+      fields: { key: "Space" },
+    }),
+  },
+  {
     type: "operator_add",
     label: "[N] + [N]",
     section: "Operators",

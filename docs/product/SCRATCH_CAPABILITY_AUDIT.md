@@ -193,7 +193,7 @@ Each iteration needs an issue with an observable child journey, success and fail
 - When the selected character has blocks of its own, **Pedirle una idea a Ori** may offer to use one of them (**+ Usar: <name>**) as the next block. It is an ordinary reviewable idea: nothing changes until the child chooses **Usar idea**, **Cambiar idea** (swaps to the character's other block; hidden when there is only one) or **No usar**. The same host checks as every other idea apply on the server and again in the browser.
 - Ori is told only the block **ids** and the kinds of blocks inside (for example `move`, `turn`), never the child's titles, texts or names; the card shows the title locally. Ori can only name an id that the selected character already has: another character's id, an unknown id, extra fields and any attempt to create, rename or delete a block fall back to the safe local idea. The no-AI path is unchanged (move or turn only).
 - The proposal check accepts a call to the child's own block, also inside a repeat, and still validates it against the real script when the idea is applied. Unit tests cover the contract, forged proposals, the model input and the tutor-api route with the real CLI wrapper; a mobile browser test with axe covers review, change, refuse and playing the result.
-- Blocks shared between characters remain open. Visible by default like the other creative tools (#539); the adult Ori switch still controls whether suggestions appear.
+- Blocks live-shared between characters remain open; a character can be given a copy (see below). Visible by default like the other creative tools (#539); the adult Ori switch still controls whether suggestions appear.
 
 ## Numbers in Mis bloques (parameters, fifth slice of #538 iteration 4)
 
@@ -201,6 +201,26 @@ Each iteration needs an issue with an observable child journey, success and fail
 - The runtime keeps a frame per call and **clamps** an out-of-range value instead of stopping: steps and turns to ±1000, waits to 0.1–5 seconds, repeats to 1–1000 (rounded). Trace entries of numbered calls include `args`. Agorix Code (`define X with a, b` / `call X with 1, 2`), Python, TypeScript and the block adapter derive from the same program.
 - In Escena libre the child adds numbers when making a block (or later), picks **Fijo** or a number on each block inside it, and chooses the value at every use. The first block to follow a number gives every existing call that block's value, so behaviour does not change until the child picks another. **Reemplazar usos y borrar** writes each call's own values into the copied blocks. Number titles are child-entered text and are never sent to Ori; Ori suggests only blocks without numbers.
 - Unit tests cover validation, clamping, equivalence with the fixed blocks, projections, block round-trip, authoring, undo, removing a number and inlining; a mobile browser test with axe covers create, bind, pick per use, play and reopen.
+
+## Handing a number on to another block (Mis bloques version 3, #735)
+
+- Inside a custom block, a use of another block can take one of the outer block's own numbers instead of a fixed one (`callProcedure.args` accepts a `param` expression of the enclosing block). The runtime reads it from the caller's frame before opening the new one, so the inner block runs with the caller's value; trace entries show the value passed. A passed number outside a custom block, or one the outer block does not declare, is rejected by the validator.
+- Agorix Code, Python, TypeScript and the block adapter show the outer number's name in the call. In Escena libre each inner use has a picker listing fixed values and **Número: <outer number>**; a number takes the unit of the inner block it is handed to. **Reemplazar usos y borrar** keeps the link when it inlines an inner block into a block that has numbers.
+- Unit tests cover run, validation, projections, round trip, authoring, units and inlining; a mobile browser test with axe covers the journey and reopening.
+
+## Copying a block to another character (#734)
+
+- In **Mis bloques** a child picks another character and presses **Copiar bloque a**. That character gets its own copy of the block and of every block it uses, with new ids (`proc-<character>-<n>`), the same numbers and the same inner links. Copies are independent: renaming, editing or deleting one never changes the other, so a block can never reach into a character that did not receive it. Undo removes the copy; the 20-block and 60-block limits still apply.
+- This is deliberately a copy, not a live shared library: the canonical program keeps every block inside one character's script, so runtime, projections, block editor and the privacy rule (Ori only sees ids of the selected character's own blocks) are unchanged. A live shared library would change that model and is not planned.
+- Unit tests cover the closure of used blocks, ids, numbers, independence, undo and limits; a mobile browser test with axe covers copy, use, reopen.
+
+## Timer and key sensors (#733)
+
+- Two new canonical expressions: `timer` (the virtual seconds the running script has waited so far; never a wall clock) and `keyDown` (a key name of letters and digits, true while that key is held). A script started by a key counts that key as held; a run may also be given a set of held keys (`keysDown`, constant for the whole run). Both are evaluated by the deterministic runtime, appear in the trace like any condition, and give the same result for the same program and inputs.
+- Agorix Code (`timer`, `key X is down`), Python (`timer()`, `key_down("X")`), TypeScript and the block adapter (**Timer**, **Key [K] is down**) derive from the same program.
+- In Escena libre the child picks one of the five keys and adds **Si la tecla está pulsada**, groups blocks the same way, saves the time in a variable, or groups blocks to repeat until a number of seconds passes (the blocks must include **Esperar** for time to advance). **Teclas mantenidas al jugar** chooses which keys count as held during Jugar.
+- Deliberately not added: the **pointer position**, which needs live per-frame input that only the same-room lockstep session supplies (a follow-up for that surface), and **answer**, because it would store free text typed by a child.
+- Unit tests cover the runtime, validation, projections, round trip and Studio limits; a mobile browser test with axe covers the journey and reopening.
 
 ## Drawing tools (#538 media creation)
 

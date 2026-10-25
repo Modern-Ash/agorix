@@ -86,6 +86,8 @@ export interface ExecutionOptions {
   readonly collectObservations?: boolean;
   readonly randomSeed?: number;
   readonly event?: ProgramEvent;
+  /** Keys held for the whole run, for `keyDown`; at most 12. The key that started a script counts too. */
+  readonly keysDown?: readonly string[];
   /** Other actors at activation start; never includes the running actor. */
   readonly sensorActors?: readonly {
     readonly id: string;
@@ -307,6 +309,13 @@ function evaluateExpression(
       return state.world.sprite.x;
     case "yPosition":
       return state.world.sprite.y;
+    case "timer":
+      return state.virtualSeconds;
+    case "keyDown":
+      return (
+        state.event === `key:${expression.key}` ||
+        state.options.keysDown?.includes(expression.key) === true
+      );
     case "booleanLiteral":
       return expression.value;
     case "numericLiteral":
@@ -659,7 +668,10 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
       state.callDepth += 1;
       const takesNumbers = (procedure.params?.length ?? 0) > 0;
       if (takesNumbers) {
-        callArgs = (statement.args ?? []).map((arg) => arg.value);
+        // Read before the new frame exists, so a number passed on is the caller's own.
+        callArgs = (statement.args ?? []).map((arg) =>
+          arg.type === "param" ? paramValue(state, arg.paramId) : arg.value,
+        );
         state.paramFrames.push(callArgs);
       }
       try {
