@@ -51,7 +51,7 @@ describe("Ori offline blind review JSON export", () => {
       exportOriBlindReviewJson({
         ...capture,
         educator: { ...capture.educator, childId: "synthetic" },
-      }),
+      } as unknown as OriSeparatedBlindMessages),
     ).toBeNull();
   });
   it("rejects false efficacy claims", () => {
