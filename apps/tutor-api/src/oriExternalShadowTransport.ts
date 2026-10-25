@@ -74,7 +74,7 @@ export function createOriShadowTransport(
           }
           const plan = validateOriShadowPlan(JSON.parse(new TextDecoder().decode(body)));
           metrics?.record(plan === null ? "invalid-contract" : "valid");
-        } catch (error) {
+        } catch {
           if (controller.signal.aborted) metrics?.record("timeout");
           else metrics?.record("invalid-contract");
           // Reject malformed shadow responses without affecting the tutor.
