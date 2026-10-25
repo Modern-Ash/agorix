@@ -1,9 +1,11 @@
 # Ori integration CI: cross-repository access and quality gates
 
 ## Current CI behavior
+
 The `Ori Integration CI` workflow runs on PRs into `integration/ori` and pushes to that branch. Formatting, lint, TypeScript, full tests and build run as independent jobs. The separate real-process interoperability job must also pass.
 
 ## Required repository secret
+
 `Modern-Ash/ori` is private. The default Agorix `GITHUB_TOKEN` does not automatically grant read access to that separate repository. Configure a fine-grained GitHub token:
 
 1. Create a fine-grained token owned by an identity authorized to access `Modern-Ash/ori`.
@@ -17,6 +19,7 @@ The `Ori Integration CI` workflow runs on PRs into `integration/ori` and pushes 
 The workflow checks for this secret before attempting checkout and **fails closed** if it is absent. Forked pull requests may not receive repository secrets; their interoperability check must not be reported as passing.
 
 ## Gates before merging
+
 - Formatting, lint, TypeScript, tests, build and interoperability all green.
 - Explicit `ORI_INTEROP_VERIFY: PASS` marker from the real-process test.
 - No bypass of the private-repository check or replacement with a synthetic-only test.
@@ -24,4 +27,5 @@ The workflow checks for this secret before attempting checkout and **fails close
 - No promotion to `main` or `development` without separate approval.
 
 ## Maintenance
+
 A one-time formatting workflow with `contents: write` was used during initial setup. It is removed by this PR. Future formatting must be performed in feature branches and reviewed normally.
