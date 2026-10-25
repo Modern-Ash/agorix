@@ -93,7 +93,6 @@ describe.skipIf(!runnable)("real Ori process to Agorix consumer contract", () =>
       });
       expect(stageThree?.stage).toBe(3);
       // The consumer is not connected to the child-facing tutor response.
-
     } finally {
       if (child.exitCode === null) {
         child.kill("SIGTERM");
