@@ -21,7 +21,13 @@ export function createAdminSessionOriReview(
     authorizedMissionIndices,
   });
   return async (request, input) => {
-    if (!auth.read(request)) {
+    let session;
+    try {
+      session = auth.read(request);
+    } catch {
+      session = null;
+    }
+    if (!session) {
       return Object.freeze({
         status: "unavailable",
         plan: null,
