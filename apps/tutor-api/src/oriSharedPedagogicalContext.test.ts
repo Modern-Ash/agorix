@@ -10,7 +10,9 @@ describe("Ori shared synthetic pedagogical context", () => {
     const contexts = createOriSharedPedagogicalContexts();
     expect(contexts).toHaveLength(KIDS_MISSION_IDS.length);
     expect(contexts.map((context) => context.missionId)).toEqual([...KIDS_MISSION_IDS]);
-    expect(contexts.every((context) => validateOriSharedPedagogicalContext(context) !== null)).toBe(true);
+    expect(contexts.every((context) => validateOriSharedPedagogicalContext(context) !== null)).toBe(
+      true,
+    );
   });
   it("does not include child identifiers, program source or prompt text", () => {
     const serialized = JSON.stringify(createOriSharedPedagogicalContexts());
@@ -29,7 +31,9 @@ describe("Ori shared synthetic pedagogical context", () => {
   });
   it("rejects invalid fingerprint and hint level", () => {
     const context = createOriSharedPedagogicalContexts()[0]!;
-    expect(validateOriSharedPedagogicalContext({ ...context, programFingerprint: "not-a-hash" })).toBeNull();
+    expect(
+      validateOriSharedPedagogicalContext({ ...context, programFingerprint: "not-a-hash" }),
+    ).toBeNull();
     expect(validateOriSharedPedagogicalContext({ ...context, hintLevel: 6 })).toBeNull();
   });
   it("rejects invalid generation levels", () => {
