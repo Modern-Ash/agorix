@@ -155,6 +155,19 @@ test("organizer runs a group of two children and starts a team project", async (
   await expect(page.getByText(/^Turno de /)).toBeVisible();
   await expect(page.getByText("Nada por decidir.")).toBeVisible();
   await expect(page.getByText("Todavía no hay cambios.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Aportes del equipo" })).toBeVisible();
+
+  // Closed gallery: shown on purpose, withdrawn at once.
+  await expect(page.getByText("No hay nada a la vista.")).toBeVisible();
+  await page.getByRole("button", { name: "Mostrar el proyecto al grupo" }).click();
+  await expect(page.getByText(/^Versión 0 · hecho por/)).toBeVisible();
+  await page.getByRole("button", { name: "Retirar ahora" }).click();
+  await expect(page.getByText("No hay nada a la vista.")).toBeVisible();
+
+  // One device's reactions can be silenced by the organizer.
+  const silence = page.getByRole("button", { name: /^Silenciar reacciones de / }).first();
+  await silence.click();
+  await expect(page.getByRole("button", { name: /^Reactivar reacciones de / })).toHaveCount(1);
   const key = await first.page.evaluate(() =>
     JSON.stringify({ ...localStorage, ...sessionStorage }),
   );

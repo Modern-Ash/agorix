@@ -23,6 +23,7 @@ import {
   type TeamPolicy,
   type TeamSessionOptions,
   type TeamSnapshot,
+  type TeamSummary,
 } from "./types.js";
 
 interface Change {
@@ -63,6 +64,7 @@ export class TeamSession {
   private readonly reactions: StoredReaction[] = [];
   private readonly recent = new Map<string, number[]>();
   private readonly muted = new Map<string, Set<string>>();
+  private readonly silenced = new Set<string>();
 
   constructor(options: TeamSessionOptions) {
     this.current = options.program;
@@ -242,6 +244,7 @@ export class TeamSession {
   react(slotId: string, reaction: ReactionId, target: ReactionTarget): void {
     this.member(slotId);
     if (!this.reactionsOn) throw new TeamError("REACTIONS_OFF", "Reactions are off.");
+    if (this.silenced.has(slotId)) throw new TeamError("SILENCED", "Silenced by the organizer.");
     if (!(REACTION_IDS as readonly unknown[]).includes(reaction)) {
       throw new TeamError("INVALID_INPUT", "Unknown reaction.");
     }
@@ -285,6 +288,46 @@ export class TeamSession {
   unmute(viewerSlotId: string, peerSlotId: string): void {
     this.member(viewerSlotId);
     this.muted.get(viewerSlotId)?.delete(peerSlotId);
+  }
+
+  /** Organizer moderation: one device's reactions stop for everyone. */
+  silence(slotId: string, silenced: boolean): void {
+    this.member(slotId);
+    if (silenced) this.silenced.add(slotId);
+    else this.silenced.delete(slotId);
+  }
+
+  /** Aliases and counts for the organizer's view. */
+  summary(): TeamSummary {
+    const applied = new Map<string, number>();
+    let appliedTotal = 0;
+    let rolledBack = 0;
+    for (const entry of this.log) {
+      if (entry.kind === "rolled-back") rolledBack += 1;
+      else {
+        appliedTotal += 1;
+        applied.set(entry.alias, (applied.get(entry.alias) ?? 0) + 1);
+      }
+    }
+    const open = new Set<string>();
+    let pending = 0;
+    let stale = 0;
+    for (const change of this.changes.values()) {
+      if (change.status === "stale") stale += 1;
+      else pending += 1;
+      open.add(change.proposerSlotId);
+    }
+    const turn = this.turnSlot === undefined ? undefined : this.roster.get(this.turnSlot)?.alias;
+    return {
+      turn,
+      totals: { applied: appliedTotal, rolledBack, pending, stale },
+      members: [...this.roster.values()].map((member) => ({
+        alias: member.alias,
+        role: member.role,
+        applied: applied.get(member.alias) ?? 0,
+        openChange: open.has(member.slotId),
+      })),
+    };
   }
 
   /** Organizer switch. */

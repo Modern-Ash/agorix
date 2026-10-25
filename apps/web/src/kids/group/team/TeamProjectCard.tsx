@@ -37,6 +37,7 @@ export function TeamProjectCard({ locale, slots, onHost }: Props) {
   const [mode, setMode] = useState<"turns" | "blocks">("turns");
   const [roles, setRoles] = useState<Record<string, TeamRole>>({});
   const [reactionsOn, setReactionsOn] = useState(true);
+  const [silenced, setSilenced] = useState<ReadonlySet<string>>(new Set());
   const [message, setMessage] = useState("");
   const [viewing, setViewing] = useState<{ itemId: string; text: string } | null>(null);
   const [, redraw] = useState(0);
@@ -80,6 +81,7 @@ export function TeamProjectCard({ locale, slots, onHost }: Props) {
     setHost(next);
     setSnapshot(next.snapshot());
     setReactionsOn(true);
+    setSilenced(new Set());
     onHost?.(next);
   }
 
@@ -107,11 +109,13 @@ export function TeamProjectCard({ locale, slots, onHost }: Props) {
     }
   }
 
+  const summary = host?.summary();
+
   return (
     <section className="kids-link-card" aria-labelledby="kids-team-title">
       <h3 id="kids-team-title">{t("teamTitle")}</h3>
       <p>{t("teamIntro")}</p>
-      {host === null || snapshot === null ? (
+      {host === null || snapshot === null || summary === undefined ? (
         approved.length < 2 ? (
           <p>{t("teamNeed")}</p>
         ) : (
@@ -190,6 +194,75 @@ export function TeamProjectCard({ locale, slots, onHost }: Props) {
               </li>
             ))}
           </ul>
+
+          <h4>{t("summaryTitle")}</h4>
+          <ul>
+            {summary.members.map((member) => (
+              <li key={member.alias}>
+                {t("summaryLine", {
+                  alias: member.alias,
+                  role: t(ROLE_KEY[member.role]),
+                  n: member.applied,
+                })}
+                {member.openChange ? ` · ${t("summaryOpen")}` : ""}{" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const slot = snapshot.members.find((m) => m.alias === member.alias)?.slotId;
+                    if (slot === undefined) return;
+                    const next = new Set(silenced);
+                    const turnOff = !next.has(slot);
+                    if (turnOff) next.add(slot);
+                    else next.delete(slot);
+                    host.silence(slot, turnOff);
+                    setSilenced(next);
+                  }}
+                >
+                  {t(
+                    silenced.has(
+                      snapshot.members.find((m) => m.alias === member.alias)?.slotId ?? "",
+                    )
+                      ? "unsilence"
+                      : "silence",
+                    { alias: member.alias },
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
+          <p>
+            {t("summaryTotals", {
+              applied: summary.totals.applied,
+              rolledBack: summary.totals.rolledBack,
+              pending: summary.totals.pending,
+            })}
+          </p>
+
+          <h4>{t("galleryTitle")}</h4>
+          <p>{t("galleryNote")}</p>
+          {host.galleryEntries().length === 0 ? <p>{t("galleryEmpty")}</p> : null}
+          <ul>
+            {host.galleryEntries().map((entry) => (
+              <li key={entry.entryId}>
+                {t("galleryEntry", { v: entry.version, who: entry.contributors.join(", ") })}{" "}
+                <button type="button" onClick={() => host.withdrawFromGallery(entry.entryId)}>
+                  {t("galleryWithdraw")}
+                </button>
+              </li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            onClick={() => {
+              try {
+                host.publishToGallery();
+              } catch {
+                setMessage(t("galleryFull"));
+              }
+            }}
+          >
+            {t("galleryPublish")}
+          </button>
 
           <h4>{t("historyTitle")}</h4>
           {snapshot.history.length === 0 ? <p>{t("noHistory")}</p> : null}

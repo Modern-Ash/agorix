@@ -133,6 +133,24 @@ and the feature stays off.
 - **Close or expiry:** hard delete, no soft-delete column. Database backup windows are not set by
   this package and remain an open item for the activation review.
 
+### F4 gallery and organizer view (issue #569)
+
+- **Closed gallery:** at most three project snapshots the organizer chose to show, readable only by
+  devices still admitted to the session (the roster is checked on every read, so an expelled device
+  loses access at once). No public URL, index, search, comment, like or remix exists. A viewer gets a
+  copy, never the stored snapshot.
+- **What a gallery entry holds:** a fixed team id, a version number, the generated aliases of who
+  contributed, a program hash and the time it was shown, plus the project snapshot itself. No title or
+  other text typed by a child exists. Shared assets inside it still pass the F2 approval queue.
+- **Organizer view:** aliases, roles, counts of applied and undone changes and whether someone has an
+  open change. No slot id, account, email or child profile is shown. The organizer can silence one
+  device's reactions for everyone, withdraw a project immediately, remove a child, lock sign-ups and
+  close the group.
+- **Retention:** gallery, roster and counters live in memory on the organizer's device and are cleared
+  when the group closes or expires. A `.agorix` file the organizer exported stays on the device that
+  exported it and must be deleted there; the interface says so.
+- **Providers:** none of this reaches Ori or any provider. `oriView()` carries the program only.
+
 Before launch with real children: approve ADR 0010 and the group spec, test on actual tablets and
 school networks, and obtain jurisdiction-specific legal/privacy review of the organizer's authority,
 adult notice or consent, retention and deletion. The first release must publish an understandable
