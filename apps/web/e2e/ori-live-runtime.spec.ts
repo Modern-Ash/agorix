@@ -6,7 +6,7 @@ import { join, resolve } from "node:path";
 import { createServer } from "node:net";
 
 const oriRoot = process.env.ORI_REPO_PATH;
-const root = resolve(import.meta.dirname, "../../..");
+const root = resolve(new URL(".", import.meta.url).pathname, "../../..");
 const tutorBinary = join(root, "apps/tutor-api/dist/main.mjs");
 const runnable = process.env.VITE_ORI_EXPERIMENTAL_REVIEW === "1" &&
   !!oriRoot && existsSync(join(oriRoot, "examples/local-agent-runtime.mjs")) &&
