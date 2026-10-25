@@ -217,7 +217,7 @@ test("free scene gives a custom block a number, picks it per use and keeps it af
   await page.getByRole("button", { name: "+ Mover", exact: true }).click();
   await page.getByRole("button", { name: "+ Girar a la derecha" }).click();
   await page.getByRole("textbox", { name: "Título del bloque" }).fill("Paso");
-  await page.getByRole("textbox", { name: "Nombre del número" }).first().fill("Largo");
+  await page.getByRole("textbox", { name: "Título del número" }).first().fill("Largo");
   await page.getByRole("button", { name: "Añadir número", exact: true }).click();
   await page.getByRole("button", { name: "Crear bloque con estos bloques" }).click();
   await expect(page.locator(".kids-program-block").first()).toContainText("Usar: Paso (Largo: 0)");
