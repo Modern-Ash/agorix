@@ -10,7 +10,10 @@ import { createOriShadowTransport } from "./oriExternalShadowTransport.js";
  * CI without this checkout skips it, preserving independent repository builds.
  */
 const oriPath = process.env["ORI_REPO_PATH"];
-const runnable = !!oriPath && existsSync(resolve(oriPath, "examples/shadow-api/serve.mjs"));
+const runnable = !!oriPath;
+if (runnable && !existsSync(resolve(oriPath, "examples/shadow-api/serve.mjs"))) {
+  throw new Error("ORI_REPO_PATH is set but Ori reference server is missing");
+}
 
 describe.skipIf(!runnable)("real Ori process to Agorix consumer contract", () => {
   it("sends synthetic metadata to a separately running Ori process", async () => {
@@ -34,19 +37,46 @@ describe.skipIf(!runnable)("real Ori process to Agorix consumer contract", () =>
           if (response.ok) {
             const data: unknown = await response.json();
             const { validateOriShadowPlan } = await import("./oriShadowPlanValidation.js");
-            expect(validateOriShadowPlan(data)).not.toBeNull();
+            if (validateOriShadowPlan(data) === null) {
+              throw new Error("Ori returned incompatible shadow-plan contract");
+            }
             ready = true;
             break;
           }
-        } catch {
+        } catch (error) {
+          if (error instanceof Error && error.message.includes("incompatible shadow-plan")) throw error;
           await new Promise((resolveWait) => setTimeout(resolveWait, 50));
         }
       }
       expect(ready).toBe(true);
-      const transport = createOriShadowTransport(url);
+      let actualRequests = 0;
+      let validatedResponses = 0;
+      const observedFetch: typeof fetch = async (input, init) => {
+        actualRequests++;
+        const response = await fetch(input, init);
+        if (response.ok) {
+          const payload: unknown = await response.clone().json();
+          const { validateOriShadowPlan } = await import("./oriShadowPlanValidation.js");
+          if (validateOriShadowPlan(payload) === null) {
+            throw new Error("Ori transport returned incompatible shadow-plan contract");
+          }
+          validatedResponses++;
+        }
+        return response;
+      };
+      const transport = createOriShadowTransport(url, observedFetch);
       expect(await transport({ missionIndex: 1, hintLevel: 2, scriptCount: 1 })).toBeUndefined();
+      expect(actualRequests).toBe(1);
+      expect(validatedResponses).toBe(1);
     } finally {
-      child.kill("SIGTERM");
+      if (child.exitCode === null) {
+        child.kill("SIGTERM");
+        await Promise.race([
+          new Promise<void>((resolveExit) => child.once("exit", () => resolveExit())),
+          new Promise<void>((resolveWait) => setTimeout(resolveWait, 1000)),
+        ]);
+        if (child.exitCode === null) child.kill("SIGKILL");
+      }
     }
   }, 10_000);
 });
