@@ -26,3 +26,23 @@ describe("Ori shadow plan schema", () => {
     expect(validateOriShadowPlan({ ...valid, steps: ["one"] })).toBeNull();
   });
 });
+
+describe("Ori plan shadow transport", () => {
+  it("reads a valid plan without returning it to the tutor", async () => {
+    const { createOriShadowTransport } = await import("./oriExternalShadowTransport.js");
+    const mockFetch = (async () => new Response(JSON.stringify(valid), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    })) as typeof fetch;
+    const transport = createOriShadowTransport("http://127.0.0.1:1234/v1/plan", mockFetch);
+    expect(await transport({ missionIndex: 1, hintLevel: 2, scriptCount: 1 })).toBeUndefined();
+  });
+  it("discards malformed plan and oversized response", async () => {
+    const { createOriShadowTransport } = await import("./oriExternalShadowTransport.js");
+    for (const body of [JSON.stringify({ ...valid, proposal: true }), "x".repeat(5000)]) {
+      const mockFetch = (async () => new Response(body, { status: 200 })) as typeof fetch;
+      const transport = createOriShadowTransport("http://127.0.0.1:1234/v1/plan", mockFetch);
+      expect(await transport({ missionIndex: 1, hintLevel: 2, scriptCount: 1 })).toBeUndefined();
+    }
+  });
+});
