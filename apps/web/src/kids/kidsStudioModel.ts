@@ -918,6 +918,14 @@ export const STUDIO_NUMBER_CHOICES: Readonly<Record<StudioNumberUnit, readonly n
     number: [-50, -10, -5, -1, 0, 1, 5, 10, 50],
   });
 
+export const STUDIO_NUMBER_DEFAULTS: Readonly<Record<StudioNumberUnit, number>> = Object.freeze({
+  steps: 40,
+  degrees: 90,
+  seconds: 1,
+  count: 2,
+  number: 1,
+});
+
 const SLOT_UNIT: Readonly<Record<string, StudioNumberUnit>> = {
   stepsFrom: "steps",
   degreesFrom: "degrees",

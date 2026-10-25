@@ -18,7 +18,13 @@ import {
   type ProgramProposal,
 } from "@agorix/proposals";
 import { validateOriStudioProposal } from "@agorix/ori-agent";
-import type { Expression, ProjectProgram, Statement } from "@agorix/program-model";
+import type {
+  Expression,
+  Procedure,
+  ProcedureParamId,
+  ProjectProgram,
+  Statement,
+} from "@agorix/program-model";
 import type { Locale } from "../../i18n.js";
 import {
   KIDS_GALLERY_BACKDROPS,
@@ -37,8 +43,18 @@ import { playKidsSound, stopKidsSounds } from "../kidsSoundPlayer.js";
 import {
   addStudioActor,
   addStudioList,
+  addStudioProcedureNumber,
   addStudioVariable,
+  bindStudioProcedureBlock,
+  removeStudioProcedureNumber,
+  setStudioCallNumbers,
   STUDIO_EDGE_CONDITION,
+  STUDIO_NUMBER_CHOICES,
+  STUDIO_NUMBER_DEFAULTS,
+  studioBlockHasNumberSlot,
+  studioBlockNumber,
+  studioProcedureNumberUnits,
+  type StudioBlockPath,
   appendStudioStatement,
   creativeForStudio,
   createStudioProcedure,
@@ -129,6 +145,13 @@ const COPY = {
     keepBlock: "Conservar",
     blockInUse: "Este bloque se usa",
     times: "veces",
+    blockNumbers: "Números del bloque",
+    numberTitle: "Nombre del número",
+    addNumber: "Añadir número",
+    removeNumber: "Quitar número",
+    followsNumber: "Valor de",
+    fixedNumber: "Fijo",
+    numberFor: "Número",
     groupRepeat: "Repetir estos bloques",
     groupIf: "Si se cumple, ejecutar estos bloques",
     blocksCount: "bloques",
@@ -276,6 +299,13 @@ const COPY = {
     keepBlock: "Keep",
     blockInUse: "This block is used",
     times: "times",
+    blockNumbers: "Block numbers",
+    numberTitle: "Number name",
+    addNumber: "Add number",
+    removeNumber: "Remove number",
+    followsNumber: "Value of",
+    fixedNumber: "Fixed",
+    numberFor: "Number",
     groupRepeat: "Repeat these blocks",
     groupIf: "If true, run these blocks",
     blocksCount: "blocks",
@@ -467,6 +497,9 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
   const [repeatCount, setRepeatCount] = useState(3);
   const [groupCount, setGroupCount] = useState(2);
   const [blockName, setBlockName] = useState("");
+  const [blockNumbers, setBlockNumbers] = useState<string[]>([]);
+  const [numberTitle, setNumberTitle] = useState("");
+  const [numberTitles, setNumberTitles] = useState<Record<string, string>>({});
   const [blockRenames, setBlockRenames] = useState<Record<string, string>>({});
   const [blockToDelete, setBlockToDelete] = useState<string | null>(null);
   const [sourceVariableId, setSourceVariableId] = useState("studio-var-1");
@@ -923,8 +956,16 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
         return `${statement.type === "listInsertAt" ? copy.listInsert : copy.listReplace}: ${history.current.lists?.find((item) => item.id === statement.listId)?.name ?? "?"} ${expressionLabel(statement.index, history.current)} ← ${expressionLabel(statement.value, history.current)}`;
       case "repeat":
         return `${copy.repeat} ${statement.count}`;
-      case "callProcedure":
-        return `${copy.useBlock}: ${script?.procedures?.find((item) => item.id === statement.procedureId)?.name ?? "?"}`;
+      case "callProcedure": {
+        const procedure = script?.procedures?.find((item) => item.id === statement.procedureId);
+        const numbers = (procedure?.params ?? [])
+          .map((param, index) => {
+            const arg = statement.args?.[index];
+            return `${param.name}: ${arg?.type === "numericLiteral" ? arg.value : 0}`;
+          })
+          .join(", ");
+        return `${copy.useBlock}: ${procedure?.name ?? "?"}${numbers ? ` (${numbers})` : ""}`;
+      }
       case "repeatUntil":
         return `${copy.repeatUntil} ${expressionLabel(statement.condition, history.current, locale)}`;
       case "if":
@@ -954,6 +995,101 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
         ))}
       </ol>
     );
+  }
+
+  function procedureBlocks(
+    procedure: Procedure,
+    statements: readonly Statement[],
+    path: StudioBlockPath,
+  ) {
+    return (
+      <ol className="kids-studio-nested-blocks">
+        {statements.map((item, index) => {
+          const here: StudioBlockPath = [...path, index];
+          return (
+            <li key={`${procedure.id}-${here.join("-")}`}>
+              {blockLabel(item)}
+              {studioBlockHasNumberSlot(item) ? (
+                <select
+                  aria-label={`${copy.followsNumber}: ${blockLabel(item)}`}
+                  value={studioBlockNumber(item) ?? ""}
+                  onChange={(event) =>
+                    authorBlock(() =>
+                      bindStudioProcedureBlock(
+                        history,
+                        activeActorId,
+                        procedure.id,
+                        here,
+                        event.target.value === "" ? null : (event.target.value as ProcedureParamId),
+                      ),
+                    )
+                  }
+                >
+                  <option value="">{copy.fixedNumber}</option>
+                  {procedure.params?.map((param) => (
+                    <option key={param.id} value={param.id}>
+                      {param.name}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
+              {item.type === "repeat" || item.type === "repeatUntil"
+                ? procedureBlocks(procedure, item.body, here)
+                : null}
+              {item.type === "if" ? procedureBlocks(procedure, item.then, here) : null}
+              {item.type === "if" && item.else ? (
+                <>
+                  <strong>{copy.elseLabel}</strong>
+                  {procedureBlocks(procedure, item.else, [...here, "else"])}
+                </>
+              ) : null}
+            </li>
+          );
+        })}
+      </ol>
+    );
+  }
+
+  function callNumbers(statement: Statement, index: number) {
+    if (statement.type !== "callProcedure") return null;
+    const procedure = script?.procedures?.find((item) => item.id === statement.procedureId);
+    if (!procedure?.params) return null;
+    const units = studioProcedureNumberUnits(procedure);
+    const values = procedure.params.map((_param, at) => {
+      const arg = statement.args?.[at];
+      return arg?.type === "numericLiteral" ? arg.value : 0;
+    });
+    return procedure.params.map((param, at) => {
+      const unit = units[at] ?? "number";
+      const choices = STUDIO_NUMBER_CHOICES[unit];
+      const current = values[at] ?? 0;
+      return (
+        <label key={param.id}>
+          {copy.numberFor} {param.name} ({index + 1})
+          <select
+            value={current}
+            onChange={(event) =>
+              authorBlock(() =>
+                setStudioCallNumbers(
+                  history,
+                  activeActorId,
+                  index,
+                  values.map((value, position) =>
+                    position === at ? Number(event.target.value) : value,
+                  ),
+                ),
+              )
+            }
+          >
+            {(choices.includes(current) ? choices : [current, ...choices]).map((choice) => (
+              <option key={choice} value={choice}>
+                {choice}
+              </option>
+            ))}
+          </select>
+        </label>
+      );
+    });
   }
 
   function authorBlock(change: () => EditorHistory) {
@@ -1606,6 +1742,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
               {script?.statements.map((statement, index) => (
                 <li key={`${script.id}-${index}`} className="kids-program-block">
                   <span>{blockLabel(statement)}</span>
+                  {callNumbers(statement, index)}
                   {statement.type === "repeat" || statement.type === "repeatUntil"
                     ? nestedBlocks(statement.body, `${script.id}-${index}`)
                     : null}
@@ -2071,15 +2208,57 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
                 onChange={(event) => setBlockName(event.target.value)}
               />
             </label>
+            <label>
+              {copy.numberTitle}
+              <input
+                type="text"
+                maxLength={20}
+                value={numberTitle}
+                onChange={(event) => setNumberTitle(event.target.value)}
+              />
+            </label>
+            <button
+              type="button"
+              className="kids-button"
+              disabled={
+                !numberTitle.trim() ||
+                blockNumbers.length >= 3 ||
+                blockNumbers.some((item) => item.toLowerCase() === numberTitle.trim().toLowerCase())
+              }
+              onClick={() => {
+                setBlockNumbers([...blockNumbers, numberTitle.trim()]);
+                setNumberTitle("");
+              }}
+            >
+              {copy.addNumber}
+            </button>
+            {blockNumbers.map((title) => (
+              <button
+                key={title}
+                type="button"
+                className="kids-button"
+                aria-label={`${copy.removeNumber}: ${title}`}
+                onClick={() => setBlockNumbers(blockNumbers.filter((item) => item !== title))}
+              >
+                {title} ✕
+              </button>
+            ))}
             <button
               type="button"
               className="kids-button"
               disabled={!blockName.trim() || (script?.statements.length ?? 0) < groupCount}
               onClick={() => {
                 authorBlock(() =>
-                  createStudioProcedure(history, activeActorId, groupCount, blockName.trim()),
+                  createStudioProcedure(
+                    history,
+                    activeActorId,
+                    groupCount,
+                    blockName.trim(),
+                    blockNumbers,
+                  ),
                 );
                 setBlockName("");
+                setBlockNumbers([]);
               }}
             >
               {copy.makeBlock}
@@ -2091,13 +2270,75 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
                 return (
                   <li key={item.id}>
                     <strong>{item.name}</strong>
-                    {nestedBlocks(item.body, item.id)}
+                    {item.params
+                      ? procedureBlocks(item, item.body, [])
+                      : nestedBlocks(item.body, item.id)}
+                    {item.params?.map((param) => (
+                      <button
+                        key={param.id}
+                        type="button"
+                        className="kids-button"
+                        aria-label={`${copy.removeNumber}: ${param.name} (${item.name})`}
+                        onClick={() =>
+                          authorBlock(() =>
+                            removeStudioProcedureNumber(history, activeActorId, item.id, param.id),
+                          )
+                        }
+                      >
+                        {param.name} ✕
+                      </button>
+                    ))}
+                    {(item.params?.length ?? 0) < 3 ? (
+                      <>
+                        <label>
+                          {copy.numberTitle} ({item.name})
+                          <input
+                            type="text"
+                            maxLength={20}
+                            value={numberTitles[item.id] ?? ""}
+                            onChange={(event) =>
+                              setNumberTitles({ ...numberTitles, [item.id]: event.target.value })
+                            }
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          className="kids-button"
+                          disabled={!(numberTitles[item.id] ?? "").trim()}
+                          onClick={() => {
+                            authorBlock(() =>
+                              addStudioProcedureNumber(
+                                history,
+                                activeActorId,
+                                item.id,
+                                (numberTitles[item.id] ?? "").trim(),
+                              ),
+                            );
+                            setNumberTitles({ ...numberTitles, [item.id]: "" });
+                          }}
+                        >
+                          {copy.addNumber}: {item.name}
+                        </button>
+                      </>
+                    ) : null}
                     <button
                       type="button"
                       className="kids-button"
-                      onClick={() =>
-                        add({ type: "callProcedure", procedureId: item.id } as StudioStatement)
-                      }
+                      onClick={() => {
+                        const units = studioProcedureNumberUnits(item);
+                        add({
+                          type: "callProcedure",
+                          procedureId: item.id,
+                          ...(item.params
+                            ? {
+                                args: units.map((unit) => ({
+                                  type: "numericLiteral" as const,
+                                  value: STUDIO_NUMBER_DEFAULTS[unit],
+                                })),
+                              }
+                            : {}),
+                        } as StudioStatement);
+                      }}
                     >
                       + {copy.useBlock}: {item.name}
                     </button>

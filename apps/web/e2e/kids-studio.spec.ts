@@ -198,6 +198,51 @@ test("free scene makes, uses, reopens and deletes a custom block", async ({ page
   await expect(page.getByRole("textbox", { name: "Cambiar nombre: Cuadrado" })).toHaveCount(0);
 });
 
+test("free scene gives a custom block a number, picks it per use and keeps it after reopening", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
+  await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  await page.getByRole("button", { name: "+ Girar a la derecha" }).click();
+  await page.getByRole("textbox", { name: "Título del bloque" }).fill("Paso");
+  await page.getByRole("textbox", { name: "Nombre del número" }).first().fill("Largo");
+  await page.getByRole("button", { name: "Añadir número", exact: true }).click();
+  await page.getByRole("button", { name: "Crear bloque con estos bloques" }).click();
+  await expect(page.locator(".kids-program-block").first()).toContainText("Usar: Paso (Largo: 0)");
+  await page.getByRole("combobox", { name: /^Valor de: Mover/ }).selectOption("p1");
+  await expect(page.locator(".kids-program-block").first()).toContainText("Largo: 40");
+  await page.getByRole("combobox", { name: /^Número Largo/ }).selectOption("100");
+  await expect(page.locator(".kids-program-block").first()).toContainText("Largo: 100");
+  await page.getByRole("button", { name: "+ Usar: Paso" }).click();
+  await expect(page.locator(".kids-program-block").last()).toContainText("Largo: 40");
+  const violations = (
+    await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
+  ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");
+  expect(violations.map((entry) => entry.id)).toEqual([]);
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await page.reload();
+  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  await page
+    .getByRole("article")
+    .filter({ hasText: "Escena libre" })
+    .getByRole("button", { name: "Jugar" })
+    .click();
+  await expect(page.locator(".kids-program-block").first()).toContainText("Largo: 100");
+  await expect(page.locator(".kids-program-block").last()).toContainText("Largo: 40");
+});
+
 test("free scene grows and shrinks a character and keeps the size blocks after reopening", async ({
   page,
 }) => {
