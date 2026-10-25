@@ -253,6 +253,12 @@ function projectStatement(
     case "move":
       write(writer, `${pad}sprite.move(${formatNumber(statement.steps)});\n`);
       return;
+    case "glideTo":
+      write(
+        writer,
+        `${pad}sprite.glideTo(${formatNumber(statement.x)}, ${formatNumber(statement.y)}, ${formatNumber(statement.seconds)});\n`,
+      );
+      return;
     case "goTo":
       write(
         writer,

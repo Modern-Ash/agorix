@@ -372,6 +372,19 @@ function validateStatement(
       checkBounds(input.y, -1000, 1000, `${path}.y`);
       return { type: "goTo", x: input.x, y: input.y };
     }
+    case "glideTo": {
+      if (
+        typeof input.x !== "number" ||
+        typeof input.y !== "number" ||
+        typeof input.seconds !== "number"
+      ) {
+        fail("MISSING_FIELD", path, "expected numeric coordinates and seconds", input);
+      }
+      checkBounds(input.x, -1000, 1000, `${path}.x`);
+      checkBounds(input.y, -1000, 1000, `${path}.y`);
+      checkBounds(input.seconds, WAIT_SECONDS_MIN, WAIT_SECONDS_MAX, `${path}.seconds`);
+      return { type: "glideTo", x: input.x, y: input.y, seconds: input.seconds };
+    }
     case "turn": {
       if (typeof input.degrees !== "number") {
         fail("MISSING_FIELD", `${path}.degrees`, "expected a number", input.degrees);

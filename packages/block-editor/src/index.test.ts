@@ -882,3 +882,23 @@ describe("layer block", () => {
     ]);
   });
 });
+
+describe("glide block", () => {
+  it("round-trips through blocks", () => {
+    const program = {
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [{ type: "glideTo", x: 120, y: -40, seconds: 2 }],
+        },
+      ],
+    } as unknown as ProjectProgram;
+    const { workspace } = programToWorkspace(program);
+    expect(JSON.stringify(workspace)).toContain("motion_glide_to");
+    expect(workspaceToProgram(workspace).program.scripts[0]?.statements).toEqual([
+      { type: "glideTo", x: 120, y: -40, seconds: 2 },
+    ]);
+  });
+});

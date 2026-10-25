@@ -90,6 +90,7 @@ describe("Python projection", () => {
         "point_in_direction",
         "point_towards",
         "bounce_on_edge",
+        "glide_to",
         "go_to_layer",
         "touching_goal",
         "touching_actor",
@@ -625,5 +626,22 @@ describe("Python projection: layers", () => {
     });
     expect(result.diagnostics).toEqual([]);
     expect(result.text).toContain('go_to_layer("front")');
+  });
+});
+
+describe("Python projection: glide", () => {
+  it("projects glide_to", () => {
+    const result = projectPython({
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [{ type: "glideTo", x: 120, y: -40, seconds: 2 }],
+        },
+      ],
+    });
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toContain("glide_to(120, -40, 2)");
   });
 });

@@ -394,3 +394,31 @@ describe("goToLayer statement", () => {
     }
   });
 });
+
+describe("glideTo statement", () => {
+  const programWith = (statement: unknown) =>
+    ({
+      schema: SCHEMA_VERSION,
+      scripts: [{ id: "main", trigger: { type: "onStart" }, statements: [statement] }],
+    }) as never;
+  it("accepts bounded coordinates and duration", () => {
+    expect(() =>
+      validateProgram(programWith({ type: "glideTo", x: 120, y: -40, seconds: 2 })),
+    ).not.toThrow();
+  });
+  it("rejects out-of-range or missing values", () => {
+    for (const bad of [
+      { x: 1001, y: 0, seconds: 1 },
+      { x: 0, y: -1001, seconds: 1 },
+      { x: 0, y: 0, seconds: 0 },
+      { x: 0, y: 0, seconds: 6 },
+      { x: 0, y: 0 },
+      { x: "0", y: 0, seconds: 1 },
+      { x: Number.NaN, y: 0, seconds: 1 },
+    ]) {
+      expect(() => validateProgram(programWith({ type: "glideTo", ...bad }))).toThrow(
+        ProgramValidationError,
+      );
+    }
+  });
+});

@@ -104,6 +104,7 @@ export function projectPython(program: ProjectProgram): LanguageProjectionResult
         "point_in_direction",
         "point_towards",
         "bounce_on_edge",
+        "glide_to",
         "go_to_layer",
         "touching_goal",
         "touching_actor",
@@ -165,6 +166,20 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
   switch (statement.type) {
     case "move":
       writeMapped(writer, nodeId, indent + "move(" + formatNumber(statement.steps) + ")\n");
+      return;
+    case "glideTo":
+      writeMapped(
+        writer,
+        nodeId,
+        indent +
+          "glide_to(" +
+          formatNumber(statement.x) +
+          ", " +
+          formatNumber(statement.y) +
+          ", " +
+          formatNumber(statement.seconds) +
+          ")\n",
+      );
       return;
     case "goTo":
       writeMapped(
@@ -647,6 +662,7 @@ const PYTHON_PROJECTION_IDENTIFIERS: ReadonlySet<string> = new Set([
   "point_towards",
   "bounce_on_edge",
   "go_to_layer",
+  "glide_to",
   "touching_goal",
   "touching_actor",
   "touching_stage_edge",

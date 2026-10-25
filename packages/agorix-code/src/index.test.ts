@@ -525,3 +525,20 @@ describe("Agorix Code projection: layers", () => {
     expect(result.text).toContain("go to front layer");
   });
 });
+
+describe("Agorix Code projection: glide", () => {
+  it("projects glide", () => {
+    const result = projectAgorixCode({
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [{ type: "glideTo", x: 120, y: -40, seconds: 2 }],
+        },
+      ],
+    });
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toContain("glide to 120, -40 in 2 seconds");
+  });
+});

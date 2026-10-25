@@ -24,6 +24,7 @@ export type BlockType =
   | "motion_point_in_direction"
   | "motion_point_towards"
   | "motion_bounce_on_edge"
+  | "motion_glide_to"
   | "looks_go_to_layer"
   | "looks_say"
   | "looks_think"
@@ -424,6 +425,13 @@ function statementFromBlock(
       }
       return { type: "goToLayer", layer };
     }
+    case "motion_glide_to":
+      return {
+        type: "glideTo",
+        x: numberField(block, "x", path),
+        y: numberField(block, "y", path),
+        seconds: numberField(block, "seconds", path),
+      };
     case "motion_bounce_on_edge":
       return { type: "bounceOnEdge" };
     case "looks_say":
@@ -719,6 +727,12 @@ function statementToBlock(
   switch (statement.type) {
     case "move":
       return { id, type: "motion_move", fields: { steps: statement.steps } };
+    case "glideTo":
+      return {
+        id,
+        type: "motion_glide_to",
+        fields: { x: statement.x, y: statement.y, seconds: statement.seconds },
+      };
     case "goTo":
       return { id, type: "motion_go_to", fields: { x: statement.x, y: statement.y } };
     case "turn":

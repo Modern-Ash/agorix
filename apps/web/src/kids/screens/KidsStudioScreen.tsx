@@ -83,6 +83,7 @@ const COPY = {
     reset: "Volver al inicio",
     move: "Mover",
     goTo: "Ir a posición",
+    glideTo: "Deslizar a posición",
     xCoordinate: "Posición horizontal",
     yCoordinate: "Posición vertical",
     turnLeft: "Girar a la izquierda",
@@ -219,6 +220,7 @@ const COPY = {
     reset: "Back to start",
     move: "Move",
     goTo: "Go to position",
+    glideTo: "Glide to position",
     xCoordinate: "Horizontal position",
     yCoordinate: "Vertical position",
     turnLeft: "Turn left",
@@ -840,6 +842,8 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
         return `${statement.steps < 0 ? copy.moveBackward : copy.move} ${Math.abs(statement.steps) / 40}`;
       case "goTo":
         return `${copy.goTo}: ${statement.x}, ${statement.y}`;
+      case "glideTo":
+        return `${copy.glideTo}: ${statement.x}, ${statement.y} (${statement.seconds}s)`;
       case "turn":
         return `${statement.degrees < 0 ? copy.turnLeft : copy.turnRight} ${Math.abs(statement.degrees)}°`;
       case "pointInDirection":
@@ -1747,6 +1751,21 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
               onClick={() => add({ type: "goTo", x: targetX, y: targetY })}
             >
               + {copy.goTo}
+            </button>
+            <button
+              type="button"
+              className="kids-button"
+              disabled={
+                !Number.isInteger(targetX) ||
+                targetX < 0 ||
+                targetX > 320 ||
+                !Number.isInteger(targetY) ||
+                targetY < -100 ||
+                targetY > 120
+              }
+              onClick={() => add({ type: "glideTo", x: targetX, y: targetY, seconds: waitSeconds })}
+            >
+              + {copy.glideTo} ({waitSeconds}s)
             </button>
             <label>
               {copy.turnAmount}{" "}

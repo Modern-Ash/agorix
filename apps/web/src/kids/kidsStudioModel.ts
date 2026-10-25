@@ -32,6 +32,7 @@ export type StudioStatement = Extract<
     type:
       | "move"
       | "goTo"
+      | "glideTo"
       | "turn"
       | "pointInDirection"
       | "pointTowards"
@@ -219,6 +220,11 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0): bool
       Number.isInteger(statement.steps / 20) &&
       statement.steps !== 0 &&
       Math.abs(statement.steps) <= 200
+    );
+  if (statement.type === "glideTo")
+    return (
+      [0.5, 1, 2, 3].includes(statement.seconds) &&
+      checked({ type: "goTo", x: statement.x, y: statement.y }, program)
     );
   if (statement.type === "goTo")
     return (

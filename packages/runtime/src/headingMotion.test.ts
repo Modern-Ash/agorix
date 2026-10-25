@@ -396,3 +396,30 @@ describe("goToLayer", () => {
     expect(result.stepsUsed).toBe(1);
   });
 });
+
+describe("glideTo", () => {
+  it("ends at the target, keeps the heading and advances virtual time", () => {
+    const result = runProgram(
+      program([
+        { type: "glideTo", x: 120, y: -40, seconds: 2 },
+        { type: "glideTo", x: 0, y: 0, seconds: 0.5 },
+      ]),
+      createWorldState({ sprite: { x: 10, y: 10, heading: 90 } }),
+    );
+    expect(result.outcome).toBe("completed");
+    expect(result.trace[0]?.worldAfter.sprite).toMatchObject({ x: 120, y: -40, heading: 90 });
+    expect(result.world.sprite).toMatchObject({ x: 0, y: 0, heading: 90 });
+    expect(result.virtualSeconds).toBe(2.5);
+  });
+
+  it("shares the virtual-time budget with wait", () => {
+    const glides = Array.from({ length: 100 }, () => ({
+      type: "glideTo" as const,
+      x: 0,
+      y: 0,
+      seconds: 5,
+    }));
+    const result = runProgram(program(glides), createWorldState());
+    expect(result.outcome).toBe("budget-exceeded");
+  });
+});
