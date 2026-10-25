@@ -422,3 +422,90 @@ describe("glideTo statement", () => {
     }
   });
 });
+
+describe("procedures", () => {
+  const withScript = (script: Record<string, unknown>) =>
+    ({
+      schema: SCHEMA_VERSION,
+      scripts: [{ id: "main", trigger: { type: "onStart" }, statements: [], ...script }],
+    }) as never;
+  const proc = (extra: Record<string, unknown> = {}) => ({
+    id: "proc-1",
+    name: "Saltar",
+    body: [{ type: "move", steps: 10 }],
+    ...extra,
+  });
+
+  it("accepts a procedure and a call to it, including a recursive one", () => {
+    expect(() =>
+      validateProgram(
+        withScript({
+          procedures: [proc()],
+          statements: [{ type: "callProcedure", procedureId: "proc-1" }],
+        }),
+      ),
+    ).not.toThrow();
+    expect(() =>
+      validateProgram(
+        withScript({
+          procedures: [proc({ body: [{ type: "callProcedure", procedureId: "proc-1" }] })],
+          statements: [{ type: "callProcedure", procedureId: "proc-1" }],
+        }),
+      ),
+    ).not.toThrow();
+  });
+
+  it("rejects a call to a procedure the script does not define", () => {
+    expect(() =>
+      validateProgram(
+        withScript({ statements: [{ type: "callProcedure", procedureId: "proc-9" }] }),
+      ),
+    ).toThrow(ProgramValidationError);
+  });
+
+  it("rejects bad names, empty or oversized bodies, duplicates and too many procedures", () => {
+    for (const bad of [
+      proc({ name: "" }),
+      proc({ name: "x".repeat(21) }),
+      proc({ name: "<b>" }),
+      proc({ body: [] }),
+      proc({ body: Array.from({ length: 21 }, () => ({ type: "move", steps: 1 })) }),
+      proc({ body: "x" }),
+      proc({ id: "" }),
+    ]) {
+      expect(() => validateProgram(withScript({ procedures: [bad] }))).toThrow(
+        ProgramValidationError,
+      );
+    }
+    expect(() => validateProgram(withScript({ procedures: [proc(), proc()] }))).toThrow(
+      ProgramValidationError,
+    );
+    expect(() =>
+      validateProgram(
+        withScript({
+          procedures: Array.from({ length: 21 }, (_, i) => proc({ id: `proc-${i}` })),
+        }),
+      ),
+    ).toThrow(ProgramValidationError);
+  });
+});
+
+describe("procedureIdentifiers", () => {
+  it("gives each custom block a stable, unique, ASCII identifier", async () => {
+    const { procedureIdentifiers } = await import("./index.js");
+    const named = (name: string, i: number) => ({
+      id: `p${i}`,
+      name,
+      body: [{ type: "move" as const, steps: 1 }],
+    });
+    expect(
+      procedureIdentifiers([
+        named("Saltar alto", 0),
+        named("saltar alto", 1),
+        named("¡Ñandú!", 2),
+        named("   ", 3),
+        named("class", 4),
+      ]),
+    ).toEqual(["my_saltar_alto", "my_saltar_alto_2", "my_nandu", "my_block_4", "my_class"]);
+  });
+});

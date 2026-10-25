@@ -4,10 +4,16 @@ import type {
   ProgramVariable,
   ProgramEvent,
   ProjectProgram,
+  Script,
   Statement,
   Trigger,
 } from "@agorix/program-model";
-import { REPEAT_UNTIL_MAX_PASSES, eventForTrigger, validateProgram } from "@agorix/program-model";
+import {
+  PROCEDURE_MAX_CALL_DEPTH,
+  REPEAT_UNTIL_MAX_PASSES,
+  eventForTrigger,
+  validateProgram,
+} from "@agorix/program-model";
 import {
   cloneWorldState,
   createWorldState,
@@ -150,6 +156,10 @@ interface MutableRunState {
   randomState: number;
   /** Virtual seconds waited so far; a clock for ordering, never a timer. */
   virtualSeconds: number;
+  /** The script being run, so a call can find its own custom blocks. */
+  script?: Script;
+  scriptIndex: number;
+  callDepth: number;
   /** Short machine notes (capped), e.g. a list read out of range; surfaced only when non-empty. */
   readonly notes: string[];
 }
@@ -165,6 +175,7 @@ function normalizeBudget(maxSteps: number | undefined): number {
 function nodeIdFromPath(path: string): string {
   return path
     .replace(/\.statements/g, "/statements")
+    .replace(/\.procedures/g, "/procedures")
     .replace(/\.body/g, "/body")
     .replace(/\.then/g, "/then")
     .replace(/\.else/g, "/else");
@@ -561,6 +572,29 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
       }
       break;
     }
+    case "callProcedure": {
+      const procedures = state.script?.procedures ?? [];
+      const procedureIndex = procedures.findIndex((item) => item.id === statement.procedureId);
+      const procedure = procedures[procedureIndex];
+      if (procedure === undefined) {
+        throw new RuntimeExecutionError(`${path}.procedureId`, statement.procedureId);
+      }
+      if (state.callDepth >= PROCEDURE_MAX_CALL_DEPTH) {
+        addNote(state, `callProcedure: stopped at depth ${PROCEDURE_MAX_CALL_DEPTH}`);
+        throw new ExecutionHalt("budget-exceeded");
+      }
+      state.callDepth += 1;
+      try {
+        executeStatements(
+          procedure.body,
+          `scripts[${state.scriptIndex}].procedures[${procedureIndex}].body`,
+          state,
+        );
+      } finally {
+        state.callDepth -= 1;
+      }
+      break;
+    }
     case "repeatUntil": {
       let passes = 0;
       while (!coerceBoolean(evaluateExpression(statement.condition, `${path}.condition`, state))) {
@@ -695,6 +729,8 @@ export function runProgram(
     observations: [],
     randomState: normalizeRandomSeed(options.randomSeed),
     virtualSeconds: 0,
+    scriptIndex: 0,
+    callDepth: 0,
     notes: [],
   };
 
@@ -708,6 +744,8 @@ export function runProgram(
       if (eventForTrigger(script.trigger) !== event) {
         continue;
       }
+      state.script = script;
+      state.scriptIndex = i;
       executeStatements(script.statements, `scripts[${i}].statements`, state);
     }
     const world = cloneWorldState(state.world);

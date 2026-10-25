@@ -377,6 +377,13 @@ export function validateProjectCreativeState(
     input.stage === undefined ? undefined : validateStage(input.stage, "$.stage", state);
   for (const [index, script] of program.scripts.entries()) {
     validateStatementAssetRefs(script.statements, `$.program.scripts[${index}].statements`, state);
+    script.procedures?.forEach((procedure, procedureIndex) =>
+      validateStatementAssetRefs(
+        procedure.body,
+        `$.program.scripts[${index}].procedures[${procedureIndex}].body`,
+        state,
+      ),
+    );
   }
   return {
     ...(actors === undefined ? {} : { actors }),

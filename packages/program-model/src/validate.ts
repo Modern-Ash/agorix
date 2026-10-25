@@ -5,6 +5,7 @@ import type {
   ProgramList,
   ProgramVariable,
   ProjectProgram,
+  Procedure,
   Script,
   Statement,
   Trigger,
@@ -20,6 +21,9 @@ import {
   LIST_MAX_ITEMS,
   NUMERIC_LITERAL_MAX,
   NUMERIC_LITERAL_MIN,
+  PROCEDURES_MAX_PER_SCRIPT,
+  PROCEDURE_BODY_MAX,
+  PROCEDURE_NAME_MAX_LENGTH,
   REPEAT_COUNT_MAX,
   REPEAT_COUNT_MIN,
   SPRITE_SIZE_MAX,
@@ -121,6 +125,8 @@ interface ValidationState {
   seenIds: Map<string, string>; // id -> first path where it was seen
   variableIds: Set<string>;
   listIds: Set<string>;
+  /** Custom blocks of the script being validated. */
+  procedureIds: Set<string>;
 }
 
 function countNode(state: ValidationState, path: string): void {
@@ -527,6 +533,17 @@ function validateStatement(
         body: validateStatementArray(input.body, `${path}.body`, state, nextDepth),
       };
     }
+    case "callProcedure": {
+      if (typeof input.procedureId !== "string" || !state.procedureIds.has(input.procedureId)) {
+        fail(
+          "INVALID_REFERENCE",
+          `${path}.procedureId`,
+          "expected the id of a custom block of this script",
+          input.procedureId,
+        );
+      }
+      return { type: "callProcedure", procedureId: input.procedureId };
+    }
     case "repeatUntil": {
       const nextDepth = depth + 1;
       checkDepth(nextDepth, `${path}.body`);
@@ -663,6 +680,29 @@ function validateList(input: unknown, path: string, state: ValidationState): Pro
   return { id: input.id, name, initialItems, visible: input.visible };
 }
 
+const PROCEDURE_NAME = /^[\p{L}\p{N}][\p{L}\p{N} _-]{0,19}$/u;
+
+function validateProcedure(input: unknown, path: string, state: ValidationState): Procedure {
+  countNode(state, path);
+  if (!isPlainObject(input)) {
+    fail("INVALID_FIELD_TYPE", path, "expected an object", input);
+  }
+  if (typeof input.id !== "string" || input.id.length === 0) {
+    fail("MISSING_FIELD", `${path}.id`, "expected a non-empty string", input.id);
+  }
+  if (typeof input.name !== "string" || !PROCEDURE_NAME.test(input.name)) {
+    fail(
+      "INVALID_FIELD_TYPE",
+      `${path}.name`,
+      `expected 1 to ${PROCEDURE_NAME_MAX_LENGTH} letters, digits, spaces, "_" or "-"`,
+      input.name,
+    );
+  }
+  recordId(state, input.id, `${path}.id`);
+  state.procedureIds.add(input.id);
+  return { id: input.id, name: input.name, body: [] };
+}
+
 function validateScript(input: unknown, path: string, state: ValidationState): Script {
   countNode(state, path);
   if (!isPlainObject(input)) {
@@ -672,10 +712,43 @@ function validateScript(input: unknown, path: string, state: ValidationState): S
     fail("MISSING_FIELD", `${path}.id`, "expected a non-empty string", input.id);
   }
   recordId(state, input.id, `${path}.id`);
+  state.procedureIds = new Set();
+  let procedures: Procedure[] | undefined;
+  if (input.procedures !== undefined) {
+    if (!Array.isArray(input.procedures)) {
+      fail("INVALID_FIELD_TYPE", `${path}.procedures`, "expected an array", input.procedures);
+    }
+    if (input.procedures.length > PROCEDURES_MAX_PER_SCRIPT) {
+      fail(
+        "PROGRAM_TOO_LARGE",
+        `${path}.procedures`,
+        `expected at most ${PROCEDURES_MAX_PER_SCRIPT} custom blocks`,
+        input.procedures.length,
+      );
+    }
+    const headers = input.procedures.map((item, index) =>
+      validateProcedure(item, `${path}.procedures[${index}]`, state),
+    );
+    procedures = headers.map((header, index) => {
+      const raw = (input.procedures as Record<string, unknown>[])[index]!;
+      const bodyPath = `${path}.procedures[${index}].body`;
+      const body = validateStatementArray(raw.body, bodyPath, state, 2);
+      if (body.length < 1 || body.length > PROCEDURE_BODY_MAX) {
+        fail(
+          "PROGRAM_TOO_LARGE",
+          bodyPath,
+          `expected 1 to ${PROCEDURE_BODY_MAX} statements`,
+          body.length,
+        );
+      }
+      return { ...header, body };
+    });
+  }
   return {
     id: input.id,
     trigger: validateTrigger(input.trigger, `${path}.trigger`),
     statements: validateStatementArray(input.statements, `${path}.statements`, state, 1),
+    ...(procedures === undefined ? {} : { procedures }),
   };
 }
 
@@ -706,6 +779,7 @@ export function validateProgram(input: unknown): ProjectProgram {
     seenIds: new Map(),
     variableIds: new Set(),
     listIds: new Set(),
+    procedureIds: new Set(),
   };
   const variables =
     input.variables === undefined

@@ -767,4 +767,18 @@ describe("Kids creative studio", () => {
     ])
       expect(() => appendStudioStatement(history, nova, { type: "glideTo", ...bad })).toThrow();
   });
+  it("does not yet accept custom blocks in a free scene", () => {
+    const history = createEditorHistory(createStudioProgram("nova"));
+    expect(() =>
+      validateStudioProgram({
+        ...history.current,
+        scripts: [
+          {
+            ...history.current.scripts[0]!,
+            procedures: [{ id: "proc-1", name: "Saltar", body: [{ type: "move", steps: 20 }] }],
+          },
+        ],
+      }),
+    ).toThrow();
+  });
 });

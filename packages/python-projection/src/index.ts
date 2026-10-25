@@ -7,6 +7,7 @@ import {
   type TextRange,
 } from "@agorix/language-projection";
 import {
+  procedureIdentifiers,
   validateProgram,
   type Expression,
   type ProjectProgram,
@@ -27,6 +28,7 @@ interface Writer {
   diagnostics: LanguageProjectionDiagnostic[];
   variableNames: ReadonlyMap<string, string>;
   listNames: ReadonlyMap<string, string>;
+  procedureNames?: ReadonlyMap<string, string>;
 }
 
 export function projectPython(program: ProjectProgram): LanguageProjectionResult {
@@ -77,6 +79,19 @@ export function projectPython(program: ProjectProgram): LanguageProjectionResult
   }
   validated.scripts.forEach((script, scriptIndex) => {
     const scriptId = "scripts[" + scriptIndex + "]";
+    const procedures = script.procedures ?? [];
+    const names = procedureIdentifiers(procedures);
+    writer.procedureNames = new Map(procedures.map((item, index) => [item.id, names[index]!]));
+    procedures.forEach((procedure, procedureIndex) => {
+      const procedureId = scriptId + "/procedures[" + procedureIndex + "]";
+      const start = writer.text.length;
+      writer.text += "def " + names[procedureIndex] + "():\n";
+      procedure.body.forEach((statement, index) =>
+        writeStatement(writer, statement, procedureId + "/body[" + index + "]", 1),
+      );
+      addRange(writer, procedureId, start, writer.text.length);
+      writer.text += "\n";
+    });
     writeMapped(writer, scriptId, triggerText(script.trigger));
     if (script.statements.length === 0) {
       writer.text += "    pass\n";
@@ -210,6 +225,13 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
         writer,
         nodeId,
         indent + "go_to_layer(" + JSON.stringify(statement.layer) + ")\n",
+      );
+      return;
+    case "callProcedure":
+      writeMapped(
+        writer,
+        nodeId,
+        indent + (writer.procedureNames?.get(statement.procedureId) ?? "my_block") + "()\n",
       );
       return;
     case "bounceOnEdge":

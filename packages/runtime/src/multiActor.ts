@@ -289,13 +289,27 @@ function reasonForActivation(
 }
 
 function statementAtNodeId(script: Script, nodeId: string) {
-  const segments = [...nodeId.matchAll(/\/(statements|body|then|else)\[(\d+)\]/g)].map((match) => ({
-    segment: match[1],
-    index: Number(match[2]),
-  }));
+  const segments = [...nodeId.matchAll(/\/(statements|procedures|body|then|else)\[(\d+)\]/g)].map(
+    (match) => ({
+      segment: match[1],
+      index: Number(match[2]),
+    }),
+  );
   let statements = script.statements;
   let current = undefined as Script["statements"][number] | undefined;
+  let enteringProcedure = false;
   for (const { segment, index } of segments) {
+    if (segment === "procedures") {
+      statements = script.procedures?.[index]?.body ?? [];
+      current = undefined;
+      enteringProcedure = true;
+      continue;
+    }
+    if (enteringProcedure) {
+      enteringProcedure = false;
+      current = statements[index];
+      continue;
+    }
     if (
       segment !== "statements" &&
       current?.type !== "repeat" &&

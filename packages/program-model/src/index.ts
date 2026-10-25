@@ -33,6 +33,8 @@ export type {
   ListReplaceAtStatement,
   ProjectProgram,
   RepeatStatement,
+  CallProcedureStatement,
+  Procedure,
   RepeatUntilStatement,
   Script,
   SchemaVersion,
@@ -50,6 +52,7 @@ export type {
   VariableExpression,
 } from "./schema.js";
 export { SCHEMA_VERSION } from "./schema.js";
+export { procedureIdentifiers } from "./procedures.js";
 export type {
   ProjectActor,
   ProjectAsset,
@@ -64,6 +67,10 @@ export { ProgramValidationError, validateProgram } from "./validate.js";
 export {
   MAX_NESTING_DEPTH,
   MAX_PROGRAM_NODES,
+  PROCEDURES_MAX_PER_SCRIPT,
+  PROCEDURE_BODY_MAX,
+  PROCEDURE_NAME_MAX_LENGTH,
+  PROCEDURE_MAX_CALL_DEPTH,
   EVENT_KEY_MAX_LENGTH,
   EVENT_MESSAGE_MAX_LENGTH,
   LOOKS_TEXT_MAX_LENGTH,

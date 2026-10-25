@@ -542,3 +542,24 @@ describe("Agorix Code projection: glide", () => {
     expect(result.text).toContain("glide to 120, -40 in 2 seconds");
   });
 });
+
+describe("Agorix Code projection: custom blocks", () => {
+  it("defines each custom block before the script and calls it", () => {
+    const result = projectAgorixCode({
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [{ type: "callProcedure", procedureId: "proc-1" }],
+          procedures: [{ id: "proc-1", name: "Saltar", body: [{ type: "move", steps: 10 }] }],
+        },
+      ],
+    });
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toBe(
+      ["define Saltar", "  move 10", "when start", "  call Saltar", ""].join("\n"),
+    );
+    expect(result.mapping["scripts[0]/procedures[0]/body[0]"]).toBeDefined();
+  });
+});

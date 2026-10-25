@@ -47,6 +47,7 @@ export const RUNTIME_STATEMENT_OPERATIONS = Object.freeze([
   "listReplaceAt",
   "repeat",
   "repeatUntil",
+  "callProcedure",
   "if",
 ] as const);
 
@@ -222,6 +223,15 @@ export function assertProgramOperationsAllowed(program: ProjectProgram): void {
     const trigger: Trigger | undefined = script.trigger;
     if (trigger !== undefined) {
       assertAllowedRuntimeOperation("trigger", trigger.type, `${scriptPath}.trigger`);
+    }
+    const procedures = script.procedures;
+    if (Array.isArray(procedures)) {
+      for (let p = 0; p < procedures.length; p += 1) {
+        const procedure = procedures[p];
+        if (procedure !== undefined && Array.isArray(procedure.body)) {
+          assertStatementsAllowed(procedure.body, `${scriptPath}.procedures[${p}].body`);
+        }
+      }
     }
     const statements: readonly Statement[] | undefined = script.statements;
     if (Array.isArray(statements)) {

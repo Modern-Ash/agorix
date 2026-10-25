@@ -27,6 +27,7 @@ interface Writer {
   diagnostics: LanguageProjectionDiagnostic[];
   variableLabels: ReadonlyMap<string, string>;
   listLabels: ReadonlyMap<string, string>;
+  procedureNames?: ReadonlyMap<string, string>;
 }
 
 export function projectAgorixCode(program: ProjectProgram): LanguageProjectionResult {
@@ -75,6 +76,17 @@ export function projectAgorixCode(program: ProjectProgram): LanguageProjectionRe
   }
   validated.scripts.forEach((script, scriptIndex) => {
     const scriptId = "scripts[" + scriptIndex + "]";
+    const procedures = script.procedures ?? [];
+    writer.procedureNames = new Map(procedures.map((item) => [item.id, item.name]));
+    procedures.forEach((procedure, procedureIndex) => {
+      const procedureId = scriptId + "/procedures[" + procedureIndex + "]";
+      const start = writer.text.length;
+      writer.text += "define " + procedure.name + "\n";
+      procedure.body.forEach((statement, index) =>
+        writeStatement(writer, statement, procedureId + "/body[" + index + "]", 1),
+      );
+      addRange(writer, procedureId, start, writer.text.length);
+    });
     writeMapped(writer, scriptId, triggerText(script.trigger));
     script.statements.forEach((statement, index) =>
       writeStatement(writer, statement, scriptId + "/statements[" + index + "]", 1),
@@ -154,6 +166,13 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
       return;
     case "goToLayer":
       writeMapped(writer, nodeId, indent + "go to " + statement.layer + " layer\n");
+      return;
+    case "callProcedure":
+      writeMapped(
+        writer,
+        nodeId,
+        indent + "call " + (writer.procedureNames?.get(statement.procedureId) ?? "?") + "\n",
+      );
       return;
     case "bounceOnEdge":
       writeMapped(writer, nodeId, indent + "bounce on edge\n");
