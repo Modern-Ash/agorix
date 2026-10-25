@@ -20,12 +20,18 @@ describe("Ori canonical Kids program evidence", () => {
     }
   });
   it("never mutates a canonical starter program", () => {
-    expect(captureOriCanonicalProgramEvidence().every((record) => record.programUnchanged)).toBe(true);
+    expect(captureOriCanonicalProgramEvidence().every((record) => record.programUnchanged)).toBe(
+      true,
+    );
   });
   it("is deterministic across repeated executions", () => {
     expect(captureOriCanonicalProgramEvidence()).toEqual(captureOriCanonicalProgramEvidence());
   });
   it("never fabricates a text hint or next step", () => {
-    expect(captureOriCanonicalProgramEvidence().every((record) => !("hint" in record) && !("nextStep" in record))).toBe(true);
+    expect(
+      captureOriCanonicalProgramEvidence().every(
+        (record) => !("hint" in record) && !("nextStep" in record),
+      ),
+    ).toBe(true);
   });
 });

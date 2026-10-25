@@ -17,19 +17,21 @@ export interface OriCanonicalProgramEvidence {
   readonly programUnchanged: boolean;
 }
 export function captureOriCanonicalProgramEvidence(): readonly OriCanonicalProgramEvidence[] {
-  return Object.freeze(KIDS_MISSION_IDS.map((missionId, missionIndex) => {
-    const mission = getKidsMission(missionId, "es");
-    const serialized = JSON.stringify(mission.starterProject);
-    const fingerprint = createHash("sha256").update(serialized, "utf8").digest("hex");
-    const offer = computeKidsOri(mission.starterProject, mission, missionIndex, "es");
-    return Object.freeze({
-      missionId,
-      missionIndex,
-      scriptCount: mission.starterProject.scripts.length,
-      programFingerprint: fingerprint,
-      deterministicKind: offer.kind,
-      hasReviewableProposal: offer.proposal !== undefined,
-      programUnchanged: JSON.stringify(mission.starterProject) === serialized,
-    });
-  }));
+  return Object.freeze(
+    KIDS_MISSION_IDS.map((missionId, missionIndex) => {
+      const mission = getKidsMission(missionId, "es");
+      const serialized = JSON.stringify(mission.starterProject);
+      const fingerprint = createHash("sha256").update(serialized, "utf8").digest("hex");
+      const offer = computeKidsOri(mission.starterProject, mission, missionIndex, "es");
+      return Object.freeze({
+        missionId,
+        missionIndex,
+        scriptCount: mission.starterProject.scripts.length,
+        programFingerprint: fingerprint,
+        deterministicKind: offer.kind,
+        hasReviewableProposal: offer.proposal !== undefined,
+        programUnchanged: JSON.stringify(mission.starterProject) === serialized,
+      });
+    }),
+  );
 }
