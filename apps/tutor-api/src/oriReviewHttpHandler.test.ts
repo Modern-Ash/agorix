@@ -34,7 +34,9 @@ async function serve(enabled: boolean) {
     enabled,
   );
   const handler = createOriReviewHttpHandler(pipeline);
-  const server = createServer((req, res) => { void handler(req, res); });
+  const server = createServer((req, res) => {
+    void handler(req, res);
+  });
   servers.push(server);
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   return (server.address() as AddressInfo).port;
