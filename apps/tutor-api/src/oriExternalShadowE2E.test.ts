@@ -46,9 +46,17 @@ describe("Agorix to Ori shadow transport e2e", () => {
   });
 
   it("network failures do not propagate into tutor flow", async () => {
-    const shadow = createOriShadowTransport("http://127.0.0.1:1/v0/shadow");
-    dispatchOriExternalShadow(true, shadow, { missionIndex: 0, hintLevel: 1, scriptCount: 1 });
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(true).toBe(true);
+    let invoked = false;
+    const failingShadow = async () => {
+      invoked = true;
+      throw new Error("unavailable");
+    };
+    dispatchOriExternalShadow(true, failingShadow, {
+      missionIndex: 0,
+      hintLevel: 1,
+      scriptCount: 1,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(invoked).toBe(true);
   });
 });
