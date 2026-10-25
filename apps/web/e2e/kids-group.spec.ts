@@ -49,9 +49,16 @@ async function newPage(browser: Browser): Promise<Page> {
   return context.newPage();
 }
 
-async function mailToken(page: Page): Promise<string> {
-  const response = await page.request.get("/v1/__dev/mail");
-  return ((await response.json()) as { token: string }).token;
+// The dev mailbox keeps only the latest message of the whole server, and other spec files run in
+// parallel, so wait for the one addressed to this test's own address.
+async function mailToken(page: Page, to: string): Promise<string> {
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const response = await page.request.get("/v1/__dev/mail");
+    const body = (await response.json()) as { token?: string; to?: string };
+    if (body.to === to && body.token !== undefined) return body.token;
+    await page.waitForTimeout(250);
+  }
+  throw new Error("verification mail not found");
 }
 
 async function verifiedOrganizerAdults(page: Page) {
@@ -59,12 +66,13 @@ async function verifiedOrganizerAdults(page: Page) {
   await openAdults(page);
   await page.getByRole("button", { name: "Crear cuenta", exact: true }).click();
   const name = alias();
+  const email = `${name}@example.com`;
   await page.getByLabel("Usuario").fill(name);
   await page.getByLabel("Contraseña", { exact: true }).fill(PASSWORD);
-  await page.getByLabel(/Tu correo/).fill("ada@example.com");
+  await page.getByLabel(/Tu correo/).fill(email);
   await page.getByRole("button", { name: "Crear mi cuenta" }).click();
   await expect(page.getByText(`Sesión iniciada como ${name}`)).toBeVisible();
-  await page.goto(`/kids?verify=${await mailToken(page)}`);
+  await page.goto(`/kids?verify=${await mailToken(page, email)}`);
   await expect(page.getByRole("status").filter({ hasText: "Correo confirmado" })).toBeVisible();
   await openAdults(page);
 }
@@ -150,7 +158,7 @@ test("organizer runs a group of two children and starts a team project", async (
   const key = await first.page.evaluate(() =>
     JSON.stringify({ ...localStorage, ...sessionStorage }),
   );
-  expect(key).not.toMatch(/email|ada@example/i);
+  expect(key).not.toMatch(/email|@example/i);
 
   // Closing the group makes the child devices forget it.
   await page.getByRole("button", { name: "Cerrar y borrar el grupo" }).click();
