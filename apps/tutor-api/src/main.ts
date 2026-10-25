@@ -1,3 +1,4 @@
+import { createOriContextPreview } from "./oriContextPreview.js";
 import { createOriRuntimePreview } from "./oriRuntimePreview.js";
 import { configFromEnv } from "./index.js";
 import { createTutorServer } from "./server.js";
@@ -39,9 +40,16 @@ const oriRuntimePreview = experimentalOriEnabled && oriRoot
   ? createOriRuntimePreview({oriRoot,enabled:true})
   : undefined;
 
+const contextualOriEnabled = process.env["AGORIX_ORI_CONTEXT_PREVIEW"] === "1";
+const oriContextPreview = contextualOriEnabled && oriRoot
+  ? createOriContextPreview({oriRoot,enabled:true})
+  : undefined;
+
 const server = createTutorServer({
   config,
   aiConfig,
+  oriContextPreviewEnabled: contextualOriEnabled && !!oriContextPreview,
+  ...(oriContextPreview ? {oriContextPreview} : {}),
   oriRuntimePreviewEnabled: experimentalOriEnabled && !!oriRuntimePreview,
   ...(oriRuntimePreview ? {oriRuntimePreview} : {}),
   adminAuth,
