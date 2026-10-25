@@ -11,11 +11,14 @@ const storageWith = (value: string | null) => ({ getItem: () => value });
 
 describe("Kids v2 flags (issue #439)", () => {
   it("enables creative tools in a new browser and keeps account linking gated", () => {
-    expect([...kidsV2Features()]).toEqual(KIDS_V2_FEATURES.filter((name) => name !== "adultLink"));
+    expect([...kidsV2Features()]).toEqual(
+      KIDS_V2_FEATURES.filter((name) => name !== "adultLink" && name !== "groupMode"),
+    );
     expect(kidsV2Enabled("customImages", { storage: storageWith(null), search: "" })).toBe(true);
     expect(kidsV2Enabled("duplicate", { storage: storageWith(null), search: "" })).toBe(true);
     expect(kidsV2Enabled("oriFloat", { storage: storageWith(null), search: "" })).toBe(true);
     expect(kidsV2Enabled("adultLink", { storage: storageWith(null), search: "" })).toBe(false);
+    expect(kidsV2Enabled("groupMode", { storage: storageWith(null), search: "" })).toBe(false);
   });
 
   it("accepts an explicit empty list as a rollback", () => {
@@ -40,7 +43,7 @@ describe("Kids v2 flags (issue #439)", () => {
   });
 
   it("accepts the query parameter outside production and drops unknown names", () => {
-    expect([...kidsV2Features({ search: "?kidsv2=adultLink,bogus" })].sort()).toEqual(
+    expect([...kidsV2Features({ search: "?kidsv2=adultLink,groupMode,bogus" })].sort()).toEqual(
       [...KIDS_V2_FEATURES].sort(),
     );
   });

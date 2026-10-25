@@ -132,6 +132,9 @@ importers:
       '@agorix/curriculum':
         specifier: workspace:*
         version: link:../../packages/curriculum
+      '@agorix/group-service':
+        specifier: workspace:*
+        version: link:../../packages/group-service
       '@agorix/interaction-core':
         specifier: workspace:*
         version: link:../../packages/interaction-core

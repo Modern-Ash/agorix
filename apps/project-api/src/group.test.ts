@@ -199,7 +199,7 @@ describe("group routes", () => {
 
     expect((await call("DELETE", `/v1/group/${groupId}`)).status).toBe(204);
     expect((await child("GET", "/v1/group/device")).status).toBe(401);
-    expect((await call("GET", "/v1/group")).status).toBe(404);
+    expect((await call("GET", "/v1/group")).body).toEqual({ group: null, slots: [] });
   });
 
   it("hide another organizer's group and slots", async () => {
