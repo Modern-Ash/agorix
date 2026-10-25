@@ -138,7 +138,11 @@ describe.skipIf(!runnable)("real Ori process to Agorix consumer contract", () =>
         hintHistory: [{ level: 1 }],
         reading: { locale: "es-AR", readingLevel: "middle-grade" },
       });
-      const dualInput = { missionIndex: 1, hintLevel: 2 as const, scriptCount: program.scripts.length };
+      const dualInput = {
+        missionIndex: 1,
+        hintLevel: 2 as const,
+        scriptCount: program.scripts.length,
+      };
       const dual = await captureOriLiveComparison(tutorRequest, dualInput, consumer, true);
       expect(dual).not.toBeNull();
       expect(dual?.educator.A).toBe(accepted?.hint);
