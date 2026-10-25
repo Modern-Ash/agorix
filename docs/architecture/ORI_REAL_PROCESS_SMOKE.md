@@ -1,0 +1,24 @@
+# Ori + Agorix: cross-repository process smoke test
+
+This optional test runs the **actual Ori reference HTTP process** from a separate local checkout and calls it through the Agorix consumer transport. It is not a production deployment or a test with children.
+
+## Preparation
+Check out `Modern-Ash/ori` and `Modern-Ash/agorix` in separate directories. The Ori checkout must contain `examples/shadow-api/serve.mjs` (Ori PR #48). The Agorix checkout must use this feature branch or its eventual integration branch.
+
+```bash
+cd /path/to/agorix
+pnpm install --frozen-lockfile
+ORI_REPO_PATH=/absolute/path/to/ori pnpm exec vitest run apps/tutor-api/src/oriRealProcessSmoke.test.ts
+```
+
+The test starts Ori on a random loopback port, posts synthetic metadata, checks the returned `ori/shadow-plan/v1` schema and invokes Agorix's real shadow transport. It then stops the Ori process.
+
+## Safeguards
+- Only synthetic mission index, hint level and script count.
+- No learner text, identifiers, program source, secrets or LLM.
+- No mutation, no UI rendering, no effect on the existing Kids tutor response.
+- Without `ORI_REPO_PATH`, the test is skipped. Ordinary CI remains independent.
+- No PR from this workstream targets `main` or `development`.
+
+## Remaining limitations
+This verifies transport and schema interoperability, not pedagogical effectiveness, child safety, authentication, mission-specific correctness or production readiness. A later review must decide whether to allow plans to influence Kids; default remains shadow-only.
