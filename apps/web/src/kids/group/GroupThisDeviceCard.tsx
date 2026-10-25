@@ -7,6 +7,7 @@ import { clearGroupDevice, loadGroupDevice, saveGroupDevice } from "./groupDevic
 import type { HostReply } from "./team/teamHost.js";
 import { GuestTeamLink } from "./team/teamLink.js";
 import { GuestTeamPlay } from "./team/GroupPlayCard.js";
+import { PairingQr, PairingScan } from "./team/PairingQr.js";
 
 interface Props {
   readonly locale: Locale;
@@ -195,6 +196,12 @@ export function GroupThisDeviceCard({ locale, api, pollMs = 4000 }: Props) {
                       spellCheck={false}
                     />
                   </label>
+                  <PairingScan
+                    label={t("teamScanOffer")}
+                    hint={t("teamScanHint")}
+                    errorText={t("teamScanError")}
+                    onValue={setOffer}
+                  />
                   <button
                     type="button"
                     disabled={offer.trim() === ""}
@@ -206,6 +213,7 @@ export function GroupThisDeviceCard({ locale, api, pollMs = 4000 }: Props) {
               ) : (
                 <>
                   <p role="status">{t(linked ? "teamJoined" : "teamReplyReady")}</p>
+                  <PairingQr value={answer} label={t("teamAnswerQr")} />
                   <label>
                     {t("teamAnswerLabel")}
                     <textarea readOnly rows={3} value={answer} spellCheck={false} />
