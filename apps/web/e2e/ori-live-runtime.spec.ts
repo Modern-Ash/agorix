@@ -62,7 +62,7 @@ test.describe("real browser → Tutor API → Ori process", () => {
       await page.goto("/");
       const panel = page.getByTestId("ori-review-panel");
       await expect(panel).toBeVisible();
-      await panel.getByRole("button", { name: "Pedir una pista" }).click();
+      await panel.getByRole("button", { name: "Necesito ayuda" }).click();
       await expect(panel.getByText("Solo para revisión. No se aplicaron cambios.")).toBeVisible();
       await expect(panel.getByText(/Siguiente paso:/)).toBeVisible();
       expect(forwarded).toBe(1);
