@@ -22,7 +22,8 @@ export function createOriPlanConsumer(
     url.password !== "" ||
     url.search !== "" ||
     url.hash !== ""
-  ) throw new TypeError("Ori plan consumer requires loopback /v1/plan");
+  )
+    throw new TypeError("Ori plan consumer requires loopback /v1/plan");
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 2000) {
     throw new RangeError("Invalid Ori plan timeout");
   }
@@ -57,15 +58,25 @@ export function createOriPlanConsumer(
           }
           const raw = new Uint8Array(bytes);
           let offset = 0;
-          for (const chunk of chunks) { raw.set(chunk, offset); offset += chunk.byteLength; }
-          const plan = validateOriShadowPlan(JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(raw)));
-          if (!plan || plan.stage !== input.hintLevel || plan.context.missionStage !== input.missionIndex) return null;
+          for (const chunk of chunks) {
+            raw.set(chunk, offset);
+            offset += chunk.byteLength;
+          }
+          const plan = validateOriShadowPlan(
+            JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(raw)),
+          );
+          if (!plan || plan.stage !== input.hintLevel || plan.context.missionStage !== input.missionIndex)
+            return null;
           // Return only the whitelisted validated schema. Never trust extra fields.
           return Object.freeze({
-            schema: plan.schema, kind: plan.kind, stage: plan.stage,
+            schema: plan.schema,
+            kind: plan.kind,
+            stage: plan.stage,
             steps: Object.freeze([...plan.steps]) as unknown as readonly [string, string, string],
-            hint: plan.hint, requiresLearnerApproval: false,
-            appliedChanges: false, context: Object.freeze({ missionStage: plan.context.missionStage }),
+            hint: plan.hint,
+            requiresLearnerApproval: false,
+            appliedChanges: false,
+            context: Object.freeze({ missionStage: plan.context.missionStage }),
           });
         } finally {
           void reader.cancel().catch(() => undefined);
