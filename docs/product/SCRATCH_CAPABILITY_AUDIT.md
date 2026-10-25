@@ -226,4 +226,11 @@ Each iteration needs an issue with an observable child journey, success and fail
 
 - The Crear and Escena libre drawing canvas now has six tools: brush, eraser, bucket fill, line, rectangle and circle, plus undo and redo (the last 20 steps), flip and clear. Shapes preview while dragging and commit on release; the eraser makes pixels transparent on a character and white on a backdrop. Fill treats near colours as one area (small tolerance) so soft brush edges leave no halo, and its work is bounded by the 256 × 256 canvas.
 - Nothing changes in what is stored: the result still goes through the same local image validation and 60 KB bound, stays on the device and is never sent to Ori or a provider. Pixel helpers live in `kidsPaint.ts` with unit tests; a mobile browser test with axe covers fill, undo/redo, eraser, rectangle, flip and clear.
-- Still open: selecting and moving parts of a drawing, text, layers, vector shapes, and a camera or recording tool.
+- Still open: a camera or recording tool.
+
+## Drawing: layers, selection, text and filled shapes (#736)
+
+- The canvas now has two layers (**Capa de atrás**, **Capa del frente**): every tool works on the chosen layer, undo/redo/flip/clear cover both, and saving flattens them into the same single bounded image, so storage, validation (60 KB), export and the Ori privacy rule are unchanged. Erasing shows what is behind; on the back layer of a backdrop it paints the white paper.
+- **Seleccionar y mover** draws a dashed rectangle; dragging inside it lifts those pixels and moves them (undoable). **Texto** stamps a word of up to 12 letters in the chosen colour and size; it becomes pixels of the drawing and is never stored as text. **Formas rellenas** fills rectangles and circles.
+- Costumes: the child already draws, reopens and reselects personal costumes per character in Escena libre; those now use the same canvas. Shapes are drawn as pixels, not as editable vector objects; a vector editor is not planned because the portable format and runtime only carry bounded raster images.
+- A mobile browser test with axe covers layers, fill, filled shape, select-and-move, undo and text.
