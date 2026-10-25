@@ -14,3 +14,9 @@ The gate runs Ori's local-agent runtime tests and loopback HTTP synthetic integr
 - Wire an opt-in Agorix feature flag and review-only UI with learner approval.
 - Add Playwright happy paths and adversarial cases across Web, tutor API, canonical runtime and Ori.
 - Keep all PR targets on `integration/ori` and do not promote to Agorix `develop` or `main`.
+
+## Expanded process-level acceptance
+
+The gate now launches Ori's `examples/local-agent-runtime.mjs` from Agorix's Vitest process for five educational intents and one rejected intent. It asserts versioned plans, deterministic hints, zero applied changes and no synthetic session identifier in stdout. Model execution is forcibly disabled for this cross-process test.
+
+The pre-existing shadow HTTP contract remains covered independently. Together, these validate **two real Ori processes** but not a unified browser-to-runtime feature: no Agorix UI or child-facing tutor endpoint is switched to Ori. The next vertical increment should implement a host-owned runtime transport behind an explicit experimental flag, with Playwright acceptance tests and no automatic edits.

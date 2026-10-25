@@ -27,6 +27,6 @@ const run=(command,args,cwd)=>{
 };
 console.log("ORI_GATE: Ori unit + real loopback HTTP integration tests");
 run("node",["--test","test/local-agent-runtime.test.mjs","test/local-agent-http-e2e.test.mjs"],root);
-console.log("ORI_GATE: Agorix-to-Ori process contract");
-run("pnpm",["exec","vitest","run","apps/tutor-api/src/oriRealProcessSmoke.test.ts","--reporter=verbose"],process.cwd());
-console.log("ORI_GATE: PASS — synthetic cross-repository tests only; not real OpenCode or child readiness");
+console.log("ORI_GATE: Agorix-to-Ori shadow API and v1 runtime process contracts");
+run("pnpm",["exec","vitest","run","apps/tutor-api/src/oriRealProcessSmoke.test.ts","apps/tutor-api/src/oriRuntimeProcessContract.test.ts","--reporter=verbose"],process.cwd());
+console.log("ORI_GATE: PASS — real processes, synthetic inputs; not real OpenCode or child readiness");
