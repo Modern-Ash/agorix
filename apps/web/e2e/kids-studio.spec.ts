@@ -369,9 +369,7 @@ test("free scene senses a held key and the timer, and keeps both after reopening
   await page.getByRole("button", { name: "+ Si la tecla está pulsada, mover 1" }).click();
   await page.getByRole("button", { name: "+ Esperar", exact: true }).click();
   await page.getByLabel("Segundos del temporizador").selectOption("2");
-  await page
-    .getByRole("button", { name: /^Repetir estos bloques hasta pasar los segundos/ })
-    .click();
+  await page.getByRole("button", { name: /^Repetir hasta pasar los segundos/ }).click();
   await expect(page.locator(".kids-program-block").first()).toContainText("tiempo");
   await page.getByRole("checkbox", { name: "ArrowRight" }).check();
   const violations = (
