@@ -31,10 +31,11 @@ export function createOriRuntimePreview({
       let child: ChildProcessWithoutNullStreams;
       try {
         child = spawn(process.execPath, ["examples/local-agent-runtime.mjs", intent], {
-          cwd: root, stdio: ["ignore", "pipe", "pipe"],
+          cwd: root, stdio: ["pipe", "pipe", "pipe"],
           env: { PATH: process.env["PATH"] ?? "", ORI_LOCAL_MODELS: "0" },
         });
       } catch { resolve(unavailable); return; }
+      child.stdin.end();
       let stdout = "";
       let settled = false;
       const finish = (value: OriRuntimePreview) => {
