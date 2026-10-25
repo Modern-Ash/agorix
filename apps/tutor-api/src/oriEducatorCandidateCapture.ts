@@ -1,4 +1,5 @@
 import type { OriPlanConsumer } from "./oriPlanConsumer.js";
+import { validateOriShadowPlan } from "./oriShadowPlanValidation.js";
 import { oriPedagogicalFixtures } from "./oriPedagogicalFixtures.js";
 import {
   prepareOriBalancedEvaluationBatch,
@@ -35,12 +36,17 @@ export async function captureOriEducatorCandidates(
   for (const fixture of oriPedagogicalFixtures) {
     const baseline = byId.get(fixture.id);
     if (!baseline) return null;
-    const plan = await consumer.evaluate({
+    let plan;
+    try {
+      plan = await consumer.evaluate({
       missionIndex: fixture.missionIndex,
       hintLevel: fixture.hintLevel,
       scriptCount: 1,
-    });
-    if (!plan || plan.stage !== fixture.hintLevel || plan.context.missionStage !== fixture.missionIndex)
+      });
+    } catch {
+      return null;
+    }
+    if (!plan || !validateOriShadowPlan(plan) || plan.stage !== fixture.hintLevel || plan.context.missionStage !== fixture.missionIndex)
       return null;
     const ori: OriHintCandidate = { hint: plan.hint, nextStep: plan.steps[0] };
     const existing: OriHintCandidate = { hint: baseline.hint, nextStep: baseline.nextStep };
