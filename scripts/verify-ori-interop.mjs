@@ -23,9 +23,15 @@ if (!existsSync(join(root, "examples/shadow-api/serve.mjs")) ||
   process.exit(2);
 }
 const args = ["exec", "vitest", "run", "apps/tutor-api/src/oriRealProcessSmoke.test.ts", "--reporter=verbose"];
+console.log("ORI_INTEROP_VERIFY: starting explicit cross-repository test");
 const result = spawnSync("pnpm", args, { stdio: "inherit", env: { ...process.env, ORI_REPO_PATH: root } });
 if (result.error) {
   console.error("Could not launch pnpm:", result.error.message);
   process.exit(2);
+}
+if (result.status === 0) {
+  console.log("ORI_INTEROP_VERIFY: PASS (real Ori process and Agorix consumer)");
+} else {
+  console.error("ORI_INTEROP_VERIFY: FAIL");
 }
 process.exit(result.status ?? 1);
