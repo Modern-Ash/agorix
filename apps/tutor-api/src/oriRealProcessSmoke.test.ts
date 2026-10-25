@@ -4,6 +4,7 @@ import { existsSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { createOriShadowTransport } from "./oriExternalShadowTransport.js";
 import { createOriPlanConsumer } from "./oriPlanConsumer.js";
+import { createOriLearnerHintPreview } from "./oriLearnerHintPreview.js";
 
 /**
  * Optional cross-repository smoke. Requires ORI_REPO_PATH pointing to a local
@@ -92,6 +93,29 @@ describe.skipIf(!runnable)("real Ori process to Agorix consumer contract", () =>
         scriptCount: 1,
       });
       expect(stageThree?.stage).toBe(3);
+      // Exercise the learner-first preview against the real Ori reference process.
+      const learnerInput = { missionIndex: 1, hintLevel: 2 as const, scriptCount: 1 };
+      const disabledPreview = createOriLearnerHintPreview(consumer);
+      expect(await disabledPreview(learnerInput)).toEqual({
+        status: "unavailable",
+        requiresLearnerApproval: true,
+        appliedChanges: false,
+      });
+      const learnerPreview = createOriLearnerHintPreview(consumer, true);
+      const hint = await learnerPreview(learnerInput);
+      expect(hint.status).toBe("ready");
+      expect(hint.hint).toBe(accepted?.hint);
+      expect(hint.nextStep).toBe(accepted?.steps[0]);
+      expect(hint.requiresLearnerApproval).toBe(true);
+      expect(hint.appliedChanges).toBe(false);
+      expect(Object.keys(hint).sort()).toEqual([
+        "appliedChanges",
+        "hint",
+        "nextStep",
+        "requiresLearnerApproval",
+        "status",
+      ]);
+
       // The consumer is not connected to the child-facing tutor response.
     } finally {
       if (child.exitCode === null) {
