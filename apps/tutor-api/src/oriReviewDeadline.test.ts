@@ -27,7 +27,12 @@ describe("Ori review HTTP body deadline", () => {
   it("terminates a stalled stream on external abort", async () => {
     const request = stream();
     const controller = new AbortController();
-    const pending = readOriReviewBodyWithDeadline(request as unknown as IncomingMessage, 1000, 512, controller.signal);
+    const pending = readOriReviewBodyWithDeadline(
+      request as unknown as IncomingMessage,
+      1000,
+      512,
+      controller.signal,
+    );
     controller.abort();
     expect(await pending).toBeNull();
     expect(request.destroyed).toBe(true);
@@ -46,7 +51,9 @@ describe("Ori review HTTP body deadline", () => {
   });
   it.each([0, -1, 10_001, 1.5, Number.NaN])("rejects invalid deadline %s", async (value) => {
     const request = stream();
-    await expect(readOriReviewBodyWithDeadline(request as unknown as IncomingMessage, value)).rejects.toThrow();
+    await expect(
+      readOriReviewBodyWithDeadline(request as unknown as IncomingMessage, value),
+    ).rejects.toThrow();
     request.destroy();
   });
 });
