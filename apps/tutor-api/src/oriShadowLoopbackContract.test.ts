@@ -52,9 +52,13 @@ describe("Ori plan shadow loopback contract", () => {
     const producer = await startProducer(validPlan);
     const shadow = createOriShadowTransport(producer.url);
     expect(await shadow(input)).toBeUndefined();
-    expect(producer.seen).toEqual([{
-      method: "POST", path: "/v1/plan", payload: input,
-    }]);
+    expect(producer.seen).toEqual([
+      {
+        method: "POST",
+        path: "/v1/plan",
+        payload: input,
+      },
+    ]);
   });
 
   it("discards invalid or privileged producer responses", async () => {

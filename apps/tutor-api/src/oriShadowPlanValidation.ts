@@ -19,18 +19,42 @@ function exactKeys(value: Record<string, unknown>, keys: readonly string[]): boo
   return Object.keys(value).sort().join(",") === [...keys].sort().join(",");
 }
 export function validateOriShadowPlan(value: unknown): OriShadowPlan | null {
-  if (!record(value) || !exactKeys(value, [
-    "schema", "kind", "stage", "steps", "hint", "requiresLearnerApproval",
-    "appliedChanges", "context",
-  ])) return null;
-  if (value.schema !== "ori/shadow-plan/v1" || value.kind !== "pedagogical-plan" ||
-      !Number.isInteger(value.stage) || (value.stage as number) < 1 || (value.stage as number) > 5 ||
-      value.requiresLearnerApproval !== false || value.appliedChanges !== false ||
-      !Array.isArray(value.steps) || value.steps.length !== 3 ||
-      !value.steps.every((step: unknown) => typeof step === "string" && step.length > 0 && step.length <= 140) ||
-      typeof value.hint !== "string" || value.hint.length === 0 || value.hint.length > 180 ||
-      !record(value.context) || !exactKeys(value.context, ["missionStage"]) ||
-      !Number.isInteger(value.context.missionStage) ||
-      (value.context.missionStage as number) < 0 || (value.context.missionStage as number) > 1000) return null;
+  if (
+    !record(value) ||
+    !exactKeys(value, [
+      "schema",
+      "kind",
+      "stage",
+      "steps",
+      "hint",
+      "requiresLearnerApproval",
+      "appliedChanges",
+      "context",
+    ])
+  )
+    return null;
+  if (
+    value.schema !== "ori/shadow-plan/v1" ||
+    value.kind !== "pedagogical-plan" ||
+    !Number.isInteger(value.stage) ||
+    (value.stage as number) < 1 ||
+    (value.stage as number) > 5 ||
+    value.requiresLearnerApproval !== false ||
+    value.appliedChanges !== false ||
+    !Array.isArray(value.steps) ||
+    value.steps.length !== 3 ||
+    !value.steps.every(
+      (step: unknown) => typeof step === "string" && step.length > 0 && step.length <= 140,
+    ) ||
+    typeof value.hint !== "string" ||
+    value.hint.length === 0 ||
+    value.hint.length > 180 ||
+    !record(value.context) ||
+    !exactKeys(value.context, ["missionStage"]) ||
+    !Number.isInteger(value.context.missionStage) ||
+    (value.context.missionStage as number) < 0 ||
+    (value.context.missionStage as number) > 1000
+  )
+    return null;
   return value as unknown as OriShadowPlan;
 }
