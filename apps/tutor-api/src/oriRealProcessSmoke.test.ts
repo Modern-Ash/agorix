@@ -72,7 +72,11 @@ describe.skipIf(!runnable)("real Ori process to Agorix consumer contract", () =>
       expect(validatedResponses).toBe(1);
       // Exercise the actual read-only consumer against the real Ori process.
       const consumer = createOriPlanConsumer(url);
-      const accepted = await consumer.evaluate({ missionIndex: 1, hintLevel: 2, scriptCount: 1 });
+      const accepted = await consumer.evaluate({
+        missionIndex: 1,
+        hintLevel: 2,
+        scriptCount: 1,
+      });
       expect(accepted?.schema).toBe("ori/shadow-plan/v1");
       expect(accepted?.stage).toBe(2);
       expect(accepted?.context.missionStage).toBe(1);
@@ -82,7 +86,11 @@ describe.skipIf(!runnable)("real Ori process to Agorix consumer contract", () =>
       expect(Object.isFrozen(accepted?.steps)).toBe(true);
       expect(Object.isFrozen(accepted?.context)).toBe(true);
       // Ori generates the plan for the requested stage; verify another stage independently.
-      const stageThree = await consumer.evaluate({ missionIndex: 1, hintLevel: 3, scriptCount: 1 });
+      const stageThree = await consumer.evaluate({
+        missionIndex: 1,
+        hintLevel: 3,
+        scriptCount: 1,
+      });
       expect(stageThree?.stage).toBe(3);
       // The consumer is not connected to the child-facing tutor response.
 
