@@ -19,10 +19,11 @@ export interface OriEvaluationAlignment {
   readonly blockers: readonly string[];
 }
 export function buildOriEvaluationAlignmentMatrix(): readonly OriEvaluationAlignment[] {
-  const contexts = createOriSharedPedagogicalContexts();
   return Object.freeze(oriPedagogicalFixtures.map((fixture) => {
     const missionId = KIDS_MISSION_IDS[fixture.missionIndex] ?? null;
-    const shared = contexts.find((context) => context.missionIndex === fixture.missionIndex);
+    const shared = createOriSharedPedagogicalContexts(fixture.hintLevel).find(
+      (context) => context.missionIndex === fixture.missionIndex,
+    );
     const separated = shared ? separateOriEvaluationContext(shared) : null;
     const metadataAligned = missionId !== null &&
       separated !== null &&
