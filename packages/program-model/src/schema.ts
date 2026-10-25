@@ -237,6 +237,12 @@ export interface BounceOnEdgeStatement {
   readonly type: "bounceOnEdge";
 }
 
+/** Reorders the stage only; it never changes which character runs first. */
+export interface GoToLayerStatement {
+  readonly type: "goToLayer";
+  readonly layer: "front" | "back";
+}
+
 export interface SayStatement {
   readonly type: "say";
   readonly text: string;
@@ -381,6 +387,7 @@ export type Statement =
   | PointInDirectionStatement
   | PointTowardsStatement
   | BounceOnEdgeStatement
+  | GoToLayerStatement
   | SayStatement
   | ThinkStatement
   | ShowStatement

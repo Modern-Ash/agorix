@@ -508,3 +508,20 @@ describe("projection: math functions", () => {
     expect(result.text).toContain("round ");
   });
 });
+
+describe("Agorix Code projection: layers", () => {
+  it("projects go to front layer", () => {
+    const result = projectAgorixCode({
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [{ type: "goToLayer", layer: "front" }],
+        },
+      ],
+    });
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toContain("go to front layer");
+  });
+});

@@ -388,6 +388,11 @@ function validateStatement(
     }
     case "pointTowards":
       return { type: "pointTowards", actorId: checkText(input.actorId, `${path}.actorId`) };
+    case "goToLayer":
+      if (input.layer !== "front" && input.layer !== "back") {
+        fail("INVALID_FIELD_TYPE", `${path}.layer`, 'expected "front" or "back"', input.layer);
+      }
+      return { type: "goToLayer", layer: input.layer };
     case "bounceOnEdge":
       return { type: "bounceOnEdge" };
     case "say":

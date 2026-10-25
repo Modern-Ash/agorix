@@ -90,6 +90,7 @@ describe("Python projection", () => {
         "point_in_direction",
         "point_towards",
         "bounce_on_edge",
+        "go_to_layer",
         "touching_goal",
         "touching_actor",
         "touching_stage_edge",
@@ -607,5 +608,22 @@ describe("projection: math functions", () => {
     });
     expect(result.diagnostics).toEqual([]);
     expect(result.text).toContain("round(");
+  });
+});
+
+describe("Python projection: layers", () => {
+  it("projects go to front and back", () => {
+    const result = projectPython({
+      schema: "agorix/program/v1",
+      scripts: [
+        {
+          id: "main",
+          trigger: { type: "onStart" },
+          statements: [{ type: "goToLayer", layer: "front" }],
+        },
+      ],
+    });
+    expect(result.diagnostics).toEqual([]);
+    expect(result.text).toContain('go_to_layer("front")');
   });
 });

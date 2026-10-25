@@ -795,6 +795,41 @@ test("free scene composes data, repeat, message and key events in a fresh sessio
   await expect(page.getByText(/bloques ejecutados/)).toBeVisible();
 });
 
+test("free scene sends a character to the front or back and keeps the blocks after reopening", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
+  await page.getByRole("button", { name: "+ Agregar personaje" }).click();
+  await page.getByRole("button", { name: "+ Pasar al frente" }).click();
+  await page.getByRole("button", { name: "+ Pasar al fondo" }).click();
+  const violations = (
+    await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
+  ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");
+  expect(violations.map((entry) => entry.id)).toEqual([]);
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByText("Pasar al frente").first()).toBeVisible();
+  await page.reload();
+  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  await page
+    .getByRole("article")
+    .filter({ hasText: "Escena libre" })
+    .getByRole("button", { name: "Jugar" })
+    .click();
+  await expect(page.locator(".kids-program-block").last()).toContainText("Pasar al fondo");
+});
+
 test("free scene rounds a divided value and keeps the block after reopening", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/kids");

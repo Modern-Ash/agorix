@@ -92,6 +92,8 @@ const COPY = {
     pointDirection: "Apuntar hacia",
     pointTowards: "Apuntar a",
     bounceOnEdge: "Rebotar en el borde",
+    layerFront: "Pasar al frente",
+    layerBack: "Pasar al fondo",
     dirRight: "derecha",
     dirDown: "abajo",
     dirLeft: "izquierda",
@@ -226,6 +228,8 @@ const COPY = {
     pointDirection: "Point",
     pointTowards: "Point at",
     bounceOnEdge: "Bounce on edge",
+    layerFront: "Go to front",
+    layerBack: "Go to back",
     dirRight: "right",
     dirDown: "down",
     dirLeft: "left",
@@ -844,6 +848,8 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
         return `${copy.pointTowards}: ${creative.actors?.find((item) => item.id === statement.actorId)?.name ?? "?"}`;
       case "bounceOnEdge":
         return copy.bounceOnEdge;
+      case "goToLayer":
+        return statement.layer === "front" ? copy.layerFront : copy.layerBack;
       case "switchCostume":
         return `${copy.costume}: ${galleryCharacterName(characterOfCostume(statement.costumeId, "nova"), locale)}`;
       case "switchBackdrop":
@@ -1135,7 +1141,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
                   style={{
                     left: `${Math.max(4, Math.min(90, 8 + x / 4))}%`,
                     top: `${Math.max(8, Math.min(82, 40 + y / 3))}%`,
-                    zIndex: (creative.stage?.actorOrder?.indexOf(item.id) ?? 0) + 1,
+                    zIndex: (shownStage?.actorOrder?.indexOf(item.id) ?? 0) + 1,
                   }}
                   aria-label={`${copy.chooseActor}: ${item.name} ${item.id}`}
                   aria-pressed={activeActorId === item.id}
@@ -1819,6 +1825,20 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
               onClick={() => add({ type: "bounceOnEdge" })}
             >
               + {copy.bounceOnEdge}
+            </button>
+            <button
+              type="button"
+              className="kids-button"
+              onClick={() => add({ type: "goToLayer", layer: "front" })}
+            >
+              + {copy.layerFront}
+            </button>
+            <button
+              type="button"
+              className="kids-button"
+              onClick={() => add({ type: "goToLayer", layer: "back" })}
+            >
+              + {copy.layerBack}
             </button>
             <h3>{copy.paletteMedia}</h3>
             <label>
