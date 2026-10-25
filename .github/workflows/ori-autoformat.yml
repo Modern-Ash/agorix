@@ -29,8 +29,13 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Format repository files with canonical Prettier
-        run: pnpm exec prettier --write .
+      - name: Format changed files with canonical Prettier
+        run: |
+          git fetch --no-tags origin integration/ori
+          git diff --name-only --diff-filter=ACMR -z origin/integration/ori...HEAD > /tmp/ori-changed-files
+          if [ -s /tmp/ori-changed-files ]; then
+            xargs -0 -r pnpm exec prettier --write --ignore-unknown < /tmp/ori-changed-files
+          fi
       - name: Commit only formatting changes to feature branch
         run: |
           if ! git diff --quiet; then
