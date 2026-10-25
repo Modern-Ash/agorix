@@ -247,6 +247,7 @@ export function changeEffectWorld(
 
 export function clearEffectsWorld(world: WorldState): WorldState {
   const { effects: _effects, ...sprite } = world.sprite;
+  void _effects;
   return createWorldState({ ...world, sprite });
 }
 

@@ -429,13 +429,13 @@ function statementFromBlock(
     case "looks_set_effect":
       return {
         type: "setEffect",
-        effect: stringField(block, "effect", path),
+        effect: stringField(block, "effect", path) as GraphicEffect,
         value: numberField(block, "value", path),
       };
     case "looks_change_effect":
       return {
         type: "changeEffect",
-        effect: stringField(block, "effect", path),
+        effect: stringField(block, "effect", path) as GraphicEffect,
         delta: numberField(block, "delta", path),
       };
     case "looks_clear_effects":

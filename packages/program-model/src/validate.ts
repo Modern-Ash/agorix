@@ -8,7 +8,6 @@ import type {
   Procedure,
   Script,
   GraphicEffect,
-  GraphicEffect,
   Statement,
   Trigger,
 } from "./schema.js";
