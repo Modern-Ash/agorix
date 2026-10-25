@@ -24,7 +24,8 @@
     "security:check": "node scripts/security-baseline.mjs",
     "verify": "pnpm install --frozen-lockfile && pnpm lint && pnpm test && pnpm build && pnpm security:check",
     "deploy:web": "bash scripts/deploy-web.sh",
-    "rollback:web": "bash scripts/rollback-web.sh"
+    "rollback:web": "bash scripts/rollback-web.sh",
+    "test:ori:interop": "node scripts/verify-ori-interop.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",
