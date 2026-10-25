@@ -1,0 +1,165 @@
+import type { Locale } from "../../i18n.js";
+import type { GroupApiErrorKind } from "./groupApi.js";
+
+const es = {
+  title: "Grupo en la misma sala",
+  intro:
+    "Opcional. Un adulto organiza un grupo de hasta 4 niños y niñas que construyen juntos en el mismo lugar. Nadie escribe nombres ni mensajes: cada niño usa un apodo generado.",
+  privacyTitle: "Qué se guarda",
+  privacyNote:
+    "Solo apodos generados, estado de cada lugar y un registro del consentimiento. Todo se borra al cerrar el grupo o a las 2 horas. Un archivo exportado queda en el dispositivo que lo exportó.",
+  needSignIn: "Entrá primero con tu cuenta de adulto, en la tarjeta de cuenta de arriba.",
+  needVerified: "Para organizar un grupo tu correo tiene que estar confirmado.",
+  enable: "Quiero organizar un grupo",
+  creating: "Creá el grupo",
+  householdLabel: "Familia o amigos: cada adulto responsable autoriza a su niño",
+  classroomLabel: "Aula: tengo autorización de la institución",
+  refLabel: "Código de la autorización",
+  refNote: "Es el código del registro de tu institución. No escribas nombres.",
+  createGroup: "Crear grupo",
+  groupOpen: "Grupo abierto",
+  expiresAt: "Se borra solo a las {time}",
+  lock: "Cerrar altas",
+  unlock: "Abrir altas",
+  locked: "No entran niños nuevos.",
+  makeCode: "Generar código de ingreso",
+  codeLabel: "Código de ingreso",
+  codeNote:
+    "Escribilo en el dispositivo del niño, en Adultos. Sirve una vez y vence en 10 minutos.",
+  rosterTitle: "Niños del grupo",
+  emptyRoster: "Todavía no entró nadie.",
+  pending: "Espera tu aprobación",
+  approved: "Aprobado",
+  consent: "Confirmo que el adulto responsable de este niño autorizó que participe.",
+  approve: "Aprobar",
+  remove: "Quitar",
+  team: "Equipo",
+  noTeam: "Sin equipo",
+  teamName: "Equipo {n}",
+  reconnects: "Reconectado {n} vez/veces",
+  reconnect: "Código de reconexión",
+  closeGroup: "Cerrar y borrar el grupo",
+  confirmClose: "Esto borra el grupo y a todos sus lugares. ¿Cerrar?",
+  yes: "Sí, borrar",
+  no: "No",
+  deviceTitle: "Unir este dispositivo a un grupo",
+  deviceIntro: "Lo hace el adulto organizador, con el código de ingreso.",
+  joinCode: "Código de ingreso",
+  join: "Unirme",
+  joined: "Este dispositivo está en un grupo.",
+  yourAlias: "Apodo: {alias}",
+  waiting: "Esperando que el organizador lo apruebe…",
+  ready: "Listo para jugar en grupo.",
+  leave: "Salir del grupo en este dispositivo",
+  leaveNote: "El organizador también puede quitarlo desde su panel.",
+  errors: {
+    unavailable: "Los grupos no están disponibles ahora.",
+    offline: "Sin conexión. Probá de nuevo.",
+    unauthenticated: "Entrá con tu cuenta de adulto.",
+    "not-organizer": "Tu cuenta todavía no puede organizar grupos.",
+    "already-has-group": "Ya tenés un grupo abierto.",
+    "authority-required": "Falta el código de autorización de la institución.",
+    "consent-required": "Confirmá la autorización del adulto responsable.",
+    "invalid-code": "Ese código no sirve o venció.",
+    "rate-limited": "Demasiados intentos. Esperá un rato.",
+    "group-full": "El grupo está completo.",
+    "group-locked": "El organizador cerró las altas.",
+    "not-found": "No lo encontramos. Puede haberse borrado.",
+    "invalid-input": "Revisá lo que escribiste.",
+    transient: "Algo falló. Probá de nuevo en un momento.",
+  },
+};
+
+const en: typeof es = {
+  title: "Same-room group",
+  intro:
+    "Optional. An adult organizes a group of up to 4 children building together in the same place. Nobody types names or messages: each child uses a generated nickname.",
+  privacyTitle: "What is kept",
+  privacyNote:
+    "Only generated nicknames, the state of each place and a consent record. Everything is deleted when the group closes or after 2 hours. An exported file stays on the device that exported it.",
+  needSignIn: "Sign in with your adult account first, in the account card above.",
+  needVerified: "Your email must be confirmed to organize a group.",
+  enable: "I want to organize a group",
+  creating: "Create the group",
+  householdLabel: "Family or friends: each responsible adult authorizes their child",
+  classroomLabel: "Classroom: I have authorization from the institution",
+  refLabel: "Authorization code",
+  refNote: "It is the code in your institution's record. Do not type names.",
+  createGroup: "Create group",
+  groupOpen: "Open group",
+  expiresAt: "Deletes itself at {time}",
+  lock: "Close sign-ups",
+  unlock: "Open sign-ups",
+  locked: "No new children can join.",
+  makeCode: "Make a join code",
+  codeLabel: "Join code",
+  codeNote: "Type it on the child's device, in Adults. It works once and expires in 10 minutes.",
+  rosterTitle: "Children in the group",
+  emptyRoster: "Nobody has joined yet.",
+  pending: "Waiting for your approval",
+  approved: "Approved",
+  consent: "I confirm the responsible adult for this child authorized their participation.",
+  approve: "Approve",
+  remove: "Remove",
+  team: "Team",
+  noTeam: "No team",
+  teamName: "Team {n}",
+  reconnects: "Reconnected {n} time(s)",
+  reconnect: "Reconnect code",
+  closeGroup: "Close and delete the group",
+  confirmClose: "This deletes the group and all its places. Close it?",
+  yes: "Yes, delete",
+  no: "No",
+  deviceTitle: "Join this device to a group",
+  deviceIntro: "The organizing adult does this, with the join code.",
+  joinCode: "Join code",
+  join: "Join",
+  joined: "This device is in a group.",
+  yourAlias: "Nickname: {alias}",
+  waiting: "Waiting for the organizer to approve…",
+  ready: "Ready to play in a group.",
+  leave: "Leave the group on this device",
+  leaveNote: "The organizer can also remove it from their panel.",
+  errors: {
+    unavailable: "Groups are not available right now.",
+    offline: "No connection. Try again.",
+    unauthenticated: "Sign in with your adult account.",
+    "not-organizer": "Your account cannot organize groups yet.",
+    "already-has-group": "You already have an open group.",
+    "authority-required": "The institution's authorization code is missing.",
+    "consent-required": "Confirm the responsible adult's authorization.",
+    "invalid-code": "That code is wrong or expired.",
+    "rate-limited": "Too many attempts. Wait a while.",
+    "group-full": "The group is full.",
+    "group-locked": "The organizer closed sign-ups.",
+    "not-found": "We could not find it. It may have been deleted.",
+    "invalid-input": "Check what you typed.",
+    transient: "Something failed. Try again in a moment.",
+  },
+};
+
+export type GroupCopyKey = Exclude<keyof typeof es, "errors">;
+
+const catalogs = { es, en } as const;
+
+export function groupText(
+  locale: Locale,
+  key: GroupCopyKey,
+  values: Record<string, string | number> = {},
+): string {
+  const catalog = (catalogs as Record<string, typeof es>)[locale] ?? es;
+  return (catalog[key] as string).replace(/\{(\w+)\}/g, (_, name: string) =>
+    String(values[name] ?? ""),
+  );
+}
+
+export function groupError(locale: Locale, kind: GroupApiErrorKind): string {
+  const catalog = (catalogs as Record<string, typeof es>)[locale] ?? es;
+  return catalog.errors[kind];
+}
+
+export function assertGroupCatalogComplete(): void {
+  const keys = (object: object) => Object.keys(object).sort().join(",");
+  if (keys(es) !== keys(en)) throw new Error("group catalog keys differ");
+  if (keys(es.errors) !== keys(en.errors)) throw new Error("group error keys differ");
+}
