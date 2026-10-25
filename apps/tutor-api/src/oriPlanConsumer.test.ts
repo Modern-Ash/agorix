@@ -14,9 +14,11 @@ const valid = {
 };
 const endpoint = "http://127.0.0.1:11485/v1/plan";
 function consumer(body: unknown, status = 200) {
-  return createOriPlanConsumer(endpoint, (async () => new Response(
-    typeof body === "string" ? body : JSON.stringify(body), { status },
-  )) as typeof fetch);
+  return createOriPlanConsumer(
+    endpoint,
+    (async () =>
+      new Response(typeof body === "string" ? body : JSON.stringify(body), { status })) as typeof fetch,
+  );
 }
 describe("Ori plan read-only consumer", () => {
   it("accepts a valid matching plan without allowing edits", async () => {
@@ -51,12 +53,21 @@ describe("Ori plan read-only consumer", () => {
     expect(JSON.parse(payload)).toEqual(input);
   });
   it("rejects remote endpoints and credentials", () => {
-    for (const url of ["https://example.com/v1/plan", "http://10.0.0.1/v1/plan", "http://user:pass@localhost/v1/plan"]) {
+    for (const url of [
+      "https://example.com/v1/plan",
+      "http://10.0.0.1/v1/plan",
+      "http://user:pass@localhost/v1/plan",
+    ]) {
       expect(() => createOriPlanConsumer(url)).toThrow();
     }
   });
   it("does not propagate provider failures", async () => {
-    const failing = createOriPlanConsumer(endpoint, (async () => { throw new Error("offline"); }) as typeof fetch);
+    const failing = createOriPlanConsumer(
+      endpoint,
+      (async () => {
+        throw new Error("offline");
+      }) as typeof fetch,
+    );
     expect(await failing.evaluate(input)).toBeNull();
   });
 });
