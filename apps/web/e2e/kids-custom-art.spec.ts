@@ -352,3 +352,82 @@ test("drawing tools fill, draw shapes, erase, flip, undo and redo on touch width
     "true",
   );
 });
+
+test("drawing layers, filled shapes, text and select-and-move work and undo", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await seed(page);
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Dibujar explorador" }).click();
+  const front = page.locator("canvas.kids-draw-canvas");
+  const back = page.locator("canvas.kids-draw-layer:not(.kids-draw-selection)");
+  const pixel = (canvas: typeof front, x: number, y: number) =>
+    canvas.evaluate(
+      (element, [px, py]) =>
+        Array.from(
+          (element as HTMLCanvasElement)
+            .getContext("2d")!
+            .getImageData(px as number, py as number, 1, 1).data,
+        ),
+      [x, y],
+    );
+  const at = async (x: number, y: number) => {
+    await front.evaluate((element) => element.scrollIntoView({ block: "center" }));
+    const box = (await front.boundingBox())!;
+    return { x: box.x + (x * box.width) / 256, y: box.y + (y * box.height) / 256 };
+  };
+  const drag = async (fromX: number, fromY: number, toX: number, toY: number) => {
+    const from = await at(fromX, fromY);
+    const to = await at(toX, toY);
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(to.x, to.y, { steps: 6 });
+    await page.mouse.up();
+  };
+
+  await page.getByRole("button", { name: "Capa de atrás" }).click();
+  await page.getByRole("button", { name: "Color #ef627d" }).click();
+  await page.getByRole("button", { name: "Rellenar" }).click();
+  const middle = await at(200, 200);
+  await page.mouse.click(middle.x, middle.y);
+  expect(await pixel(back, 200, 200)).toEqual([239, 98, 125, 255]);
+  expect((await pixel(front, 200, 200))[3]).toBe(0);
+
+  await page.getByRole("button", { name: "Capa del frente" }).click();
+  await page.getByRole("button", { name: "Color #548de4" }).click();
+  await page.getByLabel("Formas rellenas").check();
+  await page.getByRole("button", { name: "Rectángulo" }).click();
+  await drag(20, 20, 60, 60);
+  expect(await pixel(front, 40, 40)).toEqual([84, 141, 228, 255]);
+
+  await page.getByRole("button", { name: "Seleccionar y mover" }).click();
+  await drag(10, 10, 70, 70);
+  await drag(40, 40, 140, 140);
+  expect(await pixel(front, 140, 140)).toEqual([84, 141, 228, 255]);
+  expect((await pixel(front, 40, 40))[3]).toBe(0);
+  await page.getByRole("button", { name: "Deshacer trazo" }).click();
+  expect(await pixel(front, 40, 40)).toEqual([84, 141, 228, 255]);
+
+  await page.getByRole("button", { name: "Texto", exact: true }).click();
+  await page.getByRole("textbox", { name: "Palabra para estampar" }).fill("Hola");
+  await page.getByRole("button", { name: "Color #252342" }).click();
+  const spot = await at(100, 200);
+  await page.mouse.click(spot.x, spot.y);
+  const inked = await front.evaluate((element) => {
+    const data = (element as HTMLCanvasElement)
+      .getContext("2d")!
+      .getImageData(100, 185, 80, 30).data;
+    return Array.from(data).some((value, index) => index % 4 === 3 && value > 0);
+  });
+  expect(inked).toBe(true);
+
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  const violations = (
+    await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
+  ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");
+  expect(violations.map((entry) => entry.id)).toEqual([]);
+  await page.getByRole("button", { name: "Guardar dibujo" }).click();
+  await expect(page.getByRole("button", { name: "Explorador propio 1" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+});
