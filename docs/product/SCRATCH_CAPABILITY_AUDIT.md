@@ -194,3 +194,9 @@ Each iteration needs an issue with an observable child journey, success and fail
 - Ori is told only the block **ids** and the kinds of blocks inside (for example `move`, `turn`), never the child's titles, texts or names; the card shows the title locally. Ori can only name an id that the selected character already has: another character's id, an unknown id, extra fields and any attempt to create, rename or delete a block fall back to the safe local idea. The no-AI path is unchanged (move or turn only).
 - The proposal check accepts a call to the child's own block, also inside a repeat, and still validates it against the real script when the idea is applied. Unit tests cover the contract, forged proposals, the model input and the tutor-api route with the real CLI wrapper; a mobile browser test with axe covers review, change, refuse and playing the result.
 - Parameters and blocks shared between characters remain open. Visible by default like the other creative tools (#539); the adult Ori switch still controls whether suggestions appear.
+
+## Drawing tools (#538 media creation)
+
+- The Crear and Escena libre drawing canvas now has six tools: brush, eraser, bucket fill, line, rectangle and circle, plus undo and redo (the last 20 steps), flip and clear. Shapes preview while dragging and commit on release; the eraser makes pixels transparent on a character and white on a backdrop. Fill treats near colours as one area (small tolerance) so soft brush edges leave no halo, and its work is bounded by the 256 × 256 canvas.
+- Nothing changes in what is stored: the result still goes through the same local image validation and 60 KB bound, stays on the device and is never sent to Ori or a provider. Pixel helpers live in `kidsPaint.ts` with unit tests; a mobile browser test with axe covers fill, undo/redo, eraser, rectangle, flip and clear.
+- Still open: selecting and moving parts of a drawing, text, layers, vector shapes, and a camera or recording tool.
