@@ -6,6 +6,7 @@ import {
   type ProjectCreativeState,
   type ProjectAsset,
   type ProjectProgram,
+  type Procedure,
   type Expression,
   type Statement,
   type Trigger,
@@ -62,6 +63,7 @@ export type StudioStatement = Extract<
       | "listReplaceAt"
       | "repeat"
       | "repeatUntil"
+      | "callProcedure"
       | "if";
   }
 >;
@@ -184,6 +186,28 @@ function checkedCondition(value: Expression, program: ProjectProgram): boolean {
   return checkedNumber(value.left, program) && checkedNumber(value.right, program);
 }
 
+const MAX_STUDIO_PROCEDURES = 20;
+
+function checkedProcedures(
+  procedures: readonly Procedure[] | undefined,
+  actorIndex: number,
+  program: ProjectProgram,
+): boolean {
+  if (procedures === undefined) return true;
+  return (
+    procedures.length >= 1 &&
+    procedures.length <= MAX_STUDIO_PROCEDURES &&
+    procedures.every(
+      (item) =>
+        item.id.startsWith(`proc-${actorIndex}-`) &&
+        /^proc-[1-9][0-9]?-[1-9][0-9]?$/.test(item.id) &&
+        DATA_NAME.test(item.name) &&
+        item.body.length >= 1 &&
+        item.body.every((statement) => checked(statement, program)),
+    )
+  );
+}
+
 function statementCount(statements: readonly Statement[]): number {
   return statements.reduce(
     (sum, statement) =>
@@ -301,6 +325,8 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0): bool
       statement.body.length <= MAX_STUDIO_BODY &&
       statement.body.every((item) => checked(item, program, depth + 1))
     );
+  if (statement.type === "callProcedure")
+    return /^proc-[1-9][0-9]?-[1-9][0-9]?$/.test(statement.procedureId);
   if (statement.type === "repeatUntil")
     return (
       depth < MAX_STUDIO_CONTROL_DEPTH &&
@@ -352,8 +378,10 @@ export function validateStudioProgram(raw: ProjectProgram): ProjectProgram {
         !actor ||
         actor.index !== position + 1 ||
         !checkedTrigger(script.trigger) ||
-        script.procedures !== undefined ||
-        statementCount(script.statements) > MAX_STUDIO_BLOCKS ||
+        !checkedProcedures(script.procedures, position + 1, program) ||
+        statementCount(script.statements) +
+          (script.procedures ?? []).reduce((sum, item) => sum + statementCount(item.body), 0) >
+          MAX_STUDIO_BLOCKS ||
         script.statements.some((statement) => !checked(statement, program))
       );
     })
@@ -529,6 +557,179 @@ export function wrapStudioTail(
   const next = validateStudioProgram({ ...program, scripts });
   return recordCanonicalTransaction(history, { label: `group ${control.type}`, after: next })
     .history;
+}
+
+function scriptIndexOfActor(program: ProjectProgram, actorId: string): number {
+  return program.scripts.findIndex((script) => {
+    const actor = actorOfScript(script.id);
+    return actor !== null && studioActorId(actor.index, actor.characterId) === actorId;
+  });
+}
+
+function countCalls(statements: readonly Statement[], procedureId: string): number {
+  return statements.reduce((sum, statement) => {
+    if (statement.type === "callProcedure")
+      return sum + (statement.procedureId === procedureId ? 1 : 0);
+    if (statement.type === "repeat" || statement.type === "repeatUntil")
+      return sum + countCalls(statement.body, procedureId);
+    if (statement.type === "if")
+      return (
+        sum +
+        countCalls(statement.then, procedureId) +
+        countCalls(statement.else ?? [], procedureId)
+      );
+    return sum;
+  }, 0);
+}
+
+/** How many places in this character's script (blocks and other custom blocks) call a custom block. */
+export function studioProcedureUses(
+  program: ProjectProgram,
+  actorId: string,
+  procedureId: string,
+): number {
+  const script = program.scripts[scriptIndexOfActor(program, actorId)];
+  return script ? scriptCalls(script, procedureId) : 0;
+}
+
+function scriptCalls(script: ProjectProgram["scripts"][number], procedureId: string): number {
+  return (
+    countCalls(script.statements, procedureId) +
+    (script.procedures ?? []).reduce((sum, item) => sum + countCalls(item.body, procedureId), 0)
+  );
+}
+
+function replaceCalls(
+  statements: readonly Statement[],
+  procedureId: string,
+  body: readonly Statement[],
+): Statement[] {
+  return statements.flatMap((statement): Statement[] => {
+    if (statement.type === "callProcedure")
+      return statement.procedureId === procedureId ? [...body] : [statement];
+    if (statement.type === "repeat" || statement.type === "repeatUntil")
+      return [{ ...statement, body: replaceCalls(statement.body, procedureId, body) }];
+    if (statement.type === "if")
+      return [
+        {
+          ...statement,
+          then: replaceCalls(statement.then, procedureId, body),
+          ...(statement.else === undefined
+            ? {}
+            : { else: replaceCalls(statement.else, procedureId, body) }),
+        },
+      ];
+    return [statement];
+  });
+}
+
+function withScript(
+  history: EditorHistory,
+  actorId: string,
+  label: string,
+  change: (
+    script: ProjectProgram["scripts"][number],
+    actorIndex: number,
+  ) => ProjectProgram["scripts"][number],
+): EditorHistory {
+  const program = validateStudioProgram(history.current);
+  const index = scriptIndexOfActor(program, actorId);
+  const script = program.scripts[index];
+  if (!script) throw new RangeError("unknown studio actor");
+  const scripts = [...program.scripts];
+  scripts[index] = change(script, index + 1);
+  const next = validateStudioProgram({ ...program, scripts });
+  return recordCanonicalTransaction(history, { label, after: next }).history;
+}
+
+/** Turn the last blocks of a character into one named custom block and a call to it. */
+export function createStudioProcedure(
+  history: EditorHistory,
+  actorId: string,
+  count: number,
+  name: string,
+): EditorHistory {
+  return withScript(history, actorId, "create custom block", (script, actorIndex) => {
+    const procedures = script.procedures ?? [];
+    if (!Number.isInteger(count) || count < 1 || script.statements.length < count)
+      throw new RangeError("invalid custom block group");
+    if (procedures.length >= MAX_STUDIO_PROCEDURES) throw new RangeError("custom block limit");
+    const taken = new Set(procedures.map((item) => item.id));
+    let n = 1;
+    while (taken.has(`proc-${actorIndex}-${n}`)) n += 1;
+    const id = `proc-${actorIndex}-${n}`;
+    return {
+      ...script,
+      procedures: [...procedures, { id, name, body: script.statements.slice(-count) }],
+      statements: [
+        ...script.statements.slice(0, -count),
+        { type: "callProcedure", procedureId: id },
+      ],
+    };
+  });
+}
+
+export function renameStudioProcedure(
+  history: EditorHistory,
+  actorId: string,
+  procedureId: string,
+  name: string,
+): EditorHistory {
+  return withScript(history, actorId, "rename custom block", (script) => {
+    if (!script.procedures?.some((item) => item.id === procedureId))
+      throw new RangeError("unknown custom block");
+    return {
+      ...script,
+      procedures: script.procedures.map((item) =>
+        item.id === procedureId ? { ...item, name } : item,
+      ),
+    };
+  });
+}
+
+function reaches(procedures: readonly Procedure[], from: string, target: string): boolean {
+  const seen = new Set<string>();
+  const visit = (id: string): boolean => {
+    if (seen.has(id)) return false;
+    seen.add(id);
+    const body = procedures.find((item) => item.id === id)?.body ?? [];
+    if (countCalls(body, target) > 0) return true;
+    return procedures.some(
+      (item) => item.id !== id && countCalls(body, item.id) > 0 && visit(item.id),
+    );
+  };
+  return visit(from);
+}
+
+/**
+ * Delete a custom block. "refuse" fails while anything still calls it; "inline" first replaces each
+ * call with the block's own blocks, so the character does exactly what it did before.
+ */
+export function deleteStudioProcedure(
+  history: EditorHistory,
+  actorId: string,
+  procedureId: string,
+  mode: "refuse" | "inline",
+): EditorHistory {
+  return withScript(history, actorId, "delete custom block", (script) => {
+    const procedure = script.procedures?.find((item) => item.id === procedureId);
+    if (!procedure) throw new RangeError("unknown custom block");
+    const uses = scriptCalls(script, procedureId);
+    if (uses > 0 && mode === "refuse") throw new RangeError("custom block is in use");
+    if (uses > 0 && reaches(script.procedures ?? [], procedureId, procedureId))
+      throw new RangeError("a block that calls itself cannot be inlined");
+    const rest = (script.procedures ?? []).filter((item) => item.id !== procedureId);
+    const inlined = rest.map((item) => ({
+      ...item,
+      body: replaceCalls(item.body, procedureId, procedure.body),
+    }));
+    return {
+      id: script.id,
+      trigger: script.trigger,
+      statements: replaceCalls(script.statements, procedureId, procedure.body),
+      ...(inlined.length === 0 ? {} : { procedures: inlined }),
+    };
+  });
 }
 
 export function setStudioTrigger(
