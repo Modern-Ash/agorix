@@ -19,14 +19,30 @@ describe("Ori text-only pedagogical hint modality", () => {
     });
   });
   it("rejects disabled or unavailable preview", () => {
-    expect(toOriTextHintCandidate({ status: "unavailable", requiresLearnerApproval: true, appliedChanges: false })).toBeNull();
+    expect(
+      toOriTextHintCandidate({
+        status: "unavailable",
+        requiresLearnerApproval: true,
+        appliedChanges: false,
+      }),
+    ).toBeNull();
   });
   it("rejects executable proposal fields", () => {
     expect(toOriTextHintCandidate({ ...valid, proposal: { apply: true } })).toBeNull();
   });
   it("rejects claimed mutation or missing approval", () => {
-    expect(toOriTextHintCandidate({ ...valid, appliedChanges: true } as unknown as OriLearnerHintPreview)).toBeNull();
-    expect(toOriTextHintCandidate({ ...valid, requiresLearnerApproval: false } as unknown as OriLearnerHintPreview)).toBeNull();
+    expect(
+      toOriTextHintCandidate({
+        ...valid,
+        appliedChanges: true,
+      } as unknown as OriLearnerHintPreview),
+    ).toBeNull();
+    expect(
+      toOriTextHintCandidate({
+        ...valid,
+        requiresLearnerApproval: false,
+      } as unknown as OriLearnerHintPreview),
+    ).toBeNull();
   });
   it("rejects extra learner data and excessive text", () => {
     expect(toOriTextHintCandidate({ ...valid, childId: "synthetic" })).toBeNull();
