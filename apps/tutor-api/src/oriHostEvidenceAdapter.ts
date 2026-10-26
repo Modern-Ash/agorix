@@ -106,7 +106,7 @@ export function createOriHostEvidenceAdapter({oriRoot,timeoutMs=3000}:{
           if(e["programRevision"]!==input.programRevision ||
              typeof e["digest"]!=="string" || !HEX.test(e["digest"]) ||
              e["complete"]!==true)return finish(unavailable);
-          finish({status:"ready",proposal:d["proposal"],evidenceReceipt:{
+          finish({status:"ready",...(d["proposal"]===undefined?{}:{proposal:d["proposal"]}),evidenceReceipt:{
             programRevision:input.programRevision,digest:e["digest"],complete:true
           },requiresLearnerApproval:true,appliedChanges:false});
         }catch{finish(unavailable);}
