@@ -21,13 +21,16 @@ export function createOriAuthServiceSessionResolver(auth:Pick<AuthService,"resol
     if(matches.length!==1)return null;
     const token=matches[0]!.slice(cookieName.length+1);
     if(!/^[A-Za-z0-9_-]{32,256}$/.test(token))return null;
+    // Resolving may rotate and revoke the presented token. Never do so
+    // without a response capable of carrying its replacement.
+    if(!response || response.headersSent || response.writableEnded)return null;
     try{
       const resolved=await auth.resolveSession(token);
-      // A rotated token cannot be safely propagated by this read-only port.
+      // Only authorize after verifying the account/session binding.
       if(resolved.session.accountId!==resolved.account.accountId ||
          resolved.account.status!=="active")return null;
       if(resolved.rotated){
-        if(!response || response.headersSent ||
+        if(response.headersSent || response.writableEnded ||
            !/^[A-Za-z0-9_-]{32,256}$/.test(resolved.sessionToken))return null;
         const cookie=cookieName+"="+resolved.sessionToken+
           "; Path=/; HttpOnly; SameSite=Strict"+(options.secure===false?"":"; Secure");
