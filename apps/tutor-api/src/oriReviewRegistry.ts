@@ -28,7 +28,7 @@ export function createOriReviewRegistry({now=Date.now,maxSessions=MAX_SESSIONS,t
   if(typeof currentRevision!=="function"||!Number.isSafeInteger(maxSessions)||maxSessions<1||maxSessions>1000||
      !Number.isSafeInteger(ttlMs)||ttlMs<1||ttlMs>3600000)
     throw new TypeError("Invalid review registry limits");
-  const entries=new Map<string,{session:OriProposalReviewSession;created:number}>();
+  const entries=new Map<string,{session:OriProposalReviewSession;created:number;busy:boolean}>();
   const purge=()=>{
     const current=now();
     for(const [id,entry] of entries)if(current-entry.created>=ttlMs)entries.delete(id);
@@ -43,7 +43,7 @@ export function createOriReviewRegistry({now=Date.now,maxSessions=MAX_SESSIONS,t
       if(!session)return null;
       if(entries.size>=maxSessions)return null;
       const id=randomUUID();
-      entries.set(id,{session,created:now()});
+      entries.set(id,{session,created:now(),busy:false});
       return ticket(id,session);
     },
     read(id:string){
@@ -55,10 +55,18 @@ export function createOriReviewRegistry({now=Date.now,maxSessions=MAX_SESSIONS,t
       purge();
       const entry=entries.get(id);
       if(!entry)return null;
-      const revision=await currentRevision!(id);
-      const updated=decideOriProposalReview(entry.session,revision,decision);
-      entries.set(id,{...entry,session:updated});
-      return ticket(id,updated);
+      if(entry.busy || entry.session.status!=="pending")return ticket(id,entry.session);
+      entry.busy=true;
+      try {
+        const revision=await currentRevision!(id);
+        purge();
+        if(entries.get(id)!==entry)return null;
+        const updated=decideOriProposalReview(entry.session,revision,decision);
+        entry.session=updated;
+        return ticket(id,updated);
+      } finally {
+        entry.busy=false;
+      }
     }
   });
 }
