@@ -10,26 +10,26 @@ const response:OriHostEvidenceResult={
 describe("server-owned Ori proposal tickets",()=>{
  it("issues opaque IDs and never applies changes",async()=>{
   const registry=createOriReviewRegistry({currentRevision:async()=>revision});
-  const ticket=registry.issue(response,"session-a")!;
+  const ticket=registry.issue(response,"session-a","project-a")!;
   expect(ticket.id).toMatch(/^[a-f0-9-]{36}$/);
   expect(ticket.status).toBe("pending");
-  expect((await registry.decide(ticket.id,"session-a","accept"))?.status).toBe("accepted");
-  expect((await registry.decide(ticket.id,"session-a","reject"))?.status).toBe("accepted");
-  expect(registry.read(ticket.id,"session-a")?.appliedChanges).toBe(false);
+  expect((await registry.decide(ticket.id,"session-a","project-a","accept"))?.status).toBe("accepted");
+  expect((await registry.decide(ticket.id,"session-a","project-a","reject"))?.status).toBe("accepted");
+  expect(registry.read(ticket.id,"session-a","project-a")?.appliedChanges).toBe(false);
  });
  it("blocks stale revisions based on trusted callback",async()=>{
   const registry=createOriReviewRegistry({currentRevision:async()=> "c".repeat(64)});
-  const ticket=registry.issue(response,"session-a")!;
-  expect((await registry.decide(ticket.id,"session-a","accept"))?.status).toBe("stale");
+  const ticket=registry.issue(response,"session-a","project-a")!;
+  expect((await registry.decide(ticket.id,"session-a","project-a","accept"))?.status).toBe("stale");
  });
  it("expires tickets and caps memory",()=>{
   let clock=0;
   const registry=createOriReviewRegistry({now:()=>clock,ttlMs:10,maxSessions:1,currentRevision:async()=>revision});
-  const ticket=registry.issue(response,"session-a")!;
-  expect(registry.issue(response,"session-a")).toBeNull();
+  const ticket=registry.issue(response,"session-a","project-a")!;
+  expect(registry.issue(response,"session-a","project-a")).toBeNull();
   clock=10;
-  expect(registry.read(ticket.id,"session-a")).toBeNull();
-  expect(registry.issue(response,"session-a")).not.toBeNull();
+  expect(registry.read(ticket.id,"session-a","project-a")).toBeNull();
+  expect(registry.issue(response,"session-a","project-a")).not.toBeNull();
  });
  it("rejects missing proposals",()=>{
   const registry=createOriReviewRegistry({currentRevision:async()=>revision});
