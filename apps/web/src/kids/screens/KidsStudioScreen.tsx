@@ -9,6 +9,7 @@ import {
 import { projectAgorixCode } from "@agorix/agorix-code";
 import { projectProgram } from "@agorix/code-generator";
 import { projectPython } from "@agorix/python-projection";
+import { projectJava } from "@agorix/java-projection";
 import { ProjectStore } from "@agorix/persistence";
 import { runMultiActorProgram, type MultiActorRunResult, type RuntimeEvent } from "@agorix/runtime";
 import {
@@ -24,7 +25,7 @@ import {
   validateOriStudioProposal,
   type OriStudioIntent,
 } from "@agorix/ori-agent";
-import type { AgeBand } from "../kidsAgeBand.js";
+import { codeTabsForBand, type AgeBand, type CodeTab } from "../kidsAgeBand.js";
 import { TOUCH_HOLD_MS, insertIndex, isAddButton, movedFar } from "../kidsDrag.js";
 import {
   factsOfRun,
@@ -113,7 +114,8 @@ interface Props {
   readonly locale: Locale;
   readonly onBack: () => void;
   readonly oriSuggestions: boolean;
-  readonly ageBand?: AgeBand;
+  /** The adult's age band; absent while the age-band switch is off, which shows every language. */
+  readonly ageBand?: AgeBand | undefined;
 }
 
 const COPY = {
@@ -276,6 +278,8 @@ const COPY = {
     blockUp: "Subir bloque",
     blockDown: "Bajar bloque",
     dropHere: "Soltá acá para agregar",
+    moreLanguages: "Más lenguajes",
+    fewerLanguages: "Menos lenguajes",
     takeOut: "Sacar del bloque",
     giveTo: "Dar a",
     putInto: "Meter en",
@@ -467,6 +471,8 @@ const COPY = {
     blockUp: "Move block up",
     blockDown: "Move block down",
     dropHere: "Drop here to add",
+    moreLanguages: "More languages",
+    fewerLanguages: "Fewer languages",
     takeOut: "Take out of the block",
     giveTo: "Give to",
     putInto: "Put into",
@@ -625,7 +631,7 @@ function backdropOfStage(
   return isGalleryBackdropId(suffix) ? suffix : fallback;
 }
 
-export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand = "6-8" }: Props) {
+export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }: Props) {
   const copy = COPY[locale];
   const [store] = useState(() => new ProjectStore());
   const [history, setHistory] = useState<EditorHistory>(() =>
@@ -690,7 +696,8 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand =
   const [run, setRun] = useState<MultiActorRunResult | null>(null);
   const [events, setEvents] = useState<readonly RuntimeEvent[]>([{ type: "start" }]);
   const [frame, setFrame] = useState<number | null>(null);
-  const [language, setLanguage] = useState<"agorix" | "python" | "typescript">("agorix");
+  const [language, setLanguage] = useState<"agorix" | "python" | "typescript" | "java">("agorix");
+  const [showMoreLanguages, setShowMoreLanguages] = useState(false);
   const [oriIdea, setOriIdea] = useState<ProgramProposal | null>(null);
   const [oriMessage, setOriMessage] = useState("");
   const [oriBusy, setOriBusy] = useState(false);
@@ -1133,12 +1140,40 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand =
     creative.assets?.filter(
       (asset) => asset.kind === "backdrop" && asset.source.startsWith("data:"),
     ) ?? [];
-  const code =
-    language === "python"
-      ? projectPython(history.current).text
-      : language === "typescript"
-        ? projectProgram(history.current).code
-        : projectAgorixCode(history.current).text;
+  const codeTabs: readonly CodeTab[] = ageBand
+    ? codeTabsForBand(ageBand, showMoreLanguages)
+    : ["agorix", "python", "node", "java"];
+  const shownLanguage = codeTabs.includes(language === "typescript" ? "node" : language)
+    ? language
+    : "agorix";
+  const codeView = (() => {
+    if (shownLanguage === "python") {
+      const result = projectPython(history.current);
+      return { text: result.text, rangesOf: (id: string) => result.mapping[id] };
+    }
+    if (shownLanguage === "java") {
+      const result = projectJava(history.current);
+      return { text: result.text, rangesOf: (id: string) => result.mapping[id] };
+    }
+    if (shownLanguage === "typescript") {
+      const result = projectProgram(history.current);
+      return {
+        text: result.code,
+        rangesOf: (id: string) => (result.mapping[id] ? [result.mapping[id]!] : undefined),
+      };
+    }
+    const result = projectAgorixCode(history.current);
+    return { text: result.text, rangesOf: (id: string) => result.mapping[id] };
+  })();
+  const code = codeView.text;
+  // The line the stepped block is on, so a child can see which line of the code is running.
+  const currentLine = (() => {
+    const nodeId = selectedFrame?.nodeId;
+    const range = nodeId ? codeView.rangesOf(nodeId)?.[0] : undefined;
+    if (!range) return null;
+    const end = code.indexOf("\n", range.start);
+    return { start: range.start, end: end === -1 || end > range.end ? range.end : end };
+  })();
 
   function fireKey(key: string) {
     if (!run || !STUDIO_KEYS.includes(key as (typeof STUDIO_KEYS)[number])) return;
@@ -2230,7 +2265,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand =
               facts={factsOfRun(run, activeActorId)}
               predicted={predictedForRun}
               reflection={reflectionFor(
-                ageBand,
+                ageBand ?? "6-8",
                 factsOfRun(run, activeActorId),
                 script?.statements.map((statement) => statement.type) ?? [],
                 actor.name,
@@ -4052,19 +4087,47 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand =
           ) : null}
           <h2>{copy.code}</h2>
           <div className="kids-code-languages" role="group" aria-label={copy.code}>
-            {(["agorix", "python", "typescript"] as const).map((item) => (
+            {codeTabs.map((tab) => {
+              const item = tab === "node" ? "typescript" : tab;
+              return (
+                <button
+                  type="button"
+                  key={tab}
+                  aria-pressed={shownLanguage === item}
+                  onClick={() => setLanguage(item)}
+                >
+                  {item === "agorix"
+                    ? "Agorix Code"
+                    : item === "python"
+                      ? "Python"
+                      : item === "java"
+                        ? "Java"
+                        : "TypeScript"}
+                </button>
+              );
+            })}
+            {ageBand === "6-8" ? (
               <button
                 type="button"
-                key={item}
-                aria-pressed={language === item}
-                onClick={() => setLanguage(item)}
+                aria-expanded={showMoreLanguages}
+                onClick={() => setShowMoreLanguages(!showMoreLanguages)}
               >
-                {item === "agorix" ? "Agorix Code" : item === "python" ? "Python" : "TypeScript"}
+                {showMoreLanguages ? copy.fewerLanguages : copy.moreLanguages}
               </button>
-            ))}
+            ) : null}
           </div>
           <pre className="kids-code-strip" tabIndex={0} aria-label={copy.code}>
-            {code}
+            {currentLine ? (
+              <>
+                {code.slice(0, currentLine.start)}
+                <mark className="kids-code-current" data-testid="code-current">
+                  {code.slice(currentLine.start, currentLine.end)}
+                </mark>
+                {code.slice(currentLine.end)}
+              </>
+            ) : (
+              code
+            )}
           </pre>
         </div>
       </div>

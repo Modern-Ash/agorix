@@ -1431,6 +1431,13 @@
   color: #4230a2;
   font-weight: 700;
 }
+.kids-code-current {
+  display: inline-block;
+  min-width: 100%;
+  background: #ffe8a3;
+  color: #2d1f66;
+  outline: 2px solid #ffb14a;
+}
 .kids-nested-block {
   display: flex;
   flex-wrap: wrap;
