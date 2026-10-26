@@ -3,6 +3,8 @@ import { SCHEMA_VERSION } from "@agorix/program-model";
 import { InMemoryProjectRepository } from "@agorix/project-repository";
 import { createOriCanonicalReviewWorkflow } from "./oriCanonicalReviewWorkflow.js";
 import type { OriHostEvidenceResult } from "./oriHostEvidenceAdapter.js";
+import { createOriCanonicalExecutionPort } from "./oriCanonicalExecutionPort.js";
+import { createOriPersistedEvidenceResolver } from "./oriPersistedEvidenceResolver.js";
 
 describe("Ori accepted ticket application", () => {
   it("requires an accepted ticket and applies at most once", async () => {
@@ -45,6 +47,12 @@ describe("Ori accepted ticket application", () => {
       learningContext: async () => ({ attempts: 1, hintsUsed: 1, learningStage: "connect" }),
       runOriOverride: async () => response,
     });
+    const evidence = await createOriPersistedEvidenceResolver({
+      repository,
+      execute: createOriCanonicalExecutionPort({ world: { goal: { x: 10, y: 0 } } }),
+      learningContext: async () => ({ attempts: 1, hintsUsed: 1, learningStage: "connect" }),
+    })("student", record.projectId, "move");
+    expect(evidence).not.toBeNull();
     const ticket = await workflow.propose("student", record.projectId);
     expect(ticket?.status).toBe("pending");
     expect(await workflow.applyAccepted("student", record.projectId, ticket!.id, "main"))
