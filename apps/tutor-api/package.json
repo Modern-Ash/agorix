@@ -10,6 +10,7 @@
     "start": "node dist/main.mjs"
   },
   "dependencies": {
+    "@agorix/auth-service": "workspace:*",
     "@agorix/curriculum": "workspace:*",
     "@agorix/ori-agent": "workspace:*",
     "@agorix/program-model": "workspace:*",

@@ -83,6 +83,9 @@ importers:
 
   apps/tutor-api:
     dependencies:
+      '@agorix/auth-service':
+        specifier: workspace:*
+        version: link:../../packages/auth-service
       '@agorix/curriculum':
         specifier: workspace:*
         version: link:../../packages/curriculum
