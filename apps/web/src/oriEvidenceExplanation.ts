@@ -31,6 +31,8 @@ export function explainOriEvidence(envelope:OriTraceEnvelope):OriEvidenceExplana
   const total=entries.reduce((sum,[,count])=>sum+count,0);
   if(total!==envelope.expectedSteps || total>100)return unavailable;
   const [dominant]=entries.sort((a,b)=>b[1]-a[1] || a[0].localeCompare(b[0]))[0]!;
+  const question=QUESTIONS[dominant];
+  if(typeof question!=="string")return unavailable;
   return Object.freeze({
     status:"ready",stepCount:total,
     operationCounts:Object.freeze(Object.fromEntries(entries)),
