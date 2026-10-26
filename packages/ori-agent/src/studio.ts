@@ -260,3 +260,120 @@ export async function runOriStudio(
     return fallback(context);
   }
 }
+
+/**
+ * A child's goal, picked from a closed list (never typed), turned into a short sequence of blocks
+ * (issue #603). It is a deterministic fallback that needs no model, and like every idea it is a
+ * proposal: nothing changes until the child accepts it.
+ */
+export const ORI_STUDIO_INTENTS = ["ahead", "square", "backForth", "zigzag"] as const;
+export type OriStudioIntent = (typeof ORI_STUDIO_INTENTS)[number];
+
+const INTENT_BLOCKS: Readonly<Record<OriStudioIntent, readonly Statement[]>> = {
+  ahead: [
+    { type: "move", steps: 80 },
+    { type: "move", steps: 80 },
+    { type: "move", steps: 80 },
+  ],
+  square: [
+    { type: "move", steps: 80 },
+    { type: "turn", degrees: 90 },
+    { type: "move", steps: 80 },
+    { type: "turn", degrees: 90 },
+    { type: "move", steps: 80 },
+    { type: "turn", degrees: 90 },
+    { type: "move", steps: 80 },
+    { type: "turn", degrees: 90 },
+  ],
+  backForth: [
+    { type: "move", steps: 120 },
+    { type: "turn", degrees: 90 },
+    { type: "turn", degrees: 90 },
+    { type: "move", steps: 120 },
+    { type: "turn", degrees: 90 },
+    { type: "turn", degrees: 90 },
+  ],
+  zigzag: [
+    { type: "move", steps: 80 },
+    { type: "turn", degrees: 90 },
+    { type: "move", steps: 40 },
+    { type: "turn", degrees: -90 },
+    { type: "move", steps: 80 },
+    { type: "turn", degrees: 90 },
+    { type: "move", steps: 40 },
+    { type: "turn", degrees: -90 },
+  ],
+};
+
+export function isOriStudioIntent(value: unknown): value is OriStudioIntent {
+  return (ORI_STUDIO_INTENTS as readonly unknown[]).includes(value);
+}
+
+export function proposeOriStudioIntent(
+  context: OriStudioContext,
+  intent: OriStudioIntent,
+): ProgramProposal {
+  const selected = target(context);
+  if (!isOriStudioIntent(intent)) throw new Error("unknown intent");
+  const statements = INTENT_BLOCKS[intent];
+  const first = selected.script.statements.length;
+  if (first + statements.length > MAX_STATEMENTS) throw new Error("not enough room");
+  const proposal = createProgramProposal({
+    id: `ori-studio-intent-${intent}-${selected.index}-${first}`,
+    baseProgram: selected.program,
+    source: { kind: "learning-companion", capability: "builder" },
+    purpose:
+      context.locale === "es" ? "Una idea para lo que querés lograr" : "An idea for your goal",
+    rationale:
+      context.locale === "es"
+        ? "Mirá los bloques y decidí si querés usarlos."
+        : "Look at the blocks and decide whether to use them.",
+    affectedActorIds: [context.actorId],
+    affectedScriptIds: [selected.script.id],
+    affectedNodeIds: statements.map(
+      (_statement, offset) => `scripts[${selected.index}]/statements[${first + offset}]`,
+    ),
+    operations: statements.map((statement) => ({
+      type: "appendStatement" as const,
+      scriptIndex: selected.index,
+      statement,
+    })),
+  });
+  validateOriStudioIntentProposal(context, proposal);
+  return proposal;
+}
+
+/** The same host checks as a single idea, for a short sequence of allowed blocks. */
+export function validateOriStudioIntentProposal(
+  context: OriStudioContext,
+  raw: unknown,
+): ProposalReview {
+  const selected = target(context);
+  const proposal = validateProgramProposal(raw as ProgramProposal);
+  const first = selected.script.statements.length;
+  if (
+    proposal.source.kind !== "learning-companion" ||
+    proposal.source.capability !== "builder" ||
+    proposal.operations.length < 1 ||
+    proposal.operations.length > 8 ||
+    proposal.operations.some(
+      (operation) =>
+        operation.type !== "appendStatement" ||
+        operation.scriptIndex !== selected.index ||
+        !allowed(operation.statement, selected.script),
+    ) ||
+    proposal.affectedActorIds?.join() !== context.actorId ||
+    proposal.affectedScriptIds?.join() !== selected.script.id ||
+    proposal.affectedNodeIds.join() !==
+      proposal.operations
+        .map((_operation, offset) => `scripts[${selected.index}]/statements[${first + offset}]`)
+        .join()
+  )
+    throw new Error("proposal outside studio allow-list");
+  return createProposalReview(selected.program, proposal, {
+    actors: selected.program.scripts.map((script) => ({
+      id: actorIdForScript(script.id),
+      scripts: [script.id],
+    })),
+  });
+}
