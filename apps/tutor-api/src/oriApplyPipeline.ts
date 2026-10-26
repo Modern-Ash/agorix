@@ -45,7 +45,12 @@ export function createOriApplyPipeline({
     if (!enabled) return { status: 503, body: { error: "unavailable" } };
     const guard = checkOriReviewHttpRequest(request, auth, trustedHosts);
     if (!guard.allowed) return { status: guard.status, body: { error: guard.reason } };
-    const session = auth.read(request);
+    let session;
+    try {
+      session = auth.read(request);
+    } catch {
+      return { status: 401, body: { error: "unauthorized" } };
+    }
     if (!session) return { status: 401, body: { error: "unauthorized" } };
     if (!limiter.allow(session.author)) return { status: 429, body: { error: "rate-limited" } };
     let principal;
