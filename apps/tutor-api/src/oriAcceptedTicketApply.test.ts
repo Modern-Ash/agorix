@@ -41,7 +41,7 @@ describe("Ori accepted ticket application", () => {
     const workflow = createOriCanonicalReviewWorkflow({
       repository,
       oriRoot: "/unused",
-      world: {},
+      world: { goal: { x: 10, y: 0 } },
       learningContext: async () => ({ attempts: 1, hintsUsed: 1, learningStage: "connect" }),
       runOriOverride: async () => response,
     });
