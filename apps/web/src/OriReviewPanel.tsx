@@ -1,3 +1,4 @@
+import type { OriEvidenceExplanation } from "./oriEvidenceExplanation.js";
 import { requestOriContextPreview } from "./oriContextClient.js";
 import { useState } from "react";
 import { requestOriReviewPreview, type OriReviewPreview } from "./oriReviewClient.js";
@@ -30,7 +31,7 @@ export function describeOriLearningContext(context: OriLearnerContext): string {
  * Context is displayed locally. It is NOT sent to Ori until the cross-repo
  * context contract is implemented and verified.
  */
-export function OriReviewPanel({ context }: { readonly context?: OriLearnerContext }) {
+export function OriReviewPanel({ context, evidence }: { readonly context?: OriLearnerContext; readonly evidence?: OriEvidenceExplanation }) {
   const [result, setResult] = useState<OriReviewPreview | null>(null);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
@@ -56,6 +57,13 @@ export function OriReviewPanel({ context }: { readonly context?: OriLearnerConte
       <p>Elegí qué querés explorar. Ori te propone una pista para pensar, no modifica tu programa.</p>
       {context ? <p data-testid="ori-local-context">{describeOriLearningContext(context)}</p> : null}
       {context?.verifiedTraceSteps !== undefined ? <p data-testid="ori-trace-evidence">Ejecución canónica verificada: {context.verifiedTraceSteps} pasos. La traza permanece en Agorix.</p> : null}
+      {evidence?.status === "ready" ? (
+        <aside data-testid="ori-evidence-explanation" aria-label="Evidencia de ejecución">
+          <p>La ejecución registró {evidence.stepCount} pasos.</p>
+          <p>{evidence.question}</p>
+          <p>Esta pregunta se basa en categorías de instrucciones ejecutadas; no es una explicación generada por un modelo.</p>
+        </aside>
+      ) : null}
       <div className="tutor-actions" aria-label="Acciones educativas de Ori">
         {ACTIONS.map(action => (
           <button key={action.intent} type="button" disabled={loading}
