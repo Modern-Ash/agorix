@@ -12,8 +12,8 @@ export interface OriCanonicalProjectIdentity {
 }
 const HEX=/^[a-f0-9]{64}$/;
 export function createOriProjectRevisionAdapter(repository:ProjectRepository) {
-  return Object.freeze({
-    async resolve(owner:string,projectId:string):Promise<OriCanonicalProjectIdentity|null> {
+  const resolve=async(owner:string,projectId:string):Promise<OriCanonicalProjectIdentity|null>=>{
+
       if(!owner || owner.length>128 || !projectId || projectId.length>128)return null;
       try{
         const record=await repository.get(owner,projectId);
@@ -24,9 +24,11 @@ export function createOriProjectRevisionAdapter(repository:ProjectRepository) {
           owner,projectId,revision:record.semanticHash,repositoryRevision:record.revision
         });
       }catch{return null;}
-    },
+  };
+  return Object.freeze({
+    resolve,
     async currentRevision(owner:string,projectId:string):Promise<string|null> {
-      const project=await this.resolve(owner,projectId);
+      const project=await resolve(owner,projectId);
       return project?.revision??null;
     }
   });
