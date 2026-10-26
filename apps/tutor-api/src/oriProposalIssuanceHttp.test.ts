@@ -50,6 +50,15 @@ describe("Ori proposal issuance HTTP trust boundary",()=>{
     }
     expect(calls).toHaveLength(0);
   });
+  it("denies issuance without the anti-CSRF request header",async()=>{
+    const {base,calls}=await start();
+    const response=await fetch(base+"/api/tutor/ori/review/propose",{
+      method:"POST",headers:{"content-type":"application/json",origin:base},
+      body:"{}"
+    });
+    expect(response.status).toBe(403);
+    expect(calls).toHaveLength(0);
+  });
   it("denies cross-origin issuance",async()=>{
     const {base,calls}=await start();
     expect((await post(base,{},"https://untrusted.example")).status).toBe(403);
