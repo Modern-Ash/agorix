@@ -117,7 +117,7 @@ describe("First Mission", () => {
     ).toEqual({
       completed: false,
       message:
-        "Todavía falta: el personaje avanzó hacia la meta, pero se quedó corto. Prueba más pasos.",
+        "Todavía falta: el personaje avanzó hacia la meta, pero se quedó corto. Probá más pasos.",
     });
     expect(evaluateMission({ mission: getLocalizedFirstMission("es"), result }).completed).toBe(
       false,

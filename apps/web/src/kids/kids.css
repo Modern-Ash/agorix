@@ -2134,6 +2134,16 @@
   font-size: 1.15rem;
 }
 
+.kids-concept-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 2px 18px 6px;
+  color: var(--kids-text);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
 .kids-world-tabs {
   display: flex;
   gap: 10px;
@@ -3130,4 +3140,30 @@
 }
 .kids-team-play-right {
   grid-area: right;
+}
+
+/* Issue #598: every control a child can touch is at least 44 px, including form fields. */
+.kids-root select {
+  min-width: 44px;
+}
+.kids-root select,
+.kids-root textarea,
+.kids-root input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]) {
+  min-height: 44px;
+}
+.kids-root input[type="range"] {
+  min-height: 44px;
+}
+.kids-root input[type="checkbox"],
+.kids-root input[type="radio"] {
+  width: 1.5rem;
+  height: 1.5rem;
+  flex: none;
+}
+.kids-root label:has(> input[type="checkbox"]),
+.kids-root label:has(> input[type="radio"]) {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 44px;
 }

@@ -110,6 +110,14 @@ export function MapScreen({
           </button>
         ) : null}
       </header>
+      {/* The chips above are icons; this line says what each one is, for readers and non-readers. */}
+      <p className="kids-concept-legend" aria-hidden="true">
+        {CONCEPTS.map((concept) => (
+          <span key={concept.name}>
+            {concept.icon} {t(concept.name)}
+          </span>
+        ))}
+      </p>
 
       <div className="kids-world-tabs" role="group" aria-label={t("map")}>
         {KIDS_WORLDS.map((id) => {
