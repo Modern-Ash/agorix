@@ -28,8 +28,7 @@ export function OriLearnerReviewWidget() {
       </button>
       {error?<p role="status">No hay una propuesta disponible. Podés continuar programando.</p>:null}
       {issued?<OriLearnerProposalReview input={{
-        ticketId:issued.ticketId,proposal:issued.proposal,
-        revision:issued.ticketId,currentRevision:issued.ticketId
+        ticketId:issued.ticketId,proposal:issued.proposal
       }}/>:null}
     </section>
   );
