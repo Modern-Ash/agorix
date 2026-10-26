@@ -2,7 +2,7 @@ import { describe,expect,it } from "vitest";
 import { SCHEMA_VERSION } from "@agorix/program-model";
 import type { ProjectRepository } from "@agorix/project-repository";
 import { createOriCanonicalReviewWorkflow } from "./oriCanonicalReviewWorkflow.js";
-import type { OriHostEvidenceResult } from "./oriHostEvidenceAdapter.js";
+import type { OriHostEvidenceResult, TrustedOriEvidence } from "./oriHostEvidenceAdapter.js";
 
 const revision="a".repeat(64);
 const program={schema:SCHEMA_VERSION,scripts:[{
@@ -27,7 +27,7 @@ describe("canonical project -> runtime -> Ori review composition",()=>{
       repository,oriRoot:"/unused-with-test-override",
       world:{goal:{x:10,y:0}},
       learningContext:async()=>({attempts:1,hintsUsed:1,learningStage:"connect"}),
-      runOriOverride:async evidence=>{
+      runOriOverride:async (evidence:TrustedOriEvidence)=>{
         calls++;
         expect(evidence.trace.steps).toEqual([{index:0,description:"Executed move"}]);
         expect(evidence.programRevision).toBe(revision);
