@@ -1,3 +1,4 @@
+import { withAgorixSessionQueue } from "./sessionRequestQueue.js";
 import type { StoredProject } from "@agorix/persistence";
 import {
   ClientError,
@@ -36,7 +37,6 @@ export function createHttpBackend(options: HttpBackendOptions = {}): AccountBack
   const doFetch: FetchLike =
     options.fetch ?? ((input, init) => globalThis.fetch(input, init) as ReturnType<FetchLike>);
   const accountPath = options.accountPath ?? DEFAULT_ACCOUNT_PATH;
-  let tail: Promise<unknown> = Promise.resolve();
 
   function send(
     method: string,
@@ -71,9 +71,7 @@ export function createHttpBackend(options: HttpBackendOptions = {}): AccountBack
       if (response.status >= 400) throw toError(response.status, json);
       return { status: response.status, json };
     };
-    const next = tail.then(run, run);
-    tail = next.catch(() => undefined);
-    return next;
+    return withAgorixSessionQueue(run);
   }
 
   const account = {
