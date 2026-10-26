@@ -8,8 +8,10 @@ import { createServer } from "node:net";
 const oriRoot = process.env.ORI_REPO_PATH;
 const root = resolve(new URL(".", import.meta.url).pathname, "../../..");
 const tutorBinary = join(root, "apps/tutor-api/dist/main.mjs");
-const runnable = process.env.VITE_ORI_EXPERIMENTAL_REVIEW === "1" &&
-  !!oriRoot && existsSync(join(oriRoot, "examples/local-agent-runtime.mjs")) &&
+const runnable =
+  process.env.VITE_ORI_EXPERIMENTAL_REVIEW === "1" &&
+  !!oriRoot &&
+  existsSync(join(oriRoot, "examples/local-agent-runtime.mjs")) &&
   existsSync(tutorBinary);
 
 async function freePort(): Promise<number> {
@@ -28,7 +30,8 @@ test.describe("real browser → Tutor API → Ori process", () => {
     const backend = `http://127.0.0.1:${port}`;
     const workspace = mkdtempSync(join(tmpdir(), "agorix-ori-browser-"));
     const child: ChildProcess = spawn(process.execPath, [tutorBinary], {
-      cwd: root, stdio: "ignore",
+      cwd: root,
+      stdio: "ignore",
       env: {
         ...process.env,
         AGORIX_TUTOR_HOST: "127.0.0.1",
@@ -45,9 +48,14 @@ test.describe("real browser → Tutor API → Ori process", () => {
         if (child.exitCode !== null) throw new Error("Tutor API terminated");
         try {
           const response = await fetch(backend + "/api/tutor/health");
-          if (response.ok) { healthy = true; break; }
-        } catch { /* wait for server */ }
-        await new Promise(done => setTimeout(done, 100));
+          if (response.ok) {
+            healthy = true;
+            break;
+          }
+        } catch {
+          /* wait for server */
+        }
+        await new Promise((done) => setTimeout(done, 100));
       }
       expect(healthy).toBe(true);
       let forwarded = 0;
@@ -68,7 +76,7 @@ test.describe("real browser → Tutor API → Ori process", () => {
       expect(forwarded).toBe(1);
     } finally {
       if (child.exitCode === null) child.kill("SIGTERM");
-      await new Promise<void>(done => {
+      await new Promise<void>((done) => {
         if (child.exitCode !== null) return done();
         child.once("exit", () => done());
         setTimeout(done, 2000);
