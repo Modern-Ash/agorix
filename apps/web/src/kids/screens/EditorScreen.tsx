@@ -48,6 +48,8 @@ import {
 import { requestKidsOriOffer } from "../kidsOriRemote.js";
 import { oriMotionStatus, useOriPageVisible } from "../kidsOriMotion.js";
 import { expressionForMotion, outcomeOfOffer } from "../kidsOriExpression.js";
+import { conceptsOfProgram } from "@agorix/learning-evidence";
+import { recordMastery } from "../kidsMastery.js";
 import {
   addKidsBlock,
   createKidsEditor,
@@ -561,7 +563,23 @@ export function EditorScreen({
 
   function choosePrediction(answer: Prediction) {
     const run = playKidsProgram(history, mission, freeProjectId ? freeGoalCheck : "touches-goal");
-    recordKidsPrediction(answer, run.evaluation.outcome, undefined, assistanceLevel);
+    const predicted = recordKidsPrediction(
+      answer,
+      run.evaluation.outcome,
+      undefined,
+      assistanceLevel,
+    );
+    // What the run showed, for the mastery stages: kept as counters only.
+    const concepts = conceptsOfProgram(history.current);
+    recordMastery({
+      kind: "run",
+      concepts,
+      completed: run.evaluation.outcome === "success",
+      helped: assistanceLevel !== "independent",
+      free: Boolean(freeProjectId),
+    });
+    if (predicted && predicted.kind === "predictionMade" && predicted.matchedRuntimeOutcome)
+      recordMastery({ kind: "explained", concepts });
     setPrediction(answer);
     setPlayed(run);
     setStep(pending === "step" ? Math.min(1, run.result.trace.length) : run.result.trace.length);
