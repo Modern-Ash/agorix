@@ -17,6 +17,7 @@ export interface OriTraceEnvelope {
   readonly evidence?: OriTraceEvidence;
   readonly expectedSteps?: number;
   readonly outcome?: RunResult["outcome"];
+  readonly operationCounts?: Readonly<Record<string, number>>;
   readonly appliedChanges: false;
 }
 const MAX_STEPS=100;
@@ -34,11 +35,17 @@ export function deriveOriTraceEvidence(result:RunResult | undefined):OriTraceEnv
     const kind=KNOWN_KINDS.has(entry.statementType)?entry.statementType:"other";
     steps.push(Object.freeze({index,description:`Executed ${kind}`}));
   }
+  const operationCounts: Record<string,number>={};
+  for (const step of steps) {
+    const kind=step.description.slice("Executed ".length);
+    operationCounts[kind]=(operationCounts[kind]??0)+1;
+  }
   return Object.freeze({
     status:"ready",
     evidence:Object.freeze({steps:Object.freeze(steps)}),
     expectedSteps:steps.length,
     outcome:result.outcome,
+    operationCounts:Object.freeze(operationCounts),
     appliedChanges:false
   });
 }
