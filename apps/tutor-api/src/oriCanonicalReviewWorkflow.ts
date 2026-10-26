@@ -1,10 +1,11 @@
 import type { ProjectRepository } from "@agorix/project-repository";
 import type { WorldStateInput } from "@agorix/runtime";
 import { createOriCanonicalExecutionPort } from "./oriCanonicalExecutionPort.js";
-import { createOriPersistedEvidenceResolver } from "./oriPersistedEvidenceResolver.js";
+import { createOriPersistedEvidenceResolver, oriEvidenceRevision } from "./oriPersistedEvidenceResolver.js";
 import { createOriHostEvidenceAdapter } from "./oriHostEvidenceAdapter.js";
 import { createOriProjectReviewService } from "./oriProjectReviewService.js";
 import { createOriReviewRegistry } from "./oriReviewRegistry.js";
+import { applyApprovedOriProposal } from "./oriApprovedProjectApply.js";
 
 export interface OriLearningContext {
   readonly attempts:number;
@@ -46,10 +47,12 @@ export function createOriCanonicalReviewWorkflow({
         const record=await repository.get(binding.owner,binding.projectId);
         return record.ownerId===binding.owner && record.projectId===binding.projectId &&
           record.revision===binding.revision && record.semanticHash===binding.hash
-          ?record.semanticHash:"0".repeat(64);
+          ?oriEvidenceRevision(record.semanticHash,record.revision):"0".repeat(64);
       }catch{return "";}
     }
   });
+  const appliedTickets=new Set<string>();
+  const applyingTickets=new Set<string>();
   const service=createOriProjectReviewService({
     resolveProject:async(owner,projectId)=>resolve(owner,projectId,"move"),
     authorizeProject:async(owner,projectId)=>{
@@ -69,7 +72,7 @@ export function createOriCanonicalReviewWorkflow({
         try{
           const record=await repository.get(owner,projectId);
           if(record.ownerId!==owner || record.projectId!==projectId ||
-             !/^[a-f0-9]{64}$/.test(record.semanticHash))return null;
+             typeof record.semanticHash!=="string" || !record.semanticHash)return null;
           ticketProjects.set(ticket.id,{owner,projectId,revision:record.revision,hash:record.semanticHash,created:Date.now()});
         }catch{return null;}
       }
@@ -78,8 +81,33 @@ export function createOriCanonicalReviewWorkflow({
     async decide(owner:string,projectId:string,ticketId:string,decision:"accept"|"edit"|"reject"){
       purgeBindings();
       const ticket=await service.decide(owner,projectId,ticketId,decision);
-      if(ticket && ticket.status!=="pending")ticketProjects.delete(ticketId);
+      // Retain the server-owned revision binding for an accepted ticket until
+      // explicit application or TTL expiry. Reject/edit need no mutation.
+      if(ticket && ticket.status!=="pending" && ticket.status!=="accepted")ticketProjects.delete(ticketId);
       return ticket;
+    },
+    /**
+     * Explicit server-only apply operation. Call only with a principal
+     * authenticated by trusted middleware; never accept owner from a browser
+     * body. The ticket must already have an accepted review decision.
+     */
+    async applyAccepted(owner:string,projectId:string,ticketId:string,scriptId:string){
+      purgeBindings();
+      if(appliedTickets.has(ticketId) || applyingTickets.has(ticketId))return "rejected" as const;
+      if(!owner || !projectId || !ticketId || !scriptId)return "rejected" as const;
+      const ticket=await service.read(owner,projectId,ticketId);
+      if(!ticket || ticket.status!=="accepted")return "rejected" as const;
+      const binding=ticketProjects.get(ticketId);
+      if(!binding || binding.owner!==owner || binding.projectId!==projectId)return "rejected" as const;
+      applyingTickets.add(ticketId);
+      try{
+        const result=await applyApprovedOriProposal({
+          repository,owner,projectId,expectedRevision:binding.revision,
+          approved:true,proposal:ticket.proposal,allowedBlocks:["move"],scriptId
+        });
+        if(result==="applied")appliedTickets.add(ticketId);
+        return result;
+      }finally{applyingTickets.delete(ticketId);}
     },
     async read(owner:string,projectId:string,ticketId:string){
       purgeBindings();

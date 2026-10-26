@@ -1,7 +1,13 @@
+import { createHash } from "node:crypto";
 import type { ProjectRepository } from "@agorix/project-repository";
 import type { RunResult } from "@agorix/runtime";
 import type { TrustedOriProject } from "./oriProjectReviewService.js";
 
+/** Ori transport requires a 64-hex revision; Agorix persists fnv1a32 hashes. */
+export function oriEvidenceRevision(semanticHash: string, revision: number): string {
+  if (/^[a-f0-9]{64}$/.test(semanticHash)) return semanticHash;
+  return createHash("sha256").update(JSON.stringify([semanticHash, revision])).digest("hex");
+}
 export type OriIntent="help"|"repeat"|"turn"|"move"|"debug";
 export interface CanonicalOriExecution {
   readonly result:RunResult;
@@ -25,7 +31,7 @@ export function createOriPersistedEvidenceResolver({
     try{
       const record=await repository.get(owner,projectId);
       if(record.ownerId!==owner || record.projectId!==projectId ||
-         !/^[a-f0-9]{64}$/.test(record.semanticHash))return null;
+         typeof record.semanticHash!=="string" || !record.semanticHash)return null;
       const {result}=await execute(record.storedProject.program);
       if(result.outcome!=="completed" || !Number.isSafeInteger(result.stepsUsed) ||
          result.stepsUsed<1 || result.stepsUsed>100 ||
@@ -48,9 +54,9 @@ export function createOriPersistedEvidenceResolver({
       if(current.semanticHash!==record.semanticHash ||
          current.revision!==record.revision)return null;
       return {
-        owner,projectId,revision:record.semanticHash,
+        owner,projectId,revision:oriEvidenceRevision(record.semanticHash,record.revision),
         evidence:{
-          intent,programRevision:record.semanticHash,
+          intent,programRevision:oriEvidenceRevision(record.semanticHash,record.revision),
           expectedSteps:steps.length,
           hostContext:{
             sessionId:"host-verified",learningStage:context.learningStage,
