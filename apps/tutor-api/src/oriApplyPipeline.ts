@@ -21,6 +21,7 @@ export function createOriApplyPipeline({
   resolvePrincipal,
   apply,
   enabled = false,
+  bodyDeadlineMs = 1000,
 }: {
   readonly auth: AdminAuth;
   readonly trustedHosts: readonly string[];
@@ -36,7 +37,10 @@ export function createOriApplyPipeline({
     scriptId: string,
   ) => Promise<"applied" | "rejected" | "conflict">;
   readonly enabled?: boolean;
+  readonly bodyDeadlineMs?: number;
 }): (request: IncomingMessage) => Promise<OriApplyPipelineResult> {
+  if (!Number.isSafeInteger(bodyDeadlineMs) || bodyDeadlineMs < 1 || bodyDeadlineMs > 10000)
+    throw new RangeError("Invalid Ori apply body deadline");
   return async (request) => {
     if (!enabled) return { status: 503, body: { error: "unavailable" } };
     const guard = checkOriReviewHttpRequest(request, auth, trustedHosts);
@@ -52,15 +56,25 @@ export function createOriApplyPipeline({
     }
     if (!principal?.owner || !principal.projectId)
       return { status: 401, body: { error: "unauthorized" } };
-    // Bound the entire request body; never accept browser-supplied owner,
-    // revision, proposal, grants or approval.
+    // Fail closed on stalled, aborted or oversized requests. Destroying the
+    // stream interrupts the pending async iterator on deadline expiry.
+    const controller = new AbortController();
+    const stop = () => {
+      controller.abort();
+      request.destroy();
+    };
+    const timer = setTimeout(stop, bodyDeadlineMs);
     let body = "";
     try {
+      if (request.destroyed) return { status: 400, body: { error: "invalid-request" } };
       for await (const chunk of request) {
+        if (controller.signal.aborted) return { status: 400, body: { error: "invalid-request" } };
         body += Buffer.isBuffer(chunk) ? chunk.toString("utf8") : String(chunk);
         if (Buffer.byteLength(body, "utf8") > 512)
           return { status: 400, body: { error: "invalid-request" } };
       }
+      if (controller.signal.aborted || request.aborted)
+        return { status: 400, body: { error: "invalid-request" } };
       const parsed = parseOriApplyRequest(JSON.parse(body) as unknown);
       if (!parsed) return { status: 400, body: { error: "invalid-request" } };
       const result = await apply(principal.owner, principal.projectId, parsed.ticketId, parsed.scriptId);
@@ -68,7 +82,12 @@ export function createOriApplyPipeline({
       if (result === "conflict") return { status: 409, body: { error: "conflict" } };
       return { status: 403, body: { error: "forbidden" } };
     } catch {
-      return { status: 503, body: { error: "unavailable" } };
+      return {
+        status: controller.signal.aborted || request.aborted ? 400 : 503,
+        body: { error: controller.signal.aborted || request.aborted ? "invalid-request" : "unavailable" },
+      };
+    } finally {
+      clearTimeout(timer);
     }
   };
 }
