@@ -7,7 +7,7 @@ import type { OriAuthenticatedSession } from "./oriAuthenticatedProjectIdentity.
  * middleware, never from a browser-provided session identifier.
  */
 export function createOriActiveProjectSessionLifecycle(
-  persistence:OriActiveProjectPersistence
+  persistence:OriActiveProjectPersistence & {migrate?:(accountId:string,oldSessionId:string,newSessionId:string,now:number)=>Promise<boolean>}
 ) {
   const valid=(s:string)=>s.length>0&&s.length<=128;
   return Object.freeze({
@@ -20,6 +20,7 @@ export function createOriActiveProjectSessionLifecycle(
          !valid(next.accountId)||!valid(next.sessionId)||
          previous.accountId!==next.accountId)return false;
       if(previous.sessionId===next.sessionId)return true;
+      if(persistence.migrate)return persistence.migrate(previous.accountId,previous.sessionId,next.sessionId,Date.now());
       const old=await persistence.read(previous.accountId,previous.sessionId);
       if(!old)return true;
       if(old.accountId!==previous.accountId||old.sessionId!==previous.sessionId)return false;
