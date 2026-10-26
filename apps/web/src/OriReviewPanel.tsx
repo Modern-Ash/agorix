@@ -14,6 +14,7 @@ export interface OriLearnerContext {
   readonly scriptCount: number;
   readonly hintCount: number;
   readonly hasRunEvidence: boolean;
+  readonly verifiedTraceSteps?: number;
   readonly outcome?: "not-run" | "completed" | "failed" | "stopped";
 }
 
@@ -54,6 +55,7 @@ export function OriReviewPanel({ context }: { readonly context?: OriLearnerConte
       <h3>Ori · Aprendamos a programar</h3>
       <p>Elegí qué querés explorar. Ori te propone una pista para pensar, no modifica tu programa.</p>
       {context ? <p data-testid="ori-local-context">{describeOriLearningContext(context)}</p> : null}
+      {context?.verifiedTraceSteps !== undefined ? <p data-testid="ori-trace-evidence">Ejecución canónica verificada: {context.verifiedTraceSteps} pasos. La traza permanece en Agorix.</p> : null}
       <div className="tutor-actions" aria-label="Acciones educativas de Ori">
         {ACTIONS.map(action => (
           <button key={action.intent} type="button" disabled={loading}
