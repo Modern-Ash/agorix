@@ -16,7 +16,7 @@ export async function requestOriReviewDecision(
     const response=await fetchImpl("/api/tutor/ori/review/decision",{
       method:"POST",
       credentials:"same-origin",
-      headers:{"content-type":"application/json"},
+      headers:{"content-type":"application/json","x-agorix-request":"1"},
       body:JSON.stringify({ticketId,decision}),
       signal:AbortSignal.timeout(10000)
     });

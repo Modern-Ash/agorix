@@ -21,7 +21,7 @@ export async function requestOriProposal(fetchImpl:typeof fetch=fetch):Promise<O
   try{
     const response=await fetchImpl("/api/tutor/ori/review/propose",{
       method:"POST",credentials:"same-origin",
-      headers:{"content-type":"application/json"},
+      headers:{"content-type":"application/json","x-agorix-request":"1"},
       body:"{}",signal:AbortSignal.timeout(10000)
     });
     if(!response.ok)return null;

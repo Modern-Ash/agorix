@@ -24,7 +24,7 @@ async function start(authenticated=true,enabled=true) {
   return {base:`http://127.0.0.1:${(server.address() as AddressInfo).port}`,calls};
 }
 const post=(base:string,body:unknown,origin=base)=>fetch(base+"/api/tutor/ori/review/propose",{
-  method:"POST",headers:{"content-type":"application/json",origin},body:JSON.stringify(body)
+  method:"POST",headers:{"content-type":"application/json","x-agorix-request":"1",origin},body:JSON.stringify(body)
 });
 describe("Ori proposal issuance HTTP trust boundary",()=>{
   it("issues only server-owned proposal for authenticated project",async()=>{
@@ -48,6 +48,15 @@ describe("Ori proposal issuance HTTP trust boundary",()=>{
     for(const field of ["ownerId","projectId","grants","revision","program"]){
       expect((await post(base,{[field]:"forged"})).status).toBe(400);
     }
+    expect(calls).toHaveLength(0);
+  });
+  it("denies issuance without the anti-CSRF request header",async()=>{
+    const {base,calls}=await start();
+    const response=await fetch(base+"/api/tutor/ori/review/propose",{
+      method:"POST",headers:{"content-type":"application/json",origin:base},
+      body:"{}"
+    });
+    expect(response.status).toBe(403);
     expect(calls).toHaveLength(0);
   });
   it("denies cross-origin issuance",async()=>{

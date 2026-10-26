@@ -204,6 +204,7 @@ export function createTutorServer(options: TutorServerOptions): Server {
       if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
       if (!options.oriReviewEnabled || !options.oriReviewIdentity || !options.oriReviewPropose)
         return send(response, 404, error("not-found"));
+      if (request.headers["x-agorix-request"] !== "1") return send(response, 403, error("forbidden-request"));
       if (!sameOrigin(request)) return send(response, 403, error("forbidden-origin"));
       if (!(request.headers["content-type"] ?? "").includes("application/json"))
         return send(response, 415, error("unsupported-media-type"));
@@ -228,6 +229,7 @@ export function createTutorServer(options: TutorServerOptions): Server {
       if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
       if (!options.oriReviewEnabled || !options.oriReviewIdentity || !options.oriReviewDecision)
         return send(response, 404, error("not-found"));
+      if (request.headers["x-agorix-request"] !== "1") return send(response, 403, error("forbidden-request"));
       if (!sameOrigin(request)) return send(response, 403, error("forbidden-origin"));
       if (!(request.headers["content-type"] ?? "").includes("application/json"))
         return send(response, 415, error("unsupported-media-type"));
