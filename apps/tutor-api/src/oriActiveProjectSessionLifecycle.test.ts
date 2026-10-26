@@ -31,4 +31,15 @@ describe("Ori active-project session lifecycle",()=>{
       expect(await lifecycle.rotated(before,{accountId:"other",sessionId:"new"})).toBe(false);
     }finally{db.close();}
   });
+  it("rejects migration collisions without overwriting the target",async()=>{
+    const db=openOriSqliteActiveProjectPersistence(":memory:");
+    try{
+      const lifecycle=createOriActiveProjectSessionLifecycle(db);
+      await db.write({...before,projectId:"project-a",expiresAt:Date.now()+60000});
+      await db.write({...after,projectId:"project-b",expiresAt:Date.now()+60000});
+      expect(await lifecycle.rotated(before,after)).toBe(false);
+      expect((await db.read(before.accountId,before.sessionId))?.projectId).toBe("project-a");
+      expect((await db.read(after.accountId,after.sessionId))?.projectId).toBe("project-b");
+    }finally{db.close();}
+  });
 });
