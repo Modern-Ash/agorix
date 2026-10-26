@@ -17,7 +17,22 @@ import {
   rejectProposal,
   type ProgramProposal,
 } from "@agorix/proposals";
-import { validateOriStudioProposal } from "@agorix/ori-agent";
+import {
+  ORI_STUDIO_INTENTS,
+  proposeOriStudioIntent,
+  validateOriStudioIntentProposal,
+  validateOriStudioProposal,
+  type OriStudioIntent,
+} from "@agorix/ori-agent";
+import type { AgeBand } from "../kidsAgeBand.js";
+import {
+  factsOfRun,
+  previewCandidate,
+  reflectionFor,
+  type CandidatePreview,
+  type Direction,
+} from "../kidsStudioCoach.js";
+import { StudioCoach, StudioIntentPicker, StudioPrediction } from "./KidsStudioCoach.js";
 import { PEN_COLORS, type PenColor } from "@agorix/program-model";
 import type {
   Expression,
@@ -93,6 +108,7 @@ interface Props {
   readonly locale: Locale;
   readonly onBack: () => void;
   readonly oriSuggestions: boolean;
+  readonly ageBand?: AgeBand;
 }
 
 const COPY = {
@@ -541,7 +557,7 @@ function backdropOfStage(
   return isGalleryBackdropId(suffix) ? suffix : fallback;
 }
 
-export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) {
+export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand = "6-8" }: Props) {
   const copy = COPY[locale];
   const [store] = useState(() => new ProjectStore());
   const [history, setHistory] = useState<EditorHistory>(() =>
@@ -681,32 +697,32 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
    * What would really happen with Ori's idea: the same deterministic runtime, run on a copy. Nothing
    * here is saved, so the child can look, accept, change or reject (issues #602 and #605).
    */
-  const oriPreview = useMemo(() => {
+  const oriPreview = useMemo((): CandidatePreview | null => {
     if (!oriIdea || !proposedStatement) return null;
     try {
       const review = validateOriStudioProposal(
         { actorId: activeActorId, locale, program: history.current },
         oriIdea,
       );
-      const options = { keysDown: heldKeys };
-      const spriteOf = (result: MultiActorRunResult) =>
-        result.actors.find((entry) => entry.id === activeActorId)?.world.sprite;
-      const before = runMultiActorProgram(history.current, creative, options);
-      const after = runMultiActorProgram(review.candidateProgram, creative, options);
-      const from = spriteOf(before);
-      const to = spriteOf(after);
-      if (!from || !to) return null;
-      return {
-        outcome: after.outcome,
-        stepsBefore: before.stepsUsed,
-        stepsAfter: after.stepsUsed,
-        from: { x: Math.round(from.x), y: Math.round(from.y) },
-        to: { x: Math.round(to.x), y: Math.round(to.y) },
-      };
+      return previewCandidate(
+        history.current,
+        review.candidateProgram,
+        creative,
+        activeActorId,
+        heldKeys,
+      );
     } catch {
       return null;
     }
   }, [oriIdea, proposedStatement, history.current, activeActorId, creative, heldKeys, locale]);
+  const [intentPlan, setIntentPlan] = useState<{
+    readonly intent: OriStudioIntent;
+    readonly statements: readonly Statement[];
+    readonly preview: CandidatePreview | null;
+  } | null>(null);
+  const [prediction, setPrediction] = useState<Direction | null>(null);
+  const [predictedForRun, setPredictedForRun] = useState<Direction | null>(null);
+  const [runCount, setRunCount] = useState(0);
   const oriMotion = oriBusy
     ? "thinking"
     : oriIdea
@@ -805,6 +821,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
       setFrame(null);
       setOriIdea(null);
       setOriMessage("");
+      setIntentPlan(null);
       setError(false);
     } catch {
       setError(true);
@@ -1330,10 +1347,62 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
     }
   }
 
+  /** A goal from the closed list becomes a short reviewable sequence; nothing is applied yet. */
+  function startIntent(intent: OriStudioIntent) {
+    try {
+      const context = { actorId: activeActorId, locale, program: history.current };
+      const proposal = proposeOriStudioIntent(context, intent);
+      const review = validateOriStudioIntentProposal(context, proposal);
+      setOriIdea(null);
+      setIntentPlan({
+        intent,
+        statements: proposal.operations.flatMap((operation) =>
+          operation.type === "appendStatement" ? [operation.statement] : [],
+        ),
+        preview: previewCandidate(
+          history.current,
+          review.candidateProgram,
+          creative,
+          activeActorId,
+          heldKeys,
+        ),
+      });
+      setError(false);
+    } catch {
+      setError(true);
+    }
+  }
+
+  function decideIntent(decision: "accept" | "reject") {
+    if (!intentPlan) return;
+    if (decision === "reject") {
+      setIntentPlan(null);
+      return;
+    }
+    try {
+      const context = { actorId: activeActorId, locale, program: history.current };
+      const review = validateOriStudioIntentProposal(
+        context,
+        proposeOriStudioIntent(context, intentPlan.intent),
+      );
+      persist(
+        recordCanonicalTransaction(history, {
+          label: `Ori goal ${intentPlan.intent}`,
+          after: acceptProposal(history.current, review).program,
+        }).history,
+      );
+      reactOri("happy");
+    } catch {
+      setError(true);
+    }
+  }
+
   function play() {
     try {
       const result = runMultiActorProgram(history.current, creative, { keysDown: heldKeys });
       setRun(result);
+      setPredictedForRun(prediction);
+      setRunCount((count) => count + 1);
       setEvents([{ type: "start" }]);
       setFrame(null);
       stopKidsSounds();
@@ -1758,6 +1827,12 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
               {copy.backward}
             </button>
           </div>
+          <StudioPrediction
+            locale={locale}
+            name={actor?.name ?? ""}
+            value={prediction}
+            onChange={setPrediction}
+          />
           <div className="kids-run-controls">
             <button type="button" className="kids-button kids-primary" onClick={play}>
               {copy.run}
@@ -1787,6 +1862,22 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
               ? `${run.trace.length} ${locale === "es" ? (run.trace.length === 1 ? "bloque ejecutado" : "bloques ejecutados") : run.trace.length === 1 ? "block executed" : "blocks executed"}`
               : "—"}
           </p>
+          {run && actor ? (
+            <StudioCoach
+              key={runCount}
+              locale={locale}
+              name={actor.name}
+              facts={factsOfRun(run, activeActorId)}
+              predicted={predictedForRun}
+              reflection={reflectionFor(
+                ageBand,
+                factsOfRun(run, activeActorId),
+                script?.statements.map((statement) => statement.type) ?? [],
+                actor.name,
+                locale,
+              )}
+            />
+          ) : null}
           {run?.trace.some((entry) => entry.conditionResult !== undefined) ? (
             <p className="kids-note" role="status">
               {copy.conditionResult}:{" "}
@@ -1989,6 +2080,16 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
                   >
                     ×
                   </button>
+                </li>
+              ))}
+              {intentPlan?.statements.map((statement, index) => (
+                <li
+                  key={`intent-ghost-${index}`}
+                  className="kids-ghost-block"
+                  data-testid="ori-ghost-block"
+                >
+                  <span>{blockLabel(statement)}</span>
+                  <small>{copy.ghostNote}</small>
                 </li>
               ))}
               {oriPreview && proposedStatement ? (
@@ -3419,6 +3520,46 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
                 <KidsSprite slot="ori" expression={oriExpression} />
                 <span>{copy.idea}</span>
               </button>
+              <StudioIntentPicker
+                locale={locale}
+                intents={ORI_STUDIO_INTENTS}
+                disabled={oriBusy}
+                onPick={startIntent}
+              />
+              {intentPlan ? (
+                <div className="kids-ori-proposal" data-testid="intent-card">
+                  <p>
+                    {locale === "es"
+                      ? `Ori propone ${intentPlan.statements.length} bloques para lo que querés lograr.`
+                      : `Ori suggests ${intentPlan.statements.length} blocks for your goal.`}
+                  </p>
+                  {intentPlan.preview ? (
+                    <p className="kids-note" data-testid="ori-evidence">
+                      {copy.evidenceNow} ({intentPlan.preview.from.x}, {intentPlan.preview.from.y})
+                      · {intentPlan.preview.stepsBefore} {copy.evidenceBlocks}. {copy.evidenceWith}{" "}
+                      ({intentPlan.preview.to.x}, {intentPlan.preview.to.y}) ·{" "}
+                      {intentPlan.preview.stepsAfter} {copy.evidenceBlocks}.
+                      {intentPlan.preview.outcome !== "completed" ? ` ${copy.evidenceStops}` : ""}
+                    </p>
+                  ) : null}
+                  <div>
+                    <button
+                      type="button"
+                      className="kids-button kids-primary"
+                      onClick={() => decideIntent("accept")}
+                    >
+                      {copy.use}
+                    </button>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      onClick={() => decideIntent("reject")}
+                    >
+                      {copy.reject}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
               {!oriBusy && oriMessage && !oriIdea ? (
                 <p role="status" className="kids-note">
                   {oriMessage}

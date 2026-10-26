@@ -515,6 +515,93 @@ test("Ori's idea is previewed as a ghost block with real runtime evidence before
   expect(violations.map((entry) => entry.id)).toEqual([]);
 });
 
+async function openStudio(page: import("@playwright/test").Page, band: string) {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate((ageBand) => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem("agorix.kids.flags.v1", JSON.stringify(["ageBands", "customImages"]));
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+    localStorage.setItem(
+      "agorix.kids.adults.v1",
+      JSON.stringify({ oriSuggestions: true, readAloud: true, dailyLimitMinutes: 30, ageBand }),
+    );
+  }, band);
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
+}
+
+test("a goal from the closed list becomes several ghost blocks and only changes the program when used", async ({
+  page,
+}) => {
+  await openStudio(page, "6-8");
+  await page.getByRole("button", { name: "Hacer un cuadrado" }).click();
+  await expect(page.getByTestId("intent-card")).toContainText("Ori propone 8 bloques");
+  await expect(page.getByTestId("ori-ghost-block")).toHaveCount(8);
+  await expect(page.locator(".kids-program-block")).toHaveCount(0);
+  await expect(page.getByTestId("ori-evidence")).toContainText("Con la idea terminaría en");
+  await page.getByTestId("intent-card").getByRole("button", { name: "No usar" }).click();
+  await expect(page.getByTestId("ori-ghost-block")).toHaveCount(0);
+  await expect(page.locator(".kids-program-block")).toHaveCount(0);
+  await page.getByRole("button", { name: "Ir y volver" }).click();
+  await page.getByTestId("intent-card").getByRole("button", { name: "Usar idea" }).click();
+  await expect(page.getByTestId("ori-ghost-block")).toHaveCount(0);
+  await expect(page.locator(".kids-program-block")).toHaveCount(6);
+  await page.getByRole("button", { name: "Deshacer" }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(0);
+  const violations = (
+    await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
+  ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");
+  expect(violations.map((entry) => entry.id)).toEqual([]);
+});
+
+test("Ori checks a prediction and explains the run from its trace, by age band", async ({
+  page,
+}) => {
+  await openStudio(page, "6-8");
+  await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  await page.getByRole("radio", { name: "a la izquierda" }).check();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  const coach = page.getByRole("region", { name: "Qué pasó" });
+  await expect(coach).toContainText("ejecutó 1 bloque");
+  await expect(page.getByTestId("coach-prediction")).toContainText("pero fue a la derecha");
+  await expect(coach.getByRole("group", { name: "¿Pasó lo que esperabas?" })).toBeVisible();
+  await coach.getByRole("button", { name: "No", exact: true }).click();
+  await expect(page.getByTestId("coach-reply")).toContainText("Miremos juntos");
+  // Without a prediction nothing is judged.
+  await page.getByRole("button", { name: "No sé, probemos" }).click();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByTestId("coach-prediction")).toHaveCount(0);
+});
+
+for (const [band, question] of [
+  ["9-12", "¿Qué bloque movió a"],
+  ["13+", "¿Cuántos bloques se ejecutaron en total?"],
+] as const) {
+  test(`the reflection question for ${band} comes from the run`, async ({ page }) => {
+    await openStudio(page, band);
+    await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+    await page.getByRole("button", { name: "+ Girar a la derecha" }).click();
+    await page.getByRole("button", { name: "Jugar", exact: true }).click();
+    const coach = page.getByRole("region", { name: "Qué pasó" });
+    await expect(coach).toContainText(question);
+    if (band === "9-12") {
+      await coach.getByRole("button", { name: "Girar", exact: true }).click();
+      await expect(page.getByTestId("coach-reply")).toContainText("se movió con");
+      await coach.getByRole("button", { name: "Mover", exact: true }).click();
+      await expect(page.getByTestId("coach-reply")).toContainText("movió a");
+    } else {
+      await coach.getByRole("button", { name: "2", exact: true }).click();
+      await expect(page.getByTestId("coach-reply")).toContainText("Eso es");
+    }
+  });
+}
+
 test("free scene grows and shrinks a character and keeps the size blocks after reopening", async ({
   page,
 }) => {
