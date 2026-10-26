@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import { KIDS_AVATARS, KIDS_WORLDS, type KidsAvatar, type KidsWorld } from "../kidsState.js";
 import { addKidsCustom, loadKidsCustom, type KidsCustomKind } from "../kidsCustom.js";
 import { KidsImageError, processKidsImage } from "../kidsImage.js";
@@ -10,6 +10,7 @@ import { KIDS_WORLD_STYLES } from "../worlds.js";
 import type { Locale } from "../../i18n.js";
 import { ListenButton } from "./ListenButton.js";
 import { KidsDrawArt } from "./KidsDrawArt.js";
+import { loadCreateSelection, saveCreateSelection, studioStart } from "../kidsCreateSelection.js";
 import {
   KIDS_GALLERY_BACKDROPS,
   KIDS_GALLERY_CATEGORIES,
@@ -17,7 +18,9 @@ import {
   galleryBackdropName,
   galleryCategoryName,
   galleryCharacterName,
+  type KidsGalleryBackdropId,
   type KidsGalleryCategory,
+  type KidsGalleryCharacterId,
 } from "../kidsGallery.js";
 
 interface Props {
@@ -29,7 +32,10 @@ interface Props {
   readonly onAvatar: (avatar: KidsAvatar) => void;
   readonly onWorld: (world: KidsWorld) => void;
   readonly onStart: (world: KidsWorldRef, avatar: KidsAvatarRef) => void;
-  readonly onStudio: () => void;
+  readonly onStudio: (
+    characterId: KidsGalleryCharacterId,
+    backdropId: KidsGalleryBackdropId,
+  ) => void;
 }
 
 export function CreateScreen({
@@ -48,8 +54,17 @@ export function CreateScreen({
   const [custom, setCustom] = useState(() => loadKidsCustom());
   const [imageMessage, setImageMessage] = useState("");
   const [drawingKind, setDrawingKind] = useState<KidsCustomKind | null>(null);
-  const [chosenAvatar, setChosenAvatar] = useState<KidsAvatarRef>(emojiSlot(avatar));
-  const [chosenWorld, setChosenWorld] = useState<KidsWorldRef>(builtinWorld(world));
+  // One selection for everything Crear can make; it is remembered on this device.
+  const [saved] = useState(() => loadCreateSelection());
+  const [chosenAvatar, setChosenAvatar] = useState<KidsAvatarRef>(
+    () => saved?.avatar ?? emojiSlot(avatar),
+  );
+  const [chosenWorld, setChosenWorld] = useState<KidsWorldRef>(
+    () => saved?.world ?? builtinWorld(world),
+  );
+  useEffect(() => {
+    saveCreateSelection({ avatar: chosenAvatar, world: chosenWorld });
+  }, [chosenAvatar, chosenWorld]);
   const [characterCategory, setCharacterCategory] = useState<KidsGalleryCategory>("all");
   const [backdropCategory, setBackdropCategory] = useState<KidsGalleryCategory>("all");
   const [characterSearch, setCharacterSearch] = useState("");
@@ -143,9 +158,29 @@ export function CreateScreen({
               : "Create with several characters. Each can have its own program."}
           </p>
         </div>
-        <button type="button" className="kids-button kids-primary" onClick={onStudio}>
+        <button
+          type="button"
+          className="kids-button kids-primary"
+          onClick={() => {
+            const start = studioStart({ avatar: chosenAvatar, world: chosenWorld });
+            onStudio(start.characterId, start.backdropId);
+          }}
+        >
           {locale === "es" ? "Crear escena" : "Create scene"}
         </button>
+        <p className="kids-note" data-testid="studio-start-note">
+          {(() => {
+            const start = studioStart({ avatar: chosenAvatar, world: chosenWorld });
+            const name = galleryCharacterName(start.characterId, locale);
+            if (start.characterIsChosen)
+              return locale === "es"
+                ? `La escena empieza con ${name}.`
+                : `The scene starts with ${name}.`;
+            return locale === "es"
+              ? `Elegí un personaje de la galería para empezar con él. Si no, empieza con ${name}.`
+              : `Pick a character from the gallery to start with it. Otherwise it starts with ${name}.`;
+          })()}
+        </p>
       </div>
       <h2>{t("createChar")}</h2>
       <div className="kids-create-choices">
