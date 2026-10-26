@@ -47,6 +47,15 @@ export type {
   SetPenColorStatement,
   SetPenSizeStatement,
   ClearPenStatement,
+  MusicBeats,
+  MusicDrum,
+  MusicInstrument,
+  PlayNoteStatement,
+  PlayDrumStatement,
+  SetInstrumentStatement,
+  SetTempoStatement,
+  SetPitchStatement,
+  SetPanStatement,
   KeyDownExpression,
   RepeatUntilStatement,
   Script,
@@ -64,7 +73,14 @@ export type {
   BounceOnEdgeStatement,
   VariableExpression,
 } from "./schema.js";
-export { EXTENSION_IDS, PEN_COLORS, SCHEMA_VERSION } from "./schema.js";
+export {
+  EXTENSION_IDS,
+  MUSIC_BEATS,
+  MUSIC_DRUMS,
+  MUSIC_INSTRUMENTS,
+  PEN_COLORS,
+  SCHEMA_VERSION,
+} from "./schema.js";
 export { paramIdentifiers, procedureIdentifiers } from "./procedures.js";
 export type {
   ProjectActor,
@@ -87,6 +103,12 @@ export {
   PROCEDURE_PARAMS_MAX,
   EXTENSIONS_MAX,
   PEN_SIZE_MAX,
+  MUSIC_NOTE_MIN,
+  MUSIC_NOTE_MAX,
+  MUSIC_TEMPO_MIN,
+  MUSIC_TEMPO_MAX,
+  MUSIC_PITCH_MAX,
+  MUSIC_PAN_MAX,
   EVENT_KEY_MAX_LENGTH,
   EVENT_MESSAGE_MAX_LENGTH,
   LOOKS_TEXT_MAX_LENGTH,

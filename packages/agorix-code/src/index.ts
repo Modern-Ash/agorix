@@ -228,6 +228,32 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
     case "setPenSize":
       writeMapped(writer, nodeId, indent + "set pen size " + statement.size + "\n");
       return;
+    case "playNote":
+      writeMapped(
+        writer,
+        nodeId,
+        indent + "play note " + statement.note + " for " + statement.beats + " beats\n",
+      );
+      return;
+    case "playDrum":
+      writeMapped(
+        writer,
+        nodeId,
+        indent + "play drum " + statement.drum + " for " + statement.beats + " beats\n",
+      );
+      return;
+    case "setInstrument":
+      writeMapped(writer, nodeId, indent + "set instrument " + statement.instrument + "\n");
+      return;
+    case "setTempo":
+      writeMapped(writer, nodeId, indent + "set tempo " + statement.bpm + "\n");
+      return;
+    case "setPitch":
+      writeMapped(writer, nodeId, indent + "set pitch " + statement.semitones + "\n");
+      return;
+    case "setPan":
+      writeMapped(writer, nodeId, indent + "set pan " + statement.pan + "\n");
+      return;
     case "goToLayer":
       writeMapped(writer, nodeId, indent + "go to " + statement.layer + " layer\n");
       return;

@@ -10,6 +10,9 @@ import {
   type ProcedureParamId,
   type ProgramList,
   type ExtensionId,
+  type MusicBeats,
+  type MusicDrum,
+  type MusicInstrument,
   type PenColor,
   ProgramVariable,
   type ProjectProgram,
@@ -40,6 +43,12 @@ export type BlockType =
   | "pen_up"
   | "pen_set_color"
   | "pen_set_size"
+  | "music_play_note"
+  | "music_play_drum"
+  | "music_set_instrument"
+  | "music_set_tempo"
+  | "music_set_pitch"
+  | "music_set_pan"
   | "pen_clear"
   | "procedures_call"
   | "procedures_param"
@@ -515,6 +524,29 @@ function statementFromBlock(
       return { type: "setPenColor", color: stringField(block, "color", path) as PenColor };
     case "pen_set_size":
       return { type: "setPenSize", size: numberField(block, "size", path) };
+    case "music_play_note":
+      return {
+        type: "playNote",
+        note: numberField(block, "note", path),
+        beats: numberField(block, "beats", path) as MusicBeats,
+      };
+    case "music_play_drum":
+      return {
+        type: "playDrum",
+        drum: stringField(block, "drum", path) as MusicDrum,
+        beats: numberField(block, "beats", path) as MusicBeats,
+      };
+    case "music_set_instrument":
+      return {
+        type: "setInstrument",
+        instrument: stringField(block, "instrument", path) as MusicInstrument,
+      };
+    case "music_set_tempo":
+      return { type: "setTempo", bpm: numberField(block, "bpm", path) };
+    case "music_set_pitch":
+      return { type: "setPitch", semitones: numberField(block, "semitones", path) };
+    case "music_set_pan":
+      return { type: "setPan", pan: numberField(block, "pan", path) };
     case "looks_go_to_layer": {
       const layer = stringField(block, "layer", path);
       if (layer !== "front" && layer !== "back") {
@@ -898,6 +930,26 @@ function statementToBlock(
       return { id, type: "pen_set_color", fields: { color: statement.color } };
     case "setPenSize":
       return { id, type: "pen_set_size", fields: { size: statement.size } };
+    case "playNote":
+      return {
+        id,
+        type: "music_play_note",
+        fields: { note: statement.note, beats: statement.beats },
+      };
+    case "playDrum":
+      return {
+        id,
+        type: "music_play_drum",
+        fields: { drum: statement.drum, beats: statement.beats },
+      };
+    case "setInstrument":
+      return { id, type: "music_set_instrument", fields: { instrument: statement.instrument } };
+    case "setTempo":
+      return { id, type: "music_set_tempo", fields: { bpm: statement.bpm } };
+    case "setPitch":
+      return { id, type: "music_set_pitch", fields: { semitones: statement.semitones } };
+    case "setPan":
+      return { id, type: "music_set_pan", fields: { pan: statement.pan } };
     case "goToLayer":
       return { id, type: "looks_go_to_layer", fields: { layer: statement.layer } };
     case "callProcedure":

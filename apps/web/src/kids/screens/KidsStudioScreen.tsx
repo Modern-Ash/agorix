@@ -37,7 +37,16 @@ import {
   type Direction,
 } from "../kidsStudioCoach.js";
 import { StudioCoach, StudioIntentPicker, StudioPrediction } from "./KidsStudioCoach.js";
-import { PEN_COLORS, type PenColor } from "@agorix/program-model";
+import {
+  MUSIC_BEATS,
+  MUSIC_DRUMS,
+  MUSIC_INSTRUMENTS,
+  PEN_COLORS,
+  type MusicBeats,
+  type MusicDrum,
+  type MusicInstrument,
+  type PenColor,
+} from "@agorix/program-model";
 import type {
   Expression,
   Procedure,
@@ -60,6 +69,7 @@ import { KIDS_SOUNDS } from "../kidsSoundLibrary.js";
 import { processKidsImage } from "../kidsImage.js";
 import { useKidsFlag } from "../kidsFlags.js";
 import { playKidsSound, stopKidsSounds } from "../kidsSoundPlayer.js";
+import { noteName, playKidsMusic, stopKidsMusic } from "../kidsMusic.js";
 import {
   addStudioActor,
   addStudioList,
@@ -73,7 +83,11 @@ import {
   STUDIO_EDGE_CONDITION,
   STUDIO_NUMBER_CHOICES,
   STUDIO_NUMBER_DEFAULTS,
+  STUDIO_NOTES,
+  STUDIO_PANS,
   STUDIO_PEN_SIZES,
+  STUDIO_PITCHES,
+  STUDIO_TEMPOS,
   studioBlockHasNumberSlot,
   studioBlockNumber,
   studioProcedureNumberUnits,
@@ -244,6 +258,17 @@ const COPY = {
     penColor: "Color del lápiz",
     penSize: "Grosor del lápiz",
     clearPen: "Borrar los trazos",
+    musicTitle: "Música",
+    playNote: "Tocar nota",
+    playDrum: "Tocar percusión",
+    setInstrument: "Instrumento",
+    setTempo: "Velocidad",
+    setPitch: "Tono",
+    setPan: "Lado del sonido",
+    beatsLabel: "tiempos",
+    noteLabel: "Nota",
+    drums: { kick: "bombo", snare: "redoblante", hat: "platillo", clap: "palmas" },
+    instruments: { piano: "piano", flute: "flauta", guitar: "guitarra", bell: "campanas" },
     penColors: {
       dark: "oscuro",
       red: "rojo",
@@ -437,6 +462,17 @@ const COPY = {
     penColor: "Pen color",
     penSize: "Pen size",
     clearPen: "Clear drawing lines",
+    musicTitle: "Music",
+    playNote: "Play note",
+    playDrum: "Play drum",
+    setInstrument: "Instrument",
+    setTempo: "Speed",
+    setPitch: "Pitch",
+    setPan: "Sound side",
+    beatsLabel: "beats",
+    noteLabel: "Note",
+    drums: { kick: "kick", snare: "snare", hat: "hi-hat", clap: "clap" },
+    instruments: { piano: "piano", flute: "flute", guitar: "guitar", bell: "bells" },
     penColors: {
       dark: "dark",
       red: "red",
@@ -687,6 +723,14 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
   const [penColor, setPenColor] = useState<PenColor>("dark");
   const [penSize, setPenSize] = useState(8);
   const penEnabled = useKidsFlag("extensionPen");
+  const musicEnabled = useKidsFlag("extensionMusic");
+  const [musicNote, setMusicNote] = useState(60);
+  const [musicBeats, setMusicBeats] = useState<MusicBeats>(1);
+  const [musicDrum, setMusicDrum] = useState<MusicDrum>("kick");
+  const [musicInstrument, setMusicInstrument] = useState<MusicInstrument>("piano");
+  const [musicTempo, setMusicTempo] = useState(120);
+  const [musicPitch, setMusicPitch] = useState(0);
+  const [musicPan, setMusicPan] = useState(0);
   const [dataName, setDataName] = useState("");
   const [dataValue, setDataValue] = useState(1);
   const [mathFn, setMathFn] = useState<"abs" | "round" | "floor" | "ceiling">("round");
@@ -1528,6 +1572,18 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
         return `${copy.penColor}: ${copy.penColors[statement.color]}`;
       case "setPenSize":
         return `${copy.penSize}: ${statement.size}`;
+      case "playNote":
+        return `${copy.playNote}: ${noteName(statement.note, locale)} · ${statement.beats} ${copy.beatsLabel}`;
+      case "playDrum":
+        return `${copy.playDrum}: ${copy.drums[statement.drum]} · ${statement.beats} ${copy.beatsLabel}`;
+      case "setInstrument":
+        return `${copy.setInstrument}: ${copy.instruments[statement.instrument]}`;
+      case "setTempo":
+        return `${copy.setTempo}: ${statement.bpm}`;
+      case "setPitch":
+        return `${copy.setPitch}: ${statement.semitones}`;
+      case "setPan":
+        return `${copy.setPan}: ${statement.pan}`;
       case "callProcedure": {
         const procedure = script?.procedures?.find((item) => item.id === statement.procedureId);
         const numbers = (procedure?.params ?? [])
@@ -1817,8 +1873,11 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
       setEvents([{ type: "start" }]);
       setFrame(null);
       stopKidsSounds();
+      stopKidsMusic();
+      // Music pack: a timeline from the trace; plain sounds below only play without it.
+      const timeline = playKidsMusic(result.trace);
       let soundsPlayed = 0;
-      for (const entry of result.trace) {
+      for (const entry of timeline > 0 ? [] : result.trace) {
         if (entry.statementType === "stopSounds") {
           stopKidsSounds();
           continue;
@@ -3431,6 +3490,144 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                   onClick={() => add({ type: "clearPen" })}
                 >
                   + {copy.clearPen}
+                </button>
+              </div>
+            ) : null}
+            {musicEnabled ? (
+              <div role="group" aria-label={copy.musicTitle}>
+                <strong>{copy.musicTitle}</strong>
+                <label>
+                  {copy.noteLabel}{" "}
+                  <select
+                    value={musicNote}
+                    onChange={(event) => setMusicNote(Number(event.target.value))}
+                  >
+                    {STUDIO_NOTES.map((note) => (
+                      <option key={note} value={note}>
+                        {noteName(note, locale)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  {copy.beatsLabel}{" "}
+                  <select
+                    value={musicBeats}
+                    onChange={(event) => setMusicBeats(Number(event.target.value) as MusicBeats)}
+                  >
+                    {MUSIC_BEATS.map((beats) => (
+                      <option key={beats} value={beats}>
+                        {beats}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  className="kids-button"
+                  onClick={() => add({ type: "playNote", note: musicNote, beats: musicBeats })}
+                >
+                  + {copy.playNote}
+                </button>
+                <label>
+                  {copy.playDrum}{" "}
+                  <select
+                    value={musicDrum}
+                    onChange={(event) => setMusicDrum(event.target.value as MusicDrum)}
+                  >
+                    {MUSIC_DRUMS.map((drum) => (
+                      <option key={drum} value={drum}>
+                        {copy.drums[drum]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  className="kids-button"
+                  onClick={() => add({ type: "playDrum", drum: musicDrum, beats: musicBeats })}
+                >
+                  + {copy.playDrum}
+                </button>
+                <label>
+                  {copy.setInstrument}{" "}
+                  <select
+                    value={musicInstrument}
+                    onChange={(event) => setMusicInstrument(event.target.value as MusicInstrument)}
+                  >
+                    {MUSIC_INSTRUMENTS.map((instrument) => (
+                      <option key={instrument} value={instrument}>
+                        {copy.instruments[instrument]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  className="kids-button"
+                  onClick={() => add({ type: "setInstrument", instrument: musicInstrument })}
+                >
+                  + {copy.setInstrument}
+                </button>
+                <label>
+                  {copy.setTempo}{" "}
+                  <select
+                    value={musicTempo}
+                    onChange={(event) => setMusicTempo(Number(event.target.value))}
+                  >
+                    {STUDIO_TEMPOS.map((bpm) => (
+                      <option key={bpm} value={bpm}>
+                        {bpm}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  className="kids-button"
+                  onClick={() => add({ type: "setTempo", bpm: musicTempo })}
+                >
+                  + {copy.setTempo}
+                </button>
+                <label>
+                  {copy.setPitch}{" "}
+                  <select
+                    value={musicPitch}
+                    onChange={(event) => setMusicPitch(Number(event.target.value))}
+                  >
+                    {STUDIO_PITCHES.map((semitones) => (
+                      <option key={semitones} value={semitones}>
+                        {semitones}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  className="kids-button"
+                  onClick={() => add({ type: "setPitch", semitones: musicPitch })}
+                >
+                  + {copy.setPitch}
+                </button>
+                <label>
+                  {copy.setPan}{" "}
+                  <select
+                    value={musicPan}
+                    onChange={(event) => setMusicPan(Number(event.target.value))}
+                  >
+                    {STUDIO_PANS.map((pan) => (
+                      <option key={pan} value={pan}>
+                        {pan}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  className="kids-button"
+                  onClick={() => add({ type: "setPan", pan: musicPan })}
+                >
+                  + {copy.setPan}
                 </button>
               </div>
             ) : null}

@@ -317,3 +317,10 @@ Each iteration needs an issue with an observable child journey, success and fail
 - La galería pasa de 12 a 72 sonidos en 8 categorías (Efectos, Música, Naturaleza, Animales, Vehículos, Magia, Avisos, Acciones) con búsqueda sin acentos ni mayúsculas, en español e inglés, y preescucha.
 - **Licencias:** en vez de grabaciones CC0 de terceros, los sonidos son presets sintetizados propios (un oscilador acotado, ≤0.5 s, definidos en `kidsSoundCatalog.ts`). No hay licencias ajenas que auditar, funcionan sin conexión y entran en el bundle sin assets binarios. Sonidos grabados o importados quedan para SND-02.
 - Los ids `kids:*` son estables; los proyectos anteriores siguen abriendo igual.
+
+## Música y efectos de sonido (E6 / SND-04 y SND-05)
+
+- Paquete de extensión `music` (ADR 0011), activable con el flag `extensionMusic` (por defecto activo): tocar nota, tocar percusión, instrumento, velocidad (tempo), tono y lado del sonido (pan). Todo son listas cerradas y números enteros chicos; no hay grabación ni red.
+- Reproducción determinista: la traza del runtime lleva `audio` con instrumento, tono, pan y duración (`beats × 60 / tempo`). El parlante programa las entradas una tras otra (cada nota espera a que termine la anterior), con un tope de 64 eventos y 30 s. Un proyecto sin música suena exactamente igual que antes.
+- Los seis bloques están en las cuatro proyecciones (Agorix Code, Python, TypeScript, Java), en el adaptador de bloques y en el Estudio, con corpus Java compilado con `javac`.
+- Límites: los sonidos de la galería (SND-01) no se alargan con la nota; el tono y el lado afectan también a `playSound` desde el primer bloque de música. Ori todavía no propone melodías (SND-06).

@@ -46,6 +46,12 @@ import {
   setEffectWorld,
   changeEffectWorld,
   clearEffectsWorld,
+  audioPlayback,
+  setInstrumentWorld,
+  setTempoWorld,
+  setPitchWorld,
+  setPanWorld,
+  type AudioPlayback,
   penDownWorld,
   penUpWorld,
   setPenColorWorld,
@@ -110,6 +116,8 @@ export interface ExecutionTraceEntry {
   readonly statementType: Statement["type"];
   /** Emitted only for playSound, so audio playback follows executed statements exactly. */
   readonly soundId?: string;
+  /** Music pack: how a playSound, note or drum sounds, from the world at that moment. */
+  readonly audio?: AudioPlayback;
   /** Deterministic outcome of an if condition, available for learner-facing evidence. */
   readonly conditionResult?: boolean;
   /** The numbers a custom block call received; present only for calls to blocks that take numbers. */
@@ -475,6 +483,7 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
   const before = cloneWorldState(state.world);
   let conditionResult: boolean | undefined;
   let callArgs: readonly number[] | undefined;
+  let audio: AudioPlayback | undefined;
   recordObservation(state, {
     kind: "statement-start",
     step: state.stepsUsed + 1,
@@ -627,6 +636,27 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
     case "stopSounds":
       state.world = stopSoundsWorld(state.world);
       break;
+    case "playNote":
+    case "playDrum":
+      audio = audioPlayback(
+        state.world,
+        statement.type === "playNote"
+          ? { note: statement.note, beats: statement.beats }
+          : { drum: statement.drum, beats: statement.beats },
+      );
+      break;
+    case "setInstrument":
+      state.world = setInstrumentWorld(state.world, statement.instrument);
+      break;
+    case "setTempo":
+      state.world = setTempoWorld(state.world, statement.bpm);
+      break;
+    case "setPitch":
+      state.world = setPitchWorld(state.world, statement.semitones);
+      break;
+    case "setPan":
+      state.world = setPanWorld(state.world, statement.pan);
+      break;
     case "setVolume":
       state.world = setVolumeWorld(state.world, statement.volume);
       break;
@@ -755,6 +785,11 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
     path: nodeId,
     statementType: statement.type,
     ...(statement.type === "playSound" ? { soundId: statement.soundId } : {}),
+    ...(statement.type === "playSound" && state.world.music
+      ? { audio: audioPlayback(state.world, {}) }
+      : audio
+        ? { audio }
+        : {}),
     ...(conditionResult === undefined ? {} : { conditionResult }),
     ...(callArgs === undefined ? {} : { args: callArgs }),
     worldBefore: before,

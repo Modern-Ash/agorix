@@ -81,6 +81,12 @@ const statements: Statement[] = [
   { type: "setPenSize", size: 8 },
   { type: "penUp" },
   { type: "clearPen" },
+  { type: "playNote", note: 60, beats: 1 },
+  { type: "playDrum", drum: "snare", beats: 0.5 },
+  { type: "setInstrument", instrument: "flute" },
+  { type: "setTempo", bpm: 100 },
+  { type: "setPitch", semitones: -3 },
+  { type: "setPan", pan: 40 },
   { type: "callProcedure", procedureId: "p", args: [num(40), num(3)] },
   { type: "callProcedure", procedureId: "q" },
   { type: "repeat", count: 2, body: [{ type: "move", steps: 20 }] },
@@ -158,7 +164,7 @@ const statements: Statement[] = [
 
 const everything: ProjectProgram = {
   schema: SCHEMA_VERSION,
-  extensions: ["pen"],
+  extensions: ["pen", "music"],
   variables: [{ id: "v", name: "Puntos", initialValue: 0, visible: true }],
   lists: [{ id: "l", name: "Tesoros", initialItems: [1, 2.5], visible: true }],
   scripts: [

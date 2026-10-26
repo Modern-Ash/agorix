@@ -1,4 +1,11 @@
-import { EXTENSION_IDS, PEN_COLORS, SCHEMA_VERSION } from "./schema.js";
+import {
+  EXTENSION_IDS,
+  MUSIC_BEATS,
+  MUSIC_DRUMS,
+  MUSIC_INSTRUMENTS,
+  PEN_COLORS,
+  SCHEMA_VERSION,
+} from "./schema.js";
 import type {
   ExtensionId,
   PenColor,
@@ -18,6 +25,12 @@ import type {
 import {
   EXTENSIONS_MAX,
   PEN_SIZE_MAX,
+  MUSIC_NOTE_MIN,
+  MUSIC_NOTE_MAX,
+  MUSIC_TEMPO_MIN,
+  MUSIC_TEMPO_MAX,
+  MUSIC_PITCH_MAX,
+  MUSIC_PAN_MAX,
   MAX_NESTING_DEPTH,
   EVENT_KEY_MAX_LENGTH,
   EVENT_MESSAGE_MAX_LENGTH,
@@ -508,6 +521,60 @@ function validateStatement(
       }
       return { type: "setPenSize", size: input.size };
     }
+    case "playNote": {
+      state.usedExtensions.add("music");
+      const note = wholeNumber(input.note, MUSIC_NOTE_MIN, MUSIC_NOTE_MAX, `${path}.note`);
+      return { type: "playNote", note, beats: musicBeats(input.beats, path) };
+    }
+    case "playDrum": {
+      state.usedExtensions.add("music");
+      if (!(MUSIC_DRUMS as readonly unknown[]).includes(input.drum)) {
+        fail("INVALID_FIELD_TYPE", `${path}.drum`, "expected a drum", input.drum);
+      }
+      return {
+        type: "playDrum",
+        drum: input.drum as (typeof MUSIC_DRUMS)[number],
+        beats: musicBeats(input.beats, path),
+      };
+    }
+    case "setInstrument": {
+      state.usedExtensions.add("music");
+      if (!(MUSIC_INSTRUMENTS as readonly unknown[]).includes(input.instrument)) {
+        fail(
+          "INVALID_FIELD_TYPE",
+          `${path}.instrument`,
+          "expected an instrument",
+          input.instrument,
+        );
+      }
+      return {
+        type: "setInstrument",
+        instrument: input.instrument as (typeof MUSIC_INSTRUMENTS)[number],
+      };
+    }
+    case "setTempo":
+      state.usedExtensions.add("music");
+      return {
+        type: "setTempo",
+        bpm: wholeNumber(input.bpm, MUSIC_TEMPO_MIN, MUSIC_TEMPO_MAX, `${path}.bpm`),
+      };
+    case "setPitch":
+      state.usedExtensions.add("music");
+      return {
+        type: "setPitch",
+        semitones: wholeNumber(
+          input.semitones,
+          -MUSIC_PITCH_MAX,
+          MUSIC_PITCH_MAX,
+          `${path}.semitones`,
+        ),
+      };
+    case "setPan":
+      state.usedExtensions.add("music");
+      return {
+        type: "setPan",
+        pan: wholeNumber(input.pan, -MUSIC_PAN_MAX, MUSIC_PAN_MAX, `${path}.pan`),
+      };
     case "goToLayer":
       if (input.layer !== "front" && input.layer !== "back") {
         fail("INVALID_FIELD_TYPE", `${path}.layer`, 'expected "front" or "back"', input.layer);
@@ -1021,6 +1088,20 @@ export function validateProgram(input: unknown): ProjectProgram {
     ...(extensions === undefined ? {} : { extensions }),
     scripts,
   };
+}
+
+function wholeNumber(value: unknown, min: number, max: number, path: string): number {
+  if (typeof value !== "number" || !Number.isInteger(value) || value < min || value > max) {
+    fail("INVALID_FIELD_TYPE", path, `expected a whole number ${min} to ${max}`, value);
+  }
+  return value;
+}
+
+function musicBeats(value: unknown, path: string): (typeof MUSIC_BEATS)[number] {
+  if (!(MUSIC_BEATS as readonly unknown[]).includes(value)) {
+    fail("INVALID_FIELD_TYPE", `${path}.beats`, "expected 0.25, 0.5, 1 or 2 beats", value);
+  }
+  return value as (typeof MUSIC_BEATS)[number];
 }
 
 function validateExtensions(
