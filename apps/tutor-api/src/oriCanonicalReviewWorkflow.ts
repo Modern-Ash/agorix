@@ -29,9 +29,17 @@ export function createOriCanonicalReviewWorkflow({
   const execute=createOriCanonicalExecutionPort({world,maxSteps:100});
   const resolve=createOriPersistedEvidenceResolver({repository,execute,learningContext});
   const runOri=runOriOverride??createOriHostEvidenceAdapter({oriRoot});
-  const ticketProjects=new Map<string,{owner:string;projectId:string;revision:number;hash:string}>();
+  const ticketProjects=new Map<string,{owner:string;projectId:string;revision:number;hash:string;created:number}>();
+  const TICKET_TTL_MS=5*60*1000;
+  const MAX_BINDINGS=100;
+  const purgeBindings=()=>{
+    const now=Date.now();
+    for(const [id,binding] of ticketProjects)
+      if(now-binding.created>=TICKET_TTL_MS)ticketProjects.delete(id);
+  };
   const registry=createOriReviewRegistry({
     currentRevision:async id=>{
+      purgeBindings();
       const binding=ticketProjects.get(id);
       if(!binding)return "";
       try{
@@ -54,23 +62,27 @@ export function createOriCanonicalReviewWorkflow({
   });
   return Object.freeze({
     async propose(owner:string,projectId:string){
+      purgeBindings();
+      if(ticketProjects.size>=MAX_BINDINGS)return null;
       const ticket=await service.propose(owner,projectId);
       if(ticket){
         try{
           const record=await repository.get(owner,projectId);
           if(record.ownerId!==owner || record.projectId!==projectId ||
              !/^[a-f0-9]{64}$/.test(record.semanticHash))return null;
-          ticketProjects.set(ticket.id,{owner,projectId,revision:record.revision,hash:record.semanticHash});
+          ticketProjects.set(ticket.id,{owner,projectId,revision:record.revision,hash:record.semanticHash,created:Date.now()});
         }catch{return null;}
       }
       return ticket;
     },
     async decide(owner:string,projectId:string,ticketId:string,decision:"accept"|"edit"|"reject"){
+      purgeBindings();
       const ticket=await service.decide(owner,projectId,ticketId,decision);
       if(ticket && ticket.status!=="pending")ticketProjects.delete(ticketId);
       return ticket;
     },
     async read(owner:string,projectId:string,ticketId:string){
+      purgeBindings();
       // Revalidate project access; the registry's owner/project match alone
       // is not proof that ownership remains valid.
       try{
