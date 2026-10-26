@@ -321,8 +321,49 @@ export interface ClearPenStatement {
   readonly type: "clearPen";
 }
 
+/** The music extension (ADR 0011): closed lists and small whole numbers, so a tune stays tiny. */
+export const MUSIC_INSTRUMENTS = ["piano", "flute", "guitar", "bell"] as const;
+export type MusicInstrument = (typeof MUSIC_INSTRUMENTS)[number];
+export const MUSIC_DRUMS = ["kick", "snare", "hat", "clap"] as const;
+export type MusicDrum = (typeof MUSIC_DRUMS)[number];
+export const MUSIC_BEATS = [0.25, 0.5, 1, 2] as const;
+export type MusicBeats = (typeof MUSIC_BEATS)[number];
+
+export interface PlayNoteStatement {
+  readonly type: "playNote";
+  /** MIDI note number, C3 (48) to C6 (84). */
+  readonly note: number;
+  readonly beats: MusicBeats;
+}
+
+export interface PlayDrumStatement {
+  readonly type: "playDrum";
+  readonly drum: MusicDrum;
+  readonly beats: MusicBeats;
+}
+
+export interface SetInstrumentStatement {
+  readonly type: "setInstrument";
+  readonly instrument: MusicInstrument;
+}
+
+export interface SetTempoStatement {
+  readonly type: "setTempo";
+  readonly bpm: number;
+}
+
+export interface SetPitchStatement {
+  readonly type: "setPitch";
+  readonly semitones: number;
+}
+
+export interface SetPanStatement {
+  readonly type: "setPan";
+  readonly pan: number;
+}
+
 /** First-party extension packs a project may use; each needs its own ADR 0011 review. */
-export const EXTENSION_IDS = ["pen"] as const;
+export const EXTENSION_IDS = ["pen", "music"] as const;
 export type ExtensionId = (typeof EXTENSION_IDS)[number];
 
 export interface ClearEffectsStatement {
@@ -497,6 +538,12 @@ export type Statement =
   | SetPenColorStatement
   | SetPenSizeStatement
   | ClearPenStatement
+  | PlayNoteStatement
+  | PlayDrumStatement
+  | SetInstrumentStatement
+  | SetTempoStatement
+  | SetPitchStatement
+  | SetPanStatement
   | SayStatement
   | ThinkStatement
   | ShowStatement

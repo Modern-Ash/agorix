@@ -68,6 +68,12 @@ export const JAVA_SUPPORT_API = [
   "setPenColor",
   "setPenSize",
   "clearPen",
+  "playNote",
+  "playDrum",
+  "setInstrument",
+  "setTempo",
+  "setPitch",
+  "setPan",
   "touchingGoal",
   "touchingActor",
   "touchingStageEdge",
@@ -122,6 +128,12 @@ export const JAVA_SUPPORT_STUB = `class Sprite {
     void setPenColor(String color) {}
     void setPenSize(double size) {}
     void clearPen() {}
+    void playNote(double note, double beats) {}
+    void playDrum(String drum, double beats) {}
+    void setInstrument(String instrument) {}
+    void setTempo(double bpm) {}
+    void setPitch(double semitones) {}
+    void setPan(double pan) {}
     boolean touchingGoal() { return false; }
     boolean touchingActor(String actor) { return false; }
     boolean touchingStageEdge(double minX, double maxX, double minY, double maxY) { return false; }
@@ -525,6 +537,18 @@ function statement(writer: Writer, node: Statement, nodeId: string, depth: numbe
       return line(`setPenColor(${literal(node.color)})`);
     case "setPenSize":
       return line(`setPenSize(${node.size})`);
+    case "playNote":
+      return line(`playNote(${node.note}, ${node.beats})`);
+    case "playDrum":
+      return line(`playDrum(${literal(node.drum)}, ${node.beats})`);
+    case "setInstrument":
+      return line(`setInstrument(${literal(node.instrument)})`);
+    case "setTempo":
+      return line(`setTempo(${node.bpm})`);
+    case "setPitch":
+      return line(`setPitch(${node.semitones})`);
+    case "setPan":
+      return line(`setPan(${node.pan})`);
     case "callProcedure": {
       const args = (node.args ?? []).map((arg, index) =>
         asNumber(writer, arg, `${nodeId}/args[${index}]`),
@@ -706,6 +730,12 @@ export const javaLanguagePack: LanguagePack = {
     "setPenColor",
     "setPenSize",
     "clearPen",
+    "playNote",
+    "playDrum",
+    "setInstrument",
+    "setTempo",
+    "setPitch",
+    "setPan",
     "callProcedure",
     "repeat",
     "repeatUntil",

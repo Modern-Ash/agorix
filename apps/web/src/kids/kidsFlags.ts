@@ -16,6 +16,7 @@ export const KIDS_V2_FEATURES = [
   "adultLink",
   "groupMode",
   "extensionPen",
+  "extensionMusic",
 ] as const;
 
 export type KidsV2Feature = (typeof KIDS_V2_FEATURES)[number];

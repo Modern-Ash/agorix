@@ -325,6 +325,27 @@ function projectStatement(
     case "setPenSize":
       write(writer, `${pad}pen.setSize(${statement.size});\n`);
       return;
+    case "playNote":
+      write(writer, `${pad}music.playNote(${statement.note}, ${statement.beats});\n`);
+      return;
+    case "playDrum":
+      write(
+        writer,
+        `${pad}music.playDrum(${JSON.stringify(statement.drum)}, ${statement.beats});\n`,
+      );
+      return;
+    case "setInstrument":
+      write(writer, `${pad}music.setInstrument(${JSON.stringify(statement.instrument)});\n`);
+      return;
+    case "setTempo":
+      write(writer, `${pad}music.setTempo(${statement.bpm});\n`);
+      return;
+    case "setPitch":
+      write(writer, `${pad}music.setPitch(${statement.semitones});\n`);
+      return;
+    case "setPan":
+      write(writer, `${pad}music.setPan(${statement.pan});\n`);
+      return;
     case "goToLayer":
       write(writer, `${pad}sprite.goToLayer(${JSON.stringify(statement.layer)});\n`);
       return;

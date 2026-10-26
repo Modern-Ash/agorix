@@ -24,10 +24,10 @@
 
 ## First candidates (each its own issue)
 
-| Pack  | Adds                                                                     | Why it fits                                                                     |
-| ----- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
-| Pen   | pen down/up, colour, size, stamp, clear: a trail kept in the world state | deterministic, local, no new input; the trail is part of the run result         |
-| Music | play a note for a beat, tempo, instrument from the bundled sound library | aligns with the sound epics (#621–#626); notes are closed numbers, no recording |
+| Pack  | Adds                                                                     | Why it fits                                                                                                                                            |
+| ----- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Pen   | pen down/up, colour, size, stamp, clear: a trail kept in the world state | deterministic, local, no new input; the trail is part of the run result                                                                                |
+| Music | play a note for a beat, tempo, instrument from the bundled sound library | aligns with the sound epics (#621–#626); notes are closed numbers, no recording. **Implemented** with drums, pitch and pan: see `PROGRAMMING_MODEL.md` |
 
 Not candidates under this ADR: Text to Speech, Translate, Video Sensing, Makey Makey, micro:bit, LEGO and any network or hardware pack.
 

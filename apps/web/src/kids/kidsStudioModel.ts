@@ -1,5 +1,8 @@
 import { recordCanonicalTransaction, type EditorHistory } from "@agorix/block-editor";
 import {
+  MUSIC_BEATS,
+  MUSIC_DRUMS,
+  MUSIC_INSTRUMENTS,
   PEN_COLORS,
   SCHEMA_VERSION,
   validateProgram,
@@ -75,6 +78,12 @@ export type StudioStatement = Extract<
       | "setPenColor"
       | "setPenSize"
       | "clearPen"
+      | "playNote"
+      | "playDrum"
+      | "setInstrument"
+      | "setTempo"
+      | "setPitch"
+      | "setPan"
       | "if";
   }
 >;
@@ -90,6 +99,14 @@ export const STUDIO_EDGE_CONDITION = {
 } as const;
 const DATA_NAME = /^[\p{L}\p{N}][\p{L}\p{N} _-]{0,19}$/u;
 const MAX_STUDIO_BLOCKS = 60;
+/** White keys from C3 to C6: the notes the Studio offers (the model accepts every semitone). */
+export const STUDIO_NOTES = Array.from({ length: 37 }, (_value, index) => 48 + index).filter(
+  (note) => [0, 2, 4, 5, 7, 9, 11].includes(note % 12),
+);
+export const STUDIO_TEMPOS = [60, 90, 120, 150, 180] as const;
+export const STUDIO_PITCHES = [-12, -5, 0, 5, 12] as const;
+export const STUDIO_PANS = [-100, -50, 0, 50, 100] as const;
+
 /** Pen widths a child can pick; the model accepts 1 to 24, the Studio offers four. */
 export const STUDIO_PEN_SIZES: readonly number[] = [4, 8, 12, 20];
 const MAX_STUDIO_CONTROL_DEPTH = 2;
@@ -342,6 +359,17 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0, arity
   if (statement.type === "setPenColor")
     return (PEN_COLORS as readonly string[]).includes(statement.color);
   if (statement.type === "setPenSize") return STUDIO_PEN_SIZES.includes(statement.size);
+  if (statement.type === "playNote")
+    return STUDIO_NOTES.includes(statement.note) && MUSIC_BEATS.includes(statement.beats);
+  if (statement.type === "playDrum")
+    return MUSIC_DRUMS.includes(statement.drum) && MUSIC_BEATS.includes(statement.beats);
+  if (statement.type === "setInstrument") return MUSIC_INSTRUMENTS.includes(statement.instrument);
+  if (statement.type === "setTempo")
+    return (STUDIO_TEMPOS as readonly number[]).includes(statement.bpm);
+  if (statement.type === "setPitch")
+    return (STUDIO_PITCHES as readonly number[]).includes(statement.semitones);
+  if (statement.type === "setPan")
+    return (STUDIO_PANS as readonly number[]).includes(statement.pan);
   if (statement.type === "goToLayer")
     return statement.layer === "front" || statement.layer === "back";
   if (statement.type === "switchCostume")
@@ -440,7 +468,7 @@ export function validateStudioProgram(raw: ProjectProgram): ProjectProgram {
   const program = validateProgram(raw);
   if (
     (program.extensions !== undefined &&
-      (program.extensions.length !== 1 || program.extensions[0] !== "pen")) ||
+      !program.extensions.every((id) => id === "pen" || id === "music")) ||
     program.scripts.length < 1 ||
     program.scripts.length > MAX_STUDIO_ACTORS ||
     (program.variables?.length ?? 0) > 3 ||
@@ -604,13 +632,20 @@ export function appendStudioStatement(
   const scripts = [...program.scripts];
   const script = scripts[index]!;
   scripts[index] = { ...script, statements: [...script.statements, statement] };
-  // A pen block makes the project declare the pen extension (ADR 0011).
-  const usesPen = ["penDown", "penUp", "setPenColor", "setPenSize", "clearPen"].includes(
+  // A pen or music block makes the project declare its extension (ADR 0011).
+  const pack = ["penDown", "penUp", "setPenColor", "setPenSize", "clearPen"].includes(
     statement.type,
-  );
+  )
+    ? ("pen" as const)
+    : ["playNote", "playDrum", "setInstrument", "setTempo", "setPitch", "setPan"].includes(
+          statement.type,
+        )
+      ? ("music" as const)
+      : undefined;
+  const declared = program.extensions ?? [];
   const next = validateStudioProgram({
     ...program,
-    ...(usesPen && program.extensions === undefined ? { extensions: ["pen" as const] } : {}),
+    ...(pack !== undefined && !declared.includes(pack) ? { extensions: [...declared, pack] } : {}),
     scripts,
   });
   return recordCanonicalTransaction(history, { label: `add ${statement.type}`, after: next })

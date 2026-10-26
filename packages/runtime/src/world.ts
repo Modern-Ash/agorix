@@ -2,8 +2,16 @@ import {
   LIST_MAX_ITEMS,
   PEN_COLORS,
   PEN_SIZE_MAX,
+  MUSIC_INSTRUMENTS,
+  MUSIC_PAN_MAX,
+  MUSIC_PITCH_MAX,
+  MUSIC_TEMPO_MAX,
+  MUSIC_TEMPO_MIN,
   SPRITE_SIZE_MAX,
   SPRITE_SIZE_MIN,
+  type MusicBeats,
+  type MusicDrum,
+  type MusicInstrument,
   type PenColor,
 } from "@agorix/program-model";
 export interface Position {
@@ -68,6 +76,16 @@ export interface PenState {
   readonly segments: readonly PenSegment[];
 }
 
+/** Present only after a music block ran, so every other world is unchanged (ADR 0011). */
+export interface MusicState {
+  readonly instrument: MusicInstrument;
+  readonly tempo: number;
+  /** Semitones added to every sound and note that follows. */
+  readonly pitch: number;
+  /** -100 left to 100 right. */
+  readonly pan: number;
+}
+
 export interface WorldState {
   readonly sprite: SpriteState;
   readonly goal: Position;
@@ -77,6 +95,7 @@ export interface WorldState {
   readonly lists?: Readonly<Record<string, ListState>>;
   readonly sounds?: SoundState;
   readonly pen?: PenState;
+  readonly music?: MusicState;
 }
 
 export interface WorldStateInput {
@@ -87,6 +106,7 @@ export interface WorldStateInput {
   readonly lists?: Readonly<Record<string, Partial<ListState> | undefined>>;
   readonly sounds?: Partial<SoundState>;
   readonly pen?: Partial<PenState>;
+  readonly music?: Partial<MusicState>;
 }
 
 const COORDINATE_SCALE = 1_000_000_000;
@@ -188,11 +208,84 @@ function normalizeSounds(input: Partial<SoundState> | undefined): SoundState | u
   };
 }
 
+function inRange(value: number, min: number, max: number, name: string): number {
+  if (!Number.isInteger(value) || value < min || value > max) {
+    throw new RangeError(`${name} out of range: ${value}`);
+  }
+  return value;
+}
+
+function normalizeMusic(input: Partial<MusicState> | undefined): MusicState | undefined {
+  if (input === undefined) return undefined;
+  const instrument = input.instrument ?? "piano";
+  if (!(MUSIC_INSTRUMENTS as readonly string[]).includes(instrument)) {
+    throw new RangeError(`unknown instrument: ${instrument}`);
+  }
+  return {
+    instrument,
+    tempo: inRange(input.tempo ?? 120, MUSIC_TEMPO_MIN, MUSIC_TEMPO_MAX, "tempo"),
+    pitch: inRange(input.pitch ?? 0, -MUSIC_PITCH_MAX, MUSIC_PITCH_MAX, "pitch"),
+    pan: inRange(input.pan ?? 0, -MUSIC_PAN_MAX, MUSIC_PAN_MAX, "pan"),
+  };
+}
+
+function withMusic(world: WorldState, change: Partial<MusicState>): WorldState {
+  return createWorldState({
+    ...world,
+    music: { ...normalizeMusic(world.music ?? {})!, ...change },
+  });
+}
+
+export function setInstrumentWorld(world: WorldState, instrument: MusicInstrument): WorldState {
+  return withMusic(world, { instrument });
+}
+
+export function setTempoWorld(world: WorldState, tempo: number): WorldState {
+  return withMusic(world, { tempo });
+}
+
+export function setPitchWorld(world: WorldState, pitch: number): WorldState {
+  return withMusic(world, { pitch });
+}
+
+export function setPanWorld(world: WorldState, pan: number): WorldState {
+  return withMusic(world, { pan });
+}
+
+/** What a sound, note or drum sounds like right now; pure data the player turns into audio. */
+export interface AudioPlayback {
+  readonly instrument: MusicInstrument;
+  readonly pitch: number;
+  readonly pan: number;
+  readonly note?: number;
+  readonly drum?: MusicDrum;
+  /** Length of a note or drum from its beats and the tempo, rounded to the millisecond. */
+  readonly seconds?: number;
+}
+
+export function audioPlayback(
+  world: WorldState,
+  detail: { readonly note?: number; readonly drum?: MusicDrum; readonly beats?: MusicBeats },
+): AudioPlayback {
+  const music = normalizeMusic(world.music ?? {})!;
+  return {
+    instrument: music.instrument,
+    pitch: music.pitch,
+    pan: music.pan,
+    ...(detail.note === undefined ? {} : { note: detail.note }),
+    ...(detail.drum === undefined ? {} : { drum: detail.drum }),
+    ...(detail.beats === undefined
+      ? {}
+      : { seconds: Math.round((detail.beats * 60 * 1000) / music.tempo) / 1000 }),
+  };
+}
+
 export function createWorldState(input: WorldStateInput = {}): WorldState {
   const variables = normalizeVariables(input.variables);
   const lists = normalizeLists(input.lists);
   const sounds = normalizeSounds(input.sounds);
   const pen = normalizePen(input.pen);
+  const music = normalizeMusic(input.music);
   return {
     sprite: {
       x: normalizeCoordinate(input.sprite?.x ?? 0),
@@ -220,6 +313,7 @@ export function createWorldState(input: WorldStateInput = {}): WorldState {
     ...(lists === undefined ? {} : { lists }),
     ...(sounds === undefined ? {} : { sounds }),
     ...(pen === undefined ? {} : { pen }),
+    ...(music === undefined ? {} : { music }),
   };
 }
 

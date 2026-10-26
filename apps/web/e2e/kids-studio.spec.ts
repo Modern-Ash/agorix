@@ -1563,3 +1563,52 @@ test("Ori's block idea can be refused and a lone block cannot be swapped", async
   await expect(page.locator(".kids-ori-proposal")).toHaveCount(0);
   await expect(page.locator(".kids-program-block")).toHaveCount(1);
 });
+
+test("free scene composes a tune with the music extension and keeps it, with the pen, after reopening", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
+  const music = page.getByRole("group", { name: "Música" });
+  await music.getByLabel("Velocidad").selectOption("90");
+  await music.getByRole("button", { name: "+ Velocidad" }).click();
+  await music.getByLabel("Instrumento").selectOption("flute");
+  await music.getByRole("button", { name: "+ Instrumento" }).click();
+  await music.getByLabel("Nota").selectOption("64");
+  await music.getByRole("button", { name: "+ Tocar nota" }).click();
+  await music.getByLabel("Tocar percusión").selectOption("snare");
+  await music.getByRole("button", { name: "+ Tocar percusión" }).click();
+  await music.getByLabel("Lado del sonido").selectOption("-100");
+  await music.getByRole("button", { name: "+ Lado del sonido" }).click();
+  await page.getByRole("button", { name: "+ Bajar el lápiz" }).click();
+  const violations = (
+    await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
+  ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");
+  expect(violations.map((entry) => entry.id)).toEqual([]);
+  await expect(page.locator(".kids-program-block").nth(2)).toContainText("Tocar nota: Mi 4");
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByText("6 bloques ejecutados")).toBeVisible();
+  await reloadTo(page, "#/proyectos");
+  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  await page
+    .getByRole("article")
+    .filter({ hasText: "Escena libre" })
+    .getByRole("button", { name: "Jugar" })
+    .click();
+  await expect(page.locator(".kids-program-block").nth(1)).toContainText("Instrumento: flauta");
+  await expect(page.locator(".kids-program-block").nth(3)).toContainText(
+    "Tocar percusión: redoblante",
+  );
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});

@@ -46,6 +46,12 @@ export const EXTENSIONS_MAX = 4;
 
 /** Widest pen the extension allows, in stage units. */
 export const PEN_SIZE_MAX = 24;
+export const MUSIC_NOTE_MIN = 48;
+export const MUSIC_NOTE_MAX = 84;
+export const MUSIC_TEMPO_MIN = 60;
+export const MUSIC_TEMPO_MAX = 180;
+export const MUSIC_PITCH_MAX = 12;
+export const MUSIC_PAN_MAX = 100;
 /** Active calls above this depth end the run as budget-exceeded; recursion is allowed below it. */
 export const PROCEDURE_MAX_CALL_DEPTH = 16;
 
