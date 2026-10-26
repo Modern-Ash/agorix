@@ -55,6 +55,15 @@ describe("Ori review decision HTTP security integration",()=>{
     expect((await post(base,{ticketId,decision:"accept",grants:["write"]})).status).toBe(400);
     expect(calls).toHaveLength(0);
   });
+  it("rejects review decisions without the anti-CSRF request header",async()=>{
+    const {base,calls}=await start();
+    const response=await fetch(base+"/api/tutor/ori/review/decision",{
+      method:"POST",headers:{"content-type":"application/json",origin:base},
+      body:JSON.stringify({ticketId,decision:"reject"})
+    });
+    expect(response.status).toBe(403);
+    expect(calls).toHaveLength(0);
+  });
   it("rejects cross-origin review decisions",async()=>{
     const {base,calls}=await start();
     expect((await post(base,{ticketId,decision:"accept"},"https://untrusted.example")).status).toBe(403);
