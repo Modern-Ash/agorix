@@ -80,8 +80,10 @@ import {
   KIDS_CUSTOM_SOUND_ID,
   KIDS_SOUNDS,
   isKidsSoundId,
+  searchKidsSounds,
   soundEvents,
 } from "../kidsSoundLibrary.js";
+import type { KidsSoundCategory } from "../kidsSoundCatalog.js";
 import { playKidsSound } from "../kidsSoundPlayer.js";
 import { dropSlot, nextZoom, type ZoomLevel } from "../kidsEditorInteractions.js";
 import { KIDS_SHORTCUTS, kidsShortcut } from "../kidsShortcuts.js";
@@ -91,6 +93,29 @@ import { ListenButton } from "./ListenButton.js";
 
 type CodeLanguage = "agorix" | "python" | "typescript" | "java";
 type Prediction = "yes" | "no" | "dunno";
+const SOUND_CATEGORIES = [
+  "all",
+  "effects",
+  "music",
+  "nature",
+  "animals",
+  "vehicles",
+  "magic",
+  "interface",
+  "actions",
+] as const;
+const SOUND_CATEGORY_NAMES: Record<(typeof SOUND_CATEGORIES)[number], { es: string; en: string }> =
+  {
+    all: { es: "Todos", en: "All" },
+    effects: { es: "Efectos", en: "Effects" },
+    music: { es: "Música", en: "Music" },
+    nature: { es: "Naturaleza", en: "Nature" },
+    animals: { es: "Animales", en: "Animals" },
+    vehicles: { es: "Vehículos", en: "Vehicles" },
+    magic: { es: "Magia", en: "Magic" },
+    interface: { es: "Avisos", en: "Alerts" },
+    actions: { es: "Acciones", en: "Actions" },
+  };
 const PALETTE: readonly KidsBlockKind[] = ["move", "turnL", "turnR", "repeat", "sound"];
 
 interface Props {
@@ -165,9 +190,8 @@ export function EditorScreen({
   const [soundTarget, setSoundTarget] = useState<{ index: number; childIndex?: number } | null>(
     null,
   );
-  const [soundCategory, setSoundCategory] = useState<
-    "all" | "effects" | "music" | "nature" | "actions"
-  >("all");
+  const [soundCategory, setSoundCategory] = useState<"all" | KidsSoundCategory>("all");
+  const [soundQuery, setSoundQuery] = useState("");
   const editorRef = useRef<HTMLElement>(null);
   const oriTrigger = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -842,7 +866,7 @@ export function EditorScreen({
                 ) : null}
                 {KIDS_SOUNDS.map((item) => (
                   <option key={item.id} value={item.id}>
-                    {t(item.nameKey)}
+                    {item[locale]}
                   </option>
                 ))}
                 {customAudioEnabled || statement.soundId === KIDS_CUSTOM_SOUND_ID ? (
@@ -1340,7 +1364,7 @@ export function EditorScreen({
               role="group"
               aria-label={locale === "es" ? "Categorías de sonidos" : "Sound categories"}
             >
-              {(["all", "effects", "music", "nature", "actions"] as const).map((category) => (
+              {SOUND_CATEGORIES.map((category) => (
                 <button
                   key={category}
                   type="button"
@@ -1348,55 +1372,56 @@ export function EditorScreen({
                   aria-pressed={soundCategory === category}
                   onClick={() => setSoundCategory(category)}
                 >
-                  {
-                    {
-                      all: locale === "es" ? "Todos" : "All",
-                      effects: locale === "es" ? "Efectos" : "Effects",
-                      music: locale === "es" ? "Música" : "Music",
-                      nature: locale === "es" ? "Naturaleza" : "Nature",
-                      actions: locale === "es" ? "Acciones" : "Actions",
-                    }[category]
-                  }
+                  {SOUND_CATEGORY_NAMES[category][locale]}
                 </button>
               ))}
             </div>
+            <input
+              type="search"
+              className="kids-gallery-search"
+              value={soundQuery}
+              maxLength={30}
+              aria-label={locale === "es" ? "Buscar sonido" : "Search sound"}
+              placeholder={locale === "es" ? "Buscar sonido" : "Search sound"}
+              onChange={(event) => setSoundQuery(event.target.value)}
+            />
             <div className="kids-sound-gallery-grid">
-              {KIDS_SOUNDS.filter(
-                (item) => soundCategory === "all" || item.category === soundCategory,
-              ).map((item) => (
-                <div className="kids-sound-gallery-card" key={item.id}>
-                  <strong>{t(item.nameKey)}</strong>
-                  <div>
-                    <button
-                      type="button"
-                      className="kids-button"
-                      aria-label={`${locale === "es" ? "Escuchar" : "Listen"} ${t(item.nameKey)}`}
-                      onClick={() => void playKidsSound(item.id, avatarArt)}
-                    >
-                      ▶
-                    </button>
-                    <button
-                      type="button"
-                      className="kids-button kids-primary"
-                      aria-label={`${locale === "es" ? "Elegir" : "Choose"} ${t(item.nameKey)}`}
-                      onClick={() => {
-                        change(
-                          setKidsBlockSound(
-                            history,
-                            soundTarget.index,
-                            item.id,
-                            soundTarget.childIndex,
-                          ),
-                          "sequenceChange",
-                        );
-                        setSoundTarget(null);
-                      }}
-                    >
-                      {locale === "es" ? "Elegir" : "Choose"}
-                    </button>
+              {searchKidsSounds(soundQuery)
+                .filter((item) => soundCategory === "all" || item.category === soundCategory)
+                .map((item) => (
+                  <div className="kids-sound-gallery-card" key={item.id}>
+                    <strong>{item[locale]}</strong>
+                    <div>
+                      <button
+                        type="button"
+                        className="kids-button"
+                        aria-label={`${locale === "es" ? "Escuchar" : "Listen"} ${item[locale]}`}
+                        onClick={() => void playKidsSound(item.id, avatarArt)}
+                      >
+                        ▶
+                      </button>
+                      <button
+                        type="button"
+                        className="kids-button kids-primary"
+                        aria-label={`${locale === "es" ? "Elegir" : "Choose"} ${item[locale]}`}
+                        onClick={() => {
+                          change(
+                            setKidsBlockSound(
+                              history,
+                              soundTarget.index,
+                              item.id,
+                              soundTarget.childIndex,
+                            ),
+                            "sequenceChange",
+                          );
+                          setSoundTarget(null);
+                        }}
+                      >
+                        {locale === "es" ? "Elegir" : "Choose"}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
             </div>
           </div>
         </div>
