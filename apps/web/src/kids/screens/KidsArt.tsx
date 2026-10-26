@@ -34,11 +34,14 @@ export function KidsSprite({
   label,
   imageOverride,
   expression,
+  talking,
   children,
 }: {
   readonly slot: KidsSpriteSlot;
   /** Ori only: show a face for this expression instead of the star glyph (a custom image wins). */
   readonly expression?: OriExpression | undefined;
+  /** Ori only: move the mouth, while Ori has something to say. */
+  readonly talking?: boolean | undefined;
   readonly className?: string;
   readonly fallback?: string;
   readonly label?: string | undefined;
@@ -64,7 +67,11 @@ export function KidsSprite({
       {image
         ? null
         : (children ??
-          (slot === "ori" && expression ? <OriFace expression={expression} /> : glyph))}
+          (slot === "ori" && expression ? (
+            <OriFace expression={expression} talking={talking === true} />
+          ) : (
+            glyph
+          )))}
     </span>
   );
 }

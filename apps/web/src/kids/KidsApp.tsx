@@ -397,7 +397,7 @@ export function KidsApp({
           </section>
         )}
       </main>
-      {adultSettings.oriSuggestions && state.screen !== "editor" ? (
+      {adultSettings.oriSuggestions && state.screen !== "editor" && state.screen !== "studio" ? (
         <KidsOriGuide screen={state.screen} locale={state.locale} aboveNav={showNav} />
       ) : null}
       {showNav ? (

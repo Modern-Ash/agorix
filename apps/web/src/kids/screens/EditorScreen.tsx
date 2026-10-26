@@ -1423,6 +1423,16 @@ export function EditorScreen({
                 >
                   {t("closeOriProposal")}
                 </button>
+                <div className="kids-ori-stage">
+                  <KidsSprite
+                    slot="ori"
+                    expression={expressionForMotion(
+                      oriOpen && oriOffer?.proposal ? "proposal" : oriMotion,
+                      outcomeOfOffer(oriOffer?.kind),
+                    )}
+                    talking
+                  />
+                </div>
                 {oriOffer?.proposal ? (
                   oriCard(true)
                 ) : (

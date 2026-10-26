@@ -109,6 +109,9 @@ export function KidsOriGuide({
             >
               {locale === "es" ? "Cerrar" : "Close"}
             </button>
+            <div className="kids-ori-stage">
+              <KidsSprite slot="ori" expression="happy" talking />
+            </div>
             <p className="kids-ori-guide-message">{GUIDANCE[screen][locale]}</p>
           </div>
         </div>
