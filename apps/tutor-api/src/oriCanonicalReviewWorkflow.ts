@@ -17,16 +17,18 @@ export interface OriLearningContext {
  * authenticated owner identity and a real pedagogical evidence source.
  */
 export function createOriCanonicalReviewWorkflow({
-  repository,oriRoot,world,learningContext
+  repository,oriRoot,world,learningContext,runOriOverride
 }:{
   readonly repository:ProjectRepository;
   readonly oriRoot:string;
   readonly world:WorldStateInput;
   readonly learningContext:(owner:string,projectId:string)=>Promise<OriLearningContext|null>;
+  /** Test-only injection; production uses the independent Ori process. */
+  readonly runOriOverride?:ReturnType<typeof createOriHostEvidenceAdapter>;
 }) {
   const execute=createOriCanonicalExecutionPort({world,maxSteps:100});
   const resolve=createOriPersistedEvidenceResolver({repository,execute,learningContext});
-  const runOri=createOriHostEvidenceAdapter({oriRoot});
+  const runOri=runOriOverride??createOriHostEvidenceAdapter({oriRoot});
   const ticketProjects=new Map<string,{owner:string;projectId:string;revision:number}>();
   const registry=createOriReviewRegistry({
     currentRevision:async id=>{
@@ -34,20 +36,29 @@ export function createOriCanonicalReviewWorkflow({
       if(!binding)return "";
       try{
         const record=await repository.get(binding.owner,binding.projectId);
-        return record.revision===binding.revision?record.semanticHash:"";
+        return record.revision===binding.revision?record.semanticHash:"0".repeat(64);
       }catch{return "";}
     }
   });
   const service=createOriProjectReviewService({
     resolveProject:async(owner,projectId)=>resolve(owner,projectId,"move"),
+    authorizeProject:async(owner,projectId)=>{
+      try{
+        const record=await repository.get(owner,projectId);
+        return record.ownerId===owner && record.projectId===projectId;
+      }catch{return false;}
+    },
     runOri,registry
   });
   return Object.freeze({
     async propose(owner:string,projectId:string){
       const ticket=await service.propose(owner,projectId);
       if(ticket){
-        const record=await repository.get(owner,projectId);
-        ticketProjects.set(ticket.id,{owner,projectId,revision:record.revision});
+        try{
+          const record=await repository.get(owner,projectId);
+          if(record.ownerId!==owner || record.projectId!==projectId)return null;
+          ticketProjects.set(ticket.id,{owner,projectId,revision:record.revision});
+        }catch{return null;}
       }
       return ticket;
     },

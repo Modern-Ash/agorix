@@ -23,7 +23,7 @@ describe("trusted Ori project review orchestration",()=>{
   it("issues and decides only for an authorized project",async()=>{
     const registry=createOriReviewRegistry({currentRevision:async()=>revision});
     const service=createOriProjectReviewService({
-      registry,resolveProject:async(owner,id)=>owner==="student"&&id==="project-a"?project():null,
+      registry,authorizeProject:async(owner,id)=>owner==="student"&&id==="project-a",resolveProject:async(owner,id)=>owner==="student"&&id==="project-a"?project():null,
       runOri:async()=>response
     });
     const ticket=await service.propose("student","project-a");
@@ -36,6 +36,7 @@ describe("trusted Ori project review orchestration",()=>{
     let calls=0;
     const service=createOriProjectReviewService({
       registry:createOriReviewRegistry({currentRevision:async()=>revision}),
+      authorizeProject:async()=>true,
       resolveProject:async()=>{calls++;return project("student",calls===1?revision:"c".repeat(64));},
       runOri:async()=>response
     });
@@ -44,6 +45,7 @@ describe("trusted Ori project review orchestration",()=>{
   it("rejects receipt revision mismatch",async()=>{
     const service=createOriProjectReviewService({
       registry:createOriReviewRegistry({currentRevision:async()=>revision}),
+      authorizeProject:async()=>true,
       resolveProject:async()=>project(),
       runOri:async()=>({...response,evidenceReceipt:{...response.evidenceReceipt!,programRevision:"c".repeat(64)}})
     });
