@@ -7,6 +7,7 @@ const issued={ticketId,proposal,appliedChanges:false};
 test.describe("Ori learner proposal review",()=>{
   test.beforeEach(async({page})=>{
     await page.goto("/");
+    await page.getByTestId("open-ori-companion").click();
     await expect(page.getByTestId("ori-learner-review-widget")).toBeVisible();
   });
   test("requests only server-owned proposal and rejects without project writes",async({page})=>{
