@@ -47,6 +47,7 @@ import {
 } from "../kidsOri.js";
 import { requestKidsOriOffer } from "../kidsOriRemote.js";
 import { oriMotionStatus, useOriPageVisible } from "../kidsOriMotion.js";
+import { expressionForMotion, outcomeOfOffer } from "../kidsOriExpression.js";
 import {
   addKidsBlock,
   createKidsEditor,
@@ -1357,7 +1358,10 @@ export function EditorScreen({
             }
             onClick={() => setOriOpen(true)}
           >
-            <KidsSprite slot="ori" />
+            <KidsSprite
+              slot="ori"
+              expression={expressionForMotion(oriMotion, outcomeOfOffer(oriOffer?.kind))}
+            />
             <span>{oriMotion === "idle" ? t("oriIdle") : oriMotionStatus(oriMotion, locale)}</span>
           </button>
           {oriOpen ? (

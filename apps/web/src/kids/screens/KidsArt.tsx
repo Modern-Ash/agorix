@@ -6,6 +6,8 @@ import type { KidsAvatar, KidsWorld } from "../kidsState.js";
 import type { KidsAvatarRef, KidsWorldRef } from "../kidsProjects.js";
 import { KIDS_WORLD_STYLES } from "../worlds.js";
 import { galleryBackdropArt, galleryCharacterArt } from "../kidsGallery.js";
+import type { OriExpression } from "../kidsOriExpression.js";
+import { OriFace } from "./OriFace.js";
 
 export type KidsSpriteSlot = "ori" | KidsAvatarRef;
 
@@ -31,9 +33,12 @@ export function KidsSprite({
   fallback,
   label,
   imageOverride,
+  expression,
   children,
 }: {
   readonly slot: KidsSpriteSlot;
+  /** Ori only: show a face for this expression instead of the star glyph (a custom image wins). */
+  readonly expression?: OriExpression | undefined;
   readonly className?: string;
   readonly fallback?: string;
   readonly label?: string | undefined;
@@ -50,12 +55,16 @@ export function KidsSprite({
   return (
     <span
       className={`${className ?? ""}${image ? " kids-art-image" : ""}`.trim()}
+      data-ori-expression={slot === "ori" ? expression : undefined}
       role={imageLabel ? "img" : undefined}
       aria-label={imageLabel}
       aria-hidden={imageLabel ? undefined : true}
       style={image ? { backgroundImage: `url("${image}")` } : undefined}
     >
-      {image ? null : (children ?? glyph)}
+      {image
+        ? null
+        : (children ??
+          (slot === "ori" && expression ? <OriFace expression={expression} /> : glyph))}
     </span>
   );
 }
