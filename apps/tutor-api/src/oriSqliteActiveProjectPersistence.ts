@@ -49,7 +49,7 @@ export function openOriSqliteActiveProjectPersistence(path:string):OriSqliteActi
         expired.run(accountId,oldSessionId,now);
         const result=migrate.run(newSessionId,accountId,oldSessionId,now,accountId,newSessionId);
         db.exec("COMMIT");
-        return result.changes===1 || read.get(accountId,oldSessionId)===undefined;
+        return result.changes===1 || (read.get(accountId,oldSessionId)===undefined && read.get(accountId,newSessionId)===undefined);
       }catch(error){db.exec("ROLLBACK");throw error;}
     },
     close(){db.close();}
