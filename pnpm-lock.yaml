@@ -92,6 +92,9 @@ importers:
       '@agorix/program-model':
         specifier: workspace:*
         version: link:../../packages/program-model
+      '@agorix/project-repository':
+        specifier: workspace:*
+        version: link:../../packages/project-repository
       '@agorix/provider-runtime':
         specifier: workspace:*
         version: link:../../packages/provider-runtime
