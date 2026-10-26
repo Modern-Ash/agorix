@@ -74,6 +74,8 @@ export function OriFace({ expression }: { readonly expression: OriExpression }) 
       className="kids-ori-face"
       data-ori-expression={expression}
       viewBox="0 0 32 32"
+      width="32"
+      height="32"
       aria-hidden="true"
       focusable="false"
     >
