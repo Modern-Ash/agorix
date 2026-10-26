@@ -4789,7 +4789,7 @@ export function App({
                   <p>{t(locale, "aiNativeAssistBody")}</p>
                 </div>
                 {closedPanelIds.includes("companion") ? (
-                  <button type="button" onClick={() => restorePanel("companion")}>
+                  <button type="button" data-testid="open-ori-companion" onClick={() => restorePanel("companion")}>
                     {t(locale, PANEL_LABEL_KEYS.companion)}
                   </button>
                 ) : null}
