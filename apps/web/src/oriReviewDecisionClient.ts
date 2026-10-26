@@ -1,3 +1,4 @@
+import { withAgorixSessionQueue } from "./accounts/sessionRequestQueue.js";
 import type { OriLearnerDecision } from "./OriLearnerProposalReview.js";
 import { parseOriServerDecision, type OriServerDecisionStatus } from "./oriServerDecision.js";
 
@@ -12,6 +13,7 @@ export async function requestOriReviewDecision(
 ):Promise<OriServerDecisionStatus> {
   if(!UUID.test(ticketId) || !["accept","edit","reject"].includes(decision))
     return "unavailable";
+  return withAgorixSessionQueue(async()=>{
   try {
     const response=await fetchImpl("/api/tutor/ori/review/decision",{
       method:"POST",
@@ -23,4 +25,5 @@ export async function requestOriReviewDecision(
     if(!response.ok)return response.status===409?"stale":"unavailable";
     return parseOriServerDecision(await response.json());
   }catch{return "unavailable";}
+  });
 }

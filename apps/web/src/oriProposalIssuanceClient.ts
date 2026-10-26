@@ -1,3 +1,4 @@
+import { withAgorixSessionQueue } from "./accounts/sessionRequestQueue.js";
 import { parseOriReviewableProposal } from "./oriProposalReview.js";
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -18,6 +19,7 @@ export function parseOriIssuedProposal(raw:unknown):OriIssuedProposal|null {
 }
 /** The server resolves identity, project, revision, grants and evidence. */
 export async function requestOriProposal(fetchImpl:typeof fetch=fetch):Promise<OriIssuedProposal|null> {
+  return withAgorixSessionQueue(async()=>{
   try{
     const response=await fetchImpl("/api/tutor/ori/review/propose",{
       method:"POST",credentials:"same-origin",
@@ -27,4 +29,5 @@ export async function requestOriProposal(fetchImpl:typeof fetch=fetch):Promise<O
     if(!response.ok)return null;
     return parseOriIssuedProposal(await response.json());
   }catch{return null;}
+  });
 }
