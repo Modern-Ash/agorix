@@ -84,6 +84,17 @@ export function createOriApplyPipeline({
       clearTimeout(timer);
       const parsed = parseOriApplyRequest(JSON.parse(body) as unknown);
       if (!parsed) return { status: 400, body: { error: "invalid-request" } };
+      // Recheck session after asynchronous identity resolution and body read.
+      // Never apply a ticket after the session was revoked while waiting.
+      let currentSession;
+      try {
+        currentSession = auth.read(request);
+      } catch {
+        return { status: 401, body: { error: "unauthorized" } };
+      }
+      if (!currentSession || currentSession.author !== session.author ||
+          currentSession.csrf !== session.csrf)
+        return { status: 401, body: { error: "unauthorized" } };
       const result = await apply(principal.owner, principal.projectId, parsed.ticketId, parsed.scriptId);
       if (result === "applied") return { status: 200, body: { status: "applied" } };
       if (result === "conflict") return { status: 409, body: { error: "conflict" } };
