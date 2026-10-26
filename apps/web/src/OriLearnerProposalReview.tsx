@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { requestOriReviewDecision } from "./oriReviewDecisionClient.js";
 import { parseOriServerDecision } from "./oriServerDecision.js";
 import { describeOriProposal, parseOriReviewableProposal } from "./oriProposalReview.js";
 
@@ -12,7 +13,7 @@ export interface OriLearnerProposalInput {
 export interface OriLearnerProposalReviewProps {
   readonly input: OriLearnerProposalInput | undefined;
   /** Must call an authenticated server-owned decision endpoint, never write a project. */
-  readonly onDecision: (ticketId: string, decision: OriLearnerDecision) => Promise<unknown>;
+  readonly onDecision?: (ticketId: string, decision: OriLearnerDecision) => Promise<unknown>;
 }
 export function OriLearnerProposalReview({ input, onDecision }: OriLearnerProposalReviewProps) {
   const [pending, setPending] = useState(false);
@@ -24,8 +25,10 @@ export function OriLearnerProposalReview({ input, onDecision }: OriLearnerPropos
     if (pending || stale || result !== null) return;
     setPending(true);
     try {
-      const outcome = await onDecision(input.ticketId, decision);
-      setResult(parseOriServerDecision(outcome));
+      const outcome = await (onDecision ?? requestOriReviewDecision)(input.ticketId, decision);
+      setResult(typeof outcome === "string" ?
+        (["accepted","edited","rejected","stale"].includes(outcome) ? outcome : "unavailable") :
+        parseOriServerDecision(outcome));
     } catch {
       setResult("unavailable");
     } finally {
