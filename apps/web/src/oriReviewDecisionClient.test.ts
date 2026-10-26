@@ -11,6 +11,7 @@ describe("Ori same-origin review decision client",()=>{
     const [url,init]=vi.mocked(fetchMock).mock.calls[0]!;
     expect(url).toBe("/api/tutor/ori/review/decision");
     expect(init?.credentials).toBe("same-origin");
+    expect(init?.headers).toMatchObject({"x-agorix-request":"1"});
     expect(JSON.parse(init?.body as string)).toEqual({ticketId,decision:"reject"});
   });
   it("rejects invalid ticket before network access",async()=>{
