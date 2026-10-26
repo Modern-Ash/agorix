@@ -6,7 +6,7 @@ const proposal={schemaVersion:"ori/proposal/v0",operation:"append",
 const issued={ticketId,proposal,appliedChanges:false};
 test.describe("Ori learner proposal review",()=>{
   test.beforeEach(async({page})=>{
-    await page.goto("/");
+    await page.goto("/advanced");
     await page.getByTestId("open-ori-companion").click();
     await expect(page.getByTestId("ori-learner-review-widget")).toBeVisible();
   });
