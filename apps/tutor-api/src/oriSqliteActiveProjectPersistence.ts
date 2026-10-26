@@ -5,6 +5,7 @@ import type { OriActiveProjectPersistence,OriActiveProjectRecord } from "./oriEx
 
 export interface OriSqliteActiveProjectPersistence extends OriActiveProjectPersistence {
   close():void;
+  migrate(accountId:string,oldSessionId:string,newSessionId:string,now:number):Promise<boolean>;
 }
 /** Local single-host persistence. Multi-instance deployments need a shared DB. */
 export function openOriSqliteActiveProjectPersistence(path:string):OriSqliteActiveProjectPersistence {
@@ -23,6 +24,11 @@ export function openOriSqliteActiveProjectPersistence(path:string):OriSqliteActi
     VALUES(?,?,?,?) ON CONFLICT(account_id,session_id)
     DO UPDATE SET project_id=excluded.project_id,expires_at=excluded.expires_at`);
   const remove=db.prepare("DELETE FROM ori_active_projects WHERE account_id=? AND session_id=?");
+  const migrate=db.prepare(`UPDATE ori_active_projects SET session_id=?
+    WHERE account_id=? AND session_id=? AND expires_at>? AND NOT EXISTS (
+      SELECT 1 FROM ori_active_projects WHERE account_id=? AND session_id=?
+    )`);
+  const expired=db.prepare("DELETE FROM ori_active_projects WHERE account_id=? AND session_id=? AND expires_at<=?");
   return Object.freeze({
     async read(accountId:string,sessionId:string):Promise<OriActiveProjectRecord|null>{
       const row=read.get(accountId,sessionId);
@@ -35,6 +41,16 @@ export function openOriSqliteActiveProjectPersistence(path:string):OriSqliteActi
     },
     async delete(accountId:string,sessionId:string):Promise<void>{
       remove.run(accountId,sessionId);
+    },
+    async migrate(accountId:string,oldSessionId:string,newSessionId:string,now:number):Promise<boolean>{
+      if(oldSessionId===newSessionId)return true;
+      db.exec("BEGIN IMMEDIATE");
+      try{
+        expired.run(accountId,oldSessionId,now);
+        const result=migrate.run(newSessionId,accountId,oldSessionId,now,accountId,newSessionId);
+        db.exec("COMMIT");
+        return result.changes===1 || read.get(accountId,oldSessionId)===undefined;
+      }catch(error){db.exec("ROLLBACK");throw error;}
     },
     close(){db.close();}
   });
