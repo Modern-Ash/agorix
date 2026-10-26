@@ -65,6 +65,33 @@ export function validateTrustedOriEvidence(raw:unknown):TrustedOriEvidence|null 
  * Only invoke from a trusted server-side canonical-runtime adapter, NEVER
  * with a browser-provided envelope. Ori itself cannot attest host execution.
  */
+/**
+ * Only a one-block, host-allowlisted, review-only proposal may leave the
+ * server adapter. Reject extra fields rather than forwarding model output.
+ */
+export function validateOriHostProposal(value:unknown,allowedBlocks:readonly string[]):unknown|null {
+  if(value===null)return null;
+  if(!value || typeof value!=="object" || Array.isArray(value))return null;
+  const p=value as Record<string,unknown>;
+  if(Object.keys(p).sort().join()!=="blocks,operation,requiresLearnerApproval,schemaVersion" ||
+     p["schemaVersion"]!=="ori/proposal/v0" || p["operation"]!=="append" ||
+     p["requiresLearnerApproval"]!==true || !Array.isArray(p["blocks"]) ||
+     p["blocks"].length!==1)return null;
+  const block=p["blocks"][0];
+  if(!block || typeof block!=="object" || Array.isArray(block))return null;
+  const b=block as Record<string,unknown>;
+  if(b["kind"]==="move") {
+    if(Object.keys(b).sort().join()!=="kind,steps" ||
+       !Number.isSafeInteger(b["steps"]) || (b["steps"] as number)<1 ||
+       (b["steps"] as number)>5)return null;
+  }else if(b["kind"]==="turn") {
+    if(Object.keys(b).sort().join()!=="direction,kind" ||
+       !["left","right"].includes(String(b["direction"])))return null;
+  }else return null;
+  if(!allowedBlocks.includes(b["kind"] as string))return null;
+  return Object.freeze({schemaVersion:"ori/proposal/v0",operation:"append",
+    requiresLearnerApproval:true,blocks:[Object.freeze({...b})]});
+}
 export function createOriHostEvidenceAdapter({oriRoot,timeoutMs=3000}:{
   oriRoot:string;timeoutMs?:number
 }) {
@@ -106,7 +133,10 @@ export function createOriHostEvidenceAdapter({oriRoot,timeoutMs=3000}:{
           if(e["programRevision"]!==input.programRevision ||
              typeof e["digest"]!=="string" || !HEX.test(e["digest"]) ||
              e["complete"]!==true)return finish(unavailable);
-          finish({status:"ready",...(d["proposal"]===undefined?{}:{proposal:d["proposal"]}),evidenceReceipt:{
+          if(!Object.hasOwn(d,"proposal"))return finish(unavailable);
+          const proposal=validateOriHostProposal(d["proposal"],input.snapshot.allowedBlocks);
+          if(d["proposal"]!==null && proposal===null)return finish(unavailable);
+          finish({status:"ready",proposal,evidenceReceipt:{
             programRevision:input.programRevision,digest:e["digest"],complete:true
           },requiresLearnerApproval:true,appliedChanges:false});
         }catch{finish(unavailable);}
