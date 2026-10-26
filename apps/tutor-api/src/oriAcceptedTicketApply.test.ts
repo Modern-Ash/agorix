@@ -5,7 +5,7 @@ import { createOriCanonicalReviewWorkflow } from "./oriCanonicalReviewWorkflow.j
 import type { OriHostEvidenceResult } from "./oriHostEvidenceAdapter.js";
 import { createOriCanonicalExecutionPort } from "./oriCanonicalExecutionPort.js";
 import { runProgram, createWorldState } from "@agorix/runtime";
-import { createOriPersistedEvidenceResolver } from "./oriPersistedEvidenceResolver.js";
+import { createOriPersistedEvidenceResolver, oriEvidenceRevision } from "./oriPersistedEvidenceResolver.js";
 
 describe("Ori accepted ticket application", () => {
   it("requires an accepted ticket and applies at most once", async () => {
@@ -34,7 +34,7 @@ describe("Ori accepted ticket application", () => {
         blocks: [{ kind: "move", steps: 2 }],
       },
       evidenceReceipt: {
-        programRevision: record.semanticHash,
+        programRevision: oriEvidenceRevision(record.semanticHash,record.revision),
         digest: "b".repeat(64),
         complete: true,
       },
