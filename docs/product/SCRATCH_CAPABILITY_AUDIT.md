@@ -311,3 +311,9 @@ Each iteration needs an issue with an observable child journey, success and fail
 - ORI-04: Ori no ofrece una solución al entrar a una misión. La idea con bloques aparece después de una corrida que no llegó a la meta o desde la pista 2 (`gateKidsOriOffer`). En Estudio libre el aprendiz pide la meta, por lo que no cambia.
 - ORI-06: matriz adversarial determinista (`chatAdversarial.test.ts`): consultas válidas, inyección, privacidad, temas inseguros, fuera de alcance y salidas hostiles del proveedor. Encontró y cerró un hueco: "drogas" (plural) no se rechazaba.
 - ORI-07: contadores agregados por clase y hora (24 h, solo en memoria) en `GET /api/tutor/admin/ori-stats`, visibles en el panel de administración. No guardan texto, prompts ni identificadores; hay prueba de que el módulo no persiste.
+
+## Sonido creativo, primera entrega (E6 / SND-01)
+
+- La galería pasa de 12 a 72 sonidos en 8 categorías (Efectos, Música, Naturaleza, Animales, Vehículos, Magia, Avisos, Acciones) con búsqueda sin acentos ni mayúsculas, en español e inglés, y preescucha.
+- **Licencias:** en vez de grabaciones CC0 de terceros, los sonidos son presets sintetizados propios (un oscilador acotado, ≤0.5 s, definidos en `kidsSoundCatalog.ts`). No hay licencias ajenas que auditar, funcionan sin conexión y entran en el bundle sin assets binarios. Sonidos grabados o importados quedan para SND-02.
+- Los ids `kids:*` son estables; los proyectos anteriores siguen abriendo igual.

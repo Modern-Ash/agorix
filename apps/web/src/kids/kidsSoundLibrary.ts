@@ -1,4 +1,5 @@
 import type { ExecutionTraceEntry } from "@agorix/runtime";
+import { KIDS_EXTRA_SOUNDS, type KidsSoundCategory } from "./kidsSoundCatalog.js";
 
 export interface SoundParameters {
   readonly wave: OscillatorType;
@@ -8,10 +9,9 @@ export interface SoundParameters {
   readonly gain: number;
 }
 
-export const KIDS_SOUNDS = [
+const CORE_SOUNDS = [
   {
     id: "kids:pop",
-    nameKey: "soundPop",
     es: "Pop",
     en: "Pop",
     category: "effects",
@@ -19,7 +19,6 @@ export const KIDS_SOUNDS = [
   },
   {
     id: "kids:bell",
-    nameKey: "soundBell",
     es: "Campana",
     en: "Bell",
     category: "music",
@@ -27,7 +26,6 @@ export const KIDS_SOUNDS = [
   },
   {
     id: "kids:drum",
-    nameKey: "soundDrum",
     es: "Tambor",
     en: "Drum",
     category: "music",
@@ -35,7 +33,6 @@ export const KIDS_SOUNDS = [
   },
   {
     id: "kids:whoosh",
-    nameKey: "soundWhoosh",
     es: "Soplo",
     en: "Whoosh",
     category: "nature",
@@ -43,7 +40,6 @@ export const KIDS_SOUNDS = [
   },
   {
     id: "kids:win",
-    nameKey: "soundWin",
     es: "Victoria",
     en: "Win",
     category: "music",
@@ -51,7 +47,6 @@ export const KIDS_SOUNDS = [
   },
   {
     id: "kids:oops",
-    nameKey: "soundOops",
     es: "Ups",
     en: "Oops",
     category: "effects",
@@ -59,7 +54,6 @@ export const KIDS_SOUNDS = [
   },
   {
     id: "kids:chirp",
-    nameKey: "soundChirp",
     es: "Pío",
     en: "Chirp",
     category: "nature",
@@ -67,7 +61,6 @@ export const KIDS_SOUNDS = [
   },
   {
     id: "kids:splash",
-    nameKey: "soundSplash",
     es: "Salpicadura",
     en: "Splash",
     category: "nature",
@@ -75,7 +68,6 @@ export const KIDS_SOUNDS = [
   },
   {
     id: "kids:sparkle",
-    nameKey: "soundSparkle",
     es: "Destello",
     en: "Sparkle",
     category: "music",
@@ -83,7 +75,6 @@ export const KIDS_SOUNDS = [
   },
   {
     id: "kids:jump",
-    nameKey: "soundJump",
     es: "Salto",
     en: "Jump",
     category: "actions",
@@ -91,7 +82,6 @@ export const KIDS_SOUNDS = [
   },
   {
     id: "kids:step",
-    nameKey: "soundStep",
     es: "Paso",
     en: "Step",
     category: "actions",
@@ -99,7 +89,6 @@ export const KIDS_SOUNDS = [
   },
   {
     id: "kids:laser",
-    nameKey: "soundLaser",
     es: "Láser",
     en: "Laser",
     category: "effects",
@@ -107,15 +96,36 @@ export const KIDS_SOUNDS = [
   },
 ] as const satisfies readonly {
   readonly id: string;
-  readonly nameKey: string;
   readonly es: string;
   readonly en: string;
-  readonly category: "effects" | "music" | "nature" | "actions";
+  readonly category: KidsSoundCategory;
   readonly parameters: SoundParameters;
 }[];
 
+export interface KidsSound {
+  readonly id: string;
+  readonly es: string;
+  readonly en: string;
+  readonly category: KidsSoundCategory;
+  readonly parameters: SoundParameters;
+}
+
+export const KIDS_SOUNDS: readonly KidsSound[] = [...CORE_SOUNDS, ...KIDS_EXTRA_SOUNDS];
+
 export const KIDS_CUSTOM_SOUND_ID = "kids:custom";
-export type KidsSoundId = (typeof KIDS_SOUNDS)[number]["id"] | typeof KIDS_CUSTOM_SOUND_ID;
+export type KidsSoundId = string;
+
+/** Gallery search: case and accent insensitive over both languages. */
+export function searchKidsSounds(query: string): readonly KidsSound[] {
+  const fold = (value: string) =>
+    value.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().trim();
+  const needle = fold(query);
+  return needle === ""
+    ? KIDS_SOUNDS
+    : KIDS_SOUNDS.filter(
+        (item) => fold(item.es).includes(needle) || fold(item.en).includes(needle),
+      );
+}
 
 const DEFAULT: SoundParameters = {
   wave: "sine",

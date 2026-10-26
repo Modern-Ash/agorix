@@ -61,6 +61,12 @@ test("a new child can browse included art, create a project and reopen it", asyn
   await page.getByRole("button", { name: "+ sonar", exact: true }).click();
   await page.getByRole("button", { name: "Galería de sonidos" }).click();
   const soundGallery = page.getByRole("dialog", { name: "Galería de sonidos" });
+  await soundGallery.getByRole("searchbox", { name: "Buscar sonido" }).fill("avion");
+  await expect(soundGallery.getByText("Avión", { exact: true })).toBeVisible();
+  await expect(soundGallery.getByRole("button", { name: "Escuchar Gato" })).toHaveCount(0);
+  await soundGallery.getByRole("searchbox", { name: "Buscar sonido" }).fill("");
+  await soundGallery.getByRole("button", { name: "Animales" }).click();
+  await expect(soundGallery.getByRole("button", { name: "Escuchar Gato" })).toBeVisible();
   await soundGallery.getByRole("button", { name: "Naturaleza" }).click();
   await expect(soundGallery.getByText("Salpicadura")).toBeVisible();
   await expect(page.getByRole("combobox", { name: "sonar 1" })).toHaveValue("kids-tone");

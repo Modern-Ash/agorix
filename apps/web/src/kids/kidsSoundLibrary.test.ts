@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { KIDS_SOUNDS, soundParameters, soundChoices, soundEvents } from "./kidsSoundLibrary.js";
+import {
+  KIDS_SOUNDS,
+  searchKidsSounds,
+  soundParameters,
+  soundChoices,
+  soundEvents,
+} from "./kidsSoundLibrary.js";
 import {
   addKidsBlock,
   createKidsEditor,
@@ -9,17 +15,23 @@ import {
 import { getKidsMission, KIDS_MISSION_IDS } from "@agorix/curriculum";
 
 describe("Kids sound library (issue #461)", () => {
-  it("has twelve named, bounded deterministic presets and a legacy fallback", () => {
-    expect(KIDS_SOUNDS).toHaveLength(12);
-    expect(new Set(KIDS_SOUNDS.map((item) => item.id)).size).toBe(12);
+  it("has a searchable gallery of named, bounded deterministic presets and a legacy fallback", () => {
+    expect(KIDS_SOUNDS.length).toBeGreaterThanOrEqual(60);
+    expect(KIDS_SOUNDS.length).toBeLessThanOrEqual(100);
+    expect(new Set(KIDS_SOUNDS.map((item) => item.id)).size).toBe(KIDS_SOUNDS.length);
+    expect(new Set(KIDS_SOUNDS.map((item) => item.es)).size).toBe(KIDS_SOUNDS.length);
+    expect(searchKidsSounds("avion").map((item) => item.id)).toEqual(["kids:plane"]);
+    expect(searchKidsSounds("DOG").map((item) => item.id)).toEqual(["kids:dog"]);
+    expect(searchKidsSounds("   ")).toHaveLength(KIDS_SOUNDS.length);
+    expect(searchKidsSounds("zzzz")).toEqual([]);
     for (const item of KIDS_SOUNDS) {
       expect(soundParameters(item.id)).toEqual(item.parameters);
       expect(item.parameters.duration).toBeGreaterThan(0);
       expect(item.parameters.duration).toBeLessThanOrEqual(0.5);
     }
     expect(soundParameters("kids-tone")).toEqual(soundParameters("unknown"));
-    expect(soundChoices(false)).toHaveLength(12);
-    expect(soundChoices(true)).toHaveLength(13);
+    expect(soundChoices(false)).toHaveLength(KIDS_SOUNDS.length);
+    expect(soundChoices(true)).toHaveLength(KIDS_SOUNDS.length + 1);
   });
 
   it("counts each executed sound event with its chosen id, including repeats", () => {
