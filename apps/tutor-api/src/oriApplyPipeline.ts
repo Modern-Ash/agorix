@@ -75,6 +75,8 @@ export function createOriApplyPipeline({
       }
       if (controller.signal.aborted || request.aborted)
         return { status: 400, body: { error: "invalid-request" } };
+      // The deadline only bounds body reception, never the authorized write.
+      clearTimeout(timer);
       const parsed = parseOriApplyRequest(JSON.parse(body) as unknown);
       if (!parsed) return { status: 400, body: { error: "invalid-request" } };
       const result = await apply(principal.owner, principal.projectId, parsed.ticketId, parsed.scriptId);
