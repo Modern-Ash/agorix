@@ -23,7 +23,7 @@ const MAX_AGE_MS=5*60*1000;
  */
 export function createOriReviewRegistry({now=Date.now,maxSessions=MAX_SESSIONS,ttlMs=MAX_AGE_MS,currentRevision}:{
   readonly now?:()=>number;readonly maxSessions?:number;readonly ttlMs?:number;
-  readonly currentRevision?:(id:string)=>Promise<string>
+  readonly currentRevision:(id:string)=>Promise<string>
 }):OriReviewRegistry {
   if(typeof currentRevision!=="function"||!Number.isSafeInteger(maxSessions)||maxSessions<1||maxSessions>1000||
      !Number.isSafeInteger(ttlMs)||ttlMs<1||ttlMs>3600000)
@@ -58,7 +58,7 @@ export function createOriReviewRegistry({now=Date.now,maxSessions=MAX_SESSIONS,t
       if(entry.busy || entry.session.status!=="pending")return ticket(id,entry.session);
       entry.busy=true;
       try {
-        const revision=await currentRevision!(id);
+        const revision=await currentRevision(id);
         purge();
         if(entries.get(id)!==entry)return null;
         const updated=decideOriProposalReview(entry.session,revision,decision);
