@@ -31,6 +31,7 @@ export function createOriCanonicalReviewWorkflow({
   const runOri=runOriOverride??createOriHostEvidenceAdapter({oriRoot});
   const ticketProjects=new Map<string,{owner:string;projectId:string;revision:number;hash:string;created:number}>();
   const TICKET_TTL_MS=5*60*1000;
+  const MAX_BINDINGS=100;
   const purgeBindings=()=>{
     const now=Date.now();
     for(const [id,binding] of ticketProjects)
@@ -62,6 +63,7 @@ export function createOriCanonicalReviewWorkflow({
   return Object.freeze({
     async propose(owner:string,projectId:string){
       purgeBindings();
+      if(ticketProjects.size>=MAX_BINDINGS)return null;
       const ticket=await service.propose(owner,projectId);
       if(ticket){
         try{
