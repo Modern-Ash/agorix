@@ -1,0 +1,61 @@
+import { describe, expect, it } from "vitest";
+import { SCHEMA_VERSION } from "@agorix/program-model";
+import { InMemoryProjectRepository } from "@agorix/project-repository";
+import { applyApprovedOriProposal } from "./oriApprovedProjectApply.js";
+
+const oriMove = {
+  schemaVersion: "ori/proposal/v0",
+  operation: "append",
+  requiresLearnerApproval: true,
+  blocks: [{ kind: "move", steps: 2 }],
+};
+const program = {
+  schema: SCHEMA_VERSION,
+  scripts: [{ id: "main", trigger: { type: "onStart" as const }, statements: [{ type: "move" as const, steps: 1 }] }],
+};
+async function setup() {
+  const repository = new InMemoryProjectRepository({ idFactory: () => "project-1" });
+  const record = await repository.create("student", "Example", { program });
+  const apply = (overrides: Record<string, unknown> = {}) =>
+    applyApprovedOriProposal({
+      repository,
+      owner: "student",
+      projectId: record.projectId,
+      expectedRevision: record.revision,
+      approved: true,
+      proposal: oriMove,
+      allowedBlocks: ["move"],
+      scriptId: "main",
+      ...overrides,
+    });
+  return { repository, record, apply };
+}
+describe("explicit Ori proposal persistence boundary", () => {
+  it("applies once using the repository CAS revision", async () => {
+    const { repository, record, apply } = await setup();
+    expect(await apply()).toBe("applied");
+    const current = await repository.get("student", record.projectId);
+    expect(current.revision).toBe(record.revision + 1);
+    expect(current.storedProject.program.scripts[0]?.statements).toEqual([
+      { type: "move", steps: 1 },
+      { type: "move", steps: 2 },
+    ]);
+    expect(await apply()).toBe("conflict");
+  });
+  it("does not mutate without trusted approval", async () => {
+    const { repository, record, apply } = await setup();
+    expect(await apply({ approved: false })).toBe("rejected");
+    expect((await repository.get("student", record.projectId)).revision).toBe(1);
+  });
+  it("rejects wrong owner, script, and unsupported blocks", async () => {
+    const { apply } = await setup();
+    expect(await apply({ owner: "intruder" })).toBe("rejected");
+    expect(await apply({ scriptId: "missing" })).toBe("rejected");
+    expect(await apply({ allowedBlocks: [] })).toBe("rejected");
+  });
+  it("rejects stale revision before writing", async () => {
+    const { repository, record, apply } = await setup();
+    await repository.update("student", record.projectId, record.revision, { title: "Updated" });
+    expect(await apply()).toBe("conflict");
+  });
+});
