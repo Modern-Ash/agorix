@@ -13,6 +13,7 @@
     "@agorix/curriculum": "workspace:*",
     "@agorix/ori-agent": "workspace:*",
     "@agorix/program-model": "workspace:*",
+    "@agorix/project-repository": "workspace:*",
     "@agorix/provider-runtime": "workspace:*",
     "@agorix/runtime": "workspace:*",
     "@agorix/tutor-contract": "workspace:*"
