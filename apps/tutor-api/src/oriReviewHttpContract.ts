@@ -1,4 +1,4 @@
-import type { IncomingMessage } from "node:http";
+import type { IncomingMessage, ServerResponse } from "node:http";
 import type { OriReviewDecision } from "./oriProposalReview.js";
 
 export interface OriReviewPrincipal {
@@ -20,7 +20,7 @@ export function parseOriReviewHttpRequest(raw:unknown):OriReviewHttpRequest|null
     !["accept","edit","reject"].includes(String(data["decision"])))return null;
   return {ticketId:data["ticketId"],decision:data["decision"] as OriReviewDecision};
 }
-export type OriReviewIdentityResolver=(request:IncomingMessage)=>Promise<OriReviewPrincipal|null>;
+export type OriReviewIdentityResolver=(request:IncomingMessage,response?:ServerResponse)=>Promise<OriReviewPrincipal|null>;
 /** Identity must come from trusted authenticated session middleware. */
 export function validateOriReviewPrincipal(value:OriReviewPrincipal|null):OriReviewPrincipal|null {
   if(!value || typeof value.ownerId!=="string" || typeof value.projectId!=="string" ||
