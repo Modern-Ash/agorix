@@ -1410,6 +1410,30 @@ export function removeStudioStatement(
 }
 
 /**
+ * Move one of a character's blocks to another place in its script (issue #593). The blocks keep
+ * their content; only the order changes, as one undoable step. A block can be dragged or moved
+ * with the keyboard, and both end here.
+ */
+export function moveStudioStatement(
+  history: EditorHistory,
+  actorId: string,
+  from: number,
+  to: number,
+): EditorHistory {
+  return withScript(history, actorId, "move studio block", (script) => {
+    const count = script.statements.length;
+    if (!Number.isInteger(from) || !Number.isInteger(to) || from < 0 || from >= count)
+      throw new RangeError("unknown studio block");
+    if (to < 0 || to >= count) throw new RangeError("unknown studio place");
+    if (from === to) return script;
+    const statements = [...script.statements];
+    const [moved] = statements.splice(from, 1);
+    statements.splice(to, 0, moved!);
+    return { ...script, statements };
+  });
+}
+
+/**
  * Choose the numbers for a use of one custom block inside another. Each value is a fixed number or
  * the id of one of the enclosing block's own numbers, which hands that number on.
  */

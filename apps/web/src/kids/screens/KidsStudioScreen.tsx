@@ -25,6 +25,7 @@ import {
   type OriStudioIntent,
 } from "@agorix/ori-agent";
 import type { AgeBand } from "../kidsAgeBand.js";
+import { TOUCH_HOLD_MS, dropIndex, isAddButton, movedFar } from "../kidsDrag.js";
 import {
   factsOfRun,
   previewCandidate,
@@ -79,6 +80,7 @@ import {
   copyStudioProcedure,
   createStudioProcedure,
   deleteStudioProcedure,
+  moveStudioStatement,
   removeStudioStatement,
   renameStudioProcedure,
   setStudioTrigger,
@@ -266,6 +268,11 @@ const COPY = {
     code: "Código",
     idea: "Pedirle una idea a Ori",
     ghostNote: "Idea de Ori: todavía no está en tu programa",
+    dragHint: "Arrastrá un bloque del panel hasta tu programa, o tocá el botón +.",
+    moveBlock: "Arrastrar bloque",
+    blockUp: "Subir bloque",
+    blockDown: "Bajar bloque",
+    dropHere: "Soltá acá para agregar",
     evidenceNow: "Ahora termina en",
     evidenceWith: "Con la idea terminaría en",
     evidenceBlocks: "bloques",
@@ -448,6 +455,11 @@ const COPY = {
     code: "Code",
     idea: "Ask Ori for an idea",
     ghostNote: "Ori's idea: not in your program yet",
+    dragHint: "Drag a block from the panel into your program, or tap the + button.",
+    moveBlock: "Drag block",
+    blockUp: "Move block up",
+    blockDown: "Move block down",
+    dropHere: "Drop here to add",
     evidenceNow: "Now it ends at",
     evidenceWith: "With the idea it would end at",
     evidenceBlocks: "blocks",
@@ -723,6 +735,132 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand =
   const [prediction, setPrediction] = useState<Direction | null>(null);
   const [predictedForRun, setPredictedForRun] = useState<Direction | null>(null);
   const [runCount, setRunCount] = useState(0);
+  const [palette, setPalette] = useState<HTMLDivElement | null>(null);
+  const programRef = useRef<HTMLOListElement>(null);
+  const [overProgram, setOverProgram] = useState(false);
+  const [reorder, setReorder] = useState<{ readonly from: number; readonly to: number } | null>(
+    null,
+  );
+
+  // Drag a block from the panel into the program: dropping presses that button, so a drag and a tap
+  // always do exactly the same thing. A touch needs a short hold so scrolling still works.
+  useEffect(() => {
+    if (!palette) return;
+    let start: {
+      x: number;
+      y: number;
+      button: HTMLButtonElement;
+      touch: boolean;
+      armed: boolean;
+      timer: number | null;
+    } | null = null;
+    let ghost: HTMLElement | null = null;
+    let dragging = false;
+    let swallowClick = false;
+    const inside = (x: number, y: number) => {
+      const box = programRef.current?.getBoundingClientRect();
+      return Boolean(box && x >= box.left && x <= box.right && y >= box.top && y <= box.bottom);
+    };
+    const stop = () => {
+      if (start?.timer != null) window.clearTimeout(start.timer);
+      ghost?.remove();
+      ghost = null;
+      dragging = false;
+      start = null;
+      setOverProgram(false);
+    };
+    const down = (event: globalThis.PointerEvent) => {
+      const button = (event.target as HTMLElement).closest("button");
+      if (!button || button.disabled || !isAddButton(button.textContent)) return;
+      const touch = event.pointerType === "touch";
+      start = { x: event.clientX, y: event.clientY, button, touch, armed: !touch, timer: null };
+      if (touch)
+        start.timer = window.setTimeout(() => {
+          if (start) start.armed = true;
+        }, TOUCH_HOLD_MS);
+    };
+    const move = (event: globalThis.PointerEvent) => {
+      if (!start) return;
+      const far = movedFar(event.clientX - start.x, event.clientY - start.y);
+      if (!dragging) {
+        // A touch that moves before the hold is a scroll, not a drag.
+        if (start.touch && !start.armed && far) return stop();
+        if (!far || !start.armed) return;
+        dragging = true;
+        ghost = document.createElement("div");
+        ghost.className = "kids-drag-ghost";
+        ghost.textContent = start.button.textContent?.replace(/^\s*\+\s*/, "") ?? "";
+        ghost.setAttribute("aria-hidden", "true");
+        document.body.appendChild(ghost);
+      }
+      if (ghost) {
+        ghost.style.left = `${event.clientX}px`;
+        ghost.style.top = `${event.clientY}px`;
+      }
+      setOverProgram(inside(event.clientX, event.clientY));
+      event.preventDefault();
+    };
+    const up = (event: globalThis.PointerEvent) => {
+      if (!start) return;
+      const button = start.button;
+      const wasDragging = dragging;
+      const drop = wasDragging && inside(event.clientX, event.clientY);
+      stop();
+      if (wasDragging) {
+        // Press the button once for the drop, then swallow the click the browser sends on release.
+        if (drop) button.click();
+        swallowClick = true;
+        window.setTimeout(() => {
+          swallowClick = false;
+        }, 0);
+      }
+    };
+    const click = (event: MouseEvent) => {
+      if (swallowClick) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+    const block = (event: TouchEvent) => {
+      if (dragging) event.preventDefault();
+    };
+    palette.addEventListener("pointerdown", down);
+    palette.addEventListener("click", click, true);
+    window.addEventListener("pointermove", move, { passive: false });
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", stop);
+    window.addEventListener("touchmove", block, { passive: false });
+    return () => {
+      stop();
+      palette.removeEventListener("pointerdown", down);
+      palette.removeEventListener("click", click, true);
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", stop);
+      window.removeEventListener("touchmove", block);
+    };
+  }, [palette]);
+
+  /** Drag one of the program's blocks to a new place; Up and Down do the same from the keyboard. */
+  function beginReorder(event: PointerEvent<HTMLButtonElement>, from: number) {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    const handle = event.currentTarget;
+    handle.setPointerCapture(event.pointerId);
+    setReorder({ from, to: from });
+  }
+  function overReorder(event: PointerEvent<HTMLButtonElement>) {
+    if (!reorder) return;
+    const rows = [
+      ...(programRef.current?.querySelectorAll(":scope > .kids-program-block") ?? []),
+    ].map((row) => row.getBoundingClientRect());
+    setReorder({ from: reorder.from, to: dropIndex(rows, event.clientY) });
+  }
+  function endReorder() {
+    const current = reorder;
+    setReorder(null);
+    if (current && current.from !== current.to)
+      persist(moveStudioStatement(history, activeActorId, current.from, current.to));
+  }
   const oriMotion = oriBusy
     ? "thinking"
     : oriIdea
@@ -2055,9 +2193,33 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand =
                 {copy.pressKey}: {script.trigger.key}
               </button>
             ) : null}
-            <ol>
+            <ol
+              ref={programRef}
+              className="kids-program-drop"
+              data-over={overProgram ? "true" : undefined}
+              aria-label={copy.dragHint}
+              data-hint={copy.dropHere}
+            >
               {script?.statements.map((statement, index) => (
-                <li key={`${script.id}-${index}`} className="kids-program-block">
+                <li
+                  key={`${script.id}-${index}`}
+                  className="kids-program-block"
+                  data-dragging={reorder?.from === index ? "true" : undefined}
+                  data-target={
+                    reorder && reorder.to === index && reorder.from !== index ? "true" : undefined
+                  }
+                >
+                  <button
+                    type="button"
+                    className="kids-block-handle"
+                    aria-label={`${copy.moveBlock} ${index + 1}`}
+                    onPointerDown={(event) => beginReorder(event, index)}
+                    onPointerMove={overReorder}
+                    onPointerUp={endReorder}
+                    onPointerCancel={() => setReorder(null)}
+                  >
+                    ⠿
+                  </button>
                   <span>{blockLabel(statement)}</span>
                   {callNumbers(statement, index)}
                   {statement.type === "repeat" || statement.type === "repeatUntil"
@@ -2072,6 +2234,28 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand =
                       {nestedBlocks(statement.else, `${script.id}-${index}-else`)}
                     </>
                   ) : null}
+                  <button
+                    type="button"
+                    className="kids-button"
+                    aria-label={`${copy.blockUp} ${index + 1}`}
+                    disabled={index === 0}
+                    onClick={() =>
+                      persist(moveStudioStatement(history, activeActorId, index, index - 1))
+                    }
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    className="kids-button"
+                    aria-label={`${copy.blockDown} ${index + 1}`}
+                    disabled={index === (script?.statements.length ?? 1) - 1}
+                    onClick={() =>
+                      persist(moveStudioStatement(history, activeActorId, index, index + 1))
+                    }
+                  >
+                    ↓
+                  </button>
                   <button
                     type="button"
                     className="kids-button"
@@ -2101,7 +2285,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand =
             </ol>
             {script?.statements.length === 0 ? <p className="kids-note">{copy.noBlocks}</p> : null}
           </div>
-          <div className="kids-studio-palette">
+          <div className="kids-studio-palette" ref={setPalette}>
             <h3>{copy.paletteLooks}</h3>
             <label>
               {copy.say} / {copy.think}

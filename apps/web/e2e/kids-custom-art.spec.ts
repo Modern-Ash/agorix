@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { resolve } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
+import { passAdultGate } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -20,9 +21,7 @@ async function seed(page: Page) {
 
 async function openAdults(page: Page) {
   await page.getByRole("button", { name: "Adultos" }).click();
-  await page.getByRole("button", { name: "1", exact: true }).click();
-  await page.getByRole("button", { name: "2", exact: true }).click();
-  await page.getByRole("button", { name: "Comprobar" }).click();
+  await passAdultGate(page);
 }
 
 test("child adds custom explorer and backdrop from Create without entering Adults", async ({

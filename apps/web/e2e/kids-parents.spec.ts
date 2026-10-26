@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { passAdultGate } from "./helpers.js";
 
 test.use({ serviceWorkers: "block", hasTouch: true });
 
@@ -39,7 +40,7 @@ test("adult gate protects real progress, settings and AI status", async ({ page 
     });
   });
   await page.getByRole("button", { name: "Adultos" }).click();
-  await expect(page.getByRole("heading", { name: "¿Cuánto es 7 + 5?" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /¿Cuánto es \d+ × \d+\?/ })).toBeVisible();
   await expect(page.getByText("Estado de la IA")).toHaveCount(0);
   expect(healthRequests).toBe(0);
   const gateViolations = (
@@ -53,9 +54,7 @@ test("adult gate protects real progress, settings and AI status", async ({ page 
   await page.getByRole("button", { name: "3", exact: true }).click();
   await page.getByRole("button", { name: "Comprobar" }).click();
   await expect(page.getByText("Probá otra vez.")).toBeVisible();
-  await page.getByRole("button", { name: "1", exact: true }).click();
-  await page.getByRole("button", { name: "2", exact: true }).click();
-  await page.getByRole("button", { name: "Comprobar" }).click();
+  await passAdultGate(page);
   await expect(page.getByRole("heading", { name: "Estado de la IA" })).toBeVisible();
   await expect(page.getByText("2 / 30 min")).toBeVisible();
   await expect(
@@ -92,7 +91,7 @@ test("adult gate protects real progress, settings and AI status", async ({ page 
   );
   expect(clipped).toEqual([]);
   await page.getByRole("button", { name: "Salir" }).click();
-  await expect(page.getByRole("heading", { name: "¿Cuánto es 7 + 5?" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /PIN de adulto/ })).toBeVisible();
   await page.getByRole("button", { name: "Mapa" }).click();
   await expect(page.getByRole("button", { name: "Escuchar" })).toHaveCount(0);
   await page.locator(".kids-node.current").click();
@@ -100,5 +99,5 @@ test("adult gate protects real progress, settings and AI status", async ({ page 
   await expect(page.getByText(/no conectad|not connected|provider-unavailable/i)).toHaveCount(0);
   await page.getByRole("button", { name: "Volver al mapa" }).click();
   await page.getByRole("button", { name: "Adultos" }).click();
-  await expect(page.getByRole("heading", { name: "¿Cuánto es 7 + 5?" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /PIN de adulto/ })).toBeVisible();
 });

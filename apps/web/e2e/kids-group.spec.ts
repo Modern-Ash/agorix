@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
+import { passAdultGate } from "./helpers.js";
 
 // Issue #566 and #567. Runs against the DEV/E2E-only in-process backend (AGORIX_DEV_BACKEND=1), which
 // hosts the real project API, link service and group service. Separate browser contexts play the
@@ -27,9 +28,7 @@ async function open(page: Page, flags: string[] = ["adultLink", "groupMode"]) {
 
 async function openAdults(page: Page) {
   await page.getByRole("button", { name: "Adultos" }).click();
-  await page.getByRole("button", { name: "1", exact: true }).click();
-  await page.getByRole("button", { name: "2", exact: true }).click();
-  await page.getByRole("button", { name: "Comprobar" }).click();
+  await passAdultGate(page);
   await expect(page.getByRole("heading", { name: "Ajustes" })).toBeVisible();
 }
 
