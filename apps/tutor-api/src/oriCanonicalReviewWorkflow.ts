@@ -36,7 +36,7 @@ export function createOriCanonicalReviewWorkflow({
       if(!binding)return "";
       try{
         const record=await repository.get(binding.owner,binding.projectId);
-        return record.revision===binding.revision?record.semanticHash:"";
+        return record.revision===binding.revision?record.semanticHash:"0".repeat(64);
       }catch{return "";}
     }
   });
