@@ -44,6 +44,8 @@ export function openOriSqliteActiveProjectPersistence(path:string):OriSqliteActi
     },
     async migrate(accountId:string,oldSessionId:string,newSessionId:string,now:number):Promise<boolean>{
       if(oldSessionId===newSessionId)return true;
+      if(!accountId || !oldSessionId || !newSessionId ||
+         !Number.isSafeInteger(now) || now<0)return false;
       db.exec("BEGIN IMMEDIATE");
       try{
         expired.run(accountId,oldSessionId,now);
