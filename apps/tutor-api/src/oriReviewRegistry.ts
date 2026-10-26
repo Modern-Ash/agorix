@@ -55,7 +55,8 @@ export function createOriReviewRegistry({now=Date.now,maxSessions=MAX_SESSIONS,t
       purge();
       const entry=entries.get(id);
       if(!entry)return null;
-      const revision=await currentRevision(id);\n      const updated=decideOriProposalReview(entry.session,revision,decision);
+      const revision=await currentRevision(id);
+      const updated=decideOriProposalReview(entry.session,revision,decision);
       entries.set(id,{...entry,session:updated});
       return ticket(id,updated);
     }
