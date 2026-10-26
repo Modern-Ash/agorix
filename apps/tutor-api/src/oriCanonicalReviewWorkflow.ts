@@ -1,7 +1,7 @@
 import type { ProjectRepository } from "@agorix/project-repository";
 import type { WorldStateInput } from "@agorix/runtime";
 import { createOriCanonicalExecutionPort } from "./oriCanonicalExecutionPort.js";
-import { createOriPersistedEvidenceResolver } from "./oriPersistedEvidenceResolver.js";
+import { createOriPersistedEvidenceResolver, oriEvidenceRevision } from "./oriPersistedEvidenceResolver.js";
 import { createOriHostEvidenceAdapter } from "./oriHostEvidenceAdapter.js";
 import { createOriProjectReviewService } from "./oriProjectReviewService.js";
 import { createOriReviewRegistry } from "./oriReviewRegistry.js";
@@ -47,7 +47,7 @@ export function createOriCanonicalReviewWorkflow({
         const record=await repository.get(binding.owner,binding.projectId);
         return record.ownerId===binding.owner && record.projectId===binding.projectId &&
           record.revision===binding.revision && record.semanticHash===binding.hash
-          ?record.semanticHash:"0".repeat(64);
+          ?oriEvidenceRevision(record.semanticHash,record.revision):"0".repeat(64);
       }catch{return "";}
     }
   });
@@ -72,7 +72,7 @@ export function createOriCanonicalReviewWorkflow({
         try{
           const record=await repository.get(owner,projectId);
           if(record.ownerId!==owner || record.projectId!==projectId ||
-             !/^[a-f0-9]{64}$/.test(record.semanticHash))return null;
+             typeof record.semanticHash!=="string" || !record.semanticHash)return null;
           ticketProjects.set(ticket.id,{owner,projectId,revision:record.revision,hash:record.semanticHash,created:Date.now()});
         }catch{return null;}
       }
