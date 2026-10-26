@@ -2,7 +2,6 @@ import { existsSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { ProjectRepository } from "@agorix/project-repository";
-import type { TrustedOriEvidence } from "./oriHostEvidenceAdapter.js";
 import { createOriCanonicalReviewWorkflow } from "./oriCanonicalReviewWorkflow.js";
 
 const oriRoot=process.env["ORI_REPO_PATH"];
