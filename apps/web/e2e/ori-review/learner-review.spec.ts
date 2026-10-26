@@ -36,7 +36,7 @@ test.describe("Ori learner proposal review",()=>{
     });
     await page.getByRole("button",{name:"Pedir una propuesta"}).click();
     await expect(page.getByTestId("ori-proposal-review")).toHaveCount(0);
-    await expect(page.getByRole("status")).toContainText("No hay una propuesta disponible");
+    await expect(page.getByTestId("ori-learner-review-widget").getByRole("status")).toContainText("No hay una propuesta disponible");
   });
   test("surfaces stale review without claiming project mutation",async({page})=>{
     await page.route("**/api/tutor/ori/review/propose",async route=>{
