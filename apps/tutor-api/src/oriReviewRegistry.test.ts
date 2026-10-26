@@ -33,6 +33,6 @@ describe("server-owned Ori proposal tickets",()=>{
  });
  it("rejects missing proposals",()=>{
   const registry=createOriReviewRegistry({currentRevision:async()=>revision});
-  expect(registry.issue({...response,proposal:null})).toBeNull();
+  expect(registry.issue({...response,proposal:null},"session-a")).toBeNull();
  });
 });
