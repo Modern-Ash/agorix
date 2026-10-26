@@ -449,7 +449,7 @@ test("Ori's face follows real events and respects reduced motion", async ({ page
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
   await page.getByRole("button", { name: "Crear escena" }).click();
-  const face = page.locator(".kids-ori-action .kids-ori-face");
+  const face = page.locator(".kids-studio-ori .kids-ori-stage .kids-ori-face");
   // Nothing happened yet: Ori is calm, not pleased or busy.
   await expect(face).toHaveAttribute("data-ori-expression", "neutral");
   await page.getByRole("button", { name: "+ Mover", exact: true }).click();
@@ -467,7 +467,9 @@ test("Ori's face follows real events and respects reduced motion", async ({ page
   // Reduced motion keeps the expression but removes every animation.
   await page.emulateMedia({ reducedMotion: "reduce" });
   const animations = await page
-    .locator(".kids-ori-action .kids-ori-face, .kids-ori-action .kids-ori-face *")
+    .locator(
+      ".kids-studio-ori .kids-ori-stage .kids-ori-face, .kids-studio-ori .kids-ori-stage .kids-ori-face *",
+    )
     .evaluateAll((nodes) => nodes.map((node) => getComputedStyle(node).animationName));
   expect(animations.every((name) => name === "none")).toBe(true);
   await expect(face).toHaveAttribute("data-ori-expression", /happy|neutral/);

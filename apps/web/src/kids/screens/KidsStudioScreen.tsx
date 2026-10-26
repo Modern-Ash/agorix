@@ -3693,6 +3693,9 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand =
           </div>
           {oriSuggestions ? (
             <div className="kids-studio-ori">
+              <div className="kids-ori-stage">
+                <KidsSprite slot="ori" expression={oriExpression} talking={Boolean(oriIdea)} />
+              </div>
               <button
                 type="button"
                 className="kids-button kids-ori-action"
@@ -3701,7 +3704,6 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand =
                 disabled={oriBusy}
                 onClick={() => void askOri()}
               >
-                <KidsSprite slot="ori" expression={oriExpression} />
                 <span>{copy.idea}</span>
               </button>
               <StudioIntentPicker

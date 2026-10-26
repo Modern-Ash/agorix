@@ -1071,38 +1071,114 @@
   height: 100%;
   min-width: 0;
   max-width: 100%;
-  color: #ffffff;
   overflow: visible;
 }
-.kids-ori-head {
+.kids-ori-face * {
   transform-box: fill-box;
   transform-origin: center;
 }
-.kids-ori-dots circle {
-  opacity: 0.35;
+/* The character is its own shape, so its holder stops drawing a purple disc behind it. */
+.kids-ori-float-trigger > span:has(.kids-ori-face),
+.kids-ori-action > span:has(.kids-ori-face),
+.kids-ori-card > span:has(.kids-ori-face) {
+  background: transparent;
+  overflow: visible;
+}
+/* The panel already shows Ori large above the card, so the card does not repeat it. */
+.kids-ori-float-dialog .kids-ori-card > span:has(.kids-ori-face) {
+  display: none;
+}
+/* Big enough to read as a character and to see it move. */
+.kids-ori-float-trigger > span:has(.kids-ori-face) {
+  width: 56px;
+  height: 56px;
+  flex: 0 0 56px;
+}
+.kids-ori-action > span:has(.kids-ori-face) {
+  width: 3.4rem;
+  height: 3.4rem;
+  flex: 0 0 3.4rem;
+}
+.kids-ori-card > span:has(.kids-ori-face) {
+  width: 84px;
+  height: 84px;
+  flex: 0 0 84px;
+}
+.kids-ori-stage {
+  width: 132px;
+  height: 132px;
+  margin: 0 auto 0.25rem;
+  flex: none;
+}
+.kids-ori-stage > span {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 @media (prefers-reduced-motion: no-preference) {
-  .kids-ori-face[data-ori-expression="neutral"] .kids-ori-eyes {
-    transform-box: fill-box;
-    transform-origin: center;
-    animation: kids-ori-blink 5.5s ease-in-out infinite;
+  /* Always alive: it floats, breathes, blinks and glances around, so it never looks like a picture. */
+  .kids-ori-face .kids-ori-float {
+    animation: kids-ori-floatY 3.4s ease-in-out infinite;
   }
-  .kids-ori-face[data-ori-expression="happy"] .kids-ori-head {
-    animation: kids-ori-bob 1.4s ease-in-out infinite;
+  .kids-ori-face .kids-ori-body {
+    animation: kids-ori-breathe-body 4.2s ease-in-out infinite;
   }
-  .kids-ori-face[data-ori-expression="celebrate"] .kids-ori-head {
-    animation: kids-ori-hop 0.7s ease-in-out infinite;
+  .kids-ori-face .kids-ori-shadow {
+    animation: kids-ori-shadow 3.4s ease-in-out infinite;
   }
-  .kids-ori-face[data-ori-expression="celebrate"] .kids-ori-sparkles {
-    transform-box: fill-box;
-    transform-origin: center;
-    animation: kids-ori-twinkle 0.9s ease-in-out infinite;
+  .kids-ori-face .kids-ori-eye {
+    animation: kids-ori-blink-eye 4.6s ease-in-out infinite;
   }
-  .kids-ori-face[data-ori-expression="curious"] .kids-ori-head {
-    animation: kids-ori-tilt 2.2s ease-in-out infinite;
+  .kids-ori-face .kids-ori-pupil {
+    animation: kids-ori-glance 7s ease-in-out infinite;
   }
-  .kids-ori-face[data-ori-expression="encourage"] .kids-ori-head {
-    animation: kids-ori-nod-soft 1.6s ease-in-out infinite;
+  .kids-ori-face .kids-ori-bulb {
+    animation: kids-ori-bulb 2.4s ease-in-out infinite;
+  }
+  .kids-ori-face .kids-ori-antenna {
+    transform-origin: 60px 17px;
+    animation: kids-ori-antenna 3.4s ease-in-out infinite;
+  }
+  .kids-ori-face .kids-ori-cheek {
+    animation: kids-ori-cheek 3.8s ease-in-out infinite;
+  }
+  /* A mouth that talks while Ori has something to say. */
+  .kids-ori-face[data-ori-talking="true"] .kids-ori-mouth {
+    transform-origin: 60px 70px;
+    animation: kids-ori-talk 0.34s ease-in-out infinite;
+  }
+  .kids-ori-face[data-ori-expression="happy"] .kids-ori-float {
+    animation: kids-ori-bounce 1.3s ease-in-out infinite;
+  }
+  .kids-ori-face[data-ori-expression="celebrate"] .kids-ori-float {
+    animation: kids-ori-party 0.7s ease-in-out infinite;
+  }
+  .kids-ori-face[data-ori-expression="celebrate"] .kids-ori-sparkles > * {
+    animation: kids-ori-twinkle 0.8s ease-in-out infinite;
+  }
+  .kids-ori-face[data-ori-expression="celebrate"] .kids-ori-sparkles > *:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+  .kids-ori-face[data-ori-expression="celebrate"] .kids-ori-sparkles > *:nth-child(3) {
+    animation-delay: 0.4s;
+  }
+  .kids-ori-face[data-ori-expression="celebrate"] .kids-ori-sparkles > *:nth-child(4) {
+    animation-delay: 0.1s;
+  }
+  .kids-ori-face[data-ori-expression="celebrate"] .kids-ori-sparkles > *:nth-child(5) {
+    animation-delay: 0.3s;
+  }
+  .kids-ori-face[data-ori-expression="curious"] .kids-ori-body {
+    animation: kids-ori-tilt-body 2.4s ease-in-out infinite;
+  }
+  .kids-ori-face[data-ori-expression="curious"] .kids-ori-mark {
+    animation: kids-ori-pop 1.4s ease-in-out infinite;
+  }
+  .kids-ori-face[data-ori-expression="thinking"] .kids-ori-body {
+    animation: kids-ori-sway 2.2s ease-in-out infinite;
+  }
+  .kids-ori-face[data-ori-expression="thinking"] .kids-ori-pupil {
+    animation: kids-ori-ponder 2.6s ease-in-out infinite;
   }
   .kids-ori-face[data-ori-expression="thinking"] .kids-ori-dots circle {
     animation: kids-ori-dot 1.2s ease-in-out infinite;
@@ -1113,71 +1189,197 @@
   .kids-ori-face[data-ori-expression="thinking"] .kids-ori-dots circle:nth-child(3) {
     animation-delay: 0.4s;
   }
+  .kids-ori-face[data-ori-expression="encourage"] .kids-ori-body {
+    animation: kids-ori-nod 1.8s ease-in-out infinite;
+  }
+  .kids-ori-face[data-ori-expression="encourage"] .kids-ori-heart {
+    animation: kids-ori-heartbeat 1.1s ease-in-out infinite;
+  }
 }
-@keyframes kids-ori-blink {
+@keyframes kids-ori-floatY {
   0%,
-  92%,
+  100% {
+    transform: translateY(1px);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+@keyframes kids-ori-breathe-body {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  50% {
+    transform: scale(1.025, 0.975);
+  }
+}
+@keyframes kids-ori-shadow {
+  0%,
+  100% {
+    transform: scaleX(1);
+    opacity: 0.2;
+  }
+  50% {
+    transform: scaleX(0.8);
+    opacity: 0.12;
+  }
+}
+@keyframes kids-ori-blink-eye {
+  0%,
+  90%,
   100% {
     transform: scaleY(1);
   }
-  95% {
-    transform: scaleY(0.1);
+  94% {
+    transform: scaleY(0.08);
   }
 }
-@keyframes kids-ori-bob {
+@keyframes kids-ori-glance {
   0%,
+  38%,
   100% {
-    transform: translateY(0);
+    transform: translate(0, 0);
   }
-  50% {
-    transform: translateY(-1px);
+  44%,
+  62% {
+    transform: translate(3px, -1px);
+  }
+  70%,
+  88% {
+    transform: translate(-3px, 0.5px);
   }
 }
-@keyframes kids-ori-hop {
+@keyframes kids-ori-ponder {
   0%,
   100% {
-    transform: translateY(0) scale(1);
+    transform: translate(2.8px, -3px);
   }
   50% {
-    transform: translateY(-2px) scale(1.06);
+    transform: translate(-1px, -3.4px);
+  }
+}
+@keyframes kids-ori-bulb {
+  0%,
+  100% {
+    opacity: 0.75;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+@keyframes kids-ori-antenna {
+  0%,
+  100% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(5deg);
+  }
+}
+@keyframes kids-ori-cheek {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+@keyframes kids-ori-talk {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(0.45);
+  }
+}
+@keyframes kids-ori-bounce {
+  0%,
+  100% {
+    transform: translateY(1px);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+@keyframes kids-ori-party {
+  0%,
+  100% {
+    transform: translateY(2px) rotate(-4deg) scale(1);
+  }
+  50% {
+    transform: translateY(-10px) rotate(4deg) scale(1.06);
   }
 }
 @keyframes kids-ori-twinkle {
   0%,
   100% {
     opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+  50% {
+    opacity: 0.3;
+    transform: scale(0.6) rotate(25deg);
+  }
+}
+@keyframes kids-ori-tilt-body {
+  0%,
+  100% {
+    transform: rotate(-7deg);
+  }
+  50% {
+    transform: rotate(7deg);
+  }
+}
+@keyframes kids-ori-pop {
+  0%,
+  100% {
+    transform: scale(1) rotate(-8deg);
+  }
+  50% {
+    transform: scale(1.25) rotate(8deg);
+  }
+}
+@keyframes kids-ori-sway {
+  0%,
+  100% {
+    transform: rotate(-4deg) translateX(-1px);
+  }
+  50% {
+    transform: rotate(5deg) translateX(1px);
+  }
+}
+@keyframes kids-ori-nod {
+  0%,
+  100% {
+    transform: rotate(-3deg) translateY(0);
+  }
+  50% {
+    transform: rotate(3deg) translateY(3px);
+  }
+}
+@keyframes kids-ori-heartbeat {
+  0%,
+  100% {
     transform: scale(1);
   }
   50% {
-    opacity: 0.4;
-    transform: scale(0.8);
-  }
-}
-@keyframes kids-ori-tilt {
-  0%,
-  100% {
-    transform: rotate(-5deg);
-  }
-  50% {
-    transform: rotate(5deg);
-  }
-}
-@keyframes kids-ori-nod-soft {
-  0%,
-  100% {
-    transform: rotate(-3deg);
-  }
-  50% {
-    transform: rotate(3deg) translateY(1px);
+    transform: scale(1.3);
   }
 }
 @keyframes kids-ori-dot {
   0%,
   100% {
-    opacity: 0.3;
+    opacity: 0.25;
+    transform: scale(0.8);
   }
   50% {
     opacity: 1;
+    transform: scale(1.15);
   }
 }
 /* Ori's panel never blocks the stage: a side panel on wide screens, a bottom sheet on phones. */
@@ -1204,14 +1406,16 @@
   padding-bottom: calc(16px + env(safe-area-inset-bottom));
 }
 @media (min-width: 900px) {
+  /* Below the top bar, so the editor's own buttons stay visible and reachable. */
   .kids-ori-panel-layer {
-    align-items: stretch;
+    align-items: flex-start;
+    padding: 5.5rem 1rem 1rem 0;
   }
   .kids-ori-float-dialog {
-    width: min(380px, 40vw);
-    max-height: none;
-    border-radius: 18px 0 0 18px;
-    box-shadow: -8px 0 32px #140c2a40;
+    width: min(400px, 36vw);
+    max-height: calc(100vh - 6.5rem);
+    border-radius: 18px;
+    box-shadow: 0 12px 40px #140c2a50;
   }
 }
 .kids-program-drop {
