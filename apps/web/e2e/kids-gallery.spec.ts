@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { reloadTo } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -46,10 +47,7 @@ test("a new child can browse included art, create a project and reopen it", asyn
   await page.getByRole("button", { name: "¡Crear!" }).click();
   await expect(page.locator(".kids-world-grid.kids-art-backdrop")).toBeVisible();
   await expect(page.locator(".kids-world-avatar.kids-art-image")).toBeVisible();
-  await page.reload();
-  await page.evaluate(() => {
-    location.hash = "#/proyectos";
-  });
+  await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await expect(page.locator(".kids-project-card .kids-art-backdrop")).toBeVisible();
   await page.locator(".kids-project-card").getByRole("button", { name: "Jugar" }).click();
@@ -69,10 +67,7 @@ test("a new child can browse included art, create a project and reopen it", asyn
   await expect(page.getByRole("combobox", { name: "sonar 1" })).toHaveValue("kids-tone");
   await soundGallery.getByRole("button", { name: "Elegir Salpicadura" }).click();
   await expect(page.getByRole("combobox", { name: "sonar 1" })).toHaveValue("kids:splash");
-  await page.reload();
-  await page.evaluate(() => {
-    location.hash = "#/proyectos";
-  });
+  await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await page.locator(".kids-project-card").getByRole("button", { name: "Jugar" }).click();
   await expect(page.getByRole("combobox", { name: "sonar 1" })).toHaveValue("kids:splash");
