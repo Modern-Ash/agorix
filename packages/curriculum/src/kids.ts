@@ -126,13 +126,13 @@ const COPY: Record<string, Record<SupportedLocale, KidsCopy>> = {
   [KIDS_MISSION_IDS[0]]: {
     es: {
       title: "Camino recto",
-      goalTitle: "Llega a la meta",
-      learnerFacing: "Mueve a tu personaje en línea recta hasta la meta.",
+      goalTitle: "Llegá a la meta",
+      learnerFacing: "Mové a tu personaje en línea recta hasta la meta.",
       hints: [
-        "Mira dónde está la meta. ¿Está cerca o lejos?",
-        "Cuenta los cuadritos que hay entre tu personaje y la meta.",
+        "Mirá dónde está la meta. ¿Está cerca o lejos?",
+        "Contá los cuadritos que hay entre tu personaje y la meta.",
         "Un bloque Mover avanza tantos cuadritos como indica su número.",
-        "Prueba un bloque Mover con el número de cuadritos que contaste.",
+        "Probá un bloque Mover con el número de cuadritos que contaste.",
         "Una idea: un solo bloque Mover con el número 4.",
       ],
       reflectionPrompt: "¿Qué número usaste en Mover y por qué?",
@@ -154,13 +154,13 @@ const COPY: Record<string, Record<SupportedLocale, KidsCopy>> = {
   [KIDS_MISSION_IDS[1]]: {
     es: {
       title: "La esquina",
-      goalTitle: "Llega a la meta doblando",
-      learnerFacing: "La meta está arriba. Avanza y gira para llegar.",
+      goalTitle: "Llegá a la meta doblando",
+      learnerFacing: "La meta está arriba. Avanzá y girá para llegar.",
       hints: [
-        "La meta no está en tu fila. ¿Hacia dónde tienes que ir?",
-        "Primero avanza hacia el lado de la meta y después tienes que girar.",
+        "La meta no está en tu fila. ¿Hacia dónde tenés que ir?",
+        "Primero avanzá hacia el lado de la meta y después tenés que girar.",
         "Girar a la izquierda hace que tu personaje mire hacia arriba.",
-        "Prueba: Mover, Girar a la izquierda y otro Mover.",
+        "Probá: Mover, Girar a la izquierda y otro Mover.",
         "Una idea: Mover 3, Girar a la izquierda, Mover 2.",
       ],
       reflectionPrompt: "¿Por qué tuviste que girar en tu programa?",
@@ -182,13 +182,13 @@ const COPY: Record<string, Record<SupportedLocale, KidsCopy>> = {
   [KIDS_MISSION_IDS[2]]: {
     es: {
       title: "El zigzag",
-      goalTitle: "Llega a la meta con giros",
+      goalTitle: "Llegá a la meta con giros",
       learnerFacing: "Baja, gira y avanza hasta la meta. Repetir te puede ayudar.",
       hints: [
-        "Mira el camino: la meta está abajo y a la derecha.",
+        "Mirá el camino: la meta está abajo y a la derecha.",
         "Tu personaje empieza mirando a la derecha. ¿Qué giro lo hace mirar hacia abajo?",
         "Cuando repites la misma acción varias veces, el bloque Repetir te ahorra bloques.",
-        "Prueba: Girar a la derecha, avanzar, Girar a la izquierda y avanzar otra vez.",
+        "Probá: Girar a la derecha, avanzar, Girar a la izquierda y avanzar otra vez.",
         "Una idea: Girar a la derecha, Mover 3, Girar a la izquierda, Mover 3.",
       ],
       reflectionPrompt: "¿Dónde podrías usar Repetir para tener menos bloques?",
@@ -210,14 +210,14 @@ const COPY: Record<string, Record<SupportedLocale, KidsCopy>> = {
   [KIDS_FREE_MISSION_ID]: {
     es: {
       title: "Tu propio mundo",
-      goalTitle: "Elige tu meta",
-      learnerFacing: "Toca el mundo para poner la meta y luego llega hasta ella.",
+      goalTitle: "Elegí tu meta",
+      learnerFacing: "Tocá el mundo para poner la meta y luego llegá hasta ella.",
       hints: [
-        "Toca un cuadrito del mundo para poner tu meta.",
-        "Mira cuántos cuadritos hay hasta tu meta.",
+        "Tocá un cuadrito del mundo para poner tu meta.",
+        "Mirá cuántos cuadritos hay hasta tu meta.",
         "Mover avanza y Girar cambia hacia dónde mira tu personaje.",
-        "Combina Mover y Girar para dibujar tu camino.",
-        "Una idea: elige una meta en tu misma fila y usa un solo Mover.",
+        "Combiná Mover y Girar para dibujar tu camino.",
+        "Una idea: elegí una meta en tu misma fila y usá un solo Mover.",
       ],
       reflectionPrompt: "¿Qué meta elegiste y cómo llegaste?",
     },

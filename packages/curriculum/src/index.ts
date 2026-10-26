@@ -162,7 +162,7 @@ const FIRST_MISSION_LOCALIZED_CONTENT = {
     title: "Alcanza la meta",
     goal: {
       title: "Lleva tu personaje hasta la meta",
-      learnerFacing: "Usa bloques para mover el personaje hasta que llegue a la meta.",
+      learnerFacing: "Usá bloques para mover el personaje hasta que llegue a la meta.",
     },
     constraints: [
       {
@@ -183,7 +183,7 @@ const FIRST_MISSION_LOCALIZED_CONTENT = {
         level: 3,
         text: "Compara los pasos del bloque Mover con la distancia entre el personaje y la meta.",
       },
-      { level: 4, text: "Prueba un bloque Mover que recorra la misma distancia que falta." },
+      { level: 4, text: "Probá un bloque Mover que recorra la misma distancia que falta." },
       { level: 5, text: "Desde este escenario inicial, Mover 160 pasos llega a la meta." },
     ],
     reflectionPrompt: "¿Qué número hizo que el personaje llegara a la meta y por qué funcionó?",
@@ -202,10 +202,10 @@ const FEEDBACK_MESSAGES = {
   },
   es: {
     complete: "Misión completa: tu personaje llegó a la meta.",
-    nothingMoved: "Todavía no se movió nada. Agrega un bloque Mover y vuelve a presionar Ejecutar.",
+    nothingMoved: "Todavía no se movió nada. Agregá un bloque Mover y volvé a presionar Ejecutar.",
     stoppedShort:
-      "Todavía falta: el personaje avanzó hacia la meta, pero se quedó corto. Prueba más pasos.",
-    passedGoal: "El personaje pasó la meta. Prueba menos pasos para que se detenga sobre la meta.",
+      "Todavía falta: el personaje avanzó hacia la meta, pero se quedó corto. Probá más pasos.",
+    passedGoal: "El personaje pasó la meta. Probá menos pasos para que se detenga sobre la meta.",
     adjustBlock:
       "El personaje no terminó sobre la meta. Compara el escenario con tu código generado y ajusta un bloque.",
   },
