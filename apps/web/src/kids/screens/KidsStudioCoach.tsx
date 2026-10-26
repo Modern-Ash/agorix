@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { OriStudioIntent } from "@agorix/ori-agent";
 import type { Locale } from "../../i18n.js";
 import {
@@ -101,16 +101,34 @@ export function StudioCoach({
   facts,
   predicted,
   reflection,
+  onExplained,
 }: {
   readonly locale: Locale;
   readonly name: string;
   readonly facts: ActorFacts;
   readonly predicted: Direction | null;
   readonly reflection: Reflection | null;
+  /** Called once when the child's guess or answer matched what the run really did. */
+  readonly onExplained?: (() => void) | undefined;
 }) {
   const es = locale === "es";
   const [answer, setAnswer] = useState<string | number | boolean | null>(null);
   const judged = predicted ? judgePrediction(predicted, facts, name, locale) : null;
+  const told = useRef(false);
+  const correct =
+    reflection === null || answer === null
+      ? false
+      : reflection.kind === "cause"
+        ? reflection.answers.includes(String(answer))
+        : reflection.kind === "count"
+          ? answer === reflection.answer
+          : false;
+  // The "did you expect it?" question is the child's own word, so only the checks count as evidence.
+  useEffect(() => {
+    if (told.current || !(judged?.match || correct)) return;
+    told.current = true;
+    onExplained?.();
+  }, [judged?.match, correct, onExplained]);
   const reply = (() => {
     if (reflection === null || answer === null) return null;
     if (reflection.kind === "expected")

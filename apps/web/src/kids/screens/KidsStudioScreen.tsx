@@ -10,6 +10,8 @@ import { projectAgorixCode } from "@agorix/agorix-code";
 import { projectProgram } from "@agorix/code-generator";
 import { projectPython } from "@agorix/python-projection";
 import { projectJava } from "@agorix/java-projection";
+import { conceptsOfProgram, reusedConcepts } from "@agorix/learning-evidence";
+import { recordMastery } from "../kidsMastery.js";
 import { ProjectStore } from "@agorix/persistence";
 import { runMultiActorProgram, type MultiActorRunResult, type RuntimeEvent } from "@agorix/runtime";
 import {
@@ -798,6 +800,8 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
   const [prediction, setPrediction] = useState<Direction | null>(null);
   const [predictedForRun, setPredictedForRun] = useState<Direction | null>(null);
   const [runCount, setRunCount] = useState(0);
+  // Ori's help since the last run, so a run is counted as helped or on the child's own.
+  const helped = useRef(false);
   const [palette, setPalette] = useState<HTMLDivElement | null>(null);
   const programRef = useRef<HTMLOListElement>(null);
   // What is under the pointer while a block is dragged: a list (with the place in it) or a character.
@@ -1787,6 +1791,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
         }).history,
       );
       reactOri("happy");
+      helped.current = true;
     } catch {
       setError(true);
     }
@@ -1795,6 +1800,17 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
   function play() {
     try {
       const result = runMultiActorProgram(history.current, creative, { keysDown: heldKeys });
+      const completed = result.outcome === "completed";
+      recordMastery({
+        kind: "run",
+        concepts: conceptsOfProgram(history.current),
+        completed,
+        helped: helped.current,
+        free: true,
+      });
+      const reused = reusedConcepts(history.current);
+      if (completed && reused.length > 0) recordMastery({ kind: "reuse", concepts: reused });
+      helped.current = false;
       setRun(result);
       setPredictedForRun(prediction);
       setRunCount((count) => count + 1);
@@ -1881,6 +1897,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
         setOriMessage("");
         return;
       }
+      helped.current = true;
       if (decision === "accept") {
         persist(
           recordCanonicalTransaction(history, {
@@ -2264,6 +2281,9 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               name={actor.name}
               facts={factsOfRun(run, activeActorId)}
               predicted={predictedForRun}
+              onExplained={() =>
+                recordMastery({ kind: "explained", concepts: conceptsOfProgram(history.current) })
+              }
               reflection={reflectionFor(
                 ageBand ?? "6-8",
                 factsOfRun(run, activeActorId),
