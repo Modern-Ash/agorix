@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "test:prod": "playwright test -c playwright.prod.config.ts"
+    "test:prod": "playwright test -c playwright.prod.config.ts",
+    "test:e2e:ori": "playwright test -c playwright.ori-review.config.ts"
   },
   "dependencies": {
     "@agorix/agent-workflow": "workspace:*",
