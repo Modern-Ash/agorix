@@ -23,8 +23,8 @@ const MAX_AGE_MS=5*60*1000;
  */
 export function createOriReviewRegistry({now=Date.now,maxSessions=MAX_SESSIONS,ttlMs=MAX_AGE_MS,currentRevision}:{
   readonly now?:()=>number;readonly maxSessions?:number;readonly ttlMs?:number;
-  readonly currentRevision:(id:string)=>Promise<string>
-}={}):OriReviewRegistry {
+  readonly currentRevision?:(id:string)=>Promise<string>
+}):OriReviewRegistry {
   if(typeof currentRevision!=="function"||!Number.isSafeInteger(maxSessions)||maxSessions<1||maxSessions>1000||
      !Number.isSafeInteger(ttlMs)||ttlMs<1||ttlMs>3600000)
     throw new TypeError("Invalid review registry limits");
@@ -37,7 +37,7 @@ export function createOriReviewRegistry({now=Date.now,maxSessions=MAX_SESSIONS,t
     Object.freeze({id,status:session.status,proposal:structuredClone(session.proposal),appliedChanges:false});
   return Object.freeze({
     purge,
-    issue(result){
+    issue(result:OriHostEvidenceResult){
       purge();
       const session=beginOriProposalReview(result);
       if(!session)return null;
@@ -46,16 +46,16 @@ export function createOriReviewRegistry({now=Date.now,maxSessions=MAX_SESSIONS,t
       entries.set(id,{session,created:now()});
       return ticket(id,session);
     },
-    read(id){
+    read(id:string){
       purge();
       const entry=entries.get(id);
       return entry?ticket(id,entry.session):null;
     },
-    async decide(id,decision){
+    async decide(id:string,decision:OriReviewDecision){
       purge();
       const entry=entries.get(id);
       if(!entry)return null;
-      const revision=await currentRevision(id);
+      const revision=await currentRevision!(id);
       const updated=decideOriProposalReview(entry.session,revision,decision);
       entries.set(id,{...entry,session:updated});
       return ticket(id,updated);
