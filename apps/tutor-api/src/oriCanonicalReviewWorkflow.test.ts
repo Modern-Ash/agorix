@@ -27,7 +27,8 @@ describe("canonical project -> runtime -> Ori review composition",()=>{
       repository,oriRoot:"/unused-with-test-override",
       world:{goal:{x:10,y:0}},
       learningContext:async()=>({attempts:1,hintsUsed:1,learningStage:"connect"}),
-      runOriOverride:async (evidence:TrustedOriEvidence)=>{
+      runOriOverride:async (raw:unknown)=>{
+        const evidence=raw as TrustedOriEvidence;
         calls++;
         expect(evidence.trace.steps).toEqual([{index:0,description:"Executed move"}]);
         expect(evidence.programRevision).toBe(revision);
@@ -53,5 +54,32 @@ describe("canonical project -> runtime -> Ori review composition",()=>{
     expect(ticket).not.toBeNull();
     numericRevision=2;
     expect((await workflow.decide("student","project-a",ticket!.id,"accept"))?.status).toBe("stale");
+  });
+  it("rejects a changed semantic hash without a numeric revision increment",async()=>{
+    let semanticHash=revision;
+    const repository={get:async()=>({...base,semanticHash})} as unknown as ProjectRepository;
+    const workflow=createOriCanonicalReviewWorkflow({
+      repository,oriRoot:"/unused-with-test-override",world:{},
+      learningContext:async()=>({attempts:1,hintsUsed:1,learningStage:"connect"}),
+      runOriOverride:async()=>response
+    });
+    const ticket=await workflow.propose("student","project-a");
+    expect(ticket?.status).toBe("pending");
+    semanticHash="c".repeat(64);
+    expect((await workflow.decide("student","project-a",ticket!.id,"accept"))?.status).toBe("stale");
+  });
+  it("refuses decisions after project ownership is revoked",async()=>{
+    let ownerId="student";
+    const repository={get:async()=>({...base,ownerId})} as unknown as ProjectRepository;
+    const workflow=createOriCanonicalReviewWorkflow({
+      repository,oriRoot:"/unused-with-test-override",world:{},
+      learningContext:async()=>({attempts:1,hintsUsed:1,learningStage:"connect"}),
+      runOriOverride:async()=>response
+    });
+    const ticket=await workflow.propose("student","project-a");
+    expect(ticket?.status).toBe("pending");
+    ownerId="other";
+    expect(await workflow.decide("student","project-a",ticket!.id,"accept")).toBeNull();
+    expect(await workflow.read("student","project-a",ticket!.id)).toBeNull();
   });
 });

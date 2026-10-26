@@ -29,14 +29,16 @@ export function createOriCanonicalReviewWorkflow({
   const execute=createOriCanonicalExecutionPort({world,maxSteps:100});
   const resolve=createOriPersistedEvidenceResolver({repository,execute,learningContext});
   const runOri=runOriOverride??createOriHostEvidenceAdapter({oriRoot});
-  const ticketProjects=new Map<string,{owner:string;projectId:string;revision:number}>();
+  const ticketProjects=new Map<string,{owner:string;projectId:string;revision:number;hash:string}>();
   const registry=createOriReviewRegistry({
     currentRevision:async id=>{
       const binding=ticketProjects.get(id);
       if(!binding)return "";
       try{
         const record=await repository.get(binding.owner,binding.projectId);
-        return record.revision===binding.revision?record.semanticHash:"0".repeat(64);
+        return record.ownerId===binding.owner && record.projectId===binding.projectId &&
+          record.revision===binding.revision && record.semanticHash===binding.hash
+          ?record.semanticHash:"0".repeat(64);
       }catch{return "";}
     }
   });
@@ -56,8 +58,9 @@ export function createOriCanonicalReviewWorkflow({
       if(ticket){
         try{
           const record=await repository.get(owner,projectId);
-          if(record.ownerId!==owner || record.projectId!==projectId)return null;
-          ticketProjects.set(ticket.id,{owner,projectId,revision:record.revision});
+          if(record.ownerId!==owner || record.projectId!==projectId ||
+             !/^[a-f0-9]{64}$/.test(record.semanticHash))return null;
+          ticketProjects.set(ticket.id,{owner,projectId,revision:record.revision,hash:record.semanticHash});
         }catch{return null;}
       }
       return ticket;
