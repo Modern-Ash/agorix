@@ -18,6 +18,7 @@ describe("Ori proposal issuance browser contract",()=>{
     const [url,options]=vi.mocked(fetchMock).mock.calls[0]!;
     expect(url).toBe("/api/tutor/ori/review/propose");
     expect(options?.credentials).toBe("same-origin");
+    expect(options?.headers).toMatchObject({"x-agorix-request":"1"});
     expect(options?.body).toBe("{}");
   });
   it("fails closed for server errors",async()=>{
