@@ -1,4 +1,4 @@
-import type { IncomingMessage } from "node:http";
+import type { IncomingMessage, ServerResponse } from "node:http";
 import type { ProjectRepository } from "@agorix/project-repository";
 import type { WorldStateInput } from "@agorix/runtime";
 import { createOriAuthorizedProjectIdentityResolver, type OriAuthenticatedSession } from "./oriAuthenticatedProjectIdentity.js";
@@ -18,7 +18,7 @@ export function createOriAuthorizedReviewOptions({
   readonly oriRoot:string;
   readonly world:WorldStateInput;
   readonly learningContext:(owner:string,projectId:string)=>Promise<OriLearningContext|null>;
-  readonly resolveSession:(request:IncomingMessage)=>Promise<OriAuthenticatedSession|null>;
+  readonly resolveSession:(request:IncomingMessage,response?:ServerResponse)=>Promise<OriAuthenticatedSession|null>;
   readonly activeProject:(session:OriAuthenticatedSession)=>Promise<string|null>;
   /** Test-only: production invokes the real Ori process. */
   readonly runOriOverride?:(evidence:unknown)=>Promise<OriHostEvidenceResult>;

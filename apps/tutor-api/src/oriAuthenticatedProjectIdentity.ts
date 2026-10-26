@@ -1,4 +1,4 @@
-import type { IncomingMessage } from "node:http";
+import type { IncomingMessage, ServerResponse } from "node:http";
 import type { ProjectRepository } from "@agorix/project-repository";
 import type { OriReviewIdentityResolver } from "./oriReviewHttpContract.js";
 
@@ -14,14 +14,14 @@ export interface OriAuthenticatedSession {
 export function createOriAuthorizedProjectIdentityResolver({
   resolveSession,activeProject,repository
 }:{
-  readonly resolveSession:(request:IncomingMessage)=>Promise<OriAuthenticatedSession|null>;
+  readonly resolveSession:(request:IncomingMessage,response?:ServerResponse)=>Promise<OriAuthenticatedSession|null>;
   readonly activeProject:(session:OriAuthenticatedSession)=>Promise<string|null>;
   readonly repository:ProjectRepository;
 }):OriReviewIdentityResolver {
   const valid=(s:string)=>s.length>0 && s.length<=128;
-  return async request=>{
+  return async (request,response)=>{
     try {
-      const session=await resolveSession(request);
+      const session=await resolveSession(request,response);
       if(!session || !valid(session.accountId) || !valid(session.sessionId))return null;
       const projectId=await activeProject(session);
       if(!projectId || !valid(projectId))return null;

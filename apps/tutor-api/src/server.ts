@@ -209,7 +209,7 @@ export function createTutorServer(options: TutorServerOptions): Server {
       if (!(request.headers["content-type"] ?? "").includes("application/json"))
         return send(response, 415, error("unsupported-media-type"));
       if (!allowed(request, "chat")) return send(response, 429, error("rate-limited"));
-      const identity = validateOriReviewPrincipal(await options.oriReviewIdentity(request));
+      const identity = validateOriReviewPrincipal(await options.oriReviewIdentity(request,response));
       if (!identity) return send(response, 401, error("unauthorized"));
       const body = await readBody(request);
       if (body === "too-large") return send(response, 413, error("payload-too-large"));
@@ -234,7 +234,7 @@ export function createTutorServer(options: TutorServerOptions): Server {
       if (!(request.headers["content-type"] ?? "").includes("application/json"))
         return send(response, 415, error("unsupported-media-type"));
       if (!allowed(request, "chat")) return send(response, 429, error("rate-limited"));
-      const identity = validateOriReviewPrincipal(await options.oriReviewIdentity(request));
+      const identity = validateOriReviewPrincipal(await options.oriReviewIdentity(request,response));
       if (!identity) return send(response, 401, error("unauthorized"));
       const body = await readBody(request);
       if (body === "too-large") return send(response, 413, error("payload-too-large"));
