@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import type { Locale } from "../../i18n.js";
 import type { KidsScreen } from "../kidsState.js";
 import { oriMotionStatus, useOriPageVisible } from "../kidsOriMotion.js";
+import { expressionForMotion } from "../kidsOriExpression.js";
 import { KidsSprite } from "./KidsArt.js";
 
 const GUIDANCE: Record<KidsScreen, { es: string; en: string }> = {
@@ -87,7 +88,7 @@ export function KidsOriGuide({
         aria-label={locale === "es" ? "Hablar con Ori" : "Talk with Ori"}
         onClick={() => setOpen(true)}
       >
-        <KidsSprite slot="ori" />
+        <KidsSprite slot="ori" expression={expressionForMotion(motion, undefined)} />
         <span>{motion === "idle" ? "Ori" : oriMotionStatus(motion, locale)}</span>
       </button>
       {open ? (

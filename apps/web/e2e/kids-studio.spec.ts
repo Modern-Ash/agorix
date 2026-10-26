@@ -434,6 +434,44 @@ test("free scene draws with the pen extension and keeps the drawing blocks after
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });
 
+test("Ori's face follows real events and respects reduced motion", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
+  const face = page.locator(".kids-ori-action .kids-ori-face");
+  // Nothing happened yet: Ori is calm, not pleased or busy.
+  await expect(face).toHaveAttribute("data-ori-expression", "neutral");
+  await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(face).toHaveAttribute("data-ori-expression", "happy");
+  await page.getByRole("button", { name: "Pedirle una idea a Ori" }).click();
+  await expect(page.getByText("Ori tiene una idea para mirar y decidir.")).toBeVisible();
+  await expect(face).toHaveAttribute("data-ori-expression", "curious");
+  await page.getByRole("button", { name: "Usar idea" }).click();
+  await expect(face).toHaveAttribute("data-ori-expression", "happy");
+  const violations = (
+    await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
+  ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");
+  expect(violations.map((entry) => entry.id)).toEqual([]);
+  // Reduced motion keeps the expression but removes every animation.
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const animations = await page
+    .locator(".kids-ori-action .kids-ori-face, .kids-ori-action .kids-ori-face *")
+    .evaluateAll((nodes) => nodes.map((node) => getComputedStyle(node).animationName));
+  expect(animations.every((name) => name === "none")).toBe(true);
+  await expect(face).toHaveAttribute("data-ori-expression", /happy|neutral/);
+});
+
 test("free scene grows and shrinks a character and keeps the size blocks after reopening", async ({
   page,
 }) => {

@@ -84,6 +84,7 @@ import {
 } from "../kidsStudioProjects.js";
 import { requestStudioOri } from "../kidsStudioOriRemote.js";
 import { useOriPageVisible } from "../kidsOriMotion.js";
+import { expressionForMotion, outcomeOfRun, useOriReaction } from "../kidsOriExpression.js";
 import { KidsBackdrop, KidsSprite } from "./KidsArt.js";
 import { KidsDrawArt } from "./KidsDrawArt.js";
 
@@ -597,6 +598,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
   const [oriIdea, setOriIdea] = useState<ProgramProposal | null>(null);
   const [oriMessage, setOriMessage] = useState("");
   const [oriBusy, setOriBusy] = useState(false);
+  const [oriReaction, reactOri] = useOriReaction();
   const oriPageVisible = useOriPageVisible();
   const [error, setError] = useState(false);
   const customImagesEnabled = useKidsFlag("customImages");
@@ -672,6 +674,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
         : run
           ? "observing"
           : "idle";
+  const oriExpression = oriReaction ?? expressionForMotion(oriMotion, outcomeOfRun(run?.outcome));
   const selectedFrame = frame === null ? null : run?.frames[frame];
   const shownActors = selectedFrame?.actors ?? run?.actors;
   const shownWorld = shownActors?.find((entry) => entry.id === activeActorId)?.world;
@@ -1379,6 +1382,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
             after: acceptProposal(history.current, review).program,
           }).history,
         );
+        reactOri("happy");
       } else {
         const operation = oriIdea.operations[0];
         if (operation?.type !== "appendStatement") throw new Error("invalid Ori proposal");
@@ -3364,7 +3368,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
                 disabled={oriBusy}
                 onClick={() => void askOri()}
               >
-                <KidsSprite slot="ori" />
+                <KidsSprite slot="ori" expression={oriExpression} />
                 <span>{copy.idea}</span>
               </button>
               {!oriBusy && oriMessage && !oriIdea ? (
