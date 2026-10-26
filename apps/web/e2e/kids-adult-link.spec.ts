@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Browser, type Page } from "@playwright/test";
+import { passAdultGate } from "./helpers.js";
 
 // Issues #509 to #513. Runs against the DEV/E2E-only in-process backend (AGORIX_DEV_BACKEND=1), which
 // hosts the real project API and link service. Two browser contexts play the adult's phone and the
@@ -28,9 +29,7 @@ async function open(page: Page, flags: string[] = ["adultLink"]) {
 
 async function openAdults(page: Page) {
   await page.getByRole("button", { name: "Adultos" }).click();
-  await page.getByRole("button", { name: "1", exact: true }).click();
-  await page.getByRole("button", { name: "2", exact: true }).click();
-  await page.getByRole("button", { name: "Comprobar" }).click();
+  await passAdultGate(page);
   await expect(page.getByRole("heading", { name: "Ajustes" })).toBeVisible();
 }
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { LearningEvidenceEvent } from "@agorix/learning-evidence";
 import type { Locale } from "../../i18n.js";
 import { fetchAdultAiHealth, type AdultAiHealth } from "../kidsAdultHealth.js";
@@ -9,6 +9,15 @@ import { LinkPanel } from "../link/LinkPanel.js";
 import { KidsImagesPanel } from "./KidsImagesPanel.js";
 import { KidsAudioPanel } from "./KidsAudioPanel.js";
 import { adultSummary, readTodaySeconds, type AdultSettings } from "../kidsAdults.js";
+import {
+  PIN_MAX_DIGITS,
+  canKeepPin,
+  checkPin,
+  hasPin,
+  makeChallenge,
+  pinProblem,
+  savePin,
+} from "../kidsAdultPin.js";
 import type { KidsProgress } from "../kidsProgress.js";
 import { readKidsEvidenceEvents } from "../kidsEvidence.js";
 import type { KidsText } from "../useKidsText.js";
@@ -24,10 +33,21 @@ interface Props {
 const COPY = {
   es: {
     gate: "Solo para adultos",
-    question: "¿Cuánto es 7 + 5?",
+    question: "¿Cuánto es {a} × {b}?",
     check: "Comprobar",
     wrong: "Probá otra vez.",
     hint: "Esto mantiene los ajustes lejos de los más chicos.",
+    pinCreate: "Elegí un PIN de adulto (4 a 6 números)",
+    pinConfirm: "Repetí el PIN",
+    pinEnter: "Ingresá tu PIN de adulto",
+    pinForgot: "Me olvidé el PIN",
+    pinLength: "Usá entre 4 y 6 números.",
+    pinObvious: "Ese PIN es muy fácil de adivinar. Probá con otro.",
+    pinMismatch: "No coinciden. Elegí el PIN de nuevo.",
+    pinWrong: "PIN incorrecto. Intentos antes de esperar:",
+    pinWait: "Esperá un momento antes de probar de nuevo:",
+    pinSeconds: "segundos",
+    pinKept: "El PIN se guarda solo en este dispositivo, nunca el número en sí.",
     exit: "Salir",
     today: "Tiempo de hoy",
     goal: "Meta diaria",
@@ -69,10 +89,21 @@ const COPY = {
   },
   en: {
     gate: "Grown-ups only",
-    question: "What is 7 + 5?",
+    question: "What is {a} × {b}?",
     check: "Check",
     wrong: "Try again.",
     hint: "This keeps settings away from little hands.",
+    pinCreate: "Choose a grown-up PIN (4 to 6 numbers)",
+    pinConfirm: "Repeat the PIN",
+    pinEnter: "Enter your grown-up PIN",
+    pinForgot: "I forgot the PIN",
+    pinLength: "Use 4 to 6 numbers.",
+    pinObvious: "That PIN is too easy to guess. Try another.",
+    pinMismatch: "They do not match. Choose the PIN again.",
+    pinWrong: "Wrong PIN. Tries before waiting:",
+    pinWait: "Wait a moment before trying again:",
+    pinSeconds: "seconds",
+    pinKept: "The PIN stays on this device only, and never the number itself.",
     exit: "Exit",
     today: "Time today",
     goal: "Daily goal",
@@ -117,7 +148,17 @@ const COPY = {
 export function ParentsScreen({ t, locale, progress, settings, onSettings }: Props) {
   const [digits, setDigits] = useState("");
   const [unlocked, setUnlocked] = useState(false);
-  const [wrong, setWrong] = useState(false);
+  const [message, setMessage] = useState("");
+  // Who is at the door: someone with a PIN, someone who must first solve the adult calculation to
+  // start one, or a browser that cannot keep a PIN (it keeps only the calculation).
+  const pinKept = useMemo(() => canKeepPin(), []);
+  const [step, setStep] = useState<"enter" | "challenge" | "create" | "confirm">(() =>
+    pinKept && hasPin() ? "enter" : "challenge",
+  );
+  const [challenge, setChallenge] = useState(() => makeChallenge());
+  const [firstPin, setFirstPin] = useState("");
+  const [waitUntil, setWaitUntil] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
   const [seconds, setSeconds] = useState(0);
   const [events, setEvents] = useState<readonly LearningEvidenceEvent[]>([]);
   const [health, setHealth] = useState<AdultAiHealth | null>(null);
@@ -144,37 +185,95 @@ export function ParentsScreen({ t, locale, progress, settings, onSettings }: Pro
     void fetchAdultAiHealth().then(setHealth);
   }, [unlocked]);
 
-  function press(label: string) {
-    if (label === "⌫") {
-      setDigits((value) => value.slice(0, -1));
-      setWrong(false);
-    } else if (label === "✓") {
-      if (digits === "12") {
-        setUnlocked(true);
-        setDigits("");
+  useEffect(() => {
+    if (waitUntil <= Date.now()) return;
+    const id = window.setInterval(() => setNow(Date.now()), 500);
+    return () => window.clearInterval(id);
+  }, [waitUntil]);
+  // The wait applies to guessing the PIN; the fresh calculation to reset it is always available.
+  const waiting = step === "enter" ? Math.max(0, Math.ceil((waitUntil - now) / 1000)) : 0;
+  const secret = step !== "challenge";
+  const limit = step === "challenge" ? 3 : PIN_MAX_DIGITS;
+
+  async function submit() {
+    const entered = digits;
+    setDigits("");
+    if (step === "challenge") {
+      if (entered === challenge.answer) {
+        setMessage("");
+        if (pinKept) setStep("create");
+        else setUnlocked(true);
       } else {
-        setDigits("");
-        setWrong(true);
+        setChallenge(makeChallenge());
+        setMessage(copy.wrong);
       }
-    } else if (digits.length < 3) {
-      setDigits((value) => value + label);
-      setWrong(false);
+    } else if (step === "create") {
+      const problem = pinProblem(entered);
+      if (problem) setMessage(problem === "length" ? copy.pinLength : copy.pinObvious);
+      else {
+        setFirstPin(entered);
+        setMessage("");
+        setStep("confirm");
+      }
+    } else if (step === "confirm") {
+      if (entered !== firstPin) {
+        setFirstPin("");
+        setMessage(copy.pinMismatch);
+        setStep("create");
+        return;
+      }
+      await savePin(entered);
+      setMessage("");
+      setUnlocked(true);
+    } else {
+      const result = await checkPin(entered, Date.now());
+      if (result.status === "ok") {
+        setMessage("");
+        setUnlocked(true);
+      } else if (result.status === "locked") {
+        setWaitUntil(Date.now() + result.seconds * 1000);
+        setNow(Date.now());
+        setMessage("");
+      } else setMessage(`${copy.pinWrong} ${result.triesBeforeWait}`);
     }
   }
+
+  function press(label: string) {
+    if (waiting > 0) return;
+    if (label === "⌫") {
+      setDigits((value) => value.slice(0, -1));
+      setMessage("");
+    } else if (label === "✓") {
+      void submit();
+    } else if (digits.length < limit) {
+      setDigits((value) => value + label);
+      setMessage("");
+    }
+  }
+
+  const heading =
+    step === "challenge"
+      ? copy.question.replace("{a}", String(challenge.a)).replace("{b}", String(challenge.b))
+      : step === "create"
+        ? copy.pinCreate
+        : step === "confirm"
+          ? copy.pinConfirm
+          : copy.pinEnter;
 
   if (!unlocked)
     return (
       <section className="kids-screen kids-parents-gate" aria-labelledby="kids-parents-title">
         <p className="kids-parents-kicker">🔒 {copy.gate}</p>
-        <h1 id="kids-parents-title">{copy.question}</h1>
-        <output className="kids-gate-display" aria-label={copy.question}>
-          {digits || "_ _"}
+        <h1 id="kids-parents-title">{heading}</h1>
+        <output className="kids-gate-display" aria-label={heading}>
+          {digits ? (secret ? "•".repeat(digits.length) : digits) : "_ _"}
         </output>
-        <div className="kids-gate-pad" role="group" aria-label={copy.question}>
+        <div className="kids-gate-pad" role="group" aria-label={heading}>
           {["1", "2", "3", "4", "5", "6", "7", "8", "9", "⌫", "0", "✓"].map((label) => (
             <button
               key={label}
               type="button"
+              disabled={waiting > 0}
               onClick={() => press(label)}
               aria-label={label === "✓" ? copy.check : label === "⌫" ? t("back") : label}
             >
@@ -183,8 +282,24 @@ export function ParentsScreen({ t, locale, progress, settings, onSettings }: Pro
           ))}
         </div>
         <p role="status" className="kids-note">
-          {wrong ? copy.wrong : copy.hint}
+          {waiting > 0
+            ? `${copy.pinWait} ${waiting} ${copy.pinSeconds}.`
+            : message || (step === "create" || step === "confirm" ? copy.pinKept : copy.hint)}
         </p>
+        {step === "enter" ? (
+          <button
+            type="button"
+            className="kids-button"
+            onClick={() => {
+              setDigits("");
+              setMessage("");
+              setChallenge(makeChallenge());
+              setStep("challenge");
+            }}
+          >
+            {copy.pinForgot}
+          </button>
+        ) : null}
       </section>
     );
 
@@ -201,6 +316,13 @@ export function ParentsScreen({ t, locale, progress, settings, onSettings }: Pro
           type="button"
           onClick={() => {
             setUnlocked(false);
+            // Back at the door: with a PIN kept, ask for it; the old steps are forgotten.
+            setStep(pinKept && hasPin() ? "enter" : "challenge");
+            setChallenge(makeChallenge());
+            setFirstPin("");
+            setDigits("");
+            setMessage("");
+            setWaitUntil(0);
             setHealth(null);
           }}
         >

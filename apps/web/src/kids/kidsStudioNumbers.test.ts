@@ -13,6 +13,7 @@ import {
   createStudioProgram,
   creativeForStudio,
   deleteStudioProcedure,
+  moveStudioStatement,
   removeStudioProcedureNumber,
   setStudioCallNumbers,
   setStudioProcedureCallNumbers,
@@ -239,5 +240,41 @@ describe("copying a custom block to another character", () => {
     let full = history;
     for (let i = 0; i < 10; i += 1) full = copyStudioProcedure(full, nova, "proc-1-2", mika);
     expect(() => copyStudioProcedure(full, nova, "proc-1-2", mika)).toThrow();
+  });
+});
+
+describe("moving blocks within a character's script", () => {
+  const build = () => {
+    let history = createEditorHistory(createStudioProgram("nova"));
+    history = appendStudioStatement(history, nova, { type: "move", steps: 40 });
+    history = appendStudioStatement(history, nova, { type: "turn", degrees: 90 });
+    return appendStudioStatement(history, nova, { type: "say", text: "Hola" });
+  };
+  const order = (history: ReturnType<typeof build>) =>
+    history.current.scripts[0]!.statements.map((statement) => statement.type);
+
+  it("reorders as one undoable step and keeps every block", () => {
+    const history = moveStudioStatement(build(), nova, 2, 0);
+    expect(order(history)).toEqual(["say", "move", "turn"]);
+    expect(order(moveStudioStatement(history, nova, 0, 2))).toEqual(["move", "turn", "say"]);
+    expect(order(undoCanonicalTransaction(history).history)).toEqual(["move", "turn", "say"]);
+  });
+
+  it("changes nothing when the place is the same, and refuses places that do not exist", () => {
+    const history = build();
+    expect(moveStudioStatement(history, nova, 1, 1).current).toEqual(history.current);
+    for (const [from, to] of [
+      [-1, 0],
+      [3, 0],
+      [0, 3],
+      [0, -1],
+      [0.5, 1],
+    ] as const)
+      expect(() => moveStudioStatement(history, nova, from, to)).toThrow();
+  });
+
+  it("changes the run in the new order", () => {
+    const moved = moveStudioStatement(build(), nova, 1, 0);
+    expect(order(moved)).toEqual(["turn", "move", "say"]);
   });
 });

@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { reloadToMap } from "./helpers.js";
 
 // Issue #465: arithmetic on the score, behind the advancedOps flag.
 test.use({ hasTouch: true });
@@ -31,7 +32,7 @@ async function enterScore(page: import("@playwright/test").Page, flags: string[]
       );
     }
   }, flags);
-  await page.reload();
+  await reloadToMap(page);
   await expect(page.getByRole("button", { name: /Etapa 3/ })).toHaveCount(0);
   await page.getByRole("button", { name: /Nivel avanzado/ }).click();
   await page.getByRole("button", { name: /\+ Cambiar disfraz/ }).click();
@@ -72,7 +73,7 @@ test("score 2, + 2, then - 5 shows 4 and -1 from the runtime", async ({ page }) 
   await page.getByRole("button", { name: "Deshacer" }).click();
   await page.getByRole("button", { name: "Jugar" }).click();
   await expect(page.getByRole("status", { name: "Puntaje: 4" })).toBeVisible();
-  await page.reload();
+  await reloadToMap(page);
   await expect(page.getByRole("button", { name: /Etapa 3/ })).toBeVisible();
 
   const axe = await new AxeBuilder({ page }).analyze();

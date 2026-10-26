@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { reloadToMap } from "./helpers.js";
 
 test.use({ hasTouch: true });
 
@@ -29,7 +30,7 @@ async function enterScore(page: import("@playwright/test").Page) {
       );
     }
   });
-  await page.reload();
+  await reloadToMap(page);
   await expect(page.getByRole("button", { name: /Etapa 3/ })).toHaveCount(0);
   await page.getByRole("button", { name: /Nivel avanzado/ }).click();
   await page.getByRole("button", { name: /\+ Cambiar disfraz/ }).click();
@@ -58,7 +59,7 @@ test("stage 3 shows runtime watcher truth, prediction and saved progress", async
   expect(
     axe.violations.filter((item) => ["critical", "serious"].includes(item.impact ?? "")),
   ).toEqual([]);
-  await page.reload();
+  await reloadToMap(page);
   await page.getByRole("button", { name: /Etapa 3/ }).click();
   await expect(page.getByRole("status").last()).toContainText("Puntaje logrado");
   await page.getByRole("button", { name: "Volver al mapa" }).click();

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { reloadToMap, passAdultGate } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -13,7 +14,7 @@ async function start(page: Page, flags: readonly string[]) {
       JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
     );
   }, flags);
-  await page.reload();
+  await reloadToMap(page);
 }
 
 test("named sound is selected, saved and replayed from the canonical program", async ({ page }) => {
@@ -23,7 +24,7 @@ test("named sound is selected, saved and replayed from the canonical program", a
   const choice = page.getByRole("combobox", { name: "sonar 1" });
   await choice.selectOption("kids:win");
   await expect(choice).toHaveValue("kids:win");
-  await page.reload();
+  await reloadToMap(page);
   await page.getByRole("button", { name: "Misión 1" }).click();
   await expect(page.getByRole("combobox", { name: "sonar 1" })).toHaveValue("kids:win");
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
@@ -36,9 +37,7 @@ test("named sound is selected, saved and replayed from the canonical program", a
 test("adult audio stays in IndexedDB and a bad upload is rejected", async ({ page }) => {
   await start(page, ["soundLibrary", "customAudio"]);
   await page.getByRole("button", { name: "Adultos" }).click();
-  await page.getByRole("button", { name: "1", exact: true }).click();
-  await page.getByRole("button", { name: "2", exact: true }).click();
-  await page.getByRole("button", { name: "Comprobar" }).click();
+  await passAdultGate(page);
   const panel = page.getByRole("region", { name: "Sonidos propios" });
   const input = panel.getByLabel("Elegir audio para 🐸");
   await input.setInputFiles({

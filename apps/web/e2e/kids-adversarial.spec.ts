@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { KIDS_V2_FEATURES } from "../src/kids/kidsFlags.js";
+import { reloadToMap, passAdultGate } from "./helpers.js";
 
 // Issue #443: scripted slice of the adversarial charter, run with every v2 flag on.
 // Any uncaught page error is a failure; each attack asserts the app still works afterwards.
@@ -30,7 +31,7 @@ async function seed(page: Page, flags: string[] = ALL_FLAGS) {
       JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
     );
   }, flags);
-  await page.reload();
+  await reloadToMap(page);
 }
 
 async function openMission(page: Page) {
@@ -67,7 +68,7 @@ test("reload mid-prediction and mid-run, then orientation and resize sweep", asy
   await page.getByRole("button", { name: "+ mover", exact: true }).click();
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
-  await page.reload();
+  await reloadToMap(page);
   await expect(page.getByRole("heading", { name: "Mapa" })).toBeVisible();
   await openMission(page);
   await page.getByRole("button", { name: "Paso", exact: true }).click();
@@ -175,9 +176,7 @@ test("adults gate: ten wrong sums never lock out or crash, the right sum still o
     await page.getByRole("button", { name: "Comprobar" }).click();
   }
   await expect(page.getByText("Probá otra vez.")).toBeVisible();
-  await page.getByRole("button", { name: "1", exact: true }).click();
-  await page.getByRole("button", { name: "2", exact: true }).click();
-  await page.getByRole("button", { name: "Comprobar" }).click();
+  await passAdultGate(page);
   await expect(page.getByRole("heading", { name: "Ajustes" })).toBeVisible();
   expect(errors).toEqual([]);
 });
@@ -233,9 +232,7 @@ test("a full or blocked storage cannot crash the adult images panel", async ({ p
   const errors = watchErrors(page);
   await seed(page);
   await page.getByRole("button", { name: "Adultos" }).click();
-  await page.getByRole("button", { name: "1", exact: true }).click();
-  await page.getByRole("button", { name: "2", exact: true }).click();
-  await page.getByRole("button", { name: "Comprobar" }).click();
+  await passAdultGate(page);
   await expect(page.getByRole("heading", { name: "Ajustes" })).toBeVisible();
   await page.evaluate(() => {
     Storage.prototype.setItem = () => {

@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useState } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import "@fontsource/atkinson-hyperlegible/400.css";
 import "@fontsource/atkinson-hyperlegible/700.css";
 import "@fontsource/epilogue/latin-700.css";
@@ -28,7 +28,8 @@ import { EditorScreen } from "./screens/EditorScreen.js";
 import { CreateScreen } from "./screens/CreateScreen.js";
 import { ProjectsScreen } from "./screens/ProjectsScreen.js";
 import { ReflectScreen } from "./screens/ReflectScreen.js";
-import { createFreeProjectRef } from "./kidsProjects.js";
+import { createFreeProjectRef, listFreeProjectRefs } from "./kidsProjects.js";
+import { routeHash, stateFromHash, type KidsRouteLookup } from "./kidsRoute.js";
 import {
   addActiveSeconds,
   loadAdultSettings,
@@ -56,7 +57,7 @@ import { useKidsText, type KidsText } from "./useKidsText.js";
 import { stopSpeaking } from "./speak.js";
 import { KidsOriGuide } from "./screens/KidsOriGuide.js";
 import { KidsStudioScreen } from "./screens/KidsStudioScreen.js";
-import { createStudioProject } from "./kidsStudioProjects.js";
+import { createStudioProject, listStudioProjects } from "./kidsStudioProjects.js";
 
 const NAV: readonly {
   readonly screen: KidsScreen;
@@ -83,7 +84,7 @@ export function KidsApp({
   const [state, dispatch] = useReducer(
     kidsReducer,
     undefined,
-    () => initialState ?? startingState(progress),
+    () => initialState ?? stateFromLocation(startingState(progress), progress),
   );
   const [reflection, setReflection] = useState<{
     readonly prediction: "yes" | "no" | "dunno";
@@ -93,6 +94,29 @@ export function KidsApp({
   const [projectStore] = useState(() => new ProjectStore());
   const t = useKidsText(state.locale);
   const showNav = KIDS_NAV_SCREENS.includes(state.screen);
+
+  // The address follows the screen and the screen follows Back, Forward and reloads (issue #596).
+  const routed = useRef(false);
+  useEffect(() => {
+    const hash = routeHash(state);
+    if (hash === null || window.location.hash === hash) {
+      routed.current = true;
+      return;
+    }
+    if (routed.current) window.history.pushState(null, "", hash);
+    else window.history.replaceState(null, "", hash);
+    routed.current = true;
+  }, [state]);
+  useEffect(() => {
+    const follow = () => {
+      if (!progress.onboarded) return;
+      const next = stateFromHash(window.location.hash, state, routeLookup());
+      if (next) dispatch({ type: "restore", state: next });
+      else dispatch({ type: "go", screen: "map" });
+    };
+    window.addEventListener("popstate", follow);
+    return () => window.removeEventListener("popstate", follow);
+  }, [state, progress.onboarded]);
 
   // The page language drives screen readers and speech; keep <html lang> in step with the choice.
   useEffect(() => {
@@ -311,8 +335,13 @@ export function KidsApp({
             readAloud={adultSettings.readAloud}
             onAvatar={chooseAvatar}
             onWorld={(world) => dispatch({ type: "pickWorld", world })}
-            onStudio={() => {
-              const project = createStudioProject("nova", "forest", state.locale, projectStore);
+            onStudio={(characterId, backdropId) => {
+              const project = createStudioProject(
+                characterId,
+                backdropId,
+                state.locale,
+                projectStore,
+              );
               dispatch({ type: "openStudio", projectId: project.id });
             }}
             onStart={(world, avatar) => {
@@ -389,6 +418,26 @@ export function KidsApp({
       ) : null}
     </div>
   );
+}
+
+function routeLookup(): KidsRouteLookup {
+  return {
+    freeProject: (id) => {
+      const found = listFreeProjectRefs().find((item) => item.id === id);
+      if (!found) return null;
+      return {
+        world: found.world.kind === "builtin" ? found.world.value : "space",
+        avatar: found.avatar.kind === "emoji" ? found.avatar.value : "🦊",
+      };
+    },
+    studioProject: (id) => listStudioProjects().some((item) => item.id === id),
+  };
+}
+
+/** A reload on a deep link opens that screen once the child is onboarded. */
+function stateFromLocation(start: KidsState, progress: KidsProgress): KidsState {
+  if (!progress.onboarded || typeof window === "undefined") return start;
+  return stateFromHash(window.location.hash, start, routeLookup()) ?? start;
 }
 
 function startingState(progress: KidsProgress): KidsState {

@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { reloadToMap } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -33,7 +34,7 @@ test("Spanish tablet journey completes authored missions and all advanced stages
       }),
     );
   });
-  await page.reload();
+  await reloadToMap(page);
   await expect(page.getByRole("button", { name: /Nivel avanzado/ })).toHaveCount(0);
 
   await page.getByRole("button", { name: "Misión 1" }).click();
@@ -90,7 +91,7 @@ test("Spanish tablet journey completes authored missions and all advanced stages
   expect(
     axe.violations.filter((item) => ["critical", "serious"].includes(item.impact ?? "")),
   ).toEqual([]);
-  await page.reload();
+  await reloadToMap(page);
   await expect(page.getByRole("button", { name: /Etapa 3/ })).toBeVisible();
   await page.getByRole("button", { name: /Etapa 3/ }).click();
   await page.setViewportSize({ width: 1180, height: 820 });

@@ -19,6 +19,9 @@ async function openProjectsWithTwoFree(page: Page) {
     await page.getByRole("button", { name: "¡Crear!" }).click();
     await page.getByRole("button", { name: "Tocá el mundo para poner la meta: 5, 3" }).click();
     await page.reload();
+    await page.evaluate(() => {
+      location.hash = "#/proyectos";
+    });
     await page.getByRole("button", { name: "Mis proyectos" }).click();
   }
   await expect(page.locator(".kids-project-card")).toHaveCount(2);
@@ -49,6 +52,9 @@ test("deleting needs the adult gate and a confirmation, and can be undone", asyn
   await page.getByRole("dialog").getByRole("button", { name: "Borrar", exact: true }).click();
   await expect(page.locator(".kids-project-card")).toHaveCount(1);
   await page.reload();
+  await page.evaluate(() => {
+    location.hash = "#/proyectos";
+  });
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await expect(page.locator(".kids-project-card")).toHaveCount(1);
 
@@ -59,6 +65,9 @@ test("deleting needs the adult gate and a confirmation, and can be undone", asyn
   await page.getByRole("button", { name: "Deshacer" }).click();
   await expect(page.locator(".kids-project-card")).toHaveCount(1);
   await page.reload();
+  await page.evaluate(() => {
+    location.hash = "#/proyectos";
+  });
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await expect(page.locator(".kids-project-card")).toHaveCount(1);
 });

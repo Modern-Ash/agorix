@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { KIDS_V2_FEATURES } from "../src/kids/kidsFlags.js";
+import { passAdultGate } from "./helpers.js";
 
 // Issue #437: the golden Kids journey. Every additive Kids v2 change must keep it green.
 test.use({ hasTouch: true, serviceWorkers: "block" });
@@ -80,10 +81,8 @@ for (const { name: flagSet, flags } of FLAG_SETS)
       await page.getByRole("button", { name: /Mis proyectos/ }).click();
       await expect(page.getByRole("heading", { name: "Mis proyectos" })).toBeVisible();
       await page.getByRole("button", { name: "Adultos" }).click();
-      await expect(page.getByRole("heading", { name: "¿Cuánto es 7 + 5?" })).toBeVisible();
-      await page.getByRole("button", { name: "1", exact: true }).click();
-      await page.getByRole("button", { name: "2", exact: true }).click();
-      await page.getByRole("button", { name: "Comprobar" }).click();
+      await expect(page.getByRole("heading", { name: /¿Cuánto es \d+ × \d+\?/ })).toBeVisible();
+      await passAdultGate(page);
       await expect(page.getByRole("heading", { name: "Estado de la IA" })).toBeVisible();
       await expect(page.getByText("Misiones completadas")).toBeVisible();
     });

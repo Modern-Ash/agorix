@@ -45,6 +45,8 @@ export interface KidsState {
 
 export type KidsAction =
   | { readonly type: "go"; readonly screen: KidsScreen }
+  /** Back, Forward or a reload: take the state a URL hash points to (issue #596). */
+  | { readonly type: "restore"; readonly state: KidsState }
   | { readonly type: "onboardNext" }
   | { readonly type: "onboardBack" }
   | { readonly type: "setLocale"; readonly locale: Locale }
@@ -84,6 +86,8 @@ export function kidsReducer(state: KidsState, action: KidsAction): KidsState {
   switch (action.type) {
     case "go":
       return { ...state, screen: action.screen };
+    case "restore":
+      return action.state;
     case "onboardNext":
       return state.onboardStep === 2
         ? { ...state, screen: "map", onboardStep: 0 }
