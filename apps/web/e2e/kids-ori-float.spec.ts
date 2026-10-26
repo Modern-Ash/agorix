@@ -75,3 +75,35 @@ test("flag off keeps the existing inline proposal", async ({ page }) => {
   await expect(page.locator(".kids-ori-proposal")).toBeVisible();
   await expect(page.getByRole("button", { name: "Abrir propuesta de Ori" })).toHaveCount(0);
 });
+
+for (const viewport of [
+  { width: 1440, height: 900 },
+  { width: 390, height: 844 },
+]) {
+  test(`Ori's panel does not block the stage at ${viewport.width}x${viewport.height}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(viewport);
+    await open(page, true);
+    const trigger = page.getByRole("button", { name: "Abrir propuesta de Ori" });
+    await trigger.click();
+    const panel = page.getByRole("dialog", { name: "Propuesta de Ori" });
+    await expect(panel).toBeVisible();
+    // Not modal: the rest of the editor is still reachable and still operable.
+    await expect(panel).not.toHaveAttribute("aria-modal", "true");
+    const run = page.getByRole("button", { name: "Jugar", exact: true });
+    await run.click();
+    await expect(panel).toBeVisible();
+    // The idea is previewed in the program as a ghost block that is not saved.
+    await expect(page.getByTestId("ori-ghost-block").first()).toContainText("Idea de Ori");
+    expect(await page.locator(".kids-program-block").count()).toBe(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      viewport.width,
+    );
+    await panel.getByRole("button", { name: "Cerrar propuesta" }).focus();
+    await page.keyboard.press("Escape");
+    await expect(panel).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+    await expect(page.getByTestId("ori-ghost-block")).toHaveCount(0);
+  });
+}
