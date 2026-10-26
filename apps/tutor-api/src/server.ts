@@ -74,6 +74,7 @@ export interface TutorServerOptions {
   readonly oriContextPreview?: (input: OriContextInput) => Promise<OriRuntimePreview>;
   readonly oriContextPreviewEnabled?: boolean;
   readonly oriReviewEnabled?: boolean;
+  readonly oriReviewPropose?: (owner:string,projectId:string)=>Promise<OriReviewTicket|null>;
   readonly oriReviewIdentity?: OriReviewIdentityResolver;
   readonly oriReviewDecision?: (owner:string,projectId:string,ticketId:string,decision:"accept"|"edit"|"reject")=>Promise<OriReviewTicket|null>;
 }
@@ -199,6 +200,30 @@ export function createTutorServer(options: TutorServerOptions): Server {
   async function handle(request: IncomingMessage, response: ServerResponse): Promise<void> {
     const path = new URL(request.url ?? "/", "http://local").pathname;
     if (path.startsWith("/api/tutor/admin/")) return adminRoute(path, request, response);
+    if (path === "/api/tutor/ori/review/propose") {
+      if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
+      if (!options.oriReviewEnabled || !options.oriReviewIdentity || !options.oriReviewPropose)
+        return send(response, 404, error("not-found"));
+      if (!sameOrigin(request)) return send(response, 403, error("forbidden-origin"));
+      if (!(request.headers["content-type"] ?? "").includes("application/json"))
+        return send(response, 415, error("unsupported-media-type"));
+      if (!allowed(request, "chat")) return send(response, 429, error("rate-limited"));
+      const identity = validateOriReviewPrincipal(await options.oriReviewIdentity(request));
+      if (!identity) return send(response, 401, error("unauthorized"));
+      const body = await readBody(request);
+      if (body === "too-large") return send(response, 413, error("payload-too-large"));
+      let parsed: unknown;
+      try { parsed = JSON.parse(body); }
+      catch { return send(response, 400, error("invalid-request")); }
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) ||
+          Object.keys(parsed).length !== 0)
+        return send(response, 400, error("invalid-request"));
+      const ticket = await options.oriReviewPropose(identity.ownerId,identity.projectId);
+      if (!ticket || ticket.status !== "pending") return send(response, 409, error("proposal-unavailable"));
+      return send(response, 200, {
+        ticketId:ticket.id,proposal:ticket.proposal,appliedChanges:false
+      });
+    }
     if (path === "/api/tutor/ori/review/decision") {
       if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
       if (!options.oriReviewEnabled || !options.oriReviewIdentity || !options.oriReviewDecision)
