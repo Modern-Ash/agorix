@@ -25,7 +25,7 @@ test.describe("Ori learner proposal review",()=>{
     await page.getByRole("button",{name:"Pedir una propuesta"}).click();
     await expect(page.getByTestId("ori-proposal-review")).toBeVisible();
     await page.getByRole("button",{name:"Rechazar propuesta"}).click();
-    await expect(page.getByRole("status")).toContainText("rejected");
+    await expect(page.getByTestId("ori-learner-review-widget").getByRole("status")).toContainText("rejected");
     expect(issuanceBody).toEqual({});
     expect(decisionBody).toEqual({ticketId,decision:"reject"});
   });
@@ -48,7 +48,7 @@ test.describe("Ori learner proposal review",()=>{
     });
     await page.getByRole("button",{name:"Pedir una propuesta"}).click();
     await page.getByRole("button",{name:"Aceptar propuesta"}).click();
-    await expect(page.getByRole("alert")).toContainText("ya no corresponde");
+    await expect(page.getByTestId("ori-proposal-review").getByRole("alert")).toContainText("ya no corresponde");
     await expect(page.getByText("No se aplicaron cambios.",{exact:true})).toHaveCount(0);
   });
 });
