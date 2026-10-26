@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { expect, test } from "@playwright/test";
 import { evaluateOriStudioOutput, ORI_STUDIO_VERSION } from "@agorix/ori-agent";
+import { reloadTo } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -39,10 +40,7 @@ test("free scene senses the stage edge and saves distance to a character after r
     "style",
     /left: 18%/,
   );
-  await page.reload();
-  await page.evaluate(() => {
-    location.hash = "#/proyectos";
-  });
+  await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await page
     .getByRole("article")
@@ -93,10 +91,7 @@ test("free scene senses another character and records its own X position after r
     "style",
     /left: 28%/,
   );
-  await page.reload();
-  await page.evaluate(() => {
-    location.hash = "#/proyectos";
-  });
+  await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await page
     .getByRole("article")
@@ -141,10 +136,7 @@ test("free scene moves to coordinates and stops sound after reopening", async ({
     "style",
     /left: 68%/,
   );
-  await page.reload();
-  await page.evaluate(() => {
-    location.hash = "#/proyectos";
-  });
+  await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await page
     .getByRole("article")
@@ -187,10 +179,7 @@ test("free scene makes, uses, reopens and deletes a custom block", async ({ page
   ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");
   expect(violations.map((entry) => entry.id)).toEqual([]);
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
-  await page.reload();
-  await page.evaluate(() => {
-    location.hash = "#/proyectos";
-  });
+  await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await page
     .getByRole("article")
@@ -244,10 +233,7 @@ test("free scene gives a custom block a number, picks it per use and keeps it af
   ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");
   expect(violations.map((entry) => entry.id)).toEqual([]);
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
-  await page.reload();
-  await page.evaluate(() => {
-    location.hash = "#/proyectos";
-  });
+  await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await page
     .getByRole("article")
@@ -299,10 +285,7 @@ test("free scene hands a block number on to another block and keeps it after reo
   ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");
   expect(violations.map((entry) => entry.id)).toEqual([]);
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
-  await page.reload();
-  await page.evaluate(() => {
-    location.hash = "#/proyectos";
-  });
+  await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await page
     .getByRole("article")
@@ -352,10 +335,7 @@ test("free scene copies a custom block to another character and keeps both after
   ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");
   expect(violations.map((entry) => entry.id)).toEqual([]);
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
-  await page.reload();
-  await page.evaluate(() => {
-    location.hash = "#/proyectos";
-  });
+  await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await page
     .getByRole("article")
@@ -399,10 +379,7 @@ test("free scene senses a held key and the timer, and keeps both after reopening
   expect(violations.map((entry) => entry.id)).toEqual([]);
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await expect(page.getByText(/bloques ejecutados/).first()).toBeVisible();
-  await page.reload();
-  await page.evaluate(() => {
-    location.hash = "#/proyectos";
-  });
+  await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await page
     .getByRole("article")
@@ -445,10 +422,7 @@ test("free scene draws with the pen extension and keeps the drawing blocks after
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await expect(page.locator(".kids-studio-pen line").first()).toHaveAttribute("stroke", "#ef627d");
   expect(await page.locator(".kids-studio-pen line").count()).toBeGreaterThanOrEqual(3);
-  await page.reload();
-  await page.evaluate(() => {
-    location.hash = "#/proyectos";
-  });
+  await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await page
     .getByRole("article")
@@ -655,10 +629,7 @@ test("free scene grows and shrinks a character and keeps the size blocks after r
   expect(violations.map((entry) => entry.id)).toEqual([]);
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await expect(page.getByText("Cambiar tamaño: +50%").first()).toBeVisible();
-  await page.reload();
-  await page.evaluate(() => {
-    location.hash = "#/proyectos";
-  });
+  await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await page
     .getByRole("article")
@@ -694,10 +665,7 @@ test("free scene repeats blocks until the character reaches the edge and keeps t
   expect(violations.map((entry) => entry.id)).toEqual([]);
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await expect(page.getByText(/Repetir hasta/).first()).toBeVisible();
-  await page.reload();
-  await page.evaluate(() => {
-    location.hash = "#/proyectos";
-  });
+  await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await page
     .getByRole("article")
@@ -736,10 +704,7 @@ test("free scene points at a friend, bounces off the edge and keeps the blocks a
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await expect(page.getByText("Apuntar hacia: izquierda").first()).toBeVisible();
   await expect(page.getByText("Rebotar en el borde").first()).toBeVisible();
-  await page.reload();
-  await page.evaluate(() => {
-    location.hash = "#/proyectos";
-  });
+  await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await page
     .getByRole("article")
@@ -780,10 +745,7 @@ test("free scene lets a child compose volume and show or hide a variable after r
   await expect(page.getByText("Volumen: 25%")).toBeVisible();
   await expect(page.getByText("Puntos: 0")).toHaveCount(0);
   await expect(page.getByText("Cambiar volumen: -15")).toBeVisible();
-  await page.reload();
-  await page.evaluate(() => {
-    location.hash = "#/proyectos";
-  });
+  await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await page
     .getByRole("article")
@@ -832,10 +794,7 @@ test("free scene inserts and replaces list items and uses bounded seeded random"
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await expect(page.getByText("Números: 4, 6")).toBeVisible();
   await expect(page.getByText("Dado: 3")).toBeVisible();
-  await page.reload();
-  await page.evaluate(() => {
-    location.hash = "#/proyectos";
-  });
+  await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await page
     .getByRole("article")
@@ -871,10 +830,7 @@ test("free scene exposes bounded list reading, length and removal", async ({ pag
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await expect(page.getByText("Cuenta: 1")).toBeVisible();
   await expect(page.getByText("Cosas: —")).toBeVisible();
-  await page.reload();
-  await page.evaluate(() => {
-    location.hash = "#/proyectos";
-  });
+  await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await page
     .getByRole("article")
@@ -907,10 +863,7 @@ test("a child adds local costume and backdrop images to a free scene", async ({ 
     /data:image/,
   );
   await expect(page.locator(".kids-studio-stage")).toHaveCSS("background-image", /data:image/);
-  await page.reload();
-  await page.evaluate(() => {
-    location.hash = "#/proyectos";
-  });
+  await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await page
     .getByRole("article")
@@ -969,10 +922,7 @@ test("drawn costume and backdrop survive adult-approved export and import", asyn
   await page.getByRole("button", { name: "Guardar dibujo" }).click();
   await expect(page.getByRole("group", { name: "Mis fondos" })).toBeVisible();
   await expect(page.locator(".kids-studio-stage")).toHaveCSS("background-image", /data:image/);
-  await page.reload();
-  await page.evaluate(() => {
-    location.hash = "#/proyectos";
-  });
+  await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   const card = page.getByRole("article").filter({ hasText: "Escena libre" });
   await card.getByRole("button", { name: "Exportar" }).click();
@@ -1021,10 +971,7 @@ test("a child places a character and the stage keeps that position after reopeni
   await page.getByRole("button", { name: "Ubicar personaje →" }).click();
   const placed = await actor.getAttribute("style");
   expect(placed).not.toBe(before);
-  await page.reload();
-  await page.evaluate(() => {
-    location.hash = "#/proyectos";
-  });
+  await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await page
     .getByRole("article")
@@ -1067,10 +1014,7 @@ test("a child drags the selected character and changes its layer", async ({ page
   expect(moved).not.toBe(before);
   await page.getByRole("button", { name: "Traer adelante" }).click();
   await expect(first).toHaveCSS("z-index", "2");
-  await page.reload();
-  await page.evaluate(() => {
-    location.hash = "#/proyectos";
-  });
+  await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await page
     .getByRole("article")
@@ -1119,10 +1063,7 @@ test("free scene keeps independent character scripts and reopens the saved stage
   await expect(page.locator(".kids-program-block")).toHaveCount(2);
   await page.getByRole("button", { name: "Deshacer" }).click();
   await expect(page.locator(".kids-program-block")).toHaveCount(1);
-  await page.reload();
-  await page.evaluate(() => {
-    location.hash = "#/proyectos";
-  });
+  await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await page
     .getByRole("article")
@@ -1157,10 +1098,7 @@ test("looks and wait blocks change only the chosen character and survive reload"
   await expect(page.getByRole("group", { name: "Escenario" }).getByRole("button")).toHaveCount(1);
   await page.getByRole("button", { name: "Paso" }).click();
   await expect(page.locator(".kids-studio-bubble")).toHaveText("Hola, Nova");
-  await page.reload();
-  await page.evaluate(() => {
-    location.hash = "#/proyectos";
-  });
+  await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await page
     .getByRole("article")
@@ -1294,10 +1232,7 @@ test("free scene composes data, repeat, message and key events in a fresh sessio
   await expect(page.getByText("Puntos: 2")).toBeVisible();
   await expect(page.getByText("Tesoros: 2")).toBeVisible();
   await expect(page.getByText("10 bloques ejecutados")).toBeVisible();
-  await page.reload();
-  await page.evaluate(() => {
-    location.hash = "#/proyectos";
-  });
+  await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await page
     .getByRole("article")
@@ -1342,10 +1277,7 @@ test("free scene glides to a position and keeps the block after reopening", asyn
     "style",
     /left: 68%/,
   );
-  await page.reload();
-  await page.evaluate(() => {
-    location.hash = "#/proyectos";
-  });
+  await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await page
     .getByRole("article")
@@ -1382,10 +1314,7 @@ test("free scene sends a character to the front or back and keeps the blocks aft
   expect(violations.map((entry) => entry.id)).toEqual([]);
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await expect(page.getByText("Pasar al frente").first()).toBeVisible();
-  await page.reload();
-  await page.evaluate(() => {
-    location.hash = "#/proyectos";
-  });
+  await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await page
     .getByRole("article")
@@ -1424,10 +1353,7 @@ test("free scene rounds a divided value and keeps the block after reopening", as
   expect(violations.map((entry) => entry.id)).toEqual([]);
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await expect(page.getByText("Medio: 4")).toBeVisible();
-  await page.reload();
-  await page.evaluate(() => {
-    location.hash = "#/proyectos";
-  });
+  await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await page
     .getByRole("article")
@@ -1466,10 +1392,7 @@ test("free scene computes a remainder and keeps the block after reopening", asyn
   expect(violations.map((entry) => entry.id)).toEqual([]);
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await expect(page.getByText("Resto: 1")).toBeVisible();
-  await page.reload();
-  await page.evaluate(() => {
-    location.hash = "#/proyectos";
-  });
+  await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await page
     .getByRole("article")
@@ -1514,10 +1437,7 @@ test("free scene groups several blocks and runs a child-composed calculation", a
   await expect(page.locator(".kids-program-block").last()).toContainText("Mover 1");
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await expect(page.getByText("Puntos: 5")).toBeVisible();
-  await page.reload();
-  await page.evaluate(() => {
-    location.hash = "#/proyectos";
-  });
+  await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await page
     .getByRole("article")

@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { resolve } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
-import { passAdultGate } from "./helpers.js";
+import { passAdultGate, reloadTo } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -58,10 +58,7 @@ test("child adds custom explorer and backdrop from Create without entering Adult
   await page.getByRole("button", { name: "¡Crear!" }).click();
   await expect(page.locator(".kids-world-avatar")).toHaveCSS("background-image", /data:image/);
   await expect(page.locator(".kids-world-grid")).toHaveCSS("background-image", /data:image/);
-  await page.reload();
-  await page.evaluate(() => {
-    location.hash = "#/proyectos";
-  });
+  await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await page.locator(".kids-project-card").getByRole("button", { name: "Jugar" }).click();
   await expect(page.locator(".kids-world-avatar")).toHaveCSS("background-image", /data:image/);
@@ -102,10 +99,7 @@ test("child draws an explorer and backdrop, then reopens both in a local project
   await page.getByRole("button", { name: "¡Crear!" }).click();
   await expect(page.locator(".kids-world-avatar")).toHaveCSS("background-image", /data:image/);
   await expect(page.locator(".kids-world-grid")).toHaveCSS("background-image", /data:image/);
-  await page.reload();
-  await page.evaluate(() => {
-    location.hash = "#/proyectos";
-  });
+  await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await page.locator(".kids-project-card").getByRole("button", { name: "Jugar" }).click();
   await expect(page.locator(".kids-world-avatar")).toHaveCSS("background-image", /data:image/);
@@ -247,10 +241,7 @@ test("child-added explorer and backdrop persist; adult removal falls back", asyn
     "background-image",
     /data:image\/(webp|png)/,
   );
-  await page.reload();
-  await page.evaluate(() => {
-    location.hash = "#/proyectos";
-  });
+  await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   const cards = page.locator(".kids-project-card");
   await expect(cards).toHaveCount(2);

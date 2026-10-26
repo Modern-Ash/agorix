@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { reloadTo } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -35,10 +36,7 @@ test("Ori proposes a verified turn goal; the child accepts and runtime enforces 
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Sí", exact: true }).click();
   await expect(page.locator(".kids-run-status")).toContainText("Probá incluir un giro");
-  await page.reload();
-  await page.evaluate(() => {
-    location.hash = "#/proyectos";
-  });
+  await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await page.locator(".kids-project-card").getByRole("button", { name: "Jugar" }).click();
   await expect(
@@ -151,10 +149,7 @@ test("free goal rejects the start and keeps the program on reload", async ({ pag
   await page.getByRole("button", { name: "Tocá el mundo para poner la meta: 3, 3" }).click();
   await page.getByRole("button", { name: "+ mover", exact: true }).click();
   await page.getByRole("combobox", { name: "mover 1" }).selectOption("2");
-  await page.reload();
-  await page.evaluate(() => {
-    location.hash = "#/proyectos";
-  });
+  await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await page.locator(".kids-project-card").getByRole("button", { name: "Jugar" }).click();
   await expect(page.getByRole("combobox", { name: "mover 1" })).toHaveValue("2");
