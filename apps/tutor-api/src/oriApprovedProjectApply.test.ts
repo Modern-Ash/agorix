@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SCHEMA_VERSION } from "@agorix/program-model";
+import { SCHEMA_VERSION, type ProjectProgram } from "@agorix/program-model";
 import { InMemoryProjectRepository } from "@agorix/project-repository";
 import { applyApprovedOriProposal } from "./oriApprovedProjectApply.js";
 
@@ -9,13 +9,22 @@ const oriMove = {
   requiresLearnerApproval: true,
   blocks: [{ kind: "move", steps: 2 }],
 };
-const program = {
+const program: ProjectProgram = {
   schema: SCHEMA_VERSION,
   scripts: [{ id: "main", trigger: { type: "onStart" as const }, statements: [{ type: "move" as const, steps: 1 }] }],
 };
 async function setup() {
   const repository = new InMemoryProjectRepository({ idFactory: () => "project-1" });
-  const record = await repository.create("student", "Example", { program });
+  const record = await repository.create("student", "Example", {
+    schemaVersion: SCHEMA_VERSION,
+    program,
+    metadata: {
+      createdAt: "2026-10-26T00:00:00.000Z",
+      updatedAt: "2026-10-26T00:00:00.000Z",
+      missionProgress: 0,
+      hintLevel: 1,
+    },
+  });
   const apply = (overrides: Record<string, unknown> = {}) =>
     applyApprovedOriProposal({
       repository,
