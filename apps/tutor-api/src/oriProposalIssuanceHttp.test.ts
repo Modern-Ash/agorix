@@ -24,7 +24,7 @@ async function start(authenticated=true,enabled=true) {
   return {base:`http://127.0.0.1:${(server.address() as AddressInfo).port}`,calls};
 }
 const post=(base:string,body:unknown,origin=base)=>fetch(base+"/api/tutor/ori/review/propose",{
-  method:"POST",headers:{"content-type":"application/json",origin},body:JSON.stringify(body)
+  method:"POST",headers:{"content-type":"application/json","x-agorix-request":"1",origin},body:JSON.stringify(body)
 });
 describe("Ori proposal issuance HTTP trust boundary",()=>{
   it("issues only server-owned proposal for authenticated project",async()=>{
