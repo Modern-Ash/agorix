@@ -30,7 +30,7 @@ async function start({enabled=true,authenticated=true}:{
 }
 async function post(base:string,body:unknown,origin=base) {
   return fetch(base+"/api/tutor/ori/review/decision",{
-    method:"POST",headers:{"content-type":"application/json",origin},
+    method:"POST",headers:{"content-type":"application/json","x-agorix-request":"1",origin},
     body:JSON.stringify(body)
   });
 }
