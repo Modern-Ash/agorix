@@ -165,6 +165,8 @@ import { initialLocale, saveLocalePreference } from "./localePreference.js";
 import { PredictionChip, PredictionComparison } from "./PredictionChip.js";
 import { AgentCompanion, companionMood } from "./AgentCompanion.js";
 import { OriReviewPanel } from "./OriReviewPanel.js";
+import { buildOriMinimalContext } from "./oriCanonicalContext.js";
+import { deriveOriTraceEvidence } from "./oriCanonicalTrace.js";
 import { ModelComparison } from "./ModelComparison.js";
 import { GhostAddedBlocks } from "./GhostBlocks.js";
 import { ghostMarksFor, type GhostMarkKind } from "./ghostMarks.js";
@@ -5073,7 +5075,7 @@ export function App({
                 </div>
               </div>
             )}
-            {(import.meta as ImportMeta & { env?: { VITE_ORI_EXPERIMENTAL_REVIEW?: string } }).env?.VITE_ORI_EXPERIMENTAL_REVIEW === "1" ? <OriReviewPanel context={{ scriptCount: model.program.scripts.length, hintCount: hintHistory.length, hasRunEvidence: lastRunResult !== undefined, outcome: lastRunResult === undefined ? "not-run" : lastRunResult.outcome === "completed" ? "completed" : "failed" }} /> : null}
+            {(import.meta as ImportMeta & { env?: { VITE_ORI_EXPERIMENTAL_REVIEW?: string } }).env?.VITE_ORI_EXPERIMENTAL_REVIEW === "1" ? <OriReviewPanel context={{ ...buildOriMinimalContext({ scriptCount: model.program.scripts.length, hintCount: hintHistory.length, hasRun: lastRunResult !== undefined, status: lastRunResult?.outcome ?? "unknown" }), hasRunEvidence: lastRunResult !== undefined, ...(deriveOriTraceEvidence(lastRunResult).status === "ready" ? { verifiedTraceSteps: deriveOriTraceEvidence(lastRunResult).expectedSteps } : {}) }} /> : null}
             <details className="ai-more-help">
               <summary>{t(locale, "aiMoreHelp")}</summary>
               <div className="tutor-actions">
