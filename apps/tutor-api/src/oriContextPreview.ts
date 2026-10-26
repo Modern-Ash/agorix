@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn } from "node:child_process"; // agora-allowlist: server-only fixed Node script of the Ori checkout, shell disabled, input validated, bounded, opt-in behind a server flag
 import { existsSync, realpathSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import type { OriRuntimePreview } from "./oriRuntimePreview.js";

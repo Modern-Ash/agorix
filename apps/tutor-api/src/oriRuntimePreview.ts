@@ -1,4 +1,4 @@
-import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process"; // agora-allowlist: server-only fixed Node script of the Ori checkout, shell disabled, intent from a closed list, bounded, opt-in behind a server flag
 import { existsSync, realpathSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 

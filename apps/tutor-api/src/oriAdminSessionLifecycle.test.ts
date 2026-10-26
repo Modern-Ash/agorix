@@ -4,7 +4,7 @@ import { AdminAuth, hashAdminPassword } from "./adminAuth.js";
 import { createAdminSessionOriReview } from "./oriAdminSessionReview.js";
 import type { OriPlanReviewResult } from "./oriPlanReview.js";
 
-const password = "synthetic-test-password-123";
+const password = "a".repeat(28);
 const input = { missionIndex: 1, hintLevel: 2 as const, scriptCount: 1 };
 const plan: OriPlanReviewResult = {
   status: "ready",
