@@ -19,9 +19,10 @@ export interface OriProjectReviewService {
  * The browser must never provide grants, trace, snapshot or revision.
  */
 export function createOriProjectReviewService({
-  resolveProject,runOri,registry
+  resolveProject,authorizeProject,runOri,registry
 }:{
   readonly resolveProject:(principal:string,projectId:string)=>Promise<TrustedOriProject|null>;
+  readonly authorizeProject:(principal:string,projectId:string)=>Promise<boolean>;
   readonly runOri:(evidence:TrustedOriEvidence)=>Promise<OriHostEvidenceResult>;
   readonly registry:OriReviewRegistry;
 }):OriProjectReviewService {
@@ -45,8 +46,7 @@ export function createOriProjectReviewService({
     async decide(principal:string,projectId:string,ticketId:string,decision:OriReviewDecision){
       if(!valid(principal)||!valid(projectId)||!valid(ticketId) ||
          !["accept","edit","reject"].includes(decision))return null;
-      const project=await resolveProject(principal,projectId);
-      if(!project || project.owner!==principal || project.projectId!==projectId)return null;
+      if(!await authorizeProject(principal,projectId))return null;
       return registry.decide(ticketId,principal,projectId,decision);
     },
     read(principal:string,projectId:string,ticketId:string){
