@@ -1,0 +1,64 @@
+import { describe, expect, it } from "vitest";
+import { SCHEMA_VERSION } from "@agorix/program-model";
+import { InMemoryProjectRepository } from "@agorix/project-repository";
+import { createOriCanonicalReviewWorkflow } from "./oriCanonicalReviewWorkflow.js";
+import type { OriHostEvidenceResult } from "./oriHostEvidenceAdapter.js";
+
+describe("Ori accepted ticket application", () => {
+  it("requires an accepted ticket and applies at most once", async () => {
+    const repository = new InMemoryProjectRepository({ idFactory: () => "p1" });
+    const record = await repository.create("student", "Demo", {
+      schemaVersion: SCHEMA_VERSION,
+      program: {
+        schema: SCHEMA_VERSION,
+        scripts: [
+          { id: "main", trigger: { type: "onStart" }, statements: [{ type: "move", steps: 1 }] },
+        ],
+      },
+      metadata: {
+        createdAt: "2026-10-26T00:00:00.000Z",
+        updatedAt: "2026-10-26T00:00:00.000Z",
+        missionProgress: 0,
+        hintLevel: 1,
+      },
+    });
+    const response: OriHostEvidenceResult = {
+      status: "ready",
+      proposal: {
+        schemaVersion: "ori/proposal/v0",
+        operation: "append",
+        requiresLearnerApproval: true,
+        blocks: [{ kind: "move", steps: 2 }],
+      },
+      evidenceReceipt: {
+        programRevision: record.semanticHash,
+        digest: "b".repeat(64),
+        complete: true,
+      },
+      requiresLearnerApproval: true,
+      appliedChanges: false,
+    };
+    const workflow = createOriCanonicalReviewWorkflow({
+      repository,
+      oriRoot: "/unused",
+      world: {},
+      learningContext: async () => ({ attempts: 1, hintsUsed: 1, learningStage: "connect" }),
+      runOriOverride: async () => response,
+    });
+    const ticket = await workflow.propose("student", record.projectId);
+    expect(ticket?.status).toBe("pending");
+    expect(await workflow.applyAccepted("student", record.projectId, ticket!.id, "main"))
+      .toBe("rejected");
+    expect(await workflow.decide("student", record.projectId, ticket!.id, "accept"))
+      .toMatchObject({ status: "accepted" });
+    expect(await workflow.applyAccepted("intruder", record.projectId, ticket!.id, "main"))
+      .toBe("rejected");
+    expect(await workflow.applyAccepted("student", record.projectId, ticket!.id, "main"))
+      .toBe("applied");
+    expect(await workflow.applyAccepted("student", record.projectId, ticket!.id, "main"))
+      .toBe("rejected");
+    const updated = await repository.get("student", record.projectId);
+    expect(updated.revision).toBe(record.revision + 1);
+    expect(updated.storedProject.program.scripts[0]?.statements).toHaveLength(2);
+  });
+});
