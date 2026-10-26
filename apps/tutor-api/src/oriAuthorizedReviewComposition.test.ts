@@ -12,7 +12,7 @@ describe("Ori authorized review composition", () => {
       learningContext: async () => null,
       resolveSession: async () => null,
       activeProject: async () => "project-1",
-      runOriOverride: async () => ({status:"unavailable",appliedChanges:false,requiresLearnerApproval:false})
+      runOriOverride: async () => ({status:"unavailable",appliedChanges:false,requiresLearnerApproval:true})
     });
     expect(await options.oriReviewIdentity({} as never)).toBeNull();
     expect(projectLookups).toBe(0);
