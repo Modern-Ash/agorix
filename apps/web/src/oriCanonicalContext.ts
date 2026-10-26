@@ -1,22 +1,24 @@
+import type { RunOutcome } from "@agorix/runtime";
+
 /**
- * Only trusted canonical runtime status is mapped into Ori's minimal context.
- * Unknown results fail closed as stopped; raw traces and project contents
- * are never included in the request.
+ * Explicit canonical execution outcome. Budget exceeded is NOT success.
+ * This function never exposes traces, world state or program contents.
  */
 export type OriExecutionOutcome = "not-run" | "completed" | "failed" | "stopped";
 export function deriveOriExecutionOutcome(input: {
   readonly hasRun: boolean;
-  readonly status: "completed" | "failed" | "stopped" | "unknown";
+  readonly status: RunOutcome | "unknown";
 }): OriExecutionOutcome {
   if (!input.hasRun) return "not-run";
-  return input.status === "completed" || input.status === "failed"
-    ? input.status : "stopped";
+  if (input.status === "completed") return "completed";
+  if (input.status === "budget-exceeded") return "failed";
+  return "stopped";
 }
 export function buildOriMinimalContext(input: {
   readonly scriptCount: number;
   readonly hintCount: number;
   readonly hasRun: boolean;
-  readonly status: "completed" | "failed" | "stopped" | "unknown";
+  readonly status: RunOutcome | "unknown";
 }) {
   const clamp=(value:number)=>Number.isSafeInteger(value) && value>=0
     ? Math.min(value,1000) : 0;

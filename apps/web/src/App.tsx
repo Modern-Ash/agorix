@@ -5074,7 +5074,7 @@ export function App({
                 </div>
               </div>
             )}
-            {(import.meta as ImportMeta & { env?: { VITE_ORI_EXPERIMENTAL_REVIEW?: string } }).env?.VITE_ORI_EXPERIMENTAL_REVIEW === "1" ? <OriReviewPanel context={{ ...buildOriMinimalContext({ scriptCount: model.program.scripts.length, hintCount: hintHistory.length, hasRun: lastRunResult !== undefined, status: "unknown" }), hasRunEvidence: lastRunResult !== undefined }} /> : null}
+            {(import.meta as ImportMeta & { env?: { VITE_ORI_EXPERIMENTAL_REVIEW?: string } }).env?.VITE_ORI_EXPERIMENTAL_REVIEW === "1" ? <OriReviewPanel context={{ ...buildOriMinimalContext({ scriptCount: model.program.scripts.length, hintCount: hintHistory.length, hasRun: lastRunResult !== undefined, status: lastRunResult?.outcome ?? "unknown" }), hasRunEvidence: lastRunResult !== undefined }} /> : null}
             <details className="ai-more-help">
               <summary>{t(locale, "aiMoreHelp")}</summary>
               <div className="tutor-actions">
