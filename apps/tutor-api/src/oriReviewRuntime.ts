@@ -6,13 +6,14 @@ import { createOriAuthServiceSessionResolver } from "./oriAuthServiceSessionReso
 import { openOriSqliteProjectSelection } from "./oriSqliteProjectSelection.js";
 import { createOriAuthorizedReviewOptions } from "./oriAuthorizedReviewComposition.js";
 import type { OriLearningContext } from "./oriCanonicalReviewWorkflow.js";
+import type { OriHostEvidenceResult } from "./oriHostEvidenceAdapter.js";
 
 /**
  * Single-host production composition with explicit trusted dependencies.
  * Never creates a second, disconnected AuthService or ProjectRepository.
  */
 export function openOriReviewRuntime({
-  auth,repository,dbPath,oriRoot,world,learningContext,cookieName
+  auth,repository,dbPath,oriRoot,world,learningContext,cookieName,runOriOverride
 }:{
   readonly auth:Pick<AuthService,"resolveSession">;
   readonly repository:ProjectRepository;
@@ -21,6 +22,8 @@ export function openOriReviewRuntime({
   readonly world:WorldStateInput;
   readonly learningContext:(owner:string,projectId:string)=>Promise<OriLearningContext|null>;
   readonly cookieName?:string;
+  /** Test-only seam; production uses the actual Ori process. */
+  readonly runOriOverride?:(evidence:unknown)=>Promise<OriHostEvidenceResult>;
 }) {
   const projects=openOriSqliteProjectSelection({path:dbPath,repository});
   try {
@@ -31,7 +34,8 @@ export function openOriReviewRuntime({
       repository,oriRoot,world,learningContext,
       resolveSession:(request:IncomingMessage,response?:ServerResponse)=>
         resolveSession(request,response),
-      activeProject:projects.activeProject
+      activeProject:projects.activeProject,
+      ...(runOriOverride===undefined?{}:{runOriOverride})
     });
     return Object.freeze({
       options,
