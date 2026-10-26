@@ -27,7 +27,8 @@ describe("canonical project -> runtime -> Ori review composition",()=>{
       repository,oriRoot:"/unused-with-test-override",
       world:{goal:{x:10,y:0}},
       learningContext:async()=>({attempts:1,hintsUsed:1,learningStage:"connect"}),
-      runOriOverride:async (evidence:TrustedOriEvidence)=>{
+      runOriOverride:async (raw:unknown)=>{
+        const evidence=raw as TrustedOriEvidence;
         calls++;
         expect(evidence.trace.steps).toEqual([{index:0,description:"Executed move"}]);
         expect(evidence.programRevision).toBe(revision);
