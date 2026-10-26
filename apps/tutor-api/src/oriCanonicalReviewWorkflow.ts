@@ -5,6 +5,7 @@ import { createOriPersistedEvidenceResolver } from "./oriPersistedEvidenceResolv
 import { createOriHostEvidenceAdapter } from "./oriHostEvidenceAdapter.js";
 import { createOriProjectReviewService } from "./oriProjectReviewService.js";
 import { createOriReviewRegistry } from "./oriReviewRegistry.js";
+import { applyApprovedOriProposal } from "./oriApprovedProjectApply.js";
 
 export interface OriLearningContext {
   readonly attempts:number;
@@ -50,6 +51,8 @@ export function createOriCanonicalReviewWorkflow({
       }catch{return "";}
     }
   });
+  const appliedTickets=new Set<string>();
+  const applyingTickets=new Set<string>();
   const service=createOriProjectReviewService({
     resolveProject:async(owner,projectId)=>resolve(owner,projectId,"move"),
     authorizeProject:async(owner,projectId)=>{
@@ -78,8 +81,33 @@ export function createOriCanonicalReviewWorkflow({
     async decide(owner:string,projectId:string,ticketId:string,decision:"accept"|"edit"|"reject"){
       purgeBindings();
       const ticket=await service.decide(owner,projectId,ticketId,decision);
-      if(ticket && ticket.status!=="pending")ticketProjects.delete(ticketId);
+      // Retain the server-owned revision binding for an accepted ticket until
+      // explicit application or TTL expiry. Reject/edit need no mutation.
+      if(ticket && ticket.status!=="pending" && ticket.status!=="accepted")ticketProjects.delete(ticketId);
       return ticket;
+    },
+    /**
+     * Explicit server-only apply operation. Call only with a principal
+     * authenticated by trusted middleware; never accept owner from a browser
+     * body. The ticket must already have an accepted review decision.
+     */
+    async applyAccepted(owner:string,projectId:string,ticketId:string,scriptId:string){
+      purgeBindings();
+      if(appliedTickets.has(ticketId) || applyingTickets.has(ticketId))return "rejected" as const;
+      if(!owner || !projectId || !ticketId || !scriptId)return "rejected" as const;
+      const ticket=await service.read(owner,projectId,ticketId);
+      if(!ticket || ticket.status!=="accepted")return "rejected" as const;
+      const binding=ticketProjects.get(ticketId);
+      if(!binding || binding.owner!==owner || binding.projectId!==projectId)return "rejected" as const;
+      applyingTickets.add(ticketId);
+      try{
+        const result=await applyApprovedOriProposal({
+          repository,owner,projectId,expectedRevision:binding.revision,
+          approved:true,proposal:ticket.proposal,allowedBlocks:["move"],scriptId
+        });
+        if(result==="applied")appliedTickets.add(ticketId);
+        return result;
+      }finally{applyingTickets.delete(ticketId);}
     },
     async read(owner:string,projectId:string,ticketId:string){
       purgeBindings();
