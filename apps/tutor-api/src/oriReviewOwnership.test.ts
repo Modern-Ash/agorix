@@ -10,15 +10,15 @@ const result:OriHostEvidenceResult={
 describe("Ori review ticket ownership",()=>{
   it("allows only the original owner to read or decide",async()=>{
     const registry=createOriReviewRegistry({currentRevision:async()=>revision});
-    const ticket=registry.issue(result,"learner-a")!;
-    expect(registry.read(ticket.id,"learner-b")).toBeNull();
-    expect(await registry.decide(ticket.id,"learner-b","accept")).toBeNull();
-    expect(registry.read(ticket.id,"learner-a")?.status).toBe("pending");
-    expect((await registry.decide(ticket.id,"learner-a","reject"))?.status).toBe("rejected");
+    const ticket=registry.issue(result,"learner-a","project-a")!;
+    expect(registry.read(ticket.id,"learner-b","project-a")).toBeNull();
+    expect(await registry.decide(ticket.id,"learner-b","project-a","accept")).toBeNull();
+    expect(registry.read(ticket.id,"learner-a","project-a")?.status).toBe("pending");
+    expect((await registry.decide(ticket.id,"learner-a","project-a","reject"))?.status).toBe("rejected");
   });
   it("rejects empty and oversized owner IDs",()=>{
     const registry=createOriReviewRegistry({currentRevision:async()=>revision});
-    expect(registry.issue(result,"")).toBeNull();
-    expect(registry.issue(result,"x".repeat(129))).toBeNull();
+    expect(registry.issue(result,"","project-a")).toBeNull();
+    expect(registry.issue(result,"x".repeat(129),"project-a")).toBeNull();
   });
 });
