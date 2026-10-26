@@ -62,3 +62,9 @@ not an access control, and it is gone. No page, test or document now treats a pu
 wait, and a damaged record. `kids-adult-access.spec.ts` covers the first-use flow, refusals, reload,
 wait with the right PIN, the forgotten-PIN reset, accessibility and 44 px keys. Every other Kids test
 that opens the grown-ups area goes through the same flow (`passAdultGate`).
+
+## Related documents
+
+- [Child safety and privacy](./CHILD_SAFETY_PRIVACY.md): what Kids may collect and keep.
+- [Privacy threat model](./PRIVACY_THREAT_MODEL.md): the wider threat model this screen sits inside.
+- [Authentication security](./AUTH_SECURITY.md): the account sign-in that protects anything needing real trust.
