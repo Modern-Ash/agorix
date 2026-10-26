@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "agorix/ori-golden-cases/v1",
+  "provenance": "synthetic-only",
+  "cases": [
+    {
+      "caseId": "hint-equivalent",
+      "contextDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "legacy": { "kind": "hint", "hintLevel": 2 },
+      "ori": { "kind": "hint", "hintLevel": 2 },
+      "expected": "parity"
+    },
+    {
+      "caseId": "missing-ori",
+      "contextDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "legacy": { "kind": "hint", "hintLevel": 2 },
+      "ori": null,
+      "expected": "missing-ori"
+    },
+    {
+      "caseId": "different-kind",
+      "contextDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "legacy": { "kind": "hint", "hintLevel": 1 },
+      "ori": { "kind": "refusal", "hintLevel": 1 },
+      "expected": "kind-divergence"
+    },
+    {
+      "caseId": "different-level",
+      "contextDigest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "legacy": { "kind": "hint", "hintLevel": 2 },
+      "ori": { "kind": "hint", "hintLevel": 4 },
+      "expected": "hint-level-divergence"
+    }
+  ]
+}
