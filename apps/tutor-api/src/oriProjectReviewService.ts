@@ -27,7 +27,7 @@ export function createOriProjectReviewService({
 }):OriProjectReviewService {
   const valid=(value:string)=>value.length>0 && value.length<=128;
   return Object.freeze({
-    async propose(principal,projectId){
+    async propose(principal:string,projectId:string){
       if(!valid(principal)||!valid(projectId))return null;
       const project=await resolveProject(principal,projectId);
       if(!project || project.owner!==principal || project.projectId!==projectId ||
@@ -42,14 +42,14 @@ export function createOriProjectReviewService({
          latest.revision!==project.revision)return null;
       return registry.issue(result,principal,projectId);
     },
-    async decide(principal,projectId,ticketId,decision){
+    async decide(principal:string,projectId:string,ticketId:string,decision:OriReviewDecision){
       if(!valid(principal)||!valid(projectId)||!valid(ticketId) ||
          !["accept","edit","reject"].includes(decision))return null;
       const project=await resolveProject(principal,projectId);
       if(!project || project.owner!==principal || project.projectId!==projectId)return null;
       return registry.decide(ticketId,principal,projectId,decision);
     },
-    read(principal,projectId,ticketId){
+    read(principal:string,projectId:string,ticketId:string){
       if(!valid(principal)||!valid(projectId)||!valid(ticketId))return null;
       // Read is only a registry lookup. Do not expose this method directly
       // through HTTP without independent authenticated project authorization.
