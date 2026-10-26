@@ -11,7 +11,8 @@ describe("Ori runtime production dependency composition",()=>{
     })} as unknown as ProjectRepository;
     const runtime=openOriReviewRuntime({
       auth,repository,dbPath:":memory:",oriRoot:"/test-only",
-      world:{},learningContext:async()=>null
+      world:{},learningContext:async()=>null,
+      runOriOverride:async()=>({status:"unavailable",requiresLearnerApproval:true,appliedChanges:false})
     });
     try{
       expect(runtime.options.oriReviewEnabled).toBe(true);
