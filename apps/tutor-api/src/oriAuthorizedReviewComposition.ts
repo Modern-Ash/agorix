@@ -3,6 +3,7 @@ import type { ProjectRepository } from "@agorix/project-repository";
 import type { WorldStateInput } from "@agorix/runtime";
 import { createOriAuthorizedProjectIdentityResolver, type OriAuthenticatedSession } from "./oriAuthenticatedProjectIdentity.js";
 import { createOriCanonicalReviewWorkflow, type OriLearningContext } from "./oriCanonicalReviewWorkflow.js";
+import type { OriHostEvidenceResult } from "./oriHostEvidenceAdapter.js";
 
 /**
  * Complete server-side dependency composition for TutorServerOptions.
@@ -11,7 +12,7 @@ import { createOriCanonicalReviewWorkflow, type OriLearningContext } from "./ori
  * verified pedagogical context. No environment flag enables this by itself.
  */
 export function createOriAuthorizedReviewOptions({
-  repository,oriRoot,world,learningContext,resolveSession,activeProject
+  repository,oriRoot,world,learningContext,resolveSession,activeProject,runOriOverride
 }:{
   readonly repository:ProjectRepository;
   readonly oriRoot:string;
@@ -19,9 +20,12 @@ export function createOriAuthorizedReviewOptions({
   readonly learningContext:(owner:string,projectId:string)=>Promise<OriLearningContext|null>;
   readonly resolveSession:(request:IncomingMessage)=>Promise<OriAuthenticatedSession|null>;
   readonly activeProject:(session:OriAuthenticatedSession)=>Promise<string|null>;
+  /** Test-only: production invokes the real Ori process. */
+  readonly runOriOverride?:(evidence:unknown)=>Promise<OriHostEvidenceResult>;
 }) {
   const identity=createOriAuthorizedProjectIdentityResolver({repository,resolveSession,activeProject});
-  const workflow=createOriCanonicalReviewWorkflow({repository,oriRoot,world,learningContext});
+  const workflow=createOriCanonicalReviewWorkflow({repository,oriRoot,world,learningContext,
+    ...(runOriOverride ? {runOriOverride} : {})});
   return Object.freeze({
     oriReviewEnabled:true as const,
     oriReviewIdentity:identity,
