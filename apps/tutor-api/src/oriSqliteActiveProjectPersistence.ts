@@ -8,7 +8,7 @@ export interface OriSqliteActiveProjectPersistence extends OriActiveProjectPersi
 }
 /** Local single-host persistence. Multi-instance deployments need a shared DB. */
 export function openOriSqliteActiveProjectPersistence(path:string):OriSqliteActiveProjectPersistence {
-  mkdirSync(dirname(path),{recursive:true,mode:0o700});
+  if(path!==":memory:")mkdirSync(dirname(path),{recursive:true,mode:0o700});
   const db=new DatabaseSync(path);
   if(path!==":memory:")chmodSync(path,0o600);
   db.exec(`CREATE TABLE IF NOT EXISTS ori_active_projects (
