@@ -36,7 +36,8 @@ test("a new child can browse included art, create a project and reopen it", asyn
     "aria-pressed",
     "true",
   );
-  await expect(page.getByLabel("Tu elección")).toContainText("Personaje: Nova");
+  // The explorer of the world and the character of Escena libre are chosen apart.
+  await expect(page.getByLabel("Tu elección")).toContainText("Personaje: 🐸");
   await expect(page.getByLabel("Tu elección")).toContainText("Fondo: Bosque");
 
   const violations = (
@@ -46,13 +47,13 @@ test("a new child can browse included art, create a project and reopen it", asyn
 
   await page.getByRole("button", { name: "¡Crear!" }).click();
   await expect(page.locator(".kids-world-grid.kids-art-backdrop")).toBeVisible();
-  await expect(page.locator(".kids-world-avatar.kids-art-image")).toBeVisible();
+  await expect(page.locator(".kids-world-avatar")).toBeVisible();
   await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await expect(page.locator(".kids-project-card .kids-art-backdrop")).toBeVisible();
   await page.locator(".kids-project-card").getByRole("button", { name: "Jugar" }).click();
   await expect(page.locator(".kids-world-grid.kids-art-backdrop")).toBeVisible();
-  await expect(page.locator(".kids-world-avatar.kids-art-image")).toBeVisible();
+  await expect(page.locator(".kids-world-avatar")).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem("agorix.kids.projects.v2"))).toContain(
     '"id":"forest"',
   );

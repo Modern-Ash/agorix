@@ -56,15 +56,20 @@ export function CreateScreen({
   const [drawingKind, setDrawingKind] = useState<KidsCustomKind | null>(null);
   // One selection for everything Crear can make; it is remembered on this device.
   const [saved] = useState(() => loadCreateSelection());
-  const [chosenAvatar, setChosenAvatar] = useState<KidsAvatarRef>(
-    () => saved?.avatar ?? emojiSlot(avatar),
+  // The explorer of a single-character world and the character of Escena libre are two choices:
+  // both stay marked, and picking one never unmarks the other.
+  const [chosenAvatar, setChosenAvatar] = useState<KidsAvatarRef>(() =>
+    saved && saved.avatar.kind !== "gallery" ? saved.avatar : emojiSlot(avatar),
+  );
+  const [sceneCharacter, setSceneCharacter] = useState<KidsGalleryCharacterId>(
+    () => saved?.scene ?? "nova",
   );
   const [chosenWorld, setChosenWorld] = useState<KidsWorldRef>(
     () => saved?.world ?? builtinWorld(world),
   );
   useEffect(() => {
-    saveCreateSelection({ avatar: chosenAvatar, world: chosenWorld });
-  }, [chosenAvatar, chosenWorld]);
+    saveCreateSelection({ avatar: chosenAvatar, world: chosenWorld, scene: sceneCharacter });
+  }, [chosenAvatar, chosenWorld, sceneCharacter]);
   const [characterCategory, setCharacterCategory] = useState<KidsGalleryCategory>("all");
   const [backdropCategory, setBackdropCategory] = useState<KidsGalleryCategory>("all");
   const [characterSearch, setCharacterSearch] = useState("");
@@ -162,24 +167,20 @@ export function CreateScreen({
           type="button"
           className="kids-button kids-primary"
           onClick={() => {
-            const start = studioStart({ avatar: chosenAvatar, world: chosenWorld });
+            const start = studioStart({
+              avatar: chosenAvatar,
+              world: chosenWorld,
+              scene: sceneCharacter,
+            });
             onStudio(start.characterId, start.backdropId);
           }}
         >
           {locale === "es" ? "Crear escena" : "Create scene"}
         </button>
         <p className="kids-note" data-testid="studio-start-note">
-          {(() => {
-            const start = studioStart({ avatar: chosenAvatar, world: chosenWorld });
-            const name = galleryCharacterName(start.characterId, locale);
-            if (start.characterIsChosen)
-              return locale === "es"
-                ? `La escena empieza con ${name}.`
-                : `The scene starts with ${name}.`;
-            return locale === "es"
-              ? `Elegí un personaje de la galería para empezar con él. Si no, empieza con ${name}.`
-              : `Pick a character from the gallery to start with it. Otherwise it starts with ${name}.`;
-          })()}
+          {locale === "es"
+            ? `La escena empieza con ${galleryCharacterName(sceneCharacter, locale)}.`
+            : `The scene starts with ${galleryCharacterName(sceneCharacter, locale)}.`}
         </p>
       </div>
       <h2>{t("createChar")}</h2>
@@ -245,7 +246,7 @@ export function CreateScreen({
         />
       ) : null}
       <div className="kids-gallery-head">
-        <h3>{locale === "es" ? "Galería de personajes" : "Character gallery"}</h3>
+        <h3>{locale === "es" ? "Personajes para Escena libre" : "Characters for Free scene"}</h3>
         <input
           type="search"
           aria-label={locale === "es" ? "Buscar personaje" : "Search character"}
@@ -281,8 +282,8 @@ export function CreateScreen({
             type="button"
             className="kids-button kids-gallery-card"
             aria-label={galleryCharacterName(item.id, locale)}
-            aria-pressed={chosenAvatar.kind === "gallery" && chosenAvatar.id === item.id}
-            onClick={() => setChosenAvatar({ kind: "gallery", id: item.id })}
+            aria-pressed={sceneCharacter === item.id}
+            onClick={() => setSceneCharacter(item.id)}
           >
             <KidsSprite
               slot={{ kind: "gallery", id: item.id }}
