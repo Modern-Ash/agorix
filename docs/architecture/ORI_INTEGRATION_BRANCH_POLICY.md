@@ -1,0 +1,50 @@
+# Ori integration branch policy
+
+## Purpose
+
+Keep experimental Ori integration work isolated from Agorix's stable product development and other coding agents.
+
+## Branches
+
+- `main` / `development`: Agorix product work. **Do not target these from Ori integration PRs.**
+- `integration/ori`: long-lived staging branch for Ori integration only.
+- `feature/ori-*`: short-lived feature branches based on `integration/ori`; PRs must target `integration/ori`.
+- `Modern-Ash/ori`: independent agent code and harness.
+
+## Workflow
+
+1. Create an Ori integration feature branch from `integration/ori`.
+2. Implement a small scoped change; avoid unrelated UI, runtime, curriculum or product changes.
+3. Run formatting, typecheck, unit tests, integration tests and safety checks.
+4. Open a PR with base `integration/ori`; require human review and green CI.
+5. Merge only to `integration/ori`; never auto-merge into `main` or `development`.
+6. Reconcile changes from stable Agorix selectively after coordinating with the other coding agent. Prefer reviewed merges with conflict resolution and regression tests; do not force-push the integration branch.
+7. Promotion into the stable branch requires an explicit separate PR, full product regression, child-safety review and owner approval.
+
+## Current scope
+
+Shadow transport and metadata-only pedagogical plans are experimental. They must remain disabled by default in production. Do not expose them directly to children.
+
+## Collaboration
+
+The other coding agent owns its functional workstream; Ori integration must not modify their branches, PRs or ownership boundaries. Coordinate shared files before touching `apps/tutor-api` or other common integration surfaces.
+
+## Caveat
+
+This policy is documented, not a GitHub branch-protection rule. Repository administrators should configure branch protections and required status checks for enforceable safeguards.
+
+## Mandatory formatting contract for coding agents
+
+Before pushing a change to an Ori integration feature branch, run the repository's canonical formatter and then check the entire repository:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm exec prettier --write <changed-files>
+pnpm format:check
+```
+
+Do not approximate Prettier formatting manually. The `Ori Feature Autoformat` workflow is introduced separately by PR #662 and will run on pushes to `feature/ori-*` after that infrastructure PR is merged into `integration/ori`. It formats changed files and commits corrections to the feature branch. It never targets `main`, `development` or `integration/ori` directly. GitHub's separate `Formatting` CI job remains mandatory; a red formatting check blocks approval.
+
+GitHub Actions commits made with the default GITHUB_TOKEN do not automatically trigger another push workflow. After an autoformat bot commit, require a fresh explicit CI run on that exact commit SHA before declaring a PR ready. A successful formatter run alone is not a passing CI check.
+
+Wait for the autoformat commit and the subsequent CI result before declaring a PR ready. The formatter workflow requires repository Actions write permission and may be blocked by branch protection; investigate that explicitly rather than disabling formatting checks.
