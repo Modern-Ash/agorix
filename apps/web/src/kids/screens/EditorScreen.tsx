@@ -166,6 +166,7 @@ export function EditorScreen({
     "all" | "effects" | "music" | "nature" | "actions"
   >("all");
   const editorRef = useRef<HTMLElement>(null);
+  const oriTrigger = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pressOrigin = useRef<{ x: number; y: number } | null>(null);
@@ -304,11 +305,29 @@ export function EditorScreen({
         : oriOffer?.proposal
           ? "proposal"
           : "idle";
+  /** Closing the panel hands focus back to the button that opened it. */
+  function closeOriPanel() {
+    setOriOpen(false);
+    requestAnimationFrame(() => oriTrigger.current?.focus());
+  }
   const oriReview = useMemo(
     () =>
       oriOffer?.proposal ? createProposalReview(history.current, oriOffer.proposal) : undefined,
     [history.current, oriOffer],
   );
+  /** Ori's idea as ghost blocks: shown after the real ones while the panel is open, never saved. */
+  const ghostLabels = useMemo(() => {
+    const added = oriReview?.candidateProgram.scripts[0]?.statements.slice(statements.length) ?? [];
+    return added.flatMap((statement) =>
+      statement.type === "move"
+        ? [`${t("move")} ${statement.steps / KIDS_GRID.cellSize}`]
+        : statement.type === "turn"
+          ? [t(statement.degrees < 0 ? "turnL" : "turnR")]
+          : statement.type === "repeat"
+            ? [`${t("repeat")} ${statement.count}`]
+            : [],
+    );
+  }, [oriReview, statements.length, t]);
   const assistanceLevel = usedHintLevels.includes(5)
     ? "delegated"
     : usedHintLevels.length > 0
@@ -1168,6 +1187,18 @@ export function EditorScreen({
                   onDrop={dropOnProgram}
                 >
                   {statements.map((statement, index) => renderBlock(statement, index))}
+                  {oriOpen && oriOffer?.proposal
+                    ? ghostLabels.map((label, index) => (
+                        <li
+                          key={`ghost-${index}`}
+                          className="kids-ghost-block"
+                          data-testid="ori-ghost-block"
+                        >
+                          <span>{label}</span>
+                          <small>{t("oriGhostNote")}</small>
+                        </li>
+                      ))
+                    : null}
                 </ul>
                 {statements.length === 0 ? <p className="kids-note">{t("dragHere")}</p> : null}
               </div>
@@ -1346,6 +1377,7 @@ export function EditorScreen({
         <div className="kids-ori-float-zone">
           <button
             type="button"
+            ref={oriTrigger}
             className="kids-ori-float-trigger"
             data-ori-state={oriMotion}
             data-ori-paused={!oriPageVisible}
@@ -1366,9 +1398,8 @@ export function EditorScreen({
           </button>
           {oriOpen ? (
             <div
-              className="kids-ori-float-backdrop"
+              className="kids-ori-panel-layer"
               role="dialog"
-              aria-modal="true"
               aria-label={
                 oriOffer?.proposal
                   ? t("oriProposalTitle")
@@ -1379,7 +1410,7 @@ export function EditorScreen({
               onKeyDown={(event) => {
                 if (event.key === "Escape") {
                   event.stopPropagation();
-                  setOriOpen(false);
+                  closeOriPanel();
                 }
               }}
             >
@@ -1388,7 +1419,7 @@ export function EditorScreen({
                   type="button"
                   className="kids-button kids-ori-float-close"
                   autoFocus
-                  onClick={() => setOriOpen(false)}
+                  onClick={closeOriPanel}
                 >
                   {t("closeOriProposal")}
                 </button>

@@ -249,6 +249,12 @@ const COPY = {
     redo: "Rehacer",
     code: "Código",
     idea: "Pedirle una idea a Ori",
+    ghostNote: "Idea de Ori: todavía no está en tu programa",
+    evidenceNow: "Ahora termina en",
+    evidenceWith: "Con la idea terminaría en",
+    evidenceBlocks: "bloques",
+    evidenceStops:
+      "Ojo: con esta idea el programa no llega al final. Podés cambiarla o rechazarla.",
     ideaText: "Mirá el bloque propuesto y decidí.",
     use: "Usar idea",
     change: "Cambiar idea",
@@ -425,6 +431,12 @@ const COPY = {
     redo: "Redo",
     code: "Code",
     idea: "Ask Ori for an idea",
+    ghostNote: "Ori's idea: not in your program yet",
+    evidenceNow: "Now it ends at",
+    evidenceWith: "With the idea it would end at",
+    evidenceBlocks: "blocks",
+    evidenceStops:
+      "Careful: with this idea the program does not reach the end. You can change or reject it.",
     ideaText: "Look at the suggested block and decide.",
     use: "Use idea",
     change: "Change idea",
@@ -665,6 +677,36 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
       ? (script?.procedures ?? []).find((item) => item.id !== proposedStatement.procedureId)
       : undefined;
   const canChangeIdea = proposedStatement?.type !== "callProcedure" || otherOwnBlock !== undefined;
+  /**
+   * What would really happen with Ori's idea: the same deterministic runtime, run on a copy. Nothing
+   * here is saved, so the child can look, accept, change or reject (issues #602 and #605).
+   */
+  const oriPreview = useMemo(() => {
+    if (!oriIdea || !proposedStatement) return null;
+    try {
+      const review = validateOriStudioProposal(
+        { actorId: activeActorId, locale, program: history.current },
+        oriIdea,
+      );
+      const options = { keysDown: heldKeys };
+      const spriteOf = (result: MultiActorRunResult) =>
+        result.actors.find((entry) => entry.id === activeActorId)?.world.sprite;
+      const before = runMultiActorProgram(history.current, creative, options);
+      const after = runMultiActorProgram(review.candidateProgram, creative, options);
+      const from = spriteOf(before);
+      const to = spriteOf(after);
+      if (!from || !to) return null;
+      return {
+        outcome: after.outcome,
+        stepsBefore: before.stepsUsed,
+        stepsAfter: after.stepsUsed,
+        from: { x: Math.round(from.x), y: Math.round(from.y) },
+        to: { x: Math.round(to.x), y: Math.round(to.y) },
+      };
+    } catch {
+      return null;
+    }
+  }, [oriIdea, proposedStatement, history.current, activeActorId, creative, heldKeys, locale]);
   const oriMotion = oriBusy
     ? "thinking"
     : oriIdea
@@ -1949,6 +1991,12 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
                   </button>
                 </li>
               ))}
+              {oriPreview && proposedStatement ? (
+                <li className="kids-ghost-block" data-testid="ori-ghost-block">
+                  <span>{blockLabel(proposedStatement)}</span>
+                  <small>{copy.ghostNote}</small>
+                </li>
+              ) : null}
             </ol>
             {script?.statements.length === 0 ? <p className="kids-note">{copy.noBlocks}</p> : null}
           </div>
@@ -3384,6 +3432,15 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions }: Props) 
               {oriIdea ? (
                 <div className="kids-ori-proposal">
                   <p>{oriMessage || copy.ideaText}</p>
+                  {oriPreview ? (
+                    <p className="kids-note" data-testid="ori-evidence">
+                      {copy.evidenceNow} ({oriPreview.from.x}, {oriPreview.from.y}) ·{" "}
+                      {oriPreview.stepsBefore} {copy.evidenceBlocks}. {copy.evidenceWith} (
+                      {oriPreview.to.x}, {oriPreview.to.y}) · {oriPreview.stepsAfter}{" "}
+                      {copy.evidenceBlocks}.
+                      {oriPreview.outcome !== "completed" ? ` ${copy.evidenceStops}` : ""}
+                    </p>
+                  ) : null}
                   <strong>
                     {proposedStatement?.type === "move"
                       ? `+ ${copy.move} ${proposedStatement.steps / 40}`

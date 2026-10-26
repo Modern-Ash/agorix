@@ -92,13 +92,11 @@ export function KidsOriGuide({
         <span>{motion === "idle" ? "Ori" : oriMotionStatus(motion, locale)}</span>
       </button>
       {open ? (
-        <div className="kids-ori-float-backdrop" role="presentation" onClick={close}>
+        <div className="kids-ori-panel-layer" role="presentation">
           <div
             className="kids-ori-float-dialog"
             role="dialog"
-            aria-modal="true"
             aria-label={locale === "es" ? "Ori te acompaña" : "Ori is with you"}
-            onClick={(event) => event.stopPropagation()}
             onKeyDown={(event) => {
               if (event.key === "Escape") close();
             }}
