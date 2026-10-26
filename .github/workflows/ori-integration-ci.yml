@@ -146,3 +146,22 @@ jobs:
         env:
           ORI_REPO_PATH: ${{ github.workspace }}/ori
         run: pnpm test:ori:interop
+
+  ori-learner-browser:
+    name: Ori learner Playwright journey
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @agorix/web exec playwright install --with-deps chromium
+      - name: Run feature-flagged Ori learner journeys
+        working-directory: apps/web
+        run: pnpm test:e2e:ori

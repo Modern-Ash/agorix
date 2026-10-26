@@ -6,7 +6,8 @@ const proposal={schemaVersion:"ori/proposal/v0",operation:"append",
 const issued={ticketId,proposal,appliedChanges:false};
 test.describe("Ori learner proposal review",()=>{
   test.beforeEach(async({page})=>{
-    await page.goto("/");
+    await page.goto("/advanced");
+    await page.getByTestId("open-ori-companion").click();
     await expect(page.getByTestId("ori-learner-review-widget")).toBeVisible();
   });
   test("requests only server-owned proposal and rejects without project writes",async({page})=>{
@@ -24,7 +25,7 @@ test.describe("Ori learner proposal review",()=>{
     await page.getByRole("button",{name:"Pedir una propuesta"}).click();
     await expect(page.getByTestId("ori-proposal-review")).toBeVisible();
     await page.getByRole("button",{name:"Rechazar propuesta"}).click();
-    await expect(page.getByRole("status")).toContainText("rejected");
+    await expect(page.getByTestId("ori-learner-review-widget").getByRole("status")).toContainText("rejected");
     expect(issuanceBody).toEqual({});
     expect(decisionBody).toEqual({ticketId,decision:"reject"});
   });
@@ -35,7 +36,7 @@ test.describe("Ori learner proposal review",()=>{
     });
     await page.getByRole("button",{name:"Pedir una propuesta"}).click();
     await expect(page.getByTestId("ori-proposal-review")).toHaveCount(0);
-    await expect(page.getByRole("status")).toContainText("No hay una propuesta disponible");
+    await expect(page.getByTestId("ori-learner-review-widget").getByRole("status")).toContainText("No hay una propuesta disponible");
   });
   test("surfaces stale review without claiming project mutation",async({page})=>{
     await page.route("**/api/tutor/ori/review/propose",async route=>{
@@ -47,7 +48,7 @@ test.describe("Ori learner proposal review",()=>{
     });
     await page.getByRole("button",{name:"Pedir una propuesta"}).click();
     await page.getByRole("button",{name:"Aceptar propuesta"}).click();
-    await expect(page.getByRole("alert")).toContainText("ya no corresponde");
+    await expect(page.getByTestId("ori-proposal-review").getByRole("alert")).toContainText("ya no corresponde");
     await expect(page.getByText("No se aplicaron cambios.",{exact:true})).toHaveCount(0);
   });
 });
