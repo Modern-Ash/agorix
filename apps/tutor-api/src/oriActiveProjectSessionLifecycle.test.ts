@@ -42,4 +42,16 @@ describe("Ori active-project session lifecycle",()=>{
       expect((await db.read(after.accountId,after.sessionId))?.projectId).toBe("project-b");
     }finally{db.close();}
   });
+  it("fails closed rather than copying selection with a nontransactional store",async()=>{
+    let writes=0;
+    let deletes=0;
+    const lifecycle=createOriActiveProjectSessionLifecycle({
+      read:async()=>({...before,projectId:"project-a",expiresAt:Date.now()+60000}),
+      write:async()=>{writes++;},
+      delete:async()=>{deletes++;}
+    });
+    expect(await lifecycle.rotated(before,after)).toBe(false);
+    expect(writes).toBe(0);
+    expect(deletes).toBe(0);
+  });
 });

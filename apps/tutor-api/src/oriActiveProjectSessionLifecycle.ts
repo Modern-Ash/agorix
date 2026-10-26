@@ -20,17 +20,9 @@ export function createOriActiveProjectSessionLifecycle(
          !valid(next.accountId)||!valid(next.sessionId)||
          previous.accountId!==next.accountId)return false;
       if(previous.sessionId===next.sessionId)return true;
-      if(persistence.migrate)return persistence.migrate(previous.accountId,previous.sessionId,next.sessionId,Date.now());
-      const old=await persistence.read(previous.accountId,previous.sessionId);
-      if(!old)return true;
-      if(old.accountId!==previous.accountId||old.sessionId!==previous.sessionId)return false;
-      if(old.expiresAt<=Date.now()){
-        await persistence.delete(previous.accountId,previous.sessionId);
-        return true;
-      }
-      await persistence.write({...old,sessionId:next.sessionId});
-      await persistence.delete(previous.accountId,previous.sessionId);
-      return true;
+      // Session rotation must never fall back to non-atomic read/write/delete.
+      if(!persistence.migrate)return false;
+      return persistence.migrate(previous.accountId,previous.sessionId,next.sessionId,Date.now());
     }
   });
 }
