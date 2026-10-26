@@ -666,7 +666,9 @@ test("free scene repeats blocks until the character reaches the edge and keeps t
   ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");
   expect(violations.map((entry) => entry.id)).toEqual([]);
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
-  await expect(page.getByText(/Repetir hasta/).first()).toBeVisible();
+  await expect(
+    page.locator(".kids-program-block > span", { hasText: /^Repetir hasta/ }).first(),
+  ).toBeVisible();
   await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await page
@@ -674,7 +676,9 @@ test("free scene repeats blocks until the character reaches the edge and keeps t
     .filter({ hasText: "Escena libre" })
     .getByRole("button", { name: "Jugar" })
     .click();
-  await expect(page.getByText(/Repetir hasta/).first()).toBeVisible();
+  await expect(
+    page.locator(".kids-program-block > span", { hasText: /^Repetir hasta/ }).first(),
+  ).toBeVisible();
 });
 
 test("free scene points at a friend, bounces off the edge and keeps the blocks after reopening", async ({

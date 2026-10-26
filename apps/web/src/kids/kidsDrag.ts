@@ -23,3 +23,12 @@ export function dropIndex(
 export function isAddButton(label: string | null | undefined): boolean {
   return (label ?? "").trim().startsWith("+");
 }
+
+/** Where a dropped block would be inserted: before the first item whose middle is below the pointer. */
+export function insertIndex(
+  items: readonly { readonly top: number; readonly height: number }[],
+  y: number,
+): number {
+  const index = items.findIndex((item) => y < item.top + item.height / 2);
+  return index === -1 ? items.length : index;
+}

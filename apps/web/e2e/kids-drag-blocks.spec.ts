@@ -99,3 +99,86 @@ test("blocks reorder with the keyboard buttons and by dragging the handle, and u
   ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");
   expect(violations.map((entry) => entry.id)).toEqual([]);
 });
+
+const nested = (page: Page) => page.locator(".kids-program-drop .kids-nested-block");
+
+async function repeatOfTwo(page: Page) {
+  await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  await page.getByRole("button", { name: "+ Girar a la derecha" }).click();
+  await page.getByRole("button", { name: "Repetir estos bloques", exact: true }).click();
+  await page.getByRole("button", { name: "+ Esperar", exact: true }).click();
+  await expect(blocks(page)).toHaveCount(2);
+  await expect(nested(page)).toHaveCount(2);
+}
+
+test("a block can be dragged into a repeat and taken out again, and the keyboard does the same", async ({
+  page,
+}) => {
+  await openScene(page, 1280, 3200);
+  await repeatOfTwo(page);
+  // Drag the loose "Esperar" into the repeat's body: it becomes a third block inside it.
+  const handle = await center(page.getByRole("button", { name: "Arrastrar bloque 2" }));
+  const body = page.locator(".kids-program-drop .kids-studio-nested-blocks").first();
+  const rows = nested(page);
+  const lastRow = await center(rows.last());
+  await dragBetween(page, handle, { x: lastRow.x, y: lastRow.y + 20 });
+  await expect(nested(page)).toHaveCount(3);
+  await expect(blocks(page)).toHaveCount(1);
+  void body;
+  // Take it out with the button: it goes right after the repeat.
+  await page.getByRole("button", { name: /^Sacar del bloque: Esperar/ }).click();
+  await expect(nested(page)).toHaveCount(2);
+  await expect(blocks(page)).toHaveCount(2);
+  // The same move from the keyboard: the "Mover bloque a…" choice.
+  const choose = page.getByRole("combobox", { name: /^Mover bloque a… 2$/ });
+  await choose.selectOption({ index: 1 });
+  await expect(nested(page)).toHaveCount(3);
+  await expect(blocks(page)).toHaveCount(1);
+});
+
+test("a block can be given to another character by dragging it onto them or by choosing them", async ({
+  page,
+}) => {
+  await openScene(page, 1280, 3200);
+  await page.getByRole("button", { name: "+ Agregar personaje" }).click();
+  await page.getByRole("group", { name: "Personajes" }).getByRole("button").first().click();
+  await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  await page.getByRole("button", { name: "+ Esperar", exact: true }).click();
+  await page.getByRole("button", { name: "+ Girar a la derecha" }).click();
+  await expect(blocks(page)).toHaveCount(3);
+  const second = page.getByRole("group", { name: "Personajes" }).getByRole("button").nth(1);
+  // Drag the first block onto the second character.
+  await dragBetween(
+    page,
+    await center(page.getByRole("button", { name: "Arrastrar bloque 1" })),
+    await center(second),
+  );
+  await expect(blocks(page)).toHaveCount(2);
+  // Choose a character for another block, without dragging.
+  await page.getByLabel("Mover bloque a… 1").selectOption({ index: 1 });
+  await expect(blocks(page)).toHaveCount(1);
+  await page.getByRole("group", { name: "Personajes" }).getByRole("button").nth(1).click();
+  await expect(blocks(page)).toHaveCount(2);
+  // Undo brings the last gift back to the first character.
+  await page.getByRole("button", { name: "Deshacer" }).click();
+  await expect(blocks(page)).toHaveCount(1);
+  const violations = (
+    await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
+  ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");
+  expect(violations.map((entry) => entry.id)).toEqual([]);
+});
+
+test("a block dragged from the panel lands inside a repeat when dropped there", async ({
+  page,
+}) => {
+  await openScene(page, 1280, 3200);
+  await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  await page.getByRole("button", { name: "+ Girar a la derecha" }).click();
+  await page.getByRole("button", { name: "Repetir estos bloques", exact: true }).click();
+  await expect(nested(page)).toHaveCount(2);
+  const add = page.getByRole("button", { name: "+ Esperar", exact: true });
+  const target = await center(nested(page).last());
+  await dragBetween(page, await center(add), { x: target.x, y: target.y + 20 });
+  await expect(nested(page)).toHaveCount(3);
+  await expect(blocks(page)).toHaveCount(1);
+});

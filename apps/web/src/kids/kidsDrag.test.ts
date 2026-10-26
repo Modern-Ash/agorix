@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DRAG_DISTANCE, dropIndex, isAddButton, movedFar } from "./kidsDrag.js";
+import { DRAG_DISTANCE, dropIndex, insertIndex, isAddButton, movedFar } from "./kidsDrag.js";
 
 describe("drag rules", () => {
   it("tells a tap from a drag by distance", () => {
@@ -30,5 +30,17 @@ describe("drag rules", () => {
     expect(isAddButton("Jugar")).toBe(false);
     expect(isAddButton("Deshacer")).toBe(false);
     expect(isAddButton(null)).toBe(false);
+  });
+
+  it("finds where a block would be inserted, including at the end and in an empty list", () => {
+    const rows = [
+      { top: 0, height: 40 },
+      { top: 40, height: 40 },
+    ];
+    expect(insertIndex(rows, 10)).toBe(0);
+    expect(insertIndex(rows, 30)).toBe(1);
+    expect(insertIndex(rows, 79)).toBe(2);
+    expect(insertIndex(rows, 900)).toBe(2);
+    expect(insertIndex([], 5)).toBe(0);
   });
 });
