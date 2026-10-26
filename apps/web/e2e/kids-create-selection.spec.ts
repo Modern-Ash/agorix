@@ -3,8 +3,11 @@ import { expect, test } from "@playwright/test";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
-// Issue #594: one selection in Crear, remembered, and Escena libre starts from it.
-test("the character picked in Crear is remembered and starts the scene", async ({ page }) => {
+// Issue #594: the explorer of a world and the character of Escena libre are two choices that stay
+// marked together, remembered on this device, and the scene starts with its own character.
+test("the explorer and the scene character stay chosen together, are remembered and start the scene", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/kids");
   await page.evaluate(() => {
@@ -17,30 +20,45 @@ test("the character picked in Crear is remembered and starts the scene", async (
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  // Nothing from the gallery chosen yet: the scene says what it will start with.
-  await expect(page.getByTestId("studio-start-note")).toContainText(
-    "Elegí un personaje de la galería",
-  );
-  await page.getByRole("button", { name: "Luma", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Luma", exact: true })).toHaveAttribute(
+  const explorer = page.getByRole("button", { name: /Elegí tu personaje: 🐼|: 🐼$/ });
+  const note = page.getByTestId("studio-start-note");
+  // A scene character is always chosen, so the note never asks the child to pick.
+  await expect(note).toHaveText("La escena empieza con Nova.");
+  await expect(page.getByRole("button", { name: "Nova", exact: true })).toHaveAttribute(
     "aria-pressed",
     "true",
   );
-  await expect(page.getByTestId("studio-start-note")).toContainText("La escena empieza con Luma.");
+
+  await explorer.click();
+  await expect(explorer).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Cometa", exact: true }).click();
+  // Choosing the second one leaves the first one chosen.
+  await expect(explorer).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "Cometa", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(page.getByRole("button", { name: "Nova", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+  await expect(note).toHaveText("La escena empieza con Cometa.");
   const violations = (
     await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
   ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");
   expect(violations.map((entry) => entry.id)).toEqual([]);
 
-  // Leaving and coming back, even after a reload, keeps the choice.
+  // Leaving and coming back, even after a reload, keeps both.
   await page.getByRole("button", { name: "Mapa" }).click();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Luma", exact: true })).toHaveAttribute(
+  await expect(explorer).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "Cometa", exact: true })).toHaveAttribute(
     "aria-pressed",
     "true",
   );
   await page.reload();
-  await expect(page.getByRole("button", { name: "Luma", exact: true })).toHaveAttribute(
+  await expect(explorer).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "Cometa", exact: true })).toHaveAttribute(
     "aria-pressed",
     "true",
   );
@@ -48,5 +66,5 @@ test("the character picked in Crear is remembered and starts the scene", async (
   await page.getByRole("button", { name: "Crear escena" }).click();
   await expect(
     page.getByRole("group", { name: "Personajes" }).getByRole("button").first(),
-  ).toContainText("Luma");
+  ).toContainText("Cometa");
 });
