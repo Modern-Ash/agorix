@@ -23,7 +23,7 @@ describe("trusted Ori project review orchestration",()=>{
   it("issues and decides only for an authorized project",async()=>{
     const registry=createOriReviewRegistry({currentRevision:async()=>revision});
     const service=createOriProjectReviewService({
-      registry,resolveProject:async(owner,id)=>owner==="student"&&id==="project-a"?project():null,
+      registry,authorizeProject:async(owner,id)=>owner==="student"&&id==="project-a",resolveProject:async(owner,id)=>owner==="student"&&id==="project-a"?project():null,
       runOri:async()=>response
     });
     const ticket=await service.propose("student","project-a");
