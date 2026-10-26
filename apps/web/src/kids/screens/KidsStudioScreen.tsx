@@ -25,7 +25,7 @@ import {
   type OriStudioIntent,
 } from "@agorix/ori-agent";
 import type { AgeBand } from "../kidsAgeBand.js";
-import { TOUCH_HOLD_MS, dropIndex, isAddButton, movedFar } from "../kidsDrag.js";
+import { TOUCH_HOLD_MS, insertIndex, isAddButton, movedFar } from "../kidsDrag.js";
 import {
   factsOfRun,
   previewCandidate,
@@ -81,6 +81,9 @@ import {
   createStudioProcedure,
   deleteStudioProcedure,
   moveStudioStatement,
+  moveStudioStatementTo,
+  moveStudioStatementToActor,
+  type StudioListRef,
   removeStudioStatement,
   renameStudioProcedure,
   setStudioTrigger,
@@ -273,6 +276,10 @@ const COPY = {
     blockUp: "Subir bloque",
     blockDown: "Bajar bloque",
     dropHere: "Soltá acá para agregar",
+    takeOut: "Sacar del bloque",
+    giveTo: "Dar a",
+    putInto: "Meter en",
+    moveTo: "Mover bloque a…",
     evidenceNow: "Ahora termina en",
     evidenceWith: "Con la idea terminaría en",
     evidenceBlocks: "bloques",
@@ -460,6 +467,10 @@ const COPY = {
     blockUp: "Move block up",
     blockDown: "Move block down",
     dropHere: "Drop here to add",
+    takeOut: "Take out of the block",
+    giveTo: "Give to",
+    putInto: "Put into",
+    moveTo: "Move block to…",
     evidenceNow: "Now it ends at",
     evidenceWith: "With the idea it would end at",
     evidenceBlocks: "blocks",
@@ -492,6 +503,51 @@ const COPY = {
 
 const STUDIO_KEYS = ["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"] as const;
 const STUDIO_MESSAGES = ["hola", "vamos", "listo"] as const;
+type DropTarget =
+  | {
+      readonly kind: "list";
+      readonly ref: StudioListRef;
+      readonly index: number;
+      readonly key: string;
+    }
+  | { readonly kind: "actor"; readonly actorId: string; readonly key: string };
+
+/** What is under a point of the page that can receive a block: a character, or a list of blocks. */
+function dropTargetAt(x: number, y: number): DropTarget | null {
+  const element = document.elementFromPoint(x, y);
+  const actor = element?.closest<HTMLElement>("[data-drop-actor]");
+  if (actor?.dataset.dropActor)
+    return {
+      kind: "actor",
+      actorId: actor.dataset.dropActor,
+      key: `actor:${actor.dataset.dropActor}`,
+    };
+  const list = element?.closest<HTMLElement>("[data-drop-list]");
+  const raw = list?.dataset.dropList;
+  if (!list || !raw) return null;
+  try {
+    const ref = JSON.parse(raw) as StudioListRef;
+    const rows = [...list.querySelectorAll(":scope > [data-block-path]")].map((row) =>
+      row.getBoundingClientRect(),
+    );
+    const index = insertIndex(rows, y);
+    return { kind: "list", ref, index, key: `${raw}#${index}` };
+  } catch {
+    return null;
+  }
+}
+
+/** The list a block at this path belongs to. */
+function listOf(path: StudioBlockPath): StudioListRef {
+  if (path.length <= 1) return { container: null };
+  if (path[path.length - 2] === "else") return { container: path.slice(0, -2), branch: "else" };
+  return { container: path.slice(0, -1) };
+}
+
+function sameListRef(a: StudioListRef, b: StudioListRef): boolean {
+  return JSON.stringify(a.container) === JSON.stringify(b.container) && a.branch === b.branch;
+}
+
 const PEN_HEX: Record<PenColor, string> = {
   dark: "#252342",
   red: "#ef627d",
@@ -737,10 +793,18 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand =
   const [runCount, setRunCount] = useState(0);
   const [palette, setPalette] = useState<HTMLDivElement | null>(null);
   const programRef = useRef<HTMLOListElement>(null);
-  const [overProgram, setOverProgram] = useState(false);
-  const [reorder, setReorder] = useState<{ readonly from: number; readonly to: number } | null>(
-    null,
-  );
+  // What is under the pointer while a block is dragged: a list (with the place in it) or a character.
+  const [over, setOver] = useState<string | null>(null);
+  const [drag, setDrag] = useState<{ readonly from: StudioBlockPath } | null>(null);
+  const targetRef = useRef<DropTarget | null>(null);
+  // A block dropped from the panel is added by its button, then moved to where it was dropped.
+  const pendingInsert = useRef<{
+    readonly ref: StudioListRef;
+    readonly index: number;
+    readonly expected: number;
+  } | null>(null);
+  const lengthRef = useRef(0);
+  lengthRef.current = script?.statements.length ?? 0;
 
   // Drag a block from the panel into the program: dropping presses that button, so a drag and a tap
   // always do exactly the same thing. A touch needs a short hold so scrolling still works.
@@ -757,17 +821,13 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand =
     let ghost: HTMLElement | null = null;
     let dragging = false;
     let swallowClick = false;
-    const inside = (x: number, y: number) => {
-      const box = programRef.current?.getBoundingClientRect();
-      return Boolean(box && x >= box.left && x <= box.right && y >= box.top && y <= box.bottom);
-    };
     const stop = () => {
       if (start?.timer != null) window.clearTimeout(start.timer);
       ghost?.remove();
       ghost = null;
       dragging = false;
       start = null;
-      setOverProgram(false);
+      setOver(null);
     };
     const down = (event: globalThis.PointerEvent) => {
       const button = (event.target as HTMLElement).closest("button");
@@ -797,18 +857,30 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand =
         ghost.style.left = `${event.clientX}px`;
         ghost.style.top = `${event.clientY}px`;
       }
-      setOverProgram(inside(event.clientX, event.clientY));
+      const under = dropTargetAt(event.clientX, event.clientY);
+      setOver(under?.kind === "list" ? under.key : null);
       event.preventDefault();
     };
     const up = (event: globalThis.PointerEvent) => {
       if (!start) return;
       const button = start.button;
       const wasDragging = dragging;
-      const drop = wasDragging && inside(event.clientX, event.clientY);
+      const target = wasDragging ? dropTargetAt(event.clientX, event.clientY) : null;
       stop();
       if (wasDragging) {
         // Press the button once for the drop, then swallow the click the browser sends on release.
-        if (drop) button.click();
+        // A drop inside a repeat or an if, or between blocks, moves the new block there afterwards.
+        if (target?.kind === "list") {
+          const count = lengthRef.current;
+          const atEnd = target.ref.container === null && target.index >= count;
+          if (!atEnd)
+            pendingInsert.current = {
+              ref: target.ref,
+              index: target.index,
+              expected: count + 1,
+            };
+          button.click();
+        }
         swallowClick = true;
         window.setTimeout(() => {
           swallowClick = false;
@@ -841,25 +913,197 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand =
     };
   }, [palette]);
 
-  /** Drag one of the program's blocks to a new place; Up and Down do the same from the keyboard. */
-  function beginReorder(event: PointerEvent<HTMLButtonElement>, from: number) {
+  useEffect(() => {
+    const pending = pendingInsert.current;
+    if (!pending) return;
+    pendingInsert.current = null;
+    const count = script?.statements.length ?? 0;
+    // The button did not add a block (or something else changed it): leave the program alone.
+    if (count !== pending.expected) return;
+    try {
+      persist(
+        moveStudioStatementTo(history, activeActorId, [count - 1], pending.ref, pending.index),
+      );
+    } catch {
+      setError(true);
+    }
+  }, [history]);
+
+  /** Drag one of the program's blocks into another place, a repeat or an if, or to a character. */
+  function beginBlockDrag(event: PointerEvent<HTMLButtonElement>, from: StudioBlockPath) {
     if (event.pointerType === "mouse" && event.button !== 0) return;
-    const handle = event.currentTarget;
-    handle.setPointerCapture(event.pointerId);
-    setReorder({ from, to: from });
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setDrag({ from });
   }
-  function overReorder(event: PointerEvent<HTMLButtonElement>) {
-    if (!reorder) return;
-    const rows = [
-      ...(programRef.current?.querySelectorAll(":scope > .kids-program-block") ?? []),
-    ].map((row) => row.getBoundingClientRect());
-    setReorder({ from: reorder.from, to: dropIndex(rows, event.clientY) });
+  function overBlockDrag(event: PointerEvent<HTMLButtonElement>) {
+    if (!drag) return;
+    const target = dropTargetAt(event.clientX, event.clientY);
+    targetRef.current = target;
+    setOver(target?.key ?? null);
   }
-  function endReorder() {
-    const current = reorder;
-    setReorder(null);
-    if (current && current.from !== current.to)
-      persist(moveStudioStatement(history, activeActorId, current.from, current.to));
+  function endBlockDrag(event: PointerEvent<HTMLButtonElement>) {
+    const current = drag;
+    const target = dropTargetAt(event.clientX, event.clientY);
+    setDrag(null);
+    setOver(null);
+    targetRef.current = null;
+    if (!current || !target) return;
+    placeBlock(current.from, target);
+  }
+  /** One way to move a block, for a drag and for the keyboard choices alike. */
+  function placeBlock(from: StudioBlockPath, target: DropTarget) {
+    try {
+      if (target.kind === "actor") {
+        if (from.length === 1 && typeof from[0] === "number")
+          persist(moveStudioStatementToActor(history, activeActorId, from[0], target.actorId));
+        return;
+      }
+      const source = listOf(from);
+      const sameList = sameListRef(source, target.ref);
+      const last = from[from.length - 1];
+      const index =
+        sameList && typeof last === "number" && last < target.index
+          ? target.index - 1
+          : target.index;
+      if (sameList && index === last) return;
+      persist(moveStudioStatementTo(history, activeActorId, from, target.ref, index));
+    } catch {
+      setError(true);
+    }
+  }
+
+  /** The program's repeat and if bodies: each block can be dragged, moved and taken out. */
+  function programList(items: readonly Statement[], container: StudioBlockPath, branch?: "else") {
+    const ref: StudioListRef = branch ? { container, branch } : { container };
+    const key = JSON.stringify(ref);
+    const base: StudioBlockPath = branch ? [...container, "else"] : container;
+    return (
+      <ol
+        className="kids-studio-nested-blocks"
+        data-drop-list={key}
+        data-over={over?.startsWith(`${key}#`) ? "true" : undefined}
+      >
+        {items.map((item, index) => {
+          const path: StudioBlockPath = [...base, index];
+          return (
+            <li
+              key={`${key}-${index}`}
+              className="kids-nested-block"
+              data-block-path={JSON.stringify(path)}
+              data-target={over === `${key}#${index}` ? "true" : undefined}
+              data-dragging={
+                drag && JSON.stringify(drag.from) === JSON.stringify(path) ? "true" : undefined
+              }
+            >
+              <button
+                type="button"
+                className="kids-block-handle"
+                aria-label={`${copy.moveBlock}: ${blockLabel(item)}`}
+                onPointerDown={(event) => beginBlockDrag(event, path)}
+                onPointerMove={overBlockDrag}
+                onPointerUp={endBlockDrag}
+                onPointerCancel={() => setDrag(null)}
+              >
+                ⠿
+              </button>
+              <span>{blockLabel(item)}</span>
+              <button
+                type="button"
+                className="kids-button"
+                aria-label={`${copy.blockUp}: ${blockLabel(item)}`}
+                disabled={index === 0}
+                onClick={() => placeBlock(path, { kind: "list", ref, index: index - 1, key: "" })}
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                className="kids-button"
+                aria-label={`${copy.blockDown}: ${blockLabel(item)}`}
+                disabled={index === items.length - 1}
+                onClick={() => placeBlock(path, { kind: "list", ref, index: index + 2, key: "" })}
+              >
+                ↓
+              </button>
+              <button
+                type="button"
+                className="kids-button"
+                aria-label={`${copy.takeOut}: ${blockLabel(item)}`}
+                onClick={() => {
+                  const parent = listOf(container);
+                  const at = container[container.length - 1];
+                  if (typeof at === "number")
+                    placeBlock(path, { kind: "list", ref: parent, index: at + 1, key: "" });
+                }}
+              >
+                {copy.takeOut}
+              </button>
+              {item.type === "repeat" || item.type === "repeatUntil"
+                ? programList(item.body, path)
+                : null}
+              {item.type === "if" ? programList(item.then, path) : null}
+              {item.type === "if" && item.else ? (
+                <>
+                  <strong>{copy.elseLabel}</strong>
+                  {programList(item.else, path, "else")}
+                </>
+              ) : null}
+            </li>
+          );
+        })}
+      </ol>
+    );
+  }
+
+  /** Keyboard and screen-reader way to put a block somewhere else: a list of places to choose from. */
+  function placeChoices(
+    from: StudioBlockPath,
+  ): { readonly label: string; readonly run: () => void }[] {
+    const choices: { label: string; run: () => void }[] = [];
+    for (const other of otherActors)
+      choices.push({
+        label: `${copy.giveTo} ${other.name}`,
+        run: () => placeBlock(from, { kind: "actor", actorId: other.id, key: "" }),
+      });
+    (script?.statements ?? []).forEach((statement, at) => {
+      if (from.length === 1 && from[0] === at) return;
+      const name = blockLabel(statement);
+      if (statement.type === "repeat" || statement.type === "repeatUntil")
+        choices.push({
+          label: `${copy.putInto} ${name}`,
+          run: () =>
+            placeBlock(from, {
+              kind: "list",
+              ref: { container: [at] },
+              index: statement.body.length,
+              key: "",
+            }),
+        });
+      if (statement.type === "if") {
+        choices.push({
+          label: `${copy.putInto} ${name}`,
+          run: () =>
+            placeBlock(from, {
+              kind: "list",
+              ref: { container: [at] },
+              index: statement.then.length,
+              key: "",
+            }),
+        });
+        if (statement.else)
+          choices.push({
+            label: `${copy.putInto} ${name} (${copy.elseLabel})`,
+            run: () =>
+              placeBlock(from, {
+                kind: "list",
+                ref: { container: [at], branch: "else" },
+                index: statement.else!.length,
+                key: "",
+              }),
+          });
+      }
+    });
+    return choices;
   }
   const oriMotion = oriBusy
     ? "thinking"
@@ -1268,28 +1512,6 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand =
       default:
         return "";
     }
-  }
-
-  function nestedBlocks(statements: readonly Statement[], key: string) {
-    return (
-      <ol className="kids-studio-nested-blocks">
-        {statements.map((item, index) => (
-          <li key={`${key}-${index}`}>
-            {blockLabel(item)}
-            {item.type === "repeat" || item.type === "repeatUntil"
-              ? nestedBlocks(item.body, `${key}-${index}`)
-              : null}
-            {item.type === "if" ? nestedBlocks(item.then, `${key}-${index}`) : null}
-            {item.type === "if" && item.else ? (
-              <>
-                <strong>{copy.elseLabel}</strong>
-                {nestedBlocks(item.else, `${key}-${index}-else`)}
-              </>
-            ) : null}
-          </li>
-        ))}
-      </ol>
-    );
   }
 
   function procedureBlocks(
@@ -2058,6 +2280,8 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand =
                 key={item.id}
                 type="button"
                 className="kids-button"
+                data-drop-actor={item.id}
+                data-over={over === `actor:${item.id}` ? "true" : undefined}
                 aria-pressed={activeActorId === item.id}
                 onClick={() => selectActor(item.id)}
               >
@@ -2196,7 +2420,10 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand =
             <ol
               ref={programRef}
               className="kids-program-drop"
-              data-over={overProgram ? "true" : undefined}
+              data-drop-list={JSON.stringify({ container: null })}
+              data-over={
+                over?.startsWith(`${JSON.stringify({ container: null })}#`) ? "true" : undefined
+              }
               aria-label={copy.dragHint}
               data-hint={copy.dropHere}
             >
@@ -2204,35 +2431,52 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand =
                 <li
                   key={`${script.id}-${index}`}
                   className="kids-program-block"
-                  data-dragging={reorder?.from === index ? "true" : undefined}
+                  data-block-path={JSON.stringify([index])}
+                  data-dragging={
+                    drag && drag.from.length === 1 && drag.from[0] === index ? "true" : undefined
+                  }
                   data-target={
-                    reorder && reorder.to === index && reorder.from !== index ? "true" : undefined
+                    over === `${JSON.stringify({ container: null })}#${index}` ? "true" : undefined
                   }
                 >
                   <button
                     type="button"
                     className="kids-block-handle"
                     aria-label={`${copy.moveBlock} ${index + 1}`}
-                    onPointerDown={(event) => beginReorder(event, index)}
-                    onPointerMove={overReorder}
-                    onPointerUp={endReorder}
-                    onPointerCancel={() => setReorder(null)}
+                    onPointerDown={(event) => beginBlockDrag(event, [index])}
+                    onPointerMove={overBlockDrag}
+                    onPointerUp={endBlockDrag}
+                    onPointerCancel={() => setDrag(null)}
                   >
                     ⠿
                   </button>
                   <span>{blockLabel(statement)}</span>
                   {callNumbers(statement, index)}
                   {statement.type === "repeat" || statement.type === "repeatUntil"
-                    ? nestedBlocks(statement.body, `${script.id}-${index}`)
+                    ? programList(statement.body, [index])
                     : null}
-                  {statement.type === "if"
-                    ? nestedBlocks(statement.then, `${script.id}-${index}`)
-                    : null}
+                  {statement.type === "if" ? programList(statement.then, [index]) : null}
                   {statement.type === "if" && statement.else ? (
                     <>
                       <strong>{copy.elseLabel}</strong>
-                      {nestedBlocks(statement.else, `${script.id}-${index}-else`)}
+                      {programList(statement.else, [index], "else")}
                     </>
+                  ) : null}
+                  {placeChoices([index]).length > 0 ? (
+                    <select
+                      aria-label={`${copy.moveTo} ${index + 1}`}
+                      value=""
+                      onChange={(event) => {
+                        placeChoices([index])[Number(event.target.value)]?.run();
+                      }}
+                    >
+                      <option value="">{copy.moveTo}</option>
+                      {placeChoices([index]).map((choice, at) => (
+                        <option key={choice.label} value={at}>
+                          {choice.label}
+                        </option>
+                      ))}
+                    </select>
                   ) : null}
                   <button
                     type="button"

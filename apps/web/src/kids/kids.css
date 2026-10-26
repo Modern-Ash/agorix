@@ -1431,6 +1431,27 @@
   color: #4230a2;
   font-weight: 700;
 }
+.kids-nested-block {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  list-style: none;
+}
+.kids-nested-block > ol {
+  flex-basis: 100%;
+}
+.kids-nested-block[data-dragging="true"] {
+  opacity: 0.5;
+}
+.kids-nested-block[data-target="true"] {
+  box-shadow: 0 -4px 0 #7356c5;
+}
+[data-drop-list][data-over="true"],
+[data-drop-actor][data-over="true"] {
+  outline: 3px dashed #7356c5;
+  outline-offset: 3px;
+}
 .kids-program-drop[data-over="true"] {
   outline: 3px dashed #7356c5;
   outline-offset: 4px;

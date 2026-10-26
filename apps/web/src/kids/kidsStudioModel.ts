@@ -1106,6 +1106,147 @@ function updateAt(
   });
 }
 
+/**
+ * One list of blocks in a character's script: the script itself (`container: null`), or one body of
+ * a repeat, repeat-until or if. `branch` picks the "else" of an if; any other body is the default.
+ */
+export interface StudioListRef {
+  readonly container: StudioBlockPath | null;
+  readonly branch?: "else";
+}
+
+function removeAt(
+  list: readonly Statement[],
+  path: StudioBlockPath,
+): { readonly list: Statement[]; readonly removed: Statement } {
+  const [head, ...rest] = path;
+  if (typeof head !== "number" || head < 0 || head >= list.length)
+    throw new RangeError("unknown block");
+  if (rest.length === 0)
+    return { list: list.filter((_item, index) => index !== head), removed: list[head]! };
+  const item = list[head]!;
+  let removed: Statement | undefined;
+  const next = (inner: readonly Statement[], innerPath: StudioBlockPath) => {
+    const result = removeAt(inner, innerPath);
+    removed = result.removed;
+    return result.list;
+  };
+  let replaced: Statement;
+  if (item.type === "repeat" || item.type === "repeatUntil")
+    replaced = { ...item, body: next(item.body, rest) };
+  else if (item.type === "if" && rest[0] === "else" && item.else)
+    replaced = { ...item, else: next(item.else, rest.slice(1)) };
+  else if (item.type === "if") replaced = { ...item, then: next(item.then, rest) };
+  else throw new RangeError("unknown block");
+  return {
+    list: list.map((entry, index) => (index === head ? replaced : entry)),
+    removed: removed!,
+  };
+}
+
+function insertInto(
+  list: readonly Statement[],
+  target: StudioListRef,
+  index: number,
+  statement: Statement,
+): Statement[] {
+  const put = (inner: readonly Statement[]) => {
+    if (!Number.isInteger(index) || index < 0 || index > inner.length)
+      throw new RangeError("unknown studio place");
+    return [...inner.slice(0, index), statement, ...inner.slice(index)];
+  };
+  if (target.container === null) return put(list);
+  return updateAt(list, target.container, (item) => {
+    if (item.type === "repeat" || item.type === "repeatUntil")
+      return { ...item, body: put(item.body) };
+    if (item.type === "if" && target.branch === "else")
+      return item.else
+        ? { ...item, else: put(item.else) }
+        : (() => {
+            throw new RangeError("unknown studio place");
+          })();
+    if (item.type === "if") return { ...item, then: put(item.then) };
+    throw new RangeError("unknown studio place");
+  });
+}
+
+function startsWith(path: StudioBlockPath, prefix: StudioBlockPath): boolean {
+  return prefix.length <= path.length && prefix.every((step, at) => path[at] === step);
+}
+
+/**
+ * Move a block to any list of the same character: into a repeat or if, out of one, or between
+ * them (issue #593). `index` counts in the target list after the block has left its place. The
+ * move is one undoable step, and a block cannot go into itself nor leave a body empty.
+ */
+export function moveStudioStatementTo(
+  history: EditorHistory,
+  actorId: string,
+  from: StudioBlockPath,
+  target: StudioListRef,
+  index: number,
+): EditorHistory {
+  return withScript(history, actorId, "move studio block", (script) => {
+    if (target.container !== null && startsWith(target.container, from))
+      throw new RangeError("a block cannot go into itself");
+    const { list, removed } = removeAt(script.statements, from);
+    // Taking a block out of a list shifts its later siblings, and any path that runs through them.
+    let container = target.container;
+    if (container !== null) {
+      const parent = from.slice(0, -1);
+      const place = from[from.length - 1];
+      const at = parent.length;
+      if (startsWith(container, parent) && typeof place === "number") {
+        const sibling = container[at];
+        if (typeof sibling === "number" && sibling > place)
+          container = [...container.slice(0, at), sibling - 1, ...container.slice(at + 1)];
+      }
+    }
+    return {
+      ...script,
+      statements: insertInto(list, { ...target, container }, index, removed),
+    };
+  });
+}
+
+function containsCall(statement: Statement): boolean {
+  if (statement.type === "callProcedure") return true;
+  if (statement.type === "repeat" || statement.type === "repeatUntil")
+    return statement.body.some(containsCall);
+  if (statement.type === "if")
+    return statement.then.some(containsCall) || (statement.else ?? []).some(containsCall);
+  return false;
+}
+
+/**
+ * Hand one of a character's blocks to another character, which gets it at the end of its program
+ * (issue #593). A block that uses a custom block stays: those belong to their character.
+ */
+export function moveStudioStatementToActor(
+  history: EditorHistory,
+  fromActorId: string,
+  index: number,
+  toActorId: string,
+): EditorHistory {
+  if (fromActorId === toActorId) throw new RangeError("choose another character");
+  const program = validateStudioProgram(history.current);
+  const fromAt = scriptIndexOfActor(program, fromActorId);
+  const toAt = scriptIndexOfActor(program, toActorId);
+  const from = program.scripts[fromAt];
+  const to = program.scripts[toAt];
+  if (!from || !to) throw new RangeError("unknown studio actor");
+  const moving = from.statements[index];
+  if (!moving) throw new RangeError("unknown studio block");
+  if (containsCall(moving)) throw new RangeError("custom blocks stay with their character");
+  const scripts = [...program.scripts];
+  scripts[fromAt] = { ...from, statements: from.statements.filter((_item, at) => at !== index) };
+  scripts[toAt] = { ...to, statements: [...to.statements, moving] };
+  return recordCanonicalTransaction(history, {
+    label: "give studio block to another character",
+    after: validateStudioProgram({ ...program, scripts }),
+  }).history;
+}
+
 function withoutKey<T extends object>(value: T, key: string): T {
   return Object.fromEntries(Object.entries(value).filter(([name]) => name !== key)) as T;
 }
