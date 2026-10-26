@@ -1,5 +1,4 @@
-// agora-allowlist: test-only use of the local Java compiler on fixed, generated source files
-import { spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process"; // agora-allowlist: test-only use of the local Java compiler on fixed, generated source files
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
