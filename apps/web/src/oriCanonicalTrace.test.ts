@@ -33,7 +33,7 @@ describe("Ori canonical trace evidence adapter",()=>{
   });
   it("rejects out of order steps",()=>{
     const value=fixture();
-    expect(deriveOriTraceEvidence({...value,trace:[value.trace[1],value.trace[0]]}).status)
+    expect(deriveOriTraceEvidence({...value,trace:[value.trace[1]!,value.trace[0]!]}).status)
       .toBe("unavailable");
   });
   it("rejects missing run and oversized execution",()=>{
