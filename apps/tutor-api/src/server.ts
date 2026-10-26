@@ -217,6 +217,8 @@ export function createTutorServer(options: TutorServerOptions): Server {
       if (!parsed) return send(response, 400, error("invalid-request"));
       const ticket = await options.oriReviewDecision(identity.ownerId,identity.projectId,parsed.ticketId,parsed.decision);
       if (!ticket) return send(response, 404, error("not-found"));
+      if (!["accepted","edited","rejected","stale"].includes(ticket.status))
+        return send(response, 409, error("review-not-finalized"));
       return send(response, 200, {status:ticket.status,appliedChanges:false});
     }
 
