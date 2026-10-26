@@ -4,6 +4,7 @@ import { InMemoryProjectRepository } from "@agorix/project-repository";
 import { createOriCanonicalReviewWorkflow } from "./oriCanonicalReviewWorkflow.js";
 import type { OriHostEvidenceResult } from "./oriHostEvidenceAdapter.js";
 import { createOriCanonicalExecutionPort } from "./oriCanonicalExecutionPort.js";
+import { runProgram, createWorldState } from "@agorix/runtime";
 import { createOriPersistedEvidenceResolver } from "./oriPersistedEvidenceResolver.js";
 
 describe("Ori accepted ticket application", () => {
@@ -47,6 +48,10 @@ describe("Ori accepted ticket application", () => {
       learningContext: async () => ({ attempts: 1, hintsUsed: 1, learningStage: "connect" }),
       runOriOverride: async () => response,
     });
+    const execution = runProgram(record.storedProject.program, createWorldState({ goal: { x: 10, y: 0 } }), { maxSteps: 100 });
+    expect(execution.outcome).toBe("completed");
+    expect(execution.stepsUsed).toBe(1);
+    expect(execution.trace.map((step) => step.statementType)).toEqual(["move"]);
     const evidence = await createOriPersistedEvidenceResolver({
       repository,
       execute: createOriCanonicalExecutionPort({ world: { goal: { x: 10, y: 0 } } }),
