@@ -1,5 +1,4 @@
-import { createHash } from "node:crypto";
-import { validateTrustedOriEvidence, type TrustedOriEvidence, type OriHostEvidenceResult } from "./oriHostEvidenceAdapter.js";
+import type { OriHostEvidenceResult } from "./oriHostEvidenceAdapter.js";
 
 /**
  * Host-owned proposal review. The trusted host must provide a fresh canonical
