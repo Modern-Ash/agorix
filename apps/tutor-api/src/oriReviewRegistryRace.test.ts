@@ -12,24 +12,24 @@ describe("Ori review decision race and expiry",()=>{
     let release:(value:string)=>void=()=>{};
     const pending=new Promise<string>(resolve=>{release=resolve;});
     const registry=createOriReviewRegistry({currentRevision:async()=>pending});
-    const ticket=registry.issue(response,"session-a")!;
-    const first=registry.decide(ticket.id,"session-a","accept");
-    const second=await registry.decide(ticket.id,"session-a","reject");
+    const ticket=registry.issue(response,"session-a","project-a")!;
+    const first=registry.decide(ticket.id,"session-a","project-a","accept");
+    const second=await registry.decide(ticket.id,"session-a","project-a","reject");
     expect(second?.status).toBe("pending");
     release(revision);
     expect((await first)?.status).toBe("accepted");
-    expect(registry.read(ticket.id,"session-a")?.status).toBe("accepted");
+    expect(registry.read(ticket.id,"session-a","project-a")?.status).toBe("accepted");
   });
   it("does not finalize a decision after the ticket expires during await",async()=>{
     let clock=0;
     let release:(value:string)=>void=()=>{};
     const pending=new Promise<string>(resolve=>{release=resolve;});
     const registry=createOriReviewRegistry({now:()=>clock,ttlMs:10,currentRevision:async()=>pending});
-    const ticket=registry.issue(response,"session-a")!;
-    const decision=registry.decide(ticket.id,"session-a","accept");
+    const ticket=registry.issue(response,"session-a","project-a")!;
+    const decision=registry.decide(ticket.id,"session-a","project-a","accept");
     clock=11;release(revision);
     expect(await decision).toBeNull();
-    expect(registry.read(ticket.id,"session-a")).toBeNull();
+    expect(registry.read(ticket.id,"session-a","project-a")).toBeNull();
   });
   it("releases the lock after a failed trusted revision lookup",async()=>{
     let calls=0;
@@ -38,8 +38,8 @@ describe("Ori review decision race and expiry",()=>{
       if(calls===1)throw Error("temporary failure");
       return revision;
     }});
-    const ticket=registry.issue(response,"session-a")!;
-    await expect(registry.decide(ticket.id,"session-a","accept")).rejects.toThrow();
-    expect((await registry.decide(ticket.id,"session-a","reject"))?.status).toBe("rejected");
+    const ticket=registry.issue(response,"session-a","project-a")!;
+    await expect(registry.decide(ticket.id,"session-a","project-a","accept")).rejects.toThrow();
+    expect((await registry.decide(ticket.id,"session-a","project-a","reject"))?.status).toBe("rejected");
   });
 });
