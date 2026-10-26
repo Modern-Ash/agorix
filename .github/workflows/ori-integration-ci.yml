@@ -106,7 +106,7 @@ jobs:
   ori-interoperability:
     name: Real Ori process interoperability
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Checkout Agorix integration branch / PR
         uses: actions/checkout@v4
@@ -145,7 +145,9 @@ jobs:
         working-directory: agorix
         env:
           ORI_REPO_PATH: ${{ github.workspace }}/ori
-        run: pnpm test:ori:interop
+        run: |
+          pnpm test:ori:interop
+          pnpm test:ori:runtime
 
   ori-learner-browser:
     name: Ori learner Playwright journey
