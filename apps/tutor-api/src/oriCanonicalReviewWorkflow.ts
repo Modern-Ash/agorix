@@ -27,14 +27,14 @@ export function createOriCanonicalReviewWorkflow({
   const execute=createOriCanonicalExecutionPort({world,maxSteps:100});
   const resolve=createOriPersistedEvidenceResolver({repository,execute,learningContext});
   const runOri=createOriHostEvidenceAdapter({oriRoot});
-  const ticketProjects=new Map<string,{owner:string;projectId:string}>();
+  const ticketProjects=new Map<string,{owner:string;projectId:string;revision:number}>();
   const registry=createOriReviewRegistry({
     currentRevision:async id=>{
       const binding=ticketProjects.get(id);
       if(!binding)return "";
       try{
         const record=await repository.get(binding.owner,binding.projectId);
-        return record.semanticHash;
+        return record.revision===binding.revision?record.semanticHash:"";
       }catch{return "";}
     }
   });
@@ -45,7 +45,10 @@ export function createOriCanonicalReviewWorkflow({
   return Object.freeze({
     async propose(owner:string,projectId:string){
       const ticket=await service.propose(owner,projectId);
-      if(ticket)ticketProjects.set(ticket.id,{owner,projectId});
+      if(ticket){
+        const record=await repository.get(owner,projectId);
+        ticketProjects.set(ticket.id,{owner,projectId,revision:record.revision});
+      }
       return ticket;
     },
     async decide(owner:string,projectId:string,ticketId:string,decision:"accept"|"edit"|"reject"){
