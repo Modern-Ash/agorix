@@ -2,6 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { getKidsMission, kidsMoveSteps } from "@agorix/curriculum";
 import { createProgramProposal } from "@agorix/proposals";
+import { reloadToMap } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -49,7 +50,7 @@ async function openEditor(page: Page, locale: "es" | "en" = "es") {
       JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
     );
   }, locale);
-  await page.reload();
+  await reloadToMap(page);
   await page.getByRole("button", { name: locale === "es" ? "Misión 1" : "Mission 1" }).click();
 }
 
@@ -134,7 +135,7 @@ test("reveals hints in order and records only the levels opened", async ({ page 
   );
   expect(events.map((event: { level: number }) => event.level)).toEqual([1, 2, 3, 4, 5]);
   expect(events.at(-1)).toMatchObject({ kind: "scaffoldDelivered", scaffoldKind: "solution" });
-  await page.reload();
+  await reloadToMap(page);
   await page.getByRole("button", { name: "Misión 1" }).click();
   await expect(page.locator(".kids-hints .kids-note")).toHaveCount(5);
   await expect(page.getByRole("button", { name: "Ver idea" })).toHaveCount(0);
@@ -230,7 +231,7 @@ test("Ori silently uses local rules for an invalid or late agent answer", async 
       // The browser cancels the late request at the response budget.
     }
   });
-  await page.reload();
+  await reloadToMap(page);
   await page.getByRole("button", { name: "Misión 1" }).click();
   await expect(await openOriProposal(page)).toContainText("mover 4", { timeout: 13_000 });
   await expect(page.locator(".kids-editor")).not.toContainText(
@@ -245,7 +246,7 @@ test("Ori's No leaves the program alone and repeated declines stop automatic off
   await (await openOriProposal(page)).getByRole("button", { name: "No, gracias" }).click();
   await expect(page.locator(".kids-program-block")).toHaveCount(0);
   await (await openOriProposal(page)).getByRole("button", { name: "No, gracias" }).click();
-  await page.reload();
+  await reloadToMap(page);
   await page.getByRole("button", { name: "Misión 1" }).click();
   await expect(page.locator(".kids-ori-proposal")).toHaveCount(0);
   const events = await page.evaluate(() =>

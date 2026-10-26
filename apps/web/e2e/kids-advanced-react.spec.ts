@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { reloadToMap } from "./helpers.js";
 
 test.use({ hasTouch: true });
 
@@ -29,7 +30,7 @@ async function seed(page: import("@playwright/test").Page) {
       );
     }
   });
-  await page.reload();
+  await reloadToMap(page);
 }
 
 test("stage 2 unlocks after the real scene, reacts to a child tap, and replays stage 1", async ({
@@ -50,7 +51,7 @@ test("stage 2 unlocks after the real scene, reacts to a child tap, and replays s
   await page.getByRole("button", { name: /\+ Cambiar disfraz/ }).click();
   await page.getByRole("button", { name: "Tocar a Ori" }).click();
   await expect(page.getByRole("status")).toContainText("Reacción lograda");
-  await page.reload();
+  await reloadToMap(page);
   await page.getByRole("button", { name: /Etapa 2/ }).click();
   await expect(page.getByRole("status")).toContainText("Reacción lograda");
   const editorAxe = await new AxeBuilder({ page }).analyze();

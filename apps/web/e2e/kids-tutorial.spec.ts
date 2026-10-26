@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { reloadToMap } from "./helpers.js";
 
 // Issue #470: first-run coach in mission 1, behind the tutorial flag.
 test.use({ hasTouch: true, serviceWorkers: "block" });
@@ -18,7 +19,7 @@ async function open(page: Page, flags: string[], progress: Record<string, unknow
     },
     { list: flags, extra: progress },
   );
-  await page.reload();
+  await reloadToMap(page);
   await page.getByRole("button", { name: "Misión 1" }).click();
 }
 
@@ -52,7 +53,7 @@ test("walks add, number, run, then stays gone after a reload", async ({ page }) 
   await expect(coach(page)).toHaveCount(0);
   await expect.poll(() => savedDone(page)).toBe(true);
 
-  await page.reload();
+  await reloadToMap(page);
   await page.getByRole("button", { name: "Misión 1" }).click();
   await expect(coach(page)).toHaveCount(0);
 });

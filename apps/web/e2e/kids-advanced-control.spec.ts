@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { reloadToMap } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -29,7 +30,7 @@ async function enterControl(page: Page) {
       );
     }
   });
-  await page.reload();
+  await reloadToMap(page);
   await page.getByRole("button", { name: /Nivel avanzado/ }).click();
   await page.getByRole("button", { name: /\+ Cambiar disfraz/ }).click();
   await page.getByRole("button", { name: /\+ Tocar sonido/ }).click();
@@ -78,7 +79,7 @@ test("control builds if/else, comparators, random and wait with runtime evidence
   expect(
     axe.violations.filter((item) => ["critical", "serious"].includes(item.impact ?? "")),
   ).toEqual([]);
-  await page.reload();
+  await reloadToMap(page);
   await page.getByRole("button", { name: /Etapa 4/ }).click();
   await expect(page.getByText(/Azar 2–4/)).toBeVisible();
 });
@@ -106,7 +107,7 @@ test("message sends to two handlers and survives export/import", async ({ page }
   await page.getByLabel("Importar .agorix").setInputFiles(path!);
   await page.getByRole("button", { name: "Jugar" }).click();
   await expect(page.getByText("¡Misión lograda!").first()).toBeVisible();
-  await page.reload();
+  await reloadToMap(page);
   await page.getByRole("button", { name: /Etapa 5/ }).click();
   await page.getByRole("button", { name: "Jugar" }).click();
   await expect(page.getByText("¡Misión lograda!").first()).toBeVisible();
@@ -115,7 +116,7 @@ test("message sends to two handlers and survives export/import", async ({ page }
 test("advanced controls use English labels and keyboard actions", async ({ page }) => {
   await enterControl(page);
   await page.evaluate(() => localStorage.setItem("agorix.locale", "en"));
-  await page.reload();
+  await reloadToMap(page);
   await page.getByRole("button", { name: /Stage 4/ }).click();
   await expect(page.getByRole("heading", { name: "Choose what happens" })).toBeVisible();
   const add = page.getByRole("button", { name: /If score ≥/ });

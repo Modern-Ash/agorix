@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { KIDS_V2_FEATURES } from "../src/kids/kidsFlags.js";
+import { reloadToMap } from "./helpers.js";
 
 // Issue #443: scripted slice of the adversarial charter, run with every v2 flag on.
 // Any uncaught page error is a failure; each attack asserts the app still works afterwards.
@@ -30,7 +31,7 @@ async function seed(page: Page, flags: string[] = ALL_FLAGS) {
       JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
     );
   }, flags);
-  await page.reload();
+  await reloadToMap(page);
 }
 
 async function openMission(page: Page) {
@@ -67,7 +68,7 @@ test("reload mid-prediction and mid-run, then orientation and resize sweep", asy
   await page.getByRole("button", { name: "+ mover", exact: true }).click();
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
-  await page.reload();
+  await reloadToMap(page);
   await expect(page.getByRole("heading", { name: "Mapa" })).toBeVisible();
   await openMission(page);
   await page.getByRole("button", { name: "Paso", exact: true }).click();

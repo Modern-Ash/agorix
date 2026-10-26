@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { reloadToMap } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -29,7 +30,7 @@ async function enterScore(page: Page) {
       );
     }
   });
-  await page.reload();
+  await reloadToMap(page);
   await page.getByRole("button", { name: /Nivel avanzado/ }).click();
   await page.getByRole("button", { name: /\+ Cambiar disfraz/ }).click();
   await page.getByRole("button", { name: /\+ Tocar sonido/ }).click();
@@ -77,7 +78,7 @@ test("advanced list blocks edit canonical data and the watcher follows runtime",
   expect(
     axe.violations.filter((item) => ["critical", "serious"].includes(item.impact ?? "")),
   ).toEqual([]);
-  await page.reload();
+  await reloadToMap(page);
   await page.getByRole("button", { name: /Etapa 3/ }).click();
   await page.getByRole("button", { name: "Jugar" }).click();
   await expect(page.getByRole("status", { name: "Mi lista: 9" })).toBeVisible();
@@ -131,7 +132,7 @@ test("bad indices and values stay safe; Ori still proposes a reviewable score bl
 test("list controls have English copy and work from a keyboard", async ({ page }) => {
   await enterScore(page);
   await page.evaluate(() => localStorage.setItem("agorix.locale", "en"));
-  await page.reload();
+  await reloadToMap(page);
   await page.getByRole("button", { name: /Stage 3/ }).click();
   const create = page.getByRole("button", { name: /Create my list/ });
   await create.focus();

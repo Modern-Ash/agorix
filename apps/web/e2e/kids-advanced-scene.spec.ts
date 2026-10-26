@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { reloadToMap } from "./helpers.js";
 
 test.use({ hasTouch: true });
 
@@ -34,7 +35,7 @@ async function seed(page: import("@playwright/test").Page, locale: "es" | "en") 
     },
     { ids: missions, language: locale },
   );
-  await page.reload();
+  await reloadToMap(page);
 }
 
 for (const locale of ["es", "en"] as const) {
@@ -59,7 +60,7 @@ for (const locale of ["es", "en"] as const) {
     );
     await page.getByRole("button", { name: locale === "es" ? "Jugar" : "Run" }).click();
     await expect(page.getByRole("status")).toContainText(/Escena lograda|Scene complete/);
-    await page.reload();
+    await reloadToMap(page);
     await page.getByRole("button", { name: /Nivel avanzado|Advanced level/ }).click();
     await expect(page.getByRole("status")).toContainText(/Escena lograda|Scene complete/);
     const axe = await new AxeBuilder({ page }).analyze();
@@ -81,7 +82,7 @@ test("advanced entry stays hidden before all three authored missions", async ({ 
       JSON.stringify({ onboarded: true, avatar: "🦊", stars: 3, done: {} }),
     );
   });
-  await page.reload();
+  await reloadToMap(page);
   await expect(page.getByRole("button", { name: /Nivel avanzado/ })).toHaveCount(0);
 });
 
@@ -167,7 +168,7 @@ test("curated actors keep independent move scripts, selection and portable save"
   await page.getByLabel("Importar .agorix").setInputFiles(path!);
   await expect(page.getByRole("button", { name: /Rana/ })).toHaveAttribute("aria-pressed", "false");
   await page.getByRole("button", { name: /Rana/ }).click();
-  await page.reload();
+  await reloadToMap(page);
   await page.getByRole("button", { name: /Nivel avanzado/ }).click();
   await expect(page.getByRole("button", { name: /Rana/ })).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "Jugar" }).click();

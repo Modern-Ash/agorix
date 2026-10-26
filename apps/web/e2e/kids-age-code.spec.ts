@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { reloadToMap } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -13,7 +14,7 @@ async function start(page: Page) {
       JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
     );
   });
-  await page.reload();
+  await reloadToMap(page);
 }
 
 async function pickBand(page: Page, band: "6–8" | "9–12" | "13+") {
@@ -25,7 +26,7 @@ async function pickBand(page: Page, band: "6–8" | "9–12" | "13+") {
     .getByRole("group", { name: "Franja de edad" })
     .getByRole("radio", { name: band })
     .check();
-  await page.reload();
+  await reloadToMap(page);
   await page.getByRole("button", { name: "Misión 1" }).click();
   await page.getByRole("button", { name: "Código", exact: true }).click();
 }

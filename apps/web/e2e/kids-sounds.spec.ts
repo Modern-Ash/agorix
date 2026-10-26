@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { reloadToMap } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -13,7 +14,7 @@ async function start(page: Page, flags: readonly string[]) {
       JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
     );
   }, flags);
-  await page.reload();
+  await reloadToMap(page);
 }
 
 test("named sound is selected, saved and replayed from the canonical program", async ({ page }) => {
@@ -23,7 +24,7 @@ test("named sound is selected, saved and replayed from the canonical program", a
   const choice = page.getByRole("combobox", { name: "sonar 1" });
   await choice.selectOption("kids:win");
   await expect(choice).toHaveValue("kids:win");
-  await page.reload();
+  await reloadToMap(page);
   await page.getByRole("button", { name: "Misión 1" }).click();
   await expect(page.getByRole("combobox", { name: "sonar 1" })).toHaveValue("kids:win");
   await page.getByRole("button", { name: "Jugar", exact: true }).click();

@@ -47,6 +47,9 @@ test("a new child can browse included art, create a project and reopen it", asyn
   await expect(page.locator(".kids-world-grid.kids-art-backdrop")).toBeVisible();
   await expect(page.locator(".kids-world-avatar.kids-art-image")).toBeVisible();
   await page.reload();
+  await page.evaluate(() => {
+    location.hash = "#/proyectos";
+  });
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await expect(page.locator(".kids-project-card .kids-art-backdrop")).toBeVisible();
   await page.locator(".kids-project-card").getByRole("button", { name: "Jugar" }).click();
@@ -67,6 +70,9 @@ test("a new child can browse included art, create a project and reopen it", asyn
   await soundGallery.getByRole("button", { name: "Elegir Salpicadura" }).click();
   await expect(page.getByRole("combobox", { name: "sonar 1" })).toHaveValue("kids:splash");
   await page.reload();
+  await page.evaluate(() => {
+    location.hash = "#/proyectos";
+  });
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await page.locator(".kids-project-card").getByRole("button", { name: "Jugar" }).click();
   await expect(page.getByRole("combobox", { name: "sonar 1" })).toHaveValue("kids:splash");
