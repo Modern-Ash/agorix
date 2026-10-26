@@ -29,7 +29,7 @@ test("Ori chat stays scoped, private and clears when leaving the editor", async 
   await page.getByRole("textbox", { name: "Tu pregunta" }).fill("¿Dónde está la meta?");
   await page.getByRole("button", { name: "Enviar" }).click();
   await expect(
-    page.getByRole("status").filter({ hasText: "Ori no está disponible ahora" }),
+    page.getByRole("status").filter({ hasText: "Equivocarse también enseña" }),
   ).toBeVisible();
   expect(
     await page.evaluate(() => JSON.stringify({ ...localStorage, ...sessionStorage })),
@@ -54,7 +54,17 @@ async function openEditor(page: Page, locale: "es" | "en" = "es") {
   await page.getByRole("button", { name: locale === "es" ? "Misión 1" : "Mission 1" }).click();
 }
 
+/** Ori keeps its idea back on entry: two hints (or a missed run) unlock it. */
+async function earnOriIdea(page: Page) {
+  if (await page.getByRole("button", { name: "Abrir propuesta de Ori" }).count()) return;
+  for (const name of ["Pista 1", "Pista 2"]) {
+    const hint = page.getByRole("button", { name, exact: true });
+    if (await hint.count()) await hint.click();
+  }
+}
+
 async function openOriProposal(page: Page) {
+  await earnOriIdea(page);
   await page.getByRole("button", { name: "Abrir propuesta de Ori" }).click();
   const proposal = page
     .getByRole("dialog", { name: "Propuesta de Ori" })
@@ -184,7 +194,7 @@ test("Ori shows a validated agent suggestion and leaves the program unchanged un
   });
   await page.route("**/api/tutor/ori", async (route) => {
     const request = route.request().postDataJSON();
-    expect(request).toMatchObject({ missionId: mission.id, locale: "es", hintLevel: 1 });
+    expect(request).toMatchObject({ missionId: mission.id, locale: "es" });
     await route.fulfill({ json: { message: "ignored", proposal } });
   });
   await openEditor(page);

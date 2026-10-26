@@ -287,7 +287,7 @@ describe("tutor HTTP server (issue #348)", () => {
     const fallback = await sendChat("¿Cómo muevo bloques?");
     expect(fallback.status).toBe(200);
     expect(await fallback.json()).toEqual({
-      message: "Ori no está disponible ahora. Probá un bloque y mirá qué pasa.",
+      message: "¿Cuántas casillas querés avanzar? Probá un bloque de mover.",
     });
     expect((await sendChat("x".repeat(161))).status).toBe(400);
     expect((await sendChat("¿Cómo muevo?", { surprise: true })).status).toBe(400);

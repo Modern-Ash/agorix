@@ -67,6 +67,19 @@ describe("AI administrator HTTP boundary", () => {
     };
     expect(current.current.revision).toBe(1);
     expect(JSON.stringify(current)).not.toContain("a-strong-admin-password");
+    const stats = (url: string, headers: Record<string, string>) =>
+      fetch(`${base}/api/tutor/admin/${url}`, { headers: { origin: base, ...headers } });
+    expect((await stats("ori-stats", {})).status).toBe(401);
+    const counters = (await (await stats("ori-stats", { cookie })).json()) as {
+      totals: Record<string, number>;
+    };
+    expect(Object.keys(counters.totals).sort()).toEqual([
+      "answered",
+      "fallback",
+      "invalid",
+      "rate-limited",
+      "refused",
+    ]);
     const post = (path: string, value: unknown, token = csrf) =>
       fetch(`${base}/api/tutor/admin/${path}`, {
         method: "POST",

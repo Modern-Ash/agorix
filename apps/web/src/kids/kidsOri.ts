@@ -158,3 +158,21 @@ export function createKidsOriProviderRuntime(
     },
   };
 }
+
+/**
+ * Ori does not hand over a solution on entry: the idea appears only reached only after a run that did not reach the goal or from the second hint on.
+ */
+export function gateKidsOriOffer(
+  offer: KidsOriOffer,
+  progress: {
+    readonly failedRuns: number;
+    readonly hintsUsed: number;
+  },
+): KidsOriOffer {
+  if (!offer.proposal) return offer;
+  const earned = progress.failedRuns > 0 || progress.hintsUsed >= 2;
+  if (earned) return offer;
+  return offer.amount === undefined
+    ? { kind: offer.kind }
+    : { kind: offer.kind, amount: offer.amount };
+}

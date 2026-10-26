@@ -42,6 +42,7 @@ import {
 import {
   createKidsOriProviderRuntime,
   loadKidsOriMemory,
+  gateKidsOriOffer,
   saveKidsOriMemory,
   type KidsOriOffer,
 } from "../kidsOri.js";
@@ -237,6 +238,7 @@ export function EditorScreen({
   const [numberTouched, setNumberTouched] = useState(false);
   const [prediction, setPrediction] = useState<Prediction | null>(null);
   const [played, setPlayed] = useState<KidsPlayedRun | null>(null);
+  const [failedRuns, setFailedRuns] = useState(0);
   const [step, setStep] = useState(0);
   const [oriMemory, setOriMemory] = useState(loadKidsOriMemory);
   const [oriOpen, setOriOpen] = useState(false);
@@ -297,7 +299,14 @@ export function EditorScreen({
   const oriHintLevel = Math.min(5, Math.max(1, usedHintLevels.length + 1)) as 1 | 2 | 3 | 4 | 5;
   const remoteOriKey = `${mission.id}:${locale}:${oriHash}:${oriHintLevel}`;
   const oriWaiting = !freeProjectId && remoteOri?.key !== remoteOriKey;
-  const oriOffer = oriWaiting ? undefined : (remoteOri?.offer ?? localOriOffer);
+  const rawOriOffer = oriWaiting ? undefined : (remoteOri?.offer ?? localOriOffer);
+  const oriOffer =
+    rawOriOffer && !freeProjectId
+      ? gateKidsOriOffer(rawOriOffer, {
+          failedRuns,
+          hintsUsed: usedHintLevels.length,
+        })
+      : rawOriOffer;
   const oriMotion = oriWaiting
     ? "thinking"
     : oriOpen
@@ -581,6 +590,7 @@ export function EditorScreen({
     if (predicted && predicted.kind === "predictionMade" && predicted.matchedRuntimeOutcome)
       recordMastery({ kind: "explained", concepts });
     setPrediction(answer);
+    if (run.evaluation.outcome !== "success") setFailedRuns((count) => count + 1);
     setPlayed(run);
     setStep(pending === "step" ? Math.min(1, run.result.trace.length) : run.result.trace.length);
     for (const id of soundEvents(

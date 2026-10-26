@@ -64,6 +64,7 @@ export function AiAdminApp() {
   const [preview, setPreview] = useState<Section[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [chatStats, setChatStats] = useState<Record<string, number> | null>(null);
 
   async function reload() {
     const data = await api<{ current: Revision; history: History[] }>("config");
@@ -71,6 +72,9 @@ export function AiAdminApp() {
     setDraft(structuredClone(data.current.config));
     setHistory(data.history);
     setPreview(null);
+    void api<{ totals: Record<string, number> }>("ori-stats")
+      .then((stats) => setChatStats(stats.totals))
+      .catch(() => setChatStats(null));
   }
   useEffect(() => {
     void api<{ csrf: string }>("session")
@@ -340,6 +344,21 @@ export function AiAdminApp() {
               <p className="ai-admin-message" role="status">
                 {message}
               </p>
+            )}
+            {chatStats && (
+              <section className="ai-admin-history" aria-label="Ori chat, últimas 24 horas">
+                <h3>Chat de Ori, últimas 24 horas</h3>
+                <p>
+                  Solo contadores por clase: nunca guarda ni muestra lo que escriben los chicos.
+                </p>
+                <ul>
+                  <li>Respondidas: {chatStats.answered ?? 0}</li>
+                  <li>Rechazadas por seguridad: {chatStats.refused ?? 0}</li>
+                  <li>Respuesta genérica (Ori sin modelo): {chatStats.fallback ?? 0}</li>
+                  <li>Límite de uso: {chatStats["rate-limited"] ?? 0}</li>
+                  <li>Pedidos inválidos: {chatStats.invalid ?? 0}</li>
+                </ul>
+              </section>
             )}
             <section className="ai-admin-history">
               <h3>Historial</h3>

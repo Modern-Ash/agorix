@@ -18,6 +18,14 @@ async function open(page: Page, enabled: boolean) {
   await page.getByRole("button", { name: "Misión 1" }).click();
 }
 
+async function earnOriIdea(page: Page) {
+  if (await page.getByRole("button", { name: "Abrir propuesta de Ori" }).count()) return;
+  for (const name of ["Pista 1", "Pista 2"]) {
+    const hint = page.getByRole("button", { name, exact: true });
+    if (await hint.count()) await hint.click();
+  }
+}
+
 function overlaps(
   a: { x: number; y: number; width: number; height: number },
   b: { x: number; y: number; width: number; height: number },
@@ -35,6 +43,7 @@ for (const viewport of [
   }) => {
     await page.setViewportSize(viewport);
     await open(page, true);
+    await earnOriIdea(page);
     const trigger = page.getByRole("button", { name: "Abrir propuesta de Ori" });
     await expect(trigger).toBeVisible();
     const bubble = await trigger.boundingBox();
@@ -52,6 +61,7 @@ for (const viewport of [
 test("floating Ori keeps accept, modify and reject evidence", async ({ page }) => {
   for (const decision of ["accept", "modify", "reject"] as const) {
     await open(page, true);
+    await earnOriIdea(page);
     await page.getByRole("button", { name: "Abrir propuesta de Ori" }).click();
     const proposal = page.getByRole("dialog", { name: "Propuesta de Ori" });
     await proposal.getByRole("button", { name: "Ver cambios" }).click();
@@ -72,6 +82,7 @@ test("floating Ori keeps accept, modify and reject evidence", async ({ page }) =
 
 test("flag off keeps the existing inline proposal", async ({ page }) => {
   await open(page, false);
+  await earnOriIdea(page);
   await expect(page.locator(".kids-ori-proposal")).toBeVisible();
   await expect(page.getByRole("button", { name: "Abrir propuesta de Ori" })).toHaveCount(0);
 });
@@ -85,6 +96,7 @@ for (const viewport of [
   }) => {
     await page.setViewportSize(viewport);
     await open(page, true);
+    await earnOriIdea(page);
     const trigger = page.getByRole("button", { name: "Abrir propuesta de Ori" });
     await trigger.click();
     const panel = page.getByRole("dialog", { name: "Propuesta de Ori" });

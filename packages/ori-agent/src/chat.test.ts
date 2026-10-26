@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { getKidsMission, KIDS_MISSION_IDS } from "@agorix/curriculum";
 import {
+  classifyOriChat,
   getOriChatInstructions,
   ORI_CHAT_FALLBACK,
   ORI_CHAT_REFUSAL,
@@ -51,6 +52,21 @@ describe("Ori child chat", () => {
     expect(await runOriChat({ ...context, text }, { generate })).toBe(ORI_CHAT_REFUSAL.es);
   });
 
+  it.each([
+    ["no entiendo nada", "stuck"],
+    ["hola", "hello"],
+    ["gracias Ori", "thanks"],
+    ["estoy frustrado con este bloque", "sad"],
+    ["me aburro", "bored"],
+    ["ayuda con el mapa", "help"],
+    ["quiero girar", "turn"],
+  ])("answers in context without a model: %s", async (text, id) => {
+    const answer = await runOriChat({ ...context, text });
+    expect(classifyOriChat(text)).toBe(id);
+    expect(answer).not.toBe(ORI_CHAT_REFUSAL.es);
+    expect(answer).not.toContain("no está disponible");
+  });
+
   it("rejects free text, extra keys and malformed provider output", async () => {
     for (const raw of [
       "Mi nombre es Ana",
@@ -58,12 +74,13 @@ describe("Ori child chat", () => {
       "{}",
     ])
       expect(await runOriChat({ ...context, text: "¿Cómo muevo?" }, { generate: () => raw })).toBe(
-        ORI_CHAT_FALLBACK.es,
+        await runOriChat({ ...context, text: "¿Cómo muevo?" }),
       );
   });
 
   it("uses a fixed fallback when the provider is absent or fails", async () => {
-    expect(await runOriChat({ ...context, text: "¿Cómo muevo?" })).toBe(ORI_CHAT_FALLBACK.es);
+    expect(await runOriChat({ ...context, text: "¿Cómo muevo?" })).toContain("casillas");
+    expect(ORI_CHAT_FALLBACK.es).not.toContain("no está disponible");
     expect(
       await runOriChat(
         { ...context, text: "¿Cómo muevo?" },
@@ -73,7 +90,7 @@ describe("Ori child chat", () => {
           },
         },
       ),
-    ).toBe(ORI_CHAT_FALLBACK.es);
+    ).toContain("casillas");
     expect(getOriChatInstructions("es")).not.toContain("¿Cómo muevo?");
   });
 });
