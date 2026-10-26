@@ -20,6 +20,7 @@ import {
   type OriAdvancedActorId,
   validateOriAdvancedStageProposal,
 } from "@agorix/ori-agent";
+import { createOriChatStats } from "./oriChatStats.js";
 import {
   createMemoryAdvancedStageRepository,
   proveAdvancedEntry,
@@ -30,6 +31,8 @@ import {
 import {
   evaluateOriAgentOutput,
   isOriChatTextValid,
+  ORI_CHAT_FALLBACK,
+  ORI_CHAT_REFUSAL,
   runOriChat,
   type OriChatContext,
   runOriGoalAgent,
@@ -94,6 +97,7 @@ export function createTutorServer(options: TutorServerOptions): Server {
   const { config } = options;
   const fetchImpl = options.fetch ?? fetch;
   const ttl = options.healthTtlMs ?? HEALTH_TTL_MS;
+  const chatStats = createOriChatStats();
   const now = options.now ?? Date.now;
   let cached: { readonly at: number; readonly health: Health } | undefined;
   let lastErrorClass: ProviderRuntimeErrorCode | null = null;
@@ -326,6 +330,8 @@ export function createTutorServer(options: TutorServerOptions): Server {
       auth.signOut(request, response);
       return send(response, 200, { ok: true });
     }
+    if (path === "/api/tutor/admin/ori-stats" && request.method === "GET")
+      return send(response, 200, chatStats.snapshot());
     if (path === "/api/tutor/admin/config" && request.method === "GET")
       return send(response, 200, {
         current: repository.current(),
@@ -685,15 +691,26 @@ export function createTutorServer(options: TutorServerOptions): Server {
         text: raw.text,
       };
     } catch {
+      chatStats.record("invalid");
       return send(response, 400, error("invalid-request"));
     }
-    if (!allowed(request, "chat")) return send(response, 429, error("rate-limited"));
+    if (!allowed(request, "chat")) {
+      chatStats.record("rate-limited");
+      return send(response, 429, error("rate-limited"));
+    }
     const message =
       policy("chat")?.enabled === false
         ? await runOriChat(context)
         : options.ori
           ? await options.ori.chat(context)
           : await runOriChat(context);
+    chatStats.record(
+      message === ORI_CHAT_REFUSAL[context.locale]
+        ? "refused"
+        : message === ORI_CHAT_FALLBACK[context.locale]
+          ? "fallback"
+          : "answered",
+    );
     return send(response, 200, { message });
   }
 

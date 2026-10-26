@@ -3,7 +3,12 @@ import { getKidsMission, kidsMoveSteps } from "@agorix/curriculum";
 import { acceptProposal, createProposalReview } from "@agorix/proposals";
 import { createLearningCompanionRequest } from "@agorix/tutor-contract";
 import { createKidsEditor, playKidsProgram } from "./kidsEditorModel.js";
-import { computeKidsOri, createKidsOriProviderRuntime } from "./kidsOri.js";
+import {
+  computeKidsOri,
+  createKidsOriProviderRuntime,
+  gateKidsOriOffer,
+  type KidsOriOffer,
+} from "./kidsOri.js";
 
 const first = getKidsMission("kids.m1.straight", "es");
 
@@ -104,5 +109,18 @@ describe("Kids deterministic Ori provider (issue #379)", () => {
       expect(result.response.capability).toBe("builder");
       expect(result.response.metadata.provenance).toBe("deterministic-fake");
     }
+  });
+});
+
+describe("gateKidsOriOffer", () => {
+  const offer = { kind: "move", proposal: { id: "p" } } as unknown as KidsOriOffer;
+  it.each([
+    [{ failedRuns: 0, hintsUsed: 0 }, false],
+    [{ failedRuns: 0, hintsUsed: 2 }, true],
+    [{ failedRuns: 0, hintsUsed: 1 }, false],
+    [{ failedRuns: 1, hintsUsed: 0 }, true],
+    [{ failedRuns: 0, hintsUsed: 2 }, true],
+  ])("withholds the idea until earned: %j", (progress, shown) => {
+    expect(Boolean(gateKidsOriOffer(offer, progress).proposal)).toBe(shown);
   });
 });
