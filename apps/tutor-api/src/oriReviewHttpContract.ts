@@ -1,5 +1,5 @@
 import type { IncomingMessage } from "node:http";
-import type { OriLearnerDecision } from "../../web/src/OriLearnerProposalReview.js";
+import type { OriReviewDecision } from "./oriProposalReview.js";
 
 export interface OriReviewPrincipal {
   readonly ownerId: string;
@@ -7,7 +7,7 @@ export interface OriReviewPrincipal {
 }
 export interface OriReviewHttpRequest {
   readonly ticketId: string;
-  readonly decision: OriLearnerDecision;
+  readonly decision: OriReviewDecision;
 }
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -18,7 +18,7 @@ export function parseOriReviewHttpRequest(raw:unknown):OriReviewHttpRequest|null
   if(Object.keys(data).sort().join()!=="decision,ticketId" ||
     typeof data["ticketId"]!=="string" || !UUID.test(data["ticketId"]) ||
     !["accept","edit","reject"].includes(String(data["decision"])))return null;
-  return {ticketId:data["ticketId"],decision:data["decision"] as OriLearnerDecision};
+  return {ticketId:data["ticketId"],decision:data["decision"] as OriReviewDecision};
 }
 export type OriReviewIdentityResolver=(request:IncomingMessage)=>Promise<OriReviewPrincipal|null>;
 /** Identity must come from trusted authenticated session middleware. */
