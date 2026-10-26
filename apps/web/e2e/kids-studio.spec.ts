@@ -1612,3 +1612,35 @@ test("free scene composes a tune with the music extension and keeps it, with the
   );
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });
+
+test("Ori's tune is heard first, only joins the program when used, and can be undone", async ({
+  page,
+}) => {
+  await openStudio(page, "6-8");
+  await page.evaluate(() =>
+    localStorage.setItem(
+      "agorix.kids.flags.v1",
+      JSON.stringify(["ageBands", "customImages", "extensionMusic"]),
+    ),
+  );
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Hacer un zigzag" })).toBeVisible();
+  await page.getByRole("button", { name: "Tocar una melodía" }).click();
+  const card = page.getByTestId("intent-card");
+  await expect(card).toContainText("Ori propone 6 bloques");
+  await expect(page.getByTestId("ori-ghost-block")).toHaveCount(6);
+  await expect(page.locator(".kids-program-block")).toHaveCount(0);
+  await card.getByRole("button", { name: "Escuchar la idea" }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(0);
+  await card.getByRole("button", { name: "Usar idea" }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(6);
+  await expect(page.locator(".kids-program-block").nth(1)).toContainText("Tocar nota: Do 4");
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByText("6 bloques ejecutados")).toBeVisible();
+  const violations = (
+    await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
+  ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");
+  expect(violations.map((entry) => entry.id)).toEqual([]);
+  await page.getByRole("button", { name: "Deshacer" }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(0);
+});

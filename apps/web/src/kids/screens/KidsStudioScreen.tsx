@@ -840,6 +840,8 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
     readonly intent: OriStudioIntent;
     readonly statements: readonly Statement[];
     readonly preview: CandidatePreview | null;
+    /** Ori's idea applied to a copy, only to listen to it: the child's program is untouched. */
+    readonly candidate: ProjectProgram;
   } | null>(null);
   const [prediction, setPrediction] = useState<Direction | null>(null);
   const [predictedForRun, setPredictedForRun] = useState<Direction | null>(null);
@@ -1811,6 +1813,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
       setOriIdea(null);
       setIntentPlan({
         intent,
+        candidate: review.candidateProgram,
         statements: proposal.operations.flatMap((operation) =>
           operation.type === "appendStatement" ? [operation.statement] : [],
         ),
@@ -1825,6 +1828,28 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
       setError(false);
     } catch {
       setError(true);
+    }
+  }
+
+  /** Listen to Ori's idea before deciding; the speaker is presentation, the runtime is the proof. */
+  function listenToIdea() {
+    if (!intentPlan) return;
+    try {
+      const result = runMultiActorProgram(intentPlan.candidate, creative, { keysDown: heldKeys });
+      stopKidsSounds();
+      if (playKidsMusic(result.trace) > 0) return;
+      let played = 0;
+      for (const entry of result.trace) {
+        if (entry.statementType !== "playSound" || played >= 4) continue;
+        played += 1;
+        void playKidsSound(
+          entry.worldAfter.sounds?.activeSoundIds.at(-1) ?? "kids:pop",
+          { kind: "gallery", id: characterOfActor(entry.actorId ?? activeActorId) },
+          { volume: entry.worldAfter.sounds?.volume ?? 100 },
+        );
+      }
+    } catch {
+      // A blocked speaker never changes the idea or the program.
     }
   }
 
@@ -4204,7 +4229,13 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               </button>
               <StudioIntentPicker
                 locale={locale}
-                intents={ORI_STUDIO_INTENTS}
+                intents={
+                  musicEnabled
+                    ? ORI_STUDIO_INTENTS
+                    : ORI_STUDIO_INTENTS.filter(
+                        (intent) => !["melody", "rhythm", "cheer"].includes(intent),
+                      )
+                }
                 disabled={oriBusy}
                 onPick={startIntent}
               />
@@ -4225,6 +4256,13 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                     </p>
                   ) : null}
                   <div>
+                    {intentPlan.statements.some((statement) =>
+                      ["playSound", "playNote", "playDrum"].includes(statement.type),
+                    ) ? (
+                      <button type="button" className="kids-button" onClick={listenToIdea}>
+                        {locale === "es" ? "Escuchar la idea" : "Listen to the idea"}
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       className="kids-button kids-primary"

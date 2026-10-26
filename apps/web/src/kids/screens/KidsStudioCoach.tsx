@@ -18,12 +18,18 @@ const INTENT_LABEL: Record<Locale, Record<OriStudioIntent, string>> = {
     square: "Hacer un cuadrado",
     backForth: "Ir y volver",
     zigzag: "Hacer un zigzag",
+    melody: "Tocar una melodía",
+    rhythm: "Hacer un ritmo",
+    cheer: "Festejar con sonido",
   },
   en: {
     ahead: "Go a long way",
     square: "Make a square",
     backForth: "Go there and back",
     zigzag: "Make a zigzag",
+    melody: "Play a tune",
+    rhythm: "Make a beat",
+    cheer: "Cheer with a sound",
   },
 };
 

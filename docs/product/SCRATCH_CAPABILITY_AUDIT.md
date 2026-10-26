@@ -324,3 +324,11 @@ Each iteration needs an issue with an observable child journey, success and fail
 - Reproducción determinista: la traza del runtime lleva `audio` con instrumento, tono, pan y duración (`beats × 60 / tempo`). El parlante programa las entradas una tras otra (cada nota espera a que termine la anterior), con un tope de 64 eventos y 30 s. Un proyecto sin música suena exactamente igual que antes.
 - Los seis bloques están en las cuatro proyecciones (Agorix Code, Python, TypeScript, Java), en el adaptador de bloques y en el Estudio, con corpus Java compilado con `javac`.
 - Límites: los sonidos de la galería (SND-01) no se alargan con la nota; el tono y el lado afectan también a `playSound` desde el primer bloque de música. Ori todavía no propone melodías (SND-06).
+
+## Ori propone sonido y melodía (E6 / SND-06)
+
+- Tres metas nuevas en la lista cerrada del Estudio: tocar una melodía (campanas, Do-Re-Mi-Fa-Sol), hacer un ritmo (bombo, redoblante, palmas) y festejar con sonido. Son deterministas, no usan modelo y el modelo nunca recibe audio ni texto del chico; solo ids de la lista.
+- Preescucha: el botón "Escuchar la idea" corre una copia candidata y reproduce su traza; el programa del chico no cambia hasta "Usar idea". Un parlante bloqueado no afecta nada.
+- Lista permitida más estricta que la del Estudio: notas blancas Do 4–Do 5 de ½ o 1 tiempo, percusión de ½ o 1 tiempo, velocidad 90 o 120, sonidos `kids:win/sparkle/bell/tada`; cualquier otra cosa se rechaza al validar.
+- Al aceptar una propuesta que usa un bloque de un paquete, el programa declara el paquete (`extensions`) automáticamente; el validador sigue exigiéndolo.
+- Los intents de música se ocultan si el flag `extensionMusic` está apagado.
