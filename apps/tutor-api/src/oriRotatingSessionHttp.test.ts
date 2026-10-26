@@ -27,9 +27,11 @@ describe("Ori rotating session propagation",()=>{
     ]);
   });
   it("denies rotating sessions without a writable response",async()=>{
-    const auth={resolveSession:async()=>resolved} as unknown as Pick<AuthService,"resolveSession">;
+    let calls=0;
+    const auth={resolveSession:async()=>{calls++;return resolved;}} as unknown as Pick<AuthService,"resolveSession">;
     expect(await createOriAuthServiceSessionResolver(auth)(request)).toBeNull();
     const response={headersSent:true} as ServerResponse;
     expect(await createOriAuthServiceSessionResolver(auth)(request,response)).toBeNull();
+    expect(calls).toBe(0);
   });
 });

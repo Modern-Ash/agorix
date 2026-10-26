@@ -1,5 +1,5 @@
 import { describe,expect,it } from "vitest";
-import type { IncomingMessage } from "node:http";
+import type { IncomingMessage, ServerResponse } from "node:http";
 import type { AuthService } from "@agorix/auth-service";
 import { createOriAuthServiceSessionResolver } from "./oriAuthServiceSessionResolver.js";
 const token="A".repeat(48);
@@ -9,10 +9,11 @@ const result={
   session:{accountId:"learner",sessionId:"session-1"},
   rotated:false
 };
+const writableResponse=()=>({headersSent:false,writableEnded:false} as ServerResponse);
 describe("Ori canonical AuthService session resolver",()=>{
   it("accepts a validated session from the canonical auth service",async()=>{
     const auth={resolveSession:async()=>result} as unknown as Pick<AuthService,"resolveSession">;
-    expect(await createOriAuthServiceSessionResolver(auth)(request("agorix_session="+token)))
+    expect(await createOriAuthServiceSessionResolver(auth)(request("agorix_session="+token),writableResponse()))
       .toEqual({accountId:"learner",sessionId:"session-1"});
   });
   it("rejects missing, duplicate or malformed cookies",async()=>{
@@ -31,9 +32,9 @@ describe("Ori canonical AuthService session resolver",()=>{
       {...result,account:{accountId:"learner",status:"disabled"}}
     ]){
       const auth={resolveSession:async()=>value} as unknown as Pick<AuthService,"resolveSession">;
-      expect(await createOriAuthServiceSessionResolver(auth)(request("agorix_session="+token))).toBeNull();
+      expect(await createOriAuthServiceSessionResolver(auth)(request("agorix_session="+token),writableResponse())).toBeNull();
     }
     const expired={resolveSession:async()=>{throw Error("expired");}} as unknown as Pick<AuthService,"resolveSession">;
-    expect(await createOriAuthServiceSessionResolver(expired)(request("agorix_session="+token))).toBeNull();
+    expect(await createOriAuthServiceSessionResolver(expired)(request("agorix_session="+token),writableResponse())).toBeNull();
   });
 });
