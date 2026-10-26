@@ -36,6 +36,6 @@ export function explainOriEvidence(envelope:OriTraceEnvelope):OriEvidenceExplana
   return Object.freeze({
     status:"ready",stepCount:total,
     operationCounts:Object.freeze(Object.fromEntries(entries)),
-    question:QUESTIONS[dominant],appliedChanges:false
+    question,appliedChanges:false
   });
 }
