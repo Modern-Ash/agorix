@@ -82,3 +82,46 @@ test("the hints of a world count its own squares", async ({ page }) => {
     page.getByText("Pista 2: Contá los cuadritos entre tu personaje y la meta: son 5."),
   ).toBeVisible();
 });
+
+test("published missions replace the built-in ones, and an unreachable server leaves them", async ({
+  page,
+}) => {
+  const catalog = {
+    ...Object.fromEntries(
+      ["space", "ocean", "robots", "city"].map((world) => [
+        world,
+        [0, 1, 2].map(() => ({
+          start: { cx: 0, cy: 2 },
+          goal: { cx: 4, cy: 2 },
+          title: { es: "Base", en: "Base" },
+          story: { es: "Llegá.", en: "Arrive." },
+        })),
+      ]),
+    ),
+  } as Record<string, unknown[]>;
+  catalog["ocean"] = [
+    {
+      start: { cx: 1, cy: 0 },
+      goal: { cx: 3, cy: 0 },
+      title: { es: "Corriente corta", en: "Short current" },
+      story: { es: "Nadá un poquito hasta el tesoro.", en: "Swim a little to the treasure." },
+    },
+    ...(catalog["ocean"] as unknown[]).slice(1),
+  ];
+  await page.route("**/api/tutor/catalog", (route) => route.fulfill({ json: { catalog } }));
+  await start(page);
+  await page.getByRole("button", { name: "Océano" }).click();
+  await expect(page.locator(".kids-node-title").first()).toHaveText("Corriente corta");
+  await page.getByRole("button", { name: "Misión 1" }).click();
+  await expect(page.getByText("Nadá un poquito hasta el tesoro.")).toBeVisible();
+  // The goal is now two squares away, not four.
+  await play(page, "2");
+  await expect(page.locator(".kids-run-status")).toContainText("Llegaste");
+});
+
+test("without a catalog from the server the built-in missions stay", async ({ page }) => {
+  await page.route("**/api/tutor/catalog", (route) => route.fulfill({ status: 503, body: "" }));
+  await start(page);
+  await page.getByRole("button", { name: "Océano" }).click();
+  await expect(page.locator(".kids-node-title").first()).toHaveText("Corriente recta");
+});

@@ -56,6 +56,7 @@ import {
 } from "../kidsStageAdaptation.js";
 import { bumpIndicator } from "../kidsIndicators.js";
 import { useInterventionPolicy } from "../kidsBehavior.js";
+import { useKidsCatalog } from "../kidsCatalog.js";
 import { requestKidsOriOffer } from "../kidsOriRemote.js";
 import { oriMotionStatus, useOriPageVisible } from "../kidsOriMotion.js";
 import { expressionForMotion, outcomeOfOffer } from "../kidsOriExpression.js";
@@ -238,12 +239,13 @@ export function EditorScreen({
       return "touches-goal";
     }
   });
+  const catalog = useKidsCatalog();
   const mission = useMemo(
     () =>
       freeProjectId
         ? verifyKidsFreeGoal(freeGoal ?? { cx: 4, cy: 2 }, freeGoalCheck, locale)
-        : getKidsMission(KIDS_MISSION_IDS[Math.min(missionIndex, 2)]!, locale, world),
-    [freeGoal, freeGoalCheck, freeProjectId, missionIndex, locale, world],
+        : getKidsMission(KIDS_MISSION_IDS[Math.min(missionIndex, 2)]!, locale, world, catalog),
+    [freeGoal, freeGoalCheck, freeProjectId, missionIndex, locale, world, catalog],
   );
   const [createdAt] = useState(() => new Date().toISOString());
   const [history, setHistory] = useState(() => {

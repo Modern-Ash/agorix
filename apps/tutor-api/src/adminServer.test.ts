@@ -139,6 +139,48 @@ describe("AI administrator HTTP boundary", () => {
     expect((await fetch(`${base}/api/tutor/behavior`, { method: "POST" })).status).toBe(405);
   });
 
+  it("serves the published missions and builds Ori's idea for them (issue #616)", async () => {
+    const { base, repository } = await start();
+    const read = async () =>
+      (await (await fetch(`${base}/api/tutor/catalog`)).json()) as {
+        catalog: { ocean: { goal: { cx: number }; title: { es: string } }[] };
+      };
+    expect((await read()).catalog.ocean[0]!.title.es).toBe("Corriente recta");
+    expect((await fetch(`${base}/api/tutor/catalog`, { method: "POST" })).status).toBe(405);
+    const revision = repository.current();
+    const catalog = structuredClone(revision.config.catalog) as unknown as {
+      ocean: { goal: { cx: number; cy: number }; title: { es: string; en: string } }[];
+    };
+    catalog.ocean[0]!.goal = { cx: 3, cy: 0 };
+    catalog.ocean[0]!.title = { es: "Corriente corta", en: "Short current" };
+    repository.publish({ ...revision.config, catalog }, 1, "owner");
+    const published = await read();
+    expect(published.catalog.ocean[0]!.title.es).toBe("Corriente corta");
+    expect(published.catalog.ocean[0]!.goal.cx).toBe(3);
+    // Only cells and short titles reach the browser.
+    expect(JSON.stringify(published)).not.toMatch(/prompt|provider|model|token|hint/i);
+    // Ori's idea follows the published layout: two squares (80 steps) instead of four.
+    const response = await fetch(`${base}/api/tutor/ori`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        missionId: "kids.m1.straight",
+        locale: "es",
+        hintLevel: 1,
+        world: "ocean",
+        program: {
+          schema: "agorix/program/v1",
+          scripts: [{ id: "main", trigger: { type: "onStart" }, statements: [] }],
+        },
+      }),
+    });
+    expect(response.status).toBe(200);
+    const idea = (await response.json()) as {
+      proposal: { operations: { statement: { steps: number } }[] };
+    };
+    expect(idea.proposal.operations[0]!.statement.steps).toBe(80);
+  });
+
   it("reaches only the share of devices a gradual rollout names (issue #620)", async () => {
     const { base, repository } = await start();
     const strict = { minFailedRuns: 3, minHints: 4, maxProposalBlocks: 6 };

@@ -1,3 +1,4 @@
+import { useKidsCatalog } from "../kidsCatalog.js";
 import { useEffect, useState, type ChangeEvent } from "react";
 import { KIDS_MISSION_IDS, getKidsMission } from "@agorix/curriculum";
 import { ProjectStore, sanitizeAgorixFilename } from "@agorix/persistence";
@@ -94,6 +95,7 @@ export function ProjectsScreen({
     if (undo && restoreFreeProject(undo, store)) setFree(listFreeProjects());
     setUndo(null);
   }
+  const catalog = useKidsCatalog();
   const worlds = kidsTable(locale, "worlds");
   const refs = listFreeProjectRefs();
   const missions = KIDS_WORLDS.flatMap((candidate) =>
@@ -260,7 +262,10 @@ export function ProjectsScreen({
             </KidsBackdrop>
             <h2>
               {worlds[project.world]} ·{" "}
-              {getKidsMission(KIDS_MISSION_IDS[project.index], locale, project.world).title}
+              {
+                getKidsMission(KIDS_MISSION_IDS[project.index], locale, project.world, catalog)
+                  .title
+              }
             </h2>
             <p>{t("saved")}</p>
             <div>

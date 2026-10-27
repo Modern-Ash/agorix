@@ -3,6 +3,8 @@ import "@fontsource/epilogue/700.css";
 import "@fontsource/atkinson-hyperlegible/400.css";
 import "./aiAdmin.css";
 import { AgentCard, type AgentInfo } from "./AgentCard.js";
+import { CatalogSettings } from "./CatalogSettings.js";
+import type { KidsCatalog } from "@agorix/curriculum";
 import { BehaviorSettings, type BehaviorConfig } from "./BehaviorSettings.js";
 import { GroupSettings, type GroupConfig } from "./GroupSettings.js";
 
@@ -21,8 +23,9 @@ type Config = {
   capabilities: Record<Capability, Policy>;
   group?: GroupConfig;
   behavior?: BehaviorConfig;
+  catalog?: KidsCatalog;
 };
-type Section = Capability | "group" | "behavior";
+type Section = Capability | "group" | "behavior" | "catalog";
 type Revision = {
   revision: number;
   author: string;
@@ -45,11 +48,13 @@ const sectionNames: Record<Section, string> = {
   ...names,
   group: "Modo grupo",
   behavior: "Intervención de Ori",
+  catalog: "Misiones",
 };
 const gateMessages: Record<string, string> = {
   "prompt-override": "Un texto adicional intenta anular las reglas de seguridad.",
   "intervention-floor": "La intervención de Ori queda fuera de los límites de seguridad.",
   "too-few-goals": "Con ese tamaño quedan muy pocas metas para ofrecer.",
+  "mission-unsolvable": "Una misión no se puede ganar con el runtime.",
   "agent-contract": "Un agente perdió su contrato fijo.",
   "chat-safety": "La prueba de seguridad del chat no pasó.",
   "intent-validity": "Una meta de Ori dejó de ser válida.",
@@ -79,7 +84,8 @@ export function AiAdminApp() {
   const [draft, setDraft] = useState<Config | null>(null);
   const [history, setHistory] = useState<History[]>([]);
   const [section, setSection] = useState<Section>("mission");
-  const selected: Capability = section === "group" || section === "behavior" ? "mission" : section;
+  const isCapability = section !== "group" && section !== "behavior" && section !== "catalog";
+  const selected: Capability = isCapability ? section : "mission";
   const [preview, setPreview] = useState<Section[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -195,6 +201,15 @@ export function AiAdminApp() {
                   <small>{draft?.capabilities[key].enabled ? "Activa" : "En pausa"}</small>
                 </button>
               ))}
+              {draft?.catalog && (
+                <button
+                  className={section === "catalog" ? "selected" : ""}
+                  onClick={() => setSection("catalog")}
+                >
+                  <span>{sectionNames.catalog}</span>
+                  <small>Recorridos y textos</small>
+                </button>
+              )}
               {draft?.behavior && (
                 <button
                   className={section === "behavior" ? "selected" : ""}
@@ -236,7 +251,7 @@ export function AiAdminApp() {
                 </p>
                 <h2>{sectionNames[section]}</h2>
               </div>
-              {section !== "group" && section !== "behavior" && (
+              {isCapability && (
                 <span className="ai-admin-status">
                   {draft?.capabilities[selected].enabled ? "● Disponible" : "○ En pausa"}
                 </span>
@@ -247,6 +262,15 @@ export function AiAdminApp() {
                 group={draft.group}
                 onChange={(group) => {
                   setDraft({ ...draft, group });
+                  setPreview(null);
+                }}
+              />
+            )}
+            {draft && section === "catalog" && draft.catalog && (
+              <CatalogSettings
+                catalog={draft.catalog}
+                onChange={(catalog) => {
+                  setDraft({ ...draft, catalog });
                   setPreview(null);
                 }}
               />
@@ -265,7 +289,7 @@ export function AiAdminApp() {
               .map((agent) => (
                 <AgentCard key={agent.capability} agent={agent} lockedRules={agents.lockedRules} />
               ))}
-            {draft && section !== "group" && section !== "behavior" && (
+            {draft && isCapability && (
               <div className="ai-admin-card">
                 <p className="ai-admin-note">
                   Los cambios quedan en borrador hasta que los revises y publiques. La clave del
