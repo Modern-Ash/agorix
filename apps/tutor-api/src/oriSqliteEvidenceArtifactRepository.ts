@@ -39,9 +39,7 @@ export function openOriSqliteEvidenceArtifactRepository(path: string) {
       return row ? new Uint8Array(row["content"] as Uint8Array) : null;
     },
   };
-  return Object.freeze({
-    ...repository,
-    put(reviewId: string, digest: string, missionId: string, key: string,
+  function put(reviewId: string, digest: string, missionId: string, key: string,
       bytes: Uint8Array): OriEvidenceReferenceRecord | null {
       if (!ID.test(reviewId) || !ID.test(missionId) || !HEX.test(digest) ||
           !KEY.test(key) || bytes.byteLength === 0 || bytes.byteLength > 1_048_576)
@@ -61,6 +59,33 @@ export function openOriSqliteEvidenceArtifactRepository(path: string) {
         VALUES(?,?,?,?,?,?,?)`).run(reviewId, digest, missionId, key, reference,
         sha256, Buffer.from(bytes));
       return { reviewId, evidenceDigest: digest, missionId, key, reference, sha256 };
+  }
+  return Object.freeze({
+    ...repository,
+    put,
+    putBatch(reviewId: string, digest: string, missionId: string,
+      entries: Readonly<Record<string, Uint8Array>>):
+      Readonly<Record<string, string>> | null {
+      const keys = Object.keys(entries);
+      if (keys.length === 0 || keys.length > 16 || new Set(keys).size !== keys.length)
+        return null;
+      db.exec("BEGIN IMMEDIATE");
+      try {
+        const refs: Record<string, string> = {};
+        for (const key of keys) {
+          const saved = put(reviewId, digest, missionId, key, entries[key]!);
+          if (!saved) {
+            db.exec("ROLLBACK");
+            return null;
+          }
+          refs[key] = saved.reference;
+        }
+        db.exec("COMMIT");
+        return Object.freeze(refs);
+      } catch {
+        db.exec("ROLLBACK");
+        return null;
+      }
     },
     close: () => db.close(),
   });

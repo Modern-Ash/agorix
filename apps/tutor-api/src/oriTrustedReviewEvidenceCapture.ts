@@ -32,14 +32,8 @@ export function createOriTrustedReviewEvidenceCapture(
         const bytes = input.artifacts[key];
         return !bytes || bytes.byteLength === 0 || bytes.byteLength > 1_048_576;
       })) return null;
-      const refs: Record<string, string> = {};
-      for (const key of required) {
-        const saved = artifacts.put(input.reviewId, input.evidenceDigest,
-          input.missionId, key, input.artifacts[key]!);
-        if (!saved) return null;
-        refs[key] = saved.reference;
-      }
-      return Object.freeze(refs);
+      return artifacts.putBatch(input.reviewId, input.evidenceDigest,
+        input.missionId, input.artifacts);
     },
   });
 }
