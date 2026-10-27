@@ -1,0 +1,31 @@
+import { describe, expect, it } from "vitest";
+import { openOriSqliteEvidenceArtifactRepository } from "./oriSqliteEvidenceArtifactRepository.js";
+import { createOriPersistedEvidenceReferenceVerifier } from "./oriPersistedEvidenceReferenceVerifier.js";
+
+const digest = "a".repeat(64);
+describe("MIG-03 persisted educator evidence artifacts", () => {
+  it("stores immutable content and verifies SHA-256 through trusted repository", async () => {
+    const store = openOriSqliteEvidenceArtifactRepository(":memory:");
+    const bytes = Buffer.from("Synthetic educator review evidence");
+    const record = store.put("pilot", digest, "move", "ori-proposal", bytes);
+    expect(record?.reference).toMatch(/^artifact:/);
+    const verifier = createOriPersistedEvidenceReferenceVerifier(store);
+    expect(await verifier.verify("pilot", digest, "move", {
+      "ori-proposal": record!.reference,
+    })).toBe(true);
+    expect(store.put("pilot", digest, "move", "ori-proposal",
+      Buffer.from("different"))).toBeNull();
+    expect(await verifier.verify("pilot", digest, "forged", {
+      "ori-proposal": record!.reference,
+    })).toBe(false);
+    store.close();
+  });
+  it("rejects invalid keys, empty artifacts and oversized evidence", () => {
+    const store = openOriSqliteEvidenceArtifactRepository(":memory:");
+    expect(store.put("pilot", digest, "move", "../escape", Buffer.from("x"))).toBeNull();
+    expect(store.put("pilot", digest, "move", "ori-proposal", Buffer.alloc(0))).toBeNull();
+    expect(store.put("pilot", digest, "move", "ori-proposal",
+      Buffer.alloc(1_048_577))).toBeNull();
+    store.close();
+  });
+});
