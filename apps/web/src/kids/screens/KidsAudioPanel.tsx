@@ -1,6 +1,15 @@
-import { useEffect, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { KidsSoundEditor } from "./KidsSoundEditor.js";
 import { samplesFromChannels } from "../kidsSoundEdit.js";
+import {
+  decodeKidsRecording,
+  microphoneAllowed,
+  RECORDING_MAX_MS,
+  RecordingError,
+  setMicrophoneAllowed,
+  startKidsRecording,
+  type KidsRecording,
+} from "../kidsRecorder.js";
 import { KIDS_AVATARS } from "../kidsState.js";
 import { loadKidsCustom } from "../kidsCustom.js";
 import {
@@ -20,7 +29,45 @@ interface Props {
   readonly locale: Locale;
 }
 
+const MIC = {
+  es: {
+    title: "Grabar con el micrófono",
+    allow: "Permitir grabar con el micrófono de este dispositivo",
+    note: "Solo una persona adulta puede grabar, hasta 5 segundos. La voz no sale del dispositivo: se escucha y se edita antes de guardarla, y se puede quitar cuando quieras. Apagar este permiso saca los botones de grabar.",
+    record: "Grabar a",
+    stop: "Parar",
+    recording: "Grabando",
+    seconds: "s",
+    denied: "El navegador no dio permiso para usar el micrófono.",
+    unsupported: "Este dispositivo no puede grabar desde el navegador.",
+    failed: "No pudimos grabar. Probá de nuevo.",
+    empty: "No se grabó nada. Probá de nuevo.",
+  },
+  en: {
+    title: "Record with the microphone",
+    allow: "Allow recording with this device's microphone",
+    note: "Only a grown-up can record, up to 5 seconds. The voice never leaves the device: it is heard and edited before it is saved, and it can be removed any time. Turning this off removes the record buttons.",
+    record: "Record for",
+    stop: "Stop",
+    recording: "Recording",
+    seconds: "s",
+    denied: "The browser did not allow the microphone.",
+    unsupported: "This device cannot record from the browser.",
+    failed: "We couldn't record. Try again.",
+    empty: "Nothing was recorded. Try again.",
+  },
+} as const;
+
 export function KidsAudioPanel({ t, locale }: Props) {
+  const mic = MIC[locale];
+  const [micOn, setMicOn] = useState(() => microphoneAllowed());
+  const [recording, setRecording] = useState<{
+    readonly actor: KidsAvatarRef;
+    readonly seconds: number;
+  } | null>(null);
+  const active = useRef<KidsRecording | null>(null);
+  // Leaving the panel always lets go of the microphone.
+  useEffect(() => () => active.current?.stop(), []);
   const actors: readonly KidsAvatarRef[] = [
     ...KIDS_AVATARS.map((value) => ({ kind: "emoji" as const, value })),
     ...KIDS_GALLERY_CHARACTERS.map((item) => ({ kind: "gallery" as const, id: item.id })),
@@ -118,6 +165,38 @@ export function KidsAudioPanel({ t, locale }: Props) {
     }
   }
 
+  async function record(actor: KidsAvatarRef): Promise<void> {
+    if (active.current) return;
+    setMessage("");
+    try {
+      const started = await startKidsRecording();
+      active.current = started;
+      const began = Date.now();
+      setRecording({ actor, seconds: 0 });
+      const tick = setInterval(
+        () =>
+          setRecording((now) =>
+            now ? { ...now, seconds: Math.min(5, Math.floor((Date.now() - began) / 1000)) } : now,
+          ),
+        250,
+      );
+      try {
+        const blob = await started.result;
+        const samples = await decodeKidsRecording(blob);
+        setEditing({ actor, samples });
+      } finally {
+        clearInterval(tick);
+        active.current = null;
+        setRecording(null);
+      }
+    } catch (error) {
+      active.current = null;
+      setRecording(null);
+      if (error instanceof RecordingError) setMessage(mic[error.code]);
+      else setMessage(t("audioErrorDecode"));
+    }
+  }
+
   async function remove(actor: KidsAvatarRef): Promise<void> {
     try {
       await removeKidsAudio(actor);
@@ -132,6 +211,32 @@ export function KidsAudioPanel({ t, locale }: Props) {
     <section className="kids-adult-card kids-audio-panel" aria-labelledby="kids-audio-title">
       <h2 id="kids-audio-title">{t("customSounds")}</h2>
       <p>{t("customSoundsStay")}</p>
+      <section aria-labelledby="kids-mic-title" className="kids-adult-mic">
+        <h3 id="kids-mic-title">{mic.title}</h3>
+        <label>
+          <input
+            type="checkbox"
+            checked={micOn}
+            onChange={(event) => {
+              const next = event.target.checked;
+              if (!next) active.current?.stop();
+              setMicrophoneAllowed(next);
+              setMicOn(next);
+            }}
+          />{" "}
+          {mic.allow}
+        </label>
+        <p className="kids-note">{mic.note}</p>
+        {recording ? (
+          <p role="status" className="kids-note">
+            {mic.recording}: {Math.max(0, Math.ceil(RECORDING_MAX_MS / 1000) - recording.seconds)}{" "}
+            {mic.seconds}{" "}
+            <button type="button" className="kids-button" onClick={() => active.current?.stop()}>
+              {mic.stop}
+            </button>
+          </p>
+        ) : null}
+      </section>
       <div className="kids-images-list">
         {actors.map((actor) => {
           const key = actorAudioKey(actor);
@@ -147,6 +252,11 @@ export function KidsAudioPanel({ t, locale }: Props) {
                   onChange={(event) => void choose(actor, event)}
                 />
               </label>
+              {micOn && !recording ? (
+                <button type="button" className="kids-button" onClick={() => void record(actor)}>
+                  {mic.record} {name(actor)}
+                </button>
+              ) : null}
               {present.has(key) ? (
                 <>
                   <button type="button" className="kids-button" onClick={() => void edit(actor)}>

@@ -76,6 +76,11 @@ Denied in first-party source: geolocation, user media and `MediaRecorder`, outbo
 `sendBeacon`, direct messaging, social-graph mutation, and public publishing. There is no public
 sharing, chat, DM or precise-location requirement in the POC.
 
+The single exception is supervised voice recording (issue #622, `VOICE_RECORDINGS.md`): user media is
+allowed in `apps/web/src/kids/kidsRecorder.ts` only, which carries an attributed file marker; the same
+code anywhere else is a finding no marker can suppress. The browser policy opens `microphone` to this
+origin only (`microphone=(self)`).
+
 ### 7. Governed external links (`external-links`)
 
 Every outbound link in `apps/web/src/` must route through `apps/web/src/linkPolicy.ts`
@@ -125,6 +130,6 @@ adapters or packaging. Each item is a yes/no answer, not a judgement call.
 Every deviation from this baseline needs an explicit ADR (see `docs/architecture/adr/`) or a tracked
 issue reference. A deviation without one is a `adr-deviations` finding.
 
-| Control | Reason                                      | ADR/Issue |
-| ------- | ------------------------------------------- | --------- |
-| none    | No deviations recorded for the POC baseline | none      |
+| Control             | Reason                                                                                   | ADR/Issue                    |
+| ------------------- | ---------------------------------------------------------------------------------------- | ---------------------------- |
+| User media (rule 6) | Supervised five-second voice recording in the grown-ups area, one module, on-device only | #622 (`VOICE_RECORDINGS.md`) |

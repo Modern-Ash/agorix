@@ -391,3 +391,10 @@ Each iteration needs an issue with an observable child journey, success and fail
 - **Cliente sin secretos:** `GET /api/tutor/catalog` entrega solo celdas y textos cortos; no hay prompts, proveedores ni modelos. El dispositivo valida lo recibido y prueba que cada misión se pueda ganar; con cualquier problema (sin red, tarde, mal formado, insoluble) usa las misiones incluidas, así que funciona sin conexión y nunca espera al servidor. Ori arma sus ideas con las misiones tal como están publicadas.
 - **Compatibilidad de guardados:** los ids de misión y las claves de progreso no cambian; un proyecto guardado se abre y se evalúa contra el recorrido nuevo.
 - **Fuera de alcance (siguen en el código, con pruebas):** perfiles de franja, imágenes y sonidos incluidos y la progresión por etapas. Son constantes revisadas, no datos que convenga cambiar sin una revisión de código; moverlos a datos es otra decisión.
+
+## Grabación supervisada (E6 / SND-02, #622)
+
+- En Adultos (tras la puerta y el PIN), con un permiso que una persona adulta enciende y que empieza apagado: "Grabar a <personaje>" graba hasta 5 segundos solo con audio, suelta el micrófono al terminar, fallar o salir del panel, y abre el editor de sonido (SND-03) para escuchar, recortar y guardar. Cancelar o salir no guarda nada. Se guarda como WAV mono limpio en el mismo almacén local que los audios importados.
+- Nada sale del dispositivo: el módulo de grabación no tiene red, subida ni almacenamiento (una prueba lee su código), y un e2e comprueba que ninguna petición de una sesión de grabación salga del origen ni sea una escritura. Tampoco llega a Ori ni a ningún proveedor.
+- Política: `Permissions-Policy: microphone=(self)` (solo este origen) y el escáner de seguridad permite el micrófono en un único archivo (`kidsRecorder.ts`). Reglas completas, límites y revocación en `docs/safety/VOICE_RECORDINGS.md`.
+- **Supuesto de esta entrega:** el dueño pidió construirlo como si el micrófono estuviera permitido (2026-10-27); la revisión legal y de privacidad de voces infantiles sigue siendo suya. Mientras no la apruebe, no conviene encender el permiso en dispositivos de niños.
