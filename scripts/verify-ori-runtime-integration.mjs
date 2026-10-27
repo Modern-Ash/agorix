@@ -33,5 +33,5 @@ run("pnpm",["exec","vitest","run","apps/tutor-api/src/oriRealProcessSmoke.test.t
 // when its single test fails; with ORI_REPO_PATH checked above, it cannot skip
 // due to a missing checkout without the gate detecting that configuration.
 console.log("ORI_GATE: isolated live HTTP approval/apply vertical");
-run("pnpm",["exec","vitest","run","apps/tutor-api/src/oriReviewApplyLiveProcessHttp.test.ts","--reporter=verbose"],process.cwd());
+run("pnpm",["exec","vitest","run","apps/tutor-api/src/oriReviewApplyLiveProcessHttp.test.ts","apps/tutor-api/src/oriMissionParityLive.test.ts","--reporter=verbose"],process.cwd());
 console.log("ORI_GATE: PASS — real processes, synthetic inputs; not real OpenCode or child readiness");
