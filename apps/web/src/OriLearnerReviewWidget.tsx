@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { requestOriProposal, type OriIssuedProposal } from "./oriProposalIssuanceClient.js";
 import { OriLearnerProposalReview } from "./OriLearnerProposalReview.js";
+import { acknowledgeOriPresentation } from "./oriPresentationAcknowledgementClient.js";
 
 /**
  * Opt-in learner UI. No proposal can be created locally: the server must
@@ -8,8 +9,11 @@ import { OriLearnerProposalReview } from "./OriLearnerProposalReview.js";
  */
 export function OriLearnerReviewWidget({
   onPresented,
+  acknowledgePresentation = false,
 }: {
   readonly onPresented?: (ticketId: string, description: string) => void;
+  /** Disabled by default; host must explicitly enable server acknowledgement. */
+  readonly acknowledgePresentation?: boolean;
 } = {}) {
   const [issued, setIssued] = useState<OriIssuedProposal | null>(null);
   const [loading, setLoading] = useState(false);
@@ -41,7 +45,13 @@ export function OriLearnerReviewWidget({
       ) : null}
       {issued ? (
         <OriLearnerProposalReview
-          {...(onPresented ? { onPresented } : {})}
+          {...(onPresented || acknowledgePresentation ? {
+            onPresented: (ticketId: string, description: string) => {
+              onPresented?.(ticketId, description);
+              if (acknowledgePresentation)
+                void acknowledgeOriPresentation(ticketId, description);
+            },
+          } : {})}
           input={{
             ticketId: issued.ticketId,
             proposal: issued.proposal,
