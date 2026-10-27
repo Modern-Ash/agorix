@@ -27,6 +27,10 @@ export function createOriEducatorAdminComposition({
     return authorize(session as IncomingMessage);
   });
   return Object.freeze({
+    readiness: (request: IncomingMessage, reviewId: string, provenance: {
+      readonly evidenceDigest: string;
+      readonly verified: boolean;
+    }) => service.readiness(request, reviewId, provenance),
     snapshot: (request: IncomingMessage, reviewId: string) => service.snapshot(request, reviewId),
     decide: (request: IncomingMessage, reviewId: string, digest: string, revision: number,
       input: Parameters<typeof service.decide>[4]) =>

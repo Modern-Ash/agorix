@@ -1,6 +1,7 @@
 import type { OriMissionDivergenceMatrix } from "./oriMissionDivergenceMatrix.js";
 import type { OriReviewDecisionInput, OriVerifiedEducator } from "./oriEducatorReviewWorkflow.js";
 import { openOriAtomicEducatorReviewStore } from "./oriAtomicEducatorReviewStore.js";
+import { createOriPersistedReadinessService } from "./oriPersistedReadiness.js";
 
 /**
  * Internal, server-only administrative facade. The host must authenticate and
@@ -10,7 +11,16 @@ export function createOriAtomicAdminService(
   store: ReturnType<typeof openOriAtomicEducatorReviewStore>,
   authorize: (session: unknown) => Promise<OriVerifiedEducator | null>,
 ) {
+  const readiness = createOriPersistedReadinessService(store);
   return Object.freeze({
+    async readiness(session: unknown, id: string, provenance: {
+      readonly evidenceDigest: string;
+      readonly verified: boolean;
+    }) {
+      const principal = await authorize(session);
+      if (!principal?.canReviewOri) return null;
+      return readiness.assess(id, provenance);
+    },
     async publishEvidence(id: string, matrix: OriMissionDivergenceMatrix,
       expectedRevision?: number) {
       // Publication is a trusted system operation, not an educator action.
