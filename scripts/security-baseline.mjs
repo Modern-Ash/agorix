@@ -104,6 +104,19 @@ export const EXECUTION_SINK_PATTERNS = Object.freeze([
  */
 const EXECUTION_SINK_SCOPE = { include: FIRST_PARTY_SOURCE_GLOBS, exclude: ["scripts/"] };
 
+/**
+ * The one module allowed to reach the microphone (issue #622, docs/safety/VOICE_RECORDINGS.md).
+ * It and the two files that test it carry an attributed file marker; the same code anywhere else is
+ * a finding that no marker can suppress.
+ */
+export const USER_MEDIA_MODULE = "apps/web/src/kids/kidsRecorder.ts";
+/** The module and the two files that test it, each with an attributed file marker. */
+export const USER_MEDIA_FILES = Object.freeze([
+  USER_MEDIA_MODULE,
+  "apps/web/src/kids/kidsRecorder.test.ts",
+  "apps/web/e2e/kids-recording.spec.ts",
+]);
+
 export const PROHIBITED_FEATURE_PATTERNS = Object.freeze([
   {
     id: "geolocation",
@@ -488,13 +501,38 @@ function checkProhibitedFeatures({ files, read }) {
   for (const file of files) {
     if (!inScope(file, { include: FIRST_PARTY_SOURCE_GLOBS })) continue;
     const content = read(file);
-    if (content === null || hasFileAllowlist(content)) continue;
-    const lines = content.split("\n");
+    if (content === null) continue;
+    const userMedia = PROHIBITED_FEATURE_PATTERNS.find((pattern) => pattern.id === "user-media");
+    const rawLines = content.split("\n");
+    for (let index = 0; index < rawLines.length; index += 1) {
+      const raw = rawLines[index] ?? "";
+      if (userMedia?.re.test(stripAllowlist(raw))) {
+        // Outside the module no marker or file-level allowance counts; inside, each use is attributed.
+        if (
+          !USER_MEDIA_FILES.includes(file) ||
+          !(hasLineAllowlist(raw) || hasFileAllowlist(content))
+        ) {
+          findings.push(
+            finding(
+              "no-prohibited-features",
+              file,
+              index + 1,
+              USER_MEDIA_FILES.includes(file)
+                ? "prohibited POC feature user-media without an attributed file marker"
+                : `prohibited POC feature user-media outside ${USER_MEDIA_MODULE}`,
+            ),
+          );
+        }
+      }
+    }
+    if (hasFileAllowlist(content)) continue;
+    const lines = rawLines;
     for (let index = 0; index < lines.length; index += 1) {
       const raw = lines[index] ?? "";
       if (hasLineAllowlist(raw)) continue;
       const line = stripAllowlist(raw);
       for (const pattern of PROHIBITED_FEATURE_PATTERNS) {
+        if (pattern.id === "user-media") continue;
         if (pattern.re.test(line)) {
           findings.push(
             finding(

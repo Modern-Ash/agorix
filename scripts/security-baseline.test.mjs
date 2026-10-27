@@ -328,6 +328,47 @@ describe("security baseline checker", () => {
       expect(rulesIn().inRule("no-prohibited-features")).toBe(true);
     });
 
+    it("lets the one supervised recorder reach the microphone, and nothing else", () => {
+      const marker = "// agora-allowlist-file: the one supervised voice recorder, issue 622\n";
+      write(
+        "apps/web/src/kids/kidsRecorder.ts",
+        `${marker}const s = await navigator.mediaDevices.getUserMedia({ audio: true });\n`,
+      );
+      expect(rulesIn().inRule("no-prohibited-features")).toBe(false);
+      // The same code in any other file is a finding, with or without a marker.
+      write(
+        "apps/web/src/kids/other.ts",
+        `${marker}const s = await navigator.mediaDevices.getUserMedia({ audio: true });\n`,
+      );
+      expect(rulesIn().inRule("no-prohibited-features")).toBe(true);
+      write(
+        "apps/web/src/kids/other.ts",
+        "const s = await getUserMedia({ audio: true }); // agora-allowlist: supervised recording elsewhere\n",
+      );
+      expect(rulesIn().inRule("no-prohibited-features")).toBe(true);
+    });
+
+    it("lets the two files that test the recorder mention it, with a marker, and no others", () => {
+      const marker =
+        "// agora-allowlist-file: tests of the one supervised voice recorder, issue 622\n";
+      write(
+        "apps/web/src/kids/kidsRecorder.test.ts",
+        `${marker}const r = new MediaRecorder(stream);\n`,
+      );
+      write(
+        "apps/web/e2e/kids-recording.spec.ts",
+        `${marker}await navigator.mediaDevices.getUserMedia({ audio: true });\n`,
+      );
+      expect(rulesIn().inRule("no-prohibited-features")).toBe(false);
+      write("apps/web/src/kids/kidsRecorder.test.ts", "const r = new MediaRecorder(stream);\n");
+      expect(rulesIn().inRule("no-prohibited-features")).toBe(true);
+    });
+
+    it("refuses the recorder module itself when it has no attributed marker", () => {
+      write("apps/web/src/kids/kidsRecorder.ts", "const r = new MediaRecorder(stream);\n");
+      expect(rulesIn().inRule("no-prohibited-features")).toBe(true);
+    });
+
     it("does not flag the OpenAI-compatible provider transport path", () => {
       write(
         "apps/tutor-api/src/index.ts",

@@ -74,12 +74,14 @@ describe("web security headers", () => {
     expect(csp(webSecurityHeaders("development"))).not.toContain("upgrade-insecure-requests");
   });
 
-  it("closes geolocation, camera and microphone in the browser", () => {
+  it("closes geolocation and camera, and opens the microphone to this origin only", () => {
     const headers = webSecurityHeaders("production");
     expect(headers["Permissions-Policy"]).toBe(WEB_SECURITY_PERMISSIONS_POLICY);
     expect(headers["Permissions-Policy"]).toContain("geolocation=()");
     expect(headers["Permissions-Policy"]).toContain("camera=()");
-    expect(headers["Permissions-Policy"]).toContain("microphone=()");
+    // Supervised voice recording (docs/safety/VOICE_RECORDINGS.md): this origin, never a frame.
+    expect(headers["Permissions-Policy"]).toContain("microphone=(self)");
+    expect(headers["Permissions-Policy"]).not.toContain("microphone=*");
   });
 
   it("sends no referrer and no cross-origin opener", () => {
