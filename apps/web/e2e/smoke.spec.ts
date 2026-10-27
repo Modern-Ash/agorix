@@ -42,6 +42,12 @@ function stageRun(page: Page) {
   return page.locator(".stage-panel").getByRole("button", { name: "Run", exact: true });
 }
 
+/**
+ * A two-frame run takes ~1.1 s of animation. Leave headroom for a busy CI runner instead of the
+ * 5 s default, which is too close when the whole browser-smoke suite runs in parallel (issue #817).
+ */
+const RUN_FEEDBACK_TIMEOUT = 10_000;
+
 function appMenuButton(page: Page, name: string) {
   return page
     .locator("#app-menu")
@@ -367,20 +373,30 @@ test("mission retry keeps work, code, and unlocks non-blocking free play", async
 
   await page.getByRole("button", { name: "Move", exact: true }).click();
   await applyMoveSteps(page, "10");
+  await expect(visibleCode(page, "sprite.move(10);")).toBeVisible();
+
   await stageRun(page).click();
-  await expect(page.getByText("stopped short")).toBeVisible({ timeout: 5000 });
+  await expect(page.getByText("stopped short")).toBeVisible({ timeout: RUN_FEEDBACK_TIMEOUT });
   await expect(page.getByText("Attempts: 1")).toBeVisible();
-  await expect(page.getByText("sprite.move(10);")).toBeVisible();
+  await expect(visibleCode(page, "sprite.move(10);")).toBeVisible();
 
   await page.getByRole("button", { name: "Try again" }).click();
+  await expect(page.getByText("Keep your blocks and try again.")).toBeVisible();
   await expect(page.getByLabel("Move block").getByRole("spinbutton")).toHaveValue("10");
-  await expect(page.getByText("sprite.move(10);")).toBeVisible();
+  await expect(visibleCode(page, "sprite.move(10);")).toBeVisible();
 
-  await applyMoveSteps(page, "160");
+  const moveInput = page.getByLabel("Move block").getByRole("spinbutton");
+  await moveInput.fill("160");
+  // The field commits on blur. Blur explicitly instead of relying on Enter's key handler, then
+  // wait for the canonical code so a loaded runner cannot run the previous value.
+  await moveInput.blur();
+  await expect(visibleCode(page, "sprite.move(160);")).toBeVisible();
+
   await stageRun(page).click();
   await expect(page.getByText("Mission complete: your sprite reached the goal.")).toBeVisible({
-    timeout: 5000,
+    timeout: RUN_FEEDBACK_TIMEOUT,
   });
+  await expect(page.getByText("Attempts: 2")).toBeVisible();
   await page.getByRole("button", { name: "Keep building" }).click();
   await expect(
     page.getByText("Free play unlocked. Keep experimenting with your program."),
