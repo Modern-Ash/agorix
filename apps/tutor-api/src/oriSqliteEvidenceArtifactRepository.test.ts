@@ -28,4 +28,21 @@ describe("MIG-03 persisted educator evidence artifacts", () => {
       Buffer.alloc(1_048_577))).toBeNull();
     store.close();
   });
+  it("rolls back all artifacts if a later entry fails or conflicts", async () => {
+    const store = openOriSqliteEvidenceArtifactRepository(":memory:");
+    const digest = "a".repeat(64);
+    expect(store.putBatch("pilot", digest, "move", {
+      "ori-proposal": Buffer.from("valid"),
+      "kids-baseline": Buffer.alloc(0),
+    })).toBeNull();
+    expect(await store.find("pilot", digest, "move", "ori-proposal")).toBeNull();
+    expect(store.put("pilot", digest, "move", "kids-baseline",
+      Buffer.from("original"))).not.toBeNull();
+    expect(store.putBatch("pilot", digest, "move", {
+      "ori-proposal": Buffer.from("valid"),
+      "kids-baseline": Buffer.from("tampered"),
+    })).toBeNull();
+    expect(await store.find("pilot", digest, "move", "ori-proposal")).toBeNull();
+    store.close();
+  });
 });
