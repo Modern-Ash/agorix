@@ -55,4 +55,20 @@ describe("MIG-03 verified record HTTP contract", () => {
     expect(output.result().status).toBe(403);
     expect(calls).toBe(0);
   });
+  it("returns 400 for malformed JSON and 413 for oversized bodies", async () => {
+    let calls = 0;
+    const service = { record: async () => { calls++; return "recorded"; } } as unknown as
+      ReturnType<typeof createOriAuthorizedReviewRecordingService>;
+    const handler = createOriVerifiedRecordHttpHandler(service, async () => true);
+    const malformed = new PassThrough() as IncomingMessage & PassThrough;
+    Object.assign(malformed, { method: "POST", headers: {} });
+    malformed.end("{invalid");
+    const bad = response();
+    await handler("pilot", malformed, bad.value);
+    expect(bad.result().status).toBe(400);
+    const oversized = response();
+    await handler("pilot", request({ ...payload, rationale: "x".repeat(5000) }), oversized.value);
+    expect(oversized.result().status).toBe(413);
+    expect(calls).toBe(0);
+  });
 });
