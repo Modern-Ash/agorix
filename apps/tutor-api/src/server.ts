@@ -54,6 +54,7 @@ import {
   type AiPolicy,
 } from "./aiConfig.js";
 import { AdminAuth } from "./adminAuth.js";
+import type { createOriEducatorRouteDispatcher } from "./oriEducatorRouteDispatcher.js";
 
 export const MAX_BODY_BYTES = 64 * 1024;
 const HEALTH_TTL_MS = 15_000;
@@ -81,6 +82,9 @@ export interface TutorServerOptions {
   /** Explicit server-only application of a previously accepted review ticket. */
   readonly oriReviewApply?: (owner:string,projectId:string,ticketId:string,scriptId:string)=>Promise<"applied"|"rejected"|"conflict">;
   readonly oriReviewApplyEnabled?: boolean;
+  /** Explicit adult-only dispatcher; remains disabled unless opted in. */
+  readonly oriEducatorAdminEnabled?: boolean;
+  readonly oriEducatorAdminDispatch?: ReturnType<typeof createOriEducatorRouteDispatcher>;
 }
 
 interface Health {
@@ -203,6 +207,12 @@ export function createTutorServer(options: TutorServerOptions): Server {
 
   async function handle(request: IncomingMessage, response: ServerResponse): Promise<void> {
     const path = new URL(request.url ?? "/", "http://local").pathname;
+    if (path.startsWith("/api/tutor/admin/ori-educator/")) {
+      if (!options.oriEducatorAdminEnabled || !options.oriEducatorAdminDispatch)
+        return send(response, 404, error("not-found"));
+      if (await options.oriEducatorAdminDispatch(request, response)) return;
+      return send(response, 404, error("not-found"));
+    }
     if (path.startsWith("/api/tutor/admin/")) return adminRoute(path, request, response);
     if (path === "/api/tutor/ori/review/propose") {
       if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
