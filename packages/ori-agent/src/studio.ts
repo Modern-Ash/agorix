@@ -266,10 +266,55 @@ export async function runOriStudio(
  * (issue #603). It is a deterministic fallback that needs no model, and like every idea it is a
  * proposal: nothing changes until the child accepts it.
  */
-export const ORI_STUDIO_INTENTS = ["ahead", "square", "backForth", "zigzag"] as const;
+export const ORI_STUDIO_INTENTS = [
+  "ahead",
+  "square",
+  "backForth",
+  "zigzag",
+  "melody",
+  "rhythm",
+  "cheer",
+] as const;
 export type OriStudioIntent = (typeof ORI_STUDIO_INTENTS)[number];
 
+/** The closed sounds and notes an idea may use (issue #626): ids and numbers only, no free text. */
+const IDEA_SOUND_IDS = ["kids:win", "kids:sparkle", "kids:bell", "kids:tada"];
+const IDEA_NOTES = [60, 62, 64, 65, 67, 69, 71, 72];
+
+function allowedForIntent(statement: Statement, script: Script): boolean {
+  return (
+    allowed(statement, script) ||
+    (statement.type === "playSound" && IDEA_SOUND_IDS.includes(statement.soundId)) ||
+    (statement.type === "playNote" &&
+      IDEA_NOTES.includes(statement.note) &&
+      [0.5, 1].includes(statement.beats)) ||
+    (statement.type === "playDrum" && [0.5, 1].includes(statement.beats)) ||
+    (statement.type === "setInstrument" && statement.instrument !== undefined) ||
+    (statement.type === "setTempo" && [90, 120].includes(statement.bpm))
+  );
+}
+
 const INTENT_BLOCKS: Readonly<Record<OriStudioIntent, readonly Statement[]>> = {
+  melody: [
+    { type: "setInstrument", instrument: "bell" },
+    { type: "playNote", note: 60, beats: 0.5 },
+    { type: "playNote", note: 62, beats: 0.5 },
+    { type: "playNote", note: 64, beats: 0.5 },
+    { type: "playNote", note: 65, beats: 0.5 },
+    { type: "playNote", note: 67, beats: 1 },
+  ],
+  rhythm: [
+    { type: "setTempo", bpm: 120 },
+    { type: "playDrum", drum: "kick", beats: 0.5 },
+    { type: "playDrum", drum: "snare", beats: 0.5 },
+    { type: "playDrum", drum: "kick", beats: 0.5 },
+    { type: "playDrum", drum: "snare", beats: 0.5 },
+    { type: "playDrum", drum: "clap", beats: 1 },
+  ],
+  cheer: [
+    { type: "playSound", soundId: "kids:sparkle" },
+    { type: "playSound", soundId: "kids:win" },
+  ],
   ahead: [
     { type: "move", steps: 80 },
     { type: "move", steps: 80 },
@@ -360,7 +405,7 @@ export function validateOriStudioIntentProposal(
       (operation) =>
         operation.type !== "appendStatement" ||
         operation.scriptIndex !== selected.index ||
-        !allowed(operation.statement, selected.script),
+        !allowedForIntent(operation.statement, selected.script),
     ) ||
     proposal.affectedActorIds?.join() !== context.actorId ||
     proposal.affectedScriptIds?.join() !== selected.script.id ||

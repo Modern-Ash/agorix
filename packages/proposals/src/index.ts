@@ -2,6 +2,7 @@ import { projectProgram, type ProjectionResult, type TextRange } from "@agorix/c
 import {
   validateProgram,
   type Expression,
+  type ExtensionId,
   type ProjectProgram,
   type Statement,
 } from "@agorix/program-model";
@@ -308,8 +309,36 @@ export function createProposalEvidenceView(
   return { ...view, accepted, proved: { status, matched, missing } };
 }
 
+/** The extension pack each statement needs (ADR 0011); accepting a proposal declares it. */
+const PACK_OF_STATEMENT: Readonly<Record<string, ExtensionId>> = {
+  penDown: "pen",
+  penUp: "pen",
+  setPenColor: "pen",
+  setPenSize: "pen",
+  clearPen: "pen",
+  playNote: "music",
+  playDrum: "music",
+  setInstrument: "music",
+  setTempo: "music",
+  setPitch: "music",
+  setPan: "music",
+};
+
+function collectPacks(value: unknown, into: Set<ExtensionId>): void {
+  if (Array.isArray(value)) {
+    for (const item of value) collectPacks(item, into);
+    return;
+  }
+  if (typeof value !== "object" || value === null) return;
+  const record = value as Record<string, unknown>;
+  const pack = typeof record.type === "string" ? PACK_OF_STATEMENT[record.type] : undefined;
+  if (pack !== undefined) into.add(pack);
+  for (const child of Object.values(record)) collectPacks(child, into);
+}
+
 type MutableProjectProgram = {
   schema: ProjectProgram["schema"];
+  extensions?: ExtensionId[];
   scripts: Array<{
     id: string;
     trigger: ProjectProgram["scripts"][number]["trigger"];
@@ -699,6 +728,10 @@ function applyProposalOperations(
       }
     }
   }
+  const used = new Set<ExtensionId>();
+  collectPacks(mutable.scripts, used);
+  const missing = [...used].filter((id) => !(mutable.extensions ?? []).includes(id));
+  if (missing.length > 0) mutable.extensions = [...(mutable.extensions ?? []), ...missing];
   try {
     return validateProgram(mutable);
   } catch (error) {
@@ -1259,8 +1292,11 @@ function probeProgramForStatement(statement: Statement): ProjectProgram {
   // A call is checked here only for shape; whether the block really exists is checked against the
   // actual script when the proposal is applied (validateProgram of the candidate program).
   const procedureIds = [...new Set(procedureIdsForStatement(statement))];
+  const packs = new Set<ExtensionId>();
+  collectPacks(statement, packs);
   return {
     schema: "agorix/program/v1",
+    ...(packs.size === 0 ? {} : { extensions: [...packs] }),
     ...(variableIds.length === 0
       ? {}
       : {

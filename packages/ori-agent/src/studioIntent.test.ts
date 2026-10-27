@@ -41,6 +41,36 @@ describe("Studio goal to blocks", () => {
     expect(accepted.scripts[0]?.statements).toHaveLength(9);
   });
 
+  it("a music goal declares its pack on accept, and a stranger note or sound is refused", () => {
+    for (const intent of ["melody", "rhythm"] as const) {
+      const proposal = proposeOriStudioIntent(context, intent);
+      const accepted = acceptProposal(program, validateOriStudioIntentProposal(context, proposal));
+      expect(accepted.program.extensions).toEqual(["music"]);
+    }
+    const cheer = acceptProposal(
+      program,
+      validateOriStudioIntentProposal(context, proposeOriStudioIntent(context, "cheer")),
+    );
+    expect(cheer.program.extensions).toBeUndefined();
+    const melody = proposeOriStudioIntent(context, "melody");
+    for (const statement of [
+      { type: "playNote" as const, note: 61, beats: 0.5 as const },
+      { type: "playNote" as const, note: 60, beats: 2 as const },
+      { type: "playSound" as const, soundId: "kids:custom" },
+      { type: "setTempo" as const, bpm: 150 },
+    ]) {
+      const tampered = {
+        ...melody,
+        operations: melody.operations.map((operation, index) =>
+          index === 1 && operation.type === "appendStatement"
+            ? { ...operation, statement }
+            : operation,
+        ),
+      };
+      expect(() => validateOriStudioIntentProposal(context, tampered)).toThrow();
+    }
+  });
+
   it("rejects an unknown goal, another character, a changed block and a stale base", () => {
     expect(() => proposeOriStudioIntent(context, "teleport" as never)).toThrow();
     expect(() =>
