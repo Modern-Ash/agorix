@@ -24,23 +24,29 @@ export function buildOriMig03ReviewHandoff(
 ): OriMig03ReviewHandoff {
   const selected = new Set(briefing.selectedMissionIds);
   const deferred = new Set(checklist.deferredMissionIds);
-  if (selected.size !== briefing.selectedMissionIds.length ||
-      checklist.items.length !== selected.size ||
-      checklist.items.some((item) => !selected.has(item.missionId)) ||
-      deferred.size !== checklist.deferredMissionIds.length ||
-      [...deferred].some((id) => selected.has(id)) ||
-      selected.size + deferred.size !== briefing.summary.totalMissions ||
-      briefing.summary.deferred !== deferred.size)
+  if (
+    selected.size !== briefing.selectedMissionIds.length ||
+    checklist.items.length !== selected.size ||
+    checklist.items.some((item) => !selected.has(item.missionId)) ||
+    deferred.size !== checklist.deferredMissionIds.length ||
+    [...deferred].some((id) => selected.has(id)) ||
+    selected.size + deferred.size !== briefing.summary.totalMissions ||
+    briefing.summary.deferred !== deferred.size
+  )
     throw Error("inconsistent-review-handoff");
   return Object.freeze({
     schemaVersion: "agorix/ori-mig03-review-handoff/v1",
     missionCount: briefing.summary.totalMissions,
     selectedForReview: selected.size,
-    pendingEvidence: Object.freeze(checklist.items.map((item) => Object.freeze({
-      missionId: item.missionId,
-      requiredEvidence: item.requiredEvidence,
-      status: "awaiting-human-review" as const,
-    }))),
+    pendingEvidence: Object.freeze(
+      checklist.items.map((item) =>
+        Object.freeze({
+          missionId: item.missionId,
+          requiredEvidence: item.requiredEvidence,
+          status: "awaiting-human-review" as const,
+        }),
+      ),
+    ),
     deferredMissionIds: Object.freeze([...checklist.deferredMissionIds]),
     unresolvedMissionIds: Object.freeze([...briefing.unresolvedMissionIds]),
     nextAction: "educator-review-required",

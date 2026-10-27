@@ -9,19 +9,25 @@ describe("Ori browser presentation acknowledgement", () => {
       request = options;
       return { ok: true };
     }) as typeof fetch;
-    expect(await acknowledgeOriPresentation(ticketId,
-      "Agregar movimiento de 2 paso(s)", fetchImpl)).toBe(true);
+    expect(
+      await acknowledgeOriPresentation(ticketId, "Agregar movimiento de 2 paso(s)", fetchImpl),
+    ).toBe(true);
     expect(request?.credentials).toBe("same-origin");
     expect(JSON.parse(String(request?.body))).toEqual({
-      ticketId, description: "Agregar movimiento de 2 paso(s)",
+      ticketId,
+      description: "Agregar movimiento de 2 paso(s)",
     });
   });
   it("rejects invalid tickets and fails closed on unavailable route", async () => {
     let calls = 0;
-    const fetchImpl = (async () => { calls++; throw Error("offline"); }) as typeof fetch;
+    const fetchImpl = (async () => {
+      calls++;
+      throw Error("offline");
+    }) as typeof fetch;
     expect(await acknowledgeOriPresentation("forged", "description", fetchImpl)).toBe(false);
     expect(calls).toBe(0);
-    expect(await acknowledgeOriPresentation(ticketId,
-      "Agregar movimiento de 2 paso(s)", fetchImpl)).toBe(false);
+    expect(
+      await acknowledgeOriPresentation(ticketId, "Agregar movimiento de 2 paso(s)", fetchImpl),
+    ).toBe(false);
   });
 });

@@ -12,15 +12,27 @@ type Bundle = Awaited<ReturnType<ReturnType<typeof createOriMig03EducatorAuditBu
 
 /** Host-only technical exit orchestration, never a learner-facing route. */
 export function createOriMig03HostExitComposition({
-  session, repository, projectId, ticketId, resolveTicket,
-  presentations, reviews, lineage, reviewId, checkOriProcess, humanReviewVerified,
+  session,
+  repository,
+  projectId,
+  ticketId,
+  resolveTicket,
+  presentations,
+  reviews,
+  lineage,
+  reviewId,
+  checkOriProcess,
+  humanReviewVerified,
 }: {
   readonly session: () => Promise<OriAuthenticatedSession | null>;
   readonly repository: ProjectRepository;
   readonly projectId: string;
   readonly ticketId: string;
-  readonly resolveTicket: (owner: string, project: string, ticket: string) =>
-    Promise<OriReviewTicket | null>;
+  readonly resolveTicket: (
+    owner: string,
+    project: string,
+    ticket: string,
+  ) => Promise<OriReviewTicket | null>;
   readonly presentations: ReturnType<typeof openOriTicketPresentationSqliteStore>;
   readonly reviews: ReturnType<typeof openOriAtomicEducatorReviewStore>;
   readonly lineage: ReturnType<typeof openOriTicketReviewLineageStore>;
@@ -29,8 +41,17 @@ export function createOriMig03HostExitComposition({
   readonly humanReviewVerified: () => Promise<boolean>;
 }) {
   const probes = createOriMig03HostEvidenceProbes({
-    session, repository, projectId, ticketId, resolveTicket,
-    presentations, reviews, lineage, reviewId, checkOriProcess, humanReviewVerified,
+    session,
+    repository,
+    projectId,
+    ticketId,
+    resolveTicket,
+    presentations,
+    reviews,
+    lineage,
+    reviewId,
+    checkOriProcess,
+    humanReviewVerified,
   });
   return Object.freeze({
     assess: (bundle: Bundle) => runOriMig03TechnicalExitChecks(bundle, probes),

@@ -60,11 +60,13 @@ export function createOriAuthorizedReviewOptions({
   });
   return Object.freeze({
     oriReviewEnabled: true as const,
-    ...(presentationStore ? createOriPresentationServerComposition({
-      identity,
-      resolveTicket: (owner, projectId, ticketId) => workflow.read(owner, projectId, ticketId),
-      store: presentationStore,
-    }) : {}),
+    ...(presentationStore
+      ? createOriPresentationServerComposition({
+          identity,
+          resolveTicket: (owner, projectId, ticketId) => workflow.read(owner, projectId, ticketId),
+          store: presentationStore,
+        })
+      : {}),
     oriReviewIdentity: identity,
     oriReviewPropose: (owner: string, projectId: string) => workflow.propose(owner, projectId),
     oriReviewDecision: (

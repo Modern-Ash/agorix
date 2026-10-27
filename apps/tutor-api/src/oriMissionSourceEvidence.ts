@@ -25,19 +25,25 @@ export async function captureOriMissionSourceEvidence(
         hintLevel,
         scriptCount: 1,
       });
-      if (candidate && candidate.context.missionStage === mission.missionIndex &&
-          candidate.stage === hintLevel && candidate.appliedChanges === false)
+      if (
+        candidate &&
+        candidate.context.missionStage === mission.missionIndex &&
+        candidate.stage === hintLevel &&
+        candidate.appliedChanges === false
+      )
         proposal = candidate;
     } catch {
       // Preserve unavailable evidence; never fabricate an Ori response.
     }
-    results.push(Object.freeze({
-      missionId: mission.missionId,
-      missionIndex: mission.missionIndex,
-      oriProposal: proposal,
-      kidsBaseline: mission,
-      provenance: "ori-loopback-synthetic-mission" as const,
-    }));
+    results.push(
+      Object.freeze({
+        missionId: mission.missionId,
+        missionIndex: mission.missionIndex,
+        oriProposal: proposal,
+        kidsBaseline: mission,
+        provenance: "ori-loopback-synthetic-mission" as const,
+      }),
+    );
   }
   return Object.freeze(results);
 }

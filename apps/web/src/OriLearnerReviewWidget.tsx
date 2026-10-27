@@ -45,13 +45,15 @@ export function OriLearnerReviewWidget({
       ) : null}
       {issued ? (
         <OriLearnerProposalReview
-          {...(onPresented || acknowledgePresentation ? {
-            onPresented: (ticketId: string, description: string) => {
-              onPresented?.(ticketId, description);
-              if (acknowledgePresentation)
-                void acknowledgeOriPresentation(ticketId, description);
-            },
-          } : {})}
+          {...(onPresented || acknowledgePresentation
+            ? {
+                onPresented: (ticketId: string, description: string) => {
+                  onPresented?.(ticketId, description);
+                  if (acknowledgePresentation)
+                    void acknowledgeOriPresentation(ticketId, description);
+                },
+              }
+            : {})}
           input={{
             ticketId: issued.ticketId,
             proposal: issued.proposal,

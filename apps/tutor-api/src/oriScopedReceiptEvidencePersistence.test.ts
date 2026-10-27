@@ -6,26 +6,55 @@ import { createOriScopedReceiptEvidencePersistence } from "./oriScopedReceiptEvi
 import type { OriMig03ReviewHandoff } from "./oriMig03ReviewHandoff.js";
 
 const matrix = {
-  total: 1, available: 1, missing: 0, divergent: 0,
-  rows: [{ missionId: "move", missionIndex: 0, status: "matched-observables" as const,
-    matches: 4, divergences: 0, notComparable: 0 }],
+  total: 1,
+  available: 1,
+  missing: 0,
+  divergent: 0,
+  rows: [
+    {
+      missionId: "move",
+      missionIndex: 0,
+      status: "matched-observables" as const,
+      matches: 4,
+      divergences: 0,
+      notComparable: 0,
+    },
+  ],
 };
 const handoff: OriMig03ReviewHandoff = {
   schemaVersion: "agorix/ori-mig03-review-handoff/v1",
-  missionCount: 1, selectedForReview: 1,
-  pendingEvidence: [{ missionId: "move", status: "awaiting-human-review",
-    requiredEvidence: ["ori-proposal", "kids-baseline", "learning-context",
-      "learner-facing-explanation", "educator-rationale"] }],
-  deferredMissionIds: [], unresolvedMissionIds: [],
-  nextAction: "educator-review-required", formalApproval: false, rolloutAuthorized: false,
+  missionCount: 1,
+  selectedForReview: 1,
+  pendingEvidence: [
+    {
+      missionId: "move",
+      status: "awaiting-human-review",
+      requiredEvidence: [
+        "ori-proposal",
+        "kids-baseline",
+        "learning-context",
+        "learner-facing-explanation",
+        "educator-rationale",
+      ],
+    },
+  ],
+  deferredMissionIds: [],
+  unresolvedMissionIds: [],
+  nextAction: "educator-review-required",
+  formalApproval: false,
+  rolloutAuthorized: false,
 };
 const captured = {
-  missionId: "move", missionIndex: 0, oriProposal: { action: "hint" },
+  missionId: "move",
+  missionIndex: 0,
+  oriProposal: { action: "hint" },
   kidsBaseline: { action: "hint" },
   provenance: "ori-loopback-synthetic-mission" as const,
 };
 const receipt = {
-  missionId: "move", missionIndex: 0, actuallyRendered: true,
+  missionId: "move",
+  missionIndex: 0,
+  actuallyRendered: true,
   hint: {
     schema: "agorix/pedagogical-text-hint/v1" as const,
     hint: "Probá mover un bloque hacia adelante",
@@ -43,10 +72,13 @@ describe("MIG-03 scoped receipt to SQLite evidence", () => {
     const digest = reviews.get("pilot")!.digest;
     expect(receipts.recordFromHost("pilot", digest, receipt)).toBe(true);
     const service = createOriScopedReceiptEvidencePersistence({ reviews, artifacts, receipts });
-    expect(Object.keys(await service.persist(handoff, "pilot", digest, captured) ?? {}))
-      .toHaveLength(4);
+    expect(
+      Object.keys((await service.persist(handoff, "pilot", digest, captured)) ?? {}),
+    ).toHaveLength(4);
     expect(await artifacts.find("pilot", digest, "move", "educator-rationale")).toBeNull();
-    artifacts.close(); receipts.close(); reviews.close();
+    artifacts.close();
+    receipts.close();
+    reviews.close();
   });
   it("rejects receipts from a different review or digest", async () => {
     const reviews = openOriAtomicEducatorReviewStore(":memory:");
@@ -58,6 +90,8 @@ describe("MIG-03 scoped receipt to SQLite evidence", () => {
     const service = createOriScopedReceiptEvidencePersistence({ reviews, artifacts, receipts });
     expect(await service.persist(handoff, "pilot", digest, captured)).toBeNull();
     expect(await artifacts.find("pilot", digest, "move", "ori-proposal")).toBeNull();
-    artifacts.close(); receipts.close(); reviews.close();
+    artifacts.close();
+    receipts.close();
+    reviews.close();
   });
 });

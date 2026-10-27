@@ -26,14 +26,19 @@ export function buildOriReviewBriefing(
   triage: OriAutomatedTriageReport,
   plan: OriReviewSamplingPlan,
 ): OriReviewBriefing {
-  if (triage.total !== plan.totalMissions ||
-      triage.selected !== plan.selected.length ||
-      triage.deferred !== plan.deferred.length ||
-      triage.rows.length !== triage.total ||
-      plan.selected.some((item) => !triage.rows.some((row) =>
-        row.missionId === item.missionId && row.selectedForReview)) ||
-      plan.deferred.some((id) => !triage.rows.some((row) =>
-        row.missionId === id && !row.selectedForReview)))
+  if (
+    triage.total !== plan.totalMissions ||
+    triage.selected !== plan.selected.length ||
+    triage.deferred !== plan.deferred.length ||
+    triage.rows.length !== triage.total ||
+    plan.selected.some(
+      (item) =>
+        !triage.rows.some((row) => row.missionId === item.missionId && row.selectedForReview),
+    ) ||
+    plan.deferred.some(
+      (id) => !triage.rows.some((row) => row.missionId === id && !row.selectedForReview),
+    )
+  )
     throw Error("inconsistent-review-briefing");
   const unresolvedMissionIds = triage.rows
     .filter((row) => row.finding !== "observable-match")

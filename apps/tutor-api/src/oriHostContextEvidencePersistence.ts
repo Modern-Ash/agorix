@@ -17,8 +17,12 @@ export function createOriHostContextEvidencePersistence({
   const context = createOriTrustedHostReviewContextPort(resolveHostContext);
   const persistence = createOriSourceEvidencePersistence(reviews, artifacts);
   return Object.freeze({
-    async persist(handoff: OriMig03ReviewHandoff, reviewId: string, digest: string,
-      captured: OriCapturedMissionSource): Promise<Readonly<Record<string, string>> | null> {
+    async persist(
+      handoff: OriMig03ReviewHandoff,
+      reviewId: string,
+      digest: string,
+      captured: OriCapturedMissionSource,
+    ): Promise<Readonly<Record<string, string>> | null> {
       if (!captured.oriProposal) return null;
       const host = await context.resolveFor(captured);
       if (!host) return null;

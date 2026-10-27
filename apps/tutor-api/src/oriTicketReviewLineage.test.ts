@@ -6,8 +6,12 @@ describe("MIG-03 ticket lineage", () => {
   it("rejects duplicate, invalid and cross-project bindings", () => {
     const store = openOriTicketReviewLineageStore(":memory:");
     const entry = {
-      ticketId: id, owner: "student", projectId: "project",
-      reviewId: "pilot", digest: "a".repeat(64), revision: 1,
+      ticketId: id,
+      owner: "student",
+      projectId: "project",
+      reviewId: "pilot",
+      digest: "a".repeat(64),
+      revision: 1,
     };
     expect(store.bind(entry)).toBe(true);
     expect(store.bind(entry)).toBe(false);

@@ -18,26 +18,33 @@ export function createOriRenderedHintReceiptSource() {
   const key = (id: string, index: number) => JSON.stringify([id, index]);
   return Object.freeze({
     recordFromHost(receipt: OriHostHintReceipt): boolean {
-      if (!receipt.actuallyRendered || !receipt.missionId ||
-          !Number.isSafeInteger(receipt.missionIndex) ||
-          receipt.hint.schema !== "agorix/pedagogical-text-hint/v1" ||
-          receipt.hint.appliedChanges !== false ||
-          typeof receipt.hint.hint !== "string" ||
-          receipt.hint.hint.trim().length < 8 ||
-          receipt.hint.hint.length > 180)
+      if (
+        !receipt.actuallyRendered ||
+        !receipt.missionId ||
+        !Number.isSafeInteger(receipt.missionIndex) ||
+        receipt.hint.schema !== "agorix/pedagogical-text-hint/v1" ||
+        receipt.hint.appliedChanges !== false ||
+        typeof receipt.hint.hint !== "string" ||
+        receipt.hint.hint.trim().length < 8 ||
+        receipt.hint.hint.length > 180
+      )
         return false;
       receipts.set(key(receipt.missionId, receipt.missionIndex), Object.freeze(receipt));
       return true;
     },
-    async resolve(missionId: string, missionIndex: number):
-      Promise<OriTrustedHostReviewContext | null> {
+    async resolve(
+      missionId: string,
+      missionIndex: number,
+    ): Promise<OriTrustedHostReviewContext | null> {
       const receipt = receipts.get(key(missionId, missionIndex));
       if (!receipt || !receipt.actuallyRendered) return null;
       return Object.freeze({
-        missionId, missionIndex,
+        missionId,
+        missionIndex,
         learningContext: receipt.learningContext,
         learnerFacingExplanation: {
-          text: receipt.hint.hint, source: "host-rendered" as const,
+          text: receipt.hint.hint,
+          source: "host-rendered" as const,
         },
       });
     },

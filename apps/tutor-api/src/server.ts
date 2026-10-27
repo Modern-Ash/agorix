@@ -83,7 +83,8 @@ export interface TutorServerOptions {
   /** Separate opt-in presentation acknowledgement route; default off. */
   readonly oriPresentationAckEnabled?: boolean;
   readonly oriPresentationAckHandler?: (
-    request: IncomingMessage, response: ServerResponse,
+    request: IncomingMessage,
+    response: ServerResponse,
   ) => Promise<void>;
   readonly oriReviewPropose?: (owner: string, projectId: string) => Promise<OriReviewTicket | null>;
   readonly oriReviewIdentity?: OriReviewIdentityResolver;
@@ -234,8 +235,11 @@ export function createTutorServer(options: TutorServerOptions): Server {
     }
     if (path.startsWith("/api/tutor/admin/")) return adminRoute(path, request, response);
     if (path === "/api/tutor/ori/review/presented") {
-      if (!options.oriReviewEnabled || !options.oriPresentationAckEnabled ||
-          !options.oriPresentationAckHandler)
+      if (
+        !options.oriReviewEnabled ||
+        !options.oriPresentationAckEnabled ||
+        !options.oriPresentationAckHandler
+      )
         return send(response, 404, error("not-found"));
       return options.oriPresentationAckHandler(request, response);
     }

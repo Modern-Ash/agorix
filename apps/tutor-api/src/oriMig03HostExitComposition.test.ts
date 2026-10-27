@@ -12,14 +12,22 @@ const id = "123e4567-e89b-42d3-a456-426614174000";
 function bundle(): Bundle {
   const payload = {
     schema: "agorix/ori-mig03-educator-audit/v1" as const,
-    reviewId: "pilot", missionId: "move", ticketId: id,
-    reviewDigest: "a".repeat(64), reviewRevision: 1,
-    proposalEvidenceHash: "b".repeat(64), presentationHash: "c".repeat(64),
-    technicalReadiness: "blocked" as const, blockers: ["review-required"],
-    humanApproval: false as const, rolloutAuthorized: false as const,
+    reviewId: "pilot",
+    missionId: "move",
+    ticketId: id,
+    reviewDigest: "a".repeat(64),
+    reviewRevision: 1,
+    proposalEvidenceHash: "b".repeat(64),
+    presentationHash: "c".repeat(64),
+    technicalReadiness: "blocked" as const,
+    blockers: ["review-required"],
+    humanApproval: false as const,
+    rolloutAuthorized: false as const,
   };
-  return { ...payload,
-    auditHash: createHash("sha256").update(JSON.stringify(payload)).digest("hex") };
+  return {
+    ...payload,
+    auditHash: createHash("sha256").update(JSON.stringify(payload)).digest("hex"),
+  };
 }
 describe("MIG-03 host exit composition", () => {
   it("executes concrete host checks and reports missing evidence", async () => {
@@ -28,11 +36,18 @@ describe("MIG-03 host exit composition", () => {
     const presentations = openOriTicketPresentationSqliteStore(":memory:");
     const composition = createOriMig03HostExitComposition({
       session: async () => ({ accountId: "student", sessionId: "session" }),
-      repository: { get: async () => ({
-        ownerId: "student", projectId: "project",
-      }) } as unknown as ProjectRepository,
-      projectId: "project", ticketId: id, reviewId: "pilot",
-      presentations, reviews, lineage,
+      repository: {
+        get: async () => ({
+          ownerId: "student",
+          projectId: "project",
+        }),
+      } as unknown as ProjectRepository,
+      projectId: "project",
+      ticketId: id,
+      reviewId: "pilot",
+      presentations,
+      reviews,
+      lineage,
       resolveTicket: async () => null,
       checkOriProcess: async () => false,
       humanReviewVerified: async () => false,
@@ -42,6 +57,8 @@ describe("MIG-03 host exit composition", () => {
     expect(report?.blockers).toContain("durable-storage-unverified");
     expect(report?.blockers).toContain("real-ori-process-unverified");
     expect(report?.rolloutAuthorized).toBe(false);
-    lineage.close(); presentations.close(); reviews.close();
+    lineage.close();
+    presentations.close();
+    reviews.close();
   });
 });

@@ -27,34 +27,53 @@ export function openOriSqliteRenderedHintReceiptStore(path: string) {
   return Object.freeze({
     recordFromHost(receipt: OriHostHintReceipt): boolean {
       const context = receipt.learningContext;
-      if (!ID.test(receipt.missionId) ||
-          !Number.isSafeInteger(receipt.missionIndex) || receipt.missionIndex < 0 ||
-          !receipt.actuallyRendered || receipt.hint.schema !== "agorix/pedagogical-text-hint/v1" ||
-          receipt.hint.appliedChanges !== false ||
-          typeof receipt.hint.hint !== "string" ||
-          receipt.hint.hint.trim().length < 8 || receipt.hint.hint.length > 180 ||
-          !Number.isSafeInteger(context.attempts) || context.attempts < 0 ||
-          !Number.isSafeInteger(context.hintsUsed) || context.hintsUsed < 0 ||
-          !["explore", "connect", "translate"].includes(context.learningStage))
+      if (
+        !ID.test(receipt.missionId) ||
+        !Number.isSafeInteger(receipt.missionIndex) ||
+        receipt.missionIndex < 0 ||
+        !receipt.actuallyRendered ||
+        receipt.hint.schema !== "agorix/pedagogical-text-hint/v1" ||
+        receipt.hint.appliedChanges !== false ||
+        typeof receipt.hint.hint !== "string" ||
+        receipt.hint.hint.trim().length < 8 ||
+        receipt.hint.hint.length > 180 ||
+        !Number.isSafeInteger(context.attempts) ||
+        context.attempts < 0 ||
+        !Number.isSafeInteger(context.hintsUsed) ||
+        context.hintsUsed < 0 ||
+        !["explore", "connect", "translate"].includes(context.learningStage)
+      )
         return false;
-      const result = insert.run(receipt.missionId, receipt.missionIndex,
-        receipt.hint.hint, context.attempts, context.hintsUsed, context.learningStage);
+      const result = insert.run(
+        receipt.missionId,
+        receipt.missionIndex,
+        receipt.hint.hint,
+        context.attempts,
+        context.hintsUsed,
+        context.learningStage,
+      );
       return result.changes === 1;
     },
-    async resolve(missionId: string, missionIndex: number):
-      Promise<OriTrustedHostReviewContext | null> {
+    async resolve(
+      missionId: string,
+      missionIndex: number,
+    ): Promise<OriTrustedHostReviewContext | null> {
       if (!ID.test(missionId) || !Number.isSafeInteger(missionIndex)) return null;
       const row = lookup.get(missionId, missionIndex);
       if (!row) return null;
       return {
-        missionId, missionIndex,
+        missionId,
+        missionIndex,
         learningContext: {
-          attempts: Number(row["attempts"]), hintsUsed: Number(row["hints_used"]),
-          learningStage: String(row["learning_stage"]) as
-            OriTrustedHostReviewContext["learningContext"]["learningStage"],
+          attempts: Number(row["attempts"]),
+          hintsUsed: Number(row["hints_used"]),
+          learningStage: String(
+            row["learning_stage"],
+          ) as OriTrustedHostReviewContext["learningContext"]["learningStage"],
         },
         learnerFacingExplanation: {
-          text: String(row["hint_text"]), source: "host-rendered" as const,
+          text: String(row["hint_text"]),
+          source: "host-rendered" as const,
         },
       };
     },

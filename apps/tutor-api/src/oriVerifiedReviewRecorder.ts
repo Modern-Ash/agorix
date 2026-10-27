@@ -7,8 +7,12 @@ import type { OriVerifiedEducator } from "./oriEducatorReviewWorkflow.js";
 import { openOriAtomicEducatorReviewStore } from "./oriAtomicEducatorReviewStore.js";
 
 export interface OriVerifiedEvidenceResolver {
-  verify(reviewId: string, digest: string, missionId: string,
-    evidenceRefs: Readonly<Record<string, string>>): Promise<boolean>;
+  verify(
+    reviewId: string,
+    digest: string,
+    missionId: string,
+    evidenceRefs: Readonly<Record<string, string>>,
+  ): Promise<boolean>;
 }
 
 /**
@@ -34,23 +38,40 @@ export function createOriVerifiedReviewRecorder(
       const state = store.get(reviewId);
       if (!state || state.digest !== expectedDigest || state.revision !== expectedRevision)
         return "conflict";
-      const item = handoff.pendingEvidence.find((entry) => entry.missionId === submission.missionId);
-      if (!item || handoff.deferredMissionIds.includes(submission.missionId) ||
-          handoff.unresolvedMissionIds.includes(submission.missionId))
+      const item = handoff.pendingEvidence.find(
+        (entry) => entry.missionId === submission.missionId,
+      );
+      if (
+        !item ||
+        handoff.deferredMissionIds.includes(submission.missionId) ||
+        handoff.unresolvedMissionIds.includes(submission.missionId)
+      )
         return "invalid";
       // Validate this individual decision without declaring whole-batch acceptance.
       const scoped: OriMig03ReviewHandoff = {
-        ...handoff, missionCount: 1, selectedForReview: 1,
-        pendingEvidence: [item], deferredMissionIds: [], unresolvedMissionIds: [],
+        ...handoff,
+        missionCount: 1,
+        selectedForReview: 1,
+        pendingEvidence: [item],
+        deferredMissionIds: [],
+        unresolvedMissionIds: [],
       };
       const validation = validateOriEducatorSubmissions(scoped, [submission]);
       // A rejection is a legitimate human decision to persist, not an approval.
-      if (validation.blockers.some((blocker) => blocker !== "educator-rejection"))
-        return "invalid";
+      if (validation.blockers.some((blocker) => blocker !== "educator-rejection")) return "invalid";
       try {
-        if (!await evidence.verify(reviewId, expectedDigest, submission.missionId,
-          submission.evidenceRefs)) return "invalid";
-      } catch { return "invalid"; }
+        if (
+          !(await evidence.verify(
+            reviewId,
+            expectedDigest,
+            submission.missionId,
+            submission.evidenceRefs,
+          ))
+        )
+          return "invalid";
+      } catch {
+        return "invalid";
+      }
       // Re-read after async verification; CAS also protects the write.
       return store.submit(reviewId, expectedDigest, expectedRevision, principal, {
         missionId: submission.missionId,
