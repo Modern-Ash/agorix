@@ -1,4 +1,3 @@
-import type { OriCapturedMissionSource } from "./oriSourceEvidencePersistence.js";
 import type { OriTrustedHostReviewContext } from "./oriTrustedHostReviewContextPort.js";
 import type { OriTextHintCandidate } from "./oriTextHintModality.js";
 
