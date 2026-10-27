@@ -46,6 +46,8 @@ import {
   saveKidsOriMemory,
   type KidsOriOffer,
 } from "../kidsOri.js";
+import { loadKidsMastery } from "../kidsMastery.js";
+import { adaptInterventionByStage, stageBand, stagesOfProgram } from "../kidsStageAdaptation.js";
 import { bumpIndicator } from "../kidsIndicators.js";
 import { useInterventionPolicy } from "../kidsBehavior.js";
 import { requestKidsOriOffer } from "../kidsOriRemote.js";
@@ -73,7 +75,13 @@ import { kidsGoalSpec, listFreeProjectRefs, parseKidsGoalSpec } from "../kidsPro
 import { KIDS_WORLD_STYLES } from "../worlds.js";
 import { KidsOriCard } from "./KidsOriCard.js";
 import { useKidsFlag } from "../kidsFlags.js";
-import { bandProfile, codeTabsForBand, type AgeBand, type CodeTab } from "../kidsAgeBand.js";
+import {
+  bandProfile,
+  codeTabsForBand,
+  hintLevelsForBand,
+  type AgeBand,
+  type CodeTab,
+} from "../kidsAgeBand.js";
 import { KidsOriChat } from "./KidsOriChat.js";
 import { KidsOriGoals } from "./KidsOriGoals.js";
 import { describeOriGoal } from "@agorix/ori-agent";
@@ -266,6 +274,15 @@ export function EditorScreen({
   const [played, setPlayed] = useState<KidsPlayedRun | null>(null);
   const [failedRuns, setFailedRuns] = useState(0);
   const interventionPolicy = useInterventionPolicy();
+  // The runtime's evidence about this child (kept on the device) sets Ori's pace (issue #611).
+  const pacedPolicy = useMemo(
+    () =>
+      adaptInterventionByStage(
+        interventionPolicy,
+        stageBand(stagesOfProgram(loadKidsMastery(), history.current)),
+      ),
+    [interventionPolicy, history.current, failedRuns, played],
+  );
   const [step, setStep] = useState(0);
   const [oriMemory, setOriMemory] = useState(loadKidsOriMemory);
   const [oriOpen, setOriOpen] = useState(false);
@@ -335,7 +352,7 @@ export function EditorScreen({
             failedRuns,
             hintsUsed: usedHintLevels.length,
           },
-          interventionPolicy,
+          pacedPolicy,
         )
       : rawOriOffer;
   const oriMotion = oriWaiting
@@ -1126,7 +1143,7 @@ export function EditorScreen({
                 {locale === "es" ? "Pista" : "Hint"} {level}: {mission.hintLadder[level - 1]?.text}
               </p>
             ))}
-            {usedHintLevels.length < KIDS_HINT_LEVELS.length ? (
+            {usedHintLevels.length < hintLevelsForBand(ageBand) ? (
               <button type="button" className="kids-button" onClick={showNextHint}>
                 {usedHintLevels.length === 4
                   ? t("seeIdea")

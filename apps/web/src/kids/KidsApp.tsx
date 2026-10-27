@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef, useState } from "react";
+import { useEffect, useReducer, useRef, useState, type CSSProperties } from "react";
 import "@fontsource/atkinson-hyperlegible/400.css";
 import "@fontsource/atkinson-hyperlegible/700.css";
 import "@fontsource/epilogue/latin-700.css";
@@ -184,6 +184,17 @@ export function KidsApp({
     saveAdultSettings(next);
   }
 
+  // Text size follows the band for the whole Kids area; the browser's own size comes back on leaving.
+  const fontScale = ageBandsEnabled ? bandProfile(adultSettings.ageBand).fontScale : 1;
+  useEffect(() => {
+    const root = document.documentElement;
+    const before = root.style.fontSize;
+    root.style.fontSize = fontScale === 1 ? before : `${fontScale * 100}%`;
+    return () => {
+      root.style.fontSize = before;
+    };
+  }, [fontScale]);
+
   function onboardNext() {
     if (state.onboardStep === 2) update({ ...progress, onboarded: true, avatar: state.avatar });
     dispatch({ type: "onboardNext" });
@@ -198,7 +209,33 @@ export function KidsApp({
       data-block-palette={scratchBlocks ? "scratch" : "default"}
       data-age-palette={ageBandsEnabled ? bandProfile(adultSettings.ageBand).palette : "warm"}
       data-age-band={ageBandsEnabled ? adultSettings.ageBand : undefined}
+      style={
+        ageBandsEnabled
+          ? ({
+              "--kids-min-target": `${bandProfile(adultSettings.ageBand).minTarget}px`,
+            } as CSSProperties)
+          : undefined
+      }
     >
+      {ageBandsEnabled &&
+      progress.onboarded &&
+      !adultSettings.bandChosen &&
+      state.screen === "map" ? (
+        <aside className="kids-band-ask" role="note">
+          <p>
+            {state.locale === "es"
+              ? "Una persona adulta tiene que elegir la franja de edad para ajustar la herramienta. No pedimos fecha de nacimiento."
+              : "A grown-up needs to pick the age band to fit the tool. We never ask for a birth date."}
+          </p>
+          <button
+            type="button"
+            className="kids-button"
+            onClick={() => dispatch({ type: "go", screen: "parents" })}
+          >
+            {state.locale === "es" ? "Elegir la franja de edad" : "Pick the age band"}
+          </button>
+        </aside>
+      ) : null}
       {ageBandsEnabled ? (
         <header className="kids-age-header">
           <span className="kids-band-chip">

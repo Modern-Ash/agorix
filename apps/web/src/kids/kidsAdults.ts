@@ -12,6 +12,11 @@ export interface AdultSettings {
   readonly readAloud: boolean;
   readonly dailyLimitMinutes: number;
   readonly ageBand: AgeBand;
+  /**
+   * Whether an adult has picked the band on this device (issue #608). Only the category is kept,
+   * never a birth date. Settings saved before this existed count as chosen.
+   */
+  readonly bandChosen: boolean;
 }
 
 const DEFAULT_SETTINGS: AdultSettings = {
@@ -19,6 +24,7 @@ const DEFAULT_SETTINGS: AdultSettings = {
   readAloud: true,
   dailyLimitMinutes: 30,
   ageBand: DEFAULT_AGE_BAND,
+  bandChosen: false,
 };
 
 function localStorageOrUndefined(): Storage | undefined {
@@ -51,6 +57,7 @@ export function loadAdultSettings(
       readAloud: parsed.readAloud,
       dailyLimitMinutes: parsed.dailyLimitMinutes!,
       ageBand: isAgeBand(parsed.ageBand) ? parsed.ageBand : DEFAULT_AGE_BAND,
+      bandChosen: typeof parsed.bandChosen === "boolean" ? parsed.bandChosen : true,
     };
   } catch {
     return DEFAULT_SETTINGS;
