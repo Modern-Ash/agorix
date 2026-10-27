@@ -4,6 +4,7 @@ import { createServer } from "node:net";
 import { resolve, join } from "node:path";
 import { tmpdir } from "node:os";
 import { buildOriMissionDivergenceMatrix } from "./oriMissionDivergenceMatrix.js";
+import { assessOriEvidenceQuality } from "./oriEvidenceQualityGate.js";
 import { afterEach, describe, expect, it } from "vitest";
 import { createOriPlanConsumer } from "./oriPlanConsumer.js";
 import { captureOriMissionParity } from "./oriMissionParityCapture.js";
@@ -57,12 +58,15 @@ describe.skipIf(!runnable)("MIG-03 real Ori shadow mission capture", () => {
     expect(matrix.total).toBe(report.missions);
     expect(matrix.available).toBe(report.available);
     expect(matrix.missing).toBe(report.missing);
+    const evidenceQuality = assessOriEvidenceQuality(matrix);
+    expect(evidenceQuality.pedagogicalApproval).toBe(false);
     const outputDir = process.env["ORI_PARITY_REPORT_DIR"] ?? join(tmpdir(), "agorix-ori-parity");
     mkdirSync(outputDir, { recursive: true });
     writeFileSync(join(outputDir, "ori-mig03-mission-matrix.json"), JSON.stringify({
       schemaVersion: "agorix/ori-mission-parity/v1",
       provenance: "real-loopback-ori-synthetic-inputs",
       pedagogicalApproval: false,
+      evidenceQuality,
       matrix,
     }, null, 2) + "\\n", "utf8");
     expect(report.available).toBeGreaterThan(0);
