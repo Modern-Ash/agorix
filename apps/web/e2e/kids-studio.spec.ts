@@ -2,7 +2,11 @@ import AxeBuilder from "@axe-core/playwright";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { expect, test } from "@playwright/test";
-import { evaluateOriStudioOutput, ORI_STUDIO_VERSION } from "@agorix/ori-agent";
+import {
+  createOriStudioInput,
+  evaluateOriStudioOutput,
+  ORI_STUDIO_VERSION,
+} from "@agorix/ori-agent";
 import { reloadTo } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
@@ -1178,6 +1182,68 @@ test("Ori's server idea is reviewed before it changes a free scene", async ({ pa
   await expect(page.locator(".kids-program-block")).toContainText("Girar a la izquierda");
   expect(requests).toHaveLength(1);
   expect(JSON.stringify(requests[0])).toContain("actor:studio-1-nova");
+});
+
+test("Ori proposes a custom block with numbers and the child reviews the values", async ({
+  page,
+}) => {
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  const requests: unknown[] = [];
+  await page.route("**/api/tutor/studio/ori", async (route) => {
+    const context = route.request().postDataJSON();
+    requests.push(createOriStudioInput(context));
+    const decision = evaluateOriStudioOutput(context, {
+      version: ORI_STUDIO_VERSION,
+      kind: "program-suggestion",
+      actorId: context.actorId,
+      block: { type: "callProcedure", procedureId: "proc-1-1", args: [100] },
+    });
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ message: decision.message, proposal: decision.proposal }),
+    });
+  });
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
+  await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  await page.getByRole("button", { name: "+ Girar a la derecha" }).click();
+  await page.getByRole("textbox", { name: "Título del bloque" }).fill("Paso");
+  await page.getByRole("textbox", { name: "Título del número" }).first().fill("Largo");
+  await page.getByRole("button", { name: "Añadir número", exact: true }).click();
+  await page.getByRole("button", { name: "Crear bloque con estos bloques" }).click();
+  await page.getByRole("combobox", { name: /^Valor de: Mover/ }).selectOption("p1");
+
+  // A second block whose number is a turn, so changing the idea needs degree defaults.
+  await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  await page.getByRole("button", { name: "+ Girar a la izquierda" }).click();
+  await page.getByRole("textbox", { name: "Título del bloque" }).fill("Vuelta");
+  await page.getByRole("textbox", { name: "Título del número" }).first().fill("Ancho");
+  await page.getByRole("button", { name: "Añadir número", exact: true }).click();
+  await page.getByRole("button", { name: "Crear bloque con estos bloques" }).click();
+  await page.getByRole("combobox", { name: /^Valor de: Girar a la izquierda/ }).selectOption("p1");
+
+  await page.getByRole("button", { name: "Pedirle una idea a Ori" }).click();
+  await expect(page.locator(".kids-ori-proposal strong")).toHaveText("+ Usar: Paso (Largo: 100)");
+  const request = JSON.stringify(requests[0]);
+  expect(request).toContain('"unit":"steps"');
+  expect(request).toContain('"unit":"degrees"');
+  expect(request).toContain('"choices"');
+  expect(request).not.toMatch(/Paso|Vuelta|Largo|Ancho/);
+
+  // Changing to the other numbered block uses its default value instead of an invalid call.
+  await page.getByRole("button", { name: "Cambiar idea" }).click();
+  await expect(page.locator(".kids-program-block").last()).toContainText(
+    "Usar: Vuelta (Ancho: 90)",
+  );
 });
 
 test("the adult Ori switch hides scene suggestions", async ({ page }) => {

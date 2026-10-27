@@ -1,8 +1,10 @@
 import { projectProgram, type ProjectionResult, type TextRange } from "@agorix/code-generator";
 import {
+  PROCEDURE_PARAMS_MAX,
   validateProgram,
   type Expression,
   type ExtensionId,
+  type ProcedureParamId,
   type ProjectProgram,
   type Statement,
 } from "@agorix/program-model";
@@ -1273,25 +1275,48 @@ function assertOperation(operation: ProposalOperation, path: string): void {
 }
 
 /** Ids of the child's own blocks a statement calls, including inside repeat and if bodies. */
-function procedureIdsForStatement(statement: Statement): readonly string[] {
-  switch (statement.type) {
-    case "callProcedure":
-      return [statement.procedureId];
-    case "repeat":
-    case "repeatUntil":
-      return statement.body.flatMap(procedureIdsForStatement);
-    case "if":
-      return [...statement.then, ...(statement.else ?? [])].flatMap(procedureIdsForStatement);
-    default:
-      return [];
-  }
+function procedureAritiesForStatement(statement: Statement): Map<string, number> {
+  const arities = new Map<string, number>();
+  const visit = (item: Statement) => {
+    switch (item.type) {
+      case "callProcedure":
+        arities.set(
+          item.procedureId,
+          Math.max(arities.get(item.procedureId) ?? 0, item.args?.length ?? 0),
+        );
+        return;
+      case "repeat":
+      case "repeatUntil":
+        item.body.forEach(visit);
+        return;
+      case "if":
+        [...item.then, ...(item.else ?? [])].forEach(visit);
+        return;
+      default:
+        return;
+    }
+  };
+  visit(statement);
+  return arities;
 }
 
 function probeProgramForStatement(statement: Statement): ProjectProgram {
   const variableIds = variableIdsForStatement(statement);
-  // A call is checked here only for shape; whether the block really exists is checked against the
-  // actual script when the proposal is applied (validateProgram of the candidate program).
-  const procedureIds = [...new Set(procedureIdsForStatement(statement))];
+  // A call is checked here only for shape; whether the block really exists, and whether its number
+  // of arguments matches, is checked against the actual script when the proposal is applied.
+  const procedures = [...procedureAritiesForStatement(statement)].map(([id, arity]) => ({
+    id,
+    name: id,
+    ...(arity === 0
+      ? {}
+      : {
+          params: Array.from({ length: Math.min(arity, PROCEDURE_PARAMS_MAX) }, (_, index) => ({
+            id: `p${index + 1}` as ProcedureParamId,
+            name: `n${index + 1}`,
+          })),
+        }),
+    body: [{ type: "hide" as const }],
+  }));
   const packs = new Set<ExtensionId>();
   collectPacks(statement, packs);
   return {
@@ -1312,15 +1337,7 @@ function probeProgramForStatement(statement: Statement): ProjectProgram {
         id: "probe",
         trigger: { type: "onStart" },
         statements: [statement],
-        ...(procedureIds.length === 0
-          ? {}
-          : {
-              procedures: procedureIds.map((id) => ({
-                id,
-                name: id,
-                body: [{ type: "hide" as const }],
-              })),
-            }),
+        ...(procedures.length === 0 ? {} : { procedures }),
       },
     ],
   };

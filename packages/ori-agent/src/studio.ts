@@ -1,5 +1,10 @@
 import {
+  PROCEDURE_NUMBER_CHOICES,
+  procedureNumberUnits,
   validateProgram,
+  type NumericLiteralExpression,
+  type Procedure,
+  type ProcedureNumberUnit,
   type ProjectProgram,
   type Script,
   type Statement,
@@ -13,7 +18,7 @@ import {
 } from "@agorix/proposals";
 import type { OriTextModel } from "./index.js";
 
-export const ORI_STUDIO_VERSION = "agorix/ori-studio/v1";
+export const ORI_STUDIO_VERSION = "agorix/ori-studio/v2";
 export interface OriStudioContext {
   readonly actorId: string;
   readonly locale: "es" | "en";
@@ -65,13 +70,39 @@ function target(context: OriStudioContext) {
 const PROCEDURE_ID = /^proc-[1-9][0-9]*-[1-9][0-9]*$/;
 
 /**
- * The child's own blocks of this character, by id only. Ori never sees or chooses a title. Blocks
- * with numbers are left out: Ori cannot pick the child's values, and a call needs them.
+ * The child's own blocks of this character, by id only. Ori never sees or chooses a title. A block
+ * with numbers carries the unit and the closed values of each number; never the child's values.
  */
-function procedureIds(script: Script): readonly string[] {
-  return (script.procedures ?? [])
-    .filter((procedure) => procedure.params === undefined)
-    .map((procedure) => procedure.id);
+function proceduresOf(script: Script): readonly Procedure[] {
+  return script.procedures ?? [];
+}
+
+function numberSlots(procedure: Procedure, all: readonly Procedure[]) {
+  return procedureNumberUnits(procedure, all).map((unit: ProcedureNumberUnit) => ({
+    unit,
+    choices: PROCEDURE_NUMBER_CHOICES[unit],
+  }));
+}
+
+function allowedCall(
+  statement: Extract<Statement, { type: "callProcedure" }>,
+  script: Script,
+): boolean {
+  if (!PROCEDURE_ID.test(statement.procedureId)) return false;
+  const procedure = proceduresOf(script).find((item) => item.id === statement.procedureId);
+  if (!procedure) return false;
+  const units = procedureNumberUnits(procedure, proceduresOf(script));
+  if (units.length === 0) return statement.args === undefined;
+  const args = statement.args;
+  return (
+    args !== undefined &&
+    args.length === units.length &&
+    args.every(
+      (arg, index) =>
+        arg.type === "numericLiteral" &&
+        PROCEDURE_NUMBER_CHOICES[units[index]!]!.includes(arg.value),
+    )
+  );
 }
 
 function allowed(statement: Statement, script: Script): boolean {
@@ -79,45 +110,73 @@ function allowed(statement: Statement, script: Script): boolean {
     (statement.type === "move" && [40, 80, 120, 160, 200].includes(statement.steps)) ||
     (statement.type === "turn" && [-90, 90].includes(statement.degrees)) ||
     // Using a block the child already made. Ori cannot create, rename or delete one.
-    (statement.type === "callProcedure" &&
-      PROCEDURE_ID.test(statement.procedureId) &&
-      procedureIds(script).includes(statement.procedureId))
+    (statement.type === "callProcedure" && allowedCall(statement, script))
   );
+}
+
+/** Rebuild a model call from plain numbers; every value must be one the child's block offers. */
+function callFromModel(
+  block: Record<string, unknown>,
+  script: Script,
+): Extract<Statement, { type: "callProcedure" }> {
+  const keys = Object.keys(block).sort().join();
+  if (typeof block.procedureId !== "string" || !PROCEDURE_ID.test(block.procedureId))
+    throw new Error("unsupported block");
+  const procedure = proceduresOf(script).find((item) => item.id === block.procedureId);
+  if (!procedure) throw new Error("unsupported block");
+  const units = procedureNumberUnits(procedure, proceduresOf(script));
+  if (units.length === 0) {
+    if (keys !== "procedureId,type") throw new Error("unsupported block");
+    return { type: "callProcedure", procedureId: block.procedureId };
+  }
+  if (keys !== "args,procedureId,type" || !Array.isArray(block.args))
+    throw new Error("unsupported block");
+  const args = block.args;
+  if (args.length !== units.length) throw new Error("unsupported block");
+  return {
+    type: "callProcedure",
+    procedureId: block.procedureId,
+    args: args.map((value, index): NumericLiteralExpression => {
+      if (typeof value !== "number" || !PROCEDURE_NUMBER_CHOICES[units[index]!]!.includes(value))
+        throw new Error("unsupported block");
+      return { type: "numericLiteral", value };
+    }),
+  };
 }
 
 export function createOriStudioInput(context: OriStudioContext) {
   const selected = target(context);
+  const procedures = proceduresOf(selected.script);
   return {
     version: ORI_STUDIO_VERSION,
     locale: context.locale,
     actorId: context.actorId,
     actorCount: selected.program.scripts.length,
     selectedBlocks: selected.script.statements.map((statement) => statement.type),
-    // Ids and the kinds of blocks inside only: the child's titles are their own text.
-    procedures: (selected.script.procedures ?? [])
-      .filter((procedure) => procedure.params === undefined)
-      .map((procedure) => ({
-        id: procedure.id,
-        blocks: procedure.body.map((statement) => statement.type),
-      })),
+    // Ids, block kinds and closed number choices only: the child's titles and values are their own.
+    procedures: procedures.map((procedure) => ({
+      id: procedure.id,
+      blocks: procedure.body.map((statement) => statement.type),
+      numbers: numberSlots(procedure, procedures),
+    })),
     allowedBlocks: [
       { type: "move", steps: 40 },
       { type: "move", steps: 80 },
       { type: "turn", degrees: -90 },
       { type: "turn", degrees: 90 },
-      ...procedureIds(selected.script).map((procedureId) => ({
+      ...procedures.map((procedure) => ({
         type: "callProcedure",
-        procedureId,
+        procedureId: procedure.id,
       })),
     ],
   };
 }
 
 export function getOriStudioInstructions(locale: "es" | "en"): string {
-  const contract = `Contract ${ORI_STUDIO_VERSION}. Return exactly one JSON object: {"version":"${ORI_STUDIO_VERSION}","kind":"program-suggestion","actorId":"<input.actorId>","block":{"type":"move","steps":40|80|120|160|200}} or use {"type":"turn","degrees":-90|90} or, only when input.procedures is not empty, {"type":"callProcedure","procedureId":"<one id from input.procedures>"} to reuse a block the child made; alternatively {"version":"${ORI_STUDIO_VERSION}","kind":"refusal"}. No other keys, prose, links, tools or personal data. Use only the selected actor. Never claim the program ran. The child reviews before any change.`;
+  const contract = `Contract ${ORI_STUDIO_VERSION}. Return exactly one JSON object: {"version":"${ORI_STUDIO_VERSION}","kind":"program-suggestion","actorId":"<input.actorId>","block":{"type":"move","steps":40|80|120|160|200}} or use {"type":"turn","degrees":-90|90} or, only when input.procedures is not empty, {"type":"callProcedure","procedureId":"<one id from input.procedures>"} to reuse a block the child made. If that procedure lists numbers, add "args":[<one number per numbers entry, each chosen from that entry's choices>]; omit "args" when it lists none. Alternatively {"version":"${ORI_STUDIO_VERSION}","kind":"refusal"}. No other keys, prose, links, tools or personal data. Use only the selected actor. Never claim the program ran. The child reviews before any change.`;
   return locale === "es"
-    ? `Sos Ori. Sugerí un solo movimiento o giro para el personaje elegido en Agorix. El niño decide y el programa prueba. ${contract}`
-    : `You are Ori. Suggest one move or turn for the selected Agorix character. The child decides and the program proves. ${contract}`;
+    ? `Sos Ori. Sugerí un solo movimiento, giro o bloque propio para el personaje elegido en Agorix. El niño decide y el programa prueba. ${contract}`
+    : `You are Ori. Suggest one move, turn or one of the child's own blocks for the selected Agorix character. The child decides and the program proves. ${contract}`;
 }
 
 function proposalFor(context: OriStudioContext, statement: Statement): ProgramProposal {
@@ -188,7 +247,7 @@ export function evaluateOriStudioOutput(
   context: OriStudioContext,
   raw: unknown,
 ): OriStudioDecision {
-  target(context);
+  const selected = target(context);
   try {
     const parsed =
       typeof raw === "string" && raw.length <= MAX_OUTPUT_CHARS ? JSON.parse(raw) : raw;
@@ -223,11 +282,8 @@ export function evaluateOriStudioOutput(
             Object.keys(block).sort().join() === "degrees,type" &&
             [-90, 90].includes(block.degrees as number)
           ? { type: "turn", degrees: block.degrees as number }
-          : block.type === "callProcedure" &&
-              Object.keys(block).sort().join() === "procedureId,type" &&
-              typeof block.procedureId === "string" &&
-              procedureIds(target(context).script).includes(block.procedureId)
-            ? { type: "callProcedure", procedureId: block.procedureId }
+          : block.type === "callProcedure"
+            ? callFromModel(block, selected.script)
             : (() => {
                 throw new Error("unsupported block");
               })();

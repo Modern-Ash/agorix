@@ -2015,7 +2015,20 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
             : operation.statement.type === "move"
               ? { type: "move" as const, steps: operation.statement.steps === 40 ? 80 : 40 }
               : operation.statement.type === "callProcedure" && otherOwnBlock !== undefined
-                ? { type: "callProcedure" as const, procedureId: otherOwnBlock.id }
+                ? {
+                    type: "callProcedure" as const,
+                    procedureId: otherOwnBlock.id,
+                    ...(otherOwnBlock.params?.length
+                      ? {
+                          args: studioProcedureNumberUnits(otherOwnBlock, target.procedures).map(
+                            (unit) => ({
+                              type: "numericLiteral" as const,
+                              value: STUDIO_NUMBER_DEFAULTS[unit],
+                            }),
+                          ),
+                        }
+                      : {}),
+                  }
                 : (() => {
                     throw new Error("invalid Ori block");
                   })();
@@ -4326,7 +4339,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                       : proposedStatement?.type === "turn"
                         ? `+ ${proposedStatement.degrees < 0 ? copy.turnLeft : copy.turnRight}`
                         : proposedStatement?.type === "callProcedure"
-                          ? `+ ${copy.useBlock}: ${script?.procedures?.find((item) => item.id === proposedStatement.procedureId)?.name ?? "?"}`
+                          ? `+ ${blockLabel(proposedStatement)}`
                           : ""}
                   </strong>
                   <div>
