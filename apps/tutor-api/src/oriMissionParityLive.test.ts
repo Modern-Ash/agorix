@@ -9,6 +9,7 @@ import { createOriEducatorReviewPackage } from "./oriEducatorReviewPackage.js";
 import { buildOriPedagogicalReviewCorpus } from "./oriPedagogicalReviewCorpus.js";
 import { planOriPedagogicalReview } from "./oriPedagogicalReviewSampling.js";
 import { buildOriAutomatedTriageReport } from "./oriAutomatedPedagogicalTriage.js";
+import { buildOriReviewBriefing } from "./oriMig03ReviewBriefing.js";
 import { afterEach, describe, expect, it } from "vitest";
 import { createOriPlanConsumer } from "./oriPlanConsumer.js";
 import { captureOriMissionParity } from "./oriMissionParityCapture.js";
@@ -74,6 +75,7 @@ describe.skipIf(!runnable)("MIG-03 real Ori shadow mission capture", () => {
     expect(reviewSampling.selected.length + reviewSampling.deferred.length).toBe(matrix.total);
     const automatedTriage = buildOriAutomatedTriageReport(matrix, reviewSampling);
     expect(automatedTriage.rows).toHaveLength(matrix.total);
+    const reviewBriefing = buildOriReviewBriefing(automatedTriage, reviewSampling);
     expect(evidenceQuality.pedagogicalApproval).toBe(false);
     const outputDir = process.env["ORI_PARITY_REPORT_DIR"] ?? join(tmpdir(), "agorix-ori-parity");
     mkdirSync(outputDir, { recursive: true });
@@ -89,6 +91,7 @@ describe.skipIf(!runnable)("MIG-03 real Ori shadow mission capture", () => {
           pedagogicalCorpus,
           reviewSampling,
           automatedTriage,
+          reviewBriefing,
           matrix,
         },
         null,
