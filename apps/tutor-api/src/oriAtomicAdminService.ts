@@ -2,6 +2,7 @@ import type { OriMissionDivergenceMatrix } from "./oriMissionDivergenceMatrix.js
 import type { OriReviewDecisionInput, OriVerifiedEducator } from "./oriEducatorReviewWorkflow.js";
 import { openOriAtomicEducatorReviewStore } from "./oriAtomicEducatorReviewStore.js";
 import { createOriPersistedReadinessService } from "./oriPersistedReadiness.js";
+import { buildOriMig03AcceptanceManifest } from "./oriMig03AcceptanceManifest.js";
 
 /**
  * Internal, server-only administrative facade. The host must authenticate and
@@ -13,6 +14,14 @@ export function createOriAtomicAdminService(
 ) {
   const readiness = createOriPersistedReadinessService(store);
   return Object.freeze({
+    async acceptanceManifest(session: unknown, id: string, provenance: {
+      readonly evidenceDigest: string;
+      readonly verified: boolean;
+    }) {
+      const principal = await authorize(session);
+      if (!principal?.canReviewOri) return null;
+      return buildOriMig03AcceptanceManifest(store, id, provenance);
+    },
     async readiness(session: unknown, id: string, provenance: {
       readonly evidenceDigest: string;
       readonly verified: boolean;

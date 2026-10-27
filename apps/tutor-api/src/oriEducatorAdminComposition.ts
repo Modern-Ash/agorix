@@ -27,6 +27,10 @@ export function createOriEducatorAdminComposition({
     return authorize(session as IncomingMessage);
   });
   return Object.freeze({
+    acceptanceManifest: (request: IncomingMessage, reviewId: string, provenance: {
+      readonly evidenceDigest: string;
+      readonly verified: boolean;
+    }) => service.acceptanceManifest(request, reviewId, provenance),
     readiness: (request: IncomingMessage, reviewId: string, provenance: {
       readonly evidenceDigest: string;
       readonly verified: boolean;
