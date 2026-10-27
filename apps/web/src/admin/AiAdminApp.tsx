@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import "@fontsource/epilogue/700.css";
 import "@fontsource/atkinson-hyperlegible/400.css";
 import "./aiAdmin.css";
+import { AgentCard, type AgentInfo } from "./AgentCard.js";
 import { BehaviorSettings, type BehaviorConfig } from "./BehaviorSettings.js";
 import { GroupSettings, type GroupConfig } from "./GroupSettings.js";
 
@@ -49,6 +50,7 @@ const gateMessages: Record<string, string> = {
   "prompt-override": "Un texto adicional intenta anular las reglas de seguridad.",
   "intervention-floor": "La intervención de Ori queda fuera de los límites de seguridad.",
   "too-few-goals": "Con ese tamaño quedan muy pocas metas para ofrecer.",
+  "agent-contract": "Un agente perdió su contrato fijo.",
   "chat-safety": "La prueba de seguridad del chat no pasó.",
   "intent-validity": "Una meta de Ori dejó de ser válida.",
 };
@@ -81,6 +83,10 @@ export function AiAdminApp() {
   const [preview, setPreview] = useState<Section[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [agents, setAgents] = useState<{
+    readonly lockedRules: readonly string[];
+    readonly agents: readonly AgentInfo[];
+  } | null>(null);
   const [chatStats, setChatStats] = useState<Record<string, number> | null>(null);
 
   async function reload() {
@@ -89,6 +95,9 @@ export function AiAdminApp() {
     setDraft(structuredClone(data.current.config));
     setHistory(data.history);
     setPreview(null);
+    void api<{ lockedRules: string[]; agents: AgentInfo[] }>("agents")
+      .then(setAgents)
+      .catch(() => setAgents(null));
     void api<{ totals: Record<string, number> }>("ori-stats")
       .then((stats) => setChatStats(stats.totals))
       .catch(() => setChatStats(null));
@@ -251,6 +260,11 @@ export function AiAdminApp() {
                 }}
               />
             )}
+            {agents?.agents
+              .filter((agent) => agent.capability === section)
+              .map((agent) => (
+                <AgentCard key={agent.capability} agent={agent} lockedRules={agents.lockedRules} />
+              ))}
             {draft && section !== "group" && section !== "behavior" && (
               <div className="ai-admin-card">
                 <p className="ai-admin-note">

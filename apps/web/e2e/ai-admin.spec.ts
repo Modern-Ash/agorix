@@ -248,3 +248,72 @@ test("AI operations console shows Ori's intervention with synthetic learners and
   );
   await expect(page.getByRole("button", { name: "Publicar revisión" })).toBeDisabled();
 });
+
+test("AI operations console explains each agent's role, locked rules and full instructions", async ({
+  page,
+}) => {
+  const policy = {
+    enabled: true,
+    provider: "auto",
+    model: "gpt-6-luna",
+    timeoutMs: 7000,
+    requestsPerMinute: 6,
+    promptTemplate: "",
+    fallback: "deterministic",
+  };
+  const capabilities = Object.fromEntries(
+    ["mission", "advanced", "studio", "chat", "goals", "legacy"].map((key) => [
+      key,
+      { ...policy, provider: key === "legacy" ? "fake" : "auto" },
+    ]),
+  );
+  const config = { schema: "agorix/ai-config/v3", capabilities };
+  const history = [
+    {
+      revision: 1,
+      author: "system",
+      createdAt: new Date().toISOString(),
+      action: "seed",
+      sourceRevision: null,
+    },
+  ];
+  await page.route("**/api/tutor/admin/**", async (route) => {
+    const path = new URL(route.request().url()).pathname.split("/").at(-1);
+    if (path === "session" && route.request().method() === "GET")
+      return route.fulfill({ status: 401, json: { error: { code: "unauthorized" } } });
+    if (path === "session") return route.fulfill({ json: { csrf: "csrf", author: "operator" } });
+    if (path === "config")
+      return route.fulfill({ json: { current: { ...history[0], config, revision: 1 }, history } });
+    if (path === "agents")
+      return route.fulfill({
+        json: {
+          lockedRules: ["closed-output-schema", "deterministic-fallback"],
+          agents: [
+            {
+              capability: "chat",
+              role: "classifier",
+              contract: "agorix/ori-chat/v1",
+              outputs: ["replyId: blocks | move | refusal"],
+              input: "untrusted-child-choice",
+              fixedInstructions: "Contract agorix/ori-chat/v1.",
+              effectiveInstructions: "Contract agorix/ori-chat/v1.",
+            },
+          ],
+        },
+      });
+    return route.fulfill({ status: 404, json: {} });
+  });
+  await page.goto("/admin/ai");
+  await page.getByLabel("Clave de administración").fill("a-strong-admin-password");
+  await page.getByRole("button", { name: "Ingresar" }).click();
+  await page.getByRole("button", { name: /Conversación/ }).click();
+  const card = page.getByRole("region", { name: "Agente Clasificador" });
+  await expect(card).toContainText("agorix/ori-chat/v1");
+  await expect(card).toContainText("Solo puede devolver el esquema cerrado");
+  await expect(card).toContainText("Si falla, responde la regla determinista");
+  await expect(card).toContainText("nunca como instrucción");
+  await card.getByText("Instrucciones completas que recibe el modelo").click();
+  await expect(card.getByText("Contract agorix/ori-chat/v1.", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: /Ori en misiones/ }).click();
+  await expect(page.getByRole("region", { name: "Agente Clasificador" })).toHaveCount(0);
+});

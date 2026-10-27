@@ -347,3 +347,10 @@ Each iteration needs an issue with an observable child journey, success and fail
 - **Aprendices simulados (ADM-05):** la vista previa del panel muestra, para seis situaciones inventadas (nunca datos reales), si Ori ofrecería una idea y de qué tamaño. Previsualizar no publica.
 - **Gate automático (ADM-06):** antes de publicar, el servidor corre pruebas fijas: texto adicional que intente anular reglas, piso de intervención, metas suficientes, entradas hostiles al chat (ni llegan al modelo; salidas hostiles del modelo se reducen a frases fijas) y validez de todas las metas. Un fallo devuelve solo códigos (`422 gate-failed`) y no guarda nada.
 - **Pendiente de E5:** ADM-02 (definiciones por capacidad), ADM-04 (catálogos de misiones y textos; incluye rechazar misiones insolubles) y ADM-07 (despliegue gradual por grupo o porcentaje). El gate todavía no evalúa solubilidad de misiones porque aún no se administran.
+
+## Agentes por capacidad (E5 / ADM-02)
+
+- Cuatro roles sobre las capacidades de Ori: **clasificador** (chat), **coach** (misiones), **proponedor** (escenas y avanzado) y **compositor** (objetivos). Cada uno tiene contrato versionado, salidas cerradas y qué recibe (`getOriAgentDefinitions`). Solo el clasificador ve el texto del chico, siempre como dato y nunca dentro de las instrucciones; los demás reciben solo ids.
+- El panel de administración muestra, en cada capacidad, el rol, el contrato, lo que puede devolver, las seis reglas fijas y las instrucciones completas que recibe el modelo (`GET /api/tutor/admin/agents`, solo con sesión de admin; el navegador de los chicos nunca las recibe).
+- Seguridad no configurable a la baja: el texto del administrador entra solo mediante `composeOriInstructions`, después del contrato fijo y con la etiqueta `ADMIN_ADDITIONAL_INSTRUCTIONS`; el mismo código lo usa el servidor y la vista previa. El gate de publicación comprueba que cada agente conserve su contrato (`agent-contract`).
+- Los esquemas y prompts base siguen en el código y se editan con revisión, no desde el panel: lo editable es proveedor, modelo, límites y la instrucción adicional.

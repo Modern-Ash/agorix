@@ -311,3 +311,11 @@
     margin: 30px 20px;
   }
 }
+
+.ai-admin-instructions {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 16rem;
+  overflow: auto;
+  font-size: 0.85rem;
+}

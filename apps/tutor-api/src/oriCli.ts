@@ -9,6 +9,7 @@ import {
   runOriAgent,
   type OriAgentContext,
   type OriAgentDecision,
+  composeOriInstructions,
   runOriChat,
   type OriChatContext,
   runOriGoalAgent,
@@ -179,9 +180,7 @@ export function createOriCliService(
         const bin = provider === "codex" ? config.codexBin : config.opencodeBin;
         const directory = mkdtempSync(join(tmpdir(), "agorix-ori-"));
         try {
-          const instructions = policy.promptTemplate
-            ? `${systemInstructions}\n\nADMIN_ADDITIONAL_INSTRUCTIONS:\n${policy.promptTemplate}`
-            : systemInstructions;
+          const instructions = composeOriInstructions(systemInstructions, policy.promptTemplate);
           const input =
             provider === "codex" ? `${instructions}\n\nINPUT_JSON:\n${inputJson}\n` : "";
           if (

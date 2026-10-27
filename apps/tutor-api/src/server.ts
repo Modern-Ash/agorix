@@ -34,9 +34,14 @@ import {
   isOriChatTextValid,
   ORI_CHAT_FALLBACK,
   ORI_CHAT_REFUSAL,
+  composeOriInstructions,
+  fixedOriInstructions,
+  getOriAgentDefinitions,
+  ORI_AGENT_LOCKED_RULES,
   ORI_INTERVENTION_DEFAULT,
   runOriChat,
   simulateOriIntervention,
+  type OriAgentCapability,
   type OriChatContext,
   runOriGoalAgent,
 } from "@agorix/ori-agent";
@@ -341,6 +346,22 @@ export function createTutorServer(options: TutorServerOptions): Server {
     if (path === "/api/tutor/admin/session" && request.method === "DELETE") {
       auth.signOut(request, response);
       return send(response, 200, { ok: true });
+    }
+    if (path === "/api/tutor/admin/agents" && request.method === "GET") {
+      // Admin only: the fixed contract an administrator's text is added after, never replaces.
+      const extra = (capability: OriAgentCapability) =>
+        repository.current().config.capabilities[capability].promptTemplate;
+      return send(response, 200, {
+        lockedRules: ORI_AGENT_LOCKED_RULES,
+        agents: getOriAgentDefinitions().map((agent) => {
+          const fixed = fixedOriInstructions(agent.capability, "es");
+          return {
+            ...agent,
+            fixedInstructions: fixed,
+            effectiveInstructions: composeOriInstructions(fixed, extra(agent.capability)),
+          };
+        }),
+      });
     }
     if (path === "/api/tutor/admin/ori-stats" && request.method === "GET")
       return send(response, 200, chatStats.snapshot());

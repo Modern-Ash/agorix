@@ -202,6 +202,61 @@ describe("AI administrator HTTP boundary", () => {
     ).toEqual(["too-few-goals"]);
   });
 
+  it("shows administrators each agent's fixed contract and appends their text after it", async () => {
+    const { base, repository } = await start();
+    const login = await fetch(`${base}/api/tutor/admin/session`, {
+      method: "POST",
+      headers: { origin: base, "content-type": "application/json" },
+      body: JSON.stringify({ password: ["a-strong", "admin", "password"].join("-") }),
+    });
+    const cookie = login.headers.get("set-cookie")!.split(";")[0]!;
+    const read = async (): Promise<{
+      lockedRules: string[];
+      agents: {
+        capability: string;
+        contract: string;
+        fixedInstructions: string;
+        effectiveInstructions: string;
+      }[];
+    }> =>
+      (await (
+        await fetch(`${base}/api/tutor/admin/agents`, { headers: { origin: base, cookie } })
+      ).json()) as never;
+    expect(
+      (await fetch(`${base}/api/tutor/admin/agents`, { headers: { origin: base } })).status,
+    ).toBe(401);
+    const before = await read();
+    expect(before.agents.map((agent) => agent.capability).sort()).toEqual([
+      "advanced",
+      "chat",
+      "goals",
+      "mission",
+      "studio",
+    ]);
+    expect(before.lockedRules).toContain("closed-output-schema");
+    for (const agent of before.agents) {
+      expect(agent.fixedInstructions).toContain(agent.contract);
+      expect(agent.effectiveInstructions).toBe(agent.fixedInstructions);
+    }
+    const revision = repository.current();
+    repository.publish(
+      {
+        ...revision.config,
+        capabilities: {
+          ...revision.config.capabilities,
+          studio: { ...revision.config.capabilities.studio, promptTemplate: "Sé breve." },
+        },
+      },
+      1,
+      "owner",
+    );
+    const studio = (await read()).agents.find((agent) => agent.capability === "studio")!;
+    expect(studio.effectiveInstructions.startsWith(studio.fixedInstructions)).toBe(true);
+    expect(studio.effectiveInstructions.endsWith("ADMIN_ADDITIONAL_INSTRUCTIONS:\nSé breve.")).toBe(
+      true,
+    );
+  });
+
   it("a disabled published mission policy preserves the child fallback", async () => {
     const { base, repository } = await start();
     const revision = repository.current();

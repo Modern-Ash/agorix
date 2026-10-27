@@ -1,6 +1,9 @@
 import { getKidsMission, KIDS_MISSION_IDS } from "@agorix/curriculum";
 import {
+  composeOriInstructions,
+  fixedOriInstructions,
   isOriChatReply,
+  getOriAgentDefinitions,
   ORI_CHAT_REFUSAL,
   ORI_STUDIO_INTENTS,
   oriIntentSize,
@@ -15,7 +18,12 @@ import type { AiConfig } from "./aiConfig.js";
 
 /** Codes only: a failure never echoes the configuration text that caused it. */
 export type GateFailure =
-  "prompt-override" | "intervention-floor" | "too-few-goals" | "chat-safety" | "intent-validity";
+  | "prompt-override"
+  | "intervention-floor"
+  | "too-few-goals"
+  | "agent-contract"
+  | "chat-safety"
+  | "intent-validity";
 
 const OVERRIDE =
   /\b(?:ignore|ignora|olvida|forget|disregard|override|jailbreak|system prompt|developer mode|no (?:apliques|uses) (?:el )?filtro|disable (?:the )?(?:safety|filter|validator))\b/i;
@@ -81,6 +89,16 @@ function intentsAreValid(): boolean {
   }
 }
 
+/** Every agent keeps its contract first, and an administrator's text only comes after it. */
+function agentsKeepTheirContract(config: AiConfig): boolean {
+  return getOriAgentDefinitions().every((agent) => {
+    const fixed = fixedOriInstructions(agent.capability, "es");
+    const extra = config.capabilities[agent.capability].promptTemplate;
+    const effective = composeOriInstructions(fixed, extra);
+    return fixed.includes(agent.contract) && effective.startsWith(fixed);
+  });
+}
+
 /**
  * The automatic check every candidate configuration passes before it can be published (ADM-06).
  * It re-proves the safety floor with fixed hostile inputs, so a configuration that would weaken
@@ -97,6 +115,7 @@ export async function gateAiConfig(config: AiConfig): Promise<readonly GateFailu
   } catch {
     failures.push("intervention-floor");
   }
+  if (!agentsKeepTheirContract(config)) failures.push("agent-contract");
   if (!(await chatStaysSafe())) failures.push("chat-safety");
   if (!intentsAreValid()) failures.push("intent-validity");
   return failures;
