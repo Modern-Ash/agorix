@@ -4,6 +4,7 @@ import type { OriMig03VerifiedHostProbes } from "./oriMig03ExecutableExitChecks.
 import type { OriReviewTicket } from "./oriReviewRegistry.js";
 import { openOriTicketPresentationSqliteStore } from "./oriTicketPresentationSqliteStore.js";
 import { openOriAtomicEducatorReviewStore } from "./oriAtomicEducatorReviewStore.js";
+import { openOriTicketReviewLineageStore } from "./oriTicketReviewLineage.js";
 
 /**
  * Concrete host-backed checks for one scoped review. No HTTP endpoint, no
@@ -11,7 +12,7 @@ import { openOriAtomicEducatorReviewStore } from "./oriAtomicEducatorReviewStore
  */
 export function createOriMig03HostEvidenceProbes({
   session, repository, projectId, ticketId, resolveTicket,
-  presentations, reviews, reviewId, checkOriProcess, humanReviewVerified,
+  presentations, reviews, lineage, reviewId, checkOriProcess, humanReviewVerified,
 }: {
   readonly session: () => Promise<OriAuthenticatedSession | null>;
   readonly repository: ProjectRepository;
@@ -21,6 +22,7 @@ export function createOriMig03HostEvidenceProbes({
     Promise<OriReviewTicket | null>;
   readonly presentations: ReturnType<typeof openOriTicketPresentationSqliteStore>;
   readonly reviews: ReturnType<typeof openOriAtomicEducatorReviewStore>;
+  readonly lineage: ReturnType<typeof openOriTicketReviewLineageStore>;
   readonly reviewId: string;
   readonly checkOriProcess: () => Promise<boolean>;
   readonly humanReviewVerified: () => Promise<boolean>;
@@ -43,7 +45,9 @@ export function createOriMig03HostEvidenceProbes({
       if (!user) return false;
       const ticket = await resolveTicket(user.accountId, projectId, ticketId);
       const review = reviews.get(reviewId);
-      return !!ticket && ticket.id === ticketId && !!review &&
+      return !!ticket && ticket.id === ticketId && ticket.appliedChanges === false &&
+        !!review && lineage.matches({ owner: user.accountId, projectId, ticketId,
+          reviewId, digest: review.digest, revision: review.revision }) &&
         !!presentations.read(user.accountId, projectId, ticketId);
     },
     educatorReview: humanReviewVerified,
