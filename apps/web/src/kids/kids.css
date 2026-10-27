@@ -3324,7 +3324,7 @@
   border-bottom: 2px solid currentColor;
   font-size: 1rem;
 }
-/* Snap-together palette tools (issue #817 pilot). Each shell is one block with its
+/* Snap-together palette tools (issue #817). Each shell is one block with its
    action buttons and closed value slots inside; the categories not migrated yet keep
    the legacy label + select + button rows. */
 .kids-palette-tool {
@@ -3353,7 +3353,21 @@
   --kids-palette-tool-text: var(--kids-block-move-text);
   --kids-palette-tool-focus: #ffffff;
 }
-.kids-root[data-block-palette="scratch"] .kids-palette-tool-looks {
+.kids-palette-tool-sound {
+  --kids-palette-tool-bg: var(--kids-block-sound-bg);
+  --kids-palette-tool-border: var(--kids-block-sound-border);
+  --kids-palette-tool-text: var(--kids-block-sound-text);
+  --kids-palette-tool-focus: #ffffff;
+}
+.kids-palette-tool-control {
+  --kids-palette-tool-bg: var(--kids-block-control-bg);
+  --kids-palette-tool-border: var(--kids-block-control-border);
+  --kids-palette-tool-text: var(--kids-block-control-text);
+  --kids-palette-tool-focus: #ffffff;
+}
+.kids-root[data-block-palette="scratch"] .kids-palette-tool-looks,
+.kids-root[data-block-palette="scratch"] .kids-palette-tool-sound,
+.kids-root[data-block-palette="scratch"] .kids-palette-tool-control {
   --kids-palette-tool-focus: #08162e;
 }
 .kids-palette-tool-actions,
