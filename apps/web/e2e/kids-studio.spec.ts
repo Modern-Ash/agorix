@@ -1755,18 +1755,7 @@ test("free scene shows Looks and Motion as snap-together blocks and keeps tap, E
     .filter({ has: page.getByRole("button", { name: "+ Mover", exact: true }) });
   await expect(moveBlock.getByRole("combobox", { name: "Mover" })).toHaveValue("1");
 
-  // The closed value list still decides what the block adds.
-  await size.selectOption("50");
-  await palette.getByRole("button", { name: "+ Tamaño", exact: true }).click();
-  await expect(page.locator(".kids-program-block").last()).toContainText("Tamaño: 50%");
-
-  // Keyboard: focus and Enter are the same path as a tap.
-  const wait = palette.getByRole("button", { name: "+ Esperar", exact: true });
-  await wait.focus();
-  await wait.press("Enter");
-  await expect(page.locator(".kids-program-block").last()).toContainText("Esperar: 1s");
-
-  // Drag from the block still adds it, and the ghost uses the visible label.
+  // Drag into the empty program first, like the existing drag suite: the ghost uses the visible label.
   const turn = palette.getByRole("button", { name: "+ Girar a la derecha", exact: true });
   const drop = page.locator(".kids-program-drop");
   const from = (await turn.boundingBox())!;
@@ -1777,7 +1766,21 @@ test("free scene shows Looks and Motion as snap-together blocks and keeps tap, E
   await expect(page.locator(".kids-drag-ghost")).toHaveText("Girar a la derecha");
   await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 8 });
   await page.mouse.up();
+  await expect(page.locator(".kids-program-block")).toHaveCount(1);
   await expect(page.locator(".kids-program-block").last()).toContainText("Girar a la derecha 90°");
+
+  // The closed value list still decides what the block adds.
+  await size.selectOption("50");
+  await palette.getByRole("button", { name: "+ Tamaño", exact: true }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(2);
+  await expect(page.locator(".kids-program-block").last()).toContainText("Tamaño: 50%");
+
+  // Keyboard: focus and Enter are the same path as a tap.
+  const wait = palette.getByRole("button", { name: "+ Esperar", exact: true });
+  await wait.focus();
+  await wait.press("Enter");
+  await expect(page.locator(".kids-program-block")).toHaveCount(3);
+  await expect(page.locator(".kids-program-block").last()).toContainText("Esperar: 1s");
 
   const violations = (
     await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
