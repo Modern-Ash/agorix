@@ -181,40 +181,43 @@ export function MapScreen({
               {index > 0 ? (
                 <div className="kids-connector" aria-hidden="true" data-pos={index % 3} />
               ) : null}
-              <button
-                type="button"
-                className={`kids-node ${state}`}
-                disabled={locked}
-                aria-label={`${t("mission")} ${index + 1}${state === "current" ? `, ${t("play")}` : ""}`}
-                onClick={() => onMission(index)}
-              >
-                <span className="kids-node-disc">
-                  <span aria-hidden="true">
-                    {locked ? (
-                      "🔒"
-                    ) : index === 2 ? (
-                      style.goalGlyph
-                    ) : (
-                      <KidsSprite slot={emojiSlot(avatar)} />
-                    )}
-                  </span>
-                  {progress.done[`${world}:${index}`] === true ? (
-                    <span className="kids-node-star" aria-hidden="true">
-                      ★
+              <div className="kids-node-wrap">
+                <button
+                  type="button"
+                  className={`kids-node ${state}`}
+                  disabled={locked}
+                  aria-label={`${t("mission")} ${index + 1}${state === "current" ? `, ${t("play")}` : ""}`}
+                  onClick={() => onMission(index)}
+                >
+                  <span className="kids-node-disc">
+                    <span aria-hidden="true">
+                      {locked ? (
+                        "🔒"
+                      ) : index === 2 ? (
+                        style.goalGlyph
+                      ) : (
+                        <KidsSprite slot={emojiSlot(avatar)} />
+                      )}
                     </span>
-                  ) : null}
-                </span>
-                {current ? (
-                  <span className="kids-node-play">▶ {t("play")}</span>
-                ) : (
-                  <span className="kids-node-label">
-                    {t("mission")} {index + 1}
+                    {progress.done[`${world}:${index}`] === true ? (
+                      <span className="kids-node-star" aria-hidden="true">
+                        ★
+                      </span>
+                    ) : null}
                   </span>
-                )}
-                <span className="kids-node-title" aria-hidden="true">
+                  {current ? (
+                    <span className="kids-node-play">▶ {t("play")}</span>
+                  ) : (
+                    <span className="kids-node-label">
+                      {t("mission")} {index + 1}
+                    </span>
+                  )}
+                </button>
+                {/* Outside the button: its visible text must match the button's name (axe). */}
+                <span className="kids-node-title">
                   {getKidsMission(KIDS_MISSION_IDS[index]!, locale, world).title}
                 </span>
-              </button>
+              </div>
             </div>
           );
         })}

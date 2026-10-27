@@ -17,7 +17,7 @@ describe("age band profiles (issue #453)", () => {
 
   it("scales text and targets down with age, never under the 44 px floor", () => {
     const profiles = AGE_BANDS.map(bandProfile);
-    expect(profiles.map((profile) => profile.fontScale)).toEqual([1.125, 1, 0.95]);
+    expect(profiles.map((profile) => profile.fontScale)).toEqual([1.125, 1, 0.9375]);
     expect(profiles.map((profile) => profile.minTarget)).toEqual([56, 48, 44]);
     for (const profile of profiles) {
       expect(profile.minTarget).toBeGreaterThanOrEqual(44);

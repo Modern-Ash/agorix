@@ -3484,6 +3484,12 @@
   color: var(--kids-text);
 }
 
+.kids-node-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
 .kids-node-title {
   display: block;
   max-width: 9rem;

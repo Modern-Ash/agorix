@@ -9,7 +9,11 @@ export interface BandProfile {
   readonly codeTabs: readonly CodeTab[];
   readonly oriShape: "round" | "soft" | "angular";
   readonly palette: "warm" | "balanced" | "compact";
-  /** Text size of the whole Kids area, as a share of the browser's: bigger for younger readers. */
+  /**
+   * Text size of the whole Kids area, as a share of the browser's: bigger for younger readers. Each
+   * value gives a whole number of pixels at the default size (18, 16, 15): fractional sizes render
+   * differently from one host to another and broke the visual snapshots.
+   */
   readonly fontScale: number;
   /** Smallest touch target in px. Never below 44, the accessibility floor. */
   readonly minTarget: number;
@@ -53,7 +57,7 @@ const PROFILES: Readonly<Record<AgeBand, BandProfile>> = {
     codeTabs: ["agorix", "python", "node", "java"],
     oriShape: "angular",
     palette: "compact",
-    fontScale: 0.95,
+    fontScale: 0.9375,
     minTarget: 44,
     solutionHint: false,
     oriMaxBlocks: 8,
