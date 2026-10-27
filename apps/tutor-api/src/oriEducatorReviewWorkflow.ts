@@ -52,7 +52,7 @@ export function createOriEducatorReviewWorkflow(initial: OriMissionDivergenceMat
     readonly evidenceDigest: string;
     readonly missionId: string;
     readonly reviewerId: string;
-    readonly decision: "approve" | "reject";
+    readonly decision: "approve" | "reject" | "evidence-replaced";
   }> = [];
 
   function snapshot(): OriReviewSnapshot {
@@ -109,7 +109,13 @@ export function createOriEducatorReviewWorkflow(initial: OriMissionDivergenceMat
       evidenceDigest = nextDigest;
       decisions = new Map();
       revision++;
-      audit = [];
+      audit = [...audit, Object.freeze({
+        revision,
+        evidenceDigest,
+        missionId: "",
+        reviewerId: "system",
+        decision: "evidence-replaced" as const,
+      })];
       return true;
     },
   });
