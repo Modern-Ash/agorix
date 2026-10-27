@@ -25,9 +25,12 @@ export function createOriPresentationAckHttpHandler(
     if (request.method !== "POST") return reply(response, 405, { error: "method" });
     const origin = request.headers.origin;
     const host = request.headers.host;
-    if (request.headers["x-agorix-request"] !== "1" ||
-        !host || !origin || new URL(origin).host !== host ||
-        !["http:", "https:"].includes(new URL(origin).protocol))
+    let sameOrigin = false;
+    try {
+      const parsed = new URL(origin ?? "");
+      sameOrigin = parsed.host === host && ["http:", "https:"].includes(parsed.protocol);
+    } catch { /* invalid origin */ }
+    if (request.headers["x-agorix-request"] !== "1" || !sameOrigin)
       return reply(response, 403, { error: "forbidden" });
     const principal = await identity(request, response);
     if (!principal) return reply(response, 401, { error: "unauthorized" });
