@@ -34,7 +34,7 @@ describe("MIG-03 trusted review evidence capture", () => {
       "pilot", state.digest, "move", refs!)).toBe(true);
     artifacts.close(); reviews.close();
   });
-  it("rejects stale digest and incomplete evidence without persisting", () => {
+  it("rejects stale digest and incomplete evidence without persisting", async () => {
     const reviews = openOriAtomicEducatorReviewStore(":memory:");
     const artifacts = openOriSqliteEvidenceArtifactRepository(":memory:");
     reviews.publish("pilot", matrix);
