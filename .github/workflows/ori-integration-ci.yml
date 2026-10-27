@@ -145,9 +145,18 @@ jobs:
         working-directory: agorix
         env:
           ORI_REPO_PATH: ${{ github.workspace }}/ori
+          ORI_PARITY_REPORT_DIR: ${{ github.workspace }}/ori-parity-artifacts
         run: |
           pnpm test:ori:interop
           pnpm test:ori:runtime
+      - name: Upload synthetic Ori mission parity evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ori-mig03-mission-parity
+          path: ori-parity-artifacts/ori-mig03-mission-matrix.json
+          if-no-files-found: warn
+          retention-days: 14
 
   ori-learner-browser:
     name: Ori learner Playwright journey

@@ -1,7 +1,9 @@
 import { spawn, type ChildProcess } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
-import { resolve } from "node:path";
+import { resolve, join } from "node:path";
+import { tmpdir } from "node:os";
+import { buildOriMissionDivergenceMatrix } from "./oriMissionDivergenceMatrix.js";
 import { afterEach, describe, expect, it } from "vitest";
 import { createOriPlanConsumer } from "./oriPlanConsumer.js";
 import { captureOriMissionParity } from "./oriMissionParityCapture.js";
@@ -51,6 +53,18 @@ describe.skipIf(!runnable)("MIG-03 real Ori shadow mission capture", () => {
     const report = await captureOriMissionParity(createOriPlanConsumer(endpoint));
     expect(report.missions).toBeGreaterThan(0);
     expect(report.available + report.missing).toBe(report.missions);
+    const matrix = buildOriMissionDivergenceMatrix(report.findings);
+    expect(matrix.total).toBe(report.missions);
+    expect(matrix.available).toBe(report.available);
+    expect(matrix.missing).toBe(report.missing);
+    const outputDir = process.env["ORI_PARITY_REPORT_DIR"] ?? join(tmpdir(), "agorix-ori-parity");
+    mkdirSync(outputDir, { recursive: true });
+    writeFileSync(join(outputDir, "ori-mig03-mission-matrix.json"), JSON.stringify({
+      schemaVersion: "agorix/ori-mission-parity/v1",
+      provenance: "real-loopback-ori-synthetic-inputs",
+      pedagogicalApproval: false,
+      matrix,
+    }, null, 2) + "\\n", "utf8");
     expect(report.available).toBeGreaterThan(0);
     expect(report.findings.some((entry) => entry.candidateAvailable && entry.comparison !== null))
       .toBe(true);
