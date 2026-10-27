@@ -34,14 +34,14 @@ describe("MIG-03 bundled presentation readiness", () => {
   it("blocks missing technical evidence and unknown tickets", async () => {
     const tickets = openOriTicketPresentationSqliteStore(":memory:");
     const reviews = openOriAtomicEducatorReviewStore(":memory:");
-    reviews.publish("pilot", { ...matrix, missing: 1, available: 0,
-      rows: [{ ...matrix.rows[0]!, status: "missing" as const }] });
+    expect(reviews.publish("pilot", { ...matrix, missing: 1, available: 0,
+      rows: [{ ...matrix.rows[0]!, status: "missing" as const }] })).toBe("invalid");
     const gate = createOriMig03PresentationReadiness({
       tickets, reviews, resolveTicket: async () => null,
     });
     const result = await gate.assess("student", "project", id, "pilot");
     expect(result.blockers).toContain("ticket-unavailable");
-    expect(result.blockers).toContain("technical-evidence-incomplete");
+    expect(result.blockers).toContain("review-unavailable");
     tickets.close(); reviews.close();
   });
 });
