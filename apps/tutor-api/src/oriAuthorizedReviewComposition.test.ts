@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ProjectRepository } from "@agorix/project-repository";
 import { createOriAuthorizedReviewOptions } from "./oriAuthorizedReviewComposition.js";
+import { openOriTicketPresentationSqliteStore } from "./oriTicketPresentationSqliteStore.js";
 
 describe("Ori authorized review composition", () => {
   it("authorizes only the active project owned by the session", async () => {
@@ -46,5 +47,34 @@ describe("Ori authorized review composition", () => {
     });
     expect(await options.oriReviewIdentity({} as never)).toBeNull();
     expect(projectLookups).toBe(0);
+  });
+  it("keeps presentation disabled without a durable store", () => {
+    const options = createOriAuthorizedReviewOptions({
+      repository: { get: async () => { throw Error("missing"); } } as unknown as ProjectRepository,
+      oriRoot: "/test-only", world: {}, learningContext: async () => null,
+      resolveSession: async () => null, activeProject: async () => null,
+      runOriOverride: async () => ({
+        status: "unavailable", appliedChanges: false, requiresLearnerApproval: true,
+      }),
+    });
+    expect("oriPresentationAckEnabled" in options).toBe(false);
+  });
+  it("wires a durable store to the authenticated canonical workflow only when injected", async () => {
+    const store = openOriTicketPresentationSqliteStore(":memory:");
+    try {
+      const options = createOriAuthorizedReviewOptions({
+        repository: { get: async () => { throw Error("missing"); } } as unknown as ProjectRepository,
+        oriRoot: "/test-only", world: {}, learningContext: async () => null,
+        resolveSession: async () => null, activeProject: async () => null,
+        presentationStore: store,
+        runOriOverride: async () => ({
+          status: "unavailable", appliedChanges: false, requiresLearnerApproval: true,
+        }),
+      });
+      expect(options.oriPresentationAckEnabled).toBe(true);
+      expect(typeof options.oriPresentationAckHandler).toBe("function");
+    } finally {
+      store.close();
+    }
   });
 });
