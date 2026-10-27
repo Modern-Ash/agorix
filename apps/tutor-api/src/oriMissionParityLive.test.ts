@@ -16,6 +16,9 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createOriPlanConsumer } from "./oriPlanConsumer.js";
 import { captureOriMissionParity } from "./oriMissionParityCapture.js";
 import { captureOriMissionSourceEvidence } from "./oriMissionSourceEvidence.js";
+import { openOriAtomicEducatorReviewStore } from "./oriAtomicEducatorReviewStore.js";
+import { openOriSqliteEvidenceArtifactRepository } from "./oriSqliteEvidenceArtifactRepository.js";
+import { createOriSourceEvidencePersistence } from "./oriSourceEvidencePersistence.js";
 
 const root = process.env["ORI_REPO_PATH"];
 const runnable = !!root && existsSync(resolve(root, "examples/shadow-api/serve.mjs"));
@@ -85,6 +88,27 @@ describe.skipIf(!runnable)("MIG-03 real Ori shadow mission capture", () => {
     const reviewBriefing = buildOriReviewBriefing(automatedTriage, reviewSampling);
     const reviewChecklist = buildOriReviewChecklist(reviewBriefing, pedagogicalCorpus);
     const reviewHandoff = buildOriMig03ReviewHandoff(reviewBriefing, reviewChecklist);
+    const reviews = openOriAtomicEducatorReviewStore(":memory:");
+    const artifacts = openOriSqliteEvidenceArtifactRepository(":memory:");
+    const published = reviews.publish("mig03-live", matrix);
+    expect(published).toBe("published");
+    const digest = reviews.get("mig03-live")!.digest;
+    const persist = createOriSourceEvidencePersistence(reviews, artifacts);
+    let storedSourceMissions = 0;
+    for (const captured of sourceEvidence) {
+      if (!captured.oriProposal || !reviewHandoff.pendingEvidence.some((item) =>
+        item.missionId === captured.missionId)) continue;
+      // The live loopback fixture has no authenticated learner context or
+      // learner-visible explanation; never manufacture them for signoff.
+      expect(persist.persist(reviewHandoff, "mig03-live", digest, captured, {
+        learningContext: null, learnerFacingExplanation: null,
+      })).toBeNull();
+      expect(await artifacts.find("mig03-live", digest, captured.missionId,
+        "ori-proposal")).toBeNull();
+      storedSourceMissions++;
+    }
+    expect(storedSourceMissions).toBeGreaterThan(0);
+    artifacts.close(); reviews.close();
     expect(evidenceQuality.pedagogicalApproval).toBe(false);
     const outputDir = process.env["ORI_PARITY_REPORT_DIR"] ?? join(tmpdir(), "agorix-ori-parity");
     mkdirSync(outputDir, { recursive: true });
