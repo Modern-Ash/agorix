@@ -80,6 +80,12 @@ export interface TutorServerOptions {
   readonly oriContextPreview?: (input: OriContextInput) => Promise<OriRuntimePreview>;
   readonly oriContextPreviewEnabled?: boolean;
   readonly oriReviewEnabled?: boolean;
+  /** Trusted host-only aggregate telemetry/circuit breaker hook. */
+  readonly oriMig04Observe?: (
+    mode: "disabled" | "shadow" | "pilot",
+    outcome: "success" | "error" | "fallback" | "blocked",
+    durationMs: number,
+  ) => void;
   /** Optional MIG-04 server-only learner visibility gate; absent retains legacy explicit opt-in. */
   readonly oriMig04RolloutDecide?: (projectId: string) => {
     readonly learnerVisible: boolean;
@@ -288,7 +294,22 @@ export function createTutorServer(options: TutorServerOptions): Server {
         Object.keys(parsed).length !== 0
       )
         return send(response, 400, error("invalid-request"));
-      const ticket = await options.oriReviewPropose(identity.ownerId, identity.projectId);
+      const started = performance.now();
+      let ticket: OriReviewTicket | null;
+      try {
+        ticket = await options.oriReviewPropose(identity.ownerId, identity.projectId);
+      } catch (cause) {
+        options.oriMig04Observe?.("pilot", "error", performance.now() - started);
+        throw cause;
+      }
+      options.oriMig04Observe?.(
+        "pilot",
+        ticket?.status === "pending" ? "success" : "fallback",
+        performance.now() - started,
+      );
+      if (options.oriMig04RolloutDecide &&
+          !options.oriMig04RolloutDecide(identity.projectId).learnerVisible)
+        return send(response, 404, error("not-found"));
       if (!ticket || ticket.status !== "pending")
         return send(response, 409, error("proposal-unavailable"));
       return send(response, 200, {
