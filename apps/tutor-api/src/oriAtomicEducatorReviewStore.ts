@@ -88,6 +88,15 @@ export function openOriAtomicEducatorReviewStore(path: string) {
         return "recorded";
       });
     },
+    decisions(id: string) {
+      const state = current(id);
+      if (!state) return null;
+      return rows.all(id, state.digest).map((row) => Object.freeze({
+        missionId: String(row["mission_id"]), reviewerId: String(row["reviewer_id"]),
+        decision: String(row["decision"]) as "approve" | "reject",
+        rationale: String(row["rationale"]),
+      }));
+    },
     signoff(id: string) {
       const state = current(id);
       if (!state) return null;
