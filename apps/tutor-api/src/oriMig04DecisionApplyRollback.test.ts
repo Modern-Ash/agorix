@@ -37,15 +37,16 @@ describe("MIG-04 rollback blocks outstanding decision and apply requests", () =>
     servers.push(server);
     await new Promise<void>((done) => server.listen(0, "127.0.0.1", done));
     const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
-    const post = (route: string) => fetch(base + route, {
+    const post = (route: string) =>
+      fetch(base + route, {
       method: "POST",
       headers: {
         origin: base,
         "x-agorix-request": "1",
         "content-type": "application/json",
       },
-      body: "{}",
-    });
+        body: "{}",
+      });
     expect(controller.replaceFromHost({
       mode: "pilot",
       humanAuthorized: true,
