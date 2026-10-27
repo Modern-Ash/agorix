@@ -24,7 +24,8 @@ export function createOriPersistedEvidenceReferenceVerifier(
   repository: OriEvidenceReferenceRepository,
 ): OriVerifiedEvidenceResolver {
   return Object.freeze({
-    async verify(reviewId, digest, missionId, refs) {
+    async verify(reviewId: string, digest: string, missionId: string,
+      refs: Readonly<Record<string, string>>): Promise<boolean> {
       if (!reviewId || !missionId || !HEX.test(digest) ||
           !refs || typeof refs !== "object" || Array.isArray(refs))
         return false;
