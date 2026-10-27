@@ -1,4 +1,4 @@
-import { KIDS_GRID } from "@agorix/curriculum";
+import { KIDS_GRID, type KidsMissionWorld } from "@agorix/curriculum";
 import type { ProjectProgram, Statement } from "@agorix/program-model";
 import { createProposalReview, validateProgramProposal } from "@agorix/proposals";
 import type { KidsOriOffer } from "./kidsOri.js";
@@ -8,6 +8,8 @@ const ORI_PATH = "/api/tutor/ori";
 const MAX_RESPONSE_CHARS = 16 * 1024;
 
 interface RequestOptions {
+  /** The world being played; left out for the space world, as before. */
+  readonly world?: KidsMissionWorld;
   readonly fetchImpl?: typeof fetch;
   readonly timeoutMs?: number;
 }
@@ -31,7 +33,15 @@ export async function requestKidsOriOffer(
           method: "POST",
           credentials: "same-origin",
           headers: { "content-type": "application/json", accept: "application/json" },
-          body: JSON.stringify({ missionId, locale, hintLevel, program }),
+          body: JSON.stringify({
+            missionId,
+            locale,
+            hintLevel,
+            program,
+            ...(options.world !== undefined && options.world !== "space"
+              ? { world: options.world }
+              : {}),
+          }),
           signal: controller.signal,
         });
         return response.ok ? response.text() : null;

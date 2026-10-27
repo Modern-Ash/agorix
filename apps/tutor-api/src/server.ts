@@ -7,6 +7,8 @@ import {
   createFreeWorldMission,
   getKidsMission,
   KIDS_MISSION_IDS,
+  KIDS_MISSION_WORLDS,
+  type KidsMissionWorld,
   KIDS_FREE_MISSION_ID,
   KIDS_GRID,
 } from "@agorix/curriculum";
@@ -480,6 +482,7 @@ export function createTutorServer(options: TutorServerOptions): Server {
       locale: "es" | "en";
       hintLevel: 1 | 2 | 3 | 4 | 5;
       program: ProjectProgram;
+      world: KidsMissionWorld;
     };
     try {
       const raw = JSON.parse(body) as Record<string, unknown>;
@@ -487,7 +490,13 @@ export function createTutorServer(options: TutorServerOptions): Server {
         !raw ||
         typeof raw !== "object" ||
         Array.isArray(raw) ||
-        Object.keys(raw).sort().join(",") !== "hintLevel,locale,missionId,program" ||
+        // The world is optional: older browsers do not send it and mean the space world.
+        ![
+          "hintLevel,locale,missionId,program",
+          "hintLevel,locale,missionId,program,world",
+        ].includes(Object.keys(raw).sort().join(",")) ||
+        (raw.world !== undefined &&
+          !(KIDS_MISSION_WORLDS as readonly unknown[]).includes(raw.world)) ||
         typeof raw.missionId !== "string" ||
         !KIDS_MISSION_IDS.includes(raw.missionId as (typeof KIDS_MISSION_IDS)[number]) ||
         (raw.locale !== "es" && raw.locale !== "en") ||
@@ -499,6 +508,7 @@ export function createTutorServer(options: TutorServerOptions): Server {
         locale: raw.locale,
         hintLevel: raw.hintLevel as 1 | 2 | 3 | 4 | 5,
         program: validateProgram(raw.program as ProjectProgram),
+        world: (raw.world as KidsMissionWorld | undefined) ?? "space",
       };
     } catch {
       return send(response, 400, error("invalid-request"));
@@ -516,7 +526,7 @@ export function createTutorServer(options: TutorServerOptions): Server {
         scriptCount: input.program.scripts.length,
       },
     );
-    const mission = getKidsMission(input.missionId, input.locale);
+    const mission = getKidsMission(input.missionId, input.locale, input.world);
     const context = {
       mission,
       missionIndex,

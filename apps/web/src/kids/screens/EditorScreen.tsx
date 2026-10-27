@@ -236,8 +236,8 @@ export function EditorScreen({
     () =>
       freeProjectId
         ? verifyKidsFreeGoal(freeGoal ?? { cx: 4, cy: 2 }, freeGoalCheck, locale)
-        : getKidsMission(KIDS_MISSION_IDS[Math.min(missionIndex, 2)]!, locale),
-    [freeGoal, freeGoalCheck, freeProjectId, missionIndex, locale],
+        : getKidsMission(KIDS_MISSION_IDS[Math.min(missionIndex, 2)]!, locale, world),
+    [freeGoal, freeGoalCheck, freeProjectId, missionIndex, locale, world],
   );
   const [createdAt] = useState(() => new Date().toISOString());
   const [history, setHistory] = useState(() => {
@@ -341,7 +341,7 @@ export function EditorScreen({
     [oriProvider, history.current],
   );
   const oriHintLevel = Math.min(5, Math.max(1, usedHintLevels.length + 1)) as 1 | 2 | 3 | 4 | 5;
-  const remoteOriKey = `${mission.id}:${locale}:${oriHash}:${oriHintLevel}`;
+  const remoteOriKey = `${world}:${mission.id}:${locale}:${oriHash}:${oriHintLevel}`;
   const oriWaiting = !freeProjectId && remoteOri?.key !== remoteOriKey;
   const rawOriOffer = oriWaiting ? undefined : (remoteOri?.offer ?? localOriOffer);
   const oriOffer =
@@ -396,12 +396,12 @@ export function EditorScreen({
   useEffect(() => {
     if (!oriSuggestions || freeProjectId) return;
     let current = true;
-    void requestKidsOriOffer(history.current, mission.id, locale, oriHintLevel, missionIndex).then(
-      (offer) => {
-        if (current && offer === null) bumpIndicator("oriFallbacks");
-        if (current) setRemoteOri({ key: remoteOriKey, offer });
-      },
-    );
+    void requestKidsOriOffer(history.current, mission.id, locale, oriHintLevel, missionIndex, {
+      world,
+    }).then((offer) => {
+      if (current && offer === null) bumpIndicator("oriFallbacks");
+      if (current) setRemoteOri({ key: remoteOriKey, offer });
+    });
     return () => {
       current = false;
     };
@@ -414,6 +414,7 @@ export function EditorScreen({
     oriHintLevel,
     missionIndex,
     remoteOriKey,
+    world,
   ]);
 
   useEffect(() => {

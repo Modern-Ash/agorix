@@ -520,6 +520,30 @@ describe("Ori HTTP boundary (issue #381)", () => {
     ).toBe(400);
     expect((await post(body, "https://evil.example")).status).toBe(403);
   });
+
+  it("builds the idea for the world being played and refuses an unknown world (issue #612)", async () => {
+    const base = await start({});
+    const post = (payload: object) =>
+      fetch(`${base}/api/tutor/ori`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    const idea = async (extra: object) => {
+      const response = await post({ ...JSON.parse(body), ...extra });
+      expect(response.status).toBe(200);
+      const result = (await response.json()) as {
+        proposal: { operations: { statement: { steps: number } }[] };
+      };
+      return result.proposal.operations[0]!.statement.steps;
+    };
+    // The first mission needs 4 squares in space and 4 in the ocean (1,0 to 5,0); the city is 5.
+    expect(await idea({})).toBe(160);
+    expect(await idea({ world: "space" })).toBe(160);
+    expect(await idea({ world: "city" })).toBe(200);
+    expect((await post({ ...JSON.parse(body), world: "moon" })).status).toBe(400);
+    expect((await post({ ...JSON.parse(body), world: 3 })).status).toBe(400);
+  });
 });
 
 describe("Ori free scene HTTP boundary (#538)", () => {

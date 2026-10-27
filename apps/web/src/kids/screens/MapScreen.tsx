@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import type { Locale } from "../../i18n.js";
-import { conceptStates, missionState, type KidsProgress } from "../kidsProgress.js";
+import { KIDS_MISSION_IDS, getKidsMission } from "@agorix/curriculum";
+import { conceptStates, missionState, worldProgress, type KidsProgress } from "../kidsProgress.js";
 import { KIDS_WORLDS, type KidsAvatar, type KidsWorld } from "../kidsState.js";
 import { speak } from "../speak.js";
 import type { KidsText } from "../useKidsText.js";
@@ -128,6 +129,7 @@ export function MapScreen({
               type="button"
               className="kids-world-tab"
               aria-pressed={world === id}
+              aria-describedby={`kids-world-progress-${id}`}
               onClick={() => onWorld(id)}
               style={{ ["--tab-bg" as string]: tab.bg, ["--tab-ink" as string]: tab.ink }}
             >
@@ -139,6 +141,9 @@ export function MapScreen({
                 {tab.character}
               </KidsBackdrop>
               <span className="kids-world-name">{names[id]}</span>
+              <span className="kids-world-count" aria-hidden="true">
+                {worldProgress(progress, id).done}/3
+              </span>
             </button>
           );
         })}
@@ -149,6 +154,24 @@ export function MapScreen({
         style={image ? { backgroundImage: `url("${image}")`, backgroundSize: "cover" } : undefined}
       >
         <h2 className="kids-world-title">{names[world]}</h2>
+        {KIDS_WORLDS.map((id) => {
+          const { done, total } = worldProgress(progress, id);
+          const text =
+            locale === "es"
+              ? `${done} de ${total} misiones${done === total ? ": ¡mundo completo!" : ""}`
+              : `${done} of ${total} missions${done === total ? ": world complete!" : ""}`;
+          // Read for every tab, shown for the world that is open.
+          return (
+            <p
+              key={id}
+              id={`kids-world-progress-${id}`}
+              className={id === world ? "kids-world-progress" : "kids-visually-hidden"}
+              data-complete={done === total ? "true" : undefined}
+            >
+              {text}
+            </p>
+          );
+        })}
         {([0, 1, 2] as const).map((index) => {
           const state = missionState(progress, world, index);
           const locked = state === "locked";
@@ -188,6 +211,9 @@ export function MapScreen({
                     {t("mission")} {index + 1}
                   </span>
                 )}
+                <span className="kids-node-title" aria-hidden="true">
+                  {getKidsMission(KIDS_MISSION_IDS[index]!, locale, world).title}
+                </span>
               </button>
             </div>
           );

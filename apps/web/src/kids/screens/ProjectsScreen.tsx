@@ -260,7 +260,7 @@ export function ProjectsScreen({
             </KidsBackdrop>
             <h2>
               {worlds[project.world]} ·{" "}
-              {getKidsMission(KIDS_MISSION_IDS[project.index], locale).title}
+              {getKidsMission(KIDS_MISSION_IDS[project.index], locale, project.world).title}
             </h2>
             <p>{t("saved")}</p>
             <div>

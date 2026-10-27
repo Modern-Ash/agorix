@@ -9,6 +9,7 @@ import {
   loadKidsProgress,
   markMissionDone,
   missionState,
+  worldProgress,
   saveKidsProgress,
 } from "./kidsProgress.js";
 
@@ -81,6 +82,16 @@ describe("kids progress (issue #374)", () => {
     progress = markMissionDone(progress, "space", 1);
     expect(progress.stars).toBe(2);
     expect(progress.done).toEqual({ "space:0": true, "space:1": true });
+  });
+
+  it("counts the missions finished in each world, out of three", () => {
+    let progress = markMissionDone(emptyKidsProgress(), "ocean", 0);
+    progress = markMissionDone(progress, "ocean", 1);
+    progress = markMissionDone(progress, "city", 2);
+    expect(worldProgress(progress, "ocean")).toEqual({ done: 2, total: 3 });
+    expect(worldProgress(progress, "city")).toEqual({ done: 1, total: 3 });
+    expect(worldProgress(progress, "space")).toEqual({ done: 0, total: 3 });
+    expect(worldProgress(markMissionDone(progress, "ocean", 2), "ocean").done).toBe(3);
   });
 
   it("opens missions in order per world and locks the rest", () => {
