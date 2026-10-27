@@ -15,6 +15,7 @@ Date: 2026-10-27. Scope: Agorix integration of the independent Ori process in sh
 - [x] Formatting, Lint, TypeScript, Build, unit/regression tests, Playwright and real Ori interoperability were all green on PR #973 head workflow run [40596253332](https://github.com/Modern-Ash/agorix/actions/runs/40596253332).
 
 **Source evidence**
+
 - [PR #971](https://github.com/Modern-Ash/agorix/pull/971) — real Ori process → authenticated HTTP → SQLite E2E (synthetic session/project).
 - [PR #972](https://github.com/Modern-Ash/agorix/pull/972) — mandatory real-process E2E CI gate.
 - [PR #973](https://github.com/Modern-Ash/agorix/pull/973) — formatting normalization; seven checks green.
