@@ -3,6 +3,7 @@ import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
 import type { TutorRequest } from "@agorix/tutor-contract";
 import { getKidsMission } from "@agorix/curriculum";
+import { ORI_STUDIO_VERSION } from "@agorix/ori-agent";
 import { createOriCliService, oriCliConfigFromEnv, type OriCliProcess } from "./oriCli.js";
 import { configFromEnv } from "./index.js";
 import { createTutorServer, MAX_BODY_BYTES } from "./server.js";
@@ -562,7 +563,7 @@ describe("Ori free scene HTTP boundary (#538)", () => {
       if (args.includes("--version")) return "version";
       inputs.push(options.input);
       return JSON.stringify({
-        version: "agorix/ori-studio/v1",
+        version: ORI_STUDIO_VERSION,
         kind: "program-suggestion",
         actorId: context.actorId,
         block: { type: "turn", degrees: -90 },
@@ -586,7 +587,7 @@ describe("Ori free scene HTTP boundary (#538)", () => {
       },
     });
     expect(inputs).toHaveLength(1);
-    expect(inputs[0]).toContain("agorix/ori-studio/v1");
+    expect(inputs[0]).toContain(ORI_STUDIO_VERSION);
     expect(await (await fetch(`${base}/api/tutor/health`)).json()).toMatchObject({
       lastOriSource: "model",
     });
@@ -629,7 +630,7 @@ describe("Ori free scene HTTP boundary (#538)", () => {
       if (args.includes("--version")) return "version";
       inputs.push(options.input);
       return JSON.stringify({
-        version: "agorix/ori-studio/v1",
+        version: ORI_STUDIO_VERSION,
         kind: "program-suggestion",
         actorId: context.actorId,
         block: { type: "callProcedure", procedureId: "proc-1-1" },
@@ -672,5 +673,82 @@ describe("Ori free scene HTTP boundary (#538)", () => {
     });
     expect(foreign.status).toBe(200);
     expect(JSON.stringify(await foreign.json())).not.toContain("callProcedure");
+  });
+
+  it("lets the real CLI path choose numbers for a custom block without seeing titles or values", async () => {
+    const withNumbers = {
+      ...context,
+      program: {
+        schema: "agorix/program/v1",
+        scripts: [
+          {
+            id: "studio-actor-1-nova",
+            trigger: { type: "greenFlag" },
+            statements: [
+              {
+                type: "callProcedure",
+                procedureId: "proc-1-1",
+                args: [{ type: "numericLiteral", value: 37 }],
+              },
+            ],
+            procedures: [
+              {
+                id: "proc-1-1",
+                name: "Mi baile secreto",
+                params: [{ id: "p1", name: "Largo" }],
+                body: [{ type: "move", steps: 40, stepsFrom: "p1" }],
+              },
+            ],
+          },
+        ],
+      },
+    };
+    const inputs: string[] = [];
+    let offered: number[] = [100];
+    const run: OriCliProcess = async (_bin, args, options) => {
+      if (args.includes("--version")) return "version";
+      inputs.push(options.input);
+      return JSON.stringify({
+        version: ORI_STUDIO_VERSION,
+        kind: "program-suggestion",
+        actorId: context.actorId,
+        block: { type: "callProcedure", procedureId: "proc-1-1", args: offered },
+      });
+    };
+    const base = await start({}, undefined, createOriCliService(oriCliConfigFromEnv({}), { run }));
+    const post = (body: unknown) =>
+      fetch(`${base}/api/tutor/studio/ori`, {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: base },
+        body: JSON.stringify(body),
+      });
+    const response = await post(withNumbers);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      proposal: {
+        operations: [
+          {
+            type: "appendStatement",
+            scriptIndex: 0,
+            statement: {
+              type: "callProcedure",
+              procedureId: "proc-1-1",
+              args: [{ type: "numericLiteral", value: 100 }],
+            },
+          },
+        ],
+      },
+    });
+    expect(inputs[0]).toContain('"unit":"steps"');
+    expect(inputs[0]).toContain('"choices"');
+    expect(inputs[0]).not.toMatch(/Largo|Mi baile secreto/);
+    // The existing call passes 37, which is not one of the closed choices, so it stays local.
+    expect(inputs[0]).not.toContain("37");
+
+    // A value outside the block's choices never reaches the child: the safe local idea does.
+    offered = [45];
+    const invalid = await post(withNumbers);
+    expect(invalid.status).toBe(200);
+    expect(JSON.stringify(await invalid.json())).not.toContain("callProcedure");
   });
 });

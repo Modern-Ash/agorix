@@ -4,9 +4,13 @@ import {
   MUSIC_DRUMS,
   MUSIC_INSTRUMENTS,
   PEN_COLORS,
+  PROCEDURE_NUMBER_CHOICES,
+  PROCEDURE_NUMBER_DEFAULTS,
+  procedureNumberUnits,
   SCHEMA_VERSION,
   validateProgram,
   validateProjectCreativeState,
+  type ProcedureNumberUnit,
   type ProjectCreativeState,
   type ProjectAsset,
   type ProjectProgram,
@@ -989,64 +993,15 @@ export function renameStudioProcedure(
   });
 }
 
-export type StudioNumberUnit = "steps" | "degrees" | "seconds" | "count" | "number";
+export type StudioNumberUnit = ProcedureNumberUnit;
 
 /** Values a child can pick for a call's number, by the unit of the first block that uses it. */
-export const STUDIO_NUMBER_CHOICES: Readonly<Record<StudioNumberUnit, readonly number[]>> =
-  Object.freeze({
-    steps: [-200, -100, -60, -40, -20, 20, 40, 60, 100, 200],
-    degrees: [-180, -90, -45, 45, 90, 180],
-    seconds: [0.5, 1, 2, 3],
-    count: [2, 3, 5],
-    number: [-50, -10, -5, -1, 0, 1, 5, 10, 50],
-  });
+export const STUDIO_NUMBER_CHOICES = PROCEDURE_NUMBER_CHOICES;
 
-export const STUDIO_NUMBER_DEFAULTS: Readonly<Record<StudioNumberUnit, number>> = Object.freeze({
-  steps: 40,
-  degrees: 90,
-  seconds: 1,
-  count: 2,
-  number: 1,
-});
+export const STUDIO_NUMBER_DEFAULTS = PROCEDURE_NUMBER_DEFAULTS;
 
-const SLOT_UNIT: Readonly<Record<string, StudioNumberUnit>> = {
-  stepsFrom: "steps",
-  degreesFrom: "degrees",
-  secondsFrom: "seconds",
-  countFrom: "count",
-};
-
-/**
- * The unit of each of a custom block's numbers, from the first block in it that uses the number, or
- * the number of another block it is handed on to (`all` are the character's blocks).
- */
-export function studioProcedureNumberUnits(
-  procedure: Procedure,
-  all: readonly Procedure[] = [],
-  depth = 0,
-): StudioNumberUnit[] {
-  const units: (StudioNumberUnit | undefined)[] = (procedure.params ?? []).map(() => undefined);
-  const claim = (id: unknown, unit: StudioNumberUnit) => {
-    const at = PARAM_IDS.indexOf(id as ProcedureParamId);
-    if (at >= 0 && at < units.length && units[at] === undefined) units[at] = unit;
-  };
-  deepMap(procedure.body, (item) => {
-    if (item.type === "param") claim(item.paramId, "number");
-    if (item.type === "callProcedure" && Array.isArray(item.args) && depth < 4) {
-      const callee = all.find((entry) => entry.id === item.procedureId);
-      const inner = callee ? studioProcedureNumberUnits(callee, all, depth + 1) : [];
-      item.args.forEach((arg, index) => {
-        if (isRecord(arg) && arg.type === "param") claim(arg.paramId, inner[index] ?? "number");
-      });
-    }
-    for (const [key, value] of Object.entries(item)) {
-      const unit = SLOT_UNIT[key];
-      if (unit) claim(value, unit);
-    }
-    return undefined;
-  });
-  return units.map((unit) => unit ?? "number");
-}
+/** The unit of each of a custom block's numbers, shared with Ori's host-side allow-list. */
+export const studioProcedureNumberUnits = procedureNumberUnits;
 
 /** Add one titled number to a custom block; every call of it starts with 0 for the new number. */
 export function addStudioProcedureNumber(

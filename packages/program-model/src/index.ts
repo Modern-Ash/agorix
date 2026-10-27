@@ -82,6 +82,12 @@ export {
   SCHEMA_VERSION,
 } from "./schema.js";
 export { paramIdentifiers, procedureIdentifiers } from "./procedures.js";
+export type { ProcedureNumberUnit } from "./numberUnits.js";
+export {
+  PROCEDURE_NUMBER_CHOICES,
+  PROCEDURE_NUMBER_DEFAULTS,
+  procedureNumberUnits,
+} from "./numberUnits.js";
 export type {
   ProjectActor,
   ProjectAsset,

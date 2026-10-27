@@ -156,6 +156,35 @@ describe("Ori free scene contract", () => {
         ],
       },
     };
+    const numbered: OriStudioContext = {
+      ...withBlocks,
+      program: {
+        ...withBlocks.program,
+        scripts: withBlocks.program.scripts.map((script, index) =>
+          index === 1
+            ? {
+                ...script,
+                statements: [
+                  {
+                    type: "callProcedure" as const,
+                    procedureId: "proc-2-3",
+                    args: [{ type: "numericLiteral" as const, value: 37 }],
+                  },
+                ],
+                procedures: [
+                  ...(script.procedures ?? []),
+                  {
+                    id: "proc-2-3",
+                    name: "Con largo",
+                    params: [{ id: "p1" as const, name: "Largo" }],
+                    body: [{ type: "move" as const, steps: 40, stepsFrom: "p1" as const }],
+                  },
+                ],
+              }
+            : script,
+        ),
+      },
+    };
     const suggest = (block: Record<string, unknown>, ctx = withBlocks) =>
       evaluateOriStudioOutput(ctx, {
         version: ORI_STUDIO_VERSION,
@@ -167,8 +196,8 @@ describe("Ori free scene contract", () => {
     it("sends block ids and the kinds of blocks inside, never a title or the child's text", () => {
       const input = createOriStudioInput(withBlocks);
       expect(input.procedures).toEqual([
-        { id: "proc-2-1", blocks: ["move", "turn"] },
-        { id: "proc-2-2", blocks: ["turn"] },
+        { id: "proc-2-1", blocks: ["move", "turn"], numbers: [] },
+        { id: "proc-2-2", blocks: ["turn"], numbers: [] },
       ]);
       expect(input.allowedBlocks).toContainEqual({
         type: "callProcedure",
@@ -178,35 +207,90 @@ describe("Ori free scene contract", () => {
       expect(text).not.toMatch(/Mi baile secreto|Salto|Bloque de Nova|Mi secreto|proc-1-1/);
     });
 
-    it("never offers a block with numbers, because Ori cannot choose the child's values", () => {
-      const numbered = {
-        ...withBlocks,
-        program: {
-          ...withBlocks.program,
-          scripts: withBlocks.program.scripts.map((script, index) =>
-            index === 1
-              ? {
-                  ...script,
-                  procedures: [
-                    ...(script.procedures ?? []),
-                    {
-                      id: "proc-2-3",
-                      name: "Con largo",
-                      params: [{ id: "p1" as const, name: "Largo" }],
-                      body: [{ type: "move" as const, steps: 40, stepsFrom: "p1" as const }],
-                    },
-                  ],
-                }
-              : script,
-          ),
-        },
-      };
+    it("offers a block with numbers through closed choices, never a title or a chosen value", () => {
       const input = createOriStudioInput(numbered);
-      expect(input.procedures.map((item) => item.id)).toEqual(["proc-2-1", "proc-2-2"]);
-      expect(JSON.stringify(input)).not.toMatch(/proc-2-3|Largo|Con largo/);
-      expect(suggest({ type: "callProcedure", procedureId: "proc-2-3" }, numbered).source).not.toBe(
-        "model",
+      expect(input.procedures).toContainEqual({
+        id: "proc-2-3",
+        blocks: ["move"],
+        numbers: [
+          {
+            unit: "steps",
+            choices: [-200, -100, -60, -40, -20, 20, 40, 60, 100, 200],
+          },
+        ],
+      });
+      expect(JSON.stringify(input)).not.toMatch(/Largo|Con largo/);
+      // The child's current value is 37; only the closed choices are shared.
+      expect(JSON.stringify(input)).not.toContain("37");
+    });
+
+    it("turns a numbered reuse into one reviewable proposal with the chosen values", () => {
+      const decision = suggest(
+        { type: "callProcedure", procedureId: "proc-2-3", args: [100] },
+        numbered,
       );
+      expect(decision.source).toBe("model");
+      expect(decision.proposal?.operations[0]).toMatchObject({
+        type: "appendStatement",
+        scriptIndex: 1,
+        statement: {
+          type: "callProcedure",
+          procedureId: "proc-2-3",
+          args: [{ type: "numericLiteral", value: 100 }],
+        },
+      });
+      const review = validateOriStudioProposal(numbered, decision.proposal);
+      expect(review.candidateProgram.scripts[1]?.statements.at(-1)).toEqual({
+        type: "callProcedure",
+        procedureId: "proc-2-3",
+        args: [{ type: "numericLiteral", value: 100 }],
+      });
+      expect(numbered.program.scripts[1]?.statements).toHaveLength(1);
+    });
+
+    it("rejects missing, extra, wrong-unit and non-numeric arguments for a numbered block", () => {
+      for (const block of [
+        { type: "callProcedure", procedureId: "proc-2-3" },
+        { type: "callProcedure", procedureId: "proc-2-3", args: [] },
+        { type: "callProcedure", procedureId: "proc-2-3", args: [45] },
+        { type: "callProcedure", procedureId: "proc-2-3", args: ["100"] },
+        { type: "callProcedure", procedureId: "proc-2-3", args: [{ type: "numericLiteral" }] },
+        { type: "callProcedure", procedureId: "proc-2-3", args: [100, 40] },
+        { type: "callProcedure", procedureId: "proc-2-3", args: [100], name: "Con largo" },
+        { type: "callProcedure", procedureId: "proc-2-3", args: null },
+      ]) {
+        expect(suggest(block, numbered).source, JSON.stringify(block)).toBe("fallback");
+      }
+      // An unnumbered block must not grow an args key.
+      expect(
+        suggest({ type: "callProcedure", procedureId: "proc-2-2", args: [40] }, numbered).source,
+      ).toBe("fallback");
+    });
+
+    it("a forged numbered proposal is refused by the host allow-list", () => {
+      const good = suggest(
+        { type: "callProcedure", procedureId: "proc-2-3", args: [100] },
+        numbered,
+      );
+      const forge = (args: unknown) => ({
+        ...good.proposal!,
+        operations: [
+          {
+            type: "appendStatement",
+            scriptIndex: 1,
+            statement: { type: "callProcedure", procedureId: "proc-2-3", args },
+          },
+        ],
+      });
+      expect(() =>
+        validateOriStudioProposal(numbered, forge([{ type: "numericLiteral", value: 45 }])),
+      ).toThrow();
+      expect(() =>
+        validateOriStudioProposal(numbered, forge([{ type: "param", paramId: "p1" }])),
+      ).toThrow();
+      expect(() =>
+        validateOriStudioProposal(numbered, forge([{ type: "numericLiteral", value: 100 }])),
+      ).not.toThrow();
     });
 
     it("turns a valid reuse into one reviewable proposal that changes nothing by itself", () => {
@@ -286,6 +370,9 @@ describe("Ori free scene contract", () => {
       });
       expect(seenInstructions).toContain("callProcedure");
       expect(seenInstructions).toContain("input.procedures");
+      expect(seenInstructions).toContain("args");
+      expect(seenInstructions).toContain("numbers");
+      expect(seenInstructions).toContain("choices");
       expect(seenInput).not.toMatch(/Mi baile secreto/);
     });
   });

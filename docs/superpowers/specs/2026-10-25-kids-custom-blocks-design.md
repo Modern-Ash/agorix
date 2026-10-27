@@ -49,7 +49,7 @@ A child in Escena libre can turn blocks they already built into one named block 
 
 ## Ori
 
-Ori may propose a `callProcedure` for a block that exists, as an ordinary reviewable proposal (appendStatement). It cannot create or edit a procedure. The no-AI path is unchanged.
+Ori may propose a `callProcedure` for a block that exists, as an ordinary reviewable proposal (appendStatement). A block with numbers is offered with one closed list of values per number (`steps`, `degrees`, `seconds`, `count` or `number`); the model returns plain numbers and the host re-checks arity and membership before the child sees the card. It cannot create or edit a procedure or choose a title. The no-AI path is unchanged.
 
 ## Testing
 
@@ -61,7 +61,7 @@ Ori may propose a `callProcedure` for a block that exists, as an ordinary review
 
 ## Rollout
 
-Status: slices 1 to 3 shipped (#642, #645); slice 4 (Ori proposal support) ships with the change that adds "Ori suggests using a block the child made" to `SCRATCH_CAPABILITY_AUDIT.md`. Parameters remain a later slice.
+Status: slices 1 to 3 shipped (#642, #645); slice 4 (Ori proposal support) shipped after #725. Parameters shipped in #726, and Ori may now pick their argument values from the same closed lists as the child (version 2, #817), always as a reviewable proposal.
 
 Delivered in slices that each keep `main` green: (1) model, validator and runtime; (2) projections and blocks; (3) Studio authoring; (4) Ori proposal support and docs. Each slice updates `SCRATCH_CAPABILITY_AUDIT.md` and distinguishes implemented code from what a child sees by default.
 
@@ -114,7 +114,7 @@ Decision 2 above promised "up to three numbers" for a later slice. This section 
 
 ### Ori
 
-Version 2 keeps Ori's contract unchanged: it may suggest only blocks **without** numbers, by id, as today. Suggesting arguments needs its own review of what a child sees and is a separate slice.
+Ori's studio contract (version 2) may suggest a call to a block with numbers, with one value per number chosen from the same closed lists as the child's pickers. The model receives ids, block kinds and the unit and choices of each number; never titles or the child's current values. The host and the browser re-check the call's arity and every value against those choices, and anything else falls back to the local idea. The child still reviews before anything changes.
 
 ### Safety and privacy
 
@@ -122,7 +122,7 @@ Number titles are child-entered text: validated, never executed, never sent to O
 
 ### Slices (each keeps `main` green)
 
-A. model, validator and runtime (with the equivalence and clamping tests). B. projections and blocks. C. Studio authoring. D. docs and audit; Ori arguments stay open. **Status: A–D implemented in PR #726; when Ori suggestions of own blocks (PR #725) merge, they must list only blocks without numbers.**
+A. model, validator and runtime (with the equivalence and clamping tests). B. projections and blocks. C. Studio authoring. D. docs and audit; Ori arguments from the closed per-unit lists (studio contract v2), with host and browser revalidation. **Status: A–D implemented in #726 and #817.**
 
 ### Owner decisions (2026-10-25)
 
