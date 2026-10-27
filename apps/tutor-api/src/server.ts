@@ -80,6 +80,10 @@ export interface TutorServerOptions {
   readonly oriContextPreview?: (input: OriContextInput) => Promise<OriRuntimePreview>;
   readonly oriContextPreviewEnabled?: boolean;
   readonly oriReviewEnabled?: boolean;
+  /** Optional MIG-04 server-only learner visibility gate; absent retains legacy explicit opt-in. */
+  readonly oriMig04RolloutDecide?: (projectId: string) => {
+    readonly learnerVisible: boolean;
+  };
   /** Separate opt-in presentation acknowledgement route; default off. */
   readonly oriPresentationAckEnabled?: boolean;
   readonly oriPresentationAckHandler?: (
@@ -257,6 +261,9 @@ export function createTutorServer(options: TutorServerOptions): Server {
         await options.oriReviewIdentity(request, response),
       );
       if (!identity) return send(response, 401, error("unauthorized"));
+      if (options.oriMig04RolloutDecide &&
+          !options.oriMig04RolloutDecide(identity.projectId).learnerVisible)
+        return send(response, 404, error("not-found"));
       const body = await readBody(request);
       if (body === "too-large") return send(response, 413, error("payload-too-large"));
       let parsed: unknown;
