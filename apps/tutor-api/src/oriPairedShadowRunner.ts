@@ -16,7 +16,11 @@ export type OriShadowRunner = (
 ) => Promise<OriShadowObservation | null>;
 
 function canonicalContext(context: OriShadowScenario["context"]): string {
-  return JSON.stringify(Object.keys(context).sort().map((key) => [key, context[key]]));
+  return JSON.stringify(
+    Object.keys(context)
+      .sort()
+      .map((key) => [key, context[key]]),
+  );
 }
 
 /**

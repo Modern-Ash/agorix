@@ -18,7 +18,9 @@ describe("Ori adult educator administrative authorization", () => {
   it("requires an authorized role and stable authenticated session", async () => {
     const auth = { read: () => ({ author: "educator", csrf: "valid" }) } as unknown as AdminAuth;
     const authorize = createOriEducatorAdminAuthorizer({
-      auth, trustedHosts: ["agorix.example"], resolveRole: async () => true,
+      auth,
+      trustedHosts: ["agorix.example"],
+      resolveRole: async () => true,
     });
     expect(await authorize(request())).toEqual({ id: "educator", canReviewOri: true });
     expect(await authorize(request("forged"))).toBeNull();
@@ -27,18 +29,30 @@ describe("Ori adult educator administrative authorization", () => {
   it("denies missing role, session revocation and resolver failure", async () => {
     let reads = 0;
     const auth = {
-      read: () => ++reads === 1 ? { author: "educator", csrf: "valid" } : null,
+      read: () => (++reads === 1 ? { author: "educator", csrf: "valid" } : null),
     } as unknown as AdminAuth;
     const authorize = createOriEducatorAdminAuthorizer({
-      auth, trustedHosts: ["agorix.example"], resolveRole: async () => true,
+      auth,
+      trustedHosts: ["agorix.example"],
+      resolveRole: async () => true,
     });
     expect(await authorize(request())).toBeNull();
     const stable = { read: () => ({ author: "educator", csrf: "valid" }) } as unknown as AdminAuth;
-    expect(await createOriEducatorAdminAuthorizer({
-      auth: stable, trustedHosts: ["agorix.example"], resolveRole: async () => false,
-    })(request())).toBeNull();
-    expect(await createOriEducatorAdminAuthorizer({
-      auth: stable, trustedHosts: ["agorix.example"], resolveRole: async () => { throw Error("down"); },
-    })(request())).toBeNull();
+    expect(
+      await createOriEducatorAdminAuthorizer({
+        auth: stable,
+        trustedHosts: ["agorix.example"],
+        resolveRole: async () => false,
+      })(request()),
+    ).toBeNull();
+    expect(
+      await createOriEducatorAdminAuthorizer({
+        auth: stable,
+        trustedHosts: ["agorix.example"],
+        resolveRole: async () => {
+          throw Error("down");
+        },
+      })(request()),
+    ).toBeNull();
   });
 });

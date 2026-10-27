@@ -4,7 +4,10 @@ import { existsSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const oriRoot = process.env["ORI_REPO_PATH"];
-const runnable = !!oriRoot && isAbsolute(oriRoot) && existsSync(resolve(oriRoot, "examples/local-agent-runtime.mjs"));
+const runnable =
+  !!oriRoot &&
+  isAbsolute(oriRoot) &&
+  existsSync(resolve(oriRoot, "examples/local-agent-runtime.mjs"));
 if (oriRoot && !runnable) {
   throw new Error("ORI_REPO_PATH must point to a compatible Ori runtime checkout");
 }
@@ -13,17 +16,13 @@ describe.skipIf(!runnable)("Ori v1 runtime cross-process contract", () => {
   it.each(["help", "repeat", "turn", "move", "debug"] as const)(
     "runs %s as a separate deterministic Ori process without edits",
     (intent) => {
-      const result = spawnSync(
-        process.execPath,
-        ["examples/local-agent-runtime.mjs", intent],
-        {
-          cwd: oriRoot,
-          encoding: "utf8",
-          timeout: 10_000,
-          maxBuffer: 128 * 1024,
-          env: { ...process.env, ORI_LOCAL_MODELS: "0" },
-        },
-      );
+      const result = spawnSync(process.execPath, ["examples/local-agent-runtime.mjs", intent], {
+        cwd: oriRoot,
+        encoding: "utf8",
+        timeout: 10_000,
+        maxBuffer: 128 * 1024,
+        env: { ...process.env, ORI_LOCAL_MODELS: "0" },
+      });
       expect(result.error).toBeUndefined();
       expect(result.status).toBe(0);
       const output: unknown = JSON.parse(result.stdout);

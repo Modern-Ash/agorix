@@ -14,24 +14,35 @@ export function createOriAtomicAdminService(
 ) {
   const readiness = createOriPersistedReadinessService(store);
   return Object.freeze({
-    async acceptanceManifest(session: unknown, id: string, provenance: {
-      readonly evidenceDigest: string;
-      readonly verified: boolean;
-    }) {
+    async acceptanceManifest(
+      session: unknown,
+      id: string,
+      provenance: {
+        readonly evidenceDigest: string;
+        readonly verified: boolean;
+      },
+    ) {
       const principal = await authorize(session);
       if (!principal?.canReviewOri) return null;
       return buildOriMig03AcceptanceManifest(store, id, provenance);
     },
-    async readiness(session: unknown, id: string, provenance: {
-      readonly evidenceDigest: string;
-      readonly verified: boolean;
-    }) {
+    async readiness(
+      session: unknown,
+      id: string,
+      provenance: {
+        readonly evidenceDigest: string;
+        readonly verified: boolean;
+      },
+    ) {
       const principal = await authorize(session);
       if (!principal?.canReviewOri) return null;
       return readiness.assess(id, provenance);
     },
-    async publishEvidence(id: string, matrix: OriMissionDivergenceMatrix,
-      expectedRevision?: number) {
+    async publishEvidence(
+      id: string,
+      matrix: OriMissionDivergenceMatrix,
+      expectedRevision?: number,
+    ) {
       // Publication is a trusted system operation, not an educator action.
       return store.publish(id, matrix, expectedRevision);
     },
@@ -48,8 +59,13 @@ export function createOriAtomicAdminService(
         rolloutAuthorized: false as const,
       });
     },
-    async decide(session: unknown, id: string, expectedDigest: string,
-      expectedRevision: number, input: OriReviewDecisionInput) {
+    async decide(
+      session: unknown,
+      id: string,
+      expectedDigest: string,
+      expectedRevision: number,
+      input: OriReviewDecisionInput,
+    ) {
       const principal = await authorize(session);
       if (!principal?.canReviewOri) return "unauthorized" as const;
       return store.submit(id, expectedDigest, expectedRevision, principal, input);

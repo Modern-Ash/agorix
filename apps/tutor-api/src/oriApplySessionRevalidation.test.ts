@@ -36,10 +36,12 @@ describe("Ori apply session revalidation", () => {
         "x-agorix-admin-csrf": "synthetic",
       },
     });
-    request.end(JSON.stringify({
-      ticketId: "123e4567-e89b-42d3-a456-426614174000",
-      scriptId: "main",
-    }));
+    request.end(
+      JSON.stringify({
+        ticketId: "123e4567-e89b-42d3-a456-426614174000",
+        scriptId: "main",
+      }),
+    );
     expect((await pipeline(request)).status).toBe(401);
     expect(applies).toBe(0);
   });

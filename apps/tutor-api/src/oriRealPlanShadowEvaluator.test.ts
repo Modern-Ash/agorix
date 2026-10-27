@@ -21,8 +21,10 @@ describe("Ori real plan shadow evaluator", () => {
       },
     };
     const evaluate = createOriRealPlanShadowEvaluator(consumer, 3);
-    expect(await evaluate({ mission: 1, hintLevel: 2, stage: "connect" }))
-      .toEqual({ kind: "pedagogical-plan", hintLevel: 2 });
+    expect(await evaluate({ mission: 1, hintLevel: 2, stage: "connect" })).toEqual({
+      kind: "pedagogical-plan",
+      hintLevel: 2,
+    });
     expect(received).toEqual([{ missionIndex: 1, hintLevel: 2, scriptCount: 3 }]);
   });
   it("fails closed for missing and mismatched plans", async () => {

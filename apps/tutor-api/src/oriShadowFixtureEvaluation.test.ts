@@ -21,11 +21,19 @@ describe("Ori MIG-03 fixture evaluator", () => {
   });
   it("rejects invalid levels before invoking either engine", async () => {
     let calls = 0;
-    await expect(evaluateOriShadowFixtures({
-      fixtures: [{ caseId: "invalid", mission: 1, hintLevel: 9, stage: "explore" }],
-      legacy: async () => { calls++; return null; },
-      ori: async () => { calls++; return null; },
-    })).rejects.toThrow("Invalid Ori shadow fixture");
+    await expect(
+      evaluateOriShadowFixtures({
+        fixtures: [{ caseId: "invalid", mission: 1, hintLevel: 9, stage: "explore" }],
+        legacy: async () => {
+          calls++;
+          return null;
+        },
+        ori: async () => {
+          calls++;
+          return null;
+        },
+      }),
+    ).rejects.toThrow("Invalid Ori shadow fixture");
     expect(calls).toBe(0);
   });
 });

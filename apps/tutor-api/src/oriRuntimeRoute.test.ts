@@ -6,25 +6,32 @@ import { configFromEnv } from "./index.js";
 
 const servers: Server[] = [];
 afterEach(async () => {
-  await Promise.all(servers.splice(0).map(server =>
-    new Promise<void>(resolve => server.close(() => resolve()))));
+  await Promise.all(
+    servers
+      .splice(0)
+      .map((server) => new Promise<void>((resolve) => server.close(() => resolve()))),
+  );
 });
 async function start(enabled: boolean) {
   const server = createTutorServer({
     config: configFromEnv({ AGORIX_TUTOR_ADAPTER: "fake" }),
     oriRuntimePreviewEnabled: enabled,
     oriRuntimePreview: async () => ({
-      status: "ready", hint: "¿Qué podrías probar?",
-      nextStep: "Observá", requiresLearnerApproval: true, appliedChanges: false,
+      status: "ready",
+      hint: "¿Qué podrías probar?",
+      nextStep: "Observá",
+      requiresLearnerApproval: true,
+      appliedChanges: false,
     }),
   });
   servers.push(server);
-  await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   return `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 }
 async function post(base: string, body: unknown, origin = base) {
   return fetch(base + "/api/tutor/ori/runtime-preview", {
-    method: "POST", headers: { "content-type": "application/json", origin },
+    method: "POST",
+    headers: { "content-type": "application/json", origin },
     body: JSON.stringify(body),
   });
 }
@@ -38,7 +45,9 @@ describe("experimental Ori Tutor API route", () => {
     const response = await post(base, { intent: "help" });
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({
-      status: "ready", requiresLearnerApproval: true, appliedChanges: false,
+      status: "ready",
+      requiresLearnerApproval: true,
+      appliedChanges: false,
     });
   });
   it("rejects unsupported intents and extra data", async () => {

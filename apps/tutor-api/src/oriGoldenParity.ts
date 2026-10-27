@@ -10,27 +10,27 @@ export interface OriGoldenCase {
   readonly ori: { readonly kind: string; readonly hintLevel: number } | null;
 }
 export type OriParityOutcome =
-  | "parity"
-  | "missing-ori"
-  | "kind-divergence"
-  | "hint-level-divergence"
-  | "invalid-context";
+  "parity" | "missing-ori" | "kind-divergence" | "hint-level-divergence" | "invalid-context";
 export interface OriParityFinding {
   readonly caseId: string;
   readonly outcome: OriParityOutcome;
 }
 const DIGEST = /^[a-f0-9]{64}$/;
-export function classifyOriGoldenParity(cases: readonly OriGoldenCase[]): readonly OriParityFinding[] {
+export function classifyOriGoldenParity(
+  cases: readonly OriGoldenCase[],
+): readonly OriParityFinding[] {
   return cases.map((entry) => {
     const valid =
-      !!entry.caseId && entry.caseId.length <= 80 &&
+      !!entry.caseId &&
+      entry.caseId.length <= 80 &&
       DIGEST.test(entry.contextDigest) &&
       Number.isSafeInteger(entry.legacy.hintLevel) &&
-      entry.legacy.hintLevel >= 1 && entry.legacy.hintLevel <= 5 &&
-      (entry.ori === null || (
-        Number.isSafeInteger(entry.ori.hintLevel) &&
-        entry.ori.hintLevel >= 1 && entry.ori.hintLevel <= 5
-      ));
+      entry.legacy.hintLevel >= 1 &&
+      entry.legacy.hintLevel <= 5 &&
+      (entry.ori === null ||
+        (Number.isSafeInteger(entry.ori.hintLevel) &&
+          entry.ori.hintLevel >= 1 &&
+          entry.ori.hintLevel <= 5));
     const outcome: OriParityOutcome = !valid
       ? "invalid-context"
       : entry.ori === null

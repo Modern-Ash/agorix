@@ -7,22 +7,42 @@ import type { OriAuthenticatedSession } from "./oriAuthenticatedProjectIdentity.
  * middleware, never from a browser-provided session identifier.
  */
 export function createOriActiveProjectSessionLifecycle(
-  persistence:OriActiveProjectPersistence & {migrate?:(accountId:string,oldSessionId:string,newSessionId:string,now:number)=>Promise<boolean>}
+  persistence: OriActiveProjectPersistence & {
+    migrate?: (
+      accountId: string,
+      oldSessionId: string,
+      newSessionId: string,
+      now: number,
+    ) => Promise<boolean>;
+  },
 ) {
-  const valid=(s:string)=>s.length>0&&s.length<=128;
+  const valid = (s: string) => s.length > 0 && s.length <= 128;
   return Object.freeze({
-    async signedOut(session:OriAuthenticatedSession):Promise<void>{
-      if(!valid(session.accountId)||!valid(session.sessionId))return;
-      await persistence.delete(session.accountId,session.sessionId);
+    async signedOut(session: OriAuthenticatedSession): Promise<void> {
+      if (!valid(session.accountId) || !valid(session.sessionId)) return;
+      await persistence.delete(session.accountId, session.sessionId);
     },
-    async rotated(previous:OriAuthenticatedSession,next:OriAuthenticatedSession):Promise<boolean>{
-      if(!valid(previous.accountId)||!valid(previous.sessionId)||
-         !valid(next.accountId)||!valid(next.sessionId)||
-         previous.accountId!==next.accountId)return false;
-      if(previous.sessionId===next.sessionId)return true;
+    async rotated(
+      previous: OriAuthenticatedSession,
+      next: OriAuthenticatedSession,
+    ): Promise<boolean> {
+      if (
+        !valid(previous.accountId) ||
+        !valid(previous.sessionId) ||
+        !valid(next.accountId) ||
+        !valid(next.sessionId) ||
+        previous.accountId !== next.accountId
+      )
+        return false;
+      if (previous.sessionId === next.sessionId) return true;
       // Session rotation must never fall back to non-atomic read/write/delete.
-      if(!persistence.migrate)return false;
-      return persistence.migrate(previous.accountId,previous.sessionId,next.sessionId,Date.now());
-    }
+      if (!persistence.migrate) return false;
+      return persistence.migrate(
+        previous.accountId,
+        previous.sessionId,
+        next.sessionId,
+        Date.now(),
+      );
+    },
   });
 }

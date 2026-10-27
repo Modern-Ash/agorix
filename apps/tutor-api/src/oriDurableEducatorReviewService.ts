@@ -13,13 +13,21 @@ export interface OriTrustedEvidenceSource {
   read(reviewId: string): Promise<OriTrustedEvidenceSnapshot | null>;
 }
 export function digestOriReviewMatrix(matrix: OriMissionDivergenceMatrix): string {
-  const rows = [...matrix.rows].sort((a, b) =>
-    a.missionIndex - b.missionIndex || a.missionId.localeCompare(b.missionId));
-  return createHash("sha256").update(JSON.stringify({
-    schema: "agorix/ori-educator-evidence/v1",
-    total: matrix.total, available: matrix.available,
-    missing: matrix.missing, divergent: matrix.divergent, rows,
-  })).digest("hex");
+  const rows = [...matrix.rows].sort(
+    (a, b) => a.missionIndex - b.missionIndex || a.missionId.localeCompare(b.missionId),
+  );
+  return createHash("sha256")
+    .update(
+      JSON.stringify({
+        schema: "agorix/ori-educator-evidence/v1",
+        total: matrix.total,
+        available: matrix.available,
+        missing: matrix.missing,
+        divergent: matrix.divergent,
+        rows,
+      }),
+    )
+    .digest("hex");
 }
 
 /**
@@ -38,12 +46,21 @@ export function createOriDurableEducatorReviewService(
   return Object.freeze({
     async initialize(id: string): Promise<boolean> {
       const source = await verified(id);
-      if (!source || createOriEducatorReviewPackage(source.matrix).evidenceQuality.status !== "complete-technical-evidence")
+      if (
+        !source ||
+        createOriEducatorReviewPackage(source.matrix).evidenceQuality.status !==
+          "complete-technical-evidence"
+      )
         return false;
       return store.initialize(id, source.digest);
     },
-    async submit(id: string, expectedDigest: string, expectedRevision: number,
-      principal: OriVerifiedEducator | null, input: OriReviewDecisionInput) {
+    async submit(
+      id: string,
+      expectedDigest: string,
+      expectedRevision: number,
+      principal: OriVerifiedEducator | null,
+      input: OriReviewDecisionInput,
+    ) {
       if (!principal?.canReviewOri) return "unauthorized" as const;
       const source = await verified(id);
       if (!source) return "invalid" as const;
@@ -51,9 +68,16 @@ export function createOriDurableEducatorReviewService(
       if (!current || current.evidenceDigest !== source.digest) return "conflict" as const;
       if (source.digest !== expectedDigest) return "conflict" as const;
       const review = createOriEducatorReviewPackage(source.matrix);
-      if (review.evidenceQuality.status !== "complete-technical-evidence") return "invalid" as const;
-      return store.submit(id, expectedDigest, expectedRevision, principal, input,
-        review.reviewItems.map((item) => item.missionId));
+      if (review.evidenceQuality.status !== "complete-technical-evidence")
+        return "invalid" as const;
+      return store.submit(
+        id,
+        expectedDigest,
+        expectedRevision,
+        principal,
+        input,
+        review.reviewItems.map((item) => item.missionId),
+      );
     },
     async signoff(id: string) {
       const source = await verified(id);

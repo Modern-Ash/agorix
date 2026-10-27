@@ -17,7 +17,9 @@ const root = process.env["ORI_REPO_PATH"];
 const runnable = !!root && existsSync(resolve(root, "examples/shadow-api/serve.mjs"));
 if (root && !runnable) throw Error("Invalid ORI_REPO_PATH for MIG-03");
 const children: ChildProcess[] = [];
-afterEach(() => { for (const child of children.splice(0)) child.kill("SIGTERM"); });
+afterEach(() => {
+  for (const child of children.splice(0)) child.kill("SIGTERM");
+});
 
 async function availablePort(): Promise<number> {
   const server = createServer();
@@ -46,7 +48,9 @@ async function startOri() {
         signal: AbortSignal.timeout(250),
       });
       if (response.ok) return endpoint;
-    } catch { /* wait for child readiness */ }
+    } catch {
+      /* wait for child readiness */
+    }
     await new Promise<void>((done) => setTimeout(done, 50));
   }
   throw Error("Ori shadow process did not become ready");
@@ -73,23 +77,37 @@ describe.skipIf(!runnable)("MIG-03 real Ori shadow mission capture", () => {
     expect(evidenceQuality.pedagogicalApproval).toBe(false);
     const outputDir = process.env["ORI_PARITY_REPORT_DIR"] ?? join(tmpdir(), "agorix-ori-parity");
     mkdirSync(outputDir, { recursive: true });
-    writeFileSync(join(outputDir, "ori-mig03-mission-matrix.json"), JSON.stringify({
-      schemaVersion: "agorix/ori-mission-parity/v1",
-      provenance: "real-loopback-ori-synthetic-inputs",
-      pedagogicalApproval: false,
-      evidenceQuality,
-      educatorReview,
-      pedagogicalCorpus,
-      reviewSampling,
-      automatedTriage,
-      matrix,
-    }, null, 2) + "\\n", "utf8");
+    writeFileSync(
+      join(outputDir, "ori-mig03-mission-matrix.json"),
+      JSON.stringify(
+        {
+          schemaVersion: "agorix/ori-mission-parity/v1",
+          provenance: "real-loopback-ori-synthetic-inputs",
+          pedagogicalApproval: false,
+          evidenceQuality,
+          educatorReview,
+          pedagogicalCorpus,
+          reviewSampling,
+          automatedTriage,
+          matrix,
+        },
+        null,
+        2,
+      ) + "\\n",
+      "utf8",
+    );
     expect(report.available).toBeGreaterThan(0);
-    expect(report.findings.some((entry) => entry.candidateAvailable && entry.comparison !== null))
-      .toBe(true);
-    expect(report.findings.every((entry) =>
-      entry.comparison === null || entry.comparison.fields.some((field) =>
-        field.field === "actionFamily" && field.status === "not-comparable"
-      ))).toBe(true);
+    expect(
+      report.findings.some((entry) => entry.candidateAvailable && entry.comparison !== null),
+    ).toBe(true);
+    expect(
+      report.findings.every(
+        (entry) =>
+          entry.comparison === null ||
+          entry.comparison.fields.some(
+            (field) => field.field === "actionFamily" && field.status === "not-comparable",
+          ),
+      ),
+    ).toBe(true);
   }, 20000);
 });

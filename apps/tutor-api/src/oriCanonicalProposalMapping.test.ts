@@ -19,10 +19,12 @@ describe("Ori v0 to Agorix canonical statement", () => {
   });
 
   it("maps relative quarter turns into signed canonical degrees", () => {
-    expect(mapOriProposalToCanonicalStatement(proposal({ kind: "turn", direction: "left" }), ["turn"]))
-      .toEqual({ type: "turn", degrees: -90 });
-    expect(mapOriProposalToCanonicalStatement(proposal({ kind: "turn", direction: "right" }), ["turn"]))
-      .toEqual({ type: "turn", degrees: 90 });
+    expect(
+      mapOriProposalToCanonicalStatement(proposal({ kind: "turn", direction: "left" }), ["turn"]),
+    ).toEqual({ type: "turn", degrees: -90 });
+    expect(
+      mapOriProposalToCanonicalStatement(proposal({ kind: "turn", direction: "right" }), ["turn"]),
+    ).toEqual({ type: "turn", degrees: 90 });
   });
 
   it.each([
@@ -42,7 +44,8 @@ describe("Ori v0 to Agorix canonical statement", () => {
 
   it("enforces the host allowlist and never applies a project mutation", () => {
     expect(mapOriProposalToCanonicalStatement(proposal({ kind: "move", steps: 2 }), [])).toBeNull();
-    expect(mapOriProposalToCanonicalStatement(proposal({ kind: "turn", direction: "left" }), ["move"]))
-      .toBeNull();
+    expect(
+      mapOriProposalToCanonicalStatement(proposal({ kind: "turn", direction: "left" }), ["move"]),
+    ).toBeNull();
   });
 });

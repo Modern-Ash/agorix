@@ -5,12 +5,17 @@ import { afterEach, describe, expect, it } from "vitest";
 import { openOriSqliteEducatorReviewStore } from "./oriSqliteEducatorReviewStore.js";
 
 const folders: string[] = [];
-afterEach(() => folders.splice(0).forEach((path) => rmSync(path, { recursive: true, force: true })));
+afterEach(() =>
+  folders.splice(0).forEach((path) => rmSync(path, { recursive: true, force: true })),
+);
 const a = "a".repeat(64);
 const b = "b".repeat(64);
 const educator = { id: "educator-1", canReviewOri: true };
-const decision = { missionId: "movement", decision: "approve" as const,
-  rationale: "El alumno conserva la decisión final." };
+const decision = {
+  missionId: "movement",
+  decision: "approve" as const,
+  rationale: "El alumno conserva la decisión final.",
+};
 function fixture() {
   const dir = mkdtempSync(join(tmpdir(), "ori-review-"));
   folders.push(dir);
@@ -28,7 +33,10 @@ describe("Ori durable educator review store", () => {
     expect(store.submit("pilot", a, 1, educator, decision, ["movement"])).toBe("conflict");
     expect(store.replaceEvidence("pilot", 2, b)).toBe(true);
     expect(store.get("pilot")?.decisions).toHaveLength(0);
-    expect(store.audit("pilot").map((event) => event.event)).toEqual(["approve", "evidence-replaced"]);
+    expect(store.audit("pilot").map((event) => event.event)).toEqual([
+      "approve",
+      "evidence-replaced",
+    ]);
     expect(store.submit("pilot", a, 2, educator, decision, ["movement"])).toBe("conflict");
     store.close();
   });

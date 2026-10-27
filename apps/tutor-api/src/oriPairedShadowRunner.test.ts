@@ -23,16 +23,20 @@ describe("Ori MIG-03 paired synthetic shadow execution", () => {
     const report = await runOriPairedShadow({
       scenarios: [{ caseId: "offline", context: { mission: 1 } }],
       legacy: async () => ({ kind: "hint", hintLevel: 1 }),
-      ori: async () => { throw Error("unavailable"); },
+      ori: async () => {
+        throw Error("unavailable");
+      },
     });
     expect(report.counts["missing-ori"]).toBe(1);
     expect(report.exactMatchRate).toBeNull();
   });
   it("refuses comparison without a legacy baseline", async () => {
-    await expect(runOriPairedShadow({
-      scenarios: [{ caseId: "missing", context: {} }],
-      legacy: async () => null,
-      ori: async () => ({ kind: "hint", hintLevel: 1 }),
-    })).rejects.toThrow("Missing legacy baseline");
+    await expect(
+      runOriPairedShadow({
+        scenarios: [{ caseId: "missing", context: {} }],
+        legacy: async () => null,
+        ori: async () => ({ kind: "hint", hintLevel: 1 }),
+      }),
+    ).rejects.toThrow("Missing legacy baseline");
   });
 });

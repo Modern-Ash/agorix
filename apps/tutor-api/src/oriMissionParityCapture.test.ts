@@ -29,7 +29,9 @@ describe("Ori MIG-03 mission parity capture", () => {
   });
   it("reports all missions missing when Ori is unavailable", async () => {
     const result = await captureOriMissionParity({
-      evaluate: async () => { throw Error("offline"); },
+      evaluate: async () => {
+        throw Error("offline");
+      },
     });
     expect(result.available).toBe(0);
     expect(result.missing).toBe(result.missions);

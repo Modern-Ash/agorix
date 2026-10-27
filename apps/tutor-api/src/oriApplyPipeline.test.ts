@@ -42,7 +42,9 @@ describe("Ori apply pipeline adversarial request boundary", () => {
       calls++;
       return "applied";
     }, false);
-    expect((await handler(request(JSON.stringify({ ticketId, scriptId: "main" })))).status).toBe(503);
+    expect((await handler(request(JSON.stringify({ ticketId, scriptId: "main" })))).status).toBe(
+      503,
+    );
     expect(calls).toBe(0);
   });
   it("delegates a valid request to the server-owned operation", async () => {
@@ -51,7 +53,9 @@ describe("Ori apply pipeline adversarial request boundary", () => {
       calls++;
       return "applied";
     });
-    expect((await handler(request(JSON.stringify({ ticketId, scriptId: "main" })))).status).toBe(200);
+    expect((await handler(request(JSON.stringify({ ticketId, scriptId: "main" })))).status).toBe(
+      200,
+    );
     expect(calls).toBe(1);
   });
   it("rejects browser authority and oversized bodies before applying", async () => {
@@ -60,7 +64,10 @@ describe("Ori apply pipeline adversarial request boundary", () => {
       calls++;
       return "applied";
     });
-    expect((await handler(request(JSON.stringify({ ticketId, scriptId: "main", owner: "other" })))).status).toBe(400);
+    expect(
+      (await handler(request(JSON.stringify({ ticketId, scriptId: "main", owner: "other" }))))
+        .status,
+    ).toBe(400);
     expect((await handler(request("x".repeat(513)))).status).toBe(400);
     expect(calls).toBe(0);
   });
@@ -70,11 +77,19 @@ describe("Ori apply pipeline adversarial request boundary", () => {
       calls++;
       return "applied";
     });
-    expect((await handler(request(JSON.stringify({ ticketId, scriptId: "main" }), "https://attacker.example"))).status).toBe(403);
+    expect(
+      (
+        await handler(
+          request(JSON.stringify({ ticketId, scriptId: "main" }), "https://attacker.example"),
+        )
+      ).status,
+    ).toBe(403);
     expect(calls).toBe(0);
   });
   it("reports revision conflicts without applying changes", async () => {
     const handler = pipeline(async () => "conflict");
-    expect((await handler(request(JSON.stringify({ ticketId, scriptId: "main" })))).status).toBe(409);
+    expect((await handler(request(JSON.stringify({ ticketId, scriptId: "main" })))).status).toBe(
+      409,
+    );
   });
 });

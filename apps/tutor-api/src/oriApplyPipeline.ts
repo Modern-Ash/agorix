@@ -92,17 +92,27 @@ export function createOriApplyPipeline({
       } catch {
         return { status: 401, body: { error: "unauthorized" } };
       }
-      if (!currentSession || currentSession.author !== session.author ||
-          currentSession.csrf !== session.csrf)
+      if (
+        !currentSession ||
+        currentSession.author !== session.author ||
+        currentSession.csrf !== session.csrf
+      )
         return { status: 401, body: { error: "unauthorized" } };
-      const result = await apply(principal.owner, principal.projectId, parsed.ticketId, parsed.scriptId);
+      const result = await apply(
+        principal.owner,
+        principal.projectId,
+        parsed.ticketId,
+        parsed.scriptId,
+      );
       if (result === "applied") return { status: 200, body: { status: "applied" } };
       if (result === "conflict") return { status: 409, body: { error: "conflict" } };
       return { status: 403, body: { error: "forbidden" } };
     } catch {
       return {
         status: controller.signal.aborted || request.aborted ? 400 : 503,
-        body: { error: controller.signal.aborted || request.aborted ? "invalid-request" : "unavailable" },
+        body: {
+          error: controller.signal.aborted || request.aborted ? "invalid-request" : "unavailable",
+        },
       };
     } finally {
       clearTimeout(timer);

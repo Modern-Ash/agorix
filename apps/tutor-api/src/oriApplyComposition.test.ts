@@ -31,8 +31,12 @@ function response() {
     headersSent: false,
     writableEnded: false,
     destroyed: false,
-    writeHead(code: number) { status = code; },
-    end(payload: string) { body = payload; },
+    writeHead(code: number) {
+      status = code;
+    },
+    end(payload: string) {
+      body = payload;
+    },
   } as unknown as ServerResponse;
   return { value, result: () => ({ status, body }) };
 }
@@ -44,7 +48,12 @@ describe("Ori apply composition", () => {
       trustedHosts: ["agorix.example"],
       limiter: createOriReviewRateLimiter(),
       resolvePrincipal: async () => ({ owner: "student", projectId: "p1" }),
-      workflow: { applyAccepted: async () => { calls++; return "applied"; } },
+      workflow: {
+        applyAccepted: async () => {
+          calls++;
+          return "applied";
+        },
+      },
     });
     const output = response();
     await handler(request({ ticketId, scriptId: "main" }), output.value);
@@ -78,7 +87,12 @@ describe("Ori apply composition", () => {
       trustedHosts: ["agorix.example"],
       limiter: createOriReviewRateLimiter(),
       resolvePrincipal: async () => ({ owner: "student", projectId: "p1" }),
-      workflow: { applyAccepted: async () => { calls++; return "applied"; } },
+      workflow: {
+        applyAccepted: async () => {
+          calls++;
+          return "applied";
+        },
+      },
       enabled: true,
     });
     const output = response();

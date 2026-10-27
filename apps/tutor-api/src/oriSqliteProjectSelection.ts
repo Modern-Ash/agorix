@@ -9,27 +9,30 @@ import { createOriActiveProjectSessionLifecycle } from "./oriActiveProjectSessio
  * The caller owns closing this resource during graceful shutdown.
  */
 export function openOriSqliteProjectSelection({
-  path,repository,ttlMs
-}:{
-  readonly path:string;
-  readonly repository:Pick<ProjectRepository,"get">;
-  readonly ttlMs?:number;
+  path,
+  repository,
+  ttlMs,
+}: {
+  readonly path: string;
+  readonly repository: Pick<ProjectRepository, "get">;
+  readonly ttlMs?: number;
 }) {
-  const persistence=openOriSqliteActiveProjectPersistence(path);
+  const persistence = openOriSqliteActiveProjectPersistence(path);
   try {
-    const store=createOriExpiringActiveProjectStore({
-      persistence,...(ttlMs===undefined?{}:{ttlMs})
+    const store = createOriExpiringActiveProjectStore({
+      persistence,
+      ...(ttlMs === undefined ? {} : { ttlMs }),
     });
-    const selector=createOriSessionProjectSelector({repository,store});
-    const lifecycle=createOriActiveProjectSessionLifecycle(persistence);
+    const selector = createOriSessionProjectSelector({ repository, store });
+    const lifecycle = createOriActiveProjectSessionLifecycle(persistence);
     return Object.freeze({
-      choose:selector.choose,
-      activeProject:selector.activeProject,
-      signedOut:lifecycle.signedOut,
-      rotated:lifecycle.rotated,
-      close:()=>persistence.close()
+      choose: selector.choose,
+      activeProject: selector.activeProject,
+      signedOut: lifecycle.signedOut,
+      rotated: lifecycle.rotated,
+      close: () => persistence.close(),
     });
-  } catch(error) {
+  } catch (error) {
     persistence.close();
     throw error;
   }

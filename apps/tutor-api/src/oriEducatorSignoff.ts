@@ -35,8 +35,12 @@ export function assessOriEducatorSignoff(
       continue;
     }
     seen.add(decision.missionId);
-    if (!decision.reviewerId.trim() || decision.reviewerId.length > 128 ||
-        decision.rationale.trim().length < 12 || decision.rationale.length > 2000)
+    if (
+      !decision.reviewerId.trim() ||
+      decision.reviewerId.length > 128 ||
+      decision.rationale.trim().length < 12 ||
+      decision.rationale.length > 2000
+    )
       reasons.push("insufficient-review-evidence");
     if (decision.decision !== "approve" && decision.decision !== "reject")
       reasons.push("invalid-decision");

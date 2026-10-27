@@ -1,4 +1,8 @@
-import { runOriPairedShadow, type OriShadowScenario, type OriShadowObservation } from "./oriPairedShadowRunner.js";
+import {
+  runOriPairedShadow,
+  type OriShadowScenario,
+  type OriShadowObservation,
+} from "./oriPairedShadowRunner.js";
 
 /**
  * Offline, deterministic adapter seam for golden fixtures. Both evaluators
@@ -26,11 +30,14 @@ export async function evaluateOriShadowFixtures({
 }) {
   const scenarios: OriShadowScenario[] = fixtures.map((fixture) => {
     if (
-      !Number.isSafeInteger(fixture.mission) || fixture.mission < 0 ||
+      !Number.isSafeInteger(fixture.mission) ||
+      fixture.mission < 0 ||
       !Number.isSafeInteger(fixture.hintLevel) ||
-      fixture.hintLevel < 1 || fixture.hintLevel > 5 ||
+      fixture.hintLevel < 1 ||
+      fixture.hintLevel > 5 ||
       !["explore", "connect", "translate"].includes(fixture.stage)
-    ) throw new TypeError("Invalid Ori shadow fixture");
+    )
+      throw new TypeError("Invalid Ori shadow fixture");
     return {
       caseId: fixture.caseId,
       context: { mission: fixture.mission, hintLevel: fixture.hintLevel, stage: fixture.stage },

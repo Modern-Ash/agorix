@@ -12,14 +12,17 @@ export interface OriSemanticProjection {
   readonly mutatesProgram: boolean;
   readonly pedagogicalHintLevel: number | null;
 }
-export function projectLegacyOriOffer(record: OriDeterministicBaselineRecord): OriSemanticProjection {
-  const actionFamily = record.kind === "move" || record.kind === "turn"
-    ? "movement" as const
-    : record.kind === "repeat"
-      ? "control" as const
-      : record.kind === "done" || record.kind === "passed"
-        ? "completion" as const
-        : "unknown" as const;
+export function projectLegacyOriOffer(
+  record: OriDeterministicBaselineRecord,
+): OriSemanticProjection {
+  const actionFamily =
+    record.kind === "move" || record.kind === "turn"
+      ? ("movement" as const)
+      : record.kind === "repeat"
+        ? ("control" as const)
+        : record.kind === "done" || record.kind === "passed"
+          ? ("completion" as const)
+          : ("unknown" as const);
   return Object.freeze({
     source: "legacy-action",
     actionFamily,

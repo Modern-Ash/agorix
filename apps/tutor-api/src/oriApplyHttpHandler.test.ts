@@ -35,10 +35,14 @@ describe("Ori apply HTTP response adapter", () => {
       headersSent: false,
       writableEnded: false,
       destroyed: false,
-      writeHead(code: number) { status = code; },
+      writeHead(code: number) {
+        status = code;
+      },
       end() {},
     } as unknown as ServerResponse;
-    const handler = createOriApplyHttpHandler(async () => { throw Error("failure"); });
+    const handler = createOriApplyHttpHandler(async () => {
+      throw Error("failure");
+    });
     await handler({} as IncomingMessage, response);
     expect(status).toBe(503);
   });

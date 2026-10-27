@@ -10,13 +10,18 @@ export function createOriPersistedReadinessService(
   store: ReturnType<typeof openOriAtomicEducatorReviewStore>,
 ) {
   return Object.freeze({
-    assess(reviewId: string, provenance: {
-      readonly evidenceDigest: string;
-      readonly verified: boolean;
-    }): (OriMig03Readiness & {
-      readonly evidenceDigest: string;
-      readonly revision: number;
-    }) | null {
+    assess(
+      reviewId: string,
+      provenance: {
+        readonly evidenceDigest: string;
+        readonly verified: boolean;
+      },
+    ):
+      | (OriMig03Readiness & {
+          readonly evidenceDigest: string;
+          readonly revision: number;
+        })
+      | null {
       const state = store.get(reviewId);
       if (!state) return null;
       const verified = provenance.verified && provenance.evidenceDigest === state.digest;

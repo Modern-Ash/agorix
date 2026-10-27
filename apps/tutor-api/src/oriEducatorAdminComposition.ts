@@ -27,18 +27,30 @@ export function createOriEducatorAdminComposition({
     return authorize(session as IncomingMessage);
   });
   return Object.freeze({
-    acceptanceManifest: (request: IncomingMessage, reviewId: string, provenance: {
-      readonly evidenceDigest: string;
-      readonly verified: boolean;
-    }) => service.acceptanceManifest(request, reviewId, provenance),
-    readiness: (request: IncomingMessage, reviewId: string, provenance: {
-      readonly evidenceDigest: string;
-      readonly verified: boolean;
-    }) => service.readiness(request, reviewId, provenance),
+    acceptanceManifest: (
+      request: IncomingMessage,
+      reviewId: string,
+      provenance: {
+        readonly evidenceDigest: string;
+        readonly verified: boolean;
+      },
+    ) => service.acceptanceManifest(request, reviewId, provenance),
+    readiness: (
+      request: IncomingMessage,
+      reviewId: string,
+      provenance: {
+        readonly evidenceDigest: string;
+        readonly verified: boolean;
+      },
+    ) => service.readiness(request, reviewId, provenance),
     snapshot: (request: IncomingMessage, reviewId: string) => service.snapshot(request, reviewId),
-    decide: (request: IncomingMessage, reviewId: string, digest: string, revision: number,
-      input: Parameters<typeof service.decide>[4]) =>
-      service.decide(request, reviewId, digest, revision, input),
+    decide: (
+      request: IncomingMessage,
+      reviewId: string,
+      digest: string,
+      revision: number,
+      input: Parameters<typeof service.decide>[4],
+    ) => service.decide(request, reviewId, digest, revision, input),
     audit: (request: IncomingMessage, reviewId: string) => service.audit(request, reviewId),
   });
 }

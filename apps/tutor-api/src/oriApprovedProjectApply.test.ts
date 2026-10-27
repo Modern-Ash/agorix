@@ -11,7 +11,13 @@ const oriMove = {
 };
 const program: ProjectProgram = {
   schema: SCHEMA_VERSION,
-  scripts: [{ id: "main", trigger: { type: "onStart" as const }, statements: [{ type: "move" as const, steps: 1 }] }],
+  scripts: [
+    {
+      id: "main",
+      trigger: { type: "onStart" as const },
+      statements: [{ type: "move" as const, steps: 1 }],
+    },
+  ],
 };
 async function setup() {
   const repository = new InMemoryProjectRepository({ idFactory: () => "project-1" });

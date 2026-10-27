@@ -7,14 +7,16 @@ const base: OriMissionDivergenceMatrix = {
   available: 1,
   missing: 0,
   divergent: 1,
-  rows: [{
-    missionId: "movement-1",
-    missionIndex: 0,
-    status: "divergent",
-    matches: 1,
-    divergences: 1,
-    notComparable: 2,
-  }],
+  rows: [
+    {
+      missionId: "movement-1",
+      missionIndex: 0,
+      status: "divergent",
+      matches: 1,
+      divergences: 1,
+      notComparable: 2,
+    },
+  ],
 };
 describe("Ori MIG-03 technical evidence quality gate", () => {
   it("recognizes complete evidence while withholding pedagogical approval", () => {
@@ -36,8 +38,14 @@ describe("Ori MIG-03 technical evidence quality gate", () => {
     expect(result.reasons).toContain("missing-ori-evidence");
   });
   it("rejects an empty corpus", () => {
-    expect(assessOriEvidenceQuality({
-      total: 0, available: 0, missing: 0, divergent: 0, rows: [],
-    }).status).toBe("incomplete");
+    expect(
+      assessOriEvidenceQuality({
+        total: 0,
+        available: 0,
+        missing: 0,
+        divergent: 0,
+        rows: [],
+      }).status,
+    ).toBe("incomplete");
   });
 });

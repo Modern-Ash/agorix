@@ -4,17 +4,25 @@ test.describe("Ori educational intent chooser", () => {
   test.skip(process.env.VITE_ORI_EXPERIMENTAL_REVIEW !== "1", "Requires experimental build flag");
   test("supports five intents and learner review without program edits", async ({ page }) => {
     const requests: string[] = [];
-    await page.route("**/api/tutor/ori/context-preview", route => route.fulfill({
-      status: 404, contentType: "application/json", body: "{}"
-    }));
-    await page.route("**/api/tutor/ori/runtime-preview", async route => {
+    await page.route("**/api/tutor/ori/context-preview", (route) =>
+      route.fulfill({
+        status: 404,
+        contentType: "application/json",
+        body: "{}",
+      }),
+    );
+    await page.route("**/api/tutor/ori/runtime-preview", async (route) => {
       const body = route.request().postDataJSON() as { intent: string };
       requests.push(body.intent);
       await route.fulfill({
-        status: 200, contentType: "application/json",
+        status: 200,
+        contentType: "application/json",
         body: JSON.stringify({
-          status: "ready", hint: `¿Qué podrías probar con ${body.intent}?`,
-          nextStep: "Observá el resultado", requiresLearnerApproval: true, appliedChanges: false,
+          status: "ready",
+          hint: `¿Qué podrías probar con ${body.intent}?`,
+          nextStep: "Observá el resultado",
+          requiresLearnerApproval: true,
+          appliedChanges: false,
         }),
       });
     });
@@ -40,11 +48,16 @@ test.describe("Ori educational intent chooser", () => {
     await expect(panel.getByRole("button", { name: "Pista revisada" })).toBeDisabled();
   });
   test("does not show a review action when Ori is unavailable", async ({ page }) => {
-    await page.route("**/api/tutor/ori/context-preview", route => route.fulfill({
-      status: 404, contentType: "application/json", body: "{}"
-    }));
-    await page.route("**/api/tutor/ori/runtime-preview", route =>
-      route.fulfill({ status: 404, contentType: "application/json", body: "{}" }));
+    await page.route("**/api/tutor/ori/context-preview", (route) =>
+      route.fulfill({
+        status: 404,
+        contentType: "application/json",
+        body: "{}",
+      }),
+    );
+    await page.route("**/api/tutor/ori/runtime-preview", (route) =>
+      route.fulfill({ status: 404, contentType: "application/json", body: "{}" }),
+    );
     await page.goto("/");
     const panel = page.getByTestId("ori-review-panel");
     await panel.getByRole("button", { name: "Necesito ayuda" }).click();

@@ -20,12 +20,9 @@ export function compareOriSemanticProjections(
   legacy: OriSemanticProjection,
   ori: OriSemanticProjection,
 ): OriSemanticComparison {
-  const fields = ([
-    "actionFamily",
-    "reviewRequired",
-    "mutatesProgram",
-    "pedagogicalHintLevel",
-  ] as const).map((field): OriSemanticFieldComparison => {
+  const fields = (
+    ["actionFamily", "reviewRequired", "mutatesProgram", "pedagogicalHintLevel"] as const
+  ).map((field): OriSemanticFieldComparison => {
     const left = legacy[field];
     const right = ori[field];
     if (left === null || right === null || left === "unknown" || right === "unknown")

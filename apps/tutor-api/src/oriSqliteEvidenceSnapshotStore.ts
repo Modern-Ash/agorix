@@ -26,8 +26,12 @@ export function openOriSqliteEvidenceSnapshotStore(path: string) {
     digest TEXT NOT NULL,
     matrix_json TEXT NOT NULL
   );`);
-  const read = db.prepare("SELECT digest,revision,matrix_json FROM ori_evidence_snapshots WHERE review_id=?");
-  const insertHistory = db.prepare("INSERT INTO ori_evidence_history(review_id,revision,digest,matrix_json) VALUES(?,?,?,?)");
+  const read = db.prepare(
+    "SELECT digest,revision,matrix_json FROM ori_evidence_snapshots WHERE review_id=?",
+  );
+  const insertHistory = db.prepare(
+    "INSERT INTO ori_evidence_history(review_id,revision,digest,matrix_json) VALUES(?,?,?,?)",
+  );
   const get = (id: string) => {
     const row = read.get(id);
     if (!row) return null;
@@ -49,11 +53,15 @@ export function openOriSqliteEvidenceSnapshotStore(path: string) {
   };
   return Object.freeze({
     get,
-    history: (id: string) => db.prepare(
-      "SELECT revision,digest FROM ori_evidence_history WHERE review_id=? ORDER BY id",
-    ).all(id),
-    publish(id: string, matrix: OriMissionDivergenceMatrix, expectedRevision?: number):
-      "published" | "conflict" | "invalid" {
+    history: (id: string) =>
+      db
+        .prepare("SELECT revision,digest FROM ori_evidence_history WHERE review_id=? ORDER BY id")
+        .all(id),
+    publish(
+      id: string,
+      matrix: OriMissionDivergenceMatrix,
+      expectedRevision?: number,
+    ): "published" | "conflict" | "invalid" {
       if (!id || assessOriEvidenceQuality(matrix).status !== "complete-technical-evidence")
         return "invalid";
       const digest = digestOriReviewMatrix(matrix);
@@ -64,10 +72,11 @@ export function openOriSqliteEvidenceSnapshotStore(path: string) {
         if (!previous && expectedRevision !== undefined) return "conflict";
         if (previous?.digest === digest) return "published";
         const nextRevision = (previous?.revision ?? 0) + 1;
-        db.prepare(`INSERT INTO ori_evidence_snapshots(review_id,digest,revision,matrix_json)
+        db.prepare(
+          `INSERT INTO ori_evidence_snapshots(review_id,digest,revision,matrix_json)
           VALUES(?,?,?,?) ON CONFLICT(review_id) DO UPDATE SET
-          digest=excluded.digest,revision=excluded.revision,matrix_json=excluded.matrix_json`)
-          .run(id, digest, nextRevision, json);
+          digest=excluded.digest,revision=excluded.revision,matrix_json=excluded.matrix_json`,
+        ).run(id, digest, nextRevision, json);
         insertHistory.run(id, nextRevision, digest, json);
         return "published";
       });
