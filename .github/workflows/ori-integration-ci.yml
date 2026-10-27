@@ -31,7 +31,8 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm format:check
+      - name: Report Prettier debt by area (blocking)
+        run: node scripts/report-formatting-debt.mjs
 
   lint:
     name: Lint
