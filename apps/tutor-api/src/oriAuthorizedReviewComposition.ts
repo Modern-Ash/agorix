@@ -29,6 +29,7 @@ export function createOriAuthorizedReviewOptions({
   runOriOverride,
   presentationStore,
   oriMig04RolloutDecide,
+  oriMig04CommitFence,
 }: {
   readonly repository: ProjectRepository;
   readonly oriRoot: string;
@@ -45,6 +46,7 @@ export function createOriAuthorizedReviewOptions({
   /** Optional durable store; absent means presentation route remains disabled. */
   readonly presentationStore?: ReturnType<typeof openOriTicketPresentationSqliteStore>;
   readonly oriMig04RolloutDecide?: (projectId: string) => { readonly learnerVisible: boolean };
+  readonly oriMig04CommitFence?: (projectId: string, write: () => Promise<void>) => Promise<boolean>;
   /** Test-only: production invokes the real Ori process. */
   readonly runOriOverride?: (evidence: unknown) => Promise<OriHostEvidenceResult>;
 }) {
@@ -62,6 +64,7 @@ export function createOriAuthorizedReviewOptions({
     ...(oriMig04RolloutDecide ? {
       mayCommit: (projectId: string) => oriMig04RolloutDecide(projectId).learnerVisible,
     } : {}),
+    ...(oriMig04CommitFence ? { commitFence: oriMig04CommitFence } : {}),
   });
   return Object.freeze({
     oriReviewEnabled: true as const,

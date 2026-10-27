@@ -17,6 +17,7 @@ export async function applyApprovedOriProposal({
   allowedBlocks,
   scriptId,
   mayCommit,
+  commitFence,
 }: {
   readonly repository: ProjectRepository;
   readonly owner: string;
@@ -28,6 +29,8 @@ export async function applyApprovedOriProposal({
   readonly scriptId: string;
   /** Trusted synchronous policy check at the last boundary before repository CAS. */
   readonly mayCommit?: () => boolean;
+  /** Optional host-owned atomic commit boundary, never controlled by HTTP input. */
+  readonly commitFence?: (write: () => Promise<void>) => Promise<boolean>;
 }): Promise<"applied" | "rejected" | "conflict"> {
   if (
     !approved ||
@@ -58,9 +61,16 @@ export async function applyApprovedOriProposal({
     };
     validateProgram(program);
     if (mayCommit && mayCommit() !== true) return "rejected";
-    await repository.update(owner, projectId, expectedRevision, {
-      storedProject: { ...record.storedProject, program },
-    });
+    const write = async () => {
+      await repository.update(owner, projectId, expectedRevision, {
+        storedProject: { ...record.storedProject, program },
+      });
+    };
+    if (commitFence) {
+      if (!(await commitFence(write))) return "rejected";
+    } else {
+      await write();
+    }
     return "applied";
   } catch (error) {
     if (typeof error === "object" && error !== null && "code" in error && error.code === "CONFLICT")
