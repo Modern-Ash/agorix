@@ -78,6 +78,24 @@ describe("MIG-03 educator route dispatcher", () => {
     ).toBe(true);
     expect(calls).toEqual(["pilot"]);
   });
+  it("denies record operation unless a trusted handler is injected", async () => {
+    const handler = async () => { throw Error("unexpected"); };
+    const dispatch = createOriEducatorRouteDispatcher({ handler, enabled: true });
+    const output = response();
+    expect(await dispatch(request("/api/tutor/admin/ori-educator/pilot/record"), output.value)).toBe(true);
+    expect(output.status()).toBe(404);
+  });
+  it("dispatches record only through the explicit adult handler", async () => {
+    const calls: string[] = [];
+    const dispatch = createOriEducatorRouteDispatcher({
+      handler: async () => { throw Error("unexpected"); },
+      enabled: true,
+      recordHandler: async (id) => { calls.push(id); },
+    });
+    const output = response();
+    expect(await dispatch(request("/api/tutor/admin/ori-educator/pilot/record"), output.value)).toBe(true);
+    expect(calls).toEqual(["pilot"]);
+  });
   it("delegates only explicit adult review operations", async () => {
     const received: string[] = [];
     const handler: ReturnType<typeof createOriEducatorAdminHttpAdapter> = async (operation, id) => {
