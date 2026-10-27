@@ -91,6 +91,7 @@ describe.skipIf(!runnable)("MIG-03 real Ori shadow mission capture", () => {
           pedagogicalCorpus,
           reviewSampling,
           automatedTriage,
+          reviewBriefing,
           matrix,
         },
         null,
