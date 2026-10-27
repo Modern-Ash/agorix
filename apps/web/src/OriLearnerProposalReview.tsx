@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { requestOriReviewDecision } from "./oriReviewDecisionClient.js";
 import { parseOriServerDecision } from "./oriServerDecision.js";
 import { describeOriProposal, parseOriReviewableProposal } from "./oriProposalReview.js";
@@ -17,12 +17,16 @@ export interface OriLearnerProposalReviewProps {
 }
 export function OriLearnerProposalReview({ input, onDecision, onPresented }: OriLearnerProposalReviewProps) {
   const [pending, setPending] = useState(false);
+  const lastPresented = useRef<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
   const proposal = input ? parseOriReviewableProposal(input.proposal) : null;
   const ticketId = input?.ticketId;
   const description = proposal ? describeOriProposal(proposal) : null;
   useEffect(() => {
     if (!ticketId || !description || !onPresented) return;
+    const presentationKey = JSON.stringify([ticketId, description]);
+    if (lastPresented.current === presentationKey) return;
+    lastPresented.current = presentationKey;
     onPresented(ticketId, description);
   }, [ticketId, description, onPresented]);
   if (!input || !proposal || !ticketId) return null;

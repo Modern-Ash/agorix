@@ -6,7 +6,11 @@ import { OriLearnerProposalReview } from "./OriLearnerProposalReview.js";
  * Opt-in learner UI. No proposal can be created locally: the server must
  * authenticate, authorize and issue an opaque ticket first.
  */
-export function OriLearnerReviewWidget() {
+export function OriLearnerReviewWidget({
+  onPresented,
+}: {
+  readonly onPresented?: (ticketId: string, description: string) => void;
+} = {}) {
   const [issued, setIssued] = useState<OriIssuedProposal | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
@@ -37,6 +41,7 @@ export function OriLearnerReviewWidget() {
       ) : null}
       {issued ? (
         <OriLearnerProposalReview
+          {...(onPresented ? { onPresented } : {})}
           input={{
             ticketId: issued.ticketId,
             proposal: issued.proposal,
