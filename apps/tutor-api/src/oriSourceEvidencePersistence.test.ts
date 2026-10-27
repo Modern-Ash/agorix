@@ -52,4 +52,19 @@ describe("MIG-03 source evidence to SQLite", () => {
     })).toBeNull();
     artifacts.close(); reviews.close();
   });
+  it("rejects cross-mission indices and evidence for missing candidates", async () => {
+    const reviews = openOriAtomicEducatorReviewStore(":memory:");
+    const artifacts = openOriSqliteEvidenceArtifactRepository(":memory:");
+    reviews.publish("pilot", matrix);
+    const digest = reviews.get("pilot")!.digest;
+    const persist = createOriSourceEvidencePersistence(reviews, artifacts);
+    const host = {
+      learningContext: { stage: "explore" },
+      learnerFacingExplanation: { text: "Try moving" },
+    };
+    expect(persist.persist(handoff, "pilot", digest,
+      { ...captured, missionIndex: 99 }, host)).toBeNull();
+    expect(await artifacts.find("pilot", digest, "move", "ori-proposal")).toBeNull();
+    artifacts.close(); reviews.close();
+  });
 });
