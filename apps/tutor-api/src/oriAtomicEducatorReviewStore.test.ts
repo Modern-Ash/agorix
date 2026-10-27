@@ -45,7 +45,10 @@ describe("MIG-03 atomic evidence and educator review", () => {
     expect(store.publish("pilot", changed, 3)).toBe("published");
     expect(store.signoff("pilot")).toMatchObject({ status: "blocked", reviewed: 0 });
     expect(store.submit("pilot", first.digest, 3, educator, decision("move"))).toBe("conflict");
-    expect(store.audit("pilot")).toHaveLength(5);
+    expect(store.audit("pilot")).toHaveLength(4);
+    expect(store.audit("pilot").map((event) => event["event"])).toEqual([
+      "evidence-created", "approve", "approve", "evidence-replaced",
+    ]);
     store.close();
   });
   it("rejects incomplete evidence and missions absent from trusted snapshot", () => {
