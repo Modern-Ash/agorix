@@ -6,6 +6,7 @@ import {
   type MasteryState,
 } from "@agorix/learning-evidence";
 import { localDay } from "./kidsAdults.js";
+import { bumpIndicator } from "./kidsIndicators.js";
 
 /**
  * What the child's runs have shown, kept on this device (docs/superpowers/specs/
@@ -39,6 +40,11 @@ export function recordMastery(
   store: Store | undefined = browserStore(),
   day: string = localDay(),
 ): MasteryState {
+  if (evidence.kind === "run") {
+    bumpIndicator("runs");
+    if (evidence.completed) bumpIndicator("completedRuns");
+    if (!evidence.helped) bumpIndicator("independentRuns");
+  }
   const next = applyEvidence(loadKidsMastery(store), evidence, day);
   try {
     store?.setItem(KIDS_MASTERY_KEY, JSON.stringify(next));

@@ -1,3 +1,4 @@
+import { bumpIndicator } from "../kidsIndicators.js";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ORI_CHAT_FALLBACK, ORI_CHAT_MAX_CHARS, isOriChatReply } from "@agorix/ori-agent";
 import type { KidsCell } from "@agorix/curriculum";
@@ -64,7 +65,10 @@ export function KidsOriChat({ locale, missionId, goalCell, program }: Props) {
       if (!isOriChatReply(message, locale)) throw new Error("unsafe reply");
       if (request.current === controller) setAnswer(message);
     } catch {
-      if (request.current === controller) setAnswer(ORI_CHAT_FALLBACK[locale]);
+      if (request.current === controller) {
+        bumpIndicator("chatFallbacks");
+        setAnswer(ORI_CHAT_FALLBACK[locale]);
+      }
     } finally {
       clearTimeout(timer);
       if (request.current === controller) {
