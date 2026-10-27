@@ -43,7 +43,9 @@ export function createOriVerifiedReviewRecorder(
         ...handoff, missionCount: 1, selectedForReview: 1,
         pendingEvidence: [item], deferredMissionIds: [], unresolvedMissionIds: [],
       };
-      if (validateOriEducatorSubmissions(scoped, [submission]).status !== "complete-for-recording")
+      const validation = validateOriEducatorSubmissions(scoped, [submission]);
+      // A rejection is a legitimate human decision to persist, not an approval.
+      if (validation.blockers.some((blocker) => blocker !== "educator-rejection"))
         return "invalid";
       try {
         if (!await evidence.verify(reviewId, expectedDigest, submission.missionId,
