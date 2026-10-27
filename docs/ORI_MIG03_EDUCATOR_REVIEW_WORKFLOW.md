@@ -7,7 +7,7 @@ This is a server-only, in-memory integration seam. It is **not** a production ap
 - The host authenticates an educator and supplies `{ id, canReviewOri }` from trusted middleware. No request body may choose this identity or privilege.
 - Every submission includes the current evidence SHA-256 digest and CAS revision. Stale submissions are rejected.
 - Each mission can be reviewed once per evidence version. Decisions include a rationale; a rejection blocks signoff.
-- Replacing the evidence invalidates previous decisions and starts a fresh review. The in-memory audit is reset with the review; **it is not a durable audit trail**.
+- Replacing the evidence invalidates previous decisions and starts a fresh review. The in-memory audit retains previous decisions and appends an evidence-replaced event; **it is not a durable audit trail**.
 - Technical completeness and educator signoff never authorize rollout: `rolloutAuthorized` remains `false`.
 
 ## Required before production use
