@@ -2,6 +2,8 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
 // Issue #446: duplicate block, behind the `duplicate` flag.
+import { BLOCKS_UNLOCKED } from "./helpers.js";
+
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
 async function openEditor(page: Page, flags: string[]) {
@@ -15,6 +17,10 @@ async function openEditor(page: Page, flags: string[]) {
     );
     localStorage.setItem("agorix.kids.flags.v1", JSON.stringify(list));
   }, flags);
+  await page.evaluate(
+    (state) => localStorage.setItem("agorix.kids.mastery.v1", state),
+    BLOCKS_UNLOCKED,
+  );
   await page.reload();
   await page.getByRole("button", { name: "Misión 1" }).click();
 }

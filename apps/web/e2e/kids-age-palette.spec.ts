@@ -1,6 +1,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
+import { BLOCKS_UNLOCKED } from "./helpers.js";
+
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
 async function openMap(page: Page, band: "6-8" | "9-12" | "13+", enabled: boolean) {
@@ -25,6 +27,10 @@ async function openMap(page: Page, band: "6-8" | "9-12" | "13+", enabled: boolea
       );
     },
     { band, enabled },
+  );
+  await page.evaluate(
+    (state) => localStorage.setItem("agorix.kids.mastery.v1", state),
+    BLOCKS_UNLOCKED,
   );
   await page.reload();
   await expect(page.getByRole("heading", { name: "Mapa" })).toBeAttached();

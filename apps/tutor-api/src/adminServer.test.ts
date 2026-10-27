@@ -139,6 +139,43 @@ describe("AI administrator HTTP boundary", () => {
     expect((await fetch(`${base}/api/tutor/behavior`, { method: "POST" })).status).toBe(405);
   });
 
+  it("reaches only the share of devices a gradual rollout names (issue #620)", async () => {
+    const { base, repository } = await start();
+    const strict = { minFailedRuns: 3, minHints: 4, maxProposalBlocks: 6 };
+    const revision = repository.current();
+    repository.publish(
+      { ...revision.config, behavior: { intervention: strict, rolloutPercent: 30 } },
+      1,
+      "owner",
+    );
+    const served = async (query: string) =>
+      (
+        (await (await fetch(`${base}/api/tutor/behavior${query}`)).json()) as {
+          intervention: typeof strict;
+        }
+      ).intervention;
+    expect(await served("?bucket=0")).toEqual(strict);
+    expect(await served("?bucket=29")).toEqual(strict);
+    expect(await served("?bucket=30")).toEqual({
+      minFailedRuns: 1,
+      minHints: 2,
+      maxProposalBlocks: 8,
+    });
+    // No bucket, or one that is not a number from 0 to 99, is outside the rollout.
+    for (const query of ["", "?bucket=", "?bucket=abc", "?bucket=100", "?bucket=-1"]) {
+      expect((await served(query)).minFailedRuns).toBe(1);
+    }
+    repository.publish(
+      { ...repository.current().config, behavior: { intervention: strict, rolloutPercent: 100 } },
+      2,
+      "owner",
+    );
+    expect(await served("?bucket=99")).toEqual(strict);
+    repository.rollback(1, 3, "owner");
+    expect((await served("?bucket=0")).minFailedRuns).toBe(1);
+    expect(JSON.stringify(await served("?bucket=0"))).not.toMatch(/rollout|percent|bucket/i);
+  });
+
   it("the automatic gate refuses a weakening or hostile configuration and shows synthetic learners", async () => {
     const { base, repository } = await start();
     const login = await fetch(`${base}/api/tutor/admin/session`, {

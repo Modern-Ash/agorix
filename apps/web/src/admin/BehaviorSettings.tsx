@@ -6,6 +6,8 @@ import {
 
 export interface BehaviorConfig {
   intervention: OriInterventionPolicy;
+  /** Share of devices that get this revision; the rest keep the last one that reached everyone. */
+  rolloutPercent?: number;
 }
 
 const FIELDS: readonly {
@@ -79,6 +81,27 @@ export function BehaviorSettings({
           </label>
         );
       })}
+      <label>
+        Dispositivos que reciben este cambio (1 a 100 %)
+        <input
+          type="number"
+          min={1}
+          max={100}
+          step={1}
+          value={behavior.rolloutPercent ?? 100}
+          onChange={(event) => {
+            const next = Number(event.target.value);
+            if (!Number.isInteger(next)) return;
+            onChange({ ...behavior, rolloutPercent: Math.min(100, Math.max(1, next)) });
+          }}
+        />
+        <small>
+          Con menos de 100, el resto sigue con la última revisión que llegó a todos. Cada
+          dispositivo tiene un número al azar de 0 a 99, sin relación con chicos ni cuentas. Para
+          ampliar, publicá otra revisión con un porcentaje mayor; para volver atrás, restaurá una
+          revisión anterior.
+        </small>
+      </label>
       <h3>Con aprendices simulados</h3>
       <p className="ai-admin-footnote">
         Situaciones inventadas, nunca datos de chicos reales. Mostrar esto no publica nada.

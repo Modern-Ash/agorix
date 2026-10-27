@@ -57,6 +57,7 @@ import type { OriCliService } from "./oriCli.js";
 import type { OriCliDiagnostics } from "./oriCli.js";
 import {
   AiConfigError,
+  behaviorForBucket,
   configDiff,
   validateAiConfig,
   type AiCapability,
@@ -269,11 +270,15 @@ export function createTutorServer(options: TutorServerOptions): Server {
     }
     if (path === "/api/tutor/behavior") {
       if (request.method !== "GET") return send(response, 405, error("method-not-allowed"));
-      // Numbers only: no prompt, provider or model ever reaches the browser.
+      // Numbers only: no prompt, provider or model ever reaches the browser. The bucket is a random
+      // device number (0 to 99) that only decides whether a gradual rollout has reached it.
+      const raw = new URL(request.url ?? "/", "http://localhost").searchParams.get("bucket");
+      const bucket = raw !== null && /^\d{1,2}$/.test(raw) ? Number(raw) : undefined;
+      const behavior = options.aiConfig
+        ? behaviorForBucket(options.aiConfig.history(), bucket)
+        : undefined;
       return send(response, 200, {
-        intervention: options.aiConfig?.current().config.behavior.intervention ?? {
-          ...ORI_INTERVENTION_DEFAULT,
-        },
+        intervention: behavior?.intervention ?? { ...ORI_INTERVENTION_DEFAULT },
       });
     }
     if (path === "/api/tutor/respond") {
@@ -370,7 +375,10 @@ export function createTutorServer(options: TutorServerOptions): Server {
     if (path === "/api/tutor/admin/config" && request.method === "GET")
       return send(response, 200, {
         current: repository.current(),
-        history: repository.history().map(({ config: _config, ...meta }) => meta),
+        history: repository.history().map(({ config, ...meta }) => ({
+          ...meta,
+          rolloutPercent: config.behavior.rolloutPercent,
+        })),
       });
     if (
       ![

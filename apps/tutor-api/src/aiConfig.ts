@@ -99,20 +99,65 @@ export interface GroupConfig {
  */
 export interface BehaviorConfig {
   readonly intervention: OriInterventionPolicy;
+  /**
+   * Share of devices that get this revision's behaviour (issue #620); the rest keep the last
+   * revision that reached everyone. A device's place is a random number from 0 to 99 it makes for
+   * itself, so no child, account or group is identified. 100 means everyone.
+   */
+  readonly rolloutPercent: number;
 }
 
 export function defaultBehaviorConfig(): BehaviorConfig {
-  return { intervention: { ...ORI_INTERVENTION_DEFAULT } };
+  return { intervention: { ...ORI_INTERVENTION_DEFAULT }, rolloutPercent: 100 };
 }
 
 export function validateBehaviorConfig(raw: unknown): BehaviorConfig {
   const root = plain(raw);
-  if (keys(root) !== "intervention") throw new AiConfigError("invalid-config");
+  // Revisions published before the rollout existed carry only the intervention: they reach everyone.
+  const keyList = keys(root);
+  if (keyList !== "intervention" && keyList !== "intervention,rolloutPercent") {
+    throw new AiConfigError("invalid-config");
+  }
+  const rolloutPercent = root.rolloutPercent === undefined ? 100 : root.rolloutPercent;
+  if (
+    typeof rolloutPercent !== "number" ||
+    !Number.isInteger(rolloutPercent) ||
+    rolloutPercent < 1 ||
+    rolloutPercent > 100
+  ) {
+    throw new AiConfigError("invalid-config");
+  }
   try {
-    return { intervention: validateOriInterventionPolicy(root.intervention) };
+    return { intervention: validateOriInterventionPolicy(root.intervention), rolloutPercent };
   } catch {
     throw new AiConfigError("invalid-config");
   }
+}
+
+/**
+ * The behaviour a device gets: this revision's if the device is inside the rollout, otherwise the
+ * last earlier revision that reached everyone (or the defaults if there is none).
+ */
+export function behaviorForBucket(
+  history: readonly AiRevision[],
+  bucket: number | undefined,
+): BehaviorConfig {
+  const latest = history[0];
+  if (latest === undefined) return defaultBehaviorConfig();
+  const current = latest.config.behavior;
+  if (current.rolloutPercent >= 100) return current;
+  if (
+    bucket !== undefined &&
+    Number.isInteger(bucket) &&
+    bucket >= 0 &&
+    bucket < current.rolloutPercent
+  ) {
+    return current;
+  }
+  return (
+    history.slice(1).find((revision) => revision.config.behavior.rolloutPercent >= 100)?.config
+      .behavior ?? defaultBehaviorConfig()
+  );
 }
 
 export interface AiConfig {

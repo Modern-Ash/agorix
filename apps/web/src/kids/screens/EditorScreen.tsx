@@ -47,7 +47,13 @@ import {
   type KidsOriOffer,
 } from "../kidsOri.js";
 import { loadKidsMastery } from "../kidsMastery.js";
-import { adaptInterventionByStage, stageBand, stagesOfProgram } from "../kidsStageAdaptation.js";
+import {
+  adaptInterventionByStage,
+  ideaHintUnlocked,
+  paletteFor,
+  stageBand,
+  stagesOfProgram,
+} from "../kidsStageAdaptation.js";
 import { bumpIndicator } from "../kidsIndicators.js";
 import { useInterventionPolicy } from "../kidsBehavior.js";
 import { requestKidsOriOffer } from "../kidsOriRemote.js";
@@ -275,6 +281,13 @@ export function EditorScreen({
   const [failedRuns, setFailedRuns] = useState(0);
   const interventionPolicy = useInterventionPolicy();
   // The runtime's evidence about this child (kept on the device) sets Ori's pace (issue #611).
+  const sequenceStage = useMemo(
+    () => loadKidsMastery().concepts["programming.sequence"].stage,
+    [failedRuns, played],
+  );
+  const stagePalette = freeProjectId ? PALETTE : paletteFor(missionIndex, sequenceStage);
+  // How far the child has taken sequences on their own: it does not depend on the blocks placed yet.
+  const stageOfConcepts = stageBand([sequenceStage]);
   const pacedPolicy = useMemo(
     () =>
       adaptInterventionByStage(
@@ -1145,11 +1158,27 @@ export function EditorScreen({
               </p>
             ))}
             {usedHintLevels.length < hintLevelsForBand(ageBand) ? (
-              <button type="button" className="kids-button" onClick={showNextHint}>
+              <button
+                type="button"
+                className="kids-button"
+                disabled={
+                  usedHintLevels.length === 4 && !ideaHintUnlocked(stageOfConcepts, failedRuns)
+                }
+                onClick={showNextHint}
+              >
                 {usedHintLevels.length === 4
                   ? t("seeIdea")
                   : `${locale === "es" ? "Pista" : "Hint"} ${usedHintLevels.length + 1}`}
               </button>
+            ) : null}
+            {usedHintLevels.length === 4 &&
+            !ideaHintUnlocked(stageOfConcepts, failedRuns) &&
+            usedHintLevels.length < hintLevelsForBand(ageBand) ? (
+              <p className="kids-note">
+                {locale === "es"
+                  ? "Ya sabés bastante: probá tu programa una vez más antes de ver la idea."
+                  : "You know a lot already: run your program once more before seeing the idea."}
+              </p>
             ) : null}
           </div>
           {played &&
@@ -1326,7 +1355,7 @@ export function EditorScreen({
           >
             <p>{t("blocks")}</p>
             <div>
-              {PALETTE.map((kind) => (
+              {PALETTE.filter((kind) => stagePalette.includes(kind)).map((kind) => (
                 <button
                   type="button"
                   key={kind}
