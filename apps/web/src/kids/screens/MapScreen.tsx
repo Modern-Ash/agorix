@@ -7,6 +7,7 @@ import { speak } from "../speak.js";
 import type { KidsText } from "../useKidsText.js";
 import { kidsTable } from "../useKidsText.js";
 import { KIDS_WORLD_STYLES } from "../worlds.js";
+import { useKidsCatalog } from "../kidsCatalog.js";
 import { useKidsFlag } from "../kidsFlags.js";
 import { KidsBackdrop, KidsSprite, backdropImage, builtinWorld, emojiSlot } from "./KidsArt.js";
 
@@ -62,6 +63,7 @@ export function MapScreen({
   advancedMessageUnlocked = false,
   onAdvancedMessage,
 }: Props) {
+  const catalog = useKidsCatalog();
   const style = KIDS_WORLD_STYLES[world];
   const image = backdropImage(builtinWorld(world), useKidsFlag("customImages"));
   const names = kidsTable(locale, "worlds");
@@ -215,7 +217,7 @@ export function MapScreen({
                 </button>
                 {/* Outside the button: its visible text must match the button's name (axe). */}
                 <span className="kids-node-title">
-                  {getKidsMission(KIDS_MISSION_IDS[index]!, locale, world).title}
+                  {getKidsMission(KIDS_MISSION_IDS[index]!, locale, world, catalog).title}
                 </span>
               </div>
             </div>

@@ -324,3 +324,80 @@ test("AI operations console explains each agent's role, locked rules and full in
   await page.getByRole("button", { name: /Ori en misiones/ }).click();
   await expect(page.getByRole("region", { name: "Agente Clasificador" })).toHaveCount(0);
 });
+
+test("AI operations console edits the missions and shows a mission that cannot be won", async ({
+  page,
+}) => {
+  const policy = {
+    enabled: true,
+    provider: "auto",
+    model: "gpt-6-luna",
+    timeoutMs: 7000,
+    requestsPerMinute: 6,
+    promptTemplate: "",
+    fallback: "deterministic",
+  };
+  const capabilities = Object.fromEntries(
+    ["mission", "advanced", "studio", "chat", "goals", "legacy"].map((key) => [
+      key,
+      { ...policy, provider: key === "legacy" ? "fake" : "auto" },
+    ]),
+  );
+  const entry = (title: string) => ({
+    start: { cx: 0, cy: 2 },
+    goal: { cx: 4, cy: 2 },
+    title: { es: title, en: title },
+    story: { es: "Llegá a la meta.", en: "Reach the goal." },
+  });
+  const catalog = Object.fromEntries(
+    ["space", "ocean", "robots", "city"].map((world) => [
+      world,
+      [entry("Uno"), entry("Dos"), entry("Tres")],
+    ]),
+  );
+  const config = { schema: "agorix/ai-config/v4", capabilities, catalog };
+  const history = [
+    {
+      revision: 1,
+      author: "system",
+      createdAt: new Date().toISOString(),
+      action: "seed",
+      sourceRevision: null,
+    },
+  ];
+  let posted: { config?: { catalog?: Record<string, { title: { es: string } }[]> } } = {};
+  await page.route("**/api/tutor/admin/**", async (route) => {
+    const path = new URL(route.request().url()).pathname.split("/").at(-1);
+    if (path === "session" && route.request().method() === "GET")
+      return route.fulfill({ status: 401, json: { error: { code: "unauthorized" } } });
+    if (path === "session") return route.fulfill({ json: { csrf: "csrf", author: "operator" } });
+    if (path === "config")
+      return route.fulfill({ json: { current: { ...history[0], config, revision: 1 }, history } });
+    if (path === "preview") {
+      posted = route.request().postDataJSON();
+      return route.fulfill({
+        json: { valid: true, failures: [], changed: ["catalog"], expectedRevision: 1 },
+      });
+    }
+    return route.fulfill({ status: 404, json: {} });
+  });
+  await page.goto("/admin/ai");
+  await page.getByLabel("Clave de administración").fill("a-strong-admin-password");
+  await page.getByRole("button", { name: "Ingresar" }).click();
+  await page.getByRole("button", { name: /Misiones/ }).click();
+  await expect(page.getByRole("heading", { name: "Misiones" })).toBeVisible();
+  await page.getByRole("button", { name: "Océano" }).click();
+  const first = page.getByRole("group", { name: /Océano · misión 1/ });
+  await first.getByLabel("Título (español)").fill("Corriente corta");
+  // The goal is kept to the right of the start, so a mission cannot be made unwinnable here.
+  await first.getByLabel("Sale de la columna").fill("5");
+  await expect(first.getByLabel("Sale de la columna")).toHaveValue("4");
+  await expect(first.getByLabel("Meta en la columna")).toHaveValue("5");
+  await first.getByLabel("Meta en la columna").fill("2");
+  await expect(first.getByLabel("Meta en la columna")).toHaveValue("5");
+  await page.getByRole("button", { name: "Validar cambios" }).click();
+  await expect(page.getByText("Pasó las pruebas de seguridad")).toBeVisible();
+  expect(posted.config?.catalog?.["ocean"]?.[0]?.title.es).toBe("Corriente corta");
+  await page.getByRole("button", { name: "Volver a las misiones originales" }).click();
+  await expect(first.getByLabel("Título (español)")).toHaveValue("Corriente recta");
+});

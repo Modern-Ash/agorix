@@ -1,4 +1,4 @@
-import { getKidsMission, KIDS_MISSION_IDS } from "@agorix/curriculum";
+import { getKidsMission, KIDS_MISSION_IDS, unsolvableKidsMissions } from "@agorix/curriculum";
 import {
   composeOriInstructions,
   fixedOriInstructions,
@@ -21,6 +21,7 @@ export type GateFailure =
   | "prompt-override"
   | "intervention-floor"
   | "too-few-goals"
+  | "mission-unsolvable"
   | "agent-contract"
   | "chat-safety"
   | "intent-validity";
@@ -115,6 +116,8 @@ export async function gateAiConfig(config: AiConfig): Promise<readonly GateFailu
   } catch {
     failures.push("intervention-floor");
   }
+  // Every mission an administrator publishes has to be winnable by the canonical runtime.
+  if (unsolvableKidsMissions(config.catalog).length > 0) failures.push("mission-unsolvable");
   if (!agentsKeepTheirContract(config)) failures.push("agent-contract");
   if (!(await chatStaysSafe())) failures.push("chat-safety");
   if (!intentsAreValid()) failures.push("intent-validity");

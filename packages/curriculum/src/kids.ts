@@ -428,6 +428,141 @@ function worldCopy(
   };
 }
 
+/**
+ * The missions as data (issue #616): where each one starts and ends, and the words it uses. The
+ * built-in catalog is what the code ships; an administrator can publish another one, and every
+ * entry has to pass the checks below before it is stored. Hints are not edited by hand: they are
+ * counted from the layout, so they cannot disagree with it.
+ */
+export interface KidsCatalogEntry {
+  readonly start: KidsCell;
+  readonly goal: KidsCell;
+  readonly title: Readonly<Record<SupportedLocale, string>>;
+  readonly story: Readonly<Record<SupportedLocale, string>>;
+}
+export type KidsCatalog = Readonly<
+  Record<KidsMissionWorld, readonly [KidsCatalogEntry, KidsCatalogEntry, KidsCatalogEntry]>
+>;
+
+export function defaultKidsCatalog(): KidsCatalog {
+  const entry = (world: KidsMissionWorld, slot: 0 | 1 | 2): KidsCatalogEntry => {
+    const id = KIDS_MISSION_IDS[slot];
+    const { start, goal } = kidsMissionLayout(id, world);
+    const es = getKidsMission(id, "es", world);
+    const en = getKidsMission(id, "en", world);
+    return {
+      start,
+      goal,
+      title: { es: es.title, en: en.title },
+      story: { es: es.goal.learnerFacing, en: en.goal.learnerFacing },
+    };
+  };
+  const world = (name: KidsMissionWorld) =>
+    [entry(name, 0), entry(name, 1), entry(name, 2)] as const;
+  return {
+    space: world("space"),
+    ocean: world("ocean"),
+    robots: world("robots"),
+    city: world("city"),
+  };
+}
+
+const CATALOG_TEXT = /^[\p{L}\p{N} .,;:¡!¿?'’()-]+$/u;
+export const KIDS_CATALOG_TITLE_MAX = 40;
+export const KIDS_CATALOG_STORY_MAX = 120;
+
+function catalogCell(value: unknown): KidsCell {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new RangeError("cell");
+  const cell = value as Record<string, unknown>;
+  if (Object.keys(cell).sort().join() !== "cx,cy") throw new RangeError("cell");
+  const parsed = { cx: cell.cx as number, cy: cell.cy as number };
+  if (!Number.isInteger(parsed.cx) || !Number.isInteger(parsed.cy) || !insideGrid(parsed)) {
+    throw new RangeError("cell outside the grid");
+  }
+  return parsed;
+}
+
+function catalogText(value: unknown, max: number): Record<SupportedLocale, string> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new RangeError("text");
+  const text = value as Record<string, unknown>;
+  if (Object.keys(text).sort().join() !== "en,es") throw new RangeError("text");
+  const read = (locale: SupportedLocale): string => {
+    const item = text[locale];
+    if (
+      typeof item !== "string" ||
+      item.trim() !== item ||
+      item.length < 1 ||
+      item.length > max ||
+      !CATALOG_TEXT.test(item)
+    ) {
+      throw new RangeError("text");
+    }
+    return item;
+  };
+  return { es: read("es"), en: read("en") };
+}
+
+/** Shape and limits of a catalog. Whether each mission can be won is `unsolvableKidsMissions`. */
+export function validateKidsCatalog(raw: unknown): KidsCatalog {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new RangeError("catalog");
+  const root = raw as Record<string, unknown>;
+  if (Object.keys(root).sort().join() !== [...KIDS_MISSION_WORLDS].sort().join()) {
+    throw new RangeError("catalog worlds");
+  }
+  const worlds = {} as Record<KidsMissionWorld, KidsCatalogEntry[]>;
+  for (const world of KIDS_MISSION_WORLDS) {
+    const list = root[world];
+    if (!Array.isArray(list) || list.length !== 3) throw new RangeError("catalog missions");
+    worlds[world] = list.map((item): KidsCatalogEntry => {
+      if (!item || typeof item !== "object" || Array.isArray(item)) throw new RangeError("entry");
+      const entry = item as Record<string, unknown>;
+      if (Object.keys(entry).sort().join() !== "goal,start,story,title") {
+        throw new RangeError("entry");
+      }
+      const start = catalogCell(entry.start);
+      const goal = catalogCell(entry.goal);
+      // Right of the start, so the hints and the shortest answer stay honest.
+      if (goal.cx <= start.cx) throw new RangeError("goal must be to the right of the start");
+      return {
+        start,
+        goal,
+        title: catalogText(entry.title, KIDS_CATALOG_TITLE_MAX),
+        story: catalogText(entry.story, KIDS_CATALOG_STORY_MAX),
+      };
+    });
+  }
+  return worlds as unknown as KidsCatalog;
+}
+
+/** The missions of a catalog that the canonical runtime cannot win, as `world:slot`. */
+export function unsolvableKidsMissions(catalog: KidsCatalog): readonly string[] {
+  const failed: string[] = [];
+  for (const world of KIDS_MISSION_WORLDS) {
+    catalog[world].forEach((entry, slot) => {
+      const mission = getKidsMission(KIDS_MISSION_IDS[slot]!, "es", world, catalog);
+      const route: Statement[] = [
+        { type: "move", steps: kidsMoveSteps(entry.goal.cx - entry.start.cx) },
+      ];
+      const dy = entry.goal.cy - entry.start.cy;
+      if (dy !== 0) {
+        route.push({ type: "turn", degrees: dy > 0 ? 90 : -90 });
+        route.push({ type: "move", steps: kidsMoveSteps(Math.abs(dy)) });
+      }
+      const result = runProgram(
+        {
+          schema: SCHEMA_VERSION,
+          scripts: [{ id: "witness", trigger: { type: "greenFlag" }, statements: route }],
+        },
+        createWorldState(mission.starterStage),
+      );
+      if (evaluateKidsRun({ mission, result }).outcome !== "success") {
+        failed.push(`${world}:${slot}`);
+      }
+    });
+  }
+  return failed;
+}
+
 /** The layout of a mission in a world, in cells (used by tests and the map). */
 export function kidsMissionLayout(
   id: string,
@@ -489,21 +624,45 @@ export function getKidsMission(
   id: string,
   locale: string | undefined,
   world: KidsMissionWorld = "space",
+  catalog?: KidsCatalog,
 ): MissionDefinition {
   const spec = SPECS.find((candidate) => candidate.id === id);
   if (spec === undefined) {
     throw new RangeError(`unknown kids mission: ${id}`);
   }
-  if (world === "space") return buildMission(spec, normalizeLocale(locale));
-  const slot = KIDS_MISSION_IDS.findIndex((candidate) => candidate === id) as 0 | 1 | 2;
-  const layout = WORLD_LAYOUTS[world]?.[slot];
-  if (layout === undefined) throw new RangeError(`unknown kids world: ${world}`);
   const language = normalizeLocale(locale);
-  return buildMission(
-    { id, start: layout.start, goal: layout.goal, concepts: layout.concepts },
+  const slot = KIDS_MISSION_IDS.findIndex((candidate) => candidate === id) as 0 | 1 | 2;
+  const builtIn =
+    world === "space"
+      ? buildMission(spec, language)
+      : (() => {
+          const layout = WORLD_LAYOUTS[world]?.[slot];
+          if (layout === undefined) throw new RangeError(`unknown kids world: ${world}`);
+          return buildMission(
+            { id, start: layout.start, goal: layout.goal, concepts: layout.concepts },
+            language,
+            worldCopy(world, slot, layout, language),
+          );
+        })();
+  const entry = catalog?.[world]?.[slot];
+  if (entry === undefined) return builtIn;
+  const original = kidsMissionLayout(id, world);
+  const sameLayout = sameCell(entry.start, original.start) && sameCell(entry.goal, original.goal);
+  const base = buildMission(
+    { id, start: entry.start, goal: entry.goal, concepts: spec.concepts },
     language,
-    worldCopy(world, slot, layout, language),
+    {
+      title: entry.title[language],
+      goalTitle: builtIn.goal.title,
+      learnerFacing: entry.story[language],
+      // Counted from the layout when it moved; the hand-written ones still fit when it did not.
+      hints: sameLayout
+        ? (builtIn.hintLadder.map((hint) => hint.text) as unknown as KidsCopy["hints"])
+        : worldCopy("ocean", slot, { ...entry, concepts: spec.concepts }, language).hints,
+      reflectionPrompt: builtIn.reflectionPrompt ?? "",
+    },
   );
+  return base;
 }
 
 /** The free world: the child taps a cell to place the goal; the start is fixed. */

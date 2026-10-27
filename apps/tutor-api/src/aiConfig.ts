@@ -6,11 +6,13 @@ import {
   validateOriInterventionPolicy,
   type OriInterventionPolicy,
 } from "@agorix/ori-agent";
+import { defaultKidsCatalog, validateKidsCatalog, type KidsCatalog } from "@agorix/curriculum";
 import type { TutorAdapterConfig } from "./index.js";
 import type { OriCliConfig } from "./oriCli.js";
 
-export const AI_CONFIG_SCHEMA = "agorix/ai-config/v3" as const;
-/** Stored revisions and older admin clients may still carry v1 or v2: they are migrated when read. */
+export const AI_CONFIG_SCHEMA = "agorix/ai-config/v4" as const;
+export const AI_CONFIG_SCHEMA_V3 = "agorix/ai-config/v3" as const;
+/** Stored revisions and older admin clients may still carry v1 to v3: they are migrated when read. */
 export const AI_CONFIG_SCHEMA_V2 = "agorix/ai-config/v2" as const;
 export const AI_CONFIG_SCHEMA_V1 = "agorix/ai-config/v1" as const;
 export const AI_CAPABILITIES = [
@@ -165,6 +167,8 @@ export interface AiConfig {
   readonly capabilities: Readonly<Record<AiCapability, AiPolicy>>;
   readonly group: GroupConfig;
   readonly behavior: BehaviorConfig;
+  /** Missions as data: where each starts and ends and its words (issue #616). */
+  readonly catalog: KidsCatalog;
 }
 
 /** Safe defaults: fail closed, hold everything for the organizer, relay off. */
@@ -230,6 +234,7 @@ export function defaultAiConfig(ori: OriCliConfig, tutor: TutorAdapterConfig): A
     schema: AI_CONFIG_SCHEMA,
     group: defaultGroupConfig(),
     behavior: defaultBehaviorConfig(),
+    catalog: defaultKidsCatalog(),
     capabilities: {
       mission: forOri("mission"),
       advanced: forOri("advanced"),
@@ -444,17 +449,23 @@ function validateCapabilities(raw: unknown): Record<AiCapability, AiPolicy> {
 }
 
 /**
- * Validates a registry and returns it as v3. A v1 document carries no group or behaviour section
- * and a v2 document no behaviour section, so they take `fallback`: the defaults when reading old
- * history, the current settings when an old client publishes, so it cannot reset them.
+ * Validates a registry and returns it as v4. An older document lacks the sections added since: v1
+ * has no group, behaviour or catalog, v2 no behaviour or catalog and v3 no catalog. They take
+ * `fallback`: the defaults when reading old history, the current settings when an old client
+ * publishes, so it cannot reset them.
  */
 export function validateAiConfig(
   raw: unknown,
-  fallback: { readonly group?: GroupConfig; readonly behavior?: BehaviorConfig } = {},
+  fallback: {
+    readonly group?: GroupConfig;
+    readonly behavior?: BehaviorConfig;
+    readonly catalog?: KidsCatalog;
+  } = {},
 ): AiConfig {
   const root = plain(raw);
   const group = fallback.group ?? defaultGroupConfig();
   const behavior = fallback.behavior ?? defaultBehaviorConfig();
+  const catalog = fallback.catalog ?? defaultKidsCatalog();
   if (root.schema === AI_CONFIG_SCHEMA_V1) {
     if (keys(root) !== "capabilities,schema") throw new AiConfigError("invalid-config");
     return {
@@ -462,6 +473,7 @@ export function validateAiConfig(
       capabilities: validateCapabilities(root.capabilities),
       group: structuredClone(group),
       behavior: structuredClone(behavior),
+      catalog: structuredClone(catalog),
     };
   }
   if (root.schema === AI_CONFIG_SCHEMA_V2) {
@@ -471,9 +483,31 @@ export function validateAiConfig(
       capabilities: validateCapabilities(root.capabilities),
       group: validateGroupConfig(root.group),
       behavior: structuredClone(behavior),
+      catalog: structuredClone(catalog),
     };
   }
-  if (root.schema !== AI_CONFIG_SCHEMA || keys(root) !== "behavior,capabilities,group,schema") {
+  if (root.schema === AI_CONFIG_SCHEMA_V3) {
+    if (keys(root) !== "behavior,capabilities,group,schema") {
+      throw new AiConfigError("invalid-config");
+    }
+    return {
+      schema: AI_CONFIG_SCHEMA,
+      capabilities: validateCapabilities(root.capabilities),
+      group: validateGroupConfig(root.group),
+      behavior: validateBehaviorConfig(root.behavior),
+      catalog: structuredClone(catalog),
+    };
+  }
+  if (
+    root.schema !== AI_CONFIG_SCHEMA ||
+    keys(root) !== "behavior,capabilities,catalog,group,schema"
+  ) {
+    throw new AiConfigError("invalid-config");
+  }
+  let checked: KidsCatalog;
+  try {
+    checked = validateKidsCatalog(root.catalog);
+  } catch {
     throw new AiConfigError("invalid-config");
   }
   return {
@@ -481,20 +515,22 @@ export function validateAiConfig(
     capabilities: validateCapabilities(root.capabilities),
     group: validateGroupConfig(root.group),
     behavior: validateBehaviorConfig(root.behavior),
+    catalog: checked,
   };
 }
 
 export function configDiff(
   before: AiConfig,
   after: AiConfig,
-): readonly (AiCapability | "group" | "behavior")[] {
-  const changed: (AiCapability | "group" | "behavior")[] = AI_CAPABILITIES.filter(
+): readonly (AiCapability | "group" | "behavior" | "catalog")[] {
+  const changed: (AiCapability | "group" | "behavior" | "catalog")[] = AI_CAPABILITIES.filter(
     (capability) =>
       JSON.stringify(before.capabilities[capability]) !==
       JSON.stringify(after.capabilities[capability]),
   );
   if (JSON.stringify(before.group) !== JSON.stringify(after.group)) changed.push("group");
   if (JSON.stringify(before.behavior) !== JSON.stringify(after.behavior)) changed.push("behavior");
+  if (JSON.stringify(before.catalog) !== JSON.stringify(after.catalog)) changed.push("catalog");
   return changed;
 }
 

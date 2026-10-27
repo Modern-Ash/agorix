@@ -1,3 +1,4 @@
+import { defaultKidsCatalog } from "@agorix/curriculum";
 import { describe, expect, it } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -7,6 +8,7 @@ import {
   AI_CONFIG_SCHEMA,
   AI_CONFIG_SCHEMA_V1,
   AI_CONFIG_SCHEMA_V2,
+  AI_CONFIG_SCHEMA_V3,
   behaviorForBucket,
   defaultBehaviorConfig,
   AiConfigError,
@@ -357,5 +359,47 @@ describe("gradual rollout of behaviour (issue #620)", () => {
       "publish",
       "seed",
     ]);
+  });
+});
+
+describe("mission catalog section (issue #616)", () => {
+  const edited = () => {
+    const catalog = structuredClone(defaultKidsCatalog()) as unknown as Record<
+      string,
+      { goal: { cx: number; cy: number }; title: { es: string; en: string } }[]
+    >;
+    catalog.ocean![0]!.goal = { cx: 3, cy: 0 };
+    catalog.ocean![0]!.title = { es: "Corriente corta", en: "Short current" };
+    return catalog;
+  };
+
+  it("reads a v3 document with the built-in missions, and an older client cannot reset published ones", () => {
+    const v3 = {
+      schema: AI_CONFIG_SCHEMA_V3,
+      capabilities: initial.capabilities,
+      group: initial.group,
+      behavior: initial.behavior,
+    };
+    expect(validateAiConfig(v3).catalog).toEqual(defaultKidsCatalog());
+    const published = validateAiConfig({ ...initial, catalog: edited() }).catalog;
+    expect(validateAiConfig(v3, { catalog: published }).catalog).toEqual(published);
+  });
+
+  it("stores a valid edit, names the catalog in the diff, and refuses a broken one", () => {
+    const next = validateAiConfig({ ...initial, catalog: edited() });
+    expect(configDiff(initial, next)).toEqual(["catalog"]);
+    expect(next.catalog.ocean[0].goal).toEqual({ cx: 3, cy: 0 });
+    for (const bad of [
+      undefined,
+      {},
+      { ...edited(), moon: edited().ocean },
+      (() => {
+        const catalog = edited();
+        catalog.ocean![0]!.goal = { cx: 9, cy: 0 };
+        return catalog;
+      })(),
+    ]) {
+      expect(() => validateAiConfig({ ...initial, catalog: bad })).toThrow(AiConfigError);
+    }
   });
 });

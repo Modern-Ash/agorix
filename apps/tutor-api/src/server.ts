@@ -6,6 +6,7 @@ import { validateTutorRequest } from "@agorix/tutor-contract";
 import {
   createFreeWorldMission,
   getKidsMission,
+  defaultKidsCatalog,
   KIDS_MISSION_IDS,
   KIDS_MISSION_WORLDS,
   type KidsMissionWorld,
@@ -281,6 +282,13 @@ export function createTutorServer(options: TutorServerOptions): Server {
         intervention: behavior?.intervention ?? { ...ORI_INTERVENTION_DEFAULT },
       });
     }
+    if (path === "/api/tutor/catalog") {
+      if (request.method !== "GET") return send(response, 405, error("method-not-allowed"));
+      // Cells and short titles only: the missions as published, never a prompt or a setting.
+      return send(response, 200, {
+        catalog: options.aiConfig?.current().config.catalog ?? defaultKidsCatalog(),
+      });
+    }
     if (path === "/api/tutor/respond") {
       if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
       return respond(request, response);
@@ -534,7 +542,13 @@ export function createTutorServer(options: TutorServerOptions): Server {
         scriptCount: input.program.scripts.length,
       },
     );
-    const mission = getKidsMission(input.missionId, input.locale, input.world);
+    // The idea is built for the mission as it is published, so it matches what the child sees.
+    const mission = getKidsMission(
+      input.missionId,
+      input.locale,
+      input.world,
+      options.aiConfig?.current().config.catalog,
+    );
     const context = {
       mission,
       missionIndex,
