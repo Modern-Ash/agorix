@@ -1711,3 +1711,79 @@ test("Ori's tune is heard first, only joins the program when used, and can be un
   await page.getByRole("button", { name: "Deshacer" }).click();
   await expect(page.locator(".kids-program-block")).toHaveCount(0);
 });
+
+test("free scene shows Looks and Motion as snap-together blocks and keeps tap, Enter and drag", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 3200 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
+
+  const palette = page.locator(".kids-studio-palette");
+  await expect(page.locator(".kids-root")).toHaveAttribute("data-block-palette", "scratch");
+  // The visible action no longer shows a plus; the plus stays in the accessible name so the
+  // existing voice and test paths keep working.
+  const say = palette.getByRole("button", { name: "+ Decir", exact: true });
+  const visibleSay = await say.evaluate((element) => {
+    const clone = element.cloneNode(true) as HTMLElement;
+    clone.querySelectorAll(".kids-visually-hidden").forEach((node) => node.remove());
+    return clone.textContent?.trim();
+  });
+  expect(visibleSay).toBe("Decir");
+  const sayBlock = palette
+    .locator(".kids-palette-tool")
+    .filter({ has: page.getByRole("button", { name: "+ Decir", exact: true }) });
+  await expect(sayBlock.getByRole("textbox", { name: "Decir / Pensar" })).toHaveValue("¡Hola!");
+
+  const sizeBlock = palette
+    .locator(".kids-palette-tool")
+    .filter({ has: page.getByRole("button", { name: "+ Tamaño", exact: true }) });
+  const size = sizeBlock.getByRole("combobox", { name: "Tamaño" });
+  await expect(size).toHaveValue("100");
+  const moveBlock = palette
+    .locator(".kids-palette-tool")
+    .filter({ has: page.getByRole("button", { name: "+ Mover", exact: true }) });
+  await expect(moveBlock.getByRole("combobox", { name: "Mover" })).toHaveValue("1");
+
+  // Drag into the empty program first, like the existing drag suite: the ghost uses the visible label.
+  const turn = palette.getByRole("button", { name: "+ Girar a la derecha", exact: true });
+  const drop = page.locator(".kids-program-drop");
+  const from = (await turn.boundingBox())!;
+  const to = (await drop.boundingBox())!;
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2 + 20, { steps: 3 });
+  await expect(page.locator(".kids-drag-ghost")).toHaveText("Girar a la derecha");
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 8 });
+  await page.mouse.up();
+  await expect(page.locator(".kids-program-block")).toHaveCount(1);
+  await expect(page.locator(".kids-program-block").last()).toContainText("Girar a la derecha 90°");
+
+  // The closed value list still decides what the block adds.
+  await size.selectOption("50");
+  await palette.getByRole("button", { name: "+ Tamaño", exact: true }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(2);
+  await expect(page.locator(".kids-program-block").last()).toContainText("Tamaño: 50%");
+
+  // Keyboard: focus and Enter are the same path as a tap.
+  const wait = palette.getByRole("button", { name: "+ Esperar", exact: true });
+  await wait.focus();
+  await wait.press("Enter");
+  await expect(page.locator(".kids-program-block")).toHaveCount(3);
+  await expect(page.locator(".kids-program-block").last()).toContainText("Esperar: 1s");
+
+  const violations = (
+    await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
+  ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");
+  expect(violations.map((entry) => entry.id)).toEqual([]);
+});

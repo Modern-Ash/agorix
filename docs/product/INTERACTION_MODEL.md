@@ -55,6 +55,7 @@ Block cards are modern manipulable structures, not Scratch-like puzzle pieces. E
 Agorix deliberately splits two layers (issue #203):
 
 - **Interaction grammar is Scratch-familiar**: a categorized palette, drag-to-program with visible snap/insertion slots, inline value editing, stacked and nested blocks, Run/Stop, Step. A learner who knows Scratch should need no explanation. Every drag has a non-drag equivalent ([INPUT_PARITY_MATRIX.md](INPUT_PARITY_MATRIX.md)).
+- **Block-shaped palette tools (issue #817 pilot).** In Escena libre, **Apariencia y tiempo** and **Movimiento** render each action group as a block that carries its closed value list inside the same shape. The action remains a native button, so tap, click and Enter add it; the value remains a native select or number field, so the closed lists and the keyboard path stay; and the whole block still drags into the program. The remaining palette categories keep the label + select + button form until they are migrated.
 - **Semantics are AI-native and transparent**: generated code is always visible, the canonical program is the only authority, AI output is a proposal until the learner accepts, rejects or modifies it, and runtime evidence, not AI language, proves behavior. The project runs fully without AI.
 
 Familiar gestures never bypass these semantics: no gesture applies an AI proposal implicitly. The release gate is [ADOPTION_USABILITY_CHECKLIST.md](ADOPTION_USABILITY_CHECKLIST.md) plus `apps/web/e2e/adoption-gate.spec.ts`, which asserts canonical hashes at authority boundaries.

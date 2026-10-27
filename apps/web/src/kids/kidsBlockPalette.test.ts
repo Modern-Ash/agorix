@@ -29,7 +29,7 @@ function contrast(a: string, b: string): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-const categories = ["move", "turn", "control", "sound", "event"] as const;
+const categories = ["move", "turn", "control", "sound", "event", "looks"] as const;
 const defaults = block(":root");
 const scratch = block('.kids-root[data-block-palette="scratch"]');
 
@@ -41,6 +41,8 @@ describe("block category tokens (issue #447)", () => {
     expect(defaults["--kids-block-sound-bg"]).toBe("#ad5c12");
     expect(defaults["--kids-block-event-bg"]).toBe("#f8c573");
     expect(defaults["--kids-block-event-text"]).toBe("#3d2203");
+    expect(defaults["--kids-block-looks-bg"]).toBe("#7b3fa0");
+    expect(defaults["--kids-block-looks-text"]).toBe("#ffffff");
   });
 
   it("defines the Scratch hues from the prototype", () => {
@@ -52,6 +54,8 @@ describe("block category tokens (issue #447)", () => {
     expect(scratch["--kids-block-sound-border"]).toBe("#bd42bd");
     expect(scratch["--kids-block-event-bg"]).toBe("#ffbf00");
     expect(scratch["--kids-block-event-border"]).toBe("#cc9900");
+    expect(scratch["--kids-block-looks-bg"]).toBe("#9966ff");
+    expect(scratch["--kids-block-looks-border"]).toBe("#774dcb");
   });
 
   for (const [name, tokens] of [
@@ -68,9 +72,14 @@ describe("block category tokens (issue #447)", () => {
   }
 
   it("components use tokens, not hard-coded block hexes", () => {
-    for (const hex of ["#2864c5", "#6942b7", "#7042b8", "#ad5c12"]) {
+    for (const hex of ["#2864c5", "#6942b7", "#7042b8", "#ad5c12", "#7b3fa0"]) {
       const uses = css.split(hex).length - 1;
       expect(uses).toBe(1); // only the :root definition
     }
+  });
+
+  it("maps the snap-together palette tools to their category tokens", () => {
+    expect(css).toContain("--kids-palette-tool-bg: var(--kids-block-looks-bg)");
+    expect(css).toContain("--kids-palette-tool-bg: var(--kids-block-move-bg)");
   });
 });

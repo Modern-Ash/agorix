@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { DRAG_DISTANCE, dropIndex, insertIndex, isAddButton, movedFar } from "./kidsDrag.js";
+import {
+  DRAG_DISTANCE,
+  dropIndex,
+  insertIndex,
+  isAddButton,
+  isAddControl,
+  movedFar,
+} from "./kidsDrag.js";
 
 describe("drag rules", () => {
   it("tells a tap from a drag by distance", () => {
@@ -30,6 +37,16 @@ describe("drag rules", () => {
     expect(isAddButton("Jugar")).toBe(false);
     expect(isAddButton("Deshacer")).toBe(false);
     expect(isAddButton(null)).toBe(false);
+  });
+
+  it("recognises snap-together blocks that keep the plus only in the accessible name", () => {
+    expect(isAddControl({ textContent: "Mover", dataset: { kidsAdd: "true" } })).toBe(true);
+    expect(isAddControl({ textContent: "Mover", dataset: {} })).toBe(false);
+    expect(isAddControl({ textContent: "Mover" })).toBe(false);
+    // Legacy palette buttons keep working without the opt-in attribute.
+    expect(isAddControl({ textContent: "+ Mover", dataset: {} })).toBe(true);
+    expect(isAddControl({ textContent: "Agregar personaje" })).toBe(false);
+    expect(isAddControl({ textContent: null })).toBe(false);
   });
 
   it("finds where a block would be inserted, including at the end and in an empty list", () => {
