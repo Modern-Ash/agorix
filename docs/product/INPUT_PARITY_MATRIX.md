@@ -34,6 +34,7 @@ Scratch-familiar direct manipulation must stay usable on tablets and accessible 
 
 - All paths call the same canonical transaction (`commitProjection`); no path mutates the program invisibly.
 - AI proposals are not touched by this matrix: they stay proposals until the learner accepts, rejects or modifies them via the existing explicit controls.
+- Kids free scene (issue #817 pilot): Looks and Motion palette tools are blocks that carry their closed value lists inside the same shape, but the action is still a native button. Click, tap, Enter/Space and drag all press that same button, and the value controls keep their native select/number keyboard behavior.
 
 ## Known gaps
 

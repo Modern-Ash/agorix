@@ -29,7 +29,7 @@ import {
   type OriStudioIntent,
 } from "@agorix/ori-agent";
 import { bandProfile, codeTabsForBand, type AgeBand, type CodeTab } from "../kidsAgeBand.js";
-import { TOUCH_HOLD_MS, insertIndex, isAddButton, movedFar } from "../kidsDrag.js";
+import { TOUCH_HOLD_MS, insertIndex, isAddControl, movedFar } from "../kidsDrag.js";
 import {
   factsOfRun,
   previewCandidate,
@@ -38,6 +38,7 @@ import {
   type Direction,
 } from "../kidsStudioCoach.js";
 import { StudioCoach, StudioIntentPicker, StudioPrediction } from "./KidsStudioCoach.js";
+import { KidsPaletteBlock } from "./KidsPaletteBlock.js";
 import {
   MUSIC_BEATS,
   MUSIC_DRUMS,
@@ -902,7 +903,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
     };
     const down = (event: globalThis.PointerEvent) => {
       const button = (event.target as HTMLElement).closest("button");
-      if (!button || button.disabled || !isAddButton(button.textContent)) return;
+      if (!button || button.disabled || !isAddControl(button)) return;
       const touch = event.pointerType === "touch";
       start = { x: event.clientX, y: event.clientY, button, touch, armed: !touch, timer: null };
       if (touch)
@@ -920,7 +921,10 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
         dragging = true;
         ghost = document.createElement("div");
         ghost.className = "kids-drag-ghost";
-        ghost.textContent = start.button.textContent?.replace(/^\s*\+\s*/, "") ?? "";
+        ghost.textContent =
+          start.button.dataset.kidsAddLabel ??
+          start.button.textContent?.replace(/^\s*\+\s*/, "") ??
+          "";
         ghost.setAttribute("aria-hidden", "true");
         document.body.appendChild(ghost);
       }
@@ -1517,6 +1521,14 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
   }
 
   const pointTarget = otherActors.find((item) => item.id === pointTargetId) ?? otherActors[0];
+
+  const targetOutOfRange =
+    !Number.isInteger(targetX) ||
+    targetX < 0 ||
+    targetX > 320 ||
+    !Number.isInteger(targetY) ||
+    targetY < -100 ||
+    targetY > 120;
 
   function blockLabel(statement: Statement, owner?: Procedure): string {
     switch (statement.type) {
@@ -2697,40 +2709,45 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
           </div>
           <div className="kids-studio-palette" ref={setPalette}>
             <h3>{copy.paletteLooks}</h3>
-            <label>
-              {copy.say} / {copy.think}
+            <KidsPaletteBlock
+              tone="looks"
+              actions={[
+                {
+                  label: copy.say,
+                  disabled: !bubbleText.trim(),
+                  onAdd: () => add({ type: "say", text: bubbleText.trim() }),
+                },
+                {
+                  label: copy.think,
+                  disabled: !bubbleText.trim(),
+                  onAdd: () => add({ type: "think", text: bubbleText.trim() }),
+                },
+              ]}
+            >
               <input
                 type="text"
+                aria-label={`${copy.say} / ${copy.think}`}
                 maxLength={80}
                 value={bubbleText}
                 onChange={(event) => setBubbleText(event.target.value)}
               />
-            </label>
-            <button
-              type="button"
-              className="kids-button"
-              disabled={!bubbleText.trim()}
-              onClick={() => add({ type: "say", text: bubbleText.trim() })}
+            </KidsPaletteBlock>
+            <KidsPaletteBlock
+              tone="looks"
+              actions={[{ label: copy.show, onAdd: () => add({ type: "show" }) }]}
+            />
+            <KidsPaletteBlock
+              tone="looks"
+              actions={[{ label: copy.hide, onAdd: () => add({ type: "hide" }) }]}
+            />
+            <KidsPaletteBlock
+              tone="looks"
+              actions={[
+                { label: copy.size, onAdd: () => add({ type: "setSize", size: spriteSize }) },
+              ]}
             >
-              + {copy.say}
-            </button>
-            <button
-              type="button"
-              className="kids-button"
-              disabled={!bubbleText.trim()}
-              onClick={() => add({ type: "think", text: bubbleText.trim() })}
-            >
-              + {copy.think}
-            </button>
-            <button type="button" className="kids-button" onClick={() => add({ type: "show" })}>
-              + {copy.show}
-            </button>
-            <button type="button" className="kids-button" onClick={() => add({ type: "hide" })}>
-              + {copy.hide}
-            </button>
-            <label>
-              {copy.size}{" "}
               <select
+                aria-label={copy.size}
                 value={spriteSize}
                 onChange={(event) => setSpriteSize(Number(event.target.value))}
               >
@@ -2740,17 +2757,18 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                   </option>
                 ))}
               </select>
-            </label>
-            <button
-              type="button"
-              className="kids-button"
-              onClick={() => add({ type: "setSize", size: spriteSize })}
+            </KidsPaletteBlock>
+            <KidsPaletteBlock
+              tone="looks"
+              actions={[
+                {
+                  label: copy.growShrink,
+                  onAdd: () => add({ type: "changeSize", delta: sizeDelta }),
+                },
+              ]}
             >
-              + {copy.size}
-            </button>
-            <label>
-              {copy.growShrink}{" "}
               <select
+                aria-label={copy.growShrink}
                 value={sizeDelta}
                 onChange={(event) => setSizeDelta(Number(event.target.value))}
               >
@@ -2761,17 +2779,15 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                   </option>
                 ))}
               </select>
-            </label>
-            <button
-              type="button"
-              className="kids-button"
-              onClick={() => add({ type: "changeSize", delta: sizeDelta })}
+            </KidsPaletteBlock>
+            <KidsPaletteBlock
+              tone="looks"
+              actions={[
+                { label: copy.wait, onAdd: () => add({ type: "wait", seconds: waitSeconds }) },
+              ]}
             >
-              + {copy.growShrink}
-            </button>
-            <label>
-              {copy.wait}{" "}
               <select
+                aria-label={copy.wait}
                 value={waitSeconds}
                 onChange={(event) => setWaitSeconds(Number(event.target.value))}
               >
@@ -2781,18 +2797,23 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                   </option>
                 ))}
               </select>
-            </label>
-            <button
-              type="button"
-              className="kids-button"
-              onClick={() => add({ type: "wait", seconds: waitSeconds })}
-            >
-              + {copy.wait}
-            </button>
+            </KidsPaletteBlock>
             <h3>{copy.paletteMotion}</h3>
-            <label>
-              {copy.move}{" "}
+            <KidsPaletteBlock
+              tone="motion"
+              actions={[
+                {
+                  label: copy.move,
+                  onAdd: () => add({ type: "move", steps: moveCells * 40 }),
+                },
+                {
+                  label: copy.moveBackward,
+                  onAdd: () => add({ type: "move", steps: -moveCells * 40 }),
+                },
+              ]}
+            >
               <select
+                aria-label={copy.move}
                 value={moveCells}
                 onChange={(event) => setMoveCells(Number(event.target.value))}
               >
@@ -2802,76 +2823,57 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                   </option>
                 ))}
               </select>
-            </label>
-            <button
-              type="button"
-              className="kids-button"
-              onClick={() => add({ type: "move", steps: moveCells * 40 })}
+            </KidsPaletteBlock>
+            <KidsPaletteBlock
+              tone="motion"
+              actions={[
+                {
+                  label: copy.goTo,
+                  disabled: targetOutOfRange,
+                  onAdd: () => add({ type: "goTo", x: targetX, y: targetY }),
+                },
+                {
+                  label: `${copy.glideTo} (${waitSeconds}s)`,
+                  disabled: targetOutOfRange,
+                  onAdd: () =>
+                    add({ type: "glideTo", x: targetX, y: targetY, seconds: waitSeconds }),
+                },
+              ]}
             >
-              + {copy.move}
-            </button>
-            <button
-              type="button"
-              className="kids-button"
-              onClick={() => add({ type: "move", steps: -moveCells * 40 })}
-            >
-              + {copy.moveBackward}
-            </button>
-            <label>
-              {copy.xCoordinate}{" "}
               <input
                 type="number"
+                aria-label={copy.xCoordinate}
                 min={0}
                 max={320}
                 step={1}
                 value={targetX}
                 onChange={(event) => setTargetX(Number(event.target.value))}
               />
-            </label>
-            <label>
-              {copy.yCoordinate}{" "}
               <input
                 type="number"
+                aria-label={copy.yCoordinate}
                 min={-100}
                 max={120}
                 step={1}
                 value={targetY}
                 onChange={(event) => setTargetY(Number(event.target.value))}
               />
-            </label>
-            <button
-              type="button"
-              className="kids-button"
-              disabled={
-                !Number.isInteger(targetX) ||
-                targetX < 0 ||
-                targetX > 320 ||
-                !Number.isInteger(targetY) ||
-                targetY < -100 ||
-                targetY > 120
-              }
-              onClick={() => add({ type: "goTo", x: targetX, y: targetY })}
+            </KidsPaletteBlock>
+            <KidsPaletteBlock
+              tone="motion"
+              actions={[
+                {
+                  label: copy.turnLeft,
+                  onAdd: () => add({ type: "turn", degrees: -turnAmount }),
+                },
+                {
+                  label: copy.turnRight,
+                  onAdd: () => add({ type: "turn", degrees: turnAmount }),
+                },
+              ]}
             >
-              + {copy.goTo}
-            </button>
-            <button
-              type="button"
-              className="kids-button"
-              disabled={
-                !Number.isInteger(targetX) ||
-                targetX < 0 ||
-                targetX > 320 ||
-                !Number.isInteger(targetY) ||
-                targetY < -100 ||
-                targetY > 120
-              }
-              onClick={() => add({ type: "glideTo", x: targetX, y: targetY, seconds: waitSeconds })}
-            >
-              + {copy.glideTo} ({waitSeconds}s)
-            </button>
-            <label>
-              {copy.turnAmount}{" "}
               <select
+                aria-label={copy.turnAmount}
                 value={turnAmount}
                 onChange={(event) => setTurnAmount(Number(event.target.value))}
               >
@@ -2881,24 +2883,18 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                   </option>
                 ))}
               </select>
-            </label>
-            <button
-              type="button"
-              className="kids-button"
-              onClick={() => add({ type: "turn", degrees: -turnAmount })}
+            </KidsPaletteBlock>
+            <KidsPaletteBlock
+              tone="motion"
+              actions={[
+                {
+                  label: copy.pointDirection,
+                  onAdd: () => add({ type: "pointInDirection", degrees: pointDegrees }),
+                },
+              ]}
             >
-              + {copy.turnLeft}
-            </button>
-            <button
-              type="button"
-              className="kids-button"
-              onClick={() => add({ type: "turn", degrees: turnAmount })}
-            >
-              + {copy.turnRight}
-            </button>
-            <label>
-              {copy.pointDirection}{" "}
               <select
+                aria-label={copy.pointDirection}
                 value={pointDegrees}
                 onChange={(event) => setPointDegrees(Number(event.target.value))}
               >
@@ -2908,59 +2904,46 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                   </option>
                 ))}
               </select>
-            </label>
-            <button
-              type="button"
-              className="kids-button"
-              onClick={() => add({ type: "pointInDirection", degrees: pointDegrees })}
-            >
-              + {copy.pointDirection}
-            </button>
+            </KidsPaletteBlock>
             {pointTarget ? (
-              <>
-                <label>
-                  {copy.pointTowards}{" "}
-                  <select
-                    value={pointTarget.id}
-                    onChange={(event) => setPointTargetId(event.target.value)}
-                  >
-                    {otherActors.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <button
-                  type="button"
-                  className="kids-button"
-                  onClick={() => add({ type: "pointTowards", actorId: pointTarget.id })}
+              <KidsPaletteBlock
+                tone="motion"
+                actions={[
+                  {
+                    label: copy.pointTowards,
+                    onAdd: () => add({ type: "pointTowards", actorId: pointTarget.id }),
+                  },
+                ]}
+              >
+                <select
+                  aria-label={copy.pointTowards}
+                  value={pointTarget.id}
+                  onChange={(event) => setPointTargetId(event.target.value)}
                 >
-                  + {copy.pointTowards}
-                </button>
-              </>
+                  {otherActors.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </KidsPaletteBlock>
             ) : null}
-            <button
-              type="button"
-              className="kids-button"
-              onClick={() => add({ type: "bounceOnEdge" })}
-            >
-              + {copy.bounceOnEdge}
-            </button>
-            <button
-              type="button"
-              className="kids-button"
-              onClick={() => add({ type: "goToLayer", layer: "front" })}
-            >
-              + {copy.layerFront}
-            </button>
-            <button
-              type="button"
-              className="kids-button"
-              onClick={() => add({ type: "goToLayer", layer: "back" })}
-            >
-              + {copy.layerBack}
-            </button>
+            <KidsPaletteBlock
+              tone="motion"
+              actions={[{ label: copy.bounceOnEdge, onAdd: () => add({ type: "bounceOnEdge" }) }]}
+            />
+            <KidsPaletteBlock
+              tone="motion"
+              actions={[
+                { label: copy.layerFront, onAdd: () => add({ type: "goToLayer", layer: "front" }) },
+              ]}
+            />
+            <KidsPaletteBlock
+              tone="motion"
+              actions={[
+                { label: copy.layerBack, onAdd: () => add({ type: "goToLayer", layer: "back" }) },
+              ]}
+            />
             <h3>{copy.paletteMedia}</h3>
             <label>
               {copy.costume}{" "}

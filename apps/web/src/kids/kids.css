@@ -31,6 +31,10 @@
   --kids-block-event-bg: #f8c573;
   --kids-block-event-border: transparent;
   --kids-block-event-text: #3d2203;
+  /* Pilot for snap-together palette tools (issue #817). */
+  --kids-block-looks-bg: #7b3fa0;
+  --kids-block-looks-border: transparent;
+  --kids-block-looks-text: #ffffff;
   --kids-font-body: "Atkinson Hyperlegible", system-ui, sans-serif;
   --kids-font-display: "Epilogue", "Atkinson Hyperlegible", system-ui, sans-serif;
   --kids-font-code: "JetBrains Mono", ui-monospace, monospace;
@@ -1864,6 +1868,9 @@
   --kids-block-event-bg: #ffbf00;
   --kids-block-event-border: #cc9900;
   --kids-block-event-text: #2b2000;
+  --kids-block-looks-bg: #9966ff;
+  --kids-block-looks-border: #774dcb;
+  --kids-block-looks-text: #1a0b33;
 }
 /* Visual puzzle joins live on the same v2 flag as the Scratch palette. They are
    paint only: the block box and its drag/drop hit area stay unchanged. */
@@ -1942,6 +1949,52 @@
   .kids-root[data-block-palette="scratch"] .kids-palette-block::before,
   .kids-root[data-block-palette="scratch"] .kids-palette-block::after,
   .kids-root[data-block-palette="scratch"] .kids-start-block::after {
+    content: none;
+  }
+}
+/* Free-scene palette tools take the same join shape. Their cutout is the page canvas
+   because .kids-studio-palette sits on the page, not on the white panel (issue #817). */
+.kids-root[data-block-palette="scratch"] .kids-palette-tool {
+  position: relative;
+  overflow: visible;
+  margin: 8px 0 11px;
+  border-radius: 8px;
+}
+.kids-root[data-block-palette="scratch"] .kids-palette-tool::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: 23px;
+  width: 24px;
+  height: 8px;
+  border-radius: 0 0 6px 6px;
+  background: var(--kids-canvas);
+  pointer-events: none;
+}
+.kids-root[data-block-palette="scratch"] .kids-palette-tool::after {
+  content: "";
+  position: absolute;
+  bottom: -7px;
+  left: 23px;
+  width: 24px;
+  height: 8px;
+  border-radius: 0 0 6px 6px;
+  background: inherit;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kids-root[data-block-palette="scratch"] .kids-palette-tool {
+    animation: none;
+    transition: none;
+  }
+}
+@media (forced-colors: active) {
+  .kids-root[data-block-palette="scratch"] .kids-palette-tool {
+    border: 2px solid CanvasText;
+    box-shadow: none;
+  }
+  .kids-root[data-block-palette="scratch"] .kids-palette-tool::before,
+  .kids-root[data-block-palette="scratch"] .kids-palette-tool::after {
     content: none;
   }
 }
@@ -3270,6 +3323,85 @@
   padding-bottom: 0.3rem;
   border-bottom: 2px solid currentColor;
   font-size: 1rem;
+}
+/* Snap-together palette tools (issue #817 pilot). Each shell is one block with its
+   action buttons and closed value slots inside; the categories not migrated yet keep
+   the legacy label + select + button rows. */
+.kids-palette-tool {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  box-sizing: border-box;
+  max-width: 100%;
+  min-height: var(--kids-min-target, 56px);
+  padding: 0.3rem;
+  border-radius: 14px;
+  background: var(--kids-palette-tool-bg);
+  color: var(--kids-palette-tool-text);
+  box-shadow: inset 0 0 0 2px var(--kids-palette-tool-border);
+}
+.kids-palette-tool-looks {
+  --kids-palette-tool-bg: var(--kids-block-looks-bg);
+  --kids-palette-tool-border: var(--kids-block-looks-border);
+  --kids-palette-tool-text: var(--kids-block-looks-text);
+  --kids-palette-tool-focus: #ffffff;
+}
+.kids-palette-tool-motion {
+  --kids-palette-tool-bg: var(--kids-block-move-bg);
+  --kids-palette-tool-border: var(--kids-block-move-border);
+  --kids-palette-tool-text: var(--kids-block-move-text);
+  --kids-palette-tool-focus: #ffffff;
+}
+.kids-root[data-block-palette="scratch"] .kids-palette-tool-looks {
+  --kids-palette-tool-focus: #08162e;
+}
+.kids-palette-tool-actions,
+.kids-palette-tool-slots {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+.kids-palette-tool-add {
+  min-height: var(--kids-min-target, 44px);
+  padding: 0.25rem 0.75rem;
+  border: 2px solid currentColor;
+  border-radius: 9px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.kids-palette-tool-add:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.kids-palette-tool-add:focus-visible,
+.kids-palette-tool-slots input:focus-visible,
+.kids-palette-tool-slots select:focus-visible {
+  outline: 3px solid var(--kids-palette-tool-focus, var(--kids-focus));
+  outline-offset: 2px;
+}
+.kids-palette-tool-slots input,
+.kids-palette-tool-slots select {
+  box-sizing: border-box;
+  min-height: var(--kids-min-target, 44px);
+  padding: 0 0.45rem;
+  border: 2px solid var(--kids-text);
+  border-radius: 9px;
+  background: var(--kids-panel);
+  color: var(--kids-text);
+  font: inherit;
+  font-weight: 700;
+}
+.kids-palette-tool-slots input[type="text"] {
+  min-width: 11rem;
+  max-width: 100%;
+}
+.kids-palette-tool-slots input[type="number"] {
+  width: 5.5rem;
 }
 .kids-studio-watchers {
   margin: 0.8rem 0 1.2rem;

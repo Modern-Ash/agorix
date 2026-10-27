@@ -24,6 +24,19 @@ export function isAddButton(label: string | null | undefined): boolean {
   return (label ?? "").trim().startsWith("+");
 }
 
+/**
+ * Snap-together palette blocks keep the plus in the accessible name but not in the visible
+ * label, so they opt in with `data-kids-add`. Legacy palette buttons still match by label.
+ */
+export interface AddControlLike {
+  readonly textContent?: string | null;
+  readonly dataset?: { readonly kidsAdd?: string | undefined };
+}
+
+export function isAddControl(control: AddControlLike): boolean {
+  return control.dataset?.kidsAdd === "true" || isAddButton(control.textContent);
+}
+
 /** Where a dropped block would be inserted: before the first item whose middle is below the pointer. */
 export function insertIndex(
   items: readonly { readonly top: number; readonly height: number }[],
