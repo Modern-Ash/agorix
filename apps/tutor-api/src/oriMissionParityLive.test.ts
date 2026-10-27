@@ -15,6 +15,7 @@ import { buildOriMig03ReviewHandoff } from "./oriMig03ReviewHandoff.js";
 import { afterEach, describe, expect, it } from "vitest";
 import { createOriPlanConsumer } from "./oriPlanConsumer.js";
 import { captureOriMissionParity } from "./oriMissionParityCapture.js";
+import { captureOriMissionSourceEvidence } from "./oriMissionSourceEvidence.js";
 
 const root = process.env["ORI_REPO_PATH"];
 const runnable = !!root && existsSync(resolve(root, "examples/shadow-api/serve.mjs"));
@@ -62,7 +63,11 @@ async function startOri() {
 describe.skipIf(!runnable)("MIG-03 real Ori shadow mission capture", () => {
   it("compares actual Ori loopback plans against the real Kids baseline without writes", async () => {
     const endpoint = await startOri();
-    const report = await captureOriMissionParity(createOriPlanConsumer(endpoint));
+    const consumer = createOriPlanConsumer(endpoint);
+    const report = await captureOriMissionParity(consumer);
+    const sourceEvidence = await captureOriMissionSourceEvidence(consumer);
+    expect(sourceEvidence).toHaveLength(report.missions);
+    expect(sourceEvidence.every((entry) => entry.kidsBaseline !== null)).toBe(true);
     expect(report.missions).toBeGreaterThan(0);
     expect(report.available + report.missing).toBe(report.missions);
     const matrix = buildOriMissionDivergenceMatrix(report.findings);
@@ -98,6 +103,7 @@ describe.skipIf(!runnable)("MIG-03 real Ori shadow mission capture", () => {
           reviewBriefing,
           reviewChecklist,
           reviewHandoff,
+          sourceEvidence,
           matrix,
         },
         null,
