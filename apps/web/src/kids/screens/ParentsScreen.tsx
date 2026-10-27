@@ -71,6 +71,12 @@ const COPY = {
     readNote: "Activar los botones de escuchar",
     customImages: "Imágenes propias",
     customImagesNote: "Permitir que el niño agregue exploradores y fondos propios",
+    penPack: "Paquete Lápiz",
+    penPackNote:
+      "Dibujar con el personaje. Apagado, no se ofrecen los bloques; lo ya armado se conserva",
+    musicPack: "Paquete Música",
+    musicPackNote:
+      "Notas, percusión y ritmo. Apagado, no se ofrecen los bloques ni las ideas de Ori; lo ya armado se conserva",
     ageBand: "Franja de edad",
     ageBandNote: "Ajusta la herramienta a la edad. Se guarda solo en este dispositivo.",
     bandFirst:
@@ -130,6 +136,12 @@ const COPY = {
     readNote: "Enable the listen buttons",
     customImages: "Custom images",
     customImagesNote: "Let the child add custom explorers and backdrops",
+    penPack: "Pen pack",
+    penPackNote:
+      "Draw with the character. Off, the blocks are not offered; what is already built is kept",
+    musicPack: "Music pack",
+    musicPackNote:
+      "Notes, drums and beats. Off, the blocks and Ori's music ideas are not offered; what is already built is kept",
     ageBand: "Age band",
     ageBandNote: "Matches the tool to the age. Stored only on this device.",
     bandFirst:
@@ -172,6 +184,8 @@ export function ParentsScreen({ t, locale, progress, settings, onSettings }: Pro
   const copy = COPY[locale];
   const ageBandsEnabled = useKidsFlag("ageBands");
   const customImagesEnabled = useKidsFlag("customImages");
+  const penEnabled = useKidsFlag("extensionPen");
+  const musicEnabled = useKidsFlag("extensionMusic");
   const customAudioEnabled = useKidsFlag("customAudio");
   const adultLinkEnabled = useKidsFlag("adultLink");
   const groupModeEnabled = useKidsFlag("groupMode");
@@ -428,6 +442,32 @@ export function ParentsScreen({ t, locale, progress, settings, onSettings }: Pro
             <span>
               <strong>{copy.customImages}</strong>
               <small>{copy.customImagesNote}</small>
+            </span>
+            <i aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className="kids-adult-switch"
+            role="switch"
+            aria-checked={penEnabled}
+            onClick={() => setKidsV2Feature("extensionPen", !penEnabled)}
+          >
+            <span>
+              <strong>{copy.penPack}</strong>
+              <small>{copy.penPackNote}</small>
+            </span>
+            <i aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className="kids-adult-switch"
+            role="switch"
+            aria-checked={musicEnabled}
+            onClick={() => setKidsV2Feature("extensionMusic", !musicEnabled)}
+          >
+            <span>
+              <strong>{copy.musicPack}</strong>
+              <small>{copy.musicPackNote}</small>
             </span>
             <i aria-hidden="true" />
           </button>
