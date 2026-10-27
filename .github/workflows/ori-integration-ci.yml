@@ -150,6 +150,11 @@ jobs:
         run: |
           pnpm test:ori:interop
           pnpm test:ori:runtime
+      - name: Require real Ori process to authenticated HTTP and SQLite E2E
+        working-directory: agorix
+        env:
+          ORI_REPO_PATH: ${{ github.workspace }}/ori
+        run: pnpm exec vitest run apps/tutor-api/src/oriMig03RealProcessPresentationE2E.test.ts
       - name: Upload synthetic Ori mission parity evidence
         if: always()
         uses: actions/upload-artifact@v4
