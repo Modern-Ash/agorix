@@ -237,6 +237,208 @@ const COPY: Record<string, Record<SupportedLocale, KidsCopy>> = {
   },
 };
 
+/**
+ * Each world has its own three missions (issue #612). The mission id is the slot (first, second,
+ * third), so saved projects, progress keys and the tutor keep working unchanged; the world only
+ * changes where the character starts, where the goal is and how the mission talks. The space world
+ * keeps the original layouts and copy.
+ */
+export const KIDS_MISSION_WORLDS = Object.freeze(["space", "ocean", "robots", "city"] as const);
+export type KidsMissionWorld = (typeof KIDS_MISSION_WORLDS)[number];
+
+interface WorldLayout {
+  readonly start: KidsCell;
+  readonly goal: KidsCell;
+  readonly concepts: readonly MissionConcept[];
+}
+
+const WORLD_LAYOUTS: Readonly<
+  Record<Exclude<KidsMissionWorld, "space">, readonly [WorldLayout, WorldLayout, WorldLayout]>
+> = {
+  ocean: [
+    { start: { cx: 1, cy: 0 }, goal: { cx: 5, cy: 0 }, concepts: ["sequence", "movement"] },
+    { start: { cx: 0, cy: 0 }, goal: { cx: 3, cy: 2 }, concepts: ["sequence", "movement"] },
+    {
+      start: { cx: 0, cy: 3 },
+      goal: { cx: 5, cy: 1 },
+      concepts: ["sequence", "movement", "repetition"],
+    },
+  ],
+  robots: [
+    { start: { cx: 0, cy: 3 }, goal: { cx: 3, cy: 3 }, concepts: ["sequence", "movement"] },
+    { start: { cx: 1, cy: 0 }, goal: { cx: 4, cy: 3 }, concepts: ["sequence", "movement"] },
+    {
+      start: { cx: 0, cy: 1 },
+      goal: { cx: 5, cy: 3 },
+      concepts: ["sequence", "movement", "repetition"],
+    },
+  ],
+  city: [
+    { start: { cx: 0, cy: 1 }, goal: { cx: 5, cy: 1 }, concepts: ["sequence", "movement"] },
+    { start: { cx: 2, cy: 3 }, goal: { cx: 5, cy: 1 }, concepts: ["sequence", "movement"] },
+    {
+      start: { cx: 0, cy: 0 },
+      goal: { cx: 4, cy: 3 },
+      concepts: ["sequence", "movement", "repetition"],
+    },
+  ],
+};
+
+const WORLD_STORY: Readonly<
+  Record<
+    Exclude<KidsMissionWorld, "space">,
+    Record<
+      SupportedLocale,
+      { titles: readonly [string, string, string]; verb: string; place: string; goalTitle: string }
+    >
+  >
+> = {
+  ocean: {
+    es: {
+      titles: ["Corriente recta", "Doblar el arrecife", "Zigzag entre corales"],
+      verb: "Nadá",
+      place: "el tesoro",
+      goalTitle: "Llegá al tesoro",
+    },
+    en: {
+      titles: ["Straight current", "Round the reef", "Zigzag through the coral"],
+      verb: "Swim",
+      place: "the treasure",
+      goalTitle: "Reach the treasure",
+    },
+  },
+  robots: {
+    es: {
+      titles: ["Cinta transportadora", "Girar en la fábrica", "Escalera de engranajes"],
+      verb: "Rodá",
+      place: "el cargador",
+      goalTitle: "Llegá al cargador",
+    },
+    en: {
+      titles: ["Conveyor belt", "Turn in the factory", "Gear staircase"],
+      verb: "Roll",
+      place: "the charger",
+      goalTitle: "Reach the charger",
+    },
+  },
+  city: {
+    es: {
+      titles: ["Calle principal", "Doblar en la esquina", "Cruzar la plaza"],
+      verb: "Caminá",
+      place: "la parada",
+      goalTitle: "Llegá a la parada",
+    },
+    en: {
+      titles: ["Main street", "Turn at the corner", "Across the square"],
+      verb: "Walk",
+      place: "the bus stop",
+      goalTitle: "Reach the bus stop",
+    },
+  },
+};
+
+/** Copy for a world's mission, with the squares counted from its own layout. */
+function worldCopy(
+  world: Exclude<KidsMissionWorld, "space">,
+  slot: 0 | 1 | 2,
+  layout: WorldLayout,
+  locale: SupportedLocale,
+): KidsCopy {
+  const story = WORLD_STORY[world][locale];
+  const dx = layout.goal.cx - layout.start.cx;
+  const dy = layout.goal.cy - layout.start.cy;
+  const down = dy > 0;
+  const rows = Math.abs(dy);
+  const es = locale === "es";
+  const turn = es ? (down ? "derecha" : "izquierda") : down ? "right" : "left";
+  const toward = es ? (down ? "abajo" : "arriba") : down ? "down" : "up";
+  const base = COPY[KIDS_MISSION_IDS[slot]]![locale]!;
+  if (slot === 0) {
+    return {
+      title: story.titles[0],
+      goalTitle: story.goalTitle,
+      learnerFacing: es
+        ? `${story.verb} en línea recta hasta ${story.place}.`
+        : `${story.verb} in a straight line to ${story.place}.`,
+      hints: es
+        ? [
+            "Mirá dónde está la meta. ¿Está cerca o lejos?",
+            `Contá los cuadritos entre tu personaje y la meta: son ${dx}.`,
+            "Un bloque Mover avanza tantos cuadritos como indica su número.",
+            `Probá un bloque Mover con el número ${dx}.`,
+            `Una idea: Mover ${dx}.`,
+          ]
+        : [
+            "Look at where the goal is. Is it near or far?",
+            `Count the squares between your character and the goal: there are ${dx}.`,
+            "A Move block goes as many squares as its number says.",
+            `Try a Move block with the number ${dx}.`,
+            `One idea: Move ${dx}.`,
+          ],
+      reflectionPrompt: base.reflectionPrompt,
+    };
+  }
+  if (slot === 1) {
+    return {
+      title: story.titles[1],
+      goalTitle: story.goalTitle,
+      learnerFacing: es
+        ? `${story.verb} hasta ${story.place}: avanzá y doblá una vez.`
+        : `${story.verb} to ${story.place}: move, then turn once.`,
+      hints: es
+        ? [
+            `Mirá el camino: la meta está ${dx} cuadritos a la derecha y ${rows} hacia ${toward}.`,
+            `Tu personaje empieza mirando a la derecha. ¿Qué giro lo hace mirar hacia ${toward}?`,
+            "Mover avanza y Girar cambia hacia dónde mira tu personaje. Combinalos.",
+            "Primero avanzá hacia la derecha; cuando llegues a la columna de la meta, girá.",
+            `Una idea: Mover ${dx}, Girar a la ${turn}, Mover ${rows}.`,
+          ]
+        : [
+            `Look at the path: the goal is ${dx} squares to the right and ${rows} ${toward}.`,
+            `Your character starts facing right. Which turn makes it face ${toward}?`,
+            "Move goes forward and Turn changes where your character looks. Combine them.",
+            "First go right; when you reach the goal's column, turn.",
+            `One idea: Move ${dx}, Turn ${turn}, Move ${rows}.`,
+          ],
+      reflectionPrompt: base.reflectionPrompt,
+    };
+  }
+  return {
+    title: story.titles[2],
+    goalTitle: es ? `${story.goalTitle} con giros` : `${story.goalTitle} with turns`,
+    learnerFacing: es
+      ? `${story.verb} hasta ${story.place} con giros. Repetir te puede ayudar.`
+      : `${story.verb} to ${story.place} with turns. Repeat can help.`,
+    hints: es
+      ? [
+          `Mirá el camino: la meta está ${dx} cuadritos a la derecha y ${rows} hacia ${toward}.`,
+          `Tu personaje empieza mirando a la derecha. ¿Qué giro lo hace mirar hacia ${toward}?`,
+          "Cuando repetís la misma acción varias veces, el bloque Repetir te ahorra bloques.",
+          "Probá avanzar de a un cuadrito con Repetir, y girar cuando llegues a la columna de la meta.",
+          `Una idea: Mover ${dx}, Girar a la ${turn}, Mover ${rows}.`,
+        ]
+      : [
+          `Look at the path: the goal is ${dx} squares to the right and ${rows} ${toward}.`,
+          `Your character starts facing right. Which turn makes it face ${toward}?`,
+          "When you do the same action many times, the Repeat block saves you blocks.",
+          "Try moving one square at a time with Repeat, and turn when you reach the goal's column.",
+          `One idea: Move ${dx}, Turn ${turn}, Move ${rows}.`,
+        ],
+    reflectionPrompt: base.reflectionPrompt,
+  };
+}
+
+/** The layout of a mission in a world, in cells (used by tests and the map). */
+export function kidsMissionLayout(
+  id: string,
+  world: KidsMissionWorld = "space",
+): { readonly start: KidsCell; readonly goal: KidsCell } {
+  const slot = KIDS_MISSION_IDS.findIndex((candidate) => candidate === id);
+  if (slot < 0) throw new RangeError(`unknown kids mission: ${id}`);
+  const layout = world === "space" ? SPECS[slot]! : WORLD_LAYOUTS[world][slot as 0 | 1 | 2];
+  return { start: layout.start, goal: layout.goal };
+}
+
 function ladder(hints: KidsCopy["hints"]): readonly MissionHint[] {
   return hints.map((text, index) => ({
     level: (index + 1) as MissionHint["level"],
@@ -244,8 +446,12 @@ function ladder(hints: KidsCopy["hints"]): readonly MissionHint[] {
   }));
 }
 
-function buildMission(spec: KidsMissionSpec, locale: SupportedLocale): MissionDefinition {
-  const copy = COPY[spec.id]?.[locale];
+function buildMission(
+  spec: KidsMissionSpec,
+  locale: SupportedLocale,
+  override?: KidsCopy,
+): MissionDefinition {
+  const copy = override ?? COPY[spec.id]?.[locale];
   if (copy === undefined) {
     throw new RangeError(`unknown kids mission: ${spec.id}`);
   }
@@ -279,12 +485,25 @@ function buildMission(spec: KidsMissionSpec, locale: SupportedLocale): MissionDe
   });
 }
 
-export function getKidsMission(id: string, locale: string | undefined): MissionDefinition {
+export function getKidsMission(
+  id: string,
+  locale: string | undefined,
+  world: KidsMissionWorld = "space",
+): MissionDefinition {
   const spec = SPECS.find((candidate) => candidate.id === id);
   if (spec === undefined) {
     throw new RangeError(`unknown kids mission: ${id}`);
   }
-  return buildMission(spec, normalizeLocale(locale));
+  if (world === "space") return buildMission(spec, normalizeLocale(locale));
+  const slot = KIDS_MISSION_IDS.findIndex((candidate) => candidate === id) as 0 | 1 | 2;
+  const layout = WORLD_LAYOUTS[world]?.[slot];
+  if (layout === undefined) throw new RangeError(`unknown kids world: ${world}`);
+  const language = normalizeLocale(locale);
+  return buildMission(
+    { id, start: layout.start, goal: layout.goal, concepts: layout.concepts },
+    language,
+    worldCopy(world, slot, layout, language),
+  );
 }
 
 /** The free world: the child taps a cell to place the goal; the start is fixed. */

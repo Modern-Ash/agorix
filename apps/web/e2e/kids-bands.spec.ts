@@ -7,7 +7,7 @@ test.use({ hasTouch: true, serviceWorkers: "block" });
 const BANDS = [
   { band: "6-8", fontPx: 18, target: 56, solutionStep: true, studioBlocks: 6 },
   { band: "9-12", fontPx: 16, target: 48, solutionStep: true, studioBlocks: 8 },
-  { band: "13+", fontPx: 15.2, target: 44, solutionStep: false, studioBlocks: 8 },
+  { band: "13+", fontPx: 15, target: 44, solutionStep: false, studioBlocks: 8 },
 ] as const;
 
 async function seed(page: Page, settings: object | null) {

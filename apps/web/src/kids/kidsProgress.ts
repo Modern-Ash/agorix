@@ -114,6 +114,17 @@ export function markMissionDone(
   return { ...progress, stars: progress.stars + 1, done: { ...progress.done, [key]: true } };
 }
 
+/** Missions finished in one world, out of its three: what the map shows next to each world. */
+export function worldProgress(
+  progress: KidsProgress,
+  world: KidsWorld,
+): { readonly done: number; readonly total: 3 } {
+  return {
+    done: [0, 1, 2].filter((index) => progress.done[`${world}:${index}`] === true).length,
+    total: 3,
+  };
+}
+
 /** The mission to play next in a world; once all three are done the last one stays current. */
 export function firstOpenMission(progress: KidsProgress, world: KidsWorld): 0 | 1 | 2 {
   const open = [0, 1, 2].findIndex((index) => progress.done[`${world}:${index}`] !== true);
