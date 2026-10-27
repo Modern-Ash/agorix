@@ -25,8 +25,14 @@ describe("MIG-04 rollback blocks outstanding decision and apply requests", () =>
       oriReviewApplyEnabled: true,
       oriMig04RolloutDecide: controller.decide,
       oriReviewIdentity: async () => ({ ownerId: "student", projectId: "pilot" }),
-      oriReviewDecision: async () => { decisions++; return null; },
-      oriReviewApply: async () => { applies++; return null; },
+      oriReviewDecision: async () => {
+        decisions++;
+        return null;
+      },
+      oriReviewApply: async () => {
+        applies++;
+        return "rejected";
+      },
     });
     servers.push(server);
     await new Promise<void>((done) => server.listen(0, "127.0.0.1", done));
