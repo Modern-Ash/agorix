@@ -18,8 +18,8 @@ describe("MIG-03 persisted readiness audit limitations", () => {
     const readiness = createOriPersistedReadinessService(store).assess("pilot", {
       evidenceDigest: state.digest, verified: true,
     });
-    expect(readiness?.status).toBe("blocked");
-    expect(readiness?.reasons).toContain("educator-signoff-incomplete");
+    expect(readiness?.status).toBe("ready-for-human-acceptance");
+    expect(readiness?.educatorReviewed).toBe(1);
     expect(readiness?.rolloutAuthorized).toBe(false);
     store.close();
   });
