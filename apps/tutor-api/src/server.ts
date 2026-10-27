@@ -245,6 +245,15 @@ export function createTutorServer(options: TutorServerOptions): Server {
         !options.oriPresentationAckHandler
       )
         return send(response, 404, error("not-found"));
+      if (options.oriMig04RolloutDecide) {
+        if (!options.oriReviewIdentity) return send(response, 404, error("not-found"));
+        const identity = validateOriReviewPrincipal(
+          await options.oriReviewIdentity(request, response),
+        );
+        if (!identity) return send(response, 401, error("unauthorized"));
+        if (!options.oriMig04RolloutDecide(identity.projectId).learnerVisible)
+          return send(response, 404, error("not-found"));
+      }
       return options.oriPresentationAckHandler(request, response);
     }
     if (path === "/api/tutor/ori/review/propose") {
