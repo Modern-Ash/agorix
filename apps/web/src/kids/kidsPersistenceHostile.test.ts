@@ -112,6 +112,7 @@ describe("corrupt local data falls back to safe defaults (issue #442)", () => {
         readAloud: true,
         dailyLimitMinutes: 30,
         ageBand: "6-8",
+        bandChosen: false,
       });
     });
     it(`flags ${raw}`, () => {

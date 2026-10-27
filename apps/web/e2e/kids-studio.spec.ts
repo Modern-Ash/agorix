@@ -542,7 +542,8 @@ async function openStudio(page: import("@playwright/test").Page, band: string) {
 test("a goal from the closed list becomes several ghost blocks and only changes the program when used", async ({
   page,
 }) => {
-  await openStudio(page, "6-8");
+  // The 9–12 band offers every goal; the 6–8 band keeps Ori's ideas to six blocks (issue #607).
+  await openStudio(page, "9-12");
   await page.getByRole("button", { name: "Hacer un cuadrado" }).click();
   await expect(page.getByTestId("intent-card")).toContainText("Ori propone 8 bloques");
   await expect(page.getByTestId("ori-ghost-block")).toHaveCount(8);
@@ -1624,7 +1625,7 @@ test("Ori's tune is heard first, only joins the program when used, and can be un
     ),
   );
   await page.reload();
-  await expect(page.getByRole("button", { name: "Hacer un zigzag" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Tocar una melodía" })).toBeVisible();
   await page.getByRole("button", { name: "Tocar una melodía" }).click();
   const card = page.getByTestId("intent-card");
   await expect(card).toContainText("Ori propone 6 bloques");

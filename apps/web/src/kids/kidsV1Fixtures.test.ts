@@ -51,6 +51,7 @@ describe("Kids v1 saved data stays loadable (issue #437)", () => {
       readAloud: true,
       dailyLimitMinutes: 45,
       ageBand: "6-8", // v1 data has no band: default applies
+      bandChosen: true, // saved by an adult before the band was asked for
     });
   });
 

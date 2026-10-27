@@ -28,7 +28,7 @@ import {
   validateOriStudioProposal,
   type OriStudioIntent,
 } from "@agorix/ori-agent";
-import { codeTabsForBand, type AgeBand, type CodeTab } from "../kidsAgeBand.js";
+import { bandProfile, codeTabsForBand, type AgeBand, type CodeTab } from "../kidsAgeBand.js";
 import { TOUCH_HOLD_MS, insertIndex, isAddButton, movedFar } from "../kidsDrag.js";
 import {
   factsOfRun,
@@ -70,6 +70,8 @@ import { KIDS_SOUNDS } from "../kidsSoundLibrary.js";
 import { processKidsImage } from "../kidsImage.js";
 import { useKidsFlag } from "../kidsFlags.js";
 import { playKidsSound, stopKidsSounds } from "../kidsSoundPlayer.js";
+import { loadKidsMastery } from "../kidsMastery.js";
+import { adaptInterventionByStage, stageBand, stagesOfProgram } from "../kidsStageAdaptation.js";
 import { useInterventionPolicy } from "../kidsBehavior.js";
 import { noteName, playKidsMusic, stopKidsMusic } from "../kidsMusic.js";
 import {
@@ -849,6 +851,15 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
   const [prediction, setPrediction] = useState<Direction | null>(null);
   const [predictedForRun, setPredictedForRun] = useState<Direction | null>(null);
   const [runCount, setRunCount] = useState(0);
+  // What the runtime has shown about this child's concepts sets Ori's pace (issue #611).
+  const pacedPolicy = useMemo(
+    () =>
+      adaptInterventionByStage(
+        interventionPolicy,
+        stageBand(stagesOfProgram(loadKidsMastery(), history.current)),
+      ),
+    [interventionPolicy, history.current, runCount],
+  );
   // Ori's help since the last run, so a run is counted as helped or on the child's own.
   const helped = useRef(false);
   const [palette, setPalette] = useState<HTMLDivElement | null>(null);
@@ -4234,7 +4245,13 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 locale={locale}
                 intents={ORI_STUDIO_INTENTS.filter(
                   (intent) =>
-                    oriIntentsWithin(interventionPolicy).includes(intent) &&
+                    oriIntentsWithin({
+                      ...pacedPolicy,
+                      maxProposalBlocks: Math.min(
+                        pacedPolicy.maxProposalBlocks,
+                        ageBand ? bandProfile(ageBand).oriMaxBlocks : 8,
+                      ),
+                    }).includes(intent) &&
                     (musicEnabled || !["melody", "rhythm", "cheer"].includes(intent)),
                 )}
                 disabled={oriBusy}

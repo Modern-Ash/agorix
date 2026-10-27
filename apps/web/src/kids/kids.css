@@ -85,8 +85,8 @@
 }
 
 .kids-button {
-  min-width: 56px;
-  min-height: 56px;
+  min-width: var(--kids-min-target, 56px);
+  min-height: var(--kids-min-target, 56px);
   padding: 0 20px;
   border: 2px solid var(--kids-border);
   border-radius: 16px;
@@ -2355,6 +2355,7 @@
 
 .kids-map-top {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   padding: 10px 18px;
@@ -3445,4 +3446,25 @@
   align-items: center;
   gap: 0.4rem;
   min-height: 44px;
+}
+
+.kids-band-ask {
+  width: 100%;
+  max-width: 1100px;
+  box-sizing: border-box;
+  margin-bottom: 12px;
+  padding: 12px 16px;
+  border: 2px solid var(--kids-border);
+  border-radius: 16px;
+  background: var(--kids-panel);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.kids-band-ask p {
+  margin: 0;
+  flex: 1 1 18rem;
 }

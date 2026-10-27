@@ -42,9 +42,16 @@ describe("Kids adults data (#377)", () => {
       readAloud: true,
       dailyLimitMinutes: 30,
       ageBand: "6-8",
+      bandChosen: false,
     });
     saveAdultSettings(
-      { oriSuggestions: false, readAloud: false, dailyLimitMinutes: 45, ageBand: "6-8" },
+      {
+        oriSuggestions: false,
+        readAloud: false,
+        dailyLimitMinutes: 45,
+        ageBand: "6-8",
+        bandChosen: true,
+      },
       storage,
     );
     expect(loadAdultSettings(storage).dailyLimitMinutes).toBe(45);
@@ -98,6 +105,8 @@ describe("Kids adults data (#377)", () => {
       readAloud: true,
       dailyLimitMinutes: 45,
       ageBand: "6-8",
+      // Settings saved before the band was asked for count as already chosen (issue #608).
+      bandChosen: true,
     });
   });
 });

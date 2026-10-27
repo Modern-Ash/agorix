@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { LearningEvidenceEvent } from "@agorix/learning-evidence";
 import type { Locale } from "../../i18n.js";
 import { fetchAdultAiHealth, type AdultAiHealth } from "../kidsAdultHealth.js";
-import { AGE_BANDS } from "../kidsAgeBand.js";
+import { AGE_BANDS, bandProfile } from "../kidsAgeBand.js";
 import { setKidsV2Feature, useKidsFlag } from "../kidsFlags.js";
 import { GroupPanel } from "../group/GroupPanel.js";
 import { LinkPanel } from "../link/LinkPanel.js";
@@ -72,6 +72,9 @@ const COPY = {
     customImagesNote: "Permitir que el niño agregue exploradores y fondos propios",
     ageBand: "Franja de edad",
     ageBandNote: "Ajusta la herramienta a la edad. Se guarda solo en este dispositivo.",
+    bandFirst:
+      "Elegí la franja para empezar. No pedimos fecha de nacimiento: solo la franja, y la podés cambiar cuando quieras.",
+    bandKeep: "Seguir con",
     ai: "Estado de la IA",
     provider: "Proveedor en uso",
     configured: "Configurado",
@@ -128,6 +131,9 @@ const COPY = {
     customImagesNote: "Let the child add custom explorers and backdrops",
     ageBand: "Age band",
     ageBandNote: "Matches the tool to the age. Stored only on this device.",
+    bandFirst:
+      "Pick the band to start. We never ask for a birth date: only the band, which you can change any time.",
+    bandKeep: "Keep",
     ai: "AI status",
     provider: "Provider in use",
     configured: "Configured",
@@ -435,11 +441,39 @@ export function ParentsScreen({ t, locale, progress, settings, onSettings }: Pro
                     name="kids-age-band"
                     value={band}
                     checked={settings.ageBand === band}
-                    onChange={() => onSettings({ ...settings, ageBand: band })}
+                    onChange={() =>
+                      onSettings({
+                        ...settings,
+                        ageBand: band,
+                        bandChosen: true,
+                        // The first pick also sets the voice default; later picks leave the adult's choice.
+                        ...(settings.bandChosen
+                          ? {}
+                          : { readAloud: bandProfile(band).readAloudDefault }),
+                      })
+                    }
                   />{" "}
                   {band.replace("-", "–")}
                 </label>
               ))}
+              {settings.bandChosen ? null : (
+                <>
+                  <p className="kids-note">{copy.bandFirst}</p>
+                  <button
+                    type="button"
+                    className="kids-button"
+                    onClick={() =>
+                      onSettings({
+                        ...settings,
+                        bandChosen: true,
+                        readAloud: bandProfile(settings.ageBand).readAloudDefault,
+                      })
+                    }
+                  >
+                    {copy.bandKeep} {settings.ageBand.replace("-", "–")}
+                  </button>
+                </>
+              )}
             </fieldset>
           ) : null}
           <div className="kids-adult-limit">
