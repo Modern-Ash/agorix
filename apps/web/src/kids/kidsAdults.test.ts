@@ -85,7 +85,13 @@ describe("Kids adults data (#377)", () => {
   it("stores the age band, defaults old settings to 6-8 and rejects invalid values (issue #453)", () => {
     const storage = memoryStorage();
     saveAdultSettings(
-      { oriSuggestions: true, readAloud: true, dailyLimitMinutes: 30, ageBand: "9-12" },
+      {
+        oriSuggestions: true,
+        readAloud: true,
+        dailyLimitMinutes: 30,
+        ageBand: "9-12",
+        bandChosen: true,
+      },
       storage,
     );
     expect(loadAdultSettings(storage).ageBand).toBe("9-12");

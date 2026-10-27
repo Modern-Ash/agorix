@@ -114,7 +114,7 @@ describe("the uploaded summary", () => {
     const summary = buildLinkSummary({
       progress,
       events: [],
-      settings,
+      settings: { ...settings, bandChosen: true },
       usageDays: { "2026-10-22": 600, "2026-10-21": 125, "2026-10-23": 59 },
     });
     expect(summary).toEqual({
@@ -137,7 +137,7 @@ describe("the uploaded summary", () => {
     const summary = buildLinkSummary({
       progress: emptyKidsProgress(),
       events: [],
-      settings,
+      settings: { ...settings, bandChosen: true },
       usageDays: {},
     });
     expect(Object.keys(summary).sort()).toEqual([
@@ -165,7 +165,7 @@ describe("the uploaded summary", () => {
     const summary = buildLinkSummary({
       progress,
       events: [],
-      settings: { ...settings, dailyLimitMinutes: 120 },
+      settings: { ...settings, bandChosen: true, dailyLimitMinutes: 120 },
       usageDays: Object.fromEntries(
         Array.from({ length: 20 }, (_, i) => [
           `2026-10-${String(i + 1).padStart(2, "0")}`,

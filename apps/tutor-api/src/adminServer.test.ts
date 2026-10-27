@@ -159,7 +159,7 @@ describe("AI administrator HTTP boundary", () => {
         },
         body: JSON.stringify(value),
       });
-    const config = structuredClone(repository.current().config) as {
+    const config = structuredClone(repository.current().config) as unknown as {
       capabilities: { chat: { promptTemplate: string } };
       behavior: { intervention: Record<string, number> };
     };
