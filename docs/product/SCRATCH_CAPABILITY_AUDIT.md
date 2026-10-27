@@ -332,3 +332,10 @@ Each iteration needs an issue with an observable child journey, success and fail
 - Lista permitida más estricta que la del Estudio: notas blancas Do 4–Do 5 de ½ o 1 tiempo, percusión de ½ o 1 tiempo, velocidad 90 o 120, sonidos `kids:win/sparkle/bell/tada`; cualquier otra cosa se rechaza al validar.
 - Al aceptar una propuesta que usa un bloque de un paquete, el programa declara el paquete (`extensions`) automáticamente; el validador sigue exigiéndolo.
 - Los intents de música se ocultan si el flag `extensionMusic` está apagado.
+
+## Editor de sonido reversible (E6 / SND-03)
+
+- En Adultos, cada audio propio guardado tiene "Editar audio": forma de onda, recorte con dos deslizadores, dar vuelta, más fuerte/suave, entrada/salida suave, más rápido/lento, escuchar, deshacer y rehacer. Guardar reemplaza el audio con un WAV mono limpio (sin nombre de archivo ni metadatos) que pasa por la misma validación de importación (≤ 5 s, ≤ 500 KB).
+- Límites de memoria: mono a 22 050 Hz, 5 s como máximo (110 250 muestras), historial de 12 pasos; un recorte no puede dejar menos de 0,1 s; "más lento" nunca supera los 5 s.
+- Todo ocurre en el dispositivo: no hay red, y el audio sigue en IndexedDB.
+- **SND-02 (grabación con micrófono) sigue abierto por decisión del dueño (2026-10-26):** la política `Permissions-Policy` mantiene `microphone=()`. Habilitarlo requiere antes la revisión de privacidad de voces infantiles; la importación supervisada de archivos ya existe.
