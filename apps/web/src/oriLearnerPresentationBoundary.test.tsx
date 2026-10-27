@@ -12,8 +12,12 @@ describe("MIG-03 learner proposal presentation boundary", () => {
   it("renders validated proposal without treating SSR as a presentation receipt", () => {
     let presentations = 0;
     const html = renderToStaticMarkup(
-      <OriLearnerProposalReview input={{ ticketId: "ticket-1", proposal }}
-        onPresented={() => { presentations++; }} />,
+      <OriLearnerProposalReview
+        input={{ ticketId: "ticket-1", proposal }}
+        onPresented={() => {
+          presentations++;
+        }}
+      />,
     );
     expect(html).toContain("Ori propone un paso");
     expect(html).toContain("Aceptar propuesta");
@@ -24,7 +28,10 @@ describe("MIG-03 learner proposal presentation boundary", () => {
     const html = renderToStaticMarkup(
       <OriLearnerProposalReview
         input={{ ticketId: "ticket-2", proposal: { ...proposal, shell: "forged" } }}
-        onPresented={() => { presentations++; }} />,
+        onPresented={() => {
+          presentations++;
+        }}
+      />,
     );
     expect(html).toBe("");
     expect(presentations).toBe(0);

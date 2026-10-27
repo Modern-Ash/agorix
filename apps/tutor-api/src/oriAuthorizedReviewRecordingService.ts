@@ -46,10 +46,15 @@ export function createOriAuthorizedReviewRecordingService(
       if (!state || state.digest !== expectedDigest || state.revision !== expectedRevision)
         return "conflict";
       const reauthorized = await authorize(session);
-      if (!reauthorized?.canReviewOri || reauthorized.id !== principal.id)
-        return "unauthorized";
-      return recorder.record(reviewId, expectedDigest, expectedRevision,
-        reauthorized, trusted.handoff, submission);
+      if (!reauthorized?.canReviewOri || reauthorized.id !== principal.id) return "unauthorized";
+      return recorder.record(
+        reviewId,
+        expectedDigest,
+        expectedRevision,
+        reauthorized,
+        trusted.handoff,
+        submission,
+      );
     },
   });
 }

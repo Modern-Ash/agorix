@@ -30,18 +30,30 @@ export function createOriMachineReviewEvidenceSource(
       const item = handoff.pendingEvidence.find((row) => row.missionId === missionId);
       if (!item) return null;
       const expectedMachine = [
-        "ori-proposal", "kids-baseline", "learning-context", "learner-facing-explanation",
+        "ori-proposal",
+        "kids-baseline",
+        "learning-context",
+        "learner-facing-explanation",
       ];
-      if (item.requiredEvidence.some((key) =>
-        key !== "educator-rationale" && !expectedMachine.includes(key)))
+      if (
+        item.requiredEvidence.some(
+          (key) => key !== "educator-rationale" && !expectedMachine.includes(key),
+        )
+      )
         return null;
       // Never claim a complete educator checklist when rationale is still missing.
       const machineHandoff: OriMig03ReviewHandoff = {
         ...handoff,
-        pendingEvidence: handoff.pendingEvidence.map((row) => row.missionId === missionId
-          ? { ...row, requiredEvidence: row.requiredEvidence.filter((key) =>
-            key !== "educator-rationale") }
-          : row),
+        pendingEvidence: handoff.pendingEvidence.map((row) =>
+          row.missionId === missionId
+            ? {
+                ...row,
+                requiredEvidence: row.requiredEvidence.filter(
+                  (key) => key !== "educator-rationale",
+                ),
+              }
+            : row,
+        ),
       };
       const values: Record<string, unknown> = {
         "ori-proposal": evidence.oriProposal,
@@ -59,7 +71,10 @@ export function createOriMachineReviewEvidenceSource(
         payload[key] = Buffer.from(encoded, "utf8");
       }
       return capture.capture(machineHandoff, {
-        reviewId, evidenceDigest: digest, missionId, artifacts: payload,
+        reviewId,
+        evidenceDigest: digest,
+        missionId,
+        artifacts: payload,
       });
     },
   });

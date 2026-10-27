@@ -30,36 +30,68 @@ export function openOriScopedRenderedHintReceiptStore(path: string) {
   return Object.freeze({
     recordFromHost(reviewId: string, digest: string, receipt: OriHostHintReceipt): boolean {
       const ctx = receipt.learningContext;
-      if (!ID.test(reviewId) || !DIGEST.test(digest) ||
-          !ID.test(receipt.missionId) || !Number.isSafeInteger(receipt.missionIndex) ||
-          receipt.missionIndex < 0 || !receipt.actuallyRendered ||
-          receipt.hint.schema !== "agorix/pedagogical-text-hint/v1" ||
-          receipt.hint.appliedChanges !== false ||
-          typeof receipt.hint.hint !== "string" ||
-          receipt.hint.hint.trim().length < 8 || receipt.hint.hint.length > 180 ||
-          !Number.isSafeInteger(ctx.attempts) || ctx.attempts < 0 || ctx.attempts > 1000 ||
-          !Number.isSafeInteger(ctx.hintsUsed) || ctx.hintsUsed < 0 || ctx.hintsUsed > 1000 ||
-          !["explore", "connect", "translate"].includes(ctx.learningStage))
+      if (
+        !ID.test(reviewId) ||
+        !DIGEST.test(digest) ||
+        !ID.test(receipt.missionId) ||
+        !Number.isSafeInteger(receipt.missionIndex) ||
+        receipt.missionIndex < 0 ||
+        !receipt.actuallyRendered ||
+        receipt.hint.schema !== "agorix/pedagogical-text-hint/v1" ||
+        receipt.hint.appliedChanges !== false ||
+        typeof receipt.hint.hint !== "string" ||
+        receipt.hint.hint.trim().length < 8 ||
+        receipt.hint.hint.length > 180 ||
+        !Number.isSafeInteger(ctx.attempts) ||
+        ctx.attempts < 0 ||
+        ctx.attempts > 1000 ||
+        !Number.isSafeInteger(ctx.hintsUsed) ||
+        ctx.hintsUsed < 0 ||
+        ctx.hintsUsed > 1000 ||
+        !["explore", "connect", "translate"].includes(ctx.learningStage)
+      )
         return false;
-      return insert.run(reviewId, digest, receipt.missionId, receipt.missionIndex,
-        receipt.hint.hint, ctx.attempts, ctx.hintsUsed, ctx.learningStage).changes === 1;
+      return (
+        insert.run(
+          reviewId,
+          digest,
+          receipt.missionId,
+          receipt.missionIndex,
+          receipt.hint.hint,
+          ctx.attempts,
+          ctx.hintsUsed,
+          ctx.learningStage,
+        ).changes === 1
+      );
     },
-    async resolve(reviewId: string, digest: string, missionId: string,
-      missionIndex: number): Promise<OriTrustedHostReviewContext | null> {
-      if (!ID.test(reviewId) || !DIGEST.test(digest) || !ID.test(missionId) ||
-          !Number.isSafeInteger(missionIndex)) return null;
+    async resolve(
+      reviewId: string,
+      digest: string,
+      missionId: string,
+      missionIndex: number,
+    ): Promise<OriTrustedHostReviewContext | null> {
+      if (
+        !ID.test(reviewId) ||
+        !DIGEST.test(digest) ||
+        !ID.test(missionId) ||
+        !Number.isSafeInteger(missionIndex)
+      )
+        return null;
       const row = select.get(reviewId, digest, missionId, missionIndex);
       if (!row) return null;
       return {
-        missionId, missionIndex,
+        missionId,
+        missionIndex,
         learningContext: {
           attempts: Number(row["attempts"]),
           hintsUsed: Number(row["hints_used"]),
-          learningStage: String(row["learning_stage"]) as
-            OriTrustedHostReviewContext["learningContext"]["learningStage"],
+          learningStage: String(
+            row["learning_stage"],
+          ) as OriTrustedHostReviewContext["learningContext"]["learningStage"],
         },
         learnerFacingExplanation: {
-          text: String(row["hint_text"]), source: "host-rendered" as const,
+          text: String(row["hint_text"]),
+          source: "host-rendered" as const,
         },
       };
     },

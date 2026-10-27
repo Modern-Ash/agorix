@@ -30,7 +30,7 @@ export function assessOriMig03TechnicalExit({
   if (!educatorReviewCompleted) blockers.push("educator-review-pending");
   return Object.freeze({
     schema: "agorix/ori-mig03-technical-exit/v1" as const,
-    status: blockers.length ? "blocked" as const : "ready-for-human-rollout-decision" as const,
+    status: blockers.length ? ("blocked" as const) : ("ready-for-human-rollout-decision" as const),
     blockers: Object.freeze([...new Set(blockers)].sort()),
     rolloutAuthorized: false as const,
     efficacyClaimEligible: false as const,

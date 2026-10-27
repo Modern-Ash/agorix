@@ -12,23 +12,29 @@ export interface OriMig03VerifiedHostProbes {
   readonly educatorReview: () => Promise<boolean>;
 }
 async function safe(probe: () => Promise<boolean>): Promise<boolean> {
-  try { return (await probe()) === true; }
-  catch { return false; }
+  try {
+    return (await probe()) === true;
+  } catch {
+    return false;
+  }
 }
 /**
  * Executable host-only readiness runner. Probe implementations must perform
  * real checks; neither browser values nor configuration flags are evidence.
  */
 export async function runOriMig03TechnicalExitChecks(
-  bundle: Bundle, probes: OriMig03VerifiedHostProbes,
+  bundle: Bundle,
+  probes: OriMig03VerifiedHostProbes,
 ) {
   const delivery = createOriMig03ReviewDeliveryPackage(bundle);
   if (!delivery) return null;
-  const [session, project, oriProcess, durableStorage, educatorReview] =
-    await Promise.all([
-      safe(probes.session), safe(probes.project), safe(probes.oriProcess),
-      safe(probes.durableStorage), safe(probes.educatorReview),
-    ]);
+  const [session, project, oriProcess, durableStorage, educatorReview] = await Promise.all([
+    safe(probes.session),
+    safe(probes.project),
+    safe(probes.oriProcess),
+    safe(probes.durableStorage),
+    safe(probes.educatorReview),
+  ]);
   const report = assessOriMig03TechnicalExit({
     delivery,
     productionSessionVerified: session,

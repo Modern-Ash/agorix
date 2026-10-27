@@ -9,23 +9,30 @@ import type { OriReviewTicket } from "./oriReviewRegistry.js";
 
 const ticketId = "123e4567-e89b-42d3-a456-426614174000";
 const ticket: OriReviewTicket = {
-  id: ticketId, status: "pending", appliedChanges: false,
-  proposal: { schemaVersion: "ori/proposal/v0", operation: "append",
-    requiresLearnerApproval: true, blocks: [{ kind: "move", steps: 2 }] },
+  id: ticketId,
+  status: "pending",
+  appliedChanges: false,
+  proposal: {
+    schemaVersion: "ori/proposal/v0",
+    operation: "append",
+    requiresLearnerApproval: true,
+    blocks: [{ kind: "move", steps: 2 }],
+  },
 };
 const servers: Server[] = [];
 const stores: ReturnType<typeof openOriTicketPresentationSqliteStore>[] = [];
 afterEach(async () => {
-  await Promise.all(servers.splice(0).map((server) =>
-    new Promise<void>((done) => server.close(() => done()))));
+  await Promise.all(
+    servers.splice(0).map((server) => new Promise<void>((done) => server.close(() => done()))),
+  );
   stores.splice(0).forEach((store) => store.close());
 });
 async function fixture(authenticated: boolean) {
   const store = openOriTicketPresentationSqliteStore(":memory:");
   stores.push(store);
   const composition = createOriPresentationServerComposition({
-    identity: async () => authenticated ? { ownerId: "student", projectId: "project" } : null,
-    resolveTicket: async (_owner, _project, id) => id === ticketId ? ticket : null,
+    identity: async () => (authenticated ? { ownerId: "student", projectId: "project" } : null),
+    resolveTicket: async (_owner, _project, id) => (id === ticketId ? ticket : null),
     store,
   });
   const server = createTutorServer({
@@ -42,7 +49,9 @@ async function post(base: string, description: string) {
   return fetch(base + "/api/tutor/ori/review/presented", {
     method: "POST",
     headers: {
-      origin: base, "x-agorix-request": "1", "content-type": "application/json",
+      origin: base,
+      "x-agorix-request": "1",
+      "content-type": "application/json",
     },
     body: JSON.stringify({ ticketId, description }),
   });

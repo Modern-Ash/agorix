@@ -19,12 +19,17 @@ export function createOriScopedReceiptEvidencePersistence({
   readonly receipts: ReturnType<typeof openOriScopedRenderedHintReceiptStore>;
 }) {
   return Object.freeze({
-    async persist(handoff: OriMig03ReviewHandoff, reviewId: string, digest: string,
-      captured: OriCapturedMissionSource): Promise<Readonly<Record<string, string>> | null> {
+    async persist(
+      handoff: OriMig03ReviewHandoff,
+      reviewId: string,
+      digest: string,
+      captured: OriCapturedMissionSource,
+    ): Promise<Readonly<Record<string, string>> | null> {
       const current = reviews.get(reviewId);
       if (!current || current.digest !== digest) return null;
       const service = createOriHostContextEvidencePersistence({
-        reviews, artifacts,
+        reviews,
+        artifacts,
         resolveHostContext: (missionId, missionIndex) =>
           receipts.resolve(reviewId, digest, missionId, missionIndex),
       });

@@ -50,11 +50,20 @@ describe("Ori authorized review composition", () => {
   });
   it("keeps presentation disabled without a durable store", () => {
     const options = createOriAuthorizedReviewOptions({
-      repository: { get: async () => { throw Error("missing"); } } as unknown as ProjectRepository,
-      oriRoot: "/test-only", world: {}, learningContext: async () => null,
-      resolveSession: async () => null, activeProject: async () => null,
+      repository: {
+        get: async () => {
+          throw Error("missing");
+        },
+      } as unknown as ProjectRepository,
+      oriRoot: "/test-only",
+      world: {},
+      learningContext: async () => null,
+      resolveSession: async () => null,
+      activeProject: async () => null,
       runOriOverride: async () => ({
-        status: "unavailable", appliedChanges: false, requiresLearnerApproval: true,
+        status: "unavailable",
+        appliedChanges: false,
+        requiresLearnerApproval: true,
       }),
     });
     expect("oriPresentationAckEnabled" in options).toBe(false);
@@ -63,12 +72,21 @@ describe("Ori authorized review composition", () => {
     const store = openOriTicketPresentationSqliteStore(":memory:");
     try {
       const options = createOriAuthorizedReviewOptions({
-        repository: { get: async () => { throw Error("missing"); } } as unknown as ProjectRepository,
-        oriRoot: "/test-only", world: {}, learningContext: async () => null,
-        resolveSession: async () => null, activeProject: async () => null,
+        repository: {
+          get: async () => {
+            throw Error("missing");
+          },
+        } as unknown as ProjectRepository,
+        oriRoot: "/test-only",
+        world: {},
+        learningContext: async () => null,
+        resolveSession: async () => null,
+        activeProject: async () => null,
         presentationStore: store,
         runOriOverride: async () => ({
-          status: "unavailable", appliedChanges: false, requiresLearnerApproval: true,
+          status: "unavailable",
+          appliedChanges: false,
+          requiresLearnerApproval: true,
         }),
       });
       expect(options.oriPresentationAckEnabled).toBe(true);

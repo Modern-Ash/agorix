@@ -23,25 +23,52 @@ export function openOriTicketReviewLineageStore(path: string) {
     FROM ori_ticket_review_lineage WHERE ticket_id=?`);
   return Object.freeze({
     bind(input: {
-      readonly ticketId: string; readonly owner: string; readonly projectId: string;
-      readonly reviewId: string; readonly digest: string; readonly revision: number;
+      readonly ticketId: string;
+      readonly owner: string;
+      readonly projectId: string;
+      readonly reviewId: string;
+      readonly digest: string;
+      readonly revision: number;
     }): boolean {
-      if (!UUID.test(input.ticketId) || !ID.test(input.owner) ||
-          !ID.test(input.projectId) || !ID.test(input.reviewId) ||
-          !DIGEST.test(input.digest) || !Number.isSafeInteger(input.revision) ||
-          input.revision < 1) return false;
-      return insert.run(input.ticketId, input.owner, input.projectId, input.reviewId,
-        input.digest, input.revision).changes === 1;
+      if (
+        !UUID.test(input.ticketId) ||
+        !ID.test(input.owner) ||
+        !ID.test(input.projectId) ||
+        !ID.test(input.reviewId) ||
+        !DIGEST.test(input.digest) ||
+        !Number.isSafeInteger(input.revision) ||
+        input.revision < 1
+      )
+        return false;
+      return (
+        insert.run(
+          input.ticketId,
+          input.owner,
+          input.projectId,
+          input.reviewId,
+          input.digest,
+          input.revision,
+        ).changes === 1
+      );
     },
     matches(input: {
-      readonly ticketId: string; readonly owner: string; readonly projectId: string;
-      readonly reviewId: string; readonly digest: string; readonly revision: number;
+      readonly ticketId: string;
+      readonly owner: string;
+      readonly projectId: string;
+      readonly reviewId: string;
+      readonly digest: string;
+      readonly revision: number;
     }): boolean {
       if (!UUID.test(input.ticketId)) return false;
       const row = lookup.get(input.ticketId);
-      return !!row && row["owner"] === input.owner &&
-        row["project_id"] === input.projectId && row["review_id"] === input.reviewId &&
-        row["digest"] === input.digest && row["revision"] === input.revision;
+      return (
+        !!row &&
+        row["owner"] === input.owner &&
+        row["project_id"] === input.projectId &&
+        row["review_id"] === input.reviewId &&
+        row["digest"] === input.digest &&
+        row["revision"] === input.revision
+      );
     },
     close: () => db.close(),
   });
@@ -54,16 +81,31 @@ export function createOriBoundPresentationReadiness(
   presentations: ReturnType<typeof openOriTicketPresentationSqliteStore>,
 ) {
   return Object.freeze({
-    assess(owner: string, projectId: string, ticketId: string, reviewId: string):
-      { readonly ready: boolean; readonly blockers: readonly string[];
-        readonly rolloutAuthorized: false } {
+    assess(
+      owner: string,
+      projectId: string,
+      ticketId: string,
+      reviewId: string,
+    ): {
+      readonly ready: boolean;
+      readonly blockers: readonly string[];
+      readonly rolloutAuthorized: false;
+    } {
       const blockers: string[] = [];
       const review = reviews.get(reviewId);
       if (!review) blockers.push("review-unavailable");
-      if (!review || !lineage.matches({
-        owner, projectId, ticketId, reviewId,
-        digest: review.digest, revision: review.revision,
-      })) blockers.push("ticket-review-lineage-mismatch");
+      if (
+        !review ||
+        !lineage.matches({
+          owner,
+          projectId,
+          ticketId,
+          reviewId,
+          digest: review.digest,
+          revision: review.revision,
+        })
+      )
+        blockers.push("ticket-review-lineage-mismatch");
       if (!presentations.read(owner, projectId, ticketId))
         blockers.push("presentation-ack-missing");
       return Object.freeze({

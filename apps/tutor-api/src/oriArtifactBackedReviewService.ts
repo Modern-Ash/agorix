@@ -25,12 +25,18 @@ export function createOriArtifactBackedReviewService({
   } | null>;
 }) {
   const recording = createOriAuthorizedReviewRecordingService(
-    reviews, authorize, resolveHandoff,
+    reviews,
+    authorize,
+    resolveHandoff,
     createOriPersistedEvidenceReferenceVerifier(artifacts),
   );
   return Object.freeze({
-    record: (session: unknown, reviewId: string, digest: string, revision: number,
-      submission: OriEducatorSubmission) =>
-      recording.record(session, reviewId, digest, revision, submission),
+    record: (
+      session: unknown,
+      reviewId: string,
+      digest: string,
+      revision: number,
+      submission: OriEducatorSubmission,
+    ) => recording.record(session, reviewId, digest, revision, submission),
   });
 }

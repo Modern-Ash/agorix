@@ -16,22 +16,43 @@ import type { OriMig03ReviewHandoff } from "./oriMig03ReviewHandoff.js";
 const servers: Server[] = [];
 const stores: ReturnType<typeof openOriAtomicEducatorReviewStore>[] = [];
 afterEach(async () => {
-  await Promise.all(servers.splice(0).map((server) =>
-    new Promise<void>((done) => server.close(() => done()))));
+  await Promise.all(
+    servers.splice(0).map((server) => new Promise<void>((done) => server.close(() => done()))),
+  );
   stores.splice(0).forEach((store) => store.close());
 });
 const matrix = {
-  total: 1, available: 1, missing: 0, divergent: 0,
-  rows: [{ missionId: "move", missionIndex: 0, status: "matched-observables" as const,
-    matches: 4, divergences: 0, notComparable: 0 }],
+  total: 1,
+  available: 1,
+  missing: 0,
+  divergent: 0,
+  rows: [
+    {
+      missionId: "move",
+      missionIndex: 0,
+      status: "matched-observables" as const,
+      matches: 4,
+      divergences: 0,
+      notComparable: 0,
+    },
+  ],
 };
 const handoff: OriMig03ReviewHandoff = {
   schemaVersion: "agorix/ori-mig03-review-handoff/v1",
-  missionCount: 1, selectedForReview: 1,
-  pendingEvidence: [{ missionId: "move", status: "awaiting-human-review",
-    requiredEvidence: ["ori-proposal", "educator-rationale"] }],
-  deferredMissionIds: [], unresolvedMissionIds: [],
-  nextAction: "educator-review-required", formalApproval: false, rolloutAuthorized: false,
+  missionCount: 1,
+  selectedForReview: 1,
+  pendingEvidence: [
+    {
+      missionId: "move",
+      status: "awaiting-human-review",
+      requiredEvidence: ["ori-proposal", "educator-rationale"],
+    },
+  ],
+  deferredMissionIds: [],
+  unresolvedMissionIds: [],
+  nextAction: "educator-review-required",
+  formalApproval: false,
+  rolloutAuthorized: false,
 };
 async function fixture(enabled: boolean, role: boolean, evidenceValid: boolean) {
   const store = openOriAtomicEducatorReviewStore(":memory:");
@@ -39,16 +60,22 @@ async function fixture(enabled: boolean, role: boolean, evidenceValid: boolean) 
   expect(store.publish("pilot", matrix)).toBe("published");
   const state = store.get("pilot")!;
   const auth = {
-    configured: true, read: () => ({ author: "educator", csrf: "synthetic" }),
+    configured: true,
+    read: () => ({ author: "educator", csrf: "synthetic" }),
   } as unknown as AdminAuth;
   const trustedHosts: string[] = [];
   const resolveRole = async () => role;
   const authorize = createOriEducatorAdminAuthorizer({ auth, trustedHosts, resolveRole });
   const admin = createOriEducatorAdminComposition({
-    auth, trustedHosts, resolveRole, store, enabled,
+    auth,
+    trustedHosts,
+    resolveRole,
+    store,
+    enabled,
   });
   const service = createOriAuthorizedReviewRecordingService(
-    store, async (session) => enabled ? authorize(session as import("node:http").IncomingMessage) : null,
+    store,
+    async (session) => (enabled ? authorize(session as import("node:http").IncomingMessage) : null),
     async () => ({ evidenceDigest: state.digest, handoff }),
     { verify: async () => evidenceValid },
   );
@@ -56,9 +83,12 @@ async function fixture(enabled: boolean, role: boolean, evidenceValid: boolean) 
     config: configFromEnv({ AGORIX_TUTOR_ADAPTER: "fake" }),
     oriEducatorAdminEnabled: enabled,
     oriEducatorAdminDispatch: createOriEducatorRouteDispatcher({
-      enabled, handler: createOriEducatorAdminHttpAdapter(admin),
-      recordHandler: createOriVerifiedRecordHttpHandler(service,
-        async (request) => enabled && (await authorize(request)) !== null),
+      enabled,
+      handler: createOriEducatorAdminHttpAdapter(admin),
+      recordHandler: createOriVerifiedRecordHttpHandler(
+        service,
+        async (request) => enabled && (await authorize(request)) !== null,
+      ),
     }),
   });
   servers.push(server);
@@ -70,13 +100,17 @@ async function fixture(enabled: boolean, role: boolean, evidenceValid: boolean) 
       method: "POST",
       headers: {
         origin: `https://127.0.0.1:${address.port}`,
-        "content-type": "application/json", "x-agorix-admin-csrf": csrf,
+        "content-type": "application/json",
+        "x-agorix-admin-csrf": csrf,
       },
       body: JSON.stringify(payload),
     });
   const submission = {
-    evidenceDigest: state.digest, revision: state.revision,
-    missionId: "move", reviewerId: "educator", disposition: "approve",
+    evidenceDigest: state.digest,
+    revision: state.revision,
+    missionId: "move",
+    reviewerId: "educator",
+    disposition: "approve",
     rationale: "La evaluación educativa está documentada.",
     evidenceRefs: { "ori-proposal": "artifact:ori", "educator-rationale": "artifact:review" },
   };

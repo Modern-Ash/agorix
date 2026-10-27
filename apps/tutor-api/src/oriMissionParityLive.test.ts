@@ -96,19 +96,27 @@ describe.skipIf(!runnable)("MIG-03 real Ori shadow mission capture", () => {
     const persist = createOriSourceEvidencePersistence(reviews, artifacts);
     let storedSourceMissions = 0;
     for (const captured of sourceEvidence) {
-      if (!captured.oriProposal || !reviewHandoff.pendingEvidence.some((item) =>
-        item.missionId === captured.missionId)) continue;
+      if (
+        !captured.oriProposal ||
+        !reviewHandoff.pendingEvidence.some((item) => item.missionId === captured.missionId)
+      )
+        continue;
       // The live loopback fixture has no authenticated learner context or
       // learner-visible explanation; never manufacture them for signoff.
-      expect(persist.persist(reviewHandoff, "mig03-live", digest, captured, {
-        learningContext: null, learnerFacingExplanation: null,
-      })).toBeNull();
-      expect(await artifacts.find("mig03-live", digest, captured.missionId,
-        "ori-proposal")).toBeNull();
+      expect(
+        persist.persist(reviewHandoff, "mig03-live", digest, captured, {
+          learningContext: null,
+          learnerFacingExplanation: null,
+        }),
+      ).toBeNull();
+      expect(
+        await artifacts.find("mig03-live", digest, captured.missionId, "ori-proposal"),
+      ).toBeNull();
       storedSourceMissions++;
     }
     expect(storedSourceMissions).toBeGreaterThan(0);
-    artifacts.close(); reviews.close();
+    artifacts.close();
+    reviews.close();
     expect(evidenceQuality.pedagogicalApproval).toBe(false);
     const outputDir = process.env["ORI_PARITY_REPORT_DIR"] ?? join(tmpdir(), "agorix-ori-parity");
     mkdirSync(outputDir, { recursive: true });

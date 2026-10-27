@@ -21,29 +21,38 @@ export function buildOriReviewChecklist(
   corpus: readonly OriPedagogicalReviewCase[],
 ): OriReviewChecklist {
   const byId = new Map(corpus.map((item) => [item.missionId, item]));
-  if (byId.size !== corpus.length ||
-      corpus.length !== briefing.summary.totalMissions ||
-      briefing.selectedMissionIds.length !== briefing.summary.selectedForReview ||
-      briefing.selectedMissionIds.some((id) => !byId.has(id)) ||
-      briefing.summary.deferred + briefing.summary.selectedForReview !== corpus.length)
+  if (
+    byId.size !== corpus.length ||
+    corpus.length !== briefing.summary.totalMissions ||
+    briefing.selectedMissionIds.length !== briefing.summary.selectedForReview ||
+    briefing.selectedMissionIds.some((id) => !byId.has(id)) ||
+    briefing.summary.deferred + briefing.summary.selectedForReview !== corpus.length
+  )
     throw Error("inconsistent-review-checklist");
   return Object.freeze({
     schemaVersion: "agorix/ori-mig03-review-checklist/v1",
-    items: Object.freeze(briefing.selectedMissionIds.map((id) => {
-      const item = byId.get(id)!;
-      return Object.freeze({
-        missionId: id,
-        priority: item.priority,
-        requiredEvidence: Object.freeze([
-          "ori-proposal", "kids-baseline", "learning-context",
-          "learner-facing-explanation", "educator-rationale",
-        ]),
-        humanDecision: "pending" as const,
-      });
-    })),
-    deferredMissionIds: Object.freeze(corpus
-      .filter((item) => !briefing.selectedMissionIds.includes(item.missionId))
-      .map((item) => item.missionId)),
+    items: Object.freeze(
+      briefing.selectedMissionIds.map((id) => {
+        const item = byId.get(id)!;
+        return Object.freeze({
+          missionId: id,
+          priority: item.priority,
+          requiredEvidence: Object.freeze([
+            "ori-proposal",
+            "kids-baseline",
+            "learning-context",
+            "learner-facing-explanation",
+            "educator-rationale",
+          ]),
+          humanDecision: "pending" as const,
+        });
+      }),
+    ),
+    deferredMissionIds: Object.freeze(
+      corpus
+        .filter((item) => !briefing.selectedMissionIds.includes(item.missionId))
+        .map((item) => item.missionId),
+    ),
     formalApproval: false,
     rolloutAuthorized: false,
   });

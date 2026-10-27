@@ -18,22 +18,30 @@ export function createOriTrustedReviewEvidenceCapture(
   artifacts: ReturnType<typeof openOriSqliteEvidenceArtifactRepository>,
 ) {
   return Object.freeze({
-    capture(handoff: OriMig03ReviewHandoff, input: OriTrustedReviewEvidence):
-      Readonly<Record<string, string>> | null {
+    capture(
+      handoff: OriMig03ReviewHandoff,
+      input: OriTrustedReviewEvidence,
+    ): Readonly<Record<string, string>> | null {
       const state = reviews.get(input.reviewId);
       if (!state || state.digest !== input.evidenceDigest) return null;
       const item = handoff.pendingEvidence.find((row) => row.missionId === input.missionId);
       if (!item || handoff.deferredMissionIds.includes(input.missionId)) return null;
       const required = item.requiredEvidence;
-      if (Object.keys(input.artifacts).sort().join() !== [...required].sort().join())
-        return null;
+      if (Object.keys(input.artifacts).sort().join() !== [...required].sort().join()) return null;
       // Validate the entire batch before writing any artifact.
-      if (required.some((key) => {
-        const bytes = input.artifacts[key];
-        return !bytes || bytes.byteLength === 0 || bytes.byteLength > 1_048_576;
-      })) return null;
-      return artifacts.putBatch(input.reviewId, input.evidenceDigest,
-        input.missionId, input.artifacts);
+      if (
+        required.some((key) => {
+          const bytes = input.artifacts[key];
+          return !bytes || bytes.byteLength === 0 || bytes.byteLength > 1_048_576;
+        })
+      )
+        return null;
+      return artifacts.putBatch(
+        input.reviewId,
+        input.evidenceDigest,
+        input.missionId,
+        input.artifacts,
+      );
     },
   });
 }

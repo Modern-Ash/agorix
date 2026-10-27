@@ -26,10 +26,17 @@ export function openOriTicketPresentationSqliteStore(path: string) {
       readonly ticketId: string;
       readonly descriptionHash: string;
     }): Promise<boolean> {
-      if (!ID.test(entry.owner) || !ID.test(entry.projectId) ||
-          !UUID.test(entry.ticketId) || !HEX.test(entry.descriptionHash)) return false;
-      return insert.run(entry.owner, entry.projectId, entry.ticketId,
-        entry.descriptionHash).changes === 1;
+      if (
+        !ID.test(entry.owner) ||
+        !ID.test(entry.projectId) ||
+        !UUID.test(entry.ticketId) ||
+        !HEX.test(entry.descriptionHash)
+      )
+        return false;
+      return (
+        insert.run(entry.owner, entry.projectId, entry.ticketId, entry.descriptionHash).changes ===
+        1
+      );
     },
     read(owner: string, projectId: string, ticketId: string): string | null {
       if (!ID.test(owner) || !ID.test(projectId) || !UUID.test(ticketId)) return null;

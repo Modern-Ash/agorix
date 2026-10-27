@@ -29,9 +29,12 @@ export function openOriSqliteEvidenceArtifactRepository(path: string) {
       const row = lookup.get(reviewId, digest, missionId, key);
       if (!row) return null;
       return {
-        reviewId: String(row["review_id"]), evidenceDigest: String(row["digest"]),
-        missionId: String(row["mission_id"]), key: String(row["key"]),
-        reference: String(row["reference"]), sha256: String(row["sha256"]),
+        reviewId: String(row["review_id"]),
+        evidenceDigest: String(row["digest"]),
+        missionId: String(row["mission_id"]),
+        key: String(row["key"]),
+        reference: String(row["reference"]),
+        sha256: String(row["sha256"]),
       };
     },
     async read(reference): Promise<Uint8Array | null> {
@@ -39,36 +42,54 @@ export function openOriSqliteEvidenceArtifactRepository(path: string) {
       return row ? new Uint8Array(row["content"] as Uint8Array) : null;
     },
   };
-  function put(reviewId: string, digest: string, missionId: string, key: string,
-      bytes: Uint8Array): OriEvidenceReferenceRecord | null {
-      if (!ID.test(reviewId) || !ID.test(missionId) || !HEX.test(digest) ||
-          !KEY.test(key) || bytes.byteLength === 0 || bytes.byteLength > 1_048_576)
-        return null;
-      const sha256 = createHash("sha256").update(bytes).digest("hex");
-      const reference = `artifact:${reviewId}/${missionId}/${key}/${digest.slice(0, 16)}`;
-      const existing = lookup.get(reviewId, digest, missionId, key);
-      if (existing) {
-        if (existing["sha256"] !== sha256) return null;
-        return {
-          reviewId, evidenceDigest: digest, missionId, key, reference,
-          sha256,
-        };
-      }
-      db.prepare(`INSERT INTO ori_evidence_artifacts(
+  function put(
+    reviewId: string,
+    digest: string,
+    missionId: string,
+    key: string,
+    bytes: Uint8Array,
+  ): OriEvidenceReferenceRecord | null {
+    if (
+      !ID.test(reviewId) ||
+      !ID.test(missionId) ||
+      !HEX.test(digest) ||
+      !KEY.test(key) ||
+      bytes.byteLength === 0 ||
+      bytes.byteLength > 1_048_576
+    )
+      return null;
+    const sha256 = createHash("sha256").update(bytes).digest("hex");
+    const reference = `artifact:${reviewId}/${missionId}/${key}/${digest.slice(0, 16)}`;
+    const existing = lookup.get(reviewId, digest, missionId, key);
+    if (existing) {
+      if (existing["sha256"] !== sha256) return null;
+      return {
+        reviewId,
+        evidenceDigest: digest,
+        missionId,
+        key,
+        reference,
+        sha256,
+      };
+    }
+    db.prepare(
+      `INSERT INTO ori_evidence_artifacts(
         review_id,digest,mission_id,key,reference,sha256,content)
-        VALUES(?,?,?,?,?,?,?)`).run(reviewId, digest, missionId, key, reference,
-        sha256, Buffer.from(bytes));
-      return { reviewId, evidenceDigest: digest, missionId, key, reference, sha256 };
+        VALUES(?,?,?,?,?,?,?)`,
+    ).run(reviewId, digest, missionId, key, reference, sha256, Buffer.from(bytes));
+    return { reviewId, evidenceDigest: digest, missionId, key, reference, sha256 };
   }
   return Object.freeze({
     ...repository,
     put,
-    putBatch(reviewId: string, digest: string, missionId: string,
-      entries: Readonly<Record<string, Uint8Array>>):
-      Readonly<Record<string, string>> | null {
+    putBatch(
+      reviewId: string,
+      digest: string,
+      missionId: string,
+      entries: Readonly<Record<string, Uint8Array>>,
+    ): Readonly<Record<string, string>> | null {
       const keys = Object.keys(entries);
-      if (keys.length === 0 || keys.length > 16 || new Set(keys).size !== keys.length)
-        return null;
+      if (keys.length === 0 || keys.length > 16 || new Set(keys).size !== keys.length) return null;
       db.exec("BEGIN IMMEDIATE");
       try {
         const refs: Record<string, string> = {};

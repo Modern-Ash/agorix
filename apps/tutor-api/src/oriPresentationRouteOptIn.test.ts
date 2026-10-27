@@ -6,8 +6,9 @@ import { configFromEnv } from "./index.js";
 
 const servers: Server[] = [];
 afterEach(async () => {
-  await Promise.all(servers.splice(0).map((server) =>
-    new Promise<void>((done) => server.close(() => done()))));
+  await Promise.all(
+    servers.splice(0).map((server) => new Promise<void>((done) => server.close(() => done()))),
+  );
 });
 async function start(enabled: boolean, handler = true) {
   let calls = 0;
@@ -15,11 +16,18 @@ async function start(enabled: boolean, handler = true) {
     config: configFromEnv({ AGORIX_TUTOR_ADAPTER: "fake" }),
     oriReviewEnabled: true,
     oriPresentationAckEnabled: enabled,
-    ...(handler ? { oriPresentationAckHandler: async (_request: unknown,
-      response: import("node:http").ServerResponse) => {
-      calls++;
-      response.writeHead(200); response.end("{}");
-    } } : {}),
+    ...(handler
+      ? {
+          oriPresentationAckHandler: async (
+            _request: unknown,
+            response: import("node:http").ServerResponse,
+          ) => {
+            calls++;
+            response.writeHead(200);
+            response.end("{}");
+          },
+        }
+      : {}),
   });
   servers.push(server);
   await new Promise<void>((done) => server.listen(0, "127.0.0.1", done));

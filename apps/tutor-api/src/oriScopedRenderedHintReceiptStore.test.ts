@@ -3,7 +3,9 @@ import { openOriScopedRenderedHintReceiptStore } from "./oriScopedRenderedHintRe
 
 const digest = "a".repeat(64);
 const receipt = {
-  missionId: "move", missionIndex: 0, actuallyRendered: true,
+  missionId: "move",
+  missionIndex: 0,
+  actuallyRendered: true,
   hint: {
     schema: "agorix/pedagogical-text-hint/v1" as const,
     hint: "Probá mover un bloque hacia adelante",
@@ -26,9 +28,12 @@ describe("MIG-03 scoped rendered hint receipts", () => {
   });
   it("rejects preview-only receipts and invalid scope", async () => {
     const store = openOriScopedRenderedHintReceiptStore(":memory:");
-    expect(store.recordFromHost("pilot", digest, {
-      ...receipt, actuallyRendered: false,
-    })).toBe(false);
+    expect(
+      store.recordFromHost("pilot", digest, {
+        ...receipt,
+        actuallyRendered: false,
+      }),
+    ).toBe(false);
     expect(store.recordFromHost("pilot", "invalid", receipt)).toBe(false);
     expect(await store.resolve("pilot", digest, "move", 0)).toBeNull();
     store.close();

@@ -34,21 +34,27 @@ export function validateOriEducatorSubmissions(
       continue;
     }
     seen.add(submission.missionId);
-    if (!submission.reviewerId.trim() || submission.reviewerId.length > 128 ||
-        submission.rationale.trim().length < 12 || submission.rationale.length > 2000)
+    if (
+      !submission.reviewerId.trim() ||
+      submission.reviewerId.length > 128 ||
+      submission.rationale.trim().length < 12 ||
+      submission.rationale.length > 2000
+    )
       blockers.push("invalid-reviewer-or-rationale");
     if (submission.disposition !== "approve" && submission.disposition !== "reject")
       blockers.push("invalid-disposition");
     if (submission.disposition === "reject") blockers.push("educator-rejection");
-    if (item.requiredEvidence.some((key) => {
-      const value = submission.evidenceRefs?.[key];
-      return typeof value !== "string" || value.trim().length === 0 || value.length > 512;
-    })) blockers.push("missing-required-evidence");
+    if (
+      item.requiredEvidence.some((key) => {
+        const value = submission.evidenceRefs?.[key];
+        return typeof value !== "string" || value.trim().length === 0 || value.length > 512;
+      })
+    )
+      blockers.push("missing-required-evidence");
   }
   if (seen.size !== expected.size || handoff.deferredMissionIds.length > 0)
     blockers.push("review-coverage-incomplete");
-  if (handoff.unresolvedMissionIds.length > 0)
-    blockers.push("unresolved-technical-findings");
+  if (handoff.unresolvedMissionIds.length > 0) blockers.push("unresolved-technical-findings");
   return Object.freeze({
     status: blockers.length === 0 ? "complete-for-recording" : "blocked",
     blockers: Object.freeze([...new Set(blockers)]),

@@ -15,7 +15,11 @@ export interface OriLearnerProposalReviewProps {
   /** Presentation signal only; not proof of learner attention or server authorization. */
   readonly onPresented?: (ticketId: string, description: string) => void;
 }
-export function OriLearnerProposalReview({ input, onDecision, onPresented }: OriLearnerProposalReviewProps) {
+export function OriLearnerProposalReview({
+  input,
+  onDecision,
+  onPresented,
+}: OriLearnerProposalReviewProps) {
   const [pending, setPending] = useState(false);
   const lastPresented = useRef<string | null>(null);
   const [result, setResult] = useState<string | null>(null);

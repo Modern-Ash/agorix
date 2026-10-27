@@ -29,7 +29,9 @@ export function createOriPresentationAckHttpHandler(
     try {
       const parsed = new URL(origin ?? "");
       sameOrigin = parsed.host === host && ["http:", "https:"].includes(parsed.protocol);
-    } catch { /* invalid origin */ }
+    } catch {
+      /* invalid origin */
+    }
     if (request.headers["x-agorix-request"] !== "1" || !sameOrigin)
       return reply(response, 403, { error: "forbidden" });
     const principal = await identity(request, response);
@@ -48,13 +50,21 @@ export function createOriPresentationAckHttpHandler(
     if (!data || typeof data !== "object" || Array.isArray(data))
       return reply(response, 400, { error: "invalid-body" });
     const payload = data as Record<string, unknown>;
-    if (Object.keys(payload).sort().join() !== "description,ticketId" ||
-        typeof payload["ticketId"] !== "string" || !UUID.test(payload["ticketId"]) ||
-        typeof payload["description"] !== "string")
+    if (
+      Object.keys(payload).sort().join() !== "description,ticketId" ||
+      typeof payload["ticketId"] !== "string" ||
+      !UUID.test(payload["ticketId"]) ||
+      typeof payload["description"] !== "string"
+    )
       return reply(response, 400, { error: "invalid-body" });
-    const result = await service.acknowledge(principal.ownerId, principal.projectId,
-      payload["ticketId"], payload["description"]);
-    return reply(response, result === "recorded" ? 200 :
-      result === "invalid" ? 400 : 503, { status: result });
+    const result = await service.acknowledge(
+      principal.ownerId,
+      principal.projectId,
+      payload["ticketId"],
+      payload["description"],
+    );
+    return reply(response, result === "recorded" ? 200 : result === "invalid" ? 400 : 503, {
+      status: result,
+    });
   };
 }

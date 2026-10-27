@@ -14,8 +14,11 @@ export function createOriPresentationServerComposition({
   store,
 }: {
   readonly identity: OriReviewIdentityResolver;
-  readonly resolveTicket: (owner: string, projectId: string, ticketId: string) =>
-    Promise<OriReviewTicket | null>;
+  readonly resolveTicket: (
+    owner: string,
+    projectId: string,
+    ticketId: string,
+  ) => Promise<OriReviewTicket | null>;
   readonly store: ReturnType<typeof openOriTicketPresentationSqliteStore>;
 }) {
   const service = createOriTicketPresentationAcknowledgement({
