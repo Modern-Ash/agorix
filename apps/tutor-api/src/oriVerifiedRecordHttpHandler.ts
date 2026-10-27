@@ -11,13 +11,22 @@ function reply(response: ServerResponse, status: number, body: unknown): void {
   });
   response.end(JSON.stringify(body));
 }
+class InvalidReviewBody extends Error {
+  constructor(readonly status: 400 | 413) {
+    super("invalid-review-body");
+  }
+}
 async function bodyJson(request: IncomingMessage): Promise<unknown> {
   let body = "";
   for await (const chunk of request) {
     body += Buffer.isBuffer(chunk) ? chunk.toString("utf8") : String(chunk);
-    if (Buffer.byteLength(body, "utf8") > 4096) throw Error("invalid-body");
+    if (Buffer.byteLength(body, "utf8") > 4096) throw new InvalidReviewBody(413);
   }
-  return JSON.parse(body) as unknown;
+  try {
+    return JSON.parse(body) as unknown;
+  } catch {
+    throw new InvalidReviewBody(400);
+  }
 }
 
 /** Adult-only HTTP boundary; the host must supply authenticated service. */
@@ -58,7 +67,9 @@ export function createOriVerifiedRecordHttpHandler(
       return reply(response, result === "recorded" ? 200 :
         result === "unauthorized" ? 403 : result === "conflict" ? 409 : 400,
       result === "recorded" ? { status: result } : { error: result });
-    } catch {
+    } catch (cause) {
+      if (cause instanceof InvalidReviewBody)
+        return reply(response, cause.status, { error: cause.status === 413 ? "body-too-large" : "invalid-request" });
       return reply(response, 503, { error: "unavailable" });
     }
   };
