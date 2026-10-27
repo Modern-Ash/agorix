@@ -10,8 +10,11 @@ import { oriEvidenceRevision } from "./oriPersistedEvidenceResolver.js";
 
 const servers: Server[] = [];
 afterEach(async () => {
-  await Promise.all(servers.splice(0).map((server) =>
-    new Promise<void>((resolve) => server.close(() => resolve()))));
+  await Promise.all(
+    servers
+      .splice(0)
+      .map((server) => new Promise<void>((resolve) => server.close(() => resolve()))),
+  );
 });
 
 describe("Ori persisted project -> accepted ticket -> HTTP apply", () => {
@@ -66,14 +69,15 @@ describe("Ori persisted project -> accepted ticket -> HTTP apply", () => {
     servers.push(server);
     await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
     const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
-    const post = (path: string, body: unknown) => fetch(base + path, {
-      method: "POST",
-      headers: { origin: base, "content-type": "application/json", "x-agorix-request": "1" },
-      body: JSON.stringify(body),
-    });
+    const post = (path: string, body: unknown) =>
+      fetch(base + path, {
+        method: "POST",
+        headers: { origin: base, "content-type": "application/json", "x-agorix-request": "1" },
+        body: JSON.stringify(body),
+      });
     const proposed = await post("/api/tutor/ori/review/propose", {});
     expect(proposed.status).toBe(200);
-    const issued = await proposed.json() as { ticketId: string };
+    const issued = (await proposed.json()) as { ticketId: string };
     const applyBody = { ticketId: issued.ticketId, scriptId: "main" };
     expect((await post("/api/tutor/ori/review/apply", applyBody)).status).toBe(403);
     expect((await repository.get("student", record.projectId)).revision).toBe(1);

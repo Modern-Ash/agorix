@@ -24,24 +24,38 @@ export function createOriEducatorRouteDispatcher({
 }: {
   readonly handler: Handler;
   readonly enabled?: boolean;
-  readonly manifestHandler?: (reviewId: string, request: IncomingMessage,
-    response: ServerResponse) => Promise<void>;
+  readonly manifestHandler?: (
+    reviewId: string,
+    request: IncomingMessage,
+    response: ServerResponse,
+  ) => Promise<void>;
 }) {
   return async (request: IncomingMessage, response: ServerResponse): Promise<boolean> => {
     const path = new URL(request.url ?? "/", "http://local").pathname;
     if (!path.startsWith(prefix)) return false;
-    if (!enabled) { reply(response, 404, "not-found"); return true; }
+    if (!enabled) {
+      reply(response, 404, "not-found");
+      return true;
+    }
     const parts = path.slice(prefix.length).split("/");
-    if (parts.length !== 2 || !/^[a-zA-Z0-9_-]{1,80}$/.test(parts[0] ?? "") ||
-      !["snapshot", "decide", "audit", "manifest"].includes(parts[1] ?? "")) {
-      reply(response, 404, "not-found"); return true;
+    if (
+      parts.length !== 2 ||
+      !/^[a-zA-Z0-9_-]{1,80}$/.test(parts[0] ?? "") ||
+      !["snapshot", "decide", "audit", "manifest"].includes(parts[1] ?? "")
+    ) {
+      reply(response, 404, "not-found");
+      return true;
     }
     if (request.method !== "POST") {
-      reply(response, 405, "method-not-allowed"); return true;
+      reply(response, 405, "method-not-allowed");
+      return true;
     }
     try {
       if (parts[1] === "manifest") {
-        if (!manifestHandler) { reply(response, 404, "not-found"); return true; }
+        if (!manifestHandler) {
+          reply(response, 404, "not-found");
+          return true;
+        }
         await manifestHandler(parts[0]!, request, response);
         return true;
       }

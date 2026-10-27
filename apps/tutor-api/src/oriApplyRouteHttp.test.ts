@@ -6,8 +6,11 @@ import { configFromEnv } from "./index.js";
 
 const servers: Server[] = [];
 afterEach(async () => {
-  await Promise.all(servers.splice(0).map((server) =>
-    new Promise<void>((resolve) => server.close(() => resolve()))));
+  await Promise.all(
+    servers
+      .splice(0)
+      .map((server) => new Promise<void>((resolve) => server.close(() => resolve()))),
+  );
 });
 const ticketId = "123e4567-e89b-42d3-a456-426614174000";
 async function start(enabled = false) {
@@ -48,7 +51,9 @@ describe("Ori experimental apply HTTP route", () => {
   it("rejects forged authority and cross-origin requests", async () => {
     const { base, calls } = await start(true);
     expect((await post(base, { ticketId, scriptId: "main", ownerId: "other" })).status).toBe(400);
-    expect((await post(base, { ticketId, scriptId: "main" }, "https://attacker.example")).status).toBe(403);
+    expect(
+      (await post(base, { ticketId, scriptId: "main" }, "https://attacker.example")).status,
+    ).toBe(403);
     expect(calls).toHaveLength(0);
   });
 });

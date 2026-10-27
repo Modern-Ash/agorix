@@ -13,18 +13,27 @@ describe("Ori context input validation", () => {
     expect(validateOriContextInput({ ...request, message: "child text" })).toBeNull();
   });
   it("rejects raw program or trace", () => {
-    expect(validateOriContextInput({
-      ...request, context: { ...request.context, program: "raw" },
-    })).toBeNull();
+    expect(
+      validateOriContextInput({
+        ...request,
+        context: { ...request.context, program: "raw" },
+      }),
+    ).toBeNull();
   });
   it("rejects unknown outcomes", () => {
-    expect(validateOriContextInput({
-      ...request, context: { ...request.context, outcome: "unknown" },
-    })).toBeNull();
+    expect(
+      validateOriContextInput({
+        ...request,
+        context: { ...request.context, outcome: "unknown" },
+      }),
+    ).toBeNull();
   });
   it("rejects invalid counts", () => {
-    expect(validateOriContextInput({
-      ...request, context: { ...request.context, hintCount: 1001 },
-    })).toBeNull();
+    expect(
+      validateOriContextInput({
+        ...request,
+        context: { ...request.context, hintCount: 1001 },
+      }),
+    ).toBeNull();
   });
 });

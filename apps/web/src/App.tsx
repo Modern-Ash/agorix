@@ -4789,7 +4789,11 @@ export function App({
                   <p>{t(locale, "aiNativeAssistBody")}</p>
                 </div>
                 {closedPanelIds.includes("companion") ? (
-                  <button type="button" data-testid="open-ori-companion" onClick={() => restorePanel("companion")}>
+                  <button
+                    type="button"
+                    data-testid="open-ori-companion"
+                    onClick={() => restorePanel("companion")}
+                  >
                     {t(locale, PANEL_LABEL_KEYS.companion)}
                   </button>
                 ) : null}
@@ -5077,8 +5081,28 @@ export function App({
                 </div>
               </div>
             )}
-            {(import.meta as ImportMeta & { env?: { VITE_ORI_EXPERIMENTAL_REVIEW?: string } }).env?.VITE_ORI_EXPERIMENTAL_REVIEW === "1" ? <OriReviewPanel evidence={explainOriEvidence(deriveOriTraceEvidence(lastRunResult))} context={{ ...buildOriMinimalContext({ scriptCount: model.program.scripts.length, hintCount: hintHistory.length, hasRun: lastRunResult !== undefined, status: lastRunResult?.outcome ?? "unknown" }), hasRunEvidence: lastRunResult !== undefined, ...(deriveOriTraceEvidence(lastRunResult).status === "ready" ? { verifiedTraceSteps: deriveOriTraceEvidence(lastRunResult).expectedSteps } : {}) }} /> : null}
-            {(import.meta as ImportMeta & { env?: { VITE_ORI_LEARNER_REVIEW?: string } }).env?.VITE_ORI_LEARNER_REVIEW === "1" ? <OriLearnerReviewWidget /> : null}
+            {(import.meta as ImportMeta & { env?: { VITE_ORI_EXPERIMENTAL_REVIEW?: string } }).env
+              ?.VITE_ORI_EXPERIMENTAL_REVIEW === "1" ? (
+              <OriReviewPanel
+                evidence={explainOriEvidence(deriveOriTraceEvidence(lastRunResult))}
+                context={{
+                  ...buildOriMinimalContext({
+                    scriptCount: model.program.scripts.length,
+                    hintCount: hintHistory.length,
+                    hasRun: lastRunResult !== undefined,
+                    status: lastRunResult?.outcome ?? "unknown",
+                  }),
+                  hasRunEvidence: lastRunResult !== undefined,
+                  ...(deriveOriTraceEvidence(lastRunResult).status === "ready"
+                    ? { verifiedTraceSteps: deriveOriTraceEvidence(lastRunResult).expectedSteps }
+                    : {}),
+                }}
+              />
+            ) : null}
+            {(import.meta as ImportMeta & { env?: { VITE_ORI_LEARNER_REVIEW?: string } }).env
+              ?.VITE_ORI_LEARNER_REVIEW === "1" ? (
+              <OriLearnerReviewWidget />
+            ) : null}
             <details className="ai-more-help">
               <summary>{t(locale, "aiMoreHelp")}</summary>
               <div className="tutor-actions">

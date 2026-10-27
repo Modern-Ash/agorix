@@ -25,12 +25,22 @@ export function openOriAtomicEducatorReviewStore(path: string) {
       revision INTEGER NOT NULL, digest TEXT NOT NULL, event TEXT NOT NULL,
       mission_id TEXT NOT NULL, reviewer_id TEXT NOT NULL);`);
   const read = db.prepare("SELECT digest,revision,matrix_json FROM ori_atomic_reviews WHERE id=?");
-  const rows = db.prepare("SELECT mission_id,reviewer_id,decision,rationale FROM ori_atomic_decisions WHERE review_id=? AND digest=? ORDER BY mission_id");
-  const log = db.prepare("INSERT INTO ori_atomic_audit(review_id,revision,digest,event,mission_id,reviewer_id) VALUES(?,?,?,?,?,?)");
+  const rows = db.prepare(
+    "SELECT mission_id,reviewer_id,decision,rationale FROM ori_atomic_decisions WHERE review_id=? AND digest=? ORDER BY mission_id",
+  );
+  const log = db.prepare(
+    "INSERT INTO ori_atomic_audit(review_id,revision,digest,event,mission_id,reviewer_id) VALUES(?,?,?,?,?,?)",
+  );
   function transaction<T>(fn: () => T): T {
     db.exec("BEGIN IMMEDIATE");
-    try { const result = fn(); db.exec("COMMIT"); return result; }
-    catch (error) { db.exec("ROLLBACK"); throw error; }
+    try {
+      const result = fn();
+      db.exec("COMMIT");
+      return result;
+    } catch (error) {
+      db.exec("ROLLBACK");
+      throw error;
+    }
   }
   function current(id: string) {
     const row = read.get(id);
@@ -43,47 +53,78 @@ export function openOriAtomicEducatorReviewStore(path: string) {
   return Object.freeze({
     get: current,
     audit(id: string) {
-      return db.prepare("SELECT revision,digest,event,mission_id,reviewer_id FROM ori_atomic_audit WHERE review_id=? ORDER BY seq").all(id);
+      return db
+        .prepare(
+          "SELECT revision,digest,event,mission_id,reviewer_id FROM ori_atomic_audit WHERE review_id=? ORDER BY seq",
+        )
+        .all(id);
     },
-    publish(id: string, matrix: OriMissionDivergenceMatrix, expectedRevision?: number):
-      "published" | "conflict" | "invalid" {
+    publish(
+      id: string,
+      matrix: OriMissionDivergenceMatrix,
+      expectedRevision?: number,
+    ): "published" | "conflict" | "invalid" {
       if (!id || assessOriEvidenceQuality(matrix).status !== "complete-technical-evidence")
         return "invalid";
       const digest = digestOriReviewMatrix(matrix);
       return transaction(() => {
         const before = current(id);
-        if ((before && before.revision !== expectedRevision) ||
-            (!before && expectedRevision !== undefined)) return "conflict";
+        if (
+          (before && before.revision !== expectedRevision) ||
+          (!before && expectedRevision !== undefined)
+        )
+          return "conflict";
         if (before?.digest === digest) return "published";
         const revision = (before?.revision ?? 0) + 1;
-        db.prepare(`INSERT INTO ori_atomic_reviews(id,digest,revision,matrix_json) VALUES(?,?,?,?)
+        db.prepare(
+          `INSERT INTO ori_atomic_reviews(id,digest,revision,matrix_json) VALUES(?,?,?,?)
           ON CONFLICT(id) DO UPDATE SET digest=excluded.digest,
-          revision=excluded.revision,matrix_json=excluded.matrix_json`)
-          .run(id, digest, revision, JSON.stringify(matrix));
-        log.run(id, revision, digest, before ? "evidence-replaced" : "evidence-created", "", "system");
+          revision=excluded.revision,matrix_json=excluded.matrix_json`,
+        ).run(id, digest, revision, JSON.stringify(matrix));
+        log.run(
+          id,
+          revision,
+          digest,
+          before ? "evidence-replaced" : "evidence-created",
+          "",
+          "system",
+        );
         return "published";
       });
     },
-    submit(id: string, expectedDigest: string, expectedRevision: number,
-      principal: OriVerifiedEducator | null, input: OriReviewDecisionInput):
-      "recorded" | "unauthorized" | "conflict" | "invalid" {
-      if (!principal?.canReviewOri || !principal.id || principal.id.length > 128) return "unauthorized";
-      if (!["approve", "reject"].includes(input.decision) ||
-          typeof input.rationale !== "string" || input.rationale.trim().length < 12 ||
-          input.rationale.length > 2000) return "invalid";
+    submit(
+      id: string,
+      expectedDigest: string,
+      expectedRevision: number,
+      principal: OriVerifiedEducator | null,
+      input: OriReviewDecisionInput,
+    ): "recorded" | "unauthorized" | "conflict" | "invalid" {
+      if (!principal?.canReviewOri || !principal.id || principal.id.length > 128)
+        return "unauthorized";
+      if (
+        !["approve", "reject"].includes(input.decision) ||
+        typeof input.rationale !== "string" ||
+        input.rationale.trim().length < 12 ||
+        input.rationale.length > 2000
+      )
+        return "invalid";
       return transaction(() => {
         const state = current(id);
         if (!state || state.digest !== expectedDigest || state.revision !== expectedRevision)
           return "conflict";
-        if (!state.matrix.rows.some((row) => row.missionId === input.missionId))
-          return "invalid";
+        if (!state.matrix.rows.some((row) => row.missionId === input.missionId)) return "invalid";
         if (rows.all(id, state.digest).some((row) => row["mission_id"] === input.missionId))
           return "invalid";
         const revision = state.revision + 1;
-        db.prepare("INSERT INTO ori_atomic_decisions VALUES(?,?,?,?,?,?)")
-          .run(id, state.digest, input.missionId, principal.id, input.decision, input.rationale);
-        db.prepare("UPDATE ori_atomic_reviews SET revision=? WHERE id=?")
-          .run(revision, id);
+        db.prepare("INSERT INTO ori_atomic_decisions VALUES(?,?,?,?,?,?)").run(
+          id,
+          state.digest,
+          input.missionId,
+          principal.id,
+          input.decision,
+          input.rationale,
+        );
+        db.prepare("UPDATE ori_atomic_reviews SET revision=? WHERE id=?").run(revision, id);
         log.run(id, revision, state.digest, input.decision, input.missionId, principal.id);
         return "recorded";
       });
@@ -91,24 +132,29 @@ export function openOriAtomicEducatorReviewStore(path: string) {
     decisions(id: string) {
       const state = current(id);
       if (!state) return null;
-      return rows.all(id, state.digest).map((row) => Object.freeze({
-        missionId: String(row["mission_id"]), reviewerId: String(row["reviewer_id"]),
-        decision: String(row["decision"]) as "approve" | "reject",
-        rationale: String(row["rationale"]),
-      }));
+      return rows.all(id, state.digest).map((row) =>
+        Object.freeze({
+          missionId: String(row["mission_id"]),
+          reviewerId: String(row["reviewer_id"]),
+          decision: String(row["decision"]) as "approve" | "reject",
+          rationale: String(row["rationale"]),
+        }),
+      );
     },
     signoff(id: string) {
       const state = current(id);
       if (!state) return null;
       const review = createOriEducatorReviewPackage(state.matrix);
       const decisions = rows.all(id, state.digest).map((row) => ({
-        missionId: String(row["mission_id"]), reviewerId: String(row["reviewer_id"]),
+        missionId: String(row["mission_id"]),
+        reviewerId: String(row["reviewer_id"]),
         decision: String(row["decision"]) as "approve" | "reject",
         rationale: String(row["rationale"]),
       }));
       return Object.freeze({
         ...assessOriEducatorSignoff(review, decisions),
-        evidenceDigest: state.digest, revision: state.revision,
+        evidenceDigest: state.digest,
+        revision: state.revision,
       });
     },
     close: () => db.close(),

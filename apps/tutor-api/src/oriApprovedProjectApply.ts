@@ -33,7 +33,8 @@ export async function applyApprovedOriProposal({
     !scriptId ||
     !Number.isSafeInteger(expectedRevision) ||
     expectedRevision < 1
-  ) return "rejected";
+  )
+    return "rejected";
 
   const statement = mapOriProposalToCanonicalStatement(proposal, allowedBlocks);
   if (!statement) return "rejected";
@@ -58,12 +59,8 @@ export async function applyApprovedOriProposal({
     });
     return "applied";
   } catch (error) {
-    if (
-      typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      error.code === "CONFLICT"
-    ) return "conflict";
+    if (typeof error === "object" && error !== null && "code" in error && error.code === "CONFLICT")
+      return "conflict";
     return "rejected";
   }
 }

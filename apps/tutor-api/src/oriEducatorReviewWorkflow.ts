@@ -25,16 +25,21 @@ export interface OriReviewSnapshot {
 function digest(matrix: OriMissionDivergenceMatrix): string {
   // Stable canonical order and explicit schema prevent accidental reuse across
   // different evidence matrices. No learner data is included.
-  const rows = [...matrix.rows].sort((a, b) =>
-    a.missionIndex - b.missionIndex || a.missionId.localeCompare(b.missionId));
-  return createHash("sha256").update(JSON.stringify({
-    schema: "agorix/ori-educator-evidence/v1",
-    total: matrix.total,
-    available: matrix.available,
-    missing: matrix.missing,
-    divergent: matrix.divergent,
-    rows,
-  })).digest("hex");
+  const rows = [...matrix.rows].sort(
+    (a, b) => a.missionIndex - b.missionIndex || a.missionId.localeCompare(b.missionId),
+  );
+  return createHash("sha256")
+    .update(
+      JSON.stringify({
+        schema: "agorix/ori-educator-evidence/v1",
+        total: matrix.total,
+        available: matrix.available,
+        missing: matrix.missing,
+        divergent: matrix.divergent,
+        rows,
+      }),
+    )
+    .digest("hex");
 }
 
 /**
@@ -79,14 +84,16 @@ export function createOriEducatorReviewWorkflow(initial: OriMissionDivergenceMat
     ): "recorded" | "unauthorized" | "conflict" | "invalid" {
       if (!principal?.canReviewOri || !principal.id || principal.id.length > 128)
         return "unauthorized";
-      if (expectedDigest !== evidenceDigest || expectedRevision !== revision)
-        return "conflict";
+      if (expectedDigest !== evidenceDigest || expectedRevision !== revision) return "conflict";
       const review = createOriEducatorReviewPackage(matrix);
-      if (!review.reviewItems.some((item) => item.missionId === input.missionId) ||
-          decisions.has(input.missionId) ||
-          !["approve", "reject"].includes(input.decision) ||
-          typeof input.rationale !== "string" ||
-          input.rationale.trim().length < 12 || input.rationale.length > 2000)
+      if (
+        !review.reviewItems.some((item) => item.missionId === input.missionId) ||
+        decisions.has(input.missionId) ||
+        !["approve", "reject"].includes(input.decision) ||
+        typeof input.rationale !== "string" ||
+        input.rationale.trim().length < 12 ||
+        input.rationale.length > 2000
+      )
         return "invalid";
       const decision: OriEducatorDecision = Object.freeze({
         missionId: input.missionId,
@@ -96,10 +103,16 @@ export function createOriEducatorReviewWorkflow(initial: OriMissionDivergenceMat
       });
       decisions.set(input.missionId, decision);
       revision++;
-      audit = [...audit, Object.freeze({
-        revision, evidenceDigest, missionId: decision.missionId,
-        reviewerId: principal.id, decision: decision.decision,
-      })];
+      audit = [
+        ...audit,
+        Object.freeze({
+          revision,
+          evidenceDigest,
+          missionId: decision.missionId,
+          reviewerId: principal.id,
+          decision: decision.decision,
+        }),
+      ];
       return "recorded";
     },
     replaceEvidence(next: OriMissionDivergenceMatrix): boolean {
@@ -109,13 +122,16 @@ export function createOriEducatorReviewWorkflow(initial: OriMissionDivergenceMat
       evidenceDigest = nextDigest;
       decisions = new Map();
       revision++;
-      audit = [...audit, Object.freeze({
-        revision,
-        evidenceDigest,
-        missionId: "",
-        reviewerId: "system",
-        decision: "evidence-replaced" as const,
-      })];
+      audit = [
+        ...audit,
+        Object.freeze({
+          revision,
+          evidenceDigest,
+          missionId: "",
+          reviewerId: "system",
+          decision: "evidence-replaced" as const,
+        }),
+      ];
       return true;
     },
   });

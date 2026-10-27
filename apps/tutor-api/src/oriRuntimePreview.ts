@@ -14,11 +14,19 @@ export interface OriRuntimePreview {
   readonly appliedChanges: false;
 }
 const unavailable: OriRuntimePreview = Object.freeze({
-  status: "unavailable", requiresLearnerApproval: true, appliedChanges: false,
+  status: "unavailable",
+  requiresLearnerApproval: true,
+  appliedChanges: false,
 });
 export function createOriRuntimePreview({
-  oriRoot, enabled = false, timeoutMs = 3000,
-}: { oriRoot: string; enabled?: boolean; timeoutMs?: number }) {
+  oriRoot,
+  enabled = false,
+  timeoutMs = 3000,
+}: {
+  oriRoot: string;
+  enabled?: boolean;
+  timeoutMs?: number;
+}) {
   if (!isAbsolute(oriRoot)) throw new TypeError("Ori checkout must be absolute");
   const root = realpathSync(oriRoot);
   if (!existsSync(join(root, "examples/local-agent-runtime.mjs")))
@@ -31,10 +39,14 @@ export function createOriRuntimePreview({
       let child: ChildProcessWithoutNullStreams;
       try {
         child = spawn(process.execPath, ["examples/local-agent-runtime.mjs", intent], {
-          cwd: root, stdio: ["pipe", "pipe", "pipe"],
+          cwd: root,
+          stdio: ["pipe", "pipe", "pipe"],
           env: { PATH: process.env["PATH"] ?? "", ORI_LOCAL_MODELS: "0" },
         });
-      } catch { resolve(unavailable); return; }
+      } catch {
+        resolve(unavailable);
+        return;
+      }
       child.stdin.end();
       let stdout = "";
       let settled = false;
@@ -60,17 +72,36 @@ export function createOriRuntimePreview({
           const plan = record["plan"] as { schemaVersion?: unknown; steps?: unknown } | undefined;
           const steps = plan?.steps;
           const hint = record["hint"];
-          if (record["intent"] !== intent || record["appliedChanges"] !== false ||
-              record["hintSource"] !== "deterministic" || plan?.schemaVersion !== "ori/plan/v1" ||
-              !Array.isArray(steps) || steps.length < 1 || steps.length > 8 ||
-              !steps.every(s => s && typeof s === "object" && typeof s.goal === "string" && s.goal.length <= 240) ||
-              typeof hint !== "string" || hint.length < 1 || hint.length > 180)
+          if (
+            record["intent"] !== intent ||
+            record["appliedChanges"] !== false ||
+            record["hintSource"] !== "deterministic" ||
+            plan?.schemaVersion !== "ori/plan/v1" ||
+            !Array.isArray(steps) ||
+            steps.length < 1 ||
+            steps.length > 8 ||
+            !steps.every(
+              (s) =>
+                s && typeof s === "object" && typeof s.goal === "string" && s.goal.length <= 240,
+            ) ||
+            typeof hint !== "string" ||
+            hint.length < 1 ||
+            hint.length > 180
+          )
             return finish(unavailable);
-          finish(Object.freeze({
-            status: "ready", hint, nextStep: steps[0].goal,
-            hintSource: "deterministic", requiresLearnerApproval: true, appliedChanges: false,
-          }));
-        } catch { finish(unavailable); }
+          finish(
+            Object.freeze({
+              status: "ready",
+              hint,
+              nextStep: steps[0].goal,
+              hintSource: "deterministic",
+              requiresLearnerApproval: true,
+              appliedChanges: false,
+            }),
+          );
+        } catch {
+          finish(unavailable);
+        }
       });
     });
   };

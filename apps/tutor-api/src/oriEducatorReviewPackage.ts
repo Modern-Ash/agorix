@@ -5,7 +5,8 @@ export interface OriEducatorReviewItem {
   readonly missionId: string;
   readonly missionIndex: number;
   readonly priority: "high" | "normal";
-  readonly reason: "missing-evidence" | "technical-divergence" | "semantic-gap" | "observable-match";
+  readonly reason:
+    "missing-evidence" | "technical-divergence" | "semantic-gap" | "observable-match";
   readonly educatorDecision: "pending";
 }
 export interface OriEducatorReviewPackage {
@@ -24,18 +25,19 @@ export function createOriEducatorReviewPackage(
   matrix: OriMissionDivergenceMatrix,
 ): OriEducatorReviewPackage {
   const reviewItems = matrix.rows.map((row): OriEducatorReviewItem => {
-    const reason = row.status === "missing"
-      ? "missing-evidence" as const
-      : row.status === "divergent"
-        ? "technical-divergence" as const
-        : row.notComparable > 0
-          ? "semantic-gap" as const
-          : "observable-match" as const;
+    const reason =
+      row.status === "missing"
+        ? ("missing-evidence" as const)
+        : row.status === "divergent"
+          ? ("technical-divergence" as const)
+          : row.notComparable > 0
+            ? ("semantic-gap" as const)
+            : ("observable-match" as const);
     return Object.freeze({
       missionId: row.missionId,
       missionIndex: row.missionIndex,
-      priority: reason === "missing-evidence" || reason === "technical-divergence"
-        ? "high" : "normal",
+      priority:
+        reason === "missing-evidence" || reason === "technical-divergence" ? "high" : "normal",
       reason,
       educatorDecision: "pending",
     });

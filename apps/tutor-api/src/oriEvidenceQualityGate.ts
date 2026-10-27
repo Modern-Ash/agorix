@@ -21,10 +21,18 @@ export function assessOriEvidenceQuality(
   if (matrix.rows.length !== matrix.total) reasons.push("row-count-inconsistent");
   if (new Set(matrix.rows.map((row) => row.missionId)).size !== matrix.rows.length)
     reasons.push("duplicate-mission");
-  if (matrix.rows.some((row) =>
-    !row.missionId || !Number.isSafeInteger(row.missionIndex) || row.missionIndex < 0 ||
-    row.matches < 0 || row.divergences < 0 || row.notComparable < 0
-  )) reasons.push("invalid-row");
+  if (
+    matrix.rows.some(
+      (row) =>
+        !row.missionId ||
+        !Number.isSafeInteger(row.missionIndex) ||
+        row.missionIndex < 0 ||
+        row.matches < 0 ||
+        row.divergences < 0 ||
+        row.notComparable < 0,
+    )
+  )
+    reasons.push("invalid-row");
   if (matrix.missing > 0) reasons.push("missing-ori-evidence");
   return Object.freeze({
     status: reasons.length === 0 ? "complete-technical-evidence" : "incomplete",

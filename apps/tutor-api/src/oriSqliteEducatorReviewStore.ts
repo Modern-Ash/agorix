@@ -38,9 +38,15 @@ export function openOriSqliteEducatorReviewStore(path: string) {
       mission_id TEXT NOT NULL, reviewer_id TEXT NOT NULL
     );`);
   const read = db.prepare("SELECT digest,revision FROM ori_educator_review WHERE review_id=?");
-  const decisions = db.prepare("SELECT mission_id,reviewer_id,decision,rationale FROM ori_educator_decisions WHERE review_id=? AND digest=? ORDER BY mission_id");
-  const audit = db.prepare("SELECT revision,digest,event,mission_id,reviewer_id FROM ori_educator_audit WHERE review_id=? ORDER BY id");
-  const insertAudit = db.prepare("INSERT INTO ori_educator_audit(review_id,revision,digest,event,mission_id,reviewer_id) VALUES(?,?,?,?,?,?)");
+  const decisions = db.prepare(
+    "SELECT mission_id,reviewer_id,decision,rationale FROM ori_educator_decisions WHERE review_id=? AND digest=? ORDER BY mission_id",
+  );
+  const audit = db.prepare(
+    "SELECT revision,digest,event,mission_id,reviewer_id FROM ori_educator_audit WHERE review_id=? ORDER BY id",
+  );
+  const insertAudit = db.prepare(
+    "INSERT INTO ori_educator_audit(review_id,revision,digest,event,mission_id,reviewer_id) VALUES(?,?,?,?,?,?)",
+  );
   const get = (id: string): OriDurableReviewState | null => {
     const row = read.get(id);
     if (!row) return null;
@@ -68,36 +74,62 @@ export function openOriSqliteEducatorReviewStore(path: string) {
   };
   return Object.freeze({
     get,
-    audit: (id: string) => audit.all(id).map((row) => ({
-      revision: Number(row["revision"]), evidenceDigest: String(row["digest"]),
-      event: String(row["event"]), missionId: String(row["mission_id"]),
-      reviewerId: String(row["reviewer_id"]),
-    })),
+    audit: (id: string) =>
+      audit.all(id).map((row) => ({
+        revision: Number(row["revision"]),
+        evidenceDigest: String(row["digest"]),
+        event: String(row["event"]),
+        missionId: String(row["mission_id"]),
+        reviewerId: String(row["reviewer_id"]),
+      })),
     initialize(id: string, digest: string): boolean {
       if (!id || !/^[a-f0-9]{64}$/.test(digest)) return false;
       return transaction(() => {
-        const result = db.prepare("INSERT OR IGNORE INTO ori_educator_review VALUES(?,?,1)").run(id, digest);
+        const result = db
+          .prepare("INSERT OR IGNORE INTO ori_educator_review VALUES(?,?,1)")
+          .run(id, digest);
         return result.changes === 1;
       });
     },
-    submit(id: string, expectedDigest: string, expectedRevision: number,
-      principal: OriVerifiedEducator | null, input: OriReviewDecisionInput,
-      allowedMissions: readonly string[]): "recorded" | "unauthorized" | "conflict" | "invalid" {
-      if (!principal?.canReviewOri || !principal.id || principal.id.length > 128) return "unauthorized";
-      if (!allowedMissions.includes(input.missionId) ||
+    submit(
+      id: string,
+      expectedDigest: string,
+      expectedRevision: number,
+      principal: OriVerifiedEducator | null,
+      input: OriReviewDecisionInput,
+      allowedMissions: readonly string[],
+    ): "recorded" | "unauthorized" | "conflict" | "invalid" {
+      if (!principal?.canReviewOri || !principal.id || principal.id.length > 128)
+        return "unauthorized";
+      if (
+        !allowedMissions.includes(input.missionId) ||
         !["approve", "reject"].includes(input.decision) ||
         typeof input.rationale !== "string" ||
-        input.rationale.trim().length < 12 || input.rationale.length > 2000) return "invalid";
+        input.rationale.trim().length < 12 ||
+        input.rationale.length > 2000
+      )
+        return "invalid";
       return transaction(() => {
         const current = get(id);
-        if (!current || current.evidenceDigest !== expectedDigest ||
-          current.revision !== expectedRevision) return "conflict";
+        if (
+          !current ||
+          current.evidenceDigest !== expectedDigest ||
+          current.revision !== expectedRevision
+        )
+          return "conflict";
         if (current.decisions.some((d) => d.missionId === input.missionId)) return "invalid";
         const next = current.revision + 1;
-        db.prepare("INSERT INTO ori_educator_decisions VALUES(?,?,?,?,?,?)")
-          .run(id, expectedDigest, input.missionId, principal.id, input.decision, input.rationale);
-        db.prepare("UPDATE ori_educator_review SET revision=? WHERE review_id=? AND revision=?")
-          .run(next, id, current.revision);
+        db.prepare("INSERT INTO ori_educator_decisions VALUES(?,?,?,?,?,?)").run(
+          id,
+          expectedDigest,
+          input.missionId,
+          principal.id,
+          input.decision,
+          input.rationale,
+        );
+        db.prepare(
+          "UPDATE ori_educator_review SET revision=? WHERE review_id=? AND revision=?",
+        ).run(next, id, current.revision);
         insertAudit.run(id, next, expectedDigest, input.decision, input.missionId, principal.id);
         return "recorded";
       });
@@ -106,11 +138,16 @@ export function openOriSqliteEducatorReviewStore(path: string) {
       if (!/^[a-f0-9]{64}$/.test(nextDigest)) return false;
       return transaction(() => {
         const current = get(id);
-        if (!current || current.revision !== expectedRevision ||
-          current.evidenceDigest === nextDigest) return false;
+        if (
+          !current ||
+          current.revision !== expectedRevision ||
+          current.evidenceDigest === nextDigest
+        )
+          return false;
         const next = current.revision + 1;
-        db.prepare("UPDATE ori_educator_review SET digest=?,revision=? WHERE review_id=? AND revision=?")
-          .run(nextDigest, next, id, current.revision);
+        db.prepare(
+          "UPDATE ori_educator_review SET digest=?,revision=? WHERE review_id=? AND revision=?",
+        ).run(nextDigest, next, id, current.revision);
         insertAudit.run(id, next, nextDigest, "evidence-replaced", "", "system");
         return true;
       });

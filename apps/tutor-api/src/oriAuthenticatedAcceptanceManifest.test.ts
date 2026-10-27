@@ -5,14 +5,29 @@ import { openOriAtomicEducatorReviewStore } from "./oriAtomicEducatorReviewStore
 import { createOriEducatorAdminComposition } from "./oriEducatorAdminComposition.js";
 
 const matrix = {
-  total: 1, available: 1, missing: 0, divergent: 0,
-  rows: [{ missionId: "movement", missionIndex: 0, status: "matched-observables" as const,
-    matches: 4, divergences: 0, notComparable: 0 }],
+  total: 1,
+  available: 1,
+  missing: 0,
+  divergent: 0,
+  rows: [
+    {
+      missionId: "movement",
+      missionIndex: 0,
+      status: "matched-observables" as const,
+      matches: 4,
+      divergences: 0,
+      notComparable: 0,
+    },
+  ],
 };
 const request = {
   method: "POST",
-  headers: { host: "agorix.example", origin: "https://agorix.example",
-    "content-type": "application/json", "x-agorix-admin-csrf": "valid" },
+  headers: {
+    host: "agorix.example",
+    origin: "https://agorix.example",
+    "content-type": "application/json",
+    "x-agorix-admin-csrf": "valid",
+  },
 } as unknown as IncomingMessage;
 const auth = { read: () => ({ author: "educator", csrf: "valid" }) } as unknown as AdminAuth;
 
@@ -23,18 +38,30 @@ describe("MIG-03 authenticated acceptance manifest", () => {
     const state = store.get("pilot")!;
     const provenance = { evidenceDigest: state.digest, verified: true };
     const base = { auth, trustedHosts: ["agorix.example"], store };
-    expect(await createOriEducatorAdminComposition({
-      ...base, enabled: true, resolveRole: async () => false,
-    }).acceptanceManifest(request, "pilot", provenance)).toBeNull();
+    expect(
+      await createOriEducatorAdminComposition({
+        ...base,
+        enabled: true,
+        resolveRole: async () => false,
+      }).acceptanceManifest(request, "pilot", provenance),
+    ).toBeNull();
     const enabled = createOriEducatorAdminComposition({
-      ...base, enabled: true, resolveRole: async () => true,
+      ...base,
+      enabled: true,
+      resolveRole: async () => true,
     });
     expect(await enabled.acceptanceManifest(request, "pilot", provenance)).toMatchObject({
-      readiness: "blocked", rolloutAuthorized: false,
+      readiness: "blocked",
+      rolloutAuthorized: false,
     });
-    expect((await enabled.acceptanceManifest(request, "pilot", {
-      evidenceDigest: "a".repeat(64), verified: true,
-    }))?.blockers).toContain("unverified-evidence-provenance");
+    expect(
+      (
+        await enabled.acceptanceManifest(request, "pilot", {
+          evidenceDigest: "a".repeat(64),
+          verified: true,
+        })
+      )?.blockers,
+    ).toContain("unverified-evidence-provenance");
     store.close();
   });
 });

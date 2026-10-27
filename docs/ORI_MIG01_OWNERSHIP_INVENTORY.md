@@ -8,15 +8,15 @@
 
 ## Inventario observado
 
-| Superficie | Dueño | Evidencia / responsabilidad |
-| --- | --- | --- |
-| `packages/ori-agent` | Agorix, integración legacy | Contrato Kids de sugerencias con revisión, fallback determinista, sin herramientas/red propias; no retirar sin paridad. |
-| `apps/tutor-api` | Agorix, host | Consumo y evaluación del proceso Ori real; validación de entradas/salidas y autorización del lado servidor. |
-| Programa canónico, runtime, trace y proyectos | Agorix | Fuente exclusiva de verdad; Ori no escribe programa ni ejecuta mutaciones. |
-| Currículo, misión y aprobación del aprendiz | Agorix | Componer contexto mínimo autorizado; revisión humana/infantil obligatoria. |
-| `Modern-Ash/ori` | Ori, servicio headless | Planner, contratos, proveedores y tools ports; responde con planes y propuestas revisables. |
-| `docs/ORI_V2_TRUSTED_HOST_ADAPTER.md` | Agorix | Adapter experimental solo servidor. El documento exige grants del host, revisión canónica y revalidación al aceptar/rechazar. |
-| `docs/ORI_RUNTIME_CROSS_REPO_GATE.md` | Agorix | Verificación opt-in entre checkouts con `ORI_REPO_PATH`; distingue proceso real de una integración completa navegador-runtime. |
+| Superficie                                    | Dueño                      | Evidencia / responsabilidad                                                                                                    |
+| --------------------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `packages/ori-agent`                          | Agorix, integración legacy | Contrato Kids de sugerencias con revisión, fallback determinista, sin herramientas/red propias; no retirar sin paridad.        |
+| `apps/tutor-api`                              | Agorix, host               | Consumo y evaluación del proceso Ori real; validación de entradas/salidas y autorización del lado servidor.                    |
+| Programa canónico, runtime, trace y proyectos | Agorix                     | Fuente exclusiva de verdad; Ori no escribe programa ni ejecuta mutaciones.                                                     |
+| Currículo, misión y aprobación del aprendiz   | Agorix                     | Componer contexto mínimo autorizado; revisión humana/infantil obligatoria.                                                     |
+| `Modern-Ash/ori`                              | Ori, servicio headless     | Planner, contratos, proveedores y tools ports; responde con planes y propuestas revisables.                                    |
+| `docs/ORI_V2_TRUSTED_HOST_ADAPTER.md`         | Agorix                     | Adapter experimental solo servidor. El documento exige grants del host, revisión canónica y revalidación al aceptar/rechazar.  |
+| `docs/ORI_RUNTIME_CROSS_REPO_GATE.md`         | Agorix                     | Verificación opt-in entre checkouts con `ORI_REPO_PATH`; distingue proceso real de una integración completa navegador-runtime. |
 
 ## Límites de confianza
 
@@ -29,13 +29,13 @@
 
 ## Riesgos y verificaciones pendientes
 
-| Riesgo | Verificación antes del cutover | Ticket |
-| --- | --- | --- |
-| Divergencia entre Ori nuevo y tutor legado | Comparación shadow/golden sobre contextos equivalentes y matriz de divergencias | Ori #29 |
-| Grants o revisiones falsificables | Contract tests y pruebas adversariales del adapter real | Ori #28 |
-| Pérdida de disponibilidad por fallos de proveedor | Ruta offline y rollback comprobados con fallos y timeouts | Ori #28, #30 |
-| Filtración de datos del alumno | Auditoría de payloads y logs, tests de privacidad | Ori #23, #28 |
-| Retiro prematuro del agente legacy | Gate documentado con evidencia de paridad, revisión humana y latencia | Ori #30 |
+| Riesgo                                            | Verificación antes del cutover                                                  | Ticket       |
+| ------------------------------------------------- | ------------------------------------------------------------------------------- | ------------ |
+| Divergencia entre Ori nuevo y tutor legado        | Comparación shadow/golden sobre contextos equivalentes y matriz de divergencias | Ori #29      |
+| Grants o revisiones falsificables                 | Contract tests y pruebas adversariales del adapter real                         | Ori #28      |
+| Pérdida de disponibilidad por fallos de proveedor | Ruta offline y rollback comprobados con fallos y timeouts                       | Ori #28, #30 |
+| Filtración de datos del alumno                    | Auditoría de payloads y logs, tests de privacidad                               | Ori #23, #28 |
+| Retiro prematuro del agente legacy                | Gate documentado con evidencia de paridad, revisión humana y latencia           | Ori #30      |
 
 ## Plan de transición
 

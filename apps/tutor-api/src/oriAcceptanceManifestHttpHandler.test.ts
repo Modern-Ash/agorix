@@ -9,9 +9,15 @@ function response() {
   let body = "";
   return {
     value: {
-      destroyed: false, writableEnded: false, headersSent: false,
-      writeHead(code: number) { status = code; },
-      end(text: string) { body = text; },
+      destroyed: false,
+      writableEnded: false,
+      headersSent: false,
+      writeHead(code: number) {
+        status = code;
+      },
+      end(text: string) {
+        body = text;
+      },
     } as unknown as ServerResponse,
     result: () => ({ status, body }),
   };
@@ -22,8 +28,10 @@ describe("MIG-03 authenticated acceptance manifest HTTP export", () => {
       snapshot: async () => ({ revision: 2 }),
       acceptanceManifest: async () => ({ readiness: "blocked", rolloutAuthorized: false }),
     } as unknown as ReturnType<typeof createOriEducatorAdminComposition>;
-    const handler = createOriAcceptanceManifestHttpHandler(admin,
-      async () => ({ evidenceDigest: "a".repeat(64), verified: true }));
+    const handler = createOriAcceptanceManifestHttpHandler(admin, async () => ({
+      evidenceDigest: "a".repeat(64),
+      verified: true,
+    }));
     const output = response();
     await handler("pilot", request, output.value);
     expect(output.result().status).toBe(200);
@@ -33,7 +41,9 @@ describe("MIG-03 authenticated acceptance manifest HTTP export", () => {
     let calls = 0;
     const admin = {
       snapshot: async () => null,
-      acceptanceManifest: async () => { throw Error("unexpected"); },
+      acceptanceManifest: async () => {
+        throw Error("unexpected");
+      },
     } as unknown as ReturnType<typeof createOriEducatorAdminComposition>;
     const handler = createOriAcceptanceManifestHttpHandler(admin, async () => {
       calls++;

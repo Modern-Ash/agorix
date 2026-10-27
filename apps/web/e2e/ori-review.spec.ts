@@ -9,10 +9,13 @@ test.describe("Ori experimental review-only journey", () => {
       expect(route.request().method()).toBe("POST");
       expect(route.request().postDataJSON()).toEqual({ intent: "help" });
       await route.fulfill({
-        status: 200, contentType: "application/json",
+        status: 200,
+        contentType: "application/json",
         body: JSON.stringify({
-          status: "ready", hint: "¿Qué podrías probar primero?",
-          nextStep: "Observá qué sucede", requiresLearnerApproval: true,
+          status: "ready",
+          hint: "¿Qué podrías probar primero?",
+          nextStep: "Observá qué sucede",
+          requiresLearnerApproval: true,
           appliedChanges: false,
         }),
       });
@@ -26,8 +29,9 @@ test.describe("Ori experimental review-only journey", () => {
     expect(requests).toBe(1);
   });
   test("fails closed when the runtime endpoint is disabled", async ({ page }) => {
-    await page.route("**/api/tutor/ori/runtime-preview", route =>
-      route.fulfill({ status: 404, contentType: "application/json", body: "{}" }));
+    await page.route("**/api/tutor/ori/runtime-preview", (route) =>
+      route.fulfill({ status: 404, contentType: "application/json", body: "{}" }),
+    );
     await page.goto("/");
     const panel = page.getByTestId("ori-review-panel");
     await expect(panel).toBeVisible();

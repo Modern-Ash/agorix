@@ -20,11 +20,11 @@ export function buildOriMinimalContext(input: {
   readonly hasRun: boolean;
   readonly status: RunOutcome | "unknown";
 }) {
-  const clamp=(value:number)=>Number.isSafeInteger(value) && value>=0
-    ? Math.min(value,1000) : 0;
+  const clamp = (value: number) =>
+    Number.isSafeInteger(value) && value >= 0 ? Math.min(value, 1000) : 0;
   return Object.freeze({
-    scriptCount:clamp(input.scriptCount),
-    hintCount:clamp(input.hintCount),
-    outcome:deriveOriExecutionOutcome(input)
+    scriptCount: clamp(input.scriptCount),
+    hintCount: clamp(input.hintCount),
+    outcome: deriveOriExecutionOutcome(input),
   });
 }

@@ -5,9 +5,7 @@ import { applyApprovedOriProposal } from "./oriApprovedProjectApply.js";
 
 const program: ProjectProgram = {
   schema: SCHEMA_VERSION,
-  scripts: [
-    { id: "main", trigger: { type: "onStart" }, statements: [{ type: "move", steps: 1 }] },
-  ],
+  scripts: [{ id: "main", trigger: { type: "onStart" }, statements: [{ type: "move", steps: 1 }] }],
 };
 const proposal = {
   schemaVersion: "ori/proposal/v0",

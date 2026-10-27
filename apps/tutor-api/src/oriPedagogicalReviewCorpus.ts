@@ -2,8 +2,11 @@ import type { OriMissionDivergenceMatrix } from "./oriMissionDivergenceMatrix.js
 import { createOriEducatorReviewPackage } from "./oriEducatorReviewPackage.js";
 
 export type OriPedagogicalCriterion =
-  | "learner-agency" | "hint-progression" | "conceptual-clarity"
-  | "age-appropriateness" | "safe-non-application";
+  | "learner-agency"
+  | "hint-progression"
+  | "conceptual-clarity"
+  | "age-appropriateness"
+  | "safe-non-application";
 
 export interface OriPedagogicalReviewCase {
   readonly missionId: string;
@@ -16,8 +19,11 @@ export interface OriPedagogicalReviewCase {
 }
 
 const criteria: readonly OriPedagogicalCriterion[] = Object.freeze([
-  "learner-agency", "hint-progression", "conceptual-clarity",
-  "age-appropriateness", "safe-non-application",
+  "learner-agency",
+  "hint-progression",
+  "conceptual-clarity",
+  "age-appropriateness",
+  "safe-non-application",
 ]);
 const prompts = Object.freeze([
   "¿El alumno conserva la decisión final y puede rechazar la sugerencia?",
@@ -32,13 +38,17 @@ export function buildOriPedagogicalReviewCorpus(
   matrix: OriMissionDivergenceMatrix,
 ): readonly OriPedagogicalReviewCase[] {
   const review = createOriEducatorReviewPackage(matrix);
-  return Object.freeze(review.reviewItems.map((item) => Object.freeze({
-    missionId: item.missionId,
-    missionIndex: item.missionIndex,
-    priority: item.priority,
-    evidenceReason: item.reason,
-    criteria,
-    outcome: "pending-human-review" as const,
-    prompts,
-  })));
+  return Object.freeze(
+    review.reviewItems.map((item) =>
+      Object.freeze({
+        missionId: item.missionId,
+        missionIndex: item.missionIndex,
+        priority: item.priority,
+        evidenceReason: item.reason,
+        criteria,
+        outcome: "pending-human-review" as const,
+        prompts,
+      }),
+    ),
+  );
 }

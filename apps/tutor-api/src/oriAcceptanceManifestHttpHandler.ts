@@ -23,8 +23,11 @@ export function createOriAcceptanceManifestHttpHandler(
     readonly verified: boolean;
   } | null>,
 ) {
-  return async (reviewId: string, request: IncomingMessage,
-    response: ServerResponse): Promise<void> => {
+  return async (
+    reviewId: string,
+    request: IncomingMessage,
+    response: ServerResponse,
+  ): Promise<void> => {
     try {
       if (request.method !== "POST" || !/^[a-zA-Z0-9_-]{1,80}$/.test(reviewId))
         return send(response, 404, { error: "not-found" });
@@ -33,8 +36,7 @@ export function createOriAcceptanceManifestHttpHandler(
       const provenance = await trustedProvenance(reviewId);
       if (!provenance) return send(response, 503, { error: "evidence-unavailable" });
       const manifest = await admin.acceptanceManifest(request, reviewId, provenance);
-      return send(response, manifest ? 200 : 403,
-        manifest ?? { error: "forbidden" });
+      return send(response, manifest ? 200 : 403, manifest ?? { error: "forbidden" });
     } catch {
       return send(response, 503, { error: "unavailable" });
     }

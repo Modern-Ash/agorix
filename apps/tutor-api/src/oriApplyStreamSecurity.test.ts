@@ -62,10 +62,14 @@ describe("Ori apply request stream safety", () => {
     let calls = 0;
     const request = streamRequest();
     request.end("{bad-json}");
-    expect((await handler(1000, async () => {
-      calls++;
-      return "applied";
-    })(request)).status).not.toBe(200);
+    expect(
+      (
+        await handler(1000, async () => {
+          calls++;
+          return "applied";
+        })(request)
+      ).status,
+    ).not.toBe(200);
     expect(calls).toBe(0);
   });
 });

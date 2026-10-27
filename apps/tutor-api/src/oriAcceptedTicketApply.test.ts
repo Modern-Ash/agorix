@@ -5,7 +5,10 @@ import { createOriCanonicalReviewWorkflow } from "./oriCanonicalReviewWorkflow.j
 import type { OriHostEvidenceResult } from "./oriHostEvidenceAdapter.js";
 import { createOriCanonicalExecutionPort } from "./oriCanonicalExecutionPort.js";
 import { runProgram, createWorldState } from "@agorix/runtime";
-import { createOriPersistedEvidenceResolver, oriEvidenceRevision } from "./oriPersistedEvidenceResolver.js";
+import {
+  createOriPersistedEvidenceResolver,
+  oriEvidenceRevision,
+} from "./oriPersistedEvidenceResolver.js";
 
 describe("Ori accepted ticket application", () => {
   it("requires an accepted ticket and applies at most once", async () => {
@@ -34,7 +37,7 @@ describe("Ori accepted ticket application", () => {
         blocks: [{ kind: "move", steps: 2 }],
       },
       evidenceReceipt: {
-        programRevision: oriEvidenceRevision(record.semanticHash,record.revision),
+        programRevision: oriEvidenceRevision(record.semanticHash, record.revision),
         digest: "b".repeat(64),
         complete: true,
       },
@@ -48,7 +51,11 @@ describe("Ori accepted ticket application", () => {
       learningContext: async () => ({ attempts: 1, hintsUsed: 1, learningStage: "connect" }),
       runOriOverride: async () => response,
     });
-    const execution = runProgram(record.storedProject.program, createWorldState({ goal: { x: 10, y: 0 } }), { maxSteps: 100 });
+    const execution = runProgram(
+      record.storedProject.program,
+      createWorldState({ goal: { x: 10, y: 0 } }),
+      { maxSteps: 100 },
+    );
     expect(execution.outcome).toBe("completed");
     expect(execution.stepsUsed).toBe(1);
     expect(execution.trace.map((step) => step.statementType)).toEqual(["move"]);
@@ -60,16 +67,21 @@ describe("Ori accepted ticket application", () => {
     expect(evidence).not.toBeNull();
     const ticket = await workflow.propose("student", record.projectId);
     expect(ticket?.status).toBe("pending");
-    expect(await workflow.applyAccepted("student", record.projectId, ticket!.id, "main"))
-      .toBe("rejected");
-    expect(await workflow.decide("student", record.projectId, ticket!.id, "accept"))
-      .toMatchObject({ status: "accepted" });
-    expect(await workflow.applyAccepted("intruder", record.projectId, ticket!.id, "main"))
-      .toBe("rejected");
-    expect(await workflow.applyAccepted("student", record.projectId, ticket!.id, "main"))
-      .toBe("applied");
-    expect(await workflow.applyAccepted("student", record.projectId, ticket!.id, "main"))
-      .toBe("rejected");
+    expect(await workflow.applyAccepted("student", record.projectId, ticket!.id, "main")).toBe(
+      "rejected",
+    );
+    expect(await workflow.decide("student", record.projectId, ticket!.id, "accept")).toMatchObject({
+      status: "accepted",
+    });
+    expect(await workflow.applyAccepted("intruder", record.projectId, ticket!.id, "main")).toBe(
+      "rejected",
+    );
+    expect(await workflow.applyAccepted("student", record.projectId, ticket!.id, "main")).toBe(
+      "applied",
+    );
+    expect(await workflow.applyAccepted("student", record.projectId, ticket!.id, "main")).toBe(
+      "rejected",
+    );
     const updated = await repository.get("student", record.projectId);
     expect(updated.revision).toBe(record.revision + 1);
     expect(updated.storedProject.program.scripts[0]?.statements).toHaveLength(2);

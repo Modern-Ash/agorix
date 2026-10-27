@@ -6,8 +6,8 @@ import type { OriAuthenticatedSession } from "./oriAuthenticatedProjectIdentity.
  * one project. No browser-provided project ID or client-side active state.
  * Multiple projects require a separate authenticated server-side selection.
  */
-export function createOriSingleProjectSelector(repository: Pick<ProjectRepository,"list">) {
-  return async (session: OriAuthenticatedSession): Promise<string|null> => {
+export function createOriSingleProjectSelector(repository: Pick<ProjectRepository, "list">) {
+  return async (session: OriAuthenticatedSession): Promise<string | null> => {
     if (!session.accountId || !session.sessionId) return null;
     try {
       const page = await repository.list(session.accountId);

@@ -1,4 +1,8 @@
-import { classifyOriGoldenParity, type OriGoldenCase, type OriParityOutcome } from "./oriGoldenParity.js";
+import {
+  classifyOriGoldenParity,
+  type OriGoldenCase,
+  type OriParityOutcome,
+} from "./oriGoldenParity.js";
 
 export interface OriParityReport {
   readonly total: number;

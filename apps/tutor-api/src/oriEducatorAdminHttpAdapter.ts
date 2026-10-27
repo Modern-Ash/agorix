@@ -4,7 +4,8 @@ import type { createOriEducatorAdminComposition } from "./oriEducatorAdminCompos
 type Admin = ReturnType<typeof createOriEducatorAdminComposition>;
 type Result = { readonly status: number; readonly body: unknown };
 const error = (status: number, reason: string): Result => ({
-  status, body: { error: reason },
+  status,
+  body: { error: reason },
 });
 function respond(response: ServerResponse, result: Result) {
   if (response.destroyed || response.writableEnded || response.headersSent) return;
@@ -29,8 +30,12 @@ async function readJson(request: IncomingMessage): Promise<unknown> {
  * host. No routes are registered and no learner feature is enabled here.
  */
 export function createOriEducatorAdminHttpAdapter(admin: Admin) {
-  return async (operation: "snapshot" | "decide" | "audit",
-    reviewId: string, request: IncomingMessage, response: ServerResponse): Promise<void> => {
+  return async (
+    operation: "snapshot" | "decide" | "audit",
+    reviewId: string,
+    request: IncomingMessage,
+    response: ServerResponse,
+  ): Promise<void> => {
     try {
       if (!reviewId || reviewId.length > 80 || !/^[a-zA-Z0-9_-]+$/.test(reviewId))
         return respond(response, error(400, "invalid-review-id"));
@@ -50,24 +55,42 @@ export function createOriEducatorAdminHttpAdapter(admin: Admin) {
       if (!raw || typeof raw !== "object" || Array.isArray(raw))
         return respond(response, error(400, "invalid-request"));
       const data = raw as Record<string, unknown>;
-      if (Object.keys(data).sort().join() !== "decision,evidenceDigest,missionId,rationale,revision")
+      if (
+        Object.keys(data).sort().join() !== "decision,evidenceDigest,missionId,rationale,revision"
+      )
         return respond(response, error(400, "invalid-request"));
-      if (typeof data["evidenceDigest"] !== "string" ||
-          !/^[a-f0-9]{64}$/.test(data["evidenceDigest"]) ||
-          typeof data["revision"] !== "number" ||
-          !Number.isSafeInteger(data["revision"]) ||
-          typeof data["missionId"] !== "string" ||
-          typeof data["rationale"] !== "string" ||
-          (data["decision"] !== "approve" && data["decision"] !== "reject"))
+      if (
+        typeof data["evidenceDigest"] !== "string" ||
+        !/^[a-f0-9]{64}$/.test(data["evidenceDigest"]) ||
+        typeof data["revision"] !== "number" ||
+        !Number.isSafeInteger(data["revision"]) ||
+        typeof data["missionId"] !== "string" ||
+        typeof data["rationale"] !== "string" ||
+        (data["decision"] !== "approve" && data["decision"] !== "reject")
+      )
         return respond(response, error(400, "invalid-request"));
-      const result = await admin.decide(request, reviewId, data["evidenceDigest"],
-        data["revision"], {
-          missionId: data["missionId"], rationale: data["rationale"], decision: data["decision"],
-        });
-      const status = result === "recorded" ? 200 : result === "conflict" ? 409 :
-        result === "unauthorized" ? 403 : 400;
+      const result = await admin.decide(
+        request,
+        reviewId,
+        data["evidenceDigest"],
+        data["revision"],
+        {
+          missionId: data["missionId"],
+          rationale: data["rationale"],
+          decision: data["decision"],
+        },
+      );
+      const status =
+        result === "recorded"
+          ? 200
+          : result === "conflict"
+            ? 409
+            : result === "unauthorized"
+              ? 403
+              : 400;
       return respond(response, {
-        status, body: result === "recorded" ? { status: "recorded" } : { error: result },
+        status,
+        body: result === "recorded" ? { status: "recorded" } : { error: result },
       });
     } catch {
       return respond(response, error(503, "unavailable"));

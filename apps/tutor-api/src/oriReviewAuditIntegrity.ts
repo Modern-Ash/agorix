@@ -10,9 +10,10 @@ export interface OriReviewAuditEvent {
   readonly decision: "approve" | "reject" | "evidence-replaced";
 }
 
-export function validateOriReviewAudit(
-  events: readonly OriReviewAuditEvent[],
-): { readonly valid: boolean; readonly reason: string | null } {
+export function validateOriReviewAudit(events: readonly OriReviewAuditEvent[]): {
+  readonly valid: boolean;
+  readonly reason: string | null;
+} {
   let previousRevision = 0;
   let currentDigest: string | null = null;
   const seen = new Set<string>();

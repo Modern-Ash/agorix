@@ -1,5 +1,8 @@
 import type { OriMissionDivergenceMatrix } from "./oriMissionDivergenceMatrix.js";
-import { buildOriPedagogicalReviewCorpus, type OriPedagogicalReviewCase } from "./oriPedagogicalReviewCorpus.js";
+import {
+  buildOriPedagogicalReviewCorpus,
+  type OriPedagogicalReviewCase,
+} from "./oriPedagogicalReviewCorpus.js";
 
 export interface OriReviewSamplingPlan {
   readonly schemaVersion: "agorix/ori-mig03-review-sampling/v1";
@@ -24,9 +27,11 @@ export function planOriPedagogicalReview(
   if (!Number.isSafeInteger(normalSampleLimit) || normalSampleLimit < 0 || normalSampleLimit > 1000)
     throw Error("invalid-sample-limit");
   const cases = buildOriPedagogicalReviewCorpus(matrix);
-  const mandatory = cases.filter((item) => item.priority === "high")
+  const mandatory = cases
+    .filter((item) => item.priority === "high")
     .sort((a, b) => a.missionIndex - b.missionIndex || a.missionId.localeCompare(b.missionId));
-  const normal = cases.filter((item) => item.priority === "normal")
+  const normal = cases
+    .filter((item) => item.priority === "normal")
     .sort((a, b) => a.missionIndex - b.missionIndex || a.missionId.localeCompare(b.missionId));
   const selected = [...mandatory, ...normal.slice(0, normalSampleLimit)];
   return Object.freeze({

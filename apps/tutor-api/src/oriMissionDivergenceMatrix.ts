@@ -28,13 +28,14 @@ export function buildOriMissionDivergenceMatrix(
     const matches = fields.filter((field) => field.status === "match").length;
     const divergences = fields.filter((field) => field.status === "divergence").length;
     const notComparable = fields.filter((field) => field.status === "not-comparable").length;
-    const status = !finding.candidateAvailable || !finding.comparison
-      ? "missing" as const
-      : divergences > 0
-        ? "divergent" as const
-        : notComparable > 0
-          ? "partial-match" as const
-          : "matched-observables" as const;
+    const status =
+      !finding.candidateAvailable || !finding.comparison
+        ? ("missing" as const)
+        : divergences > 0
+          ? ("divergent" as const)
+          : notComparable > 0
+            ? ("partial-match" as const)
+            : ("matched-observables" as const);
     return Object.freeze({
       missionId: finding.missionId,
       missionIndex: finding.missionIndex,

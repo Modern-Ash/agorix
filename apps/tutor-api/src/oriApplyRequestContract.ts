@@ -20,7 +20,8 @@ export function parseOriApplyRequest(raw: unknown): OriApplyRequest | null {
     !UUID.test(data["ticketId"]) ||
     typeof data["scriptId"] !== "string" ||
     !SCRIPT_ID.test(data["scriptId"])
-  ) return null;
+  )
+    return null;
   return Object.freeze({
     ticketId: data["ticketId"],
     scriptId: data["scriptId"],

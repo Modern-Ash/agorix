@@ -36,22 +36,22 @@ const shadow =
 
 const experimentalOriEnabled = process.env["AGORIX_ORI_RUNTIME_PREVIEW"] === "1";
 const oriRoot = process.env["ORI_REPO_PATH"];
-const oriRuntimePreview = experimentalOriEnabled && oriRoot
-  ? createOriRuntimePreview({oriRoot,enabled:true})
-  : undefined;
+const oriRuntimePreview =
+  experimentalOriEnabled && oriRoot
+    ? createOriRuntimePreview({ oriRoot, enabled: true })
+    : undefined;
 
 const contextualOriEnabled = process.env["AGORIX_ORI_CONTEXT_PREVIEW"] === "1";
-const oriContextPreview = contextualOriEnabled && oriRoot
-  ? createOriContextPreview({oriRoot,enabled:true})
-  : undefined;
+const oriContextPreview =
+  contextualOriEnabled && oriRoot ? createOriContextPreview({ oriRoot, enabled: true }) : undefined;
 
 const server = createTutorServer({
   config,
   aiConfig,
   oriContextPreviewEnabled: contextualOriEnabled && !!oriContextPreview,
-  ...(oriContextPreview ? {oriContextPreview} : {}),
+  ...(oriContextPreview ? { oriContextPreview } : {}),
   oriRuntimePreviewEnabled: experimentalOriEnabled && !!oriRuntimePreview,
-  ...(oriRuntimePreview ? {oriRuntimePreview} : {}),
+  ...(oriRuntimePreview ? { oriRuntimePreview } : {}),
   adminAuth,
   oriExternalShadowEnabled: shadowEnabled,
   ...(shadow ? { oriExternalShadow: shadow } : {}),

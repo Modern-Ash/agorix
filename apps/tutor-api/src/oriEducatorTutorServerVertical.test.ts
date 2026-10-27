@@ -11,13 +11,25 @@ import { createOriEducatorRouteDispatcher } from "./oriEducatorRouteDispatcher.j
 
 const servers: Server[] = [];
 afterEach(async () => {
-  await Promise.all(servers.splice(0).map((server) =>
-    new Promise<void>((done) => server.close(() => done()))));
+  await Promise.all(
+    servers.splice(0).map((server) => new Promise<void>((done) => server.close(() => done()))),
+  );
 });
 const matrix = {
-  total: 1, available: 1, missing: 0, divergent: 0,
-  rows: [{ missionId: "movement", missionIndex: 0, status: "partial-match" as const,
-    matches: 2, divergences: 0, notComparable: 2 }],
+  total: 1,
+  available: 1,
+  missing: 0,
+  divergent: 0,
+  rows: [
+    {
+      missionId: "movement",
+      missionIndex: 0,
+      status: "partial-match" as const,
+      matches: 2,
+      divergences: 0,
+      notComparable: 2,
+    },
+  ],
 };
 async function start(enabled: boolean, role: boolean) {
   const store = openOriAtomicEducatorReviewStore(":memory:");
@@ -30,10 +42,15 @@ async function start(enabled: boolean, role: boolean) {
   // untrusted Host headers in production.
   const trustedHosts: string[] = [];
   const admin = createOriEducatorAdminComposition({
-    auth, trustedHosts, resolveRole: async () => role, store, enabled,
+    auth,
+    trustedHosts,
+    resolveRole: async () => role,
+    store,
+    enabled,
   });
   const dispatcher = createOriEducatorRouteDispatcher({
-    handler: createOriEducatorAdminHttpAdapter(admin), enabled,
+    handler: createOriEducatorAdminHttpAdapter(admin),
+    enabled,
   });
   const server = createTutorServer({
     config: configFromEnv({ AGORIX_TUTOR_ADAPTER: "fake" }),
@@ -65,21 +82,30 @@ describe("MIG-03 TutorServer adult review auth and SQLite vertical", () => {
     expect((await denied.post("snapshot")).status).toBe(403);
     const allowed = await start(true, true);
     expect((await allowed.post("snapshot", {}, "forged")).status).toBe(403);
-    disabled.store.close(); denied.store.close(); allowed.store.close();
+    disabled.store.close();
+    denied.store.close();
+    allowed.store.close();
   });
   it("performs snapshot, CAS decision and audit through TutorServer", async () => {
     const { post, store } = await start(true, true);
     const initial = await post("snapshot");
     expect(initial.status).toBe(200);
-    const snapshot = await initial.json() as { evidenceDigest: string; revision: number };
-    const decision = { evidenceDigest: snapshot.evidenceDigest, revision: snapshot.revision,
-      missionId: "movement", decision: "approve", rationale: "Evaluación pedagógica documentada" };
+    const snapshot = (await initial.json()) as { evidenceDigest: string; revision: number };
+    const decision = {
+      evidenceDigest: snapshot.evidenceDigest,
+      revision: snapshot.revision,
+      missionId: "movement",
+      decision: "approve",
+      rationale: "Evaluación pedagógica documentada",
+    };
     expect((await post("decide", decision)).status).toBe(200);
     expect((await post("decide", decision)).status).toBe(409);
-    const updated = await (await post("snapshot")).json() as { signoff: { status: string; rolloutAuthorized: boolean } };
+    const updated = (await (await post("snapshot")).json()) as {
+      signoff: { status: string; rolloutAuthorized: boolean };
+    };
     expect(updated.signoff.status).toBe("approved");
     expect(updated.signoff.rolloutAuthorized).toBe(false);
-    expect((await (await post("audit")).json() as unknown[]).length).toBe(2);
+    expect(((await (await post("audit")).json()) as unknown[]).length).toBe(2);
     store.close();
   });
 });

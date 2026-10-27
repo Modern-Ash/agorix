@@ -22,9 +22,13 @@ describe("Ori apply deadline only covers request reception", () => {
       },
     });
     let started!: () => void;
-    const enteredApply = new Promise<void>((resolve) => { started = resolve; });
+    const enteredApply = new Promise<void>((resolve) => {
+      started = resolve;
+    });
     let finish!: () => void;
-    const releaseApply = new Promise<void>((resolve) => { finish = resolve; });
+    const releaseApply = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
     const pipeline = createOriApplyPipeline({
       auth,
       trustedHosts: ["agorix.example"],
@@ -38,10 +42,12 @@ describe("Ori apply deadline only covers request reception", () => {
       enabled: true,
       bodyDeadlineMs: 20,
     });
-    request.end(JSON.stringify({
-      ticketId: "123e4567-e89b-42d3-a456-426614174000",
-      scriptId: "main",
-    }));
+    request.end(
+      JSON.stringify({
+        ticketId: "123e4567-e89b-42d3-a456-426614174000",
+        scriptId: "main",
+      }),
+    );
     const result = pipeline(request);
     await enteredApply;
     // Wait past the body-only deadline while the trusted write remains pending.

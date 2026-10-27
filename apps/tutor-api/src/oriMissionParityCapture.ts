@@ -7,10 +7,7 @@ import type { OriShadowPlan } from "./oriShadowPlanValidation.js";
  * Offline read-only mission capture using the independent Ori plan consumer.
  * Failures are recorded as missing; no synthetic replacement or child data.
  */
-export async function captureOriMissionParity(
-  consumer: OriPlanConsumer,
-  hintLevel: 2 | 3 = 2,
-) {
+export async function captureOriMissionParity(consumer: OriPlanConsumer, hintLevel: 2 | 3 = 2) {
   const plans = new Map<number, OriShadowPlan>();
   for (const mission of captureOriDeterministicBaseline()) {
     try {
@@ -24,7 +21,8 @@ export async function captureOriMissionParity(
         plan.context.missionStage === mission.missionIndex &&
         plan.stage === hintLevel &&
         plan.appliedChanges === false
-      ) plans.set(mission.missionIndex, plan);
+      )
+        plans.set(mission.missionIndex, plan);
     } catch {
       // Missing candidate evidence is explicitly reported, never replaced.
     }
