@@ -40,8 +40,9 @@ describe("MIG-03 ticket-to-mission semantic evidence", () => {
       Buffer.from(JSON.stringify(proposal)));
     expect((await gate.assess("student", "project", id, "pilot", "move")).status)
       .toBe("ready-for-human-review");
-    expect((await gate.assess("student", "project", id, "pilot", "other")).status)
-      .toBe("blocked");
+    const unknown = await gate.assess("student", "project", id, "pilot", "other");
+    expect(unknown.status).toBe("blocked");
+    expect(unknown.blockers).toContain("mission-not-in-review");
     artifacts.close(); lineage.close(); presentations.close(); reviews.close();
   });
 });
