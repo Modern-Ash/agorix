@@ -80,6 +80,11 @@ export interface TutorServerOptions {
   readonly oriContextPreview?: (input: OriContextInput) => Promise<OriRuntimePreview>;
   readonly oriContextPreviewEnabled?: boolean;
   readonly oriReviewEnabled?: boolean;
+  /** Separate opt-in presentation acknowledgement route; default off. */
+  readonly oriPresentationAckEnabled?: boolean;
+  readonly oriPresentationAckHandler?: (
+    request: IncomingMessage, response: ServerResponse,
+  ) => Promise<void>;
   readonly oriReviewPropose?: (owner: string, projectId: string) => Promise<OriReviewTicket | null>;
   readonly oriReviewIdentity?: OriReviewIdentityResolver;
   readonly oriReviewDecision?: (
@@ -228,6 +233,12 @@ export function createTutorServer(options: TutorServerOptions): Server {
       return send(response, 404, error("not-found"));
     }
     if (path.startsWith("/api/tutor/admin/")) return adminRoute(path, request, response);
+    if (path === "/api/tutor/ori/review/presented") {
+      if (!options.oriReviewEnabled || !options.oriPresentationAckEnabled ||
+          !options.oriPresentationAckHandler)
+        return send(response, 404, error("not-found"));
+      return options.oriPresentationAckHandler(request, response);
+    }
     if (path === "/api/tutor/ori/review/propose") {
       if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
       if (!options.oriReviewEnabled || !options.oriReviewIdentity || !options.oriReviewPropose)
