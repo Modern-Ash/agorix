@@ -10,6 +10,8 @@ import {
   type OriLearningContext,
 } from "./oriCanonicalReviewWorkflow.js";
 import type { OriHostEvidenceResult } from "./oriHostEvidenceAdapter.js";
+import { createOriPresentationServerComposition } from "./oriPresentationServerComposition.js";
+import type { openOriTicketPresentationSqliteStore } from "./oriTicketPresentationSqliteStore.js";
 
 /**
  * Complete server-side dependency composition for TutorServerOptions.
@@ -25,6 +27,7 @@ export function createOriAuthorizedReviewOptions({
   resolveSession,
   activeProject,
   runOriOverride,
+  presentationStore,
 }: {
   readonly repository: ProjectRepository;
   readonly oriRoot: string;
@@ -38,6 +41,8 @@ export function createOriAuthorizedReviewOptions({
     response?: ServerResponse,
   ) => Promise<OriAuthenticatedSession | null>;
   readonly activeProject: (session: OriAuthenticatedSession) => Promise<string | null>;
+  /** Optional durable store; absent means presentation route remains disabled. */
+  readonly presentationStore?: ReturnType<typeof openOriTicketPresentationSqliteStore>;
   /** Test-only: production invokes the real Ori process. */
   readonly runOriOverride?: (evidence: unknown) => Promise<OriHostEvidenceResult>;
 }) {
@@ -55,6 +60,11 @@ export function createOriAuthorizedReviewOptions({
   });
   return Object.freeze({
     oriReviewEnabled: true as const,
+    ...(presentationStore ? createOriPresentationServerComposition({
+      identity,
+      resolveTicket: (owner, projectId, ticketId) => workflow.read(owner, projectId, ticketId),
+      store: presentationStore,
+    }) : {}),
     oriReviewIdentity: identity,
     oriReviewPropose: (owner: string, projectId: string) => workflow.propose(owner, projectId),
     oriReviewDecision: (
