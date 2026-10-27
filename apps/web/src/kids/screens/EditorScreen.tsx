@@ -48,6 +48,7 @@ import {
 } from "../kidsOri.js";
 import { loadKidsMastery } from "../kidsMastery.js";
 import { adaptInterventionByStage, stageBand, stagesOfProgram } from "../kidsStageAdaptation.js";
+import { bumpIndicator } from "../kidsIndicators.js";
 import { useInterventionPolicy } from "../kidsBehavior.js";
 import { requestKidsOriOffer } from "../kidsOriRemote.js";
 import { oriMotionStatus, useOriPageVisible } from "../kidsOriMotion.js";
@@ -397,6 +398,7 @@ export function EditorScreen({
     let current = true;
     void requestKidsOriOffer(history.current, mission.id, locale, oriHintLevel, missionIndex).then(
       (offer) => {
+        if (current && offer === null) bumpIndicator("oriFallbacks");
         if (current) setRemoteOri({ key: remoteOriKey, offer });
       },
     );

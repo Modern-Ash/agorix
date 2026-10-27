@@ -8,6 +8,7 @@ import { GroupPanel } from "../group/GroupPanel.js";
 import { LinkPanel } from "../link/LinkPanel.js";
 import { KidsImagesPanel } from "./KidsImagesPanel.js";
 import { KidsAudioPanel } from "./KidsAudioPanel.js";
+import { KidsIndicatorsPanel } from "./KidsIndicatorsPanel.js";
 import { adultSummary, readTodaySeconds, type AdultSettings } from "../kidsAdults.js";
 import {
   PIN_MAX_DIGITS,
@@ -541,6 +542,7 @@ export function ParentsScreen({ t, locale, progress, settings, onSettings }: Pro
             {copy.refresh}
           </button>
         </section>
+        <KidsIndicatorsPanel locale={locale} />
         {customImagesEnabled ? <KidsImagesPanel locale={locale} t={t} /> : null}
         {customAudioEnabled ? <KidsAudioPanel t={t} locale={locale} /> : null}
       </div>

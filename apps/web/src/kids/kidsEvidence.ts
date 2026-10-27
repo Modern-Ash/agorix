@@ -1,3 +1,4 @@
+import { bumpIndicator } from "./kidsIndicators.js";
 import {
   EVIDENCE_EVENT_SCHEMA_VERSION,
   validateEvidenceEvent,
@@ -68,6 +69,8 @@ export function recordKidsPrediction(
   if (answer === "dunno") return null;
   const prediction =
     answer === "yes" ? "reachGoal" : answer === "no" ? "notReachGoal" : "runtimeError";
+  bumpIndicator("predictions");
+  if ((answer === "yes") === (outcome === "success")) bumpIndicator("predictionsMatched");
   return record(
     {
       kind: "predictionMade",
@@ -124,6 +127,7 @@ export function recordKidsScaffold(
   level: 1 | 2 | 3 | 4 | 5,
   storage: SessionStorageLike | undefined = defaultStorage(),
 ) {
+  bumpIndicator(scaffoldKind === "solution" ? "solutionsShown" : "hints");
   return record(
     {
       kind: "scaffoldDelivered",
