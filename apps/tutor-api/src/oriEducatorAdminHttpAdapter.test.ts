@@ -36,7 +36,7 @@ describe("Ori adult educator HTTP adapter", () => {
   it("rejects authority fields and malformed decisions", async () => {
     let calls = 0;
     const admin = {
-      snapshot: async () => null,
+      snapshot: async () => ({ evidenceDigest: "a".repeat(64), revision: 1 }),
       decide: async () => { calls++; return "recorded"; },
       audit: async () => null,
     } as unknown as ReturnType<typeof createOriEducatorAdminComposition>;
@@ -47,6 +47,18 @@ describe("Ori adult educator HTTP adapter", () => {
       decision: "approve", rationale: "Revisión pedagógica suficiente", reviewerId: "forged",
     }), output.value);
     expect(output.result().status).toBe(400);
+    expect(calls).toBe(0);
+  });
+  it("does not consume a decision body when educator authorization fails", async () => {
+    let calls = 0;
+    const admin = {
+      snapshot: async () => null,
+      decide: async () => { calls++; return "recorded"; },
+      audit: async () => null,
+    } as unknown as ReturnType<typeof createOriEducatorAdminComposition>;
+    const output = response();
+    await createOriEducatorAdminHttpAdapter(admin)("decide", "pilot", request({}), output.value);
+    expect(output.result().status).toBe(403);
     expect(calls).toBe(0);
   });
 });
