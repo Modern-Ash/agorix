@@ -26,7 +26,13 @@ export function createOriSourceEvidencePersistence(
       captured: OriCapturedMissionSource,
       host: Pick<OriMachineReviewEvidence, "learningContext" | "learnerFacingExplanation">):
       Readonly<Record<string, string>> | null {
-      if (captured.provenance !== "ori-loopback-synthetic-mission" ||
+      const state = reviews.get(reviewId);
+      const expected = state?.matrix.rows.find((row) => row.missionId === captured.missionId);
+      if (!state || state.digest !== digest || !expected ||
+          expected.missionIndex !== captured.missionIndex ||
+          expected.status === "missing" ||
+          !handoff.pendingEvidence.some((item) => item.missionId === captured.missionId) ||
+          captured.provenance !== "ori-loopback-synthetic-mission" ||
           captured.oriProposal === null || captured.kidsBaseline === null ||
           !host.learningContext || !host.learnerFacingExplanation)
         return null;
