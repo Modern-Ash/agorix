@@ -19,13 +19,17 @@ export function createOriMig04RolloutController() {
     },
     /** Trusted host control-plane only; never accept arbitrary client input. */
     replaceFromHost(next: OriMig04RolloutPolicy): boolean {
-      if (!["disabled", "shadow", "pilot"].includes(next.mode) ||
-          typeof next.humanAuthorized !== "boolean" ||
-          typeof next.killSwitch !== "boolean" ||
-          !Array.isArray(next.approvedProjectIds) ||
-          next.approvedProjectIds.length > 100 ||
-          next.approvedProjectIds.some((id) => typeof id !== "string" ||
-            !/^[a-zA-Z0-9_-]{1,128}$/.test(id))) return false;
+      if (
+        !["disabled", "shadow", "pilot"].includes(next.mode) ||
+        typeof next.humanAuthorized !== "boolean" ||
+        typeof next.killSwitch !== "boolean" ||
+        !Array.isArray(next.approvedProjectIds) ||
+        next.approvedProjectIds.length > 100 ||
+        next.approvedProjectIds.some(
+          (id) => typeof id !== "string" || !/^[a-zA-Z0-9_-]{1,128}$/.test(id),
+        )
+      )
+        return false;
       policy = Object.freeze({
         mode: next.mode,
         humanAuthorized: next.humanAuthorized,
