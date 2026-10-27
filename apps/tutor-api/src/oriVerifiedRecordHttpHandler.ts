@@ -21,12 +21,18 @@ async function bodyJson(request: IncomingMessage): Promise<unknown> {
 }
 
 /** Adult-only HTTP boundary; the host must supply authenticated service. */
-export function createOriVerifiedRecordHttpHandler(service: Service) {
+export function createOriVerifiedRecordHttpHandler(
+  service: Service,
+  authorizeRequest: (request: IncomingMessage) => Promise<boolean>,
+) {
   return async (reviewId: string, request: IncomingMessage,
     response: ServerResponse): Promise<void> => {
     try {
       if (request.method !== "POST" || !/^[a-zA-Z0-9_-]{1,80}$/.test(reviewId))
         return reply(response, 404, { error: "not-found" });
+      // Fail closed before reading any untrusted body or resolving evidence.
+      if (!await authorizeRequest(request))
+        return reply(response, 403, { error: "forbidden" });
       const raw = await bodyJson(request);
       if (!raw || typeof raw !== "object" || Array.isArray(raw))
         return reply(response, 400, { error: "invalid-request" });
