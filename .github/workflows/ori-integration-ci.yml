@@ -154,7 +154,7 @@ jobs:
         working-directory: agorix
         env:
           ORI_REPO_PATH: ${{ github.workspace }}/ori
-        run: pnpm --filter @agorix/tutor-api exec vitest run src/oriMig03RealProcessPresentationE2E.test.ts
+        run: pnpm exec vitest run apps/tutor-api/src/oriMig03RealProcessPresentationE2E.test.ts
       - name: Upload synthetic Ori mission parity evidence
         if: always()
         uses: actions/upload-artifact@v4
