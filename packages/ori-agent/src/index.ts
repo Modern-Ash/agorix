@@ -28,6 +28,7 @@ export * from "./advancedReact.js";
 export * from "./advancedScore.js";
 export * from "./advancedStage.js";
 export * from "./studio.js";
+export * from "./intervention.js";
 export const ORI_AGENT_VERSION = "agorix/ori-agent/v1";
 export const ORI_FIXED_REFUSAL = Object.freeze({
   es: "Solo puedo ayudarte con tus bloques, metas y cosas de Agorix.",

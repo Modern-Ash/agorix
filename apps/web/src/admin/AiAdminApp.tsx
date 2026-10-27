@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import "@fontsource/epilogue/700.css";
 import "@fontsource/atkinson-hyperlegible/400.css";
 import "./aiAdmin.css";
+import { BehaviorSettings, type BehaviorConfig } from "./BehaviorSettings.js";
 import { GroupSettings, type GroupConfig } from "./GroupSettings.js";
 
 type Capability = "mission" | "advanced" | "studio" | "chat" | "goals" | "legacy";
@@ -14,8 +15,13 @@ type Policy = {
   promptTemplate: string;
   fallback: "deterministic";
 };
-type Config = { schema: string; capabilities: Record<Capability, Policy>; group?: GroupConfig };
-type Section = Capability | "group";
+type Config = {
+  schema: string;
+  capabilities: Record<Capability, Policy>;
+  group?: GroupConfig;
+  behavior?: BehaviorConfig;
+};
+type Section = Capability | "group" | "behavior";
 type Revision = {
   revision: number;
   author: string;
@@ -34,7 +40,18 @@ const names: Record<Capability, string> = {
   legacy: "Tutor clásico",
 };
 const keys = Object.keys(names) as Capability[];
-const sectionNames: Record<Section, string> = { ...names, group: "Modo grupo" };
+const sectionNames: Record<Section, string> = {
+  ...names,
+  group: "Modo grupo",
+  behavior: "Intervención de Ori",
+};
+const gateMessages: Record<string, string> = {
+  "prompt-override": "Un texto adicional intenta anular las reglas de seguridad.",
+  "intervention-floor": "La intervención de Ori queda fuera de los límites de seguridad.",
+  "too-few-goals": "Con ese tamaño quedan muy pocas metas para ofrecer.",
+  "chat-safety": "La prueba de seguridad del chat no pasó.",
+  "intent-validity": "Una meta de Ori dejó de ser válida.",
+};
 
 async function api<T>(path: string, method = "GET", body?: unknown, csrf?: string): Promise<T> {
   const response = await fetch(`/api/tutor/admin/${path}`, {
@@ -60,7 +77,7 @@ export function AiAdminApp() {
   const [draft, setDraft] = useState<Config | null>(null);
   const [history, setHistory] = useState<History[]>([]);
   const [section, setSection] = useState<Section>("mission");
-  const selected: Capability = section === "group" ? "mission" : section;
+  const selected: Capability = section === "group" || section === "behavior" ? "mission" : section;
   const [preview, setPreview] = useState<Section[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -169,6 +186,15 @@ export function AiAdminApp() {
                   <small>{draft?.capabilities[key].enabled ? "Activa" : "En pausa"}</small>
                 </button>
               ))}
+              {draft?.behavior && (
+                <button
+                  className={section === "behavior" ? "selected" : ""}
+                  onClick={() => setSection("behavior")}
+                >
+                  <span>{sectionNames.behavior}</span>
+                  <small>Cuándo ayuda</small>
+                </button>
+              )}
               {draft?.group && (
                 <button
                   className={section === "group" ? "selected" : ""}
@@ -201,7 +227,7 @@ export function AiAdminApp() {
                 </p>
                 <h2>{sectionNames[section]}</h2>
               </div>
-              {section !== "group" && (
+              {section !== "group" && section !== "behavior" && (
                 <span className="ai-admin-status">
                   {draft?.capabilities[selected].enabled ? "● Disponible" : "○ En pausa"}
                 </span>
@@ -216,7 +242,16 @@ export function AiAdminApp() {
                 }}
               />
             )}
-            {draft && section !== "group" && (
+            {draft && section === "behavior" && draft.behavior && (
+              <BehaviorSettings
+                behavior={draft.behavior}
+                onChange={(behavior) => {
+                  setDraft({ ...draft, behavior });
+                  setPreview(null);
+                }}
+              />
+            )}
+            {draft && section !== "group" && section !== "behavior" && (
               <div className="ai-admin-card">
                 <p className="ai-admin-note">
                   Los cambios quedan en borrador hasta que los revises y publiques. La clave del
@@ -294,14 +329,27 @@ export function AiAdminApp() {
                 disabled={!changed || busy || !current || !draft}
                 onClick={() =>
                   void action(async () => {
-                    const result = await api<{ changed: Section[] }>(
+                    const result = await api<{
+                      changed: Section[];
+                      valid: boolean;
+                      failures?: string[];
+                    }>(
                       "preview",
                       "POST",
                       { expectedRevision: current!.revision, config: draft },
                       csrf,
                     );
+                    if (!result.valid) {
+                      setPreview(null);
+                      setMessage(
+                        `No se puede publicar: ${(result.failures ?? [])
+                          .map((code) => gateMessages[code] ?? code)
+                          .join(" ")}`,
+                      );
+                      return;
+                    }
                     setPreview(result.changed);
-                    setMessage("Revisión válida. Podés publicar los cambios.");
+                    setMessage("Revisión válida. Pasó las pruebas de seguridad. Podés publicar.");
                   })
                 }
               >

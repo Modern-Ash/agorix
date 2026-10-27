@@ -6,6 +6,8 @@ import { DatabaseSync } from "node:sqlite";
 import {
   AI_CONFIG_SCHEMA,
   AI_CONFIG_SCHEMA_V1,
+  AI_CONFIG_SCHEMA_V2,
+  defaultBehaviorConfig,
   AiConfigError,
   configDiff,
   defaultGroupConfig,
@@ -215,5 +217,54 @@ describe("group settings in the registry (schema v2)", () => {
     expect(repository.current().config.group.limits.relayEnabled).toBe(true);
     repository.rollback(1, 2, "operator");
     expect(repository.current().config.group.limits.relayEnabled).toBe(false);
+  });
+});
+
+describe("typed behaviour section (issue #613)", () => {
+  it("reads a v2 document with the default behaviour and keeps its group settings", () => {
+    const group = {
+      ...defaultGroupConfig(),
+      approvalQueue: { holdAll: false, reasonRetentionMinutes: 5 },
+    };
+    const v2 = { schema: AI_CONFIG_SCHEMA_V2, capabilities: initial.capabilities, group };
+    const migrated = validateAiConfig(v2);
+    expect(migrated.schema).toBe(AI_CONFIG_SCHEMA);
+    expect(migrated.group).toEqual(group);
+    expect(migrated.behavior).toEqual(defaultBehaviorConfig());
+  });
+
+  it("an older client cannot reset published behaviour", () => {
+    const published = { intervention: { minFailedRuns: 3, minHints: 3, maxProposalBlocks: 4 } };
+    const v2 = {
+      schema: AI_CONFIG_SCHEMA_V2,
+      capabilities: initial.capabilities,
+      group: initial.group,
+    };
+    expect(validateAiConfig(v2, { behavior: published }).behavior).toEqual(published);
+  });
+
+  it("refuses unknown fields, missing sections and values under the safety floor", () => {
+    const bad = [
+      { ...initial, behavior: undefined },
+      { ...initial, behavior: {} },
+      { ...initial, behavior: { intervention: defaultBehaviorConfig().intervention, extra: 1 } },
+      {
+        ...initial,
+        behavior: { intervention: { minFailedRuns: 1, minHints: 1, maxProposalBlocks: 8 } },
+      },
+      {
+        ...initial,
+        behavior: { intervention: { minFailedRuns: 1, minHints: 2, maxProposalBlocks: 9 } },
+      },
+    ];
+    for (const value of bad) expect(() => validateAiConfig(value)).toThrow(AiConfigError);
+  });
+
+  it("the diff names the behaviour section when only it changes", () => {
+    const edited = validateAiConfig({
+      ...initial,
+      behavior: { intervention: { minFailedRuns: 2, minHints: 2, maxProposalBlocks: 8 } },
+    });
+    expect(configDiff(initial, edited)).toEqual(["behavior"]);
   });
 });

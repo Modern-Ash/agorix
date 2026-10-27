@@ -176,3 +176,75 @@ test("AI operations console edits the group settings and cannot weaken the fail-
   expect(published?.group.moderation.text.onUnavailable).toBe("block");
   expect(published?.group.limits.relayEnabled).toBe(false);
 });
+
+test("AI operations console shows Ori's intervention with synthetic learners and explains a refused publish", async ({
+  page,
+}) => {
+  const policy = {
+    enabled: true,
+    provider: "auto",
+    model: "gpt-6-luna",
+    timeoutMs: 7000,
+    requestsPerMinute: 6,
+    promptTemplate: "",
+    fallback: "deterministic",
+  };
+  const capabilities = Object.fromEntries(
+    ["mission", "advanced", "studio", "chat", "goals", "legacy"].map((key) => [
+      key,
+      { ...policy, provider: key === "legacy" ? "fake" : "auto" },
+    ]),
+  );
+  const config = {
+    schema: "agorix/ai-config/v3",
+    capabilities,
+    behavior: { intervention: { minFailedRuns: 1, minHints: 2, maxProposalBlocks: 8 } },
+  };
+  const history = [
+    {
+      revision: 1,
+      author: "system",
+      createdAt: new Date().toISOString(),
+      action: "seed",
+      sourceRevision: null,
+    },
+  ];
+  await page.route("**/api/tutor/admin/**", async (route) => {
+    const path = new URL(route.request().url()).pathname.split("/").at(-1);
+    if (path === "session" && route.request().method() === "GET")
+      return route.fulfill({ status: 401, json: { error: { code: "unauthorized" } } });
+    if (path === "session") return route.fulfill({ json: { csrf: "csrf", author: "operator" } });
+    if (path === "config")
+      return route.fulfill({ json: { current: { ...history[0], config, revision: 1 }, history } });
+    if (path === "preview")
+      return route.fulfill({
+        json: {
+          valid: false,
+          failures: ["too-few-goals"],
+          changed: ["behavior"],
+          expectedRevision: 1,
+        },
+      });
+    return route.fulfill({ status: 404, json: {} });
+  });
+  await page.goto("/admin/ai");
+  await page.getByLabel("Clave de administración").fill("a-strong-admin-password");
+  await page.getByRole("button", { name: "Ingresar" }).click();
+  await page.getByRole("button", { name: /Intervención de Ori/ }).click();
+  await expect(page.getByRole("heading", { name: "Intervención de Ori" })).toBeVisible();
+  const table = page.getByRole("table", { name: "Aprendices simulados" });
+  await expect(table.getByRole("row", { name: /Recién entra.*No, todavía no/ })).toBeVisible();
+  await expect(table.getByRole("row", { name: /Primera corrida fallida.*Sí/ })).toBeVisible();
+  await page.getByLabel(/Corridas que no llegan a la meta/).fill("2");
+  await expect(
+    table.getByRole("row", { name: /Primera corrida fallida.*No, todavía/ }),
+  ).toBeVisible();
+  // The floor is enforced in the control itself: a hint of 1 is clamped to 2.
+  await page.getByLabel(/Pistas abiertas/).fill("1");
+  await expect(page.getByLabel(/Pistas abiertas/)).toHaveValue("2");
+  await page.getByRole("button", { name: "Validar cambios" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "No se puede publicar" })).toContainText(
+    "muy pocas metas",
+  );
+  await expect(page.getByRole("button", { name: "Publicar revisión" })).toBeDisabled();
+});

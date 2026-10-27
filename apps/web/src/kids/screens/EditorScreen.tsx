@@ -46,6 +46,7 @@ import {
   saveKidsOriMemory,
   type KidsOriOffer,
 } from "../kidsOri.js";
+import { useInterventionPolicy } from "../kidsBehavior.js";
 import { requestKidsOriOffer } from "../kidsOriRemote.js";
 import { oriMotionStatus, useOriPageVisible } from "../kidsOriMotion.js";
 import { expressionForMotion, outcomeOfOffer } from "../kidsOriExpression.js";
@@ -263,6 +264,7 @@ export function EditorScreen({
   const [prediction, setPrediction] = useState<Prediction | null>(null);
   const [played, setPlayed] = useState<KidsPlayedRun | null>(null);
   const [failedRuns, setFailedRuns] = useState(0);
+  const interventionPolicy = useInterventionPolicy();
   const [step, setStep] = useState(0);
   const [oriMemory, setOriMemory] = useState(loadKidsOriMemory);
   const [oriOpen, setOriOpen] = useState(false);
@@ -326,10 +328,14 @@ export function EditorScreen({
   const rawOriOffer = oriWaiting ? undefined : (remoteOri?.offer ?? localOriOffer);
   const oriOffer =
     rawOriOffer && !freeProjectId
-      ? gateKidsOriOffer(rawOriOffer, {
-          failedRuns,
-          hintsUsed: usedHintLevels.length,
-        })
+      ? gateKidsOriOffer(
+          rawOriOffer,
+          {
+            failedRuns,
+            hintsUsed: usedHintLevels.length,
+          },
+          interventionPolicy,
+        )
       : rawOriOffer;
   const oriMotion = oriWaiting
     ? "thinking"

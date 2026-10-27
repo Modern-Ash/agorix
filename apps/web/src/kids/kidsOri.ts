@@ -12,7 +12,13 @@ import {
   validateLearningCompanionSafety,
 } from "@agorix/tutor-contract";
 
-import { computeKidsOri, type KidsOriOffer } from "@agorix/ori-agent";
+import {
+  computeKidsOri,
+  ORI_INTERVENTION_DEFAULT,
+  shouldOfferOriIdea,
+  type KidsOriOffer,
+  type OriInterventionPolicy,
+} from "@agorix/ori-agent";
 export { computeKidsOri, type KidsOriOffer } from "@agorix/ori-agent";
 const MEMORY_KEY = "agorix.kids.ori.memory.v1";
 
@@ -160,18 +166,17 @@ export function createKidsOriProviderRuntime(
 }
 
 /**
- * Ori does not hand over a solution on entry: the idea appears only reached only after a run that did not reach the goal or from the second hint on.
+ * Ori does not hand over a solution on entry: the idea is withheld until the administrator's
+ * policy is met (by default a run that missed the goal or the second hint). The policy can only
+ * move inside the safety floor of `@agorix/ori-agent`.
  */
 export function gateKidsOriOffer(
   offer: KidsOriOffer,
-  progress: {
-    readonly failedRuns: number;
-    readonly hintsUsed: number;
-  },
+  progress: { readonly failedRuns: number; readonly hintsUsed: number },
+  policy: OriInterventionPolicy = ORI_INTERVENTION_DEFAULT,
 ): KidsOriOffer {
   if (!offer.proposal) return offer;
-  const earned = progress.failedRuns > 0 || progress.hintsUsed >= 2;
-  if (earned) return offer;
+  if (shouldOfferOriIdea(progress, policy)) return offer;
   return offer.amount === undefined
     ? { kind: offer.kind }
     : { kind: offer.kind, amount: offer.amount };

@@ -22,6 +22,7 @@ import {
 } from "@agorix/proposals";
 import {
   ORI_STUDIO_INTENTS,
+  oriIntentsWithin,
   proposeOriStudioIntent,
   validateOriStudioIntentProposal,
   validateOriStudioProposal,
@@ -69,6 +70,7 @@ import { KIDS_SOUNDS } from "../kidsSoundLibrary.js";
 import { processKidsImage } from "../kidsImage.js";
 import { useKidsFlag } from "../kidsFlags.js";
 import { playKidsSound, stopKidsSounds } from "../kidsSoundPlayer.js";
+import { useInterventionPolicy } from "../kidsBehavior.js";
 import { noteName, playKidsMusic, stopKidsMusic } from "../kidsMusic.js";
 import {
   addStudioActor,
@@ -724,6 +726,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
   const [penSize, setPenSize] = useState(8);
   const penEnabled = useKidsFlag("extensionPen");
   const musicEnabled = useKidsFlag("extensionMusic");
+  const interventionPolicy = useInterventionPolicy();
   const [musicNote, setMusicNote] = useState(60);
   const [musicBeats, setMusicBeats] = useState<MusicBeats>(1);
   const [musicDrum, setMusicDrum] = useState<MusicDrum>("kick");
@@ -4229,13 +4232,11 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               </button>
               <StudioIntentPicker
                 locale={locale}
-                intents={
-                  musicEnabled
-                    ? ORI_STUDIO_INTENTS
-                    : ORI_STUDIO_INTENTS.filter(
-                        (intent) => !["melody", "rhythm", "cheer"].includes(intent),
-                      )
-                }
+                intents={ORI_STUDIO_INTENTS.filter(
+                  (intent) =>
+                    oriIntentsWithin(interventionPolicy).includes(intent) &&
+                    (musicEnabled || !["melody", "rhythm", "cheer"].includes(intent)),
+                )}
                 disabled={oriBusy}
                 onPick={startIntent}
               />

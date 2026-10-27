@@ -1,11 +1,17 @@
 import { chmodSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import {
+  ORI_INTERVENTION_DEFAULT,
+  validateOriInterventionPolicy,
+  type OriInterventionPolicy,
+} from "@agorix/ori-agent";
 import type { TutorAdapterConfig } from "./index.js";
 import type { OriCliConfig } from "./oriCli.js";
 
-export const AI_CONFIG_SCHEMA = "agorix/ai-config/v2" as const;
-/** Stored revisions and older admin clients may still carry v1: it is migrated when read. */
+export const AI_CONFIG_SCHEMA = "agorix/ai-config/v3" as const;
+/** Stored revisions and older admin clients may still carry v1 or v2: they are migrated when read. */
+export const AI_CONFIG_SCHEMA_V2 = "agorix/ai-config/v2" as const;
 export const AI_CONFIG_SCHEMA_V1 = "agorix/ai-config/v1" as const;
 export const AI_CAPABILITIES = [
   "mission",
@@ -87,10 +93,33 @@ export interface GroupConfig {
   };
 }
 
+/**
+ * Typed behaviour sections (issue #613). Each one has its own validator, defaults and safety
+ * floor; the administrator moves values inside the floor and never past it.
+ */
+export interface BehaviorConfig {
+  readonly intervention: OriInterventionPolicy;
+}
+
+export function defaultBehaviorConfig(): BehaviorConfig {
+  return { intervention: { ...ORI_INTERVENTION_DEFAULT } };
+}
+
+export function validateBehaviorConfig(raw: unknown): BehaviorConfig {
+  const root = plain(raw);
+  if (keys(root) !== "intervention") throw new AiConfigError("invalid-config");
+  try {
+    return { intervention: validateOriInterventionPolicy(root.intervention) };
+  } catch {
+    throw new AiConfigError("invalid-config");
+  }
+}
+
 export interface AiConfig {
   readonly schema: typeof AI_CONFIG_SCHEMA;
   readonly capabilities: Readonly<Record<AiCapability, AiPolicy>>;
   readonly group: GroupConfig;
+  readonly behavior: BehaviorConfig;
 }
 
 /** Safe defaults: fail closed, hold everything for the organizer, relay off. */
@@ -155,6 +184,7 @@ export function defaultAiConfig(ori: OriCliConfig, tutor: TutorAdapterConfig): A
   return {
     schema: AI_CONFIG_SCHEMA,
     group: defaultGroupConfig(),
+    behavior: defaultBehaviorConfig(),
     capabilities: {
       mission: forOri("mission"),
       advanced: forOri("advanced"),
@@ -369,40 +399,57 @@ function validateCapabilities(raw: unknown): Record<AiCapability, AiPolicy> {
 }
 
 /**
- * Validates a registry and returns it as v2. A v1 document (an older stored revision or an older
- * admin client) carries no group section, so it takes `groupFallback`: the defaults when reading old
- * history, the current group settings when an old client publishes, so it cannot reset them.
+ * Validates a registry and returns it as v3. A v1 document carries no group or behaviour section
+ * and a v2 document no behaviour section, so they take `fallback`: the defaults when reading old
+ * history, the current settings when an old client publishes, so it cannot reset them.
  */
 export function validateAiConfig(
   raw: unknown,
-  groupFallback: GroupConfig = defaultGroupConfig(),
+  fallback: { readonly group?: GroupConfig; readonly behavior?: BehaviorConfig } = {},
 ): AiConfig {
   const root = plain(raw);
+  const group = fallback.group ?? defaultGroupConfig();
+  const behavior = fallback.behavior ?? defaultBehaviorConfig();
   if (root.schema === AI_CONFIG_SCHEMA_V1) {
     if (keys(root) !== "capabilities,schema") throw new AiConfigError("invalid-config");
     return {
       schema: AI_CONFIG_SCHEMA,
       capabilities: validateCapabilities(root.capabilities),
-      group: structuredClone(groupFallback),
+      group: structuredClone(group),
+      behavior: structuredClone(behavior),
     };
   }
-  if (root.schema !== AI_CONFIG_SCHEMA || keys(root) !== "capabilities,group,schema") {
+  if (root.schema === AI_CONFIG_SCHEMA_V2) {
+    if (keys(root) !== "capabilities,group,schema") throw new AiConfigError("invalid-config");
+    return {
+      schema: AI_CONFIG_SCHEMA,
+      capabilities: validateCapabilities(root.capabilities),
+      group: validateGroupConfig(root.group),
+      behavior: structuredClone(behavior),
+    };
+  }
+  if (root.schema !== AI_CONFIG_SCHEMA || keys(root) !== "behavior,capabilities,group,schema") {
     throw new AiConfigError("invalid-config");
   }
   return {
     schema: AI_CONFIG_SCHEMA,
     capabilities: validateCapabilities(root.capabilities),
     group: validateGroupConfig(root.group),
+    behavior: validateBehaviorConfig(root.behavior),
   };
 }
 
-export function configDiff(before: AiConfig, after: AiConfig): readonly (AiCapability | "group")[] {
-  const changed: (AiCapability | "group")[] = AI_CAPABILITIES.filter(
+export function configDiff(
+  before: AiConfig,
+  after: AiConfig,
+): readonly (AiCapability | "group" | "behavior")[] {
+  const changed: (AiCapability | "group" | "behavior")[] = AI_CAPABILITIES.filter(
     (capability) =>
       JSON.stringify(before.capabilities[capability]) !==
       JSON.stringify(after.capabilities[capability]),
   );
   if (JSON.stringify(before.group) !== JSON.stringify(after.group)) changed.push("group");
+  if (JSON.stringify(before.behavior) !== JSON.stringify(after.behavior)) changed.push("behavior");
   return changed;
 }
 
@@ -449,13 +496,7 @@ export function createMemoryAiConfigRepository(
     current: () => structuredClone(revisions.at(-1)!),
     history: () => structuredClone([...revisions].reverse()),
     publish: (raw, expected, author) =>
-      append(
-        validateAiConfig(raw, revisions.at(-1)!.config.group),
-        expected,
-        author,
-        "publish",
-        null,
-      ),
+      append(validateAiConfig(raw, revisions.at(-1)!.config), expected, author, "publish", null),
     rollback: (source, expected, author) => {
       const found = revisions.find((item) => item.revision === source);
       if (!found) throw new AiConfigError("revision-not-found");
@@ -535,7 +576,7 @@ export function openSqliteAiConfigRepository(
         db.prepare("SELECT * FROM ai_config_revisions ORDER BY revision DESC").all() as unknown[]
       ).map(row),
     publish: (raw, expected, author) =>
-      append(validateAiConfig(raw, current().config.group), expected, author, "publish", null),
+      append(validateAiConfig(raw, current().config), expected, author, "publish", null),
     rollback: (source, expected, author) => {
       const found = db.prepare("SELECT * FROM ai_config_revisions WHERE revision = ?").get(source);
       if (!found) throw new AiConfigError("revision-not-found");
