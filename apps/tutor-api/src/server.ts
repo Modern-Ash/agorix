@@ -396,6 +396,10 @@ export function createTutorServer(options: TutorServerOptions): Server {
         current.projectId !== identity.projectId
       )
         return send(response, 401, error("unauthorized"));
+      // Check again after async request parsing and identity refresh, before mutation.
+      if (options.oriMig04RolloutDecide &&
+          !options.oriMig04RolloutDecide(current.projectId).learnerVisible)
+        return send(response, 404, error("not-found"));
       const result = await options.oriReviewApply(
         current.ownerId,
         current.projectId,
