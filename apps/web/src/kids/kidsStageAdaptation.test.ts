@@ -5,6 +5,8 @@ import { SCHEMA_VERSION, type ProjectProgram } from "@agorix/program-model";
 import {
   adaptInterventionByStage,
   BEGINNER_MAX_BLOCKS,
+  ideaHintUnlocked,
+  paletteFor,
   stageBand,
   stagesOfProgram,
 } from "./kidsStageAdaptation.js";
@@ -79,5 +81,42 @@ describe("stage-aware Ori pacing", () => {
     expect(
       shouldOfferOriIdea(progress, adaptInterventionByStage(ORI_INTERVENTION_DEFAULT, "confident")),
     ).toBe(false);
+  });
+});
+
+describe("stage-aware palette and idea hint (issue #611)", () => {
+  it("opens the first mission with moving and sound, and adds blocks as the child shows more", () => {
+    expect(paletteFor(0, 0)).toEqual(["move", "sound"]);
+    expect(paletteFor(0, 1)).toEqual(["move", "sound"]);
+    expect(paletteFor(0, 2)).toEqual(["move", "turnL", "turnR", "sound"]);
+    expect(paletteFor(1, 0)).toEqual(["move", "turnL", "turnR", "sound"]);
+    expect(paletteFor(2, 0)).toEqual(["move", "turnL", "turnR", "repeat", "sound"]);
+    expect(paletteFor(0, 3)).toEqual(["move", "turnL", "turnR", "repeat", "sound"]);
+  });
+
+  it("only ever adds blocks: more evidence or a later mission never removes one", () => {
+    for (const slot of [0, 1, 2, 3]) {
+      let before = new Set<string>();
+      for (const stage of [0, 1, 2, 3, 4, 5, 6] as const) {
+        const now = new Set<string>(paletteFor(slot, stage));
+        for (const kind of before) expect(now.has(kind)).toBe(true);
+        before = now;
+      }
+    }
+    for (const stage of [0, 1, 2, 3, 4, 5, 6] as const) {
+      let before = new Set<string>();
+      for (const slot of [0, 1, 2, 3]) {
+        const now = new Set<string>(paletteFor(slot, stage));
+        for (const kind of before) expect(now.has(kind)).toBe(true);
+        before = now;
+      }
+    }
+  });
+
+  it("asks a child who already shows the concepts to miss a run before seeing the idea", () => {
+    expect(ideaHintUnlocked("confident", 0)).toBe(false);
+    expect(ideaHintUnlocked("confident", 1)).toBe(true);
+    expect(ideaHintUnlocked("growing", 0)).toBe(true);
+    expect(ideaHintUnlocked("beginner", 0)).toBe(true);
   });
 });

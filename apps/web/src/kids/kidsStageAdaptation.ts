@@ -50,3 +50,31 @@ export function adaptInterventionByStage(
   }
   return policy;
 }
+
+export type PaletteKind = "move" | "turnL" | "turnR" | "repeat" | "sound";
+
+/**
+ * Blocks offered when adding to a mission (issue #611): the first mission starts with moving and
+ * sound, turns arrive with the second mission or once the child has run a program of their own, and
+ * repeat with the third mission or once they have shown sequences without help. It only ever adds
+ * blocks as the child shows more; a free scene and blocks already in a saved program are untouched.
+ */
+export function paletteFor(
+  missionSlot: number,
+  sequenceStage: MasteryStage,
+): readonly PaletteKind[] {
+  const kinds: PaletteKind[] = ["move"];
+  if (missionSlot >= 1 || sequenceStage >= 2) kinds.push("turnL", "turnR");
+  if (missionSlot >= 2 || sequenceStage >= CONFIDENT_STAGE) kinds.push("repeat");
+  kinds.push("sound");
+  return kinds;
+}
+
+/**
+ * The hint that shows the idea outright. A child who already shows the concepts alone must have
+ * missed a run first; everyone else can open it after the earlier hints (the ladder still requires
+ * them). Prediction and reflection are asked of everyone: explaining is part of the product.
+ */
+export function ideaHintUnlocked(band: StageBand, failedRuns: number): boolean {
+  return band !== "confident" || failedRuns > 0;
+}
