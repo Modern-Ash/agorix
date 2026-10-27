@@ -32,7 +32,7 @@ describe("MIG-03 verified record HTTP contract", () => {
     const service = { record: async () => "conflict" } as unknown as
       ReturnType<typeof createOriAuthorizedReviewRecordingService>;
     const output = response();
-    await createOriVerifiedRecordHttpHandler(service)("pilot", request(payload), output.value);
+    await createOriVerifiedRecordHttpHandler(service, async () => true)("pilot", request(payload), output.value);
     expect(output.result().status).toBe(409);
   });
   it("rejects unknown fields without invoking the service", async () => {
@@ -40,9 +40,19 @@ describe("MIG-03 verified record HTTP contract", () => {
     const service = { record: async () => { calls++; return "recorded"; } } as unknown as
       ReturnType<typeof createOriAuthorizedReviewRecordingService>;
     const output = response();
-    await createOriVerifiedRecordHttpHandler(service)("pilot",
+    await createOriVerifiedRecordHttpHandler(service, async () => true)("pilot",
       request({ ...payload, canReviewOri: true }), output.value);
     expect(output.result().status).toBe(400);
+    expect(calls).toBe(0);
+  });
+  it("denies unauthenticated requests before reading the body or recording", async () => {
+    let calls = 0;
+    const service = { record: async () => { calls++; return "recorded"; } } as unknown as
+      ReturnType<typeof createOriAuthorizedReviewRecordingService>;
+    const output = response();
+    await createOriVerifiedRecordHttpHandler(service, async () => false)(
+      "pilot", request(payload), output.value);
+    expect(output.result().status).toBe(403);
     expect(calls).toBe(0);
   });
 });

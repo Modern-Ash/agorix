@@ -57,7 +57,8 @@ async function fixture(enabled: boolean, role: boolean, evidenceValid: boolean) 
     oriEducatorAdminEnabled: enabled,
     oriEducatorAdminDispatch: createOriEducatorRouteDispatcher({
       enabled, handler: createOriEducatorAdminHttpAdapter(admin),
-      recordHandler: createOriVerifiedRecordHttpHandler(service),
+      recordHandler: createOriVerifiedRecordHttpHandler(service,
+        async (request) => enabled && (await authorize(request)) !== null),
     }),
   });
   servers.push(server);
