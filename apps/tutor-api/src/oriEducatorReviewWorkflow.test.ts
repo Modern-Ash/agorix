@@ -50,7 +50,10 @@ describe("MIG-03 trusted educator review workflow", () => {
     expect(current.evidenceDigest).not.toBe(old.evidenceDigest);
     expect(current.reviewed).toBe(0);
     expect(current.status).toBe("pending");
-    expect(workflow.audit()).toHaveLength(0);
+    expect(workflow.audit()).toHaveLength(2);
+    expect(workflow.audit().map((event) => event.decision)).toEqual(["approve", "evidence-replaced"]);
+    expect(workflow.audit()[0]?.evidenceDigest).toBe(old.evidenceDigest);
+    expect(workflow.audit()[1]?.evidenceDigest).toBe(current.evidenceDigest);
     expect(workflow.submit(reviewer, old.evidenceDigest, old.revision, decision)).toBe("conflict");
   });
   it("rejects fabricated missions and inadequate rationale", () => {
