@@ -21,9 +21,15 @@ export function createOriEducatorRouteDispatcher({
   handler,
   enabled = false,
   manifestHandler,
+  recordHandler,
 }: {
   readonly handler: Handler;
   readonly enabled?: boolean;
+  readonly recordHandler?: (
+    reviewId: string,
+    request: IncomingMessage,
+    response: ServerResponse,
+  ) => Promise<void>;
   readonly manifestHandler?: (
     reviewId: string,
     request: IncomingMessage,
@@ -41,7 +47,7 @@ export function createOriEducatorRouteDispatcher({
     if (
       parts.length !== 2 ||
       !/^[a-zA-Z0-9_-]{1,80}$/.test(parts[0] ?? "") ||
-      !["snapshot", "decide", "audit", "manifest"].includes(parts[1] ?? "")
+      !["snapshot", "decide", "audit", "manifest", "record"].includes(parts[1] ?? "")
     ) {
       reply(response, 404, "not-found");
       return true;
@@ -51,6 +57,14 @@ export function createOriEducatorRouteDispatcher({
       return true;
     }
     try {
+      if (parts[1] === "record") {
+        if (!recordHandler) {
+          reply(response, 404, "not-found");
+          return true;
+        }
+        await recordHandler(parts[0]!, request, response);
+        return true;
+      }
       if (parts[1] === "manifest") {
         if (!manifestHandler) {
           reply(response, 404, "not-found");
