@@ -302,6 +302,8 @@ export function createTutorServer(options: TutorServerOptions): Server {
         await options.oriReviewIdentity(request, response),
       );
       if (!identity) return send(response, 401, error("unauthorized"));
+      if (options.oriMig04RolloutDecide && !options.oriMig04RolloutDecide(identity.projectId).learnerVisible)
+        return send(response, 404, error("not-found"));
       const body = await readBody(request);
       if (body === "too-large") return send(response, 413, error("payload-too-large"));
       let parsed;
@@ -342,6 +344,8 @@ export function createTutorServer(options: TutorServerOptions): Server {
         await options.oriReviewIdentity(request, response),
       );
       if (!identity) return send(response, 401, error("unauthorized"));
+      if (options.oriMig04RolloutDecide && !options.oriMig04RolloutDecide(identity.projectId).learnerVisible)
+        return send(response, 404, error("not-found"));
       const body = await readBody(request);
       if (body === "too-large" || Buffer.byteLength(body, "utf8") > 512)
         return send(response, 413, error("payload-too-large"));
