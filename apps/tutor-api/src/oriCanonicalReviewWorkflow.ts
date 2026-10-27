@@ -27,6 +27,7 @@ export function createOriCanonicalReviewWorkflow({
   learningContext,
   runOriOverride,
   mayCommit,
+  commitFence,
 }: {
   readonly repository: ProjectRepository;
   readonly oriRoot: string;
@@ -38,6 +39,7 @@ export function createOriCanonicalReviewWorkflow({
   /** Test-only injection; production uses the independent Ori process. */
   readonly runOriOverride?: ReturnType<typeof createOriHostEvidenceAdapter>;
   readonly mayCommit?: (projectId: string) => boolean;
+  readonly commitFence?: (projectId: string, write: () => Promise<void>) => Promise<boolean>;
 }) {
   const execute = createOriCanonicalExecutionPort({ world, maxSteps: 100 });
   const resolve = createOriPersistedEvidenceResolver({ repository, execute, learningContext });
@@ -154,6 +156,7 @@ export function createOriCanonicalReviewWorkflow({
           allowedBlocks: ["move"],
           scriptId,
           ...(mayCommit ? { mayCommit: () => mayCommit(projectId) } : {}),
+          ...(commitFence ? { commitFence: (write: () => Promise<void>) => commitFence(projectId, write) } : {}),
         });
         if (result === "applied") appliedTickets.add(ticketId);
         return result;
