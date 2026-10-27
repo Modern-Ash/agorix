@@ -43,6 +43,9 @@ export function createOriEducatorAdminHttpAdapter(admin: Admin) {
         const result = await admin.audit(request, reviewId);
         return respond(response, result ? { status: 200, body: result } : error(403, "forbidden"));
       }
+      // Revalidate authorization before accepting any body on a mutation route.
+      const initial = await admin.snapshot(request, reviewId);
+      if (!initial) return respond(response, error(403, "forbidden"));
       const raw = await readJson(request);
       if (!raw || typeof raw !== "object" || Array.isArray(raw))
         return respond(response, error(400, "invalid-request"));
