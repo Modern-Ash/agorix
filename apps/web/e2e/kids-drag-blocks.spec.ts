@@ -41,6 +41,41 @@ const center = async (locator: ReturnType<Page["locator"]>) => {
   return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
 };
 
+const TOUCH_HOLD_MS = 250;
+
+/**
+ * Playwright's touchscreen API cannot hold and drag in one gesture, so issue #817 exercises the
+ * real pointer handlers with synthetic touch PointerEvents instead.
+ */
+async function touchPointer(
+  page: Page,
+  type: "pointerdown" | "pointermove" | "pointerup",
+  at: { x: number; y: number },
+) {
+  await page.evaluate(
+    ({ type, x, y }) => {
+      const event = new PointerEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+        pointerId: 7,
+        pointerType: "touch",
+        isPrimary: true,
+        clientX: x,
+        clientY: y,
+      });
+      if (type === "pointerdown") {
+        const button = document.elementFromPoint(x, y)?.closest("button");
+        if (!button) throw new Error("No palette button at the start point");
+        button.dispatchEvent(event);
+      } else {
+        window.dispatchEvent(event);
+      }
+    },
+    { type, x: at.x, y: at.y },
+  );
+}
+
 test("dragging a block from the panel into the program adds it, a tap still does, a miss does not", async ({
   page,
 }) => {
@@ -63,6 +98,38 @@ test("dragging a block from the panel into the program adds it, a tap still does
   await dragBetween(page, await center(add), { x: 5, y: 5 });
   await expect(blocks(page)).toHaveCount(2);
   await expect(page.locator(".kids-drag-ghost")).toHaveCount(0);
+});
+
+test("a touch drag waits for the 250ms hold, then adds one block and cleans up the ghost", async ({
+  page,
+}) => {
+  await openScene(page, 1280, 3200);
+  const add = page.getByRole("button", { name: "+ Mover", exact: true });
+  const from = await center(add);
+  const to = await center(page.locator(".kids-program-drop"));
+  await touchPointer(page, "pointerdown", from);
+  await page.waitForTimeout(TOUCH_HOLD_MS + 150);
+  await touchPointer(page, "pointermove", to);
+  await expect(page.locator(".kids-drag-ghost")).toHaveCount(1);
+  await touchPointer(page, "pointerup", to);
+  await expect(blocks(page)).toHaveCount(1);
+  await expect(blocks(page).first()).toContainText("Mover");
+  await expect(page.locator(".kids-drag-ghost")).toHaveCount(0);
+});
+
+test("a touch that moves before the hold is a scroll and adds no block", async ({ page }) => {
+  await openScene(page, 1280, 3200);
+  const add = page.getByRole("button", { name: "+ Mover", exact: true });
+  const from = await center(add);
+  const to = await center(page.locator(".kids-program-drop"));
+  await touchPointer(page, "pointerdown", from);
+  await touchPointer(page, "pointermove", to);
+  await touchPointer(page, "pointerup", to);
+  await expect(blocks(page)).toHaveCount(0);
+  await expect(page.locator(".kids-drag-ghost")).toHaveCount(0);
+  // The cancelled gesture does not swallow the next tap.
+  await add.click();
+  await expect(blocks(page)).toHaveCount(1);
 });
 
 test("blocks reorder with the keyboard buttons and by dragging the handle, and undo restores them", async ({
