@@ -41,7 +41,7 @@ export function OriLearnerReviewWidget({
       ) : null}
       {issued ? (
         <OriLearnerProposalReview
-          onPresented={onPresented}
+          {...(onPresented ? { onPresented } : {})}
           input={{
             ticketId: issued.ticketId,
             proposal: issued.proposal,
