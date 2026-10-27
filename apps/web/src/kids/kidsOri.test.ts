@@ -124,3 +124,15 @@ describe("gateKidsOriOffer", () => {
     expect(Boolean(gateKidsOriOffer(offer, progress).proposal)).toBe(shown);
   });
 });
+
+describe("gateKidsOriOffer with an administrator policy", () => {
+  const offer = { kind: "move", proposal: { id: "p" } } as unknown as KidsOriOffer;
+  it("follows the numbers it is given, inside the floor", () => {
+    const strict = { minFailedRuns: 3, minHints: 4, maxProposalBlocks: 8 };
+    expect(
+      gateKidsOriOffer(offer, { failedRuns: 1, hintsUsed: 2 }, strict).proposal,
+    ).toBeUndefined();
+    expect(gateKidsOriOffer(offer, { failedRuns: 3, hintsUsed: 0 }, strict).proposal).toBeDefined();
+    expect(gateKidsOriOffer(offer, { failedRuns: 0, hintsUsed: 4 }, strict).proposal).toBeDefined();
+  });
+});

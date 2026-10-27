@@ -21,6 +21,7 @@ import {
   validateOriAdvancedStageProposal,
 } from "@agorix/ori-agent";
 import { createOriChatStats } from "./oriChatStats.js";
+import { gateAiConfig } from "./aiConfigGate.js";
 import {
   createMemoryAdvancedStageRepository,
   proveAdvancedEntry,
@@ -33,7 +34,9 @@ import {
   isOriChatTextValid,
   ORI_CHAT_FALLBACK,
   ORI_CHAT_REFUSAL,
+  ORI_INTERVENTION_DEFAULT,
   runOriChat,
+  simulateOriIntervention,
   type OriChatContext,
   runOriGoalAgent,
 } from "@agorix/ori-agent";
@@ -257,6 +260,15 @@ export function createTutorServer(options: TutorServerOptions): Server {
       if (request.method !== "GET") return send(response, 405, error("method-not-allowed"));
       return send(response, 200, await health());
     }
+    if (path === "/api/tutor/behavior") {
+      if (request.method !== "GET") return send(response, 405, error("method-not-allowed"));
+      // Numbers only: no prompt, provider or model ever reaches the browser.
+      return send(response, 200, {
+        intervention: options.aiConfig?.current().config.behavior.intervention ?? {
+          ...ORI_INTERVENTION_DEFAULT,
+        },
+      });
+    }
     if (path === "/api/tutor/respond") {
       if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
       return respond(request, response);
@@ -373,14 +385,19 @@ export function createTutorServer(options: TutorServerOptions): Server {
         throw new AiConfigError("invalid-config");
       const current = repository.current();
       // An older client posting v1 keeps the current group settings instead of resetting them.
-      const config = validateAiConfig(raw.config, current.config.group);
+      const config = validateAiConfig(raw.config, current.config);
       if (current.revision !== expected) throw new AiConfigError("revision-conflict");
+      const failures = await gateAiConfig(config);
       if (path === "/api/tutor/admin/preview")
         return send(response, 200, {
-          valid: true,
+          valid: failures.length === 0,
+          failures,
           changed: configDiff(current.config, config),
           expectedRevision: current.revision,
+          // Synthetic learners only: what Ori would do under this candidate, never real data.
+          simulation: simulateOriIntervention(config.behavior.intervention),
         });
+      if (failures.length > 0) return send(response, 422, { error: "gate-failed", failures });
       return send(response, 200, {
         current: repository.publish(config, expected as number, session.author),
       });
