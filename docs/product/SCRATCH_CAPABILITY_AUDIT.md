@@ -354,3 +354,8 @@ Each iteration needs an issue with an observable child journey, success and fail
 - El panel de administración muestra, en cada capacidad, el rol, el contrato, lo que puede devolver, las seis reglas fijas y las instrucciones completas que recibe el modelo (`GET /api/tutor/admin/agents`, solo con sesión de admin; el navegador de los chicos nunca las recibe).
 - Seguridad no configurable a la baja: el texto del administrador entra solo mediante `composeOriInstructions`, después del contrato fijo y con la etiqueta `ADMIN_ADDITIONAL_INSTRUCTIONS`; el mismo código lo usa el servidor y la vista previa. El gate de publicación comprueba que cada agente conserve su contrato (`agent-contract`).
 - Los esquemas y prompts base siguen en el código y se editan con revisión, no desde el panel: lo editable es proveedor, modelo, límites y la instrucción adicional.
+
+## Calidad integral (E8 / QA-03 y QA-04)
+
+- **QA-03:** `kids-quality-matrix.spec.ts` recorre, a 390×844 y 820×1180, un recorrido completo: mapa, misión (construir, predecir, correr, llegar), recarga con el trabajo intacto, escena libre con la red cortada, y el área de adultos. En todo el recorrido comprueba: ninguna petición a otro origen, ninguna violación de la política de seguridad de la página, ningún error sin capturar, axe sin problemas serios o críticos y sin scroll lateral.
+- **QA-04:** panel "Indicadores de aprendizaje" en Adultos (autonomía, llegada a la meta, pistas por corrida, aciertos al predecir y Ori sin conexión), con solo contadores por día, 14 días de retención y solo en el dispositivo. Definiciones en `docs/product/LEARNING_INDICATORS.md`.
