@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { BLOCKS_UNLOCKED } from "./helpers.js";
+
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
 async function open(page: Page, flags: string[]) {
@@ -13,6 +15,10 @@ async function open(page: Page, flags: string[]) {
       JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
     );
   }, flags);
+  await page.evaluate(
+    (state) => localStorage.setItem("agorix.kids.mastery.v1", state),
+    BLOCKS_UNLOCKED,
+  );
   await page.reload();
   await page.getByRole("button", { name: "Misión 1" }).click();
 }

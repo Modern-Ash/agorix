@@ -239,6 +239,13 @@ test("AI operations console shows Ori's intervention with synthetic learners and
   await expect(
     table.getByRole("row", { name: /Primera corrida fallida.*No, todavía/ }),
   ).toBeVisible();
+  // A gradual rollout shares the change with part of the devices, between 1 and 100 %.
+  const rollout = page.getByLabel(/Dispositivos que reciben este cambio/);
+  await expect(rollout).toHaveValue("100");
+  await rollout.fill("0");
+  await expect(rollout).toHaveValue("1");
+  await rollout.fill("25");
+  await expect(rollout).toHaveValue("25");
   // The floor is enforced in the control itself: a hint of 1 is clamped to 2.
   await page.getByLabel(/Pistas abiertas/).fill("1");
   await expect(page.getByLabel(/Pistas abiertas/)).toHaveValue("2");

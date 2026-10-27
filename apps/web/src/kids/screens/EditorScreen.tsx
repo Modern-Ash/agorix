@@ -286,7 +286,8 @@ export function EditorScreen({
     [failedRuns, played],
   );
   const stagePalette = freeProjectId ? PALETTE : paletteFor(missionIndex, sequenceStage);
-  const stageOfConcepts = stageBand(stagesOfProgram(loadKidsMastery(), history.current));
+  // How far the child has taken sequences on their own: it does not depend on the blocks placed yet.
+  const stageOfConcepts = stageBand([sequenceStage]);
   const pacedPolicy = useMemo(
     () =>
       adaptInterventionByStage(

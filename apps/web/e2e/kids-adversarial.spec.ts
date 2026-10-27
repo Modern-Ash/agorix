@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { KIDS_V2_FEATURES } from "../src/kids/kidsFlags.js";
-import { reloadToMap, passAdultGate } from "./helpers.js";
+import { reloadToMap, passAdultGate, BLOCKS_UNLOCKED } from "./helpers.js";
 
 // Issue #443: scripted slice of the adversarial charter, run with every v2 flag on.
 // Any uncaught page error is a failure; each attack asserts the app still works afterwards.
@@ -31,6 +31,10 @@ async function seed(page: Page, flags: string[] = ALL_FLAGS) {
       JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
     );
   }, flags);
+  await page.evaluate(
+    (state) => localStorage.setItem("agorix.kids.mastery.v1", state),
+    BLOCKS_UNLOCKED,
+  );
   await reloadToMap(page);
 }
 

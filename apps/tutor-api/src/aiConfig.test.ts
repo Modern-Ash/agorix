@@ -7,6 +7,7 @@ import {
   AI_CONFIG_SCHEMA,
   AI_CONFIG_SCHEMA_V1,
   AI_CONFIG_SCHEMA_V2,
+  behaviorForBucket,
   defaultBehaviorConfig,
   AiConfigError,
   configDiff,
@@ -234,7 +235,10 @@ describe("typed behaviour section (issue #613)", () => {
   });
 
   it("an older client cannot reset published behaviour", () => {
-    const published = { intervention: { minFailedRuns: 3, minHints: 3, maxProposalBlocks: 4 } };
+    const published = {
+      intervention: { minFailedRuns: 3, minHints: 3, maxProposalBlocks: 4 },
+      rolloutPercent: 100,
+    };
     const v2 = {
       schema: AI_CONFIG_SCHEMA_V2,
       capabilities: initial.capabilities,
@@ -266,5 +270,92 @@ describe("typed behaviour section (issue #613)", () => {
       behavior: { intervention: { minFailedRuns: 2, minHints: 2, maxProposalBlocks: 8 } },
     });
     expect(configDiff(initial, edited)).toEqual(["behavior"]);
+  });
+});
+
+describe("gradual rollout of behaviour (issue #620)", () => {
+  const strict = { minFailedRuns: 3, minHints: 3, maxProposalBlocks: 6 };
+  const publish = (
+    repository: ReturnType<typeof createMemoryAiConfigRepository>,
+    percent: number,
+  ) => {
+    const current = repository.current();
+    return repository.publish(
+      { ...current.config, behavior: { intervention: strict, rolloutPercent: percent } },
+      current.revision,
+      "owner",
+    );
+  };
+
+  it("refuses a share outside 1 to 100, and reads revisions that predate it as everyone", () => {
+    for (const rolloutPercent of [0, 101, 12.5, "50", null, -1]) {
+      expect(() =>
+        validateAiConfig({
+          ...initial,
+          behavior: { intervention: defaultBehaviorConfig().intervention, rolloutPercent },
+        }),
+      ).toThrow(AiConfigError);
+    }
+    const old = validateAiConfig({
+      ...initial,
+      behavior: { intervention: defaultBehaviorConfig().intervention },
+    });
+    expect(old.behavior.rolloutPercent).toBe(100);
+  });
+
+  it("serves the new behaviour only to the devices inside the share, the rest keep the last full one", () => {
+    const repository = createMemoryAiConfigRepository(initial);
+    publish(repository, 25);
+    const base = defaultBehaviorConfig().intervention;
+    const served = (bucket: number | undefined) =>
+      behaviorForBucket(repository.history(), bucket).intervention;
+    expect(served(0)).toEqual(strict);
+    expect(served(24)).toEqual(strict);
+    expect(served(25)).toEqual(base);
+    expect(served(99)).toEqual(base);
+    // A device that sends nothing, or nonsense, is outside the rollout: the safe side.
+    expect(served(undefined)).toEqual(base);
+    expect(served(-1)).toEqual(base);
+    expect(served(1.5)).toEqual(base);
+  });
+
+  it("widens by publishing again, and everyone follows at 100", () => {
+    const repository = createMemoryAiConfigRepository(initial);
+    publish(repository, 10);
+    publish(repository, 60);
+    expect(behaviorForBucket(repository.history(), 50).intervention).toEqual(strict);
+    expect(behaviorForBucket(repository.history(), 60).intervention).toEqual(
+      defaultBehaviorConfig().intervention,
+    );
+    publish(repository, 100);
+    expect(behaviorForBucket(repository.history(), 99).intervention).toEqual(strict);
+    expect(behaviorForBucket(repository.history(), undefined).intervention).toEqual(strict);
+  });
+
+  it("a rollback puts everyone back on the chosen revision and is recorded", () => {
+    const repository = createMemoryAiConfigRepository(initial);
+    publish(repository, 100);
+    const stable = repository.current().revision;
+    publish(repository, 5);
+    const risky = { ...defaultBehaviorConfig().intervention, maxProposalBlocks: 2 };
+    const current = repository.current();
+    repository.publish(
+      { ...current.config, behavior: { intervention: risky, rolloutPercent: 5 } },
+      current.revision,
+      "owner",
+    );
+    const restored = repository.rollback(stable, repository.current().revision, "owner");
+    expect(restored.action).toBe("rollback");
+    expect(restored.sourceRevision).toBe(stable);
+    for (const bucket of [0, 4, 50, 99, undefined]) {
+      expect(behaviorForBucket(repository.history(), bucket).intervention).toEqual(strict);
+    }
+    expect(repository.history().map((revision) => revision.action)).toEqual([
+      "rollback",
+      "publish",
+      "publish",
+      "publish",
+      "seed",
+    ]);
   });
 });

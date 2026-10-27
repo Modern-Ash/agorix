@@ -31,7 +31,7 @@ type Revision = {
   sourceRevision: number | null;
   config: Config;
 };
-type History = Omit<Revision, "config">;
+type History = Omit<Revision, "config"> & { rolloutPercent?: number };
 const names: Record<Capability, string> = {
   mission: "Ori en misiones",
   advanced: "Ori avanzado",
@@ -430,6 +430,9 @@ export function AiAdminApp() {
                   <li key={entry.revision}>
                     <div>
                       <strong>#{entry.revision}</strong> · {entry.action} · {entry.author}
+                      {entry.rolloutPercent !== undefined && entry.rolloutPercent < 100
+                        ? ` · ${entry.rolloutPercent} % de dispositivos`
+                        : ""}
                       <small>{new Date(entry.createdAt).toLocaleString("es-AR")}</small>
                     </div>
                     <button

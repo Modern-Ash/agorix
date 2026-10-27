@@ -2,7 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { getKidsMission, kidsMoveSteps } from "@agorix/curriculum";
 import { createProgramProposal } from "@agorix/proposals";
-import { reloadToMap } from "./helpers.js";
+import { reloadToMap, BLOCKS_UNLOCKED } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -40,7 +40,11 @@ test("Ori chat stays scoped, private and clears when leaving the editor", async 
   await expect(page.getByRole("status").filter({ hasText: "casillas" })).toHaveCount(0);
 });
 
-async function openEditor(page: Page, locale: "es" | "en" = "es") {
+async function openEditor(
+  page: Page,
+  locale: "es" | "en" = "es",
+  options: { readonly allBlocks?: boolean } = {},
+) {
   await page.goto("/kids");
   await page.evaluate((lang) => {
     localStorage.clear();
@@ -50,6 +54,12 @@ async function openEditor(page: Page, locale: "es" | "en" = "es") {
       JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
     );
   }, locale);
+  if (options.allBlocks) {
+    await page.evaluate(
+      (state) => localStorage.setItem("agorix.kids.mastery.v1", state),
+      BLOCKS_UNLOCKED,
+    );
+  }
   await reloadToMap(page);
   await page.getByRole("button", { name: locale === "es" ? "Misión 1" : "Mission 1" }).click();
 }
@@ -307,7 +317,7 @@ test("shows wall evidence and has no serious accessibility violations", async ({
 });
 
 test("palette works by keyboard and repeat executes its child blocks", async ({ page }) => {
-  await openEditor(page, "en");
+  await openEditor(page, "en", { allBlocks: true });
   const repeat = page.getByRole("button", { name: "+ repeat", exact: true });
   await repeat.focus();
   await page.keyboard.press("Enter");
