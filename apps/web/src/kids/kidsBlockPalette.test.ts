@@ -81,5 +81,7 @@ describe("block category tokens (issue #447)", () => {
   it("maps the snap-together palette tools to their category tokens", () => {
     expect(css).toContain("--kids-palette-tool-bg: var(--kids-block-looks-bg)");
     expect(css).toContain("--kids-palette-tool-bg: var(--kids-block-move-bg)");
+    expect(css).toContain("--kids-palette-tool-bg: var(--kids-block-sound-bg)");
+    expect(css).toContain("--kids-palette-tool-bg: var(--kids-block-control-bg)");
   });
 });

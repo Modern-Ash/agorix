@@ -43,6 +43,9 @@ describe("drag rules", () => {
     expect(isAddControl({ textContent: "Mover", dataset: { kidsAdd: "true" } })).toBe(true);
     expect(isAddControl({ textContent: "Mover", dataset: {} })).toBe(false);
     expect(isAddControl({ textContent: "Mover" })).toBe(false);
+    // Preview and group tools share a block's values but never start a drag.
+    expect(isAddControl({ textContent: "▶ Sonar", dataset: {} })).toBe(false);
+    expect(isAddControl({ textContent: "Repetir estos bloques", dataset: {} })).toBe(false);
     // Legacy palette buttons keep working without the opt-in attribute.
     expect(isAddControl({ textContent: "+ Mover", dataset: {} })).toBe(true);
     expect(isAddControl({ textContent: "Agregar personaje" })).toBe(false);

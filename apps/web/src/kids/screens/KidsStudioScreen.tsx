@@ -2945,9 +2945,17 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               ]}
             />
             <h3>{copy.paletteMedia}</h3>
-            <label>
-              {copy.costume}{" "}
+            <KidsPaletteBlock
+              tone="looks"
+              actions={[
+                {
+                  label: copy.costume,
+                  onAdd: () => add({ type: "switchCostume", costumeId: `costume:${newCostume}` }),
+                },
+              ]}
+            >
               <select
+                aria-label={copy.costume}
                 value={newCostume}
                 onChange={(event) => setNewCostume(event.target.value as KidsGalleryCharacterId)}
               >
@@ -2957,17 +2965,19 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                   </option>
                 ))}
               </select>
-            </label>
-            <button
-              type="button"
-              className="kids-button"
-              onClick={() => add({ type: "switchCostume", costumeId: `costume:${newCostume}` })}
+            </KidsPaletteBlock>
+            <KidsPaletteBlock
+              tone="looks"
+              actions={[
+                {
+                  label: copy.switchBackdrop,
+                  onAdd: () =>
+                    add({ type: "switchBackdrop", backdropId: `backdrop:${newBackdrop}` }),
+                },
+              ]}
             >
-              + {copy.costume}
-            </button>
-            <label>
-              {copy.switchBackdrop}{" "}
               <select
+                aria-label={copy.switchBackdrop}
                 value={newBackdrop}
                 onChange={(event) => setNewBackdrop(event.target.value as KidsGalleryBackdropId)}
               >
@@ -2977,17 +2987,27 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                   </option>
                 ))}
               </select>
-            </label>
-            <button
-              type="button"
-              className="kids-button"
-              onClick={() => add({ type: "switchBackdrop", backdropId: `backdrop:${newBackdrop}` })}
+            </KidsPaletteBlock>
+            <KidsPaletteBlock
+              tone="sound"
+              actions={[
+                {
+                  label: copy.sound,
+                  onAdd: () => add({ type: "playSound", soundId: newSound }),
+                },
+                {
+                  label: `▶ ${copy.sound}`,
+                  kind: "tool",
+                  onAdd: () =>
+                    void playKidsSound(newSound, {
+                      kind: "gallery",
+                      id: characterOfActor(activeActorId),
+                    }),
+                },
+              ]}
             >
-              + {copy.switchBackdrop}
-            </button>
-            <label>
-              {copy.sound}{" "}
               <select
+                aria-label={copy.sound}
                 value={newSound}
                 onChange={(event) =>
                   setNewSound(event.target.value as (typeof KIDS_SOUNDS)[number]["id"])
@@ -2999,115 +3019,101 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                   </option>
                 ))}
               </select>
-            </label>
-            <button
-              type="button"
-              className="kids-button"
-              onClick={() =>
-                void playKidsSound(newSound, {
-                  kind: "gallery",
-                  id: characterOfActor(activeActorId),
-                })
-              }
+            </KidsPaletteBlock>
+            <KidsPaletteBlock
+              tone="sound"
+              actions={[{ label: copy.stopSounds, onAdd: () => add({ type: "stopSounds" }) }]}
+            />
+            <KidsPaletteBlock
+              tone="sound"
+              actions={[
+                {
+                  label: copy.setVolume,
+                  disabled: !Number.isInteger(volume) || volume < 0 || volume > 100,
+                  onAdd: () => add({ type: "setVolume", volume }),
+                },
+              ]}
             >
-              ▶ {copy.sound}
-            </button>
-            <button
-              type="button"
-              className="kids-button"
-              onClick={() => add({ type: "playSound", soundId: newSound })}
-            >
-              + {copy.sound}
-            </button>
-            <button
-              type="button"
-              className="kids-button"
-              onClick={() => add({ type: "stopSounds" })}
-            >
-              + {copy.stopSounds}
-            </button>
-            <label>
-              {copy.volume}{" "}
               <input
                 type="number"
+                aria-label={copy.volume}
                 min={0}
                 max={100}
                 step={1}
                 value={volume}
                 onChange={(event) => setVolume(Number(event.target.value))}
               />
-            </label>
-            <button
-              type="button"
-              className="kids-button"
-              disabled={!Number.isInteger(volume) || volume < 0 || volume > 100}
-              onClick={() => add({ type: "setVolume", volume })}
+            </KidsPaletteBlock>
+            <KidsPaletteBlock
+              tone="sound"
+              actions={[
+                {
+                  label: copy.changeVolume,
+                  disabled: !Number.isInteger(volumeChange) || Math.abs(volumeChange) > 100,
+                  onAdd: () => add({ type: "changeVolume", delta: volumeChange }),
+                },
+              ]}
             >
-              + {copy.setVolume}
-            </button>
-            <label>
-              {copy.volumeChange}{" "}
               <input
                 type="number"
+                aria-label={copy.volumeChange}
                 min={-100}
                 max={100}
                 step={1}
                 value={volumeChange}
                 onChange={(event) => setVolumeChange(Number(event.target.value))}
               />
-            </label>
-            <button
-              type="button"
-              className="kids-button"
-              disabled={!Number.isInteger(volumeChange) || Math.abs(volumeChange) > 100}
-              onClick={() => add({ type: "changeVolume", delta: volumeChange })}
-            >
-              + {copy.changeVolume}
-            </button>
+            </KidsPaletteBlock>
             <h3>{copy.paletteLogic}</h3>
-            <label>
-              {copy.repeat}{" "}
-              <select
-                value={repeatCount}
-                onChange={(event) => setRepeatCount(Number(event.target.value))}
-              >
-                {[2, 3, 5].map((count) => (
-                  <option key={count} value={count}>
-                    {count}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              type="button"
-              className="kids-button"
-              onClick={() =>
-                add({ type: "repeat", count: repeatCount, body: [{ type: "move", steps: 40 }] })
-              }
+            <KidsPaletteBlock
+              tone="control"
+              actions={[
+                {
+                  label: `${copy.repeat} → ${copy.thenMove}`,
+                  onAdd: () =>
+                    add({
+                      type: "repeat",
+                      count: repeatCount,
+                      body: [{ type: "move", steps: 40 }],
+                    }),
+                },
+                {
+                  label: copy.groupRepeat,
+                  kind: "tool",
+                  disabled: (script?.statements.length ?? 0) < groupCount,
+                  onAdd: () => groupLast("repeat"),
+                },
+              ]}
             >
-              + {copy.repeat} → {copy.thenMove}
-            </button>
-            <label>
-              {copy.groupCount}{" "}
-              <select
-                value={groupCount}
-                onChange={(event) => setGroupCount(Number(event.target.value))}
-              >
-                {[1, 2, 3].map((count) => (
-                  <option key={count} value={count}>
-                    {count}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              type="button"
-              className="kids-button"
-              disabled={(script?.statements.length ?? 0) < groupCount}
-              onClick={() => groupLast("repeat")}
-            >
-              {copy.groupRepeat}
-            </button>
+              <label>
+                {copy.repeat}{" "}
+                <select
+                  aria-label={copy.repeat}
+                  value={repeatCount}
+                  onChange={(event) => setRepeatCount(Number(event.target.value))}
+                >
+                  {[2, 3, 5].map((count) => (
+                    <option key={count} value={count}>
+                      {count}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                {copy.groupCount}{" "}
+                <select
+                  aria-label={copy.groupCount}
+                  value={groupCount}
+                  onChange={(event) => setGroupCount(Number(event.target.value))}
+                >
+                  {[1, 2, 3].map((count) => (
+                    <option key={count} value={count}>
+                      {count}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </KidsPaletteBlock>
             <h3>{copy.myBlocks}</h3>
             <label>
               {copy.myBlockName}

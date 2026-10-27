@@ -1787,3 +1787,110 @@ test("free scene shows Looks and Motion as snap-together blocks and keeps tap, E
   ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");
   expect(violations.map((entry) => entry.id)).toEqual([]);
 });
+
+test("free scene shows Media and Logic as snap-together blocks and keeps tools out of drag", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 3800 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
+
+  const palette = page.locator(".kids-studio-palette");
+  await expect(page.locator(".kids-root")).toHaveAttribute("data-block-palette", "scratch");
+
+  const costumeAdd = palette.getByRole("button", { name: "+ Cambiar disfraz", exact: true });
+  const costumeBlock = palette.locator(".kids-palette-tool-looks").filter({
+    has: page.getByRole("button", { name: "+ Cambiar disfraz", exact: true }),
+  });
+  const costume = costumeBlock.getByRole("combobox", { name: "Cambiar disfraz" });
+  await expect(costume).toHaveValue("mika");
+  await costume.selectOption("nova");
+  await costumeAdd.click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(1);
+  await expect(page.locator(".kids-program-block").last()).toContainText("Cambiar disfraz: Nova");
+
+  // Drag still starts on the add button and carries the closed value with it.
+  const backdropAdd = palette.getByRole("button", { name: "+ Cambiar fondo", exact: true });
+  const backdropBlock = palette.locator(".kids-palette-tool-looks").filter({
+    has: page.getByRole("button", { name: "+ Cambiar fondo", exact: true }),
+  });
+  await backdropBlock.getByRole("combobox", { name: "Cambiar fondo" }).selectOption("forest");
+  const drop = page.locator(".kids-program-drop");
+  const from = (await backdropAdd.boundingBox())!;
+  const to = (await drop.boundingBox())!;
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2 + 20, { steps: 3 });
+  await expect(page.locator(".kids-drag-ghost")).toHaveText("Cambiar fondo");
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 8 });
+  await page.mouse.up();
+  await expect(page.locator(".kids-program-block")).toHaveCount(2);
+  await expect(page.locator(".kids-program-block").last()).toContainText("Cambiar fondo: Bosque");
+
+  const soundAdd = palette.getByRole("button", { name: "+ Sonar", exact: true });
+  const soundBlock = palette.locator(".kids-palette-tool-sound").filter({
+    has: page.getByRole("button", { name: "+ Sonar", exact: true }),
+  });
+  const preview = soundBlock.getByRole("button", { name: "▶ Sonar", exact: true });
+  await expect(preview).not.toHaveAttribute("data-kids-add", "true");
+  await soundBlock.getByRole("combobox", { name: "Sonar" }).selectOption("kids:bell");
+  await soundAdd.click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(3);
+  await expect(page.locator(".kids-program-block").last()).toContainText("Sonar: Campana");
+
+  // Keyboard: focus and Enter are the same path as a tap.
+  const stop = palette.getByRole("button", { name: "+ Detener sonidos", exact: true });
+  await stop.focus();
+  await stop.press("Enter");
+  await expect(page.locator(".kids-program-block")).toHaveCount(4);
+  await expect(page.locator(".kids-program-block").last()).toContainText("Detener sonidos");
+
+  // Closed number slots stay inside their block and feed the action.
+  await palette.getByRole("spinbutton", { name: "Volumen", exact: true }).fill("40");
+  await palette.getByRole("button", { name: "+ Fijar volumen", exact: true }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(5);
+  await expect(page.locator(".kids-program-block").last()).toContainText("Fijar volumen: 40%");
+  await palette.getByRole("spinbutton", { name: "Cambio de volumen", exact: true }).fill("-15");
+  await palette.getByRole("button", { name: "+ Cambiar volumen", exact: true }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(6);
+  await expect(page.locator(".kids-program-block").last()).toContainText("Cambiar volumen: -15");
+
+  // Repeat and group share the same closed values inside one control block.
+  const repeatAdd = palette.getByRole("button", {
+    name: "+ Repetir → mover 1",
+    exact: true,
+  });
+  const logicBlock = palette.locator(".kids-palette-tool-control").filter({
+    has: page.getByRole("button", { name: "+ Repetir → mover 1", exact: true }),
+  });
+  const repeatCount = logicBlock.getByRole("combobox", { name: "Repetir", exact: true });
+  await expect(repeatCount).toHaveValue("3");
+  await expect(
+    logicBlock.getByRole("combobox", { name: "Bloques del final", exact: true }),
+  ).toHaveValue("2");
+  await repeatCount.selectOption("5");
+  await logicBlock.getByRole("button", { name: "Repetir estos bloques", exact: true }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(5);
+  await expect(page.locator(".kids-program-block").last()).toContainText("Repetir 5");
+  await repeatAdd.click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(6);
+  await expect(page.locator(".kids-program-block").last()).toContainText("Repetir 5");
+  await expect(
+    page.locator(".kids-program-block").last().locator(".kids-nested-block").first(),
+  ).toContainText("Mover 1");
+
+  const violations = (
+    await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
+  ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");
+  expect(violations.map((entry) => entry.id)).toEqual([]);
+});

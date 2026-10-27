@@ -39,4 +39,27 @@ describe("KidsPaletteBlock (issue #817)", () => {
     expect(html).toContain('aria-label="Mover"');
     expect(html).toContain("disabled");
   });
+
+  it("keeps preview and group tools in the block without making them drag controls", () => {
+    const html = renderToStaticMarkup(
+      <KidsPaletteBlock
+        tone="sound"
+        actions={[
+          { label: "Sonar", onAdd: () => {} },
+          { label: "▶ Sonar", kind: "tool", onAdd: () => {} },
+        ]}
+      >
+        <select aria-label="Sonar" defaultValue="kids:pop">
+          <option value="kids:pop">Pop</option>
+        </select>
+      </KidsPaletteBlock>,
+    );
+    expect(html).toContain('data-kids-palette-tool="sound"');
+    expect(html).toContain('data-kids-palette-action="add"');
+    expect(html).toContain('data-kids-palette-action="tool"');
+    expect(html).toContain('data-kids-add="true"');
+    expect(html).not.toContain('data-kids-add-label="▶ Sonar"');
+    expect(html).not.toContain("+ ▶ Sonar");
+    expect(html.match(/kids-visually-hidden/g)).toHaveLength(1);
+  });
 });
