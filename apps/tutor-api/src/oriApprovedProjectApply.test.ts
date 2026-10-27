@@ -57,6 +57,33 @@ describe("explicit Ori proposal persistence boundary", () => {
     ]);
     expect(await apply()).toBe("conflict");
   });
+  it("rejects commit after host policy revocation during repository read", async () => {
+    const { repository, record } = await setup();
+    let enabled = true;
+    const guarded = {
+      get: async (owner: string, projectId: string) => {
+        const value = await repository.get(owner, projectId);
+        enabled = false;
+        return value;
+      },
+      update: async () => {
+        throw Error("commit must not execute");
+      },
+    } as unknown as typeof repository;
+    const result = await applyApprovedOriProposal({
+      repository: guarded,
+      owner: "student",
+      projectId: record.projectId,
+      expectedRevision: record.revision,
+      approved: true,
+      proposal: oriMove,
+      allowedBlocks: ["move"],
+      scriptId: "main",
+      mayCommit: () => enabled,
+    });
+    expect(result).toBe("rejected");
+    expect((await repository.get("student", record.projectId)).revision).toBe(record.revision);
+  });
   it("does not mutate without trusted approval", async () => {
     const { repository, record, apply } = await setup();
     expect(await apply({ approved: false })).toBe("rejected");

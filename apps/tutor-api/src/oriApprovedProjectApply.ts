@@ -16,6 +16,7 @@ export async function applyApprovedOriProposal({
   proposal,
   allowedBlocks,
   scriptId,
+  mayCommit,
 }: {
   readonly repository: ProjectRepository;
   readonly owner: string;
@@ -25,6 +26,8 @@ export async function applyApprovedOriProposal({
   readonly proposal: unknown;
   readonly allowedBlocks: readonly string[];
   readonly scriptId: string;
+  /** Trusted synchronous policy check at the last boundary before repository CAS. */
+  readonly mayCommit?: () => boolean;
 }): Promise<"applied" | "rejected" | "conflict"> {
   if (
     !approved ||
@@ -54,6 +57,7 @@ export async function applyApprovedOriProposal({
       ),
     };
     validateProgram(program);
+    if (mayCommit && mayCommit() !== true) return "rejected";
     await repository.update(owner, projectId, expectedRevision, {
       storedProject: { ...record.storedProject, program },
     });
