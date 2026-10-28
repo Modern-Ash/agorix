@@ -3,7 +3,7 @@ import { Readable } from "node:stream";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { createOriMig04PgLearningEventRoutes } from "./oriMig04PgLearningEventRoutes.js";
 
-function request(body: unknown, cookie = "__Host-agorix-session=token"): IncomingMessage {
+function request(body: unknown, cookie = "__Host-agorix-session=0123456789abcdef"): IncomingMessage {
   return Object.assign(Readable.from([JSON.stringify(body)]), {
     method: "POST",
     url: "/api/tutor/ori/learning/event",
