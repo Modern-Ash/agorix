@@ -17,9 +17,9 @@ describe("MIG-04 trusted PostgreSQL composition", () => {
       },
       deploymentId: "ori",
     });
-    expect(await composition.oriMig04AtomicCommit(
-      "owner", "project", {} as never, 1,
-    )).toBe("denied");
+    expect(await composition.oriMig04AtomicCommit("owner", "project", {} as never, 1)).toBe(
+      "denied",
+    );
     expect(queries).toBe(1);
   });
 });
