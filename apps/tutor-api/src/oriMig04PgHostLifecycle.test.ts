@@ -44,6 +44,42 @@ describe("MIG-04 trusted PostgreSQL host lifecycle", () => {
           },
         );
         expect(response.ok).toBe(false);
+        const denied = await Promise.all([
+          fetch(`http://127.0.0.1:${host.address.port}/api/tutor/ori/review/propose`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ projectId: "pilot" }),
+          }),
+          fetch(`http://127.0.0.1:${host.address.port}/api/tutor/ori/review/decision`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ projectId: "pilot", ticketId: "ticket", decision: "accept" }),
+          }),
+        ]);
+        expect(denied.every((result) => !result.ok)).toBe(true);
+        const forged = await fetch(
+          `http://127.0.0.1:${host.address.port}/api/tutor/ori/review/apply`,
+          {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              "x-owner-id": "learner",
+              "x-project-id": "pilot",
+              authorization: "Bearer forged",
+            },
+            body: JSON.stringify({ projectId: "pilot", ticketId: "ticket", scriptId: "main" }),
+          },
+        );
+        expect(forged.ok).toBe(false);
+        const missingTicket = await fetch(
+          `http://127.0.0.1:${host.address.port}/api/tutor/ori/review/apply`,
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ projectId: "pilot", scriptId: "main" }),
+          },
+        );
+        expect(missingTicket.ok).toBe(false);
         expect(connections).toBe(0);
       } finally {
         await host.close();
