@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createOriMig04PgAuthAccountRepository, ORI_MIG04_AUTH_ACCOUNT_SCHEMA_SQL } from "./oriMig04PgAuthAccountRepository.js";
 import { createOriMig04PgAuthSessionRepository, ORI_MIG04_AUTH_SESSION_SCHEMA_SQL } from "./oriMig04PgAuthSessionRepository.js";
+import { assertOriMig04PgAuthSchemaReadiness } from "./oriMig04PgAuthSchemaReadiness.js";
 
 const databaseUrl = process.env["ORI_MIG04_TEST_DATABASE_URL"];
 const run = databaseUrl ? describe : describe.skip;
@@ -27,6 +28,7 @@ run("MIG-04 shared PostgreSQL AuthService repositories", () => {
     try {
       await writer.query(ORI_MIG04_AUTH_ACCOUNT_SCHEMA_SQL);
       await writer.query(ORI_MIG04_AUTH_SESSION_SCHEMA_SQL);
+      await expect(assertOriMig04PgAuthSchemaReadiness(reader)).resolves.toBeUndefined();
       const accountsWriter = createOriMig04PgAuthAccountRepository(writer);
       const accountsReader = createOriMig04PgAuthAccountRepository(reader);
       const sessionsWriter = createOriMig04PgAuthSessionRepository(writer);

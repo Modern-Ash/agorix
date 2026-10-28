@@ -2,6 +2,7 @@ import { createOriMig04PgSharedAuthInfrastructure } from "./oriMig04PgSharedAuth
 import { startOriMig04ProductionStartup } from "./oriMig04ProductionStartup.js";
 import { assertOriMig04StartupSafe } from "./oriMig04PgStartupGuard.js";
 import { createOriMig04AuthenticatedSessionActions } from "./oriMig04AuthenticatedSessionActions.js";
+import { assertOriMig04PgAuthSchemaReadiness } from "./oriMig04PgAuthSchemaReadiness.js";
 
 type Startup = Parameters<typeof startOriMig04ProductionStartup>[0];
 
@@ -27,6 +28,7 @@ export async function startOriMig04PgSharedAuthProductionHost({
   if (!connectionString.trim()) throw new Error("MIG-04 requires a durable PostgreSQL connection");
   const sharedAuth = createOriMig04PgSharedAuthInfrastructure(connectionString);
   try {
+    await assertOriMig04PgAuthSchemaReadiness(sharedAuth.sqlPool);
     const runtime = await startOriMig04ProductionStartup({
       env,
       connectionString,
