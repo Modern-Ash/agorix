@@ -20,6 +20,7 @@ for (const path of paths) {
   groups.set(group, (groups.get(group) ?? 0) + 1);
 }
 process.stdout.write(`Unformatted files: ${paths.length}\n`);
+for (const path of paths) process.stdout.write(`  - ${path}\n`);
 for (const [group, count] of [...groups].sort((a, b) => b[1] - a[1])) {
   process.stdout.write(`  ${group}: ${count}\n`);
 }
@@ -31,7 +32,7 @@ if (process.env["GITHUB_STEP_SUMMARY"]) {
     .join("\n");
   appendFileSync(
     process.env["GITHUB_STEP_SUMMARY"],
-    `### Prettier debt\n\n${paths.length} files need formatting.\n\n| Area | Files |\n|---|---:|\n${rows}\n`,
+    `### Prettier debt\n\n${paths.length} files need formatting.\n\n| Area | Files |\n|---|---:|\n${rows}\n\n<details><summary>Unformatted paths</summary>\n\n${paths.map((path) => `- \`${path}\``).join("\n")}\n\n</details>\n`,
   );
 }
 process.exit(paths.length > 0 ? 1 : 0);
