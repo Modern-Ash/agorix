@@ -84,9 +84,9 @@ run("MIG-04 real PostgreSQL fenced canonical CAS", () => {
       );
       expect(before.rows[0]).toMatchObject({ revision: 2, semantic_hash: "new-hash" });
       expect(await emergencyDisableOriPgRollout(provider, id)).toBe(2);
-      expect(
-        await commitOriProjectWithPgFence(provider, { ...input, expectedRevision: 2 }),
-      ).toBe("denied");
+      expect(await commitOriProjectWithPgFence(provider, { ...input, expectedRevision: 2 })).toBe(
+        "denied",
+      );
       const after = await pool.query<{ revision: number }>(
         "select revision from agorix_projects where project_id = $1",
         [projectId],
