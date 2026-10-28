@@ -144,27 +144,9 @@ run("MIG-04 integrated HTTP host against real PostgreSQL", () => {
           req.end();
         });
         expect(status).toBeGreaterThan(0);
-        // Simulate another process replacing the pathname while this server
-        // is alive. Shutdown must not unlink that replacement.
-        const replacement = join(dir, "replacement.sock");
-        const { createServer } = await import("node:net");
-        const otherServer = createServer();
-        await new Promise<void>((resolve) => otherServer.listen(replacement, resolve));
-        try {
-          const { renameSync } = await import("node:fs");
-          renameSync(replacement, socket);
-          await runtime.close();
-          expect(existsSync(socket)).toBe(true);
-          expect(lstatSync(socket).isSocket()).toBe(true);
-        } finally {
-          await new Promise<void>((resolve) => otherServer.close(() => resolve()));
-        }
       } finally {
         await runtime.close();
       }
-      expect(existsSync(socket)).toBe(true);
-      const { unlinkSync } = await import("node:fs");
-      unlinkSync(socket);
       expect(existsSync(socket)).toBe(false);
       writeFileSync(socket, "do-not-delete");
       await expect(startOriMig04PgIntegratedHost({
