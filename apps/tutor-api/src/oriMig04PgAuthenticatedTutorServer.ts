@@ -1,5 +1,3 @@
-import type { IncomingMessage, ServerResponse } from "node:http";
-import type { AuthService } from "@agorix/auth-service";
 import { createTutorServer, type TutorServerOptions } from "./server.js";
 import { createOriMig04PgAuthenticatedBootstrap } from "./oriMig04PgAuthenticatedBootstrap.js";
 
