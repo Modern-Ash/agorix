@@ -57,7 +57,7 @@ describe("MIG-04 real AuthService session adapter", () => {
   });
   it("requires delivery of a rotated session token", async () => {
     const auth = {
-      resolveSession: async () => ({ ...resolved, rotated: true }) as never,
+      resolveSession: async () => ({ ...resolved, rotated: true, previousSessionId: "old" }) as never,
     };
     const denied = createOriMig04AuthServiceResolver({
       auth,
@@ -71,12 +71,30 @@ describe("MIG-04 real AuthService session adapter", () => {
       onRotatedToken: (_response, token) => {
         rotatedToken = token;
       },
+      onRotatedSession: async (previous, current) =>
+        previous.sessionId === "old" && current.sessionId === "session",
     });
     expect(await allowed(request, {} as ServerResponse)).toEqual({
       accountId: "owner",
       sessionId: "session",
     });
     expect(rotatedToken).toBe("next-token");
+  });
+  it("denies rotated session when mapping migration fails", async () => {
+    let cookieWrites = 0;
+    const resolver = createOriMig04AuthServiceResolver({
+      auth: {
+        resolveSession: async () =>
+          ({ ...resolved, rotated: true, previousSessionId: "old" }) as never,
+      },
+      sessionToken: () => "token",
+      onRotatedToken: () => {
+        cookieWrites++;
+      },
+      onRotatedSession: async () => false,
+    });
+    expect(await resolver(request, {} as ServerResponse)).toBeNull();
+    expect(cookieWrites).toBe(0);
   });
   it("rejects missing authentication dependencies", () => {
     expect(() =>
