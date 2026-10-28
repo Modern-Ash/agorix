@@ -84,6 +84,7 @@ run("MIG-04 integrated HTTP host against real PostgreSQL", () => {
       rmSync(oriRoot, { recursive: true, force: true });
     }
   });
+
   it("refuses to listen when the deployment policy is absent", async () => {
     if (!databaseUrl) throw Error("Missing test database URL");
     const oriRoot = mkdtempSync(join(tmpdir(), "ori-integrated-deny-"));
@@ -111,5 +112,4 @@ run("MIG-04 integrated HTTP host against real PostgreSQL", () => {
       rmSync(oriRoot, { recursive: true, force: true });
     }
   });
-
 });
