@@ -113,19 +113,14 @@ export async function startOriMig04PgIntegratedHost({
               server.close((error) => (error ? reject(error) : resolve()));
             });
           } finally {
-            try {
-              if (socket) {
-                try {
-                  unlinkSync(socket);
-                } catch (error) {
-                  if (!(error instanceof Error) || !("code" in error) || error.code !== "ENOENT") {
-                    throw error;
-                  }
-                }
+            if (socket) {
+              try {
+                unlinkSync(socket);
+              } catch {
+                // Best-effort cleanup; database closure must always run.
               }
-            } finally {
-              await infrastructure.close();
             }
+            await infrastructure.close();
           }
         })();
         return closing;
