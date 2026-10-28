@@ -7,6 +7,13 @@ describe("MIG-04 production startup fail-closed guard", () => {
       "environment activation is forbidden",
     );
   });
+  it("rejects ambiguous and alternate activation values", () => {
+    for (const value of ["true", "yes", "pilot", " 1 ", "", "false"]) {
+      expect(() => assertOriMig04StartupSafe({ AGORIX_ORI_MIG04_PILOT: value })).toThrow(
+        "environment activation is forbidden",
+      );
+    }
+  });
   it("does not change default startup behavior", () => {
     expect(() => assertOriMig04StartupSafe({})).not.toThrow();
   });
