@@ -26,7 +26,7 @@ function response() {
   };
 }
 describe("MIG-04 trusted learning event HTTP route", () => {
-  it("persists only against the verified active project", async () => {
+  it("rejects browser-supplied learning events until trusted provenance is available", async () => {
     const writes: unknown[][] = [];
     const route = createOriMig04PgLearningEventRoutes({
       auth: { resolveSession: async () => ({
@@ -39,8 +39,8 @@ describe("MIG-04 trusted learning event HTTP route", () => {
     });
     const { state, reply } = response();
     await route(request({ kind: "attempt" }), reply);
-    expect(state.status).toBe(204);
-    expect(writes).toEqual([["owner", "project", { kind: "attempt" }]]);
+    expect(state.status).toBe(403);
+    expect(writes).toEqual([]);
   });
   it("rejects client-supplied owner and counters", async () => {
     let writes = 0;
@@ -68,7 +68,7 @@ describe("MIG-04 trusted learning event HTTP route", () => {
     });
     const { state, reply } = response();
     await route(request({ kind: "hint" }), reply);
-    expect(state.status).toBe(409);
+    expect(state.status).toBe(403);
     expect(writes).toBe(0);
   });
 });
