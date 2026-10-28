@@ -35,12 +35,15 @@ export async function startOriMig04PgIntegratedHost({
   }
   const transport = createOriMig04SessionCookieTransport();
   // Validate the real authentication and rollout providers before opening a pool.
-  assertOriMig04RuntimeDependencies({
-    ...ori,
-    ...transport,
-    repository: undefined,
-    activeProject: async () => null,
-  } as never, { repositoryProvidedByHost: true });
+  assertOriMig04RuntimeDependencies(
+    {
+      ...ori,
+      ...transport,
+      repository: undefined,
+      activeProject: async () => null,
+    } as never,
+    { repositoryProvidedByHost: true },
+  );
 
   const infrastructure = createOriMig04PgSessionProjectInfrastructure(connectionString);
   try {
