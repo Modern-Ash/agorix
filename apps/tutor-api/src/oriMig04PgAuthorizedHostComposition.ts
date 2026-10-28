@@ -3,6 +3,7 @@ import type { ProjectRepository } from "@agorix/project-repository";
 import type { WorldStateInput } from "@agorix/runtime";
 import type { OriAuthenticatedSession } from "./oriAuthenticatedProjectIdentity.js";
 import type { OriLearningContext } from "./oriCanonicalReviewWorkflow.js";
+import type { OriHostEvidenceResult } from "./oriHostEvidenceAdapter.js";
 import { createOriAuthorizedReviewOptions } from "./oriAuthorizedReviewComposition.js";
 import { createOriMig04PgHostWiring } from "./oriMig04PgHostWiring.js";
 import type { OriPgPool } from "./oriMig04PgTransactionProvider.js";
@@ -23,6 +24,7 @@ export function createOriMig04PgAuthorizedHostOptions({
   resolveSession,
   activeProject,
   rolloutDecide,
+  runOriOverride,
 }: {
   readonly pool: OriPgPool;
   readonly deploymentId: string;
@@ -36,6 +38,8 @@ export function createOriMig04PgAuthorizedHostOptions({
   ) => Promise<OriAuthenticatedSession | null>;
   readonly activeProject: (session: OriAuthenticatedSession) => Promise<string | null>;
   readonly rolloutDecide: (projectId: string) => { readonly learnerVisible: boolean };
+  /** Test-only: inject verified host evidence without spawning Ori CLI. */
+  readonly runOriOverride?: (evidence: unknown) => Promise<OriHostEvidenceResult>;
 }) {
   if (!/^[a-zA-Z0-9_-]{1,128}$/.test(deploymentId)) {
     throw new Error("Invalid Ori deployment identifier");
@@ -62,6 +66,7 @@ export function createOriMig04PgAuthorizedHostOptions({
     activeProject,
     oriMig04RolloutDecide: rolloutDecide,
     oriMig04AtomicCommit: persistence.oriMig04AtomicCommit,
+    ...(runOriOverride ? { runOriOverride } : {}),
   });
   return Object.freeze({
     options,
