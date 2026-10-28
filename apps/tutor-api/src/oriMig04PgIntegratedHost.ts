@@ -71,6 +71,7 @@ export async function startOriMig04PgIntegratedHost({
       },
     });
     let socketOwned = false;
+    let socketIdentity: { dev: number; ino: number } | undefined;
     try {
       if (socket) {
         mkdirSync(dirname(socket), { recursive: true, mode: 0o755 });
@@ -96,13 +97,18 @@ export async function startOriMig04PgIntegratedHost({
       });
       if (socket) {
         socketOwned = true;
+        const stat = lstatSync(socket);
+        socketIdentity = { dev: stat.dev, ino: stat.ino };
         chmodSync(socket, 0o600);
       }
     } catch (error) {
       server.close();
-      if (socketOwned && socket) {
+      if (socketOwned && socket && socketIdentity) {
         try {
-          unlinkSync(socket);
+          const stat = lstatSync(socket);
+          if (stat.isSocket() && stat.dev === socketIdentity.dev && stat.ino === socketIdentity.ino) {
+            unlinkSync(socket);
+          }
         } catch {
           // Never mask the original listener failure during cleanup.
         }
@@ -125,9 +131,12 @@ export async function startOriMig04PgIntegratedHost({
               server.close((error) => (error ? reject(error) : resolve()));
             });
           } finally {
-            if (socketOwned && socket) {
+            if (socketOwned && socket && socketIdentity) {
               try {
-                unlinkSync(socket);
+                const stat = lstatSync(socket);
+                if (stat.isSocket() && stat.dev === socketIdentity.dev && stat.ino === socketIdentity.ino) {
+                  unlinkSync(socket);
+                }
               } catch {
                 // Best-effort cleanup; database closure must always run.
               }
