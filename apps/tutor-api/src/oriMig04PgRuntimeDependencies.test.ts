@@ -3,9 +3,17 @@ import { assertOriMig04RuntimeDependencies } from "./oriMig04PgRuntimeDependenci
 
 const valid = () => ({
   deploymentId: "ori",
-  auth: { resolveSession: async () => { throw Error("unused"); } },
+  auth: {
+    resolveSession: async () => {
+      throw Error("unused");
+    },
+  },
   sessionToken: () => null,
-  repository: { get: async () => { throw Error("unused"); } },
+  repository: {
+    get: async () => {
+      throw Error("unused");
+    },
+  },
   activeProject: async () => null,
   learningContext: async () => null,
   rolloutDecide: () => ({ learnerVisible: false }),
@@ -27,9 +35,9 @@ describe("MIG-04 runtime dependency integrity", () => {
       { learningContext: undefined },
       { rolloutDecide: undefined },
     ]) {
-      expect(() =>
-        assertOriMig04RuntimeDependencies({ ...base, ...override } as never),
-      ).toThrow("Missing trusted Ori runtime dependencies");
+      expect(() => assertOriMig04RuntimeDependencies({ ...base, ...override } as never)).toThrow(
+        "Missing trusted Ori runtime dependencies",
+      );
     }
   });
 
