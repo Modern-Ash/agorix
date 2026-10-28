@@ -1,6 +1,7 @@
 import { createOriMig04PgSharedAuthInfrastructure } from "./oriMig04PgSharedAuthInfrastructure.js";
 import { startOriMig04ProductionStartup } from "./oriMig04ProductionStartup.js";
 import { assertOriMig04StartupSafe } from "./oriMig04PgStartupGuard.js";
+import { createOriMig04AuthenticatedSessionActions } from "./oriMig04AuthenticatedSessionActions.js";
 
 type Startup = Parameters<typeof startOriMig04ProductionStartup>[0];
 
@@ -38,6 +39,10 @@ export async function startOriMig04PgSharedAuthProductionHost({
     return Object.freeze({
       ...runtime,
       auth: sharedAuth.auth,
+      sessionActions: createOriMig04AuthenticatedSessionActions({
+        auth: sharedAuth.auth,
+        projects: runtime.authenticatedProjectLifecycle,
+      }),
       close(): Promise<void> {
         closing ??= (async () => {
           try {
