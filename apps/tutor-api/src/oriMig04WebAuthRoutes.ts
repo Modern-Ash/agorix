@@ -86,7 +86,9 @@ export function createOriMig04WebAuthRoutes(auth: Pick<AuthService, "register" |
         if (!token || typeof input.projectId !== "string") {
           json(response, 401, { error: "unauthorized" });
         } else {
-          await actions.selectProject(token, input.projectId);
+          await actions.selectProject(token, input.projectId, (rotatedToken) => {
+            cookies.onRotatedToken(response, rotatedToken);
+          });
           json(response, 200, { status: "selected" });
         }
       } else {
