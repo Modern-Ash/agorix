@@ -24,6 +24,24 @@ describe("MIG-04 canonical authenticated runtime", () => {
     ).rejects.toThrow("Missing trusted Ori runtime dependencies");
   });
 
+  it("rejects missing active-project selection before PostgreSQL connectivity", async () => {
+    await expect(
+      startOriMig04PgCanonicalAuthenticatedRuntime({
+        connectionString: "postgresql://127.0.0.1:1/ori",
+        tutor: { config: configFromEnv({}) },
+        ori: {
+          deploymentId: "ori",
+          auth: { resolveSession: async () => { throw Error("unused"); } },
+          sessionToken: () => null,
+          activeProject: undefined,
+          learningContext: async () => null,
+          rolloutDecide: () => ({ learnerVisible: false }),
+          oriRoot: "/trusted/ori",
+          world: {},
+        } as never,
+      }),
+    ).rejects.toThrow("Missing trusted Ori runtime dependencies");
+  });
   it("does not listen if the durable policy cannot be checked", async () => {
     await expect(
       startOriMig04PgCanonicalAuthenticatedRuntime({
