@@ -70,6 +70,7 @@ export async function startOriMig04PgIntegratedHost({
         onRotatedSession: rotation.onResolved,
       },
     });
+    let socketOwned = false;
     try {
       if (socket) {
         mkdirSync(dirname(socket), { recursive: true, mode: 0o755 });
@@ -93,10 +94,13 @@ export async function startOriMig04PgIntegratedHost({
         if (socket) server.listen(socket, ready);
         else server.listen(port, host, ready);
       });
-      if (socket) chmodSync(socket, 0o600);
+      if (socket) {
+        socketOwned = true;
+        chmodSync(socket, 0o600);
+      }
     } catch (error) {
       server.close();
-      if (socket) {
+      if (socketOwned && socket) {
         try {
           unlinkSync(socket);
         } catch {
@@ -121,7 +125,7 @@ export async function startOriMig04PgIntegratedHost({
               server.close((error) => (error ? reject(error) : resolve()));
             });
           } finally {
-            if (socket) {
+            if (socketOwned && socket) {
               try {
                 unlinkSync(socket);
               } catch {
