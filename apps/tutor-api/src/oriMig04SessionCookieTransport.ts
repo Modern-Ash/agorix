@@ -24,10 +24,15 @@ export function createOriMig04SessionCookieTransport() {
       if (!/^[A-Za-z0-9_-]{16,512}$/.test(token) || response.headersSent) {
         throw new Error("Cannot deliver rotated Ori session");
       }
-      response.setHeader(
-        "Set-Cookie",
+      const existing = response.getHeader("Set-Cookie");
+      const cookies = existing === undefined ? [] : Array.isArray(existing) ? existing : [String(existing)];
+      if (cookies.some((cookie) => String(cookie).startsWith(`${COOKIE_NAME}=`))) {
+        throw new Error("Cannot deliver duplicate Ori session cookie");
+      }
+      response.setHeader("Set-Cookie", [
+        ...cookies,
         `${COOKIE_NAME}=${token}; Path=/; HttpOnly; Secure; SameSite=Strict`,
-      );
+      ]);
     },
   });
 }

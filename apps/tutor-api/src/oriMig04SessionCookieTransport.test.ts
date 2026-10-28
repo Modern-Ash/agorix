@@ -15,19 +15,40 @@ describe("MIG-04 trusted cookie transport", () => {
 
   it("rejects missing, duplicate, malformed and oversized cookies", () => {
     expect(transport.sessionToken(request())).toBeNull();
-    expect(transport.sessionToken(request(`__Host-agorix-session=${token}; __Host-agorix-session=${token}`))).toBeNull();
+    expect(
+      transport.sessionToken(request(`__Host-agorix-session=${token}; __Host-agorix-session=${token}`)),
+    ).toBeNull();
     expect(transport.sessionToken(request("__Host-agorix-session=bad value"))).toBeNull();
     expect(transport.sessionToken(request("x".repeat(8193)))).toBeNull();
   });
 
-  it("delivers rotated token with secure cookie attributes", () => {
-    let cookie = "";
+  it("preserves existing cookies when delivering a rotated token", () => {
+    let cookies: string[] = [];
     transport.onRotatedToken(
-      { headersSent: false, setHeader: (_name: string, value: string) => { cookie = value; } } as never,
+      {
+        headersSent: false,
+        getHeader: () => ["theme=dark; Path=/"],
+        setHeader: (_name: string, value: string[]) => {
+          cookies = value;
+        },
+      } as never,
       token,
     );
-    expect(cookie).toContain("HttpOnly; Secure; SameSite=Strict");
-    expect(cookie).toContain("__Host-agorix-session=");
+    expect(cookies[0]).toBe("theme=dark; Path=/");
+    expect(cookies[1]).toContain("HttpOnly; Secure; SameSite=Strict");
+    expect(cookies[1]).toContain("__Host-agorix-session=");
+  });
+
+  it("denies overwriting an already issued session cookie", () => {
+    expect(() =>
+      transport.onRotatedToken(
+        {
+          headersSent: false,
+          getHeader: () => [`__Host-agorix-session=${token}; Path=/`],
+        } as never,
+        token,
+      ),
+    ).toThrow("Cannot deliver duplicate Ori session cookie");
   });
 
   it("fails closed after headers are sent or token is invalid", () => {
