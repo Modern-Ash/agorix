@@ -52,7 +52,16 @@ export function createOriMig04AuthServiceResolver({
           current,
         );
         if (!migrated) return null;
-        onRotatedToken(response, resolved.sessionToken);
+        try {
+          onRotatedToken(response, resolved.sessionToken);
+        } catch {
+          // A failed cookie delivery must not leave a usable migrated project mapping.
+          await onRotatedSession(current, {
+            accountId: current.accountId,
+            sessionId: resolved.previousSessionId,
+          }).catch(() => false);
+          return null;
+        }
       }
       return current;
     } catch {
