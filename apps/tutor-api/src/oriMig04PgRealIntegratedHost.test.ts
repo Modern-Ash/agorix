@@ -50,6 +50,7 @@ run("MIG-04 integrated HTTP host against real PostgreSQL", () => {
           world: {},
           learningContext: async () => null,
           rolloutDecide: () => ({ learnerVisible: false }),
+          runOriOverride: async () => ({ status: "rejected" }) as never,
         },
       });
       try {
