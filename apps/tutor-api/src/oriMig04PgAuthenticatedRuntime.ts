@@ -24,6 +24,17 @@ export async function startOriMig04PgAuthenticatedRuntime({
   if (!Number.isSafeInteger(port) || port < 0 || port > 65535) {
     throw new Error("Invalid Ori host port");
   }
+  if (
+    !ori ||
+    !ori.auth ||
+    typeof ori.auth.resolveSession !== "function" ||
+    typeof ori.sessionToken !== "function" ||
+    !ori.repository ||
+    typeof ori.activeProject !== "function" ||
+    typeof ori.rolloutDecide !== "function"
+  ) {
+    throw new Error("Missing trusted Ori runtime dependencies");
+  }
   const database = createOriMig04PgNodePool(connectionString);
   try {
     await assertOriMig04PgReadiness(database.pool, ori.deploymentId);
