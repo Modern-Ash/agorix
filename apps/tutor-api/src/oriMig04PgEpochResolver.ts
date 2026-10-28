@@ -42,11 +42,7 @@ export function createOriMig04PgEpochResolver(
           [deploymentId, projectId],
         );
         const epoch = Number(row.epoch);
-        if (
-          allowed.rows.length !== 1 ||
-          !Number.isSafeInteger(epoch) ||
-          epoch < 0
-        ) {
+        if (allowed.rows.length !== 1 || !Number.isSafeInteger(epoch) || epoch < 0) {
           return null;
         }
         return { deploymentId, epoch };

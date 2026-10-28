@@ -17,9 +17,7 @@ const pilot = { epoch: "7", mode: "pilot", human_authorized: true, kill_switch: 
 
 describe("MIG-04 PostgreSQL trusted epoch resolver", () => {
   it("returns epoch only for a permitted pilot project", async () => {
-    const resolve = createOriMig04PgEpochResolver(
-      provider([[pilot], [{ project_id: "pilot" }]]), "ori",
-    );
+    const resolve = createOriMig04PgEpochResolver(provider([[pilot], [{ project_id: "pilot" }]]), "ori");
     expect(await resolve("owner", "pilot")).toEqual({ deploymentId: "ori", epoch: 7 });
   });
   it("fails closed for missing, disabled or unauthorized policy", async () => {
@@ -41,11 +39,14 @@ describe("MIG-04 PostgreSQL trusted epoch resolver", () => {
     expect(await resolve("owner", "other")).toBeNull();
   });
   it("fails closed on database error", async () => {
-    const resolve = createOriMig04PgEpochResolver({
-      transaction: async <T>(_work: (tx: OriPgTransaction) => Promise<T>): Promise<T> => {
-        throw Error("db unavailable");
+    const resolve = createOriMig04PgEpochResolver(
+      {
+        transaction: async <T>(_work: (tx: OriPgTransaction) => Promise<T>): Promise<T> => {
+          throw Error("db unavailable");
+        },
       },
-    }, "ori");
+      "ori",
+    );
     expect(await resolve("owner", "pilot")).toBeNull();
   });
 });
