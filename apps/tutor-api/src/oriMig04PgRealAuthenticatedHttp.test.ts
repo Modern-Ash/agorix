@@ -23,6 +23,8 @@ run("MIG-04 real authenticated HTTP cookie boundary", () => {
     const password = "VeryStrongPassword_2026!";
     let accountId: string | undefined;
     let browserAccountId: string | undefined;
+    let outsiderAccountId: string | undefined;
+    let ownedProjectId: string | undefined;
     try {
       await admin.query(POSTGRESQL_SCHEMA_SQL);
       await admin.query("alter table agorix_projects add column if not exists title text");
@@ -85,6 +87,106 @@ run("MIG-04 real authenticated HTTP cookie boundary", () => {
         });
         expect(httpLogin.status).toBe(200);
         expect(httpLogin.headers.get("set-cookie")).toContain("__Host-agorix-session=");
+        const loginCookie = httpLogin.headers.get("set-cookie") ?? "";
+        expect(loginCookie).toContain("HttpOnly");
+        expect(loginCookie).toContain("Secure");
+        expect(loginCookie).toContain("SameSite=Strict");
+        expect(loginCookie).toContain("Path=/");
+        ownedProjectId = `owned_${Date.now().toString(36)}`;
+        await admin.query(
+          "insert into agorix_projects (owner_id, project_id, title, created_at, revision, stored_project_json, semantic_hash, updated_at) values ($1, $2, 'Owned fixture', now(), 1, '{}', 'initial', now())",
+          [browserAccountId, ownedProjectId],
+        );
+        const ownedSelection = await fetch(`${authBase}/project`, {
+          method: "POST",
+          headers: {
+            ...browserHeaders,
+            cookie: httpLogin.headers.get("set-cookie")?.split(";")[0] ?? "",
+          },
+          body: JSON.stringify({ projectId: ownedProjectId }),
+        });
+        expect(ownedSelection.status).toBe(200);
+        const mapping = await admin.query<{ project_id: string }>(
+          "select project_id from agorix_ori_session_projects where account_id = $1",
+          [browserAccountId],
+        );
+        expect(mapping.rows[0]?.project_id).toBe(ownedProjectId);
+        // A second real account cannot select the first learner's project.
+        const outsiderName = `other_${Date.now().toString(36)}`;
+        const outsider = await runtime.auth.register({ username: outsiderName, password });
+        outsiderAccountId = outsider.account.accountId;
+        const outsiderLogin = await runtime.auth.signIn({ username: outsiderName, password });
+        const outsiderSelection = await fetch(`${authBase}/project`, {
+          method: "POST",
+          headers: {
+            ...browserHeaders,
+            cookie: `__Host-agorix-session=${outsiderLogin.sessionToken}`,
+          },
+          body: JSON.stringify({ projectId: ownedProjectId }),
+        });
+        expect(outsiderSelection.ok).toBe(false);
+        const outsiderMapping = await admin.query(
+          "select project_id from agorix_ori_session_projects where account_id = $1",
+          [outsiderAccountId],
+        );
+        expect(outsiderMapping.rows).toHaveLength(0);
+        const selectedSession = await admin.query<{ session_id: string }>(
+          "select session_id from agorix_ori_session_projects where account_id = $1",
+          [browserAccountId],
+        );
+        expect(selectedSession.rows).toHaveLength(1);
+        const rotatedCookie = ownedSelection.headers.get("set-cookie")?.split(";")[0];
+        expect(rotatedCookie).toContain("__Host-agorix-session=");
+        const unownedProject = await fetch(`${authBase}/project`, {
+          method: "POST",
+          headers: {
+            ...browserHeaders,
+            cookie: rotatedCookie ?? "",
+          },
+          body: JSON.stringify({ projectId: "not-owned-by-learner" }),
+        });
+        expect(unownedProject.ok).toBe(false);
+        const issuedCookie = unownedProject.headers.get("set-cookie")?.split(";")[0] ?? rotatedCookie;
+        expect(issuedCookie).toBeTruthy();
+        const httpLogout = await fetch(`${authBase}/logout`, {
+          method: "POST",
+          headers: {
+            ...browserHeaders,
+            cookie: issuedCookie ?? "",
+          },
+        });
+        expect(httpLogout.status).toBe(200);
+        expect(httpLogout.headers.get("set-cookie")).toContain("Max-Age=0");
+        const remainingMappings = await admin.query<{ session_id: string }>(
+          "select session_id from agorix_ori_session_projects where account_id = $1",
+          [browserAccountId],
+        );
+        expect(remainingMappings.rows).toHaveLength(0);
+        const staleSession = await admin.query<{ record: { revokedAt?: string } }>(
+          "select record from agorix_auth_sessions where account_id = $1",
+          [browserAccountId],
+        );
+        expect(staleSession.rows.every((row) => row.record.revokedAt !== undefined)).toBe(true);
+        const secondLogout = await fetch(`${authBase}/logout`, {
+          method: "POST",
+          headers: {
+            ...browserHeaders,
+            cookie: issuedCookie ?? "",
+          },
+        });
+        expect(secondLogout.ok).toBe(false);
+        const deniedProject = await fetch(`${authBase}/project`, {
+          method: "POST",
+          headers: {
+            ...browserHeaders,
+            cookie: issuedCookie ?? "",
+          },
+          body: JSON.stringify({ projectId: "other-project" }),
+        });
+        expect(deniedProject.ok).toBe(false);
+        const revokedToken = issuedCookie?.split("=")[1];
+        if (!revokedToken) throw Error("Missing issued session token");
+        await expect(runtime.auth.resolveSession(revokedToken)).rejects.toThrow();
         const badOrigin = await fetch(`${authBase}/login`, {
           method: "POST",
           headers: { ...browserHeaders, origin: "https://attacker.example" },
@@ -116,7 +218,13 @@ run("MIG-04 real authenticated HTTP cookie boundary", () => {
         await runtime.close();
       }
     } finally {
-      for (const id of [accountId, browserAccountId]) {
+      if (browserAccountId) {
+        await admin.query("delete from agorix_ori_session_projects where account_id = $1", [browserAccountId]);
+      }
+      if (ownedProjectId) {
+        await admin.query("delete from agorix_projects where project_id = $1", [ownedProjectId]);
+      }
+      for (const id of [accountId, browserAccountId, outsiderAccountId]) {
         if (!id) continue;
         await admin.query("delete from agorix_auth_sessions where account_id = $1", [id]);
         await admin.query("delete from agorix_auth_accounts where account_id = $1", [id]);

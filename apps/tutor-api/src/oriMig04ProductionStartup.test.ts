@@ -30,10 +30,10 @@ describe("MIG-04 production process startup", () => {
     ).rejects.toThrow("environment activation is forbidden");
   });
 
-  it("rejects Unix socket startup rather than silently changing transport", async () => {
+  it("rejects unsafe relative socket paths", async () => {
     await expect(
-      startOriMig04ProductionStartup({ ...options, socket: "/tmp/ori.sock" }),
-    ).rejects.toThrow("does not support Unix socket");
+      startOriMig04ProductionStartup({ ...options, socket: "relative/ori.sock" }),
+    ).rejects.toThrow("Invalid Ori Unix socket path");
   });
 
   it("requires durable PostgreSQL and trusted authentication", async () => {

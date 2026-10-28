@@ -27,9 +27,6 @@ export async function startOriMig04ProductionStartup({
   readonly socket?: string;
 }) {
   assertOriMig04StartupSafe(env);
-  if (socket) {
-    throw new Error("MIG-04 integrated host does not support Unix socket startup");
-  }
   if (!connectionString || !connectionString.trim()) {
     throw new Error("MIG-04 requires a durable PostgreSQL connection");
   }
@@ -42,6 +39,7 @@ export async function startOriMig04ProductionStartup({
     ori,
     ...(host ? { host } : {}),
     ...(port === undefined ? {} : { port }),
+    ...(socket ? { socket } : {}),
   });
 }
 
