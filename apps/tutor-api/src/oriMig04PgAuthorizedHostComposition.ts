@@ -40,9 +40,16 @@ export function createOriMig04PgAuthorizedHostOptions({
   if (!/^[a-zA-Z0-9_-]{1,128}$/.test(deploymentId)) {
     throw new Error("Invalid Ori deployment identifier");
   }
-  if (!pool || typeof pool.connect !== "function" || !repository || !oriRoot ||
-      typeof resolveSession !== "function" || typeof activeProject !== "function" ||
-      typeof learningContext !== "function" || typeof rolloutDecide !== "function") {
+  if (
+    !pool ||
+    typeof pool.connect !== "function" ||
+    !repository ||
+    !oriRoot ||
+    typeof resolveSession !== "function" ||
+    typeof activeProject !== "function" ||
+    typeof learningContext !== "function" ||
+    typeof rolloutDecide !== "function"
+  ) {
     throw new Error("Missing trusted Ori host dependencies");
   }
   const persistence = createOriMig04PgHostWiring({ pool, deploymentId });
