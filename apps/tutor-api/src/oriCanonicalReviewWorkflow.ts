@@ -28,6 +28,7 @@ export function createOriCanonicalReviewWorkflow({
   runOriOverride,
   mayCommit,
   commitFence,
+  atomicCommit,
 }: {
   readonly repository: ProjectRepository;
   readonly oriRoot: string;
@@ -40,6 +41,12 @@ export function createOriCanonicalReviewWorkflow({
   readonly runOriOverride?: ReturnType<typeof createOriHostEvidenceAdapter>;
   readonly mayCommit?: (projectId: string) => boolean;
   readonly commitFence?: (projectId: string, write: () => Promise<void>) => Promise<boolean>;
+  readonly atomicCommit?: (
+    owner: string,
+    projectId: string,
+    storedProject: Awaited<ReturnType<ProjectRepository["get"]>>["storedProject"],
+    expectedRevision: number,
+  ) => Promise<"applied" | "denied" | "conflict">;
 }) {
   const execute = createOriCanonicalExecutionPort({ world, maxSteps: 100 });
   const resolve = createOriPersistedEvidenceResolver({ repository, execute, learningContext });
@@ -156,6 +163,9 @@ export function createOriCanonicalReviewWorkflow({
           allowedBlocks: ["move"],
           scriptId,
           ...(mayCommit ? { mayCommit: () => mayCommit(projectId) } : {}),
+          ...(atomicCommit
+            ? { atomicCommit: (storedProject: Awaited<ReturnType<ProjectRepository["get"]>>["storedProject"], revision: number) => atomicCommit(owner, projectId, storedProject, revision) }
+            : {}),
           ...(commitFence
             ? { commitFence: (write: () => Promise<void>) => commitFence(projectId, write) }
             : {}),
