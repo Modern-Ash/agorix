@@ -142,6 +142,11 @@ run("MIG-04 real authenticated HTTP cookie boundary", () => {
           [browserAccountId],
         );
         expect(remainingMappings.rows).toHaveLength(0);
+        const staleSession = await admin.query<{ record: { revokedAt?: string } }>(
+          "select record from agorix_auth_sessions where account_id = $1",
+          [browserAccountId],
+        );
+        expect(staleSession.rows.every((row) => row.record.revokedAt !== undefined)).toBe(true);
         const secondLogout = await fetch(`${authBase}/logout`, {
           method: "POST",
           headers: {
