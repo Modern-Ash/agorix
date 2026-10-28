@@ -110,16 +110,18 @@ run("MIG-04 real authenticated HTTP cookie boundary", () => {
           [browserAccountId],
         );
         expect(mapping.rows[0]?.project_id).toBe(ownedProjectId);
+        const rotatedCookie = ownedSelection.headers.get("set-cookie")?.split(";")[0];
+        expect(rotatedCookie).toContain("__Host-agorix-session=");
         const unownedProject = await fetch(`${authBase}/project`, {
           method: "POST",
           headers: {
             ...browserHeaders,
-            cookie: httpLogin.headers.get("set-cookie")?.split(";")[0] ?? "",
+            cookie: rotatedCookie ?? "",
           },
           body: JSON.stringify({ projectId: "not-owned-by-learner" }),
         });
         expect(unownedProject.ok).toBe(false);
-        const issuedCookie = httpLogin.headers.get("set-cookie")?.split(";")[0];
+        const issuedCookie = unownedProject.headers.get("set-cookie")?.split(";")[0] ?? rotatedCookie;
         expect(issuedCookie).toBeTruthy();
         const httpLogout = await fetch(`${authBase}/logout`, {
           method: "POST",
