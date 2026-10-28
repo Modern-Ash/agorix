@@ -38,8 +38,8 @@ describe("MIG-04 trusted PostgreSQL host lifecycle", () => {
         const response = await fetch(
           `http://127.0.0.1:${host.address.port}/api/tutor/ori/review/apply`,
           {
-          method: "POST",
-          headers: { "content-type": "application/json" },
+            method: "POST",
+            headers: { "content-type": "application/json" },
             body: JSON.stringify({ projectId: "pilot", ticketId: "ticket", scriptId: "main" }),
           },
         );
