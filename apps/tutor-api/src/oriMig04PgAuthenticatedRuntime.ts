@@ -17,10 +17,7 @@ export async function startOriMig04PgAuthenticatedRuntime({
 }: {
   readonly connectionString: string;
   readonly tutor: Parameters<typeof createOriMig04PgAuthenticatedTutorServer>[0]["tutor"];
-  readonly ori: Omit<
-    Parameters<typeof createOriMig04PgAuthenticatedTutorServer>[0]["ori"],
-    "pool"
-  >;
+  readonly ori: Omit<Parameters<typeof createOriMig04PgAuthenticatedTutorServer>[0]["ori"], "pool">;
   readonly host?: string;
   readonly port?: number;
 }) {
