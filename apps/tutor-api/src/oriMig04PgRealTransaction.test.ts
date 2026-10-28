@@ -46,4 +46,32 @@ run("MIG-04 PostgreSQL real transaction isolation", () => {
       await pool.end();
     }
   });
+  it("serializes competing transactions on the same PostgreSQL policy row", async () => {
+    if (!databaseUrl) throw Error("Missing test database URL");
+    const { Pool } = await import("pg");
+    const pool = new Pool({ connectionString: databaseUrl, max: 2 });
+    const key = Math.floor(Math.random() * 1_000_000_000);
+    const first = await pool.connect();
+    const second = await pool.connect();
+    try {
+      await first.query("BEGIN");
+      await first.query("select pg_advisory_xact_lock($1)", [key]);
+      const attempt = await second.query<{ acquired: boolean }>(
+        "select pg_try_advisory_xact_lock($1) as acquired",
+        [key],
+      );
+      expect(attempt.rows[0]?.acquired).toBe(false);
+      await first.query("COMMIT");
+      const after = await second.query<{ acquired: boolean }>(
+        "select pg_try_advisory_xact_lock($1) as acquired",
+        [key],
+      );
+      expect(after.rows[0]?.acquired).toBe(true);
+    } finally {
+      await first.query("ROLLBACK");
+      first.release();
+      second.release();
+      await pool.end();
+    }
+  });
 });
