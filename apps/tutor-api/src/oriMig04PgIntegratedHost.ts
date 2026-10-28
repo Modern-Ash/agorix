@@ -8,6 +8,7 @@ import { createOriMig04PgAuthenticatedTutorServer } from "./oriMig04PgAuthentica
 import { createOriMig04ActiveProjectResolver } from "./oriMig04TrustedSessionProject.js";
 import { createOriMig04SessionCookieTransport } from "./oriMig04SessionCookieTransport.js";
 import { createOriMig04SessionRotationGuard } from "./oriMig04SessionRotationGuard.js";
+import { createOriMig04AuthenticatedProjectLifecycle } from "./oriMig04AuthenticatedProjectLifecycle.js";
 
 /**
  * One production composition root for canonical projects, session mappings,
@@ -79,6 +80,9 @@ export async function startOriMig04PgIntegratedHost({
       address: server.address() as AddressInfo,
       emergencyDisable,
       projectLifecycle: infrastructure.projectLifecycle,
+      authenticatedProjectLifecycle: createOriMig04AuthenticatedProjectLifecycle(
+        infrastructure.projectLifecycle,
+      ),
       close(): Promise<void> {
         closing ??= (async () => {
           try {

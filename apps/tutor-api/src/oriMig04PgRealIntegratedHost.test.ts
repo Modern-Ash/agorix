@@ -72,6 +72,16 @@ run("MIG-04 integrated HTTP host against real PostgreSQL", () => {
           runtime.projectLifecycle.rotate("unknown_owner", "old_session", "new_session"),
         ).rejects.toThrow("rotation denied");
         await runtime.projectLifecycle.revokeAll("unknown_owner");
+        await expect(
+          runtime.authenticatedProjectLifecycle.selectProject(
+            { accountId: "unknown_owner", sessionId: "session_1" },
+            "unknown_project",
+          ),
+        ).rejects.toThrow("ownership denied");
+        await runtime.authenticatedProjectLifecycle.logout({
+          accountId: "unknown_owner",
+          sessionId: "session_1",
+        });
       } finally {
         await runtime.close();
         await runtime.close();
