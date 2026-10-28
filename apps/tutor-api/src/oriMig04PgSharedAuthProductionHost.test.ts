@@ -26,10 +26,10 @@ describe("MIG-04 shared AuthService production composition", () => {
     ).rejects.toThrow("environment activation is forbidden");
   });
 
-  it("rejects unsupported socket transport and empty database URL", async () => {
+  it("rejects relative socket paths and empty database URL", async () => {
     await expect(
-      startOriMig04PgSharedAuthProductionHost({ ...options, socket: "/tmp/ori.sock" }),
-    ).rejects.toThrow("does not support Unix socket");
+      startOriMig04PgSharedAuthProductionHost({ ...options, socket: "relative/ori.sock" }),
+    ).rejects.toThrow("Invalid Ori Unix socket path");
     await expect(
       startOriMig04PgSharedAuthProductionHost({ ...options, connectionString: "" }),
     ).rejects.toThrow("durable PostgreSQL");
