@@ -66,4 +66,15 @@ describe("MIG-04 PostgreSQL host wiring", () => {
     expect(await wiring.oriMig04AtomicCommit("owner", "", {} as never, 1)).toBe("denied");
     expect(connections).toBe(0);
   });
+  it("denies atomic commits when acquiring a PostgreSQL connection fails", async () => {
+    const wiring = createOriMig04PgHostWiring({
+      deploymentId: "ori",
+      pool: {
+        connect: async () => {
+          throw Error("pool exhausted");
+        },
+      },
+    });
+    expect(await wiring.oriMig04AtomicCommit("owner", "pilot", {} as never, 1)).toBe("denied");
+  });
 });
