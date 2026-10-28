@@ -19,7 +19,7 @@ run("MIG-04 real authenticated HTTP cookie boundary", () => {
     const admin = new Pool({ connectionString: databaseUrl });
     const oriRoot = mkdtempSync(join(tmpdir(), "ori-auth-http-"));
     const deploymentId = `ori_auth_http_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
-    const username = `ori_http_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
+    const username = `ori_${Date.now().toString(36)}_${Math.floor(Math.random() * 100000)}`;
     const password = "VeryStrongPassword_2026!";
     let accountId: string | undefined;
     let browserAccountId: string | undefined;
