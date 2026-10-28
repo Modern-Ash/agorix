@@ -16,6 +16,7 @@ export function createOriMig04PgSharedAuthInfrastructure(connectionString: strin
     auth: new AuthService({ accounts, sessions }),
     accounts,
     sessions,
+    sqlPool: pool,
     close: () => pool.end(),
   });
 }
