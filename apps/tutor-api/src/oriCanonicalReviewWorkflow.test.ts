@@ -119,6 +119,47 @@ describe("canonical project -> runtime -> Ori review composition", () => {
     expect(await workflow.decide("student", "project-a", ticket!.id, "accept")).toBeNull();
     expect(await workflow.read("student", "project-a", ticket!.id)).toBeNull();
   });
+  it("blocks an already-approved proposal when the rollout kill switch changes", async () => {
+    const repository = new InMemoryProjectRepository({ idFactory: () => "disabled-project" });
+    const record = await repository.create("student", "Disabled", {
+      schemaVersion: SCHEMA_VERSION,
+      program,
+      metadata: {
+        createdAt: "2026-10-28T00:00:00.000Z",
+        updatedAt: "2026-10-28T00:00:00.000Z",
+        missionProgress: 0,
+        hintLevel: 1,
+      },
+    });
+    let enabled = true;
+    const workflow = createOriCanonicalReviewWorkflow({
+      repository,
+      oriRoot: "/unused-with-test-override",
+      world: { goal: { x: 10, y: 0 } },
+      learningContext: async () => ({ attempts: 1, hintsUsed: 1, learningStage: "connect" }),
+      runOriOverride: async (raw) => ({
+        ...response,
+        evidenceReceipt: {
+          ...response.evidenceReceipt!,
+          programRevision: (raw as TrustedOriEvidence).programRevision,
+        },
+      }),
+      mayCommit: () => enabled,
+    });
+    const ticket = await workflow.propose("student", record.projectId);
+    if (!ticket) throw Error("Expected Ori proposal");
+    expect((await workflow.decide("student", record.projectId, ticket.id, "accept"))?.status).toBe(
+      "accepted",
+    );
+    enabled = false;
+    expect(await workflow.applyAccepted("student", record.projectId, ticket.id, "main")).toBe(
+      "rejected",
+    );
+    const persisted = await repository.get("student", record.projectId);
+    expect(persisted.revision).toBe(record.revision);
+    expect(persisted.storedProject.program).toEqual(record.storedProject.program);
+  });
+
   it("refuses an accepted proposal after the canonical project revision changes", async () => {
     const repository = new InMemoryProjectRepository({ idFactory: () => "stale-project" });
     const record = await repository.create("student", "Stale", {
