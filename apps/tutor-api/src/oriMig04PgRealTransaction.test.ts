@@ -46,7 +46,7 @@ run("MIG-04 PostgreSQL real transaction isolation", () => {
       await pool.end();
     }
   });
-  it("serializes competing transactions on the same PostgreSQL policy row", async () => {
+  it("serializes competing connections on the same advisory transaction lock", async () => {
     if (!databaseUrl) throw Error("Missing test database URL");
     const { Pool } = await import("pg");
     const pool = new Pool({ connectionString: databaseUrl, max: 2 });
