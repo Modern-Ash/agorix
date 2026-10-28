@@ -3,8 +3,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { createOriMig04SessionCookieTransport } from "./oriMig04SessionCookieTransport.js";
 
 const token = "A".repeat(32);
-const request = (cookie?: string) =>
-  ({ headers: cookie ? { cookie } : {} }) as IncomingMessage;
+const request = (cookie?: string) => ({ headers: cookie ? { cookie } : {} }) as IncomingMessage;
 
 describe("MIG-04 trusted cookie transport", () => {
   const transport = createOriMig04SessionCookieTransport();
