@@ -3,6 +3,7 @@
 This regression runs against an isolated PostgreSQL 16 CI service for pull requests targeting `integration/ori`.
 
 The test exercises the **production CAS primitive**, not a standalone revision update:
+
 - Two independent transactions contend on the same policy row and project revision.
 - Exactly one commit returns `applied`; the other returns `conflict`.
 - The project revision advances exactly once, preserving the committed semantic hash.
