@@ -3,6 +3,7 @@ import { startOriMig04ProductionStartup } from "./oriMig04ProductionStartup.js";
 import { assertOriMig04StartupSafe } from "./oriMig04PgStartupGuard.js";
 import { createOriMig04AuthenticatedSessionActions } from "./oriMig04AuthenticatedSessionActions.js";
 import { assertOriMig04PgAuthSchemaReadiness } from "./oriMig04PgAuthSchemaReadiness.js";
+import { createOriMig04WebAuthRoutes } from "./oriMig04WebAuthRoutes.js";
 
 type Startup = Parameters<typeof startOriMig04ProductionStartup>[0];
 
