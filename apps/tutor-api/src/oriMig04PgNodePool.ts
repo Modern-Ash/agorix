@@ -25,5 +25,5 @@ export function createOriMig04PgNodePool(connectionString: string) {
       };
     },
   };
-  return Object.freeze({ pool: adapter, close: () => pool.end() });
+  return Object.freeze({ pool: adapter, sqlPool: pool, close: () => pool.end() });
 }
