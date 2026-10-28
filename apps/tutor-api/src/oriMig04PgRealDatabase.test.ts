@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createOriMig04PgHostWiring } from "./oriMig04PgHostWiring.js";
+import { createOriPgTransactionProvider } from "./oriMig04PgTransactionProvider.js";
+import { replaceOriPgRolloutPolicy } from "./oriMig04PgPolicyAdmin.js";
 
 /**
  * Real PostgreSQL integration suite. Requires a dedicated, disposable database
@@ -58,13 +60,44 @@ run("MIG-04 real PostgreSQL rollback across independent connections", () => {
         },
         deploymentId,
       });
-      expect(await wiring.emergencyDisable()).toBe(2);
+      const provider = createOriPgTransactionProvider({
+        connect: async () => {
+          const client = await pool.connect();
+          return {
+            query: async <Row extends Record<string, unknown>>(
+              sql: string,
+              values: readonly (string | number | boolean)[],
+            ) => {
+              const result = await client.query(sql, [...values]);
+              return { rows: result.rows as readonly Row[] };
+            },
+            release: () => client.release(),
+          };
+        },
+      });
+      expect(
+        await replaceOriPgRolloutPolicy(provider, deploymentId, {
+          mode: "pilot",
+          humanAuthorized: true,
+          killSwitch: false,
+          approvedProjectIds: ["pilot", "pilot-2"],
+        }),
+      ).toBe(2);
+      const allowlist = await pool.query(
+        "select project_id from agorix_ori_rollout_projects where deployment_id = $1 order by project_id",
+        [deploymentId],
+      );
+      expect(allowlist.rows.map((row: { project_id: string }) => row.project_id)).toEqual([
+        "pilot",
+        "pilot-2",
+      ]);
+      expect(await wiring.emergencyDisable()).toBe(3);
       expect(await wiring.oriMig04AtomicCommit("owner", "pilot", {} as never, 1)).toBe("denied");
       const result = await pool.query(
         "select epoch, kill_switch from agorix_ori_rollout_policy where deployment_id = $1",
         [deploymentId],
       );
-      expect(Number(result.rows[0]?.epoch)).toBe(2);
+      expect(Number(result.rows[0]?.epoch)).toBe(3);
       expect(result.rows[0]?.kill_switch).toBe(true);
     } finally {
       await pool.query("delete from agorix_ori_rollout_projects where deployment_id = $1", [
