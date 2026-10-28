@@ -74,4 +74,33 @@ run("MIG-04 PostgreSQL real transaction isolation", () => {
       await pool.end();
     }
   });
+  it("allows only one revision CAS winner across two real connections", async () => {
+    if (!databaseUrl) throw Error("Missing test database URL");
+    const { Pool } = await import("pg");
+    const pool = new Pool({ connectionString: databaseUrl, max: 2 });
+    const projectId = `ori_cas_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
+    try {
+      await pool.query(
+        "create table if not exists agorix_ori_cas_test (id text primary key, revision integer not null)",
+      );
+      await pool.query("insert into agorix_ori_cas_test (id, revision) values ($1, 1)", [
+        projectId,
+      ]);
+      const apply = () =>
+        pool.query(
+          "update agorix_ori_cas_test set revision = revision + 1 where id = $1 and revision = 1 returning revision",
+          [projectId],
+        );
+      const [first, second] = await Promise.all([apply(), apply()]);
+      expect([first.rowCount, second.rowCount].sort()).toEqual([0, 1]);
+      const result = await pool.query<{ revision: number }>(
+        "select revision from agorix_ori_cas_test where id = $1",
+        [projectId],
+      );
+      expect(result.rows[0]?.revision).toBe(2);
+    } finally {
+      await pool.query("delete from agorix_ori_cas_test where id = $1", [projectId]);
+      await pool.end();
+    }
+  });
 });
