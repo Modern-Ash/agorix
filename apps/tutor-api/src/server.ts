@@ -421,6 +421,17 @@ export function createTutorServer(options: TutorServerOptions): Server {
       if (!(request.headers["content-type"] ?? "").includes("application/json"))
         return send(response, 415, error("unsupported-media-type"));
       if (!allowed(request, "chat")) return send(response, 429, error("rate-limited"));
+      // Authenticate once. AuthService rotates the session cookie during
+      // resolution, so validating the same incoming token twice is invalid.
+      const current = validateOriReviewPrincipal(
+        await options.oriReviewIdentity(request, response),
+      );
+      if (!current) return send(response, 401, error("unauthorized"));
+      if (
+        options.oriMig04RolloutDecide &&
+        !options.oriMig04RolloutDecide(current.projectId).learnerVisible
+      )
+        return send(response, 404, error("not-found"));
       const body = await readBody(request);
       if (body === "too-large" || Buffer.byteLength(body, "utf8") > 512)
         return send(response, 413, error("payload-too-large"));
@@ -431,14 +442,8 @@ export function createTutorServer(options: TutorServerOptions): Server {
         parsed = null;
       }
       if (!parsed) return send(response, 400, error("invalid-request"));
-      // Authenticate only AFTER the asynchronous body read. AuthService
-      // rotates its secure cookie on resolve: calling the resolver twice with
-      // the same request token would invalidate the second lookup. This is
-      // the final identity/rollout check immediately before the fenced CAS.
-      const current = validateOriReviewPrincipal(
-        await options.oriReviewIdentity(request, response),
-      );
-      if (!current) return send(response, 401, error("unauthorized"));
+      // Recheck rollout after asynchronous body reception; the PostgreSQL
+      // CAS additionally verifies durable authorization and epoch under lock.
       if (
         options.oriMig04RolloutDecide &&
         !options.oriMig04RolloutDecide(current.projectId).learnerVisible
