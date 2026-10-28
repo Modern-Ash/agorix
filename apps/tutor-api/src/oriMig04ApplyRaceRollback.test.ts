@@ -8,9 +8,7 @@ import { createOriMig04RolloutController } from "./oriMig04RolloutController.js"
 const servers: Server[] = [];
 afterEach(async () => {
   await Promise.all(
-    servers.splice(0).map(
-      (server) => new Promise<void>((done) => server.close(() => done())),
-    ),
+    servers.splice(0).map((server) => new Promise<void>((done) => server.close(() => done()))),
   );
 });
 describe("MIG-04 apply rollback after asynchronous identity refresh", () => {
@@ -26,8 +24,12 @@ describe("MIG-04 apply rollback after asynchronous identity refresh", () => {
     ).toBe(true);
     let resolveRefresh: (() => void) | undefined;
     let notifyRefresh: (() => void) | undefined;
-    const enteredRefresh = new Promise<void>((resolve) => { notifyRefresh = resolve; });
-    const refreshGate = new Promise<void>((resolve) => { resolveRefresh = resolve; });
+    const enteredRefresh = new Promise<void>((resolve) => {
+      notifyRefresh = resolve;
+    });
+    const refreshGate = new Promise<void>((resolve) => {
+      resolveRefresh = resolve;
+    });
     let identityCalls = 0;
     let applies = 0;
     const server = createTutorServer({

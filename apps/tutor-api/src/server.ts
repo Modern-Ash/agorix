@@ -276,8 +276,10 @@ export function createTutorServer(options: TutorServerOptions): Server {
         await options.oriReviewIdentity(request, response),
       );
       if (!identity) return send(response, 401, error("unauthorized"));
-      if (options.oriMig04RolloutDecide &&
-          !options.oriMig04RolloutDecide(identity.projectId).learnerVisible)
+      if (
+        options.oriMig04RolloutDecide &&
+        !options.oriMig04RolloutDecide(identity.projectId).learnerVisible
+      )
         return send(response, 404, error("not-found"));
       const body = await readBody(request);
       if (body === "too-large") return send(response, 413, error("payload-too-large"));
@@ -307,8 +309,10 @@ export function createTutorServer(options: TutorServerOptions): Server {
         ticket?.status === "pending" ? "success" : "fallback",
         performance.now() - started,
       );
-      if (options.oriMig04RolloutDecide &&
-          !options.oriMig04RolloutDecide(identity.projectId).learnerVisible)
+      if (
+        options.oriMig04RolloutDecide &&
+        !options.oriMig04RolloutDecide(identity.projectId).learnerVisible
+      )
         return send(response, 404, error("not-found"));
       if (!ticket || ticket.status !== "pending")
         return send(response, 409, error("proposal-unavailable"));
@@ -332,7 +336,10 @@ export function createTutorServer(options: TutorServerOptions): Server {
         await options.oriReviewIdentity(request, response),
       );
       if (!identity) return send(response, 401, error("unauthorized"));
-      if (options.oriMig04RolloutDecide && !options.oriMig04RolloutDecide(identity.projectId).learnerVisible)
+      if (
+        options.oriMig04RolloutDecide &&
+        !options.oriMig04RolloutDecide(identity.projectId).learnerVisible
+      )
         return send(response, 404, error("not-found"));
       const body = await readBody(request);
       if (body === "too-large") return send(response, 413, error("payload-too-large"));
@@ -374,7 +381,10 @@ export function createTutorServer(options: TutorServerOptions): Server {
         await options.oriReviewIdentity(request, response),
       );
       if (!identity) return send(response, 401, error("unauthorized"));
-      if (options.oriMig04RolloutDecide && !options.oriMig04RolloutDecide(identity.projectId).learnerVisible)
+      if (
+        options.oriMig04RolloutDecide &&
+        !options.oriMig04RolloutDecide(identity.projectId).learnerVisible
+      )
         return send(response, 404, error("not-found"));
       const body = await readBody(request);
       if (body === "too-large" || Buffer.byteLength(body, "utf8") > 512)
@@ -397,8 +407,10 @@ export function createTutorServer(options: TutorServerOptions): Server {
       )
         return send(response, 401, error("unauthorized"));
       // Check again after async request parsing and identity refresh, before mutation.
-      if (options.oriMig04RolloutDecide &&
-          !options.oriMig04RolloutDecide(current.projectId).learnerVisible)
+      if (
+        options.oriMig04RolloutDecide &&
+        !options.oriMig04RolloutDecide(current.projectId).learnerVisible
+      )
         return send(response, 404, error("not-found"));
       const result = await options.oriReviewApply(
         current.ownerId,

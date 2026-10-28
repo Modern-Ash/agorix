@@ -1,7 +1,4 @@
-import type {
-  OriPgTransaction,
-  OriPgTransactionProvider,
-} from "./oriMig04PostgresAtomicCas.js";
+import type { OriPgTransaction, OriPgTransactionProvider } from "./oriMig04PostgresAtomicCas.js";
 
 export interface OriPgClient extends OriPgTransaction {
   release(): void;
