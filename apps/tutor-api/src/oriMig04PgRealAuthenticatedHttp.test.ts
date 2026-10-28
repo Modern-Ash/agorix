@@ -22,6 +22,7 @@ run("MIG-04 real authenticated HTTP cookie boundary", () => {
     const username = `ori_http_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
     const password = "VeryStrongPassword_2026!";
     let accountId: string | undefined;
+    let browserAccountId: string | undefined;
     try {
       await admin.query(POSTGRESQL_SCHEMA_SQL);
       await admin.query("alter table agorix_projects add column if not exists title text");
@@ -69,6 +70,11 @@ run("MIG-04 real authenticated HTTP cookie boundary", () => {
           }),
         });
         expect(httpRegistration.status).toBe(201);
+        const browserAccount = await admin.query<{ account_id: string }>(
+          "select account_id from agorix_auth_accounts where normalized_username = $1",
+          [`${username}_browser`],
+        );
+        browserAccountId = browserAccount.rows[0]?.account_id;
         const httpLogin = await fetch(`${authBase}/login`, {
           method: "POST",
           headers: browserHeaders,
@@ -110,9 +116,10 @@ run("MIG-04 real authenticated HTTP cookie boundary", () => {
         await runtime.close();
       }
     } finally {
-      if (accountId) {
-        await admin.query("delete from agorix_auth_sessions where account_id = $1", [accountId]);
-        await admin.query("delete from agorix_auth_accounts where account_id = $1", [accountId]);
+      for (const id of [accountId, browserAccountId]) {
+        if (!id) continue;
+        await admin.query("delete from agorix_auth_sessions where account_id = $1", [id]);
+        await admin.query("delete from agorix_auth_accounts where account_id = $1", [id]);
       }
       await admin.query("delete from agorix_ori_rollout_policy where deployment_id = $1", [
         deploymentId,
