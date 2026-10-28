@@ -25,10 +25,9 @@ export function createOriMig04SessionCookieTransport() {
         throw new Error("Cannot deliver rotated Ori session");
       }
       const existing = response.getHeader("Set-Cookie");
-      const cookies = existing === undefined ? [] : Array.isArray(existing) ? existing : [String(existing)];
-      if (
-        cookies.some((cookie) => String(cookie).trimStart().startsWith(`${COOKIE_NAME}=`))
-      ) {
+      const cookies =
+        existing === undefined ? [] : Array.isArray(existing) ? existing : [String(existing)];
+      if (cookies.some((cookie) => String(cookie).trimStart().startsWith(`${COOKIE_NAME}=`))) {
         throw new Error("Cannot deliver duplicate Ori session cookie");
       }
       response.setHeader("Set-Cookie", [

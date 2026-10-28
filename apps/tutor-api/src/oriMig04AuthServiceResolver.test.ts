@@ -57,7 +57,8 @@ describe("MIG-04 real AuthService session adapter", () => {
   });
   it("requires delivery of a rotated session token", async () => {
     const auth = {
-      resolveSession: async () => ({ ...resolved, rotated: true, previousSessionId: "old" }) as never,
+      resolveSession: async () =>
+        ({ ...resolved, rotated: true, previousSessionId: "old" }) as never,
     };
     const denied = createOriMig04AuthServiceResolver({
       auth,
