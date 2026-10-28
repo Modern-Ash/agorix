@@ -38,6 +38,18 @@ export function createOriMig04PgLearningContext(pool: Pick<Pool, "query">) {
   };
 }
 
+export async function assertOriMig04PgLearningContextReadiness(pool: Pick<Pool, "query">): Promise<void> {
+  const result = await pool.query<{ column_name: string }>(
+    `select column_name from information_schema.columns
+     where table_schema = current_schema() and table_name = $1`,
+    ["agorix_ori_learning_context"],
+  );
+  const found = new Set(result.rows.map((row) => row.column_name));
+  for (const column of ["owner_id", "project_id", "attempts", "hints_used", "learning_stage"]) {
+    if (!found.has(column)) throw new Error("Ori learning context migration is required");
+  }
+}
+
 export const ORI_MIG04_LEARNING_CONTEXT_SCHEMA_SQL = `
 create table if not exists agorix_ori_learning_context (
   owner_id text not null,
