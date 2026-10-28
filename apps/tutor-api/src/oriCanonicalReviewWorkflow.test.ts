@@ -136,7 +136,13 @@ describe("canonical project -> runtime -> Ori review composition", () => {
       oriRoot: "/unused-with-test-override",
       world: { goal: { x: 10, y: 0 } },
       learningContext: async () => ({ attempts: 1, hintsUsed: 1, learningStage: "connect" }),
-      runOriOverride: async () => response,
+      runOriOverride: async (raw) => ({
+        ...response,
+        evidenceReceipt: {
+          ...response.evidenceReceipt!,
+          programRevision: (raw as TrustedOriEvidence).programRevision,
+        },
+      }),
       mayCommit: () => true,
     });
     const ticket = await workflow.propose("student", record.projectId);
@@ -171,7 +177,13 @@ describe("canonical project -> runtime -> Ori review composition", () => {
       oriRoot: "/unused-with-test-override",
       world: { goal: { x: 10, y: 0 } },
       learningContext: async () => ({ attempts: 1, hintsUsed: 1, learningStage: "connect" }),
-      runOriOverride: async () => response,
+      runOriOverride: async (raw) => ({
+        ...response,
+        evidenceReceipt: {
+          ...response.evidenceReceipt!,
+          programRevision: (raw as TrustedOriEvidence).programRevision,
+        },
+      }),
       mayCommit: () => true,
     });
     const ticket = await workflow.propose("student", record.projectId);
@@ -204,7 +216,13 @@ describe("canonical project -> runtime -> Ori review composition", () => {
       oriRoot: "/unused-with-test-override",
       world: { goal: { x: 10, y: 0 } },
       learningContext: async () => ({ attempts: 1, hintsUsed: 1, learningStage: "connect" }),
-      runOriOverride: async () => response,
+      runOriOverride: async (raw) => ({
+        ...response,
+        evidenceReceipt: {
+          ...response.evidenceReceipt!,
+          programRevision: (raw as TrustedOriEvidence).programRevision,
+        },
+      }),
       mayCommit: () => true,
     });
     const ticket = await workflow.propose("student", record.projectId);
