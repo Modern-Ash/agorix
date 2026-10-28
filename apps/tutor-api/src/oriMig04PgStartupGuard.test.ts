@@ -14,9 +14,10 @@ describe("MIG-04 production startup fail-closed guard", () => {
       );
     }
   });
-  it("rejects environment-only integrated host selection", () => {
-    expect(() => assertOriMig04StartupSafe({ AGORIX_ORI_MIG04_HOST: "integrated" })).toThrow(
-      "requires trusted deployment providers",
+  it("allows integrated host selection but rejects unknown modes", () => {
+    expect(() => assertOriMig04StartupSafe({ AGORIX_ORI_MIG04_HOST: "integrated" })).not.toThrow();
+    expect(() => assertOriMig04StartupSafe({ AGORIX_ORI_MIG04_HOST: "unknown" })).toThrow(
+      "Invalid Ori MIG-04 host mode",
     );
     expect(() => assertOriMig04StartupSafe({ AGORIX_ORI_MIG04_HOST: "legacy" })).not.toThrow();
   });
