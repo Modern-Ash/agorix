@@ -96,6 +96,23 @@ run("MIG-04 real authenticated HTTP cookie boundary", () => {
         });
         expect(httpLogout.status).toBe(200);
         expect(httpLogout.headers.get("set-cookie")).toContain("Max-Age=0");
+        const secondLogout = await fetch(`${authBase}/logout`, {
+          method: "POST",
+          headers: {
+            ...browserHeaders,
+            cookie: issuedCookie ?? "",
+          },
+        });
+        expect(secondLogout.ok).toBe(false);
+        const deniedProject = await fetch(`${authBase}/project`, {
+          method: "POST",
+          headers: {
+            ...browserHeaders,
+            cookie: issuedCookie ?? "",
+          },
+          body: JSON.stringify({ projectId: "other-project" }),
+        });
+        expect(deniedProject.ok).toBe(false);
         const revokedToken = issuedCookie?.split("=")[1];
         if (!revokedToken) throw Error("Missing issued session token");
         await expect(runtime.auth.resolveSession(revokedToken)).rejects.toThrow();
