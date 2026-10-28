@@ -26,7 +26,9 @@ export function createOriMig04SessionCookieTransport() {
       }
       const existing = response.getHeader("Set-Cookie");
       const cookies = existing === undefined ? [] : Array.isArray(existing) ? existing : [String(existing)];
-      if (cookies.some((cookie) => String(cookie).startsWith(`${COOKIE_NAME}=`))) {
+      if (
+        cookies.some((cookie) => String(cookie).trimStart().startsWith(`${COOKIE_NAME}=`))
+      ) {
         throw new Error("Cannot deliver duplicate Ori session cookie");
       }
       response.setHeader("Set-Cookie", [

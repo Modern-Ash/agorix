@@ -51,6 +51,18 @@ describe("MIG-04 trusted cookie transport", () => {
     ).toThrow("Cannot deliver duplicate Ori session cookie");
   });
 
+  it("rejects duplicate session cookies with leading whitespace", () => {
+    expect(() =>
+      transport.onRotatedToken(
+        {
+          headersSent: false,
+          getHeader: () => ["  __Host-agorix-session=existing; Path=/"],
+        } as never,
+        token,
+      ),
+    ).toThrow("Cannot deliver duplicate Ori session cookie");
+  });
+
   it("fails closed after headers are sent or token is invalid", () => {
     expect(() => transport.onRotatedToken({ headersSent: true } as ServerResponse, token)).toThrow();
     expect(() => transport.onRotatedToken({ headersSent: false } as ServerResponse, "bad")).toThrow();
