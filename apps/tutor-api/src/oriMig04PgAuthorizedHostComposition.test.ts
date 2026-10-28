@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { ProjectRepository } from "@agorix/project-repository";
 import { createOriMig04PgAuthorizedHostOptions } from "./oriMig04PgAuthorizedHostComposition.js";
 
@@ -59,7 +62,7 @@ describe("MIG-04 trusted authenticated PostgreSQL host composition", () => {
           throw Error("not needed");
         },
       } as unknown as ProjectRepository,
-      oriRoot: "/unused",
+      oriRoot: mkdtempSync(join(tmpdir(), "ori-host-")),
       world: {},
       learningContext: async () => null,
       resolveSession: async () => null,
