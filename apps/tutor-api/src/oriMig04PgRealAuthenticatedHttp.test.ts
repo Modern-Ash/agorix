@@ -110,6 +110,11 @@ run("MIG-04 real authenticated HTTP cookie boundary", () => {
           [browserAccountId],
         );
         expect(mapping.rows[0]?.project_id).toBe(ownedProjectId);
+        const selectedSession = await admin.query<{ session_id: string }>(
+          "select session_id from agorix_ori_session_projects where account_id = $1",
+          [browserAccountId],
+        );
+        expect(selectedSession.rows).toHaveLength(1);
         const rotatedCookie = ownedSelection.headers.get("set-cookie")?.split(";")[0];
         expect(rotatedCookie).toContain("__Host-agorix-session=");
         const unownedProject = await fetch(`${authBase}/project`, {
@@ -132,6 +137,11 @@ run("MIG-04 real authenticated HTTP cookie boundary", () => {
         });
         expect(httpLogout.status).toBe(200);
         expect(httpLogout.headers.get("set-cookie")).toContain("Max-Age=0");
+        const remainingMappings = await admin.query<{ session_id: string }>(
+          "select session_id from agorix_ori_session_projects where account_id = $1",
+          [browserAccountId],
+        );
+        expect(remainingMappings.rows).toHaveLength(0);
         const secondLogout = await fetch(`${authBase}/logout`, {
           method: "POST",
           headers: {
