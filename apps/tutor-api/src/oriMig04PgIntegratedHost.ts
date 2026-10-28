@@ -1,4 +1,6 @@
 import type { AddressInfo } from "node:net";
+import { chmodSync, lstatSync, mkdirSync, unlinkSync } from "node:fs";
+import { dirname } from "node:path";
 import { createOriMig04PgSessionProjectInfrastructure } from "./oriMig04PgSessionProjectInfrastructure.js";
 import { assertOriMig04PgReadiness } from "./oriMig04PgReadiness.js";
 import { assertOriMig04PgCanonicalSchemaReadiness } from "./oriMig04PgCanonicalSchemaReadiness.js";
@@ -21,6 +23,7 @@ export async function startOriMig04PgIntegratedHost({
   ori,
   host = "127.0.0.1",
   port = 0,
+  socket,
 }: {
   readonly connectionString: string;
   readonly tutor: Parameters<typeof createOriMig04PgAuthenticatedTutorServer>[0]["tutor"];
@@ -30,9 +33,13 @@ export async function startOriMig04PgIntegratedHost({
   >;
   readonly host?: string;
   readonly port?: number;
+  readonly socket?: string;
 }) {
   if (!Number.isSafeInteger(port) || port < 0 || port > 65535) {
     throw new Error("Invalid Ori host port");
+  }
+  if (socket !== undefined && (!socket.startsWith("/") || socket.includes("\\0"))) {
+    throw new Error("Invalid Ori Unix socket path");
   }
   const transport = createOriMig04SessionCookieTransport();
   // Validate the real authentication and rollout providers before opening a pool.
@@ -64,20 +71,35 @@ export async function startOriMig04PgIntegratedHost({
       },
     });
     try {
+      if (socket) {
+        mkdirSync(dirname(socket), { recursive: true, mode: 0o755 });
+        try {
+          const existing = lstatSync(socket);
+          if (!existing.isSocket()) throw new Error("Ori socket path is not a socket");
+          unlinkSync(socket);
+        } catch (error) {
+          if (!(error instanceof Error) || !("code" in error) || error.code !== "ENOENT") {
+            throw error;
+          }
+        }
+      }
       await new Promise<void>((resolve, reject) => {
         server.once("error", reject);
-        server.listen(port, host, () => {
+        const ready = () => {
           server.off("error", reject);
           resolve();
-        });
+        };
+        if (socket) server.listen(socket, ready);
+        else server.listen(port, host, ready);
       });
+      if (socket) chmodSync(socket, 0o600);
     } catch (error) {
       server.close();
       throw error;
     }
     let closing: Promise<void> | undefined;
     return Object.freeze({
-      address: server.address() as AddressInfo,
+      address: server.address() as AddressInfo | string,
       emergencyDisable,
       projectLifecycle: infrastructure.projectLifecycle,
       authenticatedProjectLifecycle: createOriMig04AuthenticatedProjectLifecycle(
@@ -90,7 +112,19 @@ export async function startOriMig04PgIntegratedHost({
               server.close((error) => (error ? reject(error) : resolve()));
             });
           } finally {
-            await infrastructure.close();
+            try {
+              if (socket) {
+                try {
+                  unlinkSync(socket);
+                } catch (error) {
+                  if (!(error instanceof Error) || !("code" in error) || error.code !== "ENOENT") {
+                    throw error;
+                  }
+                }
+              }
+            } finally {
+              await infrastructure.close();
+            }
           }
         })();
         return closing;
