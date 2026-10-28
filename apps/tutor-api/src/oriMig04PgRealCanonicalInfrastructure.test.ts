@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { POSTGRESQL_SCHEMA_SQL } from "@agorix/project-repository";
 import { createOriMig04PgCanonicalInfrastructure } from "./oriMig04PgCanonicalInfrastructure.js";
 import { assertOriMig04PgReadiness } from "./oriMig04PgReadiness.js";
+import { assertOriMig04PgCanonicalSchemaReadiness } from "./oriMig04PgCanonicalSchemaReadiness.js";
 
 const databaseUrl = process.env["ORI_MIG04_TEST_DATABASE_URL"];
 const run = databaseUrl ? describe : describe.skip;
@@ -19,6 +20,9 @@ run("MIG-04 canonical shared PostgreSQL infrastructure", () => {
       await admin.query(POSTGRESQL_SCHEMA_SQL);
       await admin.query("alter table agorix_projects add column if not exists title text");
       await admin.query("alter table agorix_projects add column if not exists created_at text");
+      await expect(
+        assertOriMig04PgCanonicalSchemaReadiness(infrastructure.sqlPool),
+      ).resolves.toBeUndefined();
       await admin.query(`create table if not exists agorix_ori_rollout_policy (
         deployment_id text primary key,
         epoch bigint not null default 0,
