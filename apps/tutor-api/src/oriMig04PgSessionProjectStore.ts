@@ -11,7 +11,9 @@ export function createOriMig04PgSessionProjectStore(
   return Object.freeze({
     async getActiveProject(accountId: string, sessionId: string): Promise<string | null> {
       const result = await pool.query<{ project_id: string }>(
-        "select project_id from agorix_ori_session_projects where account_id = $1 and session_id = $2",
+        `select p.project_id from agorix_ori_session_projects s
+         join agorix_projects p on p.owner_id = s.account_id and p.project_id = s.project_id
+         where s.account_id = $1 and s.session_id = $2`,
         [accountId, sessionId],
       );
       return result.rows[0]?.project_id ?? null;
