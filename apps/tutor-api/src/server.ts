@@ -5,6 +5,7 @@ import {
   type OriReviewIdentityResolver,
 } from "./oriReviewHttpContract.js";
 import type { OriReviewTicket } from "./oriReviewRegistry.js";
+import type { OriLearningEvent } from "./oriMig04PgLearningEvents.js";
 import { validateOriContextInput, type OriContextInput } from "./oriContextPreview.js";
 import type { OriRuntimePreview } from "./oriRuntimePreview.js";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
@@ -79,6 +80,20 @@ export interface TutorServerOptions {
   readonly oriRuntimePreviewEnabled?: boolean;
   readonly oriContextPreview?: (input: OriContextInput) => Promise<OriRuntimePreview>;
   readonly oriContextPreviewEnabled?: boolean;
+  readonly oriLearningEventDispatch?: (
+    request: IncomingMessage,
+    response: ServerResponse,
+  ) => Promise<boolean>;
+  /**
+   * Only a trusted host may supply this callback. Review handlers invoke it
+   * after authenticated, owner-scoped canonical execution or approval.
+   * Never derive its owner/project/event from browser JSON or headers.
+   */
+  readonly oriTrustedLearningEvent?: (
+    owner: string,
+    projectId: string,
+    event: OriLearningEvent,
+  ) => Promise<boolean>;
   readonly oriWebAuthDispatch?: (
     request: IncomingMessage,
     response: ServerResponse,
@@ -241,6 +256,11 @@ export function createTutorServer(options: TutorServerOptions): Server {
 
   async function handle(request: IncomingMessage, response: ServerResponse): Promise<void> {
     const path = new URL(request.url ?? "/", "http://local").pathname;
+    if (path === "/api/tutor/ori/learning/event") {
+      if (!options.oriLearningEventDispatch) return send(response, 404, error("not-found"));
+      if (await options.oriLearningEventDispatch(request, response)) return;
+      return send(response, 404, error("not-found"));
+    }
     if (path.startsWith("/api/tutor/ori/auth/")) {
       if (!options.oriWebAuthDispatch) return send(response, 404, error("not-found"));
       if (await options.oriWebAuthDispatch(request, response)) return;
@@ -305,6 +325,15 @@ export function createTutorServer(options: TutorServerOptions): Server {
         Object.keys(parsed).length !== 0
       )
         return send(response, 400, error("invalid-request"));
+      // A validated, authenticated request for help is a real hint-use event.
+      // The actual attempt is recorded only after canonical execution succeeds,
+      // by the production learning-context provider.
+      if (options.oriTrustedLearningEvent) {
+        const recorded = await options.oriTrustedLearningEvent(
+          identity.ownerId, identity.projectId, { kind: "hint" },
+        );
+        if (!recorded) return send(response, 503, error("learning-evidence-unavailable"));
+      }
       const started = performance.now();
       let ticket: OriReviewTicket | null;
       try {
@@ -368,6 +397,12 @@ export function createTutorServer(options: TutorServerOptions): Server {
       if (!ticket) return send(response, 404, error("not-found"));
       if (!["accepted", "edited", "rejected", "stale"].includes(ticket.status))
         return send(response, 409, error("review-not-finalized"));
+      if (ticket.status === "accepted" && options.oriTrustedLearningEvent) {
+        const recorded = await options.oriTrustedLearningEvent(
+          identity.ownerId, identity.projectId, { kind: "stage", stage: "connect" },
+        );
+        if (!recorded) return send(response, 503, error("learning-evidence-unavailable"));
+      }
       return send(response, 200, { status: ticket.status, appliedChanges: false });
     }
 
@@ -386,13 +421,15 @@ export function createTutorServer(options: TutorServerOptions): Server {
       if (!(request.headers["content-type"] ?? "").includes("application/json"))
         return send(response, 415, error("unsupported-media-type"));
       if (!allowed(request, "chat")) return send(response, 429, error("rate-limited"));
-      const identity = validateOriReviewPrincipal(
+      // Authenticate once. AuthService rotates the session cookie during
+      // resolution, so validating the same incoming token twice is invalid.
+      const current = validateOriReviewPrincipal(
         await options.oriReviewIdentity(request, response),
       );
-      if (!identity) return send(response, 401, error("unauthorized"));
+      if (!current) return send(response, 401, error("unauthorized"));
       if (
         options.oriMig04RolloutDecide &&
-        !options.oriMig04RolloutDecide(identity.projectId).learnerVisible
+        !options.oriMig04RolloutDecide(current.projectId).learnerVisible
       )
         return send(response, 404, error("not-found"));
       const body = await readBody(request);
@@ -405,17 +442,8 @@ export function createTutorServer(options: TutorServerOptions): Server {
         parsed = null;
       }
       if (!parsed) return send(response, 400, error("invalid-request"));
-      // Revalidate host-owned identity after async body reception.
-      const current = validateOriReviewPrincipal(
-        await options.oriReviewIdentity(request, response),
-      );
-      if (
-        !current ||
-        current.ownerId !== identity.ownerId ||
-        current.projectId !== identity.projectId
-      )
-        return send(response, 401, error("unauthorized"));
-      // Check again after async request parsing and identity refresh, before mutation.
+      // Recheck rollout after asynchronous body reception; the PostgreSQL
+      // CAS additionally verifies durable authorization and epoch under lock.
       if (
         options.oriMig04RolloutDecide &&
         !options.oriMig04RolloutDecide(current.projectId).learnerVisible
@@ -429,7 +457,19 @@ export function createTutorServer(options: TutorServerOptions): Server {
       );
       if (result === "conflict") return send(response, 409, error("conflict"));
       if (result !== "applied") return send(response, 403, error("forbidden"));
-      return send(response, 200, { status: "applied" });
+      // The fenced CAS has committed. Never report an unsuccessful apply
+      // solely because subsequent evidence recording is unavailable.
+      let evidenceRecorded = true;
+      if (options.oriTrustedLearningEvent) {
+        try {
+          evidenceRecorded = await options.oriTrustedLearningEvent(
+            current.ownerId, current.projectId, { kind: "stage", stage: "translate" },
+          );
+        } catch {
+          evidenceRecorded = false;
+        }
+      }
+      return send(response, 200, { status: "applied", evidenceRecorded });
     }
 
     if (path === "/api/tutor/ori/context-preview") {

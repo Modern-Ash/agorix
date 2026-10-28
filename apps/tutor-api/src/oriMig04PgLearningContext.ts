@@ -13,10 +13,13 @@ export function createOriMig04PgLearningContext(pool: Pick<Pool, "query">) {
       hints_used: number;
       learning_stage: string;
     }>(
-      `select c.attempts, c.hints_used, c.learning_stage
-       from agorix_ori_learning_context c
-       join agorix_projects p on p.owner_id = c.owner_id and p.project_id = c.project_id
-       where c.owner_id = $1 and c.project_id = $2`,
+      `select coalesce(c.attempts, 0) as attempts,
+              coalesce(c.hints_used, 0) as hints_used,
+              coalesce(c.learning_stage, 'explore') as learning_stage
+       from agorix_projects p
+       left join agorix_ori_learning_context c
+         on c.owner_id = p.owner_id and c.project_id = p.project_id
+       where p.owner_id = $1 and p.project_id = $2`,
       [owner, projectId],
     );
     const row = result.rows[0];
@@ -36,6 +39,18 @@ export function createOriMig04PgLearningContext(pool: Pick<Pool, "query">) {
       learningStage: row.learning_stage as OriLearningContext["learningStage"],
     };
   };
+}
+
+export async function assertOriMig04PgLearningContextReadiness(pool: Pick<Pool, "query">): Promise<void> {
+  const result = await pool.query<{ column_name: string }>(
+    `select column_name from information_schema.columns
+     where table_schema = current_schema() and table_name = $1`,
+    ["agorix_ori_learning_context"],
+  );
+  const found = new Set(result.rows.map((row) => row.column_name));
+  for (const column of ["owner_id", "project_id", "attempts", "hints_used", "learning_stage"]) {
+    if (!found.has(column)) throw new Error("Ori learning context migration is required");
+  }
 }
 
 export const ORI_MIG04_LEARNING_CONTEXT_SCHEMA_SQL = `
