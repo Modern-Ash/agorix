@@ -71,6 +71,15 @@ describe("MIG-04 trusted PostgreSQL host lifecycle", () => {
           },
         );
         expect(forged.ok).toBe(false);
+        const missingTicket = await fetch(
+          `http://127.0.0.1:${host.address.port}/api/tutor/ori/review/apply`,
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ projectId: "pilot", scriptId: "main" }),
+          },
+        );
+        expect(missingTicket.ok).toBe(false);
         expect(connections).toBe(0);
       } finally {
         await host.close();
