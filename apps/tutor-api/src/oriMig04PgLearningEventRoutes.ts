@@ -62,25 +62,12 @@ export function createOriMig04PgLearningEventRoutes({
             ? { kind, stage: fields["stage"] as "explore" | "connect" | "translate" }
             : null;
       if (!event) { send(400); return true; }
-      // The browser cannot attest any pedagogical event, including stage.
-      // Trusted runtime/hint handlers must invoke the server-owned recorder.
-      // Keep this public endpoint fail-closed until provenance is wired.
+      // Browser events cannot prove pedagogical provenance. Only trusted
+      // server-side execution/hint handlers may call the recorder.
+      void auth;
+      void activeProject;
+      void record;
       send(403);
-      return true;
-      const resolved = await auth.resolveSession(token);
-      if (resolved.rotated) {
-        if (!resolved.previousSessionId) { send(403); return true; }
-        // Do not move project mapping or accept events during token rotation.
-        // A trusted session lifecycle must coordinate rotation first.
-        send(409); return true;
-      }
-      const accountId = resolved.account.accountId;
-      if (accountId !== resolved.session.accountId) { send(403); return true; }
-      const projectId = await activeProject(accountId, resolved.session.sessionId);
-      if (!projectId || !(await record(accountId, projectId, event))) {
-        send(403); return true;
-      }
-      send(204);
     } catch {
       send(403);
     }
