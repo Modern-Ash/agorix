@@ -10,6 +10,7 @@ export function createOriMig04PgCanonicalInfrastructure(connectionString: string
   const repository = createOriMig04PgProjectRepository(database.sqlPool);
   return Object.freeze({
     pool: database.pool,
+    sqlPool: database.sqlPool,
     repository,
     close: database.close,
   });

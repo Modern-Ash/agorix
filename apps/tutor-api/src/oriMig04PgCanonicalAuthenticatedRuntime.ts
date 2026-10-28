@@ -3,6 +3,7 @@ import { createOriMig04PgCanonicalInfrastructure } from "./oriMig04PgCanonicalIn
 import { assertOriMig04PgReadiness } from "./oriMig04PgReadiness.js";
 import { createOriMig04PgAuthenticatedTutorServer } from "./oriMig04PgAuthenticatedTutorServer.js";
 import { assertOriMig04RuntimeDependencies } from "./oriMig04PgRuntimeDependencies.js";
+import { assertOriMig04PgCanonicalSchemaReadiness } from "./oriMig04PgCanonicalSchemaReadiness.js";
 
 /**
  * Canonical deployment path: the same PostgreSQL pool owns repository reads
@@ -31,6 +32,7 @@ export async function startOriMig04PgCanonicalAuthenticatedRuntime({
   try {
     assertOriMig04RuntimeDependencies({ ...ori, repository: database.repository });
     await assertOriMig04PgReadiness(database.pool, ori.deploymentId);
+    await assertOriMig04PgCanonicalSchemaReadiness(database.sqlPool);
     const { server, emergencyDisable } = createOriMig04PgAuthenticatedTutorServer({
       tutor,
       ori: { ...ori, pool: database.pool, repository: database.repository },
