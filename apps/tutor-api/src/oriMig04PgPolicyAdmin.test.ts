@@ -90,4 +90,22 @@ describe("MIG-04 trusted PostgreSQL rollout administration", () => {
       }),
     ).rejects.toThrow("Invalid Ori rollout configuration");
   });
+  it("rejects invalid allowlist entries before a transaction", async () => {
+    let transactions = 0;
+    const provider = {
+      transaction: async <T>(_work: (tx: OriPgTransaction) => Promise<T>): Promise<T> => {
+        transactions++;
+        throw Error("unexpected transaction");
+      },
+    };
+    await expect(
+      replaceOriPgRolloutPolicy(provider, "ori", {
+        mode: "pilot",
+        humanAuthorized: true,
+        killSwitch: false,
+        approvedProjectIds: ["bad project"],
+      }),
+    ).rejects.toThrow("Invalid Ori rollout configuration");
+    expect(transactions).toBe(0);
+  });
 });
