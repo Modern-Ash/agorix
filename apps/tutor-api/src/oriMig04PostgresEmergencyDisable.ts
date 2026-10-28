@@ -27,7 +27,9 @@ export async function emergencyDisableOriPgRollout(
       "delete from agorix_ori_rollout_projects where deployment_id = $1",
       [deploymentId],
     );
-    const epoch = Number(result.rows[0].epoch);
+    const row = result.rows[0];
+    if (!row) throw new Error("Ori rollback epoch missing");
+    const epoch = Number(row.epoch);
     if (!Number.isSafeInteger(epoch)) {
       throw new Error("Invalid Ori rollout epoch");
     }
