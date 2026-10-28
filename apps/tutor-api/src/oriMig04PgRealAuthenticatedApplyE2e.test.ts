@@ -3,6 +3,7 @@ import { SCHEMA_VERSION, type ProjectProgram } from "@agorix/program-model";
 import { POSTGRESQL_SCHEMA_SQL } from "@agorix/project-repository";
 import { configFromEnv } from "./index.js";
 import { createOriMig04PgCanonicalInfrastructure } from "./oriMig04PgCanonicalInfrastructure.js";
+import { createOriMig04PgHostWiring } from "./oriMig04PgHostWiring.js";
 import { startOriMig04PgSharedAuthProductionHost } from "./oriMig04PgSharedAuthProductionHost.js";
 import { ORI_MIG04_AUTH_ACCOUNT_SCHEMA_SQL } from "./oriMig04PgAuthAccountRepository.js";
 import { ORI_MIG04_AUTH_SESSION_SCHEMA_SQL } from "./oriMig04PgAuthSessionRepository.js";
@@ -186,18 +187,13 @@ run("MIG-04 authenticated HTTP -> independent Ori -> fenced PostgreSQL CAS", () 
       expect((await post("/review/apply", applyBody)).status).toBe(403);
       expect((await canonical.repository.get(owner, projectId)).revision).toBe(updated.revision);
 
-      // New accepted ticket cannot commit after durable emergency revocation.
-      const second = await post("/review/propose", {});
-      expect(second.status).toBe(200);
-      const secondTicket = (await second.json()) as { ticketId: string };
-      expect((await post("/review/decision", {
-        ticketId: secondTicket.ticketId, decision: "accept",
-      })).status).toBe(200);
+      // Emergency revocation must fence the database CAS even if an otherwise
+      // trusted writer still has the current canonical revision.
       expect(await runtime.emergencyDisable()).toBeGreaterThan(1);
-      const revoked = await post("/review/apply", {
-        ticketId: secondTicket.ticketId, scriptId: "main",
-      });
-      expect(revoked.ok).toBe(false);
+      const writer = createOriMig04PgHostWiring({ pool: canonical.pool, deploymentId });
+      expect(await writer.oriMig04AtomicCommit(
+        owner, projectId, updated.storedProject, updated.revision,
+      )).toBe("denied");
       expect((await canonical.repository.get(owner, projectId)).revision).toBe(updated.revision);
     } finally {
       if (runtime) await runtime.close();
