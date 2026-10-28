@@ -8,6 +8,7 @@ import { startOriMig04PgSharedAuthProductionHost } from "./oriMig04PgSharedAuthP
 import { ORI_MIG04_AUTH_ACCOUNT_SCHEMA_SQL } from "./oriMig04PgAuthAccountRepository.js";
 import { ORI_MIG04_AUTH_SESSION_SCHEMA_SQL } from "./oriMig04PgAuthSessionRepository.js";
 import { ORI_MIG04_SESSION_PROJECT_SCHEMA_SQL } from "./oriMig04PgSessionProjectStore.js";
+import { ORI_MIG04_LEARNING_CONTEXT_SCHEMA_SQL } from "./oriMig04PgLearningContext.js";
 
 const databaseUrl = process.env["ORI_MIG04_TEST_DATABASE_URL"];
 const run = databaseUrl ? describe : describe.skip;
@@ -32,6 +33,7 @@ run("MIG-04 real authenticated HTTP cookie boundary", () => {
       await admin.query(ORI_MIG04_AUTH_ACCOUNT_SCHEMA_SQL);
       await admin.query(ORI_MIG04_AUTH_SESSION_SCHEMA_SQL);
       await admin.query(ORI_MIG04_SESSION_PROJECT_SCHEMA_SQL);
+      await admin.query(ORI_MIG04_LEARNING_CONTEXT_SCHEMA_SQL);
       await admin.query(`create table if not exists agorix_ori_rollout_policy (
         deployment_id text primary key,
         epoch bigint not null default 0,
