@@ -31,7 +31,11 @@ describe("MIG-04 canonical authenticated runtime", () => {
         tutor: { config: configFromEnv({}) },
         ori: {
           deploymentId: "ori",
-          auth: { resolveSession: async () => { throw Error("unused"); } },
+          auth: {
+            resolveSession: async () => {
+              throw Error("unused");
+            },
+          },
           sessionToken: () => null,
           activeProject: undefined,
           learningContext: async () => null,
