@@ -55,6 +55,36 @@ run("MIG-04 real authenticated HTTP cookie boundary", () => {
         },
       });
       try {
+        const authBase = `http://127.0.0.1:${runtime.address.port}/api/tutor/ori/auth`;
+        const browserHeaders = {
+          origin: `https://127.0.0.1:${runtime.address.port}`,
+          "content-type": "application/json",
+        };
+        const httpRegistration = await fetch(`${authBase}/register`, {
+          method: "POST",
+          headers: browserHeaders,
+          body: JSON.stringify({
+            username: `${username}_browser`,
+            password,
+          }),
+        });
+        expect(httpRegistration.status).toBe(201);
+        const httpLogin = await fetch(`${authBase}/login`, {
+          method: "POST",
+          headers: browserHeaders,
+          body: JSON.stringify({
+            username: `${username}_browser`,
+            password,
+          }),
+        });
+        expect(httpLogin.status).toBe(200);
+        expect(httpLogin.headers.get("set-cookie")).toContain("__Host-agorix-session=");
+        const badOrigin = await fetch(`${authBase}/login`, {
+          method: "POST",
+          headers: { ...browserHeaders, origin: "https://attacker.example" },
+          body: JSON.stringify({ username, password }),
+        });
+        expect(badOrigin.status).toBe(403);
         const registered = await runtime.auth.register({ username, password });
         accountId = registered.account.accountId;
         const login = await runtime.auth.signIn({ username, password });
