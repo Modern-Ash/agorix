@@ -24,7 +24,7 @@ run("MIG-04 real PostgreSQL session project mapping", () => {
       await infrastructure.projectLifecycle.rotate(accountId, sessionId, "rotated");
       expect(await infrastructure.projectStore.getActiveProject(accountId, sessionId)).toBeNull();
       expect(await infrastructure.projectStore.getActiveProject(accountId, "rotated")).toBeNull();
-      await infrastructure.projectLifecycle.revoke(accountId, "rotated");
+      await infrastructure.projectLifecycle.revokeAll(accountId);
       expect(await infrastructure.projectStore.getActiveProject(accountId, "rotated")).toBeNull();
     } finally {
       await infrastructure.sqlPool.query(
