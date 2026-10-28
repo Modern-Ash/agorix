@@ -14,11 +14,11 @@ export function createOriMig04AuthServiceResolver({
 }: {
   readonly auth: Pick<AuthService, "resolveSession">;
   readonly sessionToken: (request: IncomingMessage) => string | null;
-  readonly onRotatedToken?: (
-    response: ServerResponse,
-    token: string,
-  ) => void;
-}): (request: IncomingMessage, response?: ServerResponse) => Promise<OriAuthenticatedSession | null> {
+  readonly onRotatedToken?: (response: ServerResponse, token: string) => void;
+}): (
+  request: IncomingMessage,
+  response?: ServerResponse,
+) => Promise<OriAuthenticatedSession | null> {
   if (!auth || typeof auth.resolveSession !== "function" || typeof sessionToken !== "function") {
     throw new Error("Missing trusted Ori authentication dependencies");
   }
@@ -31,7 +31,8 @@ export function createOriMig04AuthServiceResolver({
         !resolved.account.accountId ||
         resolved.account.accountId !== resolved.session.accountId ||
         !resolved.session.sessionId
-      ) return null;
+      )
+        return null;
       // Rotated sessions must not be used unless the new token is delivered.
       if (resolved.rotated) {
         if (!response || !onRotatedToken) return null;
