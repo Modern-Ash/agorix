@@ -104,7 +104,16 @@ run("MIG-04 real authenticated HTTP cookie boundary", () => {
           body: payload,
         });
         expect(duplicateCookie.ok).toBe(false);
-        await runtime.auth.signOut(login.sessionToken).catch(() => undefined);
+        await runtime.auth.signOut(login.sessionToken);
+        const revoked = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            cookie: `__Host-agorix-session=${login.sessionToken}`,
+          },
+          body: payload,
+        });
+        expect(revoked.ok).toBe(false);
       } finally {
         await runtime.close();
       }
