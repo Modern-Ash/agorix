@@ -35,7 +35,9 @@ export function createOriMig04PgSessionProjectLifecycle(pool: Pick<Pool, "query"
       if (!valid(accountId)) {
         throw new Error("Invalid Ori session project identity");
       }
-      await pool.query("delete from agorix_ori_session_projects where account_id = $1", [accountId]);
+      await pool.query("delete from agorix_ori_session_projects where account_id = $1", [
+        accountId,
+      ]);
     },
     async rotate(accountId: string, oldSessionId: string, newSessionId: string): Promise<void> {
       if (!valid(accountId) || !valid(oldSessionId) || !valid(newSessionId)) {
