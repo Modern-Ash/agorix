@@ -29,6 +29,16 @@ export function createOriMig04WebAuthRoutes(auth: Pick<AuthService, "register" |
   return async (request: IncomingMessage, response: ServerResponse): Promise<boolean> => {
     const path = new URL(request.url ?? "/", "http://local").pathname;
     if (!path.startsWith("/api/tutor/ori/auth/")) return false;
+    const known = new Set([
+      "/api/tutor/ori/auth/register",
+      "/api/tutor/ori/auth/login",
+      "/api/tutor/ori/auth/logout",
+      "/api/tutor/ori/auth/project",
+    ]);
+    if (!known.has(path)) {
+      json(response, 404, { error: "not-found" });
+      return true;
+    }
     if (request.method !== "POST") {
       json(response, 405, { error: "method-not-allowed" });
       return true;
@@ -42,12 +52,12 @@ export function createOriMig04WebAuthRoutes(auth: Pick<AuthService, "register" |
     } catch {
       sameOrigin = false;
     }
-    if (!sameOrigin || !request.headers["content-type"]?.startsWith("application/json")) {
+    if (!sameOrigin || !/^application\/json(?:\s*;|\s*$)/i.test(request.headers["content-type"] ?? "")) {
       json(response, 403, { error: "origin-denied" });
       return true;
     }
     try {
-      const input = await body(request);
+      const input = path === "/api/tutor/ori/auth/logout" ? {} : await body(request);
       if (path === "/api/tutor/ori/auth/register") {
         if (typeof input.username !== "string" || typeof input.password !== "string")
           throw Error("invalid input");
