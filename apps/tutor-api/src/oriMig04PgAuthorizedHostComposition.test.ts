@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ProjectRepository } from "@agorix/project-repository";
@@ -68,6 +68,7 @@ describe("MIG-04 trusted authenticated PostgreSQL host composition", () => {
       resolveSession: async () => null,
       activeProject: async () => null,
       rolloutDecide: () => ({ learnerVisible: false }),
+      runOriOverride: async () => ({ status: "rejected" }) as never,
     });
     expect(host.options.oriMig04RolloutDecide?.("pilot").learnerVisible).toBe(false);
     expect(connections).toBe(0);
