@@ -62,11 +62,11 @@ export function createOriMig04PgLearningEventRoutes({
             ? { kind, stage: fields["stage"] as "explore" | "connect" | "translate" }
             : null;
       if (!event) { send(400); return true; }
-      // A browser request cannot prove a genuine attempt or hint. These
-      // events must originate from the trusted execution/hint handlers.
-      if (event.kind === "attempt" || event.kind === "hint") {
-        send(403); return true;
-      }
+      // The browser cannot attest any pedagogical event, including stage.
+      // Trusted runtime/hint handlers must invoke the server-owned recorder.
+      // Keep this public endpoint fail-closed until provenance is wired.
+      send(403);
+      return true;
       const resolved = await auth.resolveSession(token);
       if (resolved.rotated) {
         if (!resolved.previousSessionId) { send(403); return true; }
