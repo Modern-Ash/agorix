@@ -65,6 +65,13 @@ run("MIG-04 integrated HTTP host against real PostgreSQL", () => {
         );
         expect(response.ok).toBe(false);
         expect(authCalls).toBe(0);
+        await expect(
+          runtime.projectLifecycle.select("unknown_owner", "session_1", "unknown_project"),
+        ).rejects.toThrow("ownership denied");
+        await expect(
+          runtime.projectLifecycle.rotate("unknown_owner", "old_session", "new_session"),
+        ).rejects.toThrow("rotation denied");
+        await runtime.projectLifecycle.revokeAll("unknown_owner");
       } finally {
         await runtime.close();
         await runtime.close();
@@ -74,6 +81,34 @@ run("MIG-04 integrated HTTP host against real PostgreSQL", () => {
         deploymentId,
       ]);
       await admin.end();
+      rmSync(oriRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("refuses to listen when the deployment policy is absent", async () => {
+    if (!databaseUrl) throw Error("Missing test database URL");
+    const oriRoot = mkdtempSync(join(tmpdir(), "ori-integrated-deny-"));
+    try {
+      await expect(
+        startOriMig04PgIntegratedHost({
+          connectionString: databaseUrl,
+          tutor: { config: configFromEnv({}) },
+          ori: {
+            deploymentId: `ori_absent_${Date.now()}_${Math.floor(Math.random() * 100000)}`,
+            auth: {
+              resolveSession: async () => {
+                throw Error("unused");
+              },
+            },
+            oriRoot,
+            world: {},
+            learningContext: async () => null,
+            rolloutDecide: () => ({ learnerVisible: false }),
+            runOriOverride: async () => ({ status: "rejected" }) as never,
+          },
+        }),
+      ).rejects.toThrow();
+    } finally {
       rmSync(oriRoot, { recursive: true, force: true });
     }
   });
