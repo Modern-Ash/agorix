@@ -52,7 +52,13 @@ export function createOriMig04AuthServiceResolver({
           current,
         );
         if (!migrated) return null;
-        onRotatedToken(response, resolved.sessionToken);
+        try {
+          onRotatedToken(response, resolved.sessionToken);
+        } catch {
+          // AuthService already invalidated the old token. Never accept a request
+          // whose replacement cookie could not be delivered.
+          return null;
+        }
       }
       return current;
     } catch {
