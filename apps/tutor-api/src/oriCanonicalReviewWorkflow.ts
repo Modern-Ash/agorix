@@ -164,7 +164,12 @@ export function createOriCanonicalReviewWorkflow({
           scriptId,
           ...(mayCommit ? { mayCommit: () => mayCommit(projectId) } : {}),
           ...(atomicCommit
-            ? { atomicCommit: (storedProject: Awaited<ReturnType<ProjectRepository["get"]>>["storedProject"], revision: number) => atomicCommit(owner, projectId, storedProject, revision) }
+            ? {
+                atomicCommit: (
+                  storedProject: Awaited<ReturnType<ProjectRepository["get"]>>["storedProject"],
+                  revision: number,
+                ) => atomicCommit(owner, projectId, storedProject, revision),
+              }
             : {}),
           ...(commitFence
             ? { commitFence: (write: () => Promise<void>) => commitFence(projectId, write) }
