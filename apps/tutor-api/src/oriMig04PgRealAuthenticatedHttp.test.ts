@@ -75,6 +75,35 @@ run("MIG-04 real authenticated HTTP cookie boundary", () => {
           body: payload,
         });
         expect(authenticated.ok).toBe(false);
+        const forged = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-owner-id": accountId,
+            "x-project-id": "other_project",
+            authorization: "Bearer forged",
+          },
+          body: payload,
+        });
+        expect(forged.ok).toBe(false);
+        const invalidCookie = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            cookie: "__Host-agorix-session=invalid",
+          },
+          body: payload,
+        });
+        expect(invalidCookie.ok).toBe(false);
+        const duplicateCookie = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            cookie: `__Host-agorix-session=${login.sessionToken}; __Host-agorix-session=${login.sessionToken}`,
+          },
+          body: payload,
+        });
+        expect(duplicateCookie.ok).toBe(false);
         await runtime.auth.signOut(login.sessionToken).catch(() => undefined);
       } finally {
         await runtime.close();
