@@ -65,7 +65,9 @@ describe("MIG-04 session project lifecycle", () => {
     const lifecycle = createOriMig04PgSessionProjectLifecycle({
       query: async () => ({ rowCount: 0 }) as never,
     } as never);
-    await expect(lifecycle.rotate("owner", "old", "new")).rejects.toThrow("rotation denied");
+    await expect(lifecycle.rotate("owner", "old", "new")).rejects.toThrow(
+      "rotation denied",
+    );
   });
 
   it("rejects malformed identity before SQL access", async () => {
