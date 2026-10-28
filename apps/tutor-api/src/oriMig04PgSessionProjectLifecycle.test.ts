@@ -61,6 +61,27 @@ describe("MIG-04 session project lifecycle", () => {
     expect(statements).toHaveLength(1);
   });
 
+  it("denies rotation when the source mapping is absent or target exists", async () => {
+    const lifecycle = createOriMig04PgSessionProjectLifecycle({
+      query: async () => ({ rowCount: 0 }) as never,
+    } as never);
+    await expect(lifecycle.rotate("owner", "old", "new")).rejects.toThrow(
+      "Ori session project rotation denied",
+    );
+  });
+
+  it("treats unchanged session identifier as a no-op", async () => {
+    let calls = 0;
+    const lifecycle = createOriMig04PgSessionProjectLifecycle({
+      query: async () => {
+        calls++;
+        return { rowCount: 1 } as never;
+      },
+    } as never);
+    await lifecycle.rotate("owner", "same", "same");
+    expect(calls).toBe(0);
+  });
+
   it("rejects malformed identity before SQL access", async () => {
     let calls = 0;
     const lifecycle = createOriMig04PgSessionProjectLifecycle({
