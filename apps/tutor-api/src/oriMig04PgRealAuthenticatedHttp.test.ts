@@ -85,6 +85,20 @@ run("MIG-04 real authenticated HTTP cookie boundary", () => {
         });
         expect(httpLogin.status).toBe(200);
         expect(httpLogin.headers.get("set-cookie")).toContain("__Host-agorix-session=");
+        const issuedCookie = httpLogin.headers.get("set-cookie")?.split(";")[0];
+        expect(issuedCookie).toBeTruthy();
+        const httpLogout = await fetch(`${authBase}/logout`, {
+          method: "POST",
+          headers: {
+            ...browserHeaders,
+            cookie: issuedCookie ?? "",
+          },
+        });
+        expect(httpLogout.status).toBe(200);
+        expect(httpLogout.headers.get("set-cookie")).toContain("Max-Age=0");
+        const revokedToken = issuedCookie?.split("=")[1];
+        if (!revokedToken) throw Error("Missing issued session token");
+        await expect(runtime.auth.resolveSession(revokedToken)).rejects.toThrow();
         const badOrigin = await fetch(`${authBase}/login`, {
           method: "POST",
           headers: { ...browserHeaders, origin: "https://attacker.example" },
