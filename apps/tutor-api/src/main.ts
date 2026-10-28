@@ -12,6 +12,7 @@ import { AdminAuth } from "./adminAuth.js";
 import { oriExternalShadowEnabled } from "./oriExternalShadow.js";
 import { createOriShadowTransport } from "./oriExternalShadowTransport.js";
 import { assertOriMig04StartupSafe } from "./oriMig04PgStartupGuard.js";
+import { startOriMig04PgSharedAuthProductionHost } from "./oriMig04PgSharedAuthProductionHost.js";
 
 // Entry point (issue #348): `node dist/main.js`. Binds loopback unless the deployment
 // explicitly sets AGORIX_TUTOR_HOST (for example inside a container network).
@@ -47,7 +48,7 @@ const contextualOriEnabled = process.env["AGORIX_ORI_CONTEXT_PREVIEW"] === "1";
 const oriContextPreview =
   contextualOriEnabled && oriRoot ? createOriContextPreview({ oriRoot, enabled: true }) : undefined;
 
-const server = createTutorServer({
+const tutorOptions = {
   config,
   aiConfig,
   oriContextPreviewEnabled: contextualOriEnabled && !!oriContextPreview,
@@ -60,7 +61,41 @@ const server = createTutorServer({
   ori: createOriCliService(oriConfig, {
     policyFor: (capability) => aiConfig.current().config.capabilities[capability],
   }),
-});
+};
+
+if (process.env["AGORIX_ORI_MIG04_HOST"] === "integrated") {
+  const databaseUrl = process.env["AGORIX_ORI_MIG04_DATABASE_URL"];
+  const deploymentId = process.env["AGORIX_ORI_MIG04_DEPLOYMENT_ID"];
+  if (!databaseUrl || !deploymentId || !oriRoot) {
+    throw new Error("Integrated Ori requires database URL, deployment ID and Ori root");
+  }
+  const runtime = await startOriMig04PgSharedAuthProductionHost({
+    env: process.env,
+    connectionString: databaseUrl,
+    tutor: tutorOptions,
+    ori: {
+      deploymentId,
+      oriRoot,
+      world: {},
+      learningContext: async () => null,
+      rolloutDecide: () => ({ learnerVisible: false }),
+    },
+    host,
+    port,
+    ...(socket ? { socket } : {}),
+  });
+  process.stdout.write("tutor-api integrated Ori host listening\\n");
+  for (const signal of ["SIGTERM", "SIGINT"] as const) {
+    process.on(signal, () => {
+      runtime.close().finally(() => {
+        aiConfig.close();
+        process.exit(0);
+      });
+      setTimeout(() => process.exit(1), 5_000).unref();
+    });
+  }
+} else {
+const server = createTutorServer(tutorOptions);
 if (socket) {
   mkdirSync(dirname(socket), { recursive: true, mode: 0o755 });
   try {
@@ -96,4 +131,6 @@ for (const signal of ["SIGTERM", "SIGINT"] as const) {
     });
     setTimeout(() => process.exit(0), 5_000).unref();
   });
+}
+
 }
