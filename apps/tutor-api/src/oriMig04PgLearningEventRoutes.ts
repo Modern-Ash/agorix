@@ -26,7 +26,7 @@ export function createOriMig04PgLearningEventRoutes({
         "content-type": "application/json",
         "cache-control": "no-store",
       });
-      response.end(JSON.stringify({ status: status === 204 ? "recorded" : "denied" }));
+      response.end(status === 204 ? undefined : JSON.stringify({ status: "denied" }));
     };
     if (request.method !== "POST") { send(405); return true; }
     let originOk = false;
