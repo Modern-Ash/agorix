@@ -24,6 +24,25 @@ describe("MIG-04 integrated production host", () => {
     ).rejects.toThrow("Missing trusted Ori runtime dependencies");
   });
 
+  it("rejects missing learning and rollout providers before opening PostgreSQL", async () => {
+    await expect(
+      startOriMig04PgIntegratedHost({
+        connectionString: "postgresql://127.0.0.1:1/ori",
+        tutor: { config: configFromEnv({}) },
+        ori: {
+          deploymentId: "ori",
+          auth: {
+            resolveSession: async () => {
+              throw Error("unused");
+            },
+          },
+          oriRoot: "/trusted/ori",
+          world: {},
+        } as never,
+      }),
+    ).rejects.toThrow("Missing trusted Ori runtime dependencies");
+  });
+
   it("refuses startup when PostgreSQL is unreachable", async () => {
     await expect(
       startOriMig04PgIntegratedHost({
