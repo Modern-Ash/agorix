@@ -96,6 +96,26 @@ describe("MIG-04 real AuthService session adapter", () => {
     expect(await resolver(request, {} as ServerResponse)).toBeNull();
     expect(cookieWrites).toBe(0);
   });
+  it("denies identity when the rotated cookie cannot be delivered", async () => {
+    let migrations = 0;
+    const resolver = createOriMig04AuthServiceResolver({
+      auth: {
+        resolveSession: async () =>
+          ({ ...resolved, rotated: true, previousSessionId: "old" }) as never,
+      },
+      sessionToken: () => "token",
+      onRotatedSession: async () => {
+        migrations++;
+        return true;
+      },
+      onRotatedToken: () => {
+        throw Error("headers already sent");
+      },
+    });
+    expect(await resolver(request, {} as ServerResponse)).toBeNull();
+    expect(migrations).toBe(1);
+  });
+
   it("rejects missing authentication dependencies", () => {
     expect(() =>
       createOriMig04AuthServiceResolver({
