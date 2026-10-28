@@ -32,7 +32,8 @@ describe("MIG-04 PostgreSQL trusted epoch resolver", () => {
       { ...pilot, epoch: "not-a-number" },
     ]) {
       const resolve = createOriMig04PgEpochResolver(
-        provider([policy ? [policy] : [], [{ project_id: "pilot" }]]), "ori",
+        provider([policy ? [policy] : [], [{ project_id: "pilot" }]]),
+        "ori",
       );
       expect(await resolve("owner", "pilot")).toBeNull();
     }
