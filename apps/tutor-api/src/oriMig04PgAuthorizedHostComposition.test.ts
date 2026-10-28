@@ -7,7 +7,12 @@ describe("MIG-04 trusted authenticated PostgreSQL host composition", () => {
     let connections = 0;
     expect(() =>
       createOriMig04PgAuthorizedHostOptions({
-        pool: { connect: async () => { connections++; throw Error("unexpected"); } },
+        pool: {
+          connect: async () => {
+            connections++;
+            throw Error("unexpected");
+          },
+        },
         deploymentId: "bad deployment",
         repository: {} as ProjectRepository,
         oriRoot: "/unused",
