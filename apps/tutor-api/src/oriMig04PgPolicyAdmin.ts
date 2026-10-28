@@ -60,10 +60,9 @@ export async function replaceOriPgRolloutPolicy(
     );
     const row = result.rows[0];
     if (!row) throw new Error("Ori policy update not confirmed");
-    await tx.query(
-      "delete from agorix_ori_rollout_projects where deployment_id = $1",
-      [deploymentId],
-    );
+    await tx.query("delete from agorix_ori_rollout_projects where deployment_id = $1", [
+      deploymentId,
+    ]);
     if (config.mode === "pilot") {
       for (const projectId of new Set(config.approvedProjectIds)) {
         await tx.query(

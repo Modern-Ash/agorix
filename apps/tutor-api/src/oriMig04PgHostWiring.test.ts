@@ -19,9 +19,7 @@ describe("MIG-04 PostgreSQL host wiring", () => {
         }),
       },
     });
-    expect(
-      await wiring.oriMig04AtomicCommit("owner", "pilot", {} as never, 1),
-    ).toBe("denied");
+    expect(await wiring.oriMig04AtomicCommit("owner", "pilot", {} as never, 1)).toBe("denied");
     expect(sql).toEqual([
       "BEGIN",
       expect.stringContaining("from agorix_ori_rollout_policy"),

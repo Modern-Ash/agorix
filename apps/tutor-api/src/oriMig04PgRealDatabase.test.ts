@@ -67,8 +67,12 @@ run("MIG-04 real PostgreSQL rollback across independent connections", () => {
       expect(Number(result.rows[0]?.epoch)).toBe(2);
       expect(result.rows[0]?.kill_switch).toBe(true);
     } finally {
-      await pool.query("delete from agorix_ori_rollout_projects where deployment_id = $1", [deploymentId]);
-      await pool.query("delete from agorix_ori_rollout_policy where deployment_id = $1", [deploymentId]);
+      await pool.query("delete from agorix_ori_rollout_projects where deployment_id = $1", [
+        deploymentId,
+      ]);
+      await pool.query("delete from agorix_ori_rollout_policy where deployment_id = $1", [
+        deploymentId,
+      ]);
       await pool.end();
     }
   });

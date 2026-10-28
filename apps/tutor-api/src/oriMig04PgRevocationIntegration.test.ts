@@ -18,8 +18,22 @@ describe("MIG-04 revocation invalidates stale trusted epochs", () => {
             if (sql.startsWith("select epoch")) {
               return {
                 rows: (disabled
-                  ? [{ epoch: String(epoch), mode: "disabled", human_authorized: false, kill_switch: true }]
-                  : [{ epoch: String(epoch), mode: "pilot", human_authorized: true, kill_switch: false }]) as unknown as readonly Row[],
+                  ? [
+                      {
+                        epoch: String(epoch),
+                        mode: "disabled",
+                        human_authorized: false,
+                        kill_switch: true,
+                      },
+                    ]
+                  : [
+                      {
+                        epoch: String(epoch),
+                        mode: "pilot",
+                        human_authorized: true,
+                        kill_switch: false,
+                      },
+                    ]) as unknown as readonly Row[],
               };
             }
             if (sql.startsWith("select project_id")) {
