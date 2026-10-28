@@ -51,6 +51,8 @@ run("MIG-04 real PostgreSQL fenced canonical CAS", () => {
         semantic_hash text not null,
         updated_at timestamptz not null
       )`);
+      await pool.query("alter table agorix_projects add column if not exists title text");
+      await pool.query("alter table agorix_projects add column if not exists created_at text");
       await pool.query(
         "insert into agorix_ori_rollout_policy (deployment_id, epoch, mode, human_authorized, kill_switch) values ($1, 1, 'pilot', true, false)",
         [id],
@@ -60,7 +62,7 @@ run("MIG-04 real PostgreSQL fenced canonical CAS", () => {
         [id, projectId],
       );
       await pool.query(
-        "insert into agorix_projects (owner_id, project_id, revision, stored_project_json, semantic_hash, updated_at) values ($1, $2, 1, '{}', 'initial', now())",
+        "insert into agorix_projects (owner_id, project_id, title, created_at, revision, stored_project_json, semantic_hash, updated_at) values ($1, $2, 'CAS fixture', now(), 1, '{}', 'initial', now())",
         [ownerId, projectId],
       );
       const input = {
