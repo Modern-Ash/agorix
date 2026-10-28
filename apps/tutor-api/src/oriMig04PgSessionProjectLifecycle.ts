@@ -31,16 +31,16 @@ export function createOriMig04PgSessionProjectLifecycle(pool: Pick<Pool, "query"
         [accountId, sessionId],
       );
     },
+    async revokeAll(accountId: string): Promise<void> {
+      if (!valid(accountId)) {
+        throw new Error("Invalid Ori session project identity");
+      }
+      await pool.query("delete from agorix_ori_session_projects where account_id = $1", [accountId]);
+    },
     async rotate(accountId: string, oldSessionId: string, newSessionId: string): Promise<void> {
       if (!valid(accountId) || !valid(oldSessionId) || !valid(newSessionId)) {
         throw new Error("Invalid Ori session project identity");
       }
-      if (oldSessionId === newSessionId) return;
-      await pool.query(
-        `delete from agorix_ori_session_projects
-         where account_id = $1 and session_id = $2`,
-        [accountId, newSessionId],
-      );
       await pool.query(
         `update agorix_ori_session_projects set session_id = $3, updated_at = now()
          where account_id = $1 and session_id = $2`,
