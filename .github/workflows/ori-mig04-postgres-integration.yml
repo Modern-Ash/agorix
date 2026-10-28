@@ -1,0 +1,42 @@
+name: Ori MIG-04 PostgreSQL integration
+on:
+  pull_request:
+    branches:
+      - integration/ori
+    paths:
+      - apps/tutor-api/**
+      - docs/ori/sql/**
+      - .github/workflows/ori-mig04-postgres-integration.yml
+permissions:
+  contents: read
+jobs:
+  postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ori_test
+          POSTGRES_PASSWORD: ori_test
+          POSTGRES_DB: ori_mig04_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ori_test -d ori_mig04_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      ORI_MIG04_TEST_DATABASE_URL: postgresql://ori_test:ori_test@localhost:5432/ori_mig04_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.2
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Run real PostgreSQL integration regression
+        run: pnpm exec vitest run apps/tutor-api/src/oriMig04PgRealDatabase.test.ts

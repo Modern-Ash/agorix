@@ -11,17 +11,22 @@ function fixture(atomic: boolean) {
   const oriRoot = mkdtempSync(join(tmpdir(), "agorix-ori-mig04-"));
   const options = createOriAuthorizedReviewOptions({
     repository: {
-      get: async () => { throw Error("no project"); },
+      get: async () => {
+        throw Error("no project");
+      },
     } as unknown as ProjectRepository,
     oriRoot,
     world: {},
+    runOriOverride: async () => ({ status: "rejected" }) as never,
     learningContext: async () => null,
     resolveSession: async () => null,
     activeProject: async () => null,
     oriMig04RolloutDecide: controller.decide,
-    ...(atomic ? {
-      oriMig04AtomicCommit: async () => "denied" as const,
-    } : {}),
+    ...(atomic
+      ? {
+          oriMig04AtomicCommit: async () => "denied" as const,
+        }
+      : {}),
   });
   return { controller, options, cleanup: () => rmSync(oriRoot, { recursive: true, force: true }) };
 }

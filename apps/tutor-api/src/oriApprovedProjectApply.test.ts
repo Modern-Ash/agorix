@@ -141,7 +141,7 @@ describe("explicit Ori proposal persistence boundary", () => {
             calls++;
             return outcome;
           },
-          }),
+        }),
       ).toBe(expected);
     }
     expect(calls).toBe(2);
