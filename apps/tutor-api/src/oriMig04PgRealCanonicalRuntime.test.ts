@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { configFromEnv } from "./index.js";
 import { POSTGRESQL_SCHEMA_SQL } from "@agorix/project-repository";
+import { ORI_MIG04_SESSION_PROJECT_SCHEMA_SQL } from "./oriMig04PgSessionProjectStore.js";
 import { startOriMig04PgCanonicalAuthenticatedRuntime } from "./oriMig04PgCanonicalAuthenticatedRuntime.js";
 
 const databaseUrl = process.env["ORI_MIG04_TEST_DATABASE_URL"];
@@ -18,6 +19,7 @@ run("MIG-04 real canonical authenticated HTTP runtime", () => {
     const oriRoot = mkdtempSync(join(tmpdir(), "ori-canonical-http-"));
     try {
       await admin.query(POSTGRESQL_SCHEMA_SQL);
+      await admin.query(ORI_MIG04_SESSION_PROJECT_SCHEMA_SQL);
       await admin.query("alter table agorix_projects add column if not exists title text");
       await admin.query("alter table agorix_projects add column if not exists created_at text");
       await admin.query(`create table if not exists agorix_ori_rollout_policy (
