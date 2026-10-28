@@ -22,6 +22,13 @@ run("MIG-04 real PostgreSQL session project mapping", () => {
       );
       expect(await infrastructure.projectStore.getActiveProject("other", sessionId)).toBeNull();
       expect(await infrastructure.projectStore.getActiveProject(accountId, "other")).toBeNull();
+      await infrastructure.projectLifecycle.rotate(accountId, sessionId, "rotated");
+      expect(await infrastructure.projectStore.getActiveProject(accountId, sessionId)).toBeNull();
+      expect(await infrastructure.projectStore.getActiveProject(accountId, "rotated")).toBe(
+        "project_1",
+      );
+      await infrastructure.projectLifecycle.revoke(accountId, "rotated");
+      expect(await infrastructure.projectStore.getActiveProject(accountId, "rotated")).toBeNull();
     } finally {
       await infrastructure.sqlPool.query(
         "delete from agorix_ori_session_projects where account_id = $1 and session_id = $2",
