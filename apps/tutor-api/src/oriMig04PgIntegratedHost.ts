@@ -75,8 +75,9 @@ export async function startOriMig04PgIntegratedHost({
         mkdirSync(dirname(socket), { recursive: true, mode: 0o755 });
         try {
           const existing = lstatSync(socket);
+          // Never unlink an existing socket owned by another process.
           if (!existing.isSocket()) throw new Error("Ori socket path is not a socket");
-          unlinkSync(socket);
+          throw new Error("Ori socket path already exists");
         } catch (error) {
           if (!(error instanceof Error) || !("code" in error) || error.code !== "ENOENT") {
             throw error;
