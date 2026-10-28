@@ -25,7 +25,6 @@ export async function startOriMig04PgSharedAuthProductionHost({
 }) {
   // Validate policy and transport before acquiring a PostgreSQL connection.
   assertOriMig04StartupSafe(env);
-  if (socket) throw new Error("MIG-04 integrated host does not support Unix socket startup");
   if (!connectionString.trim()) throw new Error("MIG-04 requires a durable PostgreSQL connection");
   const sharedAuth = createOriMig04PgSharedAuthInfrastructure(connectionString);
   try {
@@ -48,6 +47,7 @@ export async function startOriMig04PgSharedAuthProductionHost({
       ori: { ...ori, auth: sharedAuth.auth },
       ...(host ? { host } : {}),
       ...(port === undefined ? {} : { port }),
+    ...(socket ? { socket } : {}),
     });
     const sessionActions = createOriMig04AuthenticatedSessionActions({
       auth: sharedAuth.auth,
