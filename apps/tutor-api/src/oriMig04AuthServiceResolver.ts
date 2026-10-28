@@ -55,11 +55,8 @@ export function createOriMig04AuthServiceResolver({
         try {
           onRotatedToken(response, resolved.sessionToken);
         } catch {
-          // A failed cookie delivery must not leave a usable migrated project mapping.
-          await onRotatedSession(current, {
-            accountId: current.accountId,
-            sessionId: resolved.previousSessionId,
-          }).catch(() => false);
+          // AuthService already invalidated the old token. Never accept a request
+          // whose replacement cookie could not be delivered.
           return null;
         }
       }
