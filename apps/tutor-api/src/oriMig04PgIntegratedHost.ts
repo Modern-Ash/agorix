@@ -99,7 +99,8 @@ export async function startOriMig04PgIntegratedHost({
     }
     let closing: Promise<void> | undefined;
     return Object.freeze({
-      address: server.address() as AddressInfo | string,
+      address: server.address() as AddressInfo,
+      socketPath: socket,
       emergencyDisable,
       projectLifecycle: infrastructure.projectLifecycle,
       authenticatedProjectLifecycle: createOriMig04AuthenticatedProjectLifecycle(
