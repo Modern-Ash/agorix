@@ -6,7 +6,6 @@ import { assertOriMig04PgAuthSchemaReadiness } from "./oriMig04PgAuthSchemaReadi
 import { createOriMig04WebAuthRoutes } from "./oriMig04WebAuthRoutes.js";
 import { createOriMig04PgLearningEventRoutes } from "./oriMig04PgLearningEventRoutes.js";
 import { createOriMig04PgLearningEvents } from "./oriMig04PgLearningEvents.js";
-import { assertOriMig04PgLearningContextReadiness } from "./oriMig04PgLearningContext.js";
 import { createOriMig04PgSessionProjectStore } from "./oriMig04PgSessionProjectStore.js";
 
 type Startup = Parameters<typeof startOriMig04ProductionStartup>[0];
@@ -36,7 +35,6 @@ export async function startOriMig04PgSharedAuthProductionHost({
   const sharedAuth = createOriMig04PgSharedAuthInfrastructure(connectionString);
   try {
     await assertOriMig04PgAuthSchemaReadiness(sharedAuth.sqlPool);
-    await assertOriMig04PgLearningContextReadiness(sharedAuth.sqlPool);
     const routeState: {
       dispatch?: ReturnType<typeof createOriMig04WebAuthRoutes>;
       learning?: ReturnType<typeof createOriMig04PgLearningEventRoutes>;
