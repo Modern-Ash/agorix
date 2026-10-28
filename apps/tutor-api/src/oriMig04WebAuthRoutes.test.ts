@@ -67,6 +67,35 @@ describe("MIG-04 opt-in web auth HTTP routes", () => {
     expect(state.body).not.toContain("secret");
   });
 
+  it("returns 404 for unknown auth paths without reading the body", async () => {
+    const routes = createOriMig04WebAuthRoutes({} as never, {} as never);
+    const { state, reply } = response();
+    await routes(request("/api/tutor/ori/auth/unknown", "https://agorix.example", {}), reply);
+    expect(state.status).toBe(404);
+  });
+
+  it("rejects JSON lookalike media types before calling AuthService", async () => {
+    let called = false;
+    const routes = createOriMig04WebAuthRoutes({
+      register: async () => { called = true; return {} as never; },
+      signIn: async () => { called = true; return {} as never; },
+    }, {} as never);
+    const input = request("/api/tutor/ori/auth/register", "https://agorix.example", {});
+    input.headers["content-type"] = "application/json-malicious";
+    const { state, reply } = response();
+    await routes(input, reply);
+    expect(state.status).toBe(403);
+    expect(called).toBe(false);
+  });
+
+  it("supports bodyless logout and rejects missing cookie", async () => {
+    const routes = createOriMig04WebAuthRoutes({} as never, {} as never);
+    const input = request("/api/tutor/ori/auth/logout", "https://agorix.example", {});
+    const { state, reply } = response();
+    await routes(input, reply);
+    expect(state.status).toBe(401);
+  });
+
   it("leaves unrelated TutorServer routes untouched", async () => {
     const routes = createOriMig04WebAuthRoutes({} as never, {} as never);
     const { reply } = response();
