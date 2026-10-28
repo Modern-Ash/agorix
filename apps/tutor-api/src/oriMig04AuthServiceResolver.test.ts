@@ -36,10 +36,11 @@ describe("MIG-04 real AuthService session adapter", () => {
   it("denies mismatched owner or expired session", async () => {
     const mismatched = createOriMig04AuthServiceResolver({
       auth: {
-        resolveSession: async () => ({
-          ...resolved,
-          session: { accountId: "other", sessionId: "session" },
-        }) as never,
+        resolveSession: async () =>
+          ({
+            ...resolved,
+            session: { accountId: "other", sessionId: "session" },
+          }) as never,
       },
       sessionToken: () => "token",
     });
