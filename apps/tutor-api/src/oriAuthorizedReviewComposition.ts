@@ -61,6 +61,14 @@ export function createOriAuthorizedReviewOptions({
   /** Test-only: production invokes the real Ori process. */
   readonly runOriOverride?: (evidence: unknown) => Promise<OriHostEvidenceResult>;
 }) {
+  // Pilot mode cannot expose learner-facing Ori without an atomic commit boundary.
+  // A single-process fence is insufficient for multi-instance deployments.
+  const pilotAllowed = Boolean(oriMig04RolloutDecide && oriMig04AtomicCommit);
+  const guardedRollout = oriMig04RolloutDecide
+    ? (projectId: string) => ({
+        learnerVisible: pilotAllowed && oriMig04RolloutDecide(projectId).learnerVisible,
+      })
+    : undefined;
   const identity = createOriAuthorizedProjectIdentityResolver({
     repository,
     resolveSession,
@@ -72,17 +80,15 @@ export function createOriAuthorizedReviewOptions({
     world,
     learningContext,
     ...(runOriOverride ? { runOriOverride } : {}),
-    ...(oriMig04RolloutDecide
-      ? {
-          mayCommit: (projectId: string) => oriMig04RolloutDecide(projectId).learnerVisible,
-        }
+    ...(guardedRollout
+      ? { mayCommit: (projectId: string) => guardedRollout(projectId).learnerVisible }
       : {}),
     ...(oriMig04CommitFence ? { commitFence: oriMig04CommitFence } : {}),
     ...(oriMig04AtomicCommit ? { atomicCommit: oriMig04AtomicCommit } : {}),
   });
   return Object.freeze({
     oriReviewEnabled: true as const,
-    ...(oriMig04RolloutDecide ? { oriMig04RolloutDecide } : {}),
+    ...(guardedRollout ? { oriMig04RolloutDecide: guardedRollout } : {}),
     ...(presentationStore
       ? createOriPresentationServerComposition({
           identity,
@@ -91,6 +97,13 @@ export function createOriAuthorizedReviewOptions({
         })
       : {}),
     oriReviewIdentity: identity,
+    ...(pilotAllowed
+      ? {
+          oriReviewApplyEnabled: true as const,
+          oriReviewApply: (owner: string, projectId: string, ticketId: string, scriptId: string) =>
+            workflow.applyAccepted(owner, projectId, ticketId, scriptId),
+        }
+      : {}),
     oriReviewPropose: (owner: string, projectId: string) => workflow.propose(owner, projectId),
     oriReviewDecision: (
       owner: string,

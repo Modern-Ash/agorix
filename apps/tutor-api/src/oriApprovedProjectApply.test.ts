@@ -114,6 +114,39 @@ describe("explicit Ori proposal persistence boundary", () => {
     ).toBe("rejected");
     expect((await repository.get("student", record.projectId)).revision).toBe(record.revision);
   });
+  it("uses atomic commit outcomes without falling back to unfenced repository writes", async () => {
+    const { repository, record } = await setup();
+    let calls = 0;
+    const guarded = {
+      get: (owner: string, projectId: string) => repository.get(owner, projectId),
+      update: async () => {
+        throw Error("unfenced update forbidden");
+      },
+    } as unknown as typeof repository;
+    for (const [outcome, expected] of [
+      ["denied", "rejected"],
+      ["conflict", "conflict"],
+    ] as const) {
+      expect(
+        await applyApprovedOriProposal({
+          repository: guarded,
+          owner: "student",
+          projectId: record.projectId,
+          expectedRevision: record.revision,
+          approved: true,
+          proposal: oriMove,
+          allowedBlocks: ["move"],
+          scriptId: "main",
+          atomicCommit: async () => {
+            calls++;
+            return outcome;
+          },
+          }),
+      ).toBe(expected);
+    }
+    expect(calls).toBe(2);
+    expect((await repository.get("student", record.projectId)).revision).toBe(record.revision);
+  });
   it("does not mutate without trusted approval", async () => {
     const { repository, record, apply } = await setup();
     expect(await apply({ approved: false })).toBe("rejected");
