@@ -26,6 +26,7 @@ describe("MIG-04 trusted TutorServer bootstrap", () => {
         resolveSession: async () => null,
         activeProject: async () => null,
         rolloutDecide: () => ({ learnerVisible: false }),
+        runOriOverride: async () => ({ status: "rejected" }) as never,
       },
     });
     expect(server.listening).toBe(false);
