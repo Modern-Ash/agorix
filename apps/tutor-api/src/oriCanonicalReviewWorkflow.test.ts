@@ -119,6 +119,39 @@ describe("canonical project -> runtime -> Ori review composition", () => {
     expect(await workflow.decide("student", "project-a", ticket!.id, "accept")).toBeNull();
     expect(await workflow.read("student", "project-a", ticket!.id)).toBeNull();
   });
+  it("refuses an accepted proposal after the canonical project revision changes", async () => {
+    const repository = new InMemoryProjectRepository({ idFactory: () => "stale-project" });
+    const record = await repository.create("student", "Stale", {
+      schemaVersion: SCHEMA_VERSION,
+      program,
+      metadata: {
+        createdAt: "2026-10-28T00:00:00.000Z",
+        updatedAt: "2026-10-28T00:00:00.000Z",
+        missionProgress: 0,
+        hintLevel: 1,
+      },
+    });
+    const workflow = createOriCanonicalReviewWorkflow({
+      repository,
+      oriRoot: "/unused-with-test-override",
+      world: { goal: { x: 10, y: 0 } },
+      learningContext: async () => ({ attempts: 1, hintsUsed: 1, learningStage: "connect" }),
+      runOriOverride: async () => response,
+      mayCommit: () => true,
+    });
+    const ticket = await workflow.propose("student", record.projectId);
+    if (!ticket) throw Error("Expected Ori proposal");
+    expect((await workflow.decide("student", record.projectId, ticket.id, "accept"))?.status).toBe(
+      "accepted",
+    );
+    await repository.update("student", record.projectId, record.revision, record.storedProject);
+    const result = await workflow.applyAccepted("student", record.projectId, ticket.id, "main");
+    expect(result).not.toBe("applied");
+    const persisted = await repository.get("student", record.projectId);
+    expect(persisted.revision).toBe(record.revision + 1);
+    expect(persisted.storedProject.program).toEqual(record.storedProject.program);
+  });
+
   it("never persists a rejected proposal", async () => {
     const repository = new InMemoryProjectRepository({ idFactory: () => "rejected-project" });
     const record = await repository.create("student", "Rejected", {
