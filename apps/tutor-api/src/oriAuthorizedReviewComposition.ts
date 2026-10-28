@@ -30,6 +30,7 @@ export function createOriAuthorizedReviewOptions({
   presentationStore,
   oriMig04RolloutDecide,
   oriMig04CommitFence,
+  oriMig04AtomicCommit,
 }: {
   readonly repository: ProjectRepository;
   readonly oriRoot: string;
@@ -50,6 +51,13 @@ export function createOriAuthorizedReviewOptions({
     projectId: string,
     write: () => Promise<void>,
   ) => Promise<boolean>;
+  /** Trusted host-only atomic persistence callback. */
+  readonly oriMig04AtomicCommit?: (
+    owner: string,
+    projectId: string,
+    storedProject: Awaited<ReturnType<ProjectRepository["get"]>>["storedProject"],
+    expectedRevision: number,
+  ) => Promise<"applied" | "denied" | "conflict">;
   /** Test-only: production invokes the real Ori process. */
   readonly runOriOverride?: (evidence: unknown) => Promise<OriHostEvidenceResult>;
 }) {
@@ -70,6 +78,7 @@ export function createOriAuthorizedReviewOptions({
         }
       : {}),
     ...(oriMig04CommitFence ? { commitFence: oriMig04CommitFence } : {}),
+    ...(oriMig04AtomicCommit ? { atomicCommit: oriMig04AtomicCommit } : {}),
   });
   return Object.freeze({
     oriReviewEnabled: true as const,

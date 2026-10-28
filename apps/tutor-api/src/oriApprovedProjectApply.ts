@@ -18,6 +18,7 @@ export async function applyApprovedOriProposal({
   scriptId,
   mayCommit,
   commitFence,
+  atomicCommit,
 }: {
   readonly repository: ProjectRepository;
   readonly owner: string;
@@ -31,6 +32,11 @@ export async function applyApprovedOriProposal({
   readonly mayCommit?: () => boolean;
   /** Optional host-owned atomic commit boundary, never controlled by HTTP input. */
   readonly commitFence?: (write: () => Promise<void>) => Promise<boolean>;
+  /** Durable CAS + rollout policy epoch checked in one DB transaction. */
+  readonly atomicCommit?: (
+    storedProject: Awaited<ReturnType<ProjectRepository["get"]>>["storedProject"],
+    expectedRevision: number,
+  ) => Promise<"applied" | "denied" | "conflict">;
 }): Promise<"applied" | "rejected" | "conflict"> {
   if (
     !approved ||
@@ -61,6 +67,10 @@ export async function applyApprovedOriProposal({
     };
     validateProgram(program);
     if (mayCommit && mayCommit() !== true) return "rejected";
+    if (atomicCommit) {
+      const outcome = await atomicCommit({ ...record.storedProject, program }, expectedRevision);
+      return outcome === "denied" ? "rejected" : outcome;
+    }
     const write = async () => {
       await repository.update(owner, projectId, expectedRevision, {
         storedProject: { ...record.storedProject, program },
