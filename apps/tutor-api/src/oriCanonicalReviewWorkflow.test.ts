@@ -119,6 +119,39 @@ describe("canonical project -> runtime -> Ori review composition", () => {
     expect(await workflow.decide("student", "project-a", ticket!.id, "accept")).toBeNull();
     expect(await workflow.read("student", "project-a", ticket!.id)).toBeNull();
   });
+  it("never persists a rejected proposal", async () => {
+    const repository = new InMemoryProjectRepository({ idFactory: () => "rejected-project" });
+    const record = await repository.create("student", "Rejected", {
+      schemaVersion: SCHEMA_VERSION,
+      program,
+      metadata: {
+        createdAt: "2026-10-28T00:00:00.000Z",
+        updatedAt: "2026-10-28T00:00:00.000Z",
+        missionProgress: 0,
+        hintLevel: 1,
+      },
+    });
+    const workflow = createOriCanonicalReviewWorkflow({
+      repository,
+      oriRoot: "/unused-with-test-override",
+      world: { goal: { x: 10, y: 0 } },
+      learningContext: async () => ({ attempts: 1, hintsUsed: 1, learningStage: "connect" }),
+      runOriOverride: async () => response,
+      mayCommit: () => true,
+    });
+    const ticket = await workflow.propose("student", record.projectId);
+    if (!ticket) throw Error("Expected Ori proposal");
+    expect((await workflow.decide("student", record.projectId, ticket.id, "reject"))?.status).toBe(
+      "rejected",
+    );
+    expect(await workflow.applyAccepted("student", record.projectId, ticket.id, "main")).toBe(
+      "rejected",
+    );
+    const persisted = await repository.get("student", record.projectId);
+    expect(persisted.revision).toBe(record.revision);
+    expect(persisted.storedProject.program).toEqual(record.storedProject.program);
+  });
+
   it("completes propose, accept and persistent apply with owner isolation and replay denial", async () => {
     const repository = new InMemoryProjectRepository({ idFactory: () => "owned-project" });
     const record = await repository.create("student", "Owned", {
