@@ -14,7 +14,11 @@ run("MIG-04 canonical shared PostgreSQL infrastructure", () => {
     const infrastructure = createOriMig04PgCanonicalInfrastructure(databaseUrl);
     const deploymentId = `ori_canonical_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
     try {
+      // Other integration suites create a reduced agorix_projects table.
+      // Restore the canonical columns required by SqlProjectRepository.
       await admin.query(POSTGRESQL_SCHEMA_SQL);
+      await admin.query("alter table agorix_projects add column if not exists title text");
+      await admin.query("alter table agorix_projects add column if not exists created_at text");
       await admin.query(`create table if not exists agorix_ori_rollout_policy (
         deployment_id text primary key,
         epoch bigint not null default 0,
