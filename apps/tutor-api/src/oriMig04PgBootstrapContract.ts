@@ -3,6 +3,7 @@ import type { ProjectRepository } from "@agorix/project-repository";
 import type { WorldStateInput } from "@agorix/runtime";
 import type { OriAuthenticatedSession } from "./oriAuthenticatedProjectIdentity.js";
 import type { OriLearningContext } from "./oriCanonicalReviewWorkflow.js";
+import type { OriHostEvidenceResult } from "./oriHostEvidenceAdapter.js";
 import { createOriMig04PgAuthorizedHostOptions } from "./oriMig04PgAuthorizedHostComposition.js";
 import type { OriPgPool } from "./oriMig04PgTransactionProvider.js";
 
@@ -20,6 +21,7 @@ export function createOriMig04PgBootstrap({
   resolveSession,
   activeProject,
   rolloutDecide,
+  runOriOverride,
 }: {
   readonly pool: OriPgPool;
   readonly deploymentId: string;
@@ -36,6 +38,8 @@ export function createOriMig04PgBootstrap({
   ) => Promise<OriAuthenticatedSession | null>;
   readonly activeProject: (session: OriAuthenticatedSession) => Promise<string | null>;
   readonly rolloutDecide: (projectId: string) => { readonly learnerVisible: boolean };
+  /** Test-only verified evidence runner; never supplied from client input. */
+  readonly runOriOverride?: (evidence: unknown) => Promise<OriHostEvidenceResult>;
 }) {
   return createOriMig04PgAuthorizedHostOptions({
     pool,
@@ -47,5 +51,6 @@ export function createOriMig04PgBootstrap({
     resolveSession,
     activeProject,
     rolloutDecide,
+    ...(runOriOverride ? { runOriOverride } : {}),
   });
 }
