@@ -20,12 +20,28 @@ describe("MIG-04 real authenticated PostgreSQL runtime", () => {
       }),
     ).rejects.toThrow("Invalid Ori host port");
   });
+  it("rejects missing authentication before attempting database connectivity", async () => {
+    await expect(
+      startOriMig04PgAuthenticatedRuntime({
+        connectionString: "postgresql://127.0.0.1:1/ori",
+        tutor: { config: configFromEnv({}) },
+        ori: { deploymentId: "ori" } as never,
+      }),
+    ).rejects.toThrow("Missing trusted Ori runtime dependencies");
+  });
   it("refuses startup when PostgreSQL is unavailable", async () => {
     await expect(
       startOriMig04PgAuthenticatedRuntime({
         connectionString: "postgresql://127.0.0.1:1/ori?connect_timeout=1",
         tutor: { config: configFromEnv({}) },
-        ori: { deploymentId: "ori" } as never,
+        ori: {
+          deploymentId: "ori",
+          auth: { resolveSession: async () => { throw Error("unavailable"); } },
+          sessionToken: () => null,
+          repository: {} as never,
+          activeProject: async () => null,
+          rolloutDecide: () => ({ learnerVisible: false }),
+        } as never,
       }),
     ).rejects.toThrow();
   });
