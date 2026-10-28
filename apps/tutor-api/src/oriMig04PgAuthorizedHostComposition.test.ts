@@ -88,12 +88,13 @@ describe("MIG-04 trusted authenticated PostgreSQL host composition", () => {
           throw Error("not needed");
         },
       } as unknown as ProjectRepository,
-      oriRoot: "/unused",
+      oriRoot: mkdtempSync(join(tmpdir(), "ori-host-")),
       world: {},
       learningContext: async () => null,
       resolveSession: async () => null,
       activeProject: async () => null,
       rolloutDecide: () => ({ learnerVisible: false }),
+      runOriOverride: async () => ({ status: "rejected" }) as never,
     });
     expect(host.options.oriReviewEnabled).toBe(true);
     expect(connections).toBe(0);
