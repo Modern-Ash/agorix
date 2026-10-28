@@ -57,6 +57,20 @@ describe("MIG-04 trusted PostgreSQL host lifecycle", () => {
           }),
         ]);
         expect(denied.every((result) => !result.ok)).toBe(true);
+        const forged = await fetch(
+          `http://127.0.0.1:${host.address.port}/api/tutor/ori/review/apply`,
+          {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              "x-owner-id": "learner",
+              "x-project-id": "pilot",
+              authorization: "Bearer forged",
+            },
+            body: JSON.stringify({ projectId: "pilot", ticketId: "ticket", scriptId: "main" }),
+          },
+        );
+        expect(forged.ok).toBe(false);
         expect(connections).toBe(0);
       } finally {
         await host.close();
