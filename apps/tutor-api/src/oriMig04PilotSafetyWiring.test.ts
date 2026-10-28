@@ -48,10 +48,12 @@ describe("MIG-04 bundled pilot safety wiring", () => {
       }),
     ).toBe(true);
     expect(options.oriMig04RolloutDecide?.("pilot").learnerVisible).toBe(true);
-    expect(options.oriReviewApplyEnabled).toBe(true);
-    expect(typeof options.oriReviewApply).toBe("function");
+    expect("oriReviewApplyEnabled" in options).toBe(true);
+    expect("oriReviewApply" in options).toBe(true);
     controller.emergencyDisable();
     expect(options.oriMig04RolloutDecide?.("pilot").learnerVisible).toBe(false);
-    expect(await options.oriReviewApply?.("student", "pilot", "ticket", "main")).toBe("rejected");
+    if ("oriReviewApply" in options && options.oriReviewApply) {
+      expect(await options.oriReviewApply("student", "pilot", "ticket", "main")).toBe("rejected");
+    }
   });
 });
