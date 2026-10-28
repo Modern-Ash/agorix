@@ -15,7 +15,9 @@ describe("MIG-04 trusted cookie transport", () => {
 
   it("rejects missing, duplicate, malformed and oversized cookies", () => {
     expect(transport.sessionToken(request())).toBeNull();
-    expect(transport.sessionToken(request(`__Host-agorix-session=${token}; __Host-agorix-session=${token}`))).toBeNull();
+    expect(
+      transport.sessionToken(request(`__Host-agorix-session=${token}; __Host-agorix-session=${token}`)),
+    ).toBeNull();
     expect(transport.sessionToken(request("__Host-agorix-session=bad value"))).toBeNull();
     expect(transport.sessionToken(request("x".repeat(8193)))).toBeNull();
   });
