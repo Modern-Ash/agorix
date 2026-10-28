@@ -85,6 +85,11 @@ run("MIG-04 real authenticated HTTP cookie boundary", () => {
         });
         expect(httpLogin.status).toBe(200);
         expect(httpLogin.headers.get("set-cookie")).toContain("__Host-agorix-session=");
+        const loginCookie = httpLogin.headers.get("set-cookie") ?? "";
+        expect(loginCookie).toContain("HttpOnly");
+        expect(loginCookie).toContain("Secure");
+        expect(loginCookie).toContain("SameSite=Strict");
+        expect(loginCookie).toContain("Path=/");
         const issuedCookie = httpLogin.headers.get("set-cookie")?.split(";")[0];
         expect(issuedCookie).toBeTruthy();
         const httpLogout = await fetch(`${authBase}/logout`, {
