@@ -4,9 +4,9 @@
  */
 export function assertOriMig04StartupSafe(env: Record<string, string | undefined>): void {
   const hostMode = env["AGORIX_ORI_MIG04_HOST"];
-  if (hostMode !== undefined && hostMode !== "legacy" && hostMode !== "integrated") {
+  if (hostMode !== undefined && hostMode !== "legacy") {
     throw new Error(
-      "Invalid Ori MIG-04 host mode",
+      "Ori MIG-04 integrated host requires trusted deployment providers; main.ts cannot activate it from environment",
     );
   }
   const requested = env["AGORIX_ORI_MIG04_PILOT"];
