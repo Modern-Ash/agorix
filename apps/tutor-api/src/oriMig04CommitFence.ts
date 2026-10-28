@@ -18,10 +18,15 @@ export function createOriMig04CommitFence() {
   async function exclusive<T>(operation: () => Promise<T>): Promise<T> {
     const prior = tail;
     let release!: () => void;
-    tail = new Promise<void>((resolve) => { release = resolve; });
+    tail = new Promise<void>((resolve) => {
+      release = resolve;
+    });
     await prior;
-    try { return await operation(); }
-    finally { release(); }
+    try {
+      return await operation();
+    } finally {
+      release();
+    }
   }
   const permitted = (projectId: string) =>
     createOriMig04RolloutGate(policy).decide(projectId).learnerVisible;
@@ -34,13 +39,17 @@ export function createOriMig04CommitFence() {
     },
     /** Only a trusted host may call this; never expose to learner input. */
     async replaceFromHost(next: OriMig04RolloutPolicy): Promise<boolean> {
-      if (!next || !["disabled", "shadow", "pilot"].includes(next.mode) ||
-          typeof next.humanAuthorized !== "boolean" ||
-          typeof next.killSwitch !== "boolean" ||
-          !Array.isArray(next.approvedProjectIds) ||
-          next.approvedProjectIds.length > 100 ||
-          next.approvedProjectIds.some((id) =>
-            typeof id !== "string" || !/^[a-zA-Z0-9_-]{1,128}$/.test(id)))
+      if (
+        !next ||
+        !["disabled", "shadow", "pilot"].includes(next.mode) ||
+        typeof next.humanAuthorized !== "boolean" ||
+        typeof next.killSwitch !== "boolean" ||
+        !Array.isArray(next.approvedProjectIds) ||
+        next.approvedProjectIds.length > 100 ||
+        next.approvedProjectIds.some(
+          (id) => typeof id !== "string" || !/^[a-zA-Z0-9_-]{1,128}$/.test(id),
+        )
+      )
         return false;
       return exclusive(async () => {
         policy = Object.freeze({
@@ -56,7 +65,9 @@ export function createOriMig04CommitFence() {
     async emergencyDisable(): Promise<void> {
       await exclusive(async () => {
         policy = Object.freeze({
-          mode: "disabled", humanAuthorized: false, killSwitch: true,
+          mode: "disabled",
+          humanAuthorized: false,
+          killSwitch: true,
           approvedProjectIds: Object.freeze([]),
         });
         generation++;
@@ -66,11 +77,13 @@ export function createOriMig04CommitFence() {
      * A write that started before revocation completes before the revocation
      * promise resolves. New writes cannot begin after it resolves.
      */
-    async commit<T>(projectId: string, expectedGeneration: number,
-      operation: () => Promise<T>): Promise<{ readonly applied: boolean; readonly value?: T }> {
+    async commit<T>(
+      projectId: string,
+      expectedGeneration: number,
+      operation: () => Promise<T>,
+    ): Promise<{ readonly applied: boolean; readonly value?: T }> {
       return exclusive(async () => {
-        if (generation !== expectedGeneration || !permitted(projectId))
-          return { applied: false };
+        if (generation !== expectedGeneration || !permitted(projectId)) return { applied: false };
         const value = await operation();
         return { applied: true, value };
       });

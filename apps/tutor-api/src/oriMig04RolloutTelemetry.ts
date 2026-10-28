@@ -17,9 +17,13 @@ export function createOriMig04RolloutTelemetry() {
   let lastMode: OriMig04Mode = "disabled";
   return Object.freeze({
     record(mode: OriMig04Mode, outcome: OriMig04Outcome, durationMs: number): void {
-      if (!["disabled", "shadow", "pilot"].includes(mode) ||
-          !["success", "error", "fallback", "blocked"].includes(outcome) ||
-          !Number.isFinite(durationMs) || durationMs < 0 || durationMs > 60000)
+      if (
+        !["disabled", "shadow", "pilot"].includes(mode) ||
+        !["success", "error", "fallback", "blocked"].includes(outcome) ||
+        !Number.isFinite(durationMs) ||
+        durationMs < 0 ||
+        durationMs > 60000
+      )
         return;
       lastMode = mode;
       counters[outcome]++;
@@ -28,9 +32,10 @@ export function createOriMig04RolloutTelemetry() {
     },
     snapshot() {
       const sorted = [...durations].sort((a, b) => a - b);
-      const percentile = (p: number) => sorted.length
-        ? sorted[Math.min(sorted.length - 1, Math.ceil(sorted.length * p) - 1)]!
-        : null;
+      const percentile = (p: number) =>
+        sorted.length
+          ? sorted[Math.min(sorted.length - 1, Math.ceil(sorted.length * p) - 1)]!
+          : null;
       return Object.freeze({
         mode: lastMode,
         attempts: Object.values(counters).reduce((a, b) => a + b, 0),

@@ -1,5 +1,8 @@
 import { createOriMig04RolloutController } from "./oriMig04RolloutController.js";
-import { createOriMig04RolloutTelemetry, type OriMig04Outcome } from "./oriMig04RolloutTelemetry.js";
+import {
+  createOriMig04RolloutTelemetry,
+  type OriMig04Outcome,
+} from "./oriMig04RolloutTelemetry.js";
 import type { OriMig04Mode } from "./oriMig04RolloutGate.js";
 
 /**
@@ -19,21 +22,26 @@ export function createOriMig04CircuitBreaker({
   readonly maxErrorRate?: number;
   readonly maxP95Ms?: number;
 }) {
-  if (!Number.isSafeInteger(minimumSamples) || minimumSamples < 1 ||
-      !Number.isFinite(maxErrorRate) || maxErrorRate < 0 || maxErrorRate > 1 ||
-      !Number.isFinite(maxP95Ms) || maxP95Ms <= 0)
+  if (
+    !Number.isSafeInteger(minimumSamples) ||
+    minimumSamples < 1 ||
+    !Number.isFinite(maxErrorRate) ||
+    maxErrorRate < 0 ||
+    maxErrorRate > 1 ||
+    !Number.isFinite(maxP95Ms) ||
+    maxP95Ms <= 0
+  )
     throw Error("invalid MIG-04 circuit breaker thresholds");
   let tripped = false;
   return Object.freeze({
     observe(mode: OriMig04Mode, outcome: OriMig04Outcome, durationMs: number) {
       telemetry.record(mode, outcome, durationMs);
       const snapshot = telemetry.snapshot();
-      const measured = snapshot.outcomes.success + snapshot.outcomes.error +
-        snapshot.outcomes.fallback;
+      const measured =
+        snapshot.outcomes.success + snapshot.outcomes.error + snapshot.outcomes.fallback;
       if (tripped || measured < minimumSamples || mode !== "pilot") return;
       const failureRate = (snapshot.outcomes.error + snapshot.outcomes.fallback) / measured;
-      if (failureRate > maxErrorRate ||
-          (snapshot.p95Ms !== null && snapshot.p95Ms > maxP95Ms)) {
+      if (failureRate > maxErrorRate || (snapshot.p95Ms !== null && snapshot.p95Ms > maxP95Ms)) {
         tripped = true;
         controller.emergencyDisable();
       }

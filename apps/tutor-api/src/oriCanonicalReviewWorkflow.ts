@@ -156,7 +156,9 @@ export function createOriCanonicalReviewWorkflow({
           allowedBlocks: ["move"],
           scriptId,
           ...(mayCommit ? { mayCommit: () => mayCommit(projectId) } : {}),
-          ...(commitFence ? { commitFence: (write: () => Promise<void>) => commitFence(projectId, write) } : {}),
+          ...(commitFence
+            ? { commitFence: (write: () => Promise<void>) => commitFence(projectId, write) }
+            : {}),
         });
         if (result === "applied") appliedTickets.add(ticketId);
         return result;

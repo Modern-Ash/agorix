@@ -23,10 +23,9 @@ export async function emergencyDisableOriPgRollout(
     if (result.rows.length !== 1) {
       throw new Error("Ori rollout policy not found; rollback unconfirmed");
     }
-    await tx.query(
-      "delete from agorix_ori_rollout_projects where deployment_id = $1",
-      [deploymentId],
-    );
+    await tx.query("delete from agorix_ori_rollout_projects where deployment_id = $1", [
+      deploymentId,
+    ]);
     const row = result.rows[0];
     if (!row) throw new Error("Ori rollback epoch missing");
     const epoch = Number(row.epoch);

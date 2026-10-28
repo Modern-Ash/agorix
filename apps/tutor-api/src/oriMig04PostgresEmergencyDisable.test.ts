@@ -8,11 +8,14 @@ describe("MIG-04 durable emergency disable contract", () => {
     const tx: OriPgTransaction = {
       async query<Row extends Record<string, unknown>>(sql: string) {
         queries.push(sql);
-        return { rows: (queries.length === 1 ? [{ epoch: "9" }] : []) as unknown as readonly Row[] };
+        return {
+          rows: (queries.length === 1 ? [{ epoch: "9" }] : []) as unknown as readonly Row[],
+        };
       },
     };
     const epoch = await emergencyDisableOriPgRollout(
-      { transaction: async (work) => work(tx) }, "ori",
+      { transaction: async (work) => work(tx) },
+      "ori",
     );
     expect(epoch).toBe(9);
     expect(queries[0]).toContain("epoch = epoch + 1");
@@ -28,20 +31,25 @@ describe("MIG-04 durable emergency disable contract", () => {
         return { rows: [] as readonly Row[] };
       },
     };
-    await expect(emergencyDisableOriPgRollout(
-      { transaction: async (work) => work(tx) }, "missing",
-    )).rejects.toThrow("rollback unconfirmed");
+    await expect(
+      emergencyDisableOriPgRollout({ transaction: async (work) => work(tx) }, "missing"),
+    ).rejects.toThrow("rollback unconfirmed");
     expect(statements).toBe(1);
   });
 
   it("rejects an invalid deployment before opening a transaction", async () => {
     let invoked = false;
-    await expect(emergencyDisableOriPgRollout({
-      transaction: async <T>(_work: (tx: OriPgTransaction) => Promise<T>): Promise<T> => {
-        invoked = true;
-        throw new Error("transaction must not be invoked");
-      },
-    }, "")).rejects.toThrow("Invalid");
+    await expect(
+      emergencyDisableOriPgRollout(
+        {
+          transaction: async <T>(_work: (tx: OriPgTransaction) => Promise<T>): Promise<T> => {
+            invoked = true;
+            throw new Error("transaction must not be invoked");
+          },
+        },
+        "",
+      ),
+    ).rejects.toThrow("Invalid");
     expect(invoked).toBe(false);
   });
 });

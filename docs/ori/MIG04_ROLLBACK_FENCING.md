@@ -12,7 +12,7 @@ remain mandatory.
    beginning of an authorized operation.
 4. Supply `oriMig04RolloutDecide: fence.decide` and
    `oriMig04CommitFence: async (projectId, write) =>
-   (await fence.commit(projectId, generation, write)).applied`
+(await fence.commit(projectId, generation, write)).applied`
    to `createOriAuthorizedReviewOptions`.
 5. For rollback, await `fence.emergencyDisable()` and verify that all
    subsequent requests and commits are rejected.

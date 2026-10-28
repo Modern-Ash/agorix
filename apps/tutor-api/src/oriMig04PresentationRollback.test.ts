@@ -8,9 +8,7 @@ import { createOriMig04RolloutController } from "./oriMig04RolloutController.js"
 const servers: Server[] = [];
 afterEach(async () => {
   await Promise.all(
-    servers.splice(0).map(
-      (server) => new Promise<void>((done) => server.close(() => done())),
-    ),
+    servers.splice(0).map((server) => new Promise<void>((done) => server.close(() => done()))),
   );
 });
 describe("MIG-04 presentation receipt rollback", () => {
@@ -44,12 +42,14 @@ describe("MIG-04 presentation receipt rollback", () => {
       });
     expect((await post()).status).toBe(404);
     expect(calls).toBe(0);
-    expect(controller.replaceFromHost({
-      mode: "pilot",
-      humanAuthorized: true,
-      killSwitch: false,
-      approvedProjectIds: ["pilot"],
-    })).toBe(true);
+    expect(
+      controller.replaceFromHost({
+        mode: "pilot",
+        humanAuthorized: true,
+        killSwitch: false,
+        approvedProjectIds: ["pilot"],
+      }),
+    ).toBe(true);
     expect((await post()).status).toBe(200);
     expect(calls).toBe(1);
     controller.emergencyDisable();

@@ -37,11 +37,18 @@ export async function commitOriProjectWithPgFence(
   input: OriPgCommitInput,
 ): Promise<OriPgCommitResult> {
   if (
-    !input.deploymentId || !input.ownerId || !input.projectId ||
-    !Number.isSafeInteger(input.expectedEpoch) || input.expectedEpoch < 0 ||
-    !Number.isSafeInteger(input.expectedRevision) || input.expectedRevision < 1 ||
-    !input.storedProjectJson || !input.semanticHash || !input.updatedAt
-  ) return "denied";
+    !input.deploymentId ||
+    !input.ownerId ||
+    !input.projectId ||
+    !Number.isSafeInteger(input.expectedEpoch) ||
+    input.expectedEpoch < 0 ||
+    !Number.isSafeInteger(input.expectedRevision) ||
+    input.expectedRevision < 1 ||
+    !input.storedProjectJson ||
+    !input.semanticHash ||
+    !input.updatedAt
+  )
+    return "denied";
 
   return provider.transaction(async (tx) => {
     const policy = await tx.query<{
@@ -56,10 +63,13 @@ export async function commitOriProjectWithPgFence(
     );
     const row = policy.rows[0];
     if (
-      !row || String(row.epoch) !== String(input.expectedEpoch) ||
-      row.mode !== "pilot" || row.human_authorized !== true ||
+      !row ||
+      String(row.epoch) !== String(input.expectedEpoch) ||
+      row.mode !== "pilot" ||
+      row.human_authorized !== true ||
       row.kill_switch !== false
-    ) return "denied";
+    )
+      return "denied";
 
     const allowlist = await tx.query<{ project_id: string }>(
       `select project_id from agorix_ori_rollout_projects
@@ -75,8 +85,12 @@ export async function commitOriProjectWithPgFence(
        where owner_id = $4 and project_id = $5 and revision = $6
        returning revision`,
       [
-        input.storedProjectJson, input.semanticHash, input.updatedAt,
-        input.ownerId, input.projectId, input.expectedRevision,
+        input.storedProjectJson,
+        input.semanticHash,
+        input.updatedAt,
+        input.ownerId,
+        input.projectId,
+        input.expectedRevision,
       ],
     );
     return updated.rows.length === 1 ? "applied" : "conflict";

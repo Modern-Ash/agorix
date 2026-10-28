@@ -88,19 +88,30 @@ describe("explicit Ori proposal persistence boundary", () => {
   it("refuses canonical project update when a fenced rollout generation is stale", async () => {
     const { repository, record } = await setup();
     const fence = createOriMig04CommitFence();
-    expect(await fence.replaceFromHost({
-      mode: "pilot", humanAuthorized: true, killSwitch: false,
-      approvedProjectIds: [record.projectId],
-    })).toBe(true);
+    expect(
+      await fence.replaceFromHost({
+        mode: "pilot",
+        humanAuthorized: true,
+        killSwitch: false,
+        approvedProjectIds: [record.projectId],
+      }),
+    ).toBe(true);
     const generation = fence.snapshot(record.projectId).generation;
     await fence.emergencyDisable();
-    expect(await applyApprovedOriProposal({
-      repository, owner: "student", projectId: record.projectId,
-      expectedRevision: record.revision, approved: true,
-      proposal: oriMove, allowedBlocks: ["move"], scriptId: "main",
-      commitFence: async (write) =>
-        (await fence.commit(record.projectId, generation, write)).applied,
-    })).toBe("rejected");
+    expect(
+      await applyApprovedOriProposal({
+        repository,
+        owner: "student",
+        projectId: record.projectId,
+        expectedRevision: record.revision,
+        approved: true,
+        proposal: oriMove,
+        allowedBlocks: ["move"],
+        scriptId: "main",
+        commitFence: async (write) =>
+          (await fence.commit(record.projectId, generation, write)).applied,
+      }),
+    ).toBe("rejected");
     expect((await repository.get("student", record.projectId)).revision).toBe(record.revision);
   });
   it("does not mutate without trusted approval", async () => {

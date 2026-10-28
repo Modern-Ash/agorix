@@ -10,9 +10,7 @@ import { createOriMig04CircuitBreaker } from "./oriMig04CircuitBreaker.js";
 const servers: Server[] = [];
 afterEach(async () => {
   await Promise.all(
-    servers.splice(0).map(
-      (server) => new Promise<void>((done) => server.close(() => done())),
-    ),
+    servers.splice(0).map((server) => new Promise<void>((done) => server.close(() => done()))),
   );
 });
 describe("MIG-04 live HTTP telemetry and automatic rollback", () => {
@@ -40,12 +38,14 @@ describe("MIG-04 live HTTP telemetry and automatic rollback", () => {
     servers.push(server);
     await new Promise<void>((done) => server.listen(0, "127.0.0.1", done));
     const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
-    expect(controller.replaceFromHost({
-      mode: "pilot",
-      humanAuthorized: true,
-      killSwitch: false,
-      approvedProjectIds: ["pilot"],
-    })).toBe(true);
+    expect(
+      controller.replaceFromHost({
+        mode: "pilot",
+        humanAuthorized: true,
+        killSwitch: false,
+        approvedProjectIds: ["pilot"],
+      }),
+    ).toBe(true);
     const response = await fetch(base + "/api/tutor/ori/review/propose", {
       method: "POST",
       headers: {

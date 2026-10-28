@@ -34,9 +34,11 @@ describe("MIG-04 PostgreSQL transaction provider", () => {
   });
   it("rolls back and releases on callback failure", async () => {
     const test = fixture("SELECT 1");
-    await expect(test.provider.transaction(async (tx) => {
-      await tx.query("SELECT 1", []);
-    })).rejects.toThrow("database failed");
+    await expect(
+      test.provider.transaction(async (tx) => {
+        await tx.query("SELECT 1", []);
+      }),
+    ).rejects.toThrow("database failed");
     expect(test.statements).toEqual(["BEGIN", "SELECT 1", "ROLLBACK"]);
     expect(test.released()).toBe(1);
   });

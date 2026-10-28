@@ -1,13 +1,15 @@
 import { describe, expect, it } from "vitest";
-import {
-  commitOriProjectWithPgFence,
-  type OriPgTransaction,
-} from "./oriMig04PostgresAtomicCas.js";
+import { commitOriProjectWithPgFence, type OriPgTransaction } from "./oriMig04PostgresAtomicCas.js";
 
 const input = {
-  deploymentId: "ori", ownerId: "owner", projectId: "pilot",
-  expectedEpoch: 4, expectedRevision: 2,
-  storedProjectJson: "{}", semanticHash: "hash", updatedAt: "2026-10-27",
+  deploymentId: "ori",
+  ownerId: "owner",
+  projectId: "pilot",
+  expectedEpoch: 4,
+  expectedRevision: 2,
+  storedProjectJson: "{}",
+  semanticHash: "hash",
+  updatedAt: "2026-10-27",
 };
 
 function run(rows: readonly (readonly Record<string, unknown>[])[]) {
@@ -21,9 +23,7 @@ function run(rows: readonly (readonly Record<string, unknown>[])[]) {
   };
   return {
     statements,
-    commit: () => commitOriProjectWithPgFence(
-      { transaction: async (work) => work(tx) }, input,
-    ),
+    commit: () => commitOriProjectWithPgFence({ transaction: async (work) => work(tx) }, input),
   };
 }
 const policy = { epoch: "4", mode: "pilot", human_authorized: true, kill_switch: false };
