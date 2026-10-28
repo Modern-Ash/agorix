@@ -1,0 +1,57 @@
+name: Format Ori MIG-04 debt
+on:
+  push:
+    branches:
+      - fix/ori-mig04-prettier-debt
+permissions:
+  contents: write
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.23.2'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format exact CI-reported files
+        run: |
+          pnpm exec prettier --write \
+            apps/tutor-api/src/oriApprovedProjectApply.test.ts \
+            apps/tutor-api/src/oriAuthorizedReviewComposition.ts \
+            apps/tutor-api/src/oriCanonicalReviewWorkflow.ts \
+            apps/tutor-api/src/oriMig04ApplyRaceRollback.test.ts \
+            apps/tutor-api/src/oriMig04CircuitBreaker.ts \
+            apps/tutor-api/src/oriMig04CommitFence.test.ts \
+            apps/tutor-api/src/oriMig04CommitFence.ts \
+            apps/tutor-api/src/oriMig04DecisionApplyRollback.test.ts \
+            apps/tutor-api/src/oriMig04LiveProposalTelemetry.test.ts \
+            apps/tutor-api/src/oriMig04PgPersistencePort.test.ts \
+            apps/tutor-api/src/oriMig04PgTransactionProvider.test.ts \
+            apps/tutor-api/src/oriMig04PgTransactionProvider.ts \
+            apps/tutor-api/src/oriMig04PostgresAtomicCas.test.ts \
+            apps/tutor-api/src/oriMig04PostgresAtomicCas.ts \
+            apps/tutor-api/src/oriMig04PostgresEmergencyDisable.test.ts \
+            apps/tutor-api/src/oriMig04PostgresEmergencyDisable.ts \
+            apps/tutor-api/src/oriMig04PresentationRollback.test.ts \
+            apps/tutor-api/src/oriMig04RolloutTelemetry.ts \
+            apps/tutor-api/src/oriMig04TutorServerPolicyGate.test.ts \
+            apps/tutor-api/src/server.ts \
+            docs/ori/MIG04_ROLLBACK_FENCING.md
+          pnpm exec prettier --check .
+      - name: Commit and push formatting
+        run: |
+          if ! git diff --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add apps/tutor-api/src docs/ori/MIG04_ROLLBACK_FENCING.md
+            git commit -m "style(ori): format MIG-04 CI debt"
+            git push origin HEAD:fix/ori-mig04-prettier-debt
+          fi
