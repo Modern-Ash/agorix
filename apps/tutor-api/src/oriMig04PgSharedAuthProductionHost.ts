@@ -43,8 +43,15 @@ export async function startOriMig04PgSharedAuthProductionHost({
     await assertOriMig04PgLearningContextReadiness(sharedAuth.sqlPool);
     // Compose evidence from the same durable owner-scoped database as auth.
     // An injected placeholder cannot become an authority in production.
-    const learningContext = createOriMig04PgLearningContext(sharedAuth.sqlPool);
+    const readLearningContext = createOriMig04PgLearningContext(sharedAuth.sqlPool);
     const recordTrustedLearningEvent = createOriMig04PgLearningEvents(sharedAuth.sqlPool);
+    // The canonical evidence resolver calls this provider only AFTER a
+    // successful owner-scoped deterministic execution, before invoking Ori.
+    // Consequently attempts cannot be forged by browser event payloads.
+    const learningContext = async (owner: string, projectId: string) => {
+      const recorded = await recordTrustedLearningEvent(owner, projectId, { kind: "attempt" });
+      return recorded ? readLearningContext(owner, projectId) : null;
+    };
     const routeState: {
       dispatch?: ReturnType<typeof createOriMig04WebAuthRoutes>;
       learning?: ReturnType<typeof createOriMig04PgLearningEventRoutes>;
