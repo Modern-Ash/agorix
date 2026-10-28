@@ -23,6 +23,7 @@ run("MIG-04 real authenticated HTTP cookie boundary", () => {
     const password = "VeryStrongPassword_2026!";
     let accountId: string | undefined;
     let browserAccountId: string | undefined;
+    let ownedProjectId: string | undefined;
     try {
       await admin.query(POSTGRESQL_SCHEMA_SQL);
       await admin.query("alter table agorix_projects add column if not exists title text");
@@ -90,6 +91,25 @@ run("MIG-04 real authenticated HTTP cookie boundary", () => {
         expect(loginCookie).toContain("Secure");
         expect(loginCookie).toContain("SameSite=Strict");
         expect(loginCookie).toContain("Path=/");
+        ownedProjectId = `owned_${Date.now().toString(36)}`;
+        await admin.query(
+          "insert into agorix_projects (owner_id, project_id, title, created_at, revision, stored_project_json, semantic_hash, updated_at) values ($1, $2, 'Owned fixture', now(), 1, '{}', 'initial', now())",
+          [browserAccountId, ownedProjectId],
+        );
+        const ownedSelection = await fetch(`${authBase}/project`, {
+          method: "POST",
+          headers: {
+            ...browserHeaders,
+            cookie: httpLogin.headers.get("set-cookie")?.split(";")[0] ?? "",
+          },
+          body: JSON.stringify({ projectId: ownedProjectId }),
+        });
+        expect(ownedSelection.status).toBe(200);
+        const mapping = await admin.query<{ project_id: string }>(
+          "select project_id from agorix_ori_session_projects where account_id = $1",
+          [browserAccountId],
+        );
+        expect(mapping.rows[0]?.project_id).toBe(ownedProjectId);
         const unownedProject = await fetch(`${authBase}/project`, {
           method: "POST",
           headers: {
@@ -161,6 +181,12 @@ run("MIG-04 real authenticated HTTP cookie boundary", () => {
         await runtime.close();
       }
     } finally {
+      if (browserAccountId) {
+        await admin.query("delete from agorix_ori_session_projects where account_id = $1", [browserAccountId]);
+      }
+      if (ownedProjectId) {
+        await admin.query("delete from agorix_projects where project_id = $1", [ownedProjectId]);
+      }
       for (const id of [accountId, browserAccountId]) {
         if (!id) continue;
         await admin.query("delete from agorix_auth_sessions where account_id = $1", [id]);
