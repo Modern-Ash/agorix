@@ -13,14 +13,16 @@
     "@agorix/auth-service": "workspace:*",
     "@agorix/curriculum": "workspace:*",
     "@agorix/ori-agent": "workspace:*",
+    "@agorix/persistence": "workspace:*",
     "@agorix/program-model": "workspace:*",
     "@agorix/project-repository": "workspace:*",
     "@agorix/provider-runtime": "workspace:*",
     "@agorix/runtime": "workspace:*",
-    "@agorix/tutor-contract": "workspace:*",
-    "@agorix/persistence": "workspace:*"
+    "@agorix/tutor-contract": "workspace:*"
   },
   "devDependencies": {
-    "esbuild": "^0.28.2"
+    "@types/pg": "^8.23.1",
+    "esbuild": "^0.28.2",
+    "pg": "^8.23.1"
   }
 }

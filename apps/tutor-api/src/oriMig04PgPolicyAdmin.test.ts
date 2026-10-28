@@ -56,8 +56,18 @@ describe("MIG-04 trusted PostgreSQL rollout administration", () => {
       },
     };
     for (const config of [
-      { mode: "disabled" as const, humanAuthorized: true, killSwitch: true, approvedProjectIds: [] },
-      { mode: "shadow" as const, humanAuthorized: false, killSwitch: false, approvedProjectIds: [] },
+      {
+        mode: "disabled" as const,
+        humanAuthorized: true,
+        killSwitch: true,
+        approvedProjectIds: [],
+      },
+      {
+        mode: "shadow" as const,
+        humanAuthorized: false,
+        killSwitch: false,
+        approvedProjectIds: [],
+      },
     ]) {
       await expect(replaceOriPgRolloutPolicy(provider, "ori", config)).rejects.toThrow(
         "fail-closed",
@@ -71,8 +81,13 @@ describe("MIG-04 trusted PostgreSQL rollout administration", () => {
         throw Error("must not run");
       },
     };
-    await expect(replaceOriPgRolloutPolicy(provider, "bad deployment", {
-      mode: "disabled", humanAuthorized: false, killSwitch: true, approvedProjectIds: [],
-    })).rejects.toThrow("Invalid Ori rollout configuration");
+    await expect(
+      replaceOriPgRolloutPolicy(provider, "bad deployment", {
+        mode: "disabled",
+        humanAuthorized: false,
+        killSwitch: true,
+        approvedProjectIds: [],
+      }),
+    ).rejects.toThrow("Invalid Ori rollout configuration");
   });
 });
