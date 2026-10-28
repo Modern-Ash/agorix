@@ -5,6 +5,7 @@ import {
   type OriReviewIdentityResolver,
 } from "./oriReviewHttpContract.js";
 import type { OriReviewTicket } from "./oriReviewRegistry.js";
+import type { OriLearningEvent } from "./oriMig04PgLearningEvents.js";
 import { validateOriContextInput, type OriContextInput } from "./oriContextPreview.js";
 import type { OriRuntimePreview } from "./oriRuntimePreview.js";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
@@ -82,6 +83,16 @@ export interface TutorServerOptions {
   readonly oriLearningEventDispatch?: (
     request: IncomingMessage,
     response: ServerResponse,
+  ) => Promise<boolean>;
+  /**
+   * Only a trusted host may supply this callback. Review handlers invoke it
+   * after authenticated, owner-scoped canonical execution or approval.
+   * Never derive its owner/project/event from browser JSON or headers.
+   */
+  readonly oriTrustedLearningEvent?: (
+    owner: string,
+    projectId: string,
+    event: OriLearningEvent,
   ) => Promise<boolean>;
   readonly oriWebAuthDispatch?: (
     request: IncomingMessage,
@@ -334,6 +345,19 @@ export function createTutorServer(options: TutorServerOptions): Server {
         return send(response, 404, error("not-found"));
       if (!ticket || ticket.status !== "pending")
         return send(response, 409, error("proposal-unavailable"));
+      // A pending ticket proves that the server ran the persisted canonical
+      // program, received a verified Ori proposal and rechecked ownership.
+      // The browser cannot increment counters directly.
+      if (options.oriTrustedLearningEvent) {
+        const attempt = await options.oriTrustedLearningEvent(
+          identity.ownerId, identity.projectId, { kind: "attempt" },
+        );
+        if (!attempt) return send(response, 503, error("learning-evidence-unavailable"));
+        const hint = await options.oriTrustedLearningEvent(
+          identity.ownerId, identity.projectId, { kind: "hint" },
+        );
+        if (!hint) return send(response, 503, error("learning-evidence-unavailable"));
+      }
       return send(response, 200, {
         ticketId: ticket.id,
         proposal: ticket.proposal,
@@ -377,6 +401,12 @@ export function createTutorServer(options: TutorServerOptions): Server {
       if (!ticket) return send(response, 404, error("not-found"));
       if (!["accepted", "edited", "rejected", "stale"].includes(ticket.status))
         return send(response, 409, error("review-not-finalized"));
+      if (ticket.status === "accepted" && options.oriTrustedLearningEvent) {
+        const recorded = await options.oriTrustedLearningEvent(
+          identity.ownerId, identity.projectId, { kind: "stage", stage: "connect" },
+        );
+        if (!recorded) return send(response, 503, error("learning-evidence-unavailable"));
+      }
       return send(response, 200, { status: ticket.status, appliedChanges: false });
     }
 
@@ -438,7 +468,19 @@ export function createTutorServer(options: TutorServerOptions): Server {
       );
       if (result === "conflict") return send(response, 409, error("conflict"));
       if (result !== "applied") return send(response, 403, error("forbidden"));
-      return send(response, 200, { status: "applied" });
+      // The fenced CAS has committed. Never report an unsuccessful apply
+      // solely because subsequent evidence recording is unavailable.
+      let evidenceRecorded = true;
+      if (options.oriTrustedLearningEvent) {
+        try {
+          evidenceRecorded = await options.oriTrustedLearningEvent(
+            current.ownerId, current.projectId, { kind: "stage", stage: "translate" },
+          );
+        } catch {
+          evidenceRecorded = false;
+        }
+      }
+      return send(response, 200, { status: "applied", evidenceRecorded });
     }
 
     if (path === "/api/tutor/ori/context-preview") {
