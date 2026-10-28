@@ -29,7 +29,7 @@ describe("MIG-04 durable startup readiness", () => {
       const pool = {
         connect: async () => ({
           query: async <Row extends Record<string, unknown>>() => ({
-            rows: rows as readonly Row[],
+            rows: rows as unknown as readonly Row[],
           }),
           release: () => {
             releases++;
