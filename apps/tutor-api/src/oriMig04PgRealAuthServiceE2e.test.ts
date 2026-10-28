@@ -39,6 +39,8 @@ run("MIG-04 real AuthService across PostgreSQL clients", () => {
       expect(next.account.accountId).toBe(accountId);
       await remote.signOut(next.sessionToken);
       await expect(registration.resolveSession(next.sessionToken)).rejects.toThrow();
+      await remote.deleteAccount(accountId, password);
+      await expect(registration.signIn({ username, password })).rejects.toThrow();
     } finally {
       if (accountId) {
         await writer.query("delete from agorix_auth_sessions where account_id = $1", [accountId]);
