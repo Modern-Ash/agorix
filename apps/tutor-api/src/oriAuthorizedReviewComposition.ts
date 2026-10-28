@@ -30,6 +30,7 @@ export function createOriAuthorizedReviewOptions({
   presentationStore,
   oriMig04RolloutDecide,
   oriMig04CommitFence,
+  oriMig04AtomicCommit,
 }: {
   readonly repository: ProjectRepository;
   readonly oriRoot: string;
@@ -70,6 +71,7 @@ export function createOriAuthorizedReviewOptions({
         }
       : {}),
     ...(oriMig04CommitFence ? { commitFence: oriMig04CommitFence } : {}),
+    ...(oriMig04AtomicCommit ? { atomicCommit: oriMig04AtomicCommit } : {}),
   });
   return Object.freeze({
     oriReviewEnabled: true as const,
