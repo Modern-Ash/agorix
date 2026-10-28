@@ -68,7 +68,14 @@ run("MIG-04 authenticated HTTP -> independent Ori -> fenced PostgreSQL CAS", () 
       runtime = await startOriMig04PgSharedAuthProductionHost({
         env: {},
         connectionString: databaseUrl,
-        tutor: { config: configFromEnv({}) },
+        tutor: {
+          config: configFromEnv({}),
+          // This one test deliberately exercises a full multi-request review
+          // journey. The regular rate-limiter behavior has separate tests.
+          aiConfig: {
+            current: () => ({ config: { capabilities: { chat: { requestsPerMinute: 100 } } } }),
+          } as never,
+        },
         ori: {
           deploymentId,
           oriRoot,
