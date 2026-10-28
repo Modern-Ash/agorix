@@ -35,6 +35,13 @@ describe("MIG-04 trusted PostgreSQL host lifecycle", () => {
         expect(host.address.address).toBe("127.0.0.1");
         expect(host.address.port).toBeGreaterThan(0);
         expect(connections).toBe(0);
+        const response = await fetch(`http://127.0.0.1:${host.address.port}/api/tutor/ori/review/apply`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ projectId: "pilot", ticketId: "ticket", scriptId: "main" }),
+        });
+        expect(response.ok).toBe(false);
+        expect(connections).toBe(0);
       } finally {
         await host.close();
         await host.close();
