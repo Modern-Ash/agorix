@@ -111,9 +111,7 @@ run("MIG-04 real PostgreSQL rollback across independent connections", () => {
         [deploymentId],
       );
       expect(remaining.rows).toEqual([]);
-      expect(await wiring.oriMig04AtomicCommit("owner", "pilot-2", {} as never, 1)).toBe(
-        "denied",
-      );
+      expect(await wiring.oriMig04AtomicCommit("owner", "pilot-2", {} as never, 1)).toBe("denied");
     } finally {
       await pool.query("delete from agorix_ori_rollout_projects where deployment_id = $1", [
         deploymentId,
