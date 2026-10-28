@@ -35,8 +35,14 @@ export function createOriMig04WebAuthRoutes(auth: Pick<AuthService, "register" |
     }
     // These endpoints require same-origin browser requests and must not be exposed
     // behind an untrusted reverse proxy that rewrites Host/Origin.
-    if (!request.headers.origin || !request.headers.host ||
-        new URL(request.headers.origin).host !== request.headers.host) {
+    let sameOrigin = false;
+    try {
+      const origin = new URL(request.headers.origin ?? "");
+      sameOrigin = origin.protocol === "https:" && origin.host === request.headers.host;
+    } catch {
+      sameOrigin = false;
+    }
+    if (!sameOrigin || !request.headers["content-type"]?.startsWith("application/json")) {
       json(response, 403, { error: "origin-denied" });
       return true;
     }
