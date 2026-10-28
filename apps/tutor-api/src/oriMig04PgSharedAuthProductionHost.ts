@@ -77,11 +77,15 @@ export async function startOriMig04PgSharedAuthProductionHost({
       activeProject: (accountId, sessionId) => projectStore.getActiveProject(accountId, sessionId),
       record: createOriMig04PgLearningEvents(sharedAuth.sqlPool),
     });
+    const recordTrustedLearningEvent = createOriMig04PgLearningEvents(sharedAuth.sqlPool);
     let closing: Promise<void> | undefined;
     return Object.freeze({
       ...runtime,
       auth: sharedAuth.auth,
       sessionActions,
+      // Call only from trusted server-side execution/hint handlers after
+      // verifying the learner and canonical project. Never expose directly.
+      recordTrustedLearningEvent,
       close(): Promise<void> {
         closing ??= (async () => {
           try {
