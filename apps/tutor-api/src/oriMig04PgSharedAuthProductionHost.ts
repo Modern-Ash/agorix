@@ -4,6 +4,9 @@ import { assertOriMig04StartupSafe } from "./oriMig04PgStartupGuard.js";
 import { createOriMig04AuthenticatedSessionActions } from "./oriMig04AuthenticatedSessionActions.js";
 import { assertOriMig04PgAuthSchemaReadiness } from "./oriMig04PgAuthSchemaReadiness.js";
 import { createOriMig04WebAuthRoutes } from "./oriMig04WebAuthRoutes.js";
+import { createOriMig04PgLearningEventRoutes } from "./oriMig04PgLearningEventRoutes.js";
+import { createOriMig04PgLearningEvents } from "./oriMig04PgLearningEvents.js";
+import { createOriMig04PgSessionProjectStore } from "./oriMig04PgSessionProjectStore.js";
 
 type Startup = Parameters<typeof startOriMig04ProductionStartup>[0];
 
@@ -32,12 +35,23 @@ export async function startOriMig04PgSharedAuthProductionHost({
   const sharedAuth = createOriMig04PgSharedAuthInfrastructure(connectionString);
   try {
     await assertOriMig04PgAuthSchemaReadiness(sharedAuth.sqlPool);
-    const routeState: { dispatch?: ReturnType<typeof createOriMig04WebAuthRoutes> } = {};
+    const routeState: {
+      dispatch?: ReturnType<typeof createOriMig04WebAuthRoutes>;
+      learning?: ReturnType<typeof createOriMig04PgLearningEventRoutes>;
+    } = {};
     const runtime = await startOriMig04ProductionStartup({
       env,
       connectionString,
       tutor: {
         ...tutor,
+        oriLearningEventDispatch: async (request, response) => {
+          if (!routeState.learning) {
+            response.writeHead(503);
+            response.end();
+            return true;
+          }
+          return routeState.learning(request, response);
+        },
         oriWebAuthDispatch: async (request, response) => {
           if (!routeState.dispatch) {
             response.writeHead(503);
@@ -57,6 +71,12 @@ export async function startOriMig04PgSharedAuthProductionHost({
       projects: runtime.authenticatedProjectLifecycle,
     });
     routeState.dispatch = createOriMig04WebAuthRoutes(sharedAuth.auth, sessionActions);
+    const projectStore = createOriMig04PgSessionProjectStore(sharedAuth.sqlPool);
+    routeState.learning = createOriMig04PgLearningEventRoutes({
+      auth: sharedAuth.auth,
+      activeProject: (accountId, sessionId) => projectStore.getActiveProject(accountId, sessionId),
+      record: createOriMig04PgLearningEvents(sharedAuth.sqlPool),
+    });
     let closing: Promise<void> | undefined;
     return Object.freeze({
       ...runtime,
