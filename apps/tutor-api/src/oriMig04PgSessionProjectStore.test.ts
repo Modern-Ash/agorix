@@ -25,8 +25,6 @@ describe("MIG-04 PostgreSQL session project store", () => {
   });
 
   it("declares one mapping per account and session", () => {
-    expect(ORI_MIG04_SESSION_PROJECT_SCHEMA_SQL).toContain(
-      "primary key (account_id, session_id)",
-    );
+    expect(ORI_MIG04_SESSION_PROJECT_SCHEMA_SQL).toContain("primary key (account_id, session_id)");
   });
 });
