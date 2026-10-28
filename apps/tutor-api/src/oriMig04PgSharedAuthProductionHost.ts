@@ -25,6 +25,9 @@ export async function startOriMig04PgSharedAuthProductionHost({
 }) {
   // Validate policy and transport before acquiring a PostgreSQL connection.
   assertOriMig04StartupSafe(env);
+  if (socket !== undefined && (!socket.startsWith("/") || socket.includes("\\0"))) {
+    throw new Error("Invalid Ori Unix socket path");
+  }
   if (!connectionString.trim()) throw new Error("MIG-04 requires a durable PostgreSQL connection");
   const sharedAuth = createOriMig04PgSharedAuthInfrastructure(connectionString);
   try {
