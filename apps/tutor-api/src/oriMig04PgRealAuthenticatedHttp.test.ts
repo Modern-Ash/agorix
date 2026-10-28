@@ -90,6 +90,15 @@ run("MIG-04 real authenticated HTTP cookie boundary", () => {
         expect(loginCookie).toContain("Secure");
         expect(loginCookie).toContain("SameSite=Strict");
         expect(loginCookie).toContain("Path=/");
+        const unownedProject = await fetch(`${authBase}/project`, {
+          method: "POST",
+          headers: {
+            ...browserHeaders,
+            cookie: httpLogin.headers.get("set-cookie")?.split(";")[0] ?? "",
+          },
+          body: JSON.stringify({ projectId: "not-owned-by-learner" }),
+        });
+        expect(unownedProject.ok).toBe(false);
         const issuedCookie = httpLogin.headers.get("set-cookie")?.split(";")[0];
         expect(issuedCookie).toBeTruthy();
         const httpLogout = await fetch(`${authBase}/logout`, {
