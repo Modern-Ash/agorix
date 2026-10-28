@@ -49,9 +49,9 @@ describe("MIG-04 runtime dependency integrity", () => {
       { auth: null },
       { sessionToken: undefined },
     ]) {
-      expect(() =>
-        assertOriMig04RuntimeDependencies({ ...base, ...override } as never),
-      ).toThrow("Missing trusted Ori runtime dependencies");
+      expect(() => assertOriMig04RuntimeDependencies({ ...base, ...override } as never)).toThrow(
+        "Missing trusted Ori runtime dependencies",
+      );
     }
   });
 });
