@@ -116,10 +116,10 @@ run("MIG-04 real PostgreSQL authenticated runtime acceptance", () => {
           },
           sessionToken: () => null,
           repository: {
-          get: async () => {
-            throw Error("project not requested");
-          },
-        } as never,
+            get: async () => {
+              throw Error("project not requested");
+            },
+          } as never,
           oriRoot,
           world: {},
           learningContext: async () => null,
