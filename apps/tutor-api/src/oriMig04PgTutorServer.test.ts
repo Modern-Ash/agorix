@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { ProjectRepository } from "@agorix/project-repository";
 import { configFromEnv } from "./index.js";
 import { createOriMig04PgTutorServer } from "./oriMig04PgTutorServer.js";
@@ -17,7 +20,7 @@ describe("MIG-04 trusted TutorServer bootstrap", () => {
         },
         deploymentId: "ori",
         repository: {} as ProjectRepository,
-        oriRoot: "/unused",
+        oriRoot: mkdtempSync(join(tmpdir(), "ori-server-")),
         world: {},
         learningContext: async () => null,
         resolveSession: async () => null,
