@@ -325,6 +325,15 @@ export function createTutorServer(options: TutorServerOptions): Server {
         Object.keys(parsed).length !== 0
       )
         return send(response, 400, error("invalid-request"));
+      // A validated, authenticated request for help is a real hint-use event.
+      // The actual attempt is recorded only after canonical execution succeeds,
+      // by the production learning-context provider.
+      if (options.oriTrustedLearningEvent) {
+        const recorded = await options.oriTrustedLearningEvent(
+          identity.ownerId, identity.projectId, { kind: "hint" },
+        );
+        if (!recorded) return send(response, 503, error("learning-evidence-unavailable"));
+      }
       const started = performance.now();
       let ticket: OriReviewTicket | null;
       try {
@@ -345,19 +354,6 @@ export function createTutorServer(options: TutorServerOptions): Server {
         return send(response, 404, error("not-found"));
       if (!ticket || ticket.status !== "pending")
         return send(response, 409, error("proposal-unavailable"));
-      // A pending ticket proves that the server ran the persisted canonical
-      // program, received a verified Ori proposal and rechecked ownership.
-      // The browser cannot increment counters directly.
-      if (options.oriTrustedLearningEvent) {
-        const attempt = await options.oriTrustedLearningEvent(
-          identity.ownerId, identity.projectId, { kind: "attempt" },
-        );
-        if (!attempt) return send(response, 503, error("learning-evidence-unavailable"));
-        const hint = await options.oriTrustedLearningEvent(
-          identity.ownerId, identity.projectId, { kind: "hint" },
-        );
-        if (!hint) return send(response, 503, error("learning-evidence-unavailable"));
-      }
       return send(response, 200, {
         ticketId: ticket.id,
         proposal: ticket.proposal,
