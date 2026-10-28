@@ -41,11 +41,19 @@ export function createOriMig04PgSessionProjectLifecycle(pool: Pick<Pool, "query"
       if (!valid(accountId) || !valid(oldSessionId) || !valid(newSessionId)) {
         throw new Error("Invalid Ori session project identity");
       }
-      await pool.query(
+      if (oldSessionId === newSessionId) return;
+      const result = await pool.query(
         `update agorix_ori_session_projects set session_id = $3, updated_at = now()
-         where account_id = $1 and session_id = $2`,
+         where account_id = $1 and session_id = $2
+           and not exists (
+             select 1 from agorix_ori_session_projects target
+             where target.account_id = $1 and target.session_id = $3
+           )`,
         [accountId, oldSessionId, newSessionId],
       );
+      if (result.rowCount !== 1) {
+        throw new Error("Ori session project rotation denied");
+      }
     },
   });
 }
