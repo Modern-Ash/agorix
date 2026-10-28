@@ -49,6 +49,13 @@ run("MIG-04 real PostgreSQL startup readiness", () => {
         [deploymentId],
       );
       await expect(assertOriMig04PgReadiness(adapter, deploymentId)).resolves.toBeUndefined();
+      const state = await pool.query<{ epoch: string; mode: string; kill_switch: boolean }>(
+        "select epoch, mode, kill_switch from agorix_ori_rollout_policy where deployment_id = $1",
+        [deploymentId],
+      );
+      expect(Number(state.rows[0]?.epoch)).toBe(2);
+      expect(state.rows[0]?.mode).toBe("disabled");
+      expect(state.rows[0]?.kill_switch).toBe(true);
     } finally {
       await pool.query("delete from agorix_ori_rollout_policy where deployment_id = $1", [
         deploymentId,
