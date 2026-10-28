@@ -37,7 +37,10 @@ describe("MIG-04 durable emergency disable contract", () => {
   it("rejects an invalid deployment before opening a transaction", async () => {
     let invoked = false;
     await expect(emergencyDisableOriPgRollout({
-      transaction: async () => { invoked = true; return 1; },
+      transaction: async <T>(_work: (tx: OriPgTransaction) => Promise<T>): Promise<T> => {
+        invoked = true;
+        throw new Error("transaction must not be invoked");
+      },
     }, "")).rejects.toThrow("Invalid");
     expect(invoked).toBe(false);
   });
