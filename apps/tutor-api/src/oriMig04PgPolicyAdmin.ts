@@ -21,7 +21,7 @@ export async function replaceOriPgRolloutPolicy(
 ): Promise<number> {
   if (
     !deploymentId ||
-    deploymentId.length > 128 ||
+    !/^[a-zA-Z0-9_-]{1,128}$/.test(deploymentId) ||
     !["disabled", "shadow", "pilot"].includes(config.mode) ||
     typeof config.humanAuthorized !== "boolean" ||
     typeof config.killSwitch !== "boolean" ||
@@ -32,6 +32,11 @@ export async function replaceOriPgRolloutPolicy(
     )
   ) {
     throw new Error("Invalid Ori rollout configuration");
+  }
+
+  // Disabled and shadow policies must never retain effective authorization.
+  if (config.mode !== "pilot" && (config.humanAuthorized || !config.killSwitch)) {
+    throw new Error("Non-pilot Ori policy must remain fail-closed");
   }
 
   // Pilot authorization must be explicit; never infer it from the allowlist.

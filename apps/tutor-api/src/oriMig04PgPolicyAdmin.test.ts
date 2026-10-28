@@ -47,4 +47,32 @@ describe("MIG-04 trusted PostgreSQL rollout administration", () => {
     ).rejects.toThrow("explicit authorization");
     expect(invoked).toBe(false);
   });
+  it("rejects non-pilot policies that retain authorization", async () => {
+    let invoked = false;
+    const provider = {
+      transaction: async <T>(_work: (tx: OriPgTransaction) => Promise<T>): Promise<T> => {
+        invoked = true;
+        throw Error("must not run");
+      },
+    };
+    for (const config of [
+      { mode: "disabled" as const, humanAuthorized: true, killSwitch: true, approvedProjectIds: [] },
+      { mode: "shadow" as const, humanAuthorized: false, killSwitch: false, approvedProjectIds: [] },
+    ]) {
+      await expect(replaceOriPgRolloutPolicy(provider, "ori", config)).rejects.toThrow(
+        "fail-closed",
+      );
+    }
+    expect(invoked).toBe(false);
+  });
+  it("rejects invalid deployment identifiers", async () => {
+    const provider = {
+      transaction: async <T>(_work: (tx: OriPgTransaction) => Promise<T>): Promise<T> => {
+        throw Error("must not run");
+      },
+    };
+    await expect(replaceOriPgRolloutPolicy(provider, "bad deployment", {
+      mode: "disabled", humanAuthorized: false, killSwitch: true, approvedProjectIds: [],
+    })).rejects.toThrow("Invalid Ori rollout configuration");
+  });
 });
