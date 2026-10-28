@@ -11,10 +11,7 @@ import {
 export function startOriMig04PgSessionProjectRuntime({
   projectStore,
   ...options
-}: Omit<
-  Parameters<typeof startOriMig04PgCanonicalAuthenticatedRuntime>[0],
-  "ori"
-> & {
+}: Omit<Parameters<typeof startOriMig04PgCanonicalAuthenticatedRuntime>[0], "ori"> & {
   readonly projectStore: OriSessionProjectStore;
   readonly ori: Omit<
     Parameters<typeof startOriMig04PgCanonicalAuthenticatedRuntime>[0]["ori"],
