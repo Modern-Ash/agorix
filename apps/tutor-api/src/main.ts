@@ -11,9 +11,11 @@ import { defaultAiConfig, openSqliteAiConfigRepository } from "./aiConfig.js";
 import { AdminAuth } from "./adminAuth.js";
 import { oriExternalShadowEnabled } from "./oriExternalShadow.js";
 import { createOriShadowTransport } from "./oriExternalShadowTransport.js";
+import { assertOriMig04StartupSafe } from "./oriMig04PgStartupGuard.js";
 
 // Entry point (issue #348): `node dist/main.js`. Binds loopback unless the deployment
 // explicitly sets AGORIX_TUTOR_HOST (for example inside a container network).
+assertOriMig04StartupSafe(process.env);
 const config = configFromEnv(process.env);
 const host = process.env["AGORIX_TUTOR_HOST"] ?? "127.0.0.1";
 const port = Number.parseInt(process.env["AGORIX_TUTOR_PORT"] ?? "8471", 10);
