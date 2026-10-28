@@ -79,6 +79,10 @@ export interface TutorServerOptions {
   readonly oriRuntimePreviewEnabled?: boolean;
   readonly oriContextPreview?: (input: OriContextInput) => Promise<OriRuntimePreview>;
   readonly oriContextPreviewEnabled?: boolean;
+  readonly oriLearningEventDispatch?: (
+    request: IncomingMessage,
+    response: ServerResponse,
+  ) => Promise<boolean>;
   readonly oriWebAuthDispatch?: (
     request: IncomingMessage,
     response: ServerResponse,
@@ -241,6 +245,11 @@ export function createTutorServer(options: TutorServerOptions): Server {
 
   async function handle(request: IncomingMessage, response: ServerResponse): Promise<void> {
     const path = new URL(request.url ?? "/", "http://local").pathname;
+    if (path === "/api/tutor/ori/learning/event") {
+      if (!options.oriLearningEventDispatch) return send(response, 404, error("not-found"));
+      if (await options.oriLearningEventDispatch(request, response)) return;
+      return send(response, 404, error("not-found"));
+    }
     if (path.startsWith("/api/tutor/ori/auth/")) {
       if (!options.oriWebAuthDispatch) return send(response, 404, error("not-found"));
       if (await options.oriWebAuthDispatch(request, response)) return;
