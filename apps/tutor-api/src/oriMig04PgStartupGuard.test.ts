@@ -14,6 +14,12 @@ describe("MIG-04 production startup fail-closed guard", () => {
       );
     }
   });
+  it("rejects environment-only integrated host selection", () => {
+    expect(() => assertOriMig04StartupSafe({ AGORIX_ORI_MIG04_HOST: "integrated" })).toThrow(
+      "requires trusted deployment providers",
+    );
+    expect(() => assertOriMig04StartupSafe({ AGORIX_ORI_MIG04_HOST: "legacy" })).not.toThrow();
+  });
   it("does not change default startup behavior", () => {
     expect(() => assertOriMig04StartupSafe({})).not.toThrow();
   });
