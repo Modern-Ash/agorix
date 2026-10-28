@@ -36,7 +36,11 @@ describe("MIG-04 real authenticated PostgreSQL runtime", () => {
         tutor: { config: configFromEnv({}) },
         ori: {
           deploymentId: "ori",
-          auth: { resolveSession: async () => { throw Error("unavailable"); } },
+          auth: {
+            resolveSession: async () => {
+              throw Error("unavailable");
+            },
+          },
           sessionToken: () => null,
           repository: {} as never,
           activeProject: async () => null,
