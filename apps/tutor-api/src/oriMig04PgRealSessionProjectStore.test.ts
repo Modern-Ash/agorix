@@ -17,16 +17,13 @@ run("MIG-04 real PostgreSQL session project mapping", () => {
         "insert into agorix_ori_session_projects (account_id, session_id, project_id) values ($1, $2, $3)",
         [accountId, sessionId, "project_1"],
       );
-      expect(await infrastructure.projectStore.getActiveProject(accountId, sessionId)).toBe(
-        "project_1",
-      );
+      // A mapping alone must not grant access to a missing canonical project.
+      expect(await infrastructure.projectStore.getActiveProject(accountId, sessionId)).toBeNull();
       expect(await infrastructure.projectStore.getActiveProject("other", sessionId)).toBeNull();
       expect(await infrastructure.projectStore.getActiveProject(accountId, "other")).toBeNull();
       await infrastructure.projectLifecycle.rotate(accountId, sessionId, "rotated");
       expect(await infrastructure.projectStore.getActiveProject(accountId, sessionId)).toBeNull();
-      expect(await infrastructure.projectStore.getActiveProject(accountId, "rotated")).toBe(
-        "project_1",
-      );
+      expect(await infrastructure.projectStore.getActiveProject(accountId, "rotated")).toBeNull();
       await infrastructure.projectLifecycle.revoke(accountId, "rotated");
       expect(await infrastructure.projectStore.getActiveProject(accountId, "rotated")).toBeNull();
     } finally {

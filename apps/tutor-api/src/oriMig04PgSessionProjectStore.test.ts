@@ -7,14 +7,18 @@ import {
 describe("MIG-04 PostgreSQL session project store", () => {
   it("uses parameterized account and session identity only", async () => {
     const calls: unknown[][] = [];
+    const statements: string[] = [];
     const store = createOriMig04PgSessionProjectStore({
-      query: async (_sql: string, values: unknown[]) => {
+      query: async (sql: string, values: unknown[]) => {
+        statements.push(sql);
         calls.push(values);
         return { rows: [{ project_id: "project_1" }] } as never;
       },
     } as never);
     expect(await store.getActiveProject("owner", "session")).toBe("project_1");
     expect(calls).toEqual([["owner", "session"]]);
+    expect(statements[0]).toContain("p.owner_id = s.account_id");
+    expect(statements[0]).toContain("p.project_id = s.project_id");
   });
 
   it("returns null for absent mapping", async () => {
