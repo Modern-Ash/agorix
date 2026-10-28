@@ -51,6 +51,13 @@ export function createOriAuthorizedReviewOptions({
     projectId: string,
     write: () => Promise<void>,
   ) => Promise<boolean>;
+  /** Trusted host-only atomic persistence callback. */
+  readonly oriMig04AtomicCommit?: (
+    owner: string,
+    projectId: string,
+    storedProject: Awaited<ReturnType<ProjectRepository["get"]>>["storedProject"],
+    expectedRevision: number,
+  ) => Promise<"applied" | "denied" | "conflict">;
   /** Test-only: production invokes the real Ori process. */
   readonly runOriOverride?: (evidence: unknown) => Promise<OriHostEvidenceResult>;
 }) {
