@@ -95,6 +95,9 @@ importers:
       '@agorix/program-model':
         specifier: workspace:*
         version: link:../../packages/program-model
+      '@agorix/persistence':
+        specifier: workspace:*
+        version: link:../../packages/persistence
       '@agorix/project-repository':
         specifier: workspace:*
         version: link:../../packages/project-repository

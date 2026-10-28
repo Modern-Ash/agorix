@@ -17,7 +17,8 @@
     "@agorix/project-repository": "workspace:*",
     "@agorix/provider-runtime": "workspace:*",
     "@agorix/runtime": "workspace:*",
-    "@agorix/tutor-contract": "workspace:*"
+    "@agorix/tutor-contract": "workspace:*",
+    "@agorix/persistence": "workspace:*"
   },
   "devDependencies": {
     "esbuild": "^0.28.2"
