@@ -127,7 +127,8 @@ describe("explicit Ori proposal persistence boundary", () => {
       ["denied", "rejected"],
       ["conflict", "conflict"],
     ] as const) {
-      expect(\n        await applyApprovedOriProposal({
+      expect(
+        await applyApprovedOriProposal({
         repository: guarded,
         owner: "student",
         projectId: record.projectId,
@@ -140,7 +141,8 @@ describe("explicit Ori proposal persistence boundary", () => {
           calls++;
           return outcome;
         },
-        }),\n      ).toBe(expected);
+        }),
+      ).toBe(expected);
     }
     expect(calls).toBe(2);
     expect((await repository.get("student", record.projectId)).revision).toBe(record.revision);
