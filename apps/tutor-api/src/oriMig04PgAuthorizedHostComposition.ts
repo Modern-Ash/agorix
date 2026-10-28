@@ -31,7 +31,10 @@ export function createOriMig04PgAuthorizedHostOptions({
   readonly repository: ProjectRepository;
   readonly oriRoot: string;
   readonly world: WorldStateInput;
-  readonly learningContext: (owner: string, projectId: string) => Promise<OriLearningContext | null>;
+  readonly learningContext: (
+    owner: string,
+    projectId: string,
+  ) => Promise<OriLearningContext | null>;
   readonly resolveSession: (
     request: IncomingMessage,
     response?: ServerResponse,
