@@ -3,6 +3,23 @@ import type { ProjectRepository } from "@agorix/project-repository";
 import { createOriMig04PgAuthorizedHostOptions } from "./oriMig04PgAuthorizedHostComposition.js";
 
 describe("MIG-04 trusted authenticated PostgreSQL host composition", () => {
+  it("rejects malformed deployment identifiers before connecting", () => {
+    let connections = 0;
+    expect(() =>
+      createOriMig04PgAuthorizedHostOptions({
+        pool: { connect: async () => { connections++; throw Error("unexpected"); } },
+        deploymentId: "bad deployment",
+        repository: {} as ProjectRepository,
+        oriRoot: "/unused",
+        world: {},
+        learningContext: async () => null,
+        resolveSession: async () => null,
+        activeProject: async () => null,
+        rolloutDecide: () => ({ learnerVisible: false }),
+      }),
+    ).toThrow("Invalid Ori deployment identifier");
+    expect(connections).toBe(0);
+  });
   it("keeps learner pilot invisible when rollout denies even with atomic CAS", () => {
     let connections = 0;
     const host = createOriMig04PgAuthorizedHostOptions({
