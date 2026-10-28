@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { SCHEMA_VERSION } from "@agorix/program-model";
+import { SCHEMA_VERSION, type ProjectProgram } from "@agorix/program-model";
 import { InMemoryProjectRepository, type ProjectRepository } from "@agorix/project-repository";
 import { createOriCanonicalReviewWorkflow } from "./oriCanonicalReviewWorkflow.js";
 import type { OriHostEvidenceResult, TrustedOriEvidence } from "./oriHostEvidenceAdapter.js";
 
 const revision = "a".repeat(64);
-const program = {
+const program: ProjectProgram = {
   schema: SCHEMA_VERSION,
   scripts: [
     {
@@ -144,7 +144,9 @@ describe("canonical project -> runtime -> Ori review composition", () => {
     expect((await workflow.decide("student", record.projectId, ticket.id, "accept"))?.status).toBe(
       "accepted",
     );
-    await repository.update("student", record.projectId, record.revision, record.storedProject);
+    await repository.update("student", record.projectId, record.revision, {
+      storedProject: record.storedProject,
+    });
     const result = await workflow.applyAccepted("student", record.projectId, ticket.id, "main");
     expect(result).not.toBe("applied");
     const persisted = await repository.get("student", record.projectId);
