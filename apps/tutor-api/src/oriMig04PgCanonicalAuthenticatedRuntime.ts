@@ -28,9 +28,9 @@ export async function startOriMig04PgCanonicalAuthenticatedRuntime({
   if (!Number.isSafeInteger(port) || port < 0 || port > 65535) {
     throw new Error("Invalid Ori host port");
   }
+  assertOriMig04RuntimeDependencies(ori as never, { repositoryProvidedByHost: true });
   const database = createOriMig04PgCanonicalInfrastructure(connectionString);
   try {
-    assertOriMig04RuntimeDependencies({ ...ori, repository: database.repository });
     await assertOriMig04PgReadiness(database.pool, ori.deploymentId);
     await assertOriMig04PgCanonicalSchemaReadiness(database.sqlPool);
     const { server, emergencyDisable } = createOriMig04PgAuthenticatedTutorServer({

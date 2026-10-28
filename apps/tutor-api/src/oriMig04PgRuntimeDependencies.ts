@@ -6,14 +6,17 @@ type TrustedOri = Omit<
 >;
 
 /** Reject incomplete trusted infrastructure before opening a database pool. */
-export function assertOriMig04RuntimeDependencies(ori: TrustedOri): void {
+export function assertOriMig04RuntimeDependencies(
+  ori: TrustedOri,
+  options: { readonly repositoryProvidedByHost?: boolean } = {},
+): void {
   if (
     !ori ||
     !ori.auth ||
     typeof ori.auth.resolveSession !== "function" ||
     typeof ori.sessionToken !== "function" ||
-    !ori.repository ||
-    typeof ori.repository.get !== "function" ||
+    (!options.repositoryProvidedByHost &&
+      (!ori.repository || typeof ori.repository.get !== "function")) ||
     typeof ori.activeProject !== "function" ||
     typeof ori.learningContext !== "function" ||
     typeof ori.rolloutDecide !== "function" ||
