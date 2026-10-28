@@ -23,6 +23,7 @@ run("MIG-04 real authenticated HTTP cookie boundary", () => {
     const password = "VeryStrongPassword_2026!";
     let accountId: string | undefined;
     let browserAccountId: string | undefined;
+    let outsiderAccountId: string | undefined;
     let ownedProjectId: string | undefined;
     try {
       await admin.query(POSTGRESQL_SCHEMA_SQL);
@@ -110,6 +111,25 @@ run("MIG-04 real authenticated HTTP cookie boundary", () => {
           [browserAccountId],
         );
         expect(mapping.rows[0]?.project_id).toBe(ownedProjectId);
+        // A second real account cannot select the first learner's project.
+        const outsiderName = `other_${Date.now().toString(36)}`;
+        const outsider = await runtime.auth.register({ username: outsiderName, password });
+        outsiderAccountId = outsider.account.accountId;
+        const outsiderLogin = await runtime.auth.signIn({ username: outsiderName, password });
+        const outsiderSelection = await fetch(`${authBase}/project`, {
+          method: "POST",
+          headers: {
+            ...browserHeaders,
+            cookie: `__Host-agorix-session=${outsiderLogin.sessionToken}`,
+          },
+          body: JSON.stringify({ projectId: ownedProjectId }),
+        });
+        expect(outsiderSelection.ok).toBe(false);
+        const outsiderMapping = await admin.query(
+          "select project_id from agorix_ori_session_projects where account_id = $1",
+          [outsiderAccountId],
+        );
+        expect(outsiderMapping.rows).toHaveLength(0);
         const selectedSession = await admin.query<{ session_id: string }>(
           "select session_id from agorix_ori_session_projects where account_id = $1",
           [browserAccountId],
@@ -204,7 +224,7 @@ run("MIG-04 real authenticated HTTP cookie boundary", () => {
       if (ownedProjectId) {
         await admin.query("delete from agorix_projects where project_id = $1", [ownedProjectId]);
       }
-      for (const id of [accountId, browserAccountId]) {
+      for (const id of [accountId, browserAccountId, outsiderAccountId]) {
         if (!id) continue;
         await admin.query("delete from agorix_auth_sessions where account_id = $1", [id]);
         await admin.query("delete from agorix_auth_accounts where account_id = $1", [id]);
