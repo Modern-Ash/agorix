@@ -91,6 +91,13 @@ run("MIG-04 real PostgreSQL rollback across independent connections", () => {
         "pilot",
         "pilot-2",
       ]);
+      const deniedBeforeRevocation = await wiring.oriMig04AtomicCommit(
+        "owner",
+        "not-allowlisted",
+        {} as never,
+        1,
+      );
+      expect(deniedBeforeRevocation).toBe("denied");
       expect(await wiring.emergencyDisable()).toBe(3);
       expect(await wiring.oriMig04AtomicCommit("owner", "pilot", {} as never, 1)).toBe("denied");
       const result = await pool.query(
@@ -99,6 +106,14 @@ run("MIG-04 real PostgreSQL rollback across independent connections", () => {
       );
       expect(Number(result.rows[0]?.epoch)).toBe(3);
       expect(result.rows[0]?.kill_switch).toBe(true);
+      const remaining = await pool.query(
+        "select project_id from agorix_ori_rollout_projects where deployment_id = $1",
+        [deploymentId],
+      );
+      expect(remaining.rows).toEqual([]);
+      expect(await wiring.oriMig04AtomicCommit("owner", "pilot-2", {} as never, 1)).toBe(
+        "denied",
+      );
     } finally {
       await pool.query("delete from agorix_ori_rollout_projects where deployment_id = $1", [
         deploymentId,
