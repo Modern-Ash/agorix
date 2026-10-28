@@ -1,5 +1,6 @@
 import { createOriMig04PgSharedAuthInfrastructure } from "./oriMig04PgSharedAuthInfrastructure.js";
 import { startOriMig04ProductionStartup } from "./oriMig04ProductionStartup.js";
+import { assertOriMig04StartupSafe } from "./oriMig04PgStartupGuard.js";
 
 type Startup = Parameters<typeof startOriMig04ProductionStartup>[0];
 
@@ -20,10 +21,7 @@ export async function startOriMig04PgSharedAuthProductionHost({
   readonly ori: Omit<Startup["ori"], "auth">;
 }) {
   // Validate policy and transport before acquiring a PostgreSQL connection.
-  if (env["AGORIX_ORI_MIG04_PILOT"] !== undefined &&
-      env["AGORIX_ORI_MIG04_PILOT"] !== "0") {
-    throw new Error("Ori MIG-04 pilot requires explicit trusted PostgreSQL host bootstrap");
-  }
+  assertOriMig04StartupSafe(env);
   if (socket) throw new Error("MIG-04 integrated host does not support Unix socket startup");
   if (!connectionString.trim()) throw new Error("MIG-04 requires a durable PostgreSQL connection");
   const sharedAuth = createOriMig04PgSharedAuthInfrastructure(connectionString);
