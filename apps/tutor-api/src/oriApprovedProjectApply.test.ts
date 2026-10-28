@@ -129,19 +129,19 @@ describe("explicit Ori proposal persistence boundary", () => {
     ] as const) {
       expect(
         await applyApprovedOriProposal({
-        repository: guarded,
-        owner: "student",
-        projectId: record.projectId,
-        expectedRevision: record.revision,
-        approved: true,
-        proposal: oriMove,
-        allowedBlocks: ["move"],
-        scriptId: "main",
-        atomicCommit: async () => {
-          calls++;
-          return outcome;
-        },
-        }),
+          repository: guarded,
+          owner: "student",
+          projectId: record.projectId,
+          expectedRevision: record.revision,
+          approved: true,
+          proposal: oriMove,
+          allowedBlocks: ["move"],
+          scriptId: "main",
+          atomicCommit: async () => {
+            calls++;
+            return outcome;
+          },
+          }),
       ).toBe(expected);
     }
     expect(calls).toBe(2);
