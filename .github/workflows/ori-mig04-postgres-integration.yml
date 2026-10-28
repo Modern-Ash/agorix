@@ -39,4 +39,4 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Run real PostgreSQL integration regression
-        run: pnpm exec vitest run apps/tutor-api/src/oriMig04PgRealDatabase.test.ts apps/tutor-api/src/oriMig04PgRealTransaction.test.ts apps/tutor-api/src/oriMig04PgRealFencedCas.test.ts apps/tutor-api/src/oriMig04PgRealReadiness.test.ts
+        run: pnpm exec vitest run apps/tutor-api/src/oriMig04PgRealDatabase.test.ts apps/tutor-api/src/oriMig04PgRealTransaction.test.ts apps/tutor-api/src/oriMig04PgRealFencedCas.test.ts apps/tutor-api/src/oriMig04PgRealReadiness.test.ts apps/tutor-api/src/oriMig04PgRealRuntime.test.ts
