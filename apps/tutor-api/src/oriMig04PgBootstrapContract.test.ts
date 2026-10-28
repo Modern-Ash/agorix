@@ -91,4 +91,26 @@ describe("MIG-04 trusted bootstrap", () => {
     ).toThrow("Missing trusted Ori host dependencies");
     expect(connections).toBe(0);
   });
+  it("rejects absent canonical project repository before connecting", () => {
+    let connections = 0;
+    expect(() =>
+      createOriMig04PgBootstrap({
+        pool: {
+          connect: async () => {
+            connections++;
+            throw Error("unexpected");
+          },
+        },
+        deploymentId: "ori",
+        repository: undefined as never,
+        oriRoot: "/unused",
+        world: {},
+        learningContext: async () => null,
+        resolveSession: async () => null,
+        activeProject: async () => null,
+        rolloutDecide: () => ({ learnerVisible: false }),
+      }),
+    ).toThrow("Missing trusted Ori host dependencies");
+    expect(connections).toBe(0);
+  });
 });
