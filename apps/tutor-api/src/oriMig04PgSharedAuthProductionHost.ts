@@ -30,19 +30,19 @@ export async function startOriMig04PgSharedAuthProductionHost({
   const sharedAuth = createOriMig04PgSharedAuthInfrastructure(connectionString);
   try {
     await assertOriMig04PgAuthSchemaReadiness(sharedAuth.sqlPool);
-    let dispatch: ReturnType<typeof createOriMig04WebAuthRoutes> | undefined;
+    const routeState: { dispatch?: ReturnType<typeof createOriMig04WebAuthRoutes> } = {};
     const runtime = await startOriMig04ProductionStartup({
       env,
       connectionString,
       tutor: {
         ...tutor,
         oriWebAuthDispatch: async (request, response) => {
-          if (!dispatch) {
+          if (!routeState.dispatch) {
             response.writeHead(503);
             response.end();
             return true;
           }
-          return dispatch(request, response);
+          return routeState.dispatch(request, response);
         },
       },
       ori: { ...ori, auth: sharedAuth.auth },
@@ -53,7 +53,7 @@ export async function startOriMig04PgSharedAuthProductionHost({
       auth: sharedAuth.auth,
       projects: runtime.authenticatedProjectLifecycle,
     });
-    dispatch = createOriMig04WebAuthRoutes(sharedAuth.auth, sessionActions);
+    routeState.dispatch = createOriMig04WebAuthRoutes(sharedAuth.auth, sessionActions);
     let closing: Promise<void> | undefined;
     return Object.freeze({
       ...runtime,
