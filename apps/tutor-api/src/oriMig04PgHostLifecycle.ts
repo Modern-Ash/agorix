@@ -1,5 +1,6 @@
 import type { AddressInfo } from "node:net";
 import { createOriMig04PgTutorServer } from "./oriMig04PgTutorServer.js";
+import { assertOriMig04PgReadiness } from "./oriMig04PgReadiness.js";
 
 /**
  * Explicit opt-in host entrypoint for infrastructure that already provides
@@ -43,4 +44,15 @@ export async function startOriMig04PgHost({
       });
     },
   });
+}
+
+/**
+ * Safe deployment entrypoint: refuse to listen unless PostgreSQL confirms a
+ * durable disabled policy. Pilot activation requires a separate reviewed flow.
+ */
+export async function startOriMig04PgHostWithReadiness(
+  options: Parameters<typeof startOriMig04PgHost>[0],
+) {
+  await assertOriMig04PgReadiness(options.ori.pool, options.ori.deploymentId);
+  return startOriMig04PgHost(options);
 }
