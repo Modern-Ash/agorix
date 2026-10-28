@@ -37,6 +37,9 @@ export function createOriMig04PgAuthorizedHostOptions({
   readonly activeProject: (session: OriAuthenticatedSession) => Promise<string | null>;
   readonly rolloutDecide: (projectId: string) => { readonly learnerVisible: boolean };
 }) {
+  if (!/^[a-zA-Z0-9_-]{1,128}$/.test(deploymentId)) {
+    throw new Error("Invalid Ori deployment identifier");
+  }
   const persistence = createOriMig04PgHostWiring({ pool, deploymentId });
   const options = createOriAuthorizedReviewOptions({
     repository,
