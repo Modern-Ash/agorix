@@ -98,7 +98,30 @@ run("MIG-04 real PostgreSQL rollback across independent connections", () => {
         1,
       );
       expect(deniedBeforeRevocation).toBe("denied");
-      expect(await wiring.emergencyDisable()).toBe(3);
+      const heldClient = await pool.connect();
+      try {
+        await heldClient.query("BEGIN");
+        await heldClient.query(
+          "select epoch from agorix_ori_rollout_policy where deployment_id = $1 for update",
+          [deploymentId],
+        );
+        let revocationFinished = false;
+        const pendingRevocation = wiring.emergencyDisable().then((epoch) => {
+          revocationFinished = true;
+          return epoch;
+        });
+        try {
+          // The independent connection must not complete revocation while the
+          // policy row remains locked by the first transaction.
+          await new Promise((resolve) => setTimeout(resolve, 50));
+          expect(revocationFinished).toBe(false);
+        } finally {
+          await heldClient.query("COMMIT");
+        }
+        expect(await pendingRevocation).toBe(3);
+      } finally {
+        heldClient.release();
+      }
       expect(await wiring.oriMig04AtomicCommit("owner", "pilot", {} as never, 1)).toBe("denied");
       const result = await pool.query(
         "select epoch, kill_switch from agorix_ori_rollout_policy where deployment_id = $1",
