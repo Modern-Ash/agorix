@@ -11,10 +11,15 @@ export function createOriMig04AuthServiceResolver({
   auth,
   sessionToken,
   onRotatedToken,
+  onRotatedSession,
 }: {
   readonly auth: Pick<AuthService, "resolveSession">;
   readonly sessionToken: (request: IncomingMessage) => string | null;
   readonly onRotatedToken?: (response: ServerResponse, token: string) => void;
+  readonly onRotatedSession?: (
+    previous: OriAuthenticatedSession,
+    current: OriAuthenticatedSession,
+  ) => Promise<boolean>;
 }): (
   request: IncomingMessage,
   response?: ServerResponse,
@@ -33,15 +38,23 @@ export function createOriMig04AuthServiceResolver({
         !resolved.session.sessionId
       )
         return null;
-      // Rotated sessions must not be used unless the new token is delivered.
-      if (resolved.rotated) {
-        if (!response || !onRotatedToken) return null;
-        onRotatedToken(response, resolved.sessionToken);
-      }
-      return {
+      const current = {
         accountId: resolved.account.accountId,
         sessionId: resolved.session.sessionId,
       };
+      // The old session is supplied by AuthService, never by request headers.
+      if (resolved.rotated) {
+        if (!response || !onRotatedToken || !onRotatedSession || !resolved.previousSessionId) {
+          return null;
+        }
+        const migrated = await onRotatedSession(
+          { accountId: current.accountId, sessionId: resolved.previousSessionId },
+          current,
+        );
+        if (!migrated) return null;
+        onRotatedToken(response, resolved.sessionToken);
+      }
+      return current;
     } catch {
       return null;
     }
