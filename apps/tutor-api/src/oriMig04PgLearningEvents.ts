@@ -13,6 +13,7 @@ export type OriLearningEvent =
 export function createOriMig04PgLearningEvents(pool: Pick<Pool, "query">) {
   return async (owner: string, projectId: string, event: OriLearningEvent): Promise<boolean> => {
     if (!owner || !projectId) return false;
+    if (!event || !["attempt", "hint", "stage"].includes(event.kind)) return false;
     if (event.kind === "stage" &&
         !["explore", "connect", "translate"].includes(event.stage)) return false;
     const attempts = event.kind === "attempt" ? 1 : 0;
