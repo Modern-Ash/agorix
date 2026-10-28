@@ -64,6 +64,54 @@ describe("MIG-04 trusted AuthService session actions", () => {
     expect(revoked).toBe(false);
   });
 
+  it("selects after rotation, clears old mapping and delivers new token", async () => {
+    const calls: string[] = [];
+    const actions = createOriMig04AuthenticatedSessionActions({
+      auth: {
+        resolveSession: async () => ({
+          ...identity,
+          rotated: true,
+          previousSessionId: "old",
+          sessionToken: "new-token",
+        }) as never,
+        signOut: async () => undefined,
+        deleteAccount: async () => undefined,
+      },
+      projects: {
+        selectProject: async () => { calls.push("select"); },
+        logout: async (session) => { calls.push(session.sessionId); },
+        revokeAccountSessions: async () => undefined,
+      },
+    });
+    await actions.selectProject("old-token", "project", (token) => {
+      calls.push(token);
+    });
+    expect(calls).toEqual(["old", "new-token", "select"]);
+  });
+
+  it("revokes the replacement credential on logout after rotation", async () => {
+    const calls: string[] = [];
+    const actions = createOriMig04AuthenticatedSessionActions({
+      auth: {
+        resolveSession: async () => ({
+          ...identity,
+          rotated: true,
+          previousSessionId: "old",
+          sessionToken: "replacement",
+        }) as never,
+        signOut: async (token) => { calls.push(token); },
+        deleteAccount: async () => undefined,
+      },
+      projects: {
+        selectProject: async () => undefined,
+        logout: async (session) => { calls.push(session.sessionId); },
+        revokeAccountSessions: async () => undefined,
+      },
+    });
+    await actions.signOut("old-token");
+    expect(calls).toEqual(["old", "replacement", "session"]);
+  });
+
   it("rejects rotated identities without coordinated cookie delivery", async () => {
     const actions = createOriMig04AuthenticatedSessionActions({
       auth: {
