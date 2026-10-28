@@ -95,6 +95,13 @@ export async function startOriMig04PgIntegratedHost({
       if (socket) chmodSync(socket, 0o600);
     } catch (error) {
       server.close();
+      if (socket) {
+        try {
+          unlinkSync(socket);
+        } catch {
+          // Never mask the original listener failure during cleanup.
+        }
+      }
       throw error;
     }
     let closing: Promise<void> | undefined;
