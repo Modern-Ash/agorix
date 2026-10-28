@@ -1,0 +1,5 @@
+# MIG-04 final production integration — consolidated PR
+
+This branch is the single integration PR for the remaining #1007 work. It first removes a production compatibility blocker: the integrated PostgreSQL host can now listen on a Unix-domain socket as well as TCP. The socket path must be absolute, a pre-existing non-socket file is rejected, the created socket is restricted to owner access (`0600`), and shutdown removes it. The production startup and shared-auth composition forward the socket option instead of rejecting it.
+
+The legacy `main.ts` entrypoint remains unchanged and the pilot stays disabled. The following must still be completed **in this same PR** before it is ready to merge: trusted `main.ts` host selection and cleanup with the existing TutorServer options, a production-like real PostgreSQL socket test, and successful authenticated propose/decision/apply with cross-owner denial, CAS conflict and emergency-disable acceptance. This document does not claim those gates have passed.
