@@ -43,6 +43,22 @@ describe("MIG-04 shared AuthService production composition", () => {
     ).rejects.toThrow("durable PostgreSQL");
   });
 
+  it("rejects invalid trusted deployment IDs and listener ports before opening PostgreSQL", async () => {
+    for (const deploymentId of ["", "../unsafe", "bad id", "x".repeat(129)]) {
+      await expect(
+        startOriMig04PgSharedAuthProductionHost({
+          ...options,
+          ori: { ...options.ori, deploymentId },
+        }),
+      ).rejects.toThrow("Invalid MIG-04 deployment ID");
+    }
+    for (const port of [-1, 65536, 1.5, Number.NaN]) {
+      await expect(
+        startOriMig04PgSharedAuthProductionHost({ ...options, port }),
+      ).rejects.toThrow("Invalid MIG-04 listener port");
+    }
+  });
+
   it("closes shared AuthService pool when integrated startup fails", async () => {
     await expect(startOriMig04PgSharedAuthProductionHost(options)).rejects.toThrow();
   });
