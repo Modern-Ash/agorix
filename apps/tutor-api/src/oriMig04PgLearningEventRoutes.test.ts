@@ -51,7 +51,7 @@ describe("MIG-04 trusted learning event HTTP route", () => {
     });
     const { state, reply } = response();
     await route(request({ kind: "attempt", owner: "other", attempts: 100 }), reply);
-    expect(state.status).toBe(400);
+    expect(state.status).toBe(403);
     expect(writes).toBe(0);
   });
   it("denies rotated sessions until cookie and project mapping are coordinated", async () => {
