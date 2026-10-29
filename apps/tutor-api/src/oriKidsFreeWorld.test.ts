@@ -23,9 +23,9 @@ describe("Ori Kids world from persisted project", () => {
   });
 
   it("fails closed for missing or invalid free-world goals", () => {
-    expect(
-      oriKidsFreeWorld({ ...project, metadata: { ...project.metadata, missionSpec: undefined } }),
-    ).toBeNull();
+    const metadataWithoutMission = { ...project.metadata };
+    delete metadataWithoutMission.missionSpec;
+    expect(oriKidsFreeWorld({ ...project, metadata: metadataWithoutMission })).toBeNull();
     expect(
       oriKidsFreeWorld({
         ...project,

@@ -70,7 +70,7 @@ describe("MIG-04 PostgreSQL atomic CAS query contract", () => {
     const tx: OriPgTransaction = {
       async query<Row extends Record<string, unknown>>(sql: string) {
         statements.push(sql);
-        return { rows: (rows[index++] ?? []) as readonly Row[] };
+        return { rows: (rows[index++] ?? []) as unknown as readonly Row[] };
       },
     };
     expect(

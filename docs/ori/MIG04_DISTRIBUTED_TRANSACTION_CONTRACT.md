@@ -1,6 +1,6 @@
 # MIG-04 — Distributed transactional fencing (implementation contract)
 
-Status: **not implemented; rollout remains disabled**. This document defines the acceptance contract for a multi-instance host. The in-memory `createOriMig04CommitFence` is only a single-process safeguard.
+Status (2026-10-29): **implemented and exercised for a one-account, one-project PostgreSQL pilot**. Broader rollout remains disabled. The in-memory `createOriMig04CommitFence` is only a single-process safeguard; the active pilot uses the database-backed policy lock, project CAS and audit transaction described below. Two-connection PostgreSQL tests cover races and revocation, and the public Kids flow completed one accepted commit plus a kill-switch drill.
 
 ## Atomic invariant
 
