@@ -90,6 +90,11 @@ describe("link api (issues #509 to #513)", () => {
     await expect(w.adult.register(alias(), "short", "x@example.com")).rejects.toMatchObject({
       kind: "weak-password",
     });
+    await expect(
+      w.adult.register("adult@example.com", PASSWORD, "x@example.com"),
+    ).rejects.toMatchObject({
+      kind: "invalid-alias",
+    });
     await expect(w.adult.emailStatus()).rejects.toMatchObject({ kind: "unauthenticated" });
     expect(await w.adult.restore()).toBeNull();
     await w.adult.signIn(me, PASSWORD);

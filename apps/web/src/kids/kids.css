@@ -3114,6 +3114,11 @@
   display: grid;
   gap: 10px;
 }
+.kids-link-field-note {
+  margin: -5px 0 0;
+  font-size: 0.85rem;
+  color: var(--kids-text-secondary);
+}
 .kids-link-form label,
 .kids-link-field {
   display: grid;

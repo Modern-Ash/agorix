@@ -42,6 +42,7 @@ export type LinkApiErrorKind =
   | "unauthenticated"
   | "email-not-verified"
   | "invalid-email"
+  | "invalid-alias"
   | "invalid-code"
   | "rate-limited"
   | "not-found"
@@ -304,6 +305,8 @@ function toError(status: number, json: unknown): LinkApiError {
       return new LinkApiError("transient");
     case "VALIDATION":
       switch (reason) {
+        case "INVALID_ALIAS":
+          return new LinkApiError("invalid-alias");
         case "INVALID_EMAIL":
           return new LinkApiError("invalid-email");
         case "EMAIL_NOT_VERIFIED":

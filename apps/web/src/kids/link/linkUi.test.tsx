@@ -14,6 +14,7 @@ describe("link copy", () => {
     expect(() => assertLinkCatalogComplete()).not.toThrow();
     expect(linkError("es", "invalid-code")).toContain("código");
     expect(linkError("en", "invalid-code")).toContain("code");
+    expect(linkError("es", "invalid-alias")).toContain("sin @");
   });
 
   it("fills placeholders and leaves none behind", () => {

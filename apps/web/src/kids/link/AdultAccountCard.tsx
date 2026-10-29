@@ -99,6 +99,7 @@ export function AdultAccountCard({ locale, api, session, email, onSession, onEma
               maxLength={64}
             />
           </label>
+          {mode === "create" ? <p className="kids-link-field-note">{t("aliasNote")}</p> : null}
           <div className="kids-link-field">
             <label htmlFor={`${uid}-password`}>{t("password")}</label>
             <span className="kids-link-password">
@@ -122,6 +123,7 @@ export function AdultAccountCard({ locale, api, session, email, onSession, onEma
               </button>
             </span>
           </div>
+          {mode === "create" ? <p className="kids-link-field-note">{t("passwordNote")}</p> : null}
           {mode === "create" ? (
             <label>
               {t("email")}
