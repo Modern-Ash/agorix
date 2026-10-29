@@ -36,6 +36,12 @@ export async function startOriMig04PgSharedAuthProductionHost({
     throw new Error("Invalid Ori Unix socket path");
   }
   if (!connectionString.trim()) throw new Error("MIG-04 requires a durable PostgreSQL connection");
+  if (!/^[A-Za-z0-9_-]{1,128}$/.test(ori.deploymentId)) {
+    throw new Error("Invalid MIG-04 deployment ID");
+  }
+  if (port !== undefined && (!Number.isInteger(port) || port < 0 || port > 65535)) {
+    throw new Error("Invalid MIG-04 listener port");
+  }
   const sharedAuth = createOriMig04PgSharedAuthInfrastructure(connectionString);
   try {
     await assertOriMig04PgAuthSchemaReadiness(sharedAuth.sqlPool);
