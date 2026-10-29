@@ -40,30 +40,10 @@ export function createOriMig04PgLearningEventRoutes({
     try {
       const token = cookies.sessionToken(request);
       if (!token) { send(401); return true; }
-      let raw = "";
-      for await (const chunk of request) {
-        raw += String(chunk);
-        if (raw.length > 1024) { send(413); return true; }
-      }
-      const payload: unknown = JSON.parse(raw);
-      if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
-        send(400); return true;
-      }
-      const fields = payload as Record<string, unknown>;
-      if (Object.keys(fields).sort().join() !== "kind" &&
-          Object.keys(fields).sort().join() !== "kind,stage") {
-        send(400); return true;
-      }
-      const kind = fields["kind"];
-      const event: OriLearningEvent | null =
-        kind === "attempt" || kind === "hint"
-          ? Object.keys(fields).length === 1 ? { kind } : null
-          : kind === "stage" && ["explore", "connect", "translate"].includes(String(fields["stage"]))
-            ? { kind, stage: fields["stage"] as "explore" | "connect" | "translate" }
-            : null;
-      if (!event) { send(400); return true; }
-      // Browser events cannot prove pedagogical provenance. Only trusted
-      // server-side execution/hint handlers may call the recorder.
+      // No client event is trusted as pedagogical evidence. Validation of
+      // event provenance belongs in the authenticated runtime/hint handler.
+      // Keep the public route explicitly denied rather than accepting forged
+      // attempts, hints or stages.
       void auth;
       void activeProject;
       void record;
