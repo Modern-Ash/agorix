@@ -33,6 +33,11 @@ describe("MIG-04 shared AuthService production composition", () => {
     await expect(
       startOriMig04PgSharedAuthProductionHost({ ...options, socket: "/tmp/ori\u0000.sock" }),
     ).rejects.toThrow("Invalid Ori Unix socket path");
+    for (const socket of ["/tmp/ori\n.sock", "/tmp/ori\r.sock"]) {
+      await expect(
+        startOriMig04PgSharedAuthProductionHost({ ...options, socket }),
+      ).rejects.toThrow("Invalid Ori Unix socket path");
+    }
     await expect(
       startOriMig04PgSharedAuthProductionHost({ ...options, connectionString: "" }),
     ).rejects.toThrow("durable PostgreSQL");
