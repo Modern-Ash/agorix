@@ -9,6 +9,7 @@ services:
       dockerfile: deploy/web/Dockerfile
       args:
         GIT_SHA: ${GIT_SHA:-unknown}
+        VITE_KIDS_ADULT_LINK_DEFAULT: ${AGORIX_KIDS_ADULT_LINK_DEFAULT:-0}
     # scripts/deploy-web.sh tags every build with the commit so a rollback is one `up -d`.
     image: agorix-web:${AGORIX_WEB_TAG:-local}
     container_name: agorix-web
@@ -35,8 +36,9 @@ services:
     container_name: agorix-projects
     restart: unless-stopped
     environment:
-      AGORIX_PROJECT_STORAGE: sqlite
+      AGORIX_PROJECT_STORAGE: ${AGORIX_PROJECT_STORAGE:-sqlite}
       AGORIX_PROJECT_DB_PATH: /data/agorix.sqlite
+      AGORIX_PROJECT_DATABASE_URL: ${AGORIX_PROJECT_DATABASE_URL-}
       AGORIX_PROJECT_BACKUP_DIR: /backups
       AGORIX_PROJECT_SOCKET: /run/agorix-projects/projects.sock
       AGORIX_PROJECT_ORIGIN: ${AGORIX_PROJECT_ORIGIN-}
@@ -49,13 +51,39 @@ services:
       # Where the project server reads the admin registry's public group limits
       # (an http(s) URL or unix:/absolute.sock). Empty keeps the code defaults.
       AGORIX_GROUP_CONFIG_URL: ${AGORIX_GROUP_CONFIG_URL-}
+      AGORIX_PRIVATE_ADULT_PILOT: "1"
+      # Optional private adult-account pilot. Never put an email in this tracked file.
+      AGORIX_ALLOWED_ADULT_EMAIL: ${AGORIX_ALLOWED_ADULT_EMAIL-}
     volumes:
       - agorix-project-data:/data
       - agorix-project-backups:/backups
       - type: bind
         source: ${AGORIX_PROJECT_SOCKET_DIR:?set AGORIX_PROJECT_SOCKET_DIR to the project runtime directory}
         target: /run/agorix-projects
+  postgres:
+    profiles: ["postgresql"]
+    image: postgres:17-alpine
+    container_name: agorix-postgres
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${AGORIX_POSTGRES_HOST_PORT:-5433}:5432"
+    environment:
+      POSTGRES_DB: agorix
+      POSTGRES_USER: agorix
+      POSTGRES_PASSWORD_FILE: /run/secrets/agorix-postgres-password
+    volumes:
+      - agorix-postgres-data:/var/lib/postgresql/data
+      - type: bind
+        source: ${AGORIX_POSTGRES_PASSWORD_FILE:-/run/secrets/agorix-postgres-password}
+        target: /run/secrets/agorix-postgres-password
+        read_only: true
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agorix -d agorix"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
 
 volumes:
   agorix-project-data:
   agorix-project-backups:
+  agorix-postgres-data:

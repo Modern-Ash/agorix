@@ -10,14 +10,19 @@
     "start": "node dist/main.mjs"
   },
   "dependencies": {
+    "@agorix/auth-service": "workspace:*",
     "@agorix/curriculum": "workspace:*",
     "@agorix/ori-agent": "workspace:*",
+    "@agorix/persistence": "workspace:*",
     "@agorix/program-model": "workspace:*",
+    "@agorix/project-repository": "workspace:*",
     "@agorix/provider-runtime": "workspace:*",
     "@agorix/runtime": "workspace:*",
+    "pg": "^8.23.1",
     "@agorix/tutor-contract": "workspace:*"
   },
   "devDependencies": {
+    "@types/pg": "^8",
     "esbuild": "^0.28.2"
   }
 }

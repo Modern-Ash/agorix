@@ -131,6 +131,12 @@ export class LinkService {
     return { present: row !== undefined, verified: row?.verifiedAt !== undefined };
   }
 
+  /** Server-only exact match; never returns the address to a browser. */
+  async hasVerifiedEmail(accountId: string, rawEmail: string): Promise<boolean> {
+    const row = await this.repo.getEmail(accountId);
+    return row?.verifiedAt !== undefined && row.emailNormalized === normalizeEmail(rawEmail);
+  }
+
   // ---- link codes --------------------------------------------------------------------------
 
   /** Needs a verified email. At most N live codes per account; the oldest is revoked first. */

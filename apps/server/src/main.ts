@@ -18,13 +18,14 @@ import { readGroupConfig, readGroupConfigSource, startGroupConfigSync } from "./
 import { readLinkConfig } from "./linkConfig.js";
 import { createProjectApi } from "@agorix/project-api";
 import { InMemoryProjectRepository, SqlProjectRepository } from "@agorix/project-repository";
-import { deleteSQLiteAccount } from "./deleteAccount.js";
+import { deletePostgresAccount, deleteSQLiteAccount } from "./deleteAccount.js";
 import { createProjectHttpServer } from "./server.js";
+import { openPostgresStore } from "./postgres.js";
 import { openSQLiteStore } from "./sqlite.js";
 
 const storage = process.env["AGORIX_PROJECT_STORAGE"];
-if (storage !== "memory" && storage !== "sqlite") {
-  throw new Error("Set AGORIX_PROJECT_STORAGE=sqlite or memory explicitly");
+if (storage !== "memory" && storage !== "sqlite" && storage !== "postgresql") {
+  throw new Error("Set AGORIX_PROJECT_STORAGE=sqlite, postgresql or memory explicitly");
 }
 const origin = process.env["AGORIX_PROJECT_ORIGIN"];
 if (!origin || !/^https:\/\/[^/]+$/.test(origin)) {
@@ -45,22 +46,33 @@ const sqlitePath = process.env["AGORIX_PROJECT_DB_PATH"];
 if (storage === "sqlite" && (!sqlitePath || !sqlitePath.startsWith("/"))) {
   throw new Error("AGORIX_PROJECT_DB_PATH must be an absolute path for SQLite storage");
 }
+const postgresUrl = process.env["AGORIX_PROJECT_DATABASE_URL"];
+if (storage === "postgresql" && !postgresUrl) {
+  throw new Error("AGORIX_PROJECT_DATABASE_URL is required for PostgreSQL storage");
+}
 const sqlite = storage === "sqlite" ? openSQLiteStore(sqlitePath!) : undefined;
-const accounts = sqlite
-  ? new SqlAccountRepository({ executor: sqlite, dialect: "sqlite" })
+const postgres = storage === "postgresql" ? await openPostgresStore(postgresUrl!) : undefined;
+const sqlStore = sqlite ?? postgres;
+const sqlDialect = sqlite ? "sqlite" : "postgresql";
+const accounts = sqlStore
+  ? new SqlAccountRepository({ executor: sqlStore, dialect: sqlDialect })
   : new InMemoryAccountRepository();
-const sessions = sqlite
-  ? new SqlSessionRepository({ executor: sqlite, dialect: "sqlite" })
+const sessions = sqlStore
+  ? new SqlSessionRepository({ executor: sqlStore, dialect: sqlDialect })
   : new InMemorySessionRepository();
-const projects = sqlite
-  ? new SqlProjectRepository({ executor: sqlite, dialect: "sqlite" })
+const projects = sqlStore
+  ? new SqlProjectRepository({ executor: sqlStore, dialect: sqlDialect })
   : new InMemoryProjectRepository();
 const auth = new AuthService({ accounts, sessions });
 const { secret: linkSecret, mailer } = readLinkConfig(process.env, origin);
+const allowedAdultEmail = process.env["AGORIX_ALLOWED_ADULT_EMAIL"]?.trim();
+if (process.env["AGORIX_PRIVATE_ADULT_PILOT"] === "1" && linkSecret && !allowedAdultEmail) {
+  throw new Error("Private adult pilot requires an allowed adult email");
+}
 const link = linkSecret
   ? new LinkService({
-      repository: sqlite
-        ? new SqlLinkRepository({ executor: sqlite, dialect: "sqlite" })
+      repository: sqlStore
+        ? new SqlLinkRepository({ executor: sqlStore, dialect: sqlDialect })
         : new InMemoryLinkRepository(),
       secret: linkSecret,
       ...(mailer ? { mailer } : {}),
@@ -92,8 +104,8 @@ const { secret: groupSecret } = readGroupConfig(process.env, link !== undefined)
 const group =
   groupSecret && link
     ? new GroupService({
-        repository: sqlite
-          ? new SqlGroupRepository({ executor: sqlite, dialect: "sqlite" })
+        repository: sqlStore
+          ? new SqlGroupRepository({ executor: sqlStore, dialect: sqlDialect })
           : new InMemoryGroupRepository(),
         adults: { hasVerifiedEmail: async (id) => (await link.emailStatus(id)).verified },
         secret: groupSecret,
@@ -130,11 +142,14 @@ const api = createProjectApi({
   auth,
   ...(link ? { link, requireEmail: true } : {}),
   ...(group ? { group } : {}),
+  ...(allowedAdultEmail ? { allowedAdultEmails: [allowedAdultEmail] } : {}),
   projects,
-  ...(sqlite
+  ...(sqlStore
     ? {
         deleteAccount: (accountId: string, password: string) =>
-          deleteSQLiteAccount(sqlite, auth, accountId, password),
+          sqlite
+            ? deleteSQLiteAccount(sqlite, auth, accountId, password)
+            : deletePostgresAccount(postgres!, auth, accountId, password),
       }
     : {}),
   allowedOrigins: [origin],
@@ -168,11 +183,11 @@ if (socket) {
 for (const signal of ["SIGTERM", "SIGINT"] as const) {
   process.on(signal, () => {
     server.close(() => {
-      void sqlite
+      void sqlStore
         ?.close()
         .then(() => finish())
         .catch(() => process.exit(1));
-      if (!sqlite) finish();
+      if (!sqlStore) finish();
     });
     function finish() {
       if (socket) {

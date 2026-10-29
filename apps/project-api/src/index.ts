@@ -86,6 +86,7 @@ export type LinkApiService = Pick<
   | "resendVerification"
   | "verifyEmail"
   | "emailStatus"
+  | "hasVerifiedEmail"
   | "createLinkCode"
   | "revokeLinkCodes"
   | "redeemLinkCode"
@@ -131,6 +132,8 @@ export interface ProjectApiOptions {
    * the option is ignored. Enabled by default when adult linking is configured.
    */
   readonly requireEmail?: boolean;
+  /** Deployment-scoped adult registration allowlist. Empty/absent keeps the normal public flow. */
+  readonly allowedAdultEmails?: readonly string[];
   readonly link?: LinkApiService;
   /** Closed same-room groups (ADR 0010). Off unless provided. */
   readonly group?: GroupApiService;
@@ -189,8 +192,19 @@ export interface ProjectApi {
 }
 
 export function createProjectApi(options: ProjectApiOptions): ProjectApi {
+  if (options.allowedAdultEmails && !options.link) {
+    throw new Error("Adult registration allowlist requires email verification service");
+  }
   const maxBodyBytes = options.maxBodyBytes ?? AGORIX_PROJECT_MAX_BYTES + BODY_ENVELOPE_BYTES;
   const allowedOrigins = new Set(options.allowedOrigins ?? []);
+  const allowedAdultEmails = options.allowedAdultEmails
+    ? new Set(options.allowedAdultEmails.map(normalizeEmail))
+    : undefined;
+  function requireAllowedAdultEmail(email: string): void {
+    if (allowedAdultEmails && !allowedAdultEmails.has(normalizeEmail(email))) {
+      throw new ApiError(400, "VALIDATION", "Invalid email", false, "EMAIL_INVALID");
+    }
+  }
   const idempotencyCache = new Map<string, CachedResponse>();
   const repo = options.projects;
 
@@ -239,12 +253,28 @@ export function createProjectApi(options: ProjectApiOptions): ProjectApi {
       handler: async (ctx) => ({ status: 200, body: await requireLink().emailStatus(ctx.ownerId) }),
     },
     {
+      name: "account.projectCopyEligible",
+      method: "GET",
+      pattern: /^\/v1\/account\/project-copy-eligible$/,
+      handler: async (ctx) => {
+        if (!allowedAdultEmails || allowedAdultEmails.size !== 1)
+          return { status: 404, body: null };
+        const [allowedEmail] = allowedAdultEmails;
+        if (!allowedEmail || !(await requireLink().hasVerifiedEmail(ctx.ownerId, allowedEmail))) {
+          return { status: 404, body: null };
+        }
+        return { status: 200, body: { eligible: true } };
+      },
+    },
+    {
       name: "account.email.set",
       method: "POST",
       pattern: /^\/v1\/account\/email$/,
       handler: async (ctx) => {
         const body = readBody(ctx.request, SMALL_BODY_BYTES, ["email"]);
-        await requireLink().addEmail(ctx.ownerId, requireString(body, "email"));
+        const email = requireString(body, "email");
+        requireAllowedAdultEmail(email);
+        await requireLink().addEmail(ctx.ownerId, email);
         return { status: 202, body: { status: "sent" } };
       },
     },
@@ -667,6 +697,7 @@ export function createProjectApi(options: ProjectApiOptions): ProjectApi {
         if (wantsEmail && body["email"] !== undefined) {
           email = requireString(body, "email");
           normalizeEmail(email);
+          requireAllowedAdultEmail(email);
         } else if (wantsEmail && options.requireEmail !== false) {
           throw new ApiError(400, "VALIDATION", "Email is required", false, "EMAIL_REQUIRED");
         }
@@ -1221,6 +1252,8 @@ const METADATA_KEYS = [
   "actors",
   "stage",
   "assets",
+  "missionSpec",
+  "advancedProgress",
 ];
 
 function requireStoredProject(value: unknown, maxBodyBytes: number): StoredProject {

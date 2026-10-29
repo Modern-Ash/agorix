@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { build } from "esbuild";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
-import { spawnSync } from "node:child_process"; // agora-allowlist: test-only spawn of the local Ori reference process, fixed arguments
+import { spawnSync } from "node:child_process"; // agora-allowlist: test executes a fixed local Node CLI without a shell
 import { mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve, join } from "node:path";

@@ -232,6 +232,8 @@ describe("AuthService", () => {
     const resolved = await service.resolveSession(signedIn.sessionToken);
     expect(resolved.rotated).toBe(true);
     expect(resolved.sessionToken).not.toBe(signedIn.sessionToken);
+    expect(resolved.session.sessionId).toBe(signedIn.session.sessionId);
+    expect(resolved.session.createdAt).toBe(signedIn.session.createdAt);
 
     await expect(service.resolveSession(signedIn.sessionToken)).rejects.toMatchObject({
       code: "SESSION_EXPIRED",

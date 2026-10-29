@@ -81,6 +81,39 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
 
+  postgres-integration:
+    name: PostgreSQL account, project and Ori CAS integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: agorix_test
+          POSTGRES_USER: agorix_test
+          POSTGRES_PASSWORD: local-test-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U agorix_test -d agorix_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @agorix/server test -- postgres.test.ts
+        env:
+          AGORIX_TEST_POSTGRES_URL: postgresql://agorix_test:local-test-only@127.0.0.1:5432/agorix_test
+      - run: pnpm exec vitest run apps/tutor-api/src/oriMig04PostgresIntegration.test.ts
+        env:
+          AGORIX_TEST_POSTGRES_URL: postgresql://agorix_test:local-test-only@127.0.0.1:5432/agorix_test
+
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -106,7 +139,7 @@ jobs:
   ori-interoperability:
     name: Real Ori process interoperability
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Checkout Agorix integration branch / PR
         uses: actions/checkout@v4
@@ -145,4 +178,39 @@ jobs:
         working-directory: agorix
         env:
           ORI_REPO_PATH: ${{ github.workspace }}/ori
-        run: pnpm test:ori:interop
+          ORI_PARITY_REPORT_DIR: ${{ github.workspace }}/ori-parity-artifacts
+        run: |
+          pnpm test:ori:interop
+          pnpm test:ori:runtime
+      - name: Require real Ori process to authenticated HTTP and SQLite E2E
+        working-directory: agorix
+        env:
+          ORI_REPO_PATH: ${{ github.workspace }}/ori
+        run: pnpm exec vitest run apps/tutor-api/src/oriMig03RealProcessPresentationE2E.test.ts
+      - name: Upload synthetic Ori mission parity evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ori-mig03-mission-parity
+          path: ori-parity-artifacts/ori-mig03-mission-matrix.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  ori-learner-browser:
+    name: Ori learner Playwright journey
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @agorix/web exec playwright install --with-deps chromium
+      - name: Run feature-flagged Ori learner journeys
+        working-directory: apps/web
+        run: pnpm test:e2e:ori

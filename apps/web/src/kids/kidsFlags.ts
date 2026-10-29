@@ -33,6 +33,8 @@ const DEFAULT_FEATURES: readonly KidsV2Feature[] = KIDS_V2_FEATURES.filter(
 export interface KidsFlagSources {
   readonly search?: string;
   readonly storage?: Pick<Storage, "getItem">;
+  /** Deployment build switch; off unless the private account service is verified. */
+  readonly adultLinkDefault?: boolean;
   /** Production builds ignore the query parameter. */
   readonly production?: boolean;
 }
@@ -45,10 +47,13 @@ function keep(names: readonly unknown[]): ReadonlySet<KidsV2Feature> {
   );
 }
 
-function stored(storage: KidsFlagSources["storage"]): readonly unknown[] {
+function stored(
+  storage: KidsFlagSources["storage"],
+  defaults: readonly KidsV2Feature[],
+): readonly unknown[] {
   try {
     const raw = storage?.getItem(KIDS_FLAGS_KEY);
-    if (raw === null || raw === undefined) return DEFAULT_FEATURES;
+    if (raw === null || raw === undefined) return defaults;
     const parsed = JSON.parse(raw) as unknown;
     return Array.isArray(parsed) ? parsed : [];
   } catch {
@@ -58,7 +63,12 @@ function stored(storage: KidsFlagSources["storage"]): readonly unknown[] {
 
 /** Approved defaults apply to a new browser; an explicit stored list can roll them back. */
 export function kidsV2Features(sources: KidsFlagSources = {}): ReadonlySet<KidsV2Feature> {
-  const names: unknown[] = [...stored(sources.storage)];
+  const adultLinkDefault =
+    sources.adultLinkDefault ??
+    (import.meta as { env?: { VITE_KIDS_ADULT_LINK_DEFAULT?: string } }).env
+      ?.VITE_KIDS_ADULT_LINK_DEFAULT === "1";
+  const defaults = adultLinkDefault ? KIDS_V2_FEATURES : DEFAULT_FEATURES;
+  const names: unknown[] = [...stored(sources.storage, defaults)];
   if (sources.production !== true) {
     const query = new URLSearchParams(sources.search ?? "").get("kidsv2");
     if (query) names.push(...query.split(","));

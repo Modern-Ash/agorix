@@ -11,6 +11,7 @@ import { defaultAiConfig, openSqliteAiConfigRepository } from "./aiConfig.js";
 import { AdminAuth } from "./adminAuth.js";
 import { oriExternalShadowEnabled } from "./oriExternalShadow.js";
 import { createOriShadowTransport } from "./oriExternalShadowTransport.js";
+import { openOriMig04Pilot } from "./oriMig04PilotBootstrap.js";
 
 // Entry point (issue #348): `node dist/main.js`. Binds loopback unless the deployment
 // explicitly sets AGORIX_TUTOR_HOST (for example inside a container network).
@@ -44,6 +45,8 @@ const oriRuntimePreview =
 const contextualOriEnabled = process.env["AGORIX_ORI_CONTEXT_PREVIEW"] === "1";
 const oriContextPreview =
   contextualOriEnabled && oriRoot ? createOriContextPreview({ oriRoot, enabled: true }) : undefined;
+const privatePilot =
+  process.env["AGORIX_ORI_MIG04_PILOT"] === "1" ? await openOriMig04Pilot(process.env) : undefined;
 
 const server = createTutorServer({
   config,
@@ -58,6 +61,7 @@ const server = createTutorServer({
   ori: createOriCliService(oriConfig, {
     policyFor: (capability) => aiConfig.current().config.capabilities[capability],
   }),
+  ...(privatePilot ? privatePilot.options : {}),
 });
 if (socket) {
   mkdirSync(dirname(socket), { recursive: true, mode: 0o755 });
@@ -81,16 +85,23 @@ if (socket) {
 for (const signal of ["SIGTERM", "SIGINT"] as const) {
   process.on(signal, () => {
     server.close(() => {
-      aiConfig.close();
-      if (socket) {
+      void (async () => {
         try {
-          unlinkSync(socket);
-        } catch (error) {
-          if (!(error instanceof Error) || !("code" in error) || error.code !== "ENOENT")
-            throw error;
+          await privatePilot?.close();
+          aiConfig.close();
+          if (socket) {
+            try {
+              unlinkSync(socket);
+            } catch (error) {
+              if (!(error instanceof Error) || !("code" in error) || error.code !== "ENOENT")
+                throw error;
+            }
+          }
+          process.exit(0);
+        } catch {
+          process.exit(1);
         }
-      }
-      process.exit(0);
+      })();
     });
     setTimeout(() => process.exit(0), 5_000).unref();
   });

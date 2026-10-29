@@ -341,10 +341,10 @@ export class AuthService {
   }
 
   private createSessionIdentityFor(accountId: string, existing?: SessionIdentity): SessionIdentity {
-    const createdAt = this.nowIso();
+    const createdAt = existing?.createdAt ?? this.nowIso();
     const expiresAt = existing?.expiresAt ?? this.futureIso(this.policy.session.absoluteTtlMs);
     return createSessionIdentity({
-      sessionId: this.randomIdentifier(16),
+      sessionId: existing?.sessionId ?? this.randomIdentifier(16),
       accountId,
       createdAt,
       expiresAt,

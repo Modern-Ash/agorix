@@ -44,11 +44,12 @@ class Capture implements Mailer {
   }
 }
 
-function setup(withLink = true) {
+function setup(withLink = true, allowedAdultEmails?: readonly string[]) {
   let now = Date.parse("2026-10-23T12:00:00.000Z");
   const clock = { now: () => new Date(now) };
+  const accounts = new InMemoryAccountRepository();
   const auth = new AuthService({
-    accounts: new InMemoryAccountRepository(),
+    accounts,
     sessions: new InMemorySessionRepository(),
     clock,
     policy: { session: { rotateOnResolve: false } },
@@ -63,6 +64,7 @@ function setup(withLink = true) {
   const api = createProjectApi({
     auth,
     ...(withLink ? { link } : {}),
+    ...(allowedAdultEmails ? { allowedAdultEmails } : {}),
     projects: new InMemoryProjectRepository(),
     allowedOrigins: [ORIGIN],
     secureCookies: true,
@@ -94,7 +96,7 @@ function setup(withLink = true) {
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       });
   }
-  return { api, adult, device, mailer, advance: (ms: number) => (now += ms) };
+  return { api, adult, device, mailer, accounts, advance: (ms: number) => (now += ms) };
 }
 
 async function verified(ctx: ReturnType<typeof setup>, name = "ada") {
@@ -110,6 +112,54 @@ async function verified(ctx: ReturnType<typeof setup>, name = "ada") {
 }
 
 describe("account email routes", () => {
+  it("reveals the private project-copy card only to the exact verified adult", async () => {
+    const ctx = setup(true, ["owner@example.com"]);
+    const owner = await ctx.adult("owner");
+    const other = await ctx.adult("other");
+    expect((await owner("GET", "/v1/account/project-copy-eligible")).status).toBe(404);
+    expect((await other("GET", "/v1/account/project-copy-eligible")).status).toBe(404);
+    await owner("POST", "/v1/account/email", { email: "owner@example.com" });
+    expect((await owner("GET", "/v1/account/project-copy-eligible")).status).toBe(404);
+    expect(
+      (await ctx.device()("POST", "/v1/account/email/verify", { token: ctx.mailer.token() }))
+        .status,
+    ).toBe(204);
+    expect(await owner("GET", "/v1/account/project-copy-eligible")).toMatchObject({
+      status: 200,
+      body: { eligible: true },
+    });
+    expect((await other("GET", "/v1/account/project-copy-eligible")).status).toBe(404);
+  });
+
+  it("refuses a private allowlist without the email service", () => {
+    expect(() => setup(false, ["owner@example.com"])).toThrow(
+      "Adult registration allowlist requires email verification service",
+    );
+  });
+
+  it("limits a private adult pilot before account creation and email changes", async () => {
+    const ctx = setup(true, ["owner@example.com"]);
+    const denied = await ctx.device()("POST", "/v1/auth/register", {
+      username: "outsider",
+      password: PASSWORD,
+      email: "other@example.com",
+    });
+    expect(denied.status).toBe(400);
+    expect(denied.body).toMatchObject({ error: { reason: "EMAIL_INVALID" } });
+    expect(ctx.mailer.sent).toHaveLength(0);
+    expect(await ctx.accounts.findByNormalizedUsername("outsider")).toBeUndefined();
+
+    const allowed = await ctx.device()("POST", "/v1/auth/register", {
+      username: "owner",
+      password: PASSWORD,
+      email: " Owner@Example.com ",
+    });
+    expect(allowed.status).toBe(201);
+    const owner = await ctx.adult("owner-existing");
+    const changed = await owner("POST", "/v1/account/email", { email: "other@example.com" });
+    expect(changed.body).toMatchObject({ error: { reason: "EMAIL_INVALID" } });
+  });
+
   it("requires a session, CSRF and a valid body", async () => {
     const ctx = setup();
     const anonymous = await ctx.device()("POST", "/v1/account/email", { email: "a@example.com" });

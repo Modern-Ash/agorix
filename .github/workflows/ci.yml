@@ -84,6 +84,37 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
 
+  postgres-integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: agorix_test
+          POSTGRES_USER: agorix_test
+          POSTGRES_PASSWORD: local-test-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U agorix_test -d agorix_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @agorix/server test -- postgres.test.ts
+        env:
+          AGORIX_TEST_POSTGRES_URL: postgresql://agorix_test:local-test-only@127.0.0.1:5432/agorix_test
+      - run: pnpm exec vitest run apps/tutor-api/src/oriMig04PostgresIntegration.test.ts
+        env:
+          AGORIX_TEST_POSTGRES_URL: postgresql://agorix_test:local-test-only@127.0.0.1:5432/agorix_test
+
   build:
     runs-on: ubuntu-latest
     steps:

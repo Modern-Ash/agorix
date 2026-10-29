@@ -5,6 +5,8 @@ RUN corepack enable
 WORKDIR /repo
 ARG GIT_SHA=unknown
 ENV GIT_SHA=$GIT_SHA
+ARG VITE_KIDS_ADULT_LINK_DEFAULT=0
+ENV VITE_KIDS_ADULT_LINK_DEFAULT=$VITE_KIDS_ADULT_LINK_DEFAULT
 COPY . .
 RUN pnpm install --frozen-lockfile --filter @agorix/web...
 RUN pnpm --filter @agorix/web... build

@@ -1,3 +1,10 @@
+import { parseOriApplyRequest } from "./oriApplyRequestContract.js";
+import {
+  parseOriReviewHttpRequest,
+  validateOriReviewPrincipal,
+  type OriReviewIdentityResolver,
+} from "./oriReviewHttpContract.js";
+import type { OriReviewTicket } from "./oriReviewRegistry.js";
 import { validateOriContextInput, type OriContextInput } from "./oriContextPreview.js";
 import type { OriRuntimePreview } from "./oriRuntimePreview.js";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
@@ -66,6 +73,7 @@ import {
   type AiPolicy,
 } from "./aiConfig.js";
 import { AdminAuth } from "./adminAuth.js";
+import type { createOriEducatorRouteDispatcher } from "./oriEducatorRouteDispatcher.js";
 
 export const MAX_BODY_BYTES = 64 * 1024;
 const HEALTH_TTL_MS = 15_000;
@@ -86,6 +94,59 @@ export interface TutorServerOptions {
   readonly oriRuntimePreviewEnabled?: boolean;
   readonly oriContextPreview?: (input: OriContextInput) => Promise<OriRuntimePreview>;
   readonly oriContextPreviewEnabled?: boolean;
+  readonly oriReviewEnabled?: boolean;
+  /** Server-side canonical run capture for ephemeral private-pilot evidence. */
+  readonly oriPilotVerifiedRun?: (
+    owner: string,
+    projectId: string,
+    sessionId: string,
+  ) => Promise<boolean>;
+  readonly oriPilotHintIssuer?: (
+    owner: string,
+    projectId: string,
+    sessionId: string,
+  ) => Promise<{ readonly level: number; readonly text: string } | null>;
+  /** Durable private-pilot visibility recheck after asynchronous review work. */
+  readonly oriMig04Visibility?: (owner: string, projectId: string) => Promise<boolean>;
+  /** Trusted host-only aggregate telemetry/circuit breaker hook. */
+  readonly oriMig04Observe?: (
+    mode: "disabled" | "shadow" | "pilot",
+    outcome: "success" | "error" | "fallback" | "blocked",
+    durationMs: number,
+  ) => void;
+  /** Optional MIG-04 server-only learner visibility gate; absent retains legacy explicit opt-in. */
+  readonly oriMig04RolloutDecide?: (projectId: string) => {
+    readonly learnerVisible: boolean;
+  };
+  /** Separate opt-in presentation acknowledgement route; default off. */
+  readonly oriPresentationAckEnabled?: boolean;
+  readonly oriPresentationAckHandler?: (
+    request: IncomingMessage,
+    response: ServerResponse,
+  ) => Promise<void>;
+  readonly oriReviewPropose?: (
+    owner: string,
+    projectId: string,
+    sessionId?: string,
+  ) => Promise<OriReviewTicket | null>;
+  readonly oriReviewIdentity?: OriReviewIdentityResolver;
+  readonly oriReviewDecision?: (
+    owner: string,
+    projectId: string,
+    ticketId: string,
+    decision: "accept" | "edit" | "reject",
+  ) => Promise<OriReviewTicket | null>;
+  /** Explicit server-only application of a previously accepted review ticket. */
+  readonly oriReviewApply?: (
+    owner: string,
+    projectId: string,
+    ticketId: string,
+    scriptId: string,
+  ) => Promise<"applied" | "rejected" | "conflict">;
+  readonly oriReviewApplyEnabled?: boolean;
+  /** Explicit adult-only dispatcher; remains disabled unless opted in. */
+  readonly oriEducatorAdminEnabled?: boolean;
+  readonly oriEducatorAdminDispatch?: ReturnType<typeof createOriEducatorRouteDispatcher>;
 }
 
 interface Health {
@@ -209,6 +270,12 @@ export function createTutorServer(options: TutorServerOptions): Server {
 
   async function handle(request: IncomingMessage, response: ServerResponse): Promise<void> {
     const path = new URL(request.url ?? "/", "http://local").pathname;
+    if (path.startsWith("/api/tutor/admin/ori-educator/")) {
+      if (!options.oriEducatorAdminEnabled || !options.oriEducatorAdminDispatch)
+        return send(response, 404, error("not-found"));
+      if (await options.oriEducatorAdminDispatch(request, response)) return;
+      return send(response, 404, error("not-found"));
+    }
     if (path.startsWith("/api/tutor/admin/")) return adminRoute(path, request, response);
     if (path === "/api/tutor/group-config") {
       // Public and read-only on purpose: the closed-group parameters hold no secret, and the group
@@ -218,6 +285,296 @@ export function createTutorServer(options: TutorServerOptions): Server {
       const { revision, config } = options.aiConfig.current();
       return send(response, 200, { revision, group: config.group });
     }
+    if (path === "/api/tutor/ori/review/presented") {
+      if (
+        !options.oriReviewEnabled ||
+        !options.oriPresentationAckEnabled ||
+        !options.oriPresentationAckHandler
+      )
+        return send(response, 404, error("not-found"));
+      if (options.oriMig04RolloutDecide) {
+        if (!options.oriReviewIdentity) return send(response, 404, error("not-found"));
+        const identity = validateOriReviewPrincipal(
+          await options.oriReviewIdentity(request, response),
+        );
+        if (!identity) return send(response, 401, error("unauthorized"));
+        if (!options.oriMig04RolloutDecide(identity.projectId).learnerVisible)
+          return send(response, 404, error("not-found"));
+      }
+      return options.oriPresentationAckHandler(request, response);
+    }
+    if (path === "/api/tutor/ori/pilot/project") {
+      if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
+      if (!options.oriReviewEnabled || !options.oriReviewIdentity || !options.oriMig04Visibility)
+        return send(response, 404, error("not-found"));
+      if (request.headers["x-agorix-request"] !== "1")
+        return send(response, 403, error("forbidden-request"));
+      if (!sameOrigin(request)) return send(response, 403, error("forbidden-origin"));
+      if (!(request.headers["content-type"] ?? "").includes("application/json"))
+        return send(response, 415, error("unsupported-media-type"));
+      if (!allowed(request, "advanced")) return send(response, 429, error("rate-limited"));
+      const identity = validateOriReviewPrincipal(
+        await options.oriReviewIdentity(request, response),
+      );
+      if (!identity?.sessionId) return send(response, 401, error("unauthorized"));
+      const body = await readBody(request);
+      if (body === "too-large") return send(response, 413, error("payload-too-large"));
+      if (body !== "{}") return send(response, 400, error("invalid-request"));
+      if (!(await options.oriMig04Visibility(identity.ownerId, identity.projectId)))
+        return send(response, 404, error("not-found"));
+      if (
+        options.oriMig04RolloutDecide &&
+        !options.oriMig04RolloutDecide(identity.projectId).learnerVisible
+      )
+        return send(response, 404, error("not-found"));
+      return send(response, 200, { projectId: identity.projectId });
+    }
+    if (path === "/api/tutor/ori/evidence/run" || path === "/api/tutor/ori/evidence/hint") {
+      const hintRequest = path.endsWith("/hint");
+      if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
+      if (
+        !options.oriReviewEnabled ||
+        !options.oriReviewIdentity ||
+        !options.oriMig04Visibility ||
+        !(hintRequest ? options.oriPilotHintIssuer : options.oriPilotVerifiedRun)
+      ) {
+        return send(response, 404, error("not-found"));
+      }
+      if (request.headers["x-agorix-request"] !== "1")
+        return send(response, 403, error("forbidden-request"));
+      if (!sameOrigin(request)) return send(response, 403, error("forbidden-origin"));
+      if (!(request.headers["content-type"] ?? "").includes("application/json"))
+        return send(response, 415, error("unsupported-media-type"));
+      if (!allowed(request, "advanced")) return send(response, 429, error("rate-limited"));
+      const identity = validateOriReviewPrincipal(
+        await options.oriReviewIdentity(request, response),
+      );
+      if (!identity?.sessionId) return send(response, 401, error("unauthorized"));
+      if (!(await options.oriMig04Visibility(identity.ownerId, identity.projectId)))
+        return send(response, 404, error("not-found"));
+      if (
+        options.oriMig04RolloutDecide &&
+        !options.oriMig04RolloutDecide(identity.projectId).learnerVisible
+      )
+        return send(response, 404, error("not-found"));
+      const body = await readBody(request);
+      if (body === "too-large") return send(response, 413, error("payload-too-large"));
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(body);
+      } catch {
+        return send(response, 400, error("invalid-request"));
+      }
+      if (
+        !parsed ||
+        typeof parsed !== "object" ||
+        Array.isArray(parsed) ||
+        Object.keys(parsed).length
+      )
+        return send(response, 400, error("invalid-request"));
+      const result = hintRequest
+        ? await options.oriPilotHintIssuer!(
+            identity.ownerId,
+            identity.projectId,
+            identity.sessionId,
+          )
+        : await options.oriPilotVerifiedRun!(
+            identity.ownerId,
+            identity.projectId,
+            identity.sessionId,
+          );
+      if (!(await options.oriMig04Visibility(identity.ownerId, identity.projectId)))
+        return send(response, 404, error("not-found"));
+      if (
+        options.oriMig04RolloutDecide &&
+        !options.oriMig04RolloutDecide(identity.projectId).learnerVisible
+      )
+        return send(response, 404, error("not-found"));
+      return result
+        ? send(response, 200, hintRequest ? result : { recorded: true })
+        : send(response, 409, error("evidence-unavailable"));
+    }
+    if (path === "/api/tutor/ori/review/propose") {
+      if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
+      if (!options.oriReviewEnabled || !options.oriReviewIdentity || !options.oriReviewPropose)
+        return send(response, 404, error("not-found"));
+      if (request.headers["x-agorix-request"] !== "1")
+        return send(response, 403, error("forbidden-request"));
+      if (!sameOrigin(request)) return send(response, 403, error("forbidden-origin"));
+      if (!(request.headers["content-type"] ?? "").includes("application/json"))
+        return send(response, 415, error("unsupported-media-type"));
+      if (!allowed(request, "advanced")) return send(response, 429, error("rate-limited"));
+      const identity = validateOriReviewPrincipal(
+        await options.oriReviewIdentity(request, response),
+      );
+      if (!identity) return send(response, 401, error("unauthorized"));
+      if (
+        options.oriMig04RolloutDecide &&
+        !options.oriMig04RolloutDecide(identity.projectId).learnerVisible
+      )
+        return send(response, 404, error("not-found"));
+      const body = await readBody(request);
+      if (body === "too-large") return send(response, 413, error("payload-too-large"));
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(body);
+      } catch {
+        return send(response, 400, error("invalid-request"));
+      }
+      if (
+        !parsed ||
+        typeof parsed !== "object" ||
+        Array.isArray(parsed) ||
+        Object.keys(parsed).length !== 0
+      )
+        return send(response, 400, error("invalid-request"));
+      const started = performance.now();
+      let ticket: OriReviewTicket | null;
+      try {
+        ticket = await options.oriReviewPropose(
+          identity.ownerId,
+          identity.projectId,
+          identity.sessionId,
+        );
+      } catch (cause) {
+        options.oriMig04Observe?.("pilot", "error", performance.now() - started);
+        throw cause;
+      }
+      options.oriMig04Observe?.(
+        "pilot",
+        ticket?.status === "pending" ? "success" : "fallback",
+        performance.now() - started,
+      );
+      if (
+        options.oriMig04Visibility &&
+        !(await options.oriMig04Visibility(identity.ownerId, identity.projectId))
+      )
+        return send(response, 404, error("not-found"));
+      if (
+        options.oriMig04RolloutDecide &&
+        !options.oriMig04RolloutDecide(identity.projectId).learnerVisible
+      )
+        return send(response, 404, error("not-found"));
+      if (!ticket || ticket.status !== "pending")
+        return send(response, 409, error("proposal-unavailable"));
+      return send(response, 200, {
+        ticketId: ticket.id,
+        proposal: ticket.proposal,
+        appliedChanges: false,
+      });
+    }
+    if (path === "/api/tutor/ori/review/decision") {
+      if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
+      if (!options.oriReviewEnabled || !options.oriReviewIdentity || !options.oriReviewDecision)
+        return send(response, 404, error("not-found"));
+      if (request.headers["x-agorix-request"] !== "1")
+        return send(response, 403, error("forbidden-request"));
+      if (!sameOrigin(request)) return send(response, 403, error("forbidden-origin"));
+      if (!(request.headers["content-type"] ?? "").includes("application/json"))
+        return send(response, 415, error("unsupported-media-type"));
+      if (!allowed(request, "advanced")) return send(response, 429, error("rate-limited"));
+      const identity = validateOriReviewPrincipal(
+        await options.oriReviewIdentity(request, response),
+      );
+      if (!identity) return send(response, 401, error("unauthorized"));
+      if (
+        options.oriMig04RolloutDecide &&
+        !options.oriMig04RolloutDecide(identity.projectId).learnerVisible
+      )
+        return send(response, 404, error("not-found"));
+      const body = await readBody(request);
+      if (body === "too-large") return send(response, 413, error("payload-too-large"));
+      let parsed;
+      try {
+        parsed = parseOriReviewHttpRequest(JSON.parse(body));
+      } catch {
+        parsed = null;
+      }
+      if (!parsed) return send(response, 400, error("invalid-request"));
+      const ticket = await options.oriReviewDecision(
+        identity.ownerId,
+        identity.projectId,
+        parsed.ticketId,
+        parsed.decision,
+      );
+      if (
+        options.oriMig04Visibility &&
+        !(await options.oriMig04Visibility(identity.ownerId, identity.projectId))
+      )
+        return send(response, 404, error("not-found"));
+      if (!ticket) return send(response, 404, error("not-found"));
+      if (!["accepted", "edited", "rejected", "stale"].includes(ticket.status))
+        return send(response, 409, error("review-not-finalized"));
+      return send(response, 200, { status: ticket.status, appliedChanges: false });
+    }
+
+    if (path === "/api/tutor/ori/review/apply") {
+      if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
+      if (
+        !options.oriReviewEnabled ||
+        !options.oriReviewApplyEnabled ||
+        !options.oriReviewIdentity ||
+        !options.oriReviewApply
+      )
+        return send(response, 404, error("not-found"));
+      if (request.headers["x-agorix-request"] !== "1")
+        return send(response, 403, error("forbidden-request"));
+      if (!sameOrigin(request)) return send(response, 403, error("forbidden-origin"));
+      if (!(request.headers["content-type"] ?? "").includes("application/json"))
+        return send(response, 415, error("unsupported-media-type"));
+      if (!allowed(request, "advanced")) return send(response, 429, error("rate-limited"));
+      const identity = validateOriReviewPrincipal(
+        await options.oriReviewIdentity(request, response),
+      );
+      if (!identity) return send(response, 401, error("unauthorized"));
+      if (
+        options.oriMig04RolloutDecide &&
+        !options.oriMig04RolloutDecide(identity.projectId).learnerVisible
+      )
+        return send(response, 404, error("not-found"));
+      const body = await readBody(request);
+      if (body === "too-large" || Buffer.byteLength(body, "utf8") > 512)
+        return send(response, 413, error("payload-too-large"));
+      let parsed;
+      try {
+        parsed = parseOriApplyRequest(JSON.parse(body));
+      } catch {
+        parsed = null;
+      }
+      if (!parsed) return send(response, 400, error("invalid-request"));
+      // Revalidate after asynchronous body reception using the rotated token for this request.
+      const current = validateOriReviewPrincipal(
+        await options.oriReviewIdentity(request, response),
+      );
+      if (
+        !current ||
+        current.ownerId !== identity.ownerId ||
+        current.projectId !== identity.projectId ||
+        current.sessionId !== identity.sessionId
+      )
+        return send(response, 401, error("unauthorized"));
+      if (
+        options.oriMig04Visibility &&
+        !(await options.oriMig04Visibility(current.ownerId, current.projectId))
+      )
+        return send(response, 404, error("not-found"));
+      // Recheck durable rollout before mutation; the PostgreSQL CAS repeats it under lock.
+      if (
+        options.oriMig04RolloutDecide &&
+        !options.oriMig04RolloutDecide(current.projectId).learnerVisible
+      )
+        return send(response, 404, error("not-found"));
+      const result = await options.oriReviewApply(
+        current.ownerId,
+        current.projectId,
+        parsed.ticketId,
+        parsed.scriptId,
+      );
+      if (result === "conflict") return send(response, 409, error("conflict"));
+      if (result !== "applied") return send(response, 403, error("forbidden"));
+      return send(response, 200, { status: "applied" });
+    }
+
     if (path === "/api/tutor/ori/context-preview") {
       if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
       if (!options.oriContextPreviewEnabled || !options.oriContextPreview)

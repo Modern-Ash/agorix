@@ -85,7 +85,8 @@ test("a never-linked child device makes no link request even with the flag on", 
     if (/\/v1\/link\//.test(request.url())) calls.push(request.url());
   });
   await open(page);
-  await page.getByRole("button", { name: "Misión 1" }).click();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "¡Crear!" }).click();
   await page.getByRole("button", { name: "+ mover", exact: true }).click();
   await page.waitForTimeout(300);
   expect(calls).toEqual([]);
@@ -100,7 +101,7 @@ test("adult signs up, verifies by email, links a child tablet, sees its summary 
   await open(page);
   await openAdults(page);
   await expect(page.getByRole("heading", { name: "Cuenta de adulto y vinculación" })).toBeVisible();
-  await signUp(page, name, "ada@example.com");
+  await signUp(page, name, `${name}@example.com`);
   await expect(page.getByText("Revisá tu correo")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Vincular un dispositivo" })).toHaveCount(0);
 
@@ -111,6 +112,7 @@ test("adult signs up, verifies by email, links a child tablet, sees its summary 
   expect(page.url()).not.toContain("verify=");
   await openAdults(page);
   await expect(page.getByRole("heading", { name: "Vincular un dispositivo" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Preparar un proyecto para Ori" })).toHaveCount(0);
 
   const violations = (
     await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
@@ -167,6 +169,206 @@ test("adult signs up, verifies by email, links a child tablet, sees its summary 
     })
     .toBeNull();
   await tablet.context().close();
+});
+
+test("verified adult copies one Kids project to the account without duplicating it", async ({
+  page,
+}) => {
+  await page.route("**/v1/account/project-copy-eligible", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ eligible: true }),
+    }),
+  );
+  const name = alias();
+  await open(page);
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "¡Crear!" }).click();
+  await page.getByRole("button", { name: "Tocá el mundo para poner la meta: 5, 3" }).click();
+  await page.getByRole("button", { name: "Volver al mapa" }).click();
+  await openAdults(page);
+  await signUp(page, name, `${name}@example.com`);
+  await expect(page.getByText("Revisá tu correo")).toBeVisible();
+  const token = await mailToken(page);
+  await page.goto(`/kids?verify=${token}`);
+  await expect(page.getByRole("status").filter({ hasText: "Correo confirmado" })).toBeVisible();
+  await openAdults(page);
+
+  const card = page.getByRole("region", { name: "Preparar un proyecto para Ori" });
+  await expect(card.getByRole("combobox", { name: "Proyecto de este dispositivo" })).toHaveValue(
+    "free-1",
+  );
+  let creates = 0;
+  let createStatus = 0;
+  let updates = 0;
+  page.on("request", (request) => {
+    if (request.method() === "POST" && new URL(request.url()).pathname === "/v1/projects") {
+      creates++;
+    }
+    if (
+      request.method() === "PUT" &&
+      /^\/v1\/projects\/[^/]+$/.test(new URL(request.url()).pathname)
+    ) {
+      updates++;
+    }
+  });
+  page.on("response", (response) => {
+    if (
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname === "/v1/projects"
+    ) {
+      createStatus = response.status();
+    }
+  });
+  await card.getByRole("button", { name: "Crear copia en mi cuenta" }).click();
+  await expect.poll(() => createStatus).not.toBe(0);
+  expect(createStatus).toBe(201);
+  await expect(card.locator(".kids-note")).toContainText("Copia creada en tu cuenta");
+  expect(creates).toBe(1);
+  await card.getByRole("button", { name: "Crear copia en mi cuenta" }).click();
+  await expect(card.locator(".kids-note")).toContainText("ya tiene una copia");
+  expect(creates).toBe(1);
+  const pilotProjectId = await page.evaluate(() => {
+    const copies = JSON.parse(
+      localStorage.getItem("agorix.kids.account-project-copies.v1") ?? "[]",
+    ) as { remoteProjectId: string }[];
+    return copies[0]?.remoteProjectId;
+  });
+  expect(pilotProjectId).toBeTruthy();
+  const pilotBodies: string[] = [];
+  await page.route("**/api/tutor/ori/**", async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    pilotBodies.push(`${path} ${route.request().postData() ?? ""}`);
+    const payload = path.endsWith("/pilot/project")
+      ? { projectId: pilotProjectId }
+      : path.endsWith("/evidence/run")
+        ? { recorded: true }
+        : path.endsWith("/evidence/hint")
+          ? { level: 1, text: "Probá un paso" }
+          : path.endsWith("/review/propose")
+            ? {
+                ticketId: "123e4567-e89b-42d3-a456-426614174000",
+                appliedChanges: false,
+                proposal: {
+                  schemaVersion: "ori/proposal/v0",
+                  operation: "append",
+                  requiresLearnerApproval: true,
+                  blocks: [{ kind: "move", steps: 1 }],
+                },
+              }
+            : path.endsWith("/review/decision")
+              ? { status: "accepted", appliedChanges: false }
+              : { status: "applied" };
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(payload),
+    });
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  await page.locator(".kids-project-card").getByRole("button", { name: "Jugar" }).click();
+  const pilot = page.getByRole("region", { name: "Piloto privado de Ori" });
+  await expect(pilot).toBeVisible();
+  await pilot.getByRole("button", { name: "Ejecutar copia con Ori" }).click();
+  await expect(pilot.getByText(/guardó la evidencia/)).toBeVisible();
+  await pilot.getByRole("button", { name: "Pedir pista" }).click();
+  await expect(pilot.getByText("Pista 1: Probá un paso")).toBeVisible();
+  await pilot.getByRole("button", { name: "Pedir propuesta" }).click();
+  await expect(pilot.getByRole("button", { name: "Aceptar propuesta" })).toBeVisible();
+  await pilot.getByRole("button", { name: "Aceptar propuesta" }).click();
+  await pilot.getByRole("button", { name: "Aplicar cambio aceptado a mi copia" }).click();
+  await expect(pilot.getByText(/Ori aplicó el cambio a la copia de cuenta/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Traer cambio aprobado al editor" })).toBeVisible();
+  const editorPullStatus = await page.evaluate(async () => {
+    const copies = JSON.parse(
+      localStorage.getItem("agorix.kids.account-project-copies.v1") ?? "[]",
+    ) as { remoteProjectId: string }[];
+    const remoteProjectId = copies[0]?.remoteProjectId;
+    if (!remoteProjectId) return 0;
+    const response = await fetch(`/v1/projects/${encodeURIComponent(remoteProjectId)}`);
+    const remote = (await response.json()) as {
+      revision: number;
+      storedProject: { metadata: { hintLevel: number } };
+    };
+    const updated = await fetch(`/v1/projects/${encodeURIComponent(remoteProjectId)}`, {
+      method: "PUT",
+      credentials: "same-origin",
+      headers: { "content-type": "application/json", "x-agorix-request": "1" },
+      body: JSON.stringify({
+        expectedRevision: remote.revision,
+        storedProject: {
+          ...remote.storedProject,
+          metadata: {
+            ...remote.storedProject.metadata,
+            hintLevel: remote.storedProject.metadata.hintLevel + 1,
+          },
+        },
+      }),
+    });
+    return updated.status;
+  });
+  expect(editorPullStatus).toBe(200);
+  await page.getByRole("button", { name: "Traer cambio aprobado al editor" }).click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Cambio aprobado cargado" }),
+  ).toBeVisible();
+  expect(pilotBodies.find((body) => body.startsWith("/api/tutor/ori/evidence/run"))).toBe(
+    "/api/tutor/ori/evidence/run {}",
+  );
+  expect(pilotBodies.find((body) => body.startsWith("/api/tutor/ori/evidence/hint"))).toBe(
+    "/api/tutor/ori/evidence/hint {}",
+  );
+  await page.getByRole("button", { name: "Volver al mapa" }).click();
+  await openAdults(page);
+  await card.getByRole("button", { name: "Actualizar copia" }).click();
+  await expect(card.locator(".kids-note")).toContainText("Copia de cuenta actualizada");
+  expect(updates).toBe(2);
+  const externalStatus = await page.evaluate(async () => {
+    const saved = JSON.parse(
+      localStorage.getItem("agorix.kids.account-project-copies.v1") ?? "[]",
+    ) as readonly { remoteProjectId: string }[];
+    const projectId = saved[0]?.remoteProjectId;
+    if (!projectId) return 0;
+    const response = await fetch(`/v1/projects/${encodeURIComponent(projectId)}`, {
+      credentials: "same-origin",
+    });
+    const project = (await response.json()) as {
+      revision: number;
+      storedProject: { metadata: { hintLevel: number } };
+    };
+    const updated = await fetch(`/v1/projects/${encodeURIComponent(projectId)}`, {
+      method: "PUT",
+      credentials: "same-origin",
+      headers: { "content-type": "application/json", "x-agorix-request": "1" },
+      body: JSON.stringify({
+        expectedRevision: project.revision,
+        storedProject: {
+          ...project.storedProject,
+          metadata: {
+            ...project.storedProject.metadata,
+            hintLevel: project.storedProject.metadata.hintLevel + 1,
+          },
+        },
+      }),
+    });
+    return updated.status;
+  });
+  expect(externalStatus).toBe(200);
+  await card.getByRole("button", { name: "Actualizar copia" }).click();
+  await expect(card.locator(".kids-note")).toContainText("cambió en otro lugar");
+  await card.getByRole("button", { name: "Traer cambios de mi cuenta" }).click();
+  await expect(card.locator(".kids-note")).toContainText("Versión de cuenta cargada");
+  expect(
+    await page.evaluate(() => {
+      const raw = localStorage.getItem("agorix:free-1");
+      return raw ? (JSON.parse(raw) as { metadata: { hintLevel: number } }).metadata.hintLevel : -1;
+    }),
+  ).toBe(2);
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem("agorix.kids.projects.v1")))
+    .toContain("free-1");
 });
 
 test("the child's wrong code reads as a calm, generic message", async ({ page }) => {

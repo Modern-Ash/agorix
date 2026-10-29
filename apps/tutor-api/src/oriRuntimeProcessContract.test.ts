@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process"; // agora-allowlist: test-only spawn of the local Ori reference process, fixed arguments
+import { spawnSync } from "node:child_process"; // agora-allowlist: contract test executes a fixed local Node runtime without a shell
 import { isAbsolute, resolve } from "node:path";
 import { existsSync } from "node:fs";
 import { describe, expect, it } from "vitest";

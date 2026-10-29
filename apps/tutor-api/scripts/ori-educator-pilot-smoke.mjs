@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import process from "node:process";
-import { spawnSync } from "node:child_process"; // agora-allowlist: operator smoke script, runs the local Ori reference process with fixed arguments
+import { spawnSync } from "node:child_process"; // agora-allowlist: smoke script invokes fixed local Node entrypoints without a shell
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

@@ -1,5 +1,5 @@
-import { enqueueAdult } from "../adultQueue.js";
 import { DEFAULT_ACCOUNT_PATH, type FetchLike } from "../../accounts/httpClient.js";
+import { withAgorixSessionQueue } from "../../accounts/sessionRequestQueue.js";
 
 /** What the adult sees about each linked device. No address, no agent, no fingerprint. */
 export interface LinkedDevice {
@@ -78,6 +78,8 @@ export interface LinkApi {
   /** Permanent: removes the account, its projects, link data and sessions. Needs the password again. */
   deleteAccount(password: string): Promise<void>;
   emailStatus(): Promise<{ present: boolean; verified: boolean }>;
+  /** Server-owned private copy eligibility; a hidden card is not Ori authorization. */
+  projectCopyEligible?(): Promise<boolean>;
   setEmail(email: string): Promise<void>;
   resendEmail(): Promise<void>;
   verifyEmail(token: string): Promise<void>;
@@ -109,6 +111,7 @@ function record(value: unknown): Record<string, unknown> {
 export function createLinkApi(options: { readonly fetch?: FetchLike } = {}): LinkApi {
   const doFetch: FetchLike =
     options.fetch ?? ((input, init) => globalThis.fetch(input, init) as ReturnType<FetchLike>);
+  // Adult linking and project requests share one rotating session cookie.
 
   async function raw(
     method: string,
@@ -144,7 +147,7 @@ export function createLinkApi(options: { readonly fetch?: FetchLike } = {}): Lin
   }
 
   function adult(method: string, url: string, body?: unknown): Promise<Parsed> {
-    return enqueueAdult(() => raw(method, url, body, {}));
+    return withAgorixSessionQueue(() => raw(method, url, body, {}));
   }
 
   const signInRequest = async (alias: string, password: string): Promise<{ alias: string }> => {
@@ -205,6 +208,15 @@ export function createLinkApi(options: { readonly fetch?: FetchLike } = {}): Lin
     },
 
     emailStatus: emailStatusRequest,
+
+    async projectCopyEligible() {
+      try {
+        const { json } = await adult("GET", "/v1/account/project-copy-eligible");
+        return record(json)["eligible"] === true;
+      } catch {
+        return false;
+      }
+    },
 
     async setEmail(email) {
       await adult("POST", "/v1/account/email", { email });

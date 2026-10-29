@@ -21,6 +21,15 @@ describe("Kids v2 flags (issue #439)", () => {
     expect(kidsV2Enabled("groupMode", { storage: storageWith(null), search: "" })).toBe(false);
   });
 
+  it("can enable the existing adult flow for a reviewed deployment build", () => {
+    expect(kidsV2Enabled("adultLink", { storage: storageWith(null), adultLinkDefault: true })).toBe(
+      true,
+    );
+    expect(kidsV2Enabled("adultLink", { storage: storageWith("[]"), adultLinkDefault: true })).toBe(
+      false,
+    );
+  });
+
   it("accepts an explicit empty list as a rollback", () => {
     expect(kidsV2Features({ storage: storageWith("[]") }).size).toBe(0);
   });

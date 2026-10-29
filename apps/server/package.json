@@ -6,7 +6,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/bundle.mjs",
     "test": "vitest run",
-    "start": "node dist/main.mjs"
+    "start": "node dist/main.mjs",
+    "migrate:postgres": "node dist/migrate.mjs"
   },
   "dependencies": {
     "@agorix/auth-service": "workspace:*",
@@ -14,9 +15,11 @@
     "@agorix/link-service": "workspace:*",
     "@agorix/persistence": "workspace:*",
     "@agorix/project-api": "workspace:*",
-    "@agorix/project-repository": "workspace:*"
+    "@agorix/project-repository": "workspace:*",
+    "pg": "^8"
   },
   "devDependencies": {
+    "@types/pg": "^8",
     "esbuild": "^0.28.2"
   }
 }

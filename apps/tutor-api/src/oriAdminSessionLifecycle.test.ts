@@ -4,7 +4,7 @@ import { AdminAuth, hashAdminPassword } from "./adminAuth.js";
 import { createAdminSessionOriReview } from "./oriAdminSessionReview.js";
 import type { OriPlanReviewResult } from "./oriPlanReview.js";
 
-const password = "a".repeat(28);
+const password = "fake-admin-password-123"; // agora-allowlist: synthetic fixture meets the admin minimum length
 const input = { missionIndex: 1, hintLevel: 2 as const, scriptCount: 1 };
 const plan: OriPlanReviewResult = {
   status: "ready",

@@ -19,6 +19,8 @@ const required = [
   "src/local-agent-runtime.mjs",
   "src/opencode-native.mjs",
   "test/local-agent-http-e2e.test.mjs",
+  "examples/educational-context-cli.mjs",
+  "examples/host-evidence-cli.mjs",
 ];
 if (required.some((file) => !existsSync(join(root, file)))) {
   console.error("Ori checkout lacks required integrated runtime modules");
@@ -57,6 +59,33 @@ run(
     "apps/tutor-api/src/oriRealProcessSmoke.test.ts",
     "apps/tutor-api/src/oriRuntimeProcessContract.test.ts",
     "apps/tutor-api/src/oriLiveRuntimeRoute.test.ts",
+    "apps/tutor-api/src/oriLiveContextRoute.test.ts",
+    "apps/tutor-api/src/oriHostEvidenceLive.test.ts",
+    "apps/tutor-api/src/oriCanonicalRealProcess.test.ts",
+    "apps/tutor-api/src/oriReviewApplyLiveProcessHttp.test.ts",
+    "apps/tutor-api/src/oriReviewHttpRoute.test.ts",
+    "apps/tutor-api/src/oriProposalIssuanceHttp.test.ts",
+    "apps/tutor-api/src/oriAuthorizedReviewLifecycle.test.ts",
+    "apps/tutor-api/src/oriAuthServiceIntegration.test.ts",
+    "apps/tutor-api/src/oriRealRotatingAuthIntegration.test.ts",
+    "apps/tutor-api/src/oriRotatingSessionRoute.test.ts",
+    "apps/tutor-api/src/oriReviewRuntimeHttp.test.ts",
+    "--reporter=verbose",
+  ],
+  process.cwd(),
+);
+// Run the release-critical live vertical in isolation. Vitest exits nonzero
+// when its single test fails; with ORI_REPO_PATH checked above, it cannot skip
+// due to a missing checkout without the gate detecting that configuration.
+console.log("ORI_GATE: isolated live HTTP approval/apply vertical");
+run(
+  "pnpm",
+  [
+    "exec",
+    "vitest",
+    "run",
+    "apps/tutor-api/src/oriReviewApplyLiveProcessHttp.test.ts",
+    "apps/tutor-api/src/oriMissionParityLive.test.ts",
     "--reporter=verbose",
   ],
   process.cwd(),

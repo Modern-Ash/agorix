@@ -107,6 +107,7 @@ import { KIDS_SHORTCUTS, kidsShortcut } from "../kidsShortcuts.js";
 import { tutorialStep } from "../kidsTutorial.js";
 import { KidsTutorial } from "./KidsTutorial.js";
 import { ListenButton } from "./ListenButton.js";
+import { OriKidsEditorAccess } from "../link/OriKidsEditorAccess.js";
 
 type CodeLanguage = "agorix" | "python" | "typescript" | "java";
 type Prediction = "yes" | "no" | "dunno";
@@ -513,6 +514,18 @@ export function EditorScreen({
     setOriOpen(false);
     save(next, false);
     clearRun();
+  }
+
+  function reloadAccountCopy() {
+    try {
+      const saved = store.load(projectId);
+      setHistory(createEditorHistory(validateProgram(saved.program)));
+      setFreeGoal(parseKidsGoalSpec(saved.metadata.missionSpec?.goal ?? ""));
+      setFreeGoalCheck(saved.metadata.missionSpec?.successCheck ?? "touches-goal");
+      clearRun();
+    } catch {
+      // The local project remains available if the updated copy cannot be read.
+    }
   }
 
   function dropOnProgram(event: DragEvent<HTMLUListElement>) {
@@ -1218,6 +1231,9 @@ export function EditorScreen({
               locale={locale}
               onAccept={(proposal) => chooseFreeGoal(proposal.cell, proposal.successCheck)}
             />
+          ) : null}
+          {freeProjectId ? (
+            <OriKidsEditorAccess localProjectId={freeProjectId} onPulled={reloadAccountCopy} />
           ) : null}
         </div>
         <div className="kids-editor-program-panel">
