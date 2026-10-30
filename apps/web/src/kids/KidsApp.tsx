@@ -327,6 +327,7 @@ export function KidsApp({
                 : undefined
             }
             onBack={() => dispatch({ type: "go", screen: "map" })}
+            onOpenAdults={() => dispatch({ type: "go", screen: "parents" })}
             onComplete={() => {
               if (!state.freeProjectId)
                 update(markMissionDone(progress, state.world, state.missionIndex));

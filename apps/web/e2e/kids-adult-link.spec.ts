@@ -227,6 +227,14 @@ test("verified adult copies one Kids project to the account without duplicating 
         });
     }
   });
+  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  await page.locator(".kids-project-card").getByRole("button", { name: "Jugar" }).click();
+  const entry = page.getByRole("region", { name: "Usar Ori con mi cuenta" });
+  await expect(entry).toBeVisible();
+  expect(creates).toBe(0);
+  await entry.getByRole("button", { name: "Ir a Adultos para vincularlo" }).click();
+  await passAdultGate(page);
+  await expect(card).toBeVisible();
   await card.getByRole("button", { name: "Vincular proyecto a mi cuenta" }).click();
   await expect.poll(() => createStatus).not.toBe(0);
   if (createStatus !== 201) await expect.poll(() => createResponse).not.toBe("");

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ProjectStore } from "@agorix/persistence";
+import type { Locale } from "../../i18n.js";
 import { createHttpBackend } from "../../accounts/httpClient.js";
+import { createLinkApi } from "./linkApi.js";
 import {
   kidsAccountCopy,
   pullKidsAccountCopy,
@@ -17,6 +19,8 @@ export function OriKidsEditorAccess({
   evidenceKey,
   registerHintRequest,
   onPulled,
+  onOpenAdults,
+  locale,
 }: {
   readonly localProjectId: string;
   readonly localSaveVersion: number;
@@ -24,8 +28,11 @@ export function OriKidsEditorAccess({
   readonly evidenceKey: string;
   readonly registerHintRequest: (request: OriKidsHintRequest | null) => void;
   readonly onPulled: () => void;
+  readonly onOpenAdults: () => void;
+  readonly locale: Locale;
 }) {
   const [copy, setCopy] = useState<{ alias: string; remoteProjectId: string } | null>(null);
+  const [accountAvailable, setAccountAvailable] = useState(false);
   const [applied, setApplied] = useState(false);
   const [message, setMessage] = useState("");
   const syncQueue = useRef<Promise<void>>(Promise.resolve());
@@ -34,10 +41,14 @@ export function OriKidsEditorAccess({
   useEffect(() => {
     let cancelled = false;
     setCopy(null);
-    void createHttpBackend()
-      .account.restore()
-      .then((session) => {
-        if (cancelled || !session) return;
+    setAccountAvailable(false);
+    const api = createLinkApi();
+    void api
+      .restore()
+      .then(async (session) => {
+        if (cancelled || !session || !(await api.projectCopyEligible?.())) return;
+        if (cancelled) return;
+        setAccountAvailable(true);
         const linked = kidsAccountCopy(window.localStorage, session.alias, localProjectId);
         if (linked?.remoteRevision !== undefined && linked.localSemanticHash) {
           setCopy({ alias: session.alias, remoteProjectId: linked.remoteProjectId });
@@ -100,7 +111,23 @@ export function OriKidsEditorAccess({
     };
   }, [copy, enqueueReconcile, localSaveVersion]);
 
-  if (!copy) return null;
+  if (!copy) {
+    return accountAvailable ? (
+      <section
+        className="kids-adult-card"
+        aria-label={locale === "es" ? "Usar Ori con mi cuenta" : "Use Ori with my account"}
+      >
+        <p>
+          {locale === "es"
+            ? "Para revisar propuestas de Ori sobre este proyecto, un adulto debe vincularlo a su cuenta."
+            : "To review Ori's proposals for this project, an adult must link it to their account."}
+        </p>
+        <button type="button" className="kids-button" onClick={onOpenAdults}>
+          {locale === "es" ? "Ir a Adultos para vincularlo" : "Go to Adults to link it"}
+        </button>
+      </section>
+    ) : null;
+  }
 
   async function prepareRun(): Promise<
     "unchanged" | "updated" | "pulled" | "conflict" | "unavailable"

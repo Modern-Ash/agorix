@@ -152,6 +152,7 @@ interface Props {
   readonly avatar: KidsAvatar;
   readonly missionIndex: 0 | 1 | 2 | 3;
   readonly onBack: () => void;
+  readonly onOpenAdults: () => void;
   readonly onComplete: () => void;
   readonly freeProjectId?: string | undefined;
   readonly oriSuggestions?: boolean;
@@ -189,6 +190,7 @@ export function EditorScreen({
   avatar,
   missionIndex,
   onBack,
+  onOpenAdults,
   onComplete,
   freeProjectId,
   oriSuggestions = true,
@@ -1296,6 +1298,8 @@ export function EditorScreen({
               evidenceKey={evidenceKey}
               registerHintRequest={registerOriHintRequest}
               onPulled={reloadAccountCopy}
+              onOpenAdults={onOpenAdults}
+              locale={locale}
             />
           ) : null}
         </div>
