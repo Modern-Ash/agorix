@@ -362,26 +362,33 @@ test("verified adult copies one Kids project to the account without duplicating 
         ? { recorded: true }
         : path.endsWith("/evidence/hint")
           ? { level: 2, text: "Probá un paso" }
-          : path.endsWith("/review/propose")
+          : path.endsWith("/review/debug")
             ? {
-                ticketId: `123e4567-e89b-42d3-a456-${String(++proposalCount).padStart(12, "0")}`,
+                schema: "agorix/ori-debug-guidance/v1",
+                nextStep: "Revisar el paso 2 de la traza verificada por el host",
+                question: "Preguntarse si ese paso produjo lo que esperabas",
                 appliedChanges: false,
-                proposal: {
-                  schemaVersion: "ori/proposal/v0",
-                  operation: "append",
-                  requiresLearnerApproval: true,
-                  blocks: [{ kind: "move", steps: 1 }],
-                },
               }
-            : path.endsWith("/review/decision")
+            : path.endsWith("/review/propose")
               ? {
-                  status:
-                    JSON.parse(route.request().postData() ?? "{}")?.decision === "reject"
-                      ? "rejected"
-                      : "accepted",
+                  ticketId: `123e4567-e89b-42d3-a456-${String(++proposalCount).padStart(12, "0")}`,
                   appliedChanges: false,
+                  proposal: {
+                    schemaVersion: "ori/proposal/v0",
+                    operation: "append",
+                    requiresLearnerApproval: true,
+                    blocks: [{ kind: "move", steps: 1 }],
+                  },
                 }
-              : { status: "applied" };
+              : path.endsWith("/review/decision")
+                ? {
+                    status:
+                      JSON.parse(route.request().postData() ?? "{}")?.decision === "reject"
+                        ? "rejected"
+                        : "accepted",
+                    appliedChanges: false,
+                  }
+                : { status: "applied" };
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -408,6 +415,11 @@ test("verified adult copies one Kids project to the account without duplicating 
   await page.getByRole("dialog").getByRole("button", { name: "Sí", exact: true }).click();
   await expect(pilot.getByText(/guardó la evidencia/)).toBeVisible();
   await expect(pilot.getByRole("button", { name: "Aceptar propuesta" })).toBeVisible();
+  await pilot.getByRole("button", { name: "Pedir ayuda para depurar" }).click();
+  await expect(
+    pilot.getByText("Revisar el paso 2 de la traza verificada por el host"),
+  ).toBeVisible();
+  expect(pilotBodies).toContain("/api/tutor/ori/review/debug {}");
   await pilot.getByRole("button", { name: "Rechazar propuesta" }).click();
   await expect(pilot.getByText(/Decisión confirmada por el servidor: rejected/)).toBeVisible();
   await page.getByRole("button", { name: "Jugar", exact: true }).click();

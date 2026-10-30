@@ -43,6 +43,17 @@ describe.skipIf(!runnable)("real Ori host evidence CLI", () => {
     expect(result.evidenceReceipt?.programRevision).toBe(request.programRevision);
     expect(result.evidenceReceipt?.digest).toMatch(/^[a-f0-9]{64}$/);
   }, 15000);
+  it("returns read-only debug guidance bound to a real Ori receipt", async () => {
+    const result = await createOriHostEvidenceAdapter({ oriRoot: oriRoot! })({
+      ...request,
+      intent: "debug",
+    });
+    expect(result.status).toBe("ready");
+    expect(result.proposal).toBeNull();
+    expect(result.debugGuidance?.nextStep).toContain("paso 2");
+    expect(result.evidenceReceipt?.programRevision).toBe(request.programRevision);
+    expect(result.appliedChanges).toBe(false);
+  }, 15000);
   it("rejects untrusted input without invoking Ori", async () => {
     const run = createOriHostEvidenceAdapter({ oriRoot: oriRoot! });
     expect((await run({ ...request, message: "private" })).status).toBe("unavailable");

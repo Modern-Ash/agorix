@@ -13,6 +13,7 @@ import {
 import { createOriProjectReviewService } from "./oriProjectReviewService.js";
 import { createOriReviewRegistry } from "./oriReviewRegistry.js";
 import { applyApprovedOriProposal } from "./oriApprovedProjectApply.js";
+import { validOriDebugGuidance } from "./oriDebugGuidance.js";
 
 export interface OriLearningContext {
   readonly attempts: number;
@@ -114,6 +115,52 @@ export function createOriCanonicalReviewWorkflow({
     registry,
   });
   return Object.freeze({
+    async debug(owner: string, projectId: string, sessionId?: string) {
+      const project = await resolve(owner, projectId, "debug", sessionId);
+      if (
+        !project ||
+        project.owner !== owner ||
+        project.projectId !== projectId ||
+        project.evidence.programRevision !== project.revision
+      )
+        return null;
+      let before: Awaited<ReturnType<ProjectRepository["get"]>>;
+      try {
+        before = await repository.get(owner, projectId);
+      } catch {
+        return null;
+      }
+      if (
+        before.ownerId !== owner ||
+        before.projectId !== projectId ||
+        oriEvidenceRevision(before.semanticHash, before.revision) !== project.revision
+      )
+        return null;
+      const result = await runOri(project.evidence);
+      if (
+        result.status !== "ready" ||
+        result.proposal !== null ||
+        result.evidenceReceipt?.complete !== true ||
+        !/^[a-f0-9]{64}$/.test(result.evidenceReceipt.digest) ||
+        result.evidenceReceipt?.programRevision !== project.revision ||
+        !validOriDebugGuidance(result.debugGuidance, project.evidence.expectedSteps)
+      )
+        return null;
+      let latest: typeof before;
+      try {
+        latest = await repository.get(owner, projectId);
+      } catch {
+        return null;
+      }
+      if (
+        latest.ownerId !== owner ||
+        latest.projectId !== projectId ||
+        latest.revision !== before.revision ||
+        latest.semanticHash !== before.semanticHash
+      )
+        return null;
+      return result.debugGuidance;
+    },
     async propose(owner: string, projectId: string, sessionId?: string) {
       purgeBindings();
       if (ticketProjects.size >= MAX_BINDINGS) return null;

@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process"; // agora-allowlist: server runs a fixed Ori evidence CLI with shell disabled and bounded output
 import { existsSync, realpathSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
+import { parseOriDebugPlan, type OriDebugGuidance } from "./oriDebugGuidance.js";
 
 export interface TrustedOriEvidence {
   readonly intent: "help" | "repeat" | "turn" | "move" | "debug";
@@ -22,6 +23,7 @@ export interface TrustedOriEvidence {
 export interface OriHostEvidenceResult {
   readonly status: "ready" | "unavailable";
   readonly proposal?: unknown;
+  readonly debugGuidance?: OriDebugGuidance;
   readonly evidenceReceipt?: {
     readonly programRevision: string;
     readonly digest: string;
@@ -337,9 +339,14 @@ export function createOriHostEvidenceAdapter({
           if (!Object.hasOwn(d, "proposal")) return finish(unavailable);
           const proposal = validateOriHostProposal(d["proposal"], input.snapshot.allowedBlocks);
           if (d["proposal"] !== null && proposal === null) return finish(unavailable);
+          const debugGuidance =
+            input.intent === "debug" ? parseOriDebugPlan(d["plan"], input.expectedSteps) : null;
+          if (input.intent === "debug" && (proposal !== null || !debugGuidance))
+            return finish(unavailable);
           finish({
             status: "ready",
             proposal,
+            ...(debugGuidance ? { debugGuidance } : {}),
             evidenceReceipt: {
               programRevision: input.programRevision,
               digest: e["digest"],
