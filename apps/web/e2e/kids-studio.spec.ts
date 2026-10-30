@@ -1894,3 +1894,42 @@ test("free scene shows Media and Logic as snap-together blocks and keeps tools o
   ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");
   expect(violations.map((entry) => entry.id)).toEqual([]);
 });
+
+// Issue #1110: a category bar over the palette jumps to each block family without hiding any.
+test("the block category bar jumps to each family and wraps on a phone", async ({ page }) => {
+  await openStudio(page, "9-12");
+  const bar = page.getByRole("navigation", { name: "Categorías de bloques" });
+  await expect(bar.getByRole("button")).toHaveText([
+    "Movimiento",
+    "Apariencia y tiempo",
+    "Disfraces, fondos y sonidos",
+    "Eventos y control",
+    "Variables y listas",
+    "Mis bloques",
+  ]);
+  // Lápiz and Música are packs a grown-up turned off here, so the bar leaves them out too.
+  const before = await page.locator(".kids-studio-palette button").count();
+  await bar.getByRole("button", { name: "Variables y listas" }).click();
+  const heading = page.getByRole("heading", { name: "Variables y listas" });
+  await expect(heading).toBeFocused();
+  await expect(heading).toBeInViewport();
+  await bar.getByRole("button", { name: "Mis bloques" }).click();
+  await expect(page.getByRole("heading", { name: "Mis bloques" })).toBeFocused();
+  // Jumping hides nothing: every block is still in the palette.
+  expect(await page.locator(".kids-studio-palette button").count()).toBe(before);
+  const layout = await page.evaluate(() => {
+    const width = document.documentElement.clientWidth;
+    const small = [...document.querySelectorAll<HTMLElement>(".kids-studio-category")].filter(
+      (button) => {
+        const rect = button.getBoundingClientRect();
+        return rect.right > width + 1 || rect.left < -1 || rect.height < 44;
+      },
+    ).length;
+    return { sideways: document.documentElement.scrollWidth > width, small };
+  });
+  expect(layout).toEqual({ sideways: false, small: 0 });
+  const violations = (
+    await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
+  ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");
+  expect(violations.map((entry) => entry.id)).toEqual([]);
+});

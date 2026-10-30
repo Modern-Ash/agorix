@@ -3401,6 +3401,27 @@
 .kids-studio-nested-blocks li {
   margin: 0.3rem 0;
 }
+/* Category jump bar over the free-scene palette (#1110): wraps, never scrolls sideways. */
+.kids-studio-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 1rem 0 0;
+}
+.kids-studio-category {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--kids-border);
+  border-radius: 999px;
+  background: var(--kids-panel);
+  color: var(--kids-text);
+  font: 700 0.9rem var(--kids-font-body);
+  cursor: pointer;
+}
+.kids-studio-palette h3,
+.kids-studio-palette [id^="kids-studio-cat-"] {
+  scroll-margin-top: 12px;
+}
 .kids-studio-palette {
   display: flex;
   flex-wrap: wrap;
