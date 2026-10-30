@@ -1,6 +1,8 @@
 import type { ProjectRepository } from "@agorix/project-repository";
+import { kidsMoveSteps } from "@agorix/curriculum";
 import { validateProgram, type ProjectProgram } from "@agorix/program-model";
 import { mapOriProposalToCanonicalStatement } from "./oriCanonicalProposalMapping.js";
+import { oriKidsFreeMission } from "./oriKidsFreeWorld.js";
 
 /**
  * Server-only, explicit post-review mutation boundary.
@@ -55,13 +57,18 @@ export async function applyApprovedOriProposal({
     const record = await repository.get(owner, projectId);
     if (record.ownerId !== owner || record.projectId !== projectId) return "rejected";
     if (record.revision !== expectedRevision) return "conflict";
+    // Ori v0 counts Kids moves in grid cells; the canonical runtime stores distance units.
+    const canonicalStatement =
+      statement.type === "move" && oriKidsFreeMission(record.storedProject)
+        ? { ...statement, steps: kidsMoveSteps(statement.steps) }
+        : statement;
     const original = record.storedProject.program;
     if (original.scripts.filter((script) => script.id === scriptId).length !== 1) return "rejected";
     const program: ProjectProgram = {
       ...original,
       scripts: original.scripts.map((script) =>
         script.id === scriptId
-          ? { ...script, statements: [...script.statements, statement] }
+          ? { ...script, statements: [...script.statements, canonicalStatement] }
           : script,
       ),
     };
