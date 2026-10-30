@@ -344,6 +344,7 @@ test("verified adult copies one Kids project to the account without duplicating 
   expect(secondDeviceCreates).toBe(0);
   await secondDevice.context().close();
   const pilotBodies: string[] = [];
+  let proposalCount = 0;
   await page.route("**/api/tutor/ori/**", async (route) => {
     const path = new URL(route.request().url()).pathname;
     pilotBodies.push(`${path} ${route.request().postData() ?? ""}`);
@@ -355,7 +356,7 @@ test("verified adult copies one Kids project to the account without duplicating 
           ? { level: 2, text: "Probá un paso" }
           : path.endsWith("/review/propose")
             ? {
-                ticketId: "123e4567-e89b-42d3-a456-426614174000",
+                ticketId: `123e4567-e89b-42d3-a456-${String(++proposalCount).padStart(12, "0")}`,
                 appliedChanges: false,
                 proposal: {
                   schemaVersion: "ori/proposal/v0",
@@ -365,7 +366,13 @@ test("verified adult copies one Kids project to the account without duplicating 
                 },
               }
             : path.endsWith("/review/decision")
-              ? { status: "accepted", appliedChanges: false }
+              ? {
+                  status:
+                    JSON.parse(route.request().postData() ?? "{}")?.decision === "reject"
+                      ? "rejected"
+                      : "accepted",
+                  appliedChanges: false,
+                }
               : { status: "applied" };
     await route.fulfill({
       status: 200,
@@ -392,14 +399,20 @@ test("verified adult copies one Kids project to the account without duplicating 
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Sí", exact: true }).click();
   await expect(pilot.getByText(/guardó la evidencia/)).toBeVisible();
-  await page.getByRole("button", { name: "Pista 2", exact: true }).click();
-  await expect(pilot.getByText("Pista 2: Probá un paso")).toBeVisible();
-  await expect(pilot.getByRole("button", { name: "Pedir propuesta" })).toHaveCount(0);
+  await expect(pilot.getByRole("button", { name: "Aceptar propuesta" })).toBeVisible();
+  await pilot.getByRole("button", { name: "Rechazar propuesta" }).click();
+  await expect(pilot.getByText(/Decisión confirmada por el servidor: rejected/)).toBeVisible();
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Sí", exact: true }).click();
-  await expect(pilot.getByRole("button", { name: "Pedir propuesta" })).toBeVisible();
-  await pilot.getByRole("button", { name: "Pedir propuesta" }).click();
+  await expect(pilot.getByRole("button", { name: "Aceptar propuesta" })).toHaveCount(0);
+  expect(proposalCount).toBe(1);
+  await page.getByRole("button", { name: "Pista 2", exact: true }).click();
+  await expect(pilot.getByText("Pista 2: Probá un paso")).toBeVisible();
+  await expect(pilot.getByRole("button", { name: "Aceptar propuesta" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Sí", exact: true }).click();
   await expect(pilot.getByRole("button", { name: "Aceptar propuesta" })).toBeVisible();
+  expect(proposalCount).toBe(2);
   await pilot.getByRole("button", { name: "Aceptar propuesta" }).click();
   await pilot.getByRole("button", { name: "Aplicar cambio aceptado a mi proyecto" }).click();
   await expect(pilot.getByText(/Ori aplicó el cambio a tu cuenta/)).toBeVisible();
@@ -504,7 +517,7 @@ test("verified adult copies one Kids project to the account without duplicating 
   await expect(
     pilot.getByText("No se pudo verificar esta ejecución. Tu proyecto no cambió."),
   ).toBeVisible();
-  await expect(pilot.getByRole("button", { name: "Pedir propuesta" })).toHaveCount(0);
+  await expect(pilot.getByTestId("ori-proposal-review")).toHaveCount(0);
 });
 
 test("the child's wrong code reads as a calm, generic message", async ({ page }) => {
