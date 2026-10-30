@@ -110,6 +110,10 @@ export function KidsApp({
   useEffect(() => {
     const follow = () => {
       if (!progress.onboarded) return;
+      if (window.location.pathname === "/" && !window.location.hash) {
+        dispatch({ type: "restore", state: { ...state, screen: "onboard", onboardStep: 0 } });
+        return;
+      }
       const next = stateFromHash(window.location.hash, state, routeLookup());
       if (next) dispatch({ type: "restore", state: next });
       else dispatch({ type: "go", screen: "map" });
@@ -260,6 +264,9 @@ export function KidsApp({
             onAvatar={chooseAvatar}
             onNext={onboardNext}
             onBack={() => dispatch({ type: "onboardBack" })}
+            {...(progress.onboarded
+              ? { onContinue: () => dispatch({ type: "go", screen: "map" }) }
+              : {})}
           />
         ) : state.screen === "map" ? (
           <MapScreen
@@ -479,7 +486,9 @@ function stateFromLocation(start: KidsState, progress: KidsProgress): KidsState 
 
 function startingState(progress: KidsProgress): KidsState {
   const base = { ...initialKidsState(initialLocale(undefined)), avatar: progress.avatar };
-  return progress.onboarded ? { ...base, screen: "map" } : base;
+  const returningAtEntry =
+    typeof window !== "undefined" && window.location.pathname === "/" && !window.location.hash;
+  return progress.onboarded && !returningAtEntry ? { ...base, screen: "map" } : base;
 }
 
 function screenTitle(screen: KidsScreen, t: KidsText): string {

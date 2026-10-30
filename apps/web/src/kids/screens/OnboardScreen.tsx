@@ -14,6 +14,7 @@ interface Props {
   readonly onAvatar: (avatar: KidsAvatar) => void;
   readonly onNext: () => void;
   readonly onBack: () => void;
+  readonly onContinue?: () => void;
 }
 
 function Listen({ t, text, locale }: { t: KidsText; text: string; locale: Locale }) {
@@ -40,6 +41,7 @@ export function OnboardScreen({
   onAvatar,
   onNext,
   onBack,
+  onContinue,
 }: Props) {
   return (
     <section className="kids-onboard" aria-labelledby="kids-title">
@@ -141,6 +143,11 @@ export function OnboardScreen({
       ) : null}
 
       <div className="kids-onboard-actions">
+        {step === 0 && onContinue ? (
+          <button type="button" className="kids-continue" onClick={onContinue}>
+            {t("goToMap")}
+          </button>
+        ) : null}
         {step > 0 ? (
           <button type="button" className="kids-back" aria-label={t("back")} onClick={onBack}>
             <span aria-hidden="true">←</span>

@@ -118,6 +118,20 @@ test("the default Kids journey reaches the world map", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Misión 1" })).toBeVisible();
 });
 
+test("a returning browser sees the welcome screen at the base URL", async ({ page }) => {
+  await page.addInitScript(() =>
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    ),
+  );
+  await page.goto("/");
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole("heading", { name: "¡Hola!" })).toBeVisible();
+  await page.getByRole("button", { name: "Ir al mapa" }).click();
+  await expect(page.getByRole("heading", { name: "Mapa" })).toBeVisible();
+});
+
 test("a fresh browser sees the creative Kids tools by default", async ({ page }) => {
   await page.goto("/");
   expect(await page.evaluate(() => localStorage.getItem("agorix.kids.flags.v1"))).toBeNull();
