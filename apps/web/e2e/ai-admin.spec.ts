@@ -71,15 +71,45 @@ test("AI operations console validates, publishes and restores a revision", async
   await page.getByLabel("Clave de administración").fill("a-strong-admin-password");
   await page.getByRole("button", { name: "Ingresar" }).click();
   await expect(page.getByRole("heading", { name: "Ori en misiones" })).toBeVisible();
+  // Issue #1112: the menu is grouped and monitoring lives apart from the sections that edit.
+  const menu = page.getByRole("navigation", { name: "Centro de IA" });
+  for (const group of ["REGLAS", "AGENTES DE ORI", "MONITOREO"])
+    await expect(menu.getByRole("group", { name: group })).toBeVisible();
+  await expect(menu.getByRole("button", { name: /Ori en misiones/ })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await expect(page.getByRole("button", { name: "Restaurar" })).toHaveCount(0);
+  const draftBar = page.getByRole("region", { name: "Borrador" });
+  await expect(draftBar).toContainText("Sin cambios pendientes");
   await page.getByLabel("Instrucción adicional").fill("Preguntá qué predice el estudiante.");
+  await expect(draftBar).toContainText("1 sección cambiada sin publicar");
+  await expect(draftBar).toContainText("Ori en misiones");
   await expect(page.getByRole("button", { name: "Publicar revisión" })).toBeDisabled();
   await page.getByRole("button", { name: "Validar cambios" }).click();
+  await expect(draftBar).toContainText("Validado: 1 sección cambiada, lista para publicar");
   await page.getByRole("button", { name: "Publicar revisión" }).click();
   await expect(page.getByText("Configuración publicada.")).toBeVisible();
+  await expect(draftBar).toContainText("Sin cambios pendientes");
   page.on("dialog", (dialog) => void dialog.accept());
+  await menu.getByRole("button", { name: /Historial y monitoreo/ }).click();
+  await expect(page.getByRole("heading", { name: "Historial y monitoreo" })).toBeVisible();
   await page.getByRole("button", { name: "Restaurar" }).last().click();
   await expect(page.getByText("Revisión 1 restaurada.")).toBeVisible();
+  await menu.getByRole("button", { name: /Ori en misiones/ }).click();
   await expect(page.getByLabel("Instrucción adicional")).toHaveValue("");
+
+  // On a phone the grouped menu wraps instead of scrolling sideways, and the draft bar stays in view.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByLabel("Instrucción adicional").fill("Otra idea.");
+  const layout = await page.evaluate(() => {
+    const bar = document.querySelector(".ai-admin-draft")!.getBoundingClientRect();
+    return {
+      sideways: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+      barInView: bar.bottom <= window.innerHeight + 1 && bar.top < window.innerHeight,
+    };
+  });
+  expect(layout).toEqual({ sideways: false, barInView: true });
 });
 
 test("AI operations console edits the group settings and cannot weaken the fail-closed rule", async ({

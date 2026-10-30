@@ -7,8 +7,15 @@ import { CatalogSettings } from "./CatalogSettings.js";
 import type { KidsCatalog } from "@agorix/curriculum";
 import { BehaviorSettings, type BehaviorConfig } from "./BehaviorSettings.js";
 import { GroupSettings, type GroupConfig } from "./GroupSettings.js";
+import {
+  ADMIN_NAV_GROUPS,
+  changedSections,
+  draftStatus,
+  type AdminCapability,
+  type AdminSection,
+} from "./adminDraft.js";
 
-type Capability = "mission" | "advanced" | "studio" | "chat" | "goals" | "legacy";
+type Capability = AdminCapability;
 type Policy = {
   enabled: boolean;
   provider: string;
@@ -25,7 +32,7 @@ type Config = {
   behavior?: BehaviorConfig;
   catalog?: KidsCatalog;
 };
-type Section = Capability | "group" | "behavior" | "catalog";
+type Section = AdminSection;
 type Revision = {
   revision: number;
   author: string;
@@ -43,12 +50,18 @@ const names: Record<Capability, string> = {
   goals: "Objetivos",
   legacy: "Tutor clásico",
 };
-const keys = Object.keys(names) as Capability[];
 const sectionNames: Record<Section, string> = {
   ...names,
   group: "Modo grupo",
   behavior: "Intervención de Ori",
   catalog: "Misiones",
+  monitor: "Historial y monitoreo",
+};
+const sectionHints: Record<"group" | "behavior" | "catalog" | "monitor", string> = {
+  catalog: "Recorridos y textos",
+  behavior: "Cuándo ayuda",
+  group: "Sala compartida",
+  monitor: "Chat 24 h y revisiones",
 };
 const gateMessages: Record<string, string> = {
   "prompt-override": "Un texto adicional intenta anular las reglas de seguridad.",
@@ -84,7 +97,8 @@ export function AiAdminApp() {
   const [draft, setDraft] = useState<Config | null>(null);
   const [history, setHistory] = useState<History[]>([]);
   const [section, setSection] = useState<Section>("mission");
-  const isCapability = section !== "group" && section !== "behavior" && section !== "catalog";
+  const isCapability =
+    section !== "group" && section !== "behavior" && section !== "catalog" && section !== "monitor";
   const selected: Capability = isCapability ? section : "mission";
   const [preview, setPreview] = useState<Section[] | null>(null);
   const [busy, setBusy] = useState(false);
@@ -138,8 +152,11 @@ export function AiAdminApp() {
     });
     setPreview(null);
   }
-  const changed =
-    current && draft ? JSON.stringify(current.config) !== JSON.stringify(draft) : false;
+  const pending = current && draft ? changedSections(current.config, draft) : [];
+  const changed = pending.length > 0;
+  // A section shows in the menu only when this server's configuration has it.
+  const available = (key: Section) =>
+    key === "group" || key === "behavior" || key === "catalog" ? Boolean(draft?.[key]) : true;
 
   return (
     <main className="ai-admin">
@@ -189,45 +206,39 @@ export function AiAdminApp() {
       ) : (
         <div className="ai-admin-layout">
           <aside className="ai-admin-side">
-            <p className="ai-admin-kicker">CAPACIDADES</p>
-            <nav aria-label="Capacidades de IA">
-              {keys.map((key) => (
-                <button
-                  key={key}
-                  className={section === key ? "selected" : ""}
-                  onClick={() => setSection(key)}
-                >
-                  <span>{names[key]}</span>
-                  <small>{draft?.capabilities[key].enabled ? "Activa" : "En pausa"}</small>
-                </button>
-              ))}
-              {draft?.catalog && (
-                <button
-                  className={section === "catalog" ? "selected" : ""}
-                  onClick={() => setSection("catalog")}
-                >
-                  <span>{sectionNames.catalog}</span>
-                  <small>Recorridos y textos</small>
-                </button>
-              )}
-              {draft?.behavior && (
-                <button
-                  className={section === "behavior" ? "selected" : ""}
-                  onClick={() => setSection("behavior")}
-                >
-                  <span>{sectionNames.behavior}</span>
-                  <small>Cuándo ayuda</small>
-                </button>
-              )}
-              {draft?.group && (
-                <button
-                  className={section === "group" ? "selected" : ""}
-                  onClick={() => setSection("group")}
-                >
-                  <span>{sectionNames.group}</span>
-                  <small>Sala compartida</small>
-                </button>
-              )}
+            <nav aria-label="Centro de IA">
+              {ADMIN_NAV_GROUPS.map((group) => {
+                const items = group.sections.filter(available);
+                if (items.length === 0) return null;
+                const id = `ai-admin-group-${group.title.replace(/\W+/g, "-").toLowerCase()}`;
+                return (
+                  <div key={group.title} role="group" aria-labelledby={id}>
+                    <p className="ai-admin-kicker" id={id}>
+                      {group.title.toUpperCase()}
+                    </p>
+                    {items.map((key) => (
+                      <button
+                        key={key}
+                        className={section === key ? "selected" : ""}
+                        aria-current={section === key ? "page" : undefined}
+                        onClick={() => setSection(key)}
+                      >
+                        <span>{sectionNames[key]}</span>
+                        <small>
+                          {key === "group" ||
+                          key === "behavior" ||
+                          key === "catalog" ||
+                          key === "monitor"
+                            ? sectionHints[key]
+                            : draft?.capabilities[key].enabled
+                              ? "Activa"
+                              : "En pausa"}
+                        </small>
+                      </button>
+                    ))}
+                  </div>
+                );
+              })}
             </nav>
             <button
               className="ai-admin-logout"
@@ -362,125 +373,142 @@ export function AiAdminApp() {
                 </p>
               </div>
             )}
-            <div className="ai-admin-actions">
-              <button
-                disabled={!changed || busy || !current || !draft}
-                onClick={() =>
-                  void action(async () => {
-                    const result = await api<{
-                      changed: Section[];
-                      valid: boolean;
-                      failures?: string[];
-                    }>(
-                      "preview",
-                      "POST",
-                      { expectedRevision: current!.revision, config: draft },
-                      csrf,
-                    );
-                    if (!result.valid) {
-                      setPreview(null);
-                      setMessage(
-                        `No se puede publicar: ${(result.failures ?? [])
-                          .map((code) => gateMessages[code] ?? code)
-                          .join(" ")}`,
+            {section === "monitor" ? (
+              <>
+                {chatStats && (
+                  <section className="ai-admin-history" aria-label="Ori chat, últimas 24 horas">
+                    <h3>Chat de Ori, últimas 24 horas</h3>
+                    <p>
+                      Solo contadores por clase: nunca guarda ni muestra lo que escriben los chicos.
+                    </p>
+                    <ul>
+                      <li>Respondidas: {chatStats.answered ?? 0}</li>
+                      <li>Rechazadas por seguridad: {chatStats.refused ?? 0}</li>
+                      <li>Respuesta genérica (Ori sin modelo): {chatStats.fallback ?? 0}</li>
+                      <li>Límite de uso: {chatStats["rate-limited"] ?? 0}</li>
+                      <li>Pedidos inválidos: {chatStats.invalid ?? 0}</li>
+                    </ul>
+                  </section>
+                )}
+                <section className="ai-admin-history">
+                  <h3>Historial</h3>
+                  <p>Cada publicación queda registrada. Restaurar crea una revisión nueva.</p>
+                  <ol>
+                    {history.map((entry) => (
+                      <li key={entry.revision}>
+                        <div>
+                          <strong>#{entry.revision}</strong> · {entry.action} · {entry.author}
+                          {entry.rolloutPercent !== undefined && entry.rolloutPercent < 100
+                            ? ` · ${entry.rolloutPercent} % de dispositivos`
+                            : ""}
+                          <small>{new Date(entry.createdAt).toLocaleString("es-AR")}</small>
+                        </div>
+                        <button
+                          disabled={busy || entry.revision === current?.revision}
+                          onClick={() => {
+                            if (!window.confirm(`¿Restaurar la revisión ${entry.revision}?`))
+                              return;
+                            void action(async () => {
+                              await api(
+                                "rollback",
+                                "POST",
+                                {
+                                  expectedRevision: current!.revision,
+                                  sourceRevision: entry.revision,
+                                },
+                                csrf,
+                              );
+                              await reload();
+                              setMessage(`Revisión ${entry.revision} restaurada.`);
+                            });
+                          }}
+                        >
+                          Restaurar
+                        </button>
+                      </li>
+                    ))}
+                  </ol>
+                </section>
+              </>
+            ) : null}
+            {/* The draft bar stays in view on every section, so pending changes are never hidden. */}
+            <div className="ai-admin-draft" role="region" aria-label="Borrador">
+              <p className="ai-admin-draft-status">
+                <strong>{draftStatus(pending.length, preview !== null)}</strong>
+                {changed ? (
+                  <small>{pending.map((key) => sectionNames[key]).join(", ")}</small>
+                ) : null}
+              </p>
+              <div className="ai-admin-actions">
+                <button
+                  disabled={!changed || busy || !current || !draft}
+                  onClick={() =>
+                    void action(async () => {
+                      const result = await api<{
+                        changed: Section[];
+                        valid: boolean;
+                        failures?: string[];
+                      }>(
+                        "preview",
+                        "POST",
+                        { expectedRevision: current!.revision, config: draft },
+                        csrf,
                       );
-                      return;
-                    }
-                    setPreview(result.changed);
-                    setMessage("Revisión válida. Pasó las pruebas de seguridad. Podés publicar.");
-                  })
-                }
-              >
-                Validar cambios
-              </button>
-              <button
-                className="primary"
-                disabled={!changed || !preview || busy || !current || !draft}
-                onClick={() =>
-                  void action(async () => {
-                    await api(
-                      "publish",
-                      "POST",
-                      { expectedRevision: current!.revision, config: draft },
-                      csrf,
-                    );
-                    await reload();
-                    setMessage("Configuración publicada.");
-                  })
-                }
-              >
-                Publicar revisión
-              </button>
-              <button
-                disabled={!changed || busy}
-                onClick={() => {
-                  if (current) setDraft(structuredClone(current.config));
-                  setPreview(null);
-                }}
-              >
-                Descartar
-              </button>
-            </div>
-            {preview && (
-              <p className="ai-admin-preview">
-                Impacta: {preview.map((key) => sectionNames[key]).join(", ") || "sin diferencias"}
-              </p>
-            )}
-            {message && (
-              <p className="ai-admin-message" role="status">
-                {message}
-              </p>
-            )}
-            {chatStats && (
-              <section className="ai-admin-history" aria-label="Ori chat, últimas 24 horas">
-                <h3>Chat de Ori, últimas 24 horas</h3>
-                <p>
-                  Solo contadores por clase: nunca guarda ni muestra lo que escriben los chicos.
+                      if (!result.valid) {
+                        setPreview(null);
+                        setMessage(
+                          `No se puede publicar: ${(result.failures ?? [])
+                            .map((code) => gateMessages[code] ?? code)
+                            .join(" ")}`,
+                        );
+                        return;
+                      }
+                      setPreview(result.changed);
+                      setMessage("Revisión válida. Pasó las pruebas de seguridad. Podés publicar.");
+                    })
+                  }
+                >
+                  Validar cambios
+                </button>
+                <button
+                  className="primary"
+                  disabled={!changed || !preview || busy || !current || !draft}
+                  onClick={() =>
+                    void action(async () => {
+                      await api(
+                        "publish",
+                        "POST",
+                        { expectedRevision: current!.revision, config: draft },
+                        csrf,
+                      );
+                      await reload();
+                      setMessage("Configuración publicada.");
+                    })
+                  }
+                >
+                  Publicar revisión {current ? current.revision + 1 : ""}
+                </button>
+                <button
+                  disabled={!changed || busy}
+                  onClick={() => {
+                    if (current) setDraft(structuredClone(current.config));
+                    setPreview(null);
+                  }}
+                >
+                  Descartar
+                </button>
+              </div>
+              {preview && (
+                <p className="ai-admin-preview">
+                  Impacta: {preview.map((key) => sectionNames[key]).join(", ") || "sin diferencias"}
                 </p>
-                <ul>
-                  <li>Respondidas: {chatStats.answered ?? 0}</li>
-                  <li>Rechazadas por seguridad: {chatStats.refused ?? 0}</li>
-                  <li>Respuesta genérica (Ori sin modelo): {chatStats.fallback ?? 0}</li>
-                  <li>Límite de uso: {chatStats["rate-limited"] ?? 0}</li>
-                  <li>Pedidos inválidos: {chatStats.invalid ?? 0}</li>
-                </ul>
-              </section>
-            )}
-            <section className="ai-admin-history">
-              <h3>Historial</h3>
-              <p>Cada publicación queda registrada. Restaurar crea una revisión nueva.</p>
-              <ol>
-                {history.map((entry) => (
-                  <li key={entry.revision}>
-                    <div>
-                      <strong>#{entry.revision}</strong> · {entry.action} · {entry.author}
-                      {entry.rolloutPercent !== undefined && entry.rolloutPercent < 100
-                        ? ` · ${entry.rolloutPercent} % de dispositivos`
-                        : ""}
-                      <small>{new Date(entry.createdAt).toLocaleString("es-AR")}</small>
-                    </div>
-                    <button
-                      disabled={busy || entry.revision === current?.revision}
-                      onClick={() => {
-                        if (!window.confirm(`¿Restaurar la revisión ${entry.revision}?`)) return;
-                        void action(async () => {
-                          await api(
-                            "rollback",
-                            "POST",
-                            { expectedRevision: current!.revision, sourceRevision: entry.revision },
-                            csrf,
-                          );
-                          await reload();
-                          setMessage(`Revisión ${entry.revision} restaurada.`);
-                        });
-                      }}
-                    >
-                      Restaurar
-                    </button>
-                  </li>
-                ))}
-              </ol>
-            </section>
+              )}
+              {message && (
+                <p className="ai-admin-message" role="status">
+                  {message}
+                </p>
+              )}
+            </div>
           </section>
         </div>
       )}
