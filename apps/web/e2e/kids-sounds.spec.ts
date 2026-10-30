@@ -128,7 +128,7 @@ test("an adult trims a saved sound, undoes and redoes it, and the edit is kept o
   await editor.getByRole("button", { name: "Dar vuelta" }).click();
   await editor.getByRole("button", { name: "Guardar cambios" }).click();
   await expect(panel.getByRole("status").last()).toContainText("guardado");
-  await expect(page.getByRole("region", { name: "Editar audio de 🐸" })).toHaveCount(1);
+  await expect(page.getByRole("region", { name: "Editar audio de 🐸" })).toHaveCount(0);
   await panel.getByRole("button", { name: "Editar audio de 🐸" }).click();
   await expect(
     page.getByRole("region", { name: "Editar audio de 🐸" }).last().getByText("Duración: 0.5 s"),

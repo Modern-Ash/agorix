@@ -133,7 +133,7 @@ export function OriKidsEditorAccess({
         projects: createHttpBackend().projects,
         storage: window.localStorage,
       });
-      if (result === "pulled" || result === "unchanged") {
+      if (result === "pulled") {
         onPulled();
         setApplied(false);
         setMessage("Cambio aprobado cargado en el editor.");

@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Browser, type Page } from "@playwright/test";
+import { expect, test, type Browser, type Page, type Route } from "@playwright/test";
 import { passAdultGate } from "./helpers.js";
 
 // Issues #509 to #513. Runs against the DEV/E2E-only in-process backend (AGORIX_DEV_BACKEND=1), which
@@ -414,36 +414,47 @@ test("verified adult copies one Kids project to the account without duplicating 
   await expect(pilot.getByRole("button", { name: "Aceptar propuesta" })).toBeVisible();
   expect(proposalCount).toBe(2);
   await pilot.getByRole("button", { name: "Aceptar propuesta" }).click();
+  // Exercise the explicit recovery button deterministically: the first local
+  // pull is unavailable even though the reviewed server apply succeeded.
+  const projectPattern = `**/v1/projects/${pilotProjectId}`;
+  const denyProjectRead = (route: Route) =>
+    route.request().method() === "GET"
+      ? route.fulfill({ status: 503, contentType: "application/json", body: "{}" })
+      : route.continue();
+  await page.route(projectPattern, denyProjectRead);
   await pilot.getByRole("button", { name: "Aplicar cambio aceptado a mi proyecto" }).click();
   await expect(pilot.getByText(/Ori aplicó el cambio a tu cuenta/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Traer cambio aprobado al editor" })).toBeVisible();
+  await page.unroute(projectPattern, denyProjectRead);
   const editorPullStatus = await page.evaluate(async () => {
-    const copies = JSON.parse(
-      localStorage.getItem("agorix.kids.account-project-copies.v1") ?? "[]",
-    ) as { remoteProjectId: string }[];
-    const remoteProjectId = copies[0]?.remoteProjectId;
-    if (!remoteProjectId) return 0;
-    const response = await fetch(`/v1/projects/${encodeURIComponent(remoteProjectId)}`);
-    const remote = (await response.json()) as {
-      revision: number;
-      storedProject: { metadata: { hintLevel: number } };
-    };
-    const updated = await fetch(`/v1/projects/${encodeURIComponent(remoteProjectId)}`, {
-      method: "PUT",
-      credentials: "same-origin",
-      headers: { "content-type": "application/json", "x-agorix-request": "1" },
-      body: JSON.stringify({
-        expectedRevision: remote.revision,
-        storedProject: {
-          ...remote.storedProject,
-          metadata: {
-            ...remote.storedProject.metadata,
-            hintLevel: remote.storedProject.metadata.hintLevel + 1,
+    return navigator.locks.request("agorix-auth-session-rotation", async () => {
+      const copies = JSON.parse(
+        localStorage.getItem("agorix.kids.account-project-copies.v1") ?? "[]",
+      ) as { remoteProjectId: string }[];
+      const remoteProjectId = copies[0]?.remoteProjectId;
+      if (!remoteProjectId) return 0;
+      const response = await fetch(`/v1/projects/${encodeURIComponent(remoteProjectId)}`);
+      const remote = (await response.json()) as {
+        revision: number;
+        storedProject: { metadata: { hintLevel: number } };
+      };
+      const updated = await fetch(`/v1/projects/${encodeURIComponent(remoteProjectId)}`, {
+        method: "PUT",
+        credentials: "same-origin",
+        headers: { "content-type": "application/json", "x-agorix-request": "1" },
+        body: JSON.stringify({
+          expectedRevision: remote.revision,
+          storedProject: {
+            ...remote.storedProject,
+            metadata: {
+              ...remote.storedProject.metadata,
+              hintLevel: remote.storedProject.metadata.hintLevel + 1,
+            },
           },
-        },
-      }),
+        }),
+      });
+      return updated.status;
     });
-    return updated.status;
   });
   expect(editorPullStatus).toBe(200);
   await page.getByRole("button", { name: "Traer cambio aprobado al editor" }).click();
