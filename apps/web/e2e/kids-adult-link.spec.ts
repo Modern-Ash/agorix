@@ -299,6 +299,26 @@ test("verified adult copies one Kids project to the account without duplicating 
   await expect(
     secondDevice.locator(".kids-project-card").getByRole("button", { name: "Jugar" }),
   ).toHaveCount(1);
+  await secondDevice.locator(".kids-project-card").getByRole("button", { name: "Borrar" }).click();
+  const deleteDialog = secondDevice.getByRole("dialog", { name: "¿Cuánto es 7 + 5?" });
+  await deleteDialog.getByRole("button", { name: "1", exact: true }).click();
+  await deleteDialog.getByRole("button", { name: "2", exact: true }).click();
+  await deleteDialog.getByRole("button", { name: "Comprobar" }).click();
+  await secondDevice
+    .getByRole("dialog", { name: "¿Borrar este proyecto?" })
+    .getByRole("button", { name: "Borrar", exact: true })
+    .click();
+  await expect(
+    secondDevice.locator(".kids-project-card").getByRole("button", { name: "Jugar" }),
+  ).toHaveCount(0);
+  await openAdults(secondDevice);
+  const recoverAgain = secondDevice.getByRole("region", { name: "Proyectos de mi cuenta" });
+  await expect(
+    recoverAgain.getByRole("button", { name: "Abrir en este dispositivo" }),
+  ).toBeVisible();
+  await recoverAgain.getByRole("button", { name: "Abrir en este dispositivo" }).click();
+  await expect(recoverAgain.getByRole("status")).toContainText("Proyecto free-1 listo");
+  expect(secondDeviceCreates).toBe(0);
   await secondDevice.context().close();
   const pilotBodies: string[] = [];
   await page.route("**/api/tutor/ori/**", async (route) => {

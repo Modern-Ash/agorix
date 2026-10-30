@@ -7,6 +7,7 @@ import {
 } from "@agorix/persistence";
 import type { ProjectApiClient } from "../../accounts/clients.js";
 import { ClientError } from "../../accounts/clients.js";
+import { deleteFreeProject } from "../kidsProjects.js";
 import {
   copyKidsProjectToAccount,
   kidsAccountCopy,
@@ -364,6 +365,36 @@ describe("Kids account project recovery", () => {
       world: "ocean",
       avatar: "🐼",
     });
+  });
+
+  it("repairs a stale link after the local project was deleted", async () => {
+    const { values, storage, store } = fixture();
+    const projects = {
+      get: async () => ({
+        projectId: "remote-13",
+        revision: 4,
+        semanticHash: storedHash,
+        storedProject: stored,
+      }),
+    } as unknown as Pick<ProjectApiClient, "get">;
+    const input = {
+      accountAlias: "adult",
+      remoteProjectId: "remote-13",
+      world: "ocean" as const,
+      avatar: "🐸" as const,
+      store,
+      projects,
+      storage,
+    };
+    expect((await restoreKidsAccountProject(input)).status).toBe("restored");
+    expect(deleteFreeProject("free-1", store, storage)).not.toBeNull();
+    expect(kidsAccountCopyByRemote(storage, "adult", "remote-13", store)).toBeNull();
+    expect(await restoreKidsAccountProject(input)).toEqual({
+      status: "restored",
+      localProjectId: "free-1",
+    });
+    expect(kidsAccountCopyByRemote(storage, "adult", "remote-13", store)).toBe("free-1");
+    expect(JSON.parse(values.get("agorix.kids.account-project-copies.v1") ?? "[]")).toHaveLength(1);
   });
 
   it("rejects a mismatched project hash before writing local state", async () => {

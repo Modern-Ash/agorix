@@ -67,12 +67,21 @@ export function kidsAccountCopyByRemote(
   storage: CopyStorage,
   accountAlias: string,
   remoteProjectId: string,
+  store?: Pick<ProjectStore, "has">,
 ): string | null {
-  return (
+  const localProjectId =
     records(storage).find(
       (item) => item.accountAlias === accountAlias && item.remoteProjectId === remoteProjectId,
-    )?.localProjectId ?? null
-  );
+    )?.localProjectId ?? null;
+  if (!localProjectId || !store) return localProjectId;
+  try {
+    return listFreeProjects(storage).some((project) => project.id === localProjectId) &&
+      store.has(localProjectId)
+      ? localProjectId
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Restore one account project as a local working view of the same remote identity. */
@@ -107,7 +116,7 @@ export async function restoreKidsAccountProject({
   ) {
     return { status: "invalid-project" };
   }
-  const previous = kidsAccountCopyByRemote(storage, accountAlias, remoteProjectId);
+  const previous = kidsAccountCopyByRemote(storage, accountAlias, remoteProjectId, store);
   if (previous) return { status: "already-linked", localProjectId: previous };
   const remote = await projects.get(remoteProjectId);
   try {
@@ -141,7 +150,9 @@ export async function restoreKidsAccountProject({
     storage.setItem(
       KEY,
       JSON.stringify([
-        ...records(storage),
+        ...records(storage).filter(
+          (item) => item.accountAlias !== accountAlias || item.remoteProjectId !== remoteProjectId,
+        ),
         {
           accountAlias,
           localProjectId,

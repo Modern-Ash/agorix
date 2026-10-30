@@ -15,6 +15,7 @@ export function KidsAccountProjectRestoreCard({
   readonly accountAlias: string;
 }) {
   const [items, setItems] = useState<readonly ProjectSummaryDto[]>([]);
+  const [store] = useState(() => new ProjectStore());
   const [selected, setSelected] = useState("");
   const [world, setWorld] = useState<KidsWorld>("ocean");
   const [avatar, setAvatar] = useState<KidsAvatar>("🦊");
@@ -74,7 +75,7 @@ export function KidsAccountProjectRestoreCard({
         remoteProjectId: selected,
         world,
         avatar,
-        store: new ProjectStore(),
+        store,
         projects: createHttpBackend().projects,
         storage: window.localStorage,
       });
@@ -126,7 +127,7 @@ export function KidsAccountProjectRestoreCard({
               {items.map((item) => (
                 <option key={item.projectId} value={item.projectId}>
                   {item.title}
-                  {kidsAccountCopyByRemote(window.localStorage, accountAlias, item.projectId)
+                  {kidsAccountCopyByRemote(window.localStorage, accountAlias, item.projectId, store)
                     ? spanish
                       ? " · ya está en este dispositivo"
                       : " · already on this device"
