@@ -5,6 +5,7 @@ import {
   type OriReviewIdentityResolver,
 } from "./oriReviewHttpContract.js";
 import type { OriReviewTicket } from "./oriReviewRegistry.js";
+import { validOriDebugGuidance, type OriDebugGuidance } from "./oriDebugGuidance.js";
 import { validateOriContextInput, type OriContextInput } from "./oriContextPreview.js";
 import type { OriRuntimePreview } from "./oriRuntimePreview.js";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
@@ -130,6 +131,11 @@ export interface TutorServerOptions {
     projectId: string,
     sessionId?: string,
   ) => Promise<OriReviewTicket | null>;
+  readonly oriReviewDebug?: (
+    owner: string,
+    projectId: string,
+    sessionId?: string,
+  ) => Promise<OriDebugGuidance | null>;
   readonly oriReviewIdentity?: OriReviewIdentityResolver;
   readonly oriReviewDecision?: (
     owner: string,
@@ -402,9 +408,14 @@ export function createTutorServer(options: TutorServerOptions): Server {
         ? send(response, 200, hintRequest ? result : { recorded: true })
         : send(response, 409, error("evidence-unavailable"));
     }
-    if (path === "/api/tutor/ori/review/propose") {
+    if (path === "/api/tutor/ori/review/propose" || path === "/api/tutor/ori/review/debug") {
+      const isDebug = path.endsWith("/debug");
       if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
-      if (!options.oriReviewEnabled || !options.oriReviewIdentity || !options.oriReviewPropose)
+      if (
+        !options.oriReviewEnabled ||
+        !options.oriReviewIdentity ||
+        (isDebug ? !options.oriReviewDebug : !options.oriReviewPropose)
+      )
         return send(response, 404, error("not-found"));
       if (request.headers["x-agorix-request"] !== "1")
         return send(response, 403, error("forbidden-request"));
@@ -437,20 +448,34 @@ export function createTutorServer(options: TutorServerOptions): Server {
       )
         return send(response, 400, error("invalid-request"));
       const started = performance.now();
-      let ticket: OriReviewTicket | null;
+      let ticket: OriReviewTicket | null = null;
+      let guidance: OriDebugGuidance | null = null;
       try {
-        ticket = await options.oriReviewPropose(
-          identity.ownerId,
-          identity.projectId,
-          identity.sessionId,
-        );
+        if (isDebug)
+          guidance = await options.oriReviewDebug!(
+            identity.ownerId,
+            identity.projectId,
+            identity.sessionId,
+          );
+        else
+          ticket = await options.oriReviewPropose!(
+            identity.ownerId,
+            identity.projectId,
+            identity.sessionId,
+          );
       } catch (cause) {
         options.oriMig04Observe?.("pilot", "error", performance.now() - started);
         throw cause;
       }
       options.oriMig04Observe?.(
         "pilot",
-        ticket?.status === "pending" ? "success" : "fallback",
+        isDebug
+          ? guidance
+            ? "success"
+            : "fallback"
+          : ticket?.status === "pending"
+            ? "success"
+            : "fallback",
         performance.now() - started,
       );
       if (
@@ -463,6 +488,10 @@ export function createTutorServer(options: TutorServerOptions): Server {
         !options.oriMig04RolloutDecide(identity.projectId).learnerVisible
       )
         return send(response, 404, error("not-found"));
+      if (isDebug)
+        return validOriDebugGuidance(guidance)
+          ? send(response, 200, guidance)
+          : send(response, 409, error("guidance-unavailable"));
       if (!ticket || ticket.status !== "pending")
         return send(response, 409, error("proposal-unavailable"));
       return send(response, 200, {

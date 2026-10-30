@@ -35,6 +35,51 @@ const response: OriHostEvidenceResult = {
   appliedChanges: false,
 };
 describe("canonical project -> runtime -> Ori review composition", () => {
+  it("returns debug guidance only while the canonical revision stays current", async () => {
+    let numericRevision = 1;
+    const repository = {
+      get: async () => ({ ...base, revision: numericRevision }),
+    } as unknown as ProjectRepository;
+    const workflow = createOriCanonicalReviewWorkflow({
+      repository,
+      oriRoot: "/unused-with-test-override",
+      world: {},
+      learningContext: async () => ({ attempts: 1, hintsUsed: 1, learningStage: "connect" }),
+      runOriOverride: async (raw: unknown) => {
+        expect((raw as TrustedOriEvidence).intent).toBe("debug");
+        numericRevision++;
+        return {
+          ...response,
+          proposal: null,
+          debugGuidance: {
+            schema: "agorix/ori-debug-guidance/v1",
+            nextStep: "Revisar el paso 1 de la traza verificada por el host",
+            question: "Preguntarse si ese paso produjo lo que esperabas",
+            appliedChanges: false,
+          },
+        };
+      },
+    });
+    expect(await workflow.debug("student", "project-a")).toBeNull();
+    numericRevision = 1;
+    const stable = createOriCanonicalReviewWorkflow({
+      repository,
+      oriRoot: "/unused-with-test-override",
+      world: {},
+      learningContext: async () => ({ attempts: 1, hintsUsed: 1, learningStage: "connect" }),
+      runOriOverride: async () => ({
+        ...response,
+        proposal: null,
+        debugGuidance: {
+          schema: "agorix/ori-debug-guidance/v1",
+          nextStep: "Revisar el paso 1 de la traza verificada por el host",
+          question: "Preguntarse si ese paso produjo lo que esperabas",
+          appliedChanges: false,
+        },
+      }),
+    });
+    expect((await stable.debug("student", "project-a"))?.nextStep).toContain("paso 1");
+  });
   it("runs the persisted program and records a non-applying decision", async () => {
     let calls = 0;
     const repository = {

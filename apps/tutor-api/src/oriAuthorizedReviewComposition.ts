@@ -105,6 +105,8 @@ export function createOriAuthorizedReviewOptions({
     oriReviewIdentity: identity,
     oriReviewPropose: (owner: string, projectId: string, sessionId?: string) =>
       workflow.propose(owner, projectId, sessionId),
+    oriReviewDebug: (owner: string, projectId: string, sessionId?: string) =>
+      workflow.debug(owner, projectId, sessionId),
     oriReviewDecision: (
       owner: string,
       projectId: string,

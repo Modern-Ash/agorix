@@ -10,6 +10,7 @@ import { requestOriProposal, type OriIssuedProposal } from "../../oriProposalIss
 import { requestOriReviewDecision } from "../../oriReviewDecisionClient.js";
 import { describeOriProposal } from "../../oriProposalReview.js";
 import { applyOriKidsPilotProposal } from "./oriKidsPilotApply.js";
+import { requestOriDebugGuidance, type OriDebugGuidance } from "./oriDebugGuidanceClient.js";
 import {
   oriKidsPilotProject,
   recordOriKidsPilotRun,
@@ -48,6 +49,8 @@ export function OriKidsPilotPanel({
   const [allowed, setAllowed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [ran, setRan] = useState(false);
+  const [debugAvailable, setDebugAvailable] = useState(false);
+  const [debugGuidance, setDebugGuidance] = useState<OriDebugGuidance | null>(null);
   const [hint, setHint] = useState<{ readonly level: number; readonly text: string } | null>(null);
   const [issued, setIssued] = useState<OriIssuedProposal | null>(null);
   const [accepted, setAccepted] = useState(false);
@@ -67,6 +70,8 @@ export function OriKidsPilotPanel({
     let cancelled = false;
     setAllowed(false);
     setRan(false);
+    setDebugAvailable(false);
+    setDebugGuidance(null);
     verifiedRun.current = false;
     lastAutoOfferContext.current = null;
     setIssued(null);
@@ -83,6 +88,8 @@ export function OriKidsPilotPanel({
   useEffect(() => {
     verifiedRun.current = false;
     setRan(false);
+    setDebugAvailable(false);
+    setDebugGuidance(null);
     setIssued(null);
     setAccepted(false);
     setPreview(null);
@@ -99,6 +106,8 @@ export function OriKidsPilotPanel({
           if (activity.kind === "run") {
             verifiedRun.current = false;
             setRan(false);
+            setDebugAvailable(false);
+            setDebugGuidance(null);
             setHint(null);
             setIssued(null);
             setAccepted(false);
@@ -118,6 +127,7 @@ export function OriKidsPilotPanel({
             const recorded = await recordOriKidsPilotRun();
             verifiedRun.current = recorded;
             setRan(recorded);
+            setDebugAvailable(recorded && activity.outcome !== "success");
             setMessage(
               recorded
                 ? "Ori registró la ejecución de Kids y guardó la evidencia durante esta sesión."
@@ -136,6 +146,8 @@ export function OriKidsPilotPanel({
         .catch(() => {
           verifiedRun.current = false;
           setRan(false);
+          setDebugAvailable(false);
+          setDebugGuidance(null);
           setMessage("No se pudo registrar la evidencia de Kids para Ori.");
         })
         .finally(() => setBusy(false));
@@ -159,6 +171,8 @@ export function OriKidsPilotPanel({
         setHint(next);
         verifiedRun.current = false;
         setRan(false);
+        setDebugAvailable(false);
+        setDebugGuidance(null);
         setIssued(null);
         setAccepted(false);
         setPreview(null);
@@ -207,6 +221,8 @@ export function OriKidsPilotPanel({
     if (result === "unchanged") return true;
     verifiedRun.current = false;
     setRan(false);
+    setDebugAvailable(false);
+    setDebugGuidance(null);
     setHint(null);
     setIssued(null);
     setAccepted(false);
@@ -227,6 +243,22 @@ export function OriKidsPilotPanel({
     return result;
   }
 
+  async function askDebug() {
+    if (busy || !ran || !debugAvailable) return;
+    setBusy(true);
+    const expectedEvidenceKey = currentEvidenceKey.current;
+    try {
+      if (!(await evidenceIsCurrent())) return;
+      const guidance = await requestOriDebugGuidance();
+      if (expectedEvidenceKey !== currentEvidenceKey.current) return;
+      setDebugGuidance(guidance);
+      if (!guidance)
+        setMessage("Ori no pudo verificar esta ayuda. Podés seguir usando las pistas de Kids.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function apply() {
     if (busy || !issued || !accepted || !preview) return;
     setBusy(true);
@@ -235,6 +267,8 @@ export function OriKidsPilotPanel({
       setAccepted(false);
       verifiedRun.current = false;
       setRan(false);
+      setDebugAvailable(false);
+      setDebugGuidance(null);
       setIssued(null);
       setPreview(null);
       const loaded = result === "applied" ? await onApplied?.() : false;
@@ -264,6 +298,22 @@ export function OriKidsPilotPanel({
         <p role="status">
           Pista {hint.level}: {hint.text}
         </p>
+      ) : null}
+      {debugAvailable && ran ? (
+        <button
+          type="button"
+          className="kids-button"
+          disabled={busy}
+          onClick={() => void askDebug()}
+        >
+          Pedir ayuda para depurar
+        </button>
+      ) : null}
+      {debugGuidance ? (
+        <div role="status">
+          <p>{debugGuidance.nextStep}</p>
+          <p>{debugGuidance.question}</p>
+        </div>
       ) : null}
       {issued && preview ? (
         <>
