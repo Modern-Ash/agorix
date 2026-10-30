@@ -1,9 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
+import { passAdultGate } from "../helpers.js";
 
 // Post-deploy smoke for the live site (issue #345). Read-only: it never signs in, never writes
 // to the server, and only touches browser-local state inside throwaway contexts.
 
 const expectedSha = process.env["AGORIX_EXPECT_SHA"];
+const expectedAdultLink = process.env["AGORIX_EXPECT_ADULT_LINK"] === "1";
 
 const REQUIRED_HEADERS = [
   "content-security-policy",
@@ -129,6 +131,22 @@ test("a fresh browser sees the creative Kids tools by default", async ({ page })
   await expect(page.locator(".kids-root")).toHaveAttribute("data-age-band", "6-8");
   await expect(page.getByRole("button", { name: "Hablar con Ori" })).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem("agorix.kids.flags.v1"))).toBeNull();
+});
+
+test("reviewed adult account build exposes account linking without group mode", async ({
+  page,
+}) => {
+  test.skip(!expectedAdultLink, "Adult account linking is off for this deployment");
+  await page.addInitScript(() =>
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    ),
+  );
+  await page.goto("/kids#/adultos");
+  await passAdultGate(page);
+  await expect(page.getByRole("heading", { name: "Mi cuenta de adulto" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Grupo en la misma sala" })).toHaveCount(0);
 });
 
 test("the parked editor still offers its local AI mode", async ({ page }) => {

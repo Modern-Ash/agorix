@@ -67,7 +67,9 @@ export function kidsV2Features(sources: KidsFlagSources = {}): ReadonlySet<KidsV
     sources.adultLinkDefault ??
     (import.meta as { env?: { VITE_KIDS_ADULT_LINK_DEFAULT?: string } }).env
       ?.VITE_KIDS_ADULT_LINK_DEFAULT === "1";
-  const defaults = adultLinkDefault ? KIDS_V2_FEATURES : DEFAULT_FEATURES;
+  const defaults: readonly KidsV2Feature[] = adultLinkDefault
+    ? [...DEFAULT_FEATURES, "adultLink"]
+    : DEFAULT_FEATURES;
   const names: unknown[] = [...stored(sources.storage, defaults)];
   if (sources.production !== true) {
     const query = new URLSearchParams(sources.search ?? "").get("kidsv2");

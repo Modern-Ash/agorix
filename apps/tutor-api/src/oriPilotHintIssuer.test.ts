@@ -28,7 +28,14 @@ describe("Ori server-issued pilot hint", () => {
     const issue = createOriPilotHintIssuer({ repository, journal });
     expect(await issue("owner", "project", "session")).toBeNull();
     expect(
-      journal.recordVerifiedRun("owner", "project", "session", project.semanticHash, "explore"),
+      journal.recordVerifiedRun(
+        "owner",
+        "project",
+        "session",
+        project.semanticHash,
+        "explore",
+        "a".repeat(64),
+      ),
     ).toBe(true);
     expect((await issue("owner", "project", "session"))?.level).toBe(1);
     expect((await issue("owner", "project", "session"))?.level).toBe(2);
@@ -40,7 +47,14 @@ describe("Ori server-issued pilot hint", () => {
 
   it("rejects a revision changed before hint issuance", async () => {
     const journal = createOriSessionLearningJournal();
-    journal.recordVerifiedRun("owner", "project", "session", project.semanticHash, "explore");
+    journal.recordVerifiedRun(
+      "owner",
+      "project",
+      "session",
+      project.semanticHash,
+      "explore",
+      "a".repeat(64),
+    );
     let reads = 0;
     const repository = {
       get: async () => ({ ...project, revision: ++reads }),
@@ -63,7 +77,14 @@ describe("Ori server-issued pilot hint", () => {
       },
     };
     const repository = { get: async () => saved } as unknown as ProjectRepository;
-    journal.recordVerifiedRun("owner", "project", "session", saved.semanticHash, "explore");
+    journal.recordVerifiedRun(
+      "owner",
+      "project",
+      "session",
+      saved.semanticHash,
+      "explore",
+      "a".repeat(64),
+    );
     const issue = createOriPilotHintIssuer({ repository, journal });
     expect(await issue("owner", "project", "session", 3)).toBeNull();
     expect(

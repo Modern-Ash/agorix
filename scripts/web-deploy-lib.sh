@@ -68,7 +68,8 @@ run_smoke() {
   local expected_sha="${1:-}"
   (
     cd "$(repo_root)/apps/web" || return 1
-    AGORIX_E2E_BASE_URL="$AGORIX_SMOKE_URL" AGORIX_EXPECT_SHA="$expected_sha" pnpm test:prod
+    AGORIX_E2E_BASE_URL="$AGORIX_SMOKE_URL" AGORIX_EXPECT_SHA="$expected_sha" \
+      AGORIX_EXPECT_ADULT_LINK="${AGORIX_KIDS_ADULT_LINK_DEFAULT:-0}" pnpm test:prod
   )
 }
 

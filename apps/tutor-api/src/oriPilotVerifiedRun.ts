@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { ProjectRepository } from "@agorix/project-repository";
 import { createOriCanonicalExecutionPort } from "./oriCanonicalExecutionPort.js";
 import { oriKidsFreeWorld } from "./oriKidsFreeWorld.js";
@@ -38,7 +39,19 @@ export function createOriPilotVerifiedRun({
       ) {
         return false;
       }
-      return journal.recordVerifiedRun(owner, projectId, sessionId, record.semanticHash, "explore");
+      const fingerprint = createHash("sha256")
+        .update(
+          JSON.stringify([record.storedProject.program, record.storedProject.metadata.missionSpec]),
+        )
+        .digest("hex");
+      return journal.recordVerifiedRun(
+        owner,
+        projectId,
+        sessionId,
+        record.semanticHash,
+        "explore",
+        fingerprint,
+      );
     } catch {
       return false;
     }

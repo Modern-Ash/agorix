@@ -59,4 +59,31 @@ describe("Ori server-verified pilot run", () => {
     expect(await run("owner", "project", "session")).toBe(false);
     expect(journal.learningContext("owner", "project", "session", project.semanticHash)).toBeNull();
   });
+
+  it("keeps a server-issued hint after Kids syncs only hint metadata", async () => {
+    const journal = createOriSessionLearningJournal();
+    let current = project;
+    const repository = { get: async () => current } as unknown as ProjectRepository;
+    const run = createOriPilotVerifiedRun({ repository, journal });
+    expect(await run("owner", "project", "session")).toBe(true);
+    expect(journal.recordHintIssued("owner", "project", "session", current.semanticHash, 1)).toBe(
+      true,
+    );
+    current = {
+      ...project,
+      revision: 2,
+      semanticHash: "fnv1a32:87654321",
+      storedProject: {
+        ...project.storedProject,
+        metadata: { ...project.storedProject.metadata, hintLevel: 1 },
+      },
+    };
+    expect(await run("owner", "project", "session")).toBe(true);
+    expect(
+      journal.learningContext("owner", "project", "session", current.semanticHash),
+    ).toMatchObject({
+      attempts: 2,
+      hintsUsed: 1,
+    });
+  });
 });
