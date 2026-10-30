@@ -4,6 +4,7 @@ import type { ProjectApiClient } from "../../accounts/clients.js";
 import { ClientError } from "../../accounts/clients.js";
 import {
   copyKidsProjectToAccount,
+  kidsAccountCopy,
   pullKidsAccountCopy,
   reconcileKidsAccountProject,
   updateKidsAccountCopy,
@@ -181,6 +182,42 @@ describe("explicit Kids account project copy", () => {
     local = { ...stored, metadata: { ...stored.metadata, hintLevel: 1 } };
     expect(await reconcileKidsAccountProject(input)).toBe("updated");
     expect(updates).toBe(1);
+  });
+
+  it("accepts a newer remote revision when its project content is unchanged", async () => {
+    const values = new Map<string, string>();
+    const storage: CopyStorage = {
+      getItem: (key) => values.get(key) ?? null,
+      setItem: (key, value) => void values.set(key, value),
+    };
+    let local = stored;
+    const store = { load: () => local, save: () => undefined } as unknown as Pick<
+      ProjectStore,
+      "load" | "save"
+    >;
+    const projects = {
+      create: async () => ({ projectId: "remote-7", revision: 1, semanticHash: storedHash }),
+      get: async () => ({
+        projectId: "remote-7",
+        revision: 2,
+        semanticHash: storedHash,
+        storedProject: stored,
+      }),
+      update: async (_id: string, expectedRevision: number, next: typeof stored) => {
+        expect(expectedRevision).toBe(2);
+        return {
+          projectId: "remote-7",
+          revision: 3,
+          semanticHash: semanticProjectHash(next as Parameters<typeof semanticProjectHash>[0]),
+          storedProject: next,
+        };
+      },
+    } as unknown as Pick<ProjectApiClient, "create" | "get" | "update">;
+    const input = { accountAlias: "adult", localProjectId: "free-7", store, projects, storage };
+    await copyKidsProjectToAccount(input);
+    local = { ...stored, metadata: { ...stored.metadata, hintLevel: 1 } };
+    expect(await reconcileKidsAccountProject(input)).toBe("updated");
+    expect(kidsAccountCopy(storage, "adult", "free-7")?.remoteRevision).toBe(3);
   });
 
   it("refuses divergent local and account edits without writing either side", async () => {

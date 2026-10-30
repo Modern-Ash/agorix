@@ -195,7 +195,7 @@ test("verified adult copies one Kids project to the account without duplicating 
   await expect(page.getByRole("status").filter({ hasText: "Correo confirmado" })).toBeVisible();
   await openAdults(page);
 
-  const card = page.getByRole("region", { name: "Preparar un proyecto para Ori" });
+  const card = page.getByRole("region", { name: "Usar mi proyecto con Ori" });
   await expect(card.getByRole("combobox", { name: "Proyecto de este dispositivo" })).toHaveValue(
     "free-1",
   );
@@ -221,13 +221,12 @@ test("verified adult copies one Kids project to the account without duplicating 
       createStatus = response.status();
     }
   });
-  await card.getByRole("button", { name: "Crear copia en mi cuenta" }).click();
+  await card.getByRole("button", { name: "Vincular proyecto a mi cuenta" }).click();
   await expect.poll(() => createStatus).not.toBe(0);
   expect(createStatus).toBe(201);
-  await expect(card.locator(".kids-note")).toContainText("Copia creada en tu cuenta");
+  await expect(card.locator(".kids-note")).toContainText("Proyecto vinculado a tu cuenta");
   expect(creates).toBe(1);
-  await card.getByRole("button", { name: "Crear copia en mi cuenta" }).click();
-  await expect(card.locator(".kids-note")).toContainText("ya tiene una copia");
+  await expect(card.getByRole("button", { name: "Vincular proyecto a mi cuenta" })).toHaveCount(0);
   expect(creates).toBe(1);
   const pilotProjectId = await page.evaluate(() => {
     const copies = JSON.parse(
@@ -266,11 +265,22 @@ test("verified adult copies one Kids project to the account without duplicating 
       body: JSON.stringify(payload),
     });
   });
+  await page.evaluate(() => {
+    const raw = localStorage.getItem("agorix:free-1");
+    if (!raw) throw Error("Missing local project");
+    const saved = JSON.parse(raw) as { metadata: { hintLevel: number } };
+    saved.metadata.hintLevel = 1;
+    localStorage.setItem("agorix:free-1", JSON.stringify(saved));
+  });
   await page.reload();
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await page.locator(".kids-project-card").getByRole("button", { name: "Jugar" }).click();
   const pilot = page.getByRole("region", { name: "Ori en mi proyecto" });
   await expect(pilot).toBeVisible();
+  await expect.poll(() => updates).toBe(1);
+  await expect(
+    page.getByRole("status").filter({ hasText: "Proyecto guardado en tu cuenta" }),
+  ).toBeVisible();
   await pilot.getByRole("button", { name: "Ejecutar proyecto con Ori" }).click();
   await expect(pilot.getByText(/guardó la evidencia/)).toBeVisible();
   await pilot.getByRole("button", { name: "Pedir pista" }).click();
@@ -322,9 +332,10 @@ test("verified adult copies one Kids project to the account without duplicating 
   );
   await page.getByRole("button", { name: "Volver al mapa" }).click();
   await openAdults(page);
-  await card.getByRole("button", { name: "Actualizar copia" }).click();
+  await card.getByText("Resolver problemas de sincronización").click();
+  await card.getByRole("button", { name: "Enviar cambios de este dispositivo" }).click();
   await expect(card.locator(".kids-note")).toContainText("Copia de cuenta actualizada");
-  expect(updates).toBe(2);
+  expect(updates).toBe(3);
   const externalStatus = await page.evaluate(async () => {
     const saved = JSON.parse(
       localStorage.getItem("agorix.kids.account-project-copies.v1") ?? "[]",
@@ -356,7 +367,7 @@ test("verified adult copies one Kids project to the account without duplicating 
     return updated.status;
   });
   expect(externalStatus).toBe(200);
-  await card.getByRole("button", { name: "Actualizar copia" }).click();
+  await card.getByRole("button", { name: "Enviar cambios de este dispositivo" }).click();
   await expect(card.locator(".kids-note")).toContainText("cambió en otro lugar");
   await card.getByRole("button", { name: "Traer cambios de mi cuenta" }).click();
   await expect(card.locator(".kids-note")).toContainText("Versión de cuenta cargada");
@@ -365,7 +376,7 @@ test("verified adult copies one Kids project to the account without duplicating 
       const raw = localStorage.getItem("agorix:free-1");
       return raw ? (JSON.parse(raw) as { metadata: { hintLevel: number } }).metadata.hintLevel : -1;
     }),
-  ).toBe(2);
+  ).toBe(3);
   await expect
     .poll(() => page.evaluate(() => localStorage.getItem("agorix.kids.projects.v1")))
     .toContain("free-1");
