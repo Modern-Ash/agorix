@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type DragEvent,
+  type KeyboardEvent,
+} from "react";
 import { projectAgorixCode } from "@agorix/agorix-code";
 import {
   createEditorHistory,
@@ -58,7 +66,7 @@ import { bumpIndicator } from "../kidsIndicators.js";
 import { useInterventionPolicy } from "../kidsBehavior.js";
 import { useKidsCatalog } from "../kidsCatalog.js";
 import { requestKidsOriOffer } from "../kidsOriRemote.js";
-import type { OriKidsActivity } from "../link/oriKidsActivity.js";
+import type { OriKidsActivity, OriKidsHintRequest } from "../link/oriKidsActivity.js";
 import { oriMotionStatus, useOriPageVisible } from "../kidsOriMotion.js";
 import { expressionForMotion, outcomeOfOffer } from "../kidsOriExpression.js";
 import { conceptsOfProgram } from "@agorix/learning-evidence";
@@ -284,6 +292,12 @@ export function EditorScreen({
   const [prediction, setPrediction] = useState<Prediction | null>(null);
   const [played, setPlayed] = useState<KidsPlayedRun | null>(null);
   const [oriActivities, setOriActivities] = useState<readonly OriKidsActivity[]>([]);
+  const oriHintRequest = useRef<OriKidsHintRequest | null>(null);
+  const hintPending = useRef(false);
+  const [waitingForHint, setWaitingForHint] = useState(false);
+  const registerOriHintRequest = useCallback((request: OriKidsHintRequest | null) => {
+    oriHintRequest.current = request;
+  }, []);
   const oriActivitySequence = useRef(0);
   function recordOriActivity(kind: OriKidsActivity["kind"]) {
     const sequence = ++oriActivitySequence.current;
@@ -734,13 +748,29 @@ export function EditorScreen({
     }
   }
 
-  function showNextHint() {
+  async function showNextHint() {
+    if (hintPending.current) return;
     const level = usedHintLevels.length + 1;
     const hint = getKidsHint(mission, level, usedHintLevels);
     if (!hint) return;
-    recordKidsScaffold(level === 5 ? "solution" : "hint", hint.level);
-    setUsedHintLevels([...usedHintLevels, level]);
-    save(history, false, level);
+    hintPending.current = true;
+    setWaitingForHint(true);
+    try {
+      if (freeProjectId && oriHintRequest.current) {
+        // The server sees the run's revision before saving the new local hint level.
+        try {
+          await oriHintRequest.current(level);
+        } catch {
+          // Kids still shows its deterministic local hint when Ori is unavailable.
+        }
+      }
+      recordKidsScaffold(level === 5 ? "solution" : "hint", hint.level);
+      setUsedHintLevels([...usedHintLevels, level]);
+      save(history, false, level);
+    } finally {
+      hintPending.current = false;
+      setWaitingForHint(false);
+    }
   }
 
   function decideOri(
@@ -1199,9 +1229,10 @@ export function EditorScreen({
                 type="button"
                 className="kids-button"
                 disabled={
-                  usedHintLevels.length === 4 && !ideaHintUnlocked(stageOfConcepts, failedRuns)
+                  waitingForHint ||
+                  (usedHintLevels.length === 4 && !ideaHintUnlocked(stageOfConcepts, failedRuns))
                 }
-                onClick={showNextHint}
+                onClick={() => void showNextHint()}
               >
                 {usedHintLevels.length === 4
                   ? t("seeIdea")
@@ -1260,6 +1291,7 @@ export function EditorScreen({
               localSaveVersion={localSaveVersion}
               activities={oriActivities}
               evidenceKey={evidenceKey}
+              registerHintRequest={registerOriHintRequest}
               onPulled={reloadAccountCopy}
             />
           ) : null}

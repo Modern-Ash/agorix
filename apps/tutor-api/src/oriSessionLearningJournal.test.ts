@@ -7,9 +7,10 @@ describe("ephemeral Ori session learning journal", () => {
   it("binds verified runs and issued hints to one session and revision", () => {
     const journal = createOriSessionLearningJournal();
     expect(journal.learningContext("owner", "project", "session-a", hash)).toBeNull();
-    expect(journal.recordHintIssued("owner", "project", "session-a", hash)).toBe(false);
+    expect(journal.recordHintIssued("owner", "project", "session-a", hash, 1)).toBe(false);
     expect(journal.recordVerifiedRun("owner", "project", "session-a", hash, "explore")).toBe(true);
-    expect(journal.recordHintIssued("owner", "project", "session-a", hash)).toBe(true);
+    expect(journal.recordHintIssued("owner", "project", "session-a", hash, 1)).toBe(true);
+    expect(journal.recordHintIssued("owner", "project", "session-a", hash, 1)).toBe(false);
     expect(journal.recordVerifiedRun("owner", "project", "session-a", hash, "explore")).toBe(true);
     expect(journal.learningContext("owner", "project", "session-a", hash)).toEqual({
       attempts: 2,

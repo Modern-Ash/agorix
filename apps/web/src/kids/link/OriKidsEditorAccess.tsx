@@ -7,7 +7,7 @@ import {
   reconcileKidsAccountProject,
 } from "./kidsAccountProjectCopy.js";
 import { OriKidsPilotPanel } from "./OriKidsPilotPanel.js";
-import type { OriKidsActivity } from "./oriKidsActivity.js";
+import type { OriKidsActivity, OriKidsHintRequest } from "./oriKidsActivity.js";
 
 /** Editor entry point for the private pilot. The server still decides eligibility. */
 export function OriKidsEditorAccess({
@@ -15,12 +15,14 @@ export function OriKidsEditorAccess({
   localSaveVersion,
   activities,
   evidenceKey,
+  registerHintRequest,
   onPulled,
 }: {
   readonly localProjectId: string;
   readonly localSaveVersion: number;
   readonly activities: readonly OriKidsActivity[];
   readonly evidenceKey: string;
+  readonly registerHintRequest: (request: OriKidsHintRequest | null) => void;
   readonly onPulled: () => void;
 }) {
   const [copy, setCopy] = useState<{ alias: string; remoteProjectId: string } | null>(null);
@@ -152,6 +154,7 @@ export function OriKidsEditorAccess({
         remoteProjectId={copy.remoteProjectId}
         activities={activities}
         evidenceKey={evidenceKey}
+        registerHintRequest={registerHintRequest}
         beforeRun={prepareRun}
         beforeEvidenceAction={prepareRun}
         onApplied={async () => {

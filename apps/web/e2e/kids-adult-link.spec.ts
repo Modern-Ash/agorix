@@ -352,7 +352,7 @@ test("verified adult copies one Kids project to the account without duplicating 
       : path.endsWith("/evidence/run")
         ? { recorded: true }
         : path.endsWith("/evidence/hint")
-          ? { level: 1, text: "Probá un paso" }
+          ? { level: 2, text: "Probá un paso" }
           : path.endsWith("/review/propose")
             ? {
                 ticketId: "123e4567-e89b-42d3-a456-426614174000",
@@ -392,8 +392,12 @@ test("verified adult copies one Kids project to the account without duplicating 
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Sí", exact: true }).click();
   await expect(pilot.getByText(/guardó la evidencia/)).toBeVisible();
-  await pilot.getByRole("button", { name: "Pedir pista" }).click();
-  await expect(pilot.getByText("Pista 1: Probá un paso")).toBeVisible();
+  await page.getByRole("button", { name: "Pista 2", exact: true }).click();
+  await expect(pilot.getByText("Pista 2: Probá un paso")).toBeVisible();
+  await expect(pilot.getByRole("button", { name: "Pedir propuesta" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Sí", exact: true }).click();
+  await expect(pilot.getByRole("button", { name: "Pedir propuesta" })).toBeVisible();
   await pilot.getByRole("button", { name: "Pedir propuesta" }).click();
   await expect(pilot.getByRole("button", { name: "Aceptar propuesta" })).toBeVisible();
   await pilot.getByRole("button", { name: "Aceptar propuesta" }).click();
@@ -437,14 +441,14 @@ test("verified adult copies one Kids project to the account without duplicating 
     "/api/tutor/ori/evidence/run {}",
   );
   expect(pilotBodies.find((body) => body.startsWith("/api/tutor/ori/evidence/hint"))).toBe(
-    "/api/tutor/ori/evidence/hint {}",
+    '/api/tutor/ori/evidence/hint {"expectedLevel":2}',
   );
   await page.getByRole("button", { name: "Volver al mapa" }).click();
   await openAdults(page);
   await card.getByText("Resolver problemas de sincronización").click();
   await card.getByRole("button", { name: "Enviar cambios de este dispositivo" }).click();
   await expect(card.locator(".kids-note")).toContainText("Copia de cuenta actualizada");
-  expect(updates).toBe(3);
+  expect(updates).toBe(4);
   const externalStatus = await page.evaluate(async () => {
     const saved = JSON.parse(
       localStorage.getItem("agorix.kids.account-project-copies.v1") ?? "[]",
@@ -485,7 +489,7 @@ test("verified adult copies one Kids project to the account without duplicating 
       const raw = localStorage.getItem("agorix:free-1");
       return raw ? (JSON.parse(raw) as { metadata: { hintLevel: number } }).metadata.hintLevel : -1;
     }),
-  ).toBe(3);
+  ).toBe(4);
   await expect
     .poll(() => page.evaluate(() => localStorage.getItem("agorix.kids.projects.v1")))
     .toContain("free-1");

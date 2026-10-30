@@ -85,10 +85,18 @@ export function createOriSessionLearningJournal({
       projectId: string,
       sessionId: string,
       semanticHash: string,
+      level: number,
     ): boolean {
       const entry = current(owner, projectId, sessionId, semanticHash);
-      if (!entry) return false;
-      entry.hintsUsed = Math.min(100, entry.hintsUsed + 1);
+      if (
+        !entry ||
+        !Number.isSafeInteger(level) ||
+        level < 1 ||
+        level > 5 ||
+        level <= entry.hintsUsed
+      )
+        return false;
+      entry.hintsUsed = level;
       entry.expiresAt = now() + ttlMs;
       return true;
     },

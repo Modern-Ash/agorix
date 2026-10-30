@@ -1,14 +1,19 @@
 import { withAgorixSessionQueue } from "../../accounts/sessionRequestQueue.js";
 
-async function post(path: string, fetchImpl: typeof fetch): Promise<Response | null> {
+async function post(
+  path: string,
+  fetchImpl: typeof fetch,
+  body = "{}",
+  timeoutMs = 10000,
+): Promise<Response | null> {
   return withAgorixSessionQueue(async () => {
     try {
       return await fetchImpl(path, {
         method: "POST",
         credentials: "same-origin",
         headers: { "content-type": "application/json", "x-agorix-request": "1" },
-        body: "{}",
-        signal: AbortSignal.timeout(10000),
+        body,
+        signal: AbortSignal.timeout(timeoutMs),
       });
     } catch {
       return null;
@@ -42,8 +47,14 @@ export async function recordOriKidsPilotRun(fetchImpl: typeof fetch = fetch): Pr
 
 export async function requestOriKidsPilotHint(
   fetchImpl: typeof fetch = fetch,
+  expectedLevel?: number,
 ): Promise<{ readonly level: number; readonly text: string } | null> {
-  const response = await post("/api/tutor/ori/evidence/hint", fetchImpl);
+  const response = await post(
+    "/api/tutor/ori/evidence/hint",
+    fetchImpl,
+    expectedLevel === undefined ? "{}" : JSON.stringify({ expectedLevel }),
+    2500,
+  );
   if (!response?.ok) return null;
   try {
     const raw: unknown = await response.json();

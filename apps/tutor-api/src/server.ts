@@ -105,6 +105,7 @@ export interface TutorServerOptions {
     owner: string,
     projectId: string,
     sessionId: string,
+    expectedLevel?: number,
   ) => Promise<{ readonly level: number; readonly text: string } | null>;
   /** Durable private-pilot visibility recheck after asynchronous review work. */
   readonly oriMig04Visibility?: (owner: string, projectId: string) => Promise<boolean>;
@@ -365,11 +366,17 @@ export function createTutorServer(options: TutorServerOptions): Server {
       } catch {
         return send(response, 400, error("invalid-request"));
       }
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
+        return send(response, 400, error("invalid-request"));
+      const fields = parsed as Record<string, unknown>;
+      const expectedLevel = hintRequest ? fields.expectedLevel : undefined;
       if (
-        !parsed ||
-        typeof parsed !== "object" ||
-        Array.isArray(parsed) ||
-        Object.keys(parsed).length
+        Object.keys(fields).some((key) => key !== "expectedLevel") ||
+        (!hintRequest && Object.keys(fields).length > 0) ||
+        (expectedLevel !== undefined &&
+          (!Number.isSafeInteger(expectedLevel) ||
+            Number(expectedLevel) < 1 ||
+            Number(expectedLevel) > 5))
       )
         return send(response, 400, error("invalid-request"));
       const result = hintRequest
@@ -377,6 +384,7 @@ export function createTutorServer(options: TutorServerOptions): Server {
             identity.ownerId,
             identity.projectId,
             identity.sessionId,
+            expectedLevel as number | undefined,
           )
         : await options.oriPilotVerifiedRun!(
             identity.ownerId,

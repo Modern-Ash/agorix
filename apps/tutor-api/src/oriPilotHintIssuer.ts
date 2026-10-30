@@ -15,6 +15,7 @@ export function createOriPilotHintIssuer({
     owner: string,
     projectId: string,
     sessionId: string,
+    expectedLevel?: number,
   ): Promise<MissionHint | null> => {
     if (!owner || !projectId || !sessionId) return null;
     try {
@@ -24,7 +25,8 @@ export function createOriPilotHintIssuer({
       if (!context) return null;
       const mission = oriKidsFreeMission(record.storedProject);
       if (!mission) return null;
-      const level = context.hintsUsed + 1;
+      const level = Math.max(context.hintsUsed, record.storedProject.metadata.hintLevel) + 1;
+      if (expectedLevel !== undefined && expectedLevel !== level) return null;
       const prior = KIDS_HINT_LEVELS.filter((candidate) => candidate < level);
       const hint = getKidsHint(mission, level, prior);
       if (!hint) return null;
@@ -37,7 +39,7 @@ export function createOriPilotHintIssuer({
       ) {
         return null;
       }
-      return journal.recordHintIssued(owner, projectId, sessionId, record.semanticHash)
+      return journal.recordHintIssued(owner, projectId, sessionId, record.semanticHash, level)
         ? hint
         : null;
     } catch {

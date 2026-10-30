@@ -23,9 +23,9 @@ async function start(visible: boolean, authenticated = true) {
       calls.push([owner, projectId, sessionId]);
       return true;
     },
-    oriPilotHintIssuer: async (owner, projectId, sessionId) => {
+    oriPilotHintIssuer: async (owner, projectId, sessionId, expectedLevel) => {
       calls.push([owner, projectId, sessionId]);
-      return { level: 1, text: "Pista" };
+      return { level: expectedLevel ?? 1, text: "Pista" };
     },
   });
   servers.push(server);
@@ -71,6 +71,20 @@ describe("private Ori server-verified run route", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ level: 1, text: "Pista" });
     expect(calls).toEqual([["owner", "project", "session"]]);
+    const aligned = await fetch(base + "/api/tutor/ori/evidence/hint", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-agorix-request": "1", origin: base },
+      body: JSON.stringify({ expectedLevel: 2 }),
+    });
+    expect(aligned.status).toBe(200);
+    expect(await aligned.json()).toEqual({ level: 2, text: "Pista" });
+    const invalid = await fetch(base + "/api/tutor/ori/evidence/hint", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-agorix-request": "1", origin: base },
+      body: JSON.stringify({ expectedLevel: 6 }),
+    });
+    expect(invalid.status).toBe(400);
+    expect(calls).toHaveLength(2);
   });
   it("uses only the authenticated session and an empty browser body", async () => {
     const { base, calls } = await start(true);
