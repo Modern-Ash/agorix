@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { resolve } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
-import { passAdultGate, reloadTo } from "./helpers.js";
+import { passAdultGate, reloadTo, openAdultTab } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -19,9 +19,10 @@ async function seed(page: Page) {
   await page.reload();
 }
 
-async function openAdults(page: Page) {
+async function openAdults(page: Page, tab = "Personalizar") {
   await page.getByRole("button", { name: "Adultos" }).click();
   await passAdultGate(page);
+  await openAdultTab(page, tab);
 }
 
 test("child adds custom explorer and backdrop from Create without entering Adults", async ({
@@ -133,7 +134,7 @@ test("child cannot replace bundled images and adult can disable custom image upl
   await expect(page.getByLabel(/Elegir imagen para Explorador/)).toHaveCount(0);
   await expect(page.getByLabel(/Elegir imagen para Fondo/)).toHaveCount(0);
   await expect(page.getByRole("button", { name: /Quitar imagen de/ })).toHaveCount(0);
-  await openAdults(page);
+  await openAdults(page, "Ajustes");
   await page.getByRole("switch", { name: /Imágenes propias/ }).click();
   await expect(page.getByRole("switch", { name: /Imágenes propias/ })).toHaveAttribute(
     "aria-checked",

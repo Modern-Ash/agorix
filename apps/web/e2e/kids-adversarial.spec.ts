@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { KIDS_V2_FEATURES } from "../src/kids/kidsFlags.js";
-import { reloadToMap, passAdultGate, BLOCKS_UNLOCKED } from "./helpers.js";
+import { reloadToMap, passAdultGate, BLOCKS_UNLOCKED, openAdultTab } from "./helpers.js";
 
 // Issue #443: scripted slice of the adversarial charter, run with every v2 flag on.
 // Any uncaught page error is a failure; each attack asserts the app still works afterwards.
@@ -181,7 +181,7 @@ test("adults gate: ten wrong sums never lock out or crash, the right sum still o
   }
   await expect(page.getByText("Probá otra vez.")).toBeVisible();
   await passAdultGate(page);
-  await expect(page.getByRole("heading", { name: "Ajustes" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Resumen" })).toHaveAttribute("aria-selected", "true");
   expect(errors).toEqual([]);
 });
 
@@ -237,7 +237,7 @@ test("a full or blocked storage cannot crash the adult images panel", async ({ p
   await seed(page);
   await page.getByRole("button", { name: "Adultos" }).click();
   await passAdultGate(page);
-  await expect(page.getByRole("heading", { name: "Ajustes" })).toBeVisible();
+  await openAdultTab(page, "Personalizar");
   await page.evaluate(() => {
     Storage.prototype.setItem = () => {
       throw new DOMException("quota", "QuotaExceededError");
@@ -253,6 +253,6 @@ test("a full or blocked storage cannot crash the adult images panel", async ({ p
   };
   const inputs = page.locator('input[type="file"]');
   if ((await inputs.count()) > 0) await inputs.first().setInputFiles(file);
-  await expect(page.getByRole("heading", { name: "Ajustes" })).toBeVisible();
+  await expect(page.getByRole("tablist", { name: "Secciones de Adultos" })).toBeVisible();
   expect(errors).toEqual([]);
 });

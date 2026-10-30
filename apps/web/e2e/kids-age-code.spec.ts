@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { reloadToMap, passAdultGate } from "./helpers.js";
+import { reloadToMap, passAdultGate, openAdultTab } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -20,6 +20,7 @@ async function start(page: Page) {
 async function pickBand(page: Page, band: "6–8" | "9–12" | "13+") {
   await page.getByRole("button", { name: "Adultos" }).click();
   await passAdultGate(page);
+  await openAdultTab(page, "Ajustes");
   await page
     .getByRole("group", { name: "Franja de edad" })
     .getByRole("radio", { name: band })

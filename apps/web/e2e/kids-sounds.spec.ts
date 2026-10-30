@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { reloadToMap, passAdultGate } from "./helpers.js";
+import { reloadToMap, passAdultGate, openAdultTab } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -39,6 +39,7 @@ test("adult audio stays in IndexedDB and a bad upload is rejected", async ({ pag
   await start(page, ["soundLibrary", "customAudio"]);
   await page.getByRole("button", { name: "Adultos" }).click();
   await passAdultGate(page);
+  await openAdultTab(page, "Personalizar");
   const panel = page.getByRole("region", { name: "Sonidos propios" });
   const input = panel.getByLabel("Elegir audio para 🐸");
   await input.setInputFiles({
@@ -106,6 +107,7 @@ test("an adult trims a saved sound, undoes and redoes it, and the edit is kept o
   await start(page, ["soundLibrary", "customAudio"]);
   await page.getByRole("button", { name: "Adultos" }).click();
   await passAdultGate(page);
+  await openAdultTab(page, "Personalizar");
   const panel = page.getByRole("region", { name: "Sonidos propios" });
   await panel
     .getByLabel("Elegir audio para 🐸")

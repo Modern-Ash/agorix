@@ -61,7 +61,7 @@ test("a new adult solves a fresh calculation, chooses a PIN and then enters with
   await expect(title(page)).toHaveText(/Elegí un PIN de adulto/);
   await press(page, "4829");
   await press(page, "4829");
-  await expect(page.getByRole("heading", { name: "Ajustes" })).toBeVisible();
+  await expect(page.getByRole("tablist", { name: "Secciones de Adultos" })).toBeVisible();
 
   // The PIN is kept as a salted hash on this device and survives a reload.
   const stored = await page.evaluate(() => localStorage.getItem("agorix.kids.adultpin.v1"));
@@ -75,7 +75,7 @@ test("a new adult solves a fresh calculation, chooses a PIN and then enters with
   await page.reload();
   await expect(title(page)).toHaveText("Ingresá tu PIN de adulto");
   await press(page, "4829");
-  await expect(page.getByRole("heading", { name: "Ajustes" })).toBeVisible();
+  await expect(page.getByRole("tablist", { name: "Secciones de Adultos" })).toBeVisible();
 });
 
 test("wrong PINs make the child wait, even with the right PIN, and a forgotten PIN is reset by a fresh calculation", async ({
@@ -85,7 +85,7 @@ test("wrong PINs make the child wait, even with the right PIN, and a forgotten P
   await solve(page);
   await press(page, "4829");
   await press(page, "4829");
-  await expect(page.getByRole("heading", { name: "Ajustes" })).toBeVisible();
+  await expect(page.getByRole("tablist", { name: "Secciones de Adultos" })).toBeVisible();
   await page.getByRole("button", { name: "Salir" }).click();
   for (let i = 0; i < 4; i += 1) {
     await press(page, "9999");
@@ -107,7 +107,7 @@ test("wrong PINs make the child wait, even with the right PIN, and a forgotten P
   await solve(page);
   await press(page, "7351");
   await press(page, "7351");
-  await expect(page.getByRole("heading", { name: "Ajustes" })).toBeVisible();
+  await expect(page.getByRole("tablist", { name: "Secciones de Adultos" })).toBeVisible();
   await page.getByRole("button", { name: "Salir" }).click();
   await press(page, "4829");
   await expect(page.getByText(/PIN incorrecto|Esperá/)).toBeVisible();
