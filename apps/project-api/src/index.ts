@@ -1253,6 +1253,7 @@ const METADATA_KEYS = [
   "stage",
   "assets",
   "missionSpec",
+  "kidsView",
   "advancedProgress",
 ];
 

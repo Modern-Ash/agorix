@@ -4,6 +4,7 @@ import { isClientError, type ProjectApiClient } from "../../accounts/clients.js"
 import {
   deleteFreeProject,
   listFreeProjects,
+  listFreeProjectRefs,
   parseKidsGoalSpec,
   restoreFreeProject,
   type KidsIndexStorage,
@@ -127,7 +128,12 @@ export async function restoreKidsAccountProject({
   const next =
     Math.max(0, ...listFreeProjects(storage).map((item) => Number(item.id.slice(5)))) + 1;
   const localProjectId = `free-${next}`;
-  const project = { id: localProjectId, world, avatar };
+  const accountView = remote.storedProject.metadata.kidsView;
+  const project = {
+    id: localProjectId,
+    world: accountView?.world ?? world,
+    avatar: accountView?.avatar ?? avatar,
+  };
   if (!restoreFreeProject({ project, stored: remote.storedProject }, store, storage)) {
     return { status: "storage-unavailable" };
   }
@@ -162,7 +168,7 @@ export async function copyKidsProjectToAccount({
 }: {
   readonly accountAlias: string;
   readonly localProjectId: string;
-  readonly store: Pick<ProjectStore, "load">;
+  readonly store: Pick<ProjectStore, "load" | "save">;
   readonly projects: Pick<ProjectApiClient, "create">;
   readonly storage: CopyStorage;
 }): Promise<
@@ -174,7 +180,18 @@ export async function copyKidsProjectToAccount({
   }
   const existing = kidsAccountCopy(storage, accountAlias, localProjectId);
   if (existing) return { status: "already-copied", remoteProjectId: existing.remoteProjectId };
-  const stored = store.load(localProjectId);
+  let stored = store.load(localProjectId);
+  const ref = listFreeProjectRefs(storage).find((item) => item.id === localProjectId);
+  if (ref?.world.kind === "builtin" && ref.avatar.kind === "emoji") {
+    const kidsView = { world: ref.world.value, avatar: ref.avatar.value };
+    if (
+      stored.metadata.kidsView?.world !== kidsView.world ||
+      stored.metadata.kidsView.avatar !== kidsView.avatar
+    ) {
+      store.save(localProjectId, stored.program, { ...stored.metadata, kidsView });
+      stored = store.load(localProjectId);
+    }
+  }
   const created = await projects.create(`Kids ${localProjectId}`, stored);
   if (created.semanticHash !== semanticProjectHash(stored)) {
     return { status: "copied-untracked", remoteProjectId: created.projectId };

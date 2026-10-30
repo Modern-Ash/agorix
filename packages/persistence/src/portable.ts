@@ -12,6 +12,7 @@ import {
 import { PersistenceError, type ProjectMetadata, type StoredProject } from "./store.js";
 import { validateProjectActors, type ProjectActors } from "./actors.js";
 import { validateProjectMissionSpec } from "./missionSpec.js";
+import { validateKidsProjectView } from "./kidsView.js";
 import { validateAdvancedProgress } from "./advancedProgress.js";
 
 export const AGORIX_PROJECT_FORMAT = "agorix-project";
@@ -36,6 +37,7 @@ const METADATA_KEYS = [
   "stage",
   "assets",
   "missionSpec",
+  "kidsView",
   "advancedProgress",
 ] as const;
 const STAGE_KEYS = ["backdropId", "width", "height", "actorOrder"] as const;
@@ -353,6 +355,7 @@ function validatePortableMetadata(
     ...(input.missionSpec === undefined
       ? {}
       : { missionSpec: validateProjectMissionSpec(input.missionSpec) }),
+    ...(input.kidsView === undefined ? {} : { kidsView: validateKidsProjectView(input.kidsView) }),
     ...(input.advancedProgress === undefined
       ? {}
       : { advancedProgress: validateAdvancedProgress(input.advancedProgress) }),
