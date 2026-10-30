@@ -3,6 +3,7 @@ import { getKidsMission, KIDS_MISSION_IDS } from "@agorix/curriculum";
 import { ProjectStore, type BrowserStorageAdapter } from "@agorix/persistence";
 import {
   KIDS_PROGRESS_KEY,
+  type KidsProgress,
   conceptStates,
   emptyKidsProgress,
   firstOpenMission,
@@ -153,7 +154,7 @@ describe("map progress", () => {
   });
 
   it("adds the missions done in every world and ignores unknown keys", () => {
-    const progress = {
+    const progress: KidsProgress = {
       ...emptyKidsProgress(),
       done: { "space:0": true, "space:1": true, "ocean:0": true, "nowhere:0": true },
     };
