@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { kidsMoveSteps } from "@agorix/curriculum";
 import { SCHEMA_VERSION, type ProjectProgram } from "@agorix/program-model";
 import { InMemoryProjectRepository } from "@agorix/project-repository";
 import { applyApprovedOriProposal } from "./oriApprovedProjectApply.js";
@@ -47,6 +48,44 @@ async function setup() {
   return { repository, record, apply };
 }
 describe("explicit Ori proposal persistence boundary", () => {
+  it("converts Ori's Kids cell count to canonical distance before the CAS write", async () => {
+    const repository = new InMemoryProjectRepository({ idFactory: () => "kids-project" });
+    const record = await repository.create("student", "Kids free world", {
+      schemaVersion: SCHEMA_VERSION,
+      program: {
+        ...program,
+        scripts: [
+          { ...program.scripts[0]!, statements: [{ type: "move", steps: kidsMoveSteps(1) }] },
+        ],
+      },
+      metadata: {
+        createdAt: "2026-10-26T00:00:00.000Z",
+        updatedAt: "2026-10-26T00:00:00.000Z",
+        missionProgress: 0,
+        hintLevel: 1,
+        missionSpec: { goal: "kids.cell.4.2", successCheck: "touches-goal" },
+      },
+    });
+    const apply = () =>
+      applyApprovedOriProposal({
+        repository,
+        owner: "student",
+        projectId: record.projectId,
+        expectedRevision: record.revision,
+        approved: true,
+        proposal: oriMove,
+        allowedBlocks: ["move"],
+        scriptId: "main",
+      });
+    expect(await apply()).toBe("applied");
+    const current = await repository.get("student", record.projectId);
+    expect(current.revision).toBe(record.revision + 1);
+    expect(current.storedProject.program.scripts[0]?.statements).toEqual([
+      { type: "move", steps: kidsMoveSteps(1) },
+      { type: "move", steps: kidsMoveSteps(2) },
+    ]);
+    expect(await apply()).toBe("conflict");
+  });
   it("applies once using the repository CAS revision", async () => {
     const { repository, record, apply } = await setup();
     expect(await apply()).toBe("applied");
