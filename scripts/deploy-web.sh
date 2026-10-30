@@ -12,6 +12,17 @@
 set -euo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/web-deploy-lib.sh"
 
+# A clean release checkout still needs the host's reviewed Kids account flag.
+web_config="${AGORIX_WEB_CONFIG_FILE:-$HOME/.config/agorix/web.env}"
+if [ -z "${AGORIX_KIDS_ADULT_LINK_DEFAULT+x}" ] && [ -f "$web_config" ]; then
+  configured_flag="$(sed -n 's/^AGORIX_KIDS_ADULT_LINK_DEFAULT=//p' "$web_config" | tail -n 1)"
+  export AGORIX_KIDS_ADULT_LINK_DEFAULT="$configured_flag"
+fi
+case "${AGORIX_KIDS_ADULT_LINK_DEFAULT:-0}" in
+  0|1) ;;
+  *) die "AGORIX_KIDS_ADULT_LINK_DEFAULT must be 0 or 1" ;;
+esac
+
 preflight_only=0
 skip_verify=0
 skip_smoke=0

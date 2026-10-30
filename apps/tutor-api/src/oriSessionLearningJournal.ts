@@ -5,6 +5,7 @@ interface Entry {
   readonly projectId: string;
   readonly sessionId: string;
   readonly semanticHash: string;
+  readonly programFingerprint: string;
   readonly learningStage: OriLearningContext["learningStage"];
   attempts: number;
   hintsUsed: number;
@@ -13,6 +14,7 @@ interface Entry {
 
 const ID = /^[A-Za-z0-9_-]{1,128}$/;
 const HASH = /^fnv1a32:[a-f0-9]{8}$/;
+const FINGERPRINT = /^[a-f0-9]{64}$/;
 const STAGES = new Set(["explore", "connect", "translate"]);
 
 /** Ephemeral, bounded server evidence for one authenticated adult session and project revision. */
@@ -54,23 +56,30 @@ export function createOriSessionLearningJournal({
       sessionId: string,
       semanticHash: string,
       learningStage: OriLearningContext["learningStage"],
+      programFingerprint: string,
     ): boolean {
       purge();
-      if (!valid(owner, projectId, sessionId, semanticHash) || !STAGES.has(learningStage)) {
+      if (
+        !valid(owner, projectId, sessionId, semanticHash) ||
+        !STAGES.has(learningStage) ||
+        !FINGERPRINT.test(programFingerprint)
+      ) {
         return false;
       }
       const id = key(owner, projectId, sessionId);
       const prior = entries.get(id);
       if (!prior && entries.size >= maxEntries) return false;
       if (!prior || prior.semanticHash !== semanticHash) {
+        const sameProgram = prior?.programFingerprint === programFingerprint;
         entries.set(id, {
           owner,
           projectId,
           sessionId,
           semanticHash,
+          programFingerprint,
           learningStage,
-          attempts: 1,
-          hintsUsed: 0,
+          attempts: sameProgram ? Math.min(100, (prior?.attempts ?? 0) + 1) : 1,
+          hintsUsed: sameProgram ? (prior?.hintsUsed ?? 0) : 0,
           expiresAt: now() + ttlMs,
         });
       } else {
