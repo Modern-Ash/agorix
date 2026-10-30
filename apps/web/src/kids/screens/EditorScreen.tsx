@@ -58,6 +58,7 @@ import { bumpIndicator } from "../kidsIndicators.js";
 import { useInterventionPolicy } from "../kidsBehavior.js";
 import { useKidsCatalog } from "../kidsCatalog.js";
 import { requestKidsOriOffer } from "../kidsOriRemote.js";
+import type { OriKidsActivity } from "../link/oriKidsActivity.js";
 import { oriMotionStatus, useOriPageVisible } from "../kidsOriMotion.js";
 import { expressionForMotion, outcomeOfOffer } from "../kidsOriExpression.js";
 import { conceptsOfProgram } from "@agorix/learning-evidence";
@@ -282,6 +283,12 @@ export function EditorScreen({
   const [numberTouched, setNumberTouched] = useState(false);
   const [prediction, setPrediction] = useState<Prediction | null>(null);
   const [played, setPlayed] = useState<KidsPlayedRun | null>(null);
+  const [oriActivities, setOriActivities] = useState<readonly OriKidsActivity[]>([]);
+  const oriActivitySequence = useRef(0);
+  function recordOriActivity(kind: OriKidsActivity["kind"]) {
+    const sequence = ++oriActivitySequence.current;
+    setOriActivities((previous) => [...previous.slice(-19), { sequence, kind, evidenceKey }]);
+  }
   const [failedRuns, setFailedRuns] = useState(0);
   const interventionPolicy = useInterventionPolicy();
   // The runtime's evidence about this child (kept on the device) sets Ori's pace (issue #611).
@@ -349,6 +356,7 @@ export function EditorScreen({
   const trail = evaluation?.trail ?? [start];
   const activeNode = visibleTrace.at(-1)?.nodeId;
   const oriHash = useMemo(() => programSemanticHash(history.current), [history.current]);
+  const evidenceKey = `${oriHash}:${freeGoal?.cx ?? ""}:${freeGoal?.cy ?? ""}:${freeGoalCheck}`;
   const oriProvider = useMemo(
     () => createKidsOriProviderRuntime(mission, missionIndex, locale),
     [mission, missionIndex, locale],
@@ -677,6 +685,7 @@ export function EditorScreen({
     setPrediction(answer);
     if (run.evaluation.outcome !== "success") setFailedRuns((count) => count + 1);
     setPlayed(run);
+    if (freeProjectId) recordOriActivity("run");
     setStep(pending === "step" ? Math.min(1, run.result.trace.length) : run.result.trace.length);
     for (const id of soundEvents(
       pending === "play" ? run.result.trace : run.result.trace.slice(0, 1),
@@ -1249,6 +1258,8 @@ export function EditorScreen({
             <OriKidsEditorAccess
               localProjectId={freeProjectId}
               localSaveVersion={localSaveVersion}
+              activities={oriActivities}
+              evidenceKey={evidenceKey}
               onPulled={reloadAccountCopy}
             />
           ) : null}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { projectAgorixCode } from "@agorix/agorix-code";
 import { semanticProjectHash } from "@agorix/persistence";
 import { createHttpBackend } from "../../accounts/httpClient.js";
@@ -15,15 +15,20 @@ import {
   recordOriKidsPilotRun,
   requestOriKidsPilotHint,
 } from "./oriKidsPilotClient.js";
+import type { OriKidsActivity } from "./oriKidsActivity.js";
 
 /** Adult-only Kids pilot journey; every server operation rechecks the durable allowlist. */
 export function OriKidsPilotPanel({
   remoteProjectId,
+  activities,
+  evidenceKey,
   beforeRun,
   beforeEvidenceAction,
   onApplied,
 }: {
   readonly remoteProjectId: string;
+  readonly activities: readonly OriKidsActivity[];
+  readonly evidenceKey: string;
   readonly beforeRun: () => Promise<
     "unchanged" | "updated" | "pulled" | "conflict" | "unavailable"
   >;
@@ -43,11 +48,17 @@ export function OriKidsPilotPanel({
     readonly scriptId: string;
     readonly code: string;
   } | null>(null);
+  const lastQueuedActivity = useRef(activities.at(-1)?.sequence ?? 0);
+  const activityQueue = useRef<Promise<void>>(Promise.resolve());
+  const verifiedRun = useRef(false);
+  const currentEvidenceKey = useRef(evidenceKey);
+  currentEvidenceKey.current = evidenceKey;
 
   useEffect(() => {
     let cancelled = false;
     setAllowed(false);
     setRan(false);
+    verifiedRun.current = false;
     setIssued(null);
     setAccepted(false);
     setPreview(null);
@@ -59,36 +70,50 @@ export function OriKidsPilotPanel({
     };
   }, [remoteProjectId]);
 
-  if (!allowed) return null;
-
-  async function run() {
-    if (busy) return;
-    setBusy(true);
-    setMessage("");
-    setIssued(null);
-    setAccepted(false);
-    try {
-      const synced = await beforeRun();
-      if (synced === "conflict" || synced === "unavailable") {
-        setRan(false);
-        setMessage(
-          synced === "conflict"
-            ? "Hay cambios distintos en este dispositivo y en tu cuenta. No se reemplazó ninguno. Resolvé la diferencia antes de usar Ori."
-            : "No se pudo actualizar el proyecto de tu cuenta. Ori no usó una versión anterior.",
-        );
-        return;
-      }
-      const recorded = await recordOriKidsPilotRun();
-      setRan(recorded);
-      setMessage(
-        recorded
-          ? "Ori ejecutó tu proyecto actualizado y guardó la evidencia durante esta sesión."
-          : "No se pudo verificar esta ejecución. Tu proyecto no cambió.",
-      );
-    } finally {
-      setBusy(false);
+  useEffect(() => {
+    if (!allowed) return;
+    for (const activity of activities) {
+      if (activity.sequence <= lastQueuedActivity.current) continue;
+      lastQueuedActivity.current = activity.sequence;
+      activityQueue.current = activityQueue.current
+        .then(async () => {
+          setBusy(true);
+          if (activity.kind === "run") {
+            verifiedRun.current = false;
+            setRan(false);
+            setHint(null);
+            setIssued(null);
+            setAccepted(false);
+            setMessage("");
+            if (activity.evidenceKey !== currentEvidenceKey.current) return;
+            const synced = await beforeRun();
+            if (synced === "conflict" || synced === "unavailable") {
+              setMessage(
+                synced === "conflict"
+                  ? "Hay cambios distintos en este dispositivo y en tu cuenta. No se reemplazó ninguno. Resolvé la diferencia antes de usar Ori."
+                  : "No se pudo actualizar el proyecto de tu cuenta. Ori no usó una versión anterior.",
+              );
+              return;
+            }
+            if (activity.evidenceKey !== currentEvidenceKey.current) return;
+            const recorded = await recordOriKidsPilotRun();
+            verifiedRun.current = recorded;
+            setRan(recorded);
+            setMessage(
+              recorded
+                ? "Ori registró la ejecución de Kids y guardó la evidencia durante esta sesión."
+                : "No se pudo verificar esta ejecución. Tu proyecto no cambió.",
+            );
+          }
+        })
+        .catch(() => {
+          verifiedRun.current = false;
+          setRan(false);
+          setMessage("No se pudo registrar la evidencia de Kids para Ori.");
+        })
+        .finally(() => setBusy(false));
     }
-  }
+  }, [activities, allowed, beforeRun]);
 
   async function askHint() {
     if (busy || !ran) return;
@@ -143,6 +168,7 @@ export function OriKidsPilotPanel({
   async function evidenceIsCurrent(): Promise<boolean> {
     const result = await beforeEvidenceAction();
     if (result === "unchanged") return true;
+    verifiedRun.current = false;
     setRan(false);
     setHint(null);
     setMessage(
@@ -167,6 +193,7 @@ export function OriKidsPilotPanel({
     try {
       const result = await applyOriKidsPilotProposal(issued.ticketId, preview.scriptId);
       setAccepted(false);
+      verifiedRun.current = false;
       setRan(false);
       setIssued(null);
       setPreview(null);
@@ -185,13 +212,12 @@ export function OriKidsPilotPanel({
     }
   }
 
+  if (!allowed) return null;
+
   return (
     <section className="kids-adult-card" aria-label="Ori en mi proyecto">
       <h3>Ori</h3>
-      <p>Ori trabaja con tu proyecto de cuenta. Vos revisás la propuesta y decidís si aplicarla.</p>
-      <button type="button" className="kids-button" disabled={busy} onClick={() => void run()}>
-        Ejecutar proyecto con Ori
-      </button>
+      <p>Ori usa tus ejecuciones de Kids. Vos revisás cada propuesta y decidís si aplicarla.</p>
       {ran ? (
         <>
           <button

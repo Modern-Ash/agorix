@@ -7,15 +7,20 @@ import {
   reconcileKidsAccountProject,
 } from "./kidsAccountProjectCopy.js";
 import { OriKidsPilotPanel } from "./OriKidsPilotPanel.js";
+import type { OriKidsActivity } from "./oriKidsActivity.js";
 
 /** Editor entry point for the private pilot. The server still decides eligibility. */
 export function OriKidsEditorAccess({
   localProjectId,
   localSaveVersion,
+  activities,
+  evidenceKey,
   onPulled,
 }: {
   readonly localProjectId: string;
   readonly localSaveVersion: number;
+  readonly activities: readonly OriKidsActivity[];
+  readonly evidenceKey: string;
   readonly onPulled: () => void;
 }) {
   const [copy, setCopy] = useState<{ alias: string; remoteProjectId: string } | null>(null);
@@ -145,6 +150,8 @@ export function OriKidsEditorAccess({
     <div>
       <OriKidsPilotPanel
         remoteProjectId={copy.remoteProjectId}
+        activities={activities}
+        evidenceKey={evidenceKey}
         beforeRun={prepareRun}
         beforeEvidenceAction={prepareRun}
         onApplied={async () => {
