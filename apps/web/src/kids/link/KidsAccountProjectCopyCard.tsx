@@ -48,11 +48,11 @@ export function KidsAccountProjectCopyCard({
             : "The copy was created, but this browser could not save the link. Do not retry; check your account projects."
           : result.status === "already-copied"
             ? spanish
-              ? "Este proyecto ya tiene una copia en tu cuenta. Podés actualizarla de forma explícita."
-              : "This project already has an account copy. You can update it explicitly."
+              ? "Este proyecto ya está vinculado a tu cuenta."
+              : "This project is already linked to your account."
             : spanish
-              ? "Copia creada en tu cuenta. El proyecto de este dispositivo sigue intacto."
-              : "Account copy created. The project on this device is unchanged.",
+              ? "Proyecto vinculado a tu cuenta. Podés abrirlo desde Mis proyectos."
+              : "Project linked to your account. You can open it from My projects.",
       );
     } catch {
       setMessage(
@@ -155,12 +155,12 @@ export function KidsAccountProjectCopyCard({
   return (
     <section className="kids-link-card" aria-labelledby="kids-account-project-copy-title">
       <h3 id="kids-account-project-copy-title">
-        {spanish ? "Preparar un proyecto para Ori" : "Prepare a project for Ori"}
+        {spanish ? "Usar mi proyecto con Ori" : "Use my project with Ori"}
       </h3>
       <p>
         {spanish
-          ? "Elegí un proyecto libre de Kids y creá una copia en tu cuenta. Para enviar cambios posteriores, usá Actualizar copia. Si la copia cambió en otro lugar, se rechazará la actualización."
-          : "Choose a Kids free project and create an account copy. Use Update copy to send later edits. If the account copy changed elsewhere, the update is rejected."}
+          ? "Vinculá un proyecto libre a tu cuenta. Al abrirlo o editarlo, se sincroniza con seguridad. Si hay cambios distintos en ambos lugares, te avisaremos antes de reemplazar nada."
+          : "Link a free project to your account. It syncs safely when opened or edited. If both places have different changes, we will warn you before replacing anything."}
       </p>
       {localProjects.length > 0 ? (
         <>
@@ -174,34 +174,50 @@ export function KidsAccountProjectCopyCard({
               ))}
             </select>
           </label>
-          <button type="button" className="kids-button" disabled={busy} onClick={() => void copy()}>
-            {busy
-              ? spanish
-                ? "Copiando…"
-                : "Copying…"
-              : spanish
-                ? "Crear copia en mi cuenta"
-                : "Create account copy"}
-          </button>
-          {canUpdate ? (
+          {existing ? (
+            <p>{spanish ? "Vinculado a tu cuenta" : "Linked to your account"}</p>
+          ) : (
             <button
               type="button"
               className="kids-button"
               disabled={busy}
-              onClick={() => void update()}
+              onClick={() => void copy()}
             >
-              {spanish ? "Actualizar copia" : "Update copy"}
+              {busy
+                ? spanish
+                  ? "Vinculando…"
+                  : "Linking…"
+                : spanish
+                  ? "Vincular proyecto a mi cuenta"
+                  : "Link project to my account"}
             </button>
-          ) : null}
-          {canPull ? (
-            <button
-              type="button"
-              className="kids-button"
-              disabled={busy}
-              onClick={() => void pull()}
-            >
-              {spanish ? "Traer cambios de mi cuenta" : "Load account changes"}
-            </button>
+          )}
+          {canUpdate || canPull ? (
+            <details>
+              <summary>
+                {spanish ? "Resolver problemas de sincronización" : "Resolve sync problems"}
+              </summary>
+              {canUpdate ? (
+                <button
+                  type="button"
+                  className="kids-button"
+                  disabled={busy}
+                  onClick={() => void update()}
+                >
+                  {spanish ? "Enviar cambios de este dispositivo" : "Send changes from this device"}
+                </button>
+              ) : null}
+              {canPull ? (
+                <button
+                  type="button"
+                  className="kids-button"
+                  disabled={busy}
+                  onClick={() => void pull()}
+                >
+                  {spanish ? "Traer cambios de mi cuenta" : "Load account changes"}
+                </button>
+              ) : null}
+            </details>
           ) : null}
         </>
       ) : (

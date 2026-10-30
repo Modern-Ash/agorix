@@ -227,6 +227,22 @@ export async function reconcileKidsAccountProject({
   const localChanged = localHash !== linked.localSemanticHash;
   const remoteChanged = remote.semanticHash !== linked.localSemanticHash;
   if (localChanged && remoteChanged) return "conflict";
+  if (!remoteChanged && remote.revision !== linked.remoteRevision) {
+    try {
+      storage.setItem(
+        KEY,
+        JSON.stringify(
+          records(storage).map((item) =>
+            item.accountAlias === accountAlias && item.localProjectId === localProjectId
+              ? { ...item, remoteRevision: remote.revision }
+              : item,
+          ),
+        ),
+      );
+    } catch {
+      return "untracked";
+    }
+  }
   if (remoteChanged) {
     const result = await pullKidsAccountCopy({
       accountAlias,
@@ -242,7 +258,6 @@ export async function reconcileKidsAccountProject({
         : result;
   }
   if (!localChanged) return "unchanged";
-  if (remote.revision !== linked.remoteRevision) return "conflict";
   try {
     const result = await updateKidsAccountCopy({
       accountAlias,

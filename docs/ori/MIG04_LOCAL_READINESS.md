@@ -13,12 +13,12 @@ Date: 2026-10-29. Status: **private pilot active for one verified adult and one 
 
 ### Issue #1009 evidence map
 
-| Criterion | Evidence |
-| --- | --- |
-| Disposable PostgreSQL and cross-connection tests | CI `postgres-integration` job passed; the pilot contract test covers stale revision, owner binding, epoch revocation, emergency disable, transaction rollback and audit coupling. |
-| Reproducible checks | The same commit passed CI `typecheck`, `format`, `lint`, `build`, `unit-tests`, `verify`, `security-baseline`, `boundary-check` and `browser-smoke` without disabled checks. The full local `pnpm verify` passed before the push. |
-| Fail-closed and rollback drill | The public Kids pilot refused an action while the policy was disabled with a higher epoch and empty allowlist, then resumed for the same single project under a new epoch. The accepted mutation had exactly one CAS revision advance and one audit event. |
-| Access scope | The PostgreSQL policy retains one verified adult and one allowlisted account project. A different email was rejected before account creation. |
+| Criterion                                        | Evidence                                                                                                                                                                                                                                                   |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Disposable PostgreSQL and cross-connection tests | CI `postgres-integration` job passed; the pilot contract test covers stale revision, owner binding, epoch revocation, emergency disable, transaction rollback and audit coupling.                                                                          |
+| Reproducible checks                              | The same commit passed CI `typecheck`, `format`, `lint`, `build`, `unit-tests`, `verify`, `security-baseline`, `boundary-check` and `browser-smoke` without disabled checks. The full local `pnpm verify` passed before the push.                          |
+| Fail-closed and rollback drill                   | The public Kids pilot refused an action while the policy was disabled with a higher epoch and empty allowlist, then resumed for the same single project under a new epoch. The accepted mutation had exactly one CAS revision advance and one audit event. |
+| Access scope                                     | The PostgreSQL policy retains one verified adult and one allowlisted account project. A different email was rejected before account creation.                                                                                                              |
 
 The CI run is tied to the source-only correction commit; production code remains at the previously deployed MIG-04 revisions. The table records observed pilot evidence, not authorization for a broader rollout.
 

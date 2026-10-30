@@ -224,6 +224,7 @@ export function EditorScreen({
   const projectId =
     freeProjectId ?? `kids.${world}.${KIDS_MISSION_IDS[Math.min(missionIndex, 2)]!}`;
   const [store] = useState(() => new ProjectStore());
+  const [localSaveVersion, setLocalSaveVersion] = useState(0);
   const [freeGoal, setFreeGoal] = useState<KidsCell | null>(() => {
     if (!freeProjectId || !store.has(projectId)) return null;
     try {
@@ -628,6 +629,7 @@ export function EditorScreen({
           : {}),
       };
       store.save(projectId, next.current, metadata);
+      if (freeProjectId) setLocalSaveVersion((version) => version + 1);
     } catch {
       // Local storage can be unavailable; the active editor still works.
     }
@@ -707,6 +709,7 @@ export function EditorScreen({
         locale,
         missionSpec: { goal: kidsGoalSpec(cell), successCheck: check },
       });
+      setLocalSaveVersion((version) => version + 1);
     } catch {
       /* The free world still works when storage is unavailable. */
     }
@@ -1233,7 +1236,11 @@ export function EditorScreen({
             />
           ) : null}
           {freeProjectId ? (
-            <OriKidsEditorAccess localProjectId={freeProjectId} onPulled={reloadAccountCopy} />
+            <OriKidsEditorAccess
+              localProjectId={freeProjectId}
+              localSaveVersion={localSaveVersion}
+              onPulled={reloadAccountCopy}
+            />
           ) : null}
         </div>
         <div className="kids-editor-program-panel">

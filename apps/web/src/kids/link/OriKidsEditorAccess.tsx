@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ProjectStore } from "@agorix/persistence";
 import { createHttpBackend } from "../../accounts/httpClient.js";
 import {
@@ -11,16 +11,22 @@ import { OriKidsPilotPanel } from "./OriKidsPilotPanel.js";
 /** Editor entry point for the private pilot. The server still decides eligibility. */
 export function OriKidsEditorAccess({
   localProjectId,
+  localSaveVersion,
   onPulled,
 }: {
   readonly localProjectId: string;
+  readonly localSaveVersion: number;
   readonly onPulled: () => void;
 }) {
   const [copy, setCopy] = useState<{ alias: string; remoteProjectId: string } | null>(null);
   const [applied, setApplied] = useState(false);
   const [message, setMessage] = useState("");
+  const syncQueue = useRef<Promise<void>>(Promise.resolve());
+  const onPulledRef = useRef(onPulled);
+  onPulledRef.current = onPulled;
   useEffect(() => {
     let cancelled = false;
+    setCopy(null);
     void createHttpBackend()
       .account.restore()
       .then((session) => {
@@ -35,6 +41,58 @@ export function OriKidsEditorAccess({
       cancelled = true;
     };
   }, [localProjectId]);
+
+  const enqueueReconcile = useCallback(() => {
+    const task = syncQueue.current.then(() => {
+      if (!copy) return "missing" as const;
+      return reconcileKidsAccountProject({
+        accountAlias: copy.alias,
+        localProjectId,
+        store: new ProjectStore(),
+        projects: createHttpBackend().projects,
+        storage: window.localStorage,
+      });
+    });
+    syncQueue.current = task.then(
+      () => undefined,
+      () => undefined,
+    );
+    return task;
+  }, [copy, localProjectId]);
+
+  useEffect(() => {
+    if (!copy) return;
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      void enqueueReconcile()
+        .then((result) => {
+          if (cancelled) return;
+          if (result === "pulled") onPulledRef.current();
+          setMessage(
+            result === "conflict"
+              ? "Este proyecto cambió en este dispositivo y en tu cuenta. No se reemplazó ninguno."
+              : result === "updated"
+                ? "Proyecto guardado en tu cuenta."
+                : result === "pulled"
+                  ? "Se cargó la versión más reciente de tu cuenta."
+                  : result === "invalid-remote" || result === "untracked"
+                    ? "No se pudo sincronizar este proyecto. Tus cambios locales siguen intactos."
+                    : "",
+          );
+        })
+        .catch(() => {
+          if (!cancelled)
+            setMessage(
+              "No se pudo sincronizar este proyecto. Tus cambios locales siguen intactos.",
+            );
+        });
+    }, 450);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [copy, enqueueReconcile, localSaveVersion]);
+
   if (!copy) return null;
 
   async function prepareRun(): Promise<
@@ -42,13 +100,7 @@ export function OriKidsEditorAccess({
   > {
     if (!copy) return "unavailable";
     try {
-      const result = await reconcileKidsAccountProject({
-        accountAlias: copy.alias,
-        localProjectId,
-        store: new ProjectStore(),
-        projects: createHttpBackend().projects,
-        storage: window.localStorage,
-      });
+      const result = await enqueueReconcile();
       if (result === "pulled") onPulled();
       return result === "unchanged" ||
         result === "updated" ||
