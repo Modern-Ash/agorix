@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { ProjectStore } from "@agorix/persistence";
 import { createHttpBackend } from "../../accounts/httpClient.js";
-import { kidsAccountCopy, pullKidsAccountCopy } from "./kidsAccountProjectCopy.js";
+import {
+  kidsAccountCopy,
+  pullKidsAccountCopy,
+  reconcileKidsAccountProject,
+} from "./kidsAccountProjectCopy.js";
 import { OriKidsPilotPanel } from "./OriKidsPilotPanel.js";
 
 /** Editor entry point for the private pilot. The server still decides eligibility. */
@@ -33,8 +37,32 @@ export function OriKidsEditorAccess({
   }, [localProjectId]);
   if (!copy) return null;
 
-  async function pull() {
-    if (!copy) return;
+  async function prepareRun(): Promise<
+    "unchanged" | "updated" | "pulled" | "conflict" | "unavailable"
+  > {
+    if (!copy) return "unavailable";
+    try {
+      const result = await reconcileKidsAccountProject({
+        accountAlias: copy.alias,
+        localProjectId,
+        store: new ProjectStore(),
+        projects: createHttpBackend().projects,
+        storage: window.localStorage,
+      });
+      if (result === "pulled") onPulled();
+      return result === "unchanged" ||
+        result === "updated" ||
+        result === "pulled" ||
+        result === "conflict"
+        ? result
+        : "unavailable";
+    } catch {
+      return "unavailable";
+    }
+  }
+
+  async function pull(): Promise<boolean> {
+    if (!copy) return false;
     try {
       const result = await pullKidsAccountCopy({
         accountAlias: copy.alias,
@@ -47,6 +75,7 @@ export function OriKidsEditorAccess({
         onPulled();
         setApplied(false);
         setMessage("Cambio aprobado cargado en el editor.");
+        return true;
       } else {
         setMessage(
           result === "local-conflict"
@@ -57,13 +86,20 @@ export function OriKidsEditorAccess({
     } catch {
       setMessage("No se pudo cargar el cambio aprobado en este dispositivo.");
     }
+    return false;
   }
 
   return (
     <div>
       <OriKidsPilotPanel
         remoteProjectId={copy.remoteProjectId}
-        onApplied={() => setApplied(true)}
+        beforeRun={prepareRun}
+        beforeEvidenceAction={prepareRun}
+        onApplied={async () => {
+          const loaded = await pull();
+          if (!loaded) setApplied(true);
+          return loaded;
+        }}
       />
       {applied ? (
         <button type="button" className="kids-button" onClick={() => void pull()}>

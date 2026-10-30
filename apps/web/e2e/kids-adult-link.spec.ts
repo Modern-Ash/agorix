@@ -269,17 +269,17 @@ test("verified adult copies one Kids project to the account without duplicating 
   await page.reload();
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await page.locator(".kids-project-card").getByRole("button", { name: "Jugar" }).click();
-  const pilot = page.getByRole("region", { name: "Piloto privado de Ori" });
+  const pilot = page.getByRole("region", { name: "Ori en mi proyecto" });
   await expect(pilot).toBeVisible();
-  await pilot.getByRole("button", { name: "Ejecutar copia con Ori" }).click();
+  await pilot.getByRole("button", { name: "Ejecutar proyecto con Ori" }).click();
   await expect(pilot.getByText(/guardó la evidencia/)).toBeVisible();
   await pilot.getByRole("button", { name: "Pedir pista" }).click();
   await expect(pilot.getByText("Pista 1: Probá un paso")).toBeVisible();
   await pilot.getByRole("button", { name: "Pedir propuesta" }).click();
   await expect(pilot.getByRole("button", { name: "Aceptar propuesta" })).toBeVisible();
   await pilot.getByRole("button", { name: "Aceptar propuesta" }).click();
-  await pilot.getByRole("button", { name: "Aplicar cambio aceptado a mi copia" }).click();
-  await expect(pilot.getByText(/Ori aplicó el cambio a la copia de cuenta/)).toBeVisible();
+  await pilot.getByRole("button", { name: "Aplicar cambio aceptado a mi proyecto" }).click();
+  await expect(pilot.getByText(/Ori aplicó el cambio a tu cuenta/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Traer cambio aprobado al editor" })).toBeVisible();
   const editorPullStatus = await page.evaluate(async () => {
     const copies = JSON.parse(

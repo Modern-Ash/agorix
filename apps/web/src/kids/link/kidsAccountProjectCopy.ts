@@ -1,6 +1,6 @@
 import { semanticProjectHash, type ProjectStore } from "@agorix/persistence";
 import { verifyKidsFreeGoal } from "@agorix/curriculum";
-import type { ProjectApiClient } from "../../accounts/clients.js";
+import { isClientError, type ProjectApiClient } from "../../accounts/clients.js";
 import { parseKidsGoalSpec } from "../kidsProjects.js";
 
 const KEY = "agorix.kids.account-project-copies.v1";
@@ -200,5 +200,60 @@ export async function pullKidsAccountCopy({
     return "pulled";
   } catch {
     return "pulled-untracked";
+  }
+}
+
+/** Reconcile a linked Kids project before Ori reads it; never choose a winner for divergent edits. */
+export async function reconcileKidsAccountProject({
+  accountAlias,
+  localProjectId,
+  store,
+  projects,
+  storage,
+}: {
+  readonly accountAlias: string;
+  readonly localProjectId: string;
+  readonly store: Pick<ProjectStore, "load" | "save">;
+  readonly projects: Pick<ProjectApiClient, "get" | "update">;
+  readonly storage: CopyStorage;
+}): Promise<
+  "unchanged" | "updated" | "pulled" | "conflict" | "invalid-remote" | "missing" | "untracked"
+> {
+  const linked = kidsAccountCopy(storage, accountAlias, localProjectId);
+  if (!linked?.localSemanticHash || linked.remoteRevision === undefined) return "missing";
+  const localHash = semanticProjectHash(store.load(localProjectId));
+  const remote = await projects.get(linked.remoteProjectId);
+  if (remote.semanticHash !== semanticProjectHash(remote.storedProject)) return "invalid-remote";
+  const localChanged = localHash !== linked.localSemanticHash;
+  const remoteChanged = remote.semanticHash !== linked.localSemanticHash;
+  if (localChanged && remoteChanged) return "conflict";
+  if (remoteChanged) {
+    const result = await pullKidsAccountCopy({
+      accountAlias,
+      localProjectId,
+      store,
+      projects,
+      storage,
+    });
+    return result === "local-conflict"
+      ? "conflict"
+      : result === "pulled-untracked"
+        ? "untracked"
+        : result;
+  }
+  if (!localChanged) return "unchanged";
+  if (remote.revision !== linked.remoteRevision) return "conflict";
+  try {
+    const result = await updateKidsAccountCopy({
+      accountAlias,
+      localProjectId,
+      store,
+      projects,
+      storage,
+    });
+    return result === "updated-untracked" ? "untracked" : result;
+  } catch (error) {
+    if (isClientError(error, "revision-conflict")) return "conflict";
+    throw error;
   }
 }
