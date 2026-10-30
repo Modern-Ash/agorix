@@ -1,7 +1,11 @@
 import { existsSync } from "node:fs";
+import { createServer } from "node:http";
 import { isAbsolute, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createOriHostEvidenceAdapter } from "./oriHostEvidenceAdapter.js";
+import {
+  createOriHostEvidenceAdapter,
+  oriHostProposalConfigFromEnv,
+} from "./oriHostEvidenceAdapter.js";
 const oriRoot = process.env["ORI_REPO_PATH"];
 const runnable =
   !!oriRoot &&
@@ -42,4 +46,43 @@ describe.skipIf(!runnable)("real Ori host evidence CLI", () => {
     const run = createOriHostEvidenceAdapter({ oriRoot: oriRoot! });
     expect((await run({ ...request, message: "private" })).status).toBe("unavailable");
   });
+  it("accepts a validated proposal from the opt-in local model route", async () => {
+    const server = createServer((req, res) => {
+      expect(req.url).toBe("/v1/chat/completions");
+      res.setHeader("content-type", "application/json");
+      res.end(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  schemaVersion: "ori/proposal/v0",
+                  operation: "append",
+                  requiresLearnerApproval: true,
+                  blocks: [{ kind: "move", steps: 3 }],
+                }),
+              },
+            },
+          ],
+        }),
+      );
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    try {
+      const address = server.address();
+      if (!address || typeof address === "string") throw new Error("Expected local port");
+      const proposalConfig = oriHostProposalConfigFromEnv({
+        AGORIX_ORI_REVIEW_PROVIDER: "compatible",
+        AGORIX_ORI_REVIEW_COMPATIBLE_ENDPOINT: `http://127.0.0.1:${address.port}`,
+      });
+      if (!proposalConfig) throw new Error("Expected private model configuration");
+      const run = createOriHostEvidenceAdapter({ oriRoot: oriRoot!, proposalConfig });
+      const result = await run(request);
+      expect(result.status).toBe("ready");
+      expect(result.proposal).toMatchObject({ blocks: [{ kind: "move", steps: 3 }] });
+      expect(result.appliedChanges).toBe(false);
+    } finally {
+      server.close();
+    }
+  }, 15000);
 });

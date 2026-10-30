@@ -36,6 +36,54 @@ const unavailable: OriHostEvidenceResult = Object.freeze({
   appliedChanges: false,
 });
 const HEX = /^[a-f0-9]{64}$/;
+export interface OriHostProposalConfig {
+  readonly provider: "ollama" | "compatible" | "auto";
+  readonly timeoutMs: number;
+  readonly ollamaEndpoint: string;
+  readonly compatibleEndpoint: string;
+  readonly ollamaModel: string;
+  readonly compatibleModel: string;
+}
+
+export function oriHostProposalConfigFromEnv(
+  env: Record<string, string | undefined>,
+): OriHostProposalConfig | undefined {
+  const provider = env["AGORIX_ORI_REVIEW_PROVIDER"] ?? "disabled";
+  if (provider === "disabled") return undefined;
+  if (!["ollama", "compatible", "auto"].includes(provider))
+    throw new Error("Invalid Ori private review provider");
+  const timeoutMs = Number(env["AGORIX_ORI_REVIEW_MODEL_TIMEOUT_MS"] ?? 1500);
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 3000)
+    throw new Error("Invalid Ori private review timeout");
+  const endpoint = (raw: string) => {
+    const url = new URL(raw);
+    if (
+      url.protocol !== "http:" ||
+      !["localhost", "127.0.0.1", "[::1]"].includes(url.hostname) ||
+      url.username ||
+      url.password ||
+      url.search ||
+      url.hash ||
+      !["", "/"].includes(url.pathname)
+    )
+      throw new Error("Ori private review endpoint must be loopback HTTP");
+    return url.origin;
+  };
+  const model = (raw: string) => {
+    if (!/^[a-zA-Z0-9_.:/-]{1,80}$/.test(raw)) throw new Error("Invalid Ori review model");
+    return raw;
+  };
+  return {
+    provider: provider as OriHostProposalConfig["provider"],
+    timeoutMs,
+    ollamaEndpoint: endpoint(env["AGORIX_ORI_REVIEW_OLLAMA_ENDPOINT"] ?? "http://127.0.0.1:11434"),
+    compatibleEndpoint: endpoint(
+      env["AGORIX_ORI_REVIEW_COMPATIBLE_ENDPOINT"] ?? "http://127.0.0.1:4096",
+    ),
+    ollamaModel: model(env["AGORIX_ORI_REVIEW_OLLAMA_MODEL"] ?? "qwen2.5:3b"),
+    compatibleModel: model(env["AGORIX_ORI_REVIEW_COMPATIBLE_MODEL"] ?? "local-educational"),
+  };
+}
 export function validateTrustedOriEvidence(raw: unknown): TrustedOriEvidence | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const r = raw as Record<string, unknown>;
@@ -171,9 +219,11 @@ export function validateOriHostProposal(
 }
 export function createOriHostEvidenceAdapter({
   oriRoot,
-  timeoutMs = 3000,
+  proposalConfig,
+  timeoutMs = proposalConfig ? 9000 : 3000,
 }: {
   oriRoot: string;
+  proposalConfig?: OriHostProposalConfig;
   timeoutMs?: number;
 }) {
   if (
@@ -193,7 +243,19 @@ export function createOriHostEvidenceAdapter({
       const child = spawn(process.execPath, ["examples/host-evidence-cli.mjs"], {
         cwd: root,
         stdio: ["pipe", "pipe", "pipe"],
-        env: { PATH: process.env["PATH"] ?? "" },
+        env: {
+          PATH: process.env["PATH"] ?? "",
+          ...(proposalConfig
+            ? {
+                ORI_HOST_PROPOSAL_PROVIDER: proposalConfig.provider,
+                ORI_HOST_PROPOSAL_TIMEOUT_MS: String(proposalConfig.timeoutMs),
+                ORI_HOST_OLLAMA_ENDPOINT: proposalConfig.ollamaEndpoint,
+                ORI_HOST_COMPATIBLE_ENDPOINT: proposalConfig.compatibleEndpoint,
+                ORI_HOST_OLLAMA_MODEL: proposalConfig.ollamaModel,
+                ORI_HOST_COMPATIBLE_MODEL: proposalConfig.compatibleModel,
+              }
+            : {}),
+        },
       });
       let done = false,
         output = "";

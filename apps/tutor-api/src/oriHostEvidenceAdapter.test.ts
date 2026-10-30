@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { validateTrustedOriEvidence } from "./oriHostEvidenceAdapter.js";
+import {
+  oriHostProposalConfigFromEnv,
+  validateTrustedOriEvidence,
+} from "./oriHostEvidenceAdapter.js";
 const request = {
   expectedSteps: 2,
   hostContext: {
@@ -21,6 +24,31 @@ const request = {
   },
 };
 describe("Ori trusted host evidence boundary", () => {
+  it("keeps private model routing disabled unless explicitly selected", () => {
+    expect(oriHostProposalConfigFromEnv({})).toBeUndefined();
+    expect(
+      oriHostProposalConfigFromEnv({ AGORIX_ORI_REVIEW_PROVIDER: "disabled" }),
+    ).toBeUndefined();
+    expect(oriHostProposalConfigFromEnv({ AGORIX_ORI_REVIEW_PROVIDER: "auto" })).toMatchObject({
+      provider: "auto",
+      timeoutMs: 1500,
+    });
+  });
+  it("rejects external endpoints and invalid provider policy", () => {
+    expect(() => oriHostProposalConfigFromEnv({ AGORIX_ORI_REVIEW_PROVIDER: "cloud" })).toThrow();
+    expect(() =>
+      oriHostProposalConfigFromEnv({
+        AGORIX_ORI_REVIEW_PROVIDER: "compatible",
+        AGORIX_ORI_REVIEW_COMPATIBLE_ENDPOINT: "https://example.com",
+      }),
+    ).toThrow();
+    expect(() =>
+      oriHostProposalConfigFromEnv({
+        AGORIX_ORI_REVIEW_PROVIDER: "auto",
+        AGORIX_ORI_REVIEW_MODEL_TIMEOUT_MS: "9000",
+      }),
+    ).toThrow();
+  });
   it("accepts bounded canonical evidence", () => {
     expect(validateTrustedOriEvidence(request)).not.toBeNull();
   });

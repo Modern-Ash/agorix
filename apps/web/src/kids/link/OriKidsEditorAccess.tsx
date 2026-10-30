@@ -123,6 +123,9 @@ export function OriKidsEditorAccess({
   async function pull(): Promise<boolean> {
     if (!copy) return false;
     try {
+      // A run or local edit may have queued a reconciliation. Let it settle before
+      // deciding whether the approved account revision is already on this device.
+      await syncQueue.current;
       const result = await pullKidsAccountCopy({
         accountAlias: copy.alias,
         localProjectId,

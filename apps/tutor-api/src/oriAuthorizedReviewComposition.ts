@@ -10,7 +10,7 @@ import {
   createOriCanonicalReviewWorkflow,
   type OriLearningContext,
 } from "./oriCanonicalReviewWorkflow.js";
-import type { OriHostEvidenceResult } from "./oriHostEvidenceAdapter.js";
+import type { OriHostEvidenceResult, OriHostProposalConfig } from "./oriHostEvidenceAdapter.js";
 import { createOriPresentationServerComposition } from "./oriPresentationServerComposition.js";
 import type { openOriTicketPresentationSqliteStore } from "./oriTicketPresentationSqliteStore.js";
 
@@ -29,6 +29,7 @@ export function createOriAuthorizedReviewOptions({
   resolveSession,
   activeProject,
   runOriOverride,
+  proposalConfig,
   presentationStore,
   oriMig04RolloutDecide,
   oriMig04CommitFence,
@@ -67,6 +68,7 @@ export function createOriAuthorizedReviewOptions({
   readonly oriMig04Visibility?: (owner: string, projectId: string) => Promise<boolean>;
   /** Test-only: production invokes the real Ori process. */
   readonly runOriOverride?: (evidence: unknown) => Promise<OriHostEvidenceResult>;
+  readonly proposalConfig?: OriHostProposalConfig;
 }) {
   const identity = createOriAuthorizedProjectIdentityResolver({
     repository,
@@ -80,6 +82,7 @@ export function createOriAuthorizedReviewOptions({
     ...(worldForProject ? { worldForProject } : {}),
     learningContext,
     ...(runOriOverride ? { runOriOverride } : {}),
+    ...(proposalConfig ? { proposalConfig } : {}),
     ...(oriMig04RolloutDecide
       ? {
           mayCommit: (projectId: string) => oriMig04RolloutDecide(projectId).learnerVisible,

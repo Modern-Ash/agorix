@@ -6,7 +6,10 @@ import {
   createOriPersistedEvidenceResolver,
   oriEvidenceRevision,
 } from "./oriPersistedEvidenceResolver.js";
-import { createOriHostEvidenceAdapter } from "./oriHostEvidenceAdapter.js";
+import {
+  createOriHostEvidenceAdapter,
+  type OriHostProposalConfig,
+} from "./oriHostEvidenceAdapter.js";
 import { createOriProjectReviewService } from "./oriProjectReviewService.js";
 import { createOriReviewRegistry } from "./oriReviewRegistry.js";
 import { applyApprovedOriProposal } from "./oriApprovedProjectApply.js";
@@ -28,6 +31,7 @@ export function createOriCanonicalReviewWorkflow({
   worldForProject,
   learningContext,
   runOriOverride,
+  proposalConfig,
   mayCommit,
   commitFence,
   atomicCommit,
@@ -44,6 +48,7 @@ export function createOriCanonicalReviewWorkflow({
   ) => Promise<OriLearningContext | null>;
   /** Test-only injection; production uses the independent Ori process. */
   readonly runOriOverride?: ReturnType<typeof createOriHostEvidenceAdapter>;
+  readonly proposalConfig?: OriHostProposalConfig;
   readonly mayCommit?: (projectId: string) => boolean;
   readonly commitFence?: (projectId: string, write: () => Promise<void>) => Promise<boolean>;
   readonly atomicCommit?: (
@@ -60,7 +65,9 @@ export function createOriCanonicalReviewWorkflow({
     learningContext,
     ...(worldForProject ? { worldForProject } : {}),
   });
-  const runOri = runOriOverride ?? createOriHostEvidenceAdapter({ oriRoot });
+  const runOri =
+    runOriOverride ??
+    createOriHostEvidenceAdapter({ oriRoot, ...(proposalConfig ? { proposalConfig } : {}) });
   const ticketProjects = new Map<
     string,
     { owner: string; projectId: string; revision: number; hash: string; created: number }
