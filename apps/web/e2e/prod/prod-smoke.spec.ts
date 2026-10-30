@@ -228,7 +228,7 @@ test.describe("Kids Ori production fallback", () => {
         JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
       );
     });
-    await page.goto("/");
+    await page.goto("/kids#/mapa");
     await page.getByRole("button", { name: "Misión 1" }).click();
     // Ori keeps its idea back on entry: opening the second hint unlocks it (issue #590).
     await expect(page.getByRole("button", { name: "Abrir propuesta de Ori" })).toHaveCount(0);
