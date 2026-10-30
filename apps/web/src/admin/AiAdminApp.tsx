@@ -50,7 +50,6 @@ const names: Record<Capability, string> = {
   goals: "Objetivos",
   legacy: "Tutor clásico",
 };
-const keys = Object.keys(names) as Capability[];
 const sectionNames: Record<Section, string> = {
   ...names,
   group: "Modo grupo",

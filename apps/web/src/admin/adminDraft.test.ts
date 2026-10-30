@@ -45,8 +45,7 @@ describe("draft changes", () => {
   });
 
   it("counts a section that appears or disappears as changed", () => {
-    const { group: _group, ...withoutGroup } = structuredClone(published);
-    expect(changedSections(published, withoutGroup)).toEqual(["group"]);
+    expect(changedSections(published, { ...published, group: undefined })).toEqual(["group"]);
   });
 });
 
