@@ -15,12 +15,60 @@ const KEY = "agorix.kids.account-project-copies.v1";
 const FREE_PROJECT_ID = /^free-[1-9][0-9]*$/;
 const SEMANTIC_HASH = /^fnv1a32:[a-f0-9]{8}$/;
 
-interface CopyRecord {
+export interface CopyRecord {
   readonly accountAlias: string;
   readonly localProjectId: string;
   readonly remoteProjectId: string;
   readonly remoteRevision?: number;
   readonly localSemanticHash?: string;
+}
+
+/** A deleted local ID must not transfer its account identity to a new project. */
+export function detachKidsAccountCopies(
+  storage: CopyStorage,
+  localProjectId: string,
+): readonly CopyRecord[] | null {
+  const current = records(storage);
+  const detached = current.filter((item) => item.localProjectId === localProjectId);
+  if (detached.length === 0) return [];
+  try {
+    storage.setItem(
+      KEY,
+      JSON.stringify(current.filter((item) => item.localProjectId !== localProjectId)),
+    );
+    return detached;
+  } catch {
+    return null;
+  }
+}
+
+/** Restore the identity only after the local project's Undo has succeeded. */
+export function restoreKidsAccountCopies(
+  storage: CopyStorage,
+  detached: readonly CopyRecord[],
+): boolean {
+  if (detached.length === 0) return true;
+  try {
+    const current = records(storage);
+    storage.setItem(
+      KEY,
+      JSON.stringify([
+        ...current.filter(
+          (item) =>
+            !detached.some(
+              (previous) =>
+                previous.localProjectId === item.localProjectId ||
+                (previous.accountAlias === item.accountAlias &&
+                  previous.remoteProjectId === item.remoteProjectId),
+            ),
+        ),
+        ...detached,
+      ]),
+    );
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export interface CopyStorage {

@@ -7,13 +7,15 @@ import {
 } from "@agorix/persistence";
 import type { ProjectApiClient } from "../../accounts/clients.js";
 import { ClientError } from "../../accounts/clients.js";
-import { deleteFreeProject } from "../kidsProjects.js";
+import { createFreeProject, deleteFreeProject, restoreFreeProject } from "../kidsProjects.js";
 import {
   copyKidsProjectToAccount,
+  detachKidsAccountCopies,
   kidsAccountCopy,
   pullKidsAccountCopy,
   reconcileKidsAccountProject,
   restoreKidsAccountProject,
+  restoreKidsAccountCopies,
   kidsAccountCopyByRemote,
   updateKidsAccountCopy,
   type CopyStorage,
@@ -395,6 +397,41 @@ describe("Kids account project recovery", () => {
     });
     expect(kidsAccountCopyByRemote(storage, "adult", "remote-13", store)).toBe("free-1");
     expect(JSON.parse(values.get("agorix.kids.account-project-copies.v1") ?? "[]")).toHaveLength(1);
+  });
+
+  it("keeps a link on Undo but never assigns it to a new project using the deleted ID", async () => {
+    const { storage, store } = fixture();
+    const projects = {
+      get: async () => ({
+        projectId: "remote-14",
+        revision: 2,
+        semanticHash: storedHash,
+        storedProject: stored,
+      }),
+    } as unknown as Pick<ProjectApiClient, "get">;
+    const input = {
+      accountAlias: "adult",
+      remoteProjectId: "remote-14",
+      world: "ocean" as const,
+      avatar: "🐸" as const,
+      store,
+      projects,
+      storage,
+    };
+    expect((await restoreKidsAccountProject(input)).status).toBe("restored");
+    const removed = deleteFreeProject("free-1", store, storage);
+    expect(removed).not.toBeNull();
+    const copies = detachKidsAccountCopies(storage, "free-1");
+    expect(copies).toHaveLength(1);
+    expect(kidsAccountCopy(storage, "adult", "free-1")).toBeNull();
+    expect(restoreFreeProject(removed!, store, storage)).toBe(true);
+    expect(restoreKidsAccountCopies(storage, copies!)).toBe(true);
+    expect(kidsAccountCopyByRemote(storage, "adult", "remote-14", store)).toBe("free-1");
+
+    expect(deleteFreeProject("free-1", store, storage)).not.toBeNull();
+    expect(detachKidsAccountCopies(storage, "free-1")).toHaveLength(1);
+    expect(createFreeProject("robots", "🐼", storage).id).toBe("free-1");
+    expect(kidsAccountCopy(storage, "adult", "free-1")).toBeNull();
   });
 
   it("rejects a mismatched project hash before writing local state", async () => {

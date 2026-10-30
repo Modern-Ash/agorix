@@ -13,6 +13,11 @@ import {
   type RemovedFreeProject,
 } from "../kidsProjects.js";
 import { KIDS_WORLDS, type KidsAvatar, type KidsWorld } from "../kidsState.js";
+import {
+  detachKidsAccountCopies,
+  restoreKidsAccountCopies,
+  type CopyRecord,
+} from "../link/kidsAccountProjectCopy.js";
 import { kidsTable, type KidsText } from "../useKidsText.js";
 import { KIDS_WORLD_STYLES } from "../worlds.js";
 import { DeleteProjectDialog } from "./DeleteProjectDialog.js";
@@ -55,7 +60,10 @@ export function ProjectsScreen({
   const [message, setMessage] = useState("");
   const [deleting, setDeleting] = useState<string | null>(null);
   const [exportingMedia, setExportingMedia] = useState<string | null>(null);
-  const [undo, setUndo] = useState<RemovedFreeProject | null>(null);
+  const [undo, setUndo] = useState<{
+    readonly removed: RemovedFreeProject;
+    readonly copies: readonly CopyRecord[];
+  } | null>(null);
 
   useEffect(() => {
     if (!undo) return;
@@ -84,7 +92,13 @@ export function ProjectsScreen({
     const removed = deleteFreeProject(id, store);
     setFree(listFreeProjects());
     if (removed) {
-      setUndo(removed);
+      let copies: readonly CopyRecord[] = [];
+      try {
+        copies = detachKidsAccountCopies(window.localStorage, id) ?? [];
+      } catch {
+        // Kids can still delete a local project when browser storage is blocked.
+      }
+      setUndo({ removed, copies });
       setMessage("");
     } else {
       setMessage(locale === "es" ? "No se pudo borrar." : "Could not delete.");
@@ -92,7 +106,14 @@ export function ProjectsScreen({
   }
 
   function undoDelete() {
-    if (undo && restoreFreeProject(undo, store)) setFree(listFreeProjects());
+    if (undo && restoreFreeProject(undo.removed, store)) {
+      try {
+        restoreKidsAccountCopies(window.localStorage, undo.copies);
+      } catch {
+        // The local project remains usable without an account link.
+      }
+      setFree(listFreeProjects());
+    }
     setUndo(null);
   }
   const catalog = useKidsCatalog();

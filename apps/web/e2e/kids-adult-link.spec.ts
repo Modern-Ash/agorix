@@ -308,9 +308,32 @@ test("verified adult copies one Kids project to the account without duplicating 
     .getByRole("dialog", { name: "¿Borrar este proyecto?" })
     .getByRole("button", { name: "Borrar", exact: true })
     .click();
+  await secondDevice.getByRole("button", { name: "Deshacer" }).click();
+  await expect(
+    secondDevice.locator(".kids-project-card").getByRole("button", { name: "Jugar" }),
+  ).toHaveCount(1);
+  expect(
+    await secondDevice.evaluate(() =>
+      JSON.parse(localStorage.getItem("agorix.kids.account-project-copies.v1") ?? "[]"),
+    ),
+  ).toMatchObject([{ remoteProjectId: pilotProjectId, localProjectId: "free-1" }]);
+  await secondDevice.locator(".kids-project-card").getByRole("button", { name: "Borrar" }).click();
+  const deleteAgainDialog = secondDevice.getByRole("dialog", { name: "¿Cuánto es 7 + 5?" });
+  await deleteAgainDialog.getByRole("button", { name: "1", exact: true }).click();
+  await deleteAgainDialog.getByRole("button", { name: "2", exact: true }).click();
+  await deleteAgainDialog.getByRole("button", { name: "Comprobar" }).click();
+  await secondDevice
+    .getByRole("dialog", { name: "¿Borrar este proyecto?" })
+    .getByRole("button", { name: "Borrar", exact: true })
+    .click();
   await expect(
     secondDevice.locator(".kids-project-card").getByRole("button", { name: "Jugar" }),
   ).toHaveCount(0);
+  expect(
+    await secondDevice.evaluate(() =>
+      JSON.parse(localStorage.getItem("agorix.kids.account-project-copies.v1") ?? "[]"),
+    ),
+  ).toEqual([]);
   await openAdults(secondDevice);
   const recoverAgain = secondDevice.getByRole("region", { name: "Proyectos de mi cuenta" });
   await expect(
