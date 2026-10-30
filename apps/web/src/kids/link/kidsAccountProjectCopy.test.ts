@@ -5,6 +5,7 @@ import { ClientError } from "../../accounts/clients.js";
 import {
   copyKidsProjectToAccount,
   pullKidsAccountCopy,
+  reconcileKidsAccountProject,
   updateKidsAccountCopy,
   type CopyStorage,
 } from "./kidsAccountProjectCopy.js";
@@ -142,5 +143,78 @@ describe("explicit Kids account project copy", () => {
     local = { ...local, metadata: { ...local.metadata, hintLevel: 2 } };
     expect(await pullKidsAccountCopy(input)).toBe("local-conflict");
     expect(saves).toBe(1);
+  });
+
+  it("reconciles a local edit before Ori reads the account project", async () => {
+    const values = new Map<string, string>();
+    const storage: CopyStorage = {
+      getItem: (key) => values.get(key) ?? null,
+      setItem: (key, value) => void values.set(key, value),
+    };
+    let local = stored;
+    const store = { load: () => local, save: () => undefined } as unknown as Pick<
+      ProjectStore,
+      "load" | "save"
+    >;
+    let updates = 0;
+    const projects = {
+      create: async () => ({ projectId: "remote-5", revision: 1, semanticHash: storedHash }),
+      get: async () => ({
+        projectId: "remote-5",
+        revision: 1,
+        semanticHash: storedHash,
+        storedProject: stored,
+      }),
+      update: async (_id: string, expectedRevision: number, next: typeof stored) => {
+        expect(expectedRevision).toBe(1);
+        updates++;
+        return {
+          projectId: "remote-5",
+          revision: 2,
+          semanticHash: semanticProjectHash(next as Parameters<typeof semanticProjectHash>[0]),
+          storedProject: next,
+        };
+      },
+    } as unknown as Pick<ProjectApiClient, "create" | "get" | "update">;
+    const input = { accountAlias: "adult", localProjectId: "free-5", store, projects, storage };
+    await copyKidsProjectToAccount(input);
+    local = { ...stored, metadata: { ...stored.metadata, hintLevel: 1 } };
+    expect(await reconcileKidsAccountProject(input)).toBe("updated");
+    expect(updates).toBe(1);
+  });
+
+  it("refuses divergent local and account edits without writing either side", async () => {
+    const values = new Map<string, string>();
+    const storage: CopyStorage = {
+      getItem: (key) => values.get(key) ?? null,
+      setItem: (key, value) => void values.set(key, value),
+    };
+    let local = stored;
+    let writes = 0;
+    const store = {
+      load: () => local,
+      save: () => {
+        writes++;
+      },
+    } as unknown as Pick<ProjectStore, "load" | "save">;
+    const remote = { ...stored, metadata: { ...stored.metadata, hintLevel: 2 } };
+    const projects = {
+      create: async () => ({ projectId: "remote-6", revision: 1, semanticHash: storedHash }),
+      get: async () => ({
+        projectId: "remote-6",
+        revision: 2,
+        semanticHash: semanticProjectHash(remote as Parameters<typeof semanticProjectHash>[0]),
+        storedProject: remote,
+      }),
+      update: async () => {
+        writes++;
+        throw Error("must not update");
+      },
+    } as unknown as Pick<ProjectApiClient, "create" | "get" | "update">;
+    const input = { accountAlias: "adult", localProjectId: "free-6", store, projects, storage };
+    await copyKidsProjectToAccount(input);
+    local = { ...stored, metadata: { ...stored.metadata, hintLevel: 1 } };
+    expect(await reconcileKidsAccountProject(input)).toBe("conflict");
+    expect(writes).toBe(0);
   });
 });

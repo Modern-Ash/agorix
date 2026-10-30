@@ -19,10 +19,18 @@ import {
 /** Adult-only Kids pilot journey; every server operation rechecks the durable allowlist. */
 export function OriKidsPilotPanel({
   remoteProjectId,
+  beforeRun,
+  beforeEvidenceAction,
   onApplied,
 }: {
   readonly remoteProjectId: string;
-  readonly onApplied?: () => void;
+  readonly beforeRun: () => Promise<
+    "unchanged" | "updated" | "pulled" | "conflict" | "unavailable"
+  >;
+  readonly beforeEvidenceAction: () => Promise<
+    "unchanged" | "updated" | "pulled" | "conflict" | "unavailable"
+  >;
+  readonly onApplied?: () => Promise<boolean>;
 }) {
   const [allowed, setAllowed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -60,12 +68,22 @@ export function OriKidsPilotPanel({
     setIssued(null);
     setAccepted(false);
     try {
+      const synced = await beforeRun();
+      if (synced === "conflict" || synced === "unavailable") {
+        setRan(false);
+        setMessage(
+          synced === "conflict"
+            ? "Hay cambios distintos en este dispositivo y en tu cuenta. No se reemplazó ninguno. Resolvé la diferencia antes de usar Ori."
+            : "No se pudo actualizar el proyecto de tu cuenta. Ori no usó una versión anterior.",
+        );
+        return;
+      }
       const recorded = await recordOriKidsPilotRun();
       setRan(recorded);
       setMessage(
         recorded
-          ? "El servidor ejecutó la copia actual y guardó la evidencia durante esta sesión."
-          : "No se pudo verificar esta ejecución. Revisá que la copia de cuenta esté actualizada.",
+          ? "Ori ejecutó tu proyecto actualizado y guardó la evidencia durante esta sesión."
+          : "No se pudo verificar esta ejecución. Tu proyecto no cambió.",
       );
     } finally {
       setBusy(false);
@@ -76,6 +94,7 @@ export function OriKidsPilotPanel({
     if (busy || !ran) return;
     setBusy(true);
     try {
+      if (!(await evidenceIsCurrent())) return;
       const next = await requestOriKidsPilotHint();
       setHint(next);
       if (!next) setMessage("No hay otra pista disponible para esta ejecución.");
@@ -92,6 +111,7 @@ export function OriKidsPilotPanel({
     setAccepted(false);
     setPreview(null);
     try {
+      if (!(await evidenceIsCurrent())) return;
       const remote = await createHttpBackend().projects.get(remoteProjectId);
       if (
         remote.projectId !== remoteProjectId ||
@@ -120,6 +140,21 @@ export function OriKidsPilotPanel({
     }
   }
 
+  async function evidenceIsCurrent(): Promise<boolean> {
+    const result = await beforeEvidenceAction();
+    if (result === "unchanged") return true;
+    setRan(false);
+    setHint(null);
+    setMessage(
+      result === "updated" || result === "pulled"
+        ? "El proyecto cambió desde la última ejecución. Ejecutalo otra vez antes de pedir pistas o propuestas."
+        : result === "conflict"
+          ? "Hay cambios distintos en este dispositivo y en tu cuenta. Resolvé la diferencia antes de usar Ori."
+          : "No se pudo verificar la versión actual del proyecto. Ori no usó evidencia anterior.",
+    );
+    return false;
+  }
+
   async function decide(ticketId: string, choice: OriLearnerDecision) {
     const result = await requestOriReviewDecision(ticketId, choice);
     setAccepted(result === "accepted");
@@ -135,25 +170,27 @@ export function OriKidsPilotPanel({
       setRan(false);
       setIssued(null);
       setPreview(null);
+      const loaded = result === "applied" ? await onApplied?.() : false;
       setMessage(
         result === "applied"
-          ? "Ori aplicó el cambio a la copia de cuenta. Traé el cambio aprobado al editor para verlo."
+          ? loaded
+            ? "El cambio aprobado ya está en tu editor. Ejecutá el proyecto para comprobarlo."
+            : "Ori aplicó el cambio a tu cuenta, pero no pudo cargarlo en este editor. Tus cambios locales siguen intactos."
           : result === "conflict"
             ? "La copia cambió antes de aplicar la propuesta. No se escribió ningún cambio de Ori."
             : "No se pudo aplicar la propuesta. Revisá la copia de cuenta antes de volver a intentar.",
       );
-      if (result === "applied") onApplied?.();
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <section className="kids-adult-card" aria-label="Piloto privado de Ori">
-      <h3>Ori · Piloto privado</h3>
-      <p>Ori trabaja sobre tu copia de cuenta. Vos revisás la propuesta y decidís si aplicarla.</p>
+    <section className="kids-adult-card" aria-label="Ori en mi proyecto">
+      <h3>Ori</h3>
+      <p>Ori trabaja con tu proyecto de cuenta. Vos revisás la propuesta y decidís si aplicarla.</p>
       <button type="button" className="kids-button" disabled={busy} onClick={() => void run()}>
-        Ejecutar copia con Ori
+        Ejecutar proyecto con Ori
       </button>
       {ran ? (
         <>
@@ -199,7 +236,7 @@ export function OriKidsPilotPanel({
               disabled={busy}
               onClick={() => void apply()}
             >
-              Aplicar cambio aceptado a mi copia
+              Aplicar cambio aceptado a mi proyecto
             </button>
           ) : null}
         </>
