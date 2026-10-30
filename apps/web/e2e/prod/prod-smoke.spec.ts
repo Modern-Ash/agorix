@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { passAdultGate } from "../helpers.js";
+import { openAdultTab, passAdultGate } from "../helpers.js";
 
 // Post-deploy smoke for the live site (issue #345). Read-only: it never signs in, never writes
 // to the server, and only touches browser-local state inside throwaway contexts.
@@ -159,6 +159,7 @@ test("reviewed adult account build exposes account linking without group mode", 
   );
   await page.goto("/kids#/adultos");
   await passAdultGate(page);
+  await openAdultTab(page, "Cuenta y privacidad");
   await expect(page.getByRole("heading", { name: "Mi cuenta de adulto" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Grupo en la misma sala" })).toHaveCount(0);
 });
