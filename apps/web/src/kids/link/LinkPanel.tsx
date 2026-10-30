@@ -4,6 +4,7 @@ import { AdultAccountCard, type EmailState } from "./AdultAccountCard.js";
 import { LinkDeviceCard } from "./LinkDeviceCard.js";
 import { LinkedDevicesCard } from "./LinkedDevicesCard.js";
 import { KidsAccountProjectCopyCard } from "./KidsAccountProjectCopyCard.js";
+import { KidsAccountProjectRestoreCard } from "./KidsAccountProjectRestoreCard.js";
 import { ThisDeviceCard } from "./ThisDeviceCard.js";
 import { loadLink, type LinkState } from "./kidsLink.js";
 import { createLinkApi, type LinkApi } from "./linkApi.js";
@@ -88,7 +89,10 @@ export function LinkPanel({ locale, api: provided }: Props) {
       {session !== null && email?.verified ? (
         <>
           {projectCopyEligible ? (
-            <KidsAccountProjectCopyCard locale={locale} accountAlias={session.alias} />
+            <>
+              <KidsAccountProjectCopyCard locale={locale} accountAlias={session.alias} />
+              <KidsAccountProjectRestoreCard locale={locale} accountAlias={session.alias} />
+            </>
           ) : null}
           <LinkDeviceCard
             locale={locale}

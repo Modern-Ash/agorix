@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { semanticProjectHash, type ProjectStore } from "@agorix/persistence";
+import { ProjectStore, semanticProjectHash } from "@agorix/persistence";
 import type { ProjectApiClient } from "../../accounts/clients.js";
 import { ClientError } from "../../accounts/clients.js";
 import {
@@ -7,6 +7,8 @@ import {
   kidsAccountCopy,
   pullKidsAccountCopy,
   reconcileKidsAccountProject,
+  restoreKidsAccountProject,
+  kidsAccountCopyByRemote,
   updateKidsAccountCopy,
   type CopyStorage,
 } from "./kidsAccountProjectCopy.js";
@@ -253,5 +255,114 @@ describe("explicit Kids account project copy", () => {
     local = { ...stored, metadata: { ...stored.metadata, hintLevel: 1 } };
     expect(await reconcileKidsAccountProject(input)).toBe("conflict");
     expect(writes).toBe(0);
+  });
+});
+
+describe("Kids account project recovery", () => {
+  function fixture() {
+    const values = new Map<string, string>();
+    const storage: CopyStorage = {
+      getItem: (key) => values.get(key) ?? null,
+      setItem: (key, value) => void values.set(key, value),
+    };
+    const projectStorage = {
+      get: (key: string) => values.get(`agorix:${key}`) ?? null,
+      set: (key: string, value: string) => void values.set(`agorix:${key}`, value),
+      remove: (key: string) => void values.delete(`agorix:${key}`),
+      has: (key: string) => values.has(`agorix:${key}`),
+    };
+    return { values, storage, store: new ProjectStore({ storage: projectStorage }) };
+  }
+
+  it("restores the same account identity once without creating another server project", async () => {
+    const { values, storage, store } = fixture();
+    values.set(
+      "agorix.kids.projects.v1",
+      JSON.stringify([{ id: "free-1", world: "space", avatar: "🦊" }]),
+    );
+    const projects = {
+      get: async () => ({
+        projectId: "remote-8",
+        revision: 3,
+        semanticHash: storedHash,
+        storedProject: stored,
+      }),
+    } as unknown as Pick<ProjectApiClient, "get">;
+    const input = {
+      accountAlias: "adult",
+      remoteProjectId: "remote-8",
+      world: "ocean" as const,
+      avatar: "🐼" as const,
+      store,
+      projects,
+      storage,
+    };
+    expect(await restoreKidsAccountProject(input)).toEqual({
+      status: "restored",
+      localProjectId: "free-2",
+    });
+    expect(store.load("free-2")).toEqual(stored);
+    expect(kidsAccountCopyByRemote(storage, "adult", "remote-8")).toBe("free-2");
+    expect(await restoreKidsAccountProject(input)).toEqual({
+      status: "already-linked",
+      localProjectId: "free-2",
+    });
+    expect(JSON.parse(values.get("agorix.kids.projects.v1") ?? "[]")).toHaveLength(2);
+  });
+
+  it("rejects a mismatched project hash before writing local state", async () => {
+    const { values, storage, store } = fixture();
+    const projects = {
+      get: async () => ({
+        projectId: "remote-9",
+        revision: 1,
+        semanticHash: "fnv1a32:00000000",
+        storedProject: stored,
+      }),
+    } as unknown as Pick<ProjectApiClient, "get">;
+    expect(
+      await restoreKidsAccountProject({
+        accountAlias: "adult",
+        remoteProjectId: "remote-9",
+        world: "ocean",
+        avatar: "🦊",
+        store,
+        projects,
+        storage,
+      }),
+    ).toEqual({ status: "invalid-project" });
+    expect(values.size).toBe(0);
+  });
+
+  it("rolls back the local view when its account link cannot be stored", async () => {
+    const { values, store } = fixture();
+    const storage: CopyStorage = {
+      getItem: (key) => values.get(key) ?? null,
+      setItem: (key, value) => {
+        if (key === "agorix.kids.account-project-copies.v1") throw Error("storage full");
+        values.set(key, value);
+      },
+    };
+    const projects = {
+      get: async () => ({
+        projectId: "remote-10",
+        revision: 1,
+        semanticHash: storedHash,
+        storedProject: stored,
+      }),
+    } as unknown as Pick<ProjectApiClient, "get">;
+    expect(
+      await restoreKidsAccountProject({
+        accountAlias: "adult",
+        remoteProjectId: "remote-10",
+        world: "ocean",
+        avatar: "🦊",
+        store,
+        projects,
+        storage,
+      }),
+    ).toEqual({ status: "storage-unavailable" });
+    expect(store.has("free-1")).toBe(false);
+    expect(JSON.parse(values.get("agorix.kids.projects.v1") ?? "[]")).toEqual([]);
   });
 });
