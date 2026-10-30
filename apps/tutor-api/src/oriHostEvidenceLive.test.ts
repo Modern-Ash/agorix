@@ -75,6 +75,7 @@ describe.skipIf(!runnable)("real Ori host evidence CLI", () => {
         AGORIX_ORI_REVIEW_PROVIDER: "compatible",
         AGORIX_ORI_REVIEW_COMPATIBLE_ENDPOINT: `http://127.0.0.1:${address.port}`,
       });
+      if (!proposalConfig) throw new Error("Expected private model configuration");
       const run = createOriHostEvidenceAdapter({ oriRoot: oriRoot!, proposalConfig });
       const result = await run(request);
       expect(result.status).toBe("ready");
