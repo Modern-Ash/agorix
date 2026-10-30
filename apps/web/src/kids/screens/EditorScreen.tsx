@@ -299,9 +299,12 @@ export function EditorScreen({
     oriHintRequest.current = request;
   }, []);
   const oriActivitySequence = useRef(0);
-  function recordOriActivity(kind: OriKidsActivity["kind"]) {
+  function recordOriActivity(outcome: OriKidsActivity["outcome"]) {
     const sequence = ++oriActivitySequence.current;
-    setOriActivities((previous) => [...previous.slice(-19), { sequence, kind, evidenceKey }]);
+    setOriActivities((previous) => [
+      ...previous.slice(-19),
+      { sequence, kind: "run", evidenceKey, outcome },
+    ]);
   }
   const [failedRuns, setFailedRuns] = useState(0);
   const interventionPolicy = useInterventionPolicy();
@@ -370,7 +373,7 @@ export function EditorScreen({
   const trail = evaluation?.trail ?? [start];
   const activeNode = visibleTrace.at(-1)?.nodeId;
   const oriHash = useMemo(() => programSemanticHash(history.current), [history.current]);
-  const evidenceKey = `${oriHash}:${freeGoal?.cx ?? ""}:${freeGoal?.cy ?? ""}:${freeGoalCheck}`;
+  const evidenceKey = `${oriHash}:${freeGoal?.cx ?? ""}:${freeGoal?.cy ?? ""}:${freeGoalCheck}:${usedHintLevels.length}`;
   const oriProvider = useMemo(
     () => createKidsOriProviderRuntime(mission, missionIndex, locale),
     [mission, missionIndex, locale],
@@ -699,7 +702,7 @@ export function EditorScreen({
     setPrediction(answer);
     if (run.evaluation.outcome !== "success") setFailedRuns((count) => count + 1);
     setPlayed(run);
-    if (freeProjectId) recordOriActivity("run");
+    if (freeProjectId) recordOriActivity(run.evaluation.outcome);
     setStep(pending === "step" ? Math.min(1, run.result.trace.length) : run.result.trace.length);
     for (const id of soundEvents(
       pending === "play" ? run.result.trace : run.result.trace.slice(0, 1),

@@ -152,6 +152,7 @@ export function OriKidsEditorAccess({
     <div>
       <OriKidsPilotPanel
         remoteProjectId={copy.remoteProjectId}
+        localSaveVersion={localSaveVersion}
         activities={activities}
         evidenceKey={evidenceKey}
         registerHintRequest={registerHintRequest}

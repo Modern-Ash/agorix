@@ -15,11 +15,16 @@ import {
   recordOriKidsPilotRun,
   requestOriKidsPilotHint,
 } from "./oriKidsPilotClient.js";
-import type { OriKidsActivity, OriKidsHintRequest } from "./oriKidsActivity.js";
+import {
+  oriProposalOfferContext,
+  type OriKidsActivity,
+  type OriKidsHintRequest,
+} from "./oriKidsActivity.js";
 
 /** Adult-only Kids pilot journey; every server operation rechecks the durable allowlist. */
 export function OriKidsPilotPanel({
   remoteProjectId,
+  localSaveVersion,
   activities,
   evidenceKey,
   registerHintRequest,
@@ -28,6 +33,7 @@ export function OriKidsPilotPanel({
   onApplied,
 }: {
   readonly remoteProjectId: string;
+  readonly localSaveVersion: number;
   readonly activities: readonly OriKidsActivity[];
   readonly evidenceKey: string;
   readonly registerHintRequest: (request: OriKidsHintRequest | null) => void;
@@ -53,6 +59,7 @@ export function OriKidsPilotPanel({
   const lastQueuedActivity = useRef(activities.at(-1)?.sequence ?? 0);
   const activityQueue = useRef<Promise<void>>(Promise.resolve());
   const verifiedRun = useRef(false);
+  const lastAutoOfferContext = useRef<string | null>(null);
   const currentEvidenceKey = useRef(evidenceKey);
   currentEvidenceKey.current = evidenceKey;
 
@@ -61,6 +68,7 @@ export function OriKidsPilotPanel({
     setAllowed(false);
     setRan(false);
     verifiedRun.current = false;
+    lastAutoOfferContext.current = null;
     setIssued(null);
     setAccepted(false);
     setPreview(null);
@@ -71,6 +79,14 @@ export function OriKidsPilotPanel({
       cancelled = true;
     };
   }, [remoteProjectId]);
+
+  useEffect(() => {
+    verifiedRun.current = false;
+    setRan(false);
+    setIssued(null);
+    setAccepted(false);
+    setPreview(null);
+  }, [localSaveVersion]);
 
   useEffect(() => {
     if (!allowed) return;
@@ -86,6 +102,7 @@ export function OriKidsPilotPanel({
             setHint(null);
             setIssued(null);
             setAccepted(false);
+            setPreview(null);
             setMessage("");
             if (activity.evidenceKey !== currentEvidenceKey.current) return;
             const synced = await beforeRun();
@@ -106,6 +123,14 @@ export function OriKidsPilotPanel({
                 ? "Ori registró la ejecución de Kids y guardó la evidencia durante esta sesión."
                 : "No se pudo verificar esta ejecución. Tu proyecto no cambió.",
             );
+            const offerContext = recorded ? oriProposalOfferContext(activity) : null;
+            if (offerContext) {
+              if (lastAutoOfferContext.current !== offerContext) {
+                lastAutoOfferContext.current = offerContext;
+                if (!(await prepareProposal(activity.evidenceKey)))
+                  lastAutoOfferContext.current = null;
+              }
+            }
           }
         })
         .catch(() => {
@@ -134,6 +159,9 @@ export function OriKidsPilotPanel({
         setHint(next);
         verifiedRun.current = false;
         setRan(false);
+        setIssued(null);
+        setAccepted(false);
+        setPreview(null);
         setMessage("Pista registrada. Ejecutá otra vez en Kids antes de pedir una propuesta.");
         return next;
       } finally {
@@ -143,40 +171,34 @@ export function OriKidsPilotPanel({
     return () => registerHintRequest(null);
   }, [allowed, ran, busy, beforeEvidenceAction, registerHintRequest]);
 
-  async function propose() {
-    if (busy || !ran) return;
-    setBusy(true);
-    setMessage("");
-    setIssued(null);
-    setAccepted(false);
-    setPreview(null);
+  async function prepareProposal(expectedEvidenceKey: string): Promise<boolean> {
     try {
-      if (!(await evidenceIsCurrent())) return;
+      if (!(await evidenceIsCurrent())) return false;
+      if (expectedEvidenceKey !== currentEvidenceKey.current) return false;
       const remote = await createHttpBackend().projects.get(remoteProjectId);
+      if (expectedEvidenceKey !== currentEvidenceKey.current) return false;
       if (
         remote.projectId !== remoteProjectId ||
         remote.semanticHash !== semanticProjectHash(remote.storedProject) ||
         remote.storedProject.program.scripts.length !== 1
       ) {
         setMessage("La copia de cuenta cambió o no tiene un único programa compatible.");
-        return;
+        return false;
       }
       const script = remote.storedProject.program.scripts[0];
-      if (!script) return;
+      if (!script) return false;
       const proposal = await requestOriProposal();
-      if (!proposal) {
-        setMessage("Ori no tiene una propuesta disponible para esta copia.");
-        return;
-      }
+      if (!proposal) return false;
+      if (expectedEvidenceKey !== currentEvidenceKey.current) return false;
       setPreview({
         scriptId: script.id,
         code: projectAgorixCode(remote.storedProject.program).text,
       });
       setIssued(proposal);
+      return true;
     } catch {
       setMessage("No se pudo preparar la propuesta. Tu proyecto no cambió.");
-    } finally {
-      setBusy(false);
+      return false;
     }
   }
 
@@ -186,6 +208,9 @@ export function OriKidsPilotPanel({
     verifiedRun.current = false;
     setRan(false);
     setHint(null);
+    setIssued(null);
+    setAccepted(false);
+    setPreview(null);
     setMessage(
       result === "updated" || result === "pulled"
         ? "El proyecto cambió desde la última ejecución. Ejecutalo otra vez antes de pedir pistas o propuestas."
@@ -235,18 +260,6 @@ export function OriKidsPilotPanel({
       <p>
         Ori usa tus ejecuciones y pistas de Kids. Vos revisás cada propuesta y decidís si aplicarla.
       </p>
-      {ran ? (
-        <>
-          <button
-            type="button"
-            className="kids-button"
-            disabled={busy}
-            onClick={() => void propose()}
-          >
-            Pedir propuesta
-          </button>
-        </>
-      ) : null}
       {hint ? (
         <p role="status">
           Pista {hint.level}: {hint.text}
