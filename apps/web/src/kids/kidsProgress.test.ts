@@ -3,10 +3,12 @@ import { getKidsMission, KIDS_MISSION_IDS } from "@agorix/curriculum";
 import { ProjectStore, type BrowserStorageAdapter } from "@agorix/persistence";
 import {
   KIDS_PROGRESS_KEY,
+  type KidsProgress,
   conceptStates,
   emptyKidsProgress,
   firstOpenMission,
   loadKidsProgress,
+  mapProgress,
   markMissionDone,
   missionState,
   worldProgress,
@@ -142,5 +144,20 @@ describe("kids progress (issue #374)", () => {
     } as unknown as Storage;
     expect(loadKidsProgress(blocked)).toEqual(emptyKidsProgress());
     expect(() => saveKidsProgress(emptyKidsProgress(), blocked)).not.toThrow();
+  });
+});
+
+// Issue #1111: the map heading counts missions done in every world.
+describe("map progress", () => {
+  it("counts no missions for a new child, out of three per world", () => {
+    expect(mapProgress(emptyKidsProgress())).toEqual({ done: 0, total: 12 });
+  });
+
+  it("adds the missions done in every world and ignores unknown keys", () => {
+    const progress: KidsProgress = {
+      ...emptyKidsProgress(),
+      done: { "space:0": true, "space:1": true, "ocean:0": true, "nowhere:0": true },
+    };
+    expect(mapProgress(progress)).toEqual({ done: 3, total: 12 });
   });
 });

@@ -1,7 +1,13 @@
 import type { CSSProperties } from "react";
 import type { Locale } from "../../i18n.js";
 import { KIDS_MISSION_IDS, getKidsMission } from "@agorix/curriculum";
-import { conceptStates, missionState, worldProgress, type KidsProgress } from "../kidsProgress.js";
+import {
+  conceptStates,
+  mapProgress,
+  missionState,
+  worldProgress,
+  type KidsProgress,
+} from "../kidsProgress.js";
 import { KIDS_WORLDS, type KidsAvatar, type KidsWorld } from "../kidsState.js";
 import { speak } from "../speak.js";
 import type { KidsText } from "../useKidsText.js";
@@ -68,6 +74,7 @@ export function MapScreen({
   const image = backdropImage(builtinWorld(world), useKidsFlag("customImages"));
   const names = kidsTable(locale, "worlds");
   const concepts = conceptStates(progress);
+  const overall = mapProgress(progress);
   const vars = {
     "--world-bg": style.bg,
     "--world-ink": style.ink,
@@ -77,31 +84,20 @@ export function MapScreen({
 
   return (
     <section className="kids-map" aria-labelledby="kids-title" data-world={world} style={vars}>
-      <h1 id="kids-title" className="kids-visually-hidden">
-        {t("map")}
-      </h1>
       <header className="kids-map-top">
         <KidsSprite slot={emojiSlot(avatar)} className="kids-avatar-badge" />
+        <div className="kids-map-heading">
+          <h1 id="kids-title">{t("map")}</h1>
+          <p className="kids-map-summary">
+            {locale === "es"
+              ? `${overall.done} de ${overall.total} misiones`
+              : `${overall.done} of ${overall.total} missions`}
+          </p>
+        </div>
         <div className="kids-stars" aria-label={`★ ${progress.stars}`}>
           <span aria-hidden="true">★</span>
           {progress.stars}
         </div>
-        <div className="kids-spacer" />
-        <ul className="kids-concepts">
-          {CONCEPTS.map((concept, index) => {
-            const state = concepts[index]!;
-            return (
-              <li
-                key={concept.name}
-                className="kids-concept"
-                aria-label={`${t(concept.name)}: ${t(STATE_LABEL[state])}`}
-                style={{ borderColor: STATE_COLOR[state], color: concept.color }}
-              >
-                <span aria-hidden="true">{concept.icon}</span>
-              </li>
-            );
-          })}
-        </ul>
         {readAloud ? (
           <button
             type="button"
@@ -113,14 +109,25 @@ export function MapScreen({
           </button>
         ) : null}
       </header>
-      {/* The chips above are icons; this line says what each one is, for readers and non-readers. */}
-      <p className="kids-concept-legend" aria-hidden="true">
-        {CONCEPTS.map((concept) => (
-          <span key={concept.name}>
-            {concept.icon} {t(concept.name)}
-          </span>
-        ))}
-      </p>
+      {/* Each concept says its name in words; the colored border shows how far it has come. */}
+      <ul className="kids-concepts">
+        {CONCEPTS.map((concept, index) => {
+          const state = concepts[index]!;
+          return (
+            <li
+              key={concept.name}
+              className="kids-concept"
+              aria-label={`${t(concept.name)}: ${t(STATE_LABEL[state])}`}
+              style={{ borderColor: STATE_COLOR[state] }}
+            >
+              <span aria-hidden="true" style={{ color: concept.color }}>
+                {concept.icon}
+              </span>
+              <span aria-hidden="true">{t(concept.name)}</span>
+            </li>
+          );
+        })}
+      </ul>
 
       <div className="kids-world-tabs" role="group" aria-label={t("map")}>
         {KIDS_WORLDS.map((id) => {

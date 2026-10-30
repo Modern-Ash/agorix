@@ -92,6 +92,9 @@ export function KidsApp({
     readonly outcome: "success" | "wall" | "passed" | "short";
   } | null>(null);
   const [adultSettings, setAdultSettings] = useState<AdultSettings>(() => loadAdultSettings());
+  // The age-band notice can be put away for this visit; nothing is stored, so it returns next time.
+  const [bandAskClosed, setBandAskClosed] = useState(false);
+
   // Which grown-ups tab opens after the gate: a shortcut lands on the tab it is about (#1109).
   const [adultTab, setAdultTab] = useState<AdultTab>("summary");
   const openAdults = (tab: AdultTab) => {
@@ -231,6 +234,7 @@ export function KidsApp({
       {ageBandsEnabled &&
       progress.onboarded &&
       !adultSettings.bandChosen &&
+      !bandAskClosed &&
       state.screen === "map" ? (
         <aside className="kids-band-ask" role="note">
           <p>
@@ -240,6 +244,14 @@ export function KidsApp({
           </p>
           <button type="button" className="kids-button" onClick={() => openAdults("settings")}>
             {state.locale === "es" ? "Elegir la franja de edad" : "Pick the age band"}
+          </button>
+          <button
+            type="button"
+            className="kids-round"
+            aria-label={state.locale === "es" ? "Cerrar aviso" : "Close notice"}
+            onClick={() => setBandAskClosed(true)}
+          >
+            <span aria-hidden="true">×</span>
           </button>
         </aside>
       ) : null}

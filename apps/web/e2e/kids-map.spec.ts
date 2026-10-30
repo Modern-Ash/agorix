@@ -136,3 +136,69 @@ test("the map passes axe in both languages", async ({ page }) => {
     expect(violations.map((v) => `${v.id}: ${v.nodes[0]?.target.join(" ")}`)).toEqual([]);
   }
 });
+
+// Issue #1111: a visible title with overall progress, concepts in words, worlds without scrolling.
+test("the map heading counts every world and nothing scrolls sideways on a phone", async ({
+  page,
+}) => {
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 844 });
+    await seed(page, SEEDED);
+    await expect(page.getByRole("heading", { level: 1, name: "Mapa" })).toBeVisible();
+    await expect(page.locator(".kids-map-summary")).toHaveText("2 de 12 misiones");
+    await expect(page.locator(".kids-concepts")).toContainText("Secuencia");
+    await expect(page.locator(".kids-concepts")).toContainText("Repetición");
+    const layout = await page.evaluate(() => {
+      const width = document.documentElement.clientWidth;
+      const tabs = document.querySelector<HTMLElement>(".kids-world-tabs")!;
+      const small = [...document.querySelectorAll<HTMLElement>(".kids-map button")]
+        .filter((button) => {
+          const rect = button.getBoundingClientRect();
+          return (
+            rect.width > 0 &&
+            (rect.left < -1 || rect.right > width + 1 || rect.width < 44 || rect.height < 44)
+          );
+        })
+        .map((button) => button.getAttribute("aria-label") ?? button.textContent?.trim());
+      return {
+        sideways: document.documentElement.scrollWidth > width,
+        tabsScroll: tabs.scrollWidth > tabs.clientWidth,
+        small,
+      };
+    });
+    expect(layout, `${width} px`).toEqual({ sideways: false, tabsScroll: false, small: [] });
+    const violations = (
+      await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
+    ).violations.filter((item) => item.impact === "serious" || item.impact === "critical");
+    expect(
+      violations.map((item) => item.id),
+      `${width} px`,
+    ).toEqual([]);
+  }
+});
+
+test("the age-band notice can be put away for this visit and comes back on reload", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate(
+    ({ key, value }) => {
+      localStorage.clear();
+      localStorage.setItem("agorix.locale", "es");
+      localStorage.setItem("agorix.kids.flags.v1", JSON.stringify(["ageBands"]));
+      localStorage.setItem(key, JSON.stringify(value));
+    },
+    { key: PROGRESS_KEY, value: SEEDED },
+  );
+  await page.reload();
+  const notice = page.locator(".kids-band-ask");
+  await expect(notice).toBeVisible();
+  const before = await page.evaluate(() => JSON.stringify(localStorage));
+  await notice.getByRole("button", { name: "Cerrar aviso" }).click();
+  await expect(notice).toHaveCount(0);
+  // Closing stores nothing: the notice is back on the next visit.
+  expect(await page.evaluate(() => JSON.stringify(localStorage))).toBe(before);
+  await page.reload();
+  await expect(page.locator(".kids-band-ask")).toBeVisible();
+});
