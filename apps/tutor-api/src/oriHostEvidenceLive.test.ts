@@ -1,6 +1,7 @@
-import { existsSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
-import { isAbsolute, resolve } from "node:path";
+import { tmpdir } from "node:os";
+import { isAbsolute, join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   createOriHostEvidenceAdapter,
@@ -85,4 +86,32 @@ describe.skipIf(!runnable)("real Ori host evidence CLI", () => {
       server.close();
     }
   }, 15000);
+  it.skipIf(!existsSync(resolve(oriRoot ?? "/", "src/host-proposal-cli-adapter.mjs")))(
+    "accepts one proposal through the opt-in Codex CLI boundary",
+    async () => {
+      const directory = mkdtempSync(join(tmpdir(), "agorix-ori-cli-test-"));
+      const bin = join(directory, "codex-stub");
+      writeFileSync(
+        bin,
+        `#!/usr/bin/env node\nprocess.stdout.write(JSON.stringify({schemaVersion:"ori/proposal/v0",operation:"append",requiresLearnerApproval:true,blocks:[{kind:"move",steps:2}]}));\n`,
+      );
+      chmodSync(bin, 0o700);
+      try {
+        const proposalConfig = oriHostProposalConfigFromEnv({
+          AGORIX_ORI_REVIEW_PROVIDER: "codex",
+          AGORIX_ORI_REVIEW_CODEX_BIN: bin,
+        });
+        if (!proposalConfig) throw new Error("Expected private CLI configuration");
+        const result = await createOriHostEvidenceAdapter({ oriRoot: oriRoot!, proposalConfig })(
+          request,
+        );
+        expect(result.status).toBe("ready");
+        expect(result.proposal).toMatchObject({ blocks: [{ kind: "move", steps: 2 }] });
+        expect(result.appliedChanges).toBe(false);
+      } finally {
+        rmSync(directory, { recursive: true, force: true });
+      }
+    },
+    15000,
+  );
 });
