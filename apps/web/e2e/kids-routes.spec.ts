@@ -17,6 +17,28 @@ async function seed(page: Page, onboarded = true) {
   await page.reload();
 }
 
+test("the base URL welcomes a returning player without erasing progress or deep links", async ({
+  page,
+}) => {
+  await seed(page);
+  await page.goto("/");
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole("heading", { name: "¡Hola!" })).toBeVisible();
+  await page.getByRole("button", { name: "Ir al mapa" }).click();
+  await expect(page).toHaveURL(/#\/mapa$/);
+  await expect(page.getByRole("heading", { name: "Mapa" })).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole("heading", { name: "¡Hola!" })).toBeVisible();
+  expect(
+    await page.evaluate(() =>
+      JSON.parse(localStorage.getItem("agorix.kids.progress.v1") ?? "null"),
+    ),
+  ).toMatchObject({ onboarded: true, avatar: "🐸" });
+  await page.goto("/#/crear");
+  await expect(page.getByRole("heading", { name: "Crear" })).toBeVisible();
+});
+
 test("the address follows the screen and Back and Forward keep the scene's blocks", async ({
   page,
 }) => {

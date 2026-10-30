@@ -2382,6 +2382,19 @@
   cursor: pointer;
 }
 
+.kids-continue {
+  flex: 1;
+  min-height: 64px;
+  border: 1px solid var(--kids-border);
+  border-radius: 20px;
+  background: var(--kids-panel);
+  color: var(--kids-text);
+  font-family: var(--kids-font-display);
+  font-weight: 700;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
 .kids-next {
   flex: 1;
   min-height: 64px;
