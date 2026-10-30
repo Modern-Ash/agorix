@@ -389,7 +389,8 @@ test("verified adult copies one Kids project to the account without duplicating 
   await expect(
     page.getByRole("status").filter({ hasText: "Proyecto guardado en tu cuenta" }),
   ).toBeVisible();
-  await pilot.getByRole("button", { name: "Ejecutar proyecto con Ori" }).click();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Sí", exact: true }).click();
   await expect(pilot.getByText(/guardó la evidencia/)).toBeVisible();
   await pilot.getByRole("button", { name: "Pedir pista" }).click();
   await expect(pilot.getByText("Pista 1: Probá un paso")).toBeVisible();
@@ -488,6 +489,18 @@ test("verified adult copies one Kids project to the account without duplicating 
   await expect
     .poll(() => page.evaluate(() => localStorage.getItem("agorix.kids.projects.v1")))
     .toContain("free-1");
+  await page.route("**/api/tutor/ori/evidence/run", (route) =>
+    route.fulfill({ status: 403, contentType: "application/json", body: "{}" }),
+  );
+  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  await page.locator(".kids-project-card").getByRole("button", { name: "Jugar" }).click();
+  await expect(pilot).toBeVisible();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Sí", exact: true }).click();
+  await expect(
+    pilot.getByText("No se pudo verificar esta ejecución. Tu proyecto no cambió."),
+  ).toBeVisible();
+  await expect(pilot.getByRole("button", { name: "Pedir propuesta" })).toHaveCount(0);
 });
 
 test("the child's wrong code reads as a calm, generic message", async ({ page }) => {
