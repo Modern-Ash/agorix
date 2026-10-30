@@ -8,7 +8,14 @@ import { createTutorServer } from "./server.js";
 const servers: Server[] = [];
 afterEach(async () => {
   await Promise.all(
-    servers.splice(0).map((server) => new Promise<void>((done) => server.close(done))),
+    servers
+      .splice(0)
+      .map(
+        (server) =>
+          new Promise<void>((resolve, reject) =>
+            server.close((error) => (error ? reject(error) : resolve())),
+          ),
+      ),
   );
 });
 
