@@ -202,6 +202,7 @@ test("verified adult copies one Kids project to the account without duplicating 
   );
   let creates = 0;
   let createStatus = 0;
+  let createResponse = "";
   let updates = 0;
   page.on("request", (request) => {
     if (request.method() === "POST" && new URL(request.url()).pathname === "/v1/projects") {
@@ -220,11 +221,16 @@ test("verified adult copies one Kids project to the account without duplicating 
       new URL(response.url()).pathname === "/v1/projects"
     ) {
       createStatus = response.status();
+      if (createStatus !== 201)
+        void response.text().then((body) => {
+          createResponse = body;
+        });
     }
   });
   await card.getByRole("button", { name: "Vincular proyecto a mi cuenta" }).click();
   await expect.poll(() => createStatus).not.toBe(0);
-  expect(createStatus).toBe(201);
+  if (createStatus !== 201) await expect.poll(() => createResponse).not.toBe("");
+  expect(createStatus, createResponse).toBe(201);
   await expect(card.locator(".kids-note")).toContainText("Proyecto vinculado a tu cuenta");
   expect(creates).toBe(1);
   await expect(card.getByRole("button", { name: "Vincular proyecto a mi cuenta" })).toHaveCount(0);
@@ -236,6 +242,14 @@ test("verified adult copies one Kids project to the account without duplicating 
     return copies[0]?.remoteProjectId;
   });
   expect(pilotProjectId).toBeTruthy();
+  const sourcePresentation = await page.evaluate(() => {
+    const projects = JSON.parse(localStorage.getItem("agorix.kids.projects.v1") ?? "[]") as {
+      id: string;
+      world: string;
+      avatar: string;
+    }[];
+    return projects.find((project) => project.id === "free-1");
+  });
   const secondDevice = await newPage(browser);
   let secondDeviceCreates = 0;
   secondDevice.on("request", (request) => {
@@ -258,11 +272,21 @@ test("verified adult copies one Kids project to the account without duplicating 
   const accountProjects = secondDevice.getByRole("region", { name: "Proyectos de mi cuenta" });
   await expect(accountProjects).toBeVisible();
   await accountProjects.getByLabel("Proyecto de cuenta").selectOption(pilotProjectId);
-  await accountProjects.getByLabel("Mundo en este dispositivo").selectOption("ocean");
-  await accountProjects.getByLabel("Personaje en este dispositivo").selectOption("🐼");
+  await expect(accountProjects.getByText(/Mundo y personaje guardados/)).toBeVisible();
+  await expect(accountProjects.getByLabel("Mundo en este dispositivo")).toHaveCount(0);
   await accountProjects.getByRole("button", { name: "Abrir en este dispositivo" }).click();
   await expect(accountProjects.getByRole("status")).toContainText("Proyecto free-1 listo");
   expect(secondDeviceCreates).toBe(0);
+  expect(
+    await secondDevice.evaluate(() => {
+      const projects = JSON.parse(localStorage.getItem("agorix.kids.projects.v1") ?? "[]") as {
+        id: string;
+        world: string;
+        avatar: string;
+      }[];
+      return projects.find((project) => project.id === "free-1");
+    }),
+  ).toEqual(sourcePresentation);
   expect(
     await secondDevice.evaluate(() => {
       const links = JSON.parse(

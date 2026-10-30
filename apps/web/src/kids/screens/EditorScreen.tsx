@@ -624,6 +624,11 @@ export function EditorScreen({
         missionProgress: completed || previous?.missionProgress === 1 ? 1 : 0,
         hintLevel: Math.max(previous?.hintLevel ?? 0, hintLevel),
         locale,
+        ...(freeProjectId && savedArt?.world.kind === "builtin" && savedArt.avatar.kind === "emoji"
+          ? { kidsView: { world: savedArt.world.value, avatar: savedArt.avatar.value } }
+          : previous?.kidsView
+            ? { kidsView: previous.kidsView }
+            : {}),
         ...(freeProjectId && freeGoal
           ? { missionSpec: { goal: kidsGoalSpec(freeGoal), successCheck: freeGoalCheck } }
           : {}),
@@ -707,6 +712,11 @@ export function EditorScreen({
         missionProgress: 0,
         hintLevel: 0,
         locale,
+        ...(savedArt?.world.kind === "builtin" && savedArt.avatar.kind === "emoji"
+          ? { kidsView: { world: savedArt.world.value, avatar: savedArt.avatar.value } }
+          : previous?.kidsView
+            ? { kidsView: previous.kidsView }
+            : {}),
         missionSpec: { goal: kidsGoalSpec(cell), successCheck: check },
       });
       setLocalSaveVersion((version) => version + 1);

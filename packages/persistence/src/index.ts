@@ -37,6 +37,12 @@ export {
   type ProjectMissionSpec,
 } from "./missionSpec.js";
 export {
+  KIDS_VIEW_WORLDS,
+  KIDS_VIEW_AVATARS,
+  validateKidsProjectView,
+  type KidsProjectView,
+} from "./kidsView.js";
+export {
   CROSS_SURFACE_CONTRACT_VERSION,
   FORBIDDEN_CANONICAL_IDENTITY_KEYS,
   FORBIDDEN_CANONICAL_PROGRAM_KEYS,

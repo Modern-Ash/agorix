@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ProjectStore } from "@agorix/persistence";
+import { ProjectStore, validateKidsProjectView, type KidsProjectView } from "@agorix/persistence";
 import type { ProjectSummaryDto } from "../../accounts/clients.js";
 import { createHttpBackend } from "../../accounts/httpClient.js";
 import type { Locale } from "../../i18n.js";
@@ -18,6 +18,7 @@ export function KidsAccountProjectRestoreCard({
   const [selected, setSelected] = useState("");
   const [world, setWorld] = useState<KidsWorld>("ocean");
   const [avatar, setAvatar] = useState<KidsAvatar>("🦊");
+  const [savedView, setSavedView] = useState<KidsProjectView | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const spanish = locale === "es";
@@ -43,6 +44,25 @@ export function KidsAccountProjectRestoreCard({
       cancelled = true;
     };
   }, [accountAlias, spanish]);
+
+  useEffect(() => {
+    if (!selected) return;
+    let cancelled = false;
+    setSavedView(null);
+    void createHttpBackend()
+      .projects.get(selected)
+      .then((project) => {
+        if (cancelled || !project.storedProject.metadata.kidsView) return;
+        const view = validateKidsProjectView(project.storedProject.metadata.kidsView);
+        setWorld(view.world);
+        setAvatar(view.avatar);
+        setSavedView(view);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [selected]);
 
   async function restore() {
     if (busy || !selected) return;
@@ -95,8 +115,8 @@ export function KidsAccountProjectRestoreCard({
       <h3>{spanish ? "Proyectos de mi cuenta" : "My account projects"}</h3>
       <p>
         {spanish
-          ? "Si usás otro dispositivo, recuperá aquí tu programa. Elegí el mundo y personaje para verlo en este dispositivo."
-          : "On another device, recover your program here. Choose the world and character for this device."}
+          ? "Si usás otro dispositivo, recuperá aquí tu programa. Si la cuenta conserva el mundo y personaje, también se recuperan."
+          : "On another device, recover your program here. Its saved world and character return when available."}
       </p>
       {items.length > 0 ? (
         <>
@@ -115,29 +135,41 @@ export function KidsAccountProjectRestoreCard({
               ))}
             </select>
           </label>
-          <label>
-            {spanish ? "Mundo en este dispositivo" : "World on this device"}
-            <select value={world} onChange={(event) => setWorld(event.target.value as KidsWorld)}>
-              {KIDS_WORLDS.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            {spanish ? "Personaje en este dispositivo" : "Character on this device"}
-            <select
-              value={avatar}
-              onChange={(event) => setAvatar(event.target.value as KidsAvatar)}
-            >
-              {KIDS_AVATARS.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
-          </label>
+          {savedView ? (
+            <p>
+              {spanish ? "Mundo y personaje guardados" : "Saved world and character"}:{" "}
+              {savedView.world} {savedView.avatar}
+            </p>
+          ) : (
+            <>
+              <label>
+                {spanish ? "Mundo en este dispositivo" : "World on this device"}
+                <select
+                  value={world}
+                  onChange={(event) => setWorld(event.target.value as KidsWorld)}
+                >
+                  {KIDS_WORLDS.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                {spanish ? "Personaje en este dispositivo" : "Character on this device"}
+                <select
+                  value={avatar}
+                  onChange={(event) => setAvatar(event.target.value as KidsAvatar)}
+                >
+                  {KIDS_AVATARS.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </>
+          )}
           <button
             type="button"
             className="kids-button"

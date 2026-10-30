@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { ProjectStore, semanticProjectHash } from "@agorix/persistence";
+import {
+  ProjectStore,
+  semanticProjectHash,
+  type ProjectMetadata,
+  type StoredProject,
+} from "@agorix/persistence";
 import type { ProjectApiClient } from "../../accounts/clients.js";
 import { ClientError } from "../../accounts/clients.js";
 import {
@@ -27,6 +32,46 @@ const stored = {
 const storedHash = semanticProjectHash(stored as Parameters<typeof semanticProjectHash>[0]);
 
 describe("explicit Kids account project copy", () => {
+  it("stores the built-in world and avatar with a newly linked project", async () => {
+    const values = new Map<string, string>();
+    values.set(
+      "agorix.kids.projects.v1",
+      JSON.stringify([{ id: "free-11", world: "ocean", avatar: "🐸" }]),
+    );
+    const storage: CopyStorage = {
+      getItem: (key) => values.get(key) ?? null,
+      setItem: (key, value) => void values.set(key, value),
+    };
+    let local = stored as StoredProject;
+    const store = {
+      load: () => local,
+      save: (_id: string, program: StoredProject["program"], metadata: ProjectMetadata) => {
+        local = { ...stored, program, metadata };
+      },
+    } as unknown as Pick<ProjectStore, "load" | "save">;
+    const projects = {
+      create: async (_title: string, saved: StoredProject) => {
+        expect(saved.metadata.kidsView).toEqual({ world: "ocean", avatar: "🐸" });
+        return {
+          projectId: "remote-11",
+          revision: 1,
+          semanticHash: semanticProjectHash(saved as Parameters<typeof semanticProjectHash>[0]),
+        };
+      },
+    } as unknown as Pick<ProjectApiClient, "create">;
+    expect(
+      (
+        await copyKidsProjectToAccount({
+          accountAlias: "adult",
+          localProjectId: "free-11",
+          store,
+          projects,
+          storage,
+        })
+      ).status,
+    ).toBe("copied");
+    expect(local.metadata.kidsView).toEqual({ world: "ocean", avatar: "🐸" });
+  });
   it("creates one account copy and leaves the local project untouched", async () => {
     const values = new Map<string, string>();
     const storage: CopyStorage = {
@@ -45,7 +90,8 @@ describe("explicit Kids account project copy", () => {
           loads++;
           return stored;
         },
-      } as unknown as Pick<ProjectStore, "load">,
+        save: () => undefined,
+      } as unknown as Pick<ProjectStore, "load" | "save">,
       projects: {
         create: async () => {
           creates++;
@@ -70,7 +116,10 @@ describe("explicit Kids account project copy", () => {
     const result = await copyKidsProjectToAccount({
       accountAlias: "adult",
       localProjectId: "free-2",
-      store: { load: () => stored } as unknown as Pick<ProjectStore, "load">,
+      store: { load: () => stored, save: () => undefined } as unknown as Pick<
+        ProjectStore,
+        "load" | "save"
+      >,
       projects: {
         create: async () => ({ projectId: "remote-2", revision: 1, semanticHash: storedHash }),
       } as unknown as Pick<ProjectApiClient, "create">,
@@ -90,7 +139,10 @@ describe("explicit Kids account project copy", () => {
       getItem: (key) => values.get(key) ?? null,
       setItem: (key, value) => void values.set(key, value),
     };
-    const store = { load: () => stored } as unknown as Pick<ProjectStore, "load">;
+    const store = { load: () => stored, save: () => undefined } as unknown as Pick<
+      ProjectStore,
+      "load" | "save"
+    >;
     const seen: number[] = [];
     const projects = {
       create: async () => ({ projectId: "remote-3", revision: 1, semanticHash: storedHash }),
@@ -307,7 +359,11 @@ describe("Kids account project recovery", () => {
       status: "already-linked",
       localProjectId: "free-2",
     });
-    expect(JSON.parse(values.get("agorix.kids.projects.v1") ?? "[]")).toHaveLength(2);
+    expect(JSON.parse(values.get("agorix.kids.projects.v1") ?? "[]")).toContainEqual({
+      id: "free-2",
+      world: "ocean",
+      avatar: "🐼",
+    });
   });
 
   it("rejects a mismatched project hash before writing local state", async () => {
@@ -332,6 +388,39 @@ describe("Kids account project recovery", () => {
       }),
     ).toEqual({ status: "invalid-project" });
     expect(values.size).toBe(0);
+  });
+
+  it("uses the account world and avatar when the project carries them", async () => {
+    const { values, storage, store } = fixture();
+    const accountProject: StoredProject = {
+      ...(stored as StoredProject),
+      metadata: {
+        ...(stored as StoredProject).metadata,
+        kidsView: { world: "robots", avatar: "🦄" },
+      },
+    };
+    const projects = {
+      get: async () => ({
+        projectId: "remote-12",
+        revision: 1,
+        semanticHash: semanticProjectHash(accountProject),
+        storedProject: accountProject,
+      }),
+    } as unknown as Pick<ProjectApiClient, "get">;
+    expect(
+      await restoreKidsAccountProject({
+        accountAlias: "adult",
+        remoteProjectId: "remote-12",
+        world: "ocean",
+        avatar: "🦊",
+        store,
+        projects,
+        storage,
+      }),
+    ).toEqual({ status: "restored", localProjectId: "free-1" });
+    expect(JSON.parse(values.get("agorix.kids.projects.v1") ?? "[]")).toEqual([
+      { id: "free-1", world: "robots", avatar: "🦄" },
+    ]);
   });
 
   it("rolls back the local view when its account link cannot be stored", async () => {

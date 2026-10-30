@@ -104,6 +104,31 @@ const errCode = (r: ApiResponse) => (r.body as { error: { code: string } }).erro
 const rec = (r: ApiResponse) => r.body as Record<string, any>;
 
 describe("project api", () => {
+  it("accepts validated Kids presentation metadata without accepting extra fields", async () => {
+    const { client } = setup();
+    const account = await client("alice");
+    const project = stored();
+    const created = await account.call("POST", "/v1/projects", {
+      title: "Kids free-1",
+      storedProject: {
+        ...project,
+        metadata: { ...project.metadata, kidsView: { world: "ocean", avatar: "🐸" } },
+      },
+    });
+    expect(created.status).toBe(201);
+    expect(rec(created).storedProject.metadata.kidsView).toEqual({ world: "ocean", avatar: "🐸" });
+    const invalid = await account.call("POST", "/v1/projects", {
+      title: "Kids free-2",
+      storedProject: {
+        ...project,
+        metadata: {
+          ...project.metadata,
+          kidsView: { world: "ocean", avatar: "🐸", unexpected: "x" },
+        },
+      },
+    });
+    expect(invalid.status).toBe(400);
+  });
   it("reports the session summary without ids or secrets", async () => {
     const { client } = setup();
     const a = await client("alice");
