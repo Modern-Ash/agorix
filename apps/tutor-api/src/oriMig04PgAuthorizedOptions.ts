@@ -12,7 +12,7 @@ import { createOriPilotHintIssuer } from "./oriPilotHintIssuer.js";
 import type { createOriSessionLearningJournal } from "./oriSessionLearningJournal.js";
 import { createOriMig04PgTrustedComposition } from "./oriMig04PgTrustedComposition.js";
 import { createOriPgTransactionProviderFromPool } from "./oriMig04PgTransactionProvider.js";
-import type { OriHostEvidenceResult } from "./oriHostEvidenceAdapter.js";
+import type { OriHostEvidenceResult, OriHostProposalConfig } from "./oriHostEvidenceAdapter.js";
 
 /**
  * Server-owned PostgreSQL composition for the private pilot. The caller must
@@ -30,6 +30,7 @@ export function createOriMig04PgAuthorizedOptions({
   learningContext,
   sessionJournal,
   runOriOverride,
+  proposalConfig,
 }: {
   readonly pool: Pool;
   readonly auth: Pick<AuthService, "resolveSession">;
@@ -47,6 +48,7 @@ export function createOriMig04PgAuthorizedOptions({
   readonly sessionJournal?: ReturnType<typeof createOriSessionLearningJournal>;
   /** Test-only: production invokes the independent Ori process. */
   readonly runOriOverride?: (evidence: unknown) => Promise<OriHostEvidenceResult>;
+  readonly proposalConfig?: OriHostProposalConfig;
 }) {
   if ((learningContext === undefined) === (sessionJournal === undefined)) {
     throw new Error("Exactly one trusted Ori learning-context source is required");
@@ -72,6 +74,7 @@ export function createOriMig04PgAuthorizedOptions({
           sessionJournal.learningContext(owner, projectId, sessionId, semanticHash ?? "")
       : learningContext!,
     ...(runOriOverride ? { runOriOverride } : {}),
+    ...(proposalConfig ? { proposalConfig } : {}),
     resolveSession,
     activeProject,
     oriMig04Visibility: async (owner, projectId) =>

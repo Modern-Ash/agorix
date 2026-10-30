@@ -17,6 +17,7 @@ import {
 } from "@agorix/project-repository";
 import { createOriMig04PgAuthorizedOptions } from "./oriMig04PgAuthorizedOptions.js";
 import { createOriSessionLearningJournal } from "./oriSessionLearningJournal.js";
+import { oriHostProposalConfigFromEnv } from "./oriHostEvidenceAdapter.js";
 
 type Value = AuthSqlValue & SqlValue;
 type Row = AuthSqlRow & SqlRow;
@@ -57,6 +58,7 @@ export async function openOriMig04Pilot(env: NodeJS.ProcessEnv) {
     });
     const repository = new SqlProjectRepository({ executor, dialect: "postgresql" });
     const journal = createOriSessionLearningJournal();
+    const proposalConfig = oriHostProposalConfigFromEnv(env);
     const authorized = createOriMig04PgAuthorizedOptions({
       pool,
       auth,
@@ -64,6 +66,7 @@ export async function openOriMig04Pilot(env: NodeJS.ProcessEnv) {
       deploymentId,
       allowedAdultEmail,
       oriRoot,
+      ...(proposalConfig ? { proposalConfig } : {}),
       world: {},
       sessionJournal: journal,
     });
