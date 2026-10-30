@@ -1,7 +1,14 @@
 import { semanticProjectHash, type ProjectStore } from "@agorix/persistence";
 import { verifyKidsFreeGoal } from "@agorix/curriculum";
 import { isClientError, type ProjectApiClient } from "../../accounts/clients.js";
-import { parseKidsGoalSpec } from "../kidsProjects.js";
+import {
+  deleteFreeProject,
+  listFreeProjects,
+  parseKidsGoalSpec,
+  restoreFreeProject,
+  type KidsIndexStorage,
+} from "../kidsProjects.js";
+import { KIDS_AVATARS, KIDS_WORLDS, type KidsAvatar, type KidsWorld } from "../kidsState.js";
 
 const KEY = "agorix.kids.account-project-copies.v1";
 const FREE_PROJECT_ID = /^free-[1-9][0-9]*$/;
@@ -53,6 +60,96 @@ export function kidsAccountCopy(
       (item) => item.accountAlias === accountAlias && item.localProjectId === localProjectId,
     ) ?? null
   );
+}
+
+export function kidsAccountCopyByRemote(
+  storage: CopyStorage,
+  accountAlias: string,
+  remoteProjectId: string,
+): string | null {
+  return (
+    records(storage).find(
+      (item) => item.accountAlias === accountAlias && item.remoteProjectId === remoteProjectId,
+    )?.localProjectId ?? null
+  );
+}
+
+/** Restore one account project as a local working view of the same remote identity. */
+export async function restoreKidsAccountProject({
+  accountAlias,
+  remoteProjectId,
+  world,
+  avatar,
+  store,
+  projects,
+  storage,
+}: {
+  readonly accountAlias: string;
+  readonly remoteProjectId: string;
+  readonly world: KidsWorld;
+  readonly avatar: KidsAvatar;
+  readonly store: ProjectStore;
+  readonly projects: Pick<ProjectApiClient, "get">;
+  readonly storage: CopyStorage & KidsIndexStorage;
+}): Promise<
+  | { readonly status: "restored"; readonly localProjectId: string }
+  | { readonly status: "already-linked"; readonly localProjectId: string }
+  | { readonly status: "invalid-project" | "storage-unavailable" }
+> {
+  if (
+    !accountAlias ||
+    accountAlias.length > 64 ||
+    !remoteProjectId ||
+    remoteProjectId.length > 128 ||
+    !KIDS_WORLDS.includes(world) ||
+    !KIDS_AVATARS.includes(avatar)
+  ) {
+    return { status: "invalid-project" };
+  }
+  const previous = kidsAccountCopyByRemote(storage, accountAlias, remoteProjectId);
+  if (previous) return { status: "already-linked", localProjectId: previous };
+  const remote = await projects.get(remoteProjectId);
+  try {
+    const spec = remote.storedProject.metadata.missionSpec;
+    if (
+      remote.projectId !== remoteProjectId ||
+      !Number.isSafeInteger(remote.revision) ||
+      remote.revision < 1 ||
+      !spec ||
+      remote.semanticHash !== semanticProjectHash(remote.storedProject)
+    ) {
+      return { status: "invalid-project" };
+    }
+    verifyKidsFreeGoal(parseKidsGoalSpec(spec.goal), spec.successCheck, "es");
+  } catch {
+    return { status: "invalid-project" };
+  }
+  const next =
+    Math.max(0, ...listFreeProjects(storage).map((item) => Number(item.id.slice(5)))) + 1;
+  const localProjectId = `free-${next}`;
+  const project = { id: localProjectId, world, avatar };
+  if (!restoreFreeProject({ project, stored: remote.storedProject }, store, storage)) {
+    return { status: "storage-unavailable" };
+  }
+  try {
+    storage.setItem(
+      KEY,
+      JSON.stringify([
+        ...records(storage),
+        {
+          accountAlias,
+          localProjectId,
+          remoteProjectId,
+          remoteRevision: remote.revision,
+          localSemanticHash: remote.semanticHash,
+        },
+      ]),
+    );
+  } catch {
+    deleteFreeProject(localProjectId, store, storage);
+    return { status: "storage-unavailable" };
+  }
+  return { status: "restored", localProjectId };
 }
 
 /** Explicit adult action: creates a separate account copy without changing Kids' local project. */

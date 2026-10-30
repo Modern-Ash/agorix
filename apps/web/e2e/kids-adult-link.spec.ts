@@ -173,6 +173,7 @@ test("adult signs up, verifies by email, links a child tablet, sees its summary 
 
 test("verified adult copies one Kids project to the account without duplicating it", async ({
   page,
+  browser,
 }) => {
   await page.route("**/v1/account/project-copy-eligible", (route) =>
     route.fulfill({
@@ -235,6 +236,46 @@ test("verified adult copies one Kids project to the account without duplicating 
     return copies[0]?.remoteProjectId;
   });
   expect(pilotProjectId).toBeTruthy();
+  const secondDevice = await newPage(browser);
+  let secondDeviceCreates = 0;
+  secondDevice.on("request", (request) => {
+    if (request.method() === "POST" && new URL(request.url()).pathname === "/v1/projects") {
+      secondDeviceCreates++;
+    }
+  });
+  await secondDevice.route("**/v1/account/project-copy-eligible", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ eligible: true }),
+    }),
+  );
+  await open(secondDevice);
+  await openAdults(secondDevice);
+  await secondDevice.getByLabel("Usuario").fill(name);
+  await secondDevice.getByLabel("Contraseña", { exact: true }).fill(PASSWORD);
+  await secondDevice.getByRole("button", { name: "Entrar", exact: true }).last().click();
+  const accountProjects = secondDevice.getByRole("region", { name: "Proyectos de mi cuenta" });
+  await expect(accountProjects).toBeVisible();
+  await accountProjects.getByLabel("Proyecto de cuenta").selectOption(pilotProjectId);
+  await accountProjects.getByLabel("Mundo en este dispositivo").selectOption("ocean");
+  await accountProjects.getByLabel("Personaje en este dispositivo").selectOption("🐼");
+  await accountProjects.getByRole("button", { name: "Abrir en este dispositivo" }).click();
+  await expect(accountProjects.getByRole("status")).toContainText("Proyecto free-1 listo");
+  expect(secondDeviceCreates).toBe(0);
+  expect(
+    await secondDevice.evaluate(() => {
+      const links = JSON.parse(
+        localStorage.getItem("agorix.kids.account-project-copies.v1") ?? "[]",
+      ) as { remoteProjectId: string }[];
+      return links[0]?.remoteProjectId;
+    }),
+  ).toBe(pilotProjectId);
+  await secondDevice.getByRole("button", { name: "Mis proyectos" }).click();
+  await expect(
+    secondDevice.locator(".kids-project-card").getByRole("button", { name: "Jugar" }),
+  ).toHaveCount(1);
+  await secondDevice.context().close();
   const pilotBodies: string[] = [];
   await page.route("**/api/tutor/ori/**", async (route) => {
     const path = new URL(route.request().url()).pathname;
