@@ -3,14 +3,7 @@
  * The jump bar lists them; each one points at its heading in the palette, which stays whole.
  */
 export type StudioCategory =
-  | "motion"
-  | "looks"
-  | "media"
-  | "logic"
-  | "pen"
-  | "music"
-  | "data"
-  | "myBlocks";
+  "motion" | "looks" | "media" | "logic" | "pen" | "music" | "data" | "myBlocks";
 
 const ORDER: readonly StudioCategory[] = [
   "motion",
