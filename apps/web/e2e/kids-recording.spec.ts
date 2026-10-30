@@ -1,7 +1,7 @@
 // agora-allowlist-file: end-to-end test of the one supervised voice recorder (issue #622); fake microphone.
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { passAdultGate, reloadToMap } from "./helpers.js";
+import { passAdultGate, reloadToMap, openAdultTab } from "./helpers.js";
 
 // Issue #622: supervised voice recording. A fake microphone stands in for a real one.
 test.use({
@@ -58,6 +58,7 @@ async function adultAudioPanel(page: Page) {
   await reloadToMap(page);
   await page.getByRole("button", { name: "Adultos" }).click();
   await passAdultGate(page);
+  await openAdultTab(page, "Personalizar");
   return page.getByRole("region", { name: "Sonidos propios" });
 }
 

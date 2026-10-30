@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
-import { passAdultGate } from "./helpers.js";
+import { passAdultGate, openAdultTab } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -21,6 +21,7 @@ async function start(page: Page, enabled: boolean) {
 async function openAdults(page: Page) {
   await page.getByRole("button", { name: "Adultos" }).click();
   await passAdultGate(page);
+  await openAdultTab(page, "Personalizar");
 }
 
 test("adult saves a local Ori image, reloads and removes it", async ({ page }) => {

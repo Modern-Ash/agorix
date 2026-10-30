@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { passAdultGate, reloadToMap } from "./helpers.js";
+import { passAdultGate, reloadToMap, openAdultTab } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -77,6 +77,7 @@ test("a new device asks an adult for the band, keeps only the category, and sets
   expect(violations.map((entry) => entry.id)).toEqual([]);
   await ask.getByRole("button", { name: "Elegir la franja de edad" }).click();
   await passAdultGate(page);
+  await openAdultTab(page, "Ajustes");
   // No birth date field anywhere, only the three categories.
   await expect(page.locator('input[type="date"]')).toHaveCount(0);
   await expect(page.getByRole("radio")).toHaveCount(3);
@@ -96,6 +97,7 @@ test("an adult who keeps the default band confirms it once", async ({ page }) =>
   await seed(page, null);
   await page.getByRole("button", { name: "Elegir la franja de edad" }).click();
   await passAdultGate(page);
+  await openAdultTab(page, "Ajustes");
   await page.getByRole("button", { name: "Seguir con 6–8" }).click();
   const stored = JSON.parse(
     (await page.evaluate(() => localStorage.getItem("agorix.kids.adults.v1")))!,

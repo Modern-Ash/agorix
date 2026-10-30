@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { passAdultGate } from "./helpers.js";
+import { passAdultGate, openAdultTab } from "./helpers.js";
 
 // Issue #453: the age band is an adult setting, behind the ageBands flag.
 test.use({ hasTouch: true, serviceWorkers: "block" });
@@ -19,7 +19,7 @@ async function openAdults(page: Page, flags: string[]) {
   await page.reload();
   await page.getByRole("button", { name: "Adultos" }).click();
   await passAdultGate(page);
-  await expect(page.getByRole("heading", { name: "Ajustes" })).toBeVisible();
+  await openAdultTab(page, "Ajustes");
 }
 
 test("the selector is absent while the flag is off", async ({ page }) => {
@@ -39,6 +39,7 @@ test("an adult picks a band, it persists and nothing leaves the device", async (
   await page.reload();
   await page.getByRole("button", { name: "Adultos" }).click();
   await passAdultGate(page);
+  await openAdultTab(page, "Ajustes");
   await expect(
     page.getByRole("group", { name: "Franja de edad" }).getByRole("radio", { name: "9–12" }),
   ).toBeChecked();

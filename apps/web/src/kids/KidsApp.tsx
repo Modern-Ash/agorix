@@ -38,6 +38,7 @@ import {
   type AdultSettings,
 } from "./kidsAdults.js";
 import { ParentsScreen } from "./screens/ParentsScreen.js";
+import type { AdultTab } from "./kidsAdultTabs.js";
 import { AdvancedSceneScreen } from "./screens/AdvancedSceneScreen.js";
 import { AdvancedReactScreen } from "./screens/AdvancedReactScreen.js";
 import { AdvancedScoreScreen } from "./screens/AdvancedScoreScreen.js";
@@ -91,6 +92,12 @@ export function KidsApp({
     readonly outcome: "success" | "wall" | "passed" | "short";
   } | null>(null);
   const [adultSettings, setAdultSettings] = useState<AdultSettings>(() => loadAdultSettings());
+  // Which grown-ups tab opens after the gate: a shortcut lands on the tab it is about (#1109).
+  const [adultTab, setAdultTab] = useState<AdultTab>("summary");
+  const openAdults = (tab: AdultTab) => {
+    setAdultTab(tab);
+    dispatch({ type: "go", screen: "parents" });
+  };
   const [projectStore] = useState(() => new ProjectStore());
   const t = useKidsText(state.locale);
   const showNav = KIDS_NAV_SCREENS.includes(state.screen);
@@ -231,11 +238,7 @@ export function KidsApp({
               ? "Una persona adulta tiene que elegir la franja de edad para ajustar la herramienta. No pedimos fecha de nacimiento."
               : "A grown-up needs to pick the age band to fit the tool. We never ask for a birth date."}
           </p>
-          <button
-            type="button"
-            className="kids-button"
-            onClick={() => dispatch({ type: "go", screen: "parents" })}
-          >
+          <button type="button" className="kids-button" onClick={() => openAdults("settings")}>
             {state.locale === "es" ? "Elegir la franja de edad" : "Pick the age band"}
           </button>
         </aside>
@@ -327,7 +330,7 @@ export function KidsApp({
                 : undefined
             }
             onBack={() => dispatch({ type: "go", screen: "map" })}
-            onOpenAdults={() => dispatch({ type: "go", screen: "parents" })}
+            onOpenAdults={() => openAdults("account")}
             onComplete={() => {
               if (!state.freeProjectId)
                 update(markMissionDone(progress, state.world, state.missionIndex));
@@ -435,6 +438,7 @@ export function KidsApp({
             progress={progress}
             settings={adultSettings}
             onSettings={updateAdultSettings}
+            initialTab={adultTab}
           />
         ) : (
           <section className="kids-screen" aria-labelledby="kids-title">
@@ -453,7 +457,11 @@ export function KidsApp({
               type="button"
               className="kids-nav-button"
               aria-current={state.screen === item.screen ? "page" : undefined}
-              onClick={() => dispatch({ type: "go", screen: item.screen })}
+              onClick={() =>
+                item.screen === "parents"
+                  ? openAdults("summary")
+                  : dispatch({ type: "go", screen: item.screen })
+              }
             >
               <span aria-hidden="true">{item.glyph}</span>
               <span>{t(item.label)}</span>
