@@ -103,6 +103,6 @@ test("the map names each concept icon in words, visibly and for screen readers",
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await seed(page);
-  await expect(page.locator(".kids-concept-legend")).toContainText("Secuencia");
+  await expect(page.locator(".kids-concepts")).toContainText("Secuencia");
   await expect(page.getByRole("listitem", { name: /Secuencia/ }).first()).toBeAttached();
 });

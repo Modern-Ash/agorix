@@ -125,6 +125,20 @@ export function worldProgress(
   };
 }
 
+/** Missions done across every world, for the map summary (issue #1111). */
+export function mapProgress(progress: KidsProgress): {
+  readonly done: number;
+  readonly total: number;
+} {
+  return KIDS_WORLDS.reduce(
+    (sum, world) => {
+      const { done, total } = worldProgress(progress, world);
+      return { done: sum.done + done, total: sum.total + total };
+    },
+    { done: 0, total: 0 },
+  );
+}
+
 /** The mission to play next in a world; once all three are done the last one stays current. */
 export function firstOpenMission(progress: KidsProgress, world: KidsWorld): 0 | 1 | 2 {
   const open = [0, 1, 2].findIndex((index) => progress.done[`${world}:${index}`] !== true);

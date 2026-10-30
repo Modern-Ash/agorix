@@ -91,6 +91,8 @@ export function KidsApp({
     readonly outcome: "success" | "wall" | "passed" | "short";
   } | null>(null);
   const [adultSettings, setAdultSettings] = useState<AdultSettings>(() => loadAdultSettings());
+  // The age-band notice can be put away for this visit; nothing is stored, so it returns next time.
+  const [bandAskClosed, setBandAskClosed] = useState(false);
   const [projectStore] = useState(() => new ProjectStore());
   const t = useKidsText(state.locale);
   const showNav = KIDS_NAV_SCREENS.includes(state.screen);
@@ -224,6 +226,7 @@ export function KidsApp({
       {ageBandsEnabled &&
       progress.onboarded &&
       !adultSettings.bandChosen &&
+      !bandAskClosed &&
       state.screen === "map" ? (
         <aside className="kids-band-ask" role="note">
           <p>
@@ -237,6 +240,14 @@ export function KidsApp({
             onClick={() => dispatch({ type: "go", screen: "parents" })}
           >
             {state.locale === "es" ? "Elegir la franja de edad" : "Pick the age band"}
+          </button>
+          <button
+            type="button"
+            className="kids-round"
+            aria-label={state.locale === "es" ? "Cerrar aviso" : "Close notice"}
+            onClick={() => setBandAskClosed(true)}
+          >
+            <span aria-hidden="true">×</span>
           </button>
         </aside>
       ) : null}
