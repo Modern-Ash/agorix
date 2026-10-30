@@ -39,6 +39,7 @@ const HEX = /^[a-f0-9]{64}$/;
 export interface OriHostProposalConfig {
   readonly provider: "ollama" | "compatible" | "auto" | "cli-auto" | "codex" | "opencode";
   readonly timeoutMs: number;
+  readonly totalBudgetMs: number;
   readonly ollamaEndpoint: string;
   readonly compatibleEndpoint: string;
   readonly ollamaModel: string;
@@ -59,6 +60,12 @@ export function oriHostProposalConfigFromEnv(
   const timeoutMs = Number(env["AGORIX_ORI_REVIEW_MODEL_TIMEOUT_MS"] ?? (cliMode ? 4500 : 1500));
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > (cliMode ? 5000 : 3000))
     throw new Error("Invalid Ori private review timeout");
+  const providerCount = provider === "auto" || provider === "cli-auto" ? 2 : 1;
+  const totalBudgetMs = Number(
+    env["AGORIX_ORI_REVIEW_TOTAL_BUDGET_MS"] ?? timeoutMs * providerCount,
+  );
+  if (!Number.isSafeInteger(totalBudgetMs) || totalBudgetMs < 1 || totalBudgetMs > 9000)
+    throw new Error("Invalid Ori private review total budget");
   const endpoint = (raw: string) => {
     const url = new URL(raw);
     if (
@@ -84,6 +91,7 @@ export function oriHostProposalConfigFromEnv(
   return {
     provider: provider as OriHostProposalConfig["provider"],
     timeoutMs,
+    totalBudgetMs,
     ollamaEndpoint: endpoint(env["AGORIX_ORI_REVIEW_OLLAMA_ENDPOINT"] ?? "http://127.0.0.1:11434"),
     compatibleEndpoint: endpoint(
       env["AGORIX_ORI_REVIEW_COMPATIBLE_ENDPOINT"] ?? "http://127.0.0.1:4096",
@@ -275,6 +283,7 @@ export function createOriHostEvidenceAdapter({
             ? {
                 ORI_HOST_PROPOSAL_PROVIDER: proposalConfig.provider,
                 ORI_HOST_PROPOSAL_TIMEOUT_MS: String(proposalConfig.timeoutMs),
+                ORI_HOST_PROPOSAL_TOTAL_BUDGET_MS: String(proposalConfig.totalBudgetMs),
                 ORI_HOST_OLLAMA_ENDPOINT: proposalConfig.ollamaEndpoint,
                 ORI_HOST_COMPATIBLE_ENDPOINT: proposalConfig.compatibleEndpoint,
                 ORI_HOST_OLLAMA_MODEL: proposalConfig.ollamaModel,
