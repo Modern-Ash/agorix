@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { passAdultGate, reloadToMap } from "./helpers.js";
+import { passAdultGate, reloadToMap, openAdultTab } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -21,6 +21,7 @@ async function start(page: Page) {
 async function adultSwitch(page: Page, name: string) {
   await page.getByRole("button", { name: "Adultos" }).click();
   await passAdultGate(page);
+  await openAdultTab(page, "Ajustes");
   return page.getByRole("switch", { name: new RegExp(name) });
 }
 

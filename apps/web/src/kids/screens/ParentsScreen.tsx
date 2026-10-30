@@ -22,6 +22,8 @@ import {
 import type { KidsProgress } from "../kidsProgress.js";
 import { readKidsEvidenceEvents } from "../kidsEvidence.js";
 import type { KidsText } from "../useKidsText.js";
+import type { AdultTab } from "../kidsAdultTabs.js";
+import { AdultTabList, AdultTabPanel } from "./AdultTabs.js";
 
 interface Props {
   readonly t: KidsText;
@@ -29,6 +31,8 @@ interface Props {
   readonly progress: KidsProgress;
   readonly settings: AdultSettings;
   readonly onSettings: (settings: AdultSettings) => void;
+  /** The tab shown after the gate; a link from a project opens Account directly. */
+  readonly initialTab?: AdultTab;
 }
 
 const COPY = {
@@ -64,7 +68,14 @@ const COPY = {
     used: "usadas",
     changed: "cambiadas",
     rejected: "rechazadas",
-    settings: "Ajustes",
+    aiGroup: "Ayuda de la IA",
+    accessGroup: "Accesibilidad",
+    contentGroup: "Contenido",
+    goalNote: "Tiempo sugerido de juego por día",
+    customizeEmpty:
+      "No hay nada para personalizar todavía. Las imágenes y los sonidos propios aparecen acá cuando están disponibles.",
+    seePrivacy: "Ver privacidad",
+    privacyShort: "No pedimos nombre, escuela ni ubicación. No hay chat público.",
     ori: "Ideas de Ori",
     oriNote: "Mostrar u ocultar a Ori y sus ideas",
     read: "Lectura en voz alta",
@@ -129,7 +140,14 @@ const COPY = {
     used: "used",
     changed: "changed",
     rejected: "rejected",
-    settings: "Settings",
+    aiGroup: "AI help",
+    accessGroup: "Accessibility",
+    contentGroup: "Content",
+    goalNote: "Suggested play time per day",
+    customizeEmpty:
+      "Nothing to customize yet. Custom images and sounds appear here when they are available.",
+    seePrivacy: "See privacy",
+    privacyShort: "We do not ask for a name, school or location. There is no public chat.",
     ori: "Ori's ideas",
     oriNote: "Show or hide Ori and its ideas",
     read: "Read aloud",
@@ -164,7 +182,15 @@ const COPY = {
   },
 } as const;
 
-export function ParentsScreen({ t, locale, progress, settings, onSettings }: Props) {
+export function ParentsScreen({
+  t,
+  locale,
+  progress,
+  settings,
+  onSettings,
+  initialTab = "summary",
+}: Props) {
+  const [tab, setTab] = useState<AdultTab>(initialTab);
   const [digits, setDigits] = useState("");
   const [unlocked, setUnlocked] = useState(false);
   const [message, setMessage] = useState("");
@@ -345,251 +371,304 @@ export function ParentsScreen({ t, locale, progress, settings, onSettings }: Pro
             setMessage("");
             setWaitUntil(0);
             setHealth(null);
+            setTab("summary");
           }}
         >
           🔒 {copy.exit}
         </button>
       </header>
-      <div className="kids-adult-grid">
-        <section className="kids-adult-card" aria-labelledby="kids-time-title">
-          <h2 id="kids-time-title">{copy.today}</h2>
-          <strong className="kids-adult-number">
-            {minutes} / {settings.dailyLimitMinutes} {copy.minutes}
-          </strong>
-          <div
-            className="kids-time-track"
-            role="progressbar"
-            aria-label={copy.today}
-            aria-valuenow={percent}
-            aria-valuemin={0}
-            aria-valuemax={100}
-          >
-            <span style={{ width: `${percent}%` }} />
-          </div>
-          <p className="kids-note">
-            {copy.goal}: {settings.dailyLimitMinutes} {copy.minutes}
-          </p>
-        </section>
-        <section className="kids-adult-card" aria-labelledby="kids-progress-title">
-          <h2 id="kids-progress-title">{copy.completed}</h2>
-          <strong className="kids-adult-number">{summary.completedMissions}</strong>
-          <p>
-            <strong>{copy.understanding}:</strong>{" "}
-            {summary.understandingObserved ? copy.observed : copy.notObserved}
-          </p>
-        </section>
-        <section className="kids-adult-card" aria-labelledby="kids-concepts-title">
-          <h2 id="kids-concepts-title">{copy.practice}</h2>
-          <ul className="kids-adult-concepts">
-            {(["conceptSeq", "conceptTurn", "conceptLoop"] as const).map((key, index) => (
-              <li key={key}>
-                <span>{t(key)}</span>
-                <strong>
-                  {summary.practicedConcepts[index]}{" "}
-                  {summary.practicedConcepts[index] === 1 ? copy.world : copy.worlds}
-                </strong>
-              </li>
-            ))}
-          </ul>
-        </section>
-        <section className="kids-adult-card kids-adult-ai" aria-labelledby="kids-decisions-title">
-          <h2 id="kids-decisions-title">{copy.decisions}</h2>
-          <div className="kids-adult-decisions">
-            {(["used", "changed", "rejected"] as const).map((key) => (
-              <div key={key}>
-                <strong>{summary.decisions[key]}</strong>
-                <span>{copy[key]}</span>
+      <AdultTabList locale={locale} current={tab} onSelect={setTab} />
+      {tab === "summary" ? (
+        <AdultTabPanel tab="summary">
+          <div className="kids-adult-grid">
+            <section className="kids-adult-card" aria-labelledby="kids-time-title">
+              <h2 id="kids-time-title">{copy.today}</h2>
+              <strong className="kids-adult-number">
+                {minutes} / {settings.dailyLimitMinutes} {copy.minutes}
+              </strong>
+              <div
+                className="kids-time-track"
+                role="progressbar"
+                aria-label={copy.today}
+                aria-valuenow={percent}
+                aria-valuemin={0}
+                aria-valuemax={100}
+              >
+                <span style={{ width: `${percent}%` }} />
               </div>
-            ))}
-          </div>
-          <p className="kids-note">{t("aiNote")}</p>
-        </section>
-        <section className="kids-adult-card" aria-labelledby="kids-settings-title">
-          <h2 id="kids-settings-title">{copy.settings}</h2>
-          <button
-            type="button"
-            className="kids-adult-switch"
-            role="switch"
-            aria-checked={settings.oriSuggestions}
-            onClick={() => onSettings({ ...settings, oriSuggestions: !settings.oriSuggestions })}
-          >
-            <span>
-              <strong>{copy.ori}</strong>
-              <small>{copy.oriNote}</small>
-            </span>
-            <i aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            className="kids-adult-switch"
-            role="switch"
-            aria-checked={settings.readAloud}
-            onClick={() => onSettings({ ...settings, readAloud: !settings.readAloud })}
-          >
-            <span>
-              <strong>{copy.read}</strong>
-              <small>{copy.readNote}</small>
-            </span>
-            <i aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            className="kids-adult-switch"
-            role="switch"
-            aria-checked={customImagesEnabled}
-            onClick={() => setKidsV2Feature("customImages", !customImagesEnabled)}
-          >
-            <span>
-              <strong>{copy.customImages}</strong>
-              <small>{copy.customImagesNote}</small>
-            </span>
-            <i aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            className="kids-adult-switch"
-            role="switch"
-            aria-checked={penEnabled}
-            onClick={() => setKidsV2Feature("extensionPen", !penEnabled)}
-          >
-            <span>
-              <strong>{copy.penPack}</strong>
-              <small>{copy.penPackNote}</small>
-            </span>
-            <i aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            className="kids-adult-switch"
-            role="switch"
-            aria-checked={musicEnabled}
-            onClick={() => setKidsV2Feature("extensionMusic", !musicEnabled)}
-          >
-            <span>
-              <strong>{copy.musicPack}</strong>
-              <small>{copy.musicPackNote}</small>
-            </span>
-            <i aria-hidden="true" />
-          </button>
-          {ageBandsEnabled ? (
-            <fieldset className="kids-adult-band">
-              <legend>{copy.ageBand}</legend>
-              <small>{copy.ageBandNote}</small>
-              {AGE_BANDS.map((band) => (
-                <label key={band}>
-                  <input
-                    type="radio"
-                    name="kids-age-band"
-                    value={band}
-                    checked={settings.ageBand === band}
-                    onChange={() =>
-                      onSettings({
-                        ...settings,
-                        ageBand: band,
-                        bandChosen: true,
-                        // The first pick also sets the voice default; later picks leave the adult's choice.
-                        ...(settings.bandChosen
-                          ? {}
-                          : { readAloud: bandProfile(band).readAloudDefault }),
-                      })
-                    }
-                  />{" "}
-                  {band.replace("-", "–")}
-                </label>
-              ))}
-              {settings.bandChosen ? null : (
-                <>
-                  <p className="kids-note">{copy.bandFirst}</p>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    onClick={() =>
-                      onSettings({
-                        ...settings,
-                        bandChosen: true,
-                        readAloud: bandProfile(settings.ageBand).readAloudDefault,
-                      })
-                    }
-                  >
-                    {copy.bandKeep} {settings.ageBand.replace("-", "–")}
-                  </button>
-                </>
-              )}
-            </fieldset>
-          ) : null}
-          <div className="kids-adult-limit">
-            <span>{copy.goal}</span>
-            <button
-              type="button"
-              aria-label={`${copy.goal} −`}
-              disabled={settings.dailyLimitMinutes <= 10}
-              onClick={() =>
-                onSettings({ ...settings, dailyLimitMinutes: settings.dailyLimitMinutes - 5 })
-              }
+              <p className="kids-note">
+                {copy.goal}: {settings.dailyLimitMinutes} {copy.minutes}
+              </p>
+            </section>
+            <section className="kids-adult-card" aria-labelledby="kids-progress-title">
+              <h2 id="kids-progress-title">{copy.completed}</h2>
+              <strong className="kids-adult-number">{summary.completedMissions}</strong>
+              <p>
+                <strong>{copy.understanding}:</strong>{" "}
+                {summary.understandingObserved ? copy.observed : copy.notObserved}
+              </p>
+            </section>
+            <section className="kids-adult-card" aria-labelledby="kids-concepts-title">
+              <h2 id="kids-concepts-title">{copy.practice}</h2>
+              <ul className="kids-adult-concepts">
+                {(["conceptSeq", "conceptTurn", "conceptLoop"] as const).map((key, index) => (
+                  <li key={key}>
+                    <span>{t(key)}</span>
+                    <strong>
+                      {summary.practicedConcepts[index]}{" "}
+                      {summary.practicedConcepts[index] === 1 ? copy.world : copy.worlds}
+                    </strong>
+                  </li>
+                ))}
+              </ul>
+            </section>
+            <section
+              className="kids-adult-card kids-adult-ai"
+              aria-labelledby="kids-decisions-title"
             >
-              −
-            </button>
-            <strong>
-              {settings.dailyLimitMinutes} {copy.minutes}
-            </strong>
-            <button
-              type="button"
-              aria-label={`${copy.goal} +`}
-              disabled={settings.dailyLimitMinutes >= 120}
-              onClick={() =>
-                onSettings({ ...settings, dailyLimitMinutes: settings.dailyLimitMinutes + 5 })
-              }
-            >
-              +
-            </button>
+              <h2 id="kids-decisions-title">{copy.decisions}</h2>
+              <div className="kids-adult-decisions">
+                {(["used", "changed", "rejected"] as const).map((key) => (
+                  <div key={key}>
+                    <strong>{summary.decisions[key]}</strong>
+                    <span>{copy[key]}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="kids-note">{t("aiNote")}</p>
+            </section>
+            <KidsIndicatorsPanel locale={locale} />
           </div>
-        </section>
-        {adultLinkEnabled ? <LinkPanel locale={locale} /> : null}
-        {adultLinkEnabled && groupModeEnabled ? <GroupPanel locale={locale} /> : null}
-        <section className="kids-adult-card" aria-labelledby="kids-ai-title">
-          <h2 id="kids-ai-title">{copy.ai}</h2>
-          <dl className="kids-health-list">
-            <div>
-              <dt>{copy.provider}</dt>
-              <dd>
-                {health?.providerInUse === "codex"
-                  ? "Codex"
-                  : health?.providerInUse === "opencode"
-                    ? "OpenCode"
-                    : health?.providerInUse === "openai-compatible"
-                      ? copy.compatible
-                      : copy.deterministic}
-              </dd>
-            </div>
-            <div>
-              <dt>{copy.configured}</dt>
-              <dd>{health ? yesNo(health.configured) : "…"}</dd>
-            </div>
-            <div>
-              <dt>{copy.available}</dt>
-              <dd>{health ? yesNo(health.available) : "…"}</dd>
-            </div>
-            <div>
-              <dt>{copy.lastError}</dt>
-              <dd>{health?.lastErrorClass ?? copy.none}</dd>
-            </div>
-          </dl>
-          <button
-            type="button"
-            className="kids-button"
-            onClick={() => void fetchAdultAiHealth().then(setHealth)}
-          >
-            {copy.refresh}
-          </button>
-        </section>
-        <KidsIndicatorsPanel locale={locale} />
-        {customImagesEnabled ? <KidsImagesPanel locale={locale} t={t} /> : null}
-        {customAudioEnabled ? <KidsAudioPanel t={t} locale={locale} /> : null}
-      </div>
-      <aside className="kids-adult-privacy">
-        <strong>🔒 {copy.privacy}</strong>
-        <p>{copy.privacyNote}</p>
-      </aside>
+          <aside className="kids-adult-privacy">
+            <strong>🔒 {copy.privacy}</strong>
+            <p>{copy.privacyShort}</p>
+            <button type="button" className="kids-button" onClick={() => setTab("account")}>
+              {copy.seePrivacy}
+            </button>
+          </aside>
+        </AdultTabPanel>
+      ) : null}
+      {tab === "settings" ? (
+        <AdultTabPanel tab="settings">
+          <div className="kids-adult-grid">
+            {ageBandsEnabled ? (
+              <section className="kids-adult-card kids-adult-wide">
+                <fieldset className="kids-adult-band">
+                  <legend>{copy.ageBand}</legend>
+                  <small>{copy.ageBandNote}</small>
+                  {AGE_BANDS.map((band) => (
+                    <label key={band}>
+                      <input
+                        type="radio"
+                        name="kids-age-band"
+                        value={band}
+                        checked={settings.ageBand === band}
+                        onChange={() =>
+                          onSettings({
+                            ...settings,
+                            ageBand: band,
+                            bandChosen: true,
+                            // The first pick also sets the voice default; later picks leave the adult's choice.
+                            ...(settings.bandChosen
+                              ? {}
+                              : { readAloud: bandProfile(band).readAloudDefault }),
+                          })
+                        }
+                      />{" "}
+                      {band.replace("-", "–")}
+                    </label>
+                  ))}
+                  {settings.bandChosen ? null : (
+                    <>
+                      <p className="kids-note">{copy.bandFirst}</p>
+                      <button
+                        type="button"
+                        className="kids-button"
+                        onClick={() =>
+                          onSettings({
+                            ...settings,
+                            bandChosen: true,
+                            readAloud: bandProfile(settings.ageBand).readAloudDefault,
+                          })
+                        }
+                      >
+                        {copy.bandKeep} {settings.ageBand.replace("-", "–")}
+                      </button>
+                    </>
+                  )}
+                </fieldset>
+              </section>
+            ) : null}
+            <section className="kids-adult-card" aria-labelledby="kids-settings-ai-title">
+              <h2 id="kids-settings-ai-title">{copy.aiGroup}</h2>
+              <button
+                type="button"
+                className="kids-adult-switch"
+                role="switch"
+                aria-checked={settings.oriSuggestions}
+                onClick={() =>
+                  onSettings({ ...settings, oriSuggestions: !settings.oriSuggestions })
+                }
+              >
+                <span>
+                  <strong>{copy.ori}</strong>
+                  <small>{copy.oriNote}</small>
+                </span>
+                <i aria-hidden="true" />
+              </button>
+            </section>
+            <section className="kids-adult-card" aria-labelledby="kids-settings-access-title">
+              <h2 id="kids-settings-access-title">{copy.accessGroup}</h2>
+              <button
+                type="button"
+                className="kids-adult-switch"
+                role="switch"
+                aria-checked={settings.readAloud}
+                onClick={() => onSettings({ ...settings, readAloud: !settings.readAloud })}
+              >
+                <span>
+                  <strong>{copy.read}</strong>
+                  <small>{copy.readNote}</small>
+                </span>
+                <i aria-hidden="true" />
+              </button>
+            </section>
+            <section
+              className="kids-adult-card kids-adult-wide"
+              aria-labelledby="kids-settings-content-title"
+            >
+              <h2 id="kids-settings-content-title">{copy.contentGroup}</h2>
+              <button
+                type="button"
+                className="kids-adult-switch"
+                role="switch"
+                aria-checked={customImagesEnabled}
+                onClick={() => setKidsV2Feature("customImages", !customImagesEnabled)}
+              >
+                <span>
+                  <strong>{copy.customImages}</strong>
+                  <small>{copy.customImagesNote}</small>
+                </span>
+                <i aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                className="kids-adult-switch"
+                role="switch"
+                aria-checked={penEnabled}
+                onClick={() => setKidsV2Feature("extensionPen", !penEnabled)}
+              >
+                <span>
+                  <strong>{copy.penPack}</strong>
+                  <small>{copy.penPackNote}</small>
+                </span>
+                <i aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                className="kids-adult-switch"
+                role="switch"
+                aria-checked={musicEnabled}
+                onClick={() => setKidsV2Feature("extensionMusic", !musicEnabled)}
+              >
+                <span>
+                  <strong>{copy.musicPack}</strong>
+                  <small>{copy.musicPackNote}</small>
+                </span>
+                <i aria-hidden="true" />
+              </button>
+            </section>
+            <section className="kids-adult-card kids-adult-wide" aria-labelledby="kids-goal-title">
+              <h2 id="kids-goal-title">{copy.goal}</h2>
+              <div className="kids-adult-limit">
+                <span>{copy.goalNote}</span>
+                <button
+                  type="button"
+                  aria-label={`${copy.goal} −`}
+                  disabled={settings.dailyLimitMinutes <= 10}
+                  onClick={() =>
+                    onSettings({ ...settings, dailyLimitMinutes: settings.dailyLimitMinutes - 5 })
+                  }
+                >
+                  −
+                </button>
+                <strong>
+                  {settings.dailyLimitMinutes} {copy.minutes}
+                </strong>
+                <button
+                  type="button"
+                  aria-label={`${copy.goal} +`}
+                  disabled={settings.dailyLimitMinutes >= 120}
+                  onClick={() =>
+                    onSettings({ ...settings, dailyLimitMinutes: settings.dailyLimitMinutes + 5 })
+                  }
+                >
+                  +
+                </button>
+              </div>
+            </section>
+          </div>
+        </AdultTabPanel>
+      ) : null}
+      {tab === "customize" ? (
+        <AdultTabPanel tab="customize">
+          <div className="kids-adult-grid">
+            {customImagesEnabled ? <KidsImagesPanel locale={locale} t={t} /> : null}
+            {customAudioEnabled ? <KidsAudioPanel t={t} locale={locale} /> : null}
+            {customImagesEnabled || customAudioEnabled ? null : (
+              <p className="kids-note kids-adult-wide">{copy.customizeEmpty}</p>
+            )}
+          </div>
+        </AdultTabPanel>
+      ) : null}
+      {tab === "account" ? (
+        <AdultTabPanel tab="account">
+          <div className="kids-adult-grid">
+            {adultLinkEnabled ? <LinkPanel locale={locale} /> : null}
+            {adultLinkEnabled && groupModeEnabled ? <GroupPanel locale={locale} /> : null}
+            <aside className="kids-adult-privacy kids-adult-wide">
+              <strong>🔒 {copy.privacy}</strong>
+              <p>{copy.privacyNote}</p>
+            </aside>
+            <section className="kids-adult-card" aria-labelledby="kids-ai-title">
+              <h2 id="kids-ai-title">{copy.ai}</h2>
+              <dl className="kids-health-list">
+                <div>
+                  <dt>{copy.provider}</dt>
+                  <dd>
+                    {health?.providerInUse === "codex"
+                      ? "Codex"
+                      : health?.providerInUse === "opencode"
+                        ? "OpenCode"
+                        : health?.providerInUse === "openai-compatible"
+                          ? copy.compatible
+                          : copy.deterministic}
+                  </dd>
+                </div>
+                <div>
+                  <dt>{copy.configured}</dt>
+                  <dd>{health ? yesNo(health.configured) : "…"}</dd>
+                </div>
+                <div>
+                  <dt>{copy.available}</dt>
+                  <dd>{health ? yesNo(health.available) : "…"}</dd>
+                </div>
+                <div>
+                  <dt>{copy.lastError}</dt>
+                  <dd>{health?.lastErrorClass ?? copy.none}</dd>
+                </div>
+              </dl>
+              <button
+                type="button"
+                className="kids-button"
+                onClick={() => void fetchAdultAiHealth().then(setHealth)}
+              >
+                {copy.refresh}
+              </button>
+            </section>
+          </div>
+        </AdultTabPanel>
+      ) : null}
     </section>
   );
 }

@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Browser, type Page, type Route } from "@playwright/test";
-import { passAdultGate } from "./helpers.js";
+import { passAdultGate, openAdultTab } from "./helpers.js";
 
 // Issues #509 to #513. Runs against the DEV/E2E-only in-process backend (AGORIX_DEV_BACKEND=1), which
 // hosts the real project API and link service. Two browser contexts play the adult's phone and the
@@ -30,7 +30,7 @@ async function open(page: Page, flags: string[] = ["adultLink"]) {
 async function openAdults(page: Page) {
   await page.getByRole("button", { name: "Adultos" }).click();
   await passAdultGate(page);
-  await expect(page.getByRole("heading", { name: "Ajustes" })).toBeVisible();
+  await openAdultTab(page, "Cuenta y privacidad");
 }
 
 async function newPage(browser: Browser): Promise<Page> {
@@ -604,7 +604,6 @@ test("the panel is simply absent where the server has no link service", async ({
   );
   await open(page);
   await openAdults(page);
-  await expect(page.getByRole("heading", { name: "Ajustes" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Cuenta de adulto y vinculación" })).toHaveCount(
     0,
   );
