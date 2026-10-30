@@ -32,6 +32,7 @@ describe("Ori trusted host evidence boundary", () => {
     expect(oriHostProposalConfigFromEnv({ AGORIX_ORI_REVIEW_PROVIDER: "auto" })).toMatchObject({
       provider: "auto",
       timeoutMs: 1500,
+      totalBudgetMs: 3000,
     });
   });
   it("rejects external endpoints and invalid provider policy", () => {
@@ -48,11 +49,26 @@ describe("Ori trusted host evidence boundary", () => {
         AGORIX_ORI_REVIEW_MODEL_TIMEOUT_MS: "9000",
       }),
     ).toThrow();
+    for (const total of ["0", "9001", "1.5", "NaN"]) {
+      expect(() =>
+        oriHostProposalConfigFromEnv({
+          AGORIX_ORI_REVIEW_PROVIDER: "auto",
+          AGORIX_ORI_REVIEW_TOTAL_BUDGET_MS: total,
+        }),
+      ).toThrow();
+    }
+    expect(
+      oriHostProposalConfigFromEnv({
+        AGORIX_ORI_REVIEW_PROVIDER: "auto",
+        AGORIX_ORI_REVIEW_TOTAL_BUDGET_MS: "2500",
+      })?.totalBudgetMs,
+    ).toBe(2500);
   });
   it("accepts bounded CLI routing without enabling it by default", () => {
     expect(oriHostProposalConfigFromEnv({ AGORIX_ORI_REVIEW_PROVIDER: "cli-auto" })).toMatchObject({
       provider: "cli-auto",
       timeoutMs: 4500,
+      totalBudgetMs: 9000,
       codexBin: "codex",
       opencodeBin: "opencode",
       codexModel: "gpt-6-luna",

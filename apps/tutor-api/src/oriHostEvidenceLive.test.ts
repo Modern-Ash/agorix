@@ -86,6 +86,48 @@ describe.skipIf(!runnable)("real Ori host evidence CLI", () => {
       server.close();
     }
   }, 15000);
+  it("passes the total model budget to Ori and falls back when it expires", async () => {
+    const server = createServer((_req, res) => {
+      setTimeout(() => {
+        res.setHeader("content-type", "application/json");
+        res.end(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify({
+                    schemaVersion: "ori/proposal/v0",
+                    operation: "append",
+                    requiresLearnerApproval: true,
+                    blocks: [{ kind: "move", steps: 3 }],
+                  }),
+                },
+              },
+            ],
+          }),
+        );
+      }, 120);
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    try {
+      const address = server.address();
+      if (!address || typeof address === "string") throw new Error("Expected local port");
+      const proposalConfig = oriHostProposalConfigFromEnv({
+        AGORIX_ORI_REVIEW_PROVIDER: "compatible",
+        AGORIX_ORI_REVIEW_COMPATIBLE_ENDPOINT: `http://127.0.0.1:${address.port}`,
+        AGORIX_ORI_REVIEW_TOTAL_BUDGET_MS: "20",
+      });
+      if (!proposalConfig) throw new Error("Expected private model configuration");
+      const result = await createOriHostEvidenceAdapter({ oriRoot: oriRoot!, proposalConfig })(
+        request,
+      );
+      expect(result.status).toBe("ready");
+      expect(result.proposal).toMatchObject({ blocks: [{ kind: "move", steps: 1 }] });
+      expect(result.appliedChanges).toBe(false);
+    } finally {
+      server.close();
+    }
+  }, 15000);
   it.skipIf(!existsSync(resolve(oriRoot ?? "/", "src/host-proposal-cli-adapter.mjs")))(
     "accepts one proposal through the opt-in Codex CLI boundary",
     async () => {
