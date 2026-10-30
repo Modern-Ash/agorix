@@ -3,6 +3,10 @@
 - Production Web at <https://agorix.modern-ash.com>: container image with a generated security-header set, deploy and rollback scripts with automatic rollback, `/version.json`, a read-only production smoke test as a deploy gate, and the runbook in `docs/deployment/MODERN_ASH_HOST.md`.
 - Spanish by default with a remembered language choice; calm AI status ("Modo local" / "IA activa" / "IA no disponible ahora"), an adults-only explainer and a four-step loop in the AI panel.
 - Optional same-origin tutor HTTP service (`/api/tutor/health`, `/api/tutor/respond`).
+- Kids grown-ups panel split into four tabs (Resumen, Ajustes, Personalizar, Cuenta y privacidad); a shortcut from elsewhere opens the tab it is about, and the account link and group panels live under "Cuenta y privacidad" (#1109).
+- Kids map: visible title with overall progress ("2 de 12 misiones"), concept chips that say their name, world tabs in four equal columns that never scroll sideways (also at 320 px), and a closable age-band notice that returns next visit (#1111).
+- Kids free-scene editor: block category bar (Movimiento, Apariencia, Medios, Lógica, Lápiz, Música, Datos, Mis bloques) that jumps to each palette heading; Lápiz and Música show only while a grown-up keeps their pack on (#1110).
+- Admin "Centro de IA": grouped menu (Reglas, Agentes de Ori, Contenido y grupos, Monitoreo), chat counters and revision history in their own "Historial y monitoreo" section, and a sticky draft bar that names the unpublished sections and the revision Publicar will create. Gates, API and stored configuration are unchanged (#1112).
 
 # Agorix 0.1.0
 
