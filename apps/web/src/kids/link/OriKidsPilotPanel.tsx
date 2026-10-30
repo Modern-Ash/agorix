@@ -15,13 +15,14 @@ import {
   recordOriKidsPilotRun,
   requestOriKidsPilotHint,
 } from "./oriKidsPilotClient.js";
-import type { OriKidsActivity } from "./oriKidsActivity.js";
+import type { OriKidsActivity, OriKidsHintRequest } from "./oriKidsActivity.js";
 
 /** Adult-only Kids pilot journey; every server operation rechecks the durable allowlist. */
 export function OriKidsPilotPanel({
   remoteProjectId,
   activities,
   evidenceKey,
+  registerHintRequest,
   beforeRun,
   beforeEvidenceAction,
   onApplied,
@@ -29,6 +30,7 @@ export function OriKidsPilotPanel({
   readonly remoteProjectId: string;
   readonly activities: readonly OriKidsActivity[];
   readonly evidenceKey: string;
+  readonly registerHintRequest: (request: OriKidsHintRequest | null) => void;
   readonly beforeRun: () => Promise<
     "unchanged" | "updated" | "pulled" | "conflict" | "unavailable"
   >;
@@ -115,18 +117,31 @@ export function OriKidsPilotPanel({
     }
   }, [activities, allowed, beforeRun]);
 
-  async function askHint() {
-    if (busy || !ran) return;
-    setBusy(true);
-    try {
-      if (!(await evidenceIsCurrent())) return;
-      const next = await requestOriKidsPilotHint();
-      setHint(next);
-      if (!next) setMessage("No hay otra pista disponible para esta ejecución.");
-    } finally {
-      setBusy(false);
+  useEffect(() => {
+    if (!allowed || !ran || busy) {
+      registerHintRequest(null);
+      return;
     }
-  }
+    registerHintRequest(async (expectedLevel) => {
+      setBusy(true);
+      try {
+        if (!(await evidenceIsCurrent())) return null;
+        const next = await requestOriKidsPilotHint(fetch, expectedLevel);
+        if (!next || next.level !== expectedLevel) {
+          setMessage("Ori no pudo registrar esta pista. Kids sigue funcionando.");
+          return null;
+        }
+        setHint(next);
+        verifiedRun.current = false;
+        setRan(false);
+        setMessage("Pista registrada. Ejecutá otra vez en Kids antes de pedir una propuesta.");
+        return next;
+      } finally {
+        setBusy(false);
+      }
+    });
+    return () => registerHintRequest(null);
+  }, [allowed, ran, busy, beforeEvidenceAction, registerHintRequest]);
 
   async function propose() {
     if (busy || !ran) return;
@@ -217,17 +232,11 @@ export function OriKidsPilotPanel({
   return (
     <section className="kids-adult-card" aria-label="Ori en mi proyecto">
       <h3>Ori</h3>
-      <p>Ori usa tus ejecuciones de Kids. Vos revisás cada propuesta y decidís si aplicarla.</p>
+      <p>
+        Ori usa tus ejecuciones y pistas de Kids. Vos revisás cada propuesta y decidís si aplicarla.
+      </p>
       {ran ? (
         <>
-          <button
-            type="button"
-            className="kids-button"
-            disabled={busy}
-            onClick={() => void askHint()}
-          >
-            Pedir pista
-          </button>
           <button
             type="button"
             className="kids-button"

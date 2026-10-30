@@ -52,4 +52,27 @@ describe("Ori server-issued pilot hint", () => {
       journal.learningContext("owner", "project", "session", project.semanticHash)?.hintsUsed,
     ).toBe(0);
   });
+
+  it("continues after the persisted Kids hint level without repeating a hint", async () => {
+    const journal = createOriSessionLearningJournal();
+    const saved = {
+      ...project,
+      storedProject: {
+        ...project.storedProject,
+        metadata: { ...project.storedProject.metadata, hintLevel: 1 },
+      },
+    };
+    const repository = { get: async () => saved } as unknown as ProjectRepository;
+    journal.recordVerifiedRun("owner", "project", "session", saved.semanticHash, "explore");
+    const issue = createOriPilotHintIssuer({ repository, journal });
+    expect(await issue("owner", "project", "session", 3)).toBeNull();
+    expect(
+      journal.learningContext("owner", "project", "session", saved.semanticHash)?.hintsUsed,
+    ).toBe(0);
+    expect((await issue("owner", "project", "session", 2))?.level).toBe(2);
+    expect(
+      journal.learningContext("owner", "project", "session", saved.semanticHash)?.hintsUsed,
+    ).toBe(2);
+    expect((await issue("owner", "project", "session"))?.level).toBe(3);
+  });
 });
