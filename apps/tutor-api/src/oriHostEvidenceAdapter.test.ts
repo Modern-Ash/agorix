@@ -49,6 +49,33 @@ describe("Ori trusted host evidence boundary", () => {
       }),
     ).toThrow();
   });
+  it("accepts bounded CLI routing without enabling it by default", () => {
+    expect(oriHostProposalConfigFromEnv({ AGORIX_ORI_REVIEW_PROVIDER: "cli-auto" })).toMatchObject({
+      provider: "cli-auto",
+      timeoutMs: 4500,
+      codexBin: "codex",
+      opencodeBin: "opencode",
+      codexModel: "gpt-6-luna",
+    });
+    expect(oriHostProposalConfigFromEnv({ AGORIX_ORI_REVIEW_PROVIDER: "codex" })?.provider).toBe(
+      "codex",
+    );
+    expect(oriHostProposalConfigFromEnv({ AGORIX_ORI_REVIEW_PROVIDER: "opencode" })?.provider).toBe(
+      "opencode",
+    );
+    expect(() =>
+      oriHostProposalConfigFromEnv({
+        AGORIX_ORI_REVIEW_PROVIDER: "codex",
+        AGORIX_ORI_REVIEW_CODEX_BIN: "codex; echo secret",
+      }),
+    ).toThrow();
+    expect(() =>
+      oriHostProposalConfigFromEnv({
+        AGORIX_ORI_REVIEW_PROVIDER: "cli-auto",
+        AGORIX_ORI_REVIEW_MODEL_TIMEOUT_MS: "5001",
+      }),
+    ).toThrow();
+  });
   it("accepts bounded canonical evidence", () => {
     expect(validateTrustedOriEvidence(request)).not.toBeNull();
   });

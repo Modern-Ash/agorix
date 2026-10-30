@@ -37,12 +37,15 @@ const unavailable: OriHostEvidenceResult = Object.freeze({
 });
 const HEX = /^[a-f0-9]{64}$/;
 export interface OriHostProposalConfig {
-  readonly provider: "ollama" | "compatible" | "auto";
+  readonly provider: "ollama" | "compatible" | "auto" | "cli-auto" | "codex" | "opencode";
   readonly timeoutMs: number;
   readonly ollamaEndpoint: string;
   readonly compatibleEndpoint: string;
   readonly ollamaModel: string;
   readonly compatibleModel: string;
+  readonly codexBin: string;
+  readonly opencodeBin: string;
+  readonly codexModel: string;
 }
 
 export function oriHostProposalConfigFromEnv(
@@ -50,10 +53,11 @@ export function oriHostProposalConfigFromEnv(
 ): OriHostProposalConfig | undefined {
   const provider = env["AGORIX_ORI_REVIEW_PROVIDER"] ?? "disabled";
   if (provider === "disabled") return undefined;
-  if (!["ollama", "compatible", "auto"].includes(provider))
+  if (!["ollama", "compatible", "auto", "cli-auto", "codex", "opencode"].includes(provider))
     throw new Error("Invalid Ori private review provider");
-  const timeoutMs = Number(env["AGORIX_ORI_REVIEW_MODEL_TIMEOUT_MS"] ?? 1500);
-  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 3000)
+  const cliMode = ["cli-auto", "codex", "opencode"].includes(provider);
+  const timeoutMs = Number(env["AGORIX_ORI_REVIEW_MODEL_TIMEOUT_MS"] ?? (cliMode ? 4500 : 1500));
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > (cliMode ? 5000 : 3000))
     throw new Error("Invalid Ori private review timeout");
   const endpoint = (raw: string) => {
     const url = new URL(raw);
@@ -73,6 +77,10 @@ export function oriHostProposalConfigFromEnv(
     if (!/^[a-zA-Z0-9_.:/-]{1,80}$/.test(raw)) throw new Error("Invalid Ori review model");
     return raw;
   };
+  const bin = (raw: string) => {
+    if (!/^[a-zA-Z0-9_./-]{1,200}$/.test(raw)) throw new Error("Invalid Ori review executable");
+    return raw;
+  };
   return {
     provider: provider as OriHostProposalConfig["provider"],
     timeoutMs,
@@ -82,6 +90,9 @@ export function oriHostProposalConfigFromEnv(
     ),
     ollamaModel: model(env["AGORIX_ORI_REVIEW_OLLAMA_MODEL"] ?? "qwen2.5:3b"),
     compatibleModel: model(env["AGORIX_ORI_REVIEW_COMPATIBLE_MODEL"] ?? "local-educational"),
+    codexBin: bin(env["AGORIX_ORI_REVIEW_CODEX_BIN"] ?? "codex"),
+    opencodeBin: bin(env["AGORIX_ORI_REVIEW_OPENCODE_BIN"] ?? "opencode"),
+    codexModel: model(env["AGORIX_ORI_REVIEW_CODEX_MODEL"] ?? "gpt-6-luna"),
   };
 }
 export function validateTrustedOriEvidence(raw: unknown): TrustedOriEvidence | null {
@@ -220,7 +231,7 @@ export function validateOriHostProposal(
 export function createOriHostEvidenceAdapter({
   oriRoot,
   proposalConfig,
-  timeoutMs = proposalConfig ? 9000 : 3000,
+  timeoutMs = proposalConfig ? 10000 : 3000,
 }: {
   oriRoot: string;
   proposalConfig?: OriHostProposalConfig;
@@ -245,6 +256,21 @@ export function createOriHostEvidenceAdapter({
         stdio: ["pipe", "pipe", "pipe"],
         env: {
           PATH: process.env["PATH"] ?? "",
+          ...(proposalConfig && ["cli-auto", "codex", "opencode"].includes(proposalConfig.provider)
+            ? Object.fromEntries(
+                [
+                  "HOME",
+                  "USER",
+                  "LANG",
+                  "CODEX_HOME",
+                  "XDG_CONFIG_HOME",
+                  "XDG_DATA_HOME",
+                  "XDG_CACHE_HOME",
+                ]
+                  .filter((name) => process.env[name] !== undefined)
+                  .map((name) => [name, process.env[name]!]),
+              )
+            : {}),
           ...(proposalConfig
             ? {
                 ORI_HOST_PROPOSAL_PROVIDER: proposalConfig.provider,
@@ -253,6 +279,9 @@ export function createOriHostEvidenceAdapter({
                 ORI_HOST_COMPATIBLE_ENDPOINT: proposalConfig.compatibleEndpoint,
                 ORI_HOST_OLLAMA_MODEL: proposalConfig.ollamaModel,
                 ORI_HOST_COMPATIBLE_MODEL: proposalConfig.compatibleModel,
+                ORI_HOST_CODEX_BIN: proposalConfig.codexBin,
+                ORI_HOST_OPENCODE_BIN: proposalConfig.opencodeBin,
+                ORI_HOST_CODEX_MODEL: proposalConfig.codexModel,
               }
             : {}),
         },
