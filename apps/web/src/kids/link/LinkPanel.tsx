@@ -9,6 +9,7 @@ import { ThisDeviceCard } from "./ThisDeviceCard.js";
 import { loadLink, type LinkState } from "./kidsLink.js";
 import { createLinkApi, type LinkApi } from "./linkApi.js";
 import { linkText } from "./linkCopy.js";
+import { ADULT_SESSION_CHANGED_EVENT } from "./adultSessionEvent.js";
 
 interface Props {
   readonly locale: Locale;
@@ -41,6 +42,7 @@ export function LinkPanel({ locale, api: provided }: Props) {
         if (cancelled || me === null) return;
         setSession(me);
         setEmail(await api.emailStatus());
+        window.dispatchEvent(new Event(ADULT_SESSION_CHANGED_EVENT));
       } catch {
         // Not signed in: the sign-in form is shown.
       }
@@ -83,8 +85,14 @@ export function LinkPanel({ locale, api: provided }: Props) {
         api={api}
         session={session}
         email={email}
-        onSession={setSession}
-        onEmail={setEmail}
+        onSession={(next) => {
+          setSession(next);
+          window.dispatchEvent(new Event(ADULT_SESSION_CHANGED_EVENT));
+        }}
+        onEmail={(next) => {
+          setEmail(next);
+          window.dispatchEvent(new Event(ADULT_SESSION_CHANGED_EVENT));
+        }}
       />
       {session !== null && email?.verified ? (
         <>

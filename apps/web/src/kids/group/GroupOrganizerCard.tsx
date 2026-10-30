@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Locale } from "../../i18n.js";
 import {
   GROUP_TEAMS,
@@ -10,6 +10,7 @@ import {
   type OrganizerView,
 } from "./groupApi.js";
 import { groupError, groupText } from "./groupCopy.js";
+import { ADULT_SESSION_CHANGED_EVENT } from "../link/adultSessionEvent.js";
 
 interface Props {
   readonly locale: Locale;
@@ -32,6 +33,8 @@ export function GroupOrganizerCard({ locale, api, pollMs = 4000, onView }: Props
   const [message, setMessage] = useState("");
   const [code, setCode] = useState<GroupCode | null>(null);
   const [confirmClose, setConfirmClose] = useState(false);
+  const loadRevision = useRef(0);
+  const loadPending = useRef(false);
   const t = (key: Parameters<typeof groupText>[1], values?: Record<string, string | number>) =>
     groupText(locale, key, values);
 
@@ -44,20 +47,44 @@ export function GroupOrganizerCard({ locale, api, pollMs = 4000, onView }: Props
     [locale],
   );
 
-  const load = useCallback(async () => {
-    try {
-      const next = await api.current();
-      setView(next);
-      onView?.(next);
-      setPhase("ready");
-    } catch (error) {
-      fail(error);
-    }
-  }, [api, fail, onView]);
+  const load = useCallback(
+    async (force = false) => {
+      if (loadPending.current && !force) return;
+      loadPending.current = true;
+      const revision = ++loadRevision.current;
+      try {
+        const next = await api.current();
+        if (revision !== loadRevision.current) return;
+        setView(next);
+        onView?.(next);
+        setPhase("ready");
+      } catch (error) {
+        if (revision !== loadRevision.current) return;
+        fail(error);
+      } finally {
+        if (revision === loadRevision.current) loadPending.current = false;
+      }
+    },
+    [api, fail, onView],
+  );
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    const reload = () => void load(true);
+    window.addEventListener(ADULT_SESSION_CHANGED_EVENT, reload);
+    return () => window.removeEventListener(ADULT_SESSION_CHANGED_EVENT, reload);
+  }, [load]);
+
+  // The account card and group card mount independently. An account may be
+  // restored before this card subscribes to the session event.
+  useEffect(() => {
+    if (phase !== "signin") return;
+    const id = window.setInterval(() => void load(), pollMs);
+    return () => window.clearInterval(id);
+  }, [phase, load, pollMs]);
 
   const hasGroup = phase === "ready" && view.group !== null;
   useEffect(() => {
@@ -70,7 +97,7 @@ export function GroupOrganizerCard({ locale, api, pollMs = 4000, onView }: Props
     setMessage("");
     try {
       await work();
-      await load();
+      await load(true);
     } catch (error) {
       fail(error);
     }

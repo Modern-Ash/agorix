@@ -33,6 +33,31 @@ let n = 0;
 const alias = () => `org-${Date.now().toString(36)}-${++n}`;
 
 describe("group api client", () => {
+  it("shares the rotating adult session queue with account requests", async () => {
+    const backend = createDevBackend();
+    const transport = createInProcessFetch(backend);
+    let active = 0;
+    let peak = 0;
+    const fetch: typeof transport.fetch = async (input, init) => {
+      active += 1;
+      peak = Math.max(peak, active);
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 2));
+        return await transport.fetch(input, init);
+      } finally {
+        active -= 1;
+      }
+    };
+    const link = createLinkApi({ fetch });
+    const group = createGroupApi({ fetch });
+    const name = alias();
+    await link.register(name, PASSWORD, `${name}@example.com`);
+    const results = await Promise.allSettled([link.restore(), group.available(), group.current()]);
+    expect(results[0]).toMatchObject({ status: "fulfilled", value: { alias: name } });
+    expect(results[1]).toMatchObject({ status: "fulfilled", value: true });
+    expect(results[2]).toMatchObject({ status: "rejected" });
+    expect(peak).toBe(1);
+  });
   it("reports the service as available and keeps working before sign-in", async () => {
     const w = world();
     expect(await w.adult.available()).toBe(true);

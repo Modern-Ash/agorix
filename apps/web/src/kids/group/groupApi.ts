@@ -1,4 +1,4 @@
-import { enqueueAdult } from "../adultQueue.js";
+import { withAgorixSessionQueue } from "../../accounts/sessionRequestQueue.js";
 import type { FetchLike } from "../../accounts/httpClient.js";
 
 export const GROUP_TEAMS = ["equipo-1", "equipo-2", "equipo-3", "equipo-4"] as const;
@@ -137,7 +137,7 @@ export function createGroupApi(options: { readonly fetch?: FetchLike } = {}): Gr
   }
 
   function adult(method: string, url: string, body?: unknown): Promise<Parsed> {
-    return enqueueAdult(() => raw(method, url, body, {}));
+    return withAgorixSessionQueue(() => raw(method, url, body, {}));
   }
 
   const group = (groupId: string) => `/v1/group/${encodeURIComponent(groupId)}`;
@@ -147,7 +147,7 @@ export function createGroupApi(options: { readonly fetch?: FetchLike } = {}): Gr
   return {
     async available() {
       try {
-        await raw("GET", "/v1/group", undefined, {});
+        await adult("GET", "/v1/group");
         return true;
       } catch (error) {
         // 401 and 403 mean the route exists; 404 or unavailable means the service is not there.
