@@ -174,7 +174,11 @@ export function createOriCliService(
     return undefined;
   }
 
-  function textModel(provider: "codex" | "opencode", policy: AiPolicy) {
+  function textModel(
+    provider: "codex" | "opencode",
+    policy: AiPolicy,
+    timeoutMs = policy.timeoutMs,
+  ) {
     return {
       generate: async (systemInstructions: string, inputJson: string) => {
         const bin = provider === "codex" ? config.codexBin : config.opencodeBin;
@@ -194,7 +198,7 @@ export function createOriCliService(
               : opencodeArgs(inputJson, policy.provider === "auto" ? undefined : policy.model);
           const output = await run(bin, args, {
             input,
-            timeoutMs: policy.timeoutMs,
+            timeoutMs,
             maxOutputBytes: MAX_OUTPUT_BYTES,
             cwd: directory,
             env: safeCliEnv(
@@ -222,6 +226,34 @@ export function createOriCliService(
           return provider === "opencode" ? parseOpenCodeText(output) : output.trim();
         } finally {
           rmSync(directory, { recursive: true, force: true });
+        }
+      },
+    };
+  }
+
+  function textModelWithFailover(provider: "codex" | "opencode", policy: AiPolicy) {
+    const primary = textModel(provider, policy);
+    return {
+      generate: async (instructions: string, input: string) => {
+        const started = Date.now();
+        try {
+          return await primary.generate(instructions, input);
+        } catch (primaryError) {
+          if (policy.provider !== "auto") throw primaryError;
+          const remainingMs = policy.timeoutMs - (Date.now() - started);
+          if (remainingMs <= 0) throw primaryError;
+          const alternate = provider === "codex" ? "opencode" : "codex";
+          try {
+            const output = await textModel(alternate, policy, remainingMs).generate(
+              instructions,
+              input,
+            );
+            cached.set("auto", { at: now(), provider: alternate });
+            return output;
+          } catch {
+            cached.delete("auto");
+            throw primaryError;
+          }
         }
       },
     };
@@ -256,7 +288,7 @@ export function createOriCliService(
         return decision;
       }
       let error: ProviderRuntimeErrorCode | null = null;
-      const model = textModel(provider, policy);
+      const model = textModelWithFailover(provider, policy);
       const decision = await runOriAgent(context, {
         generate: async (instructions, input) => {
           try {
@@ -282,22 +314,28 @@ export function createOriCliService(
     async chat(context) {
       const policy = policyFor("chat");
       const provider = await select(policy);
-      return runOriChat(context, provider ? textModel(provider, policy) : undefined);
+      return runOriChat(context, provider ? textModelWithFailover(provider, policy) : undefined);
     },
     async proposeGoal(locale) {
       const policy = policyFor("goals");
       const provider = await select(policy);
-      return runOriGoalAgent(locale, provider ? textModel(provider, policy) : undefined);
+      return runOriGoalAgent(
+        locale,
+        provider ? textModelWithFailover(provider, policy) : undefined,
+      );
     },
     async advanced(context) {
       const policy = policyFor("advanced");
       const provider = await select(policy);
-      return runOriAdvancedStage(context, provider ? textModel(provider, policy) : undefined);
+      return runOriAdvancedStage(
+        context,
+        provider ? textModelWithFailover(provider, policy) : undefined,
+      );
     },
     async studio(context) {
       const policy = policyFor("studio");
       const provider = await select(policy);
-      return runOriStudio(context, provider ? textModel(provider, policy) : undefined);
+      return runOriStudio(context, provider ? textModelWithFailover(provider, policy) : undefined);
     },
   };
 }

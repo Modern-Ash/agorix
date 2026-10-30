@@ -163,6 +163,53 @@ describe("Ori host CLI adapter (issue #381)", () => {
     expect(invocation?.[2].env?.OPENCODE_DISABLE_DEFAULT_PLUGINS).toBe("1");
   });
 
+  it("switches to OpenCode when a healthy Codex fails during generation", async () => {
+    const calls: string[] = [];
+    let alternateTimeout = 0;
+    const run: OriCliProcess = async (bin, args, options) => {
+      if (args.includes("--version")) return "version";
+      calls.push(bin);
+      if (bin === "codex") {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        throw new CliProcessError("failed");
+      }
+      alternateTimeout = options.timeoutMs;
+      return JSON.stringify({ type: "text", part: { text: validOutput } });
+    };
+    const service = createOriCliService(oriCliConfigFromEnv({}), { run });
+    expect((await service.respond(context)).source).toBe("model");
+    expect(calls).toEqual(["codex", "opencode"]);
+    expect(alternateTimeout).toBeLessThan(7_000);
+    expect(service.diagnostics()).toMatchObject({
+      attempts: 1,
+      modelResponses: 1,
+      lastErrorClass: null,
+    });
+    expect(await service.health()).toMatchObject({ providerInUse: "opencode" });
+    expect((await service.respond(context)).source).toBe("model");
+    expect(calls).toEqual(["codex", "opencode", "opencode"]);
+  });
+
+  it("does not switch providers when policy selects Codex explicitly", async () => {
+    const calls: string[] = [];
+    const policy = {
+      ...defaultAiConfig(oriCliConfigFromEnv({}), configFromEnv({ AGORIX_TUTOR_ADAPTER: "fake" }))
+        .capabilities.mission,
+      provider: "codex" as const,
+      enabled: true,
+    };
+    const service = createOriCliService(oriCliConfigFromEnv({}), {
+      policyFor: () => policy,
+      run: async (bin, args) => {
+        if (args.includes("--version")) return "version";
+        calls.push(bin);
+        throw new CliProcessError("timeout");
+      },
+    });
+    expect((await service.respond(context)).source).toBe("fallback");
+    expect(calls).toEqual(["codex"]);
+  });
+
   it("returns the exact Kids 08 fallback on timeout, bad output and no installed CLI", async () => {
     for (const result of ["timeout", "invalid", "missing"] as const) {
       const run: OriCliProcess = async (_bin, args) => {
