@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type PointerEvent } from "react";
 import {
+  studioCategories,
+  studioCategoryId,
+  type StudioCategory,
+} from "../kidsStudioCategories.js";
+import {
   createEditorHistory,
   recordCanonicalTransaction,
   redoCanonicalTransaction,
@@ -295,6 +300,7 @@ const COPY = {
     paletteMedia: "Disfraces, fondos y sonidos",
     paletteLogic: "Eventos y control",
     paletteData: "Variables y listas",
+    categories: "Categorías de bloques",
     event: "Cuando",
     onPlay: "Al jugar",
     onTap: "Al tocar este personaje",
@@ -499,6 +505,7 @@ const COPY = {
     paletteMedia: "Costumes, backdrops and sounds",
     paletteLogic: "Events and control",
     paletteData: "Variables and lists",
+    categories: "Block categories",
     event: "When",
     onPlay: "When played",
     onTap: "When this character is tapped",
@@ -729,6 +736,16 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
   const [penSize, setPenSize] = useState(8);
   const penEnabled = useKidsFlag("extensionPen");
   const musicEnabled = useKidsFlag("extensionMusic");
+  const categoryLabel: Record<StudioCategory, string> = {
+    motion: copy.paletteMotion,
+    looks: copy.paletteLooks,
+    media: copy.paletteMedia,
+    logic: copy.paletteLogic,
+    pen: copy.penTitle,
+    music: copy.musicTitle,
+    data: copy.paletteData,
+    myBlocks: copy.myBlocks,
+  };
   const interventionPolicy = useInterventionPolicy();
   const [musicNote, setMusicNote] = useState(60);
   const [musicBeats, setMusicBeats] = useState<MusicBeats>(1);
@@ -2707,8 +2724,28 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
             </ol>
             {script?.statements.length === 0 ? <p className="kids-note">{copy.noBlocks}</p> : null}
           </div>
+          {/* Jumps to a category; the palette below stays whole, so nothing is hidden (#1110). */}
+          <nav className="kids-studio-categories" aria-label={copy.categories}>
+            {studioCategories({ pen: penEnabled, music: musicEnabled }).map((category) => (
+              <button
+                key={category}
+                type="button"
+                className="kids-studio-category"
+                data-category={category}
+                onClick={() => {
+                  const heading = document.getElementById(studioCategoryId(category));
+                  heading?.scrollIntoView({ block: "start" });
+                  heading?.focus({ preventScroll: true });
+                }}
+              >
+                {categoryLabel[category]}
+              </button>
+            ))}
+          </nav>
           <div className="kids-studio-palette" ref={setPalette}>
-            <h3>{copy.paletteLooks}</h3>
+            <h3 id={studioCategoryId("looks")} tabIndex={-1}>
+              {copy.paletteLooks}
+            </h3>
             <KidsPaletteBlock
               tone="looks"
               actions={[
@@ -2798,7 +2835,9 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 ))}
               </select>
             </KidsPaletteBlock>
-            <h3>{copy.paletteMotion}</h3>
+            <h3 id={studioCategoryId("motion")} tabIndex={-1}>
+              {copy.paletteMotion}
+            </h3>
             <KidsPaletteBlock
               tone="motion"
               actions={[
@@ -2944,7 +2983,9 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 { label: copy.layerBack, onAdd: () => add({ type: "goToLayer", layer: "back" }) },
               ]}
             />
-            <h3>{copy.paletteMedia}</h3>
+            <h3 id={studioCategoryId("media")} tabIndex={-1}>
+              {copy.paletteMedia}
+            </h3>
             <KidsPaletteBlock
               tone="looks"
               actions={[
@@ -3064,7 +3105,9 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 onChange={(event) => setVolumeChange(Number(event.target.value))}
               />
             </KidsPaletteBlock>
-            <h3>{copy.paletteLogic}</h3>
+            <h3 id={studioCategoryId("logic")} tabIndex={-1}>
+              {copy.paletteLogic}
+            </h3>
             <KidsPaletteBlock
               tone="control"
               actions={[
@@ -3114,7 +3157,9 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 </select>
               </label>
             </KidsPaletteBlock>
-            <h3>{copy.myBlocks}</h3>
+            <h3 id={studioCategoryId("myBlocks")} tabIndex={-1}>
+              {copy.myBlocks}
+            </h3>
             <label>
               {copy.myBlockName}
               <input
@@ -3470,7 +3515,9 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
             </button>
             {penEnabled ? (
               <div role="group" aria-label={copy.penTitle}>
-                <strong>{copy.penTitle}</strong>
+                <strong id={studioCategoryId("pen")} tabIndex={-1}>
+                  {copy.penTitle}
+                </strong>
                 <button
                   type="button"
                   className="kids-button"
@@ -3536,7 +3583,9 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
             ) : null}
             {musicEnabled ? (
               <div role="group" aria-label={copy.musicTitle}>
-                <strong>{copy.musicTitle}</strong>
+                <strong id={studioCategoryId("music")} tabIndex={-1}>
+                  {copy.musicTitle}
+                </strong>
                 <label>
                   {copy.noteLabel}{" "}
                   <select
@@ -3742,7 +3791,9 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
             >
               + {copy.message}
             </button>
-            <h3>{copy.paletteData}</h3>
+            <h3 id={studioCategoryId("data")} tabIndex={-1}>
+              {copy.paletteData}
+            </h3>
             <label>
               {copy.dataName}{" "}
               <input
