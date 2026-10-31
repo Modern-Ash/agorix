@@ -460,3 +460,7 @@ Result: no backend capability for creation modes is missing from the UI. The blo
 ### Is the parked `/advanced` editor the missing piece? (#1121)
 
 No. `apps/web/src/App.tsx` (5,264 lines, served at `/advanced`) is the original engineering editor and does not hold block vocabulary Kids lacks. By keyword count it has no procedures, music, tutorials or debug UI, which Kids has. What only `App.tsx` mounts is the AI-native review surface and tooling: `OriReviewPanel` (behind a build flag, #722), `ModelComparison`, `PredictionChip`, ghost blocks, `ProvenanceLabel`, run trace, the `typescript` projection tab, and `AccountUi` workspace. Those belong to the Ori and evidence audit (#1124), not to the creation palette. The Scratch crosswalk is the matrix above; this audit only checks whether each row is reachable in the default Kids experience.
+
+### Operators closed in the free scene (#1131)
+
+`lessOrEqual`, `greaterOrEqual`, `and`, `or`, `not` and decimal `random` moved from `EXPRESSIONS_NOT_IN_SCENE` to the offered lists in `kidsCreationCoverage.ts`. The scene accepts conditions two levels deep and decimals in tenths, within -100 to 100. Still hidden by design: `touchingGoal` and `booleanLiteral`. Control flow and sensors the engine lacks are tracked in #1132.
