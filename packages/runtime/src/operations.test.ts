@@ -64,6 +64,7 @@ describe("runtime operation allowlist", () => {
       "changeVolume",
       "clearEffects",
       "clearPen",
+      "forever",
       "glideTo",
       "goTo",
       "goToLayer",

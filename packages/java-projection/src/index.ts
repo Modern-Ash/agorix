@@ -583,6 +583,14 @@ function statement(writer: Writer, node: Statement, nodeId: string, depth: numbe
       addRange(writer, nodeId, start, writer.text.length);
       return;
     }
+    case "forever": {
+      const start = writer.text.length;
+      writer.text += `${indent}while (true) { // bounded by runtime budgets\n`;
+      block(writer, nodeId, node.body, "body", depth + 1);
+      writer.text += `${indent}}\n`;
+      addRange(writer, nodeId, start, writer.text.length);
+      return;
+    }
     case "waitUntil":
       return line(
         `waitUntil(() -> ${asBoolean(writer, node.condition, `${nodeId}/condition`)}, 10)`,
@@ -751,6 +759,7 @@ export const javaLanguagePack: LanguagePack = {
     "callProcedure",
     "repeat",
     "repeatUntil",
+    "forever",
     "if",
   ],
   projection: javaProjection,

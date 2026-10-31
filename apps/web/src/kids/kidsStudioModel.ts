@@ -77,6 +77,7 @@ export type StudioStatement = Extract<
       | "listReplaceAt"
       | "repeat"
       | "repeatUntil"
+      | "forever"
       | "waitUntil"
       | "callProcedure"
       | "penDown"
@@ -329,7 +330,9 @@ function statementCount(statements: readonly Statement[]): number {
     (sum, statement) =>
       sum +
       1 +
-      (statement.type === "repeat" || statement.type === "repeatUntil"
+      (statement.type === "repeat" ||
+      statement.type === "repeatUntil" ||
+      statement.type === "forever"
         ? statementCount(statement.body)
         : statement.type === "if"
           ? statementCount(statement.then) + statementCount(statement.else ?? [])
@@ -495,6 +498,13 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0, arity
     return (
       depth < MAX_STUDIO_CONTROL_DEPTH &&
       checkedCondition(statement.condition, program, arity) &&
+      statement.body.length >= 1 &&
+      statement.body.length <= MAX_STUDIO_BODY &&
+      statement.body.every((item) => checked(item, program, depth + 1, arity))
+    );
+  if (statement.type === "forever")
+    return (
+      depth < MAX_STUDIO_CONTROL_DEPTH &&
       statement.body.length >= 1 &&
       statement.body.length <= MAX_STUDIO_BODY &&
       statement.body.every((item) => checked(item, program, depth + 1, arity))
@@ -712,6 +722,7 @@ export function wrapStudioTail(
   control:
     | { readonly type: "repeat"; readonly times: 2 | 3 | 5 }
     | { readonly type: "repeatUntil"; readonly condition: Expression }
+    | { readonly type: "forever" }
     | { readonly type: "if"; readonly condition: Expression },
 ): EditorHistory {
   const program = validateStudioProgram(history.current);
@@ -729,7 +740,9 @@ export function wrapStudioTail(
       ? { type: "repeat", count: control.times, body }
       : control.type === "repeatUntil"
         ? { type: "repeatUntil", condition: control.condition, body }
-        : { type: "if", condition: control.condition, then: body };
+        : control.type === "forever"
+          ? { type: "forever", body }
+          : { type: "if", condition: control.condition, then: body };
   if (!checked(statement, program)) throw new RangeError("unsupported studio group");
   const scripts = [...program.scripts];
   scripts[index] = {
@@ -752,7 +765,11 @@ function countCalls(statements: readonly Statement[], procedureId: string): numb
   return statements.reduce((sum, statement) => {
     if (statement.type === "callProcedure")
       return sum + (statement.procedureId === procedureId ? 1 : 0);
-    if (statement.type === "repeat" || statement.type === "repeatUntil")
+    if (
+      statement.type === "repeat" ||
+      statement.type === "repeatUntil" ||
+      statement.type === "forever"
+    )
       return sum + countCalls(statement.body, procedureId);
     if (statement.type === "if")
       return (
@@ -880,7 +897,11 @@ function replaceCalls(statements: readonly Statement[], procedure: Procedure): S
       return statement.procedureId === procedure.id
         ? bodyForCall(procedure, statement)
         : [statement];
-    if (statement.type === "repeat" || statement.type === "repeatUntil")
+    if (
+      statement.type === "repeat" ||
+      statement.type === "repeatUntil" ||
+      statement.type === "forever"
+    )
       return [{ ...statement, body: replaceCalls(statement.body, procedure) }];
     if (statement.type === "if")
       return [
@@ -905,7 +926,11 @@ function mapCalls(
   return statements.map((statement): Statement => {
     if (statement.type === "callProcedure")
       return statement.procedureId === procedureId ? change(statement) : statement;
-    if (statement.type === "repeat" || statement.type === "repeatUntil")
+    if (
+      statement.type === "repeat" ||
+      statement.type === "repeatUntil" ||
+      statement.type === "forever"
+    )
       return { ...statement, body: mapCalls(statement.body, procedureId, change) };
     if (statement.type === "if")
       return {
@@ -1133,7 +1158,7 @@ function updateAt(
   return list.map((item, index): Statement => {
     if (index !== head) return item;
     if (rest.length === 0) return change(item);
-    if (item.type === "repeat" || item.type === "repeatUntil")
+    if (item.type === "repeat" || item.type === "repeatUntil" || item.type === "forever")
       return { ...item, body: updateAt(item.body, rest, change) };
     if (item.type === "if") {
       if (rest[0] === "else" && item.else)
@@ -1170,7 +1195,7 @@ function removeAt(
     return result.list;
   };
   let replaced: Statement;
-  if (item.type === "repeat" || item.type === "repeatUntil")
+  if (item.type === "repeat" || item.type === "repeatUntil" || item.type === "forever")
     replaced = { ...item, body: next(item.body, rest) };
   else if (item.type === "if" && rest[0] === "else" && item.else)
     replaced = { ...item, else: next(item.else, rest.slice(1)) };
@@ -1195,7 +1220,7 @@ function insertInto(
   };
   if (target.container === null) return put(list);
   return updateAt(list, target.container, (item) => {
-    if (item.type === "repeat" || item.type === "repeatUntil")
+    if (item.type === "repeat" || item.type === "repeatUntil" || item.type === "forever")
       return { ...item, body: put(item.body) };
     if (item.type === "if" && target.branch === "else")
       return item.else
@@ -1249,7 +1274,11 @@ export function moveStudioStatementTo(
 
 function containsCall(statement: Statement): boolean {
   if (statement.type === "callProcedure") return true;
-  if (statement.type === "repeat" || statement.type === "repeatUntil")
+  if (
+    statement.type === "repeat" ||
+    statement.type === "repeatUntil" ||
+    statement.type === "forever"
+  )
     return statement.body.some(containsCall);
   if (statement.type === "if")
     return statement.then.some(containsCall) || (statement.else ?? []).some(containsCall);
@@ -1645,7 +1674,11 @@ export function setStudioProcedureCallNumbers(
 function called(statements: readonly Statement[]): string[] {
   return statements.flatMap((statement): string[] => {
     if (statement.type === "callProcedure") return [statement.procedureId];
-    if (statement.type === "repeat" || statement.type === "repeatUntil")
+    if (
+      statement.type === "repeat" ||
+      statement.type === "repeatUntil" ||
+      statement.type === "forever"
+    )
       return called(statement.body);
     if (statement.type === "if")
       return [...called(statement.then), ...called(statement.else ?? [])];

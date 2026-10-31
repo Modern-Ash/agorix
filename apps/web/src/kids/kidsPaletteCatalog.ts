@@ -38,6 +38,7 @@ export const STUDIO_BLOCK_CATEGORY = {
   changeVolume: "media",
   repeat: "logic",
   repeatUntil: "logic",
+  forever: "logic",
   waitUntil: "logic",
   if: "logic",
   broadcast: "logic",

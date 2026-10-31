@@ -62,6 +62,7 @@ export const RUNTIME_STATEMENT_OPERATIONS = Object.freeze([
   "listInsertAt",
   "listReplaceAt",
   "repeat",
+  "forever",
   "repeatUntil",
   "callProcedure",
   "if",

@@ -65,6 +65,7 @@ export type BlockType =
   | "sound_set_volume"
   | "sound_change_volume"
   | "control_repeat"
+  | "control_forever"
   | "control_repeat_until"
   | "control_wait_until"
   | "control_wait"
@@ -718,6 +719,16 @@ function statementFromBlock(
           mapping,
         ),
       };
+    case "control_forever":
+      return {
+        type: "forever",
+        body: statementsFromBlocks(
+          statementInput(block, "body", path),
+          `${nodeId}/body`,
+          `${path}.inputs.body`,
+          mapping,
+        ),
+      };
     case "control_if":
       return {
         type: "if",
@@ -1076,6 +1087,12 @@ function statementToBlock(
           count: statement.count,
           ...(statement.countFrom === undefined ? {} : { countFrom: statement.countFrom }),
         },
+        inputs: { body: statementsToBlocks(statement.body, `${nodeId}/body`, mapping) },
+      };
+    case "forever":
+      return {
+        id,
+        type: "control_forever",
         inputs: { body: statementsToBlocks(statement.body, `${nodeId}/body`, mapping) },
       };
     case "repeatUntil":

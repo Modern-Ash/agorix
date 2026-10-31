@@ -86,6 +86,7 @@ describe("block-editor", () => {
       "Set volume to [N]",
       "Change volume by [N]",
       "Repeat [N] times",
+      "Forever (bounded)",
       "If ___, then",
       "Stop [script / actor / scene]",
       "Wait until ___",
@@ -116,7 +117,7 @@ describe("block-editor", () => {
       "Show score",
       "Hide score",
     ]);
-    expect(POC_TOOLBOX.flatMap((section) => section.blocks)).toHaveLength(49);
+    expect(POC_TOOLBOX.flatMap((section) => section.blocks)).toHaveLength(50);
   });
 
   it("creates safe defaults for every required POC block", () => {

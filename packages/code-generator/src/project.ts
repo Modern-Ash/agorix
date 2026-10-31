@@ -469,6 +469,11 @@ function projectStatement(
       write(writer, `${pad}});\n`);
       return;
     }
+    case "forever":
+      write(writer, `${pad}forever(() => { // bounded by runtime budgets\n`);
+      projectStatements(statement.body, nodeId, "body", indent + 1, writer, context);
+      write(writer, `${pad}});\n`);
+      return;
     case "waitUntil": {
       const condId = `${nodeId}/condition`;
       const cond = formatExpression(statement.condition, condId, context);

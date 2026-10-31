@@ -154,6 +154,8 @@ interface ValidationState {
   currentParams: ReadonlySet<ProcedureParamId> | undefined;
   /** Extension packs whose blocks the program uses, checked against its declared list. */
   usedExtensions: Set<ExtensionId>;
+  loopDepth: number;
+  foreverCount: number;
 }
 
 function countNode(state: ValidationState, path: string): void {
@@ -716,12 +718,33 @@ function validateStatement(
       const nextDepth = depth + 1;
       checkDepth(nextDepth, `${path}.body`);
       const countFrom = optionalParamRef(input, "countFrom", path, state);
+      state.loopDepth += 1;
+      const body = validateStatementArray(input.body, `${path}.body`, state, nextDepth);
+      state.loopDepth -= 1;
       return {
         type: "repeat",
         count: input.count,
         ...(countFrom === undefined ? {} : { countFrom }),
-        body: validateStatementArray(input.body, `${path}.body`, state, nextDepth),
+        body,
       };
+    }
+    case "forever": {
+      if (state.loopDepth > 0) {
+        fail("INVALID_FIELD_TYPE", path, "forever cannot be inside another loop", input);
+      }
+      state.foreverCount += 1;
+      if (state.foreverCount > 1) {
+        fail("PROGRAM_TOO_LARGE", path, "at most one forever per script", input);
+      }
+      if (!Array.isArray(input.body) || input.body.length < 1 || input.body.length > 3) {
+        fail("PROGRAM_TOO_LARGE", `${path}.body`, "forever needs 1 to 3 blocks", input.body);
+      }
+      const nextDepth = depth + 1;
+      checkDepth(nextDepth, `${path}.body`);
+      state.loopDepth += 1;
+      const body = validateStatementArray(input.body, `${path}.body`, state, nextDepth);
+      state.loopDepth -= 1;
+      return { type: "forever", body };
     }
     case "callProcedure": {
       if (typeof input.procedureId !== "string" || !state.procedureIds.has(input.procedureId)) {
@@ -769,10 +792,14 @@ function validateStatement(
     case "repeatUntil": {
       const nextDepth = depth + 1;
       checkDepth(nextDepth, `${path}.body`);
+      const condition = validateExpression(input.condition, `${path}.condition`, state);
+      state.loopDepth += 1;
+      const body = validateStatementArray(input.body, `${path}.body`, state, nextDepth);
+      state.loopDepth -= 1;
       return {
         type: "repeatUntil",
-        condition: validateExpression(input.condition, `${path}.condition`, state),
-        body: validateStatementArray(input.body, `${path}.body`, state, nextDepth),
+        condition,
+        body,
       };
     }
     case "if": {
@@ -1005,6 +1032,8 @@ function validateScript(input: unknown, path: string, state: ValidationState): S
   recordId(state, input.id, `${path}.id`);
   state.procedureIds = new Set();
   state.procedureArity = new Map();
+  state.loopDepth = 0;
+  state.foreverCount = 0;
   let procedures: Procedure[] | undefined;
   if (input.procedures !== undefined) {
     if (!Array.isArray(input.procedures)) {
@@ -1077,6 +1106,8 @@ export function validateProgram(input: unknown): ProjectProgram {
     procedureArity: new Map(),
     currentParams: undefined,
     usedExtensions: new Set(),
+    loopDepth: 0,
+    foreverCount: 0,
   };
   const variables =
     input.variables === undefined

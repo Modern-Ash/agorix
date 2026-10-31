@@ -162,6 +162,7 @@ const statements: Statement[] = [
       },
     ],
   },
+  { type: "forever", body: [{ type: "move", steps: 1 }] },
 ];
 
 const everything: ProjectProgram = {

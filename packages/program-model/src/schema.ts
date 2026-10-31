@@ -506,6 +506,12 @@ export interface RepeatStatement {
   readonly body: readonly Statement[];
 }
 
+/** Repeats until the deterministic execution budget ends the run. */
+export interface ForeverStatement {
+  readonly type: "forever";
+  readonly body: readonly Statement[];
+}
+
 /** Checks the condition before every pass; the runtime stops after a fixed number of passes. */
 export interface RepeatUntilStatement {
   readonly type: "repeatUntil";
@@ -581,6 +587,7 @@ export type Statement =
   | ListInsertAtStatement
   | ListReplaceAtStatement
   | RepeatStatement
+  | ForeverStatement
   | RepeatUntilStatement
   | CallProcedureStatement
   | IfStatement;
