@@ -457,6 +457,12 @@ Two different creation modes sit side by side in Crear and are easy to confuse.
 - E2E `apps/web/e2e/kids-free-access.spec.ts`: from a fresh onboarded profile with no mission done, Crear reaches both Escena libre and a free project, map and Misión 1 remain, progress stays `stars: 0, done: {}`; `#/crear` deep link on desktop, tablet and mobile viewports.
 - Screenshots per viewport and signed-in state are not included here; capture them when #1123 verifies the deployed build.
 
+### Post-deploy route evidence (2026-10-31, SHA `0e10b7bc191f`)
+
+The public [release gate](RELEASE_GATE_1127.md#despliegue-integrado-y-gate-post-deploy) supplies anonymous-session screenshots of Escena libre at [desktop 1280×800](evidence/1127/prod-0e10b7bc191f-6-8.png), [tablet 820×1180](evidence/1127/prod-0e10b7bc191f-9-12.png) and [phone 390×844](evidence/1127/prod-0e10b7bc191f-13-plus.png). In each, an adult chose the age band through Ajustes; no feature flag was set manually. The public smoke reached Mapa, Crear, Escena libre, Mis proyectos, a mission and `/advanced`; it checked the account entry under Adultos with the reviewed adult-link build setting. Creation, local save and portable exchange require no sign-in, so an authenticated browser is not a prerequisite for these route claims. Account-linked project copy remains a separate flow.
+
+The #1134 converter is present in this SHA, but `freeToScene` is **off by default** in `kidsFlags.ts`. Thus the route table above still describes the default production behavior: «¡Crear!» opens `#/libre/{id}` with the smaller palette, while «Crear escena» opens the full `#/escena/{id}` editor. With the flag enabled, `#/libre/{id}` converts a saved free project to a scene on first open. The rollout decision and that flagged migration remain in [#1134](https://github.com/Modern-Ash/agorix/issues/1134); this route audit does not call it delivered by default.
+
 ### Backend already present (#1121)
 
 Backend checked against what the web calls and against production (GET probe, status only).
