@@ -1,5 +1,7 @@
 # Unreleased
 
+- Kids Escena libre: the palette now offers the graphic effects the engine already ran (set, change, clear: color, ghost, brightness), and every palette button carries the engine block it adds so an end-to-end guard fails when a cataloged block has no palette entry (#1133).
+
 - Kids Escena libre: `askChoice` pauses a run at a bundled text, picture or number question, shows up to four closed answers, and stores the child's selected option index in a variable before continuing. Answer text is never typed or sent to Ori (#1132).
 
 - Kids Escena libre: `mouseX`, `mouseY` and `mouseDown` now read the pointer captured on the stage. Position is bounded to the stage, passed only as a run input and never saved in the project or sent to Ori (#1132).
