@@ -1,14 +1,27 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type PointerEvent } from "react";
 import {
+  inStudioRange,
+  STUDIO_BUBBLE_MAX_LENGTH,
+  STUDIO_VOLUME_DELTA_RANGE,
+  STUDIO_VOLUME_RANGE,
+  STUDIO_X_RANGE,
+  STUDIO_Y_RANGE,
+  STUDIO_EFFECT_DELTAS,
+  STUDIO_MOVE_CELLS,
+  STUDIO_NAME_MAX_LENGTH,
+  STUDIO_REPEAT_COUNTS,
+  STUDIO_SIZE_DELTAS,
+  STUDIO_SIZES,
+  STUDIO_TURN_AMOUNTS,
+  STUDIO_WAIT_SECONDS,
+  studioEffectValues,
+} from "../kidsStudioChoices.js";
+import {
   studioCategories,
   studioCategoryId,
   type StudioCategory,
 } from "../kidsStudioCategories.js";
-import {
-  STUDIO_STARTER_BLOCKS,
-  starterStatement,
-  type StudioStarterKind,
-} from "../kidsPaletteCatalog.js";
+import { starterShelf, starterStatement, type StudioStarterKind } from "../kidsPaletteCatalog.js";
 import {
   createEditorHistory,
   recordCanonicalTransaction,
@@ -819,9 +832,23 @@ function waitingChoiceId(result: MultiActorRunResult | null): ChoicePromptId | n
 
 function starterLabel(
   kind: StudioStarterKind,
-  copy: { readonly move: string; readonly turnRight: string; readonly sound: string },
+  copy: {
+    readonly move: string;
+    readonly turnRight: string;
+    readonly sound: string;
+    readonly repeat: string;
+    readonly wait: string;
+  },
 ): string {
-  return kind === "move" ? copy.move : kind === "turn" ? copy.turnRight : copy.sound;
+  return kind === "move"
+    ? copy.move
+    : kind === "turn"
+      ? copy.turnRight
+      : kind === "repeat"
+        ? copy.repeat
+        : kind === "wait"
+          ? copy.wait
+          : copy.sound;
 }
 
 export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }: Props) {
@@ -1782,12 +1809,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
   const pointTarget = otherActors.find((item) => item.id === pointTargetId) ?? otherActors[0];
 
   const targetOutOfRange =
-    !Number.isInteger(targetX) ||
-    targetX < 0 ||
-    targetX > 320 ||
-    !Number.isInteger(targetY) ||
-    targetY < -100 ||
-    targetY > 120;
+    !inStudioRange(targetX, STUDIO_X_RANGE) || !inStudioRange(targetY, STUDIO_Y_RANGE);
 
   function blockLabel(statement: Statement, owner?: Procedure): string {
     switch (statement.type) {
@@ -3174,7 +3196,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               <h3>{copy.starters}</h3>
               <p className="kids-note">{copy.startersNote}</p>
               <div className="kids-studio-starter-row">
-                {STUDIO_STARTER_BLOCKS.map((kind) => (
+                {starterShelf(script?.statements ?? []).map((kind) => (
                   <button
                     key={kind}
                     type="button"
@@ -3210,7 +3232,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               <input
                 type="text"
                 aria-label={`${copy.say} / ${copy.think}`}
-                maxLength={80}
+                maxLength={STUDIO_BUBBLE_MAX_LENGTH}
                 value={bubbleText}
                 onChange={(event) => setBubbleText(event.target.value)}
               />
@@ -3238,7 +3260,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 value={spriteSize}
                 onChange={(event) => setSpriteSize(Number(event.target.value))}
               >
-                {[50, 75, 100, 125, 150].map((size) => (
+                {STUDIO_SIZES.map((size) => (
                   <option key={size} value={size}>
                     {size}%
                   </option>
@@ -3260,7 +3282,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 value={sizeDelta}
                 onChange={(event) => setSizeDelta(Number(event.target.value))}
               >
-                {[-50, -25, 25, 50].map((delta) => (
+                {STUDIO_SIZE_DELTAS.map((delta) => (
                   <option key={delta} value={delta}>
                     {delta > 0 ? "+" : ""}
                     {delta}%
@@ -3309,20 +3331,18 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 value={effectValue}
                 onChange={(event) => setEffectValue(Number(event.target.value))}
               >
-                {(effectKind === "brightness" ? [-50, -25, 0, 25, 50] : [0, 25, 50, 75, 100]).map(
-                  (value) => (
-                    <option key={value} value={value}>
-                      {value}
-                    </option>
-                  ),
-                )}
+                {studioEffectValues(effectKind).map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
               </select>
               <select
                 aria-label={copy.changeEffect}
                 value={effectDelta}
                 onChange={(event) => setEffectDelta(Number(event.target.value))}
               >
-                {[-25, 25].map((delta) => (
+                {STUDIO_EFFECT_DELTAS.map((delta) => (
                   <option key={delta} value={delta}>
                     {delta > 0 ? "+" : ""}
                     {delta}
@@ -3345,7 +3365,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 value={waitSeconds}
                 onChange={(event) => setWaitSeconds(Number(event.target.value))}
               >
-                {[0.5, 1, 2, 3].map((seconds) => (
+                {STUDIO_WAIT_SECONDS.map((seconds) => (
                   <option key={seconds} value={seconds}>
                     {seconds}s
                   </option>
@@ -3375,7 +3395,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 value={moveCells}
                 onChange={(event) => setMoveCells(Number(event.target.value))}
               >
-                {[1, 2, 3, 4, 5].map((count) => (
+                {STUDIO_MOVE_CELLS.map((count) => (
                   <option key={count} value={count}>
                     {count}
                   </option>
@@ -3403,8 +3423,8 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               <input
                 type="number"
                 aria-label={copy.xCoordinate}
-                min={0}
-                max={320}
+                min={STUDIO_X_RANGE.min}
+                max={STUDIO_X_RANGE.max}
                 step={1}
                 value={targetX}
                 onChange={(event) => setTargetX(Number(event.target.value))}
@@ -3412,8 +3432,8 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               <input
                 type="number"
                 aria-label={copy.yCoordinate}
-                min={-100}
-                max={120}
+                min={STUDIO_Y_RANGE.min}
+                max={STUDIO_Y_RANGE.max}
                 step={1}
                 value={targetY}
                 onChange={(event) => setTargetY(Number(event.target.value))}
@@ -3439,7 +3459,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 value={turnAmount}
                 onChange={(event) => setTurnAmount(Number(event.target.value))}
               >
-                {[45, 90, 180].map((degrees) => (
+                {STUDIO_TURN_AMOUNTS.map((degrees) => (
                   <option key={degrees} value={degrees}>
                     {degrees}°
                   </option>
@@ -3618,7 +3638,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               actions={[
                 {
                   label: copy.setVolume,
-                  disabled: !Number.isInteger(volume) || volume < 0 || volume > 100,
+                  disabled: !inStudioRange(volume, STUDIO_VOLUME_RANGE),
                   block: "setVolume",
                   onAdd: () => add({ type: "setVolume", volume }),
                 },
@@ -3627,8 +3647,8 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               <input
                 type="number"
                 aria-label={copy.volume}
-                min={0}
-                max={100}
+                min={STUDIO_VOLUME_RANGE.min}
+                max={STUDIO_VOLUME_RANGE.max}
                 step={1}
                 value={volume}
                 onChange={(event) => setVolume(Number(event.target.value))}
@@ -3639,7 +3659,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               actions={[
                 {
                   label: copy.changeVolume,
-                  disabled: !Number.isInteger(volumeChange) || Math.abs(volumeChange) > 100,
+                  disabled: !inStudioRange(volumeChange, STUDIO_VOLUME_DELTA_RANGE),
                   block: "changeVolume",
                   onAdd: () => add({ type: "changeVolume", delta: volumeChange }),
                 },
@@ -3648,8 +3668,8 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               <input
                 type="number"
                 aria-label={copy.volumeChange}
-                min={-100}
-                max={100}
+                min={STUDIO_VOLUME_DELTA_RANGE.min}
+                max={STUDIO_VOLUME_DELTA_RANGE.max}
                 step={1}
                 value={volumeChange}
                 onChange={(event) => setVolumeChange(Number(event.target.value))}
@@ -3686,7 +3706,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                   value={repeatCount}
                   onChange={(event) => setRepeatCount(Number(event.target.value))}
                 >
-                  {[2, 3, 5].map((count) => (
+                  {STUDIO_REPEAT_COUNTS.map((count) => (
                     <option key={count} value={count}>
                       {count}
                     </option>
@@ -3734,7 +3754,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               {copy.myBlockName}
               <input
                 type="text"
-                maxLength={20}
+                maxLength={STUDIO_NAME_MAX_LENGTH}
                 value={blockName}
                 onChange={(event) => setBlockName(event.target.value)}
               />
@@ -3743,7 +3763,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               {copy.numberTitle}
               <input
                 type="text"
-                maxLength={20}
+                maxLength={STUDIO_NAME_MAX_LENGTH}
                 value={numberTitle}
                 onChange={(event) => setNumberTitle(event.target.value)}
               />
@@ -3823,7 +3843,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                           {copy.numberTitle} ({item.name})
                           <input
                             type="text"
-                            maxLength={20}
+                            maxLength={STUDIO_NAME_MAX_LENGTH}
                             value={numberTitles[item.id] ?? ""}
                             onChange={(event) =>
                               setNumberTitles({ ...numberTitles, [item.id]: event.target.value })
@@ -3911,7 +3931,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                       {copy.renameBlock}: {item.name}
                       <input
                         type="text"
-                        maxLength={20}
+                        maxLength={STUDIO_NAME_MAX_LENGTH}
                         value={draft}
                         onChange={(event) =>
                           setBlockRenames({ ...blockRenames, [item.id]: event.target.value })
@@ -4607,7 +4627,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               {copy.dataName}{" "}
               <input
                 type="text"
-                maxLength={20}
+                maxLength={STUDIO_NAME_MAX_LENGTH}
                 value={dataName}
                 onChange={(event) => setDataName(event.target.value)}
               />

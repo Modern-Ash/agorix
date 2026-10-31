@@ -7,6 +7,7 @@ import {
   type DragEvent,
   type KeyboardEvent,
 } from "react";
+import { MISSION_PALETTE_STATEMENTS } from "../kidsCreationCoverage.js";
 import { projectAgorixCode } from "@agorix/agorix-code";
 import {
   createEditorHistory,
@@ -143,7 +144,8 @@ const SOUND_CATEGORY_NAMES: Record<(typeof SOUND_CATEGORIES)[number], { es: stri
     interface: { es: "Avisos", en: "Alerts" },
     actions: { es: "Acciones", en: "Actions" },
   };
-const PALETTE: readonly KidsBlockKind[] = ["move", "turnL", "turnR", "repeat", "sound"];
+/** The mission blocks, in palette order: the named subset of the scene catalog (#1133). */
+const PALETTE = Object.keys(MISSION_PALETTE_STATEMENTS) as readonly KidsBlockKind[];
 
 interface Props {
   readonly t: KidsText;

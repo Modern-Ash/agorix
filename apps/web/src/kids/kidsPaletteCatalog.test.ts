@@ -1,8 +1,15 @@
 import { describe, expect, it } from "vitest";
+import { KIDS_SOUNDS } from "./kidsSoundLibrary.js";
 import type { ProjectProgram, Statement } from "@agorix/program-model";
 import { studioCategories } from "./kidsStudioCategories.js";
 import { createStudioProgram, validateStudioProgram } from "./kidsStudioModel.js";
-import { STUDIO_BLOCK_CATEGORY, blocksInCategory, extensionOfBlock } from "./kidsPaletteCatalog.js";
+import {
+  STUDIO_BLOCK_CATEGORY,
+  blocksInCategory,
+  extensionOfBlock,
+  starterShelf,
+  starterStatement,
+} from "./kidsPaletteCatalog.js";
 
 const base = createStudioProgram("nova");
 const withStatement = (statement: Statement, extensions?: readonly ("pen" | "music")[]) =>
@@ -59,6 +66,29 @@ describe("studio block catalog", () => {
       expect(sample, kind).toBeDefined();
       expect(declares(withStatement(sample!)), `${kind} without ${pack}`).toBe(false);
       expect(declares(withStatement(sample!, [pack])), `${kind} with ${pack}`).toBe(true);
+    }
+  });
+});
+
+describe("starter shelf growth (issue #1133)", () => {
+  it("starts with the three base starters and grows with the concepts the child used", () => {
+    expect(starterShelf([])).toEqual(["move", "turn", "playSound"]);
+    expect(starterShelf([{ type: "move", steps: 40 }])).toContain("repeat");
+    expect(starterShelf([{ type: "move", steps: 40 }])).not.toContain("wait");
+    expect(
+      starterShelf([
+        {
+          type: "if",
+          condition: { type: "mouseDown" },
+          then: [{ type: "playSound", soundId: KIDS_SOUNDS[0]!.id }],
+        },
+      ]),
+    ).toContain("wait");
+  });
+
+  it("only offers starters that validate", () => {
+    for (const kind of ["move", "turn", "playSound", "repeat", "wait"] as const) {
+      expect(declares(withStatement(starterStatement(kind, KIDS_SOUNDS[0]!.id)))).toBe(true);
     }
   });
 });

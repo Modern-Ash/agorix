@@ -1,3 +1,19 @@
+import {
+  inStudioRange,
+  STUDIO_BUBBLE_MAX_LENGTH,
+  STUDIO_VOLUME_DELTA_RANGE,
+  STUDIO_VOLUME_RANGE,
+  STUDIO_X_RANGE,
+  STUDIO_Y_RANGE,
+  STUDIO_EFFECT_DELTAS,
+  STUDIO_POINT_DIRECTIONS,
+  STUDIO_REPEAT_COUNTS,
+  STUDIO_SIZE_DELTAS,
+  STUDIO_SIZES,
+  STUDIO_TURN_AMOUNTS,
+  STUDIO_WAIT_SECONDS,
+  studioEffectValues,
+} from "./kidsStudioChoices.js";
 import { recordCanonicalTransaction, type EditorHistory } from "@agorix/block-editor";
 import {
   MUSIC_BEATS,
@@ -377,24 +393,18 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0, arity
     );
   if (statement.type === "glideTo")
     return (
-      [0.5, 1, 2, 3].includes(statement.seconds) &&
+      (STUDIO_WAIT_SECONDS as readonly number[]).includes(statement.seconds) &&
       checked({ type: "goTo", x: statement.x, y: statement.y }, program)
     );
   if (statement.type === "goTo")
-    return (
-      Number.isInteger(statement.x) &&
-      statement.x >= 0 &&
-      statement.x <= 320 &&
-      Number.isInteger(statement.y) &&
-      statement.y >= -100 &&
-      statement.y <= 120
-    );
+    return inStudioRange(statement.x, STUDIO_X_RANGE) && inStudioRange(statement.y, STUDIO_Y_RANGE);
   if (statement.type === "turn")
     return (
       paramInScope(statement.degreesFrom, arity) &&
-      [45, 90, 180, -45, -90, -180].includes(statement.degrees)
+      STUDIO_TURN_AMOUNTS.flatMap((amount) => [amount, -amount]).includes(statement.degrees)
     );
-  if (statement.type === "pointInDirection") return [0, 90, 180, -90].includes(statement.degrees);
+  if (statement.type === "pointInDirection")
+    return (STUDIO_POINT_DIRECTIONS as readonly number[]).includes(statement.degrees);
   if (statement.type === "pointTowards")
     return program.scripts.some((script) => {
       const actor = actorOfScript(script.id);
@@ -403,16 +413,16 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0, arity
   if (statement.type === "bounceOnEdge") return true;
   if (statement.type === "setEffect")
     return (
+      statement.effect === "color" ||
+      statement.effect === "ghost" ||
       statement.effect === "brightness"
-        ? [-50, -25, 0, 25, 50]
-        : statement.effect === "color" || statement.effect === "ghost"
-          ? [0, 25, 50, 75, 100]
-          : []
+        ? studioEffectValues(statement.effect)
+        : []
     ).includes(statement.value);
   if (statement.type === "changeEffect")
     return (
       ["color", "ghost", "brightness"].includes(statement.effect) &&
-      [-25, 25].includes(statement.delta)
+      (STUDIO_EFFECT_DELTAS as readonly number[]).includes(statement.delta)
     );
   if (statement.type === "clearEffects") return true;
   if (statement.type === "penDown" || statement.type === "penUp" || statement.type === "clearPen")
@@ -449,17 +459,21 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0, arity
   if (statement.type === "stop") return ["script", "actor", "scene"].includes(statement.scope);
   if (statement.type === "askChoice")
     return program.variables?.some((item) => item.id === statement.variableId) === true;
-  if (statement.type === "setVolume")
-    return Number.isInteger(statement.volume) && statement.volume >= 0 && statement.volume <= 100;
+  if (statement.type === "setVolume") return inStudioRange(statement.volume, STUDIO_VOLUME_RANGE);
   if (statement.type === "changeVolume")
-    return Number.isInteger(statement.delta) && statement.delta >= -100 && statement.delta <= 100;
+    return inStudioRange(statement.delta, STUDIO_VOLUME_DELTA_RANGE);
   if (statement.type === "say" || statement.type === "think")
-    return statement.text.trim().length > 0 && statement.text.length <= 80;
+    return statement.text.trim().length > 0 && statement.text.length <= STUDIO_BUBBLE_MAX_LENGTH;
   if (statement.type === "show" || statement.type === "hide") return true;
-  if (statement.type === "changeSize") return [-50, -25, 25, 50].includes(statement.delta);
-  if (statement.type === "setSize") return [50, 75, 100, 125, 150].includes(statement.size);
+  if (statement.type === "changeSize")
+    return (STUDIO_SIZE_DELTAS as readonly number[]).includes(statement.delta);
+  if (statement.type === "setSize")
+    return (STUDIO_SIZES as readonly number[]).includes(statement.size);
   if (statement.type === "wait")
-    return paramInScope(statement.secondsFrom, arity) && [0.5, 1, 2, 3].includes(statement.seconds);
+    return (
+      paramInScope(statement.secondsFrom, arity) &&
+      (STUDIO_WAIT_SECONDS as readonly number[]).includes(statement.seconds)
+    );
   if (statement.type === "broadcast")
     return STUDIO_MESSAGES.includes(statement.message as (typeof STUDIO_MESSAGES)[number]);
   if (statement.type === "setVariable" || statement.type === "changeVariable")
@@ -494,7 +508,7 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0, arity
     return (
       depth < MAX_STUDIO_CONTROL_DEPTH &&
       paramInScope(statement.countFrom, arity) &&
-      [2, 3, 5].includes(statement.count) &&
+      (STUDIO_REPEAT_COUNTS as readonly number[]).includes(statement.count) &&
       statement.body.length >= 1 &&
       statement.body.length <= MAX_STUDIO_BODY &&
       statement.body.every((item) => checked(item, program, depth + 1, arity))
