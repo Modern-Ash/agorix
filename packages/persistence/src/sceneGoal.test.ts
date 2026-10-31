@@ -40,7 +40,9 @@ describe("Free scene goal metadata", () => {
     expect(() =>
       validateProjectSceneGoal({ kind: "reachEdge", actorId: "actor:studio-1-nova", note: "hi" }),
     ).toThrow();
-    expect(() => validateProjectSceneGoal({ kind: "reachEdge", actorId: "Nova talks to me" })).toThrow();
+    expect(() =>
+      validateProjectSceneGoal({ kind: "reachEdge", actorId: "Nova talks to me" }),
+    ).toThrow();
     expect(() =>
       validateProjectSceneGoal({
         kind: "touchActor",
@@ -48,7 +50,9 @@ describe("Free scene goal metadata", () => {
         targetId: "actor:studio-1-nova",
       }),
     ).toThrow();
-    expect(() => validateProjectSceneGoal({ kind: "score", actorId: "actor:studio-1-nova" })).toThrow();
+    expect(() =>
+      validateProjectSceneGoal({ kind: "score", actorId: "actor:studio-1-nova" }),
+    ).toThrow();
     expect(() => validateProjectSceneGoal(null)).toThrow();
   });
 });

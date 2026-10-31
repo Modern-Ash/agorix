@@ -153,9 +153,10 @@ export function setStudioSceneGoal(
   const actorIds = (saved.metadata.actors?.items ?? []).map((actor) => actor.id);
   if (goal !== null && !sceneGoalValid(goal, actorIds))
     throw new RangeError("goal needs characters in the scene");
-  const { sceneGoal: _previous, ...rest } = saved.metadata;
+  const rest: Record<string, unknown> = { ...saved.metadata };
+  delete rest["sceneGoal"];
   store.save(id, saved.program, {
-    ...rest,
+    ...(rest as unknown as ProjectMetadata),
     updatedAt: new Date().toISOString(),
     ...(goal === null ? {} : { sceneGoal: goal }),
   });
