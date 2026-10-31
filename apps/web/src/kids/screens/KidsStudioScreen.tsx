@@ -1130,8 +1130,26 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
     let ghost: HTMLElement | null = null;
     let dragging = false;
     let swallowClick = false;
+    let scrollFrame: number | null = null;
+    let pointer: { x: number; y: number } | null = null;
+    const scrollWhileDragging = () => {
+      scrollFrame = null;
+      if (!dragging || !pointer) return;
+      const edge = 72;
+      const speed = 18;
+      const delta = pointer.y < edge ? -speed : pointer.y > window.innerHeight - edge ? speed : 0;
+      if (delta !== 0) {
+        window.scrollBy(0, delta);
+        const under = dropTargetAt(pointer.x, pointer.y);
+        setOver(under?.kind === "list" ? under.key : null);
+      }
+      scrollFrame = window.requestAnimationFrame(scrollWhileDragging);
+    };
     const stop = () => {
       if (start?.timer != null) window.clearTimeout(start.timer);
+      if (scrollFrame != null) window.cancelAnimationFrame(scrollFrame);
+      scrollFrame = null;
+      pointer = null;
       ghost?.remove();
       ghost = null;
       dragging = false;
@@ -1164,7 +1182,9 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
           "";
         ghost.setAttribute("aria-hidden", "true");
         document.body.appendChild(ghost);
+        scrollFrame = window.requestAnimationFrame(scrollWhileDragging);
       }
+      pointer = { x: event.clientX, y: event.clientY };
       if (ghost) {
         ghost.style.left = `${event.clientX}px`;
         ghost.style.top = `${event.clientY}px`;
