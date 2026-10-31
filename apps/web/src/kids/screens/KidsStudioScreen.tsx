@@ -291,6 +291,12 @@ const COPY = {
     askChoicePrompt: "Pregunta",
     askChoiceVariable: "Guardar respuesta en",
     growShrink: "Cambiar tamaño",
+    setEffect: "Poner efecto",
+    changeEffect: "Cambiar efecto",
+    clearEffects: "Quitar efectos",
+    effectColor: "Color",
+    effectGhost: "Fantasma",
+    effectBrightness: "Brillo",
     groupUntilEdge: "Repetir hasta tocar el borde",
     groupUntilActor: "Repetir hasta tocar al personaje",
     saveDistance: "Guardar distancia",
@@ -532,6 +538,12 @@ const COPY = {
     askChoicePrompt: "Question",
     askChoiceVariable: "Save answer in",
     growShrink: "Change size",
+    setEffect: "Set effect",
+    changeEffect: "Change effect",
+    clearEffects: "Clear effects",
+    effectColor: "Color",
+    effectGhost: "Ghost",
+    effectBrightness: "Brightness",
     groupUntilEdge: "Repeat until at the edge",
     groupUntilActor: "Repeat until touching the character",
     saveDistance: "Save distance",
@@ -814,6 +826,12 @@ function starterLabel(
 
 export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }: Props) {
   const copy = COPY[locale];
+  const effectName = (effect: string) =>
+    effect === "ghost"
+      ? copy.effectGhost
+      : effect === "brightness"
+        ? copy.effectBrightness
+        : copy.effectColor;
   const [store] = useState(() => new ProjectStore());
   const [history, setHistory] = useState<EditorHistory>(() =>
     createEditorHistory(store.load(id).program),
@@ -840,6 +858,9 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
   const [bubbleText, setBubbleText] = useState(locale === "es" ? "¡Hola!" : "Hello!");
   const [spriteSize, setSpriteSize] = useState(100);
   const [sizeDelta, setSizeDelta] = useState(25);
+  const [effectKind, setEffectKind] = useState<"color" | "ghost" | "brightness">("color");
+  const [effectValue, setEffectValue] = useState(50);
+  const [effectDelta, setEffectDelta] = useState(25);
   const [waitSeconds, setWaitSeconds] = useState(1);
   const [stopScope, setStopScope] = useState<"script" | "actor" | "scene">("script");
   const [choicePromptId, setChoicePromptId] = useState<ChoicePromptId>("path");
@@ -1813,6 +1834,12 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
         return `${copy.size}: ${statement.size}%`;
       case "changeSize":
         return `${copy.growShrink}: ${statement.delta > 0 ? "+" : ""}${statement.delta}%`;
+      case "setEffect":
+        return `${copy.setEffect}: ${effectName(statement.effect)} ${statement.value}`;
+      case "changeEffect":
+        return `${copy.changeEffect}: ${effectName(statement.effect)} ${statement.delta > 0 ? "+" : ""}${statement.delta}`;
+      case "clearEffects":
+        return copy.clearEffects;
       case "wait":
         return `${copy.wait}: ${statement.seconds}s`;
       case "broadcast":
@@ -3169,11 +3196,13 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 {
                   label: copy.say,
                   disabled: !bubbleText.trim(),
+                  block: "say",
                   onAdd: () => add({ type: "say", text: bubbleText.trim() }),
                 },
                 {
                   label: copy.think,
                   disabled: !bubbleText.trim(),
+                  block: "think",
                   onAdd: () => add({ type: "think", text: bubbleText.trim() }),
                 },
               ]}
@@ -3188,16 +3217,20 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
             </KidsPaletteBlock>
             <KidsPaletteBlock
               tone="looks"
-              actions={[{ label: copy.show, onAdd: () => add({ type: "show" }) }]}
+              actions={[{ label: copy.show, block: "show", onAdd: () => add({ type: "show" }) }]}
             />
             <KidsPaletteBlock
               tone="looks"
-              actions={[{ label: copy.hide, onAdd: () => add({ type: "hide" }) }]}
+              actions={[{ label: copy.hide, block: "hide", onAdd: () => add({ type: "hide" }) }]}
             />
             <KidsPaletteBlock
               tone="looks"
               actions={[
-                { label: copy.size, onAdd: () => add({ type: "setSize", size: spriteSize }) },
+                {
+                  label: copy.size,
+                  block: "setSize",
+                  onAdd: () => add({ type: "setSize", size: spriteSize }),
+                },
               ]}
             >
               <select
@@ -3217,6 +3250,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               actions={[
                 {
                   label: copy.growShrink,
+                  block: "changeSize",
                   onAdd: () => add({ type: "changeSize", delta: sizeDelta }),
                 },
               ]}
@@ -3237,7 +3271,73 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
             <KidsPaletteBlock
               tone="looks"
               actions={[
-                { label: copy.wait, onAdd: () => add({ type: "wait", seconds: waitSeconds }) },
+                {
+                  label: copy.setEffect,
+                  block: "setEffect",
+                  onAdd: () => add({ type: "setEffect", effect: effectKind, value: effectValue }),
+                },
+                {
+                  label: copy.changeEffect,
+                  block: "changeEffect",
+                  onAdd: () =>
+                    add({ type: "changeEffect", effect: effectKind, delta: effectDelta }),
+                },
+                {
+                  label: copy.clearEffects,
+                  block: "clearEffects",
+                  onAdd: () => add({ type: "clearEffects" }),
+                },
+              ]}
+            >
+              <select
+                aria-label={copy.setEffect}
+                value={effectKind}
+                onChange={(event) => {
+                  const next = event.target.value as typeof effectKind;
+                  setEffectKind(next);
+                  setEffectValue(next === "brightness" ? 0 : 50);
+                }}
+              >
+                {(["color", "ghost", "brightness"] as const).map((effect) => (
+                  <option key={effect} value={effect}>
+                    {effectName(effect)}
+                  </option>
+                ))}
+              </select>
+              <select
+                aria-label={`${copy.setEffect}: ${effectName(effectKind)}`}
+                value={effectValue}
+                onChange={(event) => setEffectValue(Number(event.target.value))}
+              >
+                {(effectKind === "brightness" ? [-50, -25, 0, 25, 50] : [0, 25, 50, 75, 100]).map(
+                  (value) => (
+                    <option key={value} value={value}>
+                      {value}
+                    </option>
+                  ),
+                )}
+              </select>
+              <select
+                aria-label={copy.changeEffect}
+                value={effectDelta}
+                onChange={(event) => setEffectDelta(Number(event.target.value))}
+              >
+                {[-25, 25].map((delta) => (
+                  <option key={delta} value={delta}>
+                    {delta > 0 ? "+" : ""}
+                    {delta}
+                  </option>
+                ))}
+              </select>
+            </KidsPaletteBlock>
+            <KidsPaletteBlock
+              tone="looks"
+              actions={[
+                {
+                  label: copy.wait,
+                  block: "wait",
+                  onAdd: () => add({ type: "wait", seconds: waitSeconds }),
+                },
               ]}
             >
               <select
@@ -3260,10 +3360,12 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               actions={[
                 {
                   label: copy.move,
+                  block: "move",
                   onAdd: () => add({ type: "move", steps: moveCells * 40 }),
                 },
                 {
                   label: copy.moveBackward,
+                  block: "move",
                   onAdd: () => add({ type: "move", steps: -moveCells * 40 }),
                 },
               ]}
@@ -3286,11 +3388,13 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 {
                   label: copy.goTo,
                   disabled: targetOutOfRange,
+                  block: "goTo",
                   onAdd: () => add({ type: "goTo", x: targetX, y: targetY }),
                 },
                 {
                   label: `${copy.glideTo} (${waitSeconds}s)`,
                   disabled: targetOutOfRange,
+                  block: "glideTo",
                   onAdd: () =>
                     add({ type: "glideTo", x: targetX, y: targetY, seconds: waitSeconds }),
                 },
@@ -3320,10 +3424,12 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               actions={[
                 {
                   label: copy.turnLeft,
+                  block: "turn",
                   onAdd: () => add({ type: "turn", degrees: -turnAmount }),
                 },
                 {
                   label: copy.turnRight,
+                  block: "turn",
                   onAdd: () => add({ type: "turn", degrees: turnAmount }),
                 },
               ]}
@@ -3345,6 +3451,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               actions={[
                 {
                   label: copy.pointDirection,
+                  block: "pointInDirection",
                   onAdd: () => add({ type: "pointInDirection", degrees: pointDegrees }),
                 },
               ]}
@@ -3367,6 +3474,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 actions={[
                   {
                     label: copy.pointTowards,
+                    block: "pointTowards",
                     onAdd: () => add({ type: "pointTowards", actorId: pointTarget.id }),
                   },
                 ]}
@@ -3386,18 +3494,32 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
             ) : null}
             <KidsPaletteBlock
               tone="motion"
-              actions={[{ label: copy.bounceOnEdge, onAdd: () => add({ type: "bounceOnEdge" }) }]}
-            />
-            <KidsPaletteBlock
-              tone="motion"
               actions={[
-                { label: copy.layerFront, onAdd: () => add({ type: "goToLayer", layer: "front" }) },
+                {
+                  label: copy.bounceOnEdge,
+                  block: "bounceOnEdge",
+                  onAdd: () => add({ type: "bounceOnEdge" }),
+                },
               ]}
             />
             <KidsPaletteBlock
               tone="motion"
               actions={[
-                { label: copy.layerBack, onAdd: () => add({ type: "goToLayer", layer: "back" }) },
+                {
+                  label: copy.layerFront,
+                  block: "goToLayer",
+                  onAdd: () => add({ type: "goToLayer", layer: "front" }),
+                },
+              ]}
+            />
+            <KidsPaletteBlock
+              tone="motion"
+              actions={[
+                {
+                  label: copy.layerBack,
+                  block: "goToLayer",
+                  onAdd: () => add({ type: "goToLayer", layer: "back" }),
+                },
               ]}
             />
             <h3 id={studioCategoryId("media")} tabIndex={-1}>
@@ -3408,6 +3530,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               actions={[
                 {
                   label: copy.costume,
+                  block: "switchCostume",
                   onAdd: () => add({ type: "switchCostume", costumeId: `costume:${newCostume}` }),
                 },
               ]}
@@ -3429,6 +3552,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               actions={[
                 {
                   label: copy.switchBackdrop,
+                  block: "switchBackdrop",
                   onAdd: () =>
                     add({ type: "switchBackdrop", backdropId: `backdrop:${newBackdrop}` }),
                 },
@@ -3451,6 +3575,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               actions={[
                 {
                   label: copy.sound,
+                  block: "playSound",
                   onAdd: () => add({ type: "playSound", soundId: newSound }),
                 },
                 {
@@ -3480,7 +3605,13 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
             </KidsPaletteBlock>
             <KidsPaletteBlock
               tone="sound"
-              actions={[{ label: copy.stopSounds, onAdd: () => add({ type: "stopSounds" }) }]}
+              actions={[
+                {
+                  label: copy.stopSounds,
+                  block: "stopSounds",
+                  onAdd: () => add({ type: "stopSounds" }),
+                },
+              ]}
             />
             <KidsPaletteBlock
               tone="sound"
@@ -3488,6 +3619,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 {
                   label: copy.setVolume,
                   disabled: !Number.isInteger(volume) || volume < 0 || volume > 100,
+                  block: "setVolume",
                   onAdd: () => add({ type: "setVolume", volume }),
                 },
               ]}
@@ -3508,6 +3640,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 {
                   label: copy.changeVolume,
                   disabled: !Number.isInteger(volumeChange) || Math.abs(volumeChange) > 100,
+                  block: "changeVolume",
                   onAdd: () => add({ type: "changeVolume", delta: volumeChange }),
                 },
               ]}
@@ -3530,6 +3663,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               actions={[
                 {
                   label: `${copy.repeat} → ${copy.thenMove}`,
+                  block: "repeat",
                   onAdd: () =>
                     add({
                       type: "repeat",
@@ -3580,6 +3714,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 {
                   label: `${copy.forever} → ${copy.thenMove}`,
                   disabled: containsForever(script?.statements ?? []),
+                  block: "forever",
                   onAdd: () => add({ type: "forever", body: [{ type: "move", steps: 40 }] }),
                 },
                 {
@@ -3716,6 +3851,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                       </>
                     ) : null}
                     <button
+                      data-kids-block="callProcedure"
                       type="button"
                       className="kids-button"
                       onClick={() => {
@@ -3840,6 +3976,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
             <button
               type="button"
               className="kids-button"
+              data-kids-block="if"
               onClick={() =>
                 add({
                   type: "if",
@@ -3853,6 +3990,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
             <button
               type="button"
               className="kids-button"
+              data-kids-block="waitUntil"
               onClick={() => add({ type: "waitUntil", condition: STUDIO_EDGE_CONDITION })}
             >
               + {copy.waitUntilEdge}
@@ -3874,6 +4012,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
             <button
               type="button"
               className="kids-button"
+              data-kids-block="stop"
               onClick={() => add({ type: "stop", scope: stopScope })}
             >
               + {copy.stop}
@@ -3901,6 +4040,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               type="button"
               className="kids-button"
               disabled={!history.current.variables?.length}
+              data-kids-block="askChoice"
               onClick={() =>
                 add({ type: "askChoice", promptId: choicePromptId, variableId: selectedVariableId })
               }
@@ -3919,6 +4059,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               type="button"
               className="kids-button"
               disabled={(script?.statements.length ?? 0) < groupCount}
+              data-kids-block="repeatUntil"
               onClick={() => groupLast("repeatUntil", STUDIO_EDGE_CONDITION)}
             >
               {copy.groupUntilEdge}
@@ -4177,6 +4318,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 <button
                   type="button"
                   className="kids-button"
+                  data-kids-block="penDown"
                   onClick={() => add({ type: "penDown" })}
                 >
                   + {copy.penDown}
@@ -4184,6 +4326,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 <button
                   type="button"
                   className="kids-button"
+                  data-kids-block="penUp"
                   onClick={() => add({ type: "penUp" })}
                 >
                   + {copy.penUp}
@@ -4204,6 +4347,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 <button
                   type="button"
                   className="kids-button"
+                  data-kids-block="setPenColor"
                   onClick={() => add({ type: "setPenColor", color: penColor })}
                 >
                   + {copy.penColor}
@@ -4224,6 +4368,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 <button
                   type="button"
                   className="kids-button"
+                  data-kids-block="setPenSize"
                   onClick={() => add({ type: "setPenSize", size: penSize })}
                 >
                   + {copy.penSize}
@@ -4231,6 +4376,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 <button
                   type="button"
                   className="kids-button"
+                  data-kids-block="clearPen"
                   onClick={() => add({ type: "clearPen" })}
                 >
                   + {copy.clearPen}
@@ -4271,6 +4417,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 <button
                   type="button"
                   className="kids-button"
+                  data-kids-block="playNote"
                   onClick={() => add({ type: "playNote", note: musicNote, beats: musicBeats })}
                 >
                   + {copy.playNote}
@@ -4291,6 +4438,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 <button
                   type="button"
                   className="kids-button"
+                  data-kids-block="playDrum"
                   onClick={() => add({ type: "playDrum", drum: musicDrum, beats: musicBeats })}
                 >
                   + {copy.playDrum}
@@ -4311,6 +4459,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 <button
                   type="button"
                   className="kids-button"
+                  data-kids-block="setInstrument"
                   onClick={() => add({ type: "setInstrument", instrument: musicInstrument })}
                 >
                   + {copy.setInstrument}
@@ -4331,6 +4480,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 <button
                   type="button"
                   className="kids-button"
+                  data-kids-block="setTempo"
                   onClick={() => add({ type: "setTempo", bpm: musicTempo })}
                 >
                   + {copy.setTempo}
@@ -4351,6 +4501,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 <button
                   type="button"
                   className="kids-button"
+                  data-kids-block="setPitch"
                   onClick={() => add({ type: "setPitch", semitones: musicPitch })}
                 >
                   + {copy.setPitch}
@@ -4371,6 +4522,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 <button
                   type="button"
                   className="kids-button"
+                  data-kids-block="setPan"
                   onClick={() => add({ type: "setPan", pan: musicPan })}
                 >
                   + {copy.setPan}
@@ -4443,6 +4595,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
             <button
               type="button"
               className="kids-button"
+              data-kids-block="broadcast"
               onClick={() => add({ type: "broadcast", message: eventMessage })}
             >
               + {copy.message}
@@ -4509,6 +4662,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                   type="button"
                   className="kids-button"
                   disabled={!Number.isInteger(dataValue) || Math.abs(dataValue) > 100}
+                  data-kids-block="setVariable"
                   onClick={() =>
                     add({
                       type: "setVariable",
@@ -4618,6 +4772,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                   type="button"
                   className="kids-button"
                   disabled={!Number.isInteger(dataValue) || Math.abs(dataValue) > 100}
+                  data-kids-block="changeVariable"
                   onClick={() =>
                     add({
                       type: "changeVariable",
@@ -4631,6 +4786,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 <button
                   type="button"
                   className="kids-button"
+                  data-kids-block="showVariable"
                   onClick={() => add({ type: "showVariable", variableId: selectedVariableId })}
                 >
                   + {copy.showVariable}
@@ -4638,6 +4794,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 <button
                   type="button"
                   className="kids-button"
+                  data-kids-block="hideVariable"
                   onClick={() => add({ type: "hideVariable", variableId: selectedVariableId })}
                 >
                   + {copy.hideVariable}
@@ -4858,6 +5015,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                   type="button"
                   className="kids-button"
                   disabled={!Number.isInteger(dataValue) || Math.abs(dataValue) > 100}
+                  data-kids-block="listAdd"
                   onClick={() =>
                     add({
                       type: "listAdd",
@@ -4883,6 +5041,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                   type="button"
                   className="kids-button"
                   disabled={!Number.isInteger(listIndex) || listIndex < 1 || listIndex > 10}
+                  data-kids-block="listRemoveAt"
                   onClick={() =>
                     add({
                       type: "listRemoveAt",
@@ -4903,6 +5062,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                     !Number.isInteger(dataValue) ||
                     Math.abs(dataValue) > 100
                   }
+                  data-kids-block="listInsertAt"
                   onClick={() =>
                     add({
                       type: "listInsertAt",
@@ -4924,6 +5084,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                     !Number.isInteger(dataValue) ||
                     Math.abs(dataValue) > 100
                   }
+                  data-kids-block="listReplaceAt"
                   onClick={() =>
                     add({
                       type: "listReplaceAt",

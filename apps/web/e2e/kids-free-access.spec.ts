@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { STUDIO_BLOCK_CATEGORY } from "../src/kids/kidsPaletteCatalog.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -144,4 +145,32 @@ test("Ori proposes a scene goal; the child can ask for another, accept it or dec
   await ori.getByRole("button", { name: "Elegir esta meta" }).click();
   await expect(page.getByTestId("scene-goal")).toBeVisible();
   await expect(page.getByRole("button", { name: /^Quitar bloque \d+$/ })).toHaveCount(0);
+});
+
+// Issue #1133: the palette offers every block the catalog lists, under its own category, so an
+// engine block added to `STUDIO_BLOCK_CATEGORY` that the palette forgets fails here.
+test("the Escena libre palette offers every cataloged block", async ({ page }) => {
+  await SEED(page);
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
+  // Variable and list blocks appear once one exists.
+  await page.getByRole("textbox", { name: "Nombre" }).fill("Cuenta");
+  await page.getByRole("button", { name: "+ Crear variable" }).click();
+  await page.getByRole("textbox", { name: "Nombre" }).fill("Cosas");
+  await page.getByRole("button", { name: "+ Crear lista" }).click();
+  await expect
+    .poll(() => page.locator(".kids-studio-palette [data-kids-block]").count())
+    .toBeGreaterThan(15);
+
+  const offered = await page
+    .locator(".kids-studio-palette [data-kids-block]")
+    .evaluateAll((nodes) => [
+      ...new Set(nodes.map((node) => node.getAttribute("data-kids-block"))),
+    ]);
+  // Offered only once the project has what they point at: another character, or a made block.
+  const needsProjectContent = ["pointTowards", "callProcedure"];
+  const missing = Object.keys(STUDIO_BLOCK_CATEGORY).filter(
+    (kind) => !offered.includes(kind) && !needsProjectContent.includes(kind),
+  );
+  expect(missing).toEqual([]);
 });

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { StudioBlockKind } from "../kidsPaletteCatalog.js";
 
 /** Block-shaped palette tools. Looks, Motion, Media and Logic are migrated. */
 export type KidsPaletteTone = "looks" | "motion" | "sound" | "control";
@@ -6,6 +7,8 @@ export type KidsPaletteTone = "looks" | "motion" | "sound" | "control";
 export interface KidsPaletteAction {
   readonly label: string;
   readonly onAdd: () => void;
+  /** The engine block this action adds, so the palette can be checked against the catalog (#1133). */
+  readonly block?: StudioBlockKind;
   readonly disabled?: boolean;
   /**
    * `add` (the default) adds a block and can start a drag. `tool` shares the block's
@@ -44,6 +47,7 @@ export function KidsPaletteBlock({
               type="button"
               className="kids-palette-tool-add"
               data-kids-palette-action={adds ? "add" : "tool"}
+              data-kids-block={adds ? action.block : undefined}
               data-kids-add={adds ? "true" : undefined}
               data-kids-add-label={adds ? action.label : undefined}
               disabled={action.disabled ?? false}
