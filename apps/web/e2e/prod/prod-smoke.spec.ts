@@ -147,7 +147,7 @@ test("a fresh browser sees the creative Kids tools by default", async ({ page })
   expect(await page.evaluate(() => localStorage.getItem("agorix.kids.flags.v1"))).toBeNull();
 });
 
-test("a fresh browser reaches Escena libre with the whole palette, Lápiz and Música", async ({
+test("a fresh browser reaches Escena libre with every category and synchronized code", async ({
   page,
 }) => {
   await page.goto("/");
@@ -160,9 +160,28 @@ test("a fresh browser reaches Escena libre with the whole palette, Lápiz and M�
   // Missions show 5 block kinds; the free scene must show the whole palette without flags set by hand.
   await expect.poll(() => page.locator("[data-kids-palette-tool]").count()).toBeGreaterThan(15);
   const categories = page.getByRole("navigation", { name: "Categorías de bloques" });
-  for (const name of ["Movimiento", "Lápiz", "Música", "Variables y listas", "Mis bloques"]) {
-    await expect(categories.getByRole("button", { name })).toBeVisible();
-  }
+  await expect(categories.getByRole("button")).toHaveText([
+    "Movimiento",
+    "Apariencia y tiempo",
+    "Disfraces, fondos y sonidos",
+    "Eventos y control",
+    "Lápiz",
+    "Música",
+    "Variables y listas",
+    "Mis bloques",
+  ]);
+  const toolsBefore = await page.locator("[data-kids-palette-tool]").count();
+  await categories.getByRole("button", { name: "Variables y listas" }).click();
+  await expect(page.getByRole("heading", { name: "Variables y listas" })).toBeFocused();
+  expect(await page.locator("[data-kids-palette-tool]").count()).toBe(toolsBefore);
+
+  const code = page.locator(".kids-code-strip");
+  const before = await code.textContent();
+  // The deployed SHA predates the starter shelf; the ordinary palette control exists in both.
+  await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(1);
+  await expect.poll(() => code.textContent()).not.toBe(before);
+  await expect(page.getByRole("button", { name: "Deshacer" })).toBeEnabled();
   expect(await page.evaluate(() => localStorage.getItem("agorix.kids.flags.v1"))).toBeNull();
 });
 

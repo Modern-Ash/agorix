@@ -1,5 +1,7 @@
 # Scratch capability audit for Agorix Kids
 
+The versioned functional crosswalk for issue #1122, including toolbar, media, project operations, defaults, deployment SHA and clean-browser evidence, is in [SCRATCH_FUNCTIONAL_MATRIX_1122.md](SCRATCH_FUNCTIONAL_MATRIX_1122.md). The original audit below remains the dated 2026-10-24 baseline.
+
 Audit date: 2026-10-24. Code baseline: `main` at `4457fb5`. Tracking issue: [#538](https://github.com/Modern-Ash/agorix/issues/538). This is a source and product-document audit, not a learner playtest. "Available" means reachable in a new Kids browser session without changing local storage. "Implemented" means code exists but the normal journey may hide or restrict it.
 
 ## Product target
