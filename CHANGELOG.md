@@ -1,5 +1,7 @@
 # Unreleased
 
+- Kids Escena libre: `askChoice` pauses a run at a bundled text, picture or number question, shows up to four closed answers, and stores the child's selected option index in a variable before continuing. Answer text is never typed or sent to Ori (#1132).
+
 - Kids Escena libre: `mouseX`, `mouseY` and `mouseDown` now read the pointer captured on the stage. Position is bounded to the stage, passed only as a run input and never saved in the project or sent to Ori (#1132).
 
 - Kids Escena libre: a bounded `forever` loop is available once per script, outside other loops, with one to three body blocks; the runtime ends at its step budget with explicit trace and learner-facing feedback (#1132).

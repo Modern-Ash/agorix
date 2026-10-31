@@ -6,6 +6,7 @@ import {
   PEN_COLORS,
   SCHEMA_VERSION,
 } from "./schema.js";
+import { isChoicePromptId } from "./choiceCatalog.js";
 import type {
   ExtensionId,
   PenColor,
@@ -650,6 +651,20 @@ function validateStatement(
         );
       }
       return { type: "stop", scope: input.scope };
+    case "askChoice":
+      if (!isChoicePromptId(input.promptId)) {
+        fail(
+          "INVALID_FIELD_TYPE",
+          `${path}.promptId`,
+          "expected a bundled choice prompt id",
+          input.promptId,
+        );
+      }
+      return {
+        type: "askChoice",
+        promptId: input.promptId,
+        variableId: assertKnownVariableId(input.variableId, `${path}.variableId`, state),
+      };
     case "setVolume": {
       if (typeof input.volume !== "number") {
         fail("MISSING_FIELD", `${path}.volume`, "expected a number", input.volume);

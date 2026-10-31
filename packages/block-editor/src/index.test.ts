@@ -89,6 +89,7 @@ describe("block-editor", () => {
       "Forever (bounded)",
       "If ___, then",
       "Stop [script / actor / scene]",
+      "Ask a bundled choice",
       "Wait until ___",
       "Touching the goal?",
       "Touching character?",
@@ -120,7 +121,7 @@ describe("block-editor", () => {
       "Show score",
       "Hide score",
     ]);
-    expect(POC_TOOLBOX.flatMap((section) => section.blocks)).toHaveLength(53);
+    expect(POC_TOOLBOX.flatMap((section) => section.blocks)).toHaveLength(54);
   });
 
   it("creates safe defaults for every required POC block", () => {

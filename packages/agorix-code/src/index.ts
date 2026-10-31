@@ -374,6 +374,18 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
     case "stop":
       writeMapped(writer, nodeId, indent + "stop " + statement.scope + "\n");
       return;
+    case "askChoice":
+      writeMapped(
+        writer,
+        nodeId,
+        indent +
+          "ask " +
+          statement.promptId +
+          " → " +
+          variableName(writer, statement.variableId) +
+          "\n",
+      );
+      return;
     case "setVolume":
       writeMapped(
         writer,

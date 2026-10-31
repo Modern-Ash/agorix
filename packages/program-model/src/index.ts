@@ -68,6 +68,7 @@ export type {
   ShowVariableStatement,
   StopSoundsStatement,
   StopStatement,
+  AskChoiceStatement,
   WaitUntilStatement,
   Statement,
   SubtractExpression,
@@ -79,6 +80,8 @@ export type {
   BounceOnEdgeStatement,
   VariableExpression,
 } from "./schema.js";
+export { CHOICE_CATALOG, CHOICE_PROMPT_IDS, isChoicePromptId } from "./choiceCatalog.js";
+export type { ChoicePromptId } from "./choiceCatalog.js";
 export {
   EXTENSION_IDS,
   MUSIC_BEATS,

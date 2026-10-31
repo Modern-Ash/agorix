@@ -11,6 +11,58 @@ import { reloadTo } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
+test("free scene asks only bundled choices and waits for the child to decide", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
+  await page.getByRole("textbox", { name: "Nombre" }).fill("Camino");
+  await page.getByRole("button", { name: "+ Crear variable" }).click();
+  await page.getByRole("button", { name: "+ Preguntar con opciones" }).click();
+  await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  const question = page.getByRole("group", { name: "Preguntar con opciones" });
+  await expect(question).toContainText("¿Qué camino elegís?");
+  await expect(page.getByText("Camino: 0")).toBeVisible();
+  const violations = (
+    await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
+  ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");
+  expect(violations.map((entry) => entry.id)).toEqual([]);
+  const answer = question.getByRole("button", { name: "Derecha" });
+  await answer.focus();
+  await page.keyboard.press("Enter");
+  await expect(question).toHaveCount(0);
+  await expect(page.getByText("Camino: 2")).toBeVisible();
+  await reloadTo(page, "#/proyectos");
+  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  await page
+    .getByRole("article")
+    .filter({ hasText: "Escena libre" })
+    .getByRole("button", { name: "Jugar" })
+    .click();
+  await expect(page.locator(".kids-program-block")).toContainText([
+    "Preguntar con opciones",
+    "Mover",
+  ]);
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByRole("group", { name: "Preguntar con opciones" })).toBeVisible();
+  await expect(page.getByText("Camino: 0")).toBeVisible();
+  await page
+    .getByRole("group", { name: "Preguntar con opciones" })
+    .getByRole("button", { name: "Izquierda" })
+    .tap();
+  await expect(page.getByText("Camino: 1")).toBeVisible();
+});
+
 test("free scene records stage pointer for mouse sensors without storing it in the project", async ({
   page,
 }) => {
