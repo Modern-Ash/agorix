@@ -95,6 +95,7 @@ export interface MultiActorExecutionOptions extends Pick<ExecutionOptions, "maxS
   readonly randomSeed?: number;
   /** Keys held for the whole run, read by `keyDown`. */
   readonly keysDown?: readonly string[];
+  readonly pointer?: ExecutionOptions["pointer"];
   /** Restore actor worlds from a session snapshot; program variables and lists live here. */
   readonly initialWorlds?: Readonly<Record<string, WorldState>>;
   /** Restore stage actor order and backdrop from a session snapshot. */
@@ -442,6 +443,7 @@ export function runMultiActorProgram(
             })),
           ...(randomState === undefined ? {} : { randomSeed: randomState }),
           ...(options.keysDown === undefined ? {} : { keysDown: options.keysDown }),
+          ...(options.pointer === undefined ? {} : { pointer: options.pointer }),
         });
         randomState = result.randomState;
         if (result.outcome === "budget-exceeded") outcome = "budget-exceeded";

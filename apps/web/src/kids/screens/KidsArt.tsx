@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties, PointerEventHandler, ReactNode } from "react";
 import { useKidsFlag } from "../kidsFlags.js";
 import { loadKidsImages, type KidsImageSlot } from "../kidsImages.js";
 import { resolveKidsCustom } from "../kidsCustom.js";
@@ -87,6 +87,10 @@ export function KidsBackdrop({
   tabIndex,
   fallbackBackground,
   imageOverride,
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+  onPointerCancel,
 }: {
   readonly world: KidsWorldRef;
   readonly baseWorld?: KidsWorld;
@@ -98,6 +102,10 @@ export function KidsBackdrop({
   readonly tabIndex?: number;
   readonly fallbackBackground?: string;
   readonly imageOverride?: string | undefined;
+  readonly onPointerDown?: PointerEventHandler<HTMLDivElement>;
+  readonly onPointerMove?: PointerEventHandler<HTMLDivElement>;
+  readonly onPointerUp?: PointerEventHandler<HTMLDivElement>;
+  readonly onPointerCancel?: PointerEventHandler<HTMLDivElement>;
 }) {
   const enabled = useKidsFlag("customImages");
   const image = imageOverride ?? backdropImage(world, enabled);
@@ -108,6 +116,10 @@ export function KidsBackdrop({
       role={role}
       tabIndex={tabIndex}
       aria-label={label}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
       style={{
         background: fallbackBackground ?? KIDS_WORLD_STYLES[fallbackWorld].bg,
         ...style,

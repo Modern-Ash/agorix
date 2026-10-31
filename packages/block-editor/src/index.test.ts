@@ -98,6 +98,9 @@ describe("block-editor", () => {
       "Vertical position",
       "Timer",
       "Key [K] is down",
+      "Mouse X",
+      "Mouse Y",
+      "Mouse is down",
       "[N] + [N]",
       "[N] - [N]",
       "[N] * [N]",
@@ -117,7 +120,7 @@ describe("block-editor", () => {
       "Show score",
       "Hide score",
     ]);
-    expect(POC_TOOLBOX.flatMap((section) => section.blocks)).toHaveLength(50);
+    expect(POC_TOOLBOX.flatMap((section) => section.blocks)).toHaveLength(53);
   });
 
   it("creates safe defaults for every required POC block", () => {

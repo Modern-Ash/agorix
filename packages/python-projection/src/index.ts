@@ -601,6 +601,12 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return "timer()";
     case "keyDown":
       return "key_down(" + JSON.stringify(expression.key) + ")";
+    case "mouseX":
+      return "mouse_x()";
+    case "mouseY":
+      return "mouse_y()";
+    case "mouseDown":
+      return "mouse_down()";
     case "booleanLiteral":
       return expression.value ? "True" : "False";
     case "numericLiteral":

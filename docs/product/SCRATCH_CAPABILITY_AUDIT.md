@@ -221,8 +221,13 @@ Each iteration needs an issue with an observable child journey, success and fail
 - Two new canonical expressions: `timer` (the virtual seconds the running script has waited so far; never a wall clock) and `keyDown` (a key name of letters and digits, true while that key is held). A script started by a key counts that key as held; a run may also be given a set of held keys (`keysDown`, constant for the whole run). Both are evaluated by the deterministic runtime, appear in the trace like any condition, and give the same result for the same program and inputs.
 - Agorix Code (`timer`, `key X is down`), Python (`timer()`, `key_down("X")`), TypeScript and the block adapter (**Timer**, **Key [K] is down**) derive from the same program.
 - In Escena libre the child picks one of the five keys and adds **Si la tecla está pulsada**, groups blocks the same way, saves the time in a variable, or groups blocks to repeat until a number of seconds passes (the blocks must include **Esperar** for time to advance). **Teclas mantenidas al jugar** chooses which keys count as held during Jugar.
-- Deliberately not added: the **pointer position**, which needs live per-frame input that only the same-room lockstep session supplies (a follow-up for that surface), and **answer**, because it would store free text typed by a child.
+- Deliberately not added here: **answer**, because it would store free text typed by a child. Pointer sensors are described below.
 - Unit tests cover the runtime, validation, projections, round trip and Studio limits; a mobile browser test with axe covers the journey and reopening.
+
+## Stage pointer sensors (#1132)
+
+- `mouseX`, `mouseY` and `mouseDown` are canonical expressions. Escena libre records the pointer over the stage, maps it to scene coordinates (X 0–320, Y -100–120), and passes a bounded snapshot to each deterministic run. A fresh session starts with X 0, Y 0 and button up. Pointer data is run input only: no project persistence and no Ori request.
+- The block adapter, Agorix Code, Python, TypeScript and Java derive from the same expressions. The child can save X or Y in a variable and use the pressed condition in an `if` or combined condition. Mouse and touch pointer events use the same stage path; the runtime never reads the live device pointer.
 
 ## Drawing tools (#538 media creation)
 
