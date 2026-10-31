@@ -1103,7 +1103,7 @@ test("looks and wait blocks change only the chosen character and survive reload"
   await page.getByRole("button", { name: "+ Agregar personaje" }).click();
   await page.getByRole("textbox", { name: "Decir / Pensar" }).fill("Hola, Nova");
   await page.getByRole("button", { name: "+ Decir" }).click();
-  await page.getByRole("button", { name: "+ Esperar" }).click();
+  await page.getByRole("button", { name: "+ Esperar", exact: true }).click();
   await page.getByRole("button", { name: "+ Esconder" }).click();
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await expect(page.getByRole("group", { name: "Escenario" }).getByRole("button")).toHaveCount(1);
