@@ -36,6 +36,7 @@ import { projectJava } from "@agorix/java-projection";
 import { conceptsOfProgram, reusedConcepts } from "@agorix/learning-evidence";
 import { recordMastery } from "../kidsMastery.js";
 import { ProjectStore, type ProjectSceneGoal } from "@agorix/persistence";
+import { KidsLoopHelp } from "./KidsLoopHelp.js";
 import { KidsSceneGoalPanel } from "./KidsSceneGoalPanel.js";
 import { sceneGoalValid } from "../kidsSceneGoal.js";
 import { runMultiActorProgram, type MultiActorRunResult, type RuntimeEvent } from "@agorix/runtime";
@@ -2835,6 +2836,23 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               {oriSuggestions ? "Ori: " : ""}
               {copy.foreverBudget}
             </p>
+          ) : null}
+          {oriSuggestions ? (
+            <KidsLoopHelp
+              locale={locale}
+              program={history.current}
+              run={run}
+              actorId={activeActorId}
+              onApplyProgram={(next, label) => {
+                try {
+                  persist(recordCanonicalTransaction(history, { label, after: next }).history);
+                  helped.current = true;
+                  reactOri("happy");
+                } catch {
+                  setError(true);
+                }
+              }}
+            />
           ) : null}
           <KidsSceneGoalPanel
             locale={locale}
