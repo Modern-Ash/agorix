@@ -1,5 +1,6 @@
 # Unreleased
 
+- Kids Escena libre: a bounded `forever` loop is available once per script, outside other loops, with one to three body blocks; the runtime ends at its step budget with explicit trace and learner-facing feedback (#1132).
 - Kids Escena libre: bounded `wait until` checks canonical conditions against a virtual clock for at most ten seconds, records timeout evidence, and offers the same conditions as `if` (#1132).
 - Kids Escena libre: `Detener` now has three explicit scopes (script, character, scene), recorded in the deterministic runtime trace and preserved in project code projections (#1132).
 - Kids Escena libre: Ori can explain and propose a closed `and` condition (Space key and stage edge), with a visible block preview, reject, accept or change to `or`; the child decides before the canonical program changes, and Undo/Redo and project reopening preserve the decision (#1131).

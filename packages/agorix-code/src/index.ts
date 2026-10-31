@@ -454,6 +454,15 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
       addRange(writer, nodeId, start, writer.text.length);
       return;
     }
+    case "forever": {
+      const start = writer.text.length;
+      writer.text += indent + "forever (bounded by run budget)\n";
+      statement.body.forEach((child, index) =>
+        writeStatement(writer, child, nodeId + "/body[" + index + "]", depth + 1),
+      );
+      addRange(writer, nodeId, start, writer.text.length);
+      return;
+    }
     case "waitUntil": {
       const start = writer.text.length;
       writer.text +=

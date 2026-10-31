@@ -275,6 +275,10 @@ const COPY = {
     ifTouchEdge: "Si toca el borde, mover 1",
     groupIfTouchEdge: "Si toca el borde, ejecutar estos bloques",
     repeatUntil: "Repetir hasta",
+    forever: "Por siempre",
+    groupForever: "Repetir por siempre estos bloques",
+    foreverBudget:
+      "Tu programa sigue y sigue: lo paramos. Mirá cómo quedó la escena y probá cambiar el bucle.",
     waitUntil: "Esperar hasta",
     waitUntilEdge: "Esperar hasta tocar el borde",
     waitUntilTimeout:
@@ -505,6 +509,10 @@ const COPY = {
     ifTouchEdge: "If at edge, move 1",
     groupIfTouchEdge: "If at edge, run these blocks",
     repeatUntil: "Repeat until",
+    forever: "Forever",
+    groupForever: "Repeat these blocks forever",
+    foreverBudget:
+      "Your program keeps going: we stopped it. Look at the scene and try changing the loop.",
     waitUntil: "Wait until",
     waitUntilEdge: "Wait until touching the edge",
     waitUntilTimeout:
@@ -735,6 +743,18 @@ function expressionLabel(
 function characterOfActor(id: string): KidsGalleryCharacterId {
   const suffix = id.split("-").at(-1);
   return isGalleryCharacterId(suffix) ? suffix : "nova";
+}
+
+function containsForever(statements: readonly Statement[]): boolean {
+  return statements.some((statement) =>
+    statement.type === "forever"
+      ? true
+      : statement.type === "repeat" || statement.type === "repeatUntil"
+        ? containsForever(statement.body)
+        : statement.type === "if"
+          ? containsForever(statement.then) || containsForever(statement.else ?? [])
+          : false,
+  );
 }
 
 function characterOfCostume(
@@ -1232,7 +1252,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               >
                 {copy.takeOut}
               </button>
-              {item.type === "repeat" || item.type === "repeatUntil"
+              {item.type === "repeat" || item.type === "repeatUntil" || item.type === "forever"
                 ? programList(item.body, path)
                 : null}
               {item.type === "if" ? programList(item.then, path) : null}
@@ -1262,7 +1282,11 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
     (script?.statements ?? []).forEach((statement, at) => {
       if (from.length === 1 && from[0] === at) return;
       const name = blockLabel(statement);
-      if (statement.type === "repeat" || statement.type === "repeatUntil")
+      if (
+        statement.type === "repeat" ||
+        statement.type === "repeatUntil" ||
+        statement.type === "forever"
+      )
         choices.push({
           label: `${copy.putInto} ${name}`,
           run: () =>
@@ -1739,6 +1763,8 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
         return `${statement.type === "listInsertAt" ? copy.listInsert : copy.listReplace}: ${history.current.lists?.find((item) => item.id === statement.listId)?.name ?? "?"} ${expressionLabel(statement.index, history.current)} ← ${expressionLabel(statement.value, history.current)}`;
       case "repeat":
         return `${copy.repeat} ${statement.count}`;
+      case "forever":
+        return copy.forever;
       case "penDown":
         return copy.penDown;
       case "penUp":
@@ -1825,7 +1851,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                   ))}
                 </select>
               ) : null}
-              {item.type === "repeat" || item.type === "repeatUntil"
+              {item.type === "repeat" || item.type === "repeatUntil" || item.type === "forever"
                 ? procedureBlocks(procedure, item.body, here)
                 : null}
               {item.type === "if" ? procedureBlocks(procedure, item.then, here) : null}
@@ -1949,7 +1975,10 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
     }
   }
 
-  function groupLast(type: "repeat" | "repeatUntil" | "if", overrideCondition?: Expression) {
+  function groupLast(
+    type: "repeat" | "repeatUntil" | "forever" | "if",
+    overrideCondition?: Expression,
+  ) {
     try {
       persist(
         wrapStudioTail(
@@ -1958,7 +1987,9 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
           groupCount,
           type === "repeat"
             ? { type, times: repeatCount as 2 | 3 | 5 }
-            : { type, condition: overrideCondition ?? condition() },
+            : type === "forever"
+              ? { type }
+              : { type, condition: overrideCondition ?? condition() },
         ),
       );
     } catch {
@@ -2620,6 +2651,13 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               {copy.waitUntilTimeout}
             </p>
           ) : null}
+          {run?.outcome === "budget-exceeded" &&
+          run.trace.some((entry) => entry.statementType === "forever") ? (
+            <p className="kids-note" role="status">
+              {oriSuggestions ? "Ori: " : ""}
+              {copy.foreverBudget}
+            </p>
+          ) : null}
           <KidsSceneGoalPanel
             locale={locale}
             actors={creative.actors ?? []}
@@ -2877,7 +2915,9 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                   </button>
                   <span>{blockLabel(statement)}</span>
                   {callNumbers(statement, index)}
-                  {statement.type === "repeat" || statement.type === "repeatUntil"
+                  {statement.type === "repeat" ||
+                  statement.type === "repeatUntil" ||
+                  statement.type === "forever"
                     ? programList(statement.body, [index])
                     : null}
                   {statement.type === "if" ? programList(statement.then, [index]) : null}
@@ -3405,6 +3445,24 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 </select>
               </label>
             </KidsPaletteBlock>
+            <KidsPaletteBlock
+              tone="control"
+              actions={[
+                {
+                  label: `${copy.forever} → ${copy.thenMove}`,
+                  disabled: containsForever(script?.statements ?? []),
+                  onAdd: () => add({ type: "forever", body: [{ type: "move", steps: 40 }] }),
+                },
+                {
+                  label: copy.groupForever,
+                  kind: "tool",
+                  disabled:
+                    containsForever(script?.statements ?? []) ||
+                    (script?.statements.length ?? 0) < groupCount,
+                  onAdd: () => groupLast("forever"),
+                },
+              ]}
+            />
             <h3 id={studioCategoryId("myBlocks")} tabIndex={-1}>
               {copy.myBlocks}
             </h3>

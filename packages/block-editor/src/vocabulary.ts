@@ -229,6 +229,18 @@ const definitions: readonly ToolboxBlockDefinition[] = [
     }),
   },
   {
+    type: "control_forever",
+    label: "Forever (bounded)",
+    section: "Repeat & Decide",
+    placement: "statement",
+    accessibleName: "forever bounded loop",
+    createDefaultBlock: (id) => ({
+      id,
+      type: "control_forever",
+      inputs: { body: [createDefaultBlock("motion_move", `${id}:move`)] },
+    }),
+  },
+  {
     type: "control_if",
     label: "If ___, then",
     section: "Repeat & Decide",

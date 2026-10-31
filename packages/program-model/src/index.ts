@@ -34,6 +34,7 @@ export type {
   ListReplaceAtStatement,
   ProjectProgram,
   RepeatStatement,
+  ForeverStatement,
   CallProcedureStatement,
   Procedure,
   ProcedureParam,

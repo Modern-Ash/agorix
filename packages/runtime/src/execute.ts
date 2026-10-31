@@ -735,6 +735,9 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
       }
       break;
     }
+    case "forever":
+      // Entering the loop is traced below; its body runs after that entry.
+      break;
     case "callProcedure": {
       const procedures = state.script?.procedures ?? [];
       const procedureIndex = procedures.findIndex((item) => item.id === statement.procedureId);
@@ -814,6 +817,7 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
     nodeId,
     path: nodeId,
     statementType: statement.type,
+    ...(statement.type === "forever" ? { note: "forever: bounded by runtime budgets" } : {}),
     ...(waitUntilTimedOut ? { note: "waitUntil: stopped after 10 virtual seconds" } : {}),
     ...(statement.type === "stop" ? { stopScope: statement.scope } : {}),
     ...(statement.type === "playSound" ? { soundId: statement.soundId } : {}),
@@ -837,6 +841,9 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
   });
   if (statement.type === "stop") throw new ExecutionHalt("stopped", statement.scope);
   if (waitUntilTimedOut) throw new ExecutionHalt("stopped");
+  if (statement.type === "forever") {
+    for (;;) executeStatements(statement.body, `${path}.body`, state);
+  }
 }
 
 function seedProgramLists(
@@ -975,6 +982,12 @@ export function runProgram(
     };
   } catch (error) {
     if (error instanceof ExecutionHalt) {
+      if (
+        error.outcome === "budget-exceeded" &&
+        state.trace.some((entry) => entry.statementType === "forever")
+      ) {
+        addNote(state, "forever: stopped at runtime budget");
+      }
       const world = cloneWorldState(state.world);
       recordObservation(state, {
         kind: "run-complete",
