@@ -17,6 +17,7 @@ export const KIDS_V2_FEATURES = [
   "groupMode",
   "extensionPen",
   "extensionMusic",
+  "freeToScene",
 ] as const;
 
 export type KidsV2Feature = (typeof KIDS_V2_FEATURES)[number];
@@ -25,9 +26,11 @@ export const KIDS_FLAGS_KEY = "agorix.kids.flags.v1";
 const FLAGS_CHANGED = "agorix:kids-flags-changed";
 // Creative Kids tools are visible by default. Account linking needs a live
 // verification service and remains a separate operational release. Closed groups (ADR 0010)
-// stay off until the legal and privacy review of #556.
+// stay off until the legal and privacy review of #556. `freeToScene` (issue #1134) retires
+// ¡Crear! and opens old single-explorer projects as scenes; it stays off until the E2E suite
+// that still creates ¡Crear! projects has moved to scenes.
 const DEFAULT_FEATURES: readonly KidsV2Feature[] = KIDS_V2_FEATURES.filter(
-  (feature) => feature !== "adultLink" && feature !== "groupMode",
+  (feature) => feature !== "adultLink" && feature !== "groupMode" && feature !== "freeToScene",
 );
 
 export interface KidsFlagSources {
@@ -119,6 +122,11 @@ function browserSources(): KidsFlagSources {
   } catch {
     return { production: true };
   }
+}
+
+/** The flag now, for code that runs outside React (route lookup). */
+export function kidsFlagNow(feature: KidsV2Feature): boolean {
+  return kidsV2Enabled(feature, browserSources());
 }
 
 export function useKidsFlag(feature: KidsV2Feature): boolean {

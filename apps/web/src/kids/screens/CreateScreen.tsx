@@ -51,6 +51,8 @@ export function CreateScreen({
 }: Props) {
   const worlds = kidsTable(locale, "worlds");
   const customEnabled = useKidsFlag("customImages");
+  // With scenes as the one way to create, the old single-explorer entry is gone (#1134).
+  const freeToScene = useKidsFlag("freeToScene");
   const [custom, setCustom] = useState(() => loadKidsCustom());
   const [imageMessage, setImageMessage] = useState("");
   const [drawingKind, setDrawingKind] = useState<KidsCustomKind | null>(null);
@@ -445,23 +447,27 @@ export function CreateScreen({
           </span>
         </div>
       </div>
-      <p className="kids-note" data-testid="free-project-note">
-        {locale === "es"
-          ? "¡Crear! abre un explorador solo, con pocos bloques y una meta opcional. Para todos los bloques, usá Escena libre."
-          : "Create! opens a single explorer with a few blocks and an optional goal. For every block, use Free scene."}
-      </p>
-      <button
-        type="button"
-        className="kids-button kids-primary kids-create-start"
-        onClick={() =>
-          onStart(
-            customEnabled || chosenWorld.kind !== "custom" ? chosenWorld : builtinWorld(world),
-            customEnabled || chosenAvatar.kind !== "custom" ? chosenAvatar : emojiSlot(avatar),
-          )
-        }
-      >
-        {t("createStart")}
-      </button>
+      {freeToScene ? null : (
+        <>
+          <p className="kids-note" data-testid="free-project-note">
+            {locale === "es"
+              ? "¡Crear! abre un explorador solo, con pocos bloques y una meta opcional. Para todos los bloques, usá Escena libre."
+              : "Create! opens a single explorer with a few blocks and an optional goal. For every block, use Free scene."}
+          </p>
+          <button
+            type="button"
+            className="kids-button kids-primary kids-create-start"
+            onClick={() =>
+              onStart(
+                customEnabled || chosenWorld.kind !== "custom" ? chosenWorld : builtinWorld(world),
+                customEnabled || chosenAvatar.kind !== "custom" ? chosenAvatar : emojiSlot(avatar),
+              )
+            }
+          >
+            {t("createStart")}
+          </button>
+        </>
+      )}
     </section>
   );
 }
