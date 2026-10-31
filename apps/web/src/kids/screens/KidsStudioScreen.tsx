@@ -2450,6 +2450,8 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 : null
             }
             run={run}
+            program={history.current}
+            oriSuggestions={oriSuggestions}
             onChange={(next) => {
               try {
                 setStudioSceneGoal(id, next, store);
