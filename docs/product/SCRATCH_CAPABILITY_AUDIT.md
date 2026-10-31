@@ -406,3 +406,57 @@ Each iteration needs an issue with an observable child journey, success and fail
 - Titles and the child's current values are never sent to Ori. The card shows the title locally, and the browser revalidates the proposal against the current script before offering it. **Cambiar idea** swaps to the character's other block and fills each number with its default value, so the replacement is always valid. Anything forged, unknown or out of range falls back to the safe local idea.
 - Unit tests cover the shared units, the contract, forged proposals and the tutor-api route with the real CLI wrapper; a mobile browser test with axe covers review and applying the numbered call.
 - Remaining: real-child testing, privacy/legal review of recorded voices, and the open product decisions tracked in #817.
+
+## Route, mode and exposed-capability trace (#1121, SHA cc8224f8)
+
+Discovery only; no behaviour changed. Verified in code and against `https://agorix.modern-ash.com`.
+
+### Route → component → operations
+
+| Entry                                                 | Component                           | Profile / gate                                                                                               | Palette and operations                                                                                       |
+| ----------------------------------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| `/` , `/kids`                                         | `KidsApp` (default in `main.tsx`)   | none                                                                                                         | screen state machine; bottom nav Mapa, Crear, Mis proyectos, Adultos                                         |
+| `#/mapa`                                              | map                                 | none                                                                                                         | missions 1–3 per world                                                                                       |
+| `#/mision/{1-3}/{world}`                              | `EditorScreen`                      | stage band from mastery                                                                                      | `paletteFor()` subset: move, turn, repeat, sound, unlocked by slot and mastery (deliberate scaffold)         |
+| `#/crear`                                             | `CreateScreen`                      | none, no mission needed                                                                                      | two start buttons below                                                                                      |
+| `#/escena/{id}` (**Escena libre**, "Crear escena")    | `KidsStudioScreen`                  | age band affects code tabs only; Pen/Music categories need `extensionPen` / `extensionMusic` (ON by default) | full categorized palette, multi-actor, costumes, backdrops, sound, custom blocks; never hides blocks (#1110) |
+| `#/libre/{id}` ("¡Crear!")                            | `EditorScreen` with `freeProjectId` | none                                                                                                         | single character, `PALETTE` constant (5 block kinds), not the Studio vocabulary                              |
+| `#/avanzado/{escena,reaccion,puntos,control,mensaje}` | Advanced* screens                   | `advancedEntryUnlocked` (every mission authored and finished) then each stage unlocks the next               | staged advanced missions                                                                                     |
+| `/advanced`                                           | `AdvancedApp` (`App.tsx`)           | none                                                                                                         | parked full editor                                                                                           |
+| `/admin/ai`                                           | `AiAdminApp`                        | admin                                                                                                        | AI admin                                                                                                     |
+
+Flags live in `localStorage` `agorix.kids.flags.v1`; production ignores `?kidsv2=`. `adultLink` and `groupMode` are OFF by default (ADR 0010).
+
+### Why a user sees a basic palette
+
+Two different creation modes sit side by side in Crear and are easy to confuse.
+
+| Gap                                                                                              | Class                                      | Evidence                                                                            |
+| ------------------------------------------------------------------------------------------------ | ------------------------------------------ | ----------------------------------------------------------------------------------- |
+| "¡Crear!" opens a 5-block free project, not Escena libre (48-block Studio palette, 8 categories) | navigation / UX naming                     | prod probe: `#/libre/free-1` shows 5 blocks, `#/escena/studio-1` shows 8 categories |
+| Mission editors show 5 block kinds                                                               | intentional design                         | `kidsStageAdaptation.ts` `paletteFor()`                                             |
+| Advanced stages locked until all missions done                                                   | intentional design                         | `kidsAdvancedProgress.ts`                                                           |
+| Ori stays quiet in free projects until a goal is set                                             | intentional design, candidate UX follow-up | `EditorScreen` `oriSuggestions` guard                                               |
+| No flag or deploy gap found for Pen/Music                                                        | none                                       | both categories visible in production                                               |
+
+### Evidence
+
+- E2E `apps/web/e2e/kids-free-access.spec.ts`: from a fresh onboarded profile with no mission done, Crear reaches both Escena libre and a free project, map and Misión 1 remain, progress stays `stars: 0, done: {}`; `#/crear` deep link on desktop, tablet and mobile viewports.
+- Screenshots per viewport and signed-in state are not included here; capture them when #1123 verifies the deployed build.
+
+### Backend already present (#1121)
+
+Backend checked against what the web calls and against production (GET probe, status only).
+
+| Backend                                                                                       | Client use                                                                                                        | Production                                                                                                                                     |
+| --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `project-api` `/v1/projects` CRUD and duplicate, `/v1/link/*`, `/v1/group/*`, `/v1/account/*` | `accounts/httpClient.ts`; Kids reaches it only through account link, project copy and restore cards under Adultos | reviewed adult build only; Escena libre and free projects stay local (`ProjectStore`), no cloud save from Crear                                |
+| `tutor-api` `/api/tutor/{ori,studio/ori,advanced/ori,goals,catalog,behavior,respond,chat}`    | called by the web                                                                                                 | `catalog` 200; Ori routes answer 405 to GET, so they are mounted                                                                               |
+| `tutor-api` `/api/tutor/ori/review/{propose,debug,decision,apply}`                            | called by the web                                                                                                 | mounted (405 to GET)                                                                                                                           |
+| `tutor-api` `/api/tutor/ori/review/presented`                                                 | no web caller                                                                                                     | 404: opt-in acknowledgement route, default off and rollout-gated (`oriPresentationAckEnabled`, `oriMig04RolloutDecide`); input for #1123/#1124 |
+
+Result: no backend capability for creation modes is missing from the UI. The block vocabulary lives in `program-model`, `block-editor` and `curriculum`, and the web already consumes it; the exposure gap is the Crear naming above, plus the gated Ori review flow, to be audited in #1124.
+
+### Is the parked `/advanced` editor the missing piece? (#1121)
+
+No. `apps/web/src/App.tsx` (5,264 lines, served at `/advanced`) is the original engineering editor and does not hold block vocabulary Kids lacks. By keyword count it has no procedures, music, tutorials or debug UI, which Kids has. What only `App.tsx` mounts is the AI-native review surface and tooling: `OriReviewPanel` (behind a build flag, #722), `ModelComparison`, `PredictionChip`, ghost blocks, `ProvenanceLabel`, run trace, the `typescript` projection tab, and `AccountUi` workspace. Those belong to the Ori and evidence audit (#1124), not to the creation palette. The Scratch crosswalk is the matrix above; this audit only checks whether each row is reachable in the default Kids experience.
