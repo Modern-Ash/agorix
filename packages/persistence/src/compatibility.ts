@@ -6,6 +6,7 @@ import {
 import { validateProjectActors } from "./actors.js";
 import { missionSpecHash, validateProjectMissionSpec } from "./missionSpec.js";
 import { validateKidsProjectView } from "./kidsView.js";
+import { validateProjectSceneGoal } from "./sceneGoal.js";
 import { validateAdvancedProgress } from "./advancedProgress.js";
 import { PersistenceError, type StoredProject } from "./store.js";
 
@@ -54,6 +55,7 @@ export interface SemanticProjectSnapshot {
   readonly assets?: StoredProject["metadata"]["assets"];
   readonly missionSpecHash?: string;
   readonly kidsView?: StoredProject["metadata"]["kidsView"];
+  readonly sceneGoal?: StoredProject["metadata"]["sceneGoal"];
   readonly advancedProgress?: StoredProject["metadata"]["advancedProgress"];
 }
 
@@ -80,6 +82,10 @@ export function assertCrossSurfaceCompatibleProject(stored: StoredProject): Stor
     stored.metadata.kidsView === undefined
       ? undefined
       : validateKidsProjectView(stored.metadata.kidsView);
+  const sceneGoal =
+    stored.metadata.sceneGoal === undefined
+      ? undefined
+      : validateProjectSceneGoal(stored.metadata.sceneGoal);
   const advancedProgress =
     stored.metadata.advancedProgress === undefined
       ? undefined
@@ -94,6 +100,7 @@ export function assertCrossSurfaceCompatibleProject(stored: StoredProject): Stor
       ...(creative.assets === undefined ? {} : { assets: creative.assets }),
       ...(missionSpec === undefined ? {} : { missionSpec }),
       ...(kidsView === undefined ? {} : { kidsView }),
+      ...(sceneGoal === undefined ? {} : { sceneGoal }),
       ...(advancedProgress === undefined ? {} : { advancedProgress }),
     },
   };
@@ -120,6 +127,9 @@ export function semanticProjectSnapshot(stored: StoredProject): SemanticProjectS
     ...(compatible.metadata.kidsView === undefined
       ? {}
       : { kidsView: compatible.metadata.kidsView }),
+    ...(compatible.metadata.sceneGoal === undefined
+      ? {}
+      : { sceneGoal: compatible.metadata.sceneGoal }),
     ...(compatible.metadata.advancedProgress === undefined
       ? {}
       : { advancedProgress: compatible.metadata.advancedProgress }),

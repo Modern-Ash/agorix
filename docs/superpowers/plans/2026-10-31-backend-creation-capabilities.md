@@ -65,3 +65,15 @@ Phase 1 first, alone (cheap, shows the real gaps). Phase 2 as refactor-only PR. 
 ## Out of scope
 
 Cloud sync, accounts, server endpoints, Ori backend rollout (#1124), group mode (ADR 0010).
+
+## Delivered in PR #1128 (phases 1 to 3, first slice)
+
+- Phase 1: coverage guard for statements, expressions, triggers, effects and extensions.
+- Phase 2: exhaustive `STUDIO_BLOCK_CATEGORY`. The palette JSX of `KidsStudioScreen` is not rendered from it yet: its 21 blocks carry their own controls and state, so rendering from data waits for the merged editor.
+- Phase 3, first slice: both Crear modes explain themselves; Escena libre opens with a "Para empezar" shelf (`STUDIO_STARTER_BLOCKS`) over the whole palette.
+
+Deliberately not done, and why: the free project (`#/libre/{id}`) is not removed yet. It carries tested behavior Studio lacks (optional goal verified by Ori, explorer in a world, 10+ e2e specs), so the real merge needs those moved into the scene first. Still open: widening the shelf by use, Ori as discovery guide, missions as quests, the `gap:` conditions (`<=`, `>=`, `and`, `or`, `not`).
+
+## Step 2 of the merge: scene goals (this PR)
+
+The free project's goal lives on a grid runtime (curriculum `verifyKidsFreeGoal`), which Studio does not use, so goals were rebuilt natively for the scene: `ProjectSceneGoal` (`touchActor`, `reachEdge`) in `@agorix/persistence` metadata and `.agorix` files, `kidsSceneGoal.ts` (checks run frames with the runtime's own touch and edge geometry), and a goal panel in Escena libre. A goal that is already true before any step does not count. Still open before `¡Crear!` can be retired: Ori proposing scene goals (the free project has `kidsGoalsRemote`), the explorer-in-a-world look, and moving existing `#/libre/{id}` projects into scenes.

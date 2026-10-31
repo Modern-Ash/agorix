@@ -42,6 +42,7 @@ export {
   validateKidsProjectView,
   type KidsProjectView,
 } from "./kidsView.js";
+export { validateProjectSceneGoal, type ProjectSceneGoal } from "./sceneGoal.js";
 export {
   CROSS_SURFACE_CONTRACT_VERSION,
   FORBIDDEN_CANONICAL_IDENTITY_KEYS,

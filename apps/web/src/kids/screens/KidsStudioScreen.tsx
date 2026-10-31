@@ -5,6 +5,11 @@ import {
   type StudioCategory,
 } from "../kidsStudioCategories.js";
 import {
+  STUDIO_STARTER_BLOCKS,
+  starterStatement,
+  type StudioStarterKind,
+} from "../kidsPaletteCatalog.js";
+import {
   createEditorHistory,
   recordCanonicalTransaction,
   redoCanonicalTransaction,
@@ -17,7 +22,9 @@ import { projectPython } from "@agorix/python-projection";
 import { projectJava } from "@agorix/java-projection";
 import { conceptsOfProgram, reusedConcepts } from "@agorix/learning-evidence";
 import { recordMastery } from "../kidsMastery.js";
-import { ProjectStore } from "@agorix/persistence";
+import { ProjectStore, type ProjectSceneGoal } from "@agorix/persistence";
+import { KidsSceneGoalPanel } from "./KidsSceneGoalPanel.js";
+import { sceneGoalValid } from "../kidsSceneGoal.js";
 import { runMultiActorProgram, type MultiActorRunResult, type RuntimeEvent } from "@agorix/runtime";
 import {
   acceptProposal,
@@ -126,6 +133,8 @@ import {
   saveStudioProject,
   setStudioActorPosition,
   setStudioBackdrop,
+  setStudioSceneGoal,
+  studioSceneGoal,
   selectStudioArt,
   updateStudioArt,
 } from "../kidsStudioProjects.js";
@@ -296,6 +305,8 @@ const COPY = {
     number: "Número",
     watchers: "Datos al jugar",
     paletteLooks: "Apariencia y tiempo",
+    starters: "Para empezar",
+    startersNote: "Tres bloques para arrancar. La paleta completa sigue abajo.",
     paletteMotion: "Movimiento",
     paletteMedia: "Disfraces, fondos y sonidos",
     paletteLogic: "Eventos y control",
@@ -501,6 +512,8 @@ const COPY = {
     number: "Number",
     watchers: "Data after Play",
     paletteLooks: "Looks and time",
+    starters: "To start",
+    startersNote: "Three blocks to begin with. The whole palette is below.",
     paletteMotion: "Motion",
     paletteMedia: "Costumes, backdrops and sounds",
     paletteLogic: "Events and control",
@@ -681,6 +694,13 @@ function backdropOfStage(
   return isGalleryBackdropId(suffix) ? suffix : fallback;
 }
 
+function starterLabel(
+  kind: StudioStarterKind,
+  copy: { readonly move: string; readonly turnRight: string; readonly sound: string },
+): string {
+  return kind === "move" ? copy.move : kind === "turn" ? copy.turnRight : copy.sound;
+}
+
 export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }: Props) {
   const copy = COPY[locale];
   const [store] = useState(() => new ProjectStore());
@@ -692,6 +712,9 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
   );
   const [activeActorId, setActiveActorId] = useState(
     () => store.load(id).metadata.actors?.activeId ?? studioActorId(1, "nova"),
+  );
+  const [sceneGoal, setSceneGoal] = useState<ProjectSceneGoal | null>(
+    () => studioSceneGoal(id, store) ?? null,
   );
   const [newCharacter, setNewCharacter] = useState<KidsGalleryCharacterId>("mika");
   const [newCostume, setNewCostume] = useState<KidsGalleryCharacterId>("mika");
@@ -2414,6 +2437,28 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               ? `${run.trace.length} ${locale === "es" ? (run.trace.length === 1 ? "bloque ejecutado" : "bloques ejecutados") : run.trace.length === 1 ? "block executed" : "blocks executed"}`
               : "—"}
           </p>
+          <KidsSceneGoalPanel
+            locale={locale}
+            actors={creative.actors ?? []}
+            goal={
+              sceneGoal !== null &&
+              sceneGoalValid(
+                sceneGoal,
+                (creative.actors ?? []).map((item) => item.id),
+              )
+                ? sceneGoal
+                : null
+            }
+            run={run}
+            onChange={(next) => {
+              try {
+                setStudioSceneGoal(id, next, store);
+                setSceneGoal(next);
+              } catch {
+                setError(true);
+              }
+            }}
+          />
           {run && actor ? (
             <StudioCoach
               key={runCount}
@@ -2743,6 +2788,24 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
             ))}
           </nav>
           <div className="kids-studio-palette" ref={setPalette}>
+            {/* A shelf over the whole palette: it suggests where to begin and hides nothing (#1110). */}
+            <section className="kids-studio-starters" aria-label={copy.starters}>
+              <h3>{copy.starters}</h3>
+              <p className="kids-note">{copy.startersNote}</p>
+              <div className="kids-studio-starter-row">
+                {STUDIO_STARTER_BLOCKS.map((kind) => (
+                  <button
+                    key={kind}
+                    type="button"
+                    className="kids-button"
+                    data-starter={kind}
+                    onClick={() => add(starterStatement(kind, newSound))}
+                  >
+                    ★ {starterLabel(kind, copy)}
+                  </button>
+                ))}
+              </div>
+            </section>
             <h3 id={studioCategoryId("looks")} tabIndex={-1}>
               {copy.paletteLooks}
             </h3>
