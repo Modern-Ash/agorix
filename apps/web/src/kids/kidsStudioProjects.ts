@@ -3,6 +3,7 @@ import {
   ProjectStore,
   serializeAgorixProject,
   type ProjectMetadata,
+  type ProjectSceneGoal,
 } from "@agorix/persistence";
 import type { ProjectAsset, ProjectProgram } from "@agorix/program-model";
 import type { Locale } from "../i18n.js";
@@ -18,6 +19,7 @@ import {
   validateStudioProgram,
 } from "./kidsStudioModel.js";
 import { validKidsImageDataUrl } from "./kidsImages.js";
+import { sceneGoalValid } from "./kidsSceneGoal.js";
 
 const INDEX = "agorix.kids.studios.v1";
 const STUDIO_ID = /^studio-[1-9][0-9]*$/;
@@ -105,6 +107,15 @@ export function saveStudioProject(
   if (!creative.actors?.some((actor) => actor.id === activeActorId))
     throw new RangeError("active actor is not in studio");
   const now = new Date().toISOString();
+  // A goal survives edits while both of its characters are still in the scene.
+  const keptGoal =
+    previous?.sceneGoal !== undefined &&
+    sceneGoalValid(
+      previous.sceneGoal,
+      creative.actors.map((actor) => actor.id),
+    )
+      ? previous.sceneGoal
+      : undefined;
   const metadata: ProjectMetadata = {
     createdAt: previous?.createdAt ?? now,
     updatedAt: now,
@@ -114,8 +125,41 @@ export function saveStudioProject(
     actors: { activeId: activeActorId, items: creative.actors },
     ...(creative.stage === undefined ? {} : { stage: creative.stage }),
     ...(creative.assets === undefined ? {} : { assets: creative.assets }),
+    ...(keptGoal === undefined ? {} : { sceneGoal: keptGoal }),
   };
   store.save(id, valid, metadata);
+}
+
+/** The goal the child set on this scene, if both of its characters are still there. */
+export function studioSceneGoal(
+  id: string,
+  store: ProjectStore = new ProjectStore(),
+): ProjectSceneGoal | undefined {
+  if (!STUDIO_ID.test(id) || !store.has(id)) return undefined;
+  const saved = store.load(id);
+  const goal = saved.metadata.sceneGoal;
+  const actorIds = (saved.metadata.actors?.items ?? []).map((actor) => actor.id);
+  return goal !== undefined && sceneGoalValid(goal, actorIds) ? goal : undefined;
+}
+
+/** Sets or clears (null) the scene goal; the program and the art are left as they are. */
+export function setStudioSceneGoal(
+  id: string,
+  goal: ProjectSceneGoal | null,
+  store: ProjectStore = new ProjectStore(),
+): void {
+  if (!STUDIO_ID.test(id)) throw new RangeError("invalid studio id");
+  const saved = store.load(id);
+  const actorIds = (saved.metadata.actors?.items ?? []).map((actor) => actor.id);
+  if (goal !== null && !sceneGoalValid(goal, actorIds))
+    throw new RangeError("goal needs characters in the scene");
+  const rest: Record<string, unknown> = { ...saved.metadata };
+  delete rest["sceneGoal"];
+  store.save(id, saved.program, {
+    ...(rest as unknown as ProjectMetadata),
+    updatedAt: new Date().toISOString(),
+    ...(goal === null ? {} : { sceneGoal: goal }),
+  });
 }
 
 export function addStudioArt(

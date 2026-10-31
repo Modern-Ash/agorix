@@ -21,6 +21,8 @@ import {
   updateStudioArt,
   setStudioActorPosition,
   setStudioBackdrop,
+  setStudioSceneGoal,
+  studioSceneGoal,
 } from "./kidsStudioProjects.js";
 
 const png =
@@ -217,5 +219,37 @@ describe("Kids studio projects", () => {
     expect(() => setStudioBackdrop(project.id, "moon", "es", store, failingIndex)).toThrow("quota");
     expect(store.load(project.id).metadata.stage?.backdropId).toBe("backdrop:forest");
     expect(listStudioProjects(index)).toEqual([project]);
+  });
+
+  it("keeps a scene goal through edits and export, and drops it when a character leaves", () => {
+    const { store, index } = memory();
+    const project = createStudioProject("nova", "forest", "es", store, index);
+    let history = addStudioActor(createEditorHistory(store.load(project.id).program), "mika");
+    saveStudioProject(project.id, history.current, "forest", "actor:studio-1-nova", "es", store);
+    const goal = {
+      kind: "touchActor",
+      actorId: "actor:studio-1-nova",
+      targetId: "actor:studio-2-mika",
+    } as const;
+    setStudioSceneGoal(project.id, goal, store);
+    expect(studioSceneGoal(project.id, store)).toEqual(goal);
+
+    // Editing the program keeps the goal.
+    history = appendStudioStatement(history, "actor:studio-1-nova", { type: "move", steps: 40 });
+    saveStudioProject(project.id, history.current, "forest", "actor:studio-1-nova", "es", store);
+    expect(studioSceneGoal(project.id, store)).toEqual(goal);
+
+    // The portable file carries it.
+    const copy = importStudioProject(exportStudioProject(project.id, store), "es", store, index);
+    expect(studioSceneGoal(copy.id, store)).toEqual(goal);
+
+    // A goal about a character that is not in the scene cannot be set.
+    expect(() =>
+      setStudioSceneGoal(project.id, { kind: "reachEdge", actorId: "actor:studio-9-pip" }, store),
+    ).toThrow();
+
+    // Clearing removes it.
+    setStudioSceneGoal(project.id, null, store);
+    expect(studioSceneGoal(project.id, store)).toBeUndefined();
   });
 });

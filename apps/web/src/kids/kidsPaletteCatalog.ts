@@ -72,3 +72,24 @@ export function blocksInCategory(category: StudioCategory): readonly StudioBlock
     (kind) => STUDIO_BLOCK_CATEGORY[kind] === category,
   );
 }
+
+/** The shelf a child sees first in Escena libre: three blocks that already make a program. */
+export const STUDIO_STARTER_BLOCKS = [
+  "move",
+  "turn",
+  "playSound",
+] as const satisfies readonly StudioBlockKind[];
+
+export type StudioStarterKind = (typeof STUDIO_STARTER_BLOCKS)[number];
+
+/** The block a starter adds; values are ones the free scene accepts (see `kidsStudioModel`). */
+export function starterStatement(kind: StudioStarterKind, soundId: string): StudioStatement {
+  switch (kind) {
+    case "move":
+      return { type: "move", steps: 40 };
+    case "turn":
+      return { type: "turn", degrees: 90 };
+    case "playSound":
+      return { type: "playSound", soundId };
+  }
+}

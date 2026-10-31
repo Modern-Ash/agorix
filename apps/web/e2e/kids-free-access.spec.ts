@@ -61,3 +61,60 @@ for (const [name, viewport] of [
     await expect(page.getByRole("button", { name: "¡Crear!" })).toBeVisible();
   });
 }
+
+const SEED = async (page: import("@playwright/test").Page) => {
+  await page.goto("/kids");
+  await page.evaluate((progress) => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem("agorix.kids.progress.v1", JSON.stringify(progress));
+  }, PROGRESS);
+  await page.reload();
+};
+
+test("the Escena libre starter shelf adds blocks and leaves the whole palette in place", async ({
+  page,
+}) => {
+  await SEED(page);
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await expect(page.getByTestId("free-project-note")).toContainText("Escena libre");
+  await page.getByRole("button", { name: "Crear escena" }).click();
+
+  const shelf = page.getByRole("region", { name: "Para empezar" });
+  await expect(shelf.locator("[data-starter]")).toHaveCount(3);
+  const paletteBefore = await page.locator("[data-kids-palette-tool]").count();
+  expect(paletteBefore).toBeGreaterThan(15);
+
+  await shelf.locator('[data-starter="move"]').click();
+  await shelf.locator('[data-starter="turn"]').click();
+  await expect(page.getByRole("button", { name: /^Quitar bloque \d+$/ })).toHaveCount(2);
+  // The shelf adds to the program and the palette keeps every block.
+  expect(await page.locator("[data-kids-palette-tool]").count()).toBe(paletteBefore);
+});
+
+test("a scene goal is checked against the run, survives a reload and can be removed", async ({
+  page,
+}) => {
+  await SEED(page);
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
+
+  await page
+    .getByRole("combobox", { name: "Elegir una meta" })
+    .selectOption({ label: "Nova llega al borde" });
+  await expect(page.getByTestId("scene-goal")).toHaveText("Nova llega al borde");
+
+  // Nothing runs yet, so the goal is not reached.
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByTestId("scene-goal-result")).toContainText("Todavía no");
+
+  const shelf = page.getByRole("region", { name: "Para empezar" });
+  for (let step = 0; step < 8; step++) await shelf.locator('[data-starter="move"]').click();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByTestId("scene-goal-result")).toContainText("¡Lograste la meta!");
+
+  await page.reload();
+  await expect(page.getByTestId("scene-goal")).toHaveText("Nova llega al borde");
+  await page.getByRole("button", { name: "Quitar meta" }).click();
+  await expect(page.getByRole("combobox", { name: "Elegir una meta" })).toBeVisible();
+});
