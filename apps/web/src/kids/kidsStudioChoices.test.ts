@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  STUDIO_BUBBLE_MAX_LENGTH,
+  STUDIO_VOLUME_DELTA_RANGE,
+  STUDIO_VOLUME_RANGE,
+  STUDIO_X_RANGE,
+  STUDIO_Y_RANGE,
   STUDIO_BRIGHTNESS_VALUES,
   STUDIO_EFFECT_DELTAS,
   STUDIO_LEVEL_VALUES,
@@ -67,6 +72,30 @@ describe("closed value lists of the free scene (issue #1133)", () => {
     expect(accepted({ type: "setSize", size: 60 })).toBe(false);
     expect(accepted({ type: "wait", seconds: 4 })).toBe(false);
     expect(accepted({ type: "setEffect", effect: "ghost", value: -25 })).toBe(false);
+  });
+
+  it("accepts the bounds of every numeric input and nothing beyond them", () => {
+    for (const [x, y, ok] of [
+      [STUDIO_X_RANGE.min, STUDIO_Y_RANGE.min, true],
+      [STUDIO_X_RANGE.max, STUDIO_Y_RANGE.max, true],
+      [STUDIO_X_RANGE.max + 1, 0, false],
+      [0, STUDIO_Y_RANGE.min - 1, false],
+    ] as const)
+      expect(accepted({ type: "goTo", x, y })).toBe(ok);
+    for (const [volume, ok] of [
+      [STUDIO_VOLUME_RANGE.min, true],
+      [STUDIO_VOLUME_RANGE.max, true],
+      [STUDIO_VOLUME_RANGE.max + 1, false],
+    ] as const)
+      expect(accepted({ type: "setVolume", volume })).toBe(ok);
+    for (const [delta, ok] of [
+      [STUDIO_VOLUME_DELTA_RANGE.min, true],
+      [STUDIO_VOLUME_DELTA_RANGE.max, true],
+      [STUDIO_VOLUME_DELTA_RANGE.max + 1, false],
+    ] as const)
+      expect(accepted({ type: "changeVolume", delta })).toBe(ok);
+    expect(accepted({ type: "say", text: "a".repeat(STUDIO_BUBBLE_MAX_LENGTH) })).toBe(true);
+    expect(accepted({ type: "say", text: "a".repeat(STUDIO_BUBBLE_MAX_LENGTH + 1) })).toBe(false);
   });
 
   it("keeps every mission block inside the scene catalog", () => {

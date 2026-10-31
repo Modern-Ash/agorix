@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type PointerEvent } from "react";
 import {
+  inStudioRange,
+  STUDIO_BUBBLE_MAX_LENGTH,
+  STUDIO_VOLUME_DELTA_RANGE,
+  STUDIO_VOLUME_RANGE,
+  STUDIO_X_RANGE,
+  STUDIO_Y_RANGE,
   STUDIO_EFFECT_DELTAS,
   STUDIO_MOVE_CELLS,
+  STUDIO_NAME_MAX_LENGTH,
   STUDIO_REPEAT_COUNTS,
   STUDIO_SIZE_DELTAS,
   STUDIO_SIZES,
@@ -14,11 +21,7 @@ import {
   studioCategoryId,
   type StudioCategory,
 } from "../kidsStudioCategories.js";
-import {
-  STUDIO_STARTER_BLOCKS,
-  starterStatement,
-  type StudioStarterKind,
-} from "../kidsPaletteCatalog.js";
+import { starterShelf, starterStatement, type StudioStarterKind } from "../kidsPaletteCatalog.js";
 import {
   createEditorHistory,
   recordCanonicalTransaction,
@@ -829,9 +832,23 @@ function waitingChoiceId(result: MultiActorRunResult | null): ChoicePromptId | n
 
 function starterLabel(
   kind: StudioStarterKind,
-  copy: { readonly move: string; readonly turnRight: string; readonly sound: string },
+  copy: {
+    readonly move: string;
+    readonly turnRight: string;
+    readonly sound: string;
+    readonly repeat: string;
+    readonly wait: string;
+  },
 ): string {
-  return kind === "move" ? copy.move : kind === "turn" ? copy.turnRight : copy.sound;
+  return kind === "move"
+    ? copy.move
+    : kind === "turn"
+      ? copy.turnRight
+      : kind === "repeat"
+        ? copy.repeat
+        : kind === "wait"
+          ? copy.wait
+          : copy.sound;
 }
 
 export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }: Props) {
@@ -1792,12 +1809,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
   const pointTarget = otherActors.find((item) => item.id === pointTargetId) ?? otherActors[0];
 
   const targetOutOfRange =
-    !Number.isInteger(targetX) ||
-    targetX < 0 ||
-    targetX > 320 ||
-    !Number.isInteger(targetY) ||
-    targetY < -100 ||
-    targetY > 120;
+    !inStudioRange(targetX, STUDIO_X_RANGE) || !inStudioRange(targetY, STUDIO_Y_RANGE);
 
   function blockLabel(statement: Statement, owner?: Procedure): string {
     switch (statement.type) {
@@ -3184,7 +3196,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               <h3>{copy.starters}</h3>
               <p className="kids-note">{copy.startersNote}</p>
               <div className="kids-studio-starter-row">
-                {STUDIO_STARTER_BLOCKS.map((kind) => (
+                {starterShelf(script?.statements ?? []).map((kind) => (
                   <button
                     key={kind}
                     type="button"
@@ -3220,7 +3232,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               <input
                 type="text"
                 aria-label={`${copy.say} / ${copy.think}`}
-                maxLength={80}
+                maxLength={STUDIO_BUBBLE_MAX_LENGTH}
                 value={bubbleText}
                 onChange={(event) => setBubbleText(event.target.value)}
               />
@@ -3411,8 +3423,8 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               <input
                 type="number"
                 aria-label={copy.xCoordinate}
-                min={0}
-                max={320}
+                min={STUDIO_X_RANGE.min}
+                max={STUDIO_X_RANGE.max}
                 step={1}
                 value={targetX}
                 onChange={(event) => setTargetX(Number(event.target.value))}
@@ -3420,8 +3432,8 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               <input
                 type="number"
                 aria-label={copy.yCoordinate}
-                min={-100}
-                max={120}
+                min={STUDIO_Y_RANGE.min}
+                max={STUDIO_Y_RANGE.max}
                 step={1}
                 value={targetY}
                 onChange={(event) => setTargetY(Number(event.target.value))}
@@ -3626,7 +3638,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               actions={[
                 {
                   label: copy.setVolume,
-                  disabled: !Number.isInteger(volume) || volume < 0 || volume > 100,
+                  disabled: !inStudioRange(volume, STUDIO_VOLUME_RANGE),
                   block: "setVolume",
                   onAdd: () => add({ type: "setVolume", volume }),
                 },
@@ -3635,8 +3647,8 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               <input
                 type="number"
                 aria-label={copy.volume}
-                min={0}
-                max={100}
+                min={STUDIO_VOLUME_RANGE.min}
+                max={STUDIO_VOLUME_RANGE.max}
                 step={1}
                 value={volume}
                 onChange={(event) => setVolume(Number(event.target.value))}
@@ -3647,7 +3659,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               actions={[
                 {
                   label: copy.changeVolume,
-                  disabled: !Number.isInteger(volumeChange) || Math.abs(volumeChange) > 100,
+                  disabled: !inStudioRange(volumeChange, STUDIO_VOLUME_DELTA_RANGE),
                   block: "changeVolume",
                   onAdd: () => add({ type: "changeVolume", delta: volumeChange }),
                 },
@@ -3656,8 +3668,8 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               <input
                 type="number"
                 aria-label={copy.volumeChange}
-                min={-100}
-                max={100}
+                min={STUDIO_VOLUME_DELTA_RANGE.min}
+                max={STUDIO_VOLUME_DELTA_RANGE.max}
                 step={1}
                 value={volumeChange}
                 onChange={(event) => setVolumeChange(Number(event.target.value))}
@@ -3742,7 +3754,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               {copy.myBlockName}
               <input
                 type="text"
-                maxLength={20}
+                maxLength={STUDIO_NAME_MAX_LENGTH}
                 value={blockName}
                 onChange={(event) => setBlockName(event.target.value)}
               />
@@ -3751,7 +3763,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               {copy.numberTitle}
               <input
                 type="text"
-                maxLength={20}
+                maxLength={STUDIO_NAME_MAX_LENGTH}
                 value={numberTitle}
                 onChange={(event) => setNumberTitle(event.target.value)}
               />
@@ -3831,7 +3843,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                           {copy.numberTitle} ({item.name})
                           <input
                             type="text"
-                            maxLength={20}
+                            maxLength={STUDIO_NAME_MAX_LENGTH}
                             value={numberTitles[item.id] ?? ""}
                             onChange={(event) =>
                               setNumberTitles({ ...numberTitles, [item.id]: event.target.value })
@@ -3919,7 +3931,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                       {copy.renameBlock}: {item.name}
                       <input
                         type="text"
-                        maxLength={20}
+                        maxLength={STUDIO_NAME_MAX_LENGTH}
                         value={draft}
                         onChange={(event) =>
                           setBlockRenames({ ...blockRenames, [item.id]: event.target.value })
@@ -4615,7 +4627,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               {copy.dataName}{" "}
               <input
                 type="text"
-                maxLength={20}
+                maxLength={STUDIO_NAME_MAX_LENGTH}
                 value={dataName}
                 onChange={(event) => setDataName(event.target.value)}
               />

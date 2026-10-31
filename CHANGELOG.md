@@ -1,6 +1,6 @@
 # Unreleased
 
-- Kids Escena libre: the closed value lists (sizes, waits, turns, effects, repeat counts) live in one module that both the validator and the palette use, and the mission palette is derived from the named mission subset of the scene catalog (#1133).
+- Kids Escena libre: the closed value lists (sizes, waits, turns, effects, repeat counts) live in one module that both the validator and the palette use, numeric bounds (coordinates, volume, bubble length) are shared the same way, the mission palette is derived from the named mission subset of the scene catalog, and the "Para empezar" shelf adds Repeat after the child uses Move and Wait after Sound while the whole palette stays visible (#1133).
 
 - Kids Escena libre: the palette now offers the graphic effects the engine already ran (set, change, clear: color, ghost, brightness), and every palette button carries the engine block it adds so an end-to-end guard fails when a cataloged block has no palette entry (#1133).
 

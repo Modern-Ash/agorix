@@ -1,4 +1,10 @@
 import {
+  inStudioRange,
+  STUDIO_BUBBLE_MAX_LENGTH,
+  STUDIO_VOLUME_DELTA_RANGE,
+  STUDIO_VOLUME_RANGE,
+  STUDIO_X_RANGE,
+  STUDIO_Y_RANGE,
   STUDIO_EFFECT_DELTAS,
   STUDIO_POINT_DIRECTIONS,
   STUDIO_REPEAT_COUNTS,
@@ -391,14 +397,7 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0, arity
       checked({ type: "goTo", x: statement.x, y: statement.y }, program)
     );
   if (statement.type === "goTo")
-    return (
-      Number.isInteger(statement.x) &&
-      statement.x >= 0 &&
-      statement.x <= 320 &&
-      Number.isInteger(statement.y) &&
-      statement.y >= -100 &&
-      statement.y <= 120
-    );
+    return inStudioRange(statement.x, STUDIO_X_RANGE) && inStudioRange(statement.y, STUDIO_Y_RANGE);
   if (statement.type === "turn")
     return (
       paramInScope(statement.degreesFrom, arity) &&
@@ -460,12 +459,11 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0, arity
   if (statement.type === "stop") return ["script", "actor", "scene"].includes(statement.scope);
   if (statement.type === "askChoice")
     return program.variables?.some((item) => item.id === statement.variableId) === true;
-  if (statement.type === "setVolume")
-    return Number.isInteger(statement.volume) && statement.volume >= 0 && statement.volume <= 100;
+  if (statement.type === "setVolume") return inStudioRange(statement.volume, STUDIO_VOLUME_RANGE);
   if (statement.type === "changeVolume")
-    return Number.isInteger(statement.delta) && statement.delta >= -100 && statement.delta <= 100;
+    return inStudioRange(statement.delta, STUDIO_VOLUME_DELTA_RANGE);
   if (statement.type === "say" || statement.type === "think")
-    return statement.text.trim().length > 0 && statement.text.length <= 80;
+    return statement.text.trim().length > 0 && statement.text.length <= STUDIO_BUBBLE_MAX_LENGTH;
   if (statement.type === "show" || statement.type === "hide") return true;
   if (statement.type === "changeSize")
     return (STUDIO_SIZE_DELTAS as readonly number[]).includes(statement.delta);

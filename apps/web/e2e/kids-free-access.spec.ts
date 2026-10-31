@@ -86,7 +86,10 @@ test("the Escena libre starter shelf adds blocks and leaves the whole palette in
   const paletteBefore = await page.locator("[data-kids-palette-tool]").count();
   expect(paletteBefore).toBeGreaterThan(15);
 
+  await expect(shelf.locator('[data-starter="repeat"]')).toHaveCount(0);
   await shelf.locator('[data-starter="move"]').click();
+  // Using a concept earns the next starter (#1133).
+  await expect(shelf.locator('[data-starter="repeat"]')).toHaveCount(1);
   await shelf.locator('[data-starter="turn"]').click();
   await expect(page.getByRole("button", { name: /^Quitar bloque \d+$/ })).toHaveCount(2);
   // The shelf adds to the program and the palette keeps every block.
