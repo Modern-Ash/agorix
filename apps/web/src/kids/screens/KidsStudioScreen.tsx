@@ -35,7 +35,7 @@ import { projectPython } from "@agorix/python-projection";
 import { projectJava } from "@agorix/java-projection";
 import { conceptsOfProgram, reusedConcepts } from "@agorix/learning-evidence";
 import { recordMastery } from "../kidsMastery.js";
-import { ProjectStore, type ProjectSceneGoal } from "@agorix/persistence";
+import { ProjectStore, sanitizeAgorixFilename, type ProjectSceneGoal } from "@agorix/persistence";
 import { KidsLoopHelp } from "./KidsLoopHelp.js";
 import { KidsSceneGoalPanel } from "./KidsSceneGoalPanel.js";
 import { sceneGoalValid } from "../kidsSceneGoal.js";
@@ -155,7 +155,14 @@ import {
   studioSceneGoal,
   selectStudioArt,
   updateStudioArt,
+  exportStudioProject,
 } from "../kidsStudioProjects.js";
+import {
+  setStudioTutorialDone,
+  studioTutorialDone,
+  studioTutorialStep,
+  studioTutorialText,
+} from "../kidsStudioTutorial.js";
 import { requestStudioOri } from "../kidsStudioOriRemote.js";
 import {
   explainOriCompound,
@@ -305,6 +312,7 @@ const COPY = {
     askChoicePrompt: "Pregunta",
     askChoiceVariable: "Guardar respuesta en",
     growShrink: "Cambiar tamaño",
+    exportScene: "Exportar escena",
     setEffect: "Poner efecto",
     changeEffect: "Cambiar efecto",
     clearEffects: "Quitar efectos",
@@ -552,6 +560,7 @@ const COPY = {
     askChoicePrompt: "Question",
     askChoiceVariable: "Save answer in",
     growShrink: "Change size",
+    exportScene: "Export scene",
     setEffect: "Set effect",
     changeEffect: "Change effect",
     clearEffects: "Clear effects",
@@ -958,6 +967,12 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
   const pendingChoiceId = waitingChoiceId(run);
   const [events, setEvents] = useState<readonly RuntimeEvent[]>([{ type: "start" }]);
   const [frame, setFrame] = useState<number | null>(null);
+  const tutorialFlag = useKidsFlag("tutorial");
+  const [tutorialOpen, setTutorialOpen] = useState(() => !studioTutorialDone());
+  const [stepped, setStepped] = useState(false);
+  useEffect(() => {
+    if (stepped) setStudioTutorialDone(true);
+  }, [stepped]);
   const [language, setLanguage] = useState<"agorix" | "python" | "typescript" | "java">("agorix");
   const [showMoreLanguages, setShowMoreLanguages] = useState(false);
   const [oriIdea, setOriIdea] = useState<ProgramProposal | null>(null);
@@ -2247,6 +2262,23 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
     }
   }
 
+  function downloadScene() {
+    try {
+      const blob = new Blob([exportStudioProject(id, store, false)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url; // agora-allowlist: local Blob download from validated .agorix serializer, not outbound navigation
+      anchor.download = sanitizeAgorixFilename(id);
+      anchor.click();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+      setError(false);
+    } catch {
+      setError(true);
+    }
+  }
+
   function play() {
     try {
       choiceAnswers.current = {};
@@ -2431,6 +2463,12 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
     }
   }
 
+  const tutorialStep = studioTutorialStep({
+    blocks: history.current.scripts.reduce((total, item) => total + item.statements.length, 0),
+    ran: run !== null,
+    stepped,
+  });
+
   return (
     <section className="kids-screen kids-studio" aria-label={copy.title}>
       <header className="kids-studio-header">
@@ -2439,6 +2477,22 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
         </button>
         <h1>{copy.title}</h1>
         <div>
+          <button type="button" className="kids-button" onClick={downloadScene}>
+            {copy.exportScene}
+          </button>
+          {tutorialFlag ? (
+            <button
+              type="button"
+              className="kids-button"
+              onClick={() => {
+                setStudioTutorialDone(false);
+                setStepped(false);
+                setTutorialOpen(true);
+              }}
+            >
+              {studioTutorialText("help", locale)}
+            </button>
+          ) : null}
           <button
             type="button"
             className="kids-button"
@@ -2457,6 +2511,23 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
           </button>
         </div>
       </header>
+      {tutorialFlag && tutorialOpen && tutorialStep !== null ? (
+        <aside className="kids-tutorial" aria-label={studioTutorialText("title", locale)}>
+          <p aria-live="polite" data-testid="studio-tutorial">
+            {studioTutorialText(tutorialStep, locale)}
+          </p>
+          <button
+            type="button"
+            className="kids-button"
+            onClick={() => {
+              setStudioTutorialDone(true);
+              setTutorialOpen(false);
+            }}
+          >
+            {studioTutorialText("skip", locale)}
+          </button>
+        </aside>
+      ) : null}
       <div className="kids-studio-layout">
         <div className="kids-studio-stage-column">
           <h2>{copy.stage}</h2>
@@ -2753,7 +2824,10 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               type="button"
               className="kids-button"
               disabled={!run || (frame !== null && frame >= run.frames.length - 1)}
-              onClick={() => setFrame(frame === null ? 0 : frame + 1)}
+              onClick={() => {
+                setStepped(true);
+                setFrame(frame === null ? 0 : frame + 1);
+              }}
             >
               {copy.step}
             </button>

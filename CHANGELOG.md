@@ -1,5 +1,7 @@
 # Unreleased
 
+- Kids Escena libre: first steps coach (add a block, Play, Step) with an Ayuda button to reopen it, and Exportar escena in the editor header. The tools audit is in `docs/product/EDITOR_TOOLS_AUDIT.md` (#1126).
+
 - Kids Escena libre: when a run is cut off inside a Forever, Repeat until or Wait until, Ori explains it from the trace, says when the character's program starts, and for Forever offers a visible exit ("If touching the edge → Stop") the child can use or decline; nothing changes until accepted (#1132).
 
 - Kids: behind the `freeToScene` flag (off by default), an old single-explorer project (`#/libre/{id}`, or its card in Mis proyectos) opens as a scene: world to backdrop, explorer to character, blocks copied. The old project is kept untouched, the conversion is remembered so it never duplicates, and projects with custom art or blocks a scene lacks stay as they were. With the flag on, Crear no longer offers ¡Crear! (#1134).
