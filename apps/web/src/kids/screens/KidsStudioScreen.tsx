@@ -52,6 +52,9 @@ import {
 import { StudioCoach, StudioIntentPicker, StudioPrediction } from "./KidsStudioCoach.js";
 import { KidsPaletteBlock } from "./KidsPaletteBlock.js";
 import {
+  CHOICE_CATALOG,
+  CHOICE_PROMPT_IDS,
+  isChoicePromptId,
   MUSIC_BEATS,
   MUSIC_DRUMS,
   MUSIC_INSTRUMENTS,
@@ -60,6 +63,7 @@ import {
   type MusicDrum,
   type MusicInstrument,
   type PenColor,
+  type ChoicePromptId,
 } from "@agorix/program-model";
 import type {
   Expression,
@@ -283,6 +287,9 @@ const COPY = {
     waitUntilEdge: "Esperar hasta tocar el borde",
     waitUntilTimeout:
       "La condición no se cumplió en 10 segundos del programa. Se detuvo la escena. Probá cambiar la condición y volvé a jugar.",
+    askChoice: "Preguntar con opciones",
+    askChoicePrompt: "Pregunta",
+    askChoiceVariable: "Guardar respuesta en",
     growShrink: "Cambiar tamaño",
     groupUntilEdge: "Repetir hasta tocar el borde",
     groupUntilActor: "Repetir hasta tocar al personaje",
@@ -521,6 +528,9 @@ const COPY = {
     waitUntilEdge: "Wait until touching the edge",
     waitUntilTimeout:
       "The condition did not become true in 10 program seconds. The scene stopped. Try changing the condition and play again.",
+    askChoice: "Ask with choices",
+    askChoicePrompt: "Question",
+    askChoiceVariable: "Save answer in",
     growShrink: "Change size",
     groupUntilEdge: "Repeat until at the edge",
     groupUntilActor: "Repeat until touching the character",
@@ -786,6 +796,15 @@ function backdropOfStage(
 
 type ConditionPreset = "key" | "edge" | "touch" | "timer" | "mouse";
 
+function waitingChoiceId(result: MultiActorRunResult | null): ChoicePromptId | null {
+  const note = result?.trace.find(
+    (entry) =>
+      entry.statementType === "askChoice" && entry.note?.startsWith("askChoice: awaiting "),
+  )?.note;
+  const id = note?.slice("askChoice: awaiting ".length);
+  return isChoicePromptId(id) ? id : null;
+}
+
 function starterLabel(
   kind: StudioStarterKind,
   copy: { readonly move: string; readonly turnRight: string; readonly sound: string },
@@ -823,6 +842,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
   const [sizeDelta, setSizeDelta] = useState(25);
   const [waitSeconds, setWaitSeconds] = useState(1);
   const [stopScope, setStopScope] = useState<"script" | "actor" | "scene">("script");
+  const [choicePromptId, setChoicePromptId] = useState<ChoicePromptId>("path");
   const [volume, setVolume] = useState(100);
   const [volumeChange, setVolumeChange] = useState(-10);
   const [eventKey, setEventKey] = useState<(typeof STUDIO_KEYS)[number]>("Space");
@@ -885,6 +905,8 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
   const [randomMin, setRandomMin] = useState(1);
   const [randomMax, setRandomMax] = useState(6);
   const [run, setRun] = useState<MultiActorRunResult | null>(null);
+  const choiceAnswers = useRef<Record<string, number>>({});
+  const pendingChoiceId = waitingChoiceId(run);
   const [events, setEvents] = useState<readonly RuntimeEvent[]>([{ type: "start" }]);
   const [frame, setFrame] = useState<number | null>(null);
   const [language, setLanguage] = useState<"agorix" | "python" | "typescript" | "java">("agorix");
@@ -1406,6 +1428,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
         events: nextEvents,
         keysDown: heldKeys,
         pointer: pointerRef.current,
+        choices: choiceAnswers.current,
       }),
     );
     setEvents(nextEvents);
@@ -1432,6 +1455,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
           events,
           keysDown: heldKeys,
           pointer: pointerRef.current,
+          choices: choiceAnswers.current,
         }),
       );
       setFrame(null);
@@ -1772,6 +1796,8 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
         return copy.stopSounds;
       case "stop":
         return `${copy.stop}: ${statement.scope === "script" ? copy.stopScript : statement.scope === "actor" ? copy.stopActor : copy.stopScene}`;
+      case "askChoice":
+        return `${copy.askChoice}: ${CHOICE_CATALOG[statement.promptId].prompt[locale]}`;
       case "setVolume":
         return `${copy.setVolume}: ${statement.volume}%`;
       case "changeVolume":
@@ -2129,49 +2155,60 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
     }
   }
 
+  function recordRunResult(result: MultiActorRunResult) {
+    if (waitingChoiceId(result)) return;
+    const completed = result.outcome === "completed";
+    recordMastery({
+      kind: "run",
+      concepts: conceptsOfProgram(history.current),
+      completed,
+      helped: helped.current,
+      free: true,
+    });
+    const reused = reusedConcepts(history.current);
+    if (completed && reused.length > 0) recordMastery({ kind: "reuse", concepts: reused });
+    helped.current = false;
+    setRunCount((count) => count + 1);
+  }
+
+  function presentRun(result: MultiActorRunResult) {
+    setRun(result);
+    setFrame(null);
+    stopKidsSounds();
+    stopKidsMusic();
+    // Music pack: a timeline from the trace; plain sounds below only play without it.
+    const timeline = playKidsMusic(result.trace);
+    let soundsPlayed = 0;
+    for (const entry of timeline > 0 ? [] : result.trace) {
+      if (entry.statementType === "stopSounds") {
+        stopKidsSounds();
+        continue;
+      }
+      if (entry.statementType !== "playSound" || soundsPlayed >= 4) continue;
+      const owner = creative.actors?.find((item) => item.id === entry.actorId);
+      if (owner) {
+        soundsPlayed += 1;
+        void playKidsSound(
+          entry.worldAfter.sounds?.activeSoundIds.at(-1) ?? "kids:pop",
+          { kind: "gallery", id: characterOfActor(owner.id) },
+          { volume: entry.worldAfter.sounds?.volume ?? 100 },
+        );
+      }
+    }
+  }
+
   function play() {
     try {
+      choiceAnswers.current = {};
       const result = runMultiActorProgram(history.current, creative, {
         keysDown: heldKeys,
         pointer: pointerRef.current,
+        choices: choiceAnswers.current,
       });
-      const completed = result.outcome === "completed";
-      recordMastery({
-        kind: "run",
-        concepts: conceptsOfProgram(history.current),
-        completed,
-        helped: helped.current,
-        free: true,
-      });
-      const reused = reusedConcepts(history.current);
-      if (completed && reused.length > 0) recordMastery({ kind: "reuse", concepts: reused });
-      helped.current = false;
-      setRun(result);
+      recordRunResult(result);
+      presentRun(result);
       setPredictedForRun(prediction);
-      setRunCount((count) => count + 1);
       setEvents([{ type: "start" }]);
-      setFrame(null);
-      stopKidsSounds();
-      stopKidsMusic();
-      // Music pack: a timeline from the trace; plain sounds below only play without it.
-      const timeline = playKidsMusic(result.trace);
-      let soundsPlayed = 0;
-      for (const entry of timeline > 0 ? [] : result.trace) {
-        if (entry.statementType === "stopSounds") {
-          stopKidsSounds();
-          continue;
-        }
-        if (entry.statementType !== "playSound" || soundsPlayed >= 4) continue;
-        const owner = creative.actors?.find((item) => item.id === entry.actorId);
-        if (owner) {
-          soundsPlayed += 1;
-          void playKidsSound(
-            entry.worldAfter.sounds?.activeSoundIds.at(-1) ?? "kids:pop",
-            { kind: "gallery", id: characterOfActor(owner.id) },
-            { volume: entry.worldAfter.sounds?.volume ?? 100 },
-          );
-        }
-      }
       setError(false);
     } catch {
       setError(true);
@@ -2196,6 +2233,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
         events: nextEvents,
         keysDown: heldKeys,
         pointer: pointerRef.current,
+        choices: choiceAnswers.current,
       }),
     );
     setEvents(nextEvents);
@@ -2686,7 +2724,40 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               ? `${run.trace.length} ${locale === "es" ? (run.trace.length === 1 ? "bloque ejecutado" : "bloques ejecutados") : run.trace.length === 1 ? "block executed" : "blocks executed"}`
               : "—"}
           </p>
-          {run?.outcome === "stopped" ? (
+          {pendingChoiceId ? (
+            <div role="group" aria-label={copy.askChoice} className="kids-studio-compound">
+              <strong>{CHOICE_CATALOG[pendingChoiceId].prompt[locale]}</strong>
+              {CHOICE_CATALOG[pendingChoiceId].options.map((option, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  className="kids-button"
+                  onClick={() => {
+                    try {
+                      choiceAnswers.current = {
+                        ...choiceAnswers.current,
+                        [pendingChoiceId]: index + 1,
+                      };
+                      const result = runMultiActorProgram(history.current, creative, {
+                        events,
+                        keysDown: heldKeys,
+                        pointer: pointerRef.current,
+                        choices: choiceAnswers.current,
+                      });
+                      recordRunResult(result);
+                      presentRun(result);
+                      setError(false);
+                    } catch {
+                      setError(true);
+                    }
+                  }}
+                >
+                  {option[locale]}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          {run?.outcome === "stopped" && !pendingChoiceId ? (
             <p className="kids-note" role="status">
               {locale === "es" ? "Programa detenido: " : "Program stopped: "}
               {(() => {
@@ -3806,6 +3877,35 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               onClick={() => add({ type: "stop", scope: stopScope })}
             >
               + {copy.stop}
+            </button>
+            <label>
+              {copy.askChoicePrompt}{" "}
+              <select
+                value={choicePromptId}
+                onChange={(event) => setChoicePromptId(event.target.value as ChoicePromptId)}
+              >
+                {CHOICE_PROMPT_IDS.map((id) => (
+                  <option key={id} value={id}>
+                    {CHOICE_CATALOG[id].prompt[locale]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {history.current.variables?.length ? (
+              <p className="kids-note">
+                {copy.askChoiceVariable}:{" "}
+                {history.current.variables.find((item) => item.id === selectedVariableId)?.name}
+              </p>
+            ) : null}
+            <button
+              type="button"
+              className="kids-button"
+              disabled={!history.current.variables?.length}
+              onClick={() =>
+                add({ type: "askChoice", promptId: choicePromptId, variableId: selectedVariableId })
+              }
+            >
+              + {copy.askChoice}
             </button>
             <button
               type="button"

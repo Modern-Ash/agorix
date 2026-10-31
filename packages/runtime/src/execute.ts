@@ -11,6 +11,7 @@ import type {
   Trigger,
 } from "@agorix/program-model";
 import {
+  CHOICE_CATALOG,
   MOVE_STEPS_MAX,
   MOVE_STEPS_MIN,
   PROCEDURE_MAX_CALL_DEPTH,
@@ -103,6 +104,8 @@ export interface ExecutionOptions {
   readonly keysDown?: readonly string[];
   /** Stage pointer snapshot captured by the caller; never read from browser globals. */
   readonly pointer?: { readonly x: number; readonly y: number; readonly down: boolean };
+  /** Bundled prompt id to selected 1-based option index; absent means pause at that question. */
+  readonly choices?: Readonly<Record<string, number>>;
   /** Other actors at activation start; never includes the running actor. */
   readonly sensorActors?: readonly {
     readonly id: string;
@@ -505,6 +508,7 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
   const before = cloneWorldState(state.world);
   let conditionResult: boolean | undefined;
   let waitUntilTimedOut = false;
+  let choicePending = false;
   let callArgs: readonly number[] | undefined;
   let audio: AudioPlayback | undefined;
   recordObservation(state, {
@@ -680,6 +684,21 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
     case "stop":
       // Record this block in the trace before ending the selected scope below.
       break;
+    case "askChoice": {
+      const selected = state.options.choices?.[statement.promptId];
+      const count = CHOICE_CATALOG[statement.promptId].options.length;
+      if (
+        selected === undefined ||
+        !Number.isInteger(selected) ||
+        selected < 1 ||
+        selected > count
+      ) {
+        choicePending = true;
+      } else {
+        state.world = setVariableWorld(state.world, statement.variableId, selected);
+      }
+      break;
+    }
     case "playNote":
     case "playDrum":
       audio = audioPlayback(
@@ -833,6 +852,9 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
     statementType: statement.type,
     ...(statement.type === "forever" ? { note: "forever: bounded by runtime budgets" } : {}),
     ...(waitUntilTimedOut ? { note: "waitUntil: stopped after 10 virtual seconds" } : {}),
+    ...(choicePending && statement.type === "askChoice"
+      ? { note: `askChoice: awaiting ${statement.promptId}` }
+      : {}),
     ...(statement.type === "stop" ? { stopScope: statement.scope } : {}),
     ...(statement.type === "playSound" ? { soundId: statement.soundId } : {}),
     ...(statement.type === "playSound" && state.world.music
@@ -854,6 +876,7 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
     event: state.event,
   });
   if (statement.type === "stop") throw new ExecutionHalt("stopped", statement.scope);
+  if (choicePending) throw new ExecutionHalt("stopped", "scene");
   if (waitUntilTimedOut) throw new ExecutionHalt("stopped");
   if (statement.type === "forever") {
     for (;;) executeStatements(statement.body, `${path}.body`, state);

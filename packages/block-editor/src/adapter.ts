@@ -70,6 +70,7 @@ export type BlockType =
   | "control_wait_until"
   | "control_wait"
   | "control_stop"
+  | "control_ask_choice"
   | "control_if"
   | "sensing_touching_goal"
   | "sensing_touching_actor"
@@ -606,6 +607,16 @@ function statementFromBlock(
         throw new Error(`Invalid stop scope at ${path}`);
       return { type: "stop", scope };
     }
+    case "control_ask_choice":
+      return {
+        type: "askChoice",
+        promptId: stringField(
+          block,
+          "promptId",
+          path,
+        ) as import("@agorix/program-model").ChoicePromptId,
+        variableId: stringField(block, "variableId", path),
+      };
     case "looks_set_size":
       return { type: "setSize", size: numberField(block, "size", path) };
     case "looks_change_size":
@@ -1045,6 +1056,12 @@ function statementToBlock(
       return { id, type: "sound_stop" };
     case "stop":
       return { id, type: "control_stop", fields: { scope: statement.scope } };
+    case "askChoice":
+      return {
+        id,
+        type: "control_ask_choice",
+        fields: { promptId: statement.promptId, variableId: statement.variableId },
+      };
     case "setVolume":
       return { id, type: "sound_set_volume", fields: { volume: statement.volume } };
     case "changeVolume":

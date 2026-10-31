@@ -264,6 +264,18 @@ const definitions: readonly ToolboxBlockDefinition[] = [
     createDefaultBlock: (id) => ({ id, type: "control_stop", fields: { scope: "script" } }),
   },
   {
+    type: "control_ask_choice",
+    label: "Ask a bundled choice",
+    section: "Repeat & Decide",
+    placement: "statement",
+    accessibleName: "ask a choice",
+    createDefaultBlock: (id) => ({
+      id,
+      type: "control_ask_choice",
+      fields: { promptId: "path", variableId: "score" },
+    }),
+  },
+  {
     type: "control_wait_until",
     label: "Wait until ___",
     section: "Repeat & Decide",

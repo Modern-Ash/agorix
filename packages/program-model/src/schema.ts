@@ -450,6 +450,13 @@ export interface StopStatement {
   readonly scope: "script" | "actor" | "scene";
 }
 
+/** Pauses for one bundled choice; the selected 1-based option index becomes a variable. */
+export interface AskChoiceStatement {
+  readonly type: "askChoice";
+  readonly promptId: import("./choiceCatalog.js").ChoicePromptId;
+  readonly variableId: string;
+}
+
 export interface SetVolumeStatement {
   readonly type: "setVolume";
   readonly volume: number;
@@ -589,6 +596,7 @@ export type Statement =
   | PlaySoundStatement
   | StopSoundsStatement
   | StopStatement
+  | AskChoiceStatement
   | SetVolumeStatement
   | ChangeVolumeStatement
   | BroadcastStatement

@@ -229,6 +229,12 @@ Each iteration needs an issue with an observable child journey, success and fail
 - `mouseX`, `mouseY` and `mouseDown` are canonical expressions. Escena libre records the pointer over the stage, maps it to scene coordinates (X 0–320, Y -100–120), and passes a bounded snapshot to each deterministic run. A fresh session starts with X 0, Y 0 and button up. Pointer data is run input only: no project persistence and no Ori request.
 - The block adapter, Agorix Code, Python, TypeScript and Java derive from the same expressions. The child can save X or Y in a variable and use the pressed condition in an `if` or combined condition. Mouse and touch pointer events use the same stage path; the runtime never reads the live device pointer.
 
+## Bundled choice instead of typed answer (#1132)
+
+- `askChoice` is a canonical statement with a prompt id from `CHOICE_CATALOG` and a known variable id. The catalog bundles Spanish and English text, picture and number options (two to four per prompt). A project stores only the ids. Free text in a prompt or answer is invalid.
+- An unanswered question traces `askChoice: awaiting <id>` and pauses the scene before later blocks run. A learner selects an option by touch or keyboard; a deterministic rerun records its 1-based index in the variable and continues. Invalid or absent indices keep the scene paused. The selection is a transient run input; only the canonical program persists. No child answer is sent to Ori.
+- Agorix Code, Python, Java, TypeScript and visual blocks derive from the same statement. Typing an answer remains a deliberate difference from Scratch under ADR 0011/0012.
+
 ## Drawing tools (#538 media creation)
 
 - The Crear and Escena libre drawing canvas now has six tools: brush, eraser, bucket fill, line, rectangle and circle, plus undo and redo (the last 20 steps), flip and clear. Shapes preview while dragging and commit on release; the eraser makes pixels transparent on a character and white on a backdrop. Fill treats near colours as one area (small tolerance) so soft brush edges leave no halo, and its work is bounded by the 256 × 256 canvas.

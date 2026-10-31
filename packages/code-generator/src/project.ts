@@ -422,6 +422,12 @@ function projectStatement(
     case "stop":
       write(writer, `${pad}stop(${JSON.stringify(statement.scope)});\n`);
       return;
+    case "askChoice":
+      write(
+        writer,
+        `${pad}${formatVariableName(context, statement.variableId, nodeId)} = askChoice(${JSON.stringify(statement.promptId)});\n`,
+      );
+      return;
     case "setVolume":
       write(writer, `${pad}sound.setVolume(${statement.volume});\n`);
       return;
