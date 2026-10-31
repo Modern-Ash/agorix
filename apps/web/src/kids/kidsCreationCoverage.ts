@@ -53,6 +53,7 @@ export const SCENE_NUMBER_EXPRESSIONS = [
   "listLength",
   "listItem",
   "randomInteger",
+  "random",
   "mathFunction",
   "add",
   "subtract",
@@ -69,17 +70,16 @@ export const SCENE_CONDITION_EXPRESSIONS = [
   "greaterThan",
   "lessThan",
   "equals",
+  "lessOrEqual",
+  "greaterOrEqual",
+  "and",
+  "or",
+  "not",
 ] as const satisfies readonly ExpressionKind[];
 
 export const EXPRESSIONS_NOT_IN_SCENE = {
   touchingGoal: "by design: it reads a mission goal cell, which a free scene does not have",
   booleanLiteral: "by design: a constant true or false teaches nothing a child can try",
-  lessOrEqual: "gap: the scene offers < > = but not <= or >=",
-  greaterOrEqual: "gap: the scene offers < > = but not <= or >=",
-  and: "gap: no way to combine two conditions",
-  or: "gap: no way to combine two conditions",
-  not: "gap: no way to negate a condition",
-  random: "gap: the scene offers whole-number random only (randomInteger)",
 } as const satisfies Partial<Record<ExpressionKind, CoverageNote>>;
 
 type UndecidedExpression = Exclude<

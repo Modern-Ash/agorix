@@ -14,7 +14,12 @@ import {
   SCENE_TRIGGERS,
   TRIGGERS_NOT_IN_SCENE,
 } from "./kidsCreationCoverage.js";
-import { createStudioProgram, validateStudioProgram } from "./kidsStudioModel.js";
+import { createEditorHistory } from "@agorix/block-editor";
+import {
+  addStudioVariable,
+  createStudioProgram,
+  validateStudioProgram,
+} from "./kidsStudioModel.js";
 
 const base = createStudioProgram("nova");
 const num = (value: number): Expression => ({ type: "numericLiteral", value });
@@ -110,5 +115,47 @@ describe("creation coverage against the engine (#1121)", () => {
     expect(Object.keys(MISSION_PALETTE_STATEMENTS).sort()).toEqual(
       ["move", "repeat", "sound", "turnL", "turnR"].sort(),
     );
+  });
+
+  it("combines conditions only two levels deep and accepts tenths for decimal random", () => {
+    const andKey = (left: Expression, right: Expression): Expression => ({
+      type: "and",
+      left,
+      right,
+    });
+    expect(accepts(withCondition(andKey(andKey(key, key), key)))).toBe(true);
+    expect(accepts(withCondition(andKey(andKey(andKey(key, key), key), key)))).toBe(false);
+    expect(accepts(withCondition({ type: "not", value: { type: "not", value: key } }))).toBe(true);
+    expect(
+      accepts(
+        withCondition({
+          type: "or",
+          left: key,
+          right: { type: "not", value: { type: "not", value: { type: "not", value: key } } },
+        }),
+      ),
+    ).toBe(false);
+
+    const withVariable = addStudioVariable(createEditorHistory(base), "Puntos").current;
+    const withRandom = (min: number, max: number): ProjectProgram => ({
+      ...withVariable,
+      scripts: [
+        {
+          ...withVariable.scripts[0]!,
+          statements: [
+            {
+              type: "setVariable",
+              variableId: "studio-var-1",
+              value: { type: "random", min: num(min), max: num(max) },
+            },
+          ],
+        },
+      ],
+    });
+    expect(accepts(withRandom(0, 1))).toBe(true);
+    expect(accepts(withRandom(-2.5, 7.3))).toBe(true);
+    expect(accepts(withRandom(0.15, 1))).toBe(false);
+    expect(accepts(withRandom(3, 1))).toBe(false);
+    expect(accepts(withRandom(0, 500))).toBe(false);
   });
 });

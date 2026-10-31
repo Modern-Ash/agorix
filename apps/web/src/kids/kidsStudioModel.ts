@@ -167,6 +167,16 @@ function paramInScope(id: ProcedureParamId | undefined, arity: number): boolean 
   return id === undefined || PARAM_IDS.indexOf(id) < arity;
 }
 
+/** A child-typed decimal: tenths only and small, so every control can show and edit it. */
+function checkedDecimal(value: number): boolean {
+  return (
+    Number.isFinite(value) &&
+    Number.isInteger(Math.round(value * 10)) &&
+    Math.abs(value) <= 100 &&
+    Math.abs(value * 10 - Math.round(value * 10)) < 1e-9
+  );
+}
+
 function checkedNumber(value: Expression, program: ProjectProgram, depth = 0, arity = 0): boolean {
   if (depth > 2) return false;
   if (value.type === "param") return arity > 0 && paramInScope(value.paramId, arity);
@@ -195,6 +205,14 @@ function checkedNumber(value: Expression, program: ProjectProgram, depth = 0, ar
       finiteSmallNumber(value.max.value) &&
       value.min.value <= value.max.value
     );
+  if (value.type === "random")
+    return (
+      value.min.type === "numericLiteral" &&
+      value.max.type === "numericLiteral" &&
+      checkedDecimal(value.min.value) &&
+      checkedDecimal(value.max.value) &&
+      value.min.value <= value.max.value
+    );
   if (value.type === "mathFunction") return checkedNumber(value.value, program, depth + 1, arity);
   if (["add", "subtract", "multiply", "divide", "modulo"].includes(value.type)) {
     const binary = value as Extract<
@@ -211,7 +229,14 @@ function checkedNumber(value: Expression, program: ProjectProgram, depth = 0, ar
   return false;
 }
 
-function checkedCondition(value: Expression, program: ProjectProgram, arity = 0): boolean {
+const MAX_STUDIO_CONDITION_DEPTH = 2;
+
+function checkedCondition(
+  value: Expression,
+  program: ProjectProgram,
+  arity = 0,
+  depth = 0,
+): boolean {
   if (value.type === "keyDown")
     return STUDIO_KEYS.includes(value.key as (typeof STUDIO_KEYS)[number]);
   if (value.type === "touchingStageEdge")
@@ -226,7 +251,24 @@ function checkedCondition(value: Expression, program: ProjectProgram, arity = 0)
       const target = actorOfScript(script.id);
       return target !== null && studioActorId(target.index, target.characterId) === value.actorId;
     });
-  if (value.type !== "greaterThan" && value.type !== "lessThan" && value.type !== "equals")
+  // "and", "or" and "not" join the conditions above; the depth keeps a child's sentence short.
+  if (value.type === "and" || value.type === "or")
+    return (
+      depth < MAX_STUDIO_CONDITION_DEPTH &&
+      checkedCondition(value.left, program, arity, depth + 1) &&
+      checkedCondition(value.right, program, arity, depth + 1)
+    );
+  if (value.type === "not")
+    return (
+      depth < MAX_STUDIO_CONDITION_DEPTH && checkedCondition(value.value, program, arity, depth + 1)
+    );
+  if (
+    value.type !== "greaterThan" &&
+    value.type !== "lessThan" &&
+    value.type !== "equals" &&
+    value.type !== "lessOrEqual" &&
+    value.type !== "greaterOrEqual"
+  )
     return false;
   return (
     checkedNumber(value.left, program, 0, arity) && checkedNumber(value.right, program, 0, arity)

@@ -300,6 +300,21 @@ const COPY = {
     groupIfKeyDown: "Si la tecla está pulsada, ejecutar estos bloques",
     timerSeconds: "Segundos del temporizador",
     groupUntilTimer: "Repetir hasta pasar los segundos (usá Esperar)",
+    compoundTitle: "Combinar condiciones",
+    compoundAdd: "Condición combinada",
+    compoundGroup: "Agrupar bajo la condición combinada",
+    compoundFirst: "Primera condición",
+    compoundSecond: "Segunda condición",
+    compoundJoin: "Unir con",
+    compoundAnd: "y",
+    compoundOr: "o",
+    compoundNone: "solo la primera",
+    compoundNot: "al revés (no)",
+    presetKey: "tecla pulsada",
+    presetEdge: "tocando el borde",
+    presetTouch: "tocando otro personaje",
+    presetTimer: "pasaron los segundos",
+    randomDecimal: "con decimales",
     distanceTarget: "Distancia al personaje",
     dataName: "Nombre",
     number: "Número",
@@ -507,6 +522,21 @@ const COPY = {
     groupIfKeyDown: "If the key is down, run these blocks",
     timerSeconds: "Timer seconds",
     groupUntilTimer: "Repeat until the seconds pass (use Wait)",
+    compoundTitle: "Combine conditions",
+    compoundAdd: "Combined condition",
+    compoundGroup: "Group under the combined condition",
+    compoundFirst: "First condition",
+    compoundSecond: "Second condition",
+    compoundJoin: "Join with",
+    compoundAnd: "and",
+    compoundOr: "or",
+    compoundNone: "only the first",
+    compoundNot: "the other way round (not)",
+    presetKey: "key pressed",
+    presetEdge: "touching the edge",
+    presetTouch: "touching another character",
+    presetTimer: "the seconds passed",
+    randomDecimal: "with decimals",
     distanceTarget: "Distance to character",
     dataName: "Name",
     number: "Number",
@@ -656,8 +686,12 @@ function expressionLabel(
     return `${program.lists?.find((item) => item.id === value.listId)?.name ?? "?"}[${expressionLabel(value.index, program)}]`;
   if (value.type === "mathFunction")
     return `${value.function}(${expressionLabel(value.value, program, locale)})`;
-  if (value.type === "randomInteger")
-    return `🎲(${expressionLabel(value.min, program)}, ${expressionLabel(value.max, program)})`;
+  if (value.type === "randomInteger" || value.type === "random")
+    return `🎲${value.type === "random" ? "~" : ""}(${expressionLabel(value.min, program)}, ${expressionLabel(value.max, program)})`;
+  if (value.type === "not")
+    return `${locale === "es" ? "no" : "not"} ${expressionLabel(value.value, program, locale)}`;
+  if (value.type === "and" || value.type === "or")
+    return `(${expressionLabel(value.left, program, locale)} ${value.type === "and" ? (locale === "es" ? "y" : "and") : locale === "es" ? "o" : "or"} ${expressionLabel(value.right, program, locale)})`;
   const operators: Partial<Record<Expression["type"], string>> = {
     add: "+",
     subtract: "−",
@@ -667,6 +701,8 @@ function expressionLabel(
     greaterThan: ">",
     lessThan: "<",
     equals: "=",
+    lessOrEqual: "≤",
+    greaterOrEqual: "≥",
   };
   if ("left" in value && "right" in value && operators[value.type])
     return `(${expressionLabel(value.left, program)} ${operators[value.type]} ${expressionLabel(value.right, program)})`;
@@ -693,6 +729,8 @@ function backdropOfStage(
   const suffix = id?.replace(/^backdrop:/, "");
   return isGalleryBackdropId(suffix) ? suffix : fallback;
 }
+
+type ConditionPreset = "key" | "edge" | "touch" | "timer";
 
 function starterLabel(
   kind: StudioStarterKind,
@@ -747,9 +785,14 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
   const [mathOperator, setMathOperator] = useState<
     "add" | "subtract" | "multiply" | "divide" | "modulo"
   >("add");
-  const [compareOperator, setCompareOperator] = useState<"greaterThan" | "lessThan" | "equals">(
-    "greaterThan",
-  );
+  const [compareOperator, setCompareOperator] = useState<
+    "greaterThan" | "lessThan" | "equals" | "lessOrEqual" | "greaterOrEqual"
+  >("greaterThan");
+  const [compoundA, setCompoundA] = useState<ConditionPreset>("key");
+  const [compoundB, setCompoundB] = useState<ConditionPreset>("edge");
+  const [compoundJoin, setCompoundJoin] = useState<"none" | "and" | "or">("and");
+  const [compoundNot, setCompoundNot] = useState(false);
+  const [randomDecimal, setRandomDecimal] = useState(false);
   const [compareCalculation, setCompareCalculation] = useState(false);
   const [sensorTargetId, setSensorTargetId] = useState("");
   const [senseKey, setSenseKey] = useState<(typeof STUDIO_KEYS)[number]>("Space");
@@ -1539,6 +1582,32 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
       left: { type: "variable", variableId: selectedSourceVariableId },
       right: { type: "numericLiteral", value: dataValue },
     };
+  }
+
+  /** One of the simple conditions a child already knows, ready to be joined with another. */
+  function presetCondition(preset: ConditionPreset): Expression | null {
+    if (preset === "key") return { type: "keyDown", key: senseKey };
+    if (preset === "edge") return STUDIO_EDGE_CONDITION;
+    if (preset === "touch")
+      return targetActorId ? { type: "touchingActor", actorId: targetActorId } : null;
+    return {
+      type: "greaterThan",
+      left: { type: "timer" },
+      right: { type: "numericLiteral", value: timerSeconds },
+    };
+  }
+
+  /** "A and B", "A or B" or just "A", optionally turned round with "not". */
+  function compoundCondition(): Expression | null {
+    const first = presetCondition(compoundA);
+    if (first === null) return null;
+    let joined: Expression = first;
+    if (compoundJoin !== "none") {
+      const second = presetCondition(compoundB);
+      if (second === null) return null;
+      joined = { type: compoundJoin, left: first, right: second };
+    }
+    return compoundNot ? { type: "not", value: joined } : joined;
   }
 
   function condition(): Expression {
@@ -3576,6 +3645,80 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
             >
               {copy.groupUntilTimer}
             </button>
+            <div role="group" aria-label={copy.compoundTitle} className="kids-studio-compound">
+              <strong>{copy.compoundTitle}</strong>
+              {(
+                [
+                  [copy.compoundFirst, compoundA, setCompoundA],
+                  [copy.compoundSecond, compoundB, setCompoundB],
+                ] as const
+              ).map(([label, value, setValue], index) => (
+                <label key={label}>
+                  {label}{" "}
+                  <select
+                    value={value}
+                    disabled={index === 1 && compoundJoin === "none"}
+                    onChange={(event) => setValue(event.target.value as ConditionPreset)}
+                  >
+                    <option value="key">{copy.presetKey}</option>
+                    <option value="edge">{copy.presetEdge}</option>
+                    {otherActors.length > 0 ? (
+                      <option value="touch">{copy.presetTouch}</option>
+                    ) : null}
+                    <option value="timer">{copy.presetTimer}</option>
+                  </select>
+                </label>
+              ))}
+              <label>
+                {copy.compoundJoin}{" "}
+                <select
+                  value={compoundJoin}
+                  onChange={(event) => setCompoundJoin(event.target.value as typeof compoundJoin)}
+                >
+                  <option value="and">{copy.compoundAnd}</option>
+                  <option value="or">{copy.compoundOr}</option>
+                  <option value="none">{copy.compoundNone}</option>
+                </select>
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={compoundNot}
+                  onChange={(event) => setCompoundNot(event.target.checked)}
+                />
+                {copy.compoundNot}
+              </label>
+              <button
+                type="button"
+                className="kids-button"
+                data-testid="compound-if"
+                disabled={compoundCondition() === null}
+                onClick={() => {
+                  const joined = compoundCondition();
+                  if (joined)
+                    add({ type: "if", condition: joined, then: [{ type: "move", steps: 40 }] });
+                }}
+              >
+                + {copy.compoundAdd}:{" "}
+                {compoundCondition()
+                  ? expressionLabel(compoundCondition()!, history.current, locale)
+                  : ""}{" "}
+                → {copy.thenMove}
+              </button>
+              <button
+                type="button"
+                className="kids-button"
+                disabled={
+                  compoundCondition() === null || (script?.statements.length ?? 0) < groupCount
+                }
+                onClick={() => {
+                  const joined = compoundCondition();
+                  if (joined) groupLast("if", joined);
+                }}
+              >
+                {copy.compoundGroup}
+              </button>
+            </div>
             {penEnabled ? (
               <div role="group" aria-label={copy.penTitle}>
                 <strong id={studioCategoryId("pen")} tabIndex={-1}>
@@ -4029,7 +4172,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                     type="number"
                     min={-100}
                     max={100}
-                    step={1}
+                    step={randomDecimal ? 0.1 : 1}
                     value={randomMin}
                     onChange={(event) => setRandomMin(Number(event.target.value))}
                   />
@@ -4040,17 +4183,27 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                     type="number"
                     min={-100}
                     max={100}
-                    step={1}
+                    step={randomDecimal ? 0.1 : 1}
                     value={randomMax}
                     onChange={(event) => setRandomMax(Number(event.target.value))}
                   />
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={randomDecimal}
+                    onChange={(event) => setRandomDecimal(event.target.checked)}
+                  />
+                  {copy.randomDecimal}
                 </label>
                 <button
                   type="button"
                   className="kids-button"
                   disabled={
-                    !Number.isInteger(randomMin) ||
-                    !Number.isInteger(randomMax) ||
+                    (randomDecimal
+                      ? Math.abs(randomMin * 10 - Math.round(randomMin * 10)) > 1e-9 ||
+                        Math.abs(randomMax * 10 - Math.round(randomMax * 10)) > 1e-9
+                      : !Number.isInteger(randomMin) || !Number.isInteger(randomMax)) ||
                     Math.abs(randomMin) > 100 ||
                     Math.abs(randomMax) > 100 ||
                     randomMin > randomMax
@@ -4060,7 +4213,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                       type: "setVariable",
                       variableId,
                       value: {
-                        type: "randomInteger",
+                        type: randomDecimal ? "random" : "randomInteger",
                         min: { type: "numericLiteral", value: randomMin },
                         max: { type: "numericLiteral", value: randomMax },
                       },
@@ -4157,6 +4310,8 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                     <option value="greaterThan">&gt;</option>
                     <option value="lessThan">&lt;</option>
                     <option value="equals">=</option>
+                    <option value="lessOrEqual">&le;</option>
+                    <option value="greaterOrEqual">&ge;</option>
                   </select>
                 </label>
                 <label>
