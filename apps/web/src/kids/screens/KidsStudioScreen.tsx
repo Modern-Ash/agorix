@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type PointerEvent } from "react";
 import {
+  STUDIO_EFFECT_DELTAS,
+  STUDIO_MOVE_CELLS,
+  STUDIO_REPEAT_COUNTS,
+  STUDIO_SIZE_DELTAS,
+  STUDIO_SIZES,
+  STUDIO_TURN_AMOUNTS,
+  STUDIO_WAIT_SECONDS,
+  studioEffectValues,
+} from "../kidsStudioChoices.js";
+import {
   studioCategories,
   studioCategoryId,
   type StudioCategory,
@@ -3238,7 +3248,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 value={spriteSize}
                 onChange={(event) => setSpriteSize(Number(event.target.value))}
               >
-                {[50, 75, 100, 125, 150].map((size) => (
+                {STUDIO_SIZES.map((size) => (
                   <option key={size} value={size}>
                     {size}%
                   </option>
@@ -3260,7 +3270,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 value={sizeDelta}
                 onChange={(event) => setSizeDelta(Number(event.target.value))}
               >
-                {[-50, -25, 25, 50].map((delta) => (
+                {STUDIO_SIZE_DELTAS.map((delta) => (
                   <option key={delta} value={delta}>
                     {delta > 0 ? "+" : ""}
                     {delta}%
@@ -3309,20 +3319,18 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 value={effectValue}
                 onChange={(event) => setEffectValue(Number(event.target.value))}
               >
-                {(effectKind === "brightness" ? [-50, -25, 0, 25, 50] : [0, 25, 50, 75, 100]).map(
-                  (value) => (
-                    <option key={value} value={value}>
-                      {value}
-                    </option>
-                  ),
-                )}
+                {studioEffectValues(effectKind).map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
               </select>
               <select
                 aria-label={copy.changeEffect}
                 value={effectDelta}
                 onChange={(event) => setEffectDelta(Number(event.target.value))}
               >
-                {[-25, 25].map((delta) => (
+                {STUDIO_EFFECT_DELTAS.map((delta) => (
                   <option key={delta} value={delta}>
                     {delta > 0 ? "+" : ""}
                     {delta}
@@ -3345,7 +3353,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 value={waitSeconds}
                 onChange={(event) => setWaitSeconds(Number(event.target.value))}
               >
-                {[0.5, 1, 2, 3].map((seconds) => (
+                {STUDIO_WAIT_SECONDS.map((seconds) => (
                   <option key={seconds} value={seconds}>
                     {seconds}s
                   </option>
@@ -3375,7 +3383,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 value={moveCells}
                 onChange={(event) => setMoveCells(Number(event.target.value))}
               >
-                {[1, 2, 3, 4, 5].map((count) => (
+                {STUDIO_MOVE_CELLS.map((count) => (
                   <option key={count} value={count}>
                     {count}
                   </option>
@@ -3439,7 +3447,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 value={turnAmount}
                 onChange={(event) => setTurnAmount(Number(event.target.value))}
               >
-                {[45, 90, 180].map((degrees) => (
+                {STUDIO_TURN_AMOUNTS.map((degrees) => (
                   <option key={degrees} value={degrees}>
                     {degrees}°
                   </option>
@@ -3686,7 +3694,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                   value={repeatCount}
                   onChange={(event) => setRepeatCount(Number(event.target.value))}
                 >
-                  {[2, 3, 5].map((count) => (
+                  {STUDIO_REPEAT_COUNTS.map((count) => (
                     <option key={count} value={count}>
                       {count}
                     </option>

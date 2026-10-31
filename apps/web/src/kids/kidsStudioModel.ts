@@ -1,3 +1,13 @@
+import {
+  STUDIO_EFFECT_DELTAS,
+  STUDIO_POINT_DIRECTIONS,
+  STUDIO_REPEAT_COUNTS,
+  STUDIO_SIZE_DELTAS,
+  STUDIO_SIZES,
+  STUDIO_TURN_AMOUNTS,
+  STUDIO_WAIT_SECONDS,
+  studioEffectValues,
+} from "./kidsStudioChoices.js";
 import { recordCanonicalTransaction, type EditorHistory } from "@agorix/block-editor";
 import {
   MUSIC_BEATS,
@@ -377,7 +387,7 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0, arity
     );
   if (statement.type === "glideTo")
     return (
-      [0.5, 1, 2, 3].includes(statement.seconds) &&
+      (STUDIO_WAIT_SECONDS as readonly number[]).includes(statement.seconds) &&
       checked({ type: "goTo", x: statement.x, y: statement.y }, program)
     );
   if (statement.type === "goTo")
@@ -392,9 +402,10 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0, arity
   if (statement.type === "turn")
     return (
       paramInScope(statement.degreesFrom, arity) &&
-      [45, 90, 180, -45, -90, -180].includes(statement.degrees)
+      STUDIO_TURN_AMOUNTS.flatMap((amount) => [amount, -amount]).includes(statement.degrees)
     );
-  if (statement.type === "pointInDirection") return [0, 90, 180, -90].includes(statement.degrees);
+  if (statement.type === "pointInDirection")
+    return (STUDIO_POINT_DIRECTIONS as readonly number[]).includes(statement.degrees);
   if (statement.type === "pointTowards")
     return program.scripts.some((script) => {
       const actor = actorOfScript(script.id);
@@ -403,16 +414,16 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0, arity
   if (statement.type === "bounceOnEdge") return true;
   if (statement.type === "setEffect")
     return (
+      statement.effect === "color" ||
+      statement.effect === "ghost" ||
       statement.effect === "brightness"
-        ? [-50, -25, 0, 25, 50]
-        : statement.effect === "color" || statement.effect === "ghost"
-          ? [0, 25, 50, 75, 100]
-          : []
+        ? studioEffectValues(statement.effect)
+        : []
     ).includes(statement.value);
   if (statement.type === "changeEffect")
     return (
       ["color", "ghost", "brightness"].includes(statement.effect) &&
-      [-25, 25].includes(statement.delta)
+      (STUDIO_EFFECT_DELTAS as readonly number[]).includes(statement.delta)
     );
   if (statement.type === "clearEffects") return true;
   if (statement.type === "penDown" || statement.type === "penUp" || statement.type === "clearPen")
@@ -456,10 +467,15 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0, arity
   if (statement.type === "say" || statement.type === "think")
     return statement.text.trim().length > 0 && statement.text.length <= 80;
   if (statement.type === "show" || statement.type === "hide") return true;
-  if (statement.type === "changeSize") return [-50, -25, 25, 50].includes(statement.delta);
-  if (statement.type === "setSize") return [50, 75, 100, 125, 150].includes(statement.size);
+  if (statement.type === "changeSize")
+    return (STUDIO_SIZE_DELTAS as readonly number[]).includes(statement.delta);
+  if (statement.type === "setSize")
+    return (STUDIO_SIZES as readonly number[]).includes(statement.size);
   if (statement.type === "wait")
-    return paramInScope(statement.secondsFrom, arity) && [0.5, 1, 2, 3].includes(statement.seconds);
+    return (
+      paramInScope(statement.secondsFrom, arity) &&
+      (STUDIO_WAIT_SECONDS as readonly number[]).includes(statement.seconds)
+    );
   if (statement.type === "broadcast")
     return STUDIO_MESSAGES.includes(statement.message as (typeof STUDIO_MESSAGES)[number]);
   if (statement.type === "setVariable" || statement.type === "changeVariable")
@@ -494,7 +510,7 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0, arity
     return (
       depth < MAX_STUDIO_CONTROL_DEPTH &&
       paramInScope(statement.countFrom, arity) &&
-      [2, 3, 5].includes(statement.count) &&
+      (STUDIO_REPEAT_COUNTS as readonly number[]).includes(statement.count) &&
       statement.body.length >= 1 &&
       statement.body.length <= MAX_STUDIO_BODY &&
       statement.body.every((item) => checked(item, program, depth + 1, arity))
