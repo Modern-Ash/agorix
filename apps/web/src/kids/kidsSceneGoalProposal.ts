@@ -52,11 +52,18 @@ export function proposeSceneGoal(
   program: ProjectProgram,
   locale: Locale,
   attempt: number,
+  /** The goal a remote Ori ranked first; it goes ahead of the local ranking when it is valid. */
+  preferred?: ProjectSceneGoal | null,
 ): SceneGoalProposal | null {
-  const ranked = rankSceneGoals(
+  const local = rankSceneGoals(
     actors.map((item) => item.id),
     program,
   );
+  const preferredKey = preferred ? JSON.stringify(preferred) : null;
+  const ranked =
+    preferredKey !== null && local.some((item) => JSON.stringify(item) === preferredKey)
+      ? [preferred!, ...local.filter((item) => JSON.stringify(item) !== preferredKey)]
+      : local;
   if (ranked.length === 0) return null;
   const goal = ranked[((attempt % ranked.length) + ranked.length) % ranked.length]!;
   const nameOf = (actorId: string) => actors.find((item) => item.id === actorId)?.name ?? "?";

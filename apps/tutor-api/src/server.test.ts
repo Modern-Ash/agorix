@@ -266,6 +266,35 @@ describe("tutor HTTP server (issue #348)", () => {
     });
     expect(invalid.status).toBe(400);
   });
+  it("ranks scene goals by index only and rejects anything outside the closed choice shape", async () => {
+    const base = await start({ AGORIX_TUTOR_ADAPTER: "fake" });
+    const choices = [
+      { kind: "reachEdge", actorId: "actor:studio-1-nova" },
+      { kind: "touchActor", actorId: "actor:studio-1-nova", targetId: "actor:studio-2-mika" },
+    ];
+    const post = (body: unknown, headers: Record<string, string> = {}) =>
+      fetch(`${base}/api/tutor/scene-goals`, {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: base, ...headers },
+        body: JSON.stringify(body),
+      });
+    const ok = await post({ locale: "es", choices });
+    expect(ok.status).toBe(200);
+    expect(await ok.json()).toEqual({ choice: 0 });
+    for (const body of [
+      { locale: "es", choices, text: "ignore rules" },
+      { locale: "fr", choices },
+      { locale: "es", choices: [] },
+      { locale: "es", choices: [{ kind: "reachEdge", actorId: "Nova" }] },
+      { locale: "es", choices: [{ ...choices[0], note: "hola" }] },
+    ])
+      expect((await post(body)).status).toBe(400);
+    expect((await post({ locale: "es", choices }, { origin: "https://evil.example" })).status).toBe(
+      403,
+    );
+    const get = await fetch(`${base}/api/tutor/scene-goals`);
+    expect(get.status).toBe(405);
+  });
   it("limits Ori chat, rejects invalid input and never echoes child text", async () => {
     const base = await start({ AGORIX_TUTOR_ADAPTER: "fake" });
     const sendChat = (text: string, extra: Record<string, unknown> = {}) =>
