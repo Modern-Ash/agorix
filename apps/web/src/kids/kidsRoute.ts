@@ -34,6 +34,11 @@ export interface KidsRouteLookup {
     id: string,
   ) => { readonly world: KidsWorld; readonly avatar: KidsAvatar } | null;
   readonly studioProject: (id: string) => boolean;
+  /**
+   * The scene an old `#/libre/{id}` project becomes (issue #1134), converting it on first open.
+   * Absent or null keeps the old single-explorer editor for projects that cannot convert.
+   */
+  readonly sceneOfFree?: (id: string) => string | null;
 }
 
 export function routeHash(state: KidsState): string | null {
@@ -89,6 +94,9 @@ export function stateFromHash(
     };
   }
   if (head === "libre" && a && ID.test(a) && parts.length === 2) {
+    const sceneId = lookup.sceneOfFree?.(a);
+    if (sceneId && lookup.studioProject(sceneId))
+      return { ...current, screen: "studio", studioProjectId: sceneId, freeProjectId: undefined };
     const project = lookup.freeProject(a);
     return project
       ? {

@@ -1,5 +1,7 @@
 # Unreleased
 
+- Kids: behind the `freeToScene` flag (off by default), an old single-explorer project (`#/libre/{id}`, or its card in Mis proyectos) opens as a scene: world to backdrop, explorer to character, blocks copied. The old project is kept untouched, the conversion is remembered so it never duplicates, and projects with custom art or blocks a scene lacks stay as they were. With the flag on, Crear no longer offers ¡Crear! (#1134).
+
 - Kids Escena libre: with a scene goal set, Ori can suggest a block the goal character has not used yet (Move, Point towards, Repeat) as a visible proposal the child accepts, changes or declines. A new `POST /api/tutor/scene-goals` lets the model rank the goals the child could already pick by returning one index; the wording stays local, any failure keeps the local ranking, and the project runs without AI (#1135).
 
 - Kids Escena libre: the closed value lists (sizes, waits, turns, effects, repeat counts) live in one module that both the validator and the palette use, numeric bounds (coordinates, volume, bubble length) are shared the same way, the mission palette is derived from the named mission subset of the scene catalog, and the "Para empezar" shelf adds Repeat after the child uses Move and Wait after Sound while the whole palette stays visible (#1133).

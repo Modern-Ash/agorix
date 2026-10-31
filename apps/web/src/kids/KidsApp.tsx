@@ -28,6 +28,7 @@ import { EditorScreen } from "./screens/EditorScreen.js";
 import { CreateScreen } from "./screens/CreateScreen.js";
 import { ProjectsScreen } from "./screens/ProjectsScreen.js";
 import { ReflectScreen } from "./screens/ReflectScreen.js";
+import { convertFreeProject } from "./kidsFreeToScene.js";
 import { createFreeProjectRef, listFreeProjectRefs } from "./kidsProjects.js";
 import { routeHash, stateFromHash, type KidsRouteLookup } from "./kidsRoute.js";
 import {
@@ -49,7 +50,7 @@ import {
   ensureAdvancedProject,
 } from "./kidsAdvancedProgress.js";
 import { ProjectStore } from "@agorix/persistence";
-import { useKidsFlag } from "./kidsFlags.js";
+import { kidsFlagNow, useKidsFlag } from "./kidsFlags.js";
 import { tutorialVisible } from "./kidsTutorial.js";
 import { VerifyLanding } from "./link/VerifyLanding.js";
 import { useLinkSync } from "./link/useLinkSync.js";
@@ -77,6 +78,7 @@ export function KidsApp({
 }: { readonly initialState?: KidsState; readonly initialProgress?: KidsProgress } = {}) {
   const scratchBlocks = useKidsFlag("puzzleShape");
   const tutorialEnabled = useKidsFlag("tutorial");
+  const freeToScene = useKidsFlag("freeToScene");
   const adultLinkEnabled = useKidsFlag("adultLink");
   const ageBandsEnabled = useKidsFlag("ageBands");
   const [progress, setProgress] = useState<KidsProgress>(
@@ -124,7 +126,7 @@ export function KidsApp({
         dispatch({ type: "restore", state: { ...state, screen: "onboard", onboardStep: 0 } });
         return;
       }
-      const next = stateFromHash(window.location.hash, state, routeLookup());
+      const next = stateFromHash(window.location.hash, state, routeLookup(state.locale));
       if (next) dispatch({ type: "restore", state: next });
       else dispatch({ type: "go", screen: "map" });
     };
@@ -425,9 +427,15 @@ export function KidsApp({
             onMission={(world, missionIndex) =>
               dispatch({ type: "openSavedMission", world, missionIndex })
             }
-            onFree={(projectId, world, avatar) =>
-              dispatch({ type: "openFreeProject", projectId, world, avatar })
-            }
+            onFree={(projectId, world, avatar) => {
+              // An old single-explorer project opens as a scene when it converts without loss (#1134).
+              const converted = freeToScene
+                ? convertFreeProject(projectId, state.locale, projectStore)
+                : null;
+              if (converted?.kind === "scene")
+                dispatch({ type: "openStudio", projectId: converted.studioId });
+              else dispatch({ type: "openFreeProject", projectId, world, avatar });
+            }}
             onStudio={(projectId) => dispatch({ type: "openStudio", projectId })}
           />
         ) : state.screen === "reflect" && reflection ? (
@@ -485,7 +493,7 @@ export function KidsApp({
   );
 }
 
-function routeLookup(): KidsRouteLookup {
+function routeLookup(locale: Locale): KidsRouteLookup {
   return {
     freeProject: (id) => {
       const found = listFreeProjectRefs().find((item) => item.id === id);
@@ -496,13 +504,18 @@ function routeLookup(): KidsRouteLookup {
       };
     },
     studioProject: (id) => listStudioProjects().some((item) => item.id === id),
+    sceneOfFree: (id) => {
+      if (!kidsFlagNow("freeToScene")) return null;
+      const result = convertFreeProject(id, locale);
+      return result.kind === "scene" ? result.studioId : null;
+    },
   };
 }
 
 /** A reload on a deep link opens that screen once the child is onboarded. */
 function stateFromLocation(start: KidsState, progress: KidsProgress): KidsState {
   if (!progress.onboarded || typeof window === "undefined") return start;
-  return stateFromHash(window.location.hash, start, routeLookup()) ?? start;
+  return stateFromHash(window.location.hash, start, routeLookup(start.locale)) ?? start;
 }
 
 function startingState(progress: KidsProgress): KidsState {
