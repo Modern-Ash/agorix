@@ -56,6 +56,7 @@ const statements: Statement[] = [
   { type: "switchBackdrop", backdropId: "backdrop:forest" },
   { type: "playSound", soundId: "kids:pop" },
   { type: "stopSounds" },
+  { type: "stop", scope: "script" },
   { type: "setVolume", volume: 80 },
   { type: "changeVolume", delta: -10 },
   { type: "broadcast", message: "hola" },

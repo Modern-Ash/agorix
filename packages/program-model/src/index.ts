@@ -63,6 +63,7 @@ export type {
   SetVariableStatement,
   ShowVariableStatement,
   StopSoundsStatement,
+  StopStatement,
   Statement,
   SubtractExpression,
   TouchingGoalExpression,

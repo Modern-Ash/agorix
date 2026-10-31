@@ -436,6 +436,9 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
     case "stopSounds":
       writeMapped(writer, nodeId, indent + "stop_sounds()\n");
       return;
+    case "stop":
+      writeMapped(writer, nodeId, indent + "stop(" + JSON.stringify(statement.scope) + ")\n");
+      return;
     case "setVolume":
       writeMapped(writer, nodeId, indent + "set_volume(" + formatNumber(statement.volume) + ")\n");
       return;

@@ -56,6 +56,7 @@ export type StudioStatement = Extract<
       | "switchBackdrop"
       | "playSound"
       | "stopSounds"
+      | "stop"
       | "setVolume"
       | "changeVolume"
       | "say"
@@ -433,6 +434,7 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0, arity
   if (statement.type === "playSound")
     return isKidsSoundId(statement.soundId) && statement.soundId !== "kids:custom";
   if (statement.type === "stopSounds") return true;
+  if (statement.type === "stop") return ["script", "actor", "scene"].includes(statement.scope);
   if (statement.type === "setVolume")
     return Number.isInteger(statement.volume) && statement.volume >= 0 && statement.volume <= 100;
   if (statement.type === "changeVolume")

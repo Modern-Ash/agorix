@@ -7,6 +7,7 @@ import type {
   ProjectProgram,
   Script,
   Statement,
+  StopStatement,
   Trigger,
 } from "@agorix/program-model";
 import {
@@ -114,6 +115,7 @@ export interface ExecutionTraceEntry {
   readonly nodeId: string;
   readonly path: string;
   readonly statementType: Statement["type"];
+  readonly stopScope?: StopStatement["scope"];
   /** Emitted only for playSound, so audio playback follows executed statements exactly. */
   readonly soundId?: string;
   /** Music pack: how a playSound, note or drum sounds, from the world at that moment. */
@@ -152,6 +154,8 @@ export interface SanitizedTutorContext {
 
 export interface RunResult {
   readonly outcome: RunOutcome;
+  /** Present when a canonical stop block ended an activation. */
+  readonly stopScope?: StopStatement["scope"];
   readonly world: WorldState;
   readonly stepsUsed: number;
   readonly trace: readonly ExecutionTraceEntry[];
@@ -169,9 +173,11 @@ export interface RunResult {
 
 class ExecutionHalt {
   readonly outcome: Exclude<RunOutcome, "completed">;
+  readonly stopScope: StopStatement["scope"] | undefined;
 
-  constructor(outcome: Exclude<RunOutcome, "completed">) {
+  constructor(outcome: Exclude<RunOutcome, "completed">, stopScope?: StopStatement["scope"]) {
     this.outcome = outcome;
+    this.stopScope = stopScope;
   }
 }
 
@@ -636,6 +642,9 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
     case "stopSounds":
       state.world = stopSoundsWorld(state.world);
       break;
+    case "stop":
+      // Record this block in the trace before ending the selected scope below.
+      break;
     case "playNote":
     case "playDrum":
       audio = audioPlayback(
@@ -784,6 +793,7 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
     nodeId,
     path: nodeId,
     statementType: statement.type,
+    ...(statement.type === "stop" ? { stopScope: statement.scope } : {}),
     ...(statement.type === "playSound" ? { soundId: statement.soundId } : {}),
     ...(statement.type === "playSound" && state.world.music
       ? { audio: audioPlayback(state.world, {}) }
@@ -803,6 +813,7 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
     world: worldAfter,
     event: state.event,
   });
+  if (statement.type === "stop") throw new ExecutionHalt("stopped", statement.scope);
 }
 
 function seedProgramLists(
@@ -895,6 +906,7 @@ export function runProgram(
     notes: [],
   };
 
+  let scriptStopped = false;
   try {
     for (let i = 0; i < validated.scripts.length; i += 1) {
       const script = validated.scripts[i];
@@ -907,19 +919,29 @@ export function runProgram(
       }
       state.script = script;
       state.scriptIndex = i;
-      executeStatements(script.statements, `scripts[${i}].statements`, state);
+      try {
+        executeStatements(script.statements, `scripts[${i}].statements`, state);
+      } catch (error) {
+        if (error instanceof ExecutionHalt && error.stopScope === "script") {
+          scriptStopped = true;
+          continue;
+        }
+        throw error;
+      }
     }
     const world = cloneWorldState(state.world);
+    const outcome: RunOutcome = scriptStopped ? "stopped" : "completed";
     recordObservation(state, {
       kind: "run-complete",
       step: state.stepsUsed,
       nodeId: "$",
-      outcome: "completed",
+      outcome,
       world,
       event: state.event,
     });
     return {
-      outcome: "completed",
+      outcome,
+      ...(scriptStopped ? { stopScope: "script" as const } : {}),
       world,
       stepsUsed: state.stepsUsed,
       trace: state.trace,
@@ -941,6 +963,7 @@ export function runProgram(
       });
       return {
         outcome: error.outcome,
+        ...(error.stopScope === undefined ? {} : { stopScope: error.stopScope }),
         world,
         stepsUsed: state.stepsUsed,
         trace: state.trace,

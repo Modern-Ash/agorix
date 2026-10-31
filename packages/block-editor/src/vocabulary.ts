@@ -244,6 +244,14 @@ const definitions: readonly ToolboxBlockDefinition[] = [
     }),
   },
   {
+    type: "control_stop",
+    label: "Stop [script / actor / scene]",
+    section: "Repeat & Decide",
+    placement: "statement",
+    accessibleName: "stop program",
+    createDefaultBlock: (id) => ({ id, type: "control_stop", fields: { scope: "script" } }),
+  },
+  {
     type: "sensing_touching_goal",
     label: "Touching the goal?",
     section: "Check",

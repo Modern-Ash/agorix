@@ -194,6 +194,10 @@ const COPY = {
     switchBackdrop: "Cambiar fondo",
     sound: "Sonar",
     stopSounds: "Detener sonidos",
+    stop: "Detener",
+    stopScript: "este programa",
+    stopActor: "este personaje",
+    stopScene: "toda la escena",
     volume: "Volumen",
     volumeChange: "Cambio de volumen",
     setVolume: "Fijar volumen",
@@ -416,6 +420,10 @@ const COPY = {
     switchBackdrop: "Switch backdrop",
     sound: "Sound",
     stopSounds: "Stop sounds",
+    stop: "Stop",
+    stopScript: "this script",
+    stopActor: "this actor",
+    stopScene: "the whole scene",
     volume: "Volume",
     volumeChange: "Volume change",
     setVolume: "Set volume",
@@ -775,6 +783,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
   const [spriteSize, setSpriteSize] = useState(100);
   const [sizeDelta, setSizeDelta] = useState(25);
   const [waitSeconds, setWaitSeconds] = useState(1);
+  const [stopScope, setStopScope] = useState<"script" | "actor" | "scene">("script");
   const [volume, setVolume] = useState(100);
   const [volumeChange, setVolumeChange] = useState(-10);
   const [eventKey, setEventKey] = useState<(typeof STUDIO_KEYS)[number]>("Space");
@@ -1686,6 +1695,8 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
         return `${copy.sound}: ${KIDS_SOUNDS.find((item) => item.id === statement.soundId)?.[locale] ?? ""}`;
       case "stopSounds":
         return copy.stopSounds;
+      case "stop":
+        return `${copy.stop}: ${statement.scope === "script" ? copy.stopScript : statement.scope === "actor" ? copy.stopActor : copy.stopScene}`;
       case "setVolume":
         return `${copy.setVolume}: ${statement.volume}%`;
       case "changeVolume":
@@ -2576,6 +2587,23 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               ? `${run.trace.length} ${locale === "es" ? (run.trace.length === 1 ? "bloque ejecutado" : "bloques ejecutados") : run.trace.length === 1 ? "block executed" : "blocks executed"}`
               : "—"}
           </p>
+          {run?.outcome === "stopped" ? (
+            <p className="kids-note" role="status">
+              {locale === "es" ? "Programa detenido: " : "Program stopped: "}
+              {(() => {
+                const scope = run.trace
+                  .filter((entry) => entry.statementType === "stop")
+                  .at(-1)?.stopScope;
+                return scope === "script"
+                  ? copy.stopScript
+                  : scope === "actor"
+                    ? copy.stopActor
+                    : scope === "scene"
+                      ? copy.stopScene
+                      : copy.stop;
+              })()}
+            </p>
+          ) : null}
           <KidsSceneGoalPanel
             locale={locale}
             actors={creative.actors ?? []}
@@ -3618,6 +3646,27 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               }
             >
               + {copy.ifTouchEdge}
+            </button>
+            <label>
+              {copy.stop}{" "}
+              <select
+                aria-label={copy.stop}
+                value={stopScope}
+                onChange={(event) =>
+                  setStopScope(event.target.value as "script" | "actor" | "scene")
+                }
+              >
+                <option value="script">{copy.stopScript}</option>
+                <option value="actor">{copy.stopActor}</option>
+                <option value="scene">{copy.stopScene}</option>
+              </select>
+            </label>
+            <button
+              type="button"
+              className="kids-button"
+              onClick={() => add({ type: "stop", scope: stopScope })}
+            >
+              + {copy.stop}
             </button>
             <button
               type="button"

@@ -413,6 +413,9 @@ function projectStatement(
     case "stopSounds":
       write(writer, `${pad}sound.stopAll();\n`);
       return;
+    case "stop":
+      write(writer, `${pad}stop(${JSON.stringify(statement.scope)});\n`);
+      return;
     case "setVolume":
       write(writer, `${pad}sound.setVolume(${statement.volume});\n`);
       return;

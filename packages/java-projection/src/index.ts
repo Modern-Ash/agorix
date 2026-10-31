@@ -53,6 +53,7 @@ export const JAVA_SUPPORT_API = [
   "switchBackdrop",
   "playSound",
   "stopSounds",
+  "stop",
   "setVolume",
   "changeVolume",
   "broadcast",
@@ -113,6 +114,7 @@ export const JAVA_SUPPORT_STUB = `class Sprite {
     void switchBackdrop(String backdrop) {}
     void playSound(String sound) {}
     void stopSounds() {}
+    void stop(String scope) {}
     void setVolume(double volume) {}
     void changeVolume(double delta) {}
     void broadcast(String message) {}
@@ -501,6 +503,8 @@ function statement(writer: Writer, node: Statement, nodeId: string, depth: numbe
       return line(`playSound(${literal(node.soundId)})`);
     case "stopSounds":
       return line("stopSounds()");
+    case "stop":
+      return line(`stop(${literal(node.scope)})`);
     case "setVolume":
       return line(`setVolume(${number(node.volume)})`);
     case "changeVolume":
@@ -714,6 +718,7 @@ export const javaLanguagePack: LanguagePack = {
     "switchBackdrop",
     "playSound",
     "stopSounds",
+    "stop",
     "setVolume",
     "changeVolume",
     "broadcast",
