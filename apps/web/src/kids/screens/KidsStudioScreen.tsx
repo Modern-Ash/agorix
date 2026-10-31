@@ -275,6 +275,10 @@ const COPY = {
     ifTouchEdge: "Si toca el borde, mover 1",
     groupIfTouchEdge: "Si toca el borde, ejecutar estos bloques",
     repeatUntil: "Repetir hasta",
+    waitUntil: "Esperar hasta",
+    waitUntilEdge: "Esperar hasta tocar el borde",
+    waitUntilTimeout:
+      "La condición no se cumplió en 10 segundos del programa. Se detuvo la escena. Probá cambiar la condición y volvé a jugar.",
     growShrink: "Cambiar tamaño",
     groupUntilEdge: "Repetir hasta tocar el borde",
     groupUntilActor: "Repetir hasta tocar al personaje",
@@ -501,6 +505,10 @@ const COPY = {
     ifTouchEdge: "If at edge, move 1",
     groupIfTouchEdge: "If at edge, run these blocks",
     repeatUntil: "Repeat until",
+    waitUntil: "Wait until",
+    waitUntilEdge: "Wait until touching the edge",
+    waitUntilTimeout:
+      "The condition did not become true in 10 program seconds. The scene stopped. Try changing the condition and play again.",
     growShrink: "Change size",
     groupUntilEdge: "Repeat until at the edge",
     groupUntilActor: "Repeat until touching the character",
@@ -1771,6 +1779,8 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
       }
       case "repeatUntil":
         return `${copy.repeatUntil} ${expressionLabel(statement.condition, history.current, locale)}`;
+      case "waitUntil":
+        return `${copy.waitUntil} ${expressionLabel(statement.condition, history.current, locale)}`;
       case "if":
         return `${copy.ifLabel} ${expressionLabel(statement.condition, history.current, locale)}`;
       default:
@@ -2602,6 +2612,12 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                       ? copy.stopScene
                       : copy.stop;
               })()}
+            </p>
+          ) : null}
+          {run?.trace.some((entry) => entry.statementType === "waitUntil" && entry.note) ? (
+            <p className="kids-note" role="status">
+              {oriSuggestions ? "Ori: " : ""}
+              {copy.waitUntilTimeout}
             </p>
           ) : null}
           <KidsSceneGoalPanel
@@ -3647,6 +3663,13 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
             >
               + {copy.ifTouchEdge}
             </button>
+            <button
+              type="button"
+              className="kids-button"
+              onClick={() => add({ type: "waitUntil", condition: STUDIO_EDGE_CONDITION })}
+            >
+              + {copy.waitUntilEdge}
+            </button>
             <label>
               {copy.stop}{" "}
               <select
@@ -3825,6 +3848,21 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                   ? expressionLabel(compoundCondition()!, history.current, locale)
                   : ""}{" "}
                 → {copy.thenMove}
+              </button>
+              <button
+                type="button"
+                className="kids-button"
+                data-testid="compound-wait-until"
+                disabled={compoundCondition() === null}
+                onClick={() => {
+                  const joined = compoundCondition();
+                  if (joined) add({ type: "waitUntil", condition: joined });
+                }}
+              >
+                + {copy.waitUntil}:{" "}
+                {compoundCondition()
+                  ? expressionLabel(compoundCondition()!, history.current, locale)
+                  : ""}
               </button>
               <button
                 type="button"

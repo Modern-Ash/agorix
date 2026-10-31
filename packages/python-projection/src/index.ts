@@ -527,6 +527,16 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
       addRange(writer, nodeId, start, writer.text.length);
       return;
     }
+    case "waitUntil": {
+      const start = writer.text.length;
+      writer.text +=
+        indent +
+        "wait_until(lambda: " +
+        expressionText(writer, statement.condition, nodeId + "/condition") +
+        ", timeout=10)\n";
+      addRange(writer, nodeId, start, writer.text.length);
+      return;
+    }
     case "if": {
       const start = writer.text.length;
       writer.text +=

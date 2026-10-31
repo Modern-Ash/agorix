@@ -104,6 +104,7 @@ describe("runtime operation allowlist", () => {
       "think",
       "turn",
       "wait",
+      "waitUntil",
     ]);
     expect([...RUNTIME_EXPRESSION_OPERATIONS].sort()).toEqual([
       "add",

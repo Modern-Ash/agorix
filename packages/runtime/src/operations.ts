@@ -44,6 +44,7 @@ export const RUNTIME_STATEMENT_OPERATIONS = Object.freeze([
   "setSize",
   "changeSize",
   "wait",
+  "waitUntil",
   "switchCostume",
   "switchBackdrop",
   "playSound",

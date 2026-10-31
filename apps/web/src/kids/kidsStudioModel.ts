@@ -77,6 +77,7 @@ export type StudioStatement = Extract<
       | "listReplaceAt"
       | "repeat"
       | "repeatUntil"
+      | "waitUntil"
       | "callProcedure"
       | "penDown"
       | "penUp"
@@ -498,6 +499,7 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0, arity
       statement.body.length <= MAX_STUDIO_BODY &&
       statement.body.every((item) => checked(item, program, depth + 1, arity))
     );
+  if (statement.type === "waitUntil") return checkedCondition(statement.condition, program, arity);
   if (statement.type === "if") {
     return (
       depth < MAX_STUDIO_CONTROL_DEPTH &&

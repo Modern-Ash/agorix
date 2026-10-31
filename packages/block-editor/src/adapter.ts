@@ -66,6 +66,7 @@ export type BlockType =
   | "sound_change_volume"
   | "control_repeat"
   | "control_repeat_until"
+  | "control_wait_until"
   | "control_wait"
   | "control_stop"
   | "control_if"
@@ -695,6 +696,16 @@ function statementFromBlock(
           mapping,
         ),
       };
+    case "control_wait_until":
+      return {
+        type: "waitUntil",
+        condition: expressionFromBlock(
+          requiredInput(block, "condition", path),
+          `${nodeId}/condition`,
+          `${path}.inputs.condition`,
+          mapping,
+        ),
+      };
     case "control_repeat":
       return {
         type: "repeat",
@@ -1074,6 +1085,14 @@ function statementToBlock(
         inputs: {
           condition: expressionToBlock(statement.condition, `${nodeId}/condition`, mapping),
           body: statementsToBlocks(statement.body, `${nodeId}/body`, mapping),
+        },
+      };
+    case "waitUntil":
+      return {
+        id,
+        type: "control_wait_until",
+        inputs: {
+          condition: expressionToBlock(statement.condition, `${nodeId}/condition`, mapping),
         },
       };
     case "if":

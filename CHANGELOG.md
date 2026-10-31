@@ -1,5 +1,6 @@
 # Unreleased
 
+- Kids Escena libre: bounded `wait until` checks canonical conditions against a virtual clock for at most ten seconds, records timeout evidence, and offers the same conditions as `if` (#1132).
 - Kids Escena libre: `Detener` now has three explicit scopes (script, character, scene), recorded in the deterministic runtime trace and preserved in project code projections (#1132).
 - Kids Escena libre: Ori can explain and propose a closed `and` condition (Space key and stage edge), with a visible block preview, reject, accept or change to `or`; the child decides before the canonical program changes, and Undo/Redo and project reopening preserve the decision (#1131).
 - Production Web at <https://agorix.modern-ash.com>: container image with a generated security-header set, deploy and rollback scripts with automatic rollback, `/version.json`, a read-only production smoke test as a deploy gate, and the runbook in `docs/deployment/MODERN_ASH_HOST.md`.

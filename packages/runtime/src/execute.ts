@@ -116,6 +116,8 @@ export interface ExecutionTraceEntry {
   readonly path: string;
   readonly statementType: Statement["type"];
   readonly stopScope?: StopStatement["scope"];
+  /** Reason a bounded wait ended without its condition becoming true. */
+  readonly note?: string;
   /** Emitted only for playSound, so audio playback follows executed statements exactly. */
   readonly soundId?: string;
   /** Music pack: how a playSound, note or drum sounds, from the world at that moment. */
@@ -488,6 +490,7 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
   const nodeId = nodeIdFromPath(path);
   const before = cloneWorldState(state.world);
   let conditionResult: boolean | undefined;
+  let waitUntilTimedOut = false;
   let callArgs: readonly number[] | undefined;
   let audio: AudioPlayback | undefined;
   recordObservation(state, {
@@ -630,6 +633,24 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
             ),
       );
       break;
+    case "waitUntil": {
+      let waited = 0;
+      conditionResult = coerceBoolean(
+        evaluateExpression(statement.condition, `${path}.condition`, state),
+      );
+      while (!conditionResult && waited < 10) {
+        advanceVirtualClock(state, 0.1);
+        waited = Math.round((waited + 0.1) * 10) / 10;
+        conditionResult = coerceBoolean(
+          evaluateExpression(statement.condition, `${path}.condition`, state),
+        );
+      }
+      if (!conditionResult) {
+        waitUntilTimedOut = true;
+        addNote(state, "waitUntil: stopped after 10 virtual seconds");
+      }
+      break;
+    }
     case "switchCostume":
       state.world = switchCostumeWorld(state.world, statement.costumeId);
       break;
@@ -793,6 +814,7 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
     nodeId,
     path: nodeId,
     statementType: statement.type,
+    ...(waitUntilTimedOut ? { note: "waitUntil: stopped after 10 virtual seconds" } : {}),
     ...(statement.type === "stop" ? { stopScope: statement.scope } : {}),
     ...(statement.type === "playSound" ? { soundId: statement.soundId } : {}),
     ...(statement.type === "playSound" && state.world.music
@@ -814,6 +836,7 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
     event: state.event,
   });
   if (statement.type === "stop") throw new ExecutionHalt("stopped", statement.scope);
+  if (waitUntilTimedOut) throw new ExecutionHalt("stopped");
 }
 
 function seedProgramLists(
