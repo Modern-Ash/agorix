@@ -1,5 +1,6 @@
 # Unreleased
 
+- Kids Escena libre: Ori can explain and propose a closed `and` condition (Space key and stage edge), with a visible block preview, reject, accept or change to `or`; the child decides before the canonical program changes, and Undo/Redo and project reopening preserve the decision (#1131).
 - Production Web at <https://agorix.modern-ash.com>: container image with a generated security-header set, deploy and rollback scripts with automatic rollback, `/version.json`, a read-only production smoke test as a deploy gate, and the runbook in `docs/deployment/MODERN_ASH_HOST.md`.
 - Spanish by default with a remembered language choice; calm AI status ("Modo local" / "IA activa" / "IA no disponible ahora"), an adults-only explainer and a four-step loop in the AI panel.
 - Optional same-origin tutor HTTP service (`/api/tutor/health`, `/api/tutor/respond`).

@@ -139,6 +139,13 @@ import {
   updateStudioArt,
 } from "../kidsStudioProjects.js";
 import { requestStudioOri } from "../kidsStudioOriRemote.js";
+import {
+  explainOriCompound,
+  oriCompoundStatement,
+  proposeOriCompound,
+  reviewOriCompound,
+  type OriCompoundJoin,
+} from "../kidsOriCompound.js";
 import { useOriPageVisible } from "../kidsOriMotion.js";
 import { expressionForMotion, outcomeOfRun, useOriReaction } from "../kidsOriExpression.js";
 import { KidsBackdrop, KidsSprite } from "./KidsArt.js";
@@ -834,6 +841,10 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
   const [language, setLanguage] = useState<"agorix" | "python" | "typescript" | "java">("agorix");
   const [showMoreLanguages, setShowMoreLanguages] = useState(false);
   const [oriIdea, setOriIdea] = useState<ProgramProposal | null>(null);
+  const [compoundOri, setCompoundOri] = useState<{
+    readonly proposal: ProgramProposal;
+    readonly join: OriCompoundJoin;
+  } | null>(null);
   const [oriMessage, setOriMessage] = useState("");
   const [oriBusy, setOriBusy] = useState(false);
   const [oriReaction, reactOri] = useOriReaction();
@@ -895,6 +906,14 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
   currentProgram.current = history.current;
   currentActor.current = activeActorId;
   const proposedOperation = oriIdea?.operations[0];
+  const compoundReview = useMemo(() => {
+    if (!compoundOri) return null;
+    try {
+      return reviewOriCompound(history.current, activeActorId, compoundOri.proposal);
+    } catch {
+      return null;
+    }
+  }, [compoundOri, history.current, activeActorId]);
   const proposedStatement =
     proposedOperation?.type === "appendStatement" ? proposedOperation.statement : null;
   // "Change" swaps a suggested move/turn for its sibling, and a suggested own block for another one.
@@ -1388,6 +1407,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
       setEvents([{ type: "start" }]);
       setFrame(null);
       setOriIdea(null);
+      setCompoundOri(null);
       setOriMessage("");
       setIntentPlan(null);
       setError(false);
@@ -1401,6 +1421,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
       saveStudioProject(id, history.current, backdropId, next, locale, store);
       setActiveActorId(next);
       setOriIdea(null);
+      setCompoundOri(null);
       setOriMessage("");
       setError(false);
     } catch {
@@ -2100,6 +2121,55 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
       setError(true);
     } finally {
       setOriBusy(false);
+    }
+  }
+
+  function askOriCompound() {
+    try {
+      setCompoundOri({
+        proposal: proposeOriCompound(history.current, activeActorId, "and", locale),
+        join: "and",
+      });
+      setError(false);
+    } catch {
+      setCompoundOri(null);
+      setError(true);
+    }
+  }
+
+  function decideOriCompound(decision: "accept" | "change" | "reject") {
+    if (!compoundOri || !compoundReview) return;
+    try {
+      if (decision === "reject") {
+        rejectProposal(history.current, compoundReview);
+        setCompoundOri(null);
+        return;
+      }
+      let next = acceptProposal(history.current, compoundReview).program;
+      if (decision === "change") {
+        const operation = compoundOri.proposal.operations[0];
+        if (operation?.type !== "appendStatement") throw new Error("invalid Ori idea");
+        const changedJoin = compoundOri.join === "and" ? "or" : "and";
+        const scripts = [...compoundReview.candidateProgram.scripts];
+        const script = scripts[operation.scriptIndex]!;
+        scripts[operation.scriptIndex] = {
+          ...script,
+          statements: [...script.statements.slice(0, -1), oriCompoundStatement(changedJoin)],
+        };
+        next = modifyProposal(history.current, compoundReview, {
+          ...compoundReview.candidateProgram,
+          scripts,
+        }).program;
+      }
+      persist(
+        recordCanonicalTransaction(history, {
+          label: decision === "change" ? "Ori compound idea changed" : "Ori compound idea",
+          after: next,
+        }).history,
+      );
+    } catch {
+      setCompoundOri(null);
+      setError(true);
     }
   }
 
@@ -3720,6 +3790,67 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
               >
                 {copy.compoundGroup}
               </button>
+              {oriSuggestions ? (
+                <>
+                  <button
+                    type="button"
+                    className="kids-button"
+                    disabled={!script || script.statements.length >= 60}
+                    onClick={askOriCompound}
+                  >
+                    {locale === "es"
+                      ? "Pedirle a Ori una combinación"
+                      : "Ask Ori for a combination"}
+                  </button>
+                  {compoundOri && compoundReview ? (
+                    <div className="kids-ori-proposal" data-testid="ori-compound-proposal">
+                      <p>{explainOriCompound(compoundOri.join, locale)}</p>
+                      <p className="kids-note">
+                        {locale === "es"
+                          ? "Idea de Ori: todavía no está en tu programa. Revisá el bloque antes de decidir."
+                          : "Ori's idea is not in your program yet. Review the block before deciding."}
+                      </p>
+                      <strong>
+                        + {copy.compoundAdd}:{" "}
+                        {expressionLabel(
+                          (
+                            oriCompoundStatement(compoundOri.join) as Extract<
+                              Statement,
+                              { type: "if" }
+                            >
+                          ).condition,
+                          history.current,
+                          locale,
+                        )}{" "}
+                        → {copy.thenMove}
+                      </strong>
+                      <div>
+                        <button
+                          type="button"
+                          className="kids-button kids-primary"
+                          onClick={() => decideOriCompound("accept")}
+                        >
+                          {copy.use}
+                        </button>
+                        <button
+                          type="button"
+                          className="kids-button"
+                          onClick={() => decideOriCompound("change")}
+                        >
+                          {copy.change}
+                        </button>
+                        <button
+                          type="button"
+                          className="kids-button"
+                          onClick={() => decideOriCompound("reject")}
+                        >
+                          {copy.reject}
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+                </>
+              ) : null}
             </div>
             {penEnabled ? (
               <div role="group" aria-label={copy.penTitle}>
