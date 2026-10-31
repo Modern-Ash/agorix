@@ -344,7 +344,9 @@ function scriptId(index: number, characterId: KidsGalleryCharacterId): string {
   return `studio-actor-${index}-${characterId}`;
 }
 
-function actorOfScript(id: string): { index: number; characterId: KidsGalleryCharacterId } | null {
+export function actorOfScript(
+  id: string,
+): { index: number; characterId: KidsGalleryCharacterId } | null {
   const match = SCRIPT.exec(id);
   if (!match || !isGalleryCharacterId(match[2])) return null;
   const index = Number(match[1]);

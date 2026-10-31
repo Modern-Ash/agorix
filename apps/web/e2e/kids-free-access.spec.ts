@@ -119,31 +119,29 @@ test("a scene goal is checked against the run, survives a reload and can be remo
   await expect(page.getByRole("combobox", { name: "Elegir una meta" })).toBeVisible();
 });
 
-test("a child combines two conditions with y, o and no, and the program keeps them", async ({
+test("Ori proposes a scene goal; the child can ask for another, accept it or decline", async ({
   page,
 }) => {
   await SEED(page);
   await page.getByRole("button", { name: "Crear", exact: true }).click();
   await page.getByRole("button", { name: "Crear escena" }).click();
+  await page.getByRole("button", { name: "+ Agregar personaje" }).click();
 
-  const group = page.getByRole("group", { name: "Combinar condiciones" });
-  await group.getByRole("combobox", { name: "Primera condición" }).selectOption("key");
-  await group.getByRole("combobox", { name: "Segunda condición" }).selectOption("edge");
-  await group.getByRole("combobox", { name: "Unir con" }).selectOption("and");
-  await group.getByTestId("compound-if").click();
+  const ori = page.getByRole("complementary", { name: "Metas de Ori" });
+  await ori.getByRole("button", { name: "Inventá una meta" }).click();
+  const first = await ori.getByTestId("ori-scene-goal").locator("p").first().textContent();
+  expect(first).toMatch(/^¿Podés hacer que .+\?$/);
 
-  await group.getByRole("combobox", { name: "Unir con" }).selectOption("or");
-  await group.getByRole("checkbox", { name: "al revés (no)" }).check();
-  await group.getByTestId("compound-if").click();
+  // Declining leaves the scene without a goal and changes nothing.
+  await ori.getByRole("button", { name: "Ahora no" }).click();
+  await expect(page.getByTestId("scene-goal")).toHaveCount(0);
 
-  const blocks = page.getByRole("list", { name: /Arrastrá un bloque/ });
-  await expect(blocks).toContainText("tecla Space pulsada y tocando borde");
-  await expect(blocks).toContainText("no (tecla Space pulsada o tocando borde)");
+  await ori.getByRole("button", { name: "Inventá una meta" }).click();
+  await ori.getByRole("button", { name: "Otra idea" }).click();
+  await expect(ori.getByTestId("ori-scene-goal")).toBeVisible();
 
-  await page.reload();
-  await expect(page.getByRole("list", { name: /Arrastrá un bloque/ })).toContainText(
-    "no (tecla Space pulsada o tocando borde)",
-  );
-  await page.getByRole("button", { name: "Jugar", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Jugar", exact: true })).toBeEnabled();
+  // Accepting only sets the goal; the program is untouched until the child runs it.
+  await ori.getByRole("button", { name: "Elegir esta meta" }).click();
+  await expect(page.getByTestId("scene-goal")).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Quitar bloque \d+$/ })).toHaveCount(0);
 });

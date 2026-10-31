@@ -9,7 +9,7 @@
 - Admin "Centro de IA": grouped menu (Reglas, Agentes de Ori, Contenido y grupos, Monitoreo), chat counters and revision history in their own "Historial y monitoreo" section, and a sticky draft bar that names the unpublished sections and the revision Publicar will create. Gates, API and stored configuration are unchanged (#1112).
 - Kids Crear: the two start modes now say what they are (Escena libre = several characters and every block; ¡Crear! = one explorer, few blocks, optional goal), and Escena libre opens with a "Para empezar" shelf (move, turn, sound) above the whole palette, which stays complete. Engine coverage guard (`kidsCreationCoverage`) and an exhaustive palette category catalog keep the scene in step with the engine (#1121).
 - Kids Escena libre: a child can set a goal for the scene ("Nova toca a Luma", "Nova llega al borde"); each run is checked against the characters' positions and says whether it was reached. The goal is saved with the project and travels in the `.agorix` file (`sceneGoal`, validated, ids only, no free text) (#1121).
-- Kids Escena libre: Scratch operators. Comparisons gain ≤ and ≥; a "Combinar condiciones" group joins two simple conditions with y / o and can turn the result round with no (at most two levels); random can give decimals (tenths). All of them run and appear in the Python, Java, Agorix Code and TypeScript views (#1131).
+- Kids Escena libre: Ori suggests a scene goal ("¿Podés hacer que Nova toque a Mika?"). The idea is one of the closed goals the child could pick alone, chosen locally for this cast and program, with "Otra idea", "Elegir esta meta" and "Ahora no"; nothing is sent anywhere and accepting changes only the goal (#1121).
 
 # Agorix 0.1.0
 
