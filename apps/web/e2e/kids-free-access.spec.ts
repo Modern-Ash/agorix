@@ -244,6 +244,38 @@ test("Ori suggests a block for the goal; the child can change, decline or accept
   await expect(ori.getByTestId("ori-goal-block-diff")).not.toHaveText("+ Mover");
 });
 
+// Issue #1132: Ori explains a forever loop the runtime cut off, from the trace, and offers one exit
+// as a visible proposal. Nothing changes until the child accepts; after accepting the run ends.
+test("Ori explains a loop that does not end and offers an exit the child can accept", async ({
+  page,
+}) => {
+  await SEED(page);
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
+  await page.getByRole("button", { name: "+ Por siempre → mover 1" }).click();
+  await expect(page.getByTestId("ori-loop-help")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  const help = page.getByTestId("ori-loop-help");
+  await expect(help).toContainText("Por siempre");
+  await expect(page.getByTestId("ori-loop-trigger")).toContainText("Jugar");
+  await expect(page.getByTestId("ori-loop-diff")).toBeVisible();
+
+  // Declining changes nothing.
+  await help.getByRole("button", { name: "Ahora no" }).click();
+  await expect(page.getByTestId("ori-loop-diff")).toHaveCount(0);
+  // The same script stays declined; changing it asks again.
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByTestId("ori-loop-diff")).toHaveCount(0);
+  await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByTestId("ori-loop-diff")).toBeVisible();
+
+  await help.getByRole("button", { name: "Usar este cambio" }).click();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByTestId("ori-loop-help")).toHaveCount(0);
+});
+
 // Issue #1133: the palette offers every block the catalog lists, under its own category, so an
 // engine block added to `STUDIO_BLOCK_CATEGORY` that the palette forgets fails here.
 test("the Escena libre palette offers every cataloged block", async ({ page }) => {
