@@ -16,6 +16,8 @@ import {
   importStudioProject,
   listStudioProjects,
   moveStudioActorLayer,
+  removeStudioProject,
+  restoreStudioProject,
   saveStudioProject,
   selectStudioArt,
   updateStudioArt,
@@ -251,5 +253,27 @@ describe("Kids studio projects", () => {
     // Clearing removes it.
     setStudioSceneGoal(project.id, null, store);
     expect(studioSceneGoal(project.id, store)).toBeUndefined();
+  });
+
+  it("brings a deleted scene back with its program and backdrop, and refuses a taken id (#1134)", () => {
+    const { store, index } = memory();
+    const project = createStudioProject("nova", "forest", "es", store, index);
+    const history = appendStudioStatement(
+      createEditorHistory(store.load(project.id).program),
+      "actor:studio-1-nova",
+      { type: "move", steps: 40 },
+    );
+    saveStudioProject(project.id, history.current, "forest", "actor:studio-1-nova", "es", store);
+    const removed = removeStudioProject(project.id, store, index);
+    expect(removed?.project).toEqual(project);
+    expect(listStudioProjects(index)).toEqual([]);
+    expect(store.has(project.id)).toBe(false);
+    expect(restoreStudioProject(removed!, store, index)).toBe(true);
+    expect(listStudioProjects(index)).toEqual([project]);
+    expect(store.load(project.id).program.scripts[0]!.statements).toEqual([
+      { type: "move", steps: 40 },
+    ]);
+    expect(restoreStudioProject(removed!, store, index)).toBe(false);
+    expect(removeStudioProject("studio-99", store, index)).toBeNull();
   });
 });

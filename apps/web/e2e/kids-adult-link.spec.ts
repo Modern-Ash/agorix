@@ -86,8 +86,8 @@ test("a never-linked child device makes no link request even with the flag on", 
   });
   await open(page);
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "¡Crear!" }).click();
-  await page.getByRole("button", { name: "+ mover", exact: true }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
+  await page.getByRole("button", { name: "+ Mover", exact: true }).click();
   await page.waitForTimeout(300);
   expect(calls).toEqual([]);
 });

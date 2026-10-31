@@ -4,6 +4,7 @@ import {
   serializeAgorixProject,
   type ProjectMetadata,
   type ProjectSceneGoal,
+  type StoredProject,
 } from "@agorix/persistence";
 import type { ProjectAsset, ProjectProgram } from "@agorix/program-model";
 import type { Locale } from "../i18n.js";
@@ -468,15 +469,61 @@ export function importStudioProject(
   }
 }
 
+export interface RemovedStudioProject {
+  readonly project: KidsStudioProject;
+  readonly stored?: StoredProject;
+}
+
+/** Deletes a scene and returns what is needed to bring it back (issue #1134). */
+export function removeStudioProject(
+  id: string,
+  store: ProjectStore = new ProjectStore(),
+  storage: StudioStorage | undefined = browserStorage(),
+): RemovedStudioProject | null {
+  if (!storage || !STUDIO_ID.test(id)) return null;
+  const projects = listStudioProjects(storage);
+  const project = projects.find((item) => item.id === id);
+  if (!project) return null;
+  let stored: StoredProject | undefined;
+  try {
+    stored = store.has(id) ? store.load(id) : undefined;
+  } catch {
+    stored = undefined;
+  }
+  storage.setItem(INDEX, JSON.stringify(projects.filter((item) => item.id !== id)));
+  store.remove(id);
+  return { project, ...(stored ? { stored } : {}) };
+}
+
+/** Undo a delete. Fails (false) if the id was taken meanwhile or storage cannot be written. */
+export function restoreStudioProject(
+  removed: RemovedStudioProject,
+  store: ProjectStore = new ProjectStore(),
+  storage: StudioStorage | undefined = browserStorage(),
+): boolean {
+  if (!storage) return false;
+  const current = listStudioProjects(storage);
+  if (current.some((item) => item.id === removed.project.id)) return false;
+  try {
+    if (removed.stored)
+      store.save(removed.project.id, removed.stored.program, removed.stored.metadata);
+    storage.setItem(
+      INDEX,
+      JSON.stringify(
+        [...current, removed.project].sort((a, b) => Number(a.id.slice(7)) - Number(b.id.slice(7))),
+      ),
+    );
+    return true;
+  } catch {
+    store.remove(removed.project.id);
+    return false;
+  }
+}
+
 export function deleteStudioProject(
   id: string,
   store: ProjectStore = new ProjectStore(),
   storage: StudioStorage | undefined = browserStorage(),
 ): boolean {
-  if (!storage || !STUDIO_ID.test(id)) return false;
-  const projects = listStudioProjects(storage);
-  if (!projects.some((item) => item.id === id)) return false;
-  storage.setItem(INDEX, JSON.stringify(projects.filter((item) => item.id !== id)));
-  store.remove(id);
-  return true;
+  return removeStudioProject(id, store, storage) !== null;
 }

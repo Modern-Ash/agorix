@@ -133,10 +133,11 @@ test("adult switch hides listen controls on main Kids screens", async ({ page })
   await expect(listen).toHaveCount(0);
   await page.getByRole("button", { name: "Crear", exact: true }).click();
   await expect(listen).toHaveCount(0);
-  await page.getByRole("button", { name: "¡Crear!" }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
   await expect(listen).toHaveCount(0);
-  await page.getByRole("button", { name: "Volver al mapa" }).click();
-  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  await page.getByRole("button", { name: "Volver a Crear" }).click();
+  await page.goto("/kids#/proyectos");
+  await page.reload();
   await expect(listen).toHaveCount(0);
   expect((await speechLog(page)).spoken).toEqual([]);
 });

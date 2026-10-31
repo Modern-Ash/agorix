@@ -25,7 +25,9 @@ import { ExportMediaDialog } from "./ExportMediaDialog.js";
 import { KidsBackdrop, KidsSprite, builtinWorld, emojiSlot } from "./KidsArt.js";
 import { ListenButton } from "./ListenButton.js";
 import {
-  deleteStudioProject,
+  removeStudioProject,
+  restoreStudioProject,
+  type RemovedStudioProject,
   exportStudioProject,
   importStudioProject,
   listStudioProjects,
@@ -60,10 +62,11 @@ export function ProjectsScreen({
   const [message, setMessage] = useState("");
   const [deleting, setDeleting] = useState<string | null>(null);
   const [exportingMedia, setExportingMedia] = useState<string | null>(null);
-  const [undo, setUndo] = useState<{
-    readonly removed: RemovedFreeProject;
-    readonly copies: readonly CopyRecord[];
-  } | null>(null);
+  const [undo, setUndo] = useState<
+    | { readonly removed: RemovedFreeProject; readonly copies: readonly CopyRecord[] }
+    | { readonly scene: RemovedStudioProject }
+    | null
+  >(null);
 
   useEffect(() => {
     if (!undo) return;
@@ -76,17 +79,12 @@ export function ProjectsScreen({
     setDeleting(null);
     if (!id) return;
     if (studios.some((item) => item.id === id)) {
-      const removed = deleteStudioProject(id, store);
+      const removed = removeStudioProject(id, store);
       setStudios(listStudioProjects());
-      setMessage(
-        removed
-          ? locale === "es"
-            ? "Escena borrada."
-            : "Scene deleted."
-          : locale === "es"
-            ? "No se pudo borrar."
-            : "Could not delete.",
-      );
+      if (removed) {
+        setUndo({ scene: removed });
+        setMessage("");
+      } else setMessage(locale === "es" ? "No se pudo borrar." : "Could not delete.");
       return;
     }
     const removed = deleteFreeProject(id, store);
@@ -106,7 +104,9 @@ export function ProjectsScreen({
   }
 
   function undoDelete() {
-    if (undo && restoreFreeProject(undo.removed, store)) {
+    if (undo && "scene" in undo) {
+      if (restoreStudioProject(undo.scene, store)) setStudios(listStudioProjects());
+    } else if (undo && restoreFreeProject(undo.removed, store)) {
       try {
         restoreKidsAccountCopies(window.localStorage, undo.copies);
       } catch {

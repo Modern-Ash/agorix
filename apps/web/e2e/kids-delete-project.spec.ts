@@ -4,7 +4,7 @@ import { reloadTo } from "./helpers.js";
 // Issue #445: an adult can delete a free-world project; the child alone cannot.
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
-async function openProjectsWithTwoFree(page: Page) {
+async function openProjectsWithTwoScenes(page: Page) {
   await page.goto("/kids");
   await page.evaluate(() => {
     localStorage.clear();
@@ -17,8 +17,7 @@ async function openProjectsWithTwoFree(page: Page) {
   await page.reload();
   for (let index = 0; index < 2; index++) {
     await page.getByRole("button", { name: "Crear", exact: true }).click();
-    await page.getByRole("button", { name: "¡Crear!" }).click();
-    await page.getByRole("button", { name: "Tocá el mundo para poner la meta: 5, 3" }).click();
+    await page.getByRole("button", { name: "Crear escena" }).click();
     await reloadTo(page, "#/proyectos");
     await page.getByRole("button", { name: "Mis proyectos" }).click();
   }
@@ -33,7 +32,7 @@ async function passGate(page: Page, answer: string) {
 }
 
 test("deleting needs the adult gate and a confirmation, and can be undone", async ({ page }) => {
-  await openProjectsWithTwoFree(page);
+  await openProjectsWithTwoScenes(page);
   await page.locator(".kids-project-card").last().getByRole("button", { name: "Borrar" }).click();
 
   await passGate(page, "13");

@@ -13,11 +13,7 @@ test("blocks tab does not show the code, the code tab does", async ({ page }) =>
     );
   });
   await page.reload();
-  await page
-    .getByRole("button", { name: /^Crear$/ })
-    .first()
-    .click();
-  await page.getByRole("button", { name: "¡Crear!" }).click();
+  await page.getByRole("button", { name: "Misión 1" }).click();
   await page.getByRole("button", { name: "+ mover" }).click();
 
   await expect(page.getByRole("button", { name: "Bloques", exact: true })).toHaveAttribute(

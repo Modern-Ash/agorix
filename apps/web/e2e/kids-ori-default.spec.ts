@@ -40,13 +40,10 @@ test("Ori accompanies a new learner through onboarding, map, creation and editor
     "¿Qué te gustaría que pase ahí?",
   );
   await page.getByRole("button", { name: "Cerrar" }).click();
-  await page.getByRole("button", { name: "¡Crear!" }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
 
   // Ori stays present in free creation whether the local provider has an idea or not.
-  const ori = page.getByRole("button", { name: /Abrir (ayuda|propuesta) de Ori/ });
-  await expect(ori).toBeVisible();
-  await ori.click();
-  await expect(page.getByRole("dialog", { name: /Ori/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Pedirle una idea a Ori" })).toBeVisible();
 });
 
 test("Ori pauses offscreen and respects reduced motion", async ({ page }) => {
