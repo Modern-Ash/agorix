@@ -67,6 +67,7 @@ export type BlockType =
   | "control_repeat"
   | "control_repeat_until"
   | "control_wait"
+  | "control_stop"
   | "control_if"
   | "sensing_touching_goal"
   | "sensing_touching_actor"
@@ -588,6 +589,12 @@ function statementFromBlock(
         seconds: numberField(block, "seconds", path),
         ...paramFrom(block, "secondsFrom"),
       };
+    case "control_stop": {
+      const scope = stringField(block, "scope", path);
+      if (scope !== "script" && scope !== "actor" && scope !== "scene")
+        throw new Error(`Invalid stop scope at ${path}`);
+      return { type: "stop", scope };
+    }
     case "looks_set_size":
       return { type: "setSize", size: numberField(block, "size", path) };
     case "looks_change_size":
@@ -999,6 +1006,8 @@ function statementToBlock(
       return { id, type: "sound_play", fields: { soundId: statement.soundId } };
     case "stopSounds":
       return { id, type: "sound_stop" };
+    case "stop":
+      return { id, type: "control_stop", fields: { scope: statement.scope } };
     case "setVolume":
       return { id, type: "sound_set_volume", fields: { volume: statement.volume } };
     case "changeVolume":

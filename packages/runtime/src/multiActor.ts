@@ -69,6 +69,7 @@ export interface MultiActorTraceEntry {
   readonly nodeId: string;
   readonly path: string;
   readonly statementType: Statement["type"];
+  readonly stopScope?: "script" | "actor" | "scene";
   readonly conditionResult?: boolean;
   readonly args?: readonly number[];
   readonly worldBefore: WorldState;
@@ -364,11 +365,6 @@ function remapNodeId(nodeId: string, scriptIndex: number): string {
   return nodeId.replace(/^scripts\[0\]/, `scripts[${scriptIndex}]`);
 }
 
-function mergeOutcome(left: RunOutcome, right: RunOutcome): RunOutcome {
-  if (left !== "completed") return left;
-  return right;
-}
-
 function normalizeMaxSteps(maxSteps: number | undefined): number {
   const budget = maxSteps ?? DEFAULT_EXECUTION_BUDGET;
   if (!Number.isInteger(budget) || budget < 0) {
@@ -407,18 +403,20 @@ export function runMultiActorProgram(
   const frames: MultiActorFrame[] = [];
   const activations: MultiActorScriptActivation[] = [];
   const queue = initialEvents(options.events);
+  const stoppedActors = new Set<string>();
   let randomState = options.randomSeed;
 
-  while (queue.length > 0) {
+  eventLoop: while (queue.length > 0) {
     const event = queue.shift();
     if (event === undefined) {
       continue;
     }
     for (const actor of actors) {
+      if (stoppedActors.has(actor.id)) continue;
       for (const [scriptIndex, script] of scriptsForActor(validatedProgram, actor, event)) {
         if (stepsUsed >= maxSteps) {
           outcome = "budget-exceeded";
-          break;
+          break eventLoop;
         }
         const activationId = `activation:${activations.length}`;
         activations.push({
@@ -445,7 +443,8 @@ export function runMultiActorProgram(
           ...(options.keysDown === undefined ? {} : { keysDown: options.keysDown }),
         });
         randomState = result.randomState;
-        outcome = mergeOutcome(outcome, result.outcome);
+        if (result.outcome === "budget-exceeded") outcome = "budget-exceeded";
+        else if (result.outcome === "stopped" && outcome === "completed") outcome = "stopped";
         for (const entry of result.trace) {
           const nodeId = remapNodeId(entry.nodeId, scriptIndex);
           actor.world = cloneWorldState(entry.worldAfter);
@@ -479,6 +478,7 @@ export function runMultiActorProgram(
             nodeId,
             path: nodeId,
             statementType: entry.statementType,
+            ...(entry.stopScope === undefined ? {} : { stopScope: entry.stopScope }),
             ...(entry.conditionResult === undefined
               ? {}
               : { conditionResult: entry.conditionResult }),
@@ -500,11 +500,17 @@ export function runMultiActorProgram(
         }
         actor.world = cloneWorldState(result.world);
         stepsUsed += result.stepsUsed;
-        if (result.outcome !== "completed") break;
+        if (result.outcome === "budget-exceeded") break eventLoop;
+        if (result.outcome === "stopped") {
+          if (result.stopScope === "script") continue;
+          if (result.stopScope === "actor") {
+            stoppedActors.add(actor.id);
+            break;
+          }
+          break eventLoop;
+        }
       }
-      if (outcome !== "completed") break;
     }
-    if (outcome !== "completed") break;
   }
 
   return {

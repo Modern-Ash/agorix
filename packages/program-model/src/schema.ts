@@ -424,6 +424,12 @@ export interface StopSoundsStatement {
   readonly type: "stopSounds";
 }
 
+/** Stops this activation, this actor's activations, or the entire scene run. */
+export interface StopStatement {
+  readonly type: "stop";
+  readonly scope: "script" | "actor" | "scene";
+}
+
 export interface SetVolumeStatement {
   readonly type: "setVolume";
   readonly volume: number;
@@ -555,6 +561,7 @@ export type Statement =
   | SwitchBackdropStatement
   | PlaySoundStatement
   | StopSoundsStatement
+  | StopStatement
   | SetVolumeStatement
   | ChangeVolumeStatement
   | BroadcastStatement

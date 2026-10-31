@@ -2,7 +2,7 @@
 
 ## Status
 
-**Proposed** on 2026-10-31 (issue #1132, from the capability audit #1119). It adds no code by itself; each construct below is its own PR once the product owner accepts or edits this ADR.
+**Accepted** by the product owner on 2026-10-31 (issue #1132, from the capability audit #1119). Each construct below ships as its own PR.
 
 ## Context
 

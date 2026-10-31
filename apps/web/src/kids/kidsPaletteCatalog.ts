@@ -33,6 +33,7 @@ export const STUDIO_BLOCK_CATEGORY = {
   switchBackdrop: "media",
   playSound: "media",
   stopSounds: "media",
+  stop: "logic",
   setVolume: "media",
   changeVolume: "media",
   repeat: "logic",

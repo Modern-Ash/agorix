@@ -627,6 +627,16 @@ function validateStatement(
       return { type: "playSound", soundId: checkText(input.soundId, `${path}.soundId`) };
     case "stopSounds":
       return { type: "stopSounds" };
+    case "stop":
+      if (input.scope !== "script" && input.scope !== "actor" && input.scope !== "scene") {
+        fail(
+          "INVALID_FIELD_TYPE",
+          `${path}.scope`,
+          'expected "script", "actor" or "scene"',
+          input.scope,
+        );
+      }
+      return { type: "stop", scope: input.scope };
     case "setVolume": {
       if (typeof input.volume !== "number") {
         fail("MISSING_FIELD", `${path}.volume`, "expected a number", input.volume);

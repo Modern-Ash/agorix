@@ -48,6 +48,7 @@ export const RUNTIME_STATEMENT_OPERATIONS = Object.freeze([
   "switchBackdrop",
   "playSound",
   "stopSounds",
+  "stop",
   "setVolume",
   "changeVolume",
   "broadcast",

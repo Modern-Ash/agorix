@@ -97,6 +97,7 @@ describe("runtime operation allowlist", () => {
       "setVolume",
       "show",
       "showVariable",
+      "stop",
       "stopSounds",
       "switchBackdrop",
       "switchCostume",
