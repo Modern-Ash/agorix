@@ -12,4 +12,6 @@ En una ventana desktop de 1280×800, la paleta puede quedar por debajo del progr
 
 Verificación local: build Web aprobado; matriz nueva **4/4** (incluye soltar fuera del programa y detener el scroll); pruebas existentes de arrastre, touch, anidamiento y medios **10/10**. El gate de import/export y smoke de producción está en [#1127](RELEASE_GATE_1127.md). Estos resultados son de código local; producción todavía debe comprobarse con el SHA integrado.
 
+Actualización post-deploy: `0e10b7bc191f` se publicó el 2026-10-31 y el [gate público #1127](RELEASE_GATE_1127.md#despliegue-integrado-y-gate-post-deploy) pasó 24/24. El recorrido específico de auto-scroll a 1280×800 sigue cubierto por Playwright local; el smoke público comprueba creación, edición y persistencia a ese tamaño, pero no repite el gesto de arrastre fuera de pantalla.
+
 La [prueba de familiaridad con una persona](ADOPTION_USABILITY_CHECKLIST.md) sigue pendiente. La automatización demuestra acciones y estado visible, no que un usuario de Scratch encuentre la interfaz intuitiva.
