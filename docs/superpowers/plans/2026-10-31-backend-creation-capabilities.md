@@ -77,3 +77,7 @@ Deliberately not done, and why: the free project (`#/libre/{id}`) is not removed
 ## Step 2 of the merge: scene goals (this PR)
 
 The free project's goal lives on a grid runtime (curriculum `verifyKidsFreeGoal`), which Studio does not use, so goals were rebuilt natively for the scene: `ProjectSceneGoal` (`touchActor`, `reachEdge`) in `@agorix/persistence` metadata and `.agorix` files, `kidsSceneGoal.ts` (checks run frames with the runtime's own touch and edge geometry), and a goal panel in Escena libre. A goal that is already true before any step does not count. Still open before `¡Crear!` can be retired: Ori proposing scene goals (the free project has `kidsGoalsRemote`), the explorer-in-a-world look, and moving existing `#/libre/{id}` projects into scenes.
+
+## Step 3 of the merge: Ori proposes scene goals
+
+`kidsSceneGoalProposal.ts` ranks the closed goal choices for the current cast and program (a meeting for a character that already moves, the edge when alone) and Ori offers them one at a time with accept, another idea or not now. It is local and deterministic, so it adds no AI or data surface. A remote Ori proposal for scenes (like `/api/tutor/goals` for the grid) would need a tutor-api contract and safety review and is not part of this step. Still open before `¡Crear!` can be retired: the explorer-in-a-world look and migrating `#/libre/{id}` projects.
