@@ -2851,6 +2851,15 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
             run={run}
             program={history.current}
             oriSuggestions={oriSuggestions}
+            onApplyProgram={(next, label) => {
+              try {
+                persist(recordCanonicalTransaction(history, { label, after: next }).history);
+                helped.current = true;
+                reactOri("happy");
+              } catch {
+                setError(true);
+              }
+            }}
             onChange={(next) => {
               try {
                 setStudioSceneGoal(id, next, store);

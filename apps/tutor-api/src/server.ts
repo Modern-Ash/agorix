@@ -54,7 +54,9 @@ import {
   simulateOriIntervention,
   type OriAgentCapability,
   type OriChatContext,
+  parseOriSceneGoalChoices,
   runOriGoalAgent,
+  runOriSceneGoalAgent,
 } from "@agorix/ori-agent";
 import type { ProviderRuntimeErrorCode, ProviderRuntimeFetch } from "@agorix/provider-runtime";
 import {
@@ -711,6 +713,10 @@ export function createTutorServer(options: TutorServerOptions): Server {
       if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
       return respondGoal(request, response);
     }
+    if (path === "/api/tutor/scene-goals") {
+      if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
+      return respondSceneGoal(request, response);
+    }
     return send(response, 404, error("not-found"));
   }
 
@@ -1211,6 +1217,45 @@ export function createTutorServer(options: TutorServerOptions): Server {
       successCheck: proposal.successCheck,
       message: proposal.message,
     });
+  }
+
+  /** The model only picks an index into choices the browser itself sent; the host owns the wording. */
+  async function respondSceneGoal(
+    request: IncomingMessage,
+    response: ServerResponse,
+  ): Promise<void> {
+    if (!(request.headers["content-type"] ?? "").includes("application/json"))
+      return send(response, 415, error("unsupported-media-type"));
+    if (!sameOrigin(request)) return send(response, 403, error("forbidden-origin"));
+    const body = await readBody(request);
+    if (body === "too-large") return send(response, 413, error("payload-too-large"));
+    let locale: "es" | "en";
+    let choices: NonNullable<ReturnType<typeof parseOriSceneGoalChoices>>;
+    try {
+      const raw = JSON.parse(body) as Record<string, unknown>;
+      const parsed = parseOriSceneGoalChoices(raw?.choices);
+      if (
+        !raw ||
+        typeof raw !== "object" ||
+        Array.isArray(raw) ||
+        Object.keys(raw).sort().join(",") !== "choices,locale" ||
+        (raw.locale !== "es" && raw.locale !== "en") ||
+        parsed === null
+      )
+        throw new Error("invalid scene goal request");
+      locale = raw.locale;
+      choices = parsed;
+    } catch {
+      return send(response, 400, error("invalid-request"));
+    }
+    if (!allowed(request, "goals")) return send(response, 429, error("rate-limited"));
+    const decision =
+      policy("goals")?.enabled === false
+        ? await runOriSceneGoalAgent(locale, choices)
+        : options.ori
+          ? await options.ori.proposeSceneGoal(locale, choices)
+          : await runOriSceneGoalAgent(locale, choices);
+    return send(response, 200, { choice: decision.choice });
   }
 }
 

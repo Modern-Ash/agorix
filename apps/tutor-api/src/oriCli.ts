@@ -13,6 +13,7 @@ import {
   runOriChat,
   type OriChatContext,
   runOriGoalAgent,
+  runOriSceneGoalAgent,
   runOriAdvancedStage,
   runOriStudio,
   type OriStudioContext,
@@ -20,6 +21,8 @@ import {
   type OriAdvancedStageContext,
   type OriAdvancedDecision,
   type OriGoalDecision,
+  type OriSceneGoalChoice,
+  type OriSceneGoalDecision,
   type OriLocale,
 } from "@agorix/ori-agent";
 
@@ -59,6 +62,10 @@ export interface OriCliService {
   respond(context: OriAgentContext): Promise<OriAgentDecision>;
   chat(context: OriChatContext): Promise<string>;
   proposeGoal(locale: OriLocale): Promise<OriGoalDecision>;
+  proposeSceneGoal(
+    locale: OriLocale,
+    choices: readonly OriSceneGoalChoice[],
+  ): Promise<OriSceneGoalDecision>;
   advanced(context: OriAdvancedStageContext): Promise<OriAdvancedDecision>;
   studio(context: OriStudioContext): Promise<OriStudioDecision>;
 }
@@ -321,6 +328,15 @@ export function createOriCliService(
       const provider = await select(policy);
       return runOriGoalAgent(
         locale,
+        provider ? textModelWithFailover(provider, policy) : undefined,
+      );
+    },
+    async proposeSceneGoal(locale, choices) {
+      const policy = policyFor("goals");
+      const provider = await select(policy);
+      return runOriSceneGoalAgent(
+        locale,
+        choices,
         provider ? textModelWithFailover(provider, policy) : undefined,
       );
     },

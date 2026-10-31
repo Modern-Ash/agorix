@@ -150,6 +150,60 @@ test("Ori proposes a scene goal; the child can ask for another, accept it or dec
   await expect(page.getByRole("button", { name: /^Quitar bloque \d+$/ })).toHaveCount(0);
 });
 
+// Issue #1135: a remote Ori ranks the goals the child could already pick; it answers with one
+// index and the wording stays local. An invalid or failed answer keeps the local ranking.
+test("a remote Ori ranks the scene goal by index and the wording stays local", async ({ page }) => {
+  let sent: unknown = null;
+  await page.route("**/api/tutor/scene-goals", async (route) => {
+    sent = route.request().postDataJSON();
+    await route.fulfill({ json: { choice: 2 } });
+  });
+  await SEED(page);
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
+  await page.getByRole("button", { name: "+ Agregar personaje" }).click();
+  await expect.poll(() => sent).not.toBeNull();
+  expect(Object.keys(sent as object).sort()).toEqual(["choices", "locale"]);
+
+  const ori = page.getByRole("complementary", { name: "Metas de Ori" });
+  await ori.getByRole("button", { name: "Inventá una meta" }).click();
+  // Choice 2 is Nova reaching the edge, not the local favourite (Nova touches Mika).
+  await expect(ori.getByTestId("ori-scene-goal")).toContainText("llegue al borde");
+});
+
+// Issue #1135: with a goal set, Ori can suggest a block the character has not used yet. The block
+// is a visible proposal; nothing enters the program until the child accepts it.
+test("Ori suggests a block for the goal; the child can change, decline or accept it", async ({
+  page,
+}) => {
+  await SEED(page);
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
+  await page.getByRole("button", { name: "+ Agregar personaje" }).click();
+  await page.getByRole("combobox", { name: "Elegir una meta" }).selectOption({ index: 1 });
+  await expect(page.getByTestId("scene-goal")).toBeVisible();
+  // The goal is Nova's, so look at Nova's script.
+  await page.getByRole("button", { name: /^Elegí un personaje: Nova/ }).click();
+
+  const ori = page.getByRole("complementary", { name: "Bloques de Ori" });
+  await ori.getByRole("button", { name: "¿Qué bloque me ayuda?" }).click();
+  await expect(ori.getByTestId("ori-goal-block-diff")).toHaveText("+ Mover");
+  await expect(page.getByRole("button", { name: /^Quitar bloque \d+$/ })).toHaveCount(0);
+
+  await ori.getByRole("button", { name: "Otro bloque" }).click();
+  await expect(ori.getByTestId("ori-goal-block-diff")).not.toHaveText("+ Mover");
+
+  await ori.getByRole("button", { name: "Ahora no" }).click();
+  await expect(page.getByRole("button", { name: /^Quitar bloque \d+$/ })).toHaveCount(0);
+
+  await ori.getByRole("button", { name: "¿Qué bloque me ayuda?" }).click();
+  await ori.getByRole("button", { name: "Usar este bloque" }).click();
+  await expect(page.getByRole("button", { name: /^Quitar bloque \d+$/ })).toHaveCount(1);
+  // Mover is used now, so the next idea is a different block.
+  await ori.getByRole("button", { name: "¿Qué bloque me ayuda?" }).click();
+  await expect(ori.getByTestId("ori-goal-block-diff")).not.toHaveText("+ Mover");
+});
+
 // Issue #1133: the palette offers every block the catalog lists, under its own category, so an
 // engine block added to `STUDIO_BLOCK_CATEGORY` that the palette forgets fails here.
 test("the Escena libre palette offers every cataloged block", async ({ page }) => {
