@@ -288,6 +288,10 @@ const COPY = {
     groupUntilActor: "Repetir hasta tocar al personaje",
     saveDistance: "Guardar distancia",
     saveTimer: "Guardar el tiempo",
+    saveMouseX: "Guardar X del ratón",
+    saveMouseY: "Guardar Y del ratón",
+    ifMouseDown: "Si el ratón está pulsado, mover 1",
+    presetMouse: "ratón pulsado",
     senseKey: "Tecla a sentir",
     heldKeys: "Teclas mantenidas al jugar",
     penTitle: "Lápiz",
@@ -522,6 +526,10 @@ const COPY = {
     groupUntilActor: "Repeat until touching the character",
     saveDistance: "Save distance",
     saveTimer: "Save the time",
+    saveMouseX: "Save mouse X",
+    saveMouseY: "Save mouse Y",
+    ifMouseDown: "If the mouse is down, move 1",
+    presetMouse: "mouse pressed",
     senseKey: "Key to sense",
     heldKeys: "Keys held while playing",
     penTitle: "Pen",
@@ -704,6 +712,9 @@ function expressionLabel(
   if (value.type === "touchingStageEdge")
     return locale === "es" ? "tocando borde" : "touching edge";
   if (value.type === "timer") return locale === "es" ? "tiempo" : "timer";
+  if (value.type === "mouseX") return locale === "es" ? "X del ratón" : "mouse X";
+  if (value.type === "mouseY") return locale === "es" ? "Y del ratón" : "mouse Y";
+  if (value.type === "mouseDown") return locale === "es" ? "ratón pulsado" : "mouse pressed";
   if (value.type === "keyDown")
     return `${locale === "es" ? "tecla" : "key"} ${value.key} ${locale === "es" ? "pulsada" : "down"}`;
   if (value.type === "distanceToActor")
@@ -773,7 +784,7 @@ function backdropOfStage(
   return isGalleryBackdropId(suffix) ? suffix : fallback;
 }
 
-type ConditionPreset = "key" | "edge" | "touch" | "timer";
+type ConditionPreset = "key" | "edge" | "touch" | "timer" | "mouse";
 
 function starterLabel(
   kind: StudioStarterKind,
@@ -842,6 +853,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
   const [senseKey, setSenseKey] = useState<(typeof STUDIO_KEYS)[number]>("Space");
   const [timerSeconds, setTimerSeconds] = useState(3);
   const [heldKeys, setHeldKeys] = useState<string[]>([]);
+  const pointerRef = useRef({ x: 0, y: 0, down: false });
   const [penColor, setPenColor] = useState<PenColor>("dark");
   const [penSize, setPenSize] = useState(8);
   const penEnabled = useKidsFlag("extensionPen");
@@ -1390,10 +1402,40 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
     if (!run || !STUDIO_KEYS.includes(key as (typeof STUDIO_KEYS)[number])) return;
     const nextEvents: readonly RuntimeEvent[] = [...events, { type: "keyPressed", key }];
     setRun(
-      runMultiActorProgram(history.current, creative, { events: nextEvents, keysDown: heldKeys }),
+      runMultiActorProgram(history.current, creative, {
+        events: nextEvents,
+        keysDown: heldKeys,
+        pointer: pointerRef.current,
+      }),
     );
     setEvents(nextEvents);
     setFrame(null);
+  }
+
+  function captureStagePointer(event: PointerEvent<HTMLDivElement>, down: boolean) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+    const x = Math.max(
+      0,
+      Math.min(320, Math.round((((event.clientX - rect.left) / rect.width) * 100 - 8) * 4)),
+    );
+    const y = Math.max(
+      -100,
+      Math.min(120, Math.round((((event.clientY - rect.top) / rect.height) * 100 - 40) * 3)),
+    );
+    const previous = pointerRef.current;
+    if (previous.x === x && previous.y === y && previous.down === down) return;
+    pointerRef.current = { x, y, down };
+    if (run) {
+      setRun(
+        runMultiActorProgram(history.current, creative, {
+          events,
+          keysDown: heldKeys,
+          pointer: pointerRef.current,
+        }),
+      );
+      setFrame(null);
+    }
   }
 
   useEffect(() => {
@@ -1649,6 +1691,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
   /** One of the simple conditions a child already knows, ready to be joined with another. */
   function presetCondition(preset: ConditionPreset): Expression | null {
     if (preset === "key") return { type: "keyDown", key: senseKey };
+    if (preset === "mouse") return { type: "mouseDown" };
     if (preset === "edge") return STUDIO_EDGE_CONDITION;
     if (preset === "touch")
       return targetActorId ? { type: "touchingActor", actorId: targetActorId } : null;
@@ -2088,7 +2131,10 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
 
   function play() {
     try {
-      const result = runMultiActorProgram(history.current, creative, { keysDown: heldKeys });
+      const result = runMultiActorProgram(history.current, creative, {
+        keysDown: heldKeys,
+        pointer: pointerRef.current,
+      });
       const completed = result.outcome === "completed";
       recordMastery({
         kind: "run",
@@ -2146,7 +2192,11 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
     }
     const nextEvents: readonly RuntimeEvent[] = [...events, { type: "actorClicked", actorId }];
     setRun(
-      runMultiActorProgram(history.current, creative, { events: nextEvents, keysDown: heldKeys }),
+      runMultiActorProgram(history.current, creative, {
+        events: nextEvents,
+        keysDown: heldKeys,
+        pointer: pointerRef.current,
+      }),
     );
     setEvents(nextEvents);
     setFrame(null);
@@ -2328,6 +2378,14 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
             className="kids-studio-stage"
             role="group"
             label={copy.stage}
+            onPointerDown={(event) => {
+              if (event.target === event.currentTarget)
+                event.currentTarget.setPointerCapture(event.pointerId);
+              captureStagePointer(event, true);
+            }}
+            onPointerMove={(event) => captureStagePointer(event, event.buttons !== 0)}
+            onPointerUp={(event) => captureStagePointer(event, false)}
+            onPointerCancel={(event) => captureStagePointer(event, false)}
           >
             {shownActors?.some((entry) => entry.world.pen?.segments.length) ? (
               <svg
@@ -3815,6 +3873,19 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
             <button
               type="button"
               className="kids-button"
+              onClick={() =>
+                add({
+                  type: "if",
+                  condition: { type: "mouseDown" },
+                  then: [{ type: "move", steps: 40 }],
+                })
+              }
+            >
+              + {copy.ifMouseDown}
+            </button>
+            <button
+              type="button"
+              className="kids-button"
               disabled={(script?.statements.length ?? 0) < groupCount}
               onClick={() => groupLast("if", { type: "keyDown", key: senseKey })}
             >
@@ -3863,6 +3934,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                     onChange={(event) => setValue(event.target.value as ConditionPreset)}
                   >
                     <option value="key">{copy.presetKey}</option>
+                    <option value="mouse">{copy.presetMouse}</option>
                     <option value="edge">{copy.presetEdge}</option>
                     {otherActors.length > 0 ? (
                       <option value="touch">{copy.presetTouch}</option>
@@ -4415,6 +4487,32 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                   }
                 >
                   + {copy.saveTimer}
+                </button>
+                <button
+                  type="button"
+                  className="kids-button"
+                  onClick={() =>
+                    add({
+                      type: "setVariable",
+                      variableId: selectedVariableId,
+                      value: { type: "mouseX" },
+                    })
+                  }
+                >
+                  + {copy.saveMouseX}
+                </button>
+                <button
+                  type="button"
+                  className="kids-button"
+                  onClick={() =>
+                    add({
+                      type: "setVariable",
+                      variableId: selectedVariableId,
+                      value: { type: "mouseY" },
+                    })
+                  }
+                >
+                  + {copy.saveMouseY}
                 </button>
                 <button
                   type="button"

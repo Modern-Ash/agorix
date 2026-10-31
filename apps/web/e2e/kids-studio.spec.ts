@@ -11,6 +11,70 @@ import { reloadTo } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
+test("free scene records stage pointer for mouse sensors without storing it in the project", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
+  await page.getByRole("textbox", { name: "Nombre" }).fill("Ratón");
+  await page.getByRole("button", { name: "+ Crear variable" }).click();
+  await page.getByRole("button", { name: "+ Guardar X del ratón" }).click();
+  await page.getByRole("button", { name: "+ Si el ratón está pulsado, mover 1" }).click();
+  const stage = page.getByRole("group", { name: "Escenario" });
+  await stage.scrollIntoViewIfNeeded();
+  const box = await stage.boundingBox();
+  expect(box).not.toBeNull();
+  await page.mouse.move(box!.x + box!.width * 0.5, box!.y + box!.height * 0.5);
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByText("Ratón: 168")).toBeVisible();
+  await stage.scrollIntoViewIfNeeded();
+  const activeBox = await stage.boundingBox();
+  expect(activeBox).not.toBeNull();
+  const actor = stage.locator(".kids-studio-stage-actor").first();
+  const idleLeft = await actor.evaluate((element) => (element as HTMLElement).style.left);
+  await page.mouse.move(
+    activeBox!.x + activeBox!.width * 0.5,
+    activeBox!.y + activeBox!.height * 0.5,
+  );
+  await page.mouse.down();
+  await expect
+    .poll(() => actor.evaluate((element) => (element as HTMLElement).style.left))
+    .not.toBe(idleLeft);
+  await page.mouse.up();
+  await expect
+    .poll(() => actor.evaluate((element) => (element as HTMLElement).style.left))
+    .toBe(idleLeft);
+  await page.touchscreen.tap(
+    activeBox!.x + activeBox!.width * 0.25,
+    activeBox!.y + activeBox!.height * 0.5,
+  );
+  await expect(page.getByText("Ratón: 68")).toBeVisible();
+  await reloadTo(page, "#/proyectos");
+  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  await page
+    .getByRole("article")
+    .filter({ hasText: "Escena libre" })
+    .getByRole("button", { name: "Jugar" })
+    .click();
+  await expect(page.locator(".kids-program-block")).toContainText([
+    "Fijar valor",
+    "Si ratón pulsado",
+  ]);
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByText("Ratón: 0")).toBeVisible();
+});
+
 test("free scene senses the stage edge and saves distance to a character after reopening", async ({
   page,
 }) => {

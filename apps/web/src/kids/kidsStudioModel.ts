@@ -184,7 +184,13 @@ function checkedNumber(value: Expression, program: ProjectProgram, depth = 0, ar
   if (depth > 2) return false;
   if (value.type === "param") return arity > 0 && paramInScope(value.paramId, arity);
   if (value.type === "numericLiteral") return finiteSmallNumber(value.value);
-  if (value.type === "xPosition" || value.type === "yPosition" || value.type === "timer")
+  if (
+    value.type === "xPosition" ||
+    value.type === "yPosition" ||
+    value.type === "timer" ||
+    value.type === "mouseX" ||
+    value.type === "mouseY"
+  )
     return true;
   if (value.type === "distanceToActor")
     return program.scripts.some((script) => {
@@ -242,6 +248,7 @@ function checkedCondition(
 ): boolean {
   if (value.type === "keyDown")
     return STUDIO_KEYS.includes(value.key as (typeof STUDIO_KEYS)[number]);
+  if (value.type === "mouseDown") return true;
   if (value.type === "touchingStageEdge")
     return (
       value.minX === STUDIO_EDGE_CONDITION.minX &&

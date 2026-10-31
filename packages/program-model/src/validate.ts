@@ -323,6 +323,12 @@ function validateExpression(input: unknown, path: string, state: ValidationState
       return { type: "yPosition" };
     case "timer":
       return { type: "timer" };
+    case "mouseX":
+      return { type: "mouseX" };
+    case "mouseY":
+      return { type: "mouseY" };
+    case "mouseDown":
+      return { type: "mouseDown" };
     case "keyDown": {
       const key = checkText(input.key, `${path}.key`);
       if (!/^[A-Za-z0-9]{1,20}$/.test(key)) {

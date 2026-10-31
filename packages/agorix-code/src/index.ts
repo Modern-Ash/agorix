@@ -520,6 +520,12 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return "timer";
     case "keyDown":
       return "key " + expression.key + " is down";
+    case "mouseX":
+      return "mouse x";
+    case "mouseY":
+      return "mouse y";
+    case "mouseDown":
+      return "mouse is down";
     case "booleanLiteral":
       return expression.value ? "true" : "false";
     case "numericLiteral":

@@ -101,6 +101,8 @@ export interface ExecutionOptions {
   readonly event?: ProgramEvent;
   /** Keys held for the whole run, for `keyDown`; at most 12. The key that started a script counts too. */
   readonly keysDown?: readonly string[];
+  /** Stage pointer snapshot captured by the caller; never read from browser globals. */
+  readonly pointer?: { readonly x: number; readonly y: number; readonly down: boolean };
   /** Other actors at activation start; never includes the running actor. */
   readonly sensorActors?: readonly {
     readonly id: string;
@@ -338,6 +340,18 @@ function evaluateExpression(
         state.event === `key:${expression.key}` ||
         state.options.keysDown?.includes(expression.key) === true
       );
+    case "mouseX":
+      return Math.max(
+        0,
+        Math.min(320, Number.isFinite(state.options.pointer?.x) ? state.options.pointer!.x : 0),
+      );
+    case "mouseY":
+      return Math.max(
+        -100,
+        Math.min(120, Number.isFinite(state.options.pointer?.y) ? state.options.pointer!.y : 0),
+      );
+    case "mouseDown":
+      return state.options.pointer?.down === true;
     case "booleanLiteral":
       return expression.value;
     case "numericLiteral":

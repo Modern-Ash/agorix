@@ -173,6 +173,12 @@ function formatExpression(
       return "timer()";
     case "keyDown":
       return `keyDown(${JSON.stringify(expression.key)})`;
+    case "mouseX":
+      return "mouseX()";
+    case "mouseY":
+      return "mouseY()";
+    case "mouseDown":
+      return "mouseDown()";
     case "booleanLiteral":
       return expression.value ? "true" : "false";
     case "numericLiteral":

@@ -62,6 +62,9 @@ const statements: Statement[] = [
   { type: "changeVolume", delta: -10 },
   { type: "broadcast", message: "hola" },
   { type: "setVariable", variableId: "v", value: num(3) },
+  { type: "setVariable", variableId: "v", value: { type: "mouseX" } },
+  { type: "setVariable", variableId: "v", value: { type: "mouseY" } },
+  { type: "if", condition: { type: "mouseDown" }, then: [{ type: "show" }] },
   {
     type: "changeVariable",
     variableId: "v",

@@ -1,5 +1,7 @@
 # Unreleased
 
+- Kids Escena libre: `mouseX`, `mouseY` and `mouseDown` now read the pointer captured on the stage. Position is bounded to the stage, passed only as a run input and never saved in the project or sent to Ori (#1132).
+
 - Kids Escena libre: a bounded `forever` loop is available once per script, outside other loops, with one to three body blocks; the runtime ends at its step budget with explicit trace and learner-facing feedback (#1132).
 - Kids Escena libre: bounded `wait until` checks canonical conditions against a virtual clock for at most ten seconds, records timeout evidence, and offers the same conditions as `if` (#1132).
 - Kids Escena libre: `Detener` now has three explicit scopes (script, character, scene), recorded in the deterministic runtime trace and preserved in project code projections (#1132).

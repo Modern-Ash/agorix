@@ -84,6 +84,9 @@ export const JAVA_SUPPORT_API = [
   "yPosition",
   "timer",
   "keyDown",
+  "mouseX",
+  "mouseY",
+  "mouseDown",
   "random",
   "randomInteger",
 ] as const;
@@ -146,6 +149,9 @@ export const JAVA_SUPPORT_STUB = `class Sprite {
     double yPosition() { return 0; }
     double timer() { return 0; }
     boolean keyDown(String key) { return false; }
+    double mouseX() { return 0; }
+    double mouseY() { return 0; }
+    boolean mouseDown() { return false; }
     double random(double min, double max) { return 0; }
     double randomInteger(double min, double max) { return 0; }
 }
@@ -316,6 +322,7 @@ function kindOf(expression: Expression): Kind {
     case "touchingActor":
     case "touchingStageEdge":
     case "keyDown":
+    case "mouseDown":
     case "booleanLiteral":
     case "lessThan":
     case "greaterThan":
@@ -375,6 +382,12 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return "timer()";
     case "keyDown":
       return `keyDown(${literal(expression.key)})`;
+    case "mouseX":
+      return "mouseX()";
+    case "mouseY":
+      return "mouseY()";
+    case "mouseDown":
+      return "mouseDown()";
     case "booleanLiteral":
       return expression.value ? "true" : "false";
     case "numericLiteral":

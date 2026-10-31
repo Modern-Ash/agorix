@@ -48,6 +48,8 @@ export const SCENE_NUMBER_EXPRESSIONS = [
   "xPosition",
   "yPosition",
   "timer",
+  "mouseX",
+  "mouseY",
   "distanceToActor",
   "variable",
   "listLength",
@@ -65,6 +67,7 @@ export const SCENE_NUMBER_EXPRESSIONS = [
 /** Conditions of `if` and `repeatUntil`: `checkedCondition` in `kidsStudioModel.ts` accepts these. */
 export const SCENE_CONDITION_EXPRESSIONS = [
   "keyDown",
+  "mouseDown",
   "touchingStageEdge",
   "touchingActor",
   "greaterThan",

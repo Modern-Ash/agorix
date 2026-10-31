@@ -55,6 +55,17 @@ export interface KeyDownExpression {
   readonly key: string;
 }
 
+/** Coordinates and pressed state captured from the stage for this run. */
+export interface MouseXExpression {
+  readonly type: "mouseX";
+}
+export interface MouseYExpression {
+  readonly type: "mouseY";
+}
+export interface MouseDownExpression {
+  readonly type: "mouseDown";
+}
+
 export interface YPositionExpression {
   readonly type: "yPosition";
 }
@@ -200,6 +211,9 @@ export type Expression =
   | XPositionExpression
   | TimerExpression
   | KeyDownExpression
+  | MouseXExpression
+  | MouseYExpression
+  | MouseDownExpression
   | YPositionExpression
   | BooleanLiteralExpression
   | NumericLiteralExpression

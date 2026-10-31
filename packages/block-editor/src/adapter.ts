@@ -79,6 +79,9 @@ export type BlockType =
   | "sensing_y_position"
   | "sensing_timer"
   | "sensing_key_down"
+  | "sensing_mouse_x"
+  | "sensing_mouse_y"
+  | "sensing_mouse_down"
   | "operator_add"
   | "operator_subtract"
   | "operator_multiply"
@@ -355,6 +358,12 @@ function expressionFromBlock(
       return { type: "timer" };
     case "sensing_key_down":
       return { type: "keyDown", key: stringField(block, "key", path) };
+    case "sensing_mouse_x":
+      return { type: "mouseX" };
+    case "sensing_mouse_y":
+      return { type: "mouseY" };
+    case "sensing_mouse_down":
+      return { type: "mouseDown" };
     case "literal_boolean":
       return { type: "booleanLiteral", value: booleanField(block, "value", path) };
     case "literal_number":
@@ -798,6 +807,12 @@ function expressionToBlock(
       return { id, type: "sensing_timer" };
     case "keyDown":
       return { id, type: "sensing_key_down", fields: { key: expression.key } };
+    case "mouseX":
+      return { id, type: "sensing_mouse_x" };
+    case "mouseY":
+      return { id, type: "sensing_mouse_y" };
+    case "mouseDown":
+      return { id, type: "sensing_mouse_down" };
     case "booleanLiteral":
       return { id, type: "literal_boolean", fields: { value: expression.value } };
     case "numericLiteral":
