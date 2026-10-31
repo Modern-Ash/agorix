@@ -118,6 +118,25 @@ test("the default Kids journey reaches the world map", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Misión 1" })).toBeVisible();
 });
 
+test("a fresh browser finds quiet Ori guidance in Map and Create", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Seguir" }).click();
+  await page.getByRole("button", { name: "Seguir" }).click();
+  await page.getByRole("button", { name: "¡Empezar!" }).click();
+
+  await page.getByRole("button", { name: "Hablar con Ori" }).click();
+  const guide = page.getByRole("dialog", { name: "Ori te acompaña" });
+  await expect(guide).toContainText("Elegí una misión");
+  await guide.getByRole("button", { name: "Cerrar" }).click();
+
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Hablar con Ori" }).click();
+  await expect(page.getByRole("dialog", { name: "Ori te acompaña" })).toContainText(
+    "Elegí un explorador y un mundo",
+  );
+  await expect(page.getByRole("button", { name: "Crear escena" })).toBeVisible();
+});
+
 test("a returning browser sees the welcome screen at the base URL", async ({ page }) => {
   await page.addInitScript(() =>
     localStorage.setItem(
