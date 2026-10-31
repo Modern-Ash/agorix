@@ -71,3 +71,7 @@ La barra de E tiene **ocho grupos**: Movimiento, Apariencia, Medios, Lógica, L�
 5. **Capacidades de Scratch sin dueño confirmado**: pantalla completa de escenario, depuración con breakpoints y catálogo de tutoriales. Requieren decisión de producto antes de una implementación; esta auditoría no supone que copiar esas funciones sea el objetivo.
 
 Los checks de código y los estados de esta matriz son del `main` auditado. `B1–B5` son del despliegue anterior `cc8224f8fb5f`; no trasladar esas observaciones a `a8747f8b` ni declarar paridad total.
+
+## Incremento de Ori para condiciones compuestas (#1131)
+
+La escena ofrece una idea local y cerrada: «si Espacio y toca el borde, mover 1». Ori explica que ambas condiciones deben cumplirse; el niño ve el bloque propuesto sin insertarlo y puede rechazar, aceptar o cambiar «y» por «o». [Propuesta y validación](../../apps/web/src/kids/kidsOriCompound.ts), [UI](../../apps/web/src/kids/screens/KidsStudioScreen.tsx), [unitarias](../../apps/web/src/kids/kidsOriCompound.test.ts), [E2E](../../apps/web/e2e/kids-ori-compound.spec.ts). El código de esta sección es posterior a la evidencia `B1–B5` y necesita despliegue antes de atribuirle un resultado de producción.
