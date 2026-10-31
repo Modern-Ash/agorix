@@ -4,6 +4,7 @@ const base = (process.env.AGORIX_TUTOR_BASE_URL ?? "https://agorix.modern-ash.co
   /\/$/,
   "",
 );
+const expectedSha = process.env.AGORIX_TUTOR_EXPECT_SHA;
 const samples = Number(process.argv[2] ?? 3);
 if (!Number.isInteger(samples) || samples < 1 || samples > 9) {
   process.stderr.write("usage: node scripts/check-ori-live.mjs [samples: 1..9]\n");
@@ -30,6 +31,9 @@ async function health() {
 
 try {
   const before = await health();
+  if (expectedSha && before.buildSha !== expectedSha) {
+    throw new Error("Tutor build SHA differs from the expected release");
+  }
   if (
     !before.configured ||
     !before.available ||
@@ -75,6 +79,7 @@ try {
     JSON.stringify({
       result: successes >= minimum ? "model-proposals-validated" : "real-model-rate-too-low",
       provider: after.providerInUse,
+      buildSha: after.buildSha ?? null,
       successes,
       samples,
       minimum,

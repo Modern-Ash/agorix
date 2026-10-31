@@ -204,6 +204,29 @@ test("a fresh browser reaches Escena libre with every category and synchronized 
   expect(await page.evaluate(() => localStorage.getItem("agorix.kids.flags.v1"))).toBeNull();
 });
 
+test("an existing Kids project survives a hard reload with browser cache cleared", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Seguir" }).click();
+  await page.getByRole("button", { name: "Seguir" }).click();
+  await page.getByRole("button", { name: "¡Empezar!" }).click();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
+  await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(1);
+  const projectUrl = page.url();
+  const codeBefore = await page.locator(".kids-code-strip").textContent();
+
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Network.clearBrowserCache");
+  await page.reload();
+  await expect(page).toHaveURL(projectUrl);
+  await expect(page.locator(".kids-program-block")).toHaveCount(1);
+  await expect(page.locator(".kids-code-strip")).toHaveText(codeBefore!);
+  expect(await page.evaluate(() => localStorage.getItem("agorix.kids.flags.v1"))).toBeNull();
+});
+
 test("reviewed adult account build exposes account linking without group mode", async ({
   page,
 }) => {

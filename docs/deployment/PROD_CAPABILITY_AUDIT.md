@@ -30,7 +30,18 @@ The pipeline is `scripts/deploy-web.sh`: build image from a SHA, swap the contai
 
 `apps/web/e2e/prod/prod-smoke.spec.ts` gains "a fresh browser reaches Escena libre with the whole palette, Lápiz and Música": from a clean profile it opens Crear, "Crear escena", requires more than 15 palette tools, the categories Movimiento, Lápiz, Música, Variables y listas and Mis bloques, and no stored flags. It passes against the current production build. The existing `/version.json` test already fails a deploy whose SHA differs from `AGORIX_EXPECT_SHA`, so the deploy script reports commit and capability together.
 
-## Not verified
+## Follow-up verification for #1123
 
-- The tutor API commit: no field to read (cause 1 proposal: add a non-sensitive `build` field to `/api/tutor/health`).
-- Different learner profiles and a hard reload on a real tablet: only a fresh headless browser was used. No setting was changed persistently.
+The tutor bundle now embeds the 12-character source commit as `buildSha` in
+`/api/tutor/health`. The host activation and update scripts compare that value
+with the merged Web commit before accepting the service; the live Ori probe
+checks it too. A missing or mismatched SHA fails the rollout and triggers the
+existing rollback. The field is a commit identifier, not a provider credential.
+
+The production smoke now creates a browser-local Kids scene, adds a block,
+clears the Chromium browser cache, and reloads the same profile. It verifies
+that the route, canonical block, generated code, and absence of manual feature
+overrides persist. On 2026-10-31 this passed against Web SHA `0e10b7bc191f`.
+The fresh-profile smoke also passed on that deployment. A real tablet has not
+been tested. The public tutor health endpoint will only expose `buildSha` after
+this change is merged and the matching Web and tutor releases are deployed.

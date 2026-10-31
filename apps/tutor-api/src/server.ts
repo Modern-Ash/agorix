@@ -83,6 +83,8 @@ const HEALTH_TTL_MS = 15_000;
 
 export interface TutorServerOptions {
   readonly config: TutorAdapterConfig;
+  /** Immutable source commit embedded in the deployed tutor bundle. */
+  readonly buildSha?: string;
   /** Injected for tests; defaults to the platform `fetch`. */
   readonly fetch?: typeof fetch;
   readonly healthTtlMs?: number;
@@ -159,6 +161,7 @@ export interface TutorServerOptions {
 }
 
 interface Health {
+  readonly buildSha?: string;
   readonly configured: boolean;
   readonly available: boolean;
   readonly providerInUse: "deterministic" | "openai-compatible" | "codex" | "opencode";
@@ -181,6 +184,7 @@ export function createTutorServer(options: TutorServerOptions): Server {
   const ttl = options.healthTtlMs ?? HEALTH_TTL_MS;
   const chatStats = createOriChatStats();
   const now = options.now ?? Date.now;
+  const buildSha = /^[0-9a-f]{12}$/.test(options.buildSha ?? "") ? options.buildSha : undefined;
   let cached: { readonly at: number; readonly health: Health } | undefined;
   let lastErrorClass: ProviderRuntimeErrorCode | null = null;
   let lastOriSource: Health["lastOriSource"] = null;
@@ -218,13 +222,20 @@ export function createTutorServer(options: TutorServerOptions): Server {
         p50Ms: diagnostics.p50Ms,
         p95Ms: diagnostics.p95Ms,
       };
-      const value: Health = { ...ori, lastErrorClass, lastOriSource, oriMetrics };
+      const value: Health = {
+        ...ori,
+        ...(buildSha ? { buildSha } : {}),
+        lastErrorClass,
+        lastOriSource,
+        oriMetrics,
+      };
       cached = { at: now(), health: value };
       return value;
     }
     const configured = isTutorAdapterConfigured(config);
     const available = configured && (await probe());
     const value: Health = {
+      ...(buildSha ? { buildSha } : {}),
       configured,
       available,
       providerInUse:

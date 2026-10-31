@@ -50,9 +50,11 @@ async function start(
   env: Record<string, string | undefined>,
   fetchImpl?: typeof fetch,
   ori?: ReturnType<typeof createOriCliService>,
+  buildSha?: string,
 ): Promise<string> {
   const server = createTutorServer({
     config: configFromEnv(env),
+    ...(buildSha === undefined ? {} : { buildSha }),
     ...(fetchImpl === undefined ? {} : { fetch: fetchImpl }),
     ...(ori === undefined ? {} : { ori }),
   });
@@ -348,6 +350,16 @@ describe("tutor HTTP server (issue #348)", () => {
     });
   });
 
+  it("reports only a validated source commit in public health", async () => {
+    const sha = "0123456789ab";
+    const base = await start({ AGORIX_TUTOR_ADAPTER: "fake" }, undefined, undefined, sha);
+    expect(await (await fetch(`${base}/api/tutor/health`)).json()).toMatchObject({ buildSha: sha });
+    const invalid = await start({ AGORIX_TUTOR_ADAPTER: "fake" }, undefined, undefined, "secret");
+    const text = await (await fetch(`${invalid}/api/tutor/health`)).text();
+    expect(JSON.parse(text)).not.toHaveProperty("buildSha");
+    expect(text).not.toContain("secret");
+  });
+
   it("reports available for the fake adapter and never leaks secrets", async () => {
     const base = await start({
       AGORIX_TUTOR_ADAPTER: "fake",
@@ -502,8 +514,14 @@ describe("Ori HTTP boundary (issue #381)", () => {
             reason: "toward-goal",
             blocks: [{ type: "move", count: 4 }],
           });
-    const base = await start({}, undefined, createOriCliService(oriCliConfigFromEnv({}), { run }));
+    const base = await start(
+      {},
+      undefined,
+      createOriCliService(oriCliConfigFromEnv({}), { run }),
+      "0123456789ab",
+    );
     expect(await (await fetch(`${base}/api/tutor/health`)).json()).toEqual({
+      buildSha: "0123456789ab",
       configured: true,
       available: true,
       providerInUse: "codex",
