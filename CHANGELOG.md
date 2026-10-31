@@ -7,6 +7,7 @@
 - Kids map: visible title with overall progress ("2 de 12 misiones"), concept chips that say their name, world tabs in four equal columns that never scroll sideways (also at 320 px), and a closable age-band notice that returns next visit (#1111).
 - Kids free-scene editor: block category bar (Movimiento, Apariencia, Medios, Lógica, Lápiz, Música, Datos, Mis bloques) that jumps to each palette heading; Lápiz and Música show only while a grown-up keeps their pack on (#1110).
 - Admin "Centro de IA": grouped menu (Reglas, Agentes de Ori, Contenido y grupos, Monitoreo), chat counters and revision history in their own "Historial y monitoreo" section, and a sticky draft bar that names the unpublished sections and the revision Publicar will create. Gates, API and stored configuration are unchanged (#1112).
+- Kids Crear: the two start modes now say what they are (Escena libre = several characters and every block; ¡Crear! = one explorer, few blocks, optional goal), and Escena libre opens with a "Para empezar" shelf (move, turn, sound) above the whole palette, which stays complete. Engine coverage guard (`kidsCreationCoverage`) and an exhaustive palette category catalog keep the scene in step with the engine (#1121).
 
 # Agorix 0.1.0
 

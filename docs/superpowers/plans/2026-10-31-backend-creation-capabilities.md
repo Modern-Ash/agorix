@@ -65,3 +65,11 @@ Phase 1 first, alone (cheap, shows the real gaps). Phase 2 as refactor-only PR. 
 ## Out of scope
 
 Cloud sync, accounts, server endpoints, Ori backend rollout (#1124), group mode (ADR 0010).
+
+## Delivered in PR #1128 (phases 1 to 3, first slice)
+
+- Phase 1: coverage guard for statements, expressions, triggers, effects and extensions.
+- Phase 2: exhaustive `STUDIO_BLOCK_CATEGORY`. The palette JSX of `KidsStudioScreen` is not rendered from it yet: its 21 blocks carry their own controls and state, so rendering from data waits for the merged editor.
+- Phase 3, first slice: both Crear modes explain themselves; Escena libre opens with a "Para empezar" shelf (`STUDIO_STARTER_BLOCKS`) over the whole palette.
+
+Deliberately not done, and why: the free project (`#/libre/{id}`) is not removed yet. It carries tested behavior Studio lacks (optional goal verified by Ori, explorer in a world, 10+ e2e specs), so the real merge needs those moved into the scene first. Still open: widening the shelf by use, Ori as discovery guide, missions as quests, the `gap:` conditions (`<=`, `>=`, `and`, `or`, `not`).

@@ -159,8 +159,8 @@ export function CreateScreen({
           <h2>{locale === "es" ? "Escena libre" : "Free scene"}</h2>
           <p>
             {locale === "es"
-              ? "Creá con varios personajes. Cada uno puede tener su propio programa."
-              : "Create with several characters. Each can have its own program."}
+              ? "Creá con varios personajes y todos los bloques. Cada personaje puede tener su propio programa."
+              : "Create with several characters and every block. Each can have its own program."}
           </p>
         </div>
         <button
@@ -445,6 +445,11 @@ export function CreateScreen({
           </span>
         </div>
       </div>
+      <p className="kids-note" data-testid="free-project-note">
+        {locale === "es"
+          ? "¡Crear! abre un explorador solo, con pocos bloques y una meta opcional. Para todos los bloques, usá Escena libre."
+          : "Create! opens a single explorer with a few blocks and an optional goal. For every block, use Free scene."}
+      </p>
       <button
         type="button"
         className="kids-button kids-primary kids-create-start"

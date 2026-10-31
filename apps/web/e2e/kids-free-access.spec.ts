@@ -61,3 +61,29 @@ for (const [name, viewport] of [
     await expect(page.getByRole("button", { name: "¡Crear!" })).toBeVisible();
   });
 }
+
+test("the Escena libre starter shelf adds blocks and leaves the whole palette in place", async ({
+  page,
+}) => {
+  await page.goto("/kids");
+  await page.evaluate((progress) => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem("agorix.kids.progress.v1", JSON.stringify(progress));
+  }, PROGRESS);
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await expect(page.getByTestId("free-project-note")).toContainText("Escena libre");
+  await page.getByRole("button", { name: "Crear escena" }).click();
+
+  const shelf = page.getByRole("region", { name: "Para empezar" });
+  await expect(shelf.locator("[data-starter]")).toHaveCount(3);
+  const paletteBefore = await page.locator("[data-kids-palette-tool]").count();
+  expect(paletteBefore).toBeGreaterThan(15);
+
+  await shelf.locator('[data-starter="move"]').click();
+  await shelf.locator('[data-starter="turn"]').click();
+  await expect(page.getByRole("button", { name: /^Quitar bloque \d+$/ })).toHaveCount(2);
+  // The shelf adds to the program and the palette keeps every block.
+  expect(await page.locator("[data-kids-palette-tool]").count()).toBe(paletteBefore);
+});
