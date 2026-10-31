@@ -94,4 +94,23 @@ describe("Kids v2 flags (issue #439)", () => {
     expect(setKidsV2Feature("customImages", false, storage)).toBe(false);
     expect(kidsV2Enabled("customImages", { storage })).toBe(true);
   });
+
+  it("keeps a saved list as it was: features added to the defaults later stay off there (#1123)", () => {
+    // What a browser stored when only the first thirteen existed and an adult toggled one flag.
+    const legacy = JSON.stringify(
+      KIDS_V2_FEATURES.filter(
+        (name) =>
+          name !== "adultLink" &&
+          name !== "groupMode" &&
+          name !== "extensionPen" &&
+          name !== "extensionMusic",
+      ),
+    );
+    const sources = { storage: storageWith(legacy), search: "", production: true };
+    expect(kidsV2Enabled("oriFloat", sources)).toBe(true);
+    expect(kidsV2Enabled("extensionPen", sources)).toBe(false);
+    expect(kidsV2Enabled("extensionMusic", sources)).toBe(false);
+    // A fresh browser has both, so two browsers can show different palettes for the same build.
+    expect(kidsV2Enabled("extensionPen", { storage: storageWith(null), search: "" })).toBe(true);
+  });
 });

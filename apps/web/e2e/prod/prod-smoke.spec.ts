@@ -147,6 +147,25 @@ test("a fresh browser sees the creative Kids tools by default", async ({ page })
   expect(await page.evaluate(() => localStorage.getItem("agorix.kids.flags.v1"))).toBeNull();
 });
 
+test("a fresh browser reaches Escena libre with the whole palette, Lápiz and Música", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Seguir" }).click();
+  await page.getByRole("button", { name: "Seguir" }).click();
+  await page.getByRole("button", { name: "¡Empezar!" }).click();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
+  await expect(page).toHaveURL(/#\/escena\//);
+  // Missions show 5 block kinds; the free scene must show the whole palette without flags set by hand.
+  await expect.poll(() => page.locator("[data-kids-palette-tool]").count()).toBeGreaterThan(15);
+  const categories = page.getByRole("navigation", { name: "Categorías de bloques" });
+  for (const name of ["Movimiento", "Lápiz", "Música", "Variables y listas", "Mis bloques"]) {
+    await expect(categories.getByRole("button", { name })).toBeVisible();
+  }
+  expect(await page.evaluate(() => localStorage.getItem("agorix.kids.flags.v1"))).toBeNull();
+});
+
 test("reviewed adult account build exposes account linking without group mode", async ({
   page,
 }) => {
