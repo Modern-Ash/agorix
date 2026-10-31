@@ -15,9 +15,12 @@ describe("forever placement", () => {
       validateProgram(program([forever([move, move, move])])).scripts[0]?.statements[0],
     ).toEqual(forever([move, move, move]));
   });
-  it.each([[], [move, move, move, move]])("rejects an invalid body size", (body) => {
-    expect(() => validateProgram(program([forever(body)]))).toThrow(ProgramValidationError);
-  });
+  it.each([{ body: [] }, { body: [move, move, move, move] }])(
+    "rejects an invalid body size",
+    ({ body }) => {
+      expect(() => validateProgram(program([forever(body)]))).toThrow(ProgramValidationError);
+    },
+  );
   it("rejects two forever blocks in a script", () => {
     expect(() => validateProgram(program([forever([move]), forever([move])]))).toThrow(
       ProgramValidationError,
