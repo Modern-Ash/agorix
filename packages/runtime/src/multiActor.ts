@@ -70,6 +70,7 @@ export interface MultiActorTraceEntry {
   readonly path: string;
   readonly statementType: Statement["type"];
   readonly stopScope?: "script" | "actor" | "scene";
+  readonly note?: string;
   readonly conditionResult?: boolean;
   readonly args?: readonly number[];
   readonly worldBefore: WorldState;
@@ -479,6 +480,7 @@ export function runMultiActorProgram(
             path: nodeId,
             statementType: entry.statementType,
             ...(entry.stopScope === undefined ? {} : { stopScope: entry.stopScope }),
+            ...(entry.note === undefined ? {} : { note: entry.note }),
             ...(entry.conditionResult === undefined
               ? {}
               : { conditionResult: entry.conditionResult }),

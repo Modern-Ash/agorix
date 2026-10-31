@@ -252,6 +252,18 @@ const definitions: readonly ToolboxBlockDefinition[] = [
     createDefaultBlock: (id) => ({ id, type: "control_stop", fields: { scope: "script" } }),
   },
   {
+    type: "control_wait_until",
+    label: "Wait until ___",
+    section: "Repeat & Decide",
+    placement: "statement",
+    accessibleName: "wait until condition",
+    createDefaultBlock: (id) => ({
+      id,
+      type: "control_wait_until",
+      inputs: { condition: createDefaultBlock("sensing_touching_goal", `${id}:condition`) },
+    }),
+  },
+  {
     type: "sensing_touching_goal",
     label: "Touching the goal?",
     section: "Check",

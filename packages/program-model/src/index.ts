@@ -64,6 +64,7 @@ export type {
   ShowVariableStatement,
   StopSoundsStatement,
   StopStatement,
+  WaitUntilStatement,
   Statement,
   SubtractExpression,
   TouchingGoalExpression,

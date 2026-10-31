@@ -616,6 +616,11 @@ function validateStatement(
         ...(secondsFrom === undefined ? {} : { secondsFrom }),
       };
     }
+    case "waitUntil":
+      return {
+        type: "waitUntil",
+        condition: validateExpression(input.condition, `${path}.condition`, state),
+      };
     case "switchCostume":
       return { type: "switchCostume", costumeId: checkText(input.costumeId, `${path}.costumeId`) };
     case "switchBackdrop":

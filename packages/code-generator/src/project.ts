@@ -469,6 +469,15 @@ function projectStatement(
       write(writer, `${pad}});\n`);
       return;
     }
+    case "waitUntil": {
+      const condId = `${nodeId}/condition`;
+      const cond = formatExpression(statement.condition, condId, context);
+      const prefix = `${pad}waitUntil(() => `;
+      const condStart = writer.offset + prefix.length;
+      writer.mapping[condId] = { start: condStart, end: condStart + cond.length };
+      write(writer, `${prefix}${cond}, 10);\n`);
+      return;
+    }
     case "if": {
       const condId = `${nodeId}/condition`;
       const cond = formatExpression(statement.condition, condId, context);

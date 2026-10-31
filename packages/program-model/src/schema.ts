@@ -405,6 +405,12 @@ export interface WaitStatement {
   readonly secondsFrom?: ProcedureParamId;
 }
 
+/** Waits for a canonical condition, with a fixed ten-second virtual timeout. */
+export interface WaitUntilStatement {
+  readonly type: "waitUntil";
+  readonly condition: Expression;
+}
+
 export interface SwitchCostumeStatement {
   readonly type: "switchCostume";
   readonly costumeId: string;
@@ -557,6 +563,7 @@ export type Statement =
   | SetSizeStatement
   | ChangeSizeStatement
   | WaitStatement
+  | WaitUntilStatement
   | SwitchCostumeStatement
   | SwitchBackdropStatement
   | PlaySoundStatement

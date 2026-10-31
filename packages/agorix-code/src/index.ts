@@ -454,6 +454,16 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
       addRange(writer, nodeId, start, writer.text.length);
       return;
     }
+    case "waitUntil": {
+      const start = writer.text.length;
+      writer.text +=
+        indent +
+        "wait until " +
+        expressionText(writer, statement.condition, nodeId + "/condition") +
+        " (up to 10 seconds)\n";
+      addRange(writer, nodeId, start, writer.text.length);
+      return;
+    }
     case "if": {
       const start = writer.text.length;
       writer.text +=

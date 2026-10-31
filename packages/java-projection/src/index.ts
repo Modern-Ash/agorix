@@ -54,6 +54,7 @@ export const JAVA_SUPPORT_API = [
   "playSound",
   "stopSounds",
   "stop",
+  "waitUntil",
   "setVolume",
   "changeVolume",
   "broadcast",
@@ -115,6 +116,7 @@ export const JAVA_SUPPORT_STUB = `class Sprite {
     void playSound(String sound) {}
     void stopSounds() {}
     void stop(String scope) {}
+    void waitUntil(java.util.function.BooleanSupplier condition, double timeoutSeconds) {}
     void setVolume(double volume) {}
     void changeVolume(double delta) {}
     void broadcast(String message) {}
@@ -581,6 +583,10 @@ function statement(writer: Writer, node: Statement, nodeId: string, depth: numbe
       addRange(writer, nodeId, start, writer.text.length);
       return;
     }
+    case "waitUntil":
+      return line(
+        `waitUntil(() -> ${asBoolean(writer, node.condition, `${nodeId}/condition`)}, 10)`,
+      );
     case "if": {
       const start = writer.text.length;
       writer.text += `${indent}if (${asBoolean(writer, node.condition, `${nodeId}/condition`)}) {\n`;
@@ -719,6 +725,7 @@ export const javaLanguagePack: LanguagePack = {
     "playSound",
     "stopSounds",
     "stop",
+    "waitUntil",
     "setVolume",
     "changeVolume",
     "broadcast",

@@ -88,6 +88,7 @@ describe("block-editor", () => {
       "Repeat [N] times",
       "If ___, then",
       "Stop [script / actor / scene]",
+      "Wait until ___",
       "Touching the goal?",
       "Touching character?",
       "Touching stage edge?",
@@ -115,7 +116,7 @@ describe("block-editor", () => {
       "Show score",
       "Hide score",
     ]);
-    expect(POC_TOOLBOX.flatMap((section) => section.blocks)).toHaveLength(48);
+    expect(POC_TOOLBOX.flatMap((section) => section.blocks)).toHaveLength(49);
   });
 
   it("creates safe defaults for every required POC block", () => {
