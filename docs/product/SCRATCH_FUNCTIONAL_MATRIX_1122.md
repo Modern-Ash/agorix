@@ -2,6 +2,8 @@
 
 Gate de integración posterior: [recorridos y smoke #1127](RELEASE_GATE_1127.md). La evidencia nueva de producción sigue fijada en `cc8224f8fb5f`; no acredita los cambios posteriores ni cierra las filas marcadas `?`.
 
+Ampliación #1127: en ese SHA, el navegador público verificó también rechazo/aceptación/Undo de una propuesta local de Ori con touch, reapertura desde Mis proyectos e intercambio `.agorix` sin medios personales. La suite completa pasó **18/19**; la prueba de cuenta adulta quedó omitida por configuración. Las filas de respuesta remota de Ori, control adulto en producción y medios siguen pendientes.
+
 Fecha: 2026-10-31. Código auditado: `main` en `a8747f8b` (incluye #1121, #1123 y #1131). Producción consultada: `https://agorix.modern-ash.com/version.json` informó `cc8224f8fb5f`; por tanto, los cambios posteriores a ese SHA **no** se atribuyen al despliegue. Esta matriz extiende la [auditoría histórica](SCRATCH_CAPABILITY_AUDIT.md) y no constituye una declaración de paridad con Scratch. Fuente del inventario: [#1122](https://github.com/Modern-Ash/agorix/issues/1122), [#1119](https://github.com/Modern-Ash/agorix/issues/1119), [#538](https://github.com/Modern-Ash/agorix/issues/538), [#196](https://github.com/Modern-Ash/agorix/issues/196), [#295](https://github.com/Modern-Ash/agorix/issues/295) y [#311](https://github.com/Modern-Ash/agorix/issues/311).
 
 ## Criterio de lectura y evidencia
