@@ -101,6 +101,7 @@ export function CreateScreen({
     world: chosenWorld,
     scene: sceneCharacter,
   });
+  const finishScene = () => onStudio(selectedScene.characterId, selectedScene.backdropId);
 
   async function addImage(kind: KidsCustomKind, event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -209,13 +210,7 @@ export function CreateScreen({
               : "Create with several characters and every block. Each can have its own program."}
           </p>
         </div>
-        <button
-          type="button"
-          className="kids-button kids-primary"
-          onClick={() => {
-            onStudio(selectedScene.characterId, selectedScene.backdropId);
-          }}
-        >
+        <button type="button" className="kids-button kids-primary" onClick={finishScene}>
           {locale === "es" ? "Crear escena" : "Create scene"}
         </button>
         <p className="kids-note kids-create-ready" data-testid="studio-ready">
@@ -257,6 +252,39 @@ export function CreateScreen({
           </button>
         ))}
       </nav>
+      <div
+        className="kids-create-next"
+        aria-label={locale === "es" ? "Continuar creación" : "Continue creating"}
+      >
+        <span className="kids-create-next-selection" aria-live="polite">
+          {galleryCharacterName(selectedScene.characterId, locale)} ·{" "}
+          {galleryBackdropName(selectedScene.backdropId, locale)}
+        </span>
+        <button
+          type="button"
+          className="kids-button kids-primary kids-create-advance"
+          onClick={() => (step < 3 ? setStep(step === 1 ? 2 : 3) : finishScene())}
+        >
+          {step === 1
+            ? locale === "es"
+              ? "Continuar: elegir fondo"
+              : "Continue: choose backdrop"
+            : step === 2
+              ? locale === "es"
+                ? "Continuar: revisar escena"
+                : "Continue: review scene"
+              : locale === "es"
+                ? "Finalizar y abrir escena"
+                : "Finish and open scene"}
+        </button>
+        <button
+          type="button"
+          className="kids-button kids-primary kids-create-finish"
+          onClick={finishScene}
+        >
+          {locale === "es" ? "Finalizar y abrir escena" : "Finish and open scene"}
+        </button>
+      </div>
       <div className="kids-create-step" data-create-step="1">
         <div hidden={freeToScene}>
           <h2>{t("createChar")}</h2>
@@ -607,17 +635,6 @@ export function CreateScreen({
             </button>
           </>
         )}
-      </div>
-      <div className="kids-create-next">
-        {step < 3 ? (
-          <button
-            type="button"
-            className="kids-button kids-primary"
-            onClick={() => setStep(step === 1 ? 2 : 3)}
-          >
-            {locale === "es" ? "Seguir" : "Next"}
-          </button>
-        ) : null}
       </div>
     </section>
   );

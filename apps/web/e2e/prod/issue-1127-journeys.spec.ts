@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { readFile } from "node:fs/promises";
-import { expect, test, type Page } from "../fixtures.js";
+import { expect, test, type Page } from "@playwright/test";
 import { openAdultTab, passAdultGate } from "../helpers.js";
 
 // Anonymous, browser-local journeys. The caller pins AGORIX_EXPECT_SHA before attributing evidence.
@@ -21,6 +21,13 @@ async function enterFromFreshBrowser(page: Page) {
   await page.getByRole("button", { name: "¡Empezar!" }).click();
 }
 
+async function openStudioColour(page: Page, name: string) {
+  await page
+    .getByRole("navigation", { name: "Categorías de bloques" })
+    .getByRole("button", { name })
+    .click();
+}
+
 test("Scratch-familiar creation reaches runtime, code and saved project", async ({
   page,
 }, testInfo) => {
@@ -31,6 +38,7 @@ test("Scratch-familiar creation reaches runtime, code and saved project", async 
   await page.getByRole("button", { name: "Crear escena" }).click();
   await expect(page).toHaveURL(/#\/escena\//);
   await expect(page.getByRole("navigation", { name: "Categorías de bloques" })).toBeVisible();
+  await openStudioColour(page, "Movimiento");
   await page.getByRole("button", { name: "+ Mover", exact: true }).click();
   await expect(page.locator(".kids-program-block")).toHaveCount(1);
   const code = page.locator(".kids-code-strip");
@@ -80,6 +88,7 @@ test.describe("touch and learner authority", () => {
     await enterFromFreshBrowser(page);
     await page.getByRole("button", { name: "Crear", exact: true }).tap();
     await page.getByRole("button", { name: "Crear escena" }).tap();
+    await openStudioColour(page, "Movimiento");
     await page.getByRole("button", { name: "+ Mover", exact: true }).tap();
     const blocks = page.locator(".kids-program-block");
     await expect(blocks).toHaveCount(1);
@@ -109,6 +118,7 @@ test("a locally saved scene survives reopening and portable export/import", asyn
   await enterFromFreshBrowser(page);
   await page.getByRole("button", { name: "Crear", exact: true }).click();
   await page.getByRole("button", { name: "Crear escena" }).click();
+  await openStudioColour(page, "Movimiento");
   await page.getByRole("button", { name: "+ Mover", exact: true }).click();
   await expect(page.locator(".kids-program-block")).toHaveCount(1);
   await page.getByRole("button", { name: "Volver a Crear" }).click();
@@ -159,6 +169,7 @@ for (const [band, index, width, height] of [
     await expect(
       page.getByRole("navigation", { name: "Categorías de bloques" }).getByRole("button"),
     ).toHaveCount(8);
+    await openStudioColour(page, "Movimiento");
     await expect(page.getByRole("button", { name: "+ Mover", exact: true })).toBeVisible();
     await page.screenshot({ path: testInfo.outputPath(`scene-${band}.png`), fullPage: true });
     expect(await page.evaluate(() => localStorage.getItem("agorix.kids.flags.v1"))).toBeNull();
@@ -183,6 +194,7 @@ test("adult extension switches hide Pen and Music without hiding the core palett
   await page.getByRole("button", { name: "Crear escena" }).click();
   await expect(page.getByRole("group", { name: "Lápiz" })).toHaveCount(0);
   await expect(page.getByRole("group", { name: "Música" })).toHaveCount(0);
+  await openStudioColour(page, "Movimiento");
   await expect(page.getByRole("button", { name: "+ Mover", exact: true })).toBeVisible();
 });
 
@@ -190,6 +202,7 @@ test("Ori's contextual compound idea can be changed and undone before a run", as
   await enterFromFreshBrowser(page);
   await page.getByRole("button", { name: "Crear", exact: true }).click();
   await page.getByRole("button", { name: "Crear escena" }).click();
+  await openStudioColour(page, "Eventos y control");
   const conditions = page.getByRole("group", { name: "Combinar condiciones" });
   await conditions.getByRole("button", { name: "Pedirle a Ori una combinación" }).click();
   const proposal = page.getByTestId("ori-compound-proposal");

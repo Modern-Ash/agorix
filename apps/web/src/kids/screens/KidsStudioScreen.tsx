@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type PointerEvent } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type PointerEvent,
+} from "react";
 import {
   inStudioRange,
   STUDIO_BUBBLE_MAX_LENGTH,
@@ -99,6 +107,7 @@ import {
 } from "../kidsGallery.js";
 import { KIDS_SOUNDS } from "../kidsSoundLibrary.js";
 import { processKidsImage } from "../kidsImage.js";
+import { usePaletteView, writePaletteView } from "../kidsPaletteView.js";
 import { useKidsFlag } from "../kidsFlags.js";
 import { playKidsSound, stopKidsSounds } from "../kidsSoundPlayer.js";
 import { loadKidsMastery } from "../kidsMastery.js";
@@ -177,7 +186,6 @@ import { useOriPageVisible } from "../kidsOriMotion.js";
 import { expressionForMotion, outcomeOfRun, useOriReaction } from "../kidsOriExpression.js";
 import { KidsBackdrop, KidsSprite } from "./KidsArt.js";
 import { KidsSoundPicker } from "./KidsSoundPicker.js";
-import { usePaletteView, writePaletteView } from "../kidsPaletteView.js";
 import { KIDS_SHORTCUTS, kidsShortcut } from "../kidsShortcuts.js";
 import { OriFace } from "./OriFace.js";
 import { KidsDrawArt } from "./KidsDrawArt.js";
@@ -1239,10 +1247,20 @@ export function KidsStudioScreen({
   // Ori's help since the last run, so a run is counted as helped or on the child's own.
   const helped = useRef(false);
   const [palette, setPalette] = useState<HTMLDivElement | null>(null);
-  // Phone only: the palette is a bottom sheet, open on entry and closable (#1110).
-  const [sheetOpen, setSheetOpen] = useState(true);
-  // Wide screens: the blocks, the code and Ori's help are panels the child can fold away (#1110).
-  const [paletteCollapsed, setPaletteCollapsed] = useState(false);
+  const paletteView = usePaletteView();
+  // One-time migration: a saved full-list preference predates the contextual palette.
+  useLayoutEffect(() => {
+    try {
+      const key = "agorix.kids.palette.contextual.v1";
+      if (localStorage.getItem(key)) return;
+      localStorage.setItem(key, "1");
+      if (paletteView === "all") writePaletteView("focused");
+    } catch {
+      // Storage can be disabled; the in-memory focused default still works.
+    }
+  }, [paletteView]);
+  const [sheetOpen, setSheetOpen] = useState(paletteView === "all");
+  const [paletteCollapsed, setPaletteCollapsed] = useState(paletteView !== "all");
   const [codeCollapsed, setCodeCollapsed] = useState(false);
   const [oriCollapsed, setOriCollapsed] = useState(true);
   const [mediaTab, setMediaTab] = useState<"costumes" | "sounds">("costumes");
@@ -1251,9 +1269,31 @@ export function KidsStudioScreen({
     "actor" | "backdrop" | "costumes" | "sounds" | "program"
   >("program");
   const [activeCategory, setActiveCategory] = useState<StudioCategory | null>(null);
-  // "focused": only the opened colour's blocks show (plus a short starter shelf); "all": the whole list.
-  const paletteView = usePaletteView();
   const [openCategory, setOpenCategory] = useState<StudioCategory | null>(null);
+  useEffect(() => {
+    if (paletteView !== "focused" || openCategory === null) return;
+    const dismiss = (event: globalThis.PointerEvent) => {
+      if (
+        event.target instanceof Element &&
+        event.target.closest(".kids-studio-palette, .kids-studio-categories")
+      )
+        return;
+      setOpenCategory(null);
+    };
+    const escape = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setOpenCategory(null);
+      document
+        .querySelector<HTMLButtonElement>(`.kids-studio-category[data-category="${openCategory}"]`)
+        ?.focus();
+    };
+    document.addEventListener("pointerdown", dismiss);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("pointerdown", dismiss);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [paletteView, openCategory]);
   const programRef = useRef<HTMLOListElement>(null);
   // What is under the pointer while a block is dragged: a list (with the place in it) or a character.
   const [over, setOver] = useState<string | null>(null);
@@ -1994,6 +2034,7 @@ export function KidsStudioScreen({
   function add(statement: StudioStatement) {
     try {
       persist(appendStudioStatement(history, activeActorId, statement));
+      if (paletteView === "focused") setOpenCategory(null);
     } catch {
       setError(true);
     }
@@ -2778,36 +2819,42 @@ export function KidsStudioScreen({
             type="button"
             className="kids-studio-category"
             data-category={category}
-            aria-current={activeCategory === category ? "true" : undefined}
-            aria-pressed={paletteView === "focused" ? openCategory === category : undefined}
-            onClick={() => {
-              setSheetOpen(true);
-              setPaletteCollapsed(false);
-              if (paletteView === "focused") {
-                const next = openCategory === category ? null : category;
-                setOpenCategory(next);
-                setActiveCategory(next);
-                if (palette) palette.scrollTop = 0;
-                return;
-              }
-              setActiveCategory(category);
-              // The sheet is hidden on a phone until it opens, so move once it is on screen.
-              window.setTimeout(() => {
-                const heading = document.getElementById(studioCategoryId(category));
-                if (!heading) return;
-                const smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-                // The palette scrolls on its own beside the program: move only that list, never
-                // the whole page, so nothing else jumps.
-                if (palette && palette.scrollHeight > palette.clientHeight + 1) {
+            aria-current={
+              (paletteView === "all" ? activeCategory : openCategory) === category
+                ? "true"
+                : undefined
+            }
+            aria-expanded={paletteView === "focused" ? openCategory === category : undefined}
+            aria-controls="kids-studio-block-palette"
+            onClick={(event) => {
+              if (paletteView === "all") {
+                setSheetOpen(true);
+                setPaletteCollapsed(false);
+                setActiveCategory(category);
+                window.setTimeout(() => {
+                  const heading = document.getElementById(studioCategoryId(category));
+                  if (!heading || !palette) return;
                   const top =
                     heading.getBoundingClientRect().top -
                     palette.getBoundingClientRect().top +
                     palette.scrollTop;
-                  palette.scrollTo({ top, behavior: smooth ? "smooth" : "auto" });
-                } else
-                  heading.scrollIntoView({ block: "start", behavior: smooth ? "smooth" : "auto" });
-                heading.focus({ preventScroll: true });
-              }, 0);
+                  palette.scrollTo({ top, behavior: "auto" });
+                  heading.focus({ preventScroll: true });
+                }, 0);
+                return;
+              }
+              const next = openCategory === category ? null : category;
+              const bounds = event.currentTarget.getBoundingClientRect();
+              palette?.style.setProperty(
+                "--kids-palette-left",
+                `${Math.max(8, Math.min(bounds.right + 8, window.innerWidth - 328))}px`,
+              );
+              palette?.style.setProperty(
+                "--kids-palette-top",
+                `${Math.max(8, Math.min(bounds.top, window.innerHeight * 0.25))}px`,
+              );
+              setOpenCategory(next);
+              if (palette) palette.scrollTop = 0;
             }}
           >
             {categoryLabel[category]}
@@ -3940,49 +3987,67 @@ export function KidsStudioScreen({
             </ol>
             {script?.statements.length === 0 ? <p className="kids-note">{copy.noBlocks}</p> : null}
           </div>
-          <button
-            type="button"
-            className="kids-button kids-primary kids-studio-sheet-toggle"
-            aria-expanded={sheetOpen}
-            onClick={() => {
-              setSheetOpen((open) => !open);
-              // Opening covers the lower half: bring the program above the sheet.
-              if (!sheetOpen)
-                window.setTimeout(
-                  () =>
-                    document
-                      .querySelector(".kids-studio-program-column")
-                      ?.scrollIntoView({ block: "start" }),
-                  0,
-                );
-            }}
-          >
-            {sheetOpen ? copy.sheetClose : copy.sheetOpen}
-          </button>
+          {paletteView === "all" ? (
+            <button
+              type="button"
+              className="kids-button kids-primary kids-studio-sheet-toggle"
+              aria-expanded={sheetOpen}
+              onClick={() => setSheetOpen((open) => !open)}
+            >
+              {sheetOpen ? copy.sheetClose : copy.sheetOpen}
+            </button>
+          ) : null}
           <div
+            id="kids-studio-block-palette"
             className="kids-studio-palette"
             ref={setPalette}
-            data-sheet={sheetOpen ? "open" : "closed"}
-            data-collapsed={paletteCollapsed ? "true" : undefined}
+            data-contextual={paletteView === "focused" ? "true" : undefined}
+            data-open={paletteView === "focused" && openCategory !== null ? "true" : undefined}
+            data-sheet={
+              paletteView === "focused"
+                ? openCategory
+                  ? "open"
+                  : "closed"
+                : sheetOpen
+                  ? "open"
+                  : "closed"
+            }
+            data-collapsed={paletteView === "all" && paletteCollapsed ? "true" : undefined}
             data-view={paletteView}
             data-open-cat={paletteView === "focused" ? (openCategory ?? "none") : undefined}
+            role="region"
+            aria-label={
+              openCategory
+                ? `${copy.blocksTitle}: ${categoryLabel[openCategory]}`
+                : copy.blocksTitle
+            }
           >
             <div className="kids-studio-panel-head kids-studio-palette-head">
-              <strong>{copy.blocksTitle}</strong>
-              <button
-                type="button"
-                className="kids-panel-toggle kids-palette-view-toggle"
-                onClick={() => writePaletteView(paletteView === "all" ? "focused" : "all")}
-              >
-                {paletteView === "all" ? copy.viewFocused : copy.viewAll}
-              </button>
+              <strong>
+                {paletteView === "focused" && openCategory
+                  ? categoryLabel[openCategory]
+                  : copy.blocksTitle}
+              </strong>
+              {paletteView === "all" ? (
+                <button
+                  type="button"
+                  className="kids-panel-toggle kids-palette-view-toggle"
+                  onClick={() => writePaletteView("focused")}
+                >
+                  {copy.viewFocused}
+                </button>
+              ) : null}
               <button
                 type="button"
                 className="kids-panel-toggle kids-palette-collapse"
-                aria-expanded={!paletteCollapsed}
-                onClick={() => setPaletteCollapsed((value) => !value)}
+                aria-expanded={paletteView === "all" ? !paletteCollapsed : undefined}
+                onClick={() =>
+                  paletteView === "all"
+                    ? setPaletteCollapsed((value) => !value)
+                    : setOpenCategory(null)
+                }
               >
-                {paletteCollapsed ? copy.showBlocks : copy.hideBlocks}
+                {paletteView === "all" && paletteCollapsed ? copy.showBlocks : copy.hideBlocks}
               </button>
             </div>
             <p className="kids-note kids-studio-sheet-hint">
