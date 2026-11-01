@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./fixtures.js";
 import { passAdultGate, openAdultTab } from "./helpers.js";
 
 // Issue #453: the age band is an adult setting, behind the ageBands flag.

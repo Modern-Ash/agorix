@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures.js";
 import { spawn, type ChildProcess } from "node:child_process"; // agora-allowlist: test-only spawn of the local Ori reference process, fixed arguments
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";

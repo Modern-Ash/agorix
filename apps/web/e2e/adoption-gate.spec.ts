@@ -17,7 +17,7 @@
  * Authority boundary: the canonical program hash is the only program authority.
  * AI proposals must not move it until the learner accepts; reject leaves it unchanged.
  */
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./fixtures.js";
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/advanced");

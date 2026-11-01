@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./fixtures.js";
 
 import { BLOCKS_UNLOCKED } from "./helpers.js";
 
@@ -26,6 +26,8 @@ async function open(page: Page, flags: string[]) {
 test("150% zoom inserts a dragged block into slot two without changing the world", async ({
   page,
 }) => {
+  // The palette now sits above the program, so the zoomed program needs a taller window.
+  await page.setViewportSize({ width: 1280, height: 1400 });
   await open(page, ["zoom"]);
   await page.getByRole("button", { name: "+ mover", exact: true }).click();
   await page.getByRole("button", { name: "+ sonar", exact: true }).click();

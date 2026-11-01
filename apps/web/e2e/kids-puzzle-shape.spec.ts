@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./fixtures.js";
 
 import { BLOCKS_UNLOCKED } from "./helpers.js";
 

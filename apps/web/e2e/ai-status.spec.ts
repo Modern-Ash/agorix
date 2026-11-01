@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures.js";
 
 // Issue #352: the learner sees a calm AI status and a short loop, never a key field.
 // The service worker would answer the health call before page.route can mock it.

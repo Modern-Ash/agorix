@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures.js";
 
 test.describe("Ori educational intent chooser", () => {
   test.skip(process.env.VITE_ORI_EXPERIMENTAL_REVIEW !== "1", "Requires experimental build flag");

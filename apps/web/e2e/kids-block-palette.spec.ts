@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./fixtures.js";
 
 // Issue #447: Scratch-style block hues behind the puzzleShape flag; default look unchanged.
 import { BLOCKS_UNLOCKED } from "./helpers.js";
@@ -56,12 +56,13 @@ test("the Scratch palette applies to program and palette blocks and passes axe c
 }) => {
   await openEditor(page, ["puzzleShape"]);
   await expect(page.locator(".kids-root")).toHaveAttribute("data-block-palette", "scratch");
-  for (const selector of [
-    ".kids-program-block.kids-block-move",
-    ".kids-palette-block.kids-block-move",
-  ]) {
-    expect((await colours(page, selector)).bg).toBe("rgb(76, 151, 255)");
-  }
+  expect((await colours(page, ".kids-program-block.kids-block-move")).bg).toBe("rgb(76, 151, 255)");
+  // The palette offers picture tiles (#1110): the colour of the family is the tile's frame.
+  expect(
+    await page
+      .locator(".kids-palette-block.kids-block-move")
+      .evaluate((element) => getComputedStyle(element).borderTopColor),
+  ).toBe("rgb(61, 125, 224)");
   expect((await colours(page, ".kids-program-block.kids-block-repeat")).bg).toBe(
     "rgb(255, 171, 25)",
   );

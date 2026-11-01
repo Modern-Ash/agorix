@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./fixtures.js";
 import { getKidsMission, kidsMoveSteps } from "@agorix/curriculum";
 import { createProgramProposal } from "@agorix/proposals";
 import { reloadToMap, BLOCKS_UNLOCKED } from "./helpers.js";

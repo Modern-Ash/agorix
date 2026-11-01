@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./fixtures.js";
 
 // Issue #446: duplicate block, behind the `duplicate` flag.
 import { BLOCKS_UNLOCKED } from "./helpers.js";

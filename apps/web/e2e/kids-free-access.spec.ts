@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures.js";
 import { KIDS_V2_FEATURES } from "../src/kids/kidsFlags.js";
 import { STUDIO_BLOCK_CATEGORY } from "../src/kids/kidsPaletteCatalog.js";
 

@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./fixtures.js";
 import { passAdultGate, openAdultTab } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });

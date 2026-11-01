@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./fixtures.js";
 
 test.use({ serviceWorkers: "block", hasTouch: true });
 test.beforeEach(async ({ page }) => {

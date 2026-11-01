@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures.js";
 
 // Issue #373: the Kids shell is reachable at /kids, navigable by touch and keyboard, uses our own
 // fonts and never talks to a third party.

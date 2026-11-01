@@ -1,4 +1,4 @@
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "./fixtures.js";
 
 /**
  * Issue #190. These journeys run against the DEV/E2E-only in-process backend that

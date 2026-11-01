@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./fixtures.js";
 
 // Issue #374: onboarding (language, avatar, meet Ori) and the world map with mission locks.
 test.use({ hasTouch: true });

@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./fixtures.js";
 
 // Issue #359: tablets and phones never clip primary controls and offer 44px touch targets.
 // `hasTouch` makes `(pointer: coarse)` match, which is what a real tablet reports at 1180px.
