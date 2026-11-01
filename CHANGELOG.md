@@ -1,5 +1,7 @@
 # Unreleased
 
+- Kids: `freeToScene` is now on by default, including browsers with an older saved flag list, so Crear offers a single Escena libre entry and old `#/libre/{id}` projects open as scenes. A deliberate rollback key (`agorix.kids.freeToScene.off.v1`) turns it off; the E2E suite no longer creates ¡Crear! projects (#1134, part 2).
+
 - Kids Escena libre: first steps coach (add a block, Play, Step) with an Ayuda button to reopen it, and Exportar escena in the editor header. The tools audit is in `docs/product/EDITOR_TOOLS_AUDIT.md` (#1126).
 
 - Kids Escena libre: when a run is cut off inside a Forever, Repeat until or Wait until, Ori explains it from the trace, says when the character's program starts, and for Forever offers a visible exit ("If touching the edge → Stop") the child can use or decline; nothing changes until accepted (#1132).
