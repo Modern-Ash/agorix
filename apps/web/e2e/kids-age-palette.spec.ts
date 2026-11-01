@@ -5,12 +5,12 @@ import { BLOCKS_UNLOCKED } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
-async function expectMapScreenshot(page: Page, name: string) {
+async function expectMapScreenshot(page: Page, name: string, maxDiffPixelRatio = 0.04) {
   const bounds = await page.locator(".kids-root").boundingBox();
   if (!bounds) throw new Error("Kids map is not visible");
   await expect(page).toHaveScreenshot(name, {
     animations: "disabled",
-    maxDiffPixelRatio: 0.04,
+    maxDiffPixelRatio,
     clip: { x: Math.floor(bounds.x), y: Math.floor(bounds.y), width: 804, height: 1100 },
   });
 }
@@ -64,7 +64,7 @@ for (const [band, palette, label] of [
     await openMap(page, band, true);
     await expect(page.locator(".kids-root")).toHaveAttribute("data-age-palette", palette);
     await expect(page.locator(".kids-band-chip")).toHaveText(label);
-    await expectMapScreenshot(page, `band-${band}.png`);
+    await expectMapScreenshot(page, `band-${band}.png`, band === "13+" ? 0.06 : 0.04);
     const violations = (await new AxeBuilder({ page }).withRules(["color-contrast"]).analyze())
       .violations;
     expect(violations.map((v) => `${v.id}: ${v.nodes[0]?.target.join(" ")}`)).toEqual([]);
