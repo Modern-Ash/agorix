@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { expect, test } from "./fixtures.js";
+import { expect, test, type Page } from "./fixtures.js";
 import {
   createOriStudioInput,
   evaluateOriStudioOutput,
@@ -10,6 +10,12 @@ import {
 import { reloadTo } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
+
+async function askStudioOri(page: Page) {
+  const open = page.getByRole("button", { name: "Mostrar ayuda de Ori" });
+  if (await open.isVisible()) await open.click();
+  await page.getByRole("button", { name: "Pedirle una idea a Ori" }).click();
+}
 
 test("free scene asks only bundled choices and waits for the child to decide", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -577,7 +583,7 @@ test("Ori's face follows real events and respects reduced motion", async ({ page
   await page.getByRole("button", { name: "+ Mover", exact: true }).click();
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await expect(face).toHaveAttribute("data-ori-expression", "happy");
-  await page.getByRole("button", { name: "Pedirle una idea a Ori" }).click();
+  await askStudioOri(page);
   await expect(page.getByText("Ori tiene una idea para mirar y decidir.")).toBeVisible();
   await expect(face).toHaveAttribute("data-ori-expression", "curious");
   await page.getByRole("button", { name: "Usar idea" }).click();
@@ -615,7 +621,7 @@ test("Ori's idea is previewed as a ghost block with real runtime evidence before
   await page.getByRole("button", { name: "Crear escena" }).click();
   await page.getByRole("button", { name: "+ Mover", exact: true }).click();
   await expect(page.getByTestId("ori-ghost-block")).toHaveCount(0);
-  await page.getByRole("button", { name: "Pedirle una idea a Ori" }).click();
+  await askStudioOri(page);
   await expect(page.getByText("Ori tiene una idea para mirar y decidir.")).toBeVisible();
   // The idea is shown but not part of the program yet.
   await expect(page.getByTestId("ori-ghost-block")).toHaveCount(1);
@@ -629,7 +635,7 @@ test("Ori's idea is previewed as a ghost block with real runtime evidence before
   await expect(page.getByTestId("ori-ghost-block")).toHaveCount(0);
   await expect(page.locator(".kids-program-block")).toHaveCount(1);
   // Using it makes it a real block and the preview disappears.
-  await page.getByRole("button", { name: "Pedirle una idea a Ori" }).click();
+  await askStudioOri(page);
   await expect(page.getByTestId("ori-ghost-block")).toHaveCount(1);
   await page.getByRole("button", { name: "Usar idea" }).click();
   await expect(page.getByTestId("ori-ghost-block")).toHaveCount(0);
@@ -666,6 +672,7 @@ test("a goal from the closed list becomes several ghost blocks and only changes 
 }) => {
   // The 9–12 band offers every goal; the 6–8 band keeps Ori's ideas to six blocks (issue #607).
   await openStudio(page, "9-12");
+  await page.getByRole("button", { name: "Mostrar ayuda de Ori" }).click();
   await page.getByRole("button", { name: "Hacer un cuadrado" }).click();
   await expect(page.getByTestId("intent-card")).toContainText("Ori propone 8 bloques");
   await expect(page.getByTestId("ori-ghost-block")).toHaveCount(8);
@@ -1186,7 +1193,7 @@ test("free scene keeps independent character scripts and reopens the saved stage
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await expect(page.getByText("2 bloques ejecutados")).toBeVisible();
   await expect(page.locator(".kids-ori-action")).toHaveAttribute("data-ori-state", "observing");
-  await page.getByRole("button", { name: "Pedirle una idea a Ori" }).click();
+  await askStudioOri(page);
   await expect(page.getByText("Ori tiene una idea para mirar y decidir.")).toBeVisible();
   await page.getByRole("button", { name: "Usar idea" }).click();
   await expect(page.locator(".kids-program-block")).toHaveCount(2);
@@ -1289,7 +1296,7 @@ test("Ori's server idea is reviewed before it changes a free scene", async ({ pa
   });
   await page.getByRole("button", { name: "Crear", exact: true }).click();
   await page.getByRole("button", { name: "Crear escena" }).click();
-  await page.getByRole("button", { name: "Pedirle una idea a Ori" }).click();
+  await askStudioOri(page);
   await expect(page.locator(".kids-ori-action")).toHaveAttribute("data-ori-state", "thinking");
   await expect(
     page.getByText("Ori tiene una idea para tu escena.", { exact: false }),
@@ -1349,7 +1356,7 @@ test("Ori proposes a custom block with numbers and the child reviews the values"
   await page.getByRole("button", { name: "Crear bloque con estos bloques" }).click();
   await page.getByRole("combobox", { name: /^Valor de: Girar a la izquierda/ }).selectOption("p1");
 
-  await page.getByRole("button", { name: "Pedirle una idea a Ori" }).click();
+  await askStudioOri(page);
   await expect(page.locator(".kids-ori-proposal strong")).toHaveText("+ Usar: Paso (Largo: 100)");
   const request = JSON.stringify(requests[0]);
   expect(request).toContain('"unit":"steps"');
@@ -1690,7 +1697,7 @@ test("Ori suggests using a block the child made; the child reviews, changes and 
   const before = await page.locator(".kids-program-block").allInnerTexts();
 
   // Ori proposes to use one of them: nothing changes until the child decides.
-  await page.getByRole("button", { name: "Pedirle una idea a Ori" }).click();
+  await askStudioOri(page);
   await expect(page.locator(".kids-ori-proposal")).toContainText("+ Usar: Cuadrado");
   expect(await page.locator(".kids-program-block").allInnerTexts()).toEqual(before);
   const violations = (
@@ -1741,7 +1748,7 @@ test("Ori's block idea can be refused and a lone block cannot be swapped", async
   await page.getByRole("button", { name: "+ Girar a la derecha" }).click();
   await page.getByRole("textbox", { name: "Título del bloque" }).fill("Paso");
   await page.getByRole("button", { name: "Crear bloque con estos bloques" }).click();
-  await page.getByRole("button", { name: "Pedirle una idea a Ori" }).click();
+  await askStudioOri(page);
   await expect(page.locator(".kids-ori-proposal")).toContainText("+ Usar: Paso");
   await expect(page.getByRole("button", { name: "Cambiar idea" })).toHaveCount(0);
   await page.getByRole("button", { name: "No usar" }).click();
@@ -1809,6 +1816,7 @@ test("Ori's tune is heard first, only joins the program when used, and can be un
     ),
   );
   await page.reload();
+  await page.getByRole("button", { name: "Mostrar ayuda de Ori" }).click();
   await expect(page.getByRole("button", { name: "Tocar una melodía" })).toBeVisible();
   await page.getByRole("button", { name: "Tocar una melodía" }).click();
   const card = page.getByTestId("intent-card");
