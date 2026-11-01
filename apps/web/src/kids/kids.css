@@ -3859,3 +3859,35 @@
   text-align: center;
   color: var(--kids-text-secondary);
 }
+
+/* Escena libre sound chooser: categories, search and a scrolling list (#1110). */
+.kids-sound-picker {
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 12px;
+  background: var(--kids-panel);
+  color: var(--kids-text);
+  min-width: 0;
+  width: 100%;
+}
+.kids-sound-picker-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.kids-sound-picker-filters .kids-button[aria-pressed="true"],
+.kids-sound-picker-list .kids-button[aria-pressed="true"] {
+  border-color: var(--kids-focus, #5d418e);
+  background: #efe8fb;
+}
+.kids-sound-picker-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 11rem;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}

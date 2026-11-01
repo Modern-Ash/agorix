@@ -1,5 +1,7 @@
 # Unreleased
 
+- Kids Escena libre: the sound block now offers a chooser with categories (Animals, Effects, Music, Vehicles…), search and a list of every bundled sound; choosing one plays it, and the "Sonar" button adds the chosen sound. The mission editor shares the category names (#1110, slice 3: sounds).
+
 - Kids Escena libre on a phone: the block palette is a bottom sheet ("Agregar bloques" / "Cerrar bloques"), open on entry so a child can tap a block to add it and closable to see the whole stage and program; the category bar opens it and jumps to the family, and the header is more compact (#1110, slice 2: phone).
 
 - Kids Escena libre: on desktop and landscape tablet the block palette, the character's program and the stage are on screen together (the palette scrolls on its own beside the program), the header is more compact, and the "Pedirle una idea a Ori" button shows its label next to Ori instead of a crushed disc. Phone layout is unchanged (#1110, first slice: layout).
