@@ -1225,7 +1225,7 @@ test("looks and wait blocks change only the chosen character and survive reload"
   await page.getByRole("button", { name: "+ Esconder" }).click();
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await expect(page.getByRole("group", { name: "Escenario" }).getByRole("button")).toHaveCount(1);
-  await page.getByRole("button", { name: "Paso" }).click();
+  await page.getByRole("button", { name: "Paso", exact: true }).click();
   await expect(page.locator(".kids-studio-bubble")).toHaveText("Hola, Nova");
   await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
@@ -1961,7 +1961,7 @@ test("free scene shows Media and Logic as snap-together blocks and keeps tools o
   });
   const preview = soundBlock.getByRole("button", { name: "▶ Sonar", exact: true });
   await expect(preview).not.toHaveAttribute("data-kids-add", "true");
-  await soundBlock.getByRole("combobox", { name: "Sonar" }).selectOption("kids:bell");
+  await soundBlock.getByRole("button", { name: "Elegir y escuchar Campana" }).click();
   await soundAdd.click();
   await expect(page.locator(".kids-program-block")).toHaveCount(3);
   await expect(page.locator(".kids-program-block").last()).toContainText("Sonar: Campana");

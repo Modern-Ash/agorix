@@ -103,6 +103,7 @@ import { KidsOriChat } from "./KidsOriChat.js";
 import { KidsOriGoals } from "./KidsOriGoals.js";
 import { describeOriGoal } from "@agorix/ori-agent";
 import { KidsBackdrop, KidsSprite, builtinWorld, emojiSlot, spriteImage } from "./KidsArt.js";
+import { SOUND_CATEGORIES, SOUND_CATEGORY_NAMES } from "./KidsSoundPicker.js";
 import {
   KIDS_CUSTOM_SOUND_ID,
   KIDS_SOUNDS,
@@ -121,29 +122,6 @@ import { OriKidsEditorAccess } from "../link/OriKidsEditorAccess.js";
 
 type CodeLanguage = "agorix" | "python" | "typescript" | "java";
 type Prediction = "yes" | "no" | "dunno";
-const SOUND_CATEGORIES = [
-  "all",
-  "effects",
-  "music",
-  "nature",
-  "animals",
-  "vehicles",
-  "magic",
-  "interface",
-  "actions",
-] as const;
-const SOUND_CATEGORY_NAMES: Record<(typeof SOUND_CATEGORIES)[number], { es: string; en: string }> =
-  {
-    all: { es: "Todos", en: "All" },
-    effects: { es: "Efectos", en: "Effects" },
-    music: { es: "Música", en: "Music" },
-    nature: { es: "Naturaleza", en: "Nature" },
-    animals: { es: "Animales", en: "Animals" },
-    vehicles: { es: "Vehículos", en: "Vehicles" },
-    magic: { es: "Magia", en: "Magic" },
-    interface: { es: "Avisos", en: "Alerts" },
-    actions: { es: "Acciones", en: "Actions" },
-  };
 /** The mission blocks, in palette order: the named subset of the scene catalog (#1133). */
 const PALETTE = Object.keys(MISSION_PALETTE_STATEMENTS) as readonly KidsBlockKind[];
 

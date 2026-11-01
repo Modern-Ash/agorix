@@ -175,6 +175,7 @@ import {
 import { useOriPageVisible } from "../kidsOriMotion.js";
 import { expressionForMotion, outcomeOfRun, useOriReaction } from "../kidsOriExpression.js";
 import { KidsBackdrop, KidsSprite } from "./KidsArt.js";
+import { KidsSoundPicker } from "./KidsSoundPicker.js";
 import { OriFace } from "./OriFace.js";
 import { KidsDrawArt } from "./KidsDrawArt.js";
 
@@ -3775,19 +3776,14 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 },
               ]}
             >
-              <select
-                aria-label={copy.sound}
+              <KidsSoundPicker
+                locale={locale}
                 value={newSound}
-                onChange={(event) =>
-                  setNewSound(event.target.value as (typeof KIDS_SOUNDS)[number]["id"])
-                }
-              >
-                {KIDS_SOUNDS.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item[locale]}
-                  </option>
-                ))}
-              </select>
+                onChoose={(id) => {
+                  setNewSound(id);
+                  void playKidsSound(id, { kind: "gallery", id: characterOfActor(activeActorId) });
+                }}
+              />
             </KidsPaletteBlock>
             <KidsPaletteBlock
               tone="sound"

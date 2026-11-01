@@ -160,3 +160,26 @@ test("the phone palette is a bottom sheet that adds blocks, closes and reopens",
   await expect(page.getByRole("button", { name: /Mover/ }).first()).toBeVisible();
   expect((await toggle.boundingBox())!.height).toBeGreaterThanOrEqual(44);
 });
+
+test("the sound chooser filters by category and search, and adds the chosen sound", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await openScene(page);
+  const picker = page.getByRole("group", { name: "Sonidos", exact: true });
+  await expect(picker.getByTestId("sound-picker-selected")).toContainText("Pop");
+  const all = await picker.getByRole("button", { name: /^Elegir y escuchar/ }).count();
+  expect(all).toBeGreaterThan(60);
+  await picker.getByRole("button", { name: "Animales", exact: true }).click();
+  const animals = await picker.getByRole("button", { name: /^Elegir y escuchar/ }).count();
+  expect(animals).toBeGreaterThan(0);
+  expect(animals).toBeLessThan(all);
+  await picker.getByRole("button", { name: "Todos", exact: true }).click();
+  await picker.getByRole("searchbox", { name: "Buscar sonido" }).fill("campana");
+  await picker.getByRole("button", { name: "Elegir y escuchar Campana" }).click();
+  await expect(picker.getByTestId("sound-picker-selected")).toContainText("Campana");
+  await page.getByRole("button", { name: "+ Sonar", exact: true }).click();
+  await expect(page.locator(".kids-program-block").last()).toContainText("Sonar: Campana");
+  await picker.getByRole("searchbox", { name: "Buscar sonido" }).fill("zzzz");
+  await expect(picker.getByText("No hay sonidos así.")).toBeVisible();
+});
