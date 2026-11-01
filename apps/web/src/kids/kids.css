@@ -3570,6 +3570,57 @@
   gap: 0.5rem;
   margin-top: 0.8rem;
 }
+/* Desktop and landscape tablet: palette, program and stage are visible together (#1110). The palette scrolls on its
+   own so the program and the stage never move out of view while the child picks blocks. */
+@media (min-width: 900px) {
+  .kids-frame:has(.kids-studio) {
+    max-width: 1500px;
+  }
+  .kids-studio {
+    gap: 8px;
+    padding-top: 8px;
+  }
+  .kids-studio h1 {
+    font-size: 1.6rem;
+  }
+  .kids-studio-categories {
+    margin: 0;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+  .kids-studio-category {
+    flex: none;
+    padding: 0 12px;
+    font-size: 0.82rem;
+  }
+  .kids-studio-layout {
+    grid-template-columns: minmax(320px, 4fr) minmax(0, 7fr);
+    align-items: start;
+  }
+  .kids-studio-stage-column {
+    position: sticky;
+    top: 8px;
+  }
+  .kids-studio-program-column {
+    display: grid;
+    grid-template-columns: minmax(230px, 300px) minmax(0, 1fr);
+    column-gap: 1.25rem;
+    align-items: start;
+  }
+  .kids-studio-program-column > * {
+    grid-column: 2;
+  }
+  .kids-studio-program-column > .kids-studio-palette {
+    grid-column: 1;
+    grid-row: 1 / span 40;
+    position: sticky;
+    top: 8px;
+    max-height: calc(100vh - 16px);
+    overflow-y: auto;
+    margin: 0;
+    padding-right: 0.4rem;
+  }
+}
 @media (max-width: 720px) {
   .kids-studio-layout {
     grid-template-columns: 1fr;
