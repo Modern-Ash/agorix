@@ -94,3 +94,50 @@ test("a scene exports as a .agorix file from the editor", async ({ page }) => {
   const file = await download;
   expect(file.suggestedFilename()).toMatch(/\.agorix$/);
 });
+
+// Issue #1110: palette, program and stage are on screen together on desktop and landscape tablet;
+// on a phone nothing scrolls sideways and the controls stay touch sized.
+for (const [name, viewport] of [
+  ["desktop", { width: 1280, height: 800 }],
+  ["landscape tablet", { width: 1024, height: 768 }],
+] as const) {
+  test(`palette, program and stage are visible together on ${name}`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await openScene(page);
+    const stage = page.getByRole("group", { name: "Escenario" });
+    const program = page.getByRole("heading", { name: /^Programa de/ });
+    const palette = page.getByRole("button", { name: /Mover/ }).first();
+    const boxes = await Promise.all([stage, program, palette].map((l) => l.boundingBox()));
+    for (const box of boxes) {
+      expect(box).not.toBeNull();
+      expect(box!.y).toBeLessThan(viewport.height);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(viewport.width);
+    }
+    const [s, g, p] = boxes.map((b) => b!);
+    expect(s.x + s.width).toBeLessThanOrEqual(p.x + 1);
+    expect(p.x + p.width).toBeLessThanOrEqual(g.x + g.width);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      viewport.width,
+    );
+  });
+}
+
+test("the phone layout has no horizontal scroll and touch-sized category buttons", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openScene(page);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  const toolbar = page.getByRole("navigation", { name: "Categorías de bloques" });
+  for (const button of await toolbar.getByRole("button").all()) {
+    expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  }
+});
+
+test("the Ori idea button shows its label next to the character", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await openScene(page);
+  const button = page.getByRole("button", { name: "Pedirle una idea a Ori" });
+  await expect(button).toBeVisible();
+  expect((await button.boundingBox())!.width).toBeGreaterThan(150);
+});

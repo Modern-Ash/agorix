@@ -175,6 +175,7 @@ import {
 import { useOriPageVisible } from "../kidsOriMotion.js";
 import { expressionForMotion, outcomeOfRun, useOriReaction } from "../kidsOriExpression.js";
 import { KidsBackdrop, KidsSprite } from "./KidsArt.js";
+import { OriFace } from "./OriFace.js";
 import { KidsDrawArt } from "./KidsDrawArt.js";
 
 interface Props {
@@ -5296,6 +5297,9 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 disabled={oriBusy}
                 onClick={() => void askOri()}
               >
+                <span aria-hidden="true">
+                  <OriFace expression={oriExpression} />
+                </span>
                 <span>{copy.idea}</span>
               </button>
               <StudioIntentPicker
