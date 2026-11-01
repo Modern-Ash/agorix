@@ -44,7 +44,10 @@ test("child adds custom explorer and backdrop from Create without entering Adult
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
   await expect(page.getByText("+ Explorador")).toBeVisible();
+  await page.getByRole("button", { name: /^2 ·/ }).click();
   await expect(page.getByText("+ Fondo")).toBeVisible();
+  await page.getByRole("button", { name: /^1 ·/ }).click();
+
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   await expect(page.getByRole("region", { name: "Imágenes del juego" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /Quitar imagen de/ })).toHaveCount(0);
@@ -53,13 +56,15 @@ test("child adds custom explorer and backdrop from Create without entering Adult
     "aria-pressed",
     "true",
   );
+  await page.getByRole("button", { name: /^2 ·/ }).click();
   await page.getByLabel("+ Fondo").setInputFiles(resolve("e2e/fixtures/kids-solid.png"));
   await expect(page.getByRole("button", { name: "Fondo propio 2" })).toHaveAttribute(
     "aria-pressed",
     "true",
   );
   await expect(page.getByRole("heading", { name: "Crear" })).toBeVisible();
-  await page.getByRole("button", { name: "¡Crear!" }).click();
+  await page.getByRole("button", { name: /^3 ·/ }).click();
+  await page.getByRole("button", { name: "¡Crear!", exact: true }).click();
   await expect(page.locator(".kids-world-avatar")).toHaveCSS("background-image", /data:image/);
   await expect(page.locator(".kids-world-grid")).toHaveCSS("background-image", /data:image/);
   await reloadTo(page, "#/proyectos");
@@ -90,6 +95,7 @@ test("child draws an explorer and backdrop, then reopens both in a local project
     "true",
   );
 
+  await page.getByRole("button", { name: /^2 ·/ }).click();
   await page.getByRole("button", { name: "Dibujar fondo" }).click();
   const backdropCanvas = page.getByRole("img", { name: "Lienzo para dibujar" });
   const backdropBounds = await backdropCanvas.boundingBox();
@@ -100,7 +106,8 @@ test("child draws an explorer and backdrop, then reopens both in a local project
     "aria-pressed",
     "true",
   );
-  await page.getByRole("button", { name: "¡Crear!" }).click();
+  await page.getByRole("button", { name: /^3 ·/ }).click();
+  await page.getByRole("button", { name: "¡Crear!", exact: true }).click();
   await expect(page.locator(".kids-world-avatar")).toHaveCSS("background-image", /data:image/);
   await expect(page.locator(".kids-world-grid")).toHaveCSS("background-image", /data:image/);
   await reloadTo(page, "#/proyectos");
@@ -189,7 +196,7 @@ test("a built-in image renders locally across map, creation, editor and predicti
   await expect(
     page.getByRole("button", { name: "Elegí tu personaje: 🐸" }).locator(".kids-art-image"),
   ).toHaveCount(1);
-  await page.getByRole("button", { name: "¡Crear!" }).click();
+  await page.getByRole("button", { name: "¡Crear!", exact: true }).click();
   await expect(page.locator(".kids-world-avatar")).toHaveCSS(
     "background-image",
     /data:image\/(webp|png)/,
@@ -236,7 +243,7 @@ test("child-added explorer and backdrop persist; adult removal falls back", asyn
   await page.getByLabel("+ Explorador").setInputFiles(resolve("e2e/fixtures/kids-solid.png"));
   await page.getByLabel("+ Fondo").setInputFiles(resolve("e2e/fixtures/kids-solid.png"));
   await expect(page.getByRole("status")).toHaveText("Imagen guardada en este dispositivo.");
-  await page.getByRole("button", { name: "¡Crear!" }).click();
+  await page.getByRole("button", { name: "¡Crear!", exact: true }).click();
   await expect(page.locator(".kids-world-avatar")).toHaveCSS(
     "background-image",
     /data:image\/(webp|png)/,

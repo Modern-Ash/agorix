@@ -241,3 +241,63 @@ test("the stage can fill the screen, still plays, and Escape brings it back", as
   await expect(page.getByRole("button", { name: "Agrandar escenario" })).toBeVisible();
   expect((await stage.boundingBox())!.width).toBeCloseTo(normal.width, -1);
 });
+
+test("a block's menu duplicates, moves and removes it, with mouse and keyboard", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await openScene(page);
+  await page.getByRole("button", { name: "+ Mover", exact: true }).first().click();
+  await page.getByRole("button", { name: "+ Decir", exact: true }).first().click();
+  const blocks = page.locator(".kids-program-block");
+  await expect(blocks).toHaveCount(2);
+  await blocks.nth(0).click({ button: "right" });
+  const menu = page.getByRole("menu", { name: "Acciones del bloque" });
+  await expect(menu).toBeVisible();
+  await expect(menu.getByRole("menuitem").first()).toBeFocused();
+  await menu.getByRole("menuitem", { name: "Duplicar bloque" }).click();
+  await expect(blocks).toHaveCount(3);
+  await expect(menu).toBeHidden();
+  // Keyboard: the menu key opens it on the focused block; arrows move, Escape closes.
+  await blocks.nth(2).focus();
+  await page.keyboard.press("Shift+F10");
+  await expect(menu).toBeVisible();
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await expect(blocks).toHaveCount(3);
+  await blocks.nth(0).click({ button: "right" });
+  await menu.getByRole("menuitem", { name: "Quitar bloque" }).click();
+  await expect(blocks).toHaveCount(2);
+  await blocks.nth(0).click({ button: "right" });
+  await page.keyboard.press("Escape");
+  await expect(menu).toBeHidden();
+});
+
+test("keyboard shortcuts undo, redo, duplicate and delete the focused block and list themselves", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await openScene(page);
+  await page.getByRole("button", { name: "+ Mover", exact: true }).first().click();
+  const blocks = page.locator(".kids-program-block");
+  await blocks.nth(0).focus();
+  await page.keyboard.press("Control+d");
+  await expect(blocks).toHaveCount(2);
+  await blocks.nth(1).focus();
+  await page.keyboard.press("Delete");
+  await expect(blocks).toHaveCount(1);
+  await page.keyboard.press("Control+z");
+  await expect(blocks).toHaveCount(2);
+  await page.keyboard.press("Control+Shift+z");
+  await expect(blocks).toHaveCount(1);
+  await page.keyboard.press("?");
+  const dialog = page.getByRole("dialog", { name: "Atajos del editor" });
+  await expect(dialog).toContainText("Ctrl/Cmd+D");
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  // Typing in a field never triggers a shortcut.
+  await page.getByRole("searchbox", { name: "Buscar sonido" }).fill("?");
+  await expect(dialog).toBeHidden();
+});

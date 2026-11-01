@@ -26,19 +26,23 @@ test("a new child can browse included art, create a project and reopen it", asyn
   await expect(page.getByRole("button", { name: "Nova", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Mika", exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Nova", exact: true }).click();
+  await page.getByRole("button", { name: /^2 ·/ }).click();
   await page
     .getByRole("group", { name: "Categorías de fondos" })
     .getByRole("button", { name: "Naturaleza" })
     .click();
   await page.getByRole("button", { name: "Bosque", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Nova", exact: true })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
   await expect(page.getByRole("button", { name: "Bosque", exact: true })).toHaveAttribute(
     "aria-pressed",
     "true",
   );
+  await page.getByRole("button", { name: /^1 ·/ }).click();
+  await expect(page.getByRole("button", { name: "Nova", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await page.getByRole("button", { name: /^3 ·/ }).click();
+
   // The explorer of the world and the character of Escena libre are chosen apart.
   await expect(page.getByLabel("Tu elección")).toContainText("Personaje: 🐸");
   await expect(page.getByLabel("Tu elección")).toContainText("Fondo: Bosque");
@@ -48,7 +52,7 @@ test("a new child can browse included art, create a project and reopen it", asyn
   ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");
   expect(violations.map((entry) => entry.id)).toEqual([]);
 
-  await page.getByRole("button", { name: "¡Crear!" }).click();
+  await page.getByRole("button", { name: "¡Crear!", exact: true }).click();
   await expect(page.locator(".kids-world-grid.kids-art-backdrop")).toBeVisible();
   await expect(page.locator(".kids-world-avatar")).toBeVisible();
   await reloadTo(page, "#/proyectos");
