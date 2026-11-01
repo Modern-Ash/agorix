@@ -1246,6 +1246,10 @@ export function KidsStudioScreen({
   const [codeCollapsed, setCodeCollapsed] = useState(false);
   const [oriCollapsed, setOriCollapsed] = useState(true);
   const [mediaTab, setMediaTab] = useState<"costumes" | "sounds">("costumes");
+  const [chooser, setChooser] = useState<"actor" | "backdrop" | null>(null);
+  const [oriContext, setOriContext] = useState<
+    "actor" | "backdrop" | "costumes" | "sounds" | "program"
+  >("program");
   const [activeCategory, setActiveCategory] = useState<StudioCategory | null>(null);
   // "focused": only the opened colour's blocks show (plus a short starter shelf); "all": the whole list.
   const paletteView = usePaletteView();
@@ -1792,6 +1796,31 @@ export function KidsStudioScreen({
     } catch {
       setError(true);
     }
+  }
+
+  function setActorCoordinate(axis: "x" | "y", value: number) {
+    if (!actor || !Number.isFinite(value)) return;
+    if (value === actor[axis]) return;
+    try {
+      setStudioActorPosition(
+        id,
+        actor.id,
+        axis === "x" ? Math.max(0, Math.min(320, value)) : actor.x,
+        axis === "y" ? Math.max(-100, Math.min(120, value)) : actor.y,
+        store,
+      );
+      setPlacementRevision((current) => current + 1);
+      setRun(null);
+      setFrame(null);
+      setError(false);
+    } catch {
+      setError(true);
+    }
+  }
+
+  function openOri(context: typeof oriContext) {
+    setOriContext(context);
+    setOriCollapsed(false);
   }
 
   function changeLayer(direction: "forward" | "backward") {
@@ -2980,6 +3009,169 @@ export function KidsStudioScreen({
             })}
           </KidsBackdrop>
           <div
+            className="kids-studio-stage-actions"
+            role="group"
+            aria-label={locale === "es" ? "Herramientas del escenario" : "Stage tools"}
+          >
+            <button
+              type="button"
+              className="kids-button"
+              aria-expanded={chooser === "actor"}
+              onClick={() => setChooser(chooser === "actor" ? null : "actor")}
+            >
+              {locale === "es" ? "+ Objeto" : "+ Sprite"}
+            </button>
+            <button
+              type="button"
+              className="kids-button"
+              aria-expanded={chooser === "backdrop"}
+              onClick={() => setChooser(chooser === "backdrop" ? null : "backdrop")}
+            >
+              {locale === "es" ? "+ Fondo" : "+ Backdrop"}
+            </button>
+            {oriSuggestions ? (
+              <button
+                type="button"
+                className="kids-button"
+                onClick={() => openOri(chooser === "backdrop" ? "backdrop" : "actor")}
+              >
+                {locale === "es" ? "✦ Preguntar a Ori" : "✦ Ask Ori"}
+              </button>
+            ) : null}
+          </div>
+          {chooser === "actor" ? (
+            <div
+              className="kids-studio-chooser"
+              role="group"
+              aria-label={locale === "es" ? "Elegir objeto" : "Choose sprite"}
+            >
+              <label>
+                {locale === "es" ? "Biblioteca" : "Library"}
+                <select
+                  value={newCharacter}
+                  onChange={(event) =>
+                    setNewCharacter(event.target.value as KidsGalleryCharacterId)
+                  }
+                >
+                  {KIDS_GALLERY_CHARACTERS.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {galleryCharacterName(item.id, locale)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                className="kids-button"
+                disabled={(creative.actors?.length ?? 0) >= 12}
+                onClick={() => {
+                  addActor();
+                  setChooser(null);
+                }}
+              >
+                {locale === "es" ? "Agregar objeto" : "Add sprite"}
+              </button>
+              {customImagesEnabled ? (
+                <button
+                  type="button"
+                  className="kids-button"
+                  onClick={() => {
+                    setMediaTab("costumes");
+                    setDrawingKind("costume");
+                    setChooser(null);
+                  }}
+                >
+                  {locale === "es" ? "Dibujar disfraz" : "Draw costume"}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+          {chooser === "backdrop" ? (
+            <div
+              className="kids-studio-chooser"
+              role="group"
+              aria-label={locale === "es" ? "Elegir fondo" : "Choose backdrop"}
+            >
+              <label>
+                {locale === "es" ? "Biblioteca" : "Library"}
+                <select
+                  value={newBackdrop}
+                  onChange={(event) => setNewBackdrop(event.target.value as KidsGalleryBackdropId)}
+                >
+                  {KIDS_GALLERY_BACKDROPS.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {galleryBackdropName(item.id, locale)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                className="kids-button"
+                onClick={() => {
+                  changeBackdrop(newBackdrop);
+                  setChooser(null);
+                }}
+              >
+                {locale === "es" ? "Usar fondo" : "Use backdrop"}
+              </button>
+              {customImagesEnabled ? (
+                <button
+                  type="button"
+                  className="kids-button"
+                  onClick={() => {
+                    setMediaTab("costumes");
+                    setDrawingKind("backdrop");
+                    setChooser(null);
+                  }}
+                >
+                  {locale === "es" ? "Dibujar fondo" : "Draw backdrop"}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+          {actor ? (
+            <div
+              className="kids-studio-actor-inspector"
+              aria-label={locale === "es" ? "Objeto seleccionado" : "Selected sprite"}
+            >
+              <strong>{actor.name}</strong>
+              <label>
+                x{" "}
+                <input
+                  type="number"
+                  min={0}
+                  max={320}
+                  key={`${actor.id}-x-${placementRevision}`}
+                  defaultValue={actor.x}
+                  onBlur={(event) => {
+                    if (event.target.value.trim())
+                      setActorCoordinate("x", Number(event.target.value));
+                  }}
+                />
+              </label>
+              <label>
+                y{" "}
+                <input
+                  type="number"
+                  min={-100}
+                  max={120}
+                  key={`${actor.id}-y-${placementRevision}`}
+                  defaultValue={actor.y}
+                  onBlur={(event) => {
+                    if (event.target.value.trim())
+                      setActorCoordinate("y", Number(event.target.value));
+                  }}
+                />
+              </label>
+              {oriSuggestions ? (
+                <button type="button" className="kids-button" onClick={() => openOri("actor")}>
+                  {locale === "es" ? "✦ Ori y este objeto" : "✦ Ori and this sprite"}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+          <div
             className="kids-studio-media-tabs"
             role="group"
             aria-label={locale === "es" ? "Medios" : "Media"}
@@ -2988,7 +3180,10 @@ export function KidsStudioScreen({
               type="button"
               className="kids-button"
               aria-pressed={mediaTab === "costumes"}
-              onClick={() => setMediaTab("costumes")}
+              onClick={() => {
+                setMediaTab("costumes");
+                setOriContext("costumes");
+              }}
             >
               {locale === "es" ? "🎨 Disfraces y fondos" : "🎨 Costumes and backdrops"}
             </button>
@@ -2996,7 +3191,10 @@ export function KidsStudioScreen({
               type="button"
               className="kids-button"
               aria-pressed={mediaTab === "sounds"}
-              onClick={() => setMediaTab("sounds")}
+              onClick={() => {
+                setMediaTab("sounds");
+                setOriContext("sounds");
+              }}
             >
               {locale === "es" ? "🔊 Sonidos" : "🔊 Sounds"}
             </button>
@@ -5767,6 +5965,31 @@ export function KidsStudioScreen({
               <div className="kids-ori-stage">
                 <KidsSprite slot="ori" expression={oriExpression} talking={Boolean(oriIdea)} />
               </div>
+              <p className="kids-ori-context" role="status">
+                {locale === "es"
+                  ? oriContext === "actor"
+                    ? `Estamos trabajando con ${actor?.name ?? "un objeto"}. Podés ubicarlo, elegir un disfraz o pedir una idea para su programa.`
+                    : oriContext === "backdrop"
+                      ? "Elegí un fondo para tu escena. Ori puede ayudarte a decidir qué acción debería ocurrir allí."
+                      : oriContext === "costumes"
+                        ? `Elegí o dibujá un disfraz para ${actor?.name ?? "tu objeto"}. Después podés crear bloques para cambiar su apariencia.`
+                        : oriContext === "sounds"
+                          ? "Escuchá un sonido y agregalo al programa cuando te guste. Ori puede sugerir cuándo usarlo."
+                          : run
+                            ? `Tu última ejecución recorrió ${run.trace.length} bloques. Revisemos qué pasó antes de cambiar el programa.`
+                            : `Estamos editando el programa de ${actor?.name ?? "tu objeto"}. Contame qué querés que haga.`
+                  : oriContext === "actor"
+                    ? `We're working with ${actor?.name ?? "a sprite"}. You can position it, choose a costume, or ask for a program idea.`
+                    : oriContext === "backdrop"
+                      ? "Choose a backdrop for your scene. Ori can help you decide what should happen there."
+                      : oriContext === "costumes"
+                        ? `Choose or draw a costume for ${actor?.name ?? "your sprite"}, then add blocks to change its look.`
+                        : oriContext === "sounds"
+                          ? "Listen to a sound and add it to the program when you like it. Ori can suggest when to use it."
+                          : run
+                            ? `Your last run executed ${run.trace.length} blocks. Let's inspect what happened before changing the program.`
+                            : `We're editing ${actor?.name ?? "your sprite"}'s program. What would you like it to do?`}
+              </p>
               <button
                 type="button"
                 className="kids-button kids-ori-action"

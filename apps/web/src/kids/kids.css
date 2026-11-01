@@ -4242,6 +4242,40 @@
   border-radius: 12px;
   background: rgb(255 255 255 / 80%);
 }
+.kids-studio-stage-actions,
+.kids-studio-chooser,
+.kids-studio-actor-inspector {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid var(--kids-border);
+  border-radius: 12px;
+  background: rgb(255 255 255 / 82%);
+}
+.kids-studio-stage-actions .kids-button[aria-expanded="true"] {
+  background: #efe8fb;
+  border-color: #6245a4;
+}
+.kids-studio-chooser label,
+.kids-studio-actor-inspector label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.kids-studio-actor-inspector input {
+  width: 5rem;
+  min-height: 40px;
+}
+.kids-ori-context {
+  margin: 4px 0;
+  padding: 10px;
+  border-radius: 10px;
+  background: #f3edfc;
+  line-height: 1.4;
+}
 .kids-studio-media-tabs {
   margin-top: 10px;
   padding-bottom: 0;

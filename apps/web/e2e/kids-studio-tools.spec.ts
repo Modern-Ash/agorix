@@ -135,12 +135,33 @@ test("the phone layout has no horizontal scroll and touch-sized category buttons
   }
 });
 
-test("the Ori idea button shows its label next to the character", async ({ page }) => {
+test("Ori opens from the selected sprite with contextual help", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await openScene(page);
+  await expect(page.getByRole("button", { name: "Pedirle una idea a Ori" })).toBeHidden();
+  await page.getByRole("button", { name: "Ori y este objeto" }).click();
+  await expect(page.locator(".kids-ori-context")).toContainText("Estamos trabajando con");
   const button = page.getByRole("button", { name: "Pedirle una idea a Ori" });
   await expect(button).toBeVisible();
   expect((await button.boundingBox())!.width).toBeGreaterThan(150);
+});
+
+test("stage tools expose sprite, backdrop and editable position", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await openScene(page);
+  await page.getByRole("button", { name: "+ Objeto" }).click();
+  await expect(page.getByRole("group", { name: "Elegir objeto" })).toBeVisible();
+  await page.getByRole("button", { name: "Agregar objeto" }).click();
+  const inspector = page.getByLabel("Objeto seleccionado");
+  await expect(inspector).toBeVisible();
+  await inspector.getByRole("spinbutton", { name: "x" }).fill("120");
+  await inspector.getByRole("spinbutton", { name: "x" }).blur();
+  await expect(inspector.getByRole("spinbutton", { name: "x" })).toHaveValue("120");
+  await page.getByRole("button", { name: "+ Fondo" }).click();
+  await expect(page.getByRole("group", { name: "Elegir fondo" })).toBeVisible();
+  await page.getByRole("button", { name: "Usar fondo" }).click();
+  await page.getByRole("button", { name: "🔊 Sonidos" }).click();
+  await expect(page.locator(".kids-studio-media-content")).toBeVisible();
 });
 
 test("the phone palette is a bottom sheet that adds blocks, closes and reopens", async ({
@@ -338,6 +359,8 @@ test("a category moves only the block list, and the blocks, code and Ori help fo
   await page.getByRole("button", { name: "Mostrar código" }).click();
   await expect(page.locator(".kids-code-strip")).toBeVisible();
 
+  await page.getByRole("button", { name: "Mostrar ayuda de Ori" }).click();
+  await expect(page.getByRole("button", { name: "Pedirle una idea a Ori" })).toBeVisible();
   await page.getByRole("button", { name: "Ocultar ayuda de Ori" }).click();
   await expect(page.getByRole("button", { name: "Pedirle una idea a Ori" })).toBeHidden();
   await page.getByRole("button", { name: "Mostrar ayuda de Ori" }).click();
