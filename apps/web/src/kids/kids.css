@@ -3950,3 +3950,20 @@
   background: #fff0c2;
   color: #3d2c00;
 }
+
+/* Enlarged stage: the whole stage column covers the screen; Escape or its button returns (#1110). */
+.kids-studio-stage-column[data-large="true"] {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  overflow-y: auto;
+  padding: 12px 16px 24px;
+  background: var(--kids-bg-solid, #f4f6f5);
+}
+.kids-studio-stage-column[data-large="true"] .kids-studio-stage {
+  width: min(100%, calc((100vh - 170px) * 20 / 13));
+  margin-inline: auto;
+}
+.kids-studio-stage-zoom {
+  justify-self: start;
+}

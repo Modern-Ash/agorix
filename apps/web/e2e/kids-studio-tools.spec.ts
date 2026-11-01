@@ -203,3 +203,41 @@ test("the verdict card checks the guess against the run and marks match or diffe
   await expect(page.getByTestId("coach-prediction")).toHaveAttribute("data-verdict", "differs");
   await expect(page.getByTestId("coach-prediction")).toContainText("pero fue");
 });
+
+test("a block can be duplicated, undone and redone", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await openScene(page);
+  await page.getByRole("button", { name: "+ Mover", exact: true }).first().click();
+  await page.getByRole("button", { name: "+ Decir", exact: true }).first().click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(2);
+  await page.getByRole("button", { name: "Duplicar bloque 1" }).click();
+  const blocks = page.locator(".kids-program-block");
+  await expect(blocks).toHaveCount(3);
+  await expect(blocks.nth(0)).toContainText("Mover");
+  await expect(blocks.nth(1)).toContainText("Mover");
+  await expect(blocks.nth(2)).toContainText("Decir");
+  await page.getByRole("button", { name: "Deshacer" }).click();
+  await expect(blocks).toHaveCount(2);
+  await page.getByRole("button", { name: "Rehacer" }).click();
+  await expect(blocks).toHaveCount(3);
+});
+
+test("the stage can fill the screen, still plays, and Escape brings it back", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await openScene(page);
+  const stage = page.getByRole("group", { name: "Escenario" });
+  const normal = (await stage.boundingBox())!;
+  const toggle = page.getByRole("button", { name: "Agrandar escenario" });
+  await toggle.click();
+  await expect(page.getByRole("button", { name: "Volver al tamaño normal" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  const large = (await stage.boundingBox())!;
+  expect(large.width).toBeGreaterThan(normal.width);
+  expect(large.y + large.height).toBeLessThanOrEqual(800);
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button", { name: "Agrandar escenario" })).toBeVisible();
+  expect((await stage.boundingBox())!.width).toBeCloseTo(normal.width, -1);
+});

@@ -13,6 +13,7 @@ import {
   createStudioProgram,
   creativeForStudio,
   deleteStudioProcedure,
+  duplicateStudioStatement,
   moveStudioStatement,
   removeStudioProcedureNumber,
   setStudioCallNumbers,
@@ -276,5 +277,28 @@ describe("moving blocks within a character's script", () => {
   it("changes the run in the new order", () => {
     const moved = moveStudioStatement(build(), nova, 1, 0);
     expect(order(moved)).toEqual(["turn", "move", "say"]);
+  });
+});
+
+describe("duplicating a block in a character's script (#1110)", () => {
+  const build = () => {
+    let history = createEditorHistory(createStudioProgram("nova"));
+    history = appendStudioStatement(history, nova, { type: "move", steps: 40 });
+    return appendStudioStatement(history, nova, { type: "say", text: "Hola" });
+  };
+  const order = (history: ReturnType<typeof build>) =>
+    history.current.scripts[0]!.statements.map((statement) => statement.type);
+
+  it("copies the block right after itself as one undoable step", () => {
+    const history = duplicateStudioStatement(build(), nova, 0);
+    expect(order(history)).toEqual(["move", "move", "say"]);
+    expect(history.current.scripts[0]!.statements[1]).toEqual(
+      history.current.scripts[0]!.statements[0],
+    );
+    expect(order(undoCanonicalTransaction(history).history)).toEqual(["move", "say"]);
+  });
+
+  it("rejects an unknown block", () => {
+    expect(() => duplicateStudioStatement(build(), nova, 5)).toThrow(RangeError);
   });
 });
