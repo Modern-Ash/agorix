@@ -4127,3 +4127,102 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Editor panels: each zone is a card, and the blocks, code and Ori help fold away (#1110). */
+.kids-studio-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-basis: 100%;
+}
+.kids-studio-panel-head h2,
+.kids-studio-panel-head strong {
+  margin: 0;
+}
+.kids-panel-toggle {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--kids-border);
+  border-radius: 999px;
+  background: var(--kids-panel);
+  color: var(--kids-text);
+  font: 700 0.8rem var(--kids-font-body);
+  cursor: pointer;
+}
+.kids-studio-palette-head {
+  display: none;
+}
+.kids-studio-panel {
+  display: grid;
+  gap: 8px;
+}
+.kids-studio-panel[data-collapsed="true"] > :not(.kids-studio-panel-head),
+.kids-studio-ori[data-collapsed="true"] > :not(.kids-studio-panel-head) {
+  display: none;
+}
+.kids-studio-ori .kids-studio-panel-head {
+  justify-content: flex-end;
+}
+@media (min-width: 900px) {
+  .kids-studio > .kids-studio-categories,
+  .kids-studio-stage-column,
+  .kids-studio-program-column > .kids-studio-palette,
+  .kids-studio-panel,
+  .kids-studio-ori {
+    padding: 12px;
+    border: 1px solid var(--kids-border);
+    border-radius: 16px;
+    background: rgb(255 255 255 / 72%);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 8%);
+  }
+  .kids-studio-palette-head {
+    display: flex;
+    position: sticky;
+    top: -12px;
+    z-index: 2;
+    margin: -12px -12px 4px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--kids-border);
+    border-radius: 16px 16px 0 0;
+    background: #efe8fb;
+  }
+  .kids-studio-program-column
+    > .kids-studio-palette[data-collapsed="true"]
+    > :not(.kids-studio-panel-head) {
+    display: none;
+  }
+  .kids-studio-program-column:has(.kids-studio-palette[data-collapsed="true"]) {
+    grid-template-columns: minmax(150px, 190px) minmax(0, 1fr);
+  }
+  .kids-studio-category[aria-current="true"] {
+    background: #efe8fb;
+    box-shadow: inset 3px 0 0 #5d418e;
+  }
+  .kids-studio-stage-column {
+    background: rgb(255 255 255 / 72%);
+  }
+}
+
+.kids-node-goal {
+  display: block;
+  max-width: 22ch;
+  color: var(--kids-text);
+  font-size: 0.85rem;
+  text-align: center;
+}
+.kids-node-concept {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 10px;
+  border: 2px solid;
+  border-radius: 999px;
+  background: var(--kids-panel);
+  color: var(--kids-text);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.kids-map-next-main small {
+  display: block;
+  font-weight: 400;
+}

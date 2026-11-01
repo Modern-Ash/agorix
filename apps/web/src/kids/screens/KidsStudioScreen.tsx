@@ -409,6 +409,15 @@ const COPY = {
     undo: "Deshacer",
     redo: "Rehacer",
     code: "Código",
+    blocksTitle: "Bloques",
+    panelHide: "Ocultar",
+    panelShow: "Mostrar",
+    hideBlocks: "Ocultar bloques",
+    showBlocks: "Mostrar bloques",
+    hideCode: "Ocultar código",
+    showCode: "Mostrar código",
+    hideOri: "Ocultar ayuda de Ori",
+    showOri: "Mostrar ayuda de Ori",
     idea: "Pedirle una idea a Ori",
     sheetOpen: "Agregar bloques",
     sheetClose: "Cerrar bloques",
@@ -669,6 +678,15 @@ const COPY = {
     undo: "Undo",
     redo: "Redo",
     code: "Code",
+    blocksTitle: "Blocks",
+    panelHide: "Hide",
+    panelShow: "Show",
+    hideBlocks: "Hide blocks",
+    showBlocks: "Show blocks",
+    hideCode: "Hide code",
+    showCode: "Show code",
+    hideOri: "Hide Ori help",
+    showOri: "Show Ori help",
     idea: "Ask Ori for an idea",
     sheetOpen: "Add blocks",
     sheetClose: "Close blocks",
@@ -1192,6 +1210,11 @@ export function KidsStudioScreen({
   const [palette, setPalette] = useState<HTMLDivElement | null>(null);
   // Phone only: the palette is a bottom sheet, open on entry and closable (#1110).
   const [sheetOpen, setSheetOpen] = useState(true);
+  // Wide screens: the blocks, the code and Ori's help are panels the child can fold away (#1110).
+  const [paletteCollapsed, setPaletteCollapsed] = useState(false);
+  const [codeCollapsed, setCodeCollapsed] = useState(false);
+  const [oriCollapsed, setOriCollapsed] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<StudioCategory | null>(null);
   const programRef = useRef<HTMLOListElement>(null);
   // What is under the pointer while a block is dragged: a list (with the place in it) or a character.
   const [over, setOver] = useState<string | null>(null);
@@ -2691,13 +2714,27 @@ export function KidsStudioScreen({
             type="button"
             className="kids-studio-category"
             data-category={category}
+            aria-current={activeCategory === category ? "true" : undefined}
             onClick={() => {
               setSheetOpen(true);
-              // The sheet is hidden on a phone until it opens, so jump once it is on screen.
+              setPaletteCollapsed(false);
+              setActiveCategory(category);
+              // The sheet is hidden on a phone until it opens, so move once it is on screen.
               window.setTimeout(() => {
                 const heading = document.getElementById(studioCategoryId(category));
-                heading?.scrollIntoView({ block: "start" });
-                heading?.focus({ preventScroll: true });
+                if (!heading) return;
+                const smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+                // The palette scrolls on its own beside the program: move only that list, never
+                // the whole page, so nothing else jumps.
+                if (palette && palette.scrollHeight > palette.clientHeight + 1) {
+                  const top =
+                    heading.getBoundingClientRect().top -
+                    palette.getBoundingClientRect().top +
+                    palette.scrollTop;
+                  palette.scrollTo({ top, behavior: smooth ? "smooth" : "auto" });
+                } else
+                  heading.scrollIntoView({ block: "start", behavior: smooth ? "smooth" : "auto" });
+                heading.focus({ preventScroll: true });
               }, 0);
             }}
           >
@@ -3623,7 +3660,19 @@ export function KidsStudioScreen({
             className="kids-studio-palette"
             ref={setPalette}
             data-sheet={sheetOpen ? "open" : "closed"}
+            data-collapsed={paletteCollapsed ? "true" : undefined}
           >
+            <div className="kids-studio-panel-head kids-studio-palette-head">
+              <strong>{copy.blocksTitle}</strong>
+              <button
+                type="button"
+                className="kids-panel-toggle"
+                aria-expanded={!paletteCollapsed}
+                onClick={() => setPaletteCollapsed((value) => !value)}
+              >
+                {paletteCollapsed ? copy.showBlocks : copy.hideBlocks}
+              </button>
+            </div>
             <p className="kids-note kids-studio-sheet-hint">{copy.sheetHint}</p>
             {/* A shelf over the whole palette: it suggests where to begin and hides nothing (#1110). */}
             <section className="kids-studio-starters" aria-label={copy.starters}>
@@ -5584,7 +5633,17 @@ export function KidsStudioScreen({
             ) : null}
           </div>
           {oriSuggestions ? (
-            <div className="kids-studio-ori">
+            <div className="kids-studio-ori" data-collapsed={oriCollapsed ? "true" : undefined}>
+              <div className="kids-studio-panel-head">
+                <button
+                  type="button"
+                  className="kids-panel-toggle"
+                  aria-expanded={!oriCollapsed}
+                  onClick={() => setOriCollapsed((value) => !value)}
+                >
+                  {oriCollapsed ? copy.showOri : copy.hideOri}
+                </button>
+              </div>
               <div className="kids-ori-stage">
                 <KidsSprite slot="ori" expression={oriExpression} talking={Boolean(oriIdea)} />
               </div>
@@ -5718,50 +5777,65 @@ export function KidsStudioScreen({
               ) : null}
             </div>
           ) : null}
-          <h2>{copy.code}</h2>
-          <div className="kids-code-languages" role="group" aria-label={copy.code}>
-            {codeTabs.map((tab) => {
-              const item = tab === "node" ? "typescript" : tab;
-              return (
-                <button
-                  type="button"
-                  key={tab}
-                  aria-pressed={shownLanguage === item}
-                  onClick={() => setLanguage(item)}
-                >
-                  {item === "agorix"
-                    ? "Agorix Code"
-                    : item === "python"
-                      ? "Python"
-                      : item === "java"
-                        ? "Java"
-                        : "TypeScript"}
-                </button>
-              );
-            })}
-            {ageBand === "6-8" ? (
+          <section
+            className="kids-studio-panel"
+            data-collapsed={codeCollapsed ? "true" : undefined}
+          >
+            <div className="kids-studio-panel-head">
+              <h2>{copy.code}</h2>
               <button
                 type="button"
-                aria-expanded={showMoreLanguages}
-                onClick={() => setShowMoreLanguages(!showMoreLanguages)}
+                className="kids-panel-toggle"
+                aria-expanded={!codeCollapsed}
+                onClick={() => setCodeCollapsed((value) => !value)}
               >
-                {showMoreLanguages ? copy.fewerLanguages : copy.moreLanguages}
+                {codeCollapsed ? copy.showCode : copy.hideCode}
               </button>
-            ) : null}
-          </div>
-          <pre className="kids-code-strip" tabIndex={0} aria-label={copy.code}>
-            {currentLine ? (
-              <>
-                {code.slice(0, currentLine.start)}
-                <mark className="kids-code-current" data-testid="code-current">
-                  {code.slice(currentLine.start, currentLine.end)}
-                </mark>
-                {code.slice(currentLine.end)}
-              </>
-            ) : (
-              code
-            )}
-          </pre>
+            </div>
+            <div className="kids-code-languages" role="group" aria-label={copy.code}>
+              {codeTabs.map((tab) => {
+                const item = tab === "node" ? "typescript" : tab;
+                return (
+                  <button
+                    type="button"
+                    key={tab}
+                    aria-pressed={shownLanguage === item}
+                    onClick={() => setLanguage(item)}
+                  >
+                    {item === "agorix"
+                      ? "Agorix Code"
+                      : item === "python"
+                        ? "Python"
+                        : item === "java"
+                          ? "Java"
+                          : "TypeScript"}
+                  </button>
+                );
+              })}
+              {ageBand === "6-8" ? (
+                <button
+                  type="button"
+                  aria-expanded={showMoreLanguages}
+                  onClick={() => setShowMoreLanguages(!showMoreLanguages)}
+                >
+                  {showMoreLanguages ? copy.fewerLanguages : copy.moreLanguages}
+                </button>
+              ) : null}
+            </div>
+            <pre className="kids-code-strip" tabIndex={0} aria-label={copy.code}>
+              {currentLine ? (
+                <>
+                  {code.slice(0, currentLine.start)}
+                  <mark className="kids-code-current" data-testid="code-current">
+                    {code.slice(currentLine.start, currentLine.end)}
+                  </mark>
+                  {code.slice(currentLine.end)}
+                </>
+              ) : (
+                code
+              )}
+            </pre>
+          </section>
         </div>
       </div>
       {error ? (

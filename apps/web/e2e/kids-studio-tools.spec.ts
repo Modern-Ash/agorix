@@ -302,3 +302,44 @@ test("keyboard shortcuts undo, redo, duplicate and delete the focused block and 
   await page.getByRole("searchbox", { name: "Buscar sonido" }).fill("?");
   await expect(dialog).toBeHidden();
 });
+
+test("a category moves only the block list, and the blocks, code and Ori help fold away", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await openScene(page);
+  const rail = page.getByRole("navigation", { name: "Categorías de bloques" });
+  const before = await page.evaluate(() => window.scrollY);
+  await rail.getByRole("button", { name: "Música" }).click();
+  await expect(page.locator("#kids-studio-cat-music")).toBeFocused();
+  await expect(rail.getByRole("button", { name: "Música" })).toHaveAttribute(
+    "aria-current",
+    "true",
+  );
+  // The page itself does not jump; the list inside the blocks panel is what moved.
+  expect(await page.evaluate(() => window.scrollY)).toBe(before);
+  await expect
+    .poll(() => page.locator(".kids-studio-palette").evaluate((element) => element.scrollTop))
+    .toBeGreaterThan(0);
+
+  const hideBlocks = page.getByRole("button", { name: "Ocultar bloques" });
+  await hideBlocks.click();
+  await expect(page.getByRole("button", { name: "+ Mover", exact: true }).first()).toBeHidden();
+  await page.getByRole("button", { name: "Mostrar bloques" }).click();
+  await expect(page.getByRole("button", { name: "+ Mover", exact: true }).first()).toBeVisible();
+  // Choosing a category reopens a folded panel.
+  await page.getByRole("button", { name: "Ocultar bloques" }).click();
+  await rail.getByRole("button", { name: "Movimiento" }).click();
+  await expect(page.getByRole("button", { name: "Ocultar bloques" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Ocultar código" }).click();
+  await expect(page.locator(".kids-code-strip")).toBeHidden();
+  await expect(page.getByRole("heading", { name: "Código" })).toBeVisible();
+  await page.getByRole("button", { name: "Mostrar código" }).click();
+  await expect(page.locator(".kids-code-strip")).toBeVisible();
+
+  await page.getByRole("button", { name: "Ocultar ayuda de Ori" }).click();
+  await expect(page.getByRole("button", { name: "Pedirle una idea a Ori" })).toBeHidden();
+  await page.getByRole("button", { name: "Mostrar ayuda de Ori" }).click();
+  await expect(page.getByRole("button", { name: "Pedirle una idea a Ori" })).toBeVisible();
+});

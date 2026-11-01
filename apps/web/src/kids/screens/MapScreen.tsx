@@ -46,6 +46,25 @@ const CONCEPTS = [
   { icon: "⟳", color: "#8B63D9", name: "conceptLoop" },
 ] as const;
 
+/** What each mission asks and which idea it teaches, in plain words (the titles alone say little). */
+const MISSION_BLURB = [
+  {
+    concept: 0,
+    es: "Ordená los pasos para llegar a la meta.",
+    en: "Put the steps in order to reach the goal.",
+  },
+  {
+    concept: 1,
+    es: "Girá para cambiar de dirección y llegar a la meta.",
+    en: "Turn to change direction and reach the goal.",
+  },
+  {
+    concept: 2,
+    es: "Repetí un paso en vez de escribirlo muchas veces.",
+    en: "Repeat one step instead of writing it many times.",
+  },
+] as const;
+
 const STATE_COLOR = { learned: "#2E8F4E", practicing: "#B87503", soon: "#5E6B65" } as const;
 const STATE_LABEL = { learned: "learned", practicing: "practicing", soon: "soon" } as const;
 const ALIGN = ["flex-start", "center", "flex-end"] as const;
@@ -150,6 +169,7 @@ export function MapScreen({
               <strong>
                 {getKidsMission(KIDS_MISSION_IDS[nextMission]!, locale, world, catalog).title}
               </strong>
+              <small>{MISSION_BLURB[nextMission]![locale]}</small>
             </span>
           </button>
         ) : (
@@ -266,6 +286,14 @@ export function MapScreen({
                 {/* Outside the button: its visible text must match the button's name (axe). */}
                 <span className="kids-node-title">
                   {getKidsMission(KIDS_MISSION_IDS[index]!, locale, world, catalog).title}
+                </span>
+                <span className="kids-node-goal">{MISSION_BLURB[index]![locale]}</span>
+                <span
+                  className="kids-node-concept"
+                  style={{ borderColor: CONCEPTS[MISSION_BLURB[index]!.concept].color }}
+                >
+                  {locale === "es" ? "Aprendés" : "You learn"}:{" "}
+                  {t(CONCEPTS[MISSION_BLURB[index]!.concept].name)}
                 </span>
                 {locked ? (
                   <span className="kids-node-hint">

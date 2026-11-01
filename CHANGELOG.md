@@ -1,5 +1,9 @@
 # Unreleased
 
+- Kids Escena libre on wide screens: the category rail, the blocks, the program and the stage are separate cards. Choosing a category now moves only the block list (smoothly, and it marks the chosen category) instead of jumping the whole page, and the blocks, the code and Ori's help can each be folded away and shown again.
+
+- Kids Map: every mission says what to do and which idea it teaches ("Girá para cambiar de dirección y llegar a la meta. Aprendés: Giros"), and the "Seguir con" card repeats it, so titles like "La esquina" are no longer a riddle.
+
 - Kids Escena libre on desktop and landscape tablet is arranged like the editors children already know: a column of coloured category buttons on the left, then the blocks, the character's program in the middle and the stage on the right. Phones keep the top bar and the bottom sheet.
 
 - Kids Map: a "Seguir con <misión>" card says what to do next (or that the world is complete) and a "Crear sin misiones" card leads to Crear; locked missions say which mission opens them.
