@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./fixtures.js";
 import { reloadTo } from "./helpers.js";
 
 // Issue #445: an adult can delete a free-world project; the child alone cannot.

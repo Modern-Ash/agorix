@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures.js";
 
 test("AI operations console validates, publishes and restores a revision", async ({ page }) => {
   const capabilities = Object.fromEntries(

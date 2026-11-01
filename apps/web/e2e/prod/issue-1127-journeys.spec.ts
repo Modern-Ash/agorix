@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { readFile } from "node:fs/promises";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "../fixtures.js";
 import { openAdultTab, passAdultGate } from "../helpers.js";
 
 // Anonymous, browser-local journeys. The caller pins AGORIX_EXPECT_SHA before attributing evidence.

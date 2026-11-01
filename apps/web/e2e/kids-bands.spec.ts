@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./fixtures.js";
 import { passAdultGate, reloadToMap, openAdultTab } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });

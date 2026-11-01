@@ -177,6 +177,7 @@ import { useOriPageVisible } from "../kidsOriMotion.js";
 import { expressionForMotion, outcomeOfRun, useOriReaction } from "../kidsOriExpression.js";
 import { KidsBackdrop, KidsSprite } from "./KidsArt.js";
 import { KidsSoundPicker } from "./KidsSoundPicker.js";
+import { usePaletteView, writePaletteView } from "../kidsPaletteView.js";
 import { KIDS_SHORTCUTS, kidsShortcut } from "../kidsShortcuts.js";
 import { OriFace } from "./OriFace.js";
 import { KidsDrawArt } from "./KidsDrawArt.js";
@@ -386,7 +387,7 @@ const COPY = {
     watchers: "Datos al jugar",
     paletteLooks: "Apariencia y tiempo",
     starters: "Para empezar",
-    startersNote: "Tres bloques para arrancar. La paleta completa sigue abajo.",
+    startersNote: "Tres bloques para arrancar. Tocá un color para ver más.",
     paletteMotion: "Movimiento",
     paletteMedia: "Disfraces, fondos y sonidos",
     paletteLogic: "Eventos y control",
@@ -422,6 +423,9 @@ const COPY = {
     sheetOpen: "Agregar bloques",
     sheetClose: "Cerrar bloques",
     sheetHint: "Tocá un bloque para agregarlo a tu programa.",
+    viewAll: "Ver todo",
+    viewFocused: "Ver por categoría",
+    pickCategory: "Elegí un color para ver sus bloques.",
     ghostNote: "Idea de Ori: todavía no está en tu programa",
     dragHint: "Arrastrá un bloque del panel hasta tu programa, o tocá el botón +.",
     moveBlock: "Arrastrar bloque",
@@ -655,7 +659,7 @@ const COPY = {
     watchers: "Data after Play",
     paletteLooks: "Looks and time",
     starters: "To start",
-    startersNote: "Three blocks to begin with. The whole palette is below.",
+    startersNote: "Three blocks to begin with. Tap a colour for more.",
     paletteMotion: "Motion",
     paletteMedia: "Costumes, backdrops and sounds",
     paletteLogic: "Events and control",
@@ -691,6 +695,9 @@ const COPY = {
     sheetOpen: "Add blocks",
     sheetClose: "Close blocks",
     sheetHint: "Tap a block to add it to your program.",
+    viewAll: "Show all",
+    viewFocused: "Show by category",
+    pickCategory: "Pick a colour to see its blocks.",
     ghostNote: "Ori's idea: not in your program yet",
     dragHint: "Drag a block from the panel into your program, or tap the + button.",
     moveBlock: "Drag block",
@@ -1051,6 +1058,30 @@ export function KidsStudioScreen({
   const blockMenuRef = useRef<HTMLDivElement>(null);
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pressOrigin = useRef<{ x: number; y: number } | null>(null);
+  // Every palette child learns which colour it belongs to, so one colour can show on its own. The
+  // list is flat, and a heading (or a hidden marker) starts each family.
+  useEffect(() => {
+    if (!palette) return;
+    let current = "starters";
+    for (const child of Array.from(palette.children) as HTMLElement[]) {
+      if (child.classList.contains("kids-studio-palette-head")) {
+        child.dataset.cat = "head";
+        continue;
+      }
+      if (child.classList.contains("kids-studio-sheet-hint")) {
+        child.dataset.cat = "hint";
+        continue;
+      }
+      const marker = child.dataset.catStart;
+      const anchor = child.id.startsWith("kids-studio-cat-")
+        ? child
+        : child.querySelector<HTMLElement>('[id^="kids-studio-cat-"]');
+      if (marker) current = marker;
+      else if (anchor) current = anchor.id.slice("kids-studio-cat-".length);
+      child.dataset.cat = child.classList.contains("kids-studio-starters") ? "starters" : current;
+    }
+  });
+
   useEffect(() => {
     if (blockMenu) blockMenuRef.current?.querySelector<HTMLElement>("[role='menuitem']")?.focus();
   }, [blockMenu]);
@@ -1215,6 +1246,9 @@ export function KidsStudioScreen({
   const [codeCollapsed, setCodeCollapsed] = useState(false);
   const [oriCollapsed, setOriCollapsed] = useState(false);
   const [activeCategory, setActiveCategory] = useState<StudioCategory | null>(null);
+  // "focused": only the opened colour's blocks show (plus a short starter shelf); "all": the whole list.
+  const paletteView = usePaletteView();
+  const [openCategory, setOpenCategory] = useState<StudioCategory | null>(null);
   const programRef = useRef<HTMLOListElement>(null);
   // What is under the pointer while a block is dragged: a list (with the place in it) or a character.
   const [over, setOver] = useState<string | null>(null);
@@ -2715,9 +2749,17 @@ export function KidsStudioScreen({
             className="kids-studio-category"
             data-category={category}
             aria-current={activeCategory === category ? "true" : undefined}
+            aria-pressed={paletteView === "focused" ? openCategory === category : undefined}
             onClick={() => {
               setSheetOpen(true);
               setPaletteCollapsed(false);
+              if (paletteView === "focused") {
+                const next = openCategory === category ? null : category;
+                setOpenCategory(next);
+                setActiveCategory(next);
+                if (palette) palette.scrollTop = 0;
+                return;
+              }
               setActiveCategory(category);
               // The sheet is hidden on a phone until it opens, so move once it is on screen.
               window.setTimeout(() => {
@@ -3661,19 +3703,32 @@ export function KidsStudioScreen({
             ref={setPalette}
             data-sheet={sheetOpen ? "open" : "closed"}
             data-collapsed={paletteCollapsed ? "true" : undefined}
+            data-view={paletteView}
+            data-open-cat={paletteView === "focused" ? (openCategory ?? "none") : undefined}
           >
             <div className="kids-studio-panel-head kids-studio-palette-head">
               <strong>{copy.blocksTitle}</strong>
               <button
                 type="button"
-                className="kids-panel-toggle"
+                className="kids-panel-toggle kids-palette-view-toggle"
+                onClick={() => writePaletteView(paletteView === "all" ? "focused" : "all")}
+              >
+                {paletteView === "all" ? copy.viewFocused : copy.viewAll}
+              </button>
+              <button
+                type="button"
+                className="kids-panel-toggle kids-palette-collapse"
                 aria-expanded={!paletteCollapsed}
                 onClick={() => setPaletteCollapsed((value) => !value)}
               >
                 {paletteCollapsed ? copy.showBlocks : copy.hideBlocks}
               </button>
             </div>
-            <p className="kids-note kids-studio-sheet-hint">{copy.sheetHint}</p>
+            <p className="kids-note kids-studio-sheet-hint">
+              {paletteView === "focused" && openCategory === null
+                ? copy.pickCategory
+                : copy.sheetHint}
+            </p>
             {/* A shelf over the whole palette: it suggests where to begin and hides nothing (#1110). */}
             <section className="kids-studio-starters" aria-label={copy.starters}>
               <h3>{copy.starters}</h3>
@@ -4471,6 +4526,7 @@ export function KidsStudioScreen({
                 );
               })}
             </ul>
+            <i hidden data-cat-start="logic" />
             <button
               type="button"
               className="kids-button"
@@ -5027,6 +5083,7 @@ export function KidsStudioScreen({
                 </button>
               </div>
             ) : null}
+            <i hidden data-cat-start="logic" />
             {targetActorId ? (
               <>
                 <label>

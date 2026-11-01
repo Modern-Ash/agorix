@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures.js";
 
 // Issue #351: a first visit opens in Spanish and remembers a changed language.
 test.use({ storageState: { cookies: [], origins: [] } });

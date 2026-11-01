@@ -27,6 +27,44 @@ export interface KidsPaletteAction {
  * slot (`say`/`think`, `move`/`move backward`, sound preview/play, repeat/group) live in
  * the same block, as the old form did.
  */
+/** A small picture for each kind of block, so a tile reads at a glance (#1110). */
+const GLYPH: Partial<Record<string, string>> = {
+  move: "➜",
+  goTo: "⌖",
+  glideTo: "⇝",
+  turn: "↻",
+  pointInDirection: "🧭",
+  pointTowards: "🎯",
+  bounceOnEdge: "⤾",
+  say: "💬",
+  think: "💭",
+  show: "👁",
+  hide: "🙈",
+  setSize: "⤢",
+  changeSize: "⤢",
+  waitSeconds: "⏱",
+  switchCostume: "👕",
+  switchBackdrop: "🖼",
+  playSound: "♪",
+  stopSounds: "🔇",
+  setVolume: "🔊",
+  changeVolume: "🔊",
+  repeat: "⟳",
+  forever: "∞",
+  stop: "⏹",
+  broadcast: "📣",
+  askChoice: "❓",
+  setEffect: "✨",
+  changeEffect: "✨",
+  clearEffects: "✨",
+};
+const TONE_GLYPH: Record<KidsPaletteTone, string> = {
+  motion: "➜",
+  looks: "✦",
+  sound: "♪",
+  control: "⟳",
+};
+
 export function KidsPaletteBlock({
   actions,
   tone,
@@ -50,6 +88,9 @@ export function KidsPaletteBlock({
               data-kids-block={adds ? action.block : undefined}
               data-kids-add={adds ? "true" : undefined}
               data-kids-add-label={adds ? action.label : undefined}
+              data-glyph={
+                (adds && action.block ? GLYPH[action.block] : undefined) ?? TONE_GLYPH[tone]
+              }
               disabled={action.disabled ?? false}
               onClick={action.onAdd}
             >

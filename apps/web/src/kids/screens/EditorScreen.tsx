@@ -92,6 +92,7 @@ import { kidsGoalSpec, listFreeProjectRefs, parseKidsGoalSpec } from "../kidsPro
 import { KIDS_WORLD_STYLES } from "../worlds.js";
 import { KidsOriCard } from "./KidsOriCard.js";
 import { useKidsFlag } from "../kidsFlags.js";
+import { usePaletteView, writePaletteView } from "../kidsPaletteView.js";
 import {
   bandProfile,
   codeTabsForBand,
@@ -124,6 +125,29 @@ type CodeLanguage = "agorix" | "python" | "typescript" | "java";
 type Prediction = "yes" | "no" | "dunno";
 /** The mission blocks, in palette order: the named subset of the scene catalog (#1133). */
 const PALETTE = Object.keys(MISSION_PALETTE_STATEMENTS) as readonly KidsBlockKind[];
+
+/** The colours a mission palette is grouped in, with the picture each block shows on its tile. */
+type MissionCategory = "motion" | "control" | "sound";
+const MISSION_CATEGORY: Record<KidsBlockKind, MissionCategory> = {
+  move: "motion",
+  turnL: "motion",
+  turnR: "motion",
+  repeat: "control",
+  sound: "sound",
+};
+const MISSION_CATEGORY_ORDER: readonly MissionCategory[] = ["motion", "control", "sound"];
+const MISSION_CATEGORY_NAME: Record<MissionCategory, { es: string; en: string }> = {
+  motion: { es: "Movimiento", en: "Motion" },
+  control: { es: "Control", en: "Control" },
+  sound: { es: "Sonido", en: "Sound" },
+};
+const MISSION_GLYPH: Record<KidsBlockKind, string> = {
+  move: "➜",
+  turnL: "↺",
+  turnR: "↻",
+  repeat: "⟳",
+  sound: "♪",
+};
 
 interface Props {
   readonly t: KidsText;
@@ -189,6 +213,10 @@ export function EditorScreen({
   const shortcutsEnabled = useKidsFlag("shortcuts");
   const unifiedCreateEnabled = useKidsFlag("freeToScene");
   const [zoom, setZoom] = useState<ZoomLevel>(100);
+  // The palette opens one colour at a time (or lists everything when the device prefers it, #1110).
+  const paletteView = usePaletteView();
+  const [openMissionCategory, setOpenMissionCategory] = useState<MissionCategory | null>(null);
+  const [missionPaletteClosed, setMissionPaletteClosed] = useState(false);
   const [menu, setMenu] = useState<{
     index: number;
     childIndex?: number;
@@ -297,6 +325,15 @@ export function EditorScreen({
     [failedRuns, played],
   );
   const stagePalette = freeProjectId ? PALETTE : paletteFor(missionIndex, sequenceStage);
+  const missionCategories = MISSION_CATEGORY_ORDER.filter((category) =>
+    stagePalette.some((kind) => MISSION_CATEGORY[kind] === category),
+  );
+  // A mission opens on its first colour, so the first block is one tap away.
+  const shownMissionCategory = missionPaletteClosed
+    ? null
+    : openMissionCategory !== null && missionCategories.includes(openMissionCategory)
+      ? openMissionCategory
+      : (missionCategories[0] ?? null);
   // How far the child has taken sequences on their own: it does not depend on the blocks placed yet.
   const stageOfConcepts = stageBand([sequenceStage]);
   const pacedPolicy = useMemo(
@@ -1427,12 +1464,51 @@ export function EditorScreen({
             style={zoomEnabled ? { zoom: `${zoom}%` } : undefined}
           >
             <p>{t("blocks")}</p>
-            <div>
-              {PALETTE.filter((kind) => stagePalette.includes(kind)).map((kind) => (
+            <div className="kids-palette-cats" role="group" aria-label={t("blocks")}>
+              {missionCategories.map((category) => (
+                <button
+                  type="button"
+                  key={category}
+                  className="kids-palette-cat"
+                  data-category={category}
+                  aria-pressed={
+                    paletteView === "focused" ? shownMissionCategory === category : undefined
+                  }
+                  hidden={paletteView === "all"}
+                  onClick={() => {
+                    const closing = shownMissionCategory === category;
+                    setMissionPaletteClosed(closing);
+                    setOpenMissionCategory(closing ? null : category);
+                  }}
+                >
+                  {MISSION_CATEGORY_NAME[category][locale]}
+                </button>
+              ))}
+              <button
+                type="button"
+                className="kids-panel-toggle"
+                onClick={() => writePaletteView(paletteView === "all" ? "focused" : "all")}
+              >
+                {paletteView === "all"
+                  ? locale === "es"
+                    ? "Ver por categoría"
+                    : "Show by category"
+                  : locale === "es"
+                    ? "Ver todo"
+                    : "Show all"}
+              </button>
+            </div>
+            <div className="kids-palette-row">
+              {PALETTE.filter(
+                (kind) =>
+                  stagePalette.includes(kind) &&
+                  (paletteView === "all" || MISSION_CATEGORY[kind] === shownMissionCategory),
+              ).map((kind) => (
                 <button
                   type="button"
                   key={kind}
                   className={`kids-palette-block kids-block-${kind}`}
+                  data-glyph={MISSION_GLYPH[kind]}
                   data-tutorial={coach === "add" && kind === "move" ? "target" : undefined}
                   draggable
                   onDragStart={(event) => event.dataTransfer.setData("text/plain", kind)}

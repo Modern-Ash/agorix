@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures.js";
 
 // Issue #360: the Spanish UI must not leak English labels (visible text, aria-label, title).
 const ENGLISH_LEAKS = [

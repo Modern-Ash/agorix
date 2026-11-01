@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./fixtures.js";
 
 // Issue #362: axe against the home screen and First Mission in both languages.
 // Serious and critical findings fail the build; moderate/minor ones are reported in the log.

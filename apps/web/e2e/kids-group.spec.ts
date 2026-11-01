@@ -1,4 +1,4 @@
-import { expect, test, type Browser, type Page } from "@playwright/test";
+import { expect, test, type Browser, type Page } from "./fixtures.js";
 import { passAdultGate, openAdultTab } from "./helpers.js";
 
 // Issue #566 and #567. Runs against the DEV/E2E-only in-process backend (AGORIX_DEV_BACKEND=1), which

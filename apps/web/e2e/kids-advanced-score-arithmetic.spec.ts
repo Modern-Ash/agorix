@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures.js";
 import { reloadToMap } from "./helpers.js";
 
 // Issue #465: arithmetic on the score, behind the advancedOps flag.

@@ -1,5 +1,7 @@
 # Unreleased
 
+- Kids block palette, in Escena libre and in missions: the tools open one colour at a time. Before a colour is chosen Escena libre shows three starter tiles and a mission opens on its first colour; tapping a colour shows only that family and tapping it again closes it, so the program and the stage keep the space. "Ver todo" lists every block as before and is remembered on the device. The tools are picture tiles (a colour stripe, a large picture and the name) instead of puzzle-shaped blocks, and in missions the palette sits above the program instead of below the fold.
+
 - Kids Escena libre on wide screens: the category rail, the blocks, the program and the stage are separate cards. Choosing a category now moves only the block list (smoothly, and it marks the chosen category) instead of jumping the whole page, and the blocks, the code and Ori's help can each be folded away and shown again.
 
 - Kids Map: every mission says what to do and which idea it teaches ("Girá para cambiar de dirección y llegar a la meta. Aprendés: Giros"), and the "Seguir con" card repeats it, so titles like "La esquina" are no longer a riddle.

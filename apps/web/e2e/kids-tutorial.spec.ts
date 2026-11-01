@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./fixtures.js";
 import { reloadToMap } from "./helpers.js";
 
 // Issue #470: first-run coach in mission 1, behind the tutorial flag.

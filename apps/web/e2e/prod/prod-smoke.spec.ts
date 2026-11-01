@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "../fixtures.js";
 import { openAdultTab, passAdultGate } from "../helpers.js";
 
 // Post-deploy smoke for the live site (issue #345). Read-only: it never signs in, never writes

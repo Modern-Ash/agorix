@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures.js";
 
 test.use({ serviceWorkers: "block" });
 test.beforeEach(async ({ page }) => {

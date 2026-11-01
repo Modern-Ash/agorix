@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./fixtures.js";
 import { openAdultTab, passAdultGate } from "./helpers.js";
 
 const TABS = ["Resumen", "Ajustes", "Personalizar", "Cuenta y privacidad"] as const;

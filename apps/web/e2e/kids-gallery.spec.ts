@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures.js";
 import { reloadTo } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });

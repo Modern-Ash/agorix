@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./fixtures.js";
 import { transformWithEsbuild } from "vite";
 
 const jpeg = readFileSync(resolve("e2e/fixtures/kids-gps-zero.jpg"));

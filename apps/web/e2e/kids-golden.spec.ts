@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./fixtures.js";
 import { KIDS_V2_FEATURES } from "../src/kids/kidsFlags.js";
 import { passAdultGate, openAdultTab } from "./helpers.js";
 

@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Browser, type Page, type Route } from "@playwright/test";
+import { expect, test, type Browser, type Page, type Route } from "./fixtures.js";
 import { passAdultGate, openAdultTab } from "./helpers.js";
 
 // Issues #509 to #513. Runs against the DEV/E2E-only in-process backend (AGORIX_DEV_BACKEND=1), which

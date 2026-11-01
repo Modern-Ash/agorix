@@ -2096,7 +2096,7 @@
   margin: 0 0 8px;
   font-weight: 700;
 }
-.kids-palette > div:nth-child(2) {
+.kids-palette-row {
   display: flex;
   flex-wrap: wrap;
   gap: 7px;
@@ -4151,6 +4151,12 @@
   cursor: pointer;
 }
 .kids-studio-palette-head {
+  display: flex;
+  justify-content: flex-end;
+}
+/* Narrow screens keep only the view switch; the title and the fold button are for wide screens. */
+.kids-studio-palette-head > strong,
+.kids-palette-collapse {
   display: none;
 }
 .kids-studio-panel {
@@ -4176,8 +4182,14 @@
     background: rgb(255 255 255 / 72%);
     box-shadow: 0 1px 3px rgb(0 0 0 / 8%);
   }
+  .kids-studio-palette-head > strong {
+    display: inline;
+  }
+  .kids-palette-collapse {
+    display: inline-block;
+  }
   .kids-studio-palette-head {
-    display: flex;
+    justify-content: space-between;
     position: sticky;
     top: -12px;
     z-index: 2;
@@ -4225,4 +4237,187 @@
 .kids-map-next-main small {
   display: block;
   font-weight: 400;
+}
+
+/* Focused palette: only the opened colour's blocks show, with a short starter shelf before one is
+   chosen. Every child carries data-cat (set in KidsStudioScreen). */
+.kids-studio-palette[data-view="focused"][data-open-cat="none"]
+  > [data-cat]:not([data-cat="starters"]):not([data-cat="head"]):not([data-cat="hint"]),
+.kids-studio-palette[data-view="focused"][data-open-cat="motion"]
+  > [data-cat]:not([data-cat="motion"]):not([data-cat="head"]):not([data-cat="hint"]),
+.kids-studio-palette[data-view="focused"][data-open-cat="looks"]
+  > [data-cat]:not([data-cat="looks"]):not([data-cat="head"]):not([data-cat="hint"]),
+.kids-studio-palette[data-view="focused"][data-open-cat="media"]
+  > [data-cat]:not([data-cat="media"]):not([data-cat="head"]):not([data-cat="hint"]),
+.kids-studio-palette[data-view="focused"][data-open-cat="logic"]
+  > [data-cat]:not([data-cat="logic"]):not([data-cat="head"]):not([data-cat="hint"]),
+.kids-studio-palette[data-view="focused"][data-open-cat="myBlocks"]
+  > [data-cat]:not([data-cat="myBlocks"]):not([data-cat="head"]):not([data-cat="hint"]),
+.kids-studio-palette[data-view="focused"][data-open-cat="pen"]
+  > [data-cat]:not([data-cat="pen"]):not([data-cat="head"]):not([data-cat="hint"]),
+.kids-studio-palette[data-view="focused"][data-open-cat="music"]
+  > [data-cat]:not([data-cat="music"]):not([data-cat="head"]):not([data-cat="hint"]),
+.kids-studio-palette[data-view="focused"][data-open-cat="data"]
+  > [data-cat]:not([data-cat="data"]):not([data-cat="head"]):not([data-cat="hint"]) {
+  display: none;
+}
+.kids-palette-view-toggle {
+  font-size: 0.75rem;
+}
+
+/* Palette tiles: a card with a colour stripe and a picture above the name, not a puzzle block, so
+   they read at a glance and clearly differ from the blocks in the program (#1110). */
+.kids-studio-palette .kids-palette-tool {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 10px 10px 10px;
+  border-radius: 16px;
+  background: var(--kids-panel);
+  color: var(--kids-text);
+  box-shadow:
+    inset 0 5px 0 var(--kids-palette-tool-bg),
+    0 1px 3px rgb(0 0 0 / 14%);
+}
+.kids-studio-palette .kids-palette-tool::before,
+.kids-studio-palette .kids-palette-tool::after {
+  content: none;
+}
+.kids-studio-palette .kids-palette-tool-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 6px;
+}
+.kids-studio-palette .kids-palette-tool-add {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-width: 84px;
+  padding: 6px 10px;
+  border: 2px solid var(--kids-palette-tool-bg);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--kids-palette-tool-bg) 12%, white);
+  color: var(--kids-text);
+  font-size: 0.85rem;
+  line-height: 1.15;
+  text-align: center;
+}
+.kids-studio-palette .kids-palette-tool-add::before {
+  content: attr(data-glyph);
+  /* The picture is decoration: the empty alternative keeps it out of the button's name. */
+  content: attr(data-glyph) / "";
+  font-size: 1.5rem;
+  line-height: 1;
+}
+.kids-studio-palette .kids-palette-tool-add:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--kids-palette-tool-bg) 24%, white);
+}
+.kids-studio-palette .kids-palette-tool-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Mission palette: the tools sit above the program, one colour open at a time, as picture tiles
+   (#1110). The panel is a column so the palette can come right after the tabs. */
+.kids-editor-program-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.kids-editor-program-panel > .kids-editor-tabs {
+  order: -4;
+}
+.kids-editor-program-panel > .kids-zoom-controls {
+  order: -3;
+}
+.kids-editor-program-panel > .kids-palette {
+  order: -2;
+  padding: 10px;
+  border: 1px solid var(--kids-border);
+  border-radius: 16px;
+  background: rgb(255 255 255 / 72%);
+}
+.kids-palette-cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.kids-palette-cat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 14px 0 8px;
+  border: 2px solid var(--cat, var(--kids-border));
+  border-radius: 999px;
+  background: var(--kids-panel);
+  color: var(--kids-text);
+  font: 700 0.85rem var(--kids-font-body);
+  cursor: pointer;
+}
+.kids-palette-cat::before {
+  content: "";
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--cat, #7256ad);
+}
+.kids-palette-cat[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--cat) 16%, white);
+}
+.kids-palette-cat[hidden] {
+  display: none;
+}
+.kids-palette-cat[data-category="motion"] {
+  --cat: #3d7de0;
+}
+.kids-palette-cat[data-category="control"] {
+  --cat: #e9a21a;
+}
+.kids-palette-cat[data-category="sound"] {
+  --cat: #e0607a;
+}
+.kids-root .kids-palette .kids-palette-block {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-width: 84px;
+  min-height: 72px;
+  padding: 6px 10px;
+  border: 2px solid var(--tile, #7256ad);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--tile, #7256ad) 12%, white);
+  box-shadow: inset 0 5px 0 var(--tile, #7256ad);
+  color: var(--kids-text);
+  font-size: 0.85rem;
+  line-height: 1.15;
+  text-align: center;
+}
+.kids-root .kids-palette .kids-palette-block::before {
+  content: attr(data-glyph);
+  content: attr(data-glyph) / "";
+  position: static;
+  width: auto;
+  height: auto;
+  margin-top: 4px;
+  background: none;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+.kids-root .kids-palette .kids-palette-block::after {
+  content: none;
+}
+.kids-palette-block.kids-block-move,
+.kids-palette-block.kids-block-turnL,
+.kids-palette-block.kids-block-turnR {
+  --tile: #3d7de0;
+}
+.kids-palette-block.kids-block-repeat {
+  --tile: #e9a21a;
+}
+.kids-palette-block.kids-block-sound {
+  --tile: #e0607a;
 }
