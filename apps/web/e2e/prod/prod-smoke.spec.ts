@@ -126,7 +126,7 @@ test("a fresh browser finds quiet Ori guidance in Map and Create", async ({ page
 
   await page.getByRole("button", { name: "Hablar con Ori" }).click();
   const guide = page.getByRole("dialog", { name: "Ori te acompaña" });
-  await expect(guide).toContainText("Elegí una misión");
+  await expect(guide).toContainText("elegí una misión del mapa");
   await guide.getByRole("button", { name: "Cerrar" }).click();
 
   await page.getByRole("button", { name: "Crear", exact: true }).click();
