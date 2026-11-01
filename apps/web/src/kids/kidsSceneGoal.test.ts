@@ -53,6 +53,7 @@ describe("scene goals", () => {
   it("preserves a migrated cell goal and judges it from runtime frames", () => {
     const goal = { kind: "reachCell", actorId: NOVA, cx: 4, cy: 2 } as const;
     expect(sceneGoalMet(goal, run([actor(NOVA, 120, 80)]))).toBe(false);
+    expect(sceneGoalMet(goal, run([actor(NOVA, 160, 80)]))).toBe(false);
     expect(sceneGoalMet(goal, run([actor(NOVA, 120, 80)], [actor(NOVA, 160, 80)]))).toBe(true);
     expect(sceneGoalValid(goal, [NOVA])).toBe(true);
     expect(sceneGoalKey(goal)).toBe(`cell:${NOVA}:4:2`);

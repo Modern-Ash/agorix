@@ -74,10 +74,11 @@ function reachedCellInTrace(
  * that is already true before anything runs is not met by running an empty program.
  */
 export function sceneGoalMet(goal: ProjectSceneGoal, run: MultiActorRunResult): boolean {
-  if (goal.kind === "reachCell" && (run.trace?.length ?? 0) > 0) {
-    return reachedCellInTrace(goal, run);
+  if (goal.kind === "reachCell") {
+    if ((run.trace?.length ?? 0) > 0) return reachedCellInTrace(goal, run);
+    // A one-frame run is only the starting layout; a later frame is evidence of a step.
+    return !goal.afterTurn && run.frames.slice(1).some((frame) => metIn(goal, frame.actors));
   }
-  if (goal.kind === "reachCell" && goal.afterTurn) return false;
   return run.frames.some((frame) => metIn(goal, frame.actors));
 }
 

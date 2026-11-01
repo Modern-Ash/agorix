@@ -13,6 +13,7 @@ async function seed(page: import("@playwright/test").Page) {
     localStorage.clear();
     localStorage.setItem("agorix.locale", "es");
     localStorage.setItem("agorix.kids.progress.v1", JSON.stringify(progress));
+    localStorage.setItem("agorix.kids.fullMissionStudio.off.v1", "1");
   }, PROGRESS);
   await page.reload();
 }

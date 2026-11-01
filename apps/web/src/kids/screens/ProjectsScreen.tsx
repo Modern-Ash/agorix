@@ -13,6 +13,7 @@ import {
   type RemovedFreeProject,
 } from "../kidsProjects.js";
 import { KIDS_WORLDS, type KidsAvatar, type KidsWorld } from "../kidsState.js";
+import { missionOfStudio } from "../kidsMissionStudio.js";
 import {
   detachKidsAccountCopies,
   restoreKidsAccountCopies,
@@ -125,7 +126,14 @@ export function ProjectsScreen({
       world: candidate,
       index: index as 0 | 1 | 2,
     })),
-  ).filter((project) => store.has(project.id));
+  ).filter(
+    (project) =>
+      store.has(project.id) &&
+      !studios.some((scene) => {
+        const mission = missionOfStudio(scene.id);
+        return mission?.world === project.world && mission.index === project.index;
+      }),
+  );
 
   function download(id: string, name: string) {
     try {
@@ -246,8 +254,12 @@ export function ProjectsScreen({
               className="kids-project-thumb"
             />
             <h2>
-              {locale === "es" ? "Escena libre" : "Free scene"} ·{" "}
-              {project.id.replace("studio-", "#")}
+              {(() => {
+                const mission = missionOfStudio(project.id);
+                return mission
+                  ? `${locale === "es" ? "Misión" : "Mission"} ${mission.index + 1}: ${getKidsMission(KIDS_MISSION_IDS[mission.index], locale, mission.world).title}`
+                  : `${locale === "es" ? "Escena libre" : "Free scene"} · ${project.id.replace("studio-", "#")}`;
+              })()}
             </h2>
             <p>{t("saved")}</p>
             <div>

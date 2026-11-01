@@ -41,6 +41,15 @@ describe("Kids routes", () => {
     });
   });
 
+  it("reopens a mission scene deep link with its Map goal context", () => {
+    expect(
+      stateFromHash("#/escena/studio-1", base, {
+        ...lookup,
+        missionOfStudio: (id) => (id === "studio-1" ? { world: "ocean", index: 1 } : null),
+      }),
+    ).toMatchObject({ screen: "editor", world: "ocean", missionIndex: 1 });
+  });
+
   it("sends a missing project, an unknown screen or a malformed hash nowhere", () => {
     for (const hash of [
       "",

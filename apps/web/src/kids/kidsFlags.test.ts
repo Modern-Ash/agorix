@@ -20,6 +20,9 @@ describe("Kids v2 flags (issue #439)", () => {
     expect(kidsV2Enabled("adultLink", { storage: storageWith(null), search: "" })).toBe(false);
     expect(kidsV2Enabled("groupMode", { storage: storageWith(null), search: "" })).toBe(false);
     expect(kidsV2Enabled("freeToScene", { storage: storageWith(null), search: "" })).toBe(true);
+    expect(kidsV2Enabled("fullMissionStudio", { storage: storageWith(null), search: "" })).toBe(
+      true,
+    );
   });
 
   it("can enable the existing adult flow for a reviewed deployment build", () => {
@@ -40,7 +43,12 @@ describe("Kids v2 flags (issue #439)", () => {
 
   it("reads a validated list from storage", () => {
     const storage = storageWith('["duplicate","zoom","nope",3]');
-    expect([...kidsV2Features({ storage })].sort()).toEqual(["duplicate", "freeToScene", "zoom"]);
+    expect([...kidsV2Features({ storage })].sort()).toEqual([
+      "duplicate",
+      "freeToScene",
+      "fullMissionStudio",
+      "zoom",
+    ]);
   });
 
   it("fails closed for corrupt or blocked storage", () => {
@@ -67,7 +75,7 @@ describe("Kids v2 flags (issue #439)", () => {
       production: true,
       storage: storageWith('["zoom"]'),
     };
-    expect([...kidsV2Features(sources)]).toEqual(["zoom", "freeToScene"]);
+    expect([...kidsV2Features(sources)]).toEqual(["zoom", "freeToScene", "fullMissionStudio"]);
   });
 
   it("lets the adult persistently toggle custom images without dropping other flags", () => {
@@ -85,6 +93,7 @@ describe("Kids v2 flags (issue #439)", () => {
     expect([...kidsV2Features({ storage })].sort()).toEqual([
       "customImages",
       "freeToScene",
+      "fullMissionStudio",
       "zoom",
     ]);
   });
@@ -131,5 +140,18 @@ describe("Kids v2 flags (issue #439)", () => {
     expect(kidsV2Enabled("freeToScene", { storage })).toBe(false);
     expect(setKidsV2Feature("freeToScene", true, storage)).toBe(true);
     expect(kidsV2Enabled("freeToScene", { storage })).toBe(true);
+  });
+
+  it("can roll back the full mission editor without changing the creative scene", () => {
+    const values = new Map<string, string>();
+    const storage = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => void values.set(key, value),
+    };
+    expect(setKidsV2Feature("fullMissionStudio", false, storage)).toBe(true);
+    expect(kidsV2Enabled("fullMissionStudio", { storage })).toBe(false);
+    expect(kidsV2Enabled("freeToScene", { storage })).toBe(true);
+    expect(setKidsV2Feature("fullMissionStudio", true, storage)).toBe(true);
+    expect(kidsV2Enabled("fullMissionStudio", { storage })).toBe(true);
   });
 });

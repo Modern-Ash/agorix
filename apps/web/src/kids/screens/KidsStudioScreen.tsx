@@ -47,6 +47,10 @@ import { ProjectStore, sanitizeAgorixFilename, type ProjectSceneGoal } from "@ag
 import { KidsLoopHelp } from "./KidsLoopHelp.js";
 import { KidsSceneGoalPanel } from "./KidsSceneGoalPanel.js";
 import { sceneGoalValid } from "../kidsSceneGoal.js";
+import { sceneGoalMet } from "../kidsSceneGoal.js";
+import { KIDS_MISSION_IDS, getKidsMission } from "@agorix/curriculum";
+import type { KidsWorld } from "../kidsState.js";
+import { speak } from "../speak.js";
 import { runMultiActorProgram, type MultiActorRunResult, type RuntimeEvent } from "@agorix/runtime";
 import {
   acceptProposal,
@@ -195,10 +199,16 @@ interface Props {
   readonly locale: Locale;
   readonly onBack: () => void;
   readonly oriSuggestions: boolean;
+  readonly readAloud?: boolean;
   /** The adult's age band; absent while the age-band switch is off, which shows every language. */
   readonly ageBand?: AgeBand | undefined;
   /** Open on the drawing canvas, when Crear asked for the child's own character or backdrop. */
   readonly initialDraw?: "costume" | "backdrop" | undefined;
+  readonly mission?: {
+    readonly world: KidsWorld;
+    readonly index: 0 | 1 | 2;
+    readonly onComplete: () => void;
+  };
 }
 
 const COPY = {
@@ -947,10 +957,15 @@ export function KidsStudioScreen({
   locale,
   onBack,
   oriSuggestions,
+  readAloud = true,
   ageBand,
   initialDraw,
+  mission,
 }: Props) {
   const copy = COPY[locale];
+  const missionDefinition = mission
+    ? getKidsMission(KIDS_MISSION_IDS[mission.index], locale, mission.world)
+    : null;
   const effectName = (effect: string) =>
     effect === "ghost"
       ? copy.effectGhost
@@ -970,6 +985,8 @@ export function KidsStudioScreen({
   const [sceneGoal, setSceneGoal] = useState<ProjectSceneGoal | null>(
     () => studioSceneGoal(id, store) ?? null,
   );
+  const [hintLevel, setHintLevel] = useState(() => store.load(id).metadata.hintLevel ?? 0);
+  const missionCompleted = useRef(false);
   const [newCharacter, setNewCharacter] = useState<KidsGalleryCharacterId>("mika");
   const [newCostume, setNewCostume] = useState<KidsGalleryCharacterId>("mika");
   const [newBackdrop, setNewBackdrop] = useState<KidsGalleryBackdropId>("moon");
@@ -1051,6 +1068,23 @@ export function KidsStudioScreen({
   const [randomMin, setRandomMin] = useState(1);
   const [randomMax, setRandomMax] = useState(6);
   const [run, setRun] = useState<MultiActorRunResult | null>(null);
+  useEffect(() => {
+    if (!mission || !run || !sceneGoal || missionCompleted.current) return;
+    if (!sceneGoalMet(sceneGoal, run)) return;
+    missionCompleted.current = true;
+    try {
+      const saved = store.load(id);
+      store.save(id, saved.program, { ...saved.metadata, missionProgress: 1 });
+      const legacyId = `kids.${mission.world}.${KIDS_MISSION_IDS[mission.index]}`;
+      if (store.has(legacyId)) {
+        const legacy = store.load(legacyId);
+        store.save(legacyId, legacy.program, { ...legacy.metadata, missionProgress: 1 });
+      }
+    } catch {
+      // The completed run still counts in this session when local storage is unavailable.
+    }
+    mission.onComplete();
+  }, [mission, run, sceneGoal, store, id]);
   const choiceAnswers = useRef<Record<string, number>>({});
   const pendingChoiceId = waitingChoiceId(run);
   const [events, setEvents] = useState<readonly RuntimeEvent[]>([{ type: "start" }]);
@@ -2494,7 +2528,8 @@ export function KidsStudioScreen({
 
   function recordRunResult(result: MultiActorRunResult) {
     if (waitingChoiceId(result)) return;
-    const completed = result.outcome === "completed";
+    const completed =
+      mission && sceneGoal ? sceneGoalMet(sceneGoal, result) : result.outcome === "completed";
     recordMastery({
       kind: "run",
       concepts: conceptsOfProgram(history.current),
@@ -2749,12 +2784,15 @@ export function KidsStudioScreen({
   });
 
   return (
-    <section className="kids-screen kids-studio" aria-label={copy.title}>
+    <section
+      className="kids-screen kids-studio"
+      aria-label={missionDefinition?.title ?? copy.title}
+    >
       <header className="kids-studio-header">
         <button type="button" className="kids-button" onClick={onBack}>
-          {copy.back}
+          {mission ? (locale === "es" ? "Volver al mapa" : "Back to map") : copy.back}
         </button>
-        <h1>{copy.title}</h1>
+        <h1>{missionDefinition?.title ?? copy.title}</h1>
         <div>
           {shortcutsFlag ? (
             <button type="button" className="kids-button" onClick={() => setHelpOpen(true)}>
@@ -2795,6 +2833,52 @@ export function KidsStudioScreen({
           </button>
         </div>
       </header>
+      {missionDefinition ? (
+        <div className="kids-mission-studio-intro">
+          <strong>
+            {locale === "es" ? `Misión ${mission!.index + 1}` : `Mission ${mission!.index + 1}`}
+          </strong>
+          <p>{missionDefinition.goal.learnerFacing}</p>
+          {readAloud ? (
+            <button
+              type="button"
+              className="kids-button kids-listen"
+              aria-label={locale === "es" ? "Escuchar" : "Listen"}
+              onClick={() => speak(missionDefinition.goal.learnerFacing, locale)}
+            >
+              🔊 {locale === "es" ? "Escuchar" : "Listen"}
+            </button>
+          ) : null}
+          <p className="kids-note">
+            {locale === "es"
+              ? "Construí con objetos, disfraces, sonidos y todos los bloques. La misión se completa cuando tu programa llega a la meta al jugar."
+              : "Build with sprites, costumes, sounds and all blocks. The mission is complete when your program reaches the goal during play."}
+          </p>
+          {missionDefinition.hintLadder.slice(0, hintLevel).map((hint) => (
+            <p className="kids-note" key={hint.level}>
+              {locale === "es" ? "Pista" : "Hint"} {hint.level}: {hint.text}
+            </p>
+          ))}
+          {hintLevel < missionDefinition.hintLadder.length ? (
+            <button
+              type="button"
+              className="kids-button"
+              onClick={() => {
+                const next = hintLevel + 1;
+                try {
+                  const saved = store.load(id);
+                  store.save(id, saved.program, { ...saved.metadata, hintLevel: next });
+                  setHintLevel(next);
+                } catch {
+                  setError(true);
+                }
+              }}
+            >
+              {locale === "es" ? "Pista" : "Hint"} {hintLevel + 1}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       {tutorialFlag && tutorialOpen && tutorialStep !== null ? (
         <aside className="kids-tutorial" aria-label={studioTutorialText("title", locale)}>
           <p aria-live="polite" data-testid="studio-tutorial">
@@ -2993,6 +3077,18 @@ export function KidsStudioScreen({
             onPointerUp={(event) => captureStagePointer(event, false)}
             onPointerCancel={(event) => captureStagePointer(event, false)}
           >
+            {mission && sceneGoal?.kind === "reachCell" ? (
+              <span
+                className="kids-mission-studio-target"
+                style={{
+                  left: `${Math.max(4, Math.min(90, 8 + sceneGoal.cx * 10))}%`,
+                  top: `${Math.max(8, Math.min(82, 40 + (sceneGoal.cy * 40) / 3))}%`,
+                }}
+                aria-label={locale === "es" ? "Meta de la misión" : "Mission goal"}
+              >
+                🌎
+              </span>
+            ) : null}
             {shownActors?.some((entry) => entry.world.pen?.segments.length) ? (
               <svg
                 className="kids-studio-pen"
@@ -3595,6 +3691,7 @@ export function KidsStudioScreen({
             run={run}
             program={history.current}
             oriSuggestions={oriSuggestions}
+            fixed={Boolean(mission)}
             onApplyProgram={(next, label) => {
               try {
                 persist(recordCanonicalTransaction(history, { label, after: next }).history);

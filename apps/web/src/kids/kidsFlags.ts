@@ -18,18 +18,20 @@ export const KIDS_V2_FEATURES = [
   "extensionPen",
   "extensionMusic",
   "freeToScene",
+  "fullMissionStudio",
 ] as const;
 
 export type KidsV2Feature = (typeof KIDS_V2_FEATURES)[number];
 
 export const KIDS_FLAGS_KEY = "agorix.kids.flags.v1";
 const FREE_TO_SCENE_OFF_KEY = "agorix.kids.freeToScene.off.v1";
+const FULL_MISSION_STUDIO_OFF_KEY = "agorix.kids.fullMissionStudio.off.v1";
 const FLAGS_CHANGED = "agorix:kids-flags-changed";
 // Creative Kids tools are visible by default. Account linking needs a live
 // verification service and remains a separate operational release. Closed groups (ADR 0010)
-// stay off until the legal and privacy review of #556. `freeToScene` (issue #1134) is
-// on for existing browsers too: old saved flag lists predate it and must not keep the
-// five-block entry visible. The separate off key supports a deliberate rollback.
+// stay off until the legal and privacy review of #556. `freeToScene` (#1134) and
+// `fullMissionStudio` (#1184) are on for existing browsers too: old saved flag lists
+// predate them. Separate off keys support deliberate rollbacks without touching projects.
 const DEFAULT_FEATURES: readonly KidsV2Feature[] = KIDS_V2_FEATURES.filter(
   (feature) => feature !== "adultLink" && feature !== "groupMode",
 );
@@ -78,9 +80,11 @@ export function kidsV2Features(sources: KidsFlagSources = {}): ReadonlySet<KidsV
   if (saved === null) return new Set();
   if (saved.length === 0) {
     try {
-      return sources.storage?.getItem(FREE_TO_SCENE_OFF_KEY) === "0"
-        ? new Set(["freeToScene"])
-        : new Set();
+      const enabled: KidsV2Feature[] = [];
+      if (sources.storage?.getItem(FREE_TO_SCENE_OFF_KEY) === "0") enabled.push("freeToScene");
+      if (sources.storage?.getItem(FULL_MISSION_STUDIO_OFF_KEY) === "0")
+        enabled.push("fullMissionStudio");
+      return new Set(enabled);
     } catch {
       return new Set();
     }
@@ -94,8 +98,12 @@ export function kidsV2Features(sources: KidsFlagSources = {}): ReadonlySet<KidsV
   try {
     if (sources.storage?.getItem(FREE_TO_SCENE_OFF_KEY) === "1") features.delete("freeToScene");
     else features.add("freeToScene");
+    if (sources.storage?.getItem(FULL_MISSION_STUDIO_OFF_KEY) === "1")
+      features.delete("fullMissionStudio");
+    else features.add("fullMissionStudio");
   } catch {
     features.add("freeToScene");
+    features.add("fullMissionStudio");
   }
   return features;
 }
@@ -113,6 +121,11 @@ export function setKidsV2Feature(
     if (!storage) return false;
     if (feature === "freeToScene") {
       storage.setItem(FREE_TO_SCENE_OFF_KEY, enabled ? "0" : "1");
+      if (typeof window !== "undefined") window.dispatchEvent(new Event(FLAGS_CHANGED));
+      return true;
+    }
+    if (feature === "fullMissionStudio") {
+      storage.setItem(FULL_MISSION_STUDIO_OFF_KEY, enabled ? "0" : "1");
       if (typeof window !== "undefined") window.dispatchEvent(new Event(FLAGS_CHANGED));
       return true;
     }
