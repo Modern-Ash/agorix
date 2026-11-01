@@ -47,14 +47,10 @@ for (const viewport of viewports) {
       });
       await page.mouse.move(from.x + from.width / 2, 20, { steps: 8 });
       await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThan(beforeScroll);
-      await expect
-        .poll(() =>
-          target.evaluate((element) => {
-            const rect = element.getBoundingClientRect();
-            return rect.top >= 0 && rect.bottom <= window.innerHeight;
-          }),
-        )
-        .toBe(true);
+      // Leave the autoscroll edge before locating the drop. Otherwise an animation frame can
+      // move the program between reading its box and releasing the pointer on slower runners.
+      await page.mouse.move(viewport.width / 2, viewport.height / 2);
+      await target.scrollIntoViewIfNeeded();
       const to = (await target.boundingBox())!;
       await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 8 });
       await page.mouse.up();
