@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { getKidsMission, KIDS_MISSION_IDS } from "@agorix/curriculum";
 import { ProjectStore, type BrowserStorageAdapter } from "@agorix/persistence";
 import { ensureMissionStudio, missionOfStudio } from "./kidsMissionStudio.js";
 import { listStudioProjects, studioSceneGoal } from "./kidsStudioProjects.js";
@@ -39,40 +38,5 @@ describe("mission scenes", () => {
     setStudioSceneGoal(id!, null, store);
     expect(ensureMissionStudio("space", 0, "🐸", "es", store, storage)).toBe(id);
     expect(studioSceneGoal(id!, store)).toMatchObject({ kind: "reachCell", cx: 4, cy: 2 });
-  });
-
-  it("copies a saved block sequence without removing the old project", () => {
-    const { store, storage } = memory();
-    const mission = getKidsMission(KIDS_MISSION_IDS[0], "es");
-    const oldId = `kids.space.${mission.id}`;
-    store.save(
-      oldId,
-      {
-        ...mission.starterProject,
-        scripts: [
-          {
-            ...mission.starterProject.scripts[0]!,
-            statements: [
-              { type: "move", steps: 40 },
-              { type: "turn", degrees: 90 },
-            ],
-          },
-        ],
-      },
-      {
-        createdAt: "2026-01-01T00:00:00.000Z",
-        updatedAt: "2026-01-01T00:00:00.000Z",
-        locale: "es",
-        hintLevel: 2,
-        missionProgress: 0,
-      },
-    );
-    const id = ensureMissionStudio("space", 0, "🐼", "es", store, storage);
-    expect(id).toMatch(/^studio-/);
-    expect(store.load(id!).program.scripts[0]?.statements).toEqual(
-      store.load(oldId).program.scripts[0]?.statements,
-    );
-    expect(store.load(id!).metadata.hintLevel).toBe(2);
-    expect(store.has(oldId)).toBe(true);
   });
 });

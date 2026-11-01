@@ -2,7 +2,6 @@ import { KIDS_MISSION_IDS, getKidsMission, worldToCell } from "@agorix/curriculu
 import { ProjectStore } from "@agorix/persistence";
 import type { Locale } from "../i18n.js";
 import type { KidsAvatar, KidsWorld } from "./kidsState.js";
-import { translateProgramToScene } from "./kidsFreeToScene.js";
 import {
   createStudioProject,
   deleteStudioProject,
@@ -69,7 +68,7 @@ export function missionOfStudio(
   return null;
 }
 
-/** One canonical creative scene per world and mission. An old block project is copied, never erased. */
+/** One canonical creative scene per world and mission. */
 export function ensureMissionStudio(
   world: KidsWorld,
   missionIndex: 0 | 1 | 2,
@@ -91,11 +90,11 @@ export function ensureMissionStudio(
     typeof goalY !== "number"
   )
     return null;
-  const oldId = `kids.${world}.${mission.id}`;
+  const sceneKey = `kids.${world}.${mission.id}`;
   const known = savedScenes(storage);
-  if (known[oldId] && store.has(known[oldId])) {
+  if (known[sceneKey] && store.has(known[sceneKey])) {
     try {
-      const sceneId = known[oldId];
+      const sceneId = known[sceneKey];
       const actorId = store.load(sceneId).metadata.actors?.items[0]?.id;
       if (!actorId) return null;
       const expected = {
@@ -114,29 +113,12 @@ export function ensureMissionStudio(
 
   const character = CHARACTER[avatar];
   const actorId = `actor:studio-1-${character}`;
-  let migrated = null;
-  let legacyHintLevel = 0;
-  let legacyProgress = 0;
-  if (store.has(oldId)) {
-    try {
-      const legacy = store.load(oldId);
-      migrated = translateProgramToScene(legacy.program, character);
-      legacyHintLevel = legacy.metadata.hintLevel ?? 0;
-      legacyProgress = legacy.metadata.missionProgress ?? 0;
-    } catch {
-      return null;
-    }
-    // Keep the old editor if a saved block cannot be represented in the creative scene.
-    if (!migrated) return null;
-  }
 
   const scene = createStudioProject(character, BACKDROP[world], locale, store, storage);
   try {
     const saved = store.load(scene.id);
-    store.save(scene.id, migrated ?? saved.program, {
+    store.save(scene.id, saved.program, {
       ...saved.metadata,
-      hintLevel: legacyHintLevel,
-      missionProgress: legacyProgress,
       actors: {
         activeId: actorId,
         items: saved.metadata.actors!.items.map((actor) =>
@@ -150,7 +132,7 @@ export function ensureMissionStudio(
       { kind: "reachCell", actorId, ...goal, ...(missionIndex === 2 ? { afterTurn: true } : {}) },
       store,
     );
-    storage.setItem(KEY, JSON.stringify({ ...known, [oldId]: scene.id }));
+    storage.setItem(KEY, JSON.stringify({ ...known, [sceneKey]: scene.id }));
     return scene.id;
   } catch {
     deleteStudioProject(scene.id, store, storage);

@@ -4,7 +4,6 @@ import { reloadTo } from "./helpers.js";
 // Issue #445: an adult can delete a free-world project; the child alone cannot.
 test.use({ hasTouch: true, serviceWorkers: "block" });
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem("agorix.kids.freeToScene.off.v1", "1"));
 });
 
 async function openProjectsWithTwoFree(page: Page) {

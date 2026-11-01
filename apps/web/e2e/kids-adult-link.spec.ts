@@ -7,7 +7,6 @@ import { passAdultGate, openAdultTab } from "./helpers.js";
 // child's tablet.
 test.use({ serviceWorkers: "block" });
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem("agorix.kids.freeToScene.off.v1", "1"));
 });
 
 const PASSWORD = "correct horse battery";

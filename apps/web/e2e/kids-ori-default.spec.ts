@@ -2,7 +2,6 @@ import { expect, test } from "./fixtures.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem("agorix.kids.freeToScene.off.v1", "1"));
 });
 
 test("Ori accompanies a new learner through onboarding, map, creation and editor", async ({

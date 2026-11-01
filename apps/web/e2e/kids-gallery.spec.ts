@@ -4,7 +4,6 @@ import { reloadTo } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem("agorix.kids.freeToScene.off.v1", "1"));
 });
 
 test("a new child can browse included art, create a project and reopen it", async ({ page }) => {

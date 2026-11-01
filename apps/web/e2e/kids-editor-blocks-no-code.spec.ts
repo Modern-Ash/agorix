@@ -2,7 +2,6 @@ import { expect, test } from "./fixtures.js";
 
 test.use({ serviceWorkers: "block" });
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem("agorix.kids.freeToScene.off.v1", "1"));
 });
 
 test("blocks tab does not show the code, the code tab does", async ({ page }) => {
