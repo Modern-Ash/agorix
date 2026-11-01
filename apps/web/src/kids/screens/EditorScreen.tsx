@@ -1365,6 +1365,15 @@ export function EditorScreen({
           ) : null}
           {view === "blocks" ? (
             <>
+              <div className="kids-mission-workspace-heading">
+                <div>
+                  <p className="kids-mission-workspace-kicker">
+                    {locale === "es" ? "Área de construcción" : "Build area"}
+                  </p>
+                  <h2>{locale === "es" ? "Tu programa" : "Your program"}</h2>
+                </div>
+                <span>{locale === "es" ? "Misión guiada" : "Guided mission"}</span>
+              </div>
               <div
                 className="kids-program-stack"
                 style={zoomEnabled ? { zoom: `${zoom}%` } : undefined}
@@ -1458,87 +1467,96 @@ export function EditorScreen({
               <pre className="kids-code-view">{projection}</pre>
             </>
           )}
-          <div
-            className="kids-palette"
-            aria-label={t("blocks")}
-            style={zoomEnabled ? { zoom: `${zoom}%` } : undefined}
-          >
-            <p>{t("blocks")}</p>
-            <div className="kids-palette-cats" role="group" aria-label={t("blocks")}>
-              {missionCategories.map((category) => (
-                <button
-                  type="button"
-                  key={category}
-                  className="kids-palette-cat"
-                  data-category={category}
-                  aria-pressed={
-                    paletteView === "focused" ? shownMissionCategory === category : undefined
-                  }
-                  hidden={paletteView === "all"}
-                  onClick={() => {
-                    const closing = shownMissionCategory === category;
-                    setMissionPaletteClosed(closing);
-                    setOpenMissionCategory(closing ? null : category);
-                  }}
-                >
-                  {MISSION_CATEGORY_NAME[category][locale]}
-                </button>
-              ))}
-              <button
-                type="button"
-                className="kids-panel-toggle"
-                onClick={() => writePaletteView(paletteView === "all" ? "focused" : "all")}
-              >
-                {paletteView === "all"
-                  ? locale === "es"
-                    ? "Ver por categoría"
-                    : "Show by category"
-                  : locale === "es"
-                    ? "Ver todo"
-                    : "Show all"}
-              </button>
-            </div>
-            <div className="kids-palette-row">
-              {PALETTE.filter(
-                (kind) =>
-                  stagePalette.includes(kind) &&
-                  (paletteView === "all" || MISSION_CATEGORY[kind] === shownMissionCategory),
-              ).map((kind) => (
-                <button
-                  type="button"
-                  key={kind}
-                  className={`kids-palette-block kids-block-${kind}`}
-                  data-glyph={MISSION_GLYPH[kind]}
-                  data-tutorial={coach === "add" && kind === "move" ? "target" : undefined}
-                  draggable
-                  onDragStart={(event) => event.dataTransfer.setData("text/plain", kind)}
-                  onClick={() =>
-                    change(
-                      addKidsBlock(history, kind),
-                      kind === "repeat" ? "loopChange" : "sequenceChange",
-                    )
-                  }
-                >
-                  + {t(kind)}
-                </button>
-              ))}
-            </div>
+          {view === "blocks" ? (
             <div
-              className="kids-drop-zone"
-              onDragOver={(event) => event.preventDefault()}
-              onDrop={(event) => {
-                event.preventDefault();
-                const kind = event.dataTransfer.getData("text/plain");
-                if (PALETTE.includes(kind as KidsBlockKind))
-                  change(
-                    addKidsBlock(history, kind as KidsBlockKind),
-                    kind === "repeat" ? "loopChange" : "sequenceChange",
-                  );
-              }}
+              className="kids-palette"
+              aria-label={t("blocks")}
+              style={zoomEnabled ? { zoom: `${zoom}%` } : undefined}
             >
-              {locale === "es" ? "Soltá aquí para agregar" : "Drop here to add"}
+              <p>{locale === "es" ? "Bloques para esta misión" : "Blocks for this mission"}</p>
+              {!freeProjectId ? (
+                <small className="kids-mission-palette-note">
+                  {locale === "es"
+                    ? "Acá practicás con los bloques de este desafío. Para crear con objetos, disfraces y sonidos, volvé al mapa y abrí Crear."
+                    : "Practice with this challenge's blocks here. To create with sprites, costumes and sounds, return to the map and open Create."}
+                </small>
+              ) : null}
+              <div className="kids-palette-cats" role="group" aria-label={t("blocks")}>
+                {missionCategories.map((category) => (
+                  <button
+                    type="button"
+                    key={category}
+                    className="kids-palette-cat"
+                    data-category={category}
+                    aria-pressed={
+                      paletteView === "focused" ? shownMissionCategory === category : undefined
+                    }
+                    hidden={paletteView === "all"}
+                    onClick={() => {
+                      const closing = shownMissionCategory === category;
+                      setMissionPaletteClosed(closing);
+                      setOpenMissionCategory(closing ? null : category);
+                    }}
+                  >
+                    {MISSION_CATEGORY_NAME[category][locale]}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className="kids-panel-toggle"
+                  onClick={() => writePaletteView(paletteView === "all" ? "focused" : "all")}
+                >
+                  {paletteView === "all"
+                    ? locale === "es"
+                      ? "Ver por categoría"
+                      : "Show by category"
+                    : locale === "es"
+                      ? "Ver todo"
+                      : "Show all"}
+                </button>
+              </div>
+              <div className="kids-palette-row">
+                {PALETTE.filter(
+                  (kind) =>
+                    stagePalette.includes(kind) &&
+                    (paletteView === "all" || MISSION_CATEGORY[kind] === shownMissionCategory),
+                ).map((kind) => (
+                  <button
+                    type="button"
+                    key={kind}
+                    className={`kids-palette-block kids-block-${kind}`}
+                    data-glyph={MISSION_GLYPH[kind]}
+                    data-tutorial={coach === "add" && kind === "move" ? "target" : undefined}
+                    draggable
+                    onDragStart={(event) => event.dataTransfer.setData("text/plain", kind)}
+                    onClick={() =>
+                      change(
+                        addKidsBlock(history, kind),
+                        kind === "repeat" ? "loopChange" : "sequenceChange",
+                      )
+                    }
+                  >
+                    + {t(kind)}
+                  </button>
+                ))}
+              </div>
+              <div
+                className="kids-drop-zone"
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  const kind = event.dataTransfer.getData("text/plain");
+                  if (PALETTE.includes(kind as KidsBlockKind))
+                    change(
+                      addKidsBlock(history, kind as KidsBlockKind),
+                      kind === "repeat" ? "loopChange" : "sequenceChange",
+                    );
+                }}
+              >
+                {locale === "es" ? "Soltá aquí para agregar" : "Drop here to add"}
+              </div>
             </div>
-          </div>
+          ) : null}
         </div>
       </div>
       {soundTarget ? (

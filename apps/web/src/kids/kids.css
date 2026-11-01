@@ -4560,6 +4560,48 @@
   border-radius: 16px;
   background: rgb(255 255 255 / 72%);
 }
+.kids-mission-palette-note {
+  display: block;
+  margin: 3px 0 9px;
+  color: #46556a;
+  line-height: 1.35;
+}
+.kids-editor-program-panel > .kids-mission-workspace-heading {
+  order: -1;
+}
+.kids-mission-workspace-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 2px 0;
+}
+.kids-mission-workspace-kicker {
+  margin: 0 0 2px;
+  color: var(--kids-runtime-strong);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.kids-mission-workspace-heading h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+.kids-mission-workspace-heading > span {
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #e7f8f5;
+  color: var(--kids-runtime-strong);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.kids-editor-program-panel > .kids-program-stack {
+  min-height: 340px;
+  border: 2px dashed var(--kids-border);
+  background-color: #fbfbff;
+  background-image: radial-gradient(#dce5f2 1px, transparent 1px);
+  background-size: 20px 20px;
+}
 .kids-palette-cats {
   display: flex;
   flex-wrap: wrap;
