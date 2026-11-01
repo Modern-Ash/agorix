@@ -4080,3 +4080,50 @@
     display: none;
   }
 }
+
+/* Map: a "what now" card and lock hints so the next step is obvious (#1111). */
+.kids-map-next {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 10px;
+}
+.kids-map-next-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 64px;
+  margin: 0;
+  font-size: 1.05rem;
+  text-align: left;
+}
+.kids-map-next-done {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #e5f6ea;
+  color: #14301f;
+  font-weight: 700;
+}
+.kids-map-next-create {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 64px;
+  text-align: left;
+}
+.kids-map-next-create small {
+  display: block;
+  font-weight: 400;
+  color: var(--kids-text-secondary);
+}
+.kids-node-hint {
+  display: block;
+  max-width: 14ch;
+  color: #5e6b65;
+  font-size: 0.78rem;
+  text-align: center;
+}
+@media (max-width: 560px) {
+  .kids-map-next {
+    grid-template-columns: 1fr;
+  }
+}

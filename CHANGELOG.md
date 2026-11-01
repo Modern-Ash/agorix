@@ -1,5 +1,11 @@
 # Unreleased
 
+- Kids Escena libre on desktop and landscape tablet is arranged like the editors children already know: a column of coloured category buttons on the left, then the blocks, the character's program in the middle and the stage on the right. Phones keep the top bar and the bottom sheet.
+
+- Kids Map: a "Seguir con <misión>" card says what to do next (or that the world is complete) and a "Crear sin misiones" card leads to Crear; locked missions say which mission opens them.
+
+- Kids Crear: "Dibujar mi propio personaje" and "Dibujar mi propio fondo" are back; they create the scene and open the drawing canvas.
+
 - Kids Escena libre: a block opens a menu (right click, long press, Shift+F10) with Duplicar, Quitar, Subir and Bajar, and keyboard shortcuts work behind the existing flags: Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z, Ctrl/Cmd+D, Delete on a focused block, and `?` for the list; none fire while typing. Closes the remaining #1110 work.
 
 - Kids Crear on a phone is three steps (1 · Personaje, 2 · Fondo, 3 · ¡Crear!) with a "¡Todo listo!" summary and Seguir; wide screens show everything as before. The selection is the same stored one (#1111).

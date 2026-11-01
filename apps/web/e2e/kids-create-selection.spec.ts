@@ -122,3 +122,30 @@ test("on a phone Crear is three steps with a ready summary, no sideways scroll a
     );
   }
 });
+
+test("Crear offers drawing your own character or backdrop and opens the canvas in the scene", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Dibujar mi propio personaje" }).click();
+  await expect(page.getByRole("heading", { name: "Escena libre" })).toBeVisible();
+  await expect(page.getByRole("img", { name: "Lienzo para dibujar" })).toBeVisible();
+  await page.getByRole("button", { name: "Volver a Crear" }).click();
+  await page.getByRole("button", { name: "Dibujar mi propio fondo" }).click();
+  await expect(page.getByRole("img", { name: "Lienzo para dibujar" })).toBeVisible();
+  // A normal start never opens the canvas on its own.
+  await page.getByRole("button", { name: "Volver a Crear" }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
+  await expect(page.getByRole("img", { name: "Lienzo para dibujar" })).toHaveCount(0);
+});

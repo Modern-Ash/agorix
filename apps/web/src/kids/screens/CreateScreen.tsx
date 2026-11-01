@@ -35,6 +35,8 @@ interface Props {
   readonly onStudio: (
     characterId: KidsGalleryCharacterId,
     backdropId: KidsGalleryBackdropId,
+    /** Open the drawing canvas right away, for the child's own character or backdrop. */
+    draw?: "costume" | "backdrop",
   ) => void;
 }
 
@@ -340,6 +342,15 @@ export function CreateScreen({
             </button>
           ))}
         </div>
+        {customEnabled ? (
+          <button
+            type="button"
+            className="kids-button kids-create-upload"
+            onClick={() => onStudio(selectedScene.characterId, selectedScene.backdropId, "costume")}
+          >
+            {locale === "es" ? "Dibujar mi propio personaje" : "Draw my own character"}
+          </button>
+        ) : null}
       </div>
       <div className="kids-create-step" data-create-step="2">
         <div hidden={freeToScene}>
@@ -465,6 +476,17 @@ export function CreateScreen({
             </button>
           ))}
         </div>
+        {customEnabled ? (
+          <button
+            type="button"
+            className="kids-button kids-create-upload"
+            onClick={() =>
+              onStudio(selectedScene.characterId, selectedScene.backdropId, "backdrop")
+            }
+          >
+            {locale === "es" ? "Dibujar mi propio fondo" : "Draw my own backdrop"}
+          </button>
+        ) : null}
       </div>
       <div className="kids-create-step" data-create-step="3">
         {customEnabled ? <p className="kids-note">{t("imagesStay")}</p> : null}

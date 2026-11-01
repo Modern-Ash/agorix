@@ -188,6 +188,8 @@ interface Props {
   readonly oriSuggestions: boolean;
   /** The adult's age band; absent while the age-band switch is off, which shows every language. */
   readonly ageBand?: AgeBand | undefined;
+  /** Open on the drawing canvas, when Crear asked for the child's own character or backdrop. */
+  readonly initialDraw?: "costume" | "backdrop" | undefined;
 }
 
 const COPY = {
@@ -907,7 +909,14 @@ const SHORTCUT_LABEL: Record<"es" | "en", Record<string, string>> = {
   },
 };
 
-export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }: Props) {
+export function KidsStudioScreen({
+  id,
+  locale,
+  onBack,
+  oriSuggestions,
+  ageBand,
+  initialDraw,
+}: Props) {
   const copy = COPY[locale];
   const effectName = (effect: string) =>
     effect === "ghost"
@@ -1064,7 +1073,9 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
   const [error, setError] = useState(false);
   const [exportingMedia, setExportingMedia] = useState(false);
   const customImagesEnabled = useKidsFlag("customImages");
-  const [drawingKind, setDrawingKind] = useState<"costume" | "backdrop" | null>(null);
+  const [drawingKind, setDrawingKind] = useState<"costume" | "backdrop" | null>(
+    initialDraw ?? null,
+  );
   const [editingArtId, setEditingArtId] = useState<string | null>(null);
   const [placementRevision, setPlacementRevision] = useState(0);
   const [dragPreview, setDragPreview] = useState<{ id: string; x: number; y: number } | null>(null);
