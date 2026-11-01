@@ -13,6 +13,8 @@ import { oriExternalShadowEnabled } from "./oriExternalShadow.js";
 import { createOriShadowTransport } from "./oriExternalShadowTransport.js";
 import { openOriMig04Pilot } from "./oriMig04PilotBootstrap.js";
 
+declare const __AGORIX_TUTOR_BUILD_SHA__: string | null;
+
 // Entry point (issue #348): `node dist/main.js`. Binds loopback unless the deployment
 // explicitly sets AGORIX_TUTOR_HOST (for example inside a container network).
 const config = configFromEnv(process.env);
@@ -50,6 +52,9 @@ const privatePilot =
 
 const server = createTutorServer({
   config,
+  ...(typeof __AGORIX_TUTOR_BUILD_SHA__ === "string"
+    ? { buildSha: __AGORIX_TUTOR_BUILD_SHA__ }
+    : {}),
   aiConfig,
   oriContextPreviewEnabled: contextualOriEnabled && !!oriContextPreview,
   ...(oriContextPreview ? { oriContextPreview } : {}),

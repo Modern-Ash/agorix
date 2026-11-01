@@ -48,7 +48,7 @@ database="${AGORIX_AI_CONFIG_DB_PATH:-$HOME/.local/share/agorix/ai-config.sqlite
 if [ -f "$database" ]; then
   node --input-type=module -e 'import {DatabaseSync, backup} from "node:sqlite"; const db=new DatabaseSync(process.argv[1]); await backup(db, process.argv[2]); db.close()' "$database" "$backup_dir/ai-config.sqlite" 2>/dev/null
 fi
-corepack pnpm --filter @agorix/tutor-api build
+AGORIX_TUTOR_BUILD_SHA="$short_sha" corepack pnpm --filter @agorix/tutor-api build
 mkdir -p -m 700 "$release"
 install -m 0644 apps/tutor-api/dist/main.mjs "$release/main.mjs"
 install -m 0755 scripts/start-tutor-host.sh "$release/start-tutor-host.sh"
@@ -82,12 +82,12 @@ socket="${XDG_RUNTIME_DIR:?XDG_RUNTIME_DIR is required}/agorix-tutor/tutor.sock"
 ready=0
 for _ in {1..20}; do
   if curl -fsS --max-time 1 --unix-socket "$socket" http://localhost/api/tutor/health \
-    | node -e 'let s="";process.stdin.on("data",c=>s+=c).on("end",()=>{const h=JSON.parse(s);process.exit(h.configured&&h.available?0:1)})' >/dev/null 2>&1; then
+    | node -e 'let s="";process.stdin.on("data",c=>s+=c).on("end",()=>{const h=JSON.parse(s);process.exit(h.configured&&h.available&&h.buildSha===process.argv[1]?0:1)})' "$short_sha" >/dev/null 2>&1; then
     ready=1; break
   fi
   sleep 0.5
 done
 [ "$ready" -eq 1 ] || { echo "Ori service did not become ready" >&2; exit 1; }
-node scripts/check-ori-live.mjs
+AGORIX_TUTOR_EXPECT_SHA="$short_sha" node scripts/check-ori-live.mjs
 trap - EXIT
 echo "Ori service updated to $short_sha; rollback snapshot: $backup_dir"
