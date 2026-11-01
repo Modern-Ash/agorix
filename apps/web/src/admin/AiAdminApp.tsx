@@ -97,6 +97,8 @@ export function AiAdminApp() {
   const [draft, setDraft] = useState<Config | null>(null);
   const [history, setHistory] = useState<History[]>([]);
   const [section, setSection] = useState<Section>("mission");
+  // Tablet and phone: the grouped menu folds away behind one button (#1112); desktop ignores it.
+  const [menuOpen, setMenuOpen] = useState(false);
   const isCapability =
     section !== "group" && section !== "behavior" && section !== "catalog" && section !== "monitor";
   const selected: Capability = isCapability ? section : "mission";
@@ -206,7 +208,16 @@ export function AiAdminApp() {
       ) : (
         <div className="ai-admin-layout">
           <aside className="ai-admin-side">
-            <nav aria-label="Centro de IA">
+            <button
+              type="button"
+              className="ai-admin-menu-toggle"
+              aria-expanded={menuOpen}
+              aria-controls="ai-admin-menu"
+              onClick={() => setMenuOpen((open) => !open)}
+            >
+              Menú: {sectionNames[section]}
+            </button>
+            <nav aria-label="Centro de IA" id="ai-admin-menu" data-open={menuOpen}>
               {ADMIN_NAV_GROUPS.map((group) => {
                 const items = group.sections.filter(available);
                 if (items.length === 0) return null;
@@ -221,7 +232,10 @@ export function AiAdminApp() {
                         key={key}
                         className={section === key ? "selected" : ""}
                         aria-current={section === key ? "page" : undefined}
-                        onClick={() => setSection(key)}
+                        onClick={() => {
+                          setSection(key);
+                          setMenuOpen(false);
+                        }}
                       >
                         <span>{sectionNames[key]}</span>
                         <small>

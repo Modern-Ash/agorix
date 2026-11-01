@@ -359,3 +359,19 @@
   overflow: auto;
   font-size: 0.85rem;
 }
+
+.ai-admin-menu-toggle {
+  display: none;
+}
+@media (max-width: 960px) {
+  .ai-admin-menu-toggle {
+    display: block;
+    width: 100%;
+    min-height: 44px;
+    margin-bottom: 8px;
+    text-align: left;
+  }
+  .ai-admin-side nav[data-open="false"] {
+    display: none;
+  }
+}
