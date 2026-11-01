@@ -83,6 +83,7 @@ test.describe("touch and learner authority", () => {
     await page.getByRole("button", { name: "+ Mover", exact: true }).tap();
     const blocks = page.locator(".kids-program-block");
     await expect(blocks).toHaveCount(1);
+    await page.getByRole("button", { name: "Mostrar ayuda de Ori" }).tap();
     await page.getByRole("button", { name: "Pedirle una idea a Ori" }).tap();
     await expect(page.getByTestId("ori-ghost-block")).toHaveCount(1);
     await expect(blocks).toHaveCount(1);
