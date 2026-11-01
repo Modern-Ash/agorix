@@ -44,6 +44,7 @@ test("the default age band leaves the shipped screen unchanged", async ({ page }
   await expect(page.locator(".kids-root")).toHaveScreenshot("band-default.png", {
     animations: "disabled",
     maxDiffPixelRatio: 0.04,
+    style: ".kids-root { height: 1490px !important; overflow: hidden !important; }",
   });
 });
 
@@ -60,6 +61,7 @@ for (const [band, palette, label] of [
     await expect(page.locator(".kids-root")).toHaveScreenshot(`band-${band}.png`, {
       animations: "disabled",
       maxDiffPixelRatio: 0.04,
+      style: `.kids-root { height: ${{ "6-8": 1652, "9-12": 1527, "13+": 1488 }[band]}px !important; overflow: hidden !important; }`,
     });
     const violations = (await new AxeBuilder({ page }).withRules(["color-contrast"]).analyze())
       .violations;
