@@ -90,12 +90,17 @@ test("a mission opens on its first colour, keeps tools above the program and swi
   await expect(motion).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByRole("button", { name: "+ mover", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "+ sonar", exact: true })).toBeHidden();
+  await expect(page.getByRole("heading", { name: "Tu programa" })).toBeVisible();
+  await expect(page.getByText("Misión guiada")).toBeVisible();
 
   // The tools are on screen next to the program, not below the fold.
   const palette = (await page.locator(".kids-palette").boundingBox())!;
   const program = (await page.locator(".kids-program-stack").boundingBox())!;
   expect(palette.y).toBeLessThan(program.y);
   expect(palette.y + palette.height).toBeLessThanOrEqual(900);
+  await page.getByRole("button", { name: "Código", exact: true }).click();
+  await expect(page.locator(".kids-palette")).toHaveCount(0);
+  await page.getByRole("button", { name: "Bloques", exact: true }).click();
 
   await chips.getByRole("button", { name: "Sonido" }).click();
   await expect(page.getByRole("button", { name: "+ sonar", exact: true })).toBeVisible();
