@@ -119,8 +119,8 @@ export function saveStudioProject(
   const metadata: ProjectMetadata = {
     createdAt: previous?.createdAt ?? now,
     updatedAt: now,
-    missionProgress: 0,
-    hintLevel: 0,
+    missionProgress: previous?.missionProgress ?? 0,
+    hintLevel: previous?.hintLevel ?? 0,
     locale,
     actors: { activeId: activeActorId, items: creative.actors },
     ...(creative.stage === undefined ? {} : { stage: creative.stage }),

@@ -4566,6 +4566,24 @@
   color: #46556a;
   line-height: 1.35;
 }
+.kids-mission-studio-intro {
+  margin: 12px 0;
+  padding: 12px 16px;
+  border: 2px solid var(--kids-border);
+  border-radius: 16px;
+  background: #f6f5ff;
+}
+.kids-mission-studio-intro p {
+  margin: 6px 0;
+}
+.kids-mission-studio-target {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+  font-size: 2rem;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 2px 2px #fff);
+}
 .kids-editor-program-panel > .kids-mission-workspace-heading {
   order: -1;
 }

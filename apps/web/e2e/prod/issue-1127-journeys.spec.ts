@@ -63,9 +63,10 @@ test("new learner reaches a mission and reviews Ori's offline proposal", async (
   await enterFromFreshBrowser(page);
   await expect(page.getByRole("button", { name: "Misión 1" })).toBeVisible();
   await page.getByRole("button", { name: "Misión 1" }).click();
+  await expect(page.getByRole("button", { name: "+ Objeto" })).toBeVisible();
   await page.getByRole("button", { name: "Pista 1", exact: true }).click();
   await page.getByRole("button", { name: "Pista 2", exact: true }).click();
-  await page.getByRole("button", { name: "Abrir propuesta de Ori" }).click();
+  await page.getByRole("button", { name: "¿Qué bloque me ayuda?" }).click();
   await expect(page.locator(".kids-ori-proposal")).toBeVisible();
   await expect(page.locator(".kids-program-block")).toHaveCount(0);
   const violations = (

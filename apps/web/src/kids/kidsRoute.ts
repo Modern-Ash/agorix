@@ -34,6 +34,9 @@ export interface KidsRouteLookup {
     id: string,
   ) => { readonly world: KidsWorld; readonly avatar: KidsAvatar } | null;
   readonly studioProject: (id: string) => boolean;
+  readonly missionOfStudio?: (
+    id: string,
+  ) => { readonly world: KidsWorld; readonly index: 0 | 1 | 2 } | null;
   /**
    * The scene an old `#/libre/{id}` project becomes (issue #1134), converting it on first open.
    * Absent or null keeps the old single-explorer editor for projects that cannot convert.
@@ -109,7 +112,18 @@ export function stateFromHash(
         }
       : null;
   }
-  if (head === "escena" && a && ID.test(a) && parts.length === 2)
-    return lookup.studioProject(a) ? { ...current, screen: "studio", studioProjectId: a } : null;
+  if (head === "escena" && a && ID.test(a) && parts.length === 2) {
+    if (!lookup.studioProject(a)) return null;
+    const mission = lookup.missionOfStudio?.(a);
+    if (mission)
+      return {
+        ...current,
+        screen: "editor",
+        world: mission.world,
+        missionIndex: mission.index,
+        freeProjectId: undefined,
+      };
+    return { ...current, screen: "studio", studioProjectId: a };
+  }
   return null;
 }

@@ -711,12 +711,8 @@ test("Ori requests from a linked device never carry link data", async ({ page, b
 
   await tablet.getByRole("button", { name: "Mapa" }).click();
   await tablet.getByRole("button", { name: "Misión 1" }).click();
-  await tablet.getByRole("button", { name: "+ mover", exact: true }).click();
-  await tablet.getByRole("button", { name: "Jugar", exact: true }).click();
-  await tablet.getByRole("dialog").getByRole("button", { name: "No", exact: true }).click();
-  await tablet.getByRole("button", { name: "Preguntale a Ori" }).click();
-  await tablet.getByRole("textbox", { name: "Tu pregunta" }).fill("hola");
-  await tablet.getByRole("button", { name: "Enviar" }).click();
+  await tablet.getByRole("button", { name: "Mostrar ayuda de Ori" }).click();
+  await tablet.getByRole("button", { name: "Pedirle una idea a Ori" }).click();
   await tablet.waitForTimeout(500);
 
   const sent = tutorBodies.join("\n");

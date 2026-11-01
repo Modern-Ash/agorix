@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useReducer, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import "@fontsource/atkinson-hyperlegible/400.css";
 import "@fontsource/atkinson-hyperlegible/700.css";
 import "@fontsource/epilogue/latin-700.css";
@@ -21,6 +21,7 @@ import {
   kidsReducer,
   type KidsScreen,
   type KidsState,
+  type KidsWorld,
 } from "./kidsState.js";
 import { MapScreen } from "./screens/MapScreen.js";
 import { OnboardScreen } from "./screens/OnboardScreen.js";
@@ -54,11 +55,12 @@ import { kidsFlagNow, useKidsFlag } from "./kidsFlags.js";
 import { tutorialVisible } from "./kidsTutorial.js";
 import { VerifyLanding } from "./link/VerifyLanding.js";
 import { useLinkSync } from "./link/useLinkSync.js";
-import { bandProfile } from "./kidsAgeBand.js";
+import { bandProfile, type AgeBand } from "./kidsAgeBand.js";
 import { useKidsText, type KidsText } from "./useKidsText.js";
 import { stopSpeaking } from "./speak.js";
 import { KidsOriGuide } from "./screens/KidsOriGuide.js";
 import { KidsStudioScreen } from "./screens/KidsStudioScreen.js";
+import { ensureMissionStudio, missionOfStudio } from "./kidsMissionStudio.js";
 import {
   addStudioArt,
   createStudioProject,
@@ -330,38 +332,55 @@ export function KidsApp({
             }}
           />
         ) : state.screen === "editor" ? (
-          <EditorScreen
-            key={state.freeProjectId ?? `${state.world}:${state.missionIndex}`}
-            t={t}
-            locale={state.locale}
+          <MissionStudioEntry
+            key={`${state.world}:${state.missionIndex}:${state.avatar}:${state.freeProjectId ?? "mission"}`}
             world={state.world}
-            avatar={state.avatar}
             missionIndex={state.missionIndex}
+            avatar={state.avatar}
+            locale={state.locale}
             freeProjectId={state.freeProjectId}
             oriSuggestions={adultSettings.oriSuggestions}
             readAloud={adultSettings.readAloud}
             ageBand={ageBandsEnabled ? adultSettings.ageBand : undefined}
-            tutorial={
-              tutorialVisible({
-                enabled: tutorialEnabled,
-                done: progress.tutorialDone === true,
-                missionIndex: state.missionIndex,
-                freeProject: state.freeProjectId !== undefined,
-              })
-                ? { onDone: () => update({ ...progress, tutorialDone: true }) }
-                : undefined
-            }
             onBack={() => dispatch({ type: "go", screen: "map" })}
-            onOpenAdults={() => openAdults("account")}
             onComplete={() => {
               if (!state.freeProjectId)
                 update(markMissionDone(progress, state.world, state.missionIndex));
             }}
-            onReflect={(prediction, outcome) => {
-              setReflection({ prediction, outcome });
-              dispatch({ type: "go", screen: "reflect" });
-            }}
-          />
+          >
+            <EditorScreen
+              key={state.freeProjectId ?? `${state.world}:${state.missionIndex}`}
+              t={t}
+              locale={state.locale}
+              world={state.world}
+              avatar={state.avatar}
+              missionIndex={state.missionIndex}
+              freeProjectId={state.freeProjectId}
+              oriSuggestions={adultSettings.oriSuggestions}
+              readAloud={adultSettings.readAloud}
+              ageBand={ageBandsEnabled ? adultSettings.ageBand : undefined}
+              tutorial={
+                tutorialVisible({
+                  enabled: tutorialEnabled,
+                  done: progress.tutorialDone === true,
+                  missionIndex: state.missionIndex,
+                  freeProject: state.freeProjectId !== undefined,
+                })
+                  ? { onDone: () => update({ ...progress, tutorialDone: true }) }
+                  : undefined
+              }
+              onBack={() => dispatch({ type: "go", screen: "map" })}
+              onOpenAdults={() => openAdults("account")}
+              onComplete={() => {
+                if (!state.freeProjectId)
+                  update(markMissionDone(progress, state.world, state.missionIndex));
+              }}
+              onReflect={(prediction, outcome) => {
+                setReflection({ prediction, outcome });
+                dispatch({ type: "go", screen: "reflect" });
+              }}
+            />
+          </MissionStudioEntry>
         ) : state.screen === "advanced" ? (
           <AdvancedSceneScreen
             locale={state.locale}
@@ -457,7 +476,16 @@ export function KidsApp({
                 dispatch({ type: "openStudio", projectId: converted.studioId });
               else dispatch({ type: "openFreeProject", projectId, world, avatar });
             }}
-            onStudio={(projectId) => dispatch({ type: "openStudio", projectId })}
+            onStudio={(projectId) => {
+              const mission = missionOfStudio(projectId);
+              if (mission)
+                dispatch({
+                  type: "openSavedMission",
+                  world: mission.world,
+                  missionIndex: mission.index,
+                });
+              else dispatch({ type: "openStudio", projectId });
+            }}
           />
         ) : state.screen === "reflect" && reflection ? (
           <ReflectScreen
@@ -514,6 +542,51 @@ export function KidsApp({
   );
 }
 
+function MissionStudioEntry({
+  world,
+  missionIndex,
+  avatar,
+  locale,
+  freeProjectId,
+  oriSuggestions,
+  readAloud,
+  ageBand,
+  onBack,
+  onComplete,
+  children,
+}: {
+  readonly world: KidsWorld;
+  readonly missionIndex: 0 | 1 | 2 | 3;
+  readonly avatar: KidsAvatar;
+  readonly locale: Locale;
+  readonly freeProjectId?: string | undefined;
+  readonly oriSuggestions: boolean;
+  readonly readAloud: boolean;
+  readonly ageBand?: AgeBand | undefined;
+  readonly onBack: () => void;
+  readonly onComplete: () => void;
+  readonly children: ReactNode;
+}) {
+  const [sceneId] = useState(() =>
+    freeProjectId || missionIndex === 3 || !kidsFlagNow("fullMissionStudio")
+      ? null
+      : ensureMissionStudio(world, missionIndex as 0 | 1 | 2, avatar, locale),
+  );
+  return sceneId ? (
+    <KidsStudioScreen
+      id={sceneId}
+      locale={locale}
+      oriSuggestions={oriSuggestions}
+      readAloud={readAloud}
+      ageBand={ageBand}
+      mission={{ world, index: missionIndex as 0 | 1 | 2, onComplete }}
+      onBack={onBack}
+    />
+  ) : (
+    children
+  );
+}
+
 function routeLookup(locale: Locale): KidsRouteLookup {
   return {
     freeProject: (id) => {
@@ -525,6 +598,7 @@ function routeLookup(locale: Locale): KidsRouteLookup {
       };
     },
     studioProject: (id) => listStudioProjects().some((item) => item.id === id),
+    missionOfStudio,
     sceneOfFree: (id) => {
       if (!kidsFlagNow("freeToScene")) return null;
       const result = convertFreeProject(id, locale);

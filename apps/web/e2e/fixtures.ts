@@ -13,6 +13,8 @@ export const test = base.extend({
       try {
         window.localStorage.setItem("agorix.kids.palette.view.v1", "all");
         window.localStorage.setItem("agorix.kids.palette.contextual.v1", "1");
+        // Legacy editor journeys still exercise their saved-project compatibility path.
+        window.localStorage.setItem("agorix.kids.fullMissionStudio.off.v1", "1");
       } catch {
         // Storage can be unavailable in a test that blocks it on purpose.
       }

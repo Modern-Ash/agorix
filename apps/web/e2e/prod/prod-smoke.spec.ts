@@ -326,13 +326,13 @@ test.describe("Kids Ori production fallback", () => {
     });
     await page.goto("/kids#/mapa");
     await page.getByRole("button", { name: "Misión 1" }).click();
-    // Ori keeps its idea back on entry: opening the second hint unlocks it (issue #590).
-    await expect(page.getByRole("button", { name: "Abrir propuesta de Ori" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Camino recto" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "+ Objeto" })).toBeVisible();
     await page.getByRole("button", { name: "Pista 1", exact: true }).click();
     await page.getByRole("button", { name: "Pista 2", exact: true }).click();
-    await page.getByRole("button", { name: "Abrir propuesta de Ori" }).click();
-    await expect(page.locator(".kids-ori-proposal")).toContainText("mover 4");
-    await expect(page.locator(".kids-editor")).not.toContainText(
+    await page.getByRole("button", { name: "¿Qué bloque me ayuda?" }).click();
+    await expect(page.getByTestId("ori-goal-block-diff")).toBeVisible();
+    await expect(page.locator(".kids-studio")).not.toContainText(
       /conectad|proveedor|provider|offline/i,
     );
     await expect(page.locator(".kids-program-block")).toHaveCount(0);

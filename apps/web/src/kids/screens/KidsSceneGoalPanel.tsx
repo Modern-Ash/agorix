@@ -27,6 +27,7 @@ interface Props {
   readonly program: ProjectProgram;
   readonly oriSuggestions: boolean;
   readonly onChange: (goal: ProjectSceneGoal | null) => void;
+  readonly fixed?: boolean;
   /** The child accepted an Ori block: the new canonical program, recorded as one undoable step. */
   readonly onApplyProgram: (program: ProjectProgram, label: string) => void;
 }
@@ -40,6 +41,7 @@ export function KidsSceneGoalPanel({
   program,
   oriSuggestions,
   onChange,
+  fixed = false,
   onApplyProgram,
 }: Props) {
   // null: Ori has not been asked; otherwise which of its ideas is on show.
@@ -96,8 +98,27 @@ export function KidsSceneGoalPanel({
   }, [oriSuggestions, goal, locale, actorKey]);
   const met = goal !== null && run !== null ? sceneGoalMet(goal, run) : null;
   return (
-    <section className="kids-studio-goal" aria-label={es ? "Meta de la escena" : "Scene goal"}>
-      <h3>{es ? "Meta de la escena" : "Scene goal"}</h3>
+    <section
+      className="kids-studio-goal"
+      aria-label={
+        fixed
+          ? es
+            ? "Meta de la misión"
+            : "Mission goal"
+          : es
+            ? "Meta de la escena"
+            : "Scene goal"
+      }
+    >
+      <h3>
+        {fixed
+          ? es
+            ? "Meta de la misión"
+            : "Mission goal"
+          : es
+            ? "Meta de la escena"
+            : "Scene goal"}
+      </h3>
       {goal === null ? (
         <>
           <p className="kids-note">
@@ -169,9 +190,11 @@ export function KidsSceneGoalPanel({
       ) : (
         <>
           <p data-testid="scene-goal">{describeSceneGoal(goal, nameOf, locale)}</p>
-          <button type="button" className="kids-button" onClick={() => onChange(null)}>
-            {es ? "Quitar meta" : "Remove goal"}
-          </button>
+          {!fixed ? (
+            <button type="button" className="kids-button" onClick={() => onChange(null)}>
+              {es ? "Quitar meta" : "Remove goal"}
+            </button>
+          ) : null}
           {oriSuggestions && candidates.length > 0 ? (
             <aside className="kids-ori-chat" aria-label={es ? "Bloques de Ori" : "Ori blocks"}>
               <div className="kids-ori-chat-heading">

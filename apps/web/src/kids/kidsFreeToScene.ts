@@ -144,7 +144,7 @@ function sceneStatement(statement: Statement): Statement | null {
   }
 }
 
-function translateProgram(
+export function translateProgramToScene(
   program: ProjectProgram,
   characterId: KidsGalleryCharacterId,
 ): ProjectProgram | null {
@@ -223,7 +223,7 @@ export function convertFreeProject(
   } catch {
     return { kind: "kept", reason: "unsupported-goal" };
   }
-  const program = translateProgram(saved.program, characterId);
+  const program = translateProgramToScene(saved.program, characterId);
   if (program === null) return { kind: "kept", reason: "unsupported-block" };
   const scene = createStudioProject(characterId, backdropId, locale, store, storage as never);
   try {
