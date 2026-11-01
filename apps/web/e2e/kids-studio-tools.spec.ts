@@ -135,6 +135,41 @@ test("the phone layout has no horizontal scroll and touch-sized category buttons
   }
 });
 
+test("the making canvas and run controls stay prominent at tablet width", async ({ page }) => {
+  await page.setViewportSize({ width: 820, height: 900 });
+  await openScene(page);
+  const canvas = page.locator(".kids-studio-program-column > .kids-program-stack");
+  const stage = page.getByRole("group", { name: "Escenario" });
+  const play = page.getByRole("button", { name: "Jugar", exact: true });
+  const [canvasBox, stageBox, playBox] = await Promise.all(
+    [canvas, stage, play].map((item) => item.boundingBox()),
+  );
+  expect(canvasBox!.x).toBeLessThan(stageBox!.x);
+  expect(canvasBox!.height).toBeGreaterThanOrEqual(430);
+  expect(playBox!.y).toBeLessThan(stageBox!.y);
+  await expect(play).toBeVisible();
+});
+
+test("a phone shows the script and Play before the stage details", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openScene(page);
+  const canvas = page.locator(".kids-studio-program-column > .kids-program-stack");
+  const stage = page.getByRole("group", { name: "Escenario" });
+  const play = page.getByRole("button", { name: "Jugar", exact: true });
+  const [canvasBox, stageBox, playBox] = await Promise.all(
+    [canvas, stage, play].map((item) => item.boundingBox()),
+  );
+  expect(canvasBox!.y).toBeLessThan(stageBox!.y);
+  expect(playBox!.y).toBeLessThan(canvasBox!.y);
+  await expect(play).toBeVisible();
+  await page
+    .getByRole("navigation", { name: "Categorías de bloques" })
+    .getByRole("button", { name: "Mis bloques" })
+    .click();
+  await expect(page.getByRole("heading", { name: "Mis bloques", exact: true })).toBeFocused();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
+
 test("Ori opens from the selected sprite with contextual help", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await openScene(page);

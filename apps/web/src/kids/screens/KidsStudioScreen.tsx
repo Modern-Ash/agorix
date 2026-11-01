@@ -2939,7 +2939,35 @@ export function KidsStudioScreen({
       ) : null}
       <div className="kids-studio-layout">
         <div className="kids-studio-stage-column" data-large={stageLarge ? "true" : undefined}>
-          <h2>{copy.stage}</h2>
+          <div className="kids-studio-stage-heading">
+            <h2>{copy.stage}</h2>
+            <div className="kids-run-controls">
+              <button type="button" className="kids-button kids-primary" onClick={play}>
+                {copy.run}
+              </button>
+              <button
+                type="button"
+                className="kids-button"
+                disabled={!run || (frame !== null && frame >= run.frames.length - 1)}
+                onClick={() => {
+                  setStepped(true);
+                  setFrame(frame === null ? 0 : frame + 1);
+                }}
+              >
+                {copy.step}
+              </button>
+              <button
+                type="button"
+                className="kids-button"
+                onClick={() => {
+                  setRun(null);
+                  setFrame(null);
+                }}
+              >
+                {copy.reset}
+              </button>
+            </div>
+          </div>
           {zoomFlag ? (
             <button
               type="button"
@@ -3466,32 +3494,6 @@ export function KidsStudioScreen({
             value={prediction}
             onChange={setPrediction}
           />
-          <div className="kids-run-controls">
-            <button type="button" className="kids-button kids-primary" onClick={play}>
-              {copy.run}
-            </button>
-            <button
-              type="button"
-              className="kids-button"
-              disabled={!run || (frame !== null && frame >= run.frames.length - 1)}
-              onClick={() => {
-                setStepped(true);
-                setFrame(frame === null ? 0 : frame + 1);
-              }}
-            >
-              {copy.step}
-            </button>
-            <button
-              type="button"
-              className="kids-button"
-              onClick={() => {
-                setRun(null);
-                setFrame(null);
-              }}
-            >
-              {copy.reset}
-            </button>
-          </div>
           <p className="kids-note">
             {copy.facts}:{" "}
             {run
@@ -3726,9 +3728,42 @@ export function KidsStudioScreen({
           </label>
         </div>
         <div className="kids-studio-program-column">
-          <h2>
-            {copy.blocks} {actor?.name}
-          </h2>
+          <div className="kids-studio-workspace-heading">
+            <h2>
+              {copy.blocks} {actor?.name}
+            </h2>
+            <span>
+              {locale === "es"
+                ? "Arrastrá bloques o tocá un color para construir"
+                : "Drag blocks or choose a colour to build"}
+            </span>
+            <div className="kids-studio-mobile-run-controls">
+              <button type="button" className="kids-button kids-primary" onClick={play}>
+                {copy.run}
+              </button>
+              <button
+                type="button"
+                className="kids-button"
+                disabled={!run || (frame !== null && frame >= run.frames.length - 1)}
+                onClick={() => {
+                  setStepped(true);
+                  setFrame(frame === null ? 0 : frame + 1);
+                }}
+              >
+                {copy.step}
+              </button>
+              <button
+                type="button"
+                className="kids-button"
+                onClick={() => {
+                  setRun(null);
+                  setFrame(null);
+                }}
+              >
+                {copy.reset}
+              </button>
+            </div>
+          </div>
           <div className="kids-program-stack">
             <label>
               {copy.event}
