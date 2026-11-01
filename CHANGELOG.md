@@ -1,5 +1,7 @@
 # Unreleased
 
+- Kids Escena libre: a block can be duplicated right after itself (one undoable step, behind the existing `duplicate` flag), and the stage can fill the screen with "Agrandar escenario" (behind the existing `zoom` flag): it still plays, and Escape or the button returns. Context menu and keyboard shortcuts stay open (#1110, slice 5).
+
 - Kids Escena libre: the guess before running is a row of touch-sized chips, and after running a verdict card shows what really happened from the run's own trace with the guess marked as a match (✓) or a difference (↔). The verdict never comes from model text (#1110, slice 4: prediction and verdict).
 
 - Kids Escena libre: the sound block now offers a chooser with categories (Animals, Effects, Music, Vehicles…), search and a list of every bundled sound; choosing one plays it, and the "Sonar" button adds the chosen sound. The mission editor shares the category names (#1110, slice 3: sounds).

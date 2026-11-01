@@ -1641,6 +1641,21 @@ export function removeStudioStatement(
   return recordCanonicalTransaction(history, { label: "remove studio block", after: next }).history;
 }
 
+/** Copy one of a character's top-level blocks right after itself, as one undoable step (#1110). */
+export function duplicateStudioStatement(
+  history: EditorHistory,
+  actorId: string,
+  statementIndex: number,
+): EditorHistory {
+  return withScript(history, actorId, "duplicate studio block", (script) => {
+    const block = script.statements[statementIndex];
+    if (block === undefined) throw new RangeError("unknown studio block");
+    const statements = [...script.statements];
+    statements.splice(statementIndex + 1, 0, structuredClone(block));
+    return { ...script, statements };
+  });
+}
+
 /**
  * Move one of a character's blocks to another place in its script (issue #593). The blocks keep
  * their content; only the order changes, as one undoable step. A block can be dragged or moved

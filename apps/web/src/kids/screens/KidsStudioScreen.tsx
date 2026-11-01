@@ -132,6 +132,7 @@ import {
   copyStudioProcedure,
   createStudioProcedure,
   deleteStudioProcedure,
+  duplicateStudioStatement,
   moveStudioStatement,
   moveStudioStatementTo,
   moveStudioStatementToActor,
@@ -393,6 +394,9 @@ const COPY = {
     onTap: "Al tocar este personaje",
     tapHint: "Tocá el personaje en el escenario después de Jugar.",
     remove: "Quitar bloque",
+    duplicate: "Duplicar bloque",
+    stageLarge: "Agrandar escenario",
+    stageNormal: "Volver al tamaño normal",
     undo: "Deshacer",
     redo: "Rehacer",
     code: "Código",
@@ -644,6 +648,9 @@ const COPY = {
     onTap: "When this character is tapped",
     tapHint: "Tap the character on the stage after Play.",
     remove: "Remove block",
+    duplicate: "Duplicate block",
+    stageLarge: "Enlarge stage",
+    stageNormal: "Back to normal size",
     undo: "Undo",
     redo: "Redo",
     code: "Code",
@@ -977,6 +984,18 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
   const [events, setEvents] = useState<readonly RuntimeEvent[]>([{ type: "start" }]);
   const [frame, setFrame] = useState<number | null>(null);
   const tutorialFlag = useKidsFlag("tutorial");
+  const duplicateFlag = useKidsFlag("duplicate");
+  const zoomFlag = useKidsFlag("zoom");
+  // The stage fills the screen so a child can see and play it large; Escape or the button ends it.
+  const [stageLarge, setStageLarge] = useState(false);
+  useEffect(() => {
+    if (!stageLarge) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setStageLarge(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [stageLarge]);
   const [tutorialOpen, setTutorialOpen] = useState(() => !studioTutorialDone());
   const [stepped, setStepped] = useState(false);
   useEffect(() => {
@@ -2589,8 +2608,18 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
         ))}
       </nav>
       <div className="kids-studio-layout">
-        <div className="kids-studio-stage-column">
+        <div className="kids-studio-stage-column" data-large={stageLarge ? "true" : undefined}>
           <h2>{copy.stage}</h2>
+          {zoomFlag ? (
+            <button
+              type="button"
+              className="kids-button kids-studio-stage-zoom"
+              aria-pressed={stageLarge}
+              onClick={() => setStageLarge((large) => !large)}
+            >
+              {stageLarge ? copy.stageNormal : copy.stageLarge}
+            </button>
+          ) : null}
           <KidsBackdrop
             world={{ kind: "gallery", id: stageBackdrop }}
             imageOverride={stageArt}
@@ -3304,6 +3333,23 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                   >
                     ↓
                   </button>
+                  {duplicateFlag ? (
+                    <button
+                      type="button"
+                      className="kids-button"
+                      aria-label={`${copy.duplicate} ${index + 1}`}
+                      disabled={(script?.statements.length ?? 0) >= 60}
+                      onClick={() => {
+                        try {
+                          persist(duplicateStudioStatement(history, activeActorId, index));
+                        } catch {
+                          // The program is at its size limit: no copy is made.
+                        }
+                      }}
+                    >
+                      ⧉
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     className="kids-button"
