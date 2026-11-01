@@ -82,10 +82,8 @@ test("reloading on a scene, a mission and a free project returns to it", async (
   await page.evaluate(() => localStorage.setItem("agorix.kids.freeToScene.off.v1", "1"));
   await page.goto("/kids#/crear");
   await page.reload();
-  await page
-    .getByRole("button", { name: /Empezar|Crear!|¡Crear!/ })
-    .first()
-    .click();
+  await page.getByRole("button", { name: /^3 ·/ }).click();
+  await page.locator(".kids-create-start").click();
   await expect(page).toHaveURL(/#\/libre\//);
   await page.reload();
   await expect(page).toHaveURL(/#\/libre\//);

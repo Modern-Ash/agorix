@@ -27,7 +27,7 @@ test("the sole free scene opens without finishing a mission and leaves progress 
     .poll(() => page.locator(".kids-studio-palette [data-kids-palette-tool]").count())
     .toBeGreaterThan(15);
 
-  await expect(page.getByRole("button", { name: "¡Crear!" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "¡Crear!", exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Jugar", exact: true })).toBeVisible();
 
   // The map and its first mission are still there and still locked to the learner's progress.
@@ -57,7 +57,7 @@ for (const [name, viewport] of [
     await page.reload();
     await expect(page.getByRole("heading", { name: "Escena libre", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Crear escena" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "¡Crear!" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "¡Crear!", exact: true })).toHaveCount(0);
   });
 }
 
@@ -176,7 +176,7 @@ test("an old free project opens as a scene and Crear keeps one entry", async ({ 
   await page.evaluate(() => localStorage.setItem("agorix.kids.freeToScene.off.v1", "1"));
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "¡Crear!" }).click();
+  await page.getByRole("button", { name: "¡Crear!", exact: true }).click();
   await expect(page).toHaveURL(/#\/libre\/free-1/);
   await page.getByRole("button", { name: "+ mover", exact: true }).click();
 
@@ -209,7 +209,7 @@ test("an old free project opens as a scene and Crear keeps one entry", async ({ 
   await page.goto("/kids#/crear");
   await page.reload();
   await expect(page.getByRole("button", { name: "Crear escena" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "¡Crear!" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "¡Crear!", exact: true })).toHaveCount(0);
   await expect(page.getByTestId("free-project-note")).toHaveCount(0);
 });
 
@@ -218,7 +218,7 @@ test("a legacy cell goal survives conversion and portable export", async ({ page
   await page.evaluate(() => localStorage.setItem("agorix.kids.freeToScene.off.v1", "1"));
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "¡Crear!" }).click();
+  await page.getByRole("button", { name: "¡Crear!", exact: true }).click();
   await page.getByRole("button", { name: "Tocá el mundo para poner la meta: 5, 3" }).click();
   await expect(page).toHaveURL(/#\/libre\/free-1/);
   await page.evaluate(() => localStorage.setItem("agorix.kids.freeToScene.off.v1", "0"));

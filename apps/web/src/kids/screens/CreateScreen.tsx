@@ -72,6 +72,8 @@ export function CreateScreen({
   useEffect(() => {
     saveCreateSelection({ avatar: chosenAvatar, world: chosenWorld, scene: sceneCharacter });
   }, [chosenAvatar, chosenWorld, sceneCharacter]);
+  // Phone: Crear is a three-step flow (character, backdrop, create); wide screens show it all (#1111).
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [characterCategory, setCharacterCategory] = useState<KidsGalleryCategory>("all");
   const [backdropCategory, setBackdropCategory] = useState<KidsGalleryCategory>("all");
   const [characterSearch, setCharacterSearch] = useState("");
@@ -157,7 +159,11 @@ export function CreateScreen({
     setDrawingKind(null);
   }
   return (
-    <section className="kids-screen kids-create" aria-labelledby="kids-create-title">
+    <section
+      className="kids-screen kids-create"
+      aria-labelledby="kids-create-title"
+      data-step={step}
+    >
       <h1 id="kids-create-title">{t("create")}</h1>
       <ListenButton t={t} locale={locale} enabled={readAloud} text={t("createNote")} />
       <p className="kids-note">{t("createNote")}</p>
@@ -179,308 +185,365 @@ export function CreateScreen({
         >
           {locale === "es" ? "Crear escena" : "Create scene"}
         </button>
+        <p className="kids-note kids-create-ready" data-testid="studio-ready">
+          {locale === "es" ? "¡Todo listo!" : "All set!"}{" "}
+          {galleryCharacterName(selectedScene.characterId, locale)} {locale === "es" ? "en" : "in"}{" "}
+          {galleryBackdropName(selectedScene.backdropId, locale)} ·{" "}
+          {locale === "es" ? "Listo para programar" : "Ready to program"}
+        </p>
         <p className="kids-note" data-testid="studio-start-note">
           {locale === "es"
             ? `La escena empieza con ${galleryCharacterName(selectedScene.characterId, locale)}.`
             : `The scene starts with ${galleryCharacterName(selectedScene.characterId, locale)}.`}
         </p>
       </div>
-      <div hidden={freeToScene}>
-        <h2>{t("createChar")}</h2>
-        <div className="kids-create-choices">
-          {KIDS_AVATARS.map((candidate) => (
-            <button
-              type="button"
-              key={candidate}
-              className="kids-button"
-              aria-label={`${t("createChar")}: ${candidate}`}
-              aria-pressed={chosenAvatar.kind === "emoji" && chosenAvatar.value === candidate}
-              onClick={() => {
-                setChosenAvatar(emojiSlot(candidate));
-                onAvatar(candidate);
-              }}
-            >
-              <KidsSprite slot={emojiSlot(candidate)} fallback={candidate} />
-            </button>
-          ))}
-          {customEnabled &&
-            custom
-              .filter((item) => item.kind === "explorer")
-              .map((item) => (
-                <button
-                  type="button"
-                  className="kids-button kids-custom-choice"
-                  key={item.id}
-                  aria-label={`${t("customExplorer")} ${item.id.slice(7)}`}
-                  aria-pressed={chosenAvatar.kind === "custom" && chosenAvatar.id === item.id}
-                  onClick={() => setChosenAvatar({ kind: "custom", id: item.id })}
-                >
-                  <KidsSprite slot={{ kind: "custom", id: item.id }} label={t("customExplorer")} />
-                </button>
-              ))}
-          {customEnabled ? (
-            <label className="kids-button kids-image-file kids-create-upload">
-              {t("addCustomExplorer")}
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                aria-label={t("addCustomExplorer")}
-                onChange={(event) => void addImage("explorer", event)}
-              />
-            </label>
-          ) : null}
-          {customEnabled ? (
-            <button
-              type="button"
-              className="kids-button kids-create-upload"
-              onClick={() => setDrawingKind("explorer")}
-            >
-              {locale === "es" ? "Dibujar explorador" : "Draw character"}
-            </button>
-          ) : null}
-        </div>
-        {drawingKind === "explorer" ? (
-          <KidsDrawArt
-            kind="explorer"
-            locale={locale}
-            onSave={(dataUrl) => saveDrawing("explorer", dataUrl)}
-            onCancel={() => setDrawingKind(null)}
-            onError={() => setImageMessage(t("imageErrorOutput"))}
-          />
-        ) : null}
-      </div>
-      <div className="kids-gallery-head">
-        <h3>{locale === "es" ? "Personajes para Escena libre" : "Characters for Free scene"}</h3>
-        <input
-          type="search"
-          aria-label={locale === "es" ? "Buscar personaje" : "Search character"}
-          placeholder={locale === "es" ? "Buscar personaje" : "Search character"}
-          value={characterSearch}
-          onChange={(event) => setCharacterSearch(event.target.value)}
-        />
-      </div>
-      <div
-        className="kids-gallery-filters"
-        role="group"
-        aria-label={locale === "es" ? "Categorías de personajes" : "Character categories"}
+      <nav
+        className="kids-create-steps"
+        aria-label={locale === "es" ? "Pasos para crear" : "Steps to create"}
       >
-        {KIDS_GALLERY_CATEGORIES.map((category) => (
+        {([1, 2, 3] as const).map((number) => (
           <button
-            key={category}
+            key={number}
             type="button"
             className="kids-button"
-            aria-pressed={characterCategory === category}
-            onClick={() => setCharacterCategory(category)}
+            aria-current={step === number ? "step" : undefined}
+            onClick={() => setStep(number)}
           >
-            {galleryCategoryName(category, locale)}
+            {number} ·{" "}
+            {number === 1
+              ? locale === "es"
+                ? "Personaje"
+                : "Character"
+              : number === 2
+                ? locale === "es"
+                  ? "Fondo"
+                  : "Backdrop"
+                : locale === "es"
+                  ? "¡Crear!"
+                  : "Create!"}
           </button>
         ))}
-      </div>
-      <div
-        className="kids-gallery-grid"
-        aria-label={locale === "es" ? "Personajes incluidos" : "Included characters"}
-      >
-        {visibleCharacters.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            className="kids-button kids-gallery-card"
-            aria-label={galleryCharacterName(item.id, locale)}
-            aria-pressed={sceneCharacter === item.id}
-            onClick={() => setSceneCharacter(item.id)}
-          >
-            <KidsSprite
-              slot={{ kind: "gallery", id: item.id }}
-              label={galleryCharacterName(item.id, locale)}
+      </nav>
+      <div className="kids-create-step" data-create-step="1">
+        <div hidden={freeToScene}>
+          <h2>{t("createChar")}</h2>
+          <div className="kids-create-choices">
+            {KIDS_AVATARS.map((candidate) => (
+              <button
+                type="button"
+                key={candidate}
+                className="kids-button"
+                aria-label={`${t("createChar")}: ${candidate}`}
+                aria-pressed={chosenAvatar.kind === "emoji" && chosenAvatar.value === candidate}
+                onClick={() => {
+                  setChosenAvatar(emojiSlot(candidate));
+                  onAvatar(candidate);
+                }}
+              >
+                <KidsSprite slot={emojiSlot(candidate)} fallback={candidate} />
+              </button>
+            ))}
+            {customEnabled &&
+              custom
+                .filter((item) => item.kind === "explorer")
+                .map((item) => (
+                  <button
+                    type="button"
+                    className="kids-button kids-custom-choice"
+                    key={item.id}
+                    aria-label={`${t("customExplorer")} ${item.id.slice(7)}`}
+                    aria-pressed={chosenAvatar.kind === "custom" && chosenAvatar.id === item.id}
+                    onClick={() => setChosenAvatar({ kind: "custom", id: item.id })}
+                  >
+                    <KidsSprite
+                      slot={{ kind: "custom", id: item.id }}
+                      label={t("customExplorer")}
+                    />
+                  </button>
+                ))}
+            {customEnabled ? (
+              <label className="kids-button kids-image-file kids-create-upload">
+                {t("addCustomExplorer")}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  aria-label={t("addCustomExplorer")}
+                  onChange={(event) => void addImage("explorer", event)}
+                />
+              </label>
+            ) : null}
+            {customEnabled ? (
+              <button
+                type="button"
+                className="kids-button kids-create-upload"
+                onClick={() => setDrawingKind("explorer")}
+              >
+                {locale === "es" ? "Dibujar explorador" : "Draw character"}
+              </button>
+            ) : null}
+          </div>
+          {drawingKind === "explorer" ? (
+            <KidsDrawArt
+              kind="explorer"
+              locale={locale}
+              onSave={(dataUrl) => saveDrawing("explorer", dataUrl)}
+              onCancel={() => setDrawingKind(null)}
+              onError={() => setImageMessage(t("imageErrorOutput"))}
             />
-            <span>{galleryCharacterName(item.id, locale)}</span>
-          </button>
-        ))}
-      </div>
-      <div hidden={freeToScene}>
-        <h2>{t("createBg")}</h2>
-        <div className="kids-create-worlds">
-          {KIDS_WORLDS.map((candidate) => (
+          ) : null}
+        </div>
+        <div className="kids-gallery-head">
+          <h3>{locale === "es" ? "Personajes para Escena libre" : "Characters for Free scene"}</h3>
+          <input
+            type="search"
+            aria-label={locale === "es" ? "Buscar personaje" : "Search character"}
+            placeholder={locale === "es" ? "Buscar personaje" : "Search character"}
+            value={characterSearch}
+            onChange={(event) => setCharacterSearch(event.target.value)}
+          />
+        </div>
+        <div
+          className="kids-gallery-filters"
+          role="group"
+          aria-label={locale === "es" ? "Categorías de personajes" : "Character categories"}
+        >
+          {KIDS_GALLERY_CATEGORIES.map((category) => (
             <button
+              key={category}
               type="button"
-              key={candidate}
               className="kids-button"
-              aria-pressed={chosenWorld.kind === "builtin" && chosenWorld.value === candidate}
-              style={{ background: KIDS_WORLD_STYLES[candidate].tint }}
-              onClick={() => {
-                setChosenWorld(builtinWorld(candidate));
-                onWorld(candidate);
-              }}
+              aria-pressed={characterCategory === category}
+              onClick={() => setCharacterCategory(category)}
+            >
+              {galleryCategoryName(category, locale)}
+            </button>
+          ))}
+        </div>
+        <div
+          className="kids-gallery-grid"
+          aria-label={locale === "es" ? "Personajes incluidos" : "Included characters"}
+        >
+          {visibleCharacters.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className="kids-button kids-gallery-card"
+              aria-label={galleryCharacterName(item.id, locale)}
+              aria-pressed={sceneCharacter === item.id}
+              onClick={() => setSceneCharacter(item.id)}
+            >
+              <KidsSprite
+                slot={{ kind: "gallery", id: item.id }}
+                label={galleryCharacterName(item.id, locale)}
+              />
+              <span>{galleryCharacterName(item.id, locale)}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="kids-create-step" data-create-step="2">
+        <div hidden={freeToScene}>
+          <h2>{t("createBg")}</h2>
+          <div className="kids-create-worlds">
+            {KIDS_WORLDS.map((candidate) => (
+              <button
+                type="button"
+                key={candidate}
+                className="kids-button"
+                aria-pressed={chosenWorld.kind === "builtin" && chosenWorld.value === candidate}
+                style={{ background: KIDS_WORLD_STYLES[candidate].tint }}
+                onClick={() => {
+                  setChosenWorld(builtinWorld(candidate));
+                  onWorld(candidate);
+                }}
+              >
+                <KidsBackdrop
+                  world={builtinWorld(candidate)}
+                  fallbackBackground="transparent"
+                  className="kids-world-glyph"
+                >
+                  {KIDS_WORLD_STYLES[candidate].character}
+                </KidsBackdrop>{" "}
+                {worlds[candidate]}
+              </button>
+            ))}
+            {customEnabled &&
+              custom
+                .filter((item) => item.kind === "backdrop")
+                .map((item) => (
+                  <button
+                    type="button"
+                    className="kids-button kids-custom-world"
+                    key={item.id}
+                    aria-label={`${t("customBackdrop")} ${item.id.slice(7)}`}
+                    aria-pressed={chosenWorld.kind === "custom" && chosenWorld.id === item.id}
+                    onClick={() => setChosenWorld({ kind: "custom", id: item.id })}
+                  >
+                    <KidsBackdrop
+                      world={{ kind: "custom", id: item.id }}
+                      className="kids-custom-world-thumb"
+                    />
+                    {t("customBackdrop")} {item.id.slice(7)}
+                  </button>
+                ))}
+            {customEnabled ? (
+              <label className="kids-button kids-image-file kids-create-upload">
+                {t("addCustomBackdrop")}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  aria-label={t("addCustomBackdrop")}
+                  onChange={(event) => void addImage("backdrop", event)}
+                />
+              </label>
+            ) : null}
+            {customEnabled ? (
+              <button
+                type="button"
+                className="kids-button kids-create-upload"
+                onClick={() => setDrawingKind("backdrop")}
+              >
+                {locale === "es" ? "Dibujar fondo" : "Draw backdrop"}
+              </button>
+            ) : null}
+          </div>
+          {drawingKind === "backdrop" ? (
+            <KidsDrawArt
+              kind="backdrop"
+              locale={locale}
+              onSave={(dataUrl) => saveDrawing("backdrop", dataUrl)}
+              onCancel={() => setDrawingKind(null)}
+              onError={() => setImageMessage(t("imageErrorOutput"))}
+            />
+          ) : null}
+        </div>
+        <div className="kids-gallery-head">
+          <h3>{locale === "es" ? "Galería de fondos" : "Backdrop gallery"}</h3>
+          <input
+            type="search"
+            aria-label={locale === "es" ? "Buscar fondo" : "Search backdrop"}
+            placeholder={locale === "es" ? "Buscar fondo" : "Search backdrop"}
+            value={backdropSearch}
+            onChange={(event) => setBackdropSearch(event.target.value)}
+          />
+        </div>
+        <div
+          className="kids-gallery-filters"
+          role="group"
+          aria-label={locale === "es" ? "Categorías de fondos" : "Backdrop categories"}
+        >
+          {KIDS_GALLERY_CATEGORIES.filter((category) => category !== "animals").map((category) => (
+            <button
+              key={category}
+              type="button"
+              className="kids-button"
+              aria-pressed={backdropCategory === category}
+              onClick={() => setBackdropCategory(category)}
+            >
+              {galleryCategoryName(category, locale)}
+            </button>
+          ))}
+        </div>
+        <div
+          className="kids-gallery-grid kids-gallery-backdrops"
+          aria-label={locale === "es" ? "Fondos incluidos" : "Included backdrops"}
+        >
+          {visibleBackdrops.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className="kids-button kids-gallery-card"
+              aria-label={galleryBackdropName(item.id, locale)}
+              aria-pressed={chosenWorld.kind === "gallery" && chosenWorld.id === item.id}
+              onClick={() => setChosenWorld({ kind: "gallery", id: item.id })}
             >
               <KidsBackdrop
-                world={builtinWorld(candidate)}
-                fallbackBackground="transparent"
-                className="kids-world-glyph"
-              >
-                {KIDS_WORLD_STYLES[candidate].character}
-              </KidsBackdrop>{" "}
-              {worlds[candidate]}
+                world={{ kind: "gallery", id: item.id }}
+                className="kids-gallery-backdrop-thumb"
+              />
+              <span>{galleryBackdropName(item.id, locale)}</span>
             </button>
           ))}
-          {customEnabled &&
-            custom
-              .filter((item) => item.kind === "backdrop")
-              .map((item) => (
-                <button
-                  type="button"
-                  className="kids-button kids-custom-world"
-                  key={item.id}
-                  aria-label={`${t("customBackdrop")} ${item.id.slice(7)}`}
-                  aria-pressed={chosenWorld.kind === "custom" && chosenWorld.id === item.id}
-                  onClick={() => setChosenWorld({ kind: "custom", id: item.id })}
-                >
-                  <KidsBackdrop
-                    world={{ kind: "custom", id: item.id }}
-                    className="kids-custom-world-thumb"
-                  />
-                  {t("customBackdrop")} {item.id.slice(7)}
-                </button>
-              ))}
-          {customEnabled ? (
-            <label className="kids-button kids-image-file kids-create-upload">
-              {t("addCustomBackdrop")}
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                aria-label={t("addCustomBackdrop")}
-                onChange={(event) => void addImage("backdrop", event)}
-              />
-            </label>
-          ) : null}
-          {customEnabled ? (
+        </div>
+      </div>
+      <div className="kids-create-step" data-create-step="3">
+        {customEnabled ? <p className="kids-note">{t("imagesStay")}</p> : null}
+        <p role="status" className="kids-note">
+          {imageMessage}
+        </p>
+        <div
+          className="kids-create-selection"
+          aria-label={locale === "es" ? "Tu elección" : "Your selection"}
+        >
+          <div>
+            <KidsSprite
+              slot={freeToScene ? { kind: "gallery", id: selectedScene.characterId } : chosenAvatar}
+            />
+            <span>
+              {locale === "es" ? "Personaje" : "Character"}:{" "}
+              {freeToScene
+                ? galleryCharacterName(selectedScene.characterId, locale)
+                : chosenAvatar.kind === "gallery"
+                  ? galleryCharacterName(chosenAvatar.id, locale)
+                  : chosenAvatar.kind === "emoji"
+                    ? chosenAvatar.value
+                    : t("customExplorer")}
+            </span>
+          </div>
+          <div>
+            <KidsBackdrop
+              world={freeToScene ? { kind: "gallery", id: selectedScene.backdropId } : chosenWorld}
+              className="kids-create-selection-backdrop"
+            />
+            <span>
+              {locale === "es" ? "Fondo" : "Backdrop"}:{" "}
+              {freeToScene
+                ? galleryBackdropName(selectedScene.backdropId, locale)
+                : chosenWorld.kind === "gallery"
+                  ? galleryBackdropName(chosenWorld.id, locale)
+                  : chosenWorld.kind === "builtin"
+                    ? worlds[chosenWorld.value]
+                    : t("customBackdrop")}
+            </span>
+          </div>
+        </div>
+        {freeToScene ? null : (
+          <>
+            <p className="kids-note" data-testid="free-project-note">
+              {locale === "es"
+                ? "¡Crear! abre un explorador solo, con pocos bloques y una meta opcional. Para todos los bloques, usá Escena libre."
+                : "Create! opens a single explorer with a few blocks and an optional goal. For every block, use Free scene."}
+            </p>
             <button
               type="button"
-              className="kids-button kids-create-upload"
-              onClick={() => setDrawingKind("backdrop")}
+              className="kids-button kids-primary kids-create-start"
+              onClick={() =>
+                onStart(
+                  customEnabled || chosenWorld.kind !== "custom"
+                    ? chosenWorld
+                    : builtinWorld(world),
+                  customEnabled || chosenAvatar.kind !== "custom"
+                    ? chosenAvatar
+                    : emojiSlot(avatar),
+                )
+              }
             >
-              {locale === "es" ? "Dibujar fondo" : "Draw backdrop"}
+              {t("createStart")}
             </button>
-          ) : null}
-        </div>
-        {drawingKind === "backdrop" ? (
-          <KidsDrawArt
-            kind="backdrop"
-            locale={locale}
-            onSave={(dataUrl) => saveDrawing("backdrop", dataUrl)}
-            onCancel={() => setDrawingKind(null)}
-            onError={() => setImageMessage(t("imageErrorOutput"))}
-          />
+          </>
+        )}
+      </div>
+      <div className="kids-create-next">
+        {step < 3 ? (
+          <button
+            type="button"
+            className="kids-button kids-primary"
+            onClick={() => setStep(step === 1 ? 2 : 3)}
+          >
+            {locale === "es" ? "Seguir" : "Next"}
+          </button>
         ) : null}
       </div>
-      <div className="kids-gallery-head">
-        <h3>{locale === "es" ? "Galería de fondos" : "Backdrop gallery"}</h3>
-        <input
-          type="search"
-          aria-label={locale === "es" ? "Buscar fondo" : "Search backdrop"}
-          placeholder={locale === "es" ? "Buscar fondo" : "Search backdrop"}
-          value={backdropSearch}
-          onChange={(event) => setBackdropSearch(event.target.value)}
-        />
-      </div>
-      <div
-        className="kids-gallery-filters"
-        role="group"
-        aria-label={locale === "es" ? "Categorías de fondos" : "Backdrop categories"}
-      >
-        {KIDS_GALLERY_CATEGORIES.filter((category) => category !== "animals").map((category) => (
-          <button
-            key={category}
-            type="button"
-            className="kids-button"
-            aria-pressed={backdropCategory === category}
-            onClick={() => setBackdropCategory(category)}
-          >
-            {galleryCategoryName(category, locale)}
-          </button>
-        ))}
-      </div>
-      <div
-        className="kids-gallery-grid kids-gallery-backdrops"
-        aria-label={locale === "es" ? "Fondos incluidos" : "Included backdrops"}
-      >
-        {visibleBackdrops.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            className="kids-button kids-gallery-card"
-            aria-label={galleryBackdropName(item.id, locale)}
-            aria-pressed={chosenWorld.kind === "gallery" && chosenWorld.id === item.id}
-            onClick={() => setChosenWorld({ kind: "gallery", id: item.id })}
-          >
-            <KidsBackdrop
-              world={{ kind: "gallery", id: item.id }}
-              className="kids-gallery-backdrop-thumb"
-            />
-            <span>{galleryBackdropName(item.id, locale)}</span>
-          </button>
-        ))}
-      </div>
-      {customEnabled ? <p className="kids-note">{t("imagesStay")}</p> : null}
-      <p role="status" className="kids-note">
-        {imageMessage}
-      </p>
-      <div
-        className="kids-create-selection"
-        aria-label={locale === "es" ? "Tu elección" : "Your selection"}
-      >
-        <div>
-          <KidsSprite
-            slot={freeToScene ? { kind: "gallery", id: selectedScene.characterId } : chosenAvatar}
-          />
-          <span>
-            {locale === "es" ? "Personaje" : "Character"}:{" "}
-            {freeToScene
-              ? galleryCharacterName(selectedScene.characterId, locale)
-              : chosenAvatar.kind === "gallery"
-                ? galleryCharacterName(chosenAvatar.id, locale)
-                : chosenAvatar.kind === "emoji"
-                  ? chosenAvatar.value
-                  : t("customExplorer")}
-          </span>
-        </div>
-        <div>
-          <KidsBackdrop
-            world={freeToScene ? { kind: "gallery", id: selectedScene.backdropId } : chosenWorld}
-            className="kids-create-selection-backdrop"
-          />
-          <span>
-            {locale === "es" ? "Fondo" : "Backdrop"}:{" "}
-            {freeToScene
-              ? galleryBackdropName(selectedScene.backdropId, locale)
-              : chosenWorld.kind === "gallery"
-                ? galleryBackdropName(chosenWorld.id, locale)
-                : chosenWorld.kind === "builtin"
-                  ? worlds[chosenWorld.value]
-                  : t("customBackdrop")}
-          </span>
-        </div>
-      </div>
-      {freeToScene ? null : (
-        <>
-          <p className="kids-note" data-testid="free-project-note">
-            {locale === "es"
-              ? "¡Crear! abre un explorador solo, con pocos bloques y una meta opcional. Para todos los bloques, usá Escena libre."
-              : "Create! opens a single explorer with a few blocks and an optional goal. For every block, use Free scene."}
-          </p>
-          <button
-            type="button"
-            className="kids-button kids-primary kids-create-start"
-            onClick={() =>
-              onStart(
-                customEnabled || chosenWorld.kind !== "custom" ? chosenWorld : builtinWorld(world),
-                customEnabled || chosenAvatar.kind !== "custom" ? chosenAvatar : emojiSlot(avatar),
-              )
-            }
-          >
-            {t("createStart")}
-          </button>
-        </>
-      )}
     </section>
   );
 }
