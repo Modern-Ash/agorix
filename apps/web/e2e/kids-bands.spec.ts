@@ -57,6 +57,7 @@ for (const profile of BANDS) {
     await page.getByRole("button", { name: "Volver al mapa" }).click();
     await page.getByRole("button", { name: "Crear", exact: true }).click();
     await page.getByRole("button", { name: "Crear escena" }).click();
+    await page.getByRole("button", { name: "Mostrar ayuda de Ori" }).click();
     const picker = page.getByRole("group", { name: "¿Qué querés lograr?" });
     await expect(picker.getByRole("button")).toHaveCount(profile.studioBlocks === 6 ? 5 : 7);
     await expect(picker.getByRole("button", { name: "Hacer un cuadrado" })).toHaveCount(

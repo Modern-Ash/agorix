@@ -5,6 +5,14 @@ import { BLOCKS_UNLOCKED } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
+async function expectMapScreenshot(page: Page, name: string, height: number) {
+  await expect(page.locator(".kids-root")).toHaveScreenshot(name, {
+    animations: "disabled",
+    maxDiffPixelRatio: 0.04,
+    style: `.kids-root { box-sizing: border-box !important; height: ${height}px !important; min-height: 0 !important; max-height: ${height}px !important; overflow: hidden !important; }`,
+  });
+}
+
 async function openMap(page: Page, band: "6-8" | "9-12" | "13+", enabled: boolean) {
   await page.goto("/kids");
   await page.evaluate(
@@ -41,11 +49,7 @@ test("the default age band leaves the shipped screen unchanged", async ({ page }
   await openMap(page, "6-8", false);
   await expect(page.locator(".kids-root")).toHaveAttribute("data-age-palette", "warm");
   await expect(page.locator(".kids-band-chip")).toHaveCount(0);
-  await expect(page.locator(".kids-root")).toHaveScreenshot("band-default.png", {
-    animations: "disabled",
-    maxDiffPixelRatio: 0.04,
-    style: ".kids-root { height: 1296px !important; overflow: hidden !important; }",
-  });
+  await expectMapScreenshot(page, "band-default.png", 1490);
 });
 
 for (const [band, palette, label] of [
@@ -58,11 +62,11 @@ for (const [band, palette, label] of [
     await openMap(page, band, true);
     await expect(page.locator(".kids-root")).toHaveAttribute("data-age-palette", palette);
     await expect(page.locator(".kids-band-chip")).toHaveText(label);
-    await expect(page.locator(".kids-root")).toHaveScreenshot(`band-${band}.png`, {
-      animations: "disabled",
-      maxDiffPixelRatio: 0.04,
-      style: `.kids-root { height: ${{ "6-8": 1387, "9-12": 1333, "13+": 1312 }[band]}px !important; overflow: hidden !important; }`,
-    });
+    await expectMapScreenshot(
+      page,
+      `band-${band}.png`,
+      { "6-8": 1652, "9-12": 1527, "13+": 1488 }[band],
+    );
     const violations = (await new AxeBuilder({ page }).withRules(["color-contrast"]).analyze())
       .violations;
     expect(violations.map((v) => `${v.id}: ${v.nodes[0]?.target.join(" ")}`)).toEqual([]);

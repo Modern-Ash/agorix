@@ -4082,10 +4082,36 @@
 }
 
 /* Map: a "what now" card and lock hints so the next step is obvious (#1111). */
+.kids-map-orientation {
+  margin: 10px 18px 14px;
+  padding: 18px 20px;
+  border: 1px solid var(--kids-border);
+  border-radius: 18px;
+  background: rgb(255 255 255 / 86%);
+  box-shadow: 0 4px 18px rgb(20 30 26 / 8%);
+}
+.kids-map-orientation-kicker {
+  margin: 0 0 4px;
+  color: #5c4699;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.kids-map-orientation h2 {
+  margin: 0 0 8px;
+  font-size: clamp(1.2rem, 2vw, 1.65rem);
+}
+.kids-map-orientation p:last-child {
+  max-width: 65ch;
+  margin: 0;
+  line-height: 1.45;
+}
 .kids-map-next {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
   gap: 10px;
+  margin: 0 18px 14px;
 }
 .kids-map-next-main {
   display: flex;
@@ -4109,11 +4135,12 @@
   gap: 10px;
   min-height: 64px;
   text-align: left;
+  font-weight: 800;
 }
 .kids-map-next-create small {
   display: block;
   font-weight: 400;
-  color: var(--kids-text-secondary);
+  color: inherit;
 }
 .kids-node-hint {
   display: block;
