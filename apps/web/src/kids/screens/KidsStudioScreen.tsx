@@ -2548,6 +2548,23 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
           </button>
         </aside>
       ) : null}
+      <nav className="kids-studio-categories" aria-label={copy.categories}>
+        {studioCategories({ pen: penEnabled, music: musicEnabled }).map((category) => (
+          <button
+            key={category}
+            type="button"
+            className="kids-studio-category"
+            data-category={category}
+            onClick={() => {
+              const heading = document.getElementById(studioCategoryId(category));
+              heading?.scrollIntoView({ block: "start" });
+              heading?.focus({ preventScroll: true });
+            }}
+          >
+            {categoryLabel[category]}
+          </button>
+        ))}
+      </nav>
       <div className="kids-studio-layout">
         <div className="kids-studio-stage-column">
           <h2>{copy.stage}</h2>
@@ -3293,24 +3310,6 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
             </ol>
             {script?.statements.length === 0 ? <p className="kids-note">{copy.noBlocks}</p> : null}
           </div>
-          {/* Jumps to a category; the palette below stays whole, so nothing is hidden (#1110). */}
-          <nav className="kids-studio-categories" aria-label={copy.categories}>
-            {studioCategories({ pen: penEnabled, music: musicEnabled }).map((category) => (
-              <button
-                key={category}
-                type="button"
-                className="kids-studio-category"
-                data-category={category}
-                onClick={() => {
-                  const heading = document.getElementById(studioCategoryId(category));
-                  heading?.scrollIntoView({ block: "start" });
-                  heading?.focus({ preventScroll: true });
-                }}
-              >
-                {categoryLabel[category]}
-              </button>
-            ))}
-          </nav>
           <div className="kids-studio-palette" ref={setPalette}>
             {/* A shelf over the whole palette: it suggests where to begin and hides nothing (#1110). */}
             <section className="kids-studio-starters" aria-label={copy.starters}>

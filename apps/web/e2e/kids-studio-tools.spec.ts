@@ -18,6 +18,27 @@ async function openScene(page: import("@playwright/test").Page) {
   await page.getByRole("button", { name: "Crear escena" }).click();
 }
 
+for (const [name, viewport] of [
+  ["desktop", { width: 1280, height: 800 }],
+  ["mobile", { width: 390, height: 844 }],
+] as const) {
+  test(`the category toolbar is visible above the stage on ${name}`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await openScene(page);
+    const toolbar = page.getByRole("navigation", { name: "Categorías de bloques" });
+    const stage = page.getByRole("group", { name: "Escenario" });
+    await expect(toolbar).toBeVisible();
+    const toolbarBox = await toolbar.boundingBox();
+    const stageBox = await stage.boundingBox();
+    expect(toolbarBox).not.toBeNull();
+    expect(stageBox).not.toBeNull();
+    expect(toolbarBox!.y).toBeLessThan(stageBox!.y);
+    expect(toolbarBox!.y).toBeLessThan(viewport.height);
+    await toolbar.getByRole("button", { name: "Movimiento" }).click();
+    await expect(page.getByRole("heading", { name: "Movimiento" })).toBeFocused();
+  });
+}
+
 test("first steps follow the child, never block, end after Step and come back with Ayuda", async ({
   page,
 }) => {
