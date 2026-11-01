@@ -183,3 +183,23 @@ test("the sound chooser filters by category and search, and adds the chosen soun
   await picker.getByRole("searchbox", { name: "Buscar sonido" }).fill("zzzz");
   await expect(picker.getByText("No hay sonidos así.")).toBeVisible();
 });
+
+test("the verdict card checks the guess against the run and marks match or difference", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await openScene(page);
+  await page.getByRole("button", { name: "+ Mover", exact: true }).first().click();
+  const chip = page.getByLabel("a la derecha");
+  await chip.check();
+  expect((await chip.locator("xpath=..").boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  const verdict = page.getByTestId("coach-prediction");
+  await expect(verdict).toHaveAttribute("data-verdict", "match");
+  await expect(verdict).toContainText("pasó eso");
+  await expect(page.getByRole("region", { name: "Qué pasó" })).toContainText("empezó en");
+  await page.getByLabel("a la izquierda").check();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByTestId("coach-prediction")).toHaveAttribute("data-verdict", "differs");
+  await expect(page.getByTestId("coach-prediction")).toContainText("pero fue");
+});

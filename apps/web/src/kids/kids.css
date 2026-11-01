@@ -3891,3 +3891,62 @@
   overflow-y: auto;
   list-style: none;
 }
+
+/* Prediction chips before a run and a verdict card after it; the verdict is the runtime's (#1110). */
+.kids-studio-prediction {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--kids-border);
+  border-radius: 12px;
+}
+.kids-studio-prediction legend {
+  padding: 0 6px;
+  font-weight: 700;
+}
+.kids-studio-prediction label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--kids-border);
+  border-radius: 999px;
+  background: var(--kids-panel);
+  cursor: pointer;
+}
+.kids-studio-prediction label:has(input:checked) {
+  border-color: #5d418e;
+  background: #efe8fb;
+  font-weight: 700;
+}
+.kids-studio-prediction label:has(input:focus-visible) {
+  outline: 3px solid #5d418e;
+  outline-offset: 2px;
+}
+.kids-studio-coach {
+  padding: 12px 14px;
+  border: 2px solid #7256ad;
+  border-radius: 14px;
+  background: #f7f0ff;
+  color: var(--kids-text);
+}
+.kids-studio-coach h3 {
+  margin: 0 0 6px;
+}
+.kids-studio-verdict {
+  margin: 8px 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-weight: 700;
+  color: #14301f;
+}
+.kids-studio-verdict[data-verdict="match"] {
+  background: #d9f2df;
+}
+.kids-studio-verdict[data-verdict="differs"] {
+  background: #fff0c2;
+  color: #3d2c00;
+}

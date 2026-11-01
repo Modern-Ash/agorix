@@ -170,7 +170,13 @@ export function StudioCoach({
         ))}
       </ul>
       {judged ? (
-        <p role="status" data-testid="coach-prediction">
+        <p
+          role="status"
+          className="kids-studio-verdict"
+          data-testid="coach-prediction"
+          data-verdict={judged.match ? "match" : "differs"}
+        >
+          <span aria-hidden="true">{judged.match ? "✓ " : "↔ "}</span>
           {judged.text}
         </p>
       ) : null}
