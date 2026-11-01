@@ -220,6 +220,12 @@ test("the map says what to do next, opens that mission, explains locks and leads
   const next = page.getByTestId("map-next");
   await expect(next.getByRole("button", { name: /^Seguir con/ })).toContainText("Camino recto");
   await expect(page.getByText("Terminá la misión 1 para abrirla")).toBeVisible();
+  // Each mission says what to do and which idea it teaches, not just a title.
+  await expect(
+    page.getByText("Poné los pasos en orden para llegar a la meta.").first(),
+  ).toBeVisible();
+  await expect(page.getByText("Aprendés: Giros")).toBeVisible();
+  await expect(page.getByText("Aprendés: Repetición")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   await next.getByRole("button", { name: /Crear sin misiones/ }).click();
   await expect(page.getByRole("heading", { name: "Crear", exact: true })).toBeVisible();
