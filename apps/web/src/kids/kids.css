@@ -3967,3 +3967,41 @@
 .kids-studio-stage-zoom {
   justify-self: start;
 }
+
+/* Crear on a phone: three steps, one at a time; wide screens show everything (#1111). */
+.kids-create-steps,
+.kids-create-next {
+  display: none;
+}
+.kids-create-step {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+@media (max-width: 720px) {
+  .kids-create-steps {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .kids-create-steps .kids-button {
+    min-height: 44px;
+    padding-inline: 6px;
+    font-size: 0.85rem;
+  }
+  .kids-create-steps .kids-button[aria-current="step"] {
+    border-color: #5d418e;
+    background: #efe8fb;
+  }
+  .kids-create-next {
+    display: block;
+  }
+  .kids-create[data-step="1"] [data-create-step="2"],
+  .kids-create[data-step="1"] [data-create-step="3"],
+  .kids-create[data-step="2"] [data-create-step="1"],
+  .kids-create[data-step="2"] [data-create-step="3"],
+  .kids-create[data-step="3"] [data-create-step="1"],
+  .kids-create[data-step="3"] [data-create-step="2"] {
+    display: none;
+  }
+}

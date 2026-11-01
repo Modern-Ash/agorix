@@ -81,7 +81,8 @@ test("listen reads visible Kids instructions and results, never a project identi
   expect((await speechLog(page)).spoken.at(-1)?.text).toBe(createNote);
   expect((await speechLog(page)).cancels).toBe(beforeCreate + 1);
 
-  await page.getByRole("button", { name: "¡Crear!" }).click();
+  await page.getByRole("button", { name: /^3 ·/ }).click();
+  await page.getByRole("button", { name: "¡Crear!", exact: true }).click();
   await listen.click();
   const goal = (await page.locator(".kids-editor-goal").textContent())?.trim();
   expect((await speechLog(page)).spoken.at(-1)?.text).toBe(goal);

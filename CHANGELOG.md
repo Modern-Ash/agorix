@@ -1,5 +1,11 @@
 # Unreleased
 
+- Kids Escena libre: a block opens a menu (right click, long press, Shift+F10) with Duplicar, Quitar, Subir and Bajar, and keyboard shortcuts work behind the existing flags: Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z, Ctrl/Cmd+D, Delete on a focused block, and `?` for the list; none fire while typing. Closes the remaining #1110 work.
+
+- Kids Crear on a phone is three steps (1 · Personaje, 2 · Fondo, 3 · ¡Crear!) with a "¡Todo listo!" summary and Seguir; wide screens show everything as before. The selection is the same stored one (#1111).
+
+- Admin "Centro de IA": on tablet and phone the grouped menu folds behind a "Menú: <sección>" button and closes after choosing a section (#1112).
+
 - Kids Escena libre: a block can be duplicated right after itself (one undoable step, behind the existing `duplicate` flag), and the stage can fill the screen with "Agrandar escenario" (behind the existing `zoom` flag): it still plays, and Escape or the button returns. Context menu and keyboard shortcuts stay open (#1110, slice 5).
 
 - Kids Escena libre: the guess before running is a row of touch-sized chips, and after running a verdict card shows what really happened from the run's own trace with the guess marked as a match (✓) or a difference (↔). The verdict never comes from model text (#1110, slice 4: prediction and verdict).

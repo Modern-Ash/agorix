@@ -43,7 +43,8 @@ test("Ori accompanies a new learner through onboarding, map, creation and editor
     "¿Qué te gustaría que pase ahí?",
   );
   await page.getByRole("button", { name: "Cerrar" }).click();
-  await page.getByRole("button", { name: "¡Crear!" }).click();
+  await page.getByRole("button", { name: /^3 ·/ }).click();
+  await page.getByRole("button", { name: "¡Crear!", exact: true }).click();
 
   // Ori stays present in free creation whether the local provider has an idea or not.
   const ori = page.getByRole("button", { name: /Abrir (ayuda|propuesta) de Ori/ });

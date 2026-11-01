@@ -177,6 +177,7 @@ import { useOriPageVisible } from "../kidsOriMotion.js";
 import { expressionForMotion, outcomeOfRun, useOriReaction } from "../kidsOriExpression.js";
 import { KidsBackdrop, KidsSprite } from "./KidsArt.js";
 import { KidsSoundPicker } from "./KidsSoundPicker.js";
+import { KIDS_SHORTCUTS, kidsShortcut } from "../kidsShortcuts.js";
 import { OriFace } from "./OriFace.js";
 import { KidsDrawArt } from "./KidsDrawArt.js";
 
@@ -395,6 +396,12 @@ const COPY = {
     tapHint: "Tocá el personaje en el escenario después de Jugar.",
     remove: "Quitar bloque",
     duplicate: "Duplicar bloque",
+    menuTitle: "Acciones del bloque",
+    menuUp: "Subir",
+    menuDown: "Bajar",
+    shortcutsTitle: "Atajos del editor",
+    shortcutsOpen: "Atajos",
+    shortcutsClose: "Cerrar",
     stageLarge: "Agrandar escenario",
     stageNormal: "Volver al tamaño normal",
     undo: "Deshacer",
@@ -649,6 +656,12 @@ const COPY = {
     tapHint: "Tap the character on the stage after Play.",
     remove: "Remove block",
     duplicate: "Duplicate block",
+    menuTitle: "Block actions",
+    menuUp: "Move up",
+    menuDown: "Move down",
+    shortcutsTitle: "Editor shortcuts",
+    shortcutsOpen: "Shortcuts",
+    shortcutsClose: "Close",
     stageLarge: "Enlarge stage",
     stageNormal: "Back to normal size",
     undo: "Undo",
@@ -877,6 +890,23 @@ function starterLabel(
           : copy.sound;
 }
 
+const SHORTCUT_LABEL: Record<"es" | "en", Record<string, string>> = {
+  es: {
+    undo: "Deshacer",
+    redo: "Rehacer",
+    delete: "Quitar el bloque enfocado",
+    duplicate: "Duplicar el bloque enfocado",
+    help: "Ver atajos",
+  },
+  en: {
+    undo: "Undo",
+    redo: "Redo",
+    delete: "Remove the focused block",
+    duplicate: "Duplicate the focused block",
+    help: "Show shortcuts",
+  },
+};
+
 export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }: Props) {
   const copy = COPY[locale];
   const effectName = (effect: string) =>
@@ -986,11 +1016,30 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
   const tutorialFlag = useKidsFlag("tutorial");
   const duplicateFlag = useKidsFlag("duplicate");
   const zoomFlag = useKidsFlag("zoom");
+  const contextMenuFlag = useKidsFlag("contextMenu");
+  const shortcutsFlag = useKidsFlag("shortcuts");
+  // A block's menu (right click, long press or the menu key) and the shortcuts list (#1110).
+  const [blockMenu, setBlockMenu] = useState<{ index: number; x: number; y: number } | null>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const blockMenuRef = useRef<HTMLDivElement>(null);
+  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pressOrigin = useRef<{ x: number; y: number } | null>(null);
+  useEffect(() => {
+    if (blockMenu) blockMenuRef.current?.querySelector<HTMLElement>("[role='menuitem']")?.focus();
+  }, [blockMenu]);
+  useEffect(() => {
+    if (!blockMenu) return;
+    const outside = (event: globalThis.PointerEvent) => {
+      if (!blockMenuRef.current?.contains(event.target as Node)) setBlockMenu(null);
+    };
+    document.addEventListener("pointerdown", outside);
+    return () => document.removeEventListener("pointerdown", outside);
+  }, [blockMenu]);
   // The stage fills the screen so a child can see and play it large; Escape or the button ends it.
   const [stageLarge, setStageLarge] = useState(false);
   useEffect(() => {
     if (!stageLarge) return;
-    const onKey = (event: KeyboardEvent) => {
+    const onKey = (event: globalThis.KeyboardEvent) => {
       if (event.key === "Escape") setStageLarge(false);
     };
     window.addEventListener("keydown", onKey);
@@ -1578,7 +1627,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
   }
 
   useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
       if (
         event.target instanceof HTMLInputElement ||
         event.target instanceof HTMLSelectElement ||
@@ -1590,6 +1639,12 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
+  });
+
+  // Shortcuts listen on the window so they keep working after a focused block is removed.
+  useEffect(() => {
+    window.addEventListener("keydown", studioKeyDown);
+    return () => window.removeEventListener("keydown", studioKeyDown);
   });
 
   function setEvent(type: StudioEvent) {
@@ -1809,6 +1864,33 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
     } catch {
       setError(true);
     }
+  }
+
+  function blockAction(action: "duplicate" | "delete" | "up" | "down", index: number) {
+    try {
+      if (action === "duplicate") persist(duplicateStudioStatement(history, activeActorId, index));
+      if (action === "delete") persist(removeStudioStatement(history, activeActorId, index));
+      if (action === "up" && index > 0)
+        persist(moveStudioStatement(history, activeActorId, index, index - 1));
+      if (action === "down" && index < (script?.statements.length ?? 1) - 1)
+        persist(moveStudioStatement(history, activeActorId, index, index + 1));
+    } catch {
+      // At the size limit or already at the end: nothing changes.
+    }
+  }
+
+  function studioKeyDown(event: globalThis.KeyboardEvent) {
+    if (blockMenu || !shortcutsFlag) return;
+    const action = kidsShortcut(event, helpOpen);
+    if (!action || action === "run") return;
+    const block = (event.target as Element).closest<HTMLElement>(".kids-program-block[data-index]");
+    if ((action === "delete" || action === "duplicate") && !block) return;
+    event.preventDefault();
+    if (action === "undo") persist(undoCanonicalTransaction(history).history);
+    if (action === "redo") persist(redoCanonicalTransaction(history).history);
+    if (action === "help") setHelpOpen(true);
+    if (block && (action === "delete" || action === "duplicate"))
+      blockAction(action, Number(block.dataset.index));
   }
 
   function add(statement: StudioStatement) {
@@ -2535,6 +2617,11 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
         </button>
         <h1>{copy.title}</h1>
         <div>
+          {shortcutsFlag ? (
+            <button type="button" className="kids-button" onClick={() => setHelpOpen(true)}>
+              {copy.shortcutsOpen}
+            </button>
+          ) : null}
           <button type="button" className="kids-button" onClick={() => downloadScene()}>
             {copy.exportScene}
           </button>
@@ -2607,6 +2694,82 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
           </button>
         ))}
       </nav>
+      {blockMenu ? (
+        <div
+          ref={blockMenuRef}
+          className="kids-block-menu"
+          role="menu"
+          aria-label={copy.menuTitle}
+          style={{ left: blockMenu.x, top: blockMenu.y }}
+          onKeyDown={(event) => {
+            const items = [
+              ...event.currentTarget.querySelectorAll<HTMLElement>("[role='menuitem']"),
+            ];
+            const current = items.indexOf(document.activeElement as HTMLElement);
+            if (event.key === "Escape") {
+              event.preventDefault();
+              setBlockMenu(null);
+            }
+            if (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "Tab") {
+              event.preventDefault();
+              const delta = event.key === "ArrowUp" || event.shiftKey ? -1 : 1;
+              items[(current + delta + items.length) % items.length]?.focus();
+            }
+          }}
+        >
+          {(
+            [
+              ["duplicate", copy.duplicate],
+              ["delete", copy.remove],
+              ["up", copy.menuUp],
+              ["down", copy.menuDown],
+            ] as const
+          ).map(([action, label]) => (
+            <button
+              key={action}
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                blockAction(action, blockMenu.index);
+                setBlockMenu(null);
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {shortcutsFlag && helpOpen ? (
+        <div
+          className="kids-shortcuts-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-label={copy.shortcutsTitle}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              event.preventDefault();
+              setHelpOpen(false);
+            }
+          }}
+        >
+          <h2>{copy.shortcutsTitle}</h2>
+          <ul>
+            {KIDS_SHORTCUTS.filter((item) => item.id !== "run").map((item) => (
+              <li key={item.id}>
+                <kbd>{item.key}</kbd> {SHORTCUT_LABEL[locale][item.id]}
+              </li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            className="kids-button"
+            autoFocus
+            onClick={() => setHelpOpen(false)}
+          >
+            {copy.shortcutsClose}
+          </button>
+        </div>
+      ) : null}
       <div className="kids-studio-layout">
         <div className="kids-studio-stage-column" data-large={stageLarge ? "true" : undefined}>
           <h2>{copy.stage}</h2>
@@ -3262,6 +3425,53 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
                 <li
                   key={`${script.id}-${index}`}
                   className="kids-program-block"
+                  data-index={index}
+                  tabIndex={contextMenuFlag || shortcutsFlag ? 0 : undefined}
+                  onContextMenu={(event) => {
+                    if (!contextMenuFlag) return;
+                    event.preventDefault();
+                    setBlockMenu({ index, x: event.clientX, y: event.clientY });
+                  }}
+                  onPointerDown={(event) => {
+                    if (!contextMenuFlag || event.pointerType !== "touch") return;
+                    pressOrigin.current = { x: event.clientX, y: event.clientY };
+                    pressTimer.current = setTimeout(() => {
+                      setBlockMenu({ index, x: event.clientX, y: event.clientY });
+                      pressTimer.current = null;
+                    }, 500);
+                  }}
+                  onPointerMove={(event) => {
+                    if (!pressOrigin.current || !pressTimer.current) return;
+                    if (
+                      Math.hypot(
+                        event.clientX - pressOrigin.current.x,
+                        event.clientY - pressOrigin.current.y,
+                      ) > 8
+                    ) {
+                      clearTimeout(pressTimer.current);
+                      pressTimer.current = null;
+                    }
+                  }}
+                  onPointerUp={() => {
+                    if (pressTimer.current) clearTimeout(pressTimer.current);
+                    pressTimer.current = null;
+                  }}
+                  onPointerCancel={() => {
+                    if (pressTimer.current) clearTimeout(pressTimer.current);
+                    pressTimer.current = null;
+                  }}
+                  onKeyDown={(event) => {
+                    if (
+                      !contextMenuFlag ||
+                      event.target !== event.currentTarget ||
+                      !["F10", "ContextMenu"].includes(event.key) ||
+                      (event.key === "F10" && !event.shiftKey)
+                    )
+                      return;
+                    event.preventDefault();
+                    const rect = event.currentTarget.getBoundingClientRect();
+                    setBlockMenu({ index, x: rect.left + 24, y: rect.bottom });
+                  }}
                   data-block-path={JSON.stringify([index])}
                   data-dragging={
                     drag && drag.from.length === 1 && drag.from[0] === index ? "true" : undefined

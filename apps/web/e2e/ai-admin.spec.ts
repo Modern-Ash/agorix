@@ -99,8 +99,18 @@ test("AI operations console validates, publishes and restores a revision", async
   await menu.getByRole("button", { name: /Ori en misiones/ }).click();
   await expect(page.getByLabel("Instrucción adicional")).toHaveValue("");
 
-  // On a phone the grouped menu wraps instead of scrolling sideways, and the draft bar stays in view.
+  // On a phone the menu folds behind one button, nothing scrolls sideways, and the draft bar stays in view.
   await page.setViewportSize({ width: 390, height: 844 });
+  const toggle = page.getByRole("button", { name: /^Menú:/ });
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByRole("navigation", { name: "Centro de IA" })).toBeHidden();
+  await toggle.click();
+  await expect(page.getByRole("navigation", { name: "Centro de IA" })).toBeVisible();
+  await page
+    .getByRole("navigation", { name: "Centro de IA" })
+    .getByRole("button", { name: /Ori en misiones/ })
+    .click();
+  await expect(page.getByRole("navigation", { name: "Centro de IA" })).toBeHidden();
   await page.getByLabel("Instrucción adicional").fill("Otra idea.");
   const layout = await page.evaluate(() => {
     const bar = document.querySelector(".ai-admin-draft")!.getBoundingClientRect();
