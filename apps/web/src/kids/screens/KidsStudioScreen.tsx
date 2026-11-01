@@ -3011,7 +3011,7 @@ export function KidsStudioScreen({
           <div
             className="kids-studio-stage-actions"
             role="group"
-            aria-label={locale === "es" ? "Herramientas del escenario" : "Stage tools"}
+            aria-label={locale === "es" ? "Herramientas de escena" : "Stage tools"}
           >
             <button
               type="button"
