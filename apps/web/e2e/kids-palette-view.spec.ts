@@ -17,7 +17,7 @@ async function seed(page: import("@playwright/test").Page) {
   await page.reload();
 }
 
-test("Escena libre shows a few starters, then only the colour the child opens", async ({
+test("Escena libre opens one colour at a time and closes after adding a block", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
@@ -26,21 +26,28 @@ test("Escena libre shows a few starters, then only the colour the child opens", 
   await page.getByRole("button", { name: "Crear escena" }).click();
   const rail = page.getByRole("navigation", { name: "Categorías de bloques" });
   const tools = page.locator("[data-kids-palette-tool]:visible");
+  const program = page.locator(".kids-studio-program-column");
+  const programBefore = await program.boundingBox();
 
-  // Before choosing a colour only the starter shelf shows.
-  await expect(page.getByRole("button", { name: /^★ Mover/ })).toBeVisible();
+  // The program has the space until the child chooses a colour.
+  await expect(page.locator(".kids-studio-palette")).toBeHidden();
   await expect(page.getByRole("button", { name: "+ Decir", exact: true })).toBeHidden();
   await expect(page.getByRole("button", { name: "+ Mover", exact: true })).toBeHidden();
 
   await rail.getByRole("button", { name: "Apariencia y tiempo" }).click();
   await expect(rail.getByRole("button", { name: "Apariencia y tiempo" })).toHaveAttribute(
-    "aria-pressed",
+    "aria-expanded",
     "true",
   );
   await expect(page.getByRole("button", { name: "+ Decir", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "+ Mover", exact: true })).toBeHidden();
+  expect((await program.boundingBox())?.x).toBe(programBefore?.x);
   const looks = await tools.count();
   expect(looks).toBeGreaterThan(0);
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".kids-studio-palette")).toBeHidden();
+  await expect(rail.getByRole("button", { name: "Apariencia y tiempo" })).toBeFocused();
+  await rail.getByRole("button", { name: "Apariencia y tiempo" }).click();
 
   // Another colour replaces it; the same colour again closes it.
   await rail.getByRole("button", { name: "Movimiento" }).click();
@@ -48,20 +55,28 @@ test("Escena libre shows a few starters, then only the colour the child opens", 
   await expect(page.getByRole("button", { name: "+ Decir", exact: true })).toBeHidden();
   await rail.getByRole("button", { name: "Movimiento" }).click();
   await expect(page.getByRole("button", { name: "+ Mover", exact: true })).toBeHidden();
+  await expect(page.locator(".kids-studio-palette")).toBeHidden();
 
   // The tile still adds its block, and its name does not include the picture.
   await rail.getByRole("button", { name: "Movimiento" }).click();
   await page.getByRole("button", { name: "+ Mover", exact: true }).click();
   await expect(page.locator(".kids-program-block")).toHaveCount(1);
-
-  // "Ver todo" lists every family again and is remembered.
-  await page.getByRole("button", { name: "Ver todo" }).click();
-  await expect(page.getByRole("button", { name: "+ Decir", exact: true })).toBeVisible();
-  expect(await tools.count()).toBeGreaterThan(looks);
+  await expect(page.locator(".kids-studio-palette")).toBeHidden();
   await page.reload();
-  await expect(page.getByRole("button", { name: "Ver por categoría" })).toBeVisible();
-  await page.getByRole("button", { name: "Ver por categoría" }).click();
-  await expect(page.getByRole("button", { name: "+ Decir", exact: true })).toBeHidden();
+  await expect(page.locator(".kids-studio-palette")).toBeHidden();
+  expect(looks).toBeGreaterThan(0);
+});
+
+test("an old show-all preference migrates to the contextual palette", async ({ page }) => {
+  await seed(page);
+  await page.evaluate(() => localStorage.setItem("agorix.kids.palette.view.v1", "all"));
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
+  await expect(page.locator(".kids-studio-palette")).toBeHidden();
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem("agorix.kids.palette.view.v1")))
+    .toBe("focused");
 });
 
 test("a mission opens on its first colour, keeps tools above the program and switches colour", async ({
@@ -95,21 +110,22 @@ test("a mission opens on its first colour, keeps tools above the program and swi
   await expect(page.getByRole("button", { name: "+ sonar", exact: true })).toBeVisible();
 });
 
-test("on a phone the sheet shows starters, then the colour chosen in the top bar", async ({
+test("on a phone the sheet opens for the chosen colour and closes after adding", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await seed(page);
   await page.getByRole("button", { name: "Crear", exact: true }).click();
   await page.getByRole("button", { name: "Crear escena" }).click();
-  await expect(page.getByRole("button", { name: /^★ Mover/ })).toBeVisible();
+  await expect(page.locator(".kids-studio-palette")).toBeHidden();
   await expect(page.getByRole("button", { name: "+ Decir", exact: true })).toBeHidden();
   await page
     .getByRole("navigation", { name: "Categorías de bloques" })
     .getByRole("button", { name: "Apariencia y tiempo" })
     .click();
   await expect(page.getByRole("button", { name: "+ Decir", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Ver todo" }).click();
-  await expect(page.getByRole("button", { name: "+ Mover", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "+ Mover", exact: true })).toBeHidden();
+  await page.getByRole("button", { name: "+ Decir", exact: true }).click();
+  await expect(page.locator(".kids-studio-palette")).toBeHidden();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });

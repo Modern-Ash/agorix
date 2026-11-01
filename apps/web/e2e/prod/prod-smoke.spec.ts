@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "../fixtures.js";
+import { expect, test, type Page } from "@playwright/test";
 import { openAdultTab, passAdultGate } from "../helpers.js";
 
 // Post-deploy smoke for the live site (issue #345). Read-only: it never signs in, never writes
@@ -181,7 +181,7 @@ test("a fresh browser reaches Escena libre with every category and synchronized 
   await page.getByRole("button", { name: "Crear", exact: true }).click();
   await page.getByRole("button", { name: "Crear escena" }).click();
   await expect(page).toHaveURL(/#\/escena\//);
-  // Missions show 5 block kinds; the free scene must show the whole palette without flags set by hand.
+  // The free scene exposes every colour without flags, while blocks start folded away.
   await expect.poll(() => page.locator("[data-kids-palette-tool]").count()).toBeGreaterThan(15);
   const categories = page.getByRole("navigation", { name: "Categorías de bloques" });
   await expect(categories.getByRole("button")).toHaveText([
@@ -195,14 +195,16 @@ test("a fresh browser reaches Escena libre with every category and synchronized 
     "Mis bloques",
   ]);
   const toolsBefore = await page.locator("[data-kids-palette-tool]").count();
+  await expect(page.locator(".kids-studio-palette")).toBeHidden();
   await categories.getByRole("button", { name: "Variables y listas" }).click();
-  await expect(page.getByRole("heading", { name: "Variables y listas" })).toBeFocused();
+  await expect(page.getByRole("heading", { name: "Variables y listas" })).toBeVisible();
   expect(await page.locator("[data-kids-palette-tool]").count()).toBe(toolsBefore);
 
   const code = page.locator(".kids-code-strip");
   const before = await code.textContent();
-  // The deployed SHA predates the starter shelf; the ordinary palette control exists in both.
+  await categories.getByRole("button", { name: "Movimiento" }).click();
   await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  await expect(page.locator(".kids-studio-palette")).toBeHidden();
   await expect(page.locator(".kids-program-block")).toHaveCount(1);
   await expect.poll(() => code.textContent()).not.toBe(before);
   await expect(page.getByRole("button", { name: "Deshacer" })).toBeEnabled();
@@ -218,6 +220,10 @@ test("an existing Kids project survives a hard reload with browser cache cleared
   await page.getByRole("button", { name: "¡Empezar!" }).click();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
   await page.getByRole("button", { name: "Crear escena" }).click();
+  await page
+    .getByRole("navigation", { name: "Categorías de bloques" })
+    .getByRole("button", { name: "Movimiento" })
+    .click();
   await page.getByRole("button", { name: "+ Mover", exact: true }).click();
   await expect(page.locator(".kids-program-block")).toHaveCount(1);
   const projectUrl = page.url();

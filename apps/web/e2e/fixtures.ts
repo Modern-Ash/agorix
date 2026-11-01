@@ -12,6 +12,7 @@ export const test = base.extend({
     await context.addInitScript(() => {
       try {
         window.localStorage.setItem("agorix.kids.palette.view.v1", "all");
+        window.localStorage.setItem("agorix.kids.palette.contextual.v1", "1");
       } catch {
         // Storage can be unavailable in a test that blocks it on purpose.
       }
