@@ -12,17 +12,14 @@ const storageWith = (value: string | null) => ({ getItem: () => value });
 describe("Kids v2 flags (issue #439)", () => {
   it("enables creative tools in a new browser and keeps account linking gated", () => {
     expect([...kidsV2Features()]).toEqual(
-      KIDS_V2_FEATURES.filter(
-        (name) => name !== "adultLink" && name !== "groupMode" && name !== "freeToScene",
-      ),
+      KIDS_V2_FEATURES.filter((name) => name !== "adultLink" && name !== "groupMode"),
     );
     expect(kidsV2Enabled("customImages", { storage: storageWith(null), search: "" })).toBe(true);
     expect(kidsV2Enabled("duplicate", { storage: storageWith(null), search: "" })).toBe(true);
     expect(kidsV2Enabled("oriFloat", { storage: storageWith(null), search: "" })).toBe(true);
     expect(kidsV2Enabled("adultLink", { storage: storageWith(null), search: "" })).toBe(false);
     expect(kidsV2Enabled("groupMode", { storage: storageWith(null), search: "" })).toBe(false);
-    // Retiring ¡Crear! waits for the E2E suite that still creates those projects (#1134).
-    expect(kidsV2Enabled("freeToScene", { storage: storageWith(null), search: "" })).toBe(false);
+    expect(kidsV2Enabled("freeToScene", { storage: storageWith(null), search: "" })).toBe(true);
   });
 
   it("can enable the existing adult flow for a reviewed deployment build", () => {
@@ -43,7 +40,7 @@ describe("Kids v2 flags (issue #439)", () => {
 
   it("reads a validated list from storage", () => {
     const storage = storageWith('["duplicate","zoom","nope",3]');
-    expect([...kidsV2Features({ storage })].sort()).toEqual(["duplicate", "zoom"]);
+    expect([...kidsV2Features({ storage })].sort()).toEqual(["duplicate", "freeToScene", "zoom"]);
   });
 
   it("fails closed for corrupt or blocked storage", () => {
@@ -51,7 +48,7 @@ describe("Kids v2 flags (issue #439)", () => {
     expect(kidsV2Features({ storage: storageWith('{"a":1}') }).size).toBe(0);
     const blocked = {
       getItem: (key: string) => {
-        expect(key).toBe(KIDS_FLAGS_KEY);
+        expect([KIDS_FLAGS_KEY, "agorix.kids.freeToScene.off.v1"]).toContain(key);
         throw new DOMException("blocked", "SecurityError");
       },
     };
@@ -70,7 +67,7 @@ describe("Kids v2 flags (issue #439)", () => {
       production: true,
       storage: storageWith('["zoom"]'),
     };
-    expect([...kidsV2Features(sources)]).toEqual(["zoom"]);
+    expect([...kidsV2Features(sources)]).toEqual(["zoom", "freeToScene"]);
   });
 
   it("lets the adult persistently toggle custom images without dropping other flags", () => {
@@ -85,7 +82,11 @@ describe("Kids v2 flags (issue #439)", () => {
     expect(kidsV2Features({ storage }).has("customImages")).toBe(false);
     value = '["zoom"]';
     expect(setKidsV2Feature("customImages", true, storage)).toBe(true);
-    expect([...kidsV2Features({ storage })].sort()).toEqual(["customImages", "zoom"]);
+    expect([...kidsV2Features({ storage })].sort()).toEqual([
+      "customImages",
+      "freeToScene",
+      "zoom",
+    ]);
   });
 
   it("keeps the flag unchanged if storage rejects the adult's choice", () => {
@@ -115,7 +116,20 @@ describe("Kids v2 flags (issue #439)", () => {
     expect(kidsV2Enabled("oriFloat", sources)).toBe(true);
     expect(kidsV2Enabled("extensionPen", sources)).toBe(false);
     expect(kidsV2Enabled("extensionMusic", sources)).toBe(false);
+    expect(kidsV2Enabled("freeToScene", sources)).toBe(true);
     // A fresh browser has both, so two browsers can show different palettes for the same build.
     expect(kidsV2Enabled("extensionPen", { storage: storageWith(null), search: "" })).toBe(true);
+  });
+
+  it("supports an explicit rollback of the unified create entry", () => {
+    const values = new Map<string, string>();
+    const storage = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => void values.set(key, value),
+    };
+    expect(setKidsV2Feature("freeToScene", false, storage)).toBe(true);
+    expect(kidsV2Enabled("freeToScene", { storage })).toBe(false);
+    expect(setKidsV2Feature("freeToScene", true, storage)).toBe(true);
+    expect(kidsV2Enabled("freeToScene", { storage })).toBe(true);
   });
 });

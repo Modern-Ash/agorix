@@ -4,11 +4,10 @@ import { STUDIO_BLOCK_CATEGORY } from "../src/kids/kidsPaletteCatalog.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
-// Issue #1121: both free creation paths open from a fresh onboarded profile with no mission done,
-// without touching the map or the progression.
+// Issue #1134: fresh creation has one full-palette path without finishing a mission.
 const PROGRESS = { onboarded: true, avatar: "🐸", stars: 0, done: {} };
 
-test("free scene and free project open without finishing a mission and leave progress intact", async ({
+test("the sole free scene opens without finishing a mission and leaves progress intact", async ({
   page,
 }) => {
   await page.goto("/kids");
@@ -28,13 +27,11 @@ test("free scene and free project open without finishing a mission and leave pro
     .poll(() => page.locator(".kids-studio-palette [data-kids-palette-tool]").count())
     .toBeGreaterThan(15);
 
-  // ¡Crear! = a free project in the single-character editor.
-  await page.getByRole("button", { name: "Volver a Crear" }).click();
-  await page.getByRole("button", { name: "¡Crear!" }).click();
-  await expect(page).toHaveURL(/#\/libre\//);
+  await expect(page.getByRole("button", { name: "¡Crear!" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Jugar", exact: true })).toBeVisible();
 
   // The map and its first mission are still there and still locked to the learner's progress.
+  await page.getByRole("button", { name: "Volver a Crear" }).click();
   await page.getByRole("button", { name: "Mapa" }).click();
   await expect(page.getByRole("heading", { name: "Mapa" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Misión 1" })).toBeVisible();
@@ -48,7 +45,7 @@ for (const [name, viewport] of [
   ["tablet", { width: 820, height: 1180 }],
   ["mobile", { width: 390, height: 844 }],
 ] as const) {
-  test(`the create deep link reaches both free paths on ${name}`, async ({ page }) => {
+  test(`the create deep link shows one free path on ${name}`, async ({ page }) => {
     await page.setViewportSize(viewport);
     await page.goto("/kids");
     await page.evaluate((progress) => {
@@ -60,7 +57,7 @@ for (const [name, viewport] of [
     await page.reload();
     await expect(page.getByRole("heading", { name: "Escena libre", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Crear escena" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "¡Crear!" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "¡Crear!" })).toHaveCount(0);
   });
 }
 
@@ -79,7 +76,7 @@ test("the Escena libre starter shelf adds blocks and leaves the whole palette in
 }) => {
   await SEED(page);
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await expect(page.getByTestId("free-project-note")).toContainText("Escena libre");
+  await expect(page.getByTestId("free-project-note")).toHaveCount(0);
   await page.getByRole("button", { name: "Crear escena" }).click();
 
   const shelf = page.getByRole("region", { name: "Para empezar" });
@@ -176,6 +173,8 @@ test("a remote Ori ranks the scene goal by index and the wording stays local", a
 // project is left alone, and Crear has one entry.
 test("an old free project opens as a scene and Crear keeps one entry", async ({ page }) => {
   await SEED(page);
+  await page.evaluate(() => localStorage.setItem("agorix.kids.freeToScene.off.v1", "1"));
+  await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
   await page.getByRole("button", { name: "¡Crear!" }).click();
   await expect(page).toHaveURL(/#\/libre\/free-1/);
@@ -194,10 +193,13 @@ test("an old free project opens as a scene and Crear keeps one entry", async ({ 
     },
     [...KIDS_V2_FEATURES],
   );
+  await page.evaluate(() => localStorage.setItem("agorix.kids.freeToScene.off.v1", "0"));
   await page.goto("/kids#/libre/free-1");
   await page.reload();
   await expect(page).toHaveURL(/#\/escena\/studio-1/);
   await expect(page.getByRole("button", { name: /^Quitar bloque \d+$/ })).toHaveCount(1);
+  await expect(page.getByRole("group", { name: "Escenario" })).toHaveClass(/kids-art-backdrop/);
+  await expect(page.locator(".kids-studio-stage-actor .kids-art-image")).toHaveCount(1);
 
   // Opening it again finds the same scene instead of making a second one.
   await page.goto("/kids#/libre/free-1");
@@ -209,6 +211,29 @@ test("an old free project opens as a scene and Crear keeps one entry", async ({ 
   await expect(page.getByRole("button", { name: "Crear escena" })).toBeVisible();
   await expect(page.getByRole("button", { name: "¡Crear!" })).toHaveCount(0);
   await expect(page.getByTestId("free-project-note")).toHaveCount(0);
+});
+
+test("a legacy cell goal survives conversion and portable export", async ({ page }) => {
+  await SEED(page);
+  await page.evaluate(() => localStorage.setItem("agorix.kids.freeToScene.off.v1", "1"));
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await page.getByRole("button", { name: "¡Crear!" }).click();
+  await page.getByRole("button", { name: "Tocá el mundo para poner la meta: 5, 3" }).click();
+  await expect(page).toHaveURL(/#\/libre\/free-1/);
+  await page.evaluate(() => localStorage.setItem("agorix.kids.freeToScene.off.v1", "0"));
+  await page.goto("/kids#/libre/free-1");
+  await page.reload();
+  await expect(page).toHaveURL(/#\/escena\/studio-1/);
+  await expect(page.getByTestId("scene-goal")).toContainText("columna 5, fila 3");
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Exportar escena" }).click();
+  const gate = page.getByRole("dialog");
+  await gate.getByRole("button", { name: "1", exact: true }).click();
+  await gate.getByRole("button", { name: "2", exact: true }).click();
+  await gate.getByRole("button", { name: "Comprobar" }).click();
+  await gate.getByRole("button", { name: "Incluir imágenes y exportar" }).click();
+  expect((await download).suggestedFilename()).toMatch(/\.agorix$/);
 });
 
 // Issue #1135: with a goal set, Ori can suggest a block the character has not used yet. The block

@@ -4,7 +4,8 @@ import { createFreeWorldMission } from "@agorix/curriculum";
 import type { Statement } from "@agorix/program-model";
 import { convertFreeProject, migratedScenes } from "./kidsFreeToScene.js";
 import { createFreeProjectRef } from "./kidsProjects.js";
-import { listStudioProjects } from "./kidsStudioProjects.js";
+import { addKidsCustom } from "./kidsCustom.js";
+import { listStudioProjects, studioSceneGoal } from "./kidsStudioProjects.js";
 
 function memory() {
   const data = new Map<string, string>();
@@ -62,7 +63,12 @@ describe("old free project becomes a scene (issue #1134)", () => {
     const result = convertFreeProject(id, "es", store, index);
     expect(result.kind).toBe("scene");
     if (result.kind !== "scene") return;
-    expect(result.goalDropped).toBe(true);
+    expect(studioSceneGoal(result.studioId, store)).toEqual({
+      kind: "reachCell",
+      actorId: "actor:studio-1-mika",
+      cx: 4,
+      cy: 2,
+    });
     expect(store.load(result.studioId).program.scripts[0]!.statements).toEqual(blocks);
     expect(store.has(id)).toBe(true);
     expect(listStudioProjects(index).map((item) => item.id)).toEqual([result.studioId]);
@@ -79,6 +85,57 @@ describe("old free project becomes a scene (issue #1134)", () => {
     const result = convertFreeProject(id, "es", store, index);
     expect(result.kind).toBe("scene");
     expect(listStudioProjects(index)[0]!.backdropId).toBe("reef");
+  });
+
+  it("keeps the turn requirement of an old cell goal", () => {
+    const { store, index, id } = seed([]);
+    const saved = store.load(id);
+    store.save(id, saved.program, {
+      ...saved.metadata,
+      missionSpec: { goal: "kids.cell.4.2", successCheck: "touches-goal-after-turn" },
+    });
+    const result = convertFreeProject(id, "es", store, index);
+    expect(result.kind).toBe("scene");
+    if (result.kind !== "scene") return;
+    expect(studioSceneGoal(result.studioId, store)).toMatchObject({
+      afterTurn: true,
+      cx: 4,
+      cy: 2,
+    });
+  });
+
+  it("copies custom explorer and backdrop into portable scene assets", () => {
+    const { store, index } = memory();
+    const image =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLttAAAAABJRU5ErkJggg==";
+    const explorer = addKidsCustom("explorer", image, index);
+    const backdrop = addKidsCustom("backdrop", image, index);
+    expect(explorer.ok && backdrop.ok).toBe(true);
+    if (!explorer.ok || !backdrop.ok) return;
+    const ref = createFreeProjectRef(
+      { kind: "custom", id: backdrop.item.id },
+      { kind: "custom", id: explorer.item.id },
+      index,
+    );
+    const mission = createFreeWorldMission({ cx: 4, cy: 2 }, "es");
+    store.save(ref.id, mission.starterProject, {
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      missionProgress: 0,
+      hintLevel: 0,
+      locale: "es",
+    });
+    const result = convertFreeProject(ref.id, "es", store, index);
+    expect(result.kind).toBe("scene");
+    if (result.kind !== "scene") return;
+    const assets = store.load(result.studioId).metadata.assets ?? [];
+    expect(
+      assets
+        .filter((item) => item.source === image)
+        .map((item) => item.kind)
+        .sort(),
+    ).toEqual(["backdrop", "costume"]);
+    expect(store.has(ref.id)).toBe(true);
   });
 
   it("keeps projects it cannot convert without loss", () => {

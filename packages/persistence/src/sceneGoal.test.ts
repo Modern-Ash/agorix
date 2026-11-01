@@ -36,6 +36,22 @@ describe("Free scene goal metadata", () => {
     );
   });
 
+  it("round-trips a bounded migrated cell goal", () => {
+    const goal = { kind: "reachCell", actorId: "actor:studio-1-nova", cx: 4, cy: 2 };
+    const parsed = validatePortableStoredProject({
+      ...project,
+      metadata: { ...project.metadata, sceneGoal: goal },
+    });
+    expect(parsed.metadata.sceneGoal).toEqual(goal);
+    expect(() => validateProjectSceneGoal({ ...goal, cx: 6 })).toThrow();
+    expect(validateProjectSceneGoal({ ...goal, afterTurn: true })).toEqual({
+      ...goal,
+      afterTurn: true,
+    });
+    expect(() => validateProjectSceneGoal({ ...goal, afterTurn: "yes" })).toThrow();
+    expect(() => validateProjectSceneGoal({ ...goal, note: "private" })).toThrow();
+  });
+
   it("rejects free text, unknown fields, self targets and other kinds", () => {
     expect(() =>
       validateProjectSceneGoal({ kind: "reachEdge", actorId: "actor:studio-1-nova", note: "hi" }),

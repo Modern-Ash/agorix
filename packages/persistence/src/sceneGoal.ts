@@ -6,7 +6,14 @@ import { PersistenceError } from "./store.js";
  */
 export type ProjectSceneGoal =
   | { readonly kind: "touchActor"; readonly actorId: string; readonly targetId: string }
-  | { readonly kind: "reachEdge"; readonly actorId: string };
+  | { readonly kind: "reachEdge"; readonly actorId: string }
+  | {
+      readonly kind: "reachCell";
+      readonly actorId: string;
+      readonly cx: number;
+      readonly cy: number;
+      readonly afterTurn?: boolean;
+    };
 
 const ACTOR_ID = /^actor:[A-Za-z0-9_-]{1,56}$/;
 const PORTABLE_PROJECT_ID = "portable-project";
@@ -40,6 +47,33 @@ export function validateProjectSceneGoal(value: unknown): ProjectSceneGoal {
       return invalid("sceneGoal has an unknown field");
     }
     return { kind: "reachEdge", actorId: actorId(record["actorId"], "actorId") };
+  }
+  if (record["kind"] === "reachCell") {
+    if (keys.some((key) => !["kind", "actorId", "cx", "cy", "afterTurn"].includes(key))) {
+      return invalid("sceneGoal has an unknown field");
+    }
+    const cx = record["cx"];
+    const cy = record["cy"];
+    if (
+      !Number.isInteger(cx) ||
+      !Number.isInteger(cy) ||
+      (cx as number) < 0 ||
+      (cx as number) > 5 ||
+      (cy as number) < 0 ||
+      (cy as number) > 3
+    ) {
+      return invalid("sceneGoal cell is invalid");
+    }
+    if (record["afterTurn"] !== undefined && typeof record["afterTurn"] !== "boolean") {
+      return invalid("sceneGoal.afterTurn is invalid");
+    }
+    return {
+      kind: "reachCell",
+      actorId: actorId(record["actorId"], "actorId"),
+      cx: cx as number,
+      cy: cy as number,
+      ...(record["afterTurn"] === true ? { afterTurn: true } : {}),
+    };
   }
   return invalid("sceneGoal.kind is not supported");
 }
