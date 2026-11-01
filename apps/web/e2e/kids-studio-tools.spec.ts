@@ -114,8 +114,9 @@ for (const [name, viewport] of [
       expect(box!.x + box!.width).toBeLessThanOrEqual(viewport.width);
     }
     const [s, g, p] = boxes.map((b) => b!);
-    expect(s.x + s.width).toBeLessThanOrEqual(p.x + 1);
-    expect(p.x + p.width).toBeLessThanOrEqual(g.x + g.width);
+    // Scratch order: blocks, then the program, then the stage on the right.
+    expect(p.x + p.width).toBeLessThanOrEqual(g.x + 1);
+    expect(g.x).toBeLessThan(s.x);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
       viewport.width,
     );

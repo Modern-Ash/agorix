@@ -26,6 +26,8 @@ interface Props {
   readonly readAloud?: boolean;
   readonly onWorld: (world: KidsWorld) => void;
   readonly onMission: (index: 0 | 1 | 2) => void;
+  /** Goes to Crear, where the child makes a scene without a mission. */
+  readonly onCreate?: () => void;
   readonly advancedUnlocked?: boolean;
   readonly onAdvanced?: () => void;
   readonly advancedReactUnlocked?: boolean;
@@ -58,6 +60,7 @@ export function MapScreen({
   readAloud = true,
   onWorld,
   onMission,
+  onCreate,
   advancedUnlocked = false,
   onAdvanced,
   advancedReactUnlocked = false,
@@ -82,6 +85,10 @@ export function MapScreen({
     "--world-goal": style.goal,
   } as CSSProperties;
 
+  const nextIndex = ([0, 1, 2] as const).find(
+    (index) => missionState(progress, world, index) === "current",
+  );
+  const nextMission = nextIndex === undefined ? null : nextIndex;
   return (
     <section className="kids-map" aria-labelledby="kids-title" data-world={world} style={vars}>
       <header className="kids-map-top">
@@ -128,6 +135,40 @@ export function MapScreen({
           );
         })}
       </ul>
+
+      {/* What to do now: the next mission in this world, or a way on when the world is complete. */}
+      <div className="kids-map-next" data-testid="map-next">
+        {nextMission !== null ? (
+          <button
+            type="button"
+            className="kids-button kids-primary kids-map-next-main"
+            onClick={() => onMission(nextMission)}
+          >
+            <span aria-hidden="true">▶</span>
+            <span>
+              {locale === "es" ? "Seguir con" : "Continue with"}{" "}
+              <strong>
+                {getKidsMission(KIDS_MISSION_IDS[nextMission]!, locale, world, catalog).title}
+              </strong>
+            </span>
+          </button>
+        ) : (
+          <p className="kids-map-next-main kids-map-next-done">
+            {locale === "es"
+              ? "¡Mundo completo! Elegí otro mundo de arriba o creá algo propio."
+              : "World complete! Pick another world above or create something of your own."}
+          </p>
+        )}
+        {onCreate ? (
+          <button type="button" className="kids-button kids-map-next-create" onClick={onCreate}>
+            <span aria-hidden="true">✨</span>
+            <span>
+              {locale === "es" ? "Crear sin misiones" : "Create without missions"}
+              <small>{locale === "es" ? "Armá lo que quieras" : "Build whatever you like"}</small>
+            </span>
+          </button>
+        ) : null}
+      </div>
 
       <div className="kids-world-tabs" role="group" aria-label={t("map")}>
         {KIDS_WORLDS.map((id) => {
@@ -226,6 +267,13 @@ export function MapScreen({
                 <span className="kids-node-title">
                   {getKidsMission(KIDS_MISSION_IDS[index]!, locale, world, catalog).title}
                 </span>
+                {locked ? (
+                  <span className="kids-node-hint">
+                    {locale === "es"
+                      ? `Terminá la misión ${index} para abrirla`
+                      : `Finish mission ${index} to open it`}
+                  </span>
+                ) : null}
               </div>
             </div>
           );

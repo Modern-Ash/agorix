@@ -202,3 +202,31 @@ test("the age-band notice can be put away for this visit and comes back on reloa
   await page.reload();
   await expect(page.locator(".kids-band-ask")).toBeVisible();
 });
+
+test("the map says what to do next, opens that mission, explains locks and leads to Crear", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  const next = page.getByTestId("map-next");
+  await expect(next.getByRole("button", { name: /^Seguir con/ })).toContainText("Camino recto");
+  await expect(page.getByText("Terminá la misión 1 para abrirla")).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await next.getByRole("button", { name: /Crear sin misiones/ }).click();
+  await expect(page.getByRole("heading", { name: "Crear", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Mapa" }).click();
+  await page
+    .getByTestId("map-next")
+    .getByRole("button", { name: /^Seguir con/ })
+    .click();
+  await expect(page).toHaveURL(/#\/mision\/1\//);
+});

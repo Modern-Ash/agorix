@@ -99,6 +99,8 @@ export function KidsApp({
 
   // Which grown-ups tab opens after the gate: a shortcut lands on the tab it is about (#1109).
   const [adultTab, setAdultTab] = useState<AdultTab>("summary");
+  // Crear can open the scene straight on the drawing canvas (own character or backdrop).
+  const [studioDraw, setStudioDraw] = useState<"costume" | "backdrop" | undefined>(undefined);
   const openAdults = (tab: AdultTab) => {
     setAdultTab(tab);
     dispatch({ type: "go", screen: "parents" });
@@ -294,6 +296,7 @@ export function KidsApp({
             progress={progress}
             readAloud={adultSettings.readAloud}
             onWorld={(world) => dispatch({ type: "pickWorld", world })}
+            onCreate={() => dispatch({ type: "go", screen: "create" })}
             onMission={(missionIndex) => dispatch({ type: "pickMission", missionIndex })}
             advancedUnlocked={advancedEntryUnlocked(projectStore)}
             advancedReactUnlocked={advancedStageUnlocked("react", projectStore)}
@@ -386,6 +389,7 @@ export function KidsApp({
             locale={state.locale}
             oriSuggestions={adultSettings.oriSuggestions}
             ageBand={ageBandsEnabled ? adultSettings.ageBand : undefined}
+            initialDraw={studioDraw}
             onBack={() => dispatch({ type: "go", screen: "create" })}
           />
         ) : state.screen === "create" ? (
@@ -397,7 +401,8 @@ export function KidsApp({
             readAloud={adultSettings.readAloud}
             onAvatar={chooseAvatar}
             onWorld={(world) => dispatch({ type: "pickWorld", world })}
-            onStudio={(characterId, backdropId) => {
+            onStudio={(characterId, backdropId, draw) => {
+              setStudioDraw(draw);
               const project = createStudioProject(
                 characterId,
                 backdropId,
