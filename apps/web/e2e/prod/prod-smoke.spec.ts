@@ -158,11 +158,16 @@ test("a fresh browser sees the creative Kids tools by default", async ({ page })
   await page.getByRole("button", { name: "Seguir" }).click();
   await page.getByRole("button", { name: "¡Empezar!" }).click();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await expect(page.getByLabel("+ Explorador")).toBeVisible();
-  await expect(page.getByLabel("+ Fondo")).toBeVisible();
+  // Crear has one entry (Escena libre); the old ¡Crear! explorer is retired (#1134), so the child's own
+  // images are added from the scene editor.
+  await expect(page.getByRole("button", { name: "Crear escena" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "¡Crear!", exact: true })).toHaveCount(0);
   await expect(page.locator(".kids-root")).toHaveAttribute("data-block-palette", "scratch");
   await expect(page.locator(".kids-root")).toHaveAttribute("data-age-band", "6-8");
   await expect(page.getByRole("button", { name: "Hablar con Ori" })).toBeVisible();
+  await page.getByRole("button", { name: "Crear escena" }).click();
+  await expect(page.getByText("Agregar disfraz desde imagen")).toBeVisible();
+  await expect(page.getByText("Agregar fondo desde imagen")).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem("agorix.kids.flags.v1"))).toBeNull();
 });
 
