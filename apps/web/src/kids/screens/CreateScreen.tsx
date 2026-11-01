@@ -37,7 +37,8 @@ interface Props {
     backdropId: KidsGalleryBackdropId,
     /** Open the drawing canvas right away, for the child's own character or backdrop. */
     draw?: "costume" | "backdrop",
-  ) => void;
+    upload?: { readonly kind: "costume" | "backdrop"; readonly dataUrl: string },
+  ) => boolean;
 }
 
 export function CreateScreen({
@@ -122,6 +123,36 @@ export function CreateScreen({
       if (kind === "explorer") setChosenAvatar({ kind: "custom", id: result.item.id });
       else setChosenWorld({ kind: "custom", id: result.item.id });
       setImageMessage(t("imageSaved"));
+    } catch (error) {
+      const code = error instanceof KidsImageError ? error.code : "decodeFailed";
+      setImageMessage(
+        t(
+          code === "unsupportedType"
+            ? "imageErrorType"
+            : code === "tooLarge"
+              ? "imageErrorSize"
+              : code === "outputTooLarge"
+                ? "imageErrorOutput"
+                : "imageErrorDecode",
+        ),
+      );
+    } finally {
+      event.target.value = "";
+    }
+  }
+
+  async function uploadSceneImage(
+    kind: "costume" | "backdrop",
+    event: ChangeEvent<HTMLInputElement>,
+  ) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await processKidsImage(file);
+      if (
+        !onStudio(selectedScene.characterId, selectedScene.backdropId, undefined, { kind, dataUrl })
+      )
+        setImageMessage(t("imageErrorQuota"));
     } catch (error) {
       const code = error instanceof KidsImageError ? error.code : "decodeFailed";
       setImageMessage(
@@ -343,6 +374,17 @@ export function CreateScreen({
           ))}
         </div>
         {customEnabled ? (
+          <label className="kids-button kids-image-file kids-create-upload">
+            {locale === "es" ? "Subir mi propio personaje" : "Upload my own character"}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              aria-label={locale === "es" ? "Subir mi propio personaje" : "Upload my own character"}
+              onChange={(event) => void uploadSceneImage("costume", event)}
+            />
+          </label>
+        ) : null}
+        {customEnabled ? (
           <button
             type="button"
             className="kids-button kids-create-upload"
@@ -476,6 +518,17 @@ export function CreateScreen({
             </button>
           ))}
         </div>
+        {customEnabled ? (
+          <label className="kids-button kids-image-file kids-create-upload">
+            {locale === "es" ? "Subir mi propio fondo" : "Upload my own backdrop"}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              aria-label={locale === "es" ? "Subir mi propio fondo" : "Upload my own backdrop"}
+              onChange={(event) => void uploadSceneImage("backdrop", event)}
+            />
+          </label>
+        ) : null}
         {customEnabled ? (
           <button
             type="button"
