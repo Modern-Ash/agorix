@@ -50,6 +50,7 @@ test("a finished run, a guess that matched and help are kept as counters, never 
   expect(state.concepts["programming.sequence"].stage).toBe(5);
 
   // Help from Ori is counted as help.
+  await page.getByRole("button", { name: "Mostrar ayuda de Ori" }).click();
   await page.getByRole("button", { name: "Pedirle una idea a Ori" }).click();
   await page.getByRole("button", { name: "Usar idea" }).click();
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
