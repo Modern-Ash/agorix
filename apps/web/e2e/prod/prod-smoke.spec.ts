@@ -245,7 +245,11 @@ test("reviewed adult account build exposes account linking without group mode", 
   await page.goto("/kids#/adultos");
   await passAdultGate(page);
   await openAdultTab(page, "Cuenta y privacidad");
-  await expect(page.getByRole("heading", { name: "Mi cuenta de adulto" })).toBeVisible();
+  // The account panel draws only after its availability check answers over the network, which can
+  // take longer than the default 5 s on the first request through the tunnel.
+  await expect(page.getByRole("heading", { name: "Mi cuenta de adulto" })).toBeVisible({
+    timeout: 20_000,
+  });
   await expect(page.getByRole("heading", { name: "Grupo en la misma sala" })).toHaveCount(0);
 });
 
