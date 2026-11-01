@@ -11,8 +11,8 @@ const GUIDANCE: Record<KidsScreen, { es: string; en: string }> = {
     en: "Choose how you want to explore. We can think together when you start creating.",
   },
   map: {
-    es: "Elegí una misión. Antes de jugar, imaginá qué harán tus bloques.",
-    en: "Choose a mission. Before playing, imagine what your blocks will do.",
+    es: "¿Ya conocés Scratch? Entrá a Crear para hacer tu escena libre. Si querés practicar paso a paso, elegí una misión del mapa. Podés cambiar de camino cuando quieras.",
+    en: "Already know Scratch? Open Create to make a free scene. If you want step-by-step practice, choose a map mission. You can switch paths whenever you like.",
   },
   create: {
     es: "Elegí un explorador y un mundo. ¿Qué te gustaría que pase ahí?",

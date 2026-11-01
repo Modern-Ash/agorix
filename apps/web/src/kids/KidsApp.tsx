@@ -59,7 +59,12 @@ import { useKidsText, type KidsText } from "./useKidsText.js";
 import { stopSpeaking } from "./speak.js";
 import { KidsOriGuide } from "./screens/KidsOriGuide.js";
 import { KidsStudioScreen } from "./screens/KidsStudioScreen.js";
-import { createStudioProject, listStudioProjects } from "./kidsStudioProjects.js";
+import {
+  addStudioArt,
+  createStudioProject,
+  deleteStudioProject,
+  listStudioProjects,
+} from "./kidsStudioProjects.js";
 
 const NAV: readonly {
   readonly screen: KidsScreen;
@@ -401,15 +406,26 @@ export function KidsApp({
             readAloud={adultSettings.readAloud}
             onAvatar={chooseAvatar}
             onWorld={(world) => dispatch({ type: "pickWorld", world })}
-            onStudio={(characterId, backdropId, draw) => {
+            onStudio={(characterId, backdropId, draw, upload) => {
+              let project: ReturnType<typeof createStudioProject> | undefined;
+              try {
+                project = createStudioProject(characterId, backdropId, state.locale, projectStore);
+                if (upload)
+                  addStudioArt(
+                    project.id,
+                    upload.kind,
+                    `actor:studio-1-${characterId}`,
+                    upload.dataUrl,
+                    state.locale,
+                    projectStore,
+                  );
+              } catch {
+                if (project) deleteStudioProject(project.id, projectStore);
+                return false;
+              }
               setStudioDraw(draw);
-              const project = createStudioProject(
-                characterId,
-                backdropId,
-                state.locale,
-                projectStore,
-              );
               dispatch({ type: "openStudio", projectId: project.id });
+              return true;
             }}
             onStart={(world, avatar) => {
               const project = createFreeProjectRef(world, avatar);

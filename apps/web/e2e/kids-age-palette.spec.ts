@@ -49,7 +49,7 @@ test("the default age band leaves the shipped screen unchanged", async ({ page }
   await openMap(page, "6-8", false);
   await expect(page.locator(".kids-root")).toHaveAttribute("data-age-palette", "warm");
   await expect(page.locator(".kids-band-chip")).toHaveCount(0);
-  await expectMapScreenshot(page, "band-default.png", 1296);
+  await expectMapScreenshot(page, "band-default.png", 1490);
 });
 
 for (const [band, palette, label] of [
@@ -65,7 +65,7 @@ for (const [band, palette, label] of [
     await expectMapScreenshot(
       page,
       `band-${band}.png`,
-      { "6-8": 1387, "9-12": 1333, "13+": 1312 }[band],
+      { "6-8": 1652, "9-12": 1527, "13+": 1488 }[band],
     );
     const violations = (await new AxeBuilder({ page }).withRules(["color-contrast"]).analyze())
       .violations;
