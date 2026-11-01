@@ -50,7 +50,7 @@ const CONCEPTS = [
 const MISSION_BLURB = [
   {
     concept: 0,
-    es: "Poné los pasos en orden para llegar a la meta.",
+    es: "Ordená los pasos para llegar a la meta.",
     en: "Put the steps in order to reach the goal.",
   },
   {
