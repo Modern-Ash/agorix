@@ -396,6 +396,9 @@ const COPY = {
     redo: "Rehacer",
     code: "Código",
     idea: "Pedirle una idea a Ori",
+    sheetOpen: "Agregar bloques",
+    sheetClose: "Cerrar bloques",
+    sheetHint: "Tocá un bloque para agregarlo a tu programa.",
     ghostNote: "Idea de Ori: todavía no está en tu programa",
     dragHint: "Arrastrá un bloque del panel hasta tu programa, o tocá el botón +.",
     moveBlock: "Arrastrar bloque",
@@ -644,6 +647,9 @@ const COPY = {
     redo: "Redo",
     code: "Code",
     idea: "Ask Ori for an idea",
+    sheetOpen: "Add blocks",
+    sheetClose: "Close blocks",
+    sheetHint: "Tap a block to add it to your program.",
     ghostNote: "Ori's idea: not in your program yet",
     dragHint: "Drag a block from the panel into your program, or tap the + button.",
     moveBlock: "Drag block",
@@ -1104,6 +1110,8 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
   // Ori's help since the last run, so a run is counted as helped or on the child's own.
   const helped = useRef(false);
   const [palette, setPalette] = useState<HTMLDivElement | null>(null);
+  // Phone only: the palette is a bottom sheet, open on entry and closable (#1110).
+  const [sheetOpen, setSheetOpen] = useState(true);
   const programRef = useRef<HTMLOListElement>(null);
   // What is under the pointer while a block is dragged: a list (with the place in it) or a character.
   const [over, setOver] = useState<string | null>(null);
@@ -2566,9 +2574,13 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
             className="kids-studio-category"
             data-category={category}
             onClick={() => {
-              const heading = document.getElementById(studioCategoryId(category));
-              heading?.scrollIntoView({ block: "start" });
-              heading?.focus({ preventScroll: true });
+              setSheetOpen(true);
+              // The sheet is hidden on a phone until it opens, so jump once it is on screen.
+              window.setTimeout(() => {
+                const heading = document.getElementById(studioCategoryId(category));
+                heading?.scrollIntoView({ block: "start" });
+                heading?.focus({ preventScroll: true });
+              }, 0);
             }}
           >
             {categoryLabel[category]}
@@ -3320,7 +3332,31 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
             </ol>
             {script?.statements.length === 0 ? <p className="kids-note">{copy.noBlocks}</p> : null}
           </div>
-          <div className="kids-studio-palette" ref={setPalette}>
+          <button
+            type="button"
+            className="kids-button kids-primary kids-studio-sheet-toggle"
+            aria-expanded={sheetOpen}
+            onClick={() => {
+              setSheetOpen((open) => !open);
+              // Opening covers the lower half: bring the program above the sheet.
+              if (!sheetOpen)
+                window.setTimeout(
+                  () =>
+                    document
+                      .querySelector(".kids-studio-program-column")
+                      ?.scrollIntoView({ block: "start" }),
+                  0,
+                );
+            }}
+          >
+            {sheetOpen ? copy.sheetClose : copy.sheetOpen}
+          </button>
+          <div
+            className="kids-studio-palette"
+            ref={setPalette}
+            data-sheet={sheetOpen ? "open" : "closed"}
+          >
+            <p className="kids-note kids-studio-sheet-hint">{copy.sheetHint}</p>
             {/* A shelf over the whole palette: it suggests where to begin and hides nothing (#1110). */}
             <section className="kids-studio-starters" aria-label={copy.starters}>
               <h3>{copy.starters}</h3>

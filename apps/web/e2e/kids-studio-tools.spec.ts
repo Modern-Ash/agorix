@@ -141,3 +141,22 @@ test("the Ori idea button shows its label next to the character", async ({ page 
   await expect(button).toBeVisible();
   expect((await button.boundingBox())!.width).toBeGreaterThan(150);
 });
+
+test("the phone palette is a bottom sheet that adds blocks, closes and reopens", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openScene(page);
+  const toggle = page.getByRole("button", { name: "Cerrar bloques" });
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  const add = page.getByRole("button", { name: /Mover/ }).first();
+  const sheet = await add.boundingBox();
+  expect(sheet!.y + sheet!.height).toBeLessThanOrEqual(844);
+  await add.click();
+  await expect(page.locator(".kids-program-block").first()).toBeVisible();
+  await toggle.click();
+  await expect(page.getByRole("button", { name: /^\+? ?Mover/ }).first()).toBeHidden();
+  await page.getByRole("button", { name: "Agregar bloques" }).click();
+  await expect(page.getByRole("button", { name: /Mover/ }).first()).toBeVisible();
+  expect((await toggle.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+});
