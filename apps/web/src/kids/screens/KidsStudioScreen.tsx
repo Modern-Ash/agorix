@@ -69,7 +69,15 @@ import {
 import { bandProfile, codeTabsForBand, type AgeBand, type CodeTab } from "../kidsAgeBand.js";
 import { TOUCH_HOLD_MS, insertIndex, isAddControl, movedFar } from "../kidsDrag.js";
 import {
+  recordKidsPrediction,
+  recordKidsProposalDecision,
+  recordKidsReflection,
+  recordKidsRevision,
+  recordKidsScaffold,
+} from "../kidsEvidence.js";
+import {
   factsOfRun,
+  judgePrediction,
   previewCandidate,
   reflectionFor,
   type CandidatePreview,
@@ -1280,6 +1288,8 @@ export function KidsStudioScreen({
   );
   // Ori's help since the last run, so a run is counted as helped or on the child's own.
   const helped = useRef(false);
+  // The last run's result, until the child edits the program: that edit is a revision (evidence).
+  const unrevisedRun = useRef<{ readonly unsuccessful: boolean } | null>(null);
   const [palette, setPalette] = useState<HTMLDivElement | null>(null);
   const paletteView = usePaletteView();
   // One-time migration: a saved full-list preference predates the contextual palette.
@@ -1819,6 +1829,16 @@ export function KidsStudioScreen({
   }
 
   function persist(next: EditorHistory, selected: string = activeActorId) {
+    if (unrevisedRun.current && JSON.stringify(next.current) !== JSON.stringify(history.current)) {
+      recordKidsRevision(
+        "sequenceChange",
+        1,
+        unrevisedRun.current.unsuccessful,
+        undefined,
+        helped.current ? "proposed" : "independent",
+      );
+      unrevisedRun.current = null;
+    }
     const nextCreative = creativeForStudio(next.current, backdropId, locale);
     const nextActive = nextCreative.actors?.some((item) => item.id === selected)
       ? selected
@@ -2540,6 +2560,17 @@ export function KidsStudioScreen({
     const reused = reusedConcepts(history.current);
     if (completed && reused.length > 0) recordMastery({ kind: "reuse", concepts: reused });
     helped.current = false;
+    unrevisedRun.current = { unsuccessful: !completed };
+    if (prediction && actor) {
+      const judged = judgePrediction(
+        prediction,
+        factsOfRun(result, activeActorId),
+        actor.name,
+        locale,
+      );
+      // The child's guess is about where the actor ends up; match is what the evidence keeps.
+      recordKidsPrediction("yes", judged.match ? "success" : "short");
+    }
     setRunCount((count) => count + 1);
   }
 
@@ -2676,6 +2707,7 @@ export function KidsStudioScreen({
   function decideOriCompound(decision: "accept" | "change" | "reject") {
     if (!compoundOri || !compoundReview) return;
     try {
+      recordKidsProposalDecision(decision === "change" ? "modify" : decision, false, false);
       if (decision === "reject") {
         rejectProposal(history.current, compoundReview);
         setCompoundOri(null);
@@ -2716,6 +2748,7 @@ export function KidsStudioScreen({
         { actorId: activeActorId, locale, program: history.current },
         oriIdea,
       );
+      recordKidsProposalDecision(decision === "change" ? "modify" : decision, false, false);
       if (decision === "reject") {
         rejectProposal(history.current, review);
         setOriIdea(null);
@@ -2868,6 +2901,7 @@ export function KidsStudioScreen({
                 try {
                   const saved = store.load(id);
                   store.save(id, saved.program, { ...saved.metadata, hintLevel: next });
+                  recordKidsScaffold("hint", Math.min(next, 5) as 1 | 2 | 3 | 4 | 5);
                   setHintLevel(next);
                 } catch {
                   setError(true);
@@ -3717,9 +3751,10 @@ export function KidsStudioScreen({
               name={actor.name}
               facts={factsOfRun(run, activeActorId)}
               predicted={predictedForRun}
-              onExplained={() =>
-                recordMastery({ kind: "explained", concepts: conceptsOfProgram(history.current) })
-              }
+              onExplained={() => {
+                recordKidsReflection("verification");
+                recordMastery({ kind: "explained", concepts: conceptsOfProgram(history.current) });
+              }}
               reflection={reflectionFor(
                 ageBand ?? "6-8",
                 factsOfRun(run, activeActorId),
