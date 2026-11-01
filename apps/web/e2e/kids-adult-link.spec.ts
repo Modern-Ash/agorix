@@ -6,8 +6,6 @@ import { passAdultGate, openAdultTab } from "./helpers.js";
 // hosts the real project API and link service. Two browser contexts play the adult's phone and the
 // child's tablet.
 test.use({ serviceWorkers: "block" });
-test.beforeEach(async ({ page }) => {
-});
 
 const PASSWORD = "correct horse battery";
 let counter = 0;

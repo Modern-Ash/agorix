@@ -5,8 +5,6 @@ import { reloadToMap, passAdultGate, BLOCKS_UNLOCKED, openAdultTab } from "./hel
 // Issue #443: scripted slice of the adversarial charter, run with every v2 flag on.
 // Any uncaught page error is a failure; each attack asserts the app still works afterwards.
 test.use({ hasTouch: true, serviceWorkers: "block" });
-test.beforeEach(async ({ page }) => {
-});
 
 const ALL_FLAGS = [...KIDS_V2_FEATURES];
 

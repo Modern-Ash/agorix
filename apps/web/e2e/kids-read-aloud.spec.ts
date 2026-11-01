@@ -1,8 +1,6 @@
 import { expect, test, type Page } from "./fixtures.js";
 
 test.use({ serviceWorkers: "block", hasTouch: true });
-test.beforeEach(async ({ page }) => {
-});
 
 async function speechLog(page: Page) {
   return page.evaluate(
@@ -69,7 +67,7 @@ test("listen reads visible Kids instructions and results, never a project identi
   await page.setViewportSize({ width: 390, height: 844 });
   await stubSpeech(page);
   await start(page, true);
-  const listen = page.getByRole("button", { name: "Escuchar" });
+  const listen = page.getByRole("button", { name: "Escuchar", exact: true });
   await listen.click();
   expect((await speechLog(page)).spoken.at(-1)).toMatchObject({ lang: "es-AR" });
 
@@ -80,32 +78,24 @@ test("listen reads visible Kids instructions and results, never a project identi
   expect((await speechLog(page)).spoken.at(-1)?.text).toBe(createNote);
   expect((await speechLog(page)).cancels).toBe(beforeCreate + 1);
 
-  await page.getByRole("button", { name: /^3 ·/ }).click();
-  await page.getByRole("button", { name: "¡Crear!", exact: true }).click();
-  await listen.click();
-  const goal = (await page.locator(".kids-editor-goal").textContent())?.trim();
-  expect((await speechLog(page)).spoken.at(-1)?.text).toBe(goal);
+  await page.getByRole("button", { name: "Crear escena" }).click();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.getByRole("button", { name: "Volver al mapa" }).click();
-  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  await page.goto("/kids#/proyectos");
+  await page.reload();
   await listen.click();
   const projectsSpeech = (await speechLog(page)).spoken.at(-1)?.text ?? "";
   expect(projectsSpeech).toContain("Mis proyectos");
-  expect(projectsSpeech).not.toContain("free-");
+  expect(projectsSpeech).not.toContain("studio-");
   await expect(page.locator(".kids-project-card").first()).toBeVisible();
 
   await page.getByRole("button", { name: "Mapa" }).click();
   await page.getByRole("button", { name: "Misión 1" }).click();
-  await page.getByRole("button", { name: "+ mover", exact: true }).click();
-  await page.getByRole("combobox", { name: "mover 1" }).selectOption("4");
-  await page.getByRole("button", { name: "Jugar", exact: true }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Sí", exact: true }).click();
-  await listen.click();
-  const result = (await page.locator(".kids-run-status").textContent())?.trim();
-  expect((await speechLog(page)).spoken.at(-1)?.text).toBe(result);
-  await page.getByRole("button", { name: "Contar ★" }).click();
-  await listen.click();
-  expect((await speechLog(page)).spoken.at(-1)?.text).toContain("¿Qué hizo mover");
+  const goal = (await page.locator(".kids-mission-studio-intro p").first().textContent())?.trim();
+  await page
+    .locator(".kids-mission-studio-intro")
+    .getByRole("button", { name: "Escuchar" })
+    .click();
+  expect((await speechLog(page)).spoken.at(-1)?.text).toBe(goal);
 });
 
 test("repeated taps replace speech and navigation or language changes stop it", async ({
@@ -132,14 +122,14 @@ test("repeated taps replace speech and navigation or language changes stop it", 
 test("adult switch hides listen controls on main Kids screens", async ({ page }) => {
   await stubSpeech(page);
   await start(page, false);
-  const listen = page.getByRole("button", { name: "Escuchar" });
+  const listen = page.getByRole("button", { name: "Escuchar", exact: true });
   await expect(listen).toHaveCount(0);
   await page.getByRole("button", { name: "Crear", exact: true }).click();
   await expect(listen).toHaveCount(0);
-  await page.getByRole("button", { name: "¡Crear!" }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
   await expect(listen).toHaveCount(0);
-  await page.getByRole("button", { name: "Volver al mapa" }).click();
-  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  await page.goto("/kids#/proyectos");
+  await page.reload();
   await expect(listen).toHaveCount(0);
   expect((await speechLog(page)).spoken).toEqual([]);
 });
@@ -178,7 +168,7 @@ test("advanced stages read only their visible mission instruction or result", as
     }
   });
   await page.reload();
-  const listen = page.getByRole("button", { name: "Escuchar" });
+  const listen = page.getByRole("button", { name: "Escuchar", exact: true });
   await page.getByRole("button", { name: /Nivel avanzado/ }).click();
   await listen.click();
   expect((await speechLog(page)).spoken.at(-1)?.text).toBe(

@@ -35,18 +35,28 @@ export async function loadKidsCatalog(
 
 let shared: Promise<KidsCatalog | undefined> | undefined;
 
-/** Read once per page load. `undefined` means the built-in missions. */
-export function useKidsCatalog(): KidsCatalog | undefined {
-  const [catalog, setCatalog] = useState<KidsCatalog | undefined>(undefined);
+/** Read once per page load. `undefined` means the built-in missions, `ready` that it is settled. */
+export function useKidsCatalogState(): {
+  readonly catalog: KidsCatalog | undefined;
+  readonly ready: boolean;
+} {
+  const [state, setState] = useState<{
+    readonly catalog: KidsCatalog | undefined;
+    readonly ready: boolean;
+  }>({ catalog: undefined, ready: false });
   useEffect(() => {
     let live = true;
     shared ??= loadKidsCatalog();
     void shared.then((value) => {
-      if (live) setCatalog(value);
+      if (live) setState({ catalog: value, ready: true });
     });
     return () => {
       live = false;
     };
   }, []);
-  return catalog;
+  return state;
+}
+
+export function useKidsCatalog(): KidsCatalog | undefined {
+  return useKidsCatalogState().catalog;
 }

@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState, type CSSProperties } from "react";
 import "@fontsource/atkinson-hyperlegible/400.css";
 import "@fontsource/atkinson-hyperlegible/700.css";
 import "@fontsource/epilogue/latin-700.css";
@@ -47,6 +47,7 @@ import {
   ensureAdvancedProject,
 } from "./kidsAdvancedProgress.js";
 import { ProjectStore } from "@agorix/persistence";
+import { useKidsCatalogState } from "./kidsCatalog.js";
 import { useKidsFlag } from "./kidsFlags.js";
 import { VerifyLanding } from "./link/VerifyLanding.js";
 import { useLinkSync } from "./link/useLinkSync.js";
@@ -476,7 +477,16 @@ function MissionStudioEntry({
   readonly onBack: () => void;
   readonly onComplete: () => void;
 }) {
-  const [sceneId] = useState(() => ensureMissionStudio(world, missionIndex, avatar, locale));
+  // The published missions set the start and goal, so the scene waits for them (or for the built-in).
+  const { catalog, ready } = useKidsCatalogState();
+  const sceneId = useMemo(
+    () =>
+      ready
+        ? ensureMissionStudio(world, missionIndex, avatar, locale, undefined, undefined, catalog)
+        : null,
+    [ready, catalog, world, missionIndex, avatar, locale],
+  );
+  if (!ready) return null;
   return sceneId ? (
     <KidsStudioScreen
       id={sceneId}
@@ -484,7 +494,7 @@ function MissionStudioEntry({
       oriSuggestions={oriSuggestions}
       readAloud={readAloud}
       ageBand={ageBand}
-      mission={{ world, index: missionIndex, onComplete }}
+      mission={{ world, index: missionIndex, catalog, onComplete }}
       onBack={onBack}
     />
   ) : (

@@ -1,18 +1,11 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "./fixtures.js";
-import { reloadToMap } from "./helpers.js";
+import { reloadToMap, solveMission } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
-async function addMove(page: Page, index: number, cells: number) {
-  await page.getByRole("button", { name: "+ mover", exact: true }).click();
-  await page.getByRole("combobox", { name: `mover ${index}` }).selectOption(String(cells));
-}
-
-async function runMission(page: Page) {
-  await page.getByRole("button", { name: "Jugar", exact: true }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Sí", exact: true }).click();
-  await expect(page.locator(".kids-run-status")).toContainText("Llegaste");
+async function finishMission(page: Page, index: 0 | 1 | 2) {
+  await solveMission(page, index);
   await page.getByRole("button", { name: "Volver al mapa" }).click();
 }
 
@@ -37,20 +30,10 @@ test("Spanish tablet journey completes authored missions and all advanced stages
   await reloadToMap(page);
   await expect(page.getByRole("button", { name: /Nivel avanzado/ })).toHaveCount(0);
 
-  await page.getByRole("button", { name: "Misión 1" }).click();
-  await addMove(page, 1, 4);
-  await runMission(page);
-  await page.getByRole("button", { name: "Misión 2" }).click();
-  await addMove(page, 1, 3);
-  await page.getByRole("button", { name: "+ girar ←" }).click();
-  await addMove(page, 3, 2);
-  await runMission(page);
-  await page.getByRole("button", { name: "Misión 3" }).click();
-  await page.getByRole("button", { name: "+ girar →" }).click();
-  await addMove(page, 2, 3);
-  await page.getByRole("button", { name: "+ girar ←" }).click();
-  await addMove(page, 4, 3);
-  await runMission(page);
+  for (const index of [0, 1, 2] as const) {
+    await page.getByRole("button", { name: `Misión ${index + 1}` }).click();
+    await finishMission(page, index);
+  }
 
   await expect(page.getByRole("button", { name: /Nivel avanzado/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /Etapa 2/ })).toHaveCount(0);

@@ -1,8 +1,6 @@
 import { expect, test } from "./fixtures.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
-test.beforeEach(async ({ page }) => {
-});
 
 test("Ori accompanies a new learner through onboarding, map, creation and editor", async ({
   page,

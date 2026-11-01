@@ -48,7 +48,7 @@ import { KidsLoopHelp } from "./KidsLoopHelp.js";
 import { KidsSceneGoalPanel } from "./KidsSceneGoalPanel.js";
 import { sceneGoalValid } from "../kidsSceneGoal.js";
 import { sceneGoalMet } from "../kidsSceneGoal.js";
-import { KIDS_MISSION_IDS, getKidsMission } from "@agorix/curriculum";
+import { KIDS_MISSION_IDS, getKidsMission, type KidsCatalog } from "@agorix/curriculum";
 import type { KidsWorld } from "../kidsState.js";
 import { speak } from "../speak.js";
 import { runMultiActorProgram, type MultiActorRunResult, type RuntimeEvent } from "@agorix/runtime";
@@ -215,6 +215,8 @@ interface Props {
   readonly mission?: {
     readonly world: KidsWorld;
     readonly index: 0 | 1 | 2;
+    /** The missions the administrator published, when they arrived (issue #616). */
+    readonly catalog?: KidsCatalog | undefined;
     readonly onComplete: () => void;
   };
 }
@@ -972,7 +974,7 @@ export function KidsStudioScreen({
 }: Props) {
   const copy = COPY[locale];
   const missionDefinition = mission
-    ? getKidsMission(KIDS_MISSION_IDS[mission.index], locale, mission.world)
+    ? getKidsMission(KIDS_MISSION_IDS[mission.index], locale, mission.world, mission.catalog)
     : null;
   const effectName = (effect: string) =>
     effect === "ghost"
@@ -1083,11 +1085,6 @@ export function KidsStudioScreen({
     try {
       const saved = store.load(id);
       store.save(id, saved.program, { ...saved.metadata, missionProgress: 1 });
-      const legacyId = `kids.${mission.world}.${KIDS_MISSION_IDS[mission.index]}`;
-      if (store.has(legacyId)) {
-        const legacy = store.load(legacyId);
-        store.save(legacyId, legacy.program, { ...legacy.metadata, missionProgress: 1 });
-      }
     } catch {
       // The completed run still counts in this session when local storage is unavailable.
     }

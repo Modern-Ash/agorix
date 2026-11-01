@@ -57,3 +57,43 @@ export async function openAdultTab(page: Page, name: string | RegExp): Promise<v
   await tab.click();
   await expect(tab).toHaveAttribute("aria-selected", "true");
 }
+
+/** Adds a block in the creative studio by opening its colour first, as a child does. */
+export async function addStudioBlock(
+  page: Page,
+  category: string,
+  label: string,
+  times = 1,
+): Promise<void> {
+  const open = page
+    .getByRole("navigation", { name: "Categorías de bloques" })
+    .getByRole("button", { name: category });
+  for (let index = 0; index < times; index += 1) {
+    await open.click();
+    await page.getByRole("button", { name: label, exact: true }).click();
+  }
+}
+
+/** The programs that reach the goal of each Map mission (one square per "+ Mover"). */
+const MISSION_SOLUTIONS: readonly (readonly (readonly [string, number])[])[] = [
+  [["+ Mover", 4]],
+  [
+    ["+ Mover", 3],
+    ["+ Girar a la izquierda", 1],
+    ["+ Mover", 2],
+  ],
+  [
+    ["+ Girar a la derecha", 1],
+    ["+ Mover", 3],
+    ["+ Girar a la izquierda", 1],
+    ["+ Mover", 3],
+  ],
+];
+
+/** Builds the winning program of a Map mission in the open studio, plays it and checks the goal. */
+export async function solveMission(page: Page, index: 0 | 1 | 2): Promise<void> {
+  for (const [label, times] of MISSION_SOLUTIONS[index]!)
+    await addStudioBlock(page, "Movimiento", label, times);
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByTestId("scene-goal-result")).toContainText("Lograste la meta");
+}

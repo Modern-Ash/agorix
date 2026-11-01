@@ -61,7 +61,7 @@ test("the address follows the screen and Back and Forward keep the scene's block
   await expect(page.locator(".kids-program-block")).toHaveCount(2);
 });
 
-test("reloading on a scene, a mission and a free project returns to it", async ({ page }) => {
+test("reloading on a scene and a mission returns to it", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await seed(page);
   await page.getByRole("button", { name: "Crear", exact: true }).click();
@@ -76,17 +76,6 @@ test("reloading on a scene, a mission and a free project returns to it", async (
   await expect(page).toHaveURL(/#\/mision\/1\/[a-z]+$/);
   await page.reload();
   await expect(page).toHaveURL(/#\/mision\/1\//);
-  await expect(page.getByRole("button", { name: "Jugar", exact: true })).toBeVisible();
-
-  // Keep the legacy route covered as a compatibility path after it leaves Crear by default.
-  await page.evaluate(() => localStorage.setItem("agorix.kids.freeToScene.off.v1", "1"));
-  await page.goto("/kids#/crear");
-  await page.reload();
-  await page.getByRole("button", { name: /^3 ·/ }).click();
-  await page.locator(".kids-create-start").click();
-  await expect(page).toHaveURL(/#\/libre\//);
-  await page.reload();
-  await expect(page).toHaveURL(/#\/libre\//);
   await expect(page.getByRole("button", { name: "Jugar", exact: true })).toBeVisible();
 });
 

@@ -12,24 +12,14 @@ import {
   type StoredProject,
 } from "@agorix/persistence";
 import { runMultiActorProgram, type RuntimeEvent } from "@agorix/runtime";
-import { validateProgram } from "@agorix/program-model";
 import { KIDS_WORLDS } from "./kidsState.js";
 import { validateControlStageProgram } from "./kidsAdvancedControlModel.js";
+import { missionSceneCompleted } from "./kidsMissionStudio.js";
 
-/** Check authored mission projects, never a star count or legacy profile marker. */
+/** Check the finished mission scenes, never a star count or legacy profile marker. */
 export function advancedEntryUnlocked(store: ProjectStore): boolean {
-  return KIDS_MISSION_IDS.every((missionId) =>
-    KIDS_WORLDS.some((world) => {
-      const id = `kids.${world}.${missionId}`;
-      if (!store.has(id)) return false;
-      try {
-        const project = store.load(id);
-        validateProgram(project.program);
-        return project.metadata.missionProgress === 1;
-      } catch {
-        return false;
-      }
-    }),
+  return KIDS_MISSION_IDS.every((_missionId, index) =>
+    KIDS_WORLDS.some((world) => missionSceneCompleted(world, index as 0 | 1 | 2, store)),
   );
 }
 

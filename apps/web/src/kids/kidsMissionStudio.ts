@@ -1,4 +1,9 @@
-import { KIDS_MISSION_IDS, getKidsMission, worldToCell } from "@agorix/curriculum";
+import {
+  KIDS_MISSION_IDS,
+  getKidsMission,
+  worldToCell,
+  type KidsCatalog,
+} from "@agorix/curriculum";
 import { ProjectStore } from "@agorix/persistence";
 import type { Locale } from "../i18n.js";
 import type { KidsAvatar, KidsWorld } from "./kidsState.js";
@@ -53,6 +58,23 @@ function savedScenes(storage: Storage): Record<string, string> {
   }
 }
 
+/** Whether the mission scene of this world was finished: the goal was reached in a run. */
+export function missionSceneCompleted(
+  world: KidsWorld,
+  missionIndex: 0 | 1 | 2,
+  store: ProjectStore = new ProjectStore(),
+  storage: Storage | undefined = browserStorage(),
+): boolean {
+  if (!storage) return false;
+  const sceneId = savedScenes(storage)[`kids.${world}.${KIDS_MISSION_IDS[missionIndex]}`];
+  if (!sceneId || !store.has(sceneId)) return false;
+  try {
+    return store.load(sceneId).metadata.missionProgress === 1;
+  } catch {
+    return false;
+  }
+}
+
 /** Resolves a scene back to its Map mission so Projects and deep links keep the goal context. */
 export function missionOfStudio(
   studioId: string,
@@ -76,9 +98,10 @@ export function ensureMissionStudio(
   locale: Locale,
   store: ProjectStore = new ProjectStore(),
   storage: Storage | undefined = browserStorage(),
+  catalog?: KidsCatalog,
 ): string | null {
   if (!storage) return null;
-  const mission = getKidsMission(KIDS_MISSION_IDS[missionIndex], locale, world);
+  const mission = getKidsMission(KIDS_MISSION_IDS[missionIndex], locale, world, catalog);
   const startX = mission.starterStage.sprite?.x;
   const startY = mission.starterStage.sprite?.y;
   const goalX = mission.starterStage.goal?.x;
