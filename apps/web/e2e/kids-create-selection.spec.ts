@@ -1,4 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
+import { resolve } from "node:path";
 import { expect, test } from "./fixtures.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
@@ -139,7 +140,7 @@ test("Crear offers drawing your own character or backdrop and opens the canvas i
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
   await page.getByRole("button", { name: "Dibujar mi propio personaje" }).click();
-  await expect(page.getByRole("heading", { name: "Escena libre" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Escena libre", exact: true })).toBeVisible();
   await expect(page.getByRole("img", { name: "Lienzo para dibujar" })).toBeVisible();
   await page.getByRole("button", { name: "Volver a Crear" }).click();
   await page.getByRole("button", { name: "Dibujar mi propio fondo" }).click();
@@ -148,4 +149,30 @@ test("Crear offers drawing your own character or backdrop and opens the canvas i
   await page.getByRole("button", { name: "Volver a Crear" }).click();
   await page.getByRole("button", { name: "Crear escena" }).click();
   await expect(page.getByRole("img", { name: "Lienzo para dibujar" })).toHaveCount(0);
+});
+
+test("Crear restores uploading a character and a backdrop into the new scene", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  const image = resolve("e2e/fixtures/kids-solid.png");
+  await page.getByLabel("Subir mi propio personaje").setInputFiles(image);
+  await expect(page.getByRole("heading", { name: "Escena libre", exact: true })).toBeVisible();
+  await expect(page.locator(".kids-studio-stage-actor .kids-art-image")).toHaveCSS(
+    "background-image",
+    /data:image\//,
+  );
+  await page.getByRole("button", { name: "Volver a Crear" }).click();
+  await page.getByLabel("Subir mi propio fondo").setInputFiles(image);
+  await expect(page.getByRole("heading", { name: "Escena libre", exact: true })).toBeVisible();
+  await expect(page.locator(".kids-studio-stage")).toHaveCSS("background-image", /data:image\//);
 });
