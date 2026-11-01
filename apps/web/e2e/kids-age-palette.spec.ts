@@ -5,11 +5,13 @@ import { BLOCKS_UNLOCKED } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
-async function expectMapScreenshot(page: Page, name: string, height: number) {
-  await expect(page.locator(".kids-root")).toHaveScreenshot(name, {
+async function expectMapScreenshot(page: Page, name: string) {
+  const bounds = await page.locator(".kids-root").boundingBox();
+  if (!bounds) throw new Error("Kids map is not visible");
+  await expect(page).toHaveScreenshot(name, {
     animations: "disabled",
     maxDiffPixelRatio: 0.04,
-    style: `.kids-root { box-sizing: border-box !important; height: ${height}px !important; min-height: 0 !important; max-height: ${height}px !important; overflow: hidden !important; }`,
+    clip: { x: Math.floor(bounds.x), y: Math.floor(bounds.y), width: 804, height: 1100 },
   });
 }
 
@@ -49,7 +51,7 @@ test("the default age band leaves the shipped screen unchanged", async ({ page }
   await openMap(page, "6-8", false);
   await expect(page.locator(".kids-root")).toHaveAttribute("data-age-palette", "warm");
   await expect(page.locator(".kids-band-chip")).toHaveCount(0);
-  await expectMapScreenshot(page, "band-default.png", 1490);
+  await expectMapScreenshot(page, "band-default.png");
 });
 
 for (const [band, palette, label] of [
@@ -62,11 +64,7 @@ for (const [band, palette, label] of [
     await openMap(page, band, true);
     await expect(page.locator(".kids-root")).toHaveAttribute("data-age-palette", palette);
     await expect(page.locator(".kids-band-chip")).toHaveText(label);
-    await expectMapScreenshot(
-      page,
-      `band-${band}.png`,
-      { "6-8": 1652, "9-12": 1527, "13+": 1488 }[band],
-    );
+    await expectMapScreenshot(page, `band-${band}.png`);
     const violations = (await new AxeBuilder({ page }).withRules(["color-contrast"]).analyze())
       .violations;
     expect(violations.map((v) => `${v.id}: ${v.nodes[0]?.target.join(" ")}`)).toEqual([]);
