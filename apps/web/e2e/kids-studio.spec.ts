@@ -83,6 +83,8 @@ test("free scene records stage pointer for mouse sensors without storing it in t
   await page.getByRole("button", { name: "+ Crear variable" }).click();
   await page.getByRole("button", { name: "+ Guardar X del ratón" }).click();
   await page.getByRole("button", { name: "+ Si el ratón está pulsado, mover 1" }).click();
+  // The bottom sheet would cover the stage the pointer test reads (#1110).
+  await page.getByRole("button", { name: "Cerrar bloques" }).click();
   const stage = page.getByRole("group", { name: "Escenario" });
   await stage.scrollIntoViewIfNeeded();
   const box = await stage.boundingBox();

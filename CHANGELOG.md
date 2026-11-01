@@ -1,5 +1,7 @@
 # Unreleased
 
+- Kids Escena libre on a phone: the block palette is a bottom sheet ("Agregar bloques" / "Cerrar bloques"), open on entry so a child can tap a block to add it and closable to see the whole stage and program; the category bar opens it and jumps to the family, and the header is more compact (#1110, slice 2: phone).
+
 - Kids Escena libre: on desktop and landscape tablet the block palette, the character's program and the stage are on screen together (the palette scrolls on its own beside the program), the header is more compact, and the "Pedirle una idea a Ori" button shows its label next to Ori instead of a crushed disc. Phone layout is unchanged (#1110, first slice: layout).
 
 - Kids: `freeToScene` is now on by default, including browsers with an older saved flag list, so Crear offers a single Escena libre entry and old `#/libre/{id}` projects open as scenes. A deliberate rollback key (`agorix.kids.freeToScene.off.v1`) turns it off; the E2E suite no longer creates ¡Crear! projects (#1134, part 2).
