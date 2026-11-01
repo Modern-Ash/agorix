@@ -1244,7 +1244,8 @@ export function KidsStudioScreen({
   // Wide screens: the blocks, the code and Ori's help are panels the child can fold away (#1110).
   const [paletteCollapsed, setPaletteCollapsed] = useState(false);
   const [codeCollapsed, setCodeCollapsed] = useState(false);
-  const [oriCollapsed, setOriCollapsed] = useState(false);
+  const [oriCollapsed, setOriCollapsed] = useState(true);
+  const [mediaTab, setMediaTab] = useState<"costumes" | "sounds">("costumes");
   const [activeCategory, setActiveCategory] = useState<StudioCategory | null>(null);
   // "focused": only the opened colour's blocks show (plus a short starter shelf); "all": the whole list.
   const paletteView = usePaletteView();
@@ -2978,7 +2979,69 @@ export function KidsStudioScreen({
               );
             })}
           </KidsBackdrop>
-          {customImagesEnabled ? (
+          <div
+            className="kids-studio-media-tabs"
+            role="group"
+            aria-label={locale === "es" ? "Medios" : "Media"}
+          >
+            <button
+              type="button"
+              className="kids-button"
+              aria-pressed={mediaTab === "costumes"}
+              onClick={() => setMediaTab("costumes")}
+            >
+              {locale === "es" ? "🎨 Disfraces y fondos" : "🎨 Costumes and backdrops"}
+            </button>
+            <button
+              type="button"
+              className="kids-button"
+              aria-pressed={mediaTab === "sounds"}
+              onClick={() => setMediaTab("sounds")}
+            >
+              {locale === "es" ? "🔊 Sonidos" : "🔊 Sounds"}
+            </button>
+          </div>
+          {mediaTab === "sounds" ? (
+            <div
+              className="kids-studio-media-content"
+              role="group"
+              aria-label={locale === "es" ? "Sonidos" : "Sounds"}
+            >
+              <label>
+                {locale === "es" ? "Sonido" : "Sound"}
+                <select
+                  value={newSound}
+                  onChange={(event) => setNewSound(event.target.value as typeof newSound)}
+                >
+                  {KIDS_SOUNDS.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item[locale]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                className="kids-button"
+                onClick={() =>
+                  void playKidsSound(newSound, {
+                    kind: "gallery",
+                    id: characterOfActor(activeActorId),
+                  })
+                }
+              >
+                {locale === "es" ? "▶ Escuchar" : "▶ Listen"}
+              </button>
+              <button
+                type="button"
+                className="kids-button"
+                onClick={() => add({ type: "playSound", soundId: newSound })}
+              >
+                {locale === "es" ? "+ Agregar al programa" : "+ Add to program"}
+              </button>
+            </div>
+          ) : null}
+          {mediaTab === "costumes" && customImagesEnabled ? (
             <div className="kids-studio-art-controls">
               <button
                 type="button"
@@ -3074,7 +3137,7 @@ export function KidsStudioScreen({
               ) : null}
             </div>
           ) : null}
-          {customImagesEnabled && drawingKind ? (
+          {mediaTab === "costumes" && customImagesEnabled && drawingKind ? (
             <KidsDrawArt
               kind={drawingKind === "costume" ? "explorer" : "backdrop"}
               locale={locale}
