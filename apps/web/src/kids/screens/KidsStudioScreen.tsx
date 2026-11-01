@@ -157,6 +157,7 @@ import {
   updateStudioArt,
   exportStudioProject,
 } from "../kidsStudioProjects.js";
+import { ExportMediaDialog } from "./ExportMediaDialog.js";
 import {
   setStudioTutorialDone,
   studioTutorialDone,
@@ -985,6 +986,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
   const [oriReaction, reactOri] = useOriReaction();
   const oriPageVisible = useOriPageVisible();
   const [error, setError] = useState(false);
+  const [exportingMedia, setExportingMedia] = useState(false);
   const customImagesEnabled = useKidsFlag("customImages");
   const [drawingKind, setDrawingKind] = useState<"costume" | "backdrop" | null>(null);
   const [editingArtId, setEditingArtId] = useState<string | null>(null);
@@ -2282,9 +2284,16 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
     }
   }
 
-  function downloadScene() {
+  function downloadScene(includeMedia = false) {
     try {
-      const blob = new Blob([exportStudioProject(id, store, false)], {
+      if (
+        !includeMedia &&
+        store.load(id).metadata.assets?.some((asset) => asset.source.startsWith("data:"))
+      ) {
+        setExportingMedia(true);
+        return;
+      }
+      const blob = new Blob([exportStudioProject(id, store, includeMedia)], {
         type: "application/json",
       });
       const url = URL.createObjectURL(blob);
@@ -2497,7 +2506,7 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
         </button>
         <h1>{copy.title}</h1>
         <div>
-          <button type="button" className="kids-button" onClick={downloadScene}>
+          <button type="button" className="kids-button" onClick={() => downloadScene()}>
             {copy.exportScene}
           </button>
           {tutorialFlag ? (
@@ -5456,6 +5465,16 @@ export function KidsStudioScreen({ id, locale, onBack, oriSuggestions, ageBand }
         <p role="alert" className="kids-note">
           {copy.saveError}
         </p>
+      ) : null}
+      {exportingMedia ? (
+        <ExportMediaDialog
+          locale={locale}
+          onConfirm={() => {
+            downloadScene(true);
+            setExportingMedia(false);
+          }}
+          onCancel={() => setExportingMedia(false)}
+        />
       ) : null}
     </section>
   );

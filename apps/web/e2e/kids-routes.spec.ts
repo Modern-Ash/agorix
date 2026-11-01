@@ -78,7 +78,10 @@ test("reloading on a scene, a mission and a free project returns to it", async (
   await expect(page).toHaveURL(/#\/mision\/1\//);
   await expect(page.getByRole("button", { name: "Jugar", exact: true })).toBeVisible();
 
+  // Keep the legacy route covered as a compatibility path after it leaves Crear by default.
+  await page.evaluate(() => localStorage.setItem("agorix.kids.freeToScene.off.v1", "1"));
   await page.goto("/kids#/crear");
+  await page.reload();
   await page
     .getByRole("button", { name: /Empezar|Crear!|¡Crear!/ })
     .first()

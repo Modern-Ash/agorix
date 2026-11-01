@@ -209,6 +209,7 @@ export function EditorScreen({
   const zoomEnabled = useKidsFlag("zoom");
   const contextMenuEnabled = useKidsFlag("contextMenu");
   const shortcutsEnabled = useKidsFlag("shortcuts");
+  const unifiedCreateEnabled = useKidsFlag("freeToScene");
   const [zoom, setZoom] = useState<ZoomLevel>(100);
   const [menu, setMenu] = useState<{
     index: number;
@@ -1130,6 +1131,13 @@ export function EditorScreen({
           </button>
         ) : null}
       </header>
+      {freeProjectId && unifiedCreateEnabled ? (
+        <p className="kids-note" role="status">
+          {locale === "es"
+            ? "Este proyecto anterior sigue aquí para conservar todo su contenido. En Crear escena está la paleta completa."
+            : "This older project stays here to keep all its content. The full palette is in Create scene."}
+        </p>
+      ) : null}
       {tutorial && coach ? (
         <KidsTutorial
           t={t}

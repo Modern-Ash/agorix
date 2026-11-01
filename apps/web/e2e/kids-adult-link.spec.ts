@@ -6,6 +6,9 @@ import { passAdultGate, openAdultTab } from "./helpers.js";
 // hosts the real project API and link service. Two browser contexts play the adult's phone and the
 // child's tablet.
 test.use({ serviceWorkers: "block" });
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("agorix.kids.freeToScene.off.v1", "1"));
+});
 
 const PASSWORD = "correct horse battery";
 let counter = 0;

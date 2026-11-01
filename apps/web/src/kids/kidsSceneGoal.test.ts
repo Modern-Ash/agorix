@@ -50,6 +50,42 @@ describe("scene goals", () => {
     expect(sceneGoalMet(goal, run([actor(NOVA, 160, 115)]))).toBe(true);
   });
 
+  it("preserves a migrated cell goal and judges it from runtime frames", () => {
+    const goal = { kind: "reachCell", actorId: NOVA, cx: 4, cy: 2 } as const;
+    expect(sceneGoalMet(goal, run([actor(NOVA, 120, 80)]))).toBe(false);
+    expect(sceneGoalMet(goal, run([actor(NOVA, 120, 80)], [actor(NOVA, 160, 80)]))).toBe(true);
+    expect(sceneGoalValid(goal, [NOVA])).toBe(true);
+    expect(sceneGoalKey(goal)).toBe(`cell:${NOVA}:4:2`);
+    expect(describeSceneGoal(goal, () => "Nova", "es")).toContain("columna 5, fila 3");
+    const jump = {
+      frames: [],
+      trace: [
+        {
+          actorId: NOVA,
+          worldBefore: { sprite: { x: 0, y: 80 } },
+          worldAfter: { sprite: { x: 200, y: 80 } },
+        },
+      ],
+    } as unknown as MultiActorRunResult;
+    expect(sceneGoalMet(goal, jump)).toBe(true);
+    const afterTurn = { ...goal, afterTurn: true } as const;
+    expect(sceneGoalMet(afterTurn, jump)).toBe(false);
+    expect(
+      sceneGoalMet(afterTurn, {
+        frames: [],
+        trace: [
+          {
+            actorId: NOVA,
+            statementType: "turn",
+            worldBefore: { sprite: { x: 0, y: 80 } },
+            worldAfter: { sprite: { x: 0, y: 80 } },
+          },
+          jump.trace[0],
+        ],
+      } as unknown as MultiActorRunResult),
+    ).toBe(true);
+  });
+
   it("is not met with no steps, even if the layout already satisfies it", () => {
     const goal = { kind: "reachEdge", actorId: NOVA } as const;
     expect(sceneGoalMet(goal, { frames: [] } as unknown as MultiActorRunResult)).toBe(false);

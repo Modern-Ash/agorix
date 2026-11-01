@@ -1,6 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 
 test.use({ serviceWorkers: "block", hasTouch: true });
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("agorix.kids.freeToScene.off.v1", "1"));
+});
 
 async function speechLog(page: Page) {
   return page.evaluate(
