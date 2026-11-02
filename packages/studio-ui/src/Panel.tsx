@@ -320,6 +320,7 @@ export function PanelDivider({
       role="separator"
       tabIndex={0}
       aria-orientation={orientation}
+      aria-valuenow={Math.round(size())}
       aria-label={copy.resize(title)}
       className={`agx-panel-divider agx-panel-divider--${orientation}${className ? ` ${className}` : ""}`}
       onPointerDown={onPointerDown}
