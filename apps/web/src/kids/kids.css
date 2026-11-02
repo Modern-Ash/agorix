@@ -3733,8 +3733,19 @@
     box-shadow: 0 6px 18px rgb(0 0 0 / 22%);
   }
   .kids-studio-header {
-    flex-wrap: nowrap;
-    gap: 6px;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .kids-studio-header .kids-hint-button {
+    padding-inline: 8px;
+  }
+  .kids-studio .kids-studio-header > h1.kids-studio-mission {
+    order: 10;
+    flex: 1 0 100%;
+  }
+  .kids-studio-header .kids-studio-menu .kids-icon-button[aria-label^="Atajos"],
+  .kids-studio-header .kids-studio-menu .kids-icon-button[aria-label^="Shortcuts"] {
+    display: none;
   }
   .kids-studio-header > div {
     display: flex;
@@ -4632,8 +4643,60 @@
   color: #46556a;
   line-height: 1.35;
 }
+.kids-studio-header {
+  position: relative;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 52px;
+}
+.kids-studio-header h1.kids-studio-mission {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 1rem;
+}
+.kids-mission-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 2px 14px;
+  overflow: hidden;
+  border: 2px solid var(--kids-border);
+  border-radius: 999px;
+  background: #f6f5ff;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.kids-mission-pill > * {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kids-mission-pill-goal {
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+.kids-hint-button {
+  flex: none;
+  min-height: 44px;
+  white-space: nowrap;
+}
 .kids-mission-studio-intro {
-  margin: 12px 0;
+  position: absolute;
+  z-index: 30;
+  top: 100%;
+  inset-inline: 0;
+  margin: 4px 0 0;
+  max-height: 60vh;
+  overflow: auto;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
   padding: 12px 16px;
   border: 2px solid var(--kids-border);
   border-radius: 16px;

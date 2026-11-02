@@ -34,6 +34,7 @@ test("a map mission uses the complete creative editor and one evaluated project"
   await page.getByRole("button", { name: "Pista 1" }).click();
   await expect(page.getByText(/^Pista 1:/)).toBeVisible();
   await page.reload();
+  await page.locator(".kids-mission-pill").click();
   await expect(page.getByText(/^Pista 1:/)).toBeVisible();
   await expect(page.getByRole("button", { name: "+ Objeto" })).toBeVisible();
   await page.goto("/kids#/proyectos");
@@ -43,7 +44,8 @@ test("a map mission uses the complete creative editor and one evaluated project"
     .filter({ hasText: "Misión 1: Camino recto" })
     .getByRole("button", { name: "Jugar" })
     .click();
-  await expect(page.getByRole("heading", { name: "Camino recto" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Camino recto/ })).toBeVisible();
+  await page.locator(".kids-mission-pill").click();
   await expect(page.getByText(/^Pista 1:/)).toBeVisible();
 });
 

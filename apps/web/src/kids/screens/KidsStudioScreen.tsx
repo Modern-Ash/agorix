@@ -995,6 +995,15 @@ export function KidsStudioScreen({
   const [sceneGoal, setSceneGoal] = useState<ProjectSceneGoal | null>(
     () => studioSceneGoal(id, store) ?? null,
   );
+  const [missionOpen, setMissionOpen] = useState(false);
+  useEffect(() => {
+    if (!missionOpen) return undefined;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMissionOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [missionOpen]);
   const [hintLevel, setHintLevel] = useState(() => store.load(id).metadata.hintLevel ?? 0);
   const missionCompleted = useRef(false);
   const [newCharacter, setNewCharacter] = useState<KidsGalleryCharacterId>("mika");
@@ -2829,7 +2838,46 @@ export function KidsStudioScreen({
             {mission ? (locale === "es" ? "Volver al mapa" : "Back to map") : copy.back}
           </span>
         </button>
-        <h1>{missionDefinition?.title ?? copy.title}</h1>
+        {missionDefinition ? (
+          <h1 className="kids-studio-mission">
+            <button
+              type="button"
+              className="kids-mission-pill"
+              aria-expanded={missionOpen}
+              aria-controls="kids-mission-popover"
+              onClick={() => setMissionOpen((open) => !open)}
+            >
+              <strong>
+                {locale === "es" ? `Misión ${mission!.index + 1}` : `Mission ${mission!.index + 1}`}
+                {" · "}
+                {missionDefinition.title}
+              </strong>
+              <span className="kids-mission-pill-goal">{missionDefinition.goal.learnerFacing}</span>
+            </button>
+          </h1>
+        ) : (
+          <h1>{copy.title}</h1>
+        )}
+        {missionDefinition && hintLevel < missionDefinition.hintLadder.length ? (
+          <button
+            type="button"
+            className="kids-button kids-hint-button"
+            onClick={() => {
+              const next = hintLevel + 1;
+              try {
+                const saved = store.load(id);
+                store.save(id, saved.program, { ...saved.metadata, hintLevel: next });
+                recordKidsScaffold("hint", Math.min(next, 5) as 1 | 2 | 3 | 4 | 5);
+                setHintLevel(next);
+                setMissionOpen(true);
+              } catch {
+                setError(true);
+              }
+            }}
+          >
+            {locale === "es" ? "Pista" : "Hint"} {hintLevel + 1}
+          </button>
+        ) : null}
         <div className="kids-studio-menu">
           <button
             type="button"
@@ -2887,54 +2935,38 @@ export function KidsStudioScreen({
             </button>
           ) : null}
         </div>
-      </header>
-      {missionDefinition ? (
-        <div className="kids-mission-studio-intro">
-          <strong>
-            {locale === "es" ? `Misión ${mission!.index + 1}` : `Mission ${mission!.index + 1}`}
-          </strong>
-          <p>{missionDefinition.goal.learnerFacing}</p>
-          {readAloud ? (
-            <button
-              type="button"
-              className="kids-button kids-listen"
-              aria-label={locale === "es" ? "Escuchar" : "Listen"}
-              onClick={() => speak(missionDefinition.goal.learnerFacing, locale)}
-            >
-              🔊 {locale === "es" ? "Escuchar" : "Listen"}
-            </button>
-          ) : null}
-          <p className="kids-note">
-            {locale === "es"
-              ? "Construí con objetos, disfraces, sonidos y todos los bloques. La misión se completa cuando tu programa llega a la meta al jugar."
-              : "Build with sprites, costumes, sounds and all blocks. The mission is complete when your program reaches the goal during play."}
-          </p>
-          {missionDefinition.hintLadder.slice(0, hintLevel).map((hint) => (
-            <p className="kids-note" key={hint.level}>
-              {locale === "es" ? "Pista" : "Hint"} {hint.level}: {hint.text}
+        {missionDefinition ? (
+          <section
+            className="kids-mission-studio-intro"
+            id="kids-mission-popover"
+            role="region"
+            aria-label={locale === "es" ? "Misión" : "Mission"}
+            hidden={!missionOpen}
+          >
+            <p>{missionDefinition.goal.learnerFacing}</p>
+            {readAloud ? (
+              <button
+                type="button"
+                className="kids-button kids-listen"
+                aria-label={locale === "es" ? "Escuchar" : "Listen"}
+                onClick={() => speak(missionDefinition.goal.learnerFacing, locale)}
+              >
+                🔊 {locale === "es" ? "Escuchar" : "Listen"}
+              </button>
+            ) : null}
+            <p className="kids-note">
+              {locale === "es"
+                ? "Construí con objetos, disfraces, sonidos y todos los bloques. La misión se completa cuando tu programa llega a la meta al jugar."
+                : "Build with sprites, costumes, sounds and all blocks. The mission is complete when your program reaches the goal during play."}
             </p>
-          ))}
-          {hintLevel < missionDefinition.hintLadder.length ? (
-            <button
-              type="button"
-              className="kids-button"
-              onClick={() => {
-                const next = hintLevel + 1;
-                try {
-                  const saved = store.load(id);
-                  store.save(id, saved.program, { ...saved.metadata, hintLevel: next });
-                  recordKidsScaffold("hint", Math.min(next, 5) as 1 | 2 | 3 | 4 | 5);
-                  setHintLevel(next);
-                } catch {
-                  setError(true);
-                }
-              }}
-            >
-              {locale === "es" ? "Pista" : "Hint"} {hintLevel + 1}
-            </button>
-          ) : null}
-        </div>
-      ) : null}
+            {missionDefinition.hintLadder.slice(0, hintLevel).map((hint) => (
+              <p className="kids-note" key={hint.level}>
+                {locale === "es" ? "Pista" : "Hint"} {hint.level}: {hint.text}
+              </p>
+            ))}
+          </section>
+        ) : null}
+      </header>
       {tutorialFlag && tutorialOpen && tutorialStep !== null ? (
         <aside className="kids-tutorial" aria-label={studioTutorialText("title", locale)}>
           <p aria-live="polite" data-testid="studio-tutorial">
