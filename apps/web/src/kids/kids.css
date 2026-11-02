@@ -3717,20 +3717,57 @@
 }
 /* Phone: the palette is a bottom sheet opened from a bar, so the stage and the program stay
    in view (#1110). Desktop and tablet keep the palette beside the program. */
-.kids-studio-sheet-toggle,
-.kids-studio-sheet-hint {
+.kids-studio-sheet-hint,
+.kids-studio-bottombar {
   display: none;
 }
 @media (max-width: 720px) {
-  .kids-studio-sheet-toggle {
-    display: inline-flex;
+  /* Bottom bar: Blocks, Costumes, Sounds and Code open sheets; the stage and the program stay
+     visible above them (#1191 2c). */
+  .kids-studio-bottombar {
     position: fixed;
-    inset: auto 12px 12px;
-    z-index: 30;
+    inset: auto 0 0;
+    z-index: 31;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    padding: 6px 8px max(6px, env(safe-area-inset-bottom));
+    border-top: 2px solid var(--kids-border);
+    background: var(--kids-panel);
+  }
+  .kids-studio-bottom-button {
+    display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: 52px;
-    box-shadow: 0 6px 18px rgb(0 0 0 / 22%);
+    min-height: 48px;
+    min-width: 0;
+    padding: 2px;
+    border: 2px solid transparent;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--kids-text);
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .kids-studio-bottom-button[aria-pressed="true"] {
+    border-color: #5d418e;
+    background: #efe8fb;
+  }
+  .kids-studio > .kids-studio-tabs {
+    display: none;
+  }
+  .kids-studio {
+    padding-bottom: 72px;
+  }
+  /* Ori floats above the bottom bar, never over it. */
+  .kids-studio-ori {
+    bottom: calc(76px + env(safe-area-inset-bottom));
+  }
+  .kids-studio-stage-column {
+    order: -1;
   }
   .kids-studio-header {
     flex-wrap: wrap;
@@ -5053,14 +5090,22 @@
 .kids-studio[data-editor-tab="sounds"] .kids-studio-categories {
   display: none;
 }
-/* Phone: the media panel still takes the whole area (the phone layout comes with #1191 2c). */
+/* Phone: Costumes and Sounds are a bottom sheet above the bar; the stage and program stay. */
 @media (max-width: 720px) {
-  .kids-studio[data-editor-tab="costumes"]
-    .kids-studio-program-column
-    > :not(.kids-studio-media-panel),
-  .kids-studio[data-editor-tab="sounds"]
-    .kids-studio-program-column
-    > :not(.kids-studio-media-panel) {
+  .kids-studio[data-editor-tab="costumes"] .kids-studio-media-panel,
+  .kids-studio[data-editor-tab="sounds"] .kids-studio-media-panel {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 29;
+    max-height: 45vh;
+    margin: 0;
+    padding: 12px 12px 76px;
+    overflow-y: auto;
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -6px 24px rgb(0 0 0 / 25%);
+  }
+  .kids-studio[data-editor-tab="costumes"] .kids-studio-program-column > .kids-studio-palette,
+  .kids-studio[data-editor-tab="sounds"] .kids-studio-program-column > .kids-studio-palette {
     display: none;
   }
 }

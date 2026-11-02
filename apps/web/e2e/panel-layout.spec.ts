@@ -106,3 +106,41 @@ for (const { width, height } of WIDTHS.filter((size) => size.width >= 768)) {
     await expect(page.locator(".kids-studio-media-panel")).toHaveCount(0);
   });
 }
+
+// Issue #1191 (2c): phone layout; the stage is on top and a bottom bar opens sheets.
+test("phone editor: stage on top, bottom bar opens Blocks, Costumes, Sounds and Code sheets", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 360, height: 740 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await reloadToMap(page);
+  await page.getByRole("button", { name: "Misión 1" }).click();
+  const bar = page.getByRole("navigation", { name: "Herramientas del editor" });
+  await expect(bar.getByRole("button")).toHaveText([/Bloques/, /Disfraces/, /Sonidos/, /Código/]);
+  const noSideways = () =>
+    page.evaluate(
+      () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+    );
+  for (const name of ["Bloques", "Disfraces", "Sonidos"]) {
+    await bar.getByRole("button", { name: new RegExp(name) }).click();
+    expect(await noSideways()).toBe(false);
+    const box = await bar.getByRole("button", { name: new RegExp(name) }).boundingBox();
+    expect(box!.height).toBeGreaterThanOrEqual(48);
+  }
+  await expect(page.locator(".kids-studio-media-panel")).toBeVisible();
+  await expect(page.locator(".kids-studio-stage").first()).toBeAttached();
+  const stage = await page.locator(".kids-studio-stage-column").boundingBox();
+  const program = await page.locator(".kids-studio-program-column").boundingBox();
+  expect(stage!.y).toBeLessThan(program!.y);
+  await bar.getByRole("button", { name: /Código/ }).click();
+  await expect(page.locator(".kids-code-strip")).toBeVisible();
+  await expect(page.locator(".kids-studio-media-panel")).toHaveCount(0);
+});

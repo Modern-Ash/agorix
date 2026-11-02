@@ -3013,6 +3013,69 @@ export function KidsStudioScreen({
           </button>
         ))}
       </div>
+      <nav
+        className="kids-studio-bottombar"
+        aria-label={locale === "es" ? "Herramientas del editor" : "Editor tools"}
+      >
+        {(
+          [
+            ["blocks", locale === "es" ? "Bloques" : "Blocks", "🧩"],
+            ["costumes", locale === "es" ? "Disfraces" : "Costumes", "🎨"],
+            ["sounds", locale === "es" ? "Sonidos" : "Sounds", "🔊"],
+            ["code", locale === "es" ? "Código" : "Code", "</>"],
+          ] as const
+        ).map(([tool, label, glyph]) => {
+          const pressed =
+            tool === "blocks"
+              ? editorTab === "code" && (paletteView === "all" ? sheetOpen : openCategory !== null)
+              : tool === "code"
+                ? false
+                : editorTab === tool;
+          return (
+            <button
+              key={tool}
+              type="button"
+              className="kids-studio-bottom-button"
+              aria-pressed={tool === "code" ? undefined : pressed}
+              onClick={() => {
+                if (tool === "blocks") {
+                  setEditorTab("code");
+                  setOriContext("actor");
+                  if (paletteView === "all")
+                    setSheetOpen((open) => (editorTab === "code" ? !open : true));
+                  else
+                    setOpenCategory(
+                      (current) =>
+                        current ??
+                        studioCategories({ pen: penEnabled, music: musicEnabled })[0] ??
+                        null,
+                    );
+                  return;
+                }
+                if (tool === "code") {
+                  setEditorTab("code");
+                  setSheetOpen(false);
+                  setCodeCollapsed(false);
+                  window.setTimeout(
+                    () =>
+                      document
+                        .querySelector(".kids-code-strip")
+                        ?.scrollIntoView({ block: "center", behavior: "auto" }),
+                    0,
+                  );
+                  return;
+                }
+                setSheetOpen(false);
+                setEditorTab(editorTab === tool ? "code" : tool);
+                setOriContext(editorTab === tool ? "actor" : tool);
+              }}
+            >
+              <span aria-hidden="true">{glyph}</span>
+              <span>{label}</span>
+            </button>
+          );
+        })}
+      </nav>
       <nav className="kids-studio-categories" aria-label={copy.categories}>
         {studioCategories({ pen: penEnabled, music: musicEnabled }).map((category) => (
           <button
@@ -4330,16 +4393,6 @@ export function KidsStudioScreen({
               </button>
             </div>
           </div>
-          {paletteView === "all" ? (
-            <button
-              type="button"
-              className="kids-button kids-primary kids-studio-sheet-toggle"
-              aria-expanded={sheetOpen}
-              onClick={() => setSheetOpen((open) => !open)}
-            >
-              {sheetOpen ? copy.sheetClose : copy.sheetOpen}
-            </button>
-          ) : null}
           <div
             id="kids-studio-block-palette"
             className="kids-studio-palette"
