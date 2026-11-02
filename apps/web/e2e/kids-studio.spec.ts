@@ -1139,7 +1139,7 @@ test("a child drags the selected character and changes its layer", async ({ page
   await page.getByRole("group", { name: "Personajes" }).getByRole("button").first().click();
   const first = page.getByRole("group", { name: "Escenario" }).getByRole("button").first();
   const before = await first.getAttribute("style");
-  await first.scrollIntoViewIfNeeded();
+  await first.evaluate((actor) => actor.scrollIntoView({ block: "center", inline: "nearest" }));
   const bounds = await first.boundingBox();
   expect(bounds).not.toBeNull();
   await page.mouse.move(bounds!.x + bounds!.width / 2, bounds!.y + bounds!.height / 2);

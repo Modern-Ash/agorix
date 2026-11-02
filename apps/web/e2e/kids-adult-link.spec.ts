@@ -49,9 +49,12 @@ async function newPage(browser: Browser): Promise<Page> {
   return context.newPage();
 }
 
-async function mailToken(page: Page): Promise<string> {
-  const response = await page.request.get("/v1/__dev/mail");
-  return ((await response.json()) as { token: string }).token;
+async function mailToken(page: Page, to: string): Promise<string> {
+  const response = await page.request.get(`/v1/__dev/mail?to=${encodeURIComponent(to)}`);
+  const body = (await response.json()) as { token?: string; to?: string };
+  expect(body.to).toBe(to);
+  expect(body.token).toBeDefined();
+  return body.token!;
 }
 
 async function signUp(page: Page, name: string, email: string) {
@@ -101,12 +104,13 @@ test("adult signs up, verifies by email, links a child tablet, sees its summary 
   await open(page);
   await openAdults(page);
   await expect(page.getByRole("heading", { name: "Cuenta de adulto y vinculación" })).toBeVisible();
-  await signUp(page, name, `${name}@example.com`);
+  const email = `${name}@example.com`;
+  await signUp(page, name, email);
   await expect(page.getByText("Revisá tu correo")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Vincular un dispositivo" })).toHaveCount(0);
 
   // The email link
-  const token = await mailToken(page);
+  const token = await mailToken(page, email);
   await page.goto(`/kids?verify=${token}`);
   await expect(page.getByRole("status").filter({ hasText: "Correo confirmado" })).toBeVisible();
   expect(page.url()).not.toContain("verify=");
@@ -298,8 +302,9 @@ test("Ori requests from a linked device never carry link data", async ({ page, b
   const name = alias();
   await open(page);
   await openAdults(page);
-  await signUp(page, name, "ori.check@example.com");
-  await page.goto(`/kids?verify=${await mailToken(page)}`);
+  const email = `${name}@example.com`;
+  await signUp(page, name, email);
+  await page.goto(`/kids?verify=${await mailToken(page, email)}`);
   await expect(page.getByRole("status").filter({ hasText: "Correo confirmado" })).toBeVisible();
   await openAdults(page);
   const refreshVerification = page.getByRole("button", { name: "Ya lo confirmé" });
@@ -384,8 +389,9 @@ test("deleting the account needs the password, removes everything and the tablet
   const name = alias();
   await open(page);
   await openAdults(page);
-  await signUp(page, name, "gone@example.com");
-  await page.goto(`/kids?verify=${await mailToken(page)}`);
+  const email = `${name}@example.com`;
+  await signUp(page, name, email);
+  await page.goto(`/kids?verify=${await mailToken(page, email)}`);
   await openAdults(page);
   await page.getByRole("button", { name: "Generar código" }).click();
   const code = (await page.getByLabel("Código de vinculación").innerText()).replace(/\s/g, "");

@@ -76,8 +76,13 @@ export function createDevBackend(options: DevBackendOptions = {}): DevBackend {
 
   return {
     async handle(request) {
-      if (request.method === "GET" && request.url === "/v1/__dev/mail") {
-        const last = [...mails].reverse().find((mail) => mail.kind === "verify-email");
+      if (request.method === "GET" && request.url.startsWith("/v1/__dev/mail")) {
+        const url = new URL(request.url, "http://localhost");
+        if (url.pathname !== "/v1/__dev/mail") return { status: 404, headers: {}, body: null };
+        const to = url.searchParams.get("to");
+        const last = [...mails]
+          .reverse()
+          .find((mail) => mail.kind === "verify-email" && (to === null || mail.to === to));
         return {
           status: 200,
           headers: { "content-type": "application/json", "cache-control": "no-store" },
