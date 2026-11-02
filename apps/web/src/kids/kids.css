@@ -3278,8 +3278,38 @@
   flex-wrap: wrap;
   gap: 0.6rem;
 }
+/* One slim menu bar, like Scratch's: back, the title, then icon tools that keep their names. */
 .kids-studio-header {
   justify-content: space-between;
+  flex-wrap: nowrap;
+  gap: 8px;
+  padding-block: 4px;
+}
+.kids-studio-header h1 {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: 1.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kids-studio-header .kids-studio-back {
+  flex: none;
+  white-space: nowrap;
+}
+.kids-studio-header > .kids-studio-menu {
+  flex: none;
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+.kids-icon-button {
+  width: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  font-size: 1.2rem;
+  line-height: 1;
 }
 .kids-studio-placement {
   margin-block: 0.75rem;
@@ -3699,13 +3729,27 @@
     box-shadow: 0 6px 18px rgb(0 0 0 / 22%);
   }
   .kids-studio-header {
-    flex-wrap: wrap;
-    gap: 8px;
+    flex-wrap: nowrap;
+    gap: 6px;
   }
   .kids-studio-header > div {
     display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
+  /* On a phone the back button is an arrow; its name stays for screen readers. */
+  .kids-studio-back-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .kids-studio-header .kids-studio-back {
+    width: 44px;
+    min-width: 44px;
+    padding: 0;
   }
   .kids-studio h1 {
     font-size: 1.5rem;
@@ -4877,4 +4921,29 @@
   .kids-studio-workspace-heading span {
     flex-basis: 100%;
   }
+}
+
+/* In the studio the first-step hint is one slim line, not a banner. */
+.kids-studio .kids-tutorial {
+  margin: 0 0 6px;
+  padding: 4px 10px;
+  border-width: 1px;
+  border-radius: 10px;
+  gap: 6px;
+}
+.kids-studio .kids-tutorial p {
+  flex: 1 1 200px;
+  font-size: 0.95rem;
+}
+
+/* On a phone the studio is one column that may shrink: the slim header must not widen it. */
+@media (max-width: 720px) {
+  .kids-studio {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.kids-studio .kids-tutorial .kids-button {
+  min-height: 36px;
+  padding: 2px 12px;
+  font-size: 0.85rem;
 }
