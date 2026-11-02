@@ -93,6 +93,7 @@ export type PanelProps = {
   readonly maximizable?: boolean;
   readonly actions?: ReactNode;
   readonly className?: string;
+  readonly style?: CSSProperties;
   readonly children: ReactNode;
 };
 
@@ -106,6 +107,7 @@ export function Panel({
   maximizable = false,
   actions,
   className,
+  style: customStyle,
   children,
 }: PanelProps) {
   const { state, dispatch, locale } = usePanelLayout(controller);
@@ -149,6 +151,7 @@ export function Panel({
   const style: CSSProperties = {
     ["--panel-accent" as string]: accent,
     ...(size !== undefined && !maximized ? { flexBasis: size, flexGrow: 0 } : {}),
+    ...customStyle,
   };
 
   return (
@@ -268,6 +271,7 @@ const DIVIDER_STEP = 16;
 /** Draggable (pointer) and keyboard-resizable divider that resizes panel `id`. */
 export function PanelDivider({
   controller,
+  className,
   id,
   title,
   orientation = "vertical",
@@ -275,6 +279,7 @@ export function PanelDivider({
   direction = 1,
 }: {
   readonly controller?: PanelLayoutController;
+  readonly className?: string;
   readonly id: string;
   readonly title: string;
   /** "vertical" divider sits between side-by-side panels and changes width. */
@@ -316,7 +321,7 @@ export function PanelDivider({
       tabIndex={0}
       aria-orientation={orientation}
       aria-label={copy.resize(title)}
-      className={`agx-panel-divider agx-panel-divider--${orientation}`}
+      className={`agx-panel-divider agx-panel-divider--${orientation}${className ? ` ${className}` : ""}`}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}

@@ -9,7 +9,17 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from "react";
-import { INITIAL_PANEL_LAYOUT, reducePanelLayout } from "@agorix/studio-ui";
+import {
+  PANEL_CSS,
+  Panel,
+  PanelDivider,
+  PanelDock,
+  loadPanelLayout,
+  panelLayoutStorageKey,
+  reducePanelLayout,
+  savePanelLayout,
+  zoomOf,
+} from "@agorix/studio-ui";
 import {
   parseAgorixProject,
   sanitizeAgorixFilename,
@@ -235,6 +245,9 @@ function PanelControls({
   onClose,
   onMaximize,
   onMove,
+  zoom,
+  onZoom,
+  onZoomReset,
 }: {
   readonly locale: Locale;
   readonly panel: PanelId;
@@ -244,6 +257,9 @@ function PanelControls({
   readonly onClose: () => void;
   readonly onMaximize: () => void;
   readonly onMove: (direction: -1 | 1) => void;
+  readonly zoom?: number;
+  readonly onZoom?: (delta: number) => void;
+  readonly onZoomReset?: () => void;
 }) {
   const panelName = t(locale, PANEL_LABEL_KEYS[panel]);
   const named = (key: MessageKey) => t(locale, key, { panel: panelName });
@@ -255,6 +271,33 @@ function PanelControls({
       <button type="button" onClick={() => onMove(1)} aria-label={named("panelShiftRight")}>
         <span aria-hidden="true">›</span>
       </button>
+      {zoom === undefined ? null : (
+        <div className="studio-panel-zoom" role="group" aria-label={`${panelName} zoom`}>
+          <button
+            type="button"
+            aria-label={`${locale === "es" ? "Alejar" : "Zoom out"} ${panelName}`}
+            disabled={zoom <= 50}
+            onClick={() => onZoom?.(-10)}
+          >
+            −
+          </button>
+          <button
+            type="button"
+            aria-label={`${locale === "es" ? "Volver" : "Reset"} ${panelName} ${locale === "es" ? "al 100 %" : "to 100%"}`}
+            onClick={onZoomReset}
+          >
+            {zoom} %
+          </button>
+          <button
+            type="button"
+            aria-label={`${locale === "es" ? "Acercar" : "Zoom in"} ${panelName}`}
+            disabled={zoom >= 200}
+            onClick={() => onZoom?.(10)}
+          >
+            +
+          </button>
+        </div>
+      )}
       <button
         type="button"
         onClick={onToggle}
@@ -2867,14 +2910,27 @@ export function App({
   const timerRef = useRef<number | undefined>();
   const [panelAreas, setPanelAreas] = useState<Record<PanelId, PanelArea>>(DEFAULT_PANEL_AREAS);
   const [collapsedPanels, setCollapsedPanels] = useState<readonly PanelId[]>([]);
-  const [closedPanels, setClosedPanels] = useState<readonly PanelId[]>([
-    "code",
-    "trace",
-    "companion",
-  ]);
   const [topbarOpen, setTopbarOpen] = useState(false);
-  const [panelLayout, dispatchPanelLayout] = useReducer(reducePanelLayout, INITIAL_PANEL_LAYOUT);
+  const [panelLayout, dispatchPanelLayout] = useReducer(reducePanelLayout, undefined, () => {
+    const loaded = loadPanelLayout("studio");
+    try {
+      if (window.localStorage.getItem(panelLayoutStorageKey("studio")) !== null) return loaded;
+    } catch {
+      // Keep the default dock when storage is unavailable.
+    }
+    return { ...loaded, minimized: ["code", "trace", "companion"] };
+  });
+  const closedPanels = panelLayout.minimized;
   const maximizedPanel = panelLayout.maximized as PanelId | undefined;
+  useEffect(() => savePanelLayout("studio", panelLayout), [panelLayout]);
+  useEffect(() => {
+    if (maximizedPanel === undefined) return;
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") dispatchPanelLayout({ type: "restoreMaximized" });
+    };
+    document.addEventListener("keydown", onEscape);
+    return () => document.removeEventListener("keydown", onEscape);
+  }, [maximizedPanel]);
   const [aiStatus, setAiStatus] = useState<AiStatus>("connecting");
   useEffect(() => {
     let cancelled = false;
@@ -4159,20 +4215,16 @@ export function App({
   }
 
   function closePanel(panel: PanelId) {
-    setClosedPanels((current) => (current.includes(panel) ? current : [...current, panel]));
-    if (panelLayout.maximized === panel) {
-      dispatchPanelLayout({ type: "restoreMaximized" });
-    }
+    dispatchPanelLayout({ type: "minimize", id: panel });
   }
 
   function restorePanel(panel: PanelId) {
-    setClosedPanels((current) => current.filter((item) => item !== panel));
+    dispatchPanelLayout({ type: "restore", id: panel });
     setCollapsedPanels((current) => current.filter((item) => item !== panel));
   }
 
   function toggleMaximizedPanel(panel: PanelId) {
     setCollapsedPanels((current) => current.filter((item) => item !== panel));
-    setClosedPanels((current) => current.filter((item) => item !== panel));
     dispatchPanelLayout({ type: "toggleMaximize", id: panel });
   }
 
@@ -4208,6 +4260,13 @@ export function App({
         onClose={() => closePanel(panel)}
         onMaximize={() => toggleMaximizedPanel(panel)}
         onMove={(direction) => movePanel(panel, direction)}
+        {...(panel === "program" || panel === "stage"
+          ? {
+              zoom: zoomOf(panelLayout, panel),
+              onZoom: (delta: number) => dispatchPanelLayout({ type: "zoomBy", id: panel, delta }),
+              onZoomReset: () => dispatchPanelLayout({ type: "zoomReset", id: panel }),
+            }
+          : {})}
       />
     );
   }
@@ -4219,7 +4278,10 @@ export function App({
       className: `${baseClassName} resizable-panel${isCollapsed ? " panel-collapsed" : ""}${
         isMaximized ? " panel-maximized" : ""
       }`,
-      style: { gridArea: panelAreas[panel] },
+      style: {
+        gridArea: panelAreas[panel],
+        ["--studio-panel-zoom" as string]: zoomOf(panelLayout, panel) / 100,
+      },
     };
   }
 
@@ -4397,6 +4459,7 @@ export function App({
       data-trace-open={closedPanels.includes("trace") ? "false" : "true"}
       data-companion-open={closedPanels.includes("companion") ? "false" : "true"}
     >
+      <style>{PANEL_CSS}</style>
       <header className={topbarOpen ? "topbar topbar-open" : "topbar"}>
         <div className="brand-lockup">
           <div className="brand-identity" aria-label="Agorix">
@@ -4655,7 +4718,15 @@ export function App({
         </article>
       </section>
 
-      <div className="learning-layout">
+      <div
+        className="learning-layout"
+        style={{
+          ["--studio-program-width" as string]:
+            panelLayout.sizes.program === undefined
+              ? undefined
+              : `min(${panelLayout.sizes.program}px, calc(100% - 732px))`,
+        }}
+      >
         {closedPanels.includes("stage") ? null : (
           <StageView
             world={world}
@@ -4867,20 +4938,24 @@ export function App({
         )}
 
         {closedPanels.includes("program") ? null : (
-          <section
+          <Panel
+            controller={{ state: panelLayout, dispatch: dispatchPanelLayout, locale }}
+            id="program"
+            title={
+              activeScript === undefined
+                ? t(locale, "whenRun")
+                : scriptLabelFor(activeScript, locale)
+            }
+            accent="#2563eb"
             className={panelProps("program", "program-panel").className}
             style={panelProps("program", "program-panel").style}
-            aria-labelledby="workspace-title"
+            actions={
+              <>
+                <span>{t(locale, "blockCount", { count: activeScriptBlockCount })}</span>
+                {panelControls("program")}
+              </>
+            }
           >
-            <div className="panel-heading">
-              <h2 id="workspace-title">
-                {activeScript === undefined
-                  ? t(locale, "whenRun")
-                  : scriptLabelFor(activeScript, locale)}
-              </h2>
-              <span>{t(locale, "blockCount", { count: activeScriptBlockCount })}</span>
-              {panelControls("program")}
-            </div>
             <div className="script-switcher" aria-label={t(locale, "eventScriptsLabel")}>
               {model.workspace.scripts.map((script, index) => (
                 <button
@@ -4966,7 +5041,19 @@ export function App({
               {renderWorkspaceBlocks()}
               <GhostAddedBlocks texts={ghostMarks.added} locale={locale} />
             </div>
-          </section>
+          </Panel>
+        )}
+
+        {closedPanels.includes("program") || closedPanels.includes("stage") ? null : (
+          <PanelDivider
+            controller={{ state: panelLayout, dispatch: dispatchPanelLayout, locale }}
+            className="studio-program-divider"
+            id="program"
+            title={t(locale, PANEL_LABEL_KEYS.program)}
+            size={() =>
+              document.querySelector(".program-panel")?.getBoundingClientRect().width ?? 420
+            }
+          />
         )}
 
         {closedPanels.includes("companion") ? null : (
@@ -5185,6 +5272,10 @@ export function App({
           </aside>
         )}
       </div>
+      <PanelDock
+        controller={{ state: panelLayout, dispatch: dispatchPanelLayout, locale }}
+        panels={PANEL_AREAS.map((id) => ({ id, title: t(locale, PANEL_LABEL_KEYS[id]) }))}
+      />
       {!stepping || activeTrace === undefined ? null : (
         <StepCard
           item={activeTrace}
