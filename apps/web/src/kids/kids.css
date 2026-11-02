@@ -1587,6 +1587,29 @@
 .kids-ori-guide-above-nav {
   bottom: calc(88px + env(safe-area-inset-bottom));
 }
+.kids-nav:has(.kids-ori-guide-docked) {
+  z-index: 60;
+}
+.kids-nav:has(.kids-ori-guide-docked) .kids-nav-button {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.kids-ori-guide-zone.kids-ori-guide-docked {
+  position: static;
+  flex: 0 0 52px;
+}
+.kids-ori-guide-docked .kids-ori-float-trigger {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  min-height: 56px;
+  padding: 2px;
+  border-radius: 12px;
+  box-shadow: none;
+}
+.kids-ori-guide-docked .kids-ori-float-trigger > span:last-child {
+  display: none;
+}
 .kids-ori-guide-message {
   margin: 0;
   color: var(--kids-text);

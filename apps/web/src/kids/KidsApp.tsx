@@ -431,7 +431,10 @@ export function KidsApp({
           </section>
         )}
       </main>
-      {adultSettings.oriSuggestions && state.screen !== "editor" && state.screen !== "studio" ? (
+      {adultSettings.oriSuggestions &&
+      state.screen !== "editor" &&
+      state.screen !== "studio" &&
+      state.screen !== "map" ? (
         <KidsOriGuide screen={state.screen} locale={state.locale} aboveNav={showNav} />
       ) : null}
       {showNav ? (
@@ -452,6 +455,9 @@ export function KidsApp({
               <span>{t(item.label)}</span>
             </button>
           ))}
+          {state.screen === "map" && adultSettings.oriSuggestions ? (
+            <KidsOriGuide screen="map" locale={state.locale} aboveNav={false} docked />
+          ) : null}
         </nav>
       ) : null}
     </div>

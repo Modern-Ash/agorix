@@ -70,6 +70,30 @@ test("the map shows stars, concept states and mission locks from saved progress"
   await expect(page.getByRole("button", { name: "Misión 2" })).toBeDisabled();
 });
 
+test("Ori lives in the map's bottom navigation without covering missions", async ({ page }) => {
+  for (const width of [360, 768, 1280]) {
+    await page.setViewportSize({ width, height: 844 });
+    await seed(page, SEEDED);
+    const nav = page.locator(".kids-nav");
+    const ori = nav.getByRole("button", { name: "Hablar con Ori" });
+    await expect(ori).toBeVisible();
+    const navBox = await nav.boundingBox();
+    const oriBox = await ori.boundingBox();
+    expect(oriBox!.y).toBeGreaterThanOrEqual(navBox!.y);
+    expect(oriBox!.y + oriBox!.height).toBeLessThanOrEqual(navBox!.y + navBox!.height + 1);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      width,
+    );
+    await ori.click();
+    await expect(page.getByRole("dialog", { name: "Ori te acompaña" })).toBeVisible();
+    await page
+      .getByRole("dialog", { name: "Ori te acompaña" })
+      .getByRole("button", { name: "Cerrar" })
+      .click();
+    await expect(page.getByRole("dialog", { name: "Ori te acompaña" })).toHaveCount(0);
+  }
+});
+
 test("a locked mission cannot be opened and the current one opens the editor", async ({ page }) => {
   await seed(page, SEEDED);
   await expect(page.getByRole("button", { name: "Misión 3" })).toBeDisabled();
