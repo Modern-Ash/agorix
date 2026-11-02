@@ -3603,18 +3603,49 @@
   }
   /* Scratch-like arrangement: category rail, blocks, program, and the stage on the right. */
   .kids-studio {
-    grid-template-columns: 92px minmax(0, 1fr);
+    grid-template-columns: 68px 92px minmax(0, 1fr);
     column-gap: 12px;
   }
   .kids-studio > * {
     grid-column: 1 / -1;
   }
+  /* Activity bar (68 px): Code, Costumes and Sounds switch the left drawer (#1191 2b). */
   .kids-studio > .kids-studio-tabs {
-    grid-column: 1 / -1;
-    grid-row: 3;
+    grid-column: 1;
+    grid-row: 4;
+    position: sticky;
+    top: 8px;
+    align-self: start;
+    flex-direction: column;
+    align-items: stretch;
+    width: 68px;
+    gap: 6px;
+    border-bottom: 0;
+  }
+  .kids-studio > .kids-studio-tabs .kids-studio-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-height: 64px;
+    padding: 4px 2px;
+    border: 2px solid var(--kids-border);
+    border-radius: 12px;
+    font-size: 0.75rem;
+    margin-bottom: 0;
+    box-shadow: none;
+  }
+  .kids-studio > .kids-studio-tabs .kids-studio-tab[aria-selected="true"] {
+    margin-bottom: 0;
+    box-shadow: none;
+  }
+  .kids-studio[data-editor-tab="costumes"] > .kids-studio-layout,
+  .kids-studio[data-editor-tab="sounds"] > .kids-studio-layout {
+    grid-column: 2 / -1;
   }
   .kids-studio > .kids-studio-categories {
-    grid-column: 1;
+    grid-column: 2;
     grid-row: 4;
     position: sticky;
     top: 8px;
@@ -3627,7 +3658,7 @@
     overflow-y: auto;
   }
   .kids-studio > .kids-studio-layout {
-    grid-column: 2;
+    grid-column: 3;
     grid-row: 4;
   }
   .kids-studio-category {
@@ -3714,6 +3745,92 @@
     margin: 0;
     padding-right: 0.4rem;
   }
+}
+@media (min-width: 900px) {
+  .kids-studio > .kids-studio-ori-rail {
+    grid-column: 1;
+    grid-row: 4;
+    align-self: end;
+    position: sticky;
+    bottom: 8px;
+    z-index: 3;
+    width: 68px;
+    min-height: 48px;
+    padding: 4px;
+  }
+}
+/* The activity rail stays vertical on tablets and desktops. */
+@media (min-width: 721px) and (max-width: 899px) {
+  .kids-studio {
+    grid-template-columns: 68px minmax(0, 1fr);
+    column-gap: 10px;
+  }
+  .kids-studio > * {
+    grid-column: 1 / -1;
+  }
+  .kids-studio > .kids-studio-tabs {
+    grid-column: 1;
+    grid-row: 4;
+    position: sticky;
+    top: 8px;
+    align-self: start;
+    flex-direction: column;
+    width: 68px;
+    gap: 6px;
+    border-bottom: 0;
+  }
+  .kids-studio > .kids-studio-tabs .kids-studio-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 64px;
+    padding: 4px 2px;
+    border: 2px solid var(--kids-border);
+    border-radius: 12px;
+    font-size: 0.75rem;
+    margin-bottom: 0;
+    box-shadow: none;
+  }
+  .kids-studio > .kids-studio-ori-rail {
+    grid-column: 1;
+    grid-row: 4;
+    align-self: end;
+    position: sticky;
+    bottom: 8px;
+    z-index: 3;
+    width: 68px;
+    min-height: 48px;
+    padding: 4px;
+  }
+  .kids-studio > .kids-studio-layout {
+    grid-column: 2;
+    grid-row: 4;
+  }
+  .kids-studio > .kids-studio-categories {
+    grid-column: 2;
+    grid-row: 3;
+  }
+}
+@media (min-width: 721px) {
+  .kids-studio-layout[data-stage-minimized="true"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.kids-studio-stage-column[hidden] {
+  display: none;
+}
+.kids-stage-dock {
+  grid-column: 1 / -1;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 2px solid #5d418e;
+  border-radius: 12px;
+  background: #efe8fb;
+  color: #332554;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
 }
 /* Phone: the palette is a bottom sheet opened from a bar, so the stage and the program stay
    in view (#1110). Desktop and tablet keep the palette beside the program. */
@@ -5247,5 +5364,11 @@
     flex: 1 1 0;
     padding-inline: 6px;
     font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 720px) {
+  .kids-studio-ori-rail {
+    display: none;
   }
 }

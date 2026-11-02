@@ -1151,6 +1151,7 @@ export function KidsStudioScreen({
   }, [blockMenu]);
   // The stage fills the screen so a child can see and play it large; Escape or the button ends it.
   const [stageLarge, setStageLarge] = useState(false);
+  const [stageMinimized, setStageMinimized] = useState(false);
   const [programZoom, setProgramZoom] = useState(100);
   useEffect(() => {
     if (!stageLarge) return;
@@ -3013,6 +3014,16 @@ export function KidsStudioScreen({
           </button>
         ))}
       </div>
+      {oriSuggestions ? (
+        <button
+          type="button"
+          className="kids-studio-ori-rail kids-button"
+          aria-label={locale === "es" ? "Abrir Ori" : "Open Ori"}
+          onClick={() => openOri("actor")}
+        >
+          <span aria-hidden="true">✦</span> Ori
+        </button>
+      ) : null}
       <nav
         className="kids-studio-bottombar"
         aria-label={locale === "es" ? "Herramientas del editor" : "Editor tools"}
@@ -3201,8 +3212,24 @@ export function KidsStudioScreen({
           </button>
         </div>
       ) : null}
-      <div className="kids-studio-layout">
-        <div className="kids-studio-stage-column" data-large={stageLarge ? "true" : undefined}>
+      <div
+        className="kids-studio-layout"
+        data-stage-minimized={stageMinimized ? "true" : undefined}
+      >
+        {stageMinimized ? (
+          <button
+            type="button"
+            className="kids-stage-dock"
+            onClick={() => setStageMinimized(false)}
+          >
+            {locale === "es" ? "Restaurar escenario" : "Restore stage"}
+          </button>
+        ) : null}
+        <div
+          className="kids-studio-stage-column"
+          data-large={stageLarge ? "true" : undefined}
+          hidden={stageMinimized}
+        >
           <div className="kids-studio-stage-heading">
             <h2 className="kids-sr-only">{copy.stage}</h2>
             <div className="kids-run-controls">
@@ -3245,6 +3272,18 @@ export function KidsStudioScreen({
                 <span className="kids-sr-only">{copy.step}</span>
               </button>
             </div>
+            <button
+              type="button"
+              className="kids-button kids-icon-button kids-stage-minimize"
+              aria-label={locale === "es" ? "Minimizar escenario" : "Minimize stage"}
+              title={locale === "es" ? "Minimizar escenario" : "Minimize stage"}
+              onClick={() => {
+                setStageLarge(false);
+                setStageMinimized(true);
+              }}
+            >
+              <span aria-hidden="true">−</span>
+            </button>
             <div
               className="kids-stage-view"
               role="group"

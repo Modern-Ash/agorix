@@ -107,6 +107,36 @@ for (const { width, height } of WIDTHS.filter((size) => size.width >= 768)) {
   });
 }
 
+test("activity rail is vertical on tablet and desktop; the stage can be docked and restored", async ({
+  page,
+}) => {
+  for (const width of [768, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/kids");
+    await page.evaluate(() => {
+      localStorage.clear();
+      localStorage.setItem("agorix.locale", "es");
+      localStorage.setItem(
+        "agorix.kids.progress.v1",
+        JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+      );
+    });
+    await reloadToMap(page);
+    await page.getByRole("button", { name: "Misión 1" }).click();
+    const rail = await page.locator(".kids-studio-tabs").boundingBox();
+    const layout = await page.locator(".kids-studio-layout").boundingBox();
+    expect(rail!.width).toBeLessThanOrEqual(70);
+    expect(rail!.x + rail!.width).toBeLessThanOrEqual(layout!.x + 1);
+    await page.getByRole("button", { name: "Minimizar escenario" }).click();
+    await expect(page.locator(".kids-studio-stage-column")).toBeHidden();
+    await page.getByRole("button", { name: "Restaurar escenario" }).click();
+    await expect(page.locator(".kids-studio-stage-column")).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)).toBe(
+      false,
+    );
+  }
+});
+
 // Issue #1191 (2c): phone layout; the stage is on top and a bottom bar opens sheets.
 test("phone editor: stage on top, bottom bar opens Blocks, Costumes, Sounds and Code sheets", async ({
   page,
@@ -140,6 +170,16 @@ test("phone editor: stage on top, bottom bar opens Blocks, Costumes, Sounds and 
   const stage = await page.locator(".kids-studio-stage-column").boundingBox();
   const program = await page.locator(".kids-studio-program-column").boundingBox();
   expect(stage!.y).toBeLessThan(program!.y);
+  await page.getByRole("button", { name: "Minimizar escenario" }).click();
+  await expect(page.locator(".kids-studio-stage-column")).toBeHidden();
+  await expect(page.locator(".kids-program-zone").first()).toBeVisible();
+  await page.getByRole("button", { name: "Restaurar escenario" }).click();
+  await expect(page.locator(".kids-studio-stage-column")).toBeVisible();
+  await page.getByRole("button", { name: "Agrandar escenario" }).click();
+  await expect(page.locator(".kids-studio-stage-column")).toHaveAttribute("data-large", "true");
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".kids-studio-stage-column")).not.toHaveAttribute("data-large", "true");
+  expect(await noSideways()).toBe(false);
   await bar.getByRole("button", { name: /Código/ }).click();
   await expect(page.locator(".kids-code-strip")).toBeVisible();
   await expect(page.locator(".kids-studio-media-panel")).toHaveCount(0);
