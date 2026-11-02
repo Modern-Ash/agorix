@@ -1256,6 +1256,13 @@
     animation: kids-ori-heartbeat 1.1s ease-in-out infinite;
   }
 }
+@media (prefers-reduced-motion: reduce) {
+  .kids-ori-face,
+  .kids-ori-face * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
 @keyframes kids-ori-floatY {
   0%,
   100% {
@@ -3603,18 +3610,49 @@
   }
   /* Scratch-like arrangement: category rail, blocks, program, and the stage on the right. */
   .kids-studio {
-    grid-template-columns: 92px minmax(0, 1fr);
+    grid-template-columns: 68px 92px minmax(0, 1fr);
     column-gap: 12px;
   }
   .kids-studio > * {
     grid-column: 1 / -1;
   }
+  /* Activity bar (68 px): Code, Costumes and Sounds switch the left drawer (#1191 2b). */
   .kids-studio > .kids-studio-tabs {
-    grid-column: 1 / -1;
-    grid-row: 3;
+    grid-column: 1;
+    grid-row: 4;
+    position: sticky;
+    top: 8px;
+    align-self: start;
+    flex-direction: column;
+    align-items: stretch;
+    width: 68px;
+    gap: 6px;
+    border-bottom: 0;
+  }
+  .kids-studio > .kids-studio-tabs .kids-studio-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-height: 64px;
+    padding: 4px 2px;
+    border: 2px solid var(--kids-border);
+    border-radius: 12px;
+    font-size: 0.75rem;
+    margin-bottom: 0;
+    box-shadow: none;
+  }
+  .kids-studio > .kids-studio-tabs .kids-studio-tab[aria-selected="true"] {
+    margin-bottom: 0;
+    box-shadow: none;
+  }
+  .kids-studio[data-editor-tab="costumes"] > .kids-studio-layout,
+  .kids-studio[data-editor-tab="sounds"] > .kids-studio-layout {
+    grid-column: 2 / -1;
   }
   .kids-studio > .kids-studio-categories {
-    grid-column: 1;
+    grid-column: 2;
     grid-row: 4;
     position: sticky;
     top: 8px;
@@ -3627,7 +3665,7 @@
     overflow-y: auto;
   }
   .kids-studio > .kids-studio-layout {
-    grid-column: 2;
+    grid-column: 3;
     grid-row: 4;
   }
   .kids-studio-category {
@@ -3704,7 +3742,7 @@
   .kids-studio-program-column > * {
     grid-column: 2;
   }
-  .kids-studio-program-column > .kids-studio-palette {
+  .kids-studio-program-column > .kids-studio-blocks-panel {
     grid-column: 1;
     grid-row: 1 / span 40;
     position: sticky;
@@ -3715,26 +3753,148 @@
     padding-right: 0.4rem;
   }
 }
+@media (min-width: 900px) {
+  .kids-studio > .kids-studio-ori-rail {
+    grid-column: 1;
+    grid-row: 4;
+    align-self: end;
+    position: sticky;
+    bottom: 8px;
+    z-index: 3;
+    width: 68px;
+    min-height: 48px;
+    padding: 4px;
+  }
+}
+/* The activity rail stays vertical on tablets and desktops. */
+@media (min-width: 721px) and (max-width: 899px) {
+  .kids-studio {
+    grid-template-columns: 68px minmax(0, 1fr);
+    column-gap: 10px;
+  }
+  .kids-studio > * {
+    grid-column: 1 / -1;
+  }
+  .kids-studio > .kids-studio-tabs {
+    grid-column: 1;
+    grid-row: 4;
+    position: sticky;
+    top: 8px;
+    align-self: start;
+    flex-direction: column;
+    width: 68px;
+    gap: 6px;
+    border-bottom: 0;
+  }
+  .kids-studio > .kids-studio-tabs .kids-studio-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 64px;
+    padding: 4px 2px;
+    border: 2px solid var(--kids-border);
+    border-radius: 12px;
+    font-size: 0.75rem;
+    margin-bottom: 0;
+    box-shadow: none;
+  }
+  .kids-studio > .kids-studio-ori-rail {
+    grid-column: 1;
+    grid-row: 4;
+    align-self: end;
+    position: sticky;
+    bottom: 8px;
+    z-index: 3;
+    width: 68px;
+    min-height: 48px;
+    padding: 4px;
+  }
+  .kids-studio > .kids-studio-layout {
+    grid-column: 2;
+    grid-row: 4;
+  }
+  .kids-studio > .kids-studio-categories {
+    grid-column: 2;
+    grid-row: 3;
+  }
+}
+@media (min-width: 721px) {
+  .kids-studio-layout[data-stage-minimized="true"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.kids-studio-stage-column[hidden] {
+  display: none;
+}
 /* Phone: the palette is a bottom sheet opened from a bar, so the stage and the program stay
    in view (#1110). Desktop and tablet keep the palette beside the program. */
-.kids-studio-sheet-toggle,
-.kids-studio-sheet-hint {
+.kids-studio-sheet-hint,
+.kids-studio-bottombar {
   display: none;
 }
 @media (max-width: 720px) {
-  .kids-studio-sheet-toggle {
-    display: inline-flex;
+  /* Bottom bar: Blocks, Costumes, Sounds and Code open sheets; the stage and the program stay
+     visible above them (#1191 2c). */
+  .kids-studio-bottombar {
     position: fixed;
-    inset: auto 12px 12px;
-    z-index: 30;
+    inset: auto 0 0;
+    z-index: 31;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    padding: 6px 8px max(6px, env(safe-area-inset-bottom));
+    border-top: 2px solid var(--kids-border);
+    background: var(--kids-panel);
+  }
+  .kids-studio-bottom-button {
+    display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: 52px;
-    box-shadow: 0 6px 18px rgb(0 0 0 / 22%);
+    min-height: 48px;
+    min-width: 0;
+    padding: 2px;
+    border: 2px solid transparent;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--kids-text);
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .kids-studio-bottom-button[aria-pressed="true"] {
+    border-color: #5d418e;
+    background: #efe8fb;
+  }
+  .kids-studio > .kids-studio-tabs {
+    display: none;
+  }
+  .kids-studio {
+    padding-bottom: 72px;
+  }
+  /* Ori floats above the bottom bar, never over it. */
+  .kids-studio-ori {
+    bottom: calc(76px + env(safe-area-inset-bottom));
+  }
+  .kids-studio-stage-column {
+    order: -1;
   }
   .kids-studio-header {
-    flex-wrap: nowrap;
-    gap: 6px;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .kids-studio-header .kids-hint-button {
+    padding-inline: 8px;
+  }
+  .kids-studio .kids-studio-header > h1.kids-studio-mission {
+    order: 10;
+    flex: 1 0 100%;
+  }
+  .kids-studio-header .kids-studio-menu .kids-icon-button[aria-label^="Atajos"],
+  .kids-studio-header .kids-studio-menu .kids-icon-button[aria-label^="Shortcuts"] {
+    display: none;
   }
   .kids-studio-header > div {
     display: flex;
@@ -4055,19 +4215,6 @@
   color: #3d2c00;
 }
 
-/* Enlarged stage: the whole stage column covers the screen; Escape or its button returns (#1110). */
-.kids-studio-stage-column[data-large="true"] {
-  position: fixed;
-  inset: 0;
-  z-index: 40;
-  overflow-y: auto;
-  padding: 12px 16px 24px;
-  background: var(--kids-bg-solid, #f4f6f5);
-}
-.kids-studio-stage-column[data-large="true"] .kids-studio-stage {
-  width: min(100%, calc((100vh - 170px) * 20 / 13));
-  margin-inline: auto;
-}
 .kids-studio-stage-zoom {
   justify-self: start;
 }
@@ -4300,7 +4447,7 @@
 @media (min-width: 900px) {
   .kids-studio > .kids-studio-categories,
   .kids-studio-stage-column,
-  .kids-studio-program-column > .kids-studio-palette,
+  .kids-studio-program-column > .kids-studio-blocks-panel,
   .kids-studio-panel,
   .kids-studio-ori {
     padding: 12px;
@@ -4327,7 +4474,8 @@
     background: #efe8fb;
   }
   .kids-studio-program-column
-    > .kids-studio-palette[data-collapsed="true"]
+    > .kids-studio-blocks-panel
+    .kids-studio-palette[data-collapsed="true"]
     > :not(.kids-studio-panel-head) {
     display: none;
   }
@@ -4528,7 +4676,10 @@
   .kids-studio-program-column:has(.kids-studio-palette[data-contextual="true"]) > * {
     grid-column: 1;
   }
-  .kids-studio-program-column > .kids-studio-palette[data-contextual="true"][data-open="true"] {
+  .kids-studio-program-column
+    > .kids-studio-blocks-panel:has(
+      .kids-studio-palette[data-contextual="true"][data-open="true"]
+    ) {
     position: fixed;
     grid-column: auto;
     grid-row: auto;
@@ -4632,8 +4783,60 @@
   color: #46556a;
   line-height: 1.35;
 }
+.kids-studio-header {
+  position: relative;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 52px;
+}
+.kids-studio-header h1.kids-studio-mission {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 1rem;
+}
+.kids-mission-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 2px 14px;
+  overflow: hidden;
+  border: 2px solid var(--kids-border);
+  border-radius: 999px;
+  background: #f6f5ff;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.kids-mission-pill > * {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kids-mission-pill-goal {
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+.kids-hint-button {
+  flex: none;
+  min-height: 44px;
+  white-space: nowrap;
+}
 .kids-mission-studio-intro {
-  margin: 12px 0;
+  position: absolute;
+  z-index: 30;
+  top: 100%;
+  inset-inline: 0;
+  margin: 4px 0 0;
+  max-height: 60vh;
+  overflow: auto;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
   padding: 12px 16px;
   border: 2px solid var(--kids-border);
   border-radius: 16px;
@@ -4875,9 +5078,6 @@
     background: #fff;
   }
 }
-.kids-studio-stage-column[data-large="true"] {
-  max-height: none;
-}
 @media (min-width: 900px) {
   .kids-studio-program-column .kids-program-zone > .kids-program-stack {
     min-height: max(500px, calc(100dvh - 280px));
@@ -4898,10 +5098,10 @@
   }
   .kids-studio-layout:has(.kids-studio-palette[data-contextual="true"])
     .kids-studio-program-column {
-    order: 1;
+    order: 2;
   }
   .kids-studio-layout:has(.kids-studio-palette[data-contextual="true"]) .kids-studio-stage-column {
-    order: 2;
+    order: 1;
   }
   .kids-studio:has(.kids-studio-palette[data-contextual="true"])
     .kids-studio-stage-heading
@@ -4987,14 +5187,47 @@
   margin-bottom: -2px;
 }
 .kids-studio[data-editor-tab="costumes"] .kids-studio-categories,
-.kids-studio[data-editor-tab="sounds"] .kids-studio-categories,
-.kids-studio[data-editor-tab="costumes"]
-  .kids-studio-program-column
-  > :not(.kids-studio-media-panel),
-.kids-studio[data-editor-tab="sounds"]
-  .kids-studio-program-column
-  > :not(.kids-studio-media-panel) {
+.kids-studio[data-editor-tab="sounds"] .kids-studio-categories {
   display: none;
+}
+/* Phone: Costumes and Sounds are a bottom sheet above the bar; the stage and program stay. */
+@media (max-width: 720px) {
+  .kids-studio[data-editor-tab="costumes"] .kids-studio-media-panel,
+  .kids-studio[data-editor-tab="sounds"] .kids-studio-media-panel {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 29;
+    max-height: 45vh;
+    margin: 0;
+    padding: 12px 12px 76px;
+    overflow-y: auto;
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -6px 24px rgb(0 0 0 / 25%);
+  }
+  .kids-studio[data-editor-tab="costumes"] .kids-studio-program-column > .kids-studio-blocks-panel,
+  .kids-studio[data-editor-tab="sounds"] .kids-studio-program-column > .kids-studio-blocks-panel {
+    display: none;
+  }
+}
+/* Tablet and desktop: Costumes and Sounds open in the left drawer, where the blocks are, so
+   the program and the stage stay visible (#1191 2b). */
+@media (min-width: 721px) {
+  .kids-studio[data-editor-tab="costumes"] .kids-studio-program-column > .kids-studio-blocks-panel,
+  .kids-studio[data-editor-tab="sounds"] .kids-studio-program-column > .kids-studio-blocks-panel {
+    display: none;
+  }
+}
+@media (min-width: 900px) {
+  .kids-studio[data-editor-tab="costumes"] .kids-studio-program-column > .kids-studio-media-panel,
+  .kids-studio[data-editor-tab="sounds"] .kids-studio-program-column > .kids-studio-media-panel {
+    grid-column: 1;
+    grid-row: 1 / span 40;
+    position: sticky;
+    top: 8px;
+    max-height: calc(100vh - 16px);
+    overflow-y: auto;
+    min-width: 0;
+  }
 }
 .kids-studio-media-panel {
   display: grid;
@@ -5115,4 +5348,295 @@
     padding-inline: 6px;
     font-size: 0.85rem;
   }
+}
+
+@media (max-width: 720px) {
+  .kids-studio-ori-rail {
+    display: none;
+  }
+}
+
+/* Kids editor hosts shared panels without changing its grid geometry. */
+.kids-studio-program-column {
+  position: relative;
+}
+.kids-studio-media-panel.agx-panel {
+  display: flex;
+}
+.kids-studio-media-panel .agx-panel-body {
+  overflow: auto;
+}
+.kids-sheet-maximize {
+  display: none;
+}
+@media (max-width: 720px) {
+  .kids-sheet-maximize {
+    display: inline-flex;
+    flex: 0 0 48px;
+    align-items: center;
+    justify-content: center;
+    min-width: 48px;
+    min-height: 48px;
+  }
+  .kids-studio-palette[data-sheet="open"][data-maximized="true"] {
+    inset: 0 0 72px;
+    max-height: none;
+    z-index: 30;
+    border-radius: 0;
+  }
+  .kids-studio[data-editor-tab="costumes"] .kids-studio-media-panel.agx-panel--maximized,
+  .kids-studio[data-editor-tab="sounds"] .kids-studio-media-panel.agx-panel--maximized {
+    inset: 0 0 72px;
+    max-height: none;
+    z-index: 30;
+    border-radius: 0;
+  }
+}
+
+/* The Kids stage uses the same Panel reducer and dock as Studio. */
+.kids-studio-layout {
+  position: relative;
+}
+.kids-studio-layout > .agx-panel-dock {
+  grid-column: 1 / -1;
+}
+.kids-studio-stage-column.agx-panel {
+  min-width: 0;
+}
+.kids-studio-stage-column.agx-panel .agx-panel-body {
+  overflow: auto;
+}
+.kids-studio-stage-column.agx-panel--maximized {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  max-height: 100dvh;
+}
+@media (max-width: 720px) {
+  .kids-studio-stage-column.agx-panel--maximized {
+    position: fixed;
+    max-height: none;
+    border-radius: 0;
+  }
+}
+
+.kids-studio-sound-search {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+}
+.kids-studio-sound-search input {
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px;
+  border: 2px solid var(--kids-border);
+  border-radius: 10px;
+  font: inherit;
+}
+.kids-studio-sound-list {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.kids-studio-sound-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px;
+  border: 1px solid var(--kids-border);
+  border-radius: 10px;
+}
+.kids-studio-sound-list li > span {
+  overflow-wrap: anywhere;
+}
+.kids-studio-sound-list .kids-button {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.kids-studio-program-panel.agx-panel {
+  flex: none;
+  min-width: 0;
+  min-height: 430px;
+}
+.kids-studio-program-panel .agx-panel-body {
+  overflow: auto;
+}
+.kids-studio-program-panel.agx-panel--maximized {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  min-height: 0;
+}
+.kids-studio-program-panel .kids-program-zone {
+  min-width: 0;
+}
+@media (max-width: 720px) {
+  .kids-studio-program-panel.agx-panel {
+    min-height: 260px;
+  }
+  .kids-studio-program-panel.agx-panel--maximized {
+    position: fixed;
+    inset: 0 0 72px;
+    z-index: 30;
+    height: auto;
+    border-radius: 0;
+  }
+}
+
+.kids-studio-characters-panel.agx-panel,
+.kids-studio-inspector-panel.agx-panel {
+  flex: none;
+  min-height: 0;
+  margin-block: 8px;
+}
+.kids-studio-characters-panel .agx-panel-body,
+.kids-studio-inspector-panel .agx-panel-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+  overflow: visible;
+}
+.kids-studio-characters-panel .kids-studio-actors {
+  width: 100%;
+}
+
+.kids-studio-blocks-panel.agx-panel {
+  flex: none;
+  min-width: 0;
+}
+.kids-studio-blocks-panel .agx-panel-body {
+  overflow: auto;
+}
+.kids-studio-blocks-panel .kids-studio-palette {
+  margin: 0;
+  padding: 8px;
+}
+.kids-studio-blocks-panel .kids-studio-palette-head > strong {
+  display: none;
+}
+@media (max-width: 720px) {
+  .kids-studio-blocks-panel.agx-panel,
+  .kids-studio-blocks-panel > .agx-panel-body {
+    display: contents;
+  }
+  .kids-studio-blocks-panel > .agx-panel-header {
+    display: none;
+  }
+  .kids-studio-blocks-panel .kids-studio-palette[data-sheet="open"] {
+    margin: 0;
+    padding: 12px 12px 76px;
+  }
+  .kids-studio-blocks-panel .kids-studio-palette[data-sheet="open"][data-maximized="true"] {
+    padding-bottom: 76px;
+  }
+}
+@media (min-width: 900px) {
+  .kids-studio-blocks-panel .agx-panel-body {
+    overflow: visible;
+  }
+  .kids-studio-blocks-panel .kids-studio-palette {
+    max-height: calc(100dvh - 80px);
+    overflow-y: auto;
+  }
+}
+
+.kids-studio-code-panel.agx-panel {
+  flex: none;
+  min-width: 0;
+}
+.kids-studio-code-panel .agx-panel-body {
+  overflow: visible;
+  padding: 8px;
+}
+.kids-studio-code-panel .kids-studio-panel {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+@media (max-width: 720px) {
+  .kids-studio:has(.kids-studio-palette[data-sheet="open"]) .kids-code-strip {
+    display: none;
+  }
+}
+
+.kids-studio-stage-column .agx-panel-actions .kids-run-controls {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+.kids-studio-stage-column .agx-panel-actions .kids-button {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 4px;
+}
+@media (max-width: 720px) {
+  .kids-studio-stage-column .agx-panel-title {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .kids-studio-mobile-run-controls {
+    display: none !important;
+  }
+}
+@media (max-width: 720px) {
+  .kids-studio-layout .kids-studio-stage-column {
+    order: 1;
+    max-height: min(460px, 58dvh);
+  }
+  .kids-studio-layout .kids-studio-program-column {
+    order: 2;
+  }
+  .kids-studio-layout .kids-studio-stage-column.agx-panel--maximized {
+    max-height: none;
+  }
+}
+
+.kids-studio-costume-library {
+  display: grid;
+  gap: 12px;
+  padding: 8px;
+}
+.kids-studio-costume-library label {
+  display: grid;
+  gap: 4px;
+  font-weight: 700;
+}
+.kids-studio-costume-library input {
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px;
+  border: 2px solid var(--kids-border);
+  border-radius: 10px;
+  font: inherit;
+}
+.kids-studio-costume-library h3 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+}
+.kids-studio-costume-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 6px;
+}
+.kids-studio-costume-grid .kids-button {
+  min-height: 52px;
+  overflow-wrap: anywhere;
+}
+.kids-studio-costume-grid .kids-button[aria-pressed="true"] {
+  border-color: #7256ad;
+  background: #efe8fb;
+  box-shadow: 0 0 0 2px #7256ad;
 }

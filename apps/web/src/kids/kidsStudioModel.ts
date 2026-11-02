@@ -602,7 +602,17 @@ export function creativeForStudio(
   raw: ProjectProgram,
   backdropId: KidsGalleryBackdropId,
   locale: Locale,
-  positions: Readonly<Record<string, { readonly x: number; readonly y: number }>> = {},
+  positions: Readonly<
+    Record<
+      string,
+      {
+        readonly x: number;
+        readonly y: number;
+        readonly direction?: number;
+        readonly size?: number;
+      }
+    >
+  > = {},
   actorOrder: readonly string[] = [],
   art: StudioArt = {},
 ): ProjectCreativeState {
@@ -645,14 +655,26 @@ export function creativeForStudio(
         saved && Number.isInteger(saved.y) && saved.y >= -100 && saved.y <= 120
           ? saved.y
           : Math.floor(position / 5) * 60,
-      direction: 0,
-      size: 100,
+      direction:
+        saved &&
+        Number.isInteger(saved.direction) &&
+        saved.direction! >= -180 &&
+        saved.direction! <= 180
+          ? saved.direction!
+          : 0,
+      size:
+        saved && Number.isInteger(saved.size) && saved.size! >= 10 && saved.size! <= 400
+          ? saved.size!
+          : 100,
       visible: true,
-      costumeId: customAssets.some(
-        (asset) => asset.kind === "costume" && asset.id === art.actorCostumes?.[id],
-      )
-        ? art.actorCostumes![id]!
-        : `costume:${actor.characterId}`,
+      costumeId:
+        customAssets.some(
+          (asset) => asset.kind === "costume" && asset.id === art.actorCostumes?.[id],
+        ) ||
+        (art.actorCostumes?.[id]?.startsWith("costume:") &&
+          isGalleryCharacterId(art.actorCostumes[id]!.slice(8)))
+          ? art.actorCostumes![id]!
+          : `costume:${actor.characterId}`,
       scripts: [script.id],
     };
   });

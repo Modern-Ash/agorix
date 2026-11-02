@@ -66,6 +66,7 @@ test("reveals hints in order and records only the levels opened", async ({ page 
   expect(events.at(-1)).toMatchObject({ kind: "scaffoldDelivered", scaffoldKind: "hint" });
   await reloadToMap(page);
   await page.getByRole("button", { name: "Misión 1" }).click();
+  await page.locator(".kids-mission-pill").click();
   await expect(page.getByText(/^Pista \d:/)).toHaveCount(3);
 });
 

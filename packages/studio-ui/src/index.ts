@@ -20,3 +20,27 @@ export {
 } from "./agentUi.js";
 export { AgentPanel } from "./AgentPanel.js";
 export { type StudioUiLocale } from "./i18n.js";
+export {
+  Panel,
+  PanelDivider,
+  PanelDock,
+  PanelWorkArea,
+  usePanelLayoutController,
+  type PanelLayoutController,
+  type PanelProps,
+} from "./Panel.js";
+export { PANEL_CSS } from "./panelStyles.js";
+export {
+  INITIAL_PANEL_LAYOUT,
+  ZOOM_MAX,
+  ZOOM_MIN,
+  clampZoom,
+  loadPanelLayout,
+  parsePanelLayout,
+  reducePanelLayout,
+  savePanelLayout,
+  serializePanelLayout,
+  zoomOf,
+  type PanelLayoutAction,
+  type PanelLayoutState,
+} from "./panelLayout.js";

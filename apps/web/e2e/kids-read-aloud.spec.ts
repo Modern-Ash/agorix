@@ -90,6 +90,7 @@ test("listen reads visible Kids instructions and results, never a project identi
 
   await page.getByRole("button", { name: "Mapa" }).click();
   await page.getByRole("button", { name: "Misión 1" }).click();
+  await page.locator(".kids-mission-pill").click();
   const goal = (await page.locator(".kids-mission-studio-intro p").first().textContent())?.trim();
   await page
     .locator(".kids-mission-studio-intro")

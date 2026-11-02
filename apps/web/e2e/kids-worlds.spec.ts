@@ -50,7 +50,9 @@ test("a world's goal is where its own layout says, and finishing it shows the pr
   // Ocean mission 1 is four squares; the same four squares do not reach the city's goal.
   await page.getByRole("button", { name: "Océano" }).click();
   await page.getByRole("button", { name: "Misión 1" }).click();
-  await expect(page.getByText("Nadá en línea recta hasta el tesoro.")).toBeVisible();
+  await expect(
+    page.locator(".kids-mission-pill-goal", { hasText: "Nadá en línea recta hasta el tesoro." }),
+  ).toBeVisible();
   await play(page, 4);
   await expect(page.getByTestId("scene-goal-result")).toContainText("Lograste la meta");
   await page.getByRole("button", { name: "Volver al mapa" }).click();
@@ -110,7 +112,9 @@ test("published missions replace the built-in ones, and an unreachable server le
   await page.getByRole("button", { name: "Océano" }).click();
   await expect(page.locator(".kids-node-title").first()).toHaveText("Corriente corta");
   await page.getByRole("button", { name: "Misión 1" }).click();
-  await expect(page.getByText("Nadá un poquito hasta el tesoro.")).toBeVisible();
+  await expect(
+    page.locator(".kids-mission-pill-goal", { hasText: "Nadá un poquito hasta el tesoro." }),
+  ).toBeVisible();
   // The goal is now two squares away, not four.
   await play(page, 2);
   await expect(page.getByTestId("scene-goal-result")).toContainText("Lograste la meta");

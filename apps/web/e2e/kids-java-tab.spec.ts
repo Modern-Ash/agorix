@@ -32,9 +32,12 @@ test("every language is offered while the age-band switch is off, and Java shows
   page,
 }) => {
   await openScene(page);
+  await page.getByRole("button", { name: "Código", exact: true }).click();
   await expect(languages(page)).toHaveText(["Agorix Code", "Python", "TypeScript", "Java"]);
+  await page.getByRole("button", { name: "Bloques", exact: true }).click();
   await page.getByRole("button", { name: "+ Mover", exact: true }).click();
   await page.getByRole("button", { name: "+ Esperar", exact: true }).click();
+  await page.getByRole("button", { name: "Código", exact: true }).click();
   await page.getByRole("button", { name: "Java", exact: true }).click();
   const code = page.locator(".kids-code-strip");
   await expect(code).toContainText("class AgorixProgram extends Sprite {");
@@ -52,6 +55,7 @@ test("the line of the stepped block is highlighted in Java and in the other lang
   await openScene(page);
   await page.getByRole("button", { name: "+ Mover", exact: true }).click();
   await page.getByRole("button", { name: "+ Girar a la derecha" }).click();
+  await page.getByRole("button", { name: "Código", exact: true }).click();
   await page.getByRole("button", { name: "Java", exact: true }).click();
   await expect(page.getByTestId("code-current")).toHaveCount(0);
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
@@ -71,12 +75,14 @@ for (const [band, expected] of [
 ] as const) {
   test(`the ${band} band offers ${expected.join(", ")}`, async ({ page }) => {
     await openScene(page, band);
+    await page.getByRole("button", { name: "Código", exact: true }).click();
     await expect(languages(page)).toHaveText(expected);
   });
 }
 
 test("the 6–8 band starts with one language and opens the rest on request", async ({ page }) => {
   await openScene(page, "6-8");
+  await page.getByRole("button", { name: "Código", exact: true }).click();
   await expect(languages(page)).toHaveText(["Agorix Code", "Más lenguajes"]);
   await page.getByRole("button", { name: "Más lenguajes" }).click();
   await expect(languages(page)).toHaveText([

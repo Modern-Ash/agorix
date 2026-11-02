@@ -186,8 +186,8 @@ test("the phone palette is a bottom sheet that adds blocks, closes and reopens",
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await openScene(page);
-  const toggle = page.getByRole("button", { name: "Cerrar bloques" });
-  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  const toggle = page.getByRole("button", { name: "Bloques", exact: true });
+  await expect(toggle).toHaveAttribute("aria-pressed", "true");
   const add = page.getByRole("button", { name: /Mover/ }).first();
   const sheet = await add.boundingBox();
   expect(sheet!.y + sheet!.height).toBeLessThanOrEqual(844);
@@ -195,7 +195,7 @@ test("the phone palette is a bottom sheet that adds blocks, closes and reopens",
   await expect(page.locator(".kids-program-block").first()).toBeVisible();
   await toggle.click();
   await expect(page.getByRole("button", { name: /^\+? ?Mover/ }).first()).toBeHidden();
-  await page.getByRole("button", { name: "Agregar bloques" }).click();
+  await page.getByRole("button", { name: "Bloques", exact: true }).click();
   await expect(page.getByRole("button", { name: /Mover/ }).first()).toBeVisible();
   expect((await toggle.boundingBox())!.height).toBeGreaterThanOrEqual(44);
 });
@@ -261,22 +261,30 @@ test("a block can be duplicated, undone and redone", async ({ page }) => {
   await expect(blocks).toHaveCount(3);
 });
 
-test("the stage can fill the screen, still plays, and Escape brings it back", async ({ page }) => {
+test("the stage can fill its work area, still plays, and Escape brings it back", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await openScene(page);
   const stage = page.getByRole("group", { name: "Escenario" });
   const normal = (await stage.boundingBox())!;
-  const toggle = page.getByRole("button", { name: "Agrandar escenario" });
+  const toggle = page.getByRole("button", { name: "Maximizar Escenario" });
   await toggle.click();
-  await expect(toggle).toHaveAttribute("aria-pressed", "true");
-  const large = (await stage.boundingBox())!;
-  expect(large.width).toBeGreaterThan(normal.width);
-  expect(large.y + large.height).toBeLessThanOrEqual(800);
-  await page.getByRole("button", { name: "Jugar", exact: true }).click();
-  await page.keyboard.press("Escape");
-  await expect(page.getByRole("button", { name: "Volver al tamaño normal" })).toHaveAttribute(
+  await expect(page.getByRole("button", { name: "Restaurar Escenario" })).toHaveAttribute(
     "aria-pressed",
     "true",
+  );
+  const large = (await stage.boundingBox())!;
+  expect(large.width).toBeGreaterThan(normal.width);
+  const workArea = (await page.locator(".kids-studio-layout").boundingBox())!;
+  const panel = (await page.locator(".kids-studio-stage-column").boundingBox())!;
+  expect(panel.x).toBeGreaterThanOrEqual(workArea.x);
+  expect(panel.x + panel.width).toBeLessThanOrEqual(workArea.x + workArea.width + 1);
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button", { name: "Maximizar Escenario" })).toHaveAttribute(
+    "aria-pressed",
+    "false",
   );
   expect((await stage.boundingBox())!.width).toBeCloseTo(normal.width, -1);
 });

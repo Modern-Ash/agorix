@@ -47,6 +47,7 @@ import {
   ensureAdvancedProject,
 } from "./kidsAdvancedProgress.js";
 import { ProjectStore } from "@agorix/persistence";
+import { PANEL_CSS } from "@agorix/studio-ui";
 import { useKidsCatalogState } from "./kidsCatalog.js";
 import { useKidsFlag } from "./kidsFlags.js";
 import { VerifyLanding } from "./link/VerifyLanding.js";
@@ -231,6 +232,7 @@ export function KidsApp({
           : undefined
       }
     >
+      <style>{PANEL_CSS}</style>
       {ageBandsEnabled &&
       progress.onboarded &&
       !adultSettings.bandChosen &&

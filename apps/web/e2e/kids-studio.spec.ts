@@ -90,15 +90,15 @@ test("free scene records stage pointer for mouse sensors without storing it in t
   await page.getByRole("button", { name: "+ Guardar X del ratón" }).click();
   await page.getByRole("button", { name: "+ Si el ratón está pulsado, mover 1" }).click();
   // The bottom sheet would cover the stage the pointer test reads (#1110).
-  await page.getByRole("button", { name: "Cerrar bloques" }).click();
+  await page.getByRole("button", { name: "Bloques", exact: true }).click();
   const stage = page.getByRole("group", { name: "Escenario" });
-  await stage.scrollIntoViewIfNeeded();
+  await stage.evaluate((element) => element.scrollIntoView({ block: "center" }));
   const box = await stage.boundingBox();
   expect(box).not.toBeNull();
   await page.mouse.move(box!.x + box!.width * 0.5, box!.y + box!.height * 0.5);
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await expect(page.getByText("Ratón: 168")).toBeVisible();
-  await stage.scrollIntoViewIfNeeded();
+  await stage.evaluate((element) => element.scrollIntoView({ block: "center" }));
   const activeBox = await stage.boundingBox();
   expect(activeBox).not.toBeNull();
   const actor = stage.locator(".kids-studio-stage-actor").first();
@@ -594,12 +594,17 @@ test("Ori's face follows real events and respects reduced motion", async ({ page
   expect(violations.map((entry) => entry.id)).toEqual([]);
   // Reduced motion keeps the expression but removes every animation.
   await page.emulateMedia({ reducedMotion: "reduce" });
-  const animations = await page
-    .locator(
-      ".kids-studio-ori .kids-ori-stage .kids-ori-face, .kids-studio-ori .kids-ori-stage .kids-ori-face *",
+  await expect
+    .poll(() =>
+      page
+        .locator(
+          ".kids-studio-ori .kids-ori-stage .kids-ori-face, .kids-studio-ori .kids-ori-stage .kids-ori-face *",
+        )
+        .evaluateAll((nodes) =>
+          nodes.every((node) => getComputedStyle(node).animationName === "none"),
+        ),
     )
-    .evaluateAll((nodes) => nodes.map((node) => getComputedStyle(node).animationName));
-  expect(animations.every((name) => name === "none")).toBe(true);
+    .toBe(true);
   await expect(face).toHaveAttribute("data-ori-expression", /happy|neutral/);
 });
 
@@ -1139,7 +1144,7 @@ test("a child drags the selected character and changes its layer", async ({ page
   await page.getByRole("group", { name: "Personajes" }).getByRole("button").first().click();
   const first = page.getByRole("group", { name: "Escenario" }).getByRole("button").first();
   const before = await first.getAttribute("style");
-  await first.scrollIntoViewIfNeeded();
+  await first.evaluate((actor) => actor.scrollIntoView({ block: "center", inline: "nearest" }));
   const bounds = await first.boundingBox();
   expect(bounds).not.toBeNull();
   await page.mouse.move(bounds!.x + bounds!.width / 2, bounds!.y + bounds!.height / 2);
