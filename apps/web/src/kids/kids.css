@@ -5050,14 +5050,39 @@
   margin-bottom: -2px;
 }
 .kids-studio[data-editor-tab="costumes"] .kids-studio-categories,
-.kids-studio[data-editor-tab="sounds"] .kids-studio-categories,
-.kids-studio[data-editor-tab="costumes"]
-  .kids-studio-program-column
-  > :not(.kids-studio-media-panel),
-.kids-studio[data-editor-tab="sounds"]
-  .kids-studio-program-column
-  > :not(.kids-studio-media-panel) {
+.kids-studio[data-editor-tab="sounds"] .kids-studio-categories {
   display: none;
+}
+/* Phone: the media panel still takes the whole area (the phone layout comes with #1191 2c). */
+@media (max-width: 720px) {
+  .kids-studio[data-editor-tab="costumes"]
+    .kids-studio-program-column
+    > :not(.kids-studio-media-panel),
+  .kids-studio[data-editor-tab="sounds"]
+    .kids-studio-program-column
+    > :not(.kids-studio-media-panel) {
+    display: none;
+  }
+}
+/* Tablet and desktop: Costumes and Sounds open in the left drawer, where the blocks are, so
+   the program and the stage stay visible (#1191 2b). */
+@media (min-width: 721px) {
+  .kids-studio[data-editor-tab="costumes"] .kids-studio-program-column > .kids-studio-palette,
+  .kids-studio[data-editor-tab="sounds"] .kids-studio-program-column > .kids-studio-palette {
+    display: none;
+  }
+}
+@media (min-width: 900px) {
+  .kids-studio[data-editor-tab="costumes"] .kids-studio-program-column > .kids-studio-media-panel,
+  .kids-studio[data-editor-tab="sounds"] .kids-studio-program-column > .kids-studio-media-panel {
+    grid-column: 1;
+    grid-row: 1 / span 40;
+    position: sticky;
+    top: 8px;
+    max-height: calc(100vh - 16px);
+    overflow-y: auto;
+    min-width: 0;
+  }
 }
 .kids-studio-media-panel {
   display: grid;

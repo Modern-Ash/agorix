@@ -70,3 +70,39 @@ for (const { width, height } of WIDTHS) {
     await expect(page.locator(".kids-mission-studio-intro")).toBeHidden();
   });
 }
+
+// Issue #1191 (2b): Costumes and Sounds open in the left drawer; program and stage stay visible.
+for (const { width, height } of WIDTHS.filter((size) => size.width >= 768)) {
+  test(`Costumes and Sounds keep the program and stage visible at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await page.goto("/kids");
+    await page.evaluate(() => {
+      localStorage.clear();
+      localStorage.setItem("agorix.locale", "es");
+      localStorage.setItem(
+        "agorix.kids.progress.v1",
+        JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+      );
+    });
+    await reloadToMap(page);
+    await page.getByRole("button", { name: "Misión 1" }).click();
+    for (const tab of ["Disfraces", "Sonidos"]) {
+      await page.getByRole("tab", { name: new RegExp(tab) }).click();
+      await expect(page.locator(".kids-studio-media-panel")).toBeVisible();
+      await expect(page.locator(".kids-program-zone").first()).toBeVisible();
+      await expect(page.locator(".kids-studio-stage").first()).toBeVisible();
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+        ),
+      ).toBe(false);
+    }
+    if (width >= 900) {
+      const drawer = await page.locator(".kids-studio-media-panel").boundingBox();
+      const program = await page.locator(".kids-program-zone").first().boundingBox();
+      expect(drawer!.x + drawer!.width).toBeLessThanOrEqual(program!.x + 1);
+    }
+    await page.getByRole("tab", { name: /Código/ }).click();
+    await expect(page.locator(".kids-studio-media-panel")).toHaveCount(0);
+  });
+}
