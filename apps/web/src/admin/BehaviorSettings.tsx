@@ -49,82 +49,104 @@ export function BehaviorSettings({
   readonly onChange: (next: BehaviorConfig) => void;
 }) {
   const policy = behavior.intervention;
+  const changePolicy = (key: keyof OriInterventionPolicy, value: number) => {
+    const limit = ORI_INTERVENTION_LIMITS[key];
+    onChange({
+      ...behavior,
+      intervention: {
+        ...policy,
+        [key]: Math.min(limit.max, Math.max(limit.min, Math.round(value))),
+      },
+    });
+  };
   return (
     <div className="ai-admin-card">
       <p className="ai-admin-note">
         Cuándo ofrece Ori una idea hecha de bloques. Los límites son el piso de seguridad: Ori nunca
         ofrece una solución al entrar y los validadores siguen decidiendo qué se acepta.
       </p>
-      {FIELDS.map((field) => {
-        const limit = ORI_INTERVENTION_LIMITS[field.key];
-        return (
-          <label key={field.key}>
-            {field.label} ({limit.min} a {limit.max})
+      <div className="ai-admin-behavior-layout">
+        <div className="ai-admin-behavior-controls">
+          {FIELDS.map((field) => {
+            const limit = ORI_INTERVENTION_LIMITS[field.key];
+            return (
+              <label key={field.key}>
+                {field.label} ({limit.min} a {limit.max})
+                <input
+                  type="number"
+                  min={limit.min}
+                  max={limit.max}
+                  step={1}
+                  value={policy[field.key]}
+                  onChange={(event) => {
+                    const next = Number(event.target.value);
+                    if (!Number.isInteger(next)) return;
+                    changePolicy(field.key, next);
+                  }}
+                />
+                <input
+                  type="range"
+                  aria-label={`${field.label}: deslizador`}
+                  min={limit.min}
+                  max={limit.max}
+                  step={1}
+                  value={policy[field.key]}
+                  onChange={(event) => changePolicy(field.key, Number(event.target.value))}
+                />
+                <small>{field.help}</small>
+              </label>
+            );
+          })}
+          <label>
+            Dispositivos que reciben este cambio (1 a 100 %)
             <input
               type="number"
-              min={limit.min}
-              max={limit.max}
+              min={1}
+              max={100}
               step={1}
-              value={policy[field.key]}
+              value={behavior.rolloutPercent ?? 100}
               onChange={(event) => {
                 const next = Number(event.target.value);
                 if (!Number.isInteger(next)) return;
-                onChange({
-                  intervention: {
-                    ...policy,
-                    [field.key]: Math.min(limit.max, Math.max(limit.min, next)),
-                  },
-                });
+                onChange({ ...behavior, rolloutPercent: Math.min(100, Math.max(1, next)) });
               }}
             />
-            <small>{field.help}</small>
+            <small>
+              Con menos de 100, el resto sigue con la última revisión que llegó a todos. Cada
+              dispositivo tiene un número al azar de 0 a 99, sin relación con chicos ni cuentas.
+              Para ampliar, publicá otra revisión con un porcentaje mayor; para volver atrás,
+              restaurá una revisión anterior.
+            </small>
           </label>
-        );
-      })}
-      <label>
-        Dispositivos que reciben este cambio (1 a 100 %)
-        <input
-          type="number"
-          min={1}
-          max={100}
-          step={1}
-          value={behavior.rolloutPercent ?? 100}
-          onChange={(event) => {
-            const next = Number(event.target.value);
-            if (!Number.isInteger(next)) return;
-            onChange({ ...behavior, rolloutPercent: Math.min(100, Math.max(1, next)) });
-          }}
-        />
-        <small>
-          Con menos de 100, el resto sigue con la última revisión que llegó a todos. Cada
-          dispositivo tiene un número al azar de 0 a 99, sin relación con chicos ni cuentas. Para
-          ampliar, publicá otra revisión con un porcentaje mayor; para volver atrás, restaurá una
-          revisión anterior.
-        </small>
-      </label>
-      <h3>Con aprendices simulados</h3>
-      <p className="ai-admin-footnote">
-        Situaciones inventadas, nunca datos de chicos reales. Mostrar esto no publica nada.
-      </p>
-      <table aria-label="Aprendices simulados">
-        <thead>
-          <tr>
-            <th scope="col">Situación</th>
-            <th scope="col">¿Ori ofrece una idea?</th>
-          </tr>
-        </thead>
-        <tbody>
-          {simulateOriIntervention(policy).map((row) => (
-            <tr key={row.learner}>
-              <th scope="row">{LEARNERS[row.learner]}</th>
-              <td>{row.offersIdea ? `Sí, hasta ${row.maxBlocks} bloques` : "No, todavía no"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <p className="ai-admin-footnote">
-        Metas disponibles con este tamaño: {simulateOriIntervention(policy)[0]?.goals} de 7.
-      </p>
+        </div>
+        <div className="ai-admin-behavior-preview">
+          <h3>Con aprendices simulados</h3>
+          <p className="ai-admin-footnote">
+            Situaciones inventadas, nunca datos de chicos reales. Mostrar esto no publica nada.
+          </p>
+          <table aria-label="Aprendices simulados">
+            <thead>
+              <tr>
+                <th scope="col">Situación</th>
+                <th scope="col">¿Ori ofrece una idea?</th>
+              </tr>
+            </thead>
+            <tbody>
+              {simulateOriIntervention(policy).map((row) => (
+                <tr key={row.learner}>
+                  <th scope="row">{LEARNERS[row.learner]}</th>
+                  <td>
+                    {row.offersIdea ? `Sí, hasta ${row.maxBlocks} bloques` : "No, todavía no"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="ai-admin-footnote">
+            Metas disponibles con este tamaño: {simulateOriIntervention(policy)[0]?.goals} de 7.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

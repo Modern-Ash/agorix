@@ -217,6 +217,23 @@ export function AiAdminApp() {
             >
               Menú: {sectionNames[section]}
             </button>
+            <label className="ai-admin-section-select">
+              Sección
+              <select
+                value={section}
+                onChange={(event) => setSection(event.target.value as Section)}
+              >
+                {ADMIN_NAV_GROUPS.map((group) => (
+                  <optgroup key={group.title} label={group.title}>
+                    {group.sections.filter(available).map((key) => (
+                      <option key={key} value={key}>
+                        {sectionNames[key]}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </label>
             <nav aria-label="Centro de IA" id="ai-admin-menu" data-open={menuOpen}>
               {ADMIN_NAV_GROUPS.map((group) => {
                 const items = group.sections.filter(available);
@@ -448,12 +465,26 @@ export function AiAdminApp() {
             {/* The draft bar stays in view on every section, so pending changes are never hidden. */}
             <div className="ai-admin-draft" role="region" aria-label="Borrador">
               <p className="ai-admin-draft-status">
-                <strong>{draftStatus(pending.length, preview !== null)}</strong>
+                <strong>
+                  {message === "Configuración publicada."
+                    ? "Publicado"
+                    : draftStatus(pending.length, preview !== null)}
+                </strong>
                 {changed ? (
                   <small>{pending.map((key) => sectionNames[key]).join(", ")}</small>
                 ) : null}
               </p>
               <div className="ai-admin-actions">
+                <button
+                  disabled={!changed || busy}
+                  onClick={() => {
+                    if (current) setDraft(structuredClone(current.config));
+                    setPreview(null);
+                    setMessage("");
+                  }}
+                >
+                  Descartar
+                </button>
                 <button
                   disabled={!changed || busy || !current || !draft}
                   onClick={() =>
@@ -501,15 +532,6 @@ export function AiAdminApp() {
                   }
                 >
                   Publicar revisión {current ? current.revision + 1 : ""}
-                </button>
-                <button
-                  disabled={!changed || busy}
-                  onClick={() => {
-                    if (current) setDraft(structuredClone(current.config));
-                    setPreview(null);
-                  }}
-                >
-                  Descartar
                 </button>
               </div>
               {preview && (
