@@ -40,6 +40,8 @@ for (const viewport of viewports) {
       await move.scrollIntoViewIfNeeded();
       const from = (await move.boundingBox())!;
       const target = page.locator(".kids-program-drop");
+      // The page opens at the top now, so give the drag somewhere to scroll back to.
+      await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
       const beforeScroll = await page.evaluate(() => window.scrollY);
       await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
       await page.mouse.down();
@@ -110,6 +112,7 @@ test("an offscreen palette drag released outside the program adds nothing and st
   const add = page.getByRole("button", { name: "+ Mover", exact: true });
   await add.scrollIntoViewIfNeeded();
   const from = (await add.boundingBox())!;
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   const before = await page.evaluate(() => window.scrollY);
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
   await page.mouse.down();

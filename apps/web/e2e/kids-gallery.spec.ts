@@ -39,6 +39,7 @@ test("a new child can browse included art, create a project and reopen it", asyn
     "true",
   );
 
+  await page.getByRole("button", { name: /^3 ·/ }).click();
   await expect(page.getByRole("group", { name: "Tu elección" })).toContainText("Nova");
   await expect(page.getByRole("group", { name: "Tu elección" })).toContainText("Bosque");
 
