@@ -166,6 +166,7 @@ test("a fresh browser sees the creative Kids tools by default", async ({ page })
   await expect(page.locator(".kids-root")).toHaveAttribute("data-age-band", "6-8");
   await expect(page.getByRole("button", { name: "Hablar con Ori" })).toBeVisible();
   await page.getByRole("button", { name: "Crear escena" }).click();
+  await page.getByRole("tab", { name: /Disfraces/ }).click();
   await expect(page.getByText("Agregar disfraz desde imagen")).toBeVisible();
   await expect(page.getByText("Agregar fondo desde imagen")).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem("agorix.kids.flags.v1"))).toBeNull();
