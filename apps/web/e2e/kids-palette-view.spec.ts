@@ -1,6 +1,7 @@
 // Plain Playwright, not ./fixtures.js: this spec needs the real default and a preference that survives
 // a reload.
 import { expect, test } from "@playwright/test";
+import { clickCreateScene } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -23,7 +24,7 @@ test("Escena libre opens one colour at a time and closes after adding a block", 
   await page.setViewportSize({ width: 1280, height: 900 });
   await seed(page);
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   const rail = page.getByRole("navigation", { name: "Categorías de bloques" });
   const tools = page.locator("[data-kids-palette-tool]:visible");
   const program = page.locator(".kids-studio-program-column");
@@ -72,7 +73,7 @@ test("an old show-all preference migrates to the contextual palette", async ({ p
   await page.evaluate(() => localStorage.setItem("agorix.kids.palette.view.v1", "all"));
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await expect(page.locator(".kids-studio-palette")).toBeHidden();
   await expect
     .poll(() => page.evaluate(() => localStorage.getItem("agorix.kids.palette.view.v1")))
@@ -85,7 +86,7 @@ test("on a phone the sheet opens for the chosen colour and closes after adding",
   await page.setViewportSize({ width: 390, height: 844 });
   await seed(page);
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await expect(page.locator(".kids-studio-palette")).toBeHidden();
   await expect(page.getByRole("button", { name: "+ Decir", exact: true })).toBeHidden();
   await page

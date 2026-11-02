@@ -1,5 +1,5 @@
 import { expect, test } from "./fixtures.js";
-import { reloadTo } from "./helpers.js";
+import { reloadTo, clickCreateScene } from "./helpers.js";
 
 test.use({ hasTouch: true });
 
@@ -23,7 +23,7 @@ for (const viewport of [
     });
     await page.reload();
     await page.getByRole("button", { name: "Crear", exact: true }).click();
-    await page.getByRole("button", { name: "Crear escena" }).click();
+    await clickCreateScene(page);
     const conditions = page.getByRole("group", { name: "Combinar condiciones" });
     const ask = conditions.getByRole("button", { name: "Pedirle a Ori una combinación" });
     await ask.click();

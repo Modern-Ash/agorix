@@ -1,4 +1,5 @@
 import { expect, test } from "./fixtures.js";
+import { clickCreateScene } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -40,7 +41,7 @@ test("Ori accompanies a new learner through onboarding, map, creation and editor
     "¿Qué te gustaría que pase ahí?",
   );
   await page.getByRole("button", { name: "Cerrar" }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
 
   // Ori stays present in free creation whether the local provider has an idea or not.
   const ori = page.getByRole("button", { name: /(Abrir (ayuda|propuesta)|Mostrar ayuda) de Ori/ });

@@ -7,7 +7,7 @@ import {
   evaluateOriStudioOutput,
   ORI_STUDIO_VERSION,
 } from "@agorix/ori-agent";
-import { reloadTo } from "./helpers.js";
+import { reloadTo, clickCreateScene } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -30,7 +30,7 @@ test("free scene asks only bundled choices and waits for the child to decide", a
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByRole("textbox", { name: "Nombre" }).fill("Camino");
   await page.getByRole("button", { name: "+ Crear variable" }).click();
   await page.getByRole("button", { name: "+ Preguntar con opciones" }).click();
@@ -84,7 +84,7 @@ test("free scene records stage pointer for mouse sensors without storing it in t
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByRole("textbox", { name: "Nombre" }).fill("Ratón");
   await page.getByRole("button", { name: "+ Crear variable" }).click();
   await page.getByRole("button", { name: "+ Guardar X del ratón" }).click();
@@ -150,7 +150,7 @@ test("free scene senses the stage edge and saves distance to a character after r
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByRole("button", { name: "+ Agregar personaje" }).click();
   await page.getByRole("group", { name: "Personajes" }).getByRole("button").first().click();
   await page.getByRole("textbox", { name: "Nombre" }).fill("Distancia");
@@ -198,7 +198,7 @@ test("free scene senses another character and records its own X position after r
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByRole("button", { name: "+ Agregar personaje" }).click();
   await page.getByRole("group", { name: "Personajes" }).getByRole("button").first().click();
   await page.getByRole("textbox", { name: "Nombre" }).fill("Lugar");
@@ -248,7 +248,7 @@ test("free scene moves to coordinates and stops sound after reopening", async ({
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByRole("spinbutton", { name: "Posición horizontal" }).fill("240");
   await page.getByRole("spinbutton", { name: "Posición vertical" }).fill("-40");
   await page.getByRole("button", { name: "+ Ir a posición" }).click();
@@ -293,7 +293,7 @@ test("free scene makes, uses, reopens and deletes a custom block", async ({ page
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByRole("button", { name: "+ Mover", exact: true }).click();
   await page.getByRole("button", { name: "+ Girar a la derecha" }).click();
   await page.getByRole("textbox", { name: "Título del bloque" }).fill("Cuadrado");
@@ -342,7 +342,7 @@ test("free scene gives a custom block a number, picks it per use and keeps it af
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByRole("button", { name: "+ Mover", exact: true }).click();
   await page.getByRole("button", { name: "+ Girar a la derecha" }).click();
   await page.getByRole("textbox", { name: "Título del bloque" }).fill("Paso");
@@ -387,7 +387,7 @@ test("free scene hands a block number on to another block and keeps it after reo
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByRole("button", { name: "+ Mover", exact: true }).click();
   await page.getByRole("button", { name: "+ Girar a la derecha" }).click();
   await page.getByRole("textbox", { name: "Título del bloque" }).fill("Paso");
@@ -441,7 +441,7 @@ test("free scene copies a custom block to another character and keeps both after
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByRole("button", { name: "+ Agregar personaje" }).click();
   const actors = page.getByRole("group", { name: "Personajes" }).getByRole("button");
   await actors.first().click();
@@ -493,7 +493,7 @@ test("free scene senses a held key and the timer, and keeps both after reopening
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByLabel("Tecla a sentir").selectOption("ArrowRight");
   await page.getByRole("button", { name: "+ Si la tecla está pulsada, mover 1" }).click();
   await page.getByRole("button", { name: "+ Esperar", exact: true }).click();
@@ -535,7 +535,7 @@ test("free scene draws with the pen extension and keeps the drawing blocks after
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByLabel("Color del lápiz").selectOption("red");
   await page.getByRole("button", { name: "+ Color del lápiz" }).click();
   await page.getByRole("button", { name: "+ Bajar el lápiz" }).click();
@@ -576,7 +576,7 @@ test("Ori's face follows real events and respects reduced motion", async ({ page
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   const face = page.locator(".kids-studio-ori .kids-ori-stage .kids-ori-face");
   // Nothing happened yet: Ori is calm, not pleased or busy.
   await expect(face).toHaveAttribute("data-ori-expression", "neutral");
@@ -623,7 +623,7 @@ test("Ori's idea is previewed as a ghost block with real runtime evidence before
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByRole("button", { name: "+ Mover", exact: true }).click();
   await expect(page.getByTestId("ori-ghost-block")).toHaveCount(0);
   await askStudioOri(page);
@@ -669,7 +669,7 @@ async function openStudio(page: import("@playwright/test").Page, band: string) {
   }, band);
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
 }
 
 test("a goal from the closed list becomes several ghost blocks and only changes the program when used", async ({
@@ -755,7 +755,7 @@ test("free scene grows and shrinks a character and keeps the size blocks after r
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByLabel("Cambiar tamaño").selectOption("50");
   await page.getByRole("button", { name: "+ Cambiar tamaño" }).click();
   await page.getByLabel("Cambiar tamaño").selectOption("-25");
@@ -791,7 +791,7 @@ test("free scene repeats blocks until the character reaches the edge and keeps t
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByRole("button", { name: "+ Mover", exact: true }).click();
   await page.getByRole("button", { name: "+ Mover", exact: true }).click();
   await page.getByRole("button", { name: "+ Mover", exact: true }).click();
@@ -831,7 +831,7 @@ test("free scene points at a friend, bounces off the edge and keeps the blocks a
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByRole("button", { name: "+ Agregar personaje" }).click();
   await page.getByRole("button", { name: "+ Apuntar a" }).click();
   await page.getByLabel("Apuntar hacia").selectOption({ label: "izquierda" });
@@ -870,7 +870,7 @@ test("free scene lets a child compose volume and show or hide a variable after r
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByRole("textbox", { name: "Nombre" }).fill("Puntos");
   await page.getByRole("button", { name: "+ Crear variable" }).click();
   await page.getByRole("spinbutton", { name: "Volumen", exact: true }).fill("40");
@@ -913,7 +913,7 @@ test("free scene inserts and replaces list items and uses bounded seeded random"
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByRole("textbox", { name: "Nombre" }).fill("Dado");
   await page.getByRole("button", { name: "+ Crear variable" }).click();
   await page.getByRole("textbox", { name: "Nombre" }).fill("Números");
@@ -958,7 +958,7 @@ test("free scene exposes bounded list reading, length and removal", async ({ pag
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByRole("textbox", { name: "Nombre" }).fill("Cuenta");
   await page.getByRole("button", { name: "+ Crear variable" }).click();
   await page.getByRole("textbox", { name: "Nombre" }).fill("Cosas");
@@ -993,7 +993,7 @@ test("a child adds local costume and backdrop images to a free scene", async ({ 
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByRole("tab", { name: /Disfraces/ }).click();
   const fixture = resolve("e2e/fixtures/kids-solid.png");
   await page.getByLabel("Agregar disfraz desde imagen").setInputFiles(fixture);
@@ -1029,7 +1029,7 @@ test("drawn costume and backdrop survive adult-approved export and import", asyn
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByRole("tab", { name: /Disfraces/ }).click();
   await page.getByRole("button", { name: "Dibujar disfraz" }).click();
   const costumeCanvas = page.getByRole("img", { name: "Lienzo para dibujar" });
@@ -1108,7 +1108,7 @@ test("a child places a character and the stage keeps that position after reopeni
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   const actor = page.getByRole("group", { name: "Escenario" }).getByRole("button").first();
   await expect(actor).toHaveCSS("left", /%|px/);
   const before = await actor.getAttribute("style");
@@ -1139,7 +1139,7 @@ test("a child drags the selected character and changes its layer", async ({ page
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByRole("button", { name: "+ Agregar personaje" }).click();
   await page.getByRole("group", { name: "Personajes" }).getByRole("button").first().click();
   const first = page.getByRole("group", { name: "Escenario" }).getByRole("button").first();
@@ -1185,7 +1185,7 @@ test("free scene keeps independent character scripts and reopens the saved stage
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await expect(page.getByRole("heading", { name: "Escena libre" })).toBeVisible();
   const violations = (
     await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
@@ -1232,7 +1232,7 @@ test("looks and wait blocks change only the chosen character and survive reload"
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByRole("button", { name: "+ Agregar personaje" }).click();
   await page.getByRole("textbox", { name: "Decir / Pensar" }).fill("Hola, Nova");
   await page.getByRole("button", { name: "+ Decir" }).click();
@@ -1265,7 +1265,7 @@ test("a tapped character runs its own event script after Play", async ({ page })
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByRole("button", { name: "+ Agregar personaje" }).click();
   await page.getByRole("combobox", { name: "Cuando" }).selectOption("onActorClicked");
   await page.getByRole("button", { name: "+ Girar a la derecha" }).click();
@@ -1303,7 +1303,7 @@ test("Ori's server idea is reviewed before it changes a free scene", async ({ pa
     });
   });
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await askStudioOri(page);
   await expect(page.locator(".kids-ori-action")).toHaveAttribute("data-ori-state", "thinking");
   await expect(
@@ -1346,7 +1346,7 @@ test("Ori proposes a custom block with numbers and the child reviews the values"
     });
   });
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByRole("button", { name: "+ Mover", exact: true }).click();
   await page.getByRole("button", { name: "+ Girar a la derecha" }).click();
   await page.getByRole("textbox", { name: "Título del bloque" }).fill("Paso");
@@ -1400,7 +1400,7 @@ test("the adult Ori switch hides scene suggestions", async ({ page }) => {
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await expect(page.getByRole("button", { name: "Pedirle una idea a Ori" })).toHaveCount(0);
 });
 
@@ -1418,7 +1418,7 @@ test("free scene composes data, repeat, message and key events in a fresh sessio
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByRole("textbox", { name: "Nombre" }).fill("Puntos");
   await page.getByRole("button", { name: "+ Crear variable" }).click();
   await page.getByRole("textbox", { name: "Nombre" }).fill("Tesoros");
@@ -1466,7 +1466,7 @@ test("free scene glides to a position and keeps the block after reopening", asyn
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByRole("spinbutton", { name: "Posición horizontal" }).fill("240");
   await page.getByRole("spinbutton", { name: "Posición vertical" }).fill("-40");
   await page.getByRole("combobox", { name: "Esperar" }).selectOption("2");
@@ -1510,7 +1510,7 @@ test("free scene sends a character to the front or back and keeps the blocks aft
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByRole("button", { name: "+ Agregar personaje" }).click();
   await page.getByRole("button", { name: "+ Pasar al frente" }).click();
   await page.getByRole("button", { name: "+ Pasar al fondo" }).click();
@@ -1543,7 +1543,7 @@ test("free scene rounds a divided value and keeps the block after reopening", as
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByRole("textbox", { name: "Nombre" }).fill("Medio");
   await page.getByRole("button", { name: "+ Crear variable" }).click();
   await page.getByRole("spinbutton", { name: "Número" }).fill("7");
@@ -1582,7 +1582,7 @@ test("free scene computes a remainder and keeps the block after reopening", asyn
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByRole("textbox", { name: "Nombre" }).fill("Resto");
   await page.getByRole("button", { name: "+ Crear variable" }).click();
   await page.getByRole("spinbutton", { name: "Número" }).fill("7");
@@ -1620,7 +1620,7 @@ test("free scene groups several blocks and runs a child-composed calculation", a
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByRole("textbox", { name: "Nombre" }).fill("Puntos");
   await page.getByRole("button", { name: "+ Crear variable" }).click();
   await page.getByRole("spinbutton", { name: "Número" }).fill("2");
@@ -1690,7 +1690,7 @@ test("Ori suggests using a block the child made; the child reviews, changes and 
     });
   });
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
 
   // Two blocks of the child's own.
   await page.getByRole("button", { name: "+ Mover", exact: true }).click();
@@ -1751,7 +1751,7 @@ test("Ori's block idea can be refused and a lone block cannot be swapped", async
     });
   });
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByRole("button", { name: "+ Mover", exact: true }).click();
   await page.getByRole("button", { name: "+ Girar a la derecha" }).click();
   await page.getByRole("textbox", { name: "Título del bloque" }).fill("Paso");
@@ -1779,7 +1779,7 @@ test("free scene composes a tune with the music extension and keeps it, with the
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   const music = page.getByRole("group", { name: "Música" });
   await music.getByLabel("Velocidad").selectOption("90");
   await music.getByRole("button", { name: "+ Velocidad" }).click();
@@ -1861,7 +1861,7 @@ test("free scene shows Looks and Motion as snap-together blocks and keeps tap, E
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
 
   const palette = page.locator(".kids-studio-palette");
   await expect(page.locator(".kids-root")).toHaveAttribute("data-block-palette", "scratch");
@@ -1937,7 +1937,7 @@ test("free scene shows Media and Logic as snap-together blocks and keeps tools o
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
 
   const palette = page.locator(".kids-studio-palette");
   await expect(page.locator(".kids-root")).toHaveAttribute("data-block-palette", "scratch");

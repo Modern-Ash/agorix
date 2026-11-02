@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "./fixtures.js";
+import { clickCreateScene } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -18,7 +19,7 @@ async function beginFreshScene(page: Page) {
   await page.getByRole("button", { name: "¡Empezar!" }).click();
   await expect(page.getByRole("heading", { name: "Mapa" })).toBeVisible();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await expect(page.getByRole("heading", { name: "Escena libre" })).toBeVisible();
 }
 

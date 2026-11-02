@@ -162,7 +162,12 @@ test("blocked storage: the session keeps working", async ({ page }) => {
   await page.getByRole("button", { name: "Seguir" }).click();
   await page.getByRole("button", { name: "¡Empezar!" }).click();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Crear escena" })).toBeVisible();
+  await expect(
+    page
+      .getByRole("button", { name: "Crear escena" })
+      .or(page.getByRole("navigation", { name: "Pasos para crear" }))
+      .first(),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Mapa" }).click();
   await page.getByRole("button", { name: "Misión 1" }).click();
   // The mission is a saved scene: without storage it may open in memory or lead back, never crash.

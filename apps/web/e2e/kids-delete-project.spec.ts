@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "./fixtures.js";
-import { reloadTo } from "./helpers.js";
+import { reloadTo, clickCreateScene } from "./helpers.js";
 
 // Issue #445: an adult can delete a scene; the child alone cannot.
 test.use({ hasTouch: true, serviceWorkers: "block" });
@@ -17,7 +17,7 @@ async function openProjectsWithTwoFree(page: Page) {
   await page.reload();
   for (let index = 0; index < 2; index++) {
     await reloadTo(page, "#/crear");
-    await page.getByRole("button", { name: "Crear escena" }).click();
+    await clickCreateScene(page);
   }
   await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
