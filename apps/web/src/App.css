@@ -5069,12 +5069,16 @@ button:hover:not(:disabled) {
   position: relative;
 }
 .learning-layout .panel-maximized {
-  position: fixed !important;
+  position: absolute !important;
   inset: 8px !important;
-  z-index: 80;
+  grid-area: 1 / 1 / -1 / -1 !important;
   width: auto !important;
   height: auto !important;
   max-height: none !important;
+}
+.learning-layout .code-panel.panel-maximized {
+  position: fixed !important;
+  z-index: 80;
 }
 .editor-shell > .agx-panel-dock {
   margin-top: 8px;

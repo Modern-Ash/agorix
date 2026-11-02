@@ -5655,6 +5655,11 @@
   .kids-studio-layout > .kids-studio-stage-column {
     grid-column: 3;
   }
+  /* An absolutely placed child measures against its grid area, so the maximized stage takes it all. */
+  .kids-studio-layout > .kids-studio-stage-column.agx-panel--maximized {
+    grid-column: 1 / -1;
+    grid-row: 1 / -1;
+  }
   .kids-studio-layout > .agx-panel-divider {
     grid-column: 2;
     width: 12px;
