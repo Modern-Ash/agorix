@@ -266,6 +266,8 @@ export function PanelDock({
   );
 }
 
+/** Reported until the first resize, when the real size is only known from the DOM. */
+const DEFAULT_DIVIDER_VALUE = 0;
 const DIVIDER_STEP = 16;
 
 /** Draggable (pointer) and keyboard-resizable divider that resizes panel `id`. */
@@ -289,7 +291,7 @@ export function PanelDivider({
   /** 1 when growing the panel means dragging toward the end; -1 for the opposite. */
   readonly direction?: 1 | -1;
 }) {
-  const { dispatch, locale } = usePanelLayout(controller);
+  const { state, dispatch, locale } = usePanelLayout(controller);
   const copy = PANEL_COPY[locale];
   const drag = useRef<{ start: number; base: number } | undefined>(undefined);
   const axis = orientation === "vertical" ? "clientX" : "clientY";
@@ -320,7 +322,7 @@ export function PanelDivider({
       role="separator"
       tabIndex={0}
       aria-orientation={orientation}
-      aria-valuenow={Math.round(size())}
+      aria-valuenow={Math.round(state.sizes[id] ?? DEFAULT_DIVIDER_VALUE)}
       aria-label={copy.resize(title)}
       className={`agx-panel-divider agx-panel-divider--${orientation}${className ? ` ${className}` : ""}`}
       onPointerDown={onPointerDown}
