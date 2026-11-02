@@ -1,5 +1,5 @@
 import { expect, test } from "./fixtures.js";
-import { reloadTo } from "./helpers.js";
+import { reloadTo, clickCreateScene } from "./helpers.js";
 
 test.use({ hasTouch: true });
 
@@ -21,7 +21,7 @@ for (const viewport of [
     });
     await page.reload();
     await page.getByRole("button", { name: "Crear", exact: true }).click();
-    await page.getByRole("button", { name: "Crear escena" }).click();
+    await clickCreateScene(page);
     await page.getByRole("combobox", { name: "Detener" }).selectOption("scene");
     await page.getByRole("button", { name: "+ Detener", exact: true }).click();
     await expect(page.locator(".kids-program-block")).toContainText("Detener: toda la escena");

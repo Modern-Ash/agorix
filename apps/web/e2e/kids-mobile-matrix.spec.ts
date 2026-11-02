@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page, type TestInfo } from "./fixtures.js";
+import { clickCreateScene } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -76,7 +77,7 @@ for (const viewport of VIEWPORTS) {
     await check(page, info, "map");
     await page.getByRole("button", { name: "Crear", exact: true }).click();
     await check(page, info, "create");
-    await page.getByRole("button", { name: "Crear escena" }).click();
+    await clickCreateScene(page);
     await page.getByRole("button", { name: "+ Mover", exact: true }).click();
     await check(page, info, "studio");
     // Ori never sits on top of Jugar.

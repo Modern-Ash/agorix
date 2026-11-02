@@ -97,3 +97,16 @@ export async function solveMission(page: Page, index: 0 | 1 | 2): Promise<void> 
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await expect(page.getByTestId("scene-goal-result")).toContainText("Lograste la meta");
 }
+
+/**
+ * Start the chosen scene from Crear. On a phone the action lives on the last of three steps, so open
+ * it first; on wider screens the gallery shows the action next to the choice.
+ */
+export async function clickCreateScene(page: Page): Promise<void> {
+  const steps = page.getByRole("navigation", { name: "Pasos para crear" });
+  const start = page.getByRole("button", { name: "Crear escena", exact: true });
+  if (!(await start.isVisible()) && (await steps.isVisible())) {
+    await steps.getByRole("button", { name: /^3 ·/ }).click();
+  }
+  await start.click();
+}

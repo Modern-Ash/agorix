@@ -1587,6 +1587,29 @@
 .kids-ori-guide-above-nav {
   bottom: calc(88px + env(safe-area-inset-bottom));
 }
+.kids-nav:has(.kids-ori-guide-docked) {
+  z-index: 60;
+}
+.kids-nav:has(.kids-ori-guide-docked) .kids-nav-button {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.kids-ori-guide-zone.kids-ori-guide-docked {
+  position: static;
+  flex: 0 0 52px;
+}
+.kids-ori-guide-docked .kids-ori-float-trigger {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  min-height: 56px;
+  padding: 2px;
+  border-radius: 12px;
+  box-shadow: none;
+}
+.kids-ori-guide-docked .kids-ori-float-trigger > span:last-child {
+  display: none;
+}
 .kids-ori-guide-message {
   margin: 0;
   color: var(--kids-text);
@@ -4328,6 +4351,191 @@
   }
 }
 
+/* Crear 2026: one gallery panel and a live scene preview. */
+body:has(.kids-create) {
+  margin: 0;
+}
+.kids-create {
+  max-width: 1280px;
+  width: 100%;
+}
+.kids-create-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.8fr);
+  gap: 14px;
+  min-height: 0;
+  height: min(710px, calc(100dvh - 380px));
+}
+.kids-create-gallery-panel {
+  min-width: 0;
+  min-height: 0;
+}
+.kids-create-gallery-panel .agx-panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+}
+.kids-create-steps {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.kids-create-steps .kids-button {
+  min-height: 44px;
+}
+.kids-create-steps .kids-button[aria-current="step"] {
+  border-color: #0f6e66;
+  background: #def3ef;
+}
+.kids-create-steps .kids-button:nth-child(3),
+.kids-create-progress,
+.kids-create-back {
+  display: none;
+}
+.kids-create[data-step="1"] [data-create-step="2"],
+.kids-create[data-step="2"] [data-create-step="1"] {
+  display: none;
+}
+.kids-create-step {
+  grid-template-columns: minmax(0, 1fr) minmax(160px, 0.55fr);
+  align-content: start;
+  gap: 10px;
+}
+.kids-create-step .kids-gallery-head {
+  display: contents;
+}
+.kids-create-step .kids-gallery-head h3 {
+  grid-column: 1 / -1;
+}
+.kids-create-step .kids-gallery-head input {
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
+  width: 100%;
+}
+.kids-create-step .kids-gallery-filters {
+  grid-column: 1;
+  grid-row: 2;
+  min-width: 0;
+}
+.kids-create-step .kids-create-media {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.kids-create-step .kids-gallery-grid {
+  grid-column: 1 / -1;
+  grid-row: 4;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+}
+.kids-create-step .kids-create-upload {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 86px;
+  text-align: center;
+}
+.kids-create-next {
+  position: static;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  flex-wrap: nowrap;
+  min-height: 0;
+  margin: 0;
+}
+.kids-create-preview {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: 12px;
+}
+.kids-create-preview-backdrop {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+}
+.kids-create-preview-backdrop .kids-art-image,
+.kids-create-preview-backdrop .kids-art-emoji {
+  width: 32%;
+  height: 50%;
+}
+.kids-create-pick {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--kids-border);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--kids-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.kids-create-surprise,
+.kids-create-go {
+  width: 100%;
+  margin: 0;
+}
+@media (max-width: 720px) {
+  .kids-create-workspace {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+  }
+  .kids-create .kids-create-gallery-panel.agx-panel {
+    flex: 0 0 auto;
+    height: auto;
+    overflow: visible;
+  }
+  .kids-create .kids-create-gallery-panel.agx-panel .agx-panel-body {
+    flex: 0 0 auto;
+    overflow: visible;
+  }
+  .kids-create-steps {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .kids-create-steps .kids-button:nth-child(3),
+  .kids-create-progress,
+  .kids-create-back {
+    display: block;
+  }
+  .kids-create-progress {
+    height: 6px;
+    border-radius: 99px;
+    background: #d7e7e4;
+  }
+  .kids-create-progress span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: #0f6e66;
+  }
+  .kids-create-step {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .kids-create-step .kids-gallery-filters {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .kids-create-step .kids-gallery-head input {
+    grid-column: 1;
+    grid-row: 3;
+  }
+  .kids-create-step .kids-create-media {
+    grid-row: 4;
+  }
+  .kids-create-step .kids-gallery-grid {
+    grid-row: 5;
+  }
+  .kids-create[data-step="3"] .kids-create-step,
+  .kids-create[data-step="1"] .kids-create-next,
+  .kids-create[data-step="2"] .kids-create-next {
+    display: none;
+  }
+}
+
 /* Map: a "what now" card and lock hints so the next step is obvious (#1111). */
 .kids-map-orientation {
   margin: 10px 18px 14px;
@@ -5799,5 +6007,60 @@
   .kids-adult-layout > .kids-adult-tabs [role="tab"] {
     min-height: 48px;
     font-size: 0.8rem;
+  }
+}
+
+/* The separator owns a narrow grid track; persisted widths belong to the stage panel. */
+@media (min-width: 721px) {
+  .kids-studio-layout:not([data-stage-minimized="true"]) {
+    grid-template-columns: minmax(0, 7fr) 12px var(--kids-stage-width);
+    column-gap: 6px;
+  }
+  .kids-studio-layout > .kids-studio-stage-column,
+  .kids-studio-layout > .agx-panel-divider,
+  .kids-studio-layout > .kids-studio-program-column {
+    grid-row: 1;
+  }
+  .kids-studio-layout > .kids-studio-stage-column {
+    grid-column: 3;
+  }
+  /* An absolutely placed child measures against its grid area, so the maximized stage takes it all. */
+  .kids-studio-layout > .kids-studio-stage-column.agx-panel--maximized {
+    grid-column: 1 / -1;
+    grid-row: 1 / -1;
+  }
+  .kids-studio-layout > .agx-panel-divider {
+    grid-column: 2;
+    width: 12px;
+    min-height: 44px;
+  }
+  .kids-studio-layout > .kids-studio-program-column {
+    grid-column: 1;
+    min-width: 0;
+  }
+  .kids-studio-layout[data-stage-minimized="true"] > .agx-panel-divider {
+    display: none;
+  }
+  .kids-studio-layout[data-stage-minimized="true"] > .kids-studio-program-column {
+    grid-column: 1;
+  }
+  .kids-studio-layout > .agx-panel-dock {
+    grid-row: 2;
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 720px) {
+  .kids-studio-layout > .agx-panel-divider {
+    display: none;
+  }
+  .kids-studio-layout > .agx-panel-dock {
+    position: fixed;
+    right: 8px;
+    bottom: calc(56px + env(safe-area-inset-bottom));
+    left: 8px;
+    z-index: 31;
+    background: var(--kids-panel);
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgb(0 0 0 / 18%);
   }
 }

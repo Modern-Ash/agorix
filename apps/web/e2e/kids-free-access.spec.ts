@@ -1,5 +1,6 @@
 import { expect, test } from "./fixtures.js";
 import { STUDIO_BLOCK_CATEGORY } from "../src/kids/kidsPaletteCatalog.js";
+import { clickCreateScene } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -20,7 +21,7 @@ test("the sole free scene opens without finishing a mission and leaves progress 
 
   // Escena libre = the Studio: whole categorized palette, never the mission subset.
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await expect(page).toHaveURL(/#\/escena\//);
   await expect
     .poll(() => page.locator(".kids-studio-palette [data-kids-palette-tool]").count())
@@ -55,7 +56,12 @@ for (const [name, viewport] of [
     await page.goto("/kids#/crear");
     await page.reload();
     await expect(page.getByRole("heading", { name: "Crear", exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Crear escena" })).toBeVisible();
+    await expect(
+      page
+        .getByRole("button", { name: "Crear escena" })
+        .or(page.getByRole("navigation", { name: "Pasos para crear" }))
+        .first(),
+    ).toBeVisible();
     await expect(page.getByRole("button", { name: "¡Crear!", exact: true })).toHaveCount(0);
   });
 }
@@ -76,7 +82,7 @@ test("the Escena libre starter shelf adds blocks and leaves the whole palette in
   await SEED(page);
   await page.getByRole("button", { name: "Crear", exact: true }).click();
   await expect(page.getByTestId("free-project-note")).toHaveCount(0);
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
 
   const shelf = page.getByRole("region", { name: "Para empezar" });
   await expect(shelf.locator("[data-starter]")).toHaveCount(3);
@@ -98,7 +104,7 @@ test("a scene goal is checked against the run, survives a reload and can be remo
 }) => {
   await SEED(page);
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
 
   await page
     .getByRole("combobox", { name: "Elegir una meta" })
@@ -125,7 +131,7 @@ test("Ori proposes a scene goal; the child can ask for another, accept it or dec
 }) => {
   await SEED(page);
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByRole("button", { name: "+ Agregar personaje" }).click();
 
   const ori = page.getByRole("complementary", { name: "Metas de Ori" });
@@ -157,7 +163,7 @@ test("a remote Ori ranks the scene goal by index and the wording stays local", a
   });
   await SEED(page);
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByRole("button", { name: "+ Agregar personaje" }).click();
   await expect.poll(() => sent).not.toBeNull();
   expect(Object.keys(sent as object).sort()).toEqual(["choices", "locale"]);
@@ -175,7 +181,7 @@ test("Ori suggests a block for the goal; the child can change, decline or accept
 }) => {
   await SEED(page);
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByRole("button", { name: "+ Agregar personaje" }).click();
   await page.getByRole("combobox", { name: "Elegir una meta" }).selectOption({ index: 1 });
   await expect(page.getByTestId("scene-goal")).toBeVisible();
@@ -208,7 +214,7 @@ test("Ori explains a loop that does not end and offers an exit the child can acc
 }) => {
   await SEED(page);
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByRole("button", { name: "+ Por siempre → mover 1" }).click();
   await expect(page.getByTestId("ori-loop-help")).toHaveCount(0);
 
@@ -238,7 +244,7 @@ test("Ori explains a loop that does not end and offers an exit the child can acc
 test("the Escena libre palette offers every cataloged block", async ({ page }) => {
   await SEED(page);
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   // Variable and list blocks appear once one exists.
   await page.getByRole("textbox", { name: "Nombre" }).fill("Cuenta");
   await page.getByRole("button", { name: "+ Crear variable" }).click();

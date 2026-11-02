@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "./fixtures.js";
-import { passAdultGate, reloadToMap, openAdultTab } from "./helpers.js";
+import { passAdultGate, reloadToMap, openAdultTab, clickCreateScene } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -47,7 +47,7 @@ for (const profile of BANDS) {
     // Ori's goals in the Studio: the younger band gets shorter ideas.
     await page.getByRole("button", { name: "Volver al mapa" }).click();
     await page.getByRole("button", { name: "Crear", exact: true }).click();
-    await page.getByRole("button", { name: "Crear escena" }).click();
+    await clickCreateScene(page);
     await page.getByRole("button", { name: "Mostrar ayuda de Ori" }).click();
     const picker = page.getByRole("group", { name: "¿Qué querés lograr?" });
     await expect(picker.getByRole("button")).toHaveCount(profile.studioBlocks === 6 ? 5 : 7);

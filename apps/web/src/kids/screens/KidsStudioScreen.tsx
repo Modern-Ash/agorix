@@ -38,7 +38,7 @@ import {
   type EditorHistory,
 } from "@agorix/block-editor";
 import { projectAgorixCode } from "@agorix/agorix-code";
-import { Panel, PanelDock, usePanelLayoutController } from "@agorix/studio-ui";
+import { Panel, PanelDivider, PanelDock, usePanelLayoutController } from "@agorix/studio-ui";
 import { projectProgram } from "@agorix/code-generator";
 import { projectPython } from "@agorix/python-projection";
 import { projectJava } from "@agorix/java-projection";
@@ -3241,6 +3241,12 @@ export function KidsStudioScreen({
       <div
         className="kids-studio-layout"
         data-stage-minimized={panelLayout.state.minimized.includes("stage") ? "true" : undefined}
+        style={{
+          ["--kids-stage-width" as string]:
+            panelLayout.state.sizes.stage === undefined
+              ? "minmax(320px, 4fr)"
+              : `min(${panelLayout.state.sizes.stage}px, 45vw)`,
+        }}
       >
         <PanelDock
           panels={[
@@ -3254,6 +3260,7 @@ export function KidsStudioScreen({
           id="stage"
           title={copy.stage}
           accent="#0F6E66"
+          zoomable
           minimizable
           maximizable
           className="kids-studio-stage-column"
@@ -3955,6 +3962,16 @@ export function KidsStudioScreen({
             </select>
           </label>
         </Panel>
+        <PanelDivider
+          controller={panelLayout}
+          id="stage"
+          title={copy.stage}
+          direction={-1}
+          size={() =>
+            document.querySelector(".kids-studio-stage-column")?.getBoundingClientRect().width ??
+            320
+          }
+        />
         <div className="kids-studio-program-column">
           {editorTab !== "code" ? (
             <Panel
@@ -3970,6 +3987,7 @@ export function KidsStudioScreen({
                     : "Costumes"
               }
               accent={editorTab === "sounds" ? "#BE185D" : "#7C3AED"}
+              zoomable={editorTab === "costumes"}
               maximizable
               className="kids-studio-media-panel"
             >

@@ -64,10 +64,12 @@ export function KidsOriGuide({
   screen,
   locale,
   aboveNav,
+  docked = false,
 }: {
   readonly screen: KidsScreen;
   readonly locale: Locale;
   readonly aboveNav: boolean;
+  readonly docked?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const visible = useOriPageVisible();
@@ -78,7 +80,9 @@ export function KidsOriGuide({
     requestAnimationFrame(() => trigger.current?.focus());
   }
   return (
-    <div className={`kids-ori-guide-zone${aboveNav ? " kids-ori-guide-above-nav" : ""}`}>
+    <div
+      className={`kids-ori-guide-zone${aboveNav ? " kids-ori-guide-above-nav" : ""}${docked ? " kids-ori-guide-docked" : ""}`}
+    >
       <button
         type="button"
         ref={trigger}

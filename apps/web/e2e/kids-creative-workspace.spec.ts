@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { clickCreateScene } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -15,7 +16,7 @@ test("a new phone scene starts with its stage, Play and the program below", asyn
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena", exact: true }).click();
+  await clickCreateScene(page);
 
   const canvas = page.locator(
     ".kids-studio-program-column .kids-program-zone > .kids-program-stack",

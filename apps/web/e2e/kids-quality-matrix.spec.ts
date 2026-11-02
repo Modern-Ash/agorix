@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "./fixtures.js";
-import { passAdultGate, reloadTo } from "./helpers.js";
+import { passAdultGate, reloadTo, clickCreateScene } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -110,7 +110,7 @@ for (const viewport of VIEWPORTS) {
     // Offline: a free scene is built, played and saved with the network cut.
     await page.getByRole("button", { name: "Volver al mapa" }).click();
     await page.getByRole("button", { name: "Crear", exact: true }).click();
-    await page.getByRole("button", { name: "Crear escena" }).click();
+    await clickCreateScene(page);
     await context.setOffline(true);
     await page.getByRole("button", { name: "+ Mover", exact: true }).click();
     await page.getByRole("button", { name: "+ Girar a la derecha" }).click();

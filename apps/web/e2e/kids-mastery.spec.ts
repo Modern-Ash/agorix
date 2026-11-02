@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "./fixtures.js";
+import { clickCreateScene } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -16,7 +17,7 @@ async function openScene(page: Page) {
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
 }
 
 const mastery = (page: Page) =>

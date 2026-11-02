@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "./fixtures.js";
+import { clickCreateScene } from "./helpers.js";
 
 test.use({ serviceWorkers: "block", hasTouch: true });
 
@@ -78,7 +79,7 @@ test("listen reads visible Kids instructions and results, never a project identi
   expect((await speechLog(page)).spoken.at(-1)?.text).toBe(createNote);
   expect((await speechLog(page)).cancels).toBe(beforeCreate + 1);
 
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.goto("/kids#/proyectos");
   await page.reload();
@@ -127,7 +128,7 @@ test("adult switch hides listen controls on main Kids screens", async ({ page })
   await expect(listen).toHaveCount(0);
   await page.getByRole("button", { name: "Crear", exact: true }).click();
   await expect(listen).toHaveCount(0);
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await expect(listen).toHaveCount(0);
   await page.goto("/kids#/proyectos");
   await page.reload();

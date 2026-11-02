@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "./fixtures.js";
+import { clickCreateScene } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -18,7 +19,7 @@ async function beginFreshScene(page: Page) {
   await page.getByRole("button", { name: "¡Empezar!" }).click();
   await expect(page.getByRole("heading", { name: "Mapa" })).toBeVisible();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await expect(page.getByRole("heading", { name: "Escena libre" })).toBeVisible();
 }
 
@@ -36,6 +37,8 @@ for (const viewport of viewports) {
 
     // The desktop gesture has a non-drag keyboard path on every viewport.
     if (viewport.width === 1280) {
+      // The page opens at the top now, so give the drag somewhere to scroll back to.
+      await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
       await move.scrollIntoViewIfNeeded();
       const from = (await move.boundingBox())!;
       const target = page.locator(".kids-program-drop");
@@ -107,6 +110,7 @@ test("an offscreen palette drag released outside the program adds nothing and st
   await page.setViewportSize({ width: 1280, height: 800 });
   await beginFreshScene(page);
   const add = page.getByRole("button", { name: "+ Mover", exact: true });
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   await add.scrollIntoViewIfNeeded();
   const from = (await add.boundingBox())!;
   const before = await page.evaluate(() => window.scrollY);

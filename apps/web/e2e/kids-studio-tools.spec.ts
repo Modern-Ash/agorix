@@ -1,4 +1,5 @@
 import { expect, test } from "./fixtures.js";
+import { clickCreateScene } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -15,7 +16,7 @@ async function openScene(page: import("@playwright/test").Page) {
   }, PROGRESS);
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
 }
 
 for (const [name, viewport] of [
