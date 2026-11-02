@@ -92,13 +92,13 @@ test("free scene records stage pointer for mouse sensors without storing it in t
   // The bottom sheet would cover the stage the pointer test reads (#1110).
   await page.getByRole("button", { name: "Bloques", exact: true }).click();
   const stage = page.getByRole("group", { name: "Escenario" });
-  await stage.scrollIntoViewIfNeeded();
+  await stage.evaluate((element) => element.scrollIntoView({ block: "center" }));
   const box = await stage.boundingBox();
   expect(box).not.toBeNull();
   await page.mouse.move(box!.x + box!.width * 0.5, box!.y + box!.height * 0.5);
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await expect(page.getByText("Ratón: 168")).toBeVisible();
-  await stage.scrollIntoViewIfNeeded();
+  await stage.evaluate((element) => element.scrollIntoView({ block: "center" }));
   const activeBox = await stage.boundingBox();
   expect(activeBox).not.toBeNull();
   const actor = stage.locator(".kids-studio-stage-actor").first();

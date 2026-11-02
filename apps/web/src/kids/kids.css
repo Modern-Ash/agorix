@@ -3820,18 +3820,6 @@
 .kids-studio-stage-column[hidden] {
   display: none;
 }
-.kids-stage-dock {
-  grid-column: 1 / -1;
-  min-height: 44px;
-  padding: 8px 12px;
-  border: 2px solid #5d418e;
-  border-radius: 12px;
-  background: #efe8fb;
-  color: #332554;
-  font: inherit;
-  font-weight: 700;
-  cursor: pointer;
-}
 /* Phone: the palette is a bottom sheet opened from a bar, so the stage and the program stay
    in view (#1110). Desktop and tablet keep the palette beside the program. */
 .kids-studio-sheet-hint,
@@ -4220,19 +4208,6 @@
   color: #3d2c00;
 }
 
-/* Enlarged stage: the whole stage column covers the screen; Escape or its button returns (#1110). */
-.kids-studio-stage-column[data-large="true"] {
-  position: fixed;
-  inset: 0;
-  z-index: 40;
-  overflow-y: auto;
-  padding: 12px 16px 24px;
-  background: var(--kids-bg-solid, #f4f6f5);
-}
-.kids-studio-stage-column[data-large="true"] .kids-studio-stage {
-  width: min(100%, calc((100vh - 170px) * 20 / 13));
-  margin-inline: auto;
-}
 .kids-studio-stage-zoom {
   justify-self: start;
 }
@@ -5092,9 +5067,6 @@
     background: #fff;
   }
 }
-.kids-studio-stage-column[data-large="true"] {
-  max-height: none;
-}
 @media (min-width: 900px) {
   .kids-studio-program-column .kids-program-zone > .kids-program-stack {
     min-height: max(500px, calc(100dvh - 280px));
@@ -5370,5 +5342,69 @@
 @media (max-width: 720px) {
   .kids-studio-ori-rail {
     display: none;
+  }
+}
+
+/* Kids editor hosts shared panels without changing its grid geometry. */
+.kids-studio-program-column {
+  position: relative;
+}
+.kids-studio-media-panel.agx-panel {
+  display: flex;
+}
+.kids-studio-media-panel .agx-panel-body {
+  overflow: auto;
+}
+.kids-sheet-maximize {
+  display: none;
+}
+@media (max-width: 720px) {
+  .kids-sheet-maximize {
+    display: inline-flex;
+    flex: 0 0 48px;
+    align-items: center;
+    justify-content: center;
+    min-width: 48px;
+    min-height: 48px;
+  }
+  .kids-studio-palette[data-sheet="open"][data-maximized="true"] {
+    inset: 0 0 72px;
+    max-height: none;
+    z-index: 30;
+    border-radius: 0;
+  }
+  .kids-studio[data-editor-tab="costumes"] .kids-studio-media-panel.agx-panel--maximized,
+  .kids-studio[data-editor-tab="sounds"] .kids-studio-media-panel.agx-panel--maximized {
+    inset: 0 0 72px;
+    max-height: none;
+    z-index: 30;
+    border-radius: 0;
+  }
+}
+
+/* The Kids stage uses the same Panel reducer and dock as Studio. */
+.kids-studio-layout {
+  position: relative;
+}
+.kids-studio-layout > .agx-panel-dock {
+  grid-column: 1 / -1;
+}
+.kids-studio-stage-column.agx-panel {
+  min-width: 0;
+}
+.kids-studio-stage-column.agx-panel .agx-panel-body {
+  overflow: auto;
+}
+.kids-studio-stage-column.agx-panel--maximized {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  max-height: 100dvh;
+}
+@media (max-width: 720px) {
+  .kids-studio-stage-column.agx-panel--maximized {
+    position: fixed;
+    max-height: none;
+    border-radius: 0;
   }
 }

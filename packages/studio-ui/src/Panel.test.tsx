@@ -40,6 +40,18 @@ function Demo() {
   );
 }
 
+function StandaloneDemo() {
+  const controller = usePanelLayoutController("standalone", "es");
+  return (
+    <>
+      <Panel id="stage" title="Escenario" controller={controller} minimizable maximizable>
+        <p>escenario</p>
+      </Panel>
+      <PanelDock controller={controller} panels={[{ id: "stage", title: "Escenario" }]} />
+    </>
+  );
+}
+
 let host: HTMLDivElement;
 let root: Root;
 beforeEach(() => {
@@ -134,6 +146,22 @@ describe("<Panel>", () => {
     expect(button("Volver Programa al 100 %")?.textContent).toBe("100 %");
     for (let i = 0; i < 10; i += 1) click(button("Alejar Programa"));
     expect(button("Alejar Programa")?.disabled).toBe(true);
+  });
+
+  it("supports direct panel and dock use with a shared controller", () => {
+    act(() => root.unmount());
+    root = createRoot(host);
+    act(() => root.render(<StandaloneDemo />));
+    click(button("Minimizar Escenario"));
+    expect(panel("stage")?.hidden).toBe(true);
+    click(button("Restaurar Escenario desde la barra"));
+    expect(panel("stage")?.hidden).toBe(false);
+    click(button("Maximizar Escenario"));
+    expect(panel("stage")?.classList.contains("agx-panel--maximized")).toBe(true);
+    act(() => {
+      document.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    expect(panel("stage")?.classList.contains("agx-panel--maximized")).toBe(false);
   });
 
   it("persists minimized state per device scope", () => {

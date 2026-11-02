@@ -131,6 +131,13 @@ test("activity rail is vertical on tablet and desktop; the stage can be docked a
     await expect(page.locator(".kids-studio-stage-column")).toBeHidden();
     await page.getByRole("button", { name: "Restaurar escenario" }).click();
     await expect(page.locator(".kids-studio-stage-column")).toBeVisible();
+    await page.getByRole("button", { name: "Maximizar Escenario" }).click();
+    await expect(page.locator(".kids-studio-stage-column")).toHaveClass(/agx-panel--maximized/);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)).toBe(
+      false,
+    );
+    await page.keyboard.press("Escape");
+    await expect(page.locator(".kids-studio-stage-column")).not.toHaveClass(/agx-panel--maximized/);
     expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)).toBe(
       false,
     );
@@ -165,7 +172,7 @@ test("phone editor: stage on top, bottom bar opens Blocks, Costumes, Sounds and 
     const box = await bar.getByRole("button", { name: new RegExp(name) }).boundingBox();
     expect(box!.height).toBeGreaterThanOrEqual(48);
   }
-  await expect(page.locator(".kids-studio-media-panel")).toBeVisible();
+  await expect(page.locator(".kids-studio-media-panel[data-panel-id='media']")).toBeVisible();
   await expect(page.locator(".kids-studio-stage").first()).toBeAttached();
   const stage = await page.locator(".kids-studio-stage-column").boundingBox();
   const program = await page.locator(".kids-studio-program-column").boundingBox();
@@ -175,11 +182,30 @@ test("phone editor: stage on top, bottom bar opens Blocks, Costumes, Sounds and 
   await expect(page.locator(".kids-program-zone").first()).toBeVisible();
   await page.getByRole("button", { name: "Restaurar escenario" }).click();
   await expect(page.locator(".kids-studio-stage-column")).toBeVisible();
-  await page.getByRole("button", { name: "Agrandar escenario" }).click();
-  await expect(page.locator(".kids-studio-stage-column")).toHaveAttribute("data-large", "true");
+  await page.getByRole("button", { name: "Maximizar Escenario" }).click();
+  await expect(page.locator(".kids-studio-stage-column")).toHaveClass(/agx-panel--maximized/);
   await page.keyboard.press("Escape");
-  await expect(page.locator(".kids-studio-stage-column")).not.toHaveAttribute("data-large", "true");
+  await expect(page.locator(".kids-studio-stage-column")).not.toHaveClass(/agx-panel--maximized/);
   expect(await noSideways()).toBe(false);
+  await bar.getByRole("button", { name: /Bloques/ }).click();
+  await page.getByRole("button", { name: "Maximizar hoja de Bloques" }).click();
+  await expect(page.locator(".kids-studio-palette")).toHaveAttribute("data-maximized", "true");
+  expect((await page.locator(".kids-studio-palette").boundingBox())!.y).toBe(0);
+  const blocksBefore = await page.locator(".kids-program-block").count();
+  await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(blocksBefore + 1);
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".kids-studio-palette")).not.toHaveAttribute("data-maximized", "true");
+  for (const name of ["Disfraces", "Sonidos"]) {
+    await bar.getByRole("button", { name: new RegExp(name) }).click();
+    const panel = page.locator(".kids-studio-media-panel[data-panel-id='media']");
+    await panel.getByRole("button", { name: `Maximizar ${name}` }).click();
+    await expect(panel).toHaveClass(/agx-panel--maximized/);
+    expect((await panel.boundingBox())!.y).toBe(0);
+    await page.keyboard.press("Escape");
+    await expect(panel).not.toHaveClass(/agx-panel--maximized/);
+    expect(await noSideways()).toBe(false);
+  }
   await bar.getByRole("button", { name: /Código/ }).click();
   await expect(page.locator(".kids-code-strip")).toBeVisible();
   await expect(page.locator(".kids-studio-media-panel")).toHaveCount(0);

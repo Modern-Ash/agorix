@@ -74,8 +74,9 @@ export function PanelWorkArea({
   );
 }
 
-function usePanelLayout(): PanelLayoutController {
-  const controller = useContext(PanelLayoutContext);
+function usePanelLayout(override?: PanelLayoutController): PanelLayoutController {
+  const context = useContext(PanelLayoutContext);
+  const controller = override ?? context;
   if (controller === undefined) {
     throw new Error("<Panel> must be rendered inside <PanelWorkArea>.");
   }
@@ -83,6 +84,7 @@ function usePanelLayout(): PanelLayoutController {
 }
 
 export type PanelProps = {
+  readonly controller?: PanelLayoutController;
   readonly id: string;
   readonly title: string;
   readonly accent?: string;
@@ -95,6 +97,7 @@ export type PanelProps = {
 };
 
 export function Panel({
+  controller,
   id,
   title,
   accent = "#5B6475",
@@ -105,7 +108,7 @@ export function Panel({
   className,
   children,
 }: PanelProps) {
-  const { state, dispatch, locale } = usePanelLayout();
+  const { state, dispatch, locale } = usePanelLayout(controller);
   const copy = PANEL_COPY[locale];
   const minimized = state.minimized.includes(id);
   const maximized = state.maximized === id;
@@ -228,14 +231,16 @@ export function Panel({
 /** Chips for minimized panels; one tap restores a panel to its slot. */
 export function PanelDock({
   panels,
+  controller,
 }: {
+  readonly controller?: PanelLayoutController;
   readonly panels: readonly {
     readonly id: string;
     readonly title: string;
     readonly accent?: string;
   }[];
 }) {
-  const { state, dispatch, locale } = usePanelLayout();
+  const { state, dispatch, locale } = usePanelLayout(controller);
   const copy = PANEL_COPY[locale];
   const items = panels.filter((panel) => state.minimized.includes(panel.id));
   if (items.length === 0) return null;

@@ -38,6 +38,7 @@ import {
   type EditorHistory,
 } from "@agorix/block-editor";
 import { projectAgorixCode } from "@agorix/agorix-code";
+import { Panel, PanelDock, usePanelLayoutController } from "@agorix/studio-ui";
 import { projectProgram } from "@agorix/code-generator";
 import { projectPython } from "@agorix/python-projection";
 import { projectJava } from "@agorix/java-projection";
@@ -433,8 +434,6 @@ const COPY = {
     shortcutsTitle: "Atajos del editor",
     shortcutsOpen: "Atajos",
     shortcutsClose: "Cerrar",
-    stageLarge: "Agrandar escenario",
-    stageNormal: "Volver al tamaño normal",
     undo: "Deshacer",
     redo: "Rehacer",
     code: "Código",
@@ -705,8 +704,6 @@ const COPY = {
     shortcutsTitle: "Editor shortcuts",
     shortcutsOpen: "Shortcuts",
     shortcutsClose: "Close",
-    stageLarge: "Enlarge stage",
-    stageNormal: "Back to normal size",
     undo: "Undo",
     redo: "Redo",
     code: "Code",
@@ -1105,7 +1102,6 @@ export function KidsStudioScreen({
   const [frame, setFrame] = useState<number | null>(null);
   const tutorialFlag = useKidsFlag("tutorial");
   const duplicateFlag = useKidsFlag("duplicate");
-  const zoomFlag = useKidsFlag("zoom");
   const contextMenuFlag = useKidsFlag("contextMenu");
   const shortcutsFlag = useKidsFlag("shortcuts");
   // A block's menu (right click, long press or the menu key) and the shortcuts list (#1110).
@@ -1150,17 +1146,7 @@ export function KidsStudioScreen({
     return () => document.removeEventListener("pointerdown", outside);
   }, [blockMenu]);
   // The stage fills the screen so a child can see and play it large; Escape or the button ends it.
-  const [stageLarge, setStageLarge] = useState(false);
-  const [stageMinimized, setStageMinimized] = useState(false);
   const [programZoom, setProgramZoom] = useState(100);
-  useEffect(() => {
-    if (!stageLarge) return;
-    const onKey = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") setStageLarge(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [stageLarge]);
   const [tutorialOpen, setTutorialOpen] = useState(() => !studioTutorialDone());
   const [stepped, setStepped] = useState(false);
   useEffect(() => {
@@ -1312,6 +1298,16 @@ export function KidsStudioScreen({
     }
   }, [paletteView]);
   const [sheetOpen, setSheetOpen] = useState(paletteView === "all");
+  const [blocksSheetMaximized, setBlocksSheetMaximized] = useState(false);
+  const panelLayout = usePanelLayoutController("kids-editor", locale);
+  useEffect(() => {
+    if (!blocksSheetMaximized) return;
+    const restore = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") setBlocksSheetMaximized(false);
+    };
+    document.addEventListener("keydown", restore);
+    return () => document.removeEventListener("keydown", restore);
+  }, [blocksSheetMaximized]);
   const [paletteCollapsed, setPaletteCollapsed] = useState(paletteView !== "all");
   const [codeCollapsed, setCodeCollapsed] = useState(false);
   const [oriCollapsed, setOriCollapsed] = useState(true);
@@ -3066,6 +3062,7 @@ export function KidsStudioScreen({
                 if (tool === "code") {
                   setEditorTab("code");
                   setSheetOpen(false);
+                  setBlocksSheetMaximized(false);
                   setCodeCollapsed(false);
                   window.setTimeout(
                     () =>
@@ -3077,6 +3074,8 @@ export function KidsStudioScreen({
                   return;
                 }
                 setSheetOpen(false);
+                setBlocksSheetMaximized(false);
+                panelLayout.dispatch({ type: "restoreMaximized" });
                 setEditorTab(editorTab === tool ? "code" : tool);
                 setOriContext(editorTab === tool ? "actor" : tool);
               }}
@@ -3214,21 +3213,20 @@ export function KidsStudioScreen({
       ) : null}
       <div
         className="kids-studio-layout"
-        data-stage-minimized={stageMinimized ? "true" : undefined}
+        data-stage-minimized={panelLayout.state.minimized.includes("stage") ? "true" : undefined}
       >
-        {stageMinimized ? (
-          <button
-            type="button"
-            className="kids-stage-dock"
-            onClick={() => setStageMinimized(false)}
-          >
-            {locale === "es" ? "Restaurar escenario" : "Restore stage"}
-          </button>
-        ) : null}
-        <div
+        <PanelDock
+          panels={[{ id: "stage", title: copy.stage, accent: "#0F6E66" }]}
+          controller={panelLayout}
+        />
+        <Panel
+          id="stage"
+          title={copy.stage}
+          accent="#0F6E66"
+          minimizable
+          maximizable
           className="kids-studio-stage-column"
-          data-large={stageLarge ? "true" : undefined}
-          hidden={stageMinimized}
+          controller={panelLayout}
         >
           <div className="kids-studio-stage-heading">
             <h2 className="kids-sr-only">{copy.stage}</h2>
@@ -3272,71 +3270,11 @@ export function KidsStudioScreen({
                 <span className="kids-sr-only">{copy.step}</span>
               </button>
             </div>
-            <button
-              type="button"
-              className="kids-button kids-icon-button kids-stage-minimize"
-              aria-label={locale === "es" ? "Minimizar escenario" : "Minimize stage"}
-              title={locale === "es" ? "Minimizar escenario" : "Minimize stage"}
-              onClick={() => {
-                setStageLarge(false);
-                setStageMinimized(true);
-              }}
-            >
-              <span aria-hidden="true">−</span>
-            </button>
             <div
               className="kids-stage-view"
               role="group"
               aria-label={locale === "es" ? "Vista del juego" : "Game view"}
             >
-              {zoomFlag ? (
-                <>
-                  <button
-                    type="button"
-                    className="kids-button kids-icon-button"
-                    aria-pressed={!stageLarge}
-                    aria-label={copy.stageNormal}
-                    title={copy.stageNormal}
-                    onClick={() => setStageLarge(false)}
-                  >
-                    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
-                      <rect
-                        x="3"
-                        y="5"
-                        width="18"
-                        height="14"
-                        rx="2"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      />
-                      <rect x="13" y="8" width="5" height="5" fill="currentColor" />
-                    </svg>
-                  </button>
-                  <button
-                    type="button"
-                    className="kids-button kids-icon-button"
-                    aria-pressed={stageLarge}
-                    aria-label={copy.stageLarge}
-                    title={copy.stageLarge}
-                    onClick={() => setStageLarge(true)}
-                  >
-                    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
-                      <rect
-                        x="3"
-                        y="5"
-                        width="18"
-                        height="14"
-                        rx="2"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      />
-                      <rect x="6" y="8" width="9" height="8" fill="currentColor" />
-                    </svg>
-                  </button>
-                </>
-              ) : null}
               <button
                 type="button"
                 className="kids-button kids-icon-button"
@@ -3938,10 +3876,25 @@ export function KidsStudioScreen({
               ))}
             </select>
           </label>
-        </div>
+        </Panel>
         <div className="kids-studio-program-column">
           {editorTab !== "code" ? (
-            <div className="kids-studio-media-panel" role="tabpanel">
+            <Panel
+              controller={panelLayout}
+              id="media"
+              title={
+                editorTab === "sounds"
+                  ? locale === "es"
+                    ? "Sonidos"
+                    : "Sounds"
+                  : locale === "es"
+                    ? "Disfraces"
+                    : "Costumes"
+              }
+              accent={editorTab === "sounds" ? "#BE185D" : "#7C3AED"}
+              maximizable
+              className="kids-studio-media-panel"
+            >
               {editorTab === "sounds" ? (
                 <div
                   className="kids-studio-media-content"
@@ -4091,7 +4044,7 @@ export function KidsStudioScreen({
                   onError={() => setError(true)}
                 />
               ) : null}
-            </div>
+            </Panel>
           ) : null}
           <div className="kids-studio-workspace-heading">
             <h2>
@@ -4438,6 +4391,7 @@ export function KidsStudioScreen({
             ref={setPalette}
             data-contextual={paletteView === "focused" ? "true" : undefined}
             data-open={paletteView === "focused" && openCategory !== null ? "true" : undefined}
+            data-maximized={blocksSheetMaximized ? "true" : undefined}
             data-sheet={
               paletteView === "focused"
                 ? openCategory
@@ -4463,6 +4417,23 @@ export function KidsStudioScreen({
                   ? categoryLabel[openCategory]
                   : copy.blocksTitle}
               </strong>
+              <button
+                type="button"
+                className="kids-panel-toggle kids-sheet-maximize"
+                aria-label={
+                  blocksSheetMaximized
+                    ? locale === "es"
+                      ? "Restaurar hoja de Bloques"
+                      : "Restore Blocks sheet"
+                    : locale === "es"
+                      ? "Maximizar hoja de Bloques"
+                      : "Maximize Blocks sheet"
+                }
+                aria-pressed={blocksSheetMaximized}
+                onClick={() => setBlocksSheetMaximized((value) => !value)}
+              >
+                <span aria-hidden="true">{blocksSheetMaximized ? "❐" : "□"}</span>
+              </button>
               {paletteView === "all" ? (
                 <button
                   type="button"
