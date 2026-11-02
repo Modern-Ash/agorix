@@ -5063,3 +5063,99 @@ button:hover:not(:disabled) {
     height: 24px;
   }
 }
+
+/* Studio panels share the persisted layout reducer and dock with Kids. */
+.learning-layout {
+  position: relative;
+}
+.learning-layout .panel-maximized {
+  position: absolute !important;
+  inset: 8px !important;
+  grid-area: 1 / 1 / -1 / -1 !important;
+  width: auto !important;
+  height: auto !important;
+  max-height: none !important;
+}
+.learning-layout .code-panel.panel-maximized {
+  position: fixed !important;
+  z-index: 80;
+}
+.editor-shell > .agx-panel-dock {
+  margin-top: 8px;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+.editor-shell .studio-panel-zoom {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.editor-shell .studio-panel-zoom button:nth-child(2) {
+  min-width: 56px;
+  font-variant-numeric: tabular-nums;
+}
+.program-panel .block-stack,
+.stage-panel .stage-canvas {
+  zoom: var(--studio-panel-zoom, 1);
+}
+@media (max-width: 720px) {
+  .learning-layout .panel-maximized {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 80;
+    border-radius: 0;
+  }
+  .editor-shell > .agx-panel-dock .agx-panel-chip {
+    min-height: 48px;
+  }
+}
+.learning-layout .panel-heading {
+  flex-wrap: wrap;
+}
+.learning-layout > .program-panel .agx-panel-header {
+  flex-wrap: wrap;
+  padding-block: 6px;
+}
+.learning-layout > .program-panel .agx-panel-actions {
+  flex: 1 1 100%;
+  min-width: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.learning-layout .panel-controls {
+  flex: 1 1 100%;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  max-width: 100%;
+  min-width: 0;
+  margin-left: 0;
+}
+.editor-shell[data-code-open="false"][data-companion-open="false"]
+  .learning-layout
+  > .program-panel
+  .panel-controls {
+  display: inline-flex;
+}
+.learning-layout > .studio-program-divider {
+  display: none;
+}
+@media (min-width: 1180px) {
+  .editor-shell[data-code-open="false"][data-companion-open="false"]
+    .learning-layout:has(.studio-program-divider) {
+    grid-template-columns:
+      minmax(200px, 248px)
+      minmax(340px, var(--studio-program-width, 0.92fr))
+      minmax(460px, 1.18fr);
+  }
+  .editor-shell[data-code-open="false"][data-companion-open="false"]
+    .learning-layout
+    > .studio-program-divider {
+    display: block;
+    grid-area: program;
+    justify-self: end;
+    width: 12px;
+    min-height: 100%;
+    margin-right: -6px;
+    z-index: 5;
+  }
+}

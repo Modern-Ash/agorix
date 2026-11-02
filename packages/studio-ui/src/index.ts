@@ -36,6 +36,7 @@ export {
   ZOOM_MIN,
   clampZoom,
   loadPanelLayout,
+  panelLayoutStorageKey,
   parsePanelLayout,
   reducePanelLayout,
   savePanelLayout,

@@ -5640,3 +5640,58 @@
   background: #efe8fb;
   box-shadow: 0 0 0 2px #7256ad;
 }
+
+/* The separator owns a narrow grid track; persisted widths belong to the stage panel. */
+@media (min-width: 721px) {
+  .kids-studio-layout:not([data-stage-minimized="true"]) {
+    grid-template-columns: minmax(0, 7fr) 12px var(--kids-stage-width);
+    column-gap: 6px;
+  }
+  .kids-studio-layout > .kids-studio-stage-column,
+  .kids-studio-layout > .agx-panel-divider,
+  .kids-studio-layout > .kids-studio-program-column {
+    grid-row: 1;
+  }
+  .kids-studio-layout > .kids-studio-stage-column {
+    grid-column: 3;
+  }
+  /* An absolutely placed child measures against its grid area, so the maximized stage takes it all. */
+  .kids-studio-layout > .kids-studio-stage-column.agx-panel--maximized {
+    grid-column: 1 / -1;
+    grid-row: 1 / -1;
+  }
+  .kids-studio-layout > .agx-panel-divider {
+    grid-column: 2;
+    width: 12px;
+    min-height: 44px;
+  }
+  .kids-studio-layout > .kids-studio-program-column {
+    grid-column: 1;
+    min-width: 0;
+  }
+  .kids-studio-layout[data-stage-minimized="true"] > .agx-panel-divider {
+    display: none;
+  }
+  .kids-studio-layout[data-stage-minimized="true"] > .kids-studio-program-column {
+    grid-column: 1;
+  }
+  .kids-studio-layout > .agx-panel-dock {
+    grid-row: 2;
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 720px) {
+  .kids-studio-layout > .agx-panel-divider {
+    display: none;
+  }
+  .kids-studio-layout > .agx-panel-dock {
+    position: fixed;
+    right: 8px;
+    bottom: calc(56px + env(safe-area-inset-bottom));
+    left: 8px;
+    z-index: 31;
+    background: var(--kids-panel);
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgb(0 0 0 / 18%);
+  }
+}

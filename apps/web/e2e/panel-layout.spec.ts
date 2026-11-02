@@ -34,6 +34,44 @@ for (const { width, height } of WIDTHS) {
   });
 }
 
+test("Studio persists its dock and zoom, and Escape restores a panel within the work area", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/advanced");
+  await page.getByRole("button", { name: "Close Preview" }).click();
+  const dock = page.getByRole("navigation", { name: "Minimized panels" });
+  await expect(dock.getByRole("button", { name: "Restore Preview from the dock" })).toBeVisible();
+  await page.reload();
+  await expect(dock.getByRole("button", { name: "Restore Preview from the dock" })).toBeVisible();
+  await dock.getByRole("button", { name: "Restore Preview from the dock" }).click();
+  await expect(page.locator(".stage-panel")).toBeVisible();
+  await page.getByRole("button", { name: "Zoom in Blocks" }).click();
+  await expect(page.getByRole("button", { name: "Reset Blocks to 100%" })).toContainText("110 %");
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Reset Blocks to 100%" })).toContainText("110 %");
+  const divider = page.getByRole("separator", { name: "Resize Blocks" });
+  await expect(divider).toBeVisible();
+  await divider.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.locator(".learning-layout")).toHaveAttribute(
+    "style",
+    /--studio-program-width: min\(\d+px/,
+  );
+  await page.reload();
+  await expect(page.locator(".learning-layout")).toHaveAttribute(
+    "style",
+    /--studio-program-width: min\(\d+px/,
+  );
+  await page.getByRole("button", { name: "Maximize Blocks" }).click();
+  const layout = await page.locator(".learning-layout").boundingBox();
+  const panel = await page.locator(".program-panel").boundingBox();
+  expect(panel!.x).toBeGreaterThanOrEqual(layout!.x);
+  expect(panel!.x + panel!.width).toBeLessThanOrEqual(layout!.x + layout!.width + 1);
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".program-panel")).not.toHaveClass(/panel-maximized/);
+});
+
 // Issue #1191 (2a): one-line top bar with a mission pill; the big mission card is gone.
 for (const { width, height } of WIDTHS) {
   test(`mission editor top bar fits at ${width}px and the pill opens the full goal`, async ({
@@ -127,6 +165,18 @@ test("activity rail is vertical on tablet and desktop; the stage can be docked a
     const layout = await page.locator(".kids-studio-layout").boundingBox();
     expect(rail!.width).toBeLessThanOrEqual(70);
     expect(rail!.x + rail!.width).toBeLessThanOrEqual(layout!.x + 1);
+    const divider = page.getByRole("separator", { name: "Cambiar el tamaño de Escenario" });
+    await divider.focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(page.locator(".kids-studio-layout")).toHaveAttribute(
+      "style",
+      /--kids-stage-width: min\(\d+px, 45vw\)/,
+    );
+    await page.getByRole("button", { name: "Acercar Escenario" }).click();
+    await expect(page.getByRole("button", { name: "Volver Escenario al 100 %" })).toContainText(
+      "110 %",
+    );
+    await page.getByRole("button", { name: "Volver Escenario al 100 %" }).click();
     await page.getByRole("button", { name: "Minimizar escenario" }).click();
     await expect(page.locator(".kids-studio-stage-column")).toBeHidden();
     await page.getByRole("button", { name: "Restaurar escenario" }).click();

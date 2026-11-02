@@ -2,7 +2,13 @@ import { act } from "react-dom/test-utils";
 import { createRoot, type Root } from "react-dom/client";
 import { JSDOM } from "jsdom";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Panel, PanelDock, PanelWorkArea, usePanelLayoutController } from "./Panel.js";
+import {
+  Panel,
+  PanelDivider,
+  PanelDock,
+  PanelWorkArea,
+  usePanelLayoutController,
+} from "./Panel.js";
 
 const dom = new JSDOM("<!doctype html><html><body></body></html>", {
   pretendToBeVisual: true,
@@ -30,6 +36,7 @@ function Demo() {
       <Panel id="stage" title="Escenario" minimizable maximizable>
         <p>escenario</p>
       </Panel>
+      <PanelDivider id="stage" title="Escenario" size={() => 320} />
       <PanelDock
         panels={[
           { id: "program", title: "Programa" },
@@ -170,5 +177,20 @@ describe("<Panel>", () => {
     root = createRoot(host);
     act(() => root.render(<Demo />));
     expect(panel("program")?.hidden).toBe(true);
+  });
+
+  it("resizes by keyboard and persists the divider size", () => {
+    const divider = host.querySelector<HTMLElement>('[role="separator"]');
+    expect(divider?.getAttribute("aria-label")).toBe("Cambiar el tamaño de Escenario");
+    act(() => {
+      divider?.dispatchEvent(
+        new window.KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }),
+      );
+    });
+    expect(panel("stage")?.style.flexBasis).toBe("336px");
+    act(() => root.unmount());
+    root = createRoot(host);
+    act(() => root.render(<Demo />));
+    expect(panel("stage")?.style.flexBasis).toBe("336px");
   });
 });
