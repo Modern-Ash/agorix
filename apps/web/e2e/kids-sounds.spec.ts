@@ -23,6 +23,10 @@ test("adult audio stays in IndexedDB and a bad upload is rejected", async ({ pag
   await page.getByRole("button", { name: "Adultos" }).click();
   await passAdultGate(page);
   await openAdultTab(page, "Personalizar");
+  await page
+    .getByRole("group", { name: "Tipo de contenido" })
+    .getByRole("button", { name: "Sonidos" })
+    .click();
   const panel = page.getByRole("region", { name: "Sonidos propios" });
   const input = panel.getByLabel("Elegir audio para 🐸");
   await input.setInputFiles({
@@ -91,6 +95,10 @@ test("an adult trims a saved sound, undoes and redoes it, and the edit is kept o
   await page.getByRole("button", { name: "Adultos" }).click();
   await passAdultGate(page);
   await openAdultTab(page, "Personalizar");
+  await page
+    .getByRole("group", { name: "Tipo de contenido" })
+    .getByRole("button", { name: "Sonidos" })
+    .click();
   const panel = page.getByRole("region", { name: "Sonidos propios" });
   await panel
     .getByLabel("Elegir audio para 🐸")

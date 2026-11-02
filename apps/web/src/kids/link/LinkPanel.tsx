@@ -79,6 +79,30 @@ export function LinkPanel({ locale, api: provided }: Props) {
         <summary>{linkText(locale, "privacyTitle")}</summary>
         <p>{linkText(locale, "privacyNote")}</p>
       </details>
+      <div
+        className="kids-link-paths"
+        role="group"
+        aria-label={locale === "es" ? "Opciones de cuenta" : "Account options"}
+      >
+        <button
+          type="button"
+          className="kids-button"
+          onClick={() =>
+            document.getElementById("kids-link-this-title")?.scrollIntoView({ block: "start" })
+          }
+        >
+          {locale === "es" ? "Ya tengo un código" : "I have a code"}
+        </button>
+        <button
+          type="button"
+          className="kids-button"
+          onClick={() =>
+            document.getElementById("kids-link-account-title")?.scrollIntoView({ block: "start" })
+          }
+        >
+          {locale === "es" ? "Entrar / Crear cuenta" : "Sign in / Create account"}
+        </button>
+      </div>
       <ThisDeviceCard locale={locale} api={api} link={link} onLink={setLink} />
       <AdultAccountCard
         locale={locale}

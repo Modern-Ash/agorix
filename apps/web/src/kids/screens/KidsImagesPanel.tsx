@@ -21,6 +21,7 @@ export function KidsImagesPanel({ locale, t }: Props) {
   const [images, setImages] = useState(loadKidsImages);
   const [custom, setCustom] = useState(loadKidsCustom);
   const [message, setMessage] = useState("");
+  const [filter, setFilter] = useState<"explorers" | "characters" | "backdrops">("explorers");
   const worlds = kidsTable(locale, "worlds");
   const used = Math.ceil(imageStorageBytes(images) / 1024);
 
@@ -96,8 +97,43 @@ export function KidsImagesPanel({ locale, t }: Props) {
       <h2 id="kids-images-title">{t("gameImages")}</h2>
       <p>{t("imagesStay")}</p>
       <p className="kids-note">{t("imagesUsed", { used, limit: 1024 })}</p>
+      <meter
+        min={0}
+        max={1024}
+        value={Math.min(used, 1024)}
+        aria-label={locale === "es" ? "Espacio usado por imágenes" : "Image storage used"}
+      />
+      <div
+        className="kids-images-filters"
+        role="group"
+        aria-label={locale === "es" ? "Filtrar imágenes" : "Filter images"}
+      >
+        {(["explorers", "characters", "backdrops"] as const).map((category) => (
+          <button
+            key={category}
+            type="button"
+            className="kids-button"
+            aria-pressed={filter === category}
+            onClick={() => setFilter(category)}
+          >
+            {locale === "es"
+              ? { explorers: "Exploradores", characters: "Personajes", backdrops: "Fondos" }[
+                  category
+                ]
+              : { explorers: "Explorers", characters: "Characters", backdrops: "Backdrops" }[
+                  category
+                ]}
+          </button>
+        ))}
+      </div>
       <div className="kids-images-list">
-        {KIDS_IMAGE_SLOTS.map((slot) => (
+        {KIDS_IMAGE_SLOTS.filter((slot) =>
+          filter === "explorers"
+            ? slot === "ori" || slot.startsWith("explorer:")
+            : filter === "backdrops"
+              ? slot.startsWith("world:")
+              : false,
+        ).map((slot) => (
           <div className="kids-image-row" key={slot}>
             <span
               className="kids-image-preview"
@@ -143,22 +179,31 @@ export function KidsImagesPanel({ locale, t }: Props) {
         {t("customExplorer")} / {t("customBackdrop")}
       </h3>
       <div className="kids-images-list">
-        {custom.map((item) => (
-          <div className="kids-image-row" key={item.id}>
-            <span
-              className="kids-image-preview"
-              role="img"
-              aria-label={t(item.kind === "explorer" ? "customExplorer" : "customBackdrop")}
-              style={{ backgroundImage: `url("${item.dataUrl}")` }}
-            />
-            <strong>
-              {t(item.kind === "explorer" ? "customExplorer" : "customBackdrop")} {item.id.slice(7)}
-            </strong>
-            <button type="button" className="kids-button" onClick={() => removeCustom(item.id)}>
-              {t("removeImage")} {item.id.slice(7)}
-            </button>
-          </div>
-        ))}
+        {custom
+          .filter((item) =>
+            filter === "characters"
+              ? item.kind === "explorer"
+              : filter === "backdrops"
+                ? item.kind === "backdrop"
+                : false,
+          )
+          .map((item) => (
+            <div className="kids-image-row" key={item.id}>
+              <span
+                className="kids-image-preview"
+                role="img"
+                aria-label={t(item.kind === "explorer" ? "customExplorer" : "customBackdrop")}
+                style={{ backgroundImage: `url("${item.dataUrl}")` }}
+              />
+              <strong>
+                {t(item.kind === "explorer" ? "customExplorer" : "customBackdrop")}{" "}
+                {item.id.slice(7)}
+              </strong>
+              <button type="button" className="kids-button" onClick={() => removeCustom(item.id)}>
+                {t("removeImage")} {item.id.slice(7)}
+              </button>
+            </div>
+          ))}
       </div>
       <p role="status" className="kids-note">
         {message}

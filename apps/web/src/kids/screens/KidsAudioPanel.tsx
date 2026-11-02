@@ -23,6 +23,7 @@ import type { KidsAvatarRef } from "../kidsProjects.js";
 import type { KidsText } from "../useKidsText.js";
 import { KIDS_GALLERY_CHARACTERS, galleryCharacterName } from "../kidsGallery.js";
 import type { Locale } from "../../i18n.js";
+import { KidsSprite } from "./KidsArt.js";
 
 interface Props {
   readonly t: KidsText;
@@ -242,6 +243,7 @@ export function KidsAudioPanel({ t, locale }: Props) {
           const key = actorAudioKey(actor);
           return (
             <div className="kids-image-row" key={key}>
+              <KidsSprite slot={actor} className="kids-image-preview" />
               <strong>{name(actor)}</strong>
               <label className="kids-button kids-image-file">
                 {t("chooseAudio")}

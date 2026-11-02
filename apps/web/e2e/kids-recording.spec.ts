@@ -59,6 +59,10 @@ async function adultAudioPanel(page: Page) {
   await page.getByRole("button", { name: "Adultos" }).click();
   await passAdultGate(page);
   await openAdultTab(page, "Personalizar");
+  await page
+    .getByRole("group", { name: "Tipo de contenido" })
+    .getByRole("button", { name: "Sonidos" })
+    .click();
   return page.getByRole("region", { name: "Sonidos propios" });
 }
 
