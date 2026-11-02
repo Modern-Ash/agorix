@@ -70,29 +70,39 @@ export function KidsIndicatorsPanel({ locale }: { readonly locale: Locale }) {
       ) : (
         <dl className="kids-adult-metrics">
           <div>
-            <dt>{copy.autonomy}</dt>
+            <dt title={copy.autonomyHelp} tabIndex={0}>
+              {copy.autonomy} <span aria-hidden="true">ⓘ</span>
+            </dt>
             <dd>
               {pct(summary.independentPercent)} ({summary.totals.runs} {copy.runs})
             </dd>
             <dd className="kids-note">{copy.autonomyHelp}</dd>
           </div>
           <div>
-            <dt>{copy.success}</dt>
+            <dt title={copy.successHelp} tabIndex={0}>
+              {copy.success} <span aria-hidden="true">ⓘ</span>
+            </dt>
             <dd>{pct(summary.completedPercent)}</dd>
             <dd className="kids-note">{copy.successHelp}</dd>
           </div>
           <div>
-            <dt>{copy.hints}</dt>
+            <dt title={copy.hintsHelp} tabIndex={0}>
+              {copy.hints} <span aria-hidden="true">ⓘ</span>
+            </dt>
             <dd>{summary.hintsPerRun === null ? copy.none : summary.hintsPerRun}</dd>
             <dd className="kids-note">{copy.hintsHelp}</dd>
           </div>
           <div>
-            <dt>{copy.prediction}</dt>
+            <dt title={copy.predictionHelp} tabIndex={0}>
+              {copy.prediction} <span aria-hidden="true">ⓘ</span>
+            </dt>
             <dd>{pct(summary.predictionPercent)}</dd>
             <dd className="kids-note">{copy.predictionHelp}</dd>
           </div>
           <div>
-            <dt>{copy.fallbacks}</dt>
+            <dt title={copy.fallbacksHelp} tabIndex={0}>
+              {copy.fallbacks} <span aria-hidden="true">ⓘ</span>
+            </dt>
             <dd>{fallbacks}</dd>
             <dd className="kids-note">{copy.fallbacksHelp}</dd>
           </div>

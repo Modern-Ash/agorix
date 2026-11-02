@@ -23,6 +23,51 @@ async function layoutProblems(page: Page) {
 
 test.use({ serviceWorkers: "block", hasTouch: true });
 
+test("adult tabs fit every width and keep customization and diagnostics deliberate", async ({
+  page,
+}) => {
+  for (const width of [360, 768, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/kids");
+    await page.evaluate(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+      localStorage.setItem("agorix.locale", "es");
+      localStorage.setItem(
+        "agorix.kids.flags.v1",
+        JSON.stringify(["customImages", "customAudio", "adultLink", "ageBands"]),
+      );
+      localStorage.setItem(
+        "agorix.kids.progress.v1",
+        JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+      );
+    });
+    await page.reload();
+    await page.getByRole("button", { name: "Adultos" }).click();
+    await passAdultGate(page);
+    const tabs = page.getByRole("tablist", { name: "Secciones de Adultos" });
+    await expect(tabs.getByRole("tab")).toHaveCount(4);
+    if (width === 1280) {
+      const nav = await tabs.boundingBox();
+      const panel = await page.getByRole("tabpanel").boundingBox();
+      expect(nav!.x + nav!.width).toBeLessThan(panel!.x);
+    }
+    await openAdultTab(page, "Ajustes");
+    await expect(page.getByRole("switch", { name: /Micrófono/ })).toBeVisible();
+    await openAdultTab(page, "Personalizar");
+    await page.getByRole("button", { name: "Sonidos", exact: true }).click();
+    await expect(page.getByRole("region", { name: "Sonidos propios" })).toBeVisible();
+    await page.getByRole("button", { name: "Imágenes", exact: true }).click();
+    await expect(page.getByRole("meter", { name: "Espacio usado por imágenes" })).toBeVisible();
+    await openAdultTab(page, "Cuenta y privacidad");
+    await expect(page.getByText("Diagnóstico", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Estado de la IA" })).toBeHidden();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      width,
+    );
+  }
+});
+
 test("adult gate protects real progress, settings and AI status", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/kids");
@@ -99,8 +144,10 @@ test("adult gate protects real progress, settings and AI status", async ({ page 
   await expect(page.getByText("35 min")).toBeVisible();
 
   await openAdultTab(page, "Cuenta y privacidad");
+  await page.getByText("Diagnóstico", { exact: true }).click();
   await expect(page.getByRole("heading", { name: "Estado de la IA" })).toBeVisible();
   await expect(page.getByText("provider-unavailable")).toBeVisible();
+  await page.getByText("🔒 Privacidad", { exact: true }).click();
   await expect(page.getByText(/No pedimos nombre, escuela ni ubicación/)).toBeVisible();
   expect(healthRequests).toBe(1);
 

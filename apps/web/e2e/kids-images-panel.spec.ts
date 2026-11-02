@@ -30,7 +30,10 @@ test("adult saves a local Ori image, reloads and removes it", async ({ page }) =
   await openAdults(page);
   const panel = page.getByRole("region", { name: "Imágenes del juego" });
   await expect(panel).toContainText("Estas imágenes se quedan en este dispositivo.");
-  await expect(panel.getByRole("img")).toHaveCount(11);
+  await expect(panel.getByRole("img").first()).toBeVisible();
+  await page.getByRole("button", { name: "Fondos", exact: true }).click();
+  await expect(panel.getByRole("img").first()).toBeVisible();
+  await page.getByRole("button", { name: "Exploradores", exact: true }).click();
   await panel
     .getByLabel("Elegir imagen para Ori")
     .setInputFiles(resolve("e2e/fixtures/kids-gps-zero.jpg"));
