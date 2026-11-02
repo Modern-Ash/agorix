@@ -5069,8 +5069,9 @@ button:hover:not(:disabled) {
   position: relative;
 }
 .learning-layout .panel-maximized {
-  position: absolute !important;
+  position: fixed !important;
   inset: 8px !important;
+  z-index: 80;
   width: auto !important;
   height: auto !important;
   max-height: none !important;

@@ -5644,7 +5644,7 @@
 /* The separator owns a narrow grid track; persisted widths belong to the stage panel. */
 @media (min-width: 721px) {
   .kids-studio-layout:not([data-stage-minimized="true"]) {
-    grid-template-columns: var(--kids-stage-width) 12px minmax(0, 3fr);
+    grid-template-columns: minmax(0, 7fr) 12px var(--kids-stage-width);
     column-gap: 6px;
   }
   .kids-studio-layout > .kids-studio-stage-column,
@@ -5653,7 +5653,7 @@
     grid-row: 1;
   }
   .kids-studio-layout > .kids-studio-stage-column {
-    grid-column: 1;
+    grid-column: 3;
   }
   .kids-studio-layout > .agx-panel-divider {
     grid-column: 2;
@@ -5661,7 +5661,7 @@
     min-height: 44px;
   }
   .kids-studio-layout > .kids-studio-program-column {
-    grid-column: 3;
+    grid-column: 1;
     min-width: 0;
   }
   .kids-studio-layout[data-stage-minimized="true"] > .agx-panel-divider {

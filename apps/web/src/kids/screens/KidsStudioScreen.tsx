@@ -3244,7 +3244,7 @@ export function KidsStudioScreen({
         style={{
           ["--kids-stage-width" as string]:
             panelLayout.state.sizes.stage === undefined
-              ? "minmax(280px, 2fr)"
+              ? "minmax(320px, 4fr)"
               : `min(${panelLayout.state.sizes.stage}px, 45vw)`,
         }}
       >
@@ -3966,6 +3966,7 @@ export function KidsStudioScreen({
           controller={panelLayout}
           id="stage"
           title={copy.stage}
+          direction={-1}
           size={() =>
             document.querySelector(".kids-studio-stage-column")?.getBoundingClientRect().width ??
             320
