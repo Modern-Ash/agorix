@@ -64,6 +64,7 @@ for (const { name: flagSet, flags } of FLAG_SETS)
       await passAdultGate(page);
       await expect(page.getByText("Misiones completadas")).toBeVisible();
       await openAdultTab(page, "Cuenta y privacidad");
+      await page.getByText("Diagnóstico", { exact: true }).click();
       await expect(page.getByRole("heading", { name: "Estado de la IA" })).toBeVisible();
     });
   }
