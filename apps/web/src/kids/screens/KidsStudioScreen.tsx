@@ -1007,6 +1007,7 @@ export function KidsStudioScreen({
   const [newCostume, setNewCostume] = useState<KidsGalleryCharacterId>("mika");
   const [newBackdrop, setNewBackdrop] = useState<KidsGalleryBackdropId>("moon");
   const [newSound, setNewSound] = useState<(typeof KIDS_SOUNDS)[number]["id"]>("kids:pop");
+  const [soundQuery, setSoundQuery] = useState("");
   const [moveCells, setMoveCells] = useState(1);
   const [targetX, setTargetX] = useState(160);
   const [targetY, setTargetY] = useState(0);
@@ -3901,38 +3902,60 @@ export function KidsStudioScreen({
                   role="group"
                   aria-label={locale === "es" ? "Sonidos" : "Sounds"}
                 >
-                  <label>
-                    {locale === "es" ? "Sonido" : "Sound"}
-                    <select
-                      value={newSound}
-                      onChange={(event) => setNewSound(event.target.value as typeof newSound)}
-                    >
-                      {KIDS_SOUNDS.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item[locale]}
-                        </option>
-                      ))}
-                    </select>
+                  <label className="kids-studio-sound-search">
+                    {locale === "es" ? "Buscar sonidos" : "Search sounds"}
+                    <input
+                      type="search"
+                      value={soundQuery}
+                      onChange={(event) => setSoundQuery(event.target.value)}
+                    />
                   </label>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    onClick={() =>
-                      void playKidsSound(newSound, {
-                        kind: "gallery",
-                        id: characterOfActor(activeActorId),
-                      })
-                    }
-                  >
-                    {locale === "es" ? "▶ Escuchar" : "▶ Listen"}
-                  </button>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    onClick={() => add({ type: "playSound", soundId: newSound })}
-                  >
-                    {locale === "es" ? "+ Agregar al programa" : "+ Add to program"}
-                  </button>
+                  <ul className="kids-studio-sound-list">
+                    {KIDS_SOUNDS.filter((item) =>
+                      item[locale]
+                        .toLocaleLowerCase(locale)
+                        .includes(soundQuery.trim().toLocaleLowerCase(locale)),
+                    ).map((item) => (
+                      <li key={item.id}>
+                        <span>{item[locale]}</span>
+                        <button
+                          type="button"
+                          className="kids-button"
+                          aria-label={`${locale === "es" ? "Escuchar" : "Listen to"} ${item[locale]}`}
+                          onClick={() =>
+                            void playKidsSound(item.id, {
+                              kind: "gallery",
+                              id: characterOfActor(activeActorId),
+                            })
+                          }
+                        >
+                          ▶
+                        </button>
+                        <button
+                          type="button"
+                          className="kids-button"
+                          aria-label={`${locale === "es" ? "Usar" : "Use"} ${item[locale]}`}
+                          onClick={() => {
+                            setNewSound(item.id);
+                            add({ type: "playSound", soundId: item.id });
+                          }}
+                        >
+                          {locale === "es" ? "Usar" : "Use"}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  {KIDS_SOUNDS.some((item) =>
+                    item[locale]
+                      .toLocaleLowerCase(locale)
+                      .includes(soundQuery.trim().toLocaleLowerCase(locale)),
+                  ) ? null : (
+                    <p role="status">
+                      {locale === "es"
+                        ? "No hay sonidos para esa búsqueda."
+                        : "No sounds match that search."}
+                    </p>
+                  )}
                 </div>
               ) : null}
               {editorTab === "costumes" && customImagesEnabled ? (

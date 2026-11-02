@@ -1256,6 +1256,13 @@
     animation: kids-ori-heartbeat 1.1s ease-in-out infinite;
   }
 }
+@media (prefers-reduced-motion: reduce) {
+  .kids-ori-face,
+  .kids-ori-face * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
 @keyframes kids-ori-floatY {
   0%,
   100% {
@@ -5407,4 +5414,43 @@
     max-height: none;
     border-radius: 0;
   }
+}
+
+.kids-studio-sound-search {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+}
+.kids-studio-sound-search input {
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px;
+  border: 2px solid var(--kids-border);
+  border-radius: 10px;
+  font: inherit;
+}
+.kids-studio-sound-list {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.kids-studio-sound-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px;
+  border: 1px solid var(--kids-border);
+  border-radius: 10px;
+}
+.kids-studio-sound-list li > span {
+  overflow-wrap: anywhere;
+}
+.kids-studio-sound-list .kids-button {
+  min-width: 44px;
+  min-height: 44px;
 }

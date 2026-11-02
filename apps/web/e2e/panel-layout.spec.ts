@@ -210,3 +210,31 @@ test("phone editor: stage on top, bottom bar opens Blocks, Costumes, Sounds and 
   await expect(page.locator(".kids-code-strip")).toBeVisible();
   await expect(page.locator(".kids-studio-media-panel")).toHaveCount(0);
 });
+
+test("Sounds drawer filters the catalog and adds the chosen sound to the program", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 768, height: 1024 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await reloadToMap(page);
+  await page.getByRole("button", { name: "Misión 1" }).click();
+  await page.getByRole("tab", { name: /Sonidos/ }).click();
+  const drawer = page.locator(".kids-studio-media-panel");
+  const search = drawer.getByRole("searchbox", { name: "Buscar sonidos" });
+  await search.fill("campana");
+  await expect(drawer.locator(".kids-studio-sound-list li")).toHaveCount(1);
+  const before = await page.locator(".kids-program-block").count();
+  await drawer.getByRole("button", { name: "Usar Campana" }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(before + 1);
+  await search.fill("no-existe-este-sonido");
+  await expect(drawer.getByRole("status")).toContainText("No hay sonidos");
+  await expect(drawer.locator(".kids-studio-sound-list li")).toHaveCount(0);
+});

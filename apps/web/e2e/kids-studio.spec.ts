@@ -594,12 +594,17 @@ test("Ori's face follows real events and respects reduced motion", async ({ page
   expect(violations.map((entry) => entry.id)).toEqual([]);
   // Reduced motion keeps the expression but removes every animation.
   await page.emulateMedia({ reducedMotion: "reduce" });
-  const animations = await page
-    .locator(
-      ".kids-studio-ori .kids-ori-stage .kids-ori-face, .kids-studio-ori .kids-ori-stage .kids-ori-face *",
+  await expect
+    .poll(() =>
+      page
+        .locator(
+          ".kids-studio-ori .kids-ori-stage .kids-ori-face, .kids-studio-ori .kids-ori-stage .kids-ori-face *",
+        )
+        .evaluateAll((nodes) =>
+          nodes.every((node) => getComputedStyle(node).animationName === "none"),
+        ),
     )
-    .evaluateAll((nodes) => nodes.map((node) => getComputedStyle(node).animationName));
-  expect(animations.every((name) => name === "none")).toBe(true);
+    .toBe(true);
   await expect(face).toHaveAttribute("data-ori-expression", /happy|neutral/);
 });
 
