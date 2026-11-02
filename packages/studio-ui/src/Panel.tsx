@@ -267,12 +267,14 @@ const DIVIDER_STEP = 16;
 
 /** Draggable (pointer) and keyboard-resizable divider that resizes panel `id`. */
 export function PanelDivider({
+  controller,
   id,
   title,
   orientation = "vertical",
   size,
   direction = 1,
 }: {
+  readonly controller?: PanelLayoutController;
   readonly id: string;
   readonly title: string;
   /** "vertical" divider sits between side-by-side panels and changes width. */
@@ -282,7 +284,7 @@ export function PanelDivider({
   /** 1 when growing the panel means dragging toward the end; -1 for the opposite. */
   readonly direction?: 1 | -1;
 }) {
-  const { dispatch, locale } = usePanelLayout();
+  const { dispatch, locale } = usePanelLayout(controller);
   const copy = PANEL_COPY[locale];
   const drag = useRef<{ start: number; base: number } | undefined>(undefined);
   const axis = orientation === "vertical" ? "clientX" : "clientY";

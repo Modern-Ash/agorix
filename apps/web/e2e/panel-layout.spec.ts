@@ -127,6 +127,18 @@ test("activity rail is vertical on tablet and desktop; the stage can be docked a
     const layout = await page.locator(".kids-studio-layout").boundingBox();
     expect(rail!.width).toBeLessThanOrEqual(70);
     expect(rail!.x + rail!.width).toBeLessThanOrEqual(layout!.x + 1);
+    const divider = page.getByRole("separator", { name: "Cambiar el tamaño de Escenario" });
+    await divider.focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(page.locator(".kids-studio-layout")).toHaveAttribute(
+      "style",
+      /--kids-stage-width: min\(\d+px, 45vw\)/,
+    );
+    await page.getByRole("button", { name: "Acercar Escenario" }).click();
+    await expect(page.getByRole("button", { name: "Volver Escenario al 100 %" })).toContainText(
+      "110 %",
+    );
+    await page.getByRole("button", { name: "Volver Escenario al 100 %" }).click();
     await page.getByRole("button", { name: "Minimizar escenario" }).click();
     await expect(page.locator(".kids-studio-stage-column")).toBeHidden();
     await page.getByRole("button", { name: "Restaurar escenario" }).click();
