@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Componente Panel</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&amp;family=JetBrains+Mono:wght@500&amp;display=swap">
+<style>
+body{margin:0;font-family:Nunito,system-ui,sans-serif;color:#1B2333}
+a{color:#0F6E66}a:hover{color:#0A4F49}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 1440px; height: 700px; box-sizing: border-box; padding: 40px 48px; background: #EEF2F7; font-family: Nunito, system-ui, sans-serif; color: #1B2333; display: flex; gap: 40px">
+
+  <section style="width: 520px; flex-shrink: 0; display: flex; flex-direction: column; gap: 16px">
+    <h1 style="margin: 0; font-size: 32px; font-weight: 900">Panel</h1>
+    <p style="margin: 0; font-size: 16px; line-height: 1.5; color: #3A4354">Un solo componente para Bloques, Programa, Escenario, Personajes, Código y Disfraces. Siempre la misma barra, los mismos botones y el mismo comportamiento.</p>
+    <div style="background: #FFFFFF; border-radius: 16px; border: 1px solid #DDE3EC; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; font-size: 15px">
+      <sc-for list="{{rules}}" as="r" hint-placeholder-count="6">
+        <div style="display: flex; gap: 10px"><span style="flex-shrink: 0; width: 22px; height: 22px; border-radius: 11px; background: #E3F2F0; color: #0A4F49; font-size: 12px; font-weight: 900; display: flex; align-items: center; justify-content: center">{{r.n}}</span><span style="line-height: 1.45"><b>{{r.t}}</b> {{r.d}}</span></div>
+      </sc-for>
+    </div>
+    <pre style="margin: 0; padding: 14px 16px; border-radius: 12px; background: #1B2333; color: #DCE7F5; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.5; white-space: pre-wrap">&lt;Panel id="program" title="Programa de Pip"
+  zoom minimize maximize
+  actions={&lt;RunControls /&gt;}&gt;
+  …
+&lt;/Panel&gt;</pre>
+  </section>
+
+  <section style="flex-grow: 1; display: flex; flex-direction: column; gap: 14px; min-width: 0">
+    <span style="font-size: 14px; font-weight: 800; color: #5B6475">PROBALO: minimizá, maximizá y hacé zoom</span>
+    <div style="flex-grow: 1; position: relative; border-radius: 18px; background: #E4E9F1; padding: 12px; display: flex; gap: 12px; min-height: 0">
+      <article aria-label="Programa de Pip" style="flex: {{prog.flex}}; display: {{prog.display}}; flex-direction: column; min-width: 0; background: #FFFFFF; border-radius: 14px; border: 1px solid #D5DCE6; box-shadow: 0 1px 2px rgba(27, 35, 51, 0.06); overflow: hidden; transition: flex 0.25s">
+        <header style="height: 40px; flex-shrink: 0; display: flex; align-items: center; gap: 6px; padding: 0 6px 0 14px; border-bottom: 1px solid #EEF1F5; background: #FAFBFD">
+          <span style="width: 10px; height: 10px; border-radius: 5px; background: #2563EB"></span>
+          <h2 style="margin: 0; font-size: 14px; font-weight: 900; flex-grow: 1">Programa de Pip</h2>
+          <div style="display: flex; align-items: center; border: 1px solid #D5DCE6; border-radius: 9px; overflow: hidden">
+            <button aria-label="Alejar" onClick="{{zoomOut}}" style="width: 30px; height: 28px; border: 0; background: #FFFFFF; font-size: 15px; font-weight: 800; cursor: pointer">−</button>
+            <button aria-label="Ajustar zoom" onClick="{{zoomFit}}" style="min-width: 48px; height: 28px; border: 0; border-left: 1px solid #E2E6EE; border-right: 1px solid #E2E6EE; background: #FFFFFF; font-size: 12px; font-weight: 800; cursor: pointer">{{zoomLabel}}</button>
+            <button aria-label="Acercar" onClick="{{zoomIn}}" style="width: 30px; height: 28px; border: 0; background: #FFFFFF; font-size: 15px; font-weight: 800; cursor: pointer">+</button>
+          </div>
+          <button aria-label="{{prog.minLabel}}" onClick="{{prog.min}}" style="width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3A4354" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path></svg></button>
+          <button aria-label="{{prog.maxLabel}}" onClick="{{prog.max}}" style="width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3A4354" stroke-width="2.5" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"></rect></svg></button>
+        </header>
+        <div style="flex-grow: 1; display: {{prog.body}}; position: relative; overflow: hidden; background-color: #FFFFFF; background-image: radial-gradient(#DDE3EC 1px, transparent 1px); background-size: 18px 18px">
+          <div style="position: absolute; left: 24px; top: 24px; transform: scale({{zoom}}); transform-origin: 0 0; transition: transform 0.2s; display: flex; flex-direction: column; align-items: flex-start">
+            <div style="height: 46px; padding: 0 16px; display: flex; align-items: center; gap: 8px; border-radius: 18px 18px 10px 10px; background: #F5B301; font-weight: 900; font-size: 15px">Cuando <span style="padding: 1px 9px; border-radius: 7px; background: #FFFFFF">al jugar</span></div>
+            <div style="height: 42px; padding: 0 14px; margin: 3px 0 0 12px; display: flex; align-items: center; gap: 8px; border-radius: 10px; background: #2563EB; color: #FFFFFF; font-weight: 800; font-size: 15px">Mover <span style="padding: 1px 9px; border-radius: 7px; background: #FFFFFF; color: #1D4FC4">2</span></div>
+            <div style="height: 42px; padding: 0 14px; margin: 3px 0 0 12px; display: flex; align-items: center; gap: 8px; border-radius: 10px; background: #2563EB; color: #FFFFFF; font-weight: 800; font-size: 15px">Girar a la izquierda <span style="padding: 1px 9px; border-radius: 7px; background: #FFFFFF; color: #1D4FC4">90°</span></div>
+          </div>
+        </div>
+      </article>
+
+      <article aria-label="Escenario" style="flex: {{stage.flex}}; display: {{stage.display}}; flex-direction: column; min-width: 0; background: #FFFFFF; border-radius: 14px; border: 1px solid #D5DCE6; overflow: hidden; transition: flex 0.25s">
+        <header style="height: 40px; flex-shrink: 0; display: flex; align-items: center; gap: 6px; padding: 0 6px 0 14px; border-bottom: 1px solid #EEF1F5; background: #FAFBFD">
+          <span style="width: 10px; height: 10px; border-radius: 5px; background: #15803D"></span>
+          <h2 style="margin: 0; font-size: 14px; font-weight: 900; flex-grow: 1">Escenario</h2>
+          <button style="height: 28px; padding: 0 12px; border: 0; border-radius: 8px; background: #15803D; color: #FFFFFF; font-size: 13px; font-weight: 900; cursor: pointer">Jugar</button>
+          <button aria-label="{{stage.minLabel}}" onClick="{{stage.min}}" style="width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3A4354" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path></svg></button>
+          <button aria-label="{{stage.maxLabel}}" onClick="{{stage.max}}" style="width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3A4354" stroke-width="2.5" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"></rect></svg></button>
+        </header>
+        <div style="flex-grow: 1; display: {{stage.body}}; background: #4B3F8F; position: relative; overflow: hidden">
+          <div style="position: absolute; right: 36px; top: 26px; width: 40px; height: 40px; border-radius: 20px; background: #EFE3B8"></div>
+          <div style="position: absolute; left: -40px; right: -40px; bottom: -60px; height: 140px; border-radius: 50%; background: #6E5FB0"></div>
+          <div style="position: absolute; left: 40px; bottom: 30px; width: 40px; height: 40px; border-radius: 20px; background: #FFFFFF; border: 3px solid #2563EB"></div>
+        </div>
+      </article>
+
+      <div style="position: absolute; left: 12px; bottom: 12px; display: {{dockDisplay}}; gap: 8px">
+        <sc-for list="{{dock}}" as="d" hint-placeholder-count="1">
+          <button onClick="{{d.restore}}" style="height: 36px; padding: 0 14px; border-radius: 10px; border: 1px solid #C9D1DD; background: #FFFFFF; font-size: 13px; font-weight: 800; cursor: pointer; box-shadow: 0 2px 6px rgba(27, 35, 51, 0.1)">{{d.label}} ▴</button>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":700}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var self = this;
+    var st = this.state || {};
+    var zoom = st.zoom || 1;
+    var max = st.max || null;
+    var mins = st.mins || {};
+    var panel = function (id, label, grow) {
+      var minimized = !!mins[id];
+      var hidden = minimized || (max && max !== id);
+      return {
+        flex: hidden ? '0 0 0px' : (max === id ? '1 1 100%' : grow),
+        display: hidden ? 'none' : 'flex',
+        body: 'block',
+        minLabel: 'Minimizar ' + label,
+        maxLabel: max === id ? 'Restaurar ' + label : 'Maximizar ' + label,
+        min: function () { var m = Object.assign({}, mins); m[id] = true; self.setState({ mins: m, max: max === id ? null : max }); },
+        max: function () { self.setState({ max: max === id ? null : id }); }
+      };
+    };
+    var dock = [['prog', 'Programa de Pip'], ['stage', 'Escenario']].filter(function (p) { return mins[p[0]]; }).map(function (p) {
+      return { label: p[1], restore: function () { var m = Object.assign({}, mins); delete m[p[0]]; self.setState({ mins: m }); } };
+    });
+    return {
+      prog: panel('prog', 'Programa', '1.4 1 0px'),
+      stage: panel('stage', 'Escenario', '1 1 0px'),
+      dock: dock,
+      dockDisplay: dock.length ? 'flex' : 'none',
+      zoom: zoom,
+      zoomLabel: Math.round(zoom * 100) + '%',
+      zoomIn: function () { self.setState({ zoom: Math.min(2, Math.round((zoom + 0.25) * 100) / 100) }); },
+      zoomOut: function () { self.setState({ zoom: Math.max(0.5, Math.round((zoom - 0.25) * 100) / 100) }); },
+      zoomFit: function () { self.setState({ zoom: 1 }); },
+      rules: [
+        { n: '1', t: 'Barra de 40 px:', d: 'color de la categoría, título, acciones propias y, a la derecha, zoom · minimizar · maximizar.' },
+        { n: '2', t: 'Minimizar', d: 'lo manda al dock de abajo; un toque lo devuelve a su lugar.' },
+        { n: '3', t: 'Maximizar', d: 'ocupa toda el área de trabajo; Esc o el mismo botón lo restaura.' },
+        { n: '4', t: 'Zoom', d: 'solo en paneles con lienzo (Programa, Escenario, Disfraces): −, +, y tocar el % vuelve a 100.' },
+        { n: '5', t: 'Bordes arrastrables', d: 'entre paneles; el tamaño se recuerda por dispositivo.' },
+        { n: '6', t: 'En celular', d: 'maximizar = pantalla completa y minimizar = pestaña abajo.' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

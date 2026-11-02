@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Crear en 3 pasos (celular)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&amp;display=swap">
+<style>
+body{margin:0;font-family:Nunito,system-ui,sans-serif;color:#1B2333}
+a{color:#0F6E66}a:hover{color:#0A4F49}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; display: flex; flex-direction: column; background: #EEF2F7; font-family: Nunito, system-ui, sans-serif; color: #1B2333; overflow: hidden">
+  <header style="padding: 14px 16px 12px; background: #FFFFFF; display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; align-items: center; gap: 10px">
+      <sc-if value="{{canBack}}" hint-placeholder-val="{{false}}">
+        <button aria-label="Paso anterior" onClick="{{back}}" style="width: 44px; height: 44px; border-radius: 12px; border: 1px solid #D5DAE3; background: #FFFFFF; display: flex; align-items: center; justify-content: center; cursor: pointer">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1B2333" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+        </button>
+      </sc-if>
+      <h1 style="margin: 0; font-weight: 900; font-size: 24px; flex-grow: 1">Crear</h1>
+      <button aria-label="Escuchar" style="width: 44px; height: 44px; border-radius: 12px; border: 1px solid #D5DAE3; background: #FFFFFF; display: flex; align-items: center; justify-content: center; cursor: pointer">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1B2333" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4z"></path><path d="M16 9a4 4 0 0 1 0 6"></path></svg>
+      </button>
+    </div>
+    <ol aria-label="Pasos" style="margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px">
+      <sc-for list="{{steps}}" as="s" hint-placeholder-count="3">
+        <li aria-current="{{s.current}}" style="display: flex; flex-direction: column; gap: 6px">
+          <span style="height: 6px; border-radius: 3px; background: {{s.bar}}; transition: background 0.3s"></span>
+          <span style="font-size: 13px; font-weight: 800; color: {{s.color}}">{{s.label}}</span>
+        </li>
+      </sc-for>
+    </ol>
+  </header>
+
+  <main style="flex-grow: 1; padding: 16px; display: flex; flex-direction: column; gap: 14px; overflow: hidden">
+    <sc-if value="{{isStep0}}" hint-placeholder-val="{{true}}">
+      <h2 style="margin: 0; font-size: 22px; font-weight: 900">¿Quién protagoniza tu escena?</h2>
+      <div style="display: flex; gap: 6px; flex-wrap: wrap">
+        <sc-for list="{{filters}}" as="f" hint-placeholder-count="6">
+          <button aria-pressed="{{f.on}}" onClick="{{f.pick}}" style="height: 38px; padding: 0 13px; border-radius: 19px; border: 1.5px solid {{f.border}}; background: {{f.bg}}; color: {{f.color}}; font-size: 14px; font-weight: 800; cursor: pointer">{{f.label}}</button>
+        </sc-for>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px">
+        <sc-for list="{{chars}}" as="c" hint-placeholder-count="9">
+          <button aria-pressed="{{c.on}}" onClick="{{c.pick}}" style="height: 104px; border-radius: 18px; border: 3px solid {{c.border}}; background: #FFFFFF; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; cursor: pointer">
+            <span style="width: 52px; height: 52px; border-radius: 26px; background: {{c.color}}; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 900">{{c.initial}}</span>
+            <span style="font-size: 15px; font-weight: 800; color: #1B2333">{{c.name}}</span>
+          </button>
+        </sc-for>
+      </div>
+      <button style="height: 50px; border-radius: 14px; border: 2px dashed #B7C0CF; background: transparent; color: #3A4354; font-size: 15px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg>
+        Dibujar mi propio personaje
+      </button>
+    </sc-if>
+
+    <sc-if value="{{isStep1}}" hint-placeholder-val="{{false}}">
+      <h2 style="margin: 0; font-size: 22px; font-weight: 900">¿Dónde pasa?</h2>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+        <sc-for list="{{bgs}}" as="b" hint-placeholder-count="8">
+          <button aria-pressed="{{b.on}}" onClick="{{b.pick}}" style="height: 100px; border-radius: 18px; border: 3px solid {{b.border}}; background: {{b.color}}; display: flex; align-items: flex-end; padding: 10px; box-sizing: border-box; cursor: pointer">
+            <span style="padding: 3px 10px; border-radius: 10px; background: #FFFFFF; font-size: 15px; font-weight: 800; color: #1B2333">{{b.name}}</span>
+          </button>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isStep2}}" hint-placeholder-val="{{false}}">
+      <h2 style="margin: 0; font-size: 22px; font-weight: 900">¡Todo listo!</h2>
+      <div style="height: 300px; border-radius: 22px; background: {{bgColor}}; position: relative; overflow: hidden">
+        <div style="position: absolute; left: -40px; bottom: -90px; width: 300px; height: 180px; border-radius: 50%; background: rgba(255, 255, 255, 0.25)"></div>
+        <div style="position: absolute; left: 130px; top: 120px; width: 80px; height: 80px; border-radius: 40px; background: {{charColor}}; border: 4px solid #FFFFFF; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 900">{{charInitial}}</div>
+      </div>
+      <p style="margin: 0; font-size: 17px; font-weight: 800; text-align: center">{{charName}} en {{bgName}}</p>
+    </sc-if>
+  </main>
+
+  <footer style="flex-shrink: 0; background: #FFFFFF; border-top: 1px solid #E2E6EE; padding: 12px 16px 16px; display: flex; align-items: center; gap: 12px">
+    <div style="width: 56px; height: 56px; border-radius: 14px; background: {{bgColor}}; display: flex; align-items: center; justify-content: center">
+      <span style="width: 34px; height: 34px; border-radius: 17px; background: {{charColor}}; border: 2px solid #FFFFFF; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 900">{{charInitial}}</span>
+    </div>
+    <div style="display: flex; flex-direction: column; flex-grow: 1">
+      <span style="font-size: 15px; font-weight: 900">{{charName}}</span>
+      <span style="font-size: 13px; color: #5B6475; font-weight: 700">{{footNote}}</span>
+    </div>
+    <sc-if value="{{notLast}}" hint-placeholder-val="{{true}}">
+      <button onClick="{{next}}" style="height: 52px; padding: 0 22px; border: 0; border-radius: 14px; background: #0F6E66; color: #FFFFFF; font-size: 17px; font-weight: 900; cursor: pointer">Seguir</button>
+    </sc-if>
+    <sc-if value="{{isStep2}}" hint-placeholder-val="{{false}}">
+      <a href="EditorCelular.dc.html" style="height: 52px; padding: 0 22px; border-radius: 14px; background: #F5B301; color: #1B2333; font-size: 17px; font-weight: 900; display: flex; align-items: center; text-decoration: none">¡Crear!</a>
+    </sc-if>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var self = this;
+    var st = this.state || {};
+    var step = st.step || 0;
+    var ch = st.ch == null ? 1 : st.ch;
+    var bgi = st.bg || 0;
+    var flt = st.flt || 0;
+    var stl = ['1 · Personaje', '2 · Fondo', '3 · ¡Crear!'];
+    var fl = ['Todos', 'Animales', 'Naturaleza', 'Mar', 'Espacio', 'Fantasía'];
+    var cs = [['Nova', '#6D3FE0', 4], ['Luma', '#0F6E66', 2], ['Cometa', '#C2410C', 4], ['Mika', '#BE185D', 1], ['Pip', '#2563EB', 1], ['Tito', '#15803D', 1], ['Nori', '#0E7490', 3], ['Flor', '#9D1550', 2], ['Pixel', '#3A4354', 5]];
+    var bs = [['Bosque', '#6BB48C'], ['Jardín', '#8CC98A'], ['Montañas', '#7C93B5'], ['Playa', '#E8C27A'], ['Arrecife', '#3BA3B8'], ['Luna', '#5B6475'], ['Galaxia', '#3A2E7A'], ['Castillo', '#9C7BB8']];
+    var visible = cs.map(function (c, i) { return { c: c, i: i }; }).filter(function (x) { return flt === 0 || x.c[2] === flt; });
+    return {
+      canBack: step > 0,
+      back: function () { self.setState({ step: step - 1 }); },
+      next: function () { self.setState({ step: step + 1 }); },
+      isStep0: step === 0, isStep1: step === 1, isStep2: step === 2, notLast: step < 2,
+      steps: stl.map(function (s, i) { return { label: s, current: i === step ? 'step' : 'false', bar: i <= step ? '#0F6E66' : '#E2E6EE', color: i === step ? '#0A4F49' : '#5B6475' }; }),
+      filters: fl.map(function (f, i) { var a = i === flt; return { label: f, on: a ? 'true' : 'false', bg: a ? '#1B2333' : '#FFFFFF', color: a ? '#FFFFFF' : '#3A4354', border: a ? '#1B2333' : '#D5DAE3', pick: function () { self.setState({ flt: i }); } }; }),
+      chars: visible.map(function (x) { var a = x.i === ch; return { name: x.c[0], color: x.c[1], initial: x.c[0].charAt(0), on: a ? 'true' : 'false', border: a ? '#F5B301' : '#E2E6EE', pick: function () { self.setState({ ch: x.i }); } }; }),
+      bgs: bs.map(function (b, i) { var a = i === bgi; return { name: b[0], color: b[1], on: a ? 'true' : 'false', border: a ? '#F5B301' : 'transparent', pick: function () { self.setState({ bg: i }); } }; }),
+      charName: cs[ch][0], charColor: cs[ch][1], charInitial: cs[ch][0].charAt(0),
+      bgName: bs[bgi][0], bgColor: bs[bgi][1],
+      footNote: step === 0 ? 'Después elegís el fondo' : (step === 1 ? 'Fondo: ' + bs[bgi][0] : 'Listo para programar')
+    };
+  }
+}
+</script>
+</body>
+</html>

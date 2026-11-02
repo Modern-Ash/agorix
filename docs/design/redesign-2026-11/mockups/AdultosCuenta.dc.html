@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Adultos – Cuenta y privacidad (celular)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&amp;family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0;font-family:Inter,system-ui,sans-serif;color:#1B2333}
+a{color:#0F6E66}a:hover{color:#0A4F49}
+button,input{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; display: flex; flex-direction: column; background: #F3F5F9; font-family: Inter, system-ui, sans-serif; color: #1B2333; overflow: hidden">
+  <header style="background: #FFFFFF; border-bottom: 1px solid #E2E6EE; padding: 16px 16px 0; display: flex; flex-direction: column; gap: 10px">
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <h1 style="margin: 0; font-family: Nunito, sans-serif; font-weight: 900; font-size: 24px">Adultos</h1>
+      <button aria-label="Salir de Adultos" style="width: 44px; height: 44px; border: 1px solid #D5DAE3; border-radius: 12px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; cursor: pointer">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1B2333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+      </button>
+    </div>
+    <div role="tablist" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr))">
+      <sc-for list="{{tabs}}" as="t" hint-placeholder-count="4">
+        <a href="{{t.href}}" role="tab" aria-selected="{{t.active}}" style="height: 46px; box-sizing: border-box; border-bottom: 3px solid {{t.line}}; display: flex; align-items: center; justify-content: center; color: {{t.color}}; font-size: 13px; font-weight: 700; text-decoration: none">{{t.label}}</a>
+      </sc-for>
+    </div>
+  </header>
+
+  <main style="flex-grow: 1; padding: 16px; display: flex; flex-direction: column; gap: 14px; overflow: hidden">
+    <p style="margin: 0; font-size: 14px; color: #5B6475; line-height: 1.45">Opcional. Vinculá este dispositivo para ver el progreso desde otro. El niño no necesita cuenta, nombre ni correo.</p>
+
+    <section style="background: #FFFFFF; border: 1px solid #E2E6EE; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+      <div style="display: flex; align-items: center; gap: 10px">
+        <span style="width: 28px; height: 28px; border-radius: 14px; background: #E3F2F0; color: #0A4F49; font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center">A</span>
+        <h2 style="margin: 0; font-family: Nunito, sans-serif; font-weight: 800; font-size: 18px">Ya tengo un código</h2>
+      </div>
+      <label for="code" style="font-size: 13px; color: #5B6475">Escribí el código de 6 dígitos que generaste en tu cuenta.</label>
+      <button id="code" onClick="{{typeDigit}}" aria-label="Código de vinculación: tocá para escribir" style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; padding: 0; border: 0; background: transparent; cursor: text">
+        <sc-for list="{{digits}}" as="d" hint-placeholder-count="6">
+          <span style="height: 50px; border-radius: 10px; border: 1.5px solid {{d.border}}; background: #F7F8FB; display: flex; align-items: center; justify-content: center; font-family: Nunito, sans-serif; font-size: 22px; font-weight: 800; color: #1B2333">{{d.v}}</span>
+        </sc-for>
+      </button>
+      <sc-if value="{{linked}}" hint-placeholder-val="{{false}}">
+        <div role="status" style="padding: 12px; border-radius: 12px; background: #E3F2F0; color: #0A4F49; font-size: 14px; font-weight: 700">Listo: este dispositivo quedó vinculado.</div>
+      </sc-if>
+      <sc-if value="{{notLinked}}" hint-placeholder-val="{{true}}">
+        <button onClick="{{link}}" style="height: 48px; border: 0; border-radius: 12px; background: {{linkBg}}; color: #FFFFFF; font-size: 16px; font-weight: 700; cursor: pointer">Vincular este dispositivo</button>
+      </sc-if>
+    </section>
+
+    <section style="background: #FFFFFF; border: 1px solid #E2E6EE; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+      <div style="display: flex; align-items: center; gap: 10px">
+        <span style="width: 28px; height: 28px; border-radius: 14px; background: #E3F2F0; color: #0A4F49; font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center">B</span>
+        <h2 style="margin: 0; font-family: Nunito, sans-serif; font-weight: 800; font-size: 18px">Mi cuenta de adulto</h2>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+        <button style="height: 48px; border: 1px solid #D5DAE3; border-radius: 12px; background: #FFFFFF; color: #1B2333; font-size: 15px; font-weight: 700; cursor: pointer">Entrar</button>
+        <button style="height: 48px; border: 1px solid #D5DAE3; border-radius: 12px; background: #FFFFFF; color: #1B2333; font-size: 15px; font-weight: 700; cursor: pointer">Crear cuenta</button>
+      </div>
+    </section>
+
+    <details style="background: #FFFFFF; border: 1px solid #E2E6EE; border-radius: 16px; padding: 0 16px">
+      <summary style="height: 52px; display: flex; align-items: center; font-weight: 700; font-size: 15px; cursor: pointer">Privacidad</summary>
+      <p style="margin: 0 0 14px; font-size: 14px; color: #5B6475; line-height: 1.45">No pedimos nombre, escuela ni ubicación. Los proyectos y el tiempo quedan en este navegador. No hay chat público.</p>
+    </details>
+
+    <details style="background: #FFFFFF; border: 1px solid #E2E6EE; border-radius: 16px; padding: 0 16px">
+      <summary style="height: 52px; display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: 15px; cursor: pointer">
+        <span>Diagnóstico de la IA</span>
+        <span style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: #15803D; font-weight: 600"><span style="width: 8px; height: 8px; border-radius: 4px; background: #15803D"></span>Funcionando</span>
+      </summary>
+      <div style="padding-bottom: 14px; display: flex; flex-direction: column; gap: 8px; font-size: 14px">
+        <div style="display: flex; justify-content: space-between"><span style="color: #5B6475">Proveedor</span><span style="font-weight: 600">Codex</span></div>
+        <div style="display: flex; justify-content: space-between"><span style="color: #5B6475">Último error</span><span style="font-weight: 600">Ninguno</span></div>
+      </div>
+    </details>
+  </main>
+
+  <nav aria-label="Principal" style="height: 72px; flex-shrink: 0; background: #FFFFFF; border-top: 1px solid #E2E6EE; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr))">
+    <sc-for list="{{nav}}" as="n" hint-placeholder-count="4">
+      <a href="{{n.href}}" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: {{n.color}}; font-size: 12px; font-weight: 700">
+        <span style="width: 24px; height: 5px; border-radius: 3px; background: {{n.dot}}"></span>{{n.label}}
+      </a>
+    </sc-for>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var self = this;
+    var st = this.state || {};
+    var code = st.code || '';
+    var demo = '482913';
+    var names = ['Resumen', 'Ajustes', 'Personalizar', 'Cuenta'];
+    var hrefs = ['Main.dc.html', 'AdultosTablet.dc.html', 'AdultosCelular.dc.html', 'AdultosCuenta.dc.html'];
+    var digits = [];
+    for (var i = 0; i < 6; i++) digits.push({ v: code.charAt(i), border: i === code.length ? '#0F6E66' : '#C9CFDA' });
+    return {
+      tabs: names.map(function (n, i) { var a = i === 3; return { label: n, href: hrefs[i], active: a ? 'true' : 'false', line: a ? '#0F6E66' : 'transparent', color: a ? '#0A4F49' : '#5B6475' }; }),
+      digits: digits,
+      typeDigit: function () { if (code.length < 6) self.setState({ code: demo.slice(0, code.length + 1) }); },
+      linked: !!st.linked,
+      notLinked: !st.linked,
+      linkBg: code.length === 6 ? '#0F6E66' : '#8FB8B4',
+      link: function () { if (code.length === 6) self.setState({ linked: true }); },
+      nav: ['Mapa', 'Crear', 'Mis proyectos', 'Adultos'].map(function (l, i) {
+        var h = ['MapaCelular.dc.html', 'CrearCelular.dc.html', '#', 'Main.dc.html'];
+        return { label: l, href: h[i], color: i === 3 ? '#0A4F49' : '#5B6475', dot: i === 3 ? '#0F6E66' : 'transparent' };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Adultos – Ajustes (tablet)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&amp;family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0;font-family:Inter,system-ui,sans-serif;color:#1B2333}
+a{color:#0F6E66}a:hover{color:#0A4F49}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 820px; height: 1180px; display: flex; flex-direction: column; background: #F3F5F9; font-family: Inter, system-ui, sans-serif; color: #1B2333; overflow: hidden">
+  <header style="padding: 28px 36px 0; display: flex; flex-direction: column; gap: 18px; background: #FFFFFF; border-bottom: 1px solid #E2E6EE">
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <h1 style="margin: 0; font-family: Nunito, sans-serif; font-weight: 900; font-size: 30px">Adultos</h1>
+      <button style="height: 44px; padding: 0 16px; border: 1px solid #D5DAE3; border-radius: 12px; background: #FFFFFF; font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; cursor: pointer">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>Salir
+      </button>
+    </div>
+    <div role="tablist" style="display: flex; gap: 4px">
+      <sc-for list="{{tabs}}" as="t" hint-placeholder-count="4">
+        <a href="{{t.href}}" role="tab" aria-selected="{{t.selected}}" style="height: 48px; padding: 0 18px; box-sizing: border-box; border-bottom: 3px solid {{t.line}}; display: flex; align-items: center; color: {{t.color}}; font-size: 15px; font-weight: 700; text-decoration: none">{{t.label}}</a>
+      </sc-for>
+    </div>
+  </header>
+
+  <main style="flex-grow: 1; padding: 28px 36px; display: flex; flex-direction: column; gap: 20px; overflow: hidden">
+    <section style="background: #FFFFFF; border: 1px solid #E2E6EE; border-radius: 18px; padding: 22px; display: flex; flex-direction: column; gap: 14px">
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <h2 style="margin: 0; font-family: Nunito, sans-serif; font-weight: 800; font-size: 20px">Franja de edad</h2>
+        <p style="margin: 0; font-size: 14px; color: #5B6475">Ajusta la herramienta a la edad. No pedimos fecha de nacimiento y se guarda solo en este dispositivo.</p>
+      </div>
+      <div role="radiogroup" aria-label="Franja de edad" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding: 6px; background: #F3F5F9; border-radius: 14px">
+        <sc-for list="{{ages}}" as="a" hint-placeholder-count="3">
+          <button role="radio" aria-checked="{{a.checked}}" onClick="{{a.pick}}" style="height: 52px; border: 0; border-radius: 10px; background: {{a.bg}}; color: {{a.color}}; font-family: Nunito, sans-serif; font-size: 18px; font-weight: 800; cursor: pointer; transition: background 0.2s">{{a.label}}</button>
+        </sc-for>
+      </div>
+    </section>
+
+    <sc-for list="{{groups}}" as="g" hint-placeholder-count="3">
+      <section style="background: #FFFFFF; border: 1px solid #E2E6EE; border-radius: 18px; padding: 8px 22px; display: flex; flex-direction: column">
+        <h2 style="margin: 14px 0 4px; font-family: Nunito, sans-serif; font-weight: 800; font-size: 20px">{{g.title}}</h2>
+        <sc-for list="{{g.items}}" as="it" hint-placeholder-count="2">
+          <button role="switch" aria-checked="{{it.checked}}" onClick="{{it.toggle}}" style="display: flex; align-items: center; justify-content: space-between; gap: 20px; width: 100%; padding: 16px 0; border: 0; border-top: 1px solid #EEF1F5; background: transparent; color: #1B2333; text-align: left; cursor: pointer">
+            <span style="display: flex; flex-direction: column; gap: 3px">
+              <span style="font-size: 16px; font-weight: 600">{{it.name}}</span>
+              <span style="font-size: 14px; color: #5B6475; line-height: 1.4">{{it.desc}}</span>
+            </span>
+            <sc-if value="{{it.on}}" hint-placeholder-val="{{true}}">
+              <span style="width: 52px; height: 30px; flex-shrink: 0; border-radius: 15px; background: #0F6E66; position: relative"><span style="position: absolute; top: 3px; left: 25px; width: 24px; height: 24px; border-radius: 12px; background: #FFFFFF"></span></span>
+            </sc-if>
+            <sc-if value="{{it.off}}" hint-placeholder-val="{{false}}">
+              <span style="width: 52px; height: 30px; flex-shrink: 0; border-radius: 15px; background: #C9CFDA; position: relative"><span style="position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 12px; background: #FFFFFF"></span></span>
+            </sc-if>
+          </button>
+        </sc-for>
+      </section>
+    </sc-for>
+
+    <section style="background: #FFFFFF; border: 1px solid #E2E6EE; border-radius: 18px; padding: 20px 22px; display: flex; align-items: center; justify-content: space-between">
+      <div style="display: flex; flex-direction: column; gap: 3px">
+        <h2 style="margin: 0; font-family: Nunito, sans-serif; font-weight: 800; font-size: 20px">Meta diaria</h2>
+        <span style="font-size: 14px; color: #5B6475">Tiempo sugerido de juego por día</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px">
+        <button aria-label="Bajar meta" onClick="{{dec}}" style="width: 48px; height: 48px; border-radius: 12px; border: 1px solid #D5DAE3; background: #FFFFFF; font-size: 22px; cursor: pointer">−</button>
+        <span style="font-family: Nunito, sans-serif; font-weight: 800; font-size: 20px; min-width: 76px; text-align: center">{{goal}} min</span>
+        <button aria-label="Subir meta" onClick="{{inc}}" style="width: 48px; height: 48px; border-radius: 12px; border: 1px solid #D5DAE3; background: #FFFFFF; font-size: 22px; cursor: pointer">+</button>
+      </div>
+    </section>
+  </main>
+
+  <nav aria-label="Principal" style="height: 76px; flex-shrink: 0; background: #FFFFFF; border-top: 1px solid #E2E6EE; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr))">
+    <sc-for list="{{nav}}" as="n" hint-placeholder-count="4">
+      <a href="{{n.href}}" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: {{n.color}}; font-size: 13px; font-weight: 700">
+        <span style="width: 28px; height: 6px; border-radius: 3px; background: {{n.dot}}"></span>{{n.label}}
+      </a>
+    </sc-for>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":820,"height":1180}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var self = this;
+    var st = this.state || {};
+    var goal = st.goal || 30;
+    var age = st.age || 0;
+    var sw = st.sw || { 'Ideas de Ori': true, 'Lectura en voz alta': true, 'Imágenes propias': true, 'Paquete Lápiz': true, 'Paquete Música': true, 'Grabar con el micrófono': false };
+    var names = ['Resumen', 'Ajustes', 'Personalizar', 'Cuenta y privacidad'];
+    var hrefs = ['Main.dc.html', 'AdultosTablet.dc.html', 'AdultosCelular.dc.html', 'AdultosCuenta.dc.html'];
+    var item = function (name, desc) {
+      var on = !!sw[name];
+      return { name: name, desc: desc, on: on, off: !on, checked: on ? 'true' : 'false', toggle: function () { var n = Object.assign({}, sw); n[name] = !on; self.setState({ sw: n }); } };
+    };
+    return {
+      goal: goal,
+      dec: function () { self.setState({ goal: Math.max(10, goal - 5) }); },
+      inc: function () { self.setState({ goal: Math.min(120, goal + 5) }); },
+      ages: ['6–8', '9–12', '13+'].map(function (l, i) { var a = i === age; return { label: l, checked: a ? 'true' : 'false', bg: a ? '#0F6E66' : 'transparent', color: a ? '#FFFFFF' : '#3A4354', pick: function () { self.setState({ age: i }); } }; }),
+      tabs: names.map(function (n, i) { var a = i === 1; return { label: n, href: hrefs[i], selected: a ? 'true' : 'false', line: a ? '#0F6E66' : 'transparent', color: a ? '#0A4F49' : '#5B6475' }; }),
+      groups: [
+        { title: 'Ayuda de la IA', items: [ item('Ideas de Ori', 'Mostrar u ocultar a Ori y sus ideas') ] },
+        { title: 'Accesibilidad', items: [ item('Lectura en voz alta', 'Activa los botones de escuchar') ] },
+        { title: 'Contenido', items: [
+          item('Imágenes propias', 'El niño puede agregar exploradores y fondos propios'),
+          item('Paquete Lápiz', 'Dibujar con el personaje. Apagado, se ocultan los bloques; lo armado se conserva'),
+          item('Paquete Música', 'Notas, percusión y ritmo. Apagado, se ocultan los bloques y las ideas de Ori'),
+          item('Grabar con el micrófono', 'Solo un adulto, hasta 5 segundos. La voz no sale del dispositivo')
+        ] }
+      ],
+      nav: ['Mapa', 'Crear', 'Mis proyectos', 'Adultos'].map(function (l, i) {
+        var h = ['MapaCelular.dc.html', 'CrearCelular.dc.html', '#', 'Main.dc.html'];
+        return { label: l, href: h[i], color: i === 3 ? '#0A4F49' : '#5B6475', dot: i === 3 ? '#0F6E66' : 'transparent' };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

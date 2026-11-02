@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Editor Escena libre (computadora)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&amp;display=swap">
+<style>
+body{margin:0;font-family:Nunito,system-ui,sans-serif;color:#1B2333}
+a{color:#0F6E66}a:hover{color:#0A4F49}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 1366px; height: 900px; display: flex; flex-direction: column; background: #EEF2F7; font-family: Nunito, system-ui, sans-serif; color: #1B2333; overflow: hidden">
+
+  <header style="height: 68px; flex-shrink: 0; background: #FFFFFF; border-bottom: 1px solid #E2E6EE; display: flex; align-items: center; gap: 12px; padding: 0 20px">
+    <a href="#" aria-label="Volver a Crear" style="width: 44px; height: 44px; border-radius: 12px; border: 1px solid #D5DAE3; display: flex; align-items: center; justify-content: center; color: #1B2333">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+    </a>
+    <h1 style="margin: 0; font-weight: 900; font-size: 24px">Escena libre</h1>
+    <div style="flex-grow: 1"></div>
+    <button aria-label="Deshacer (Ctrl+Z)" style="width: 44px; height: 44px; border-radius: 12px; border: 1px solid #D5DAE3; background: #FFFFFF; display: flex; align-items: center; justify-content: center; cursor: pointer">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1B2333" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14L4 9l5-5"></path><path d="M4 9h10a6 6 0 0 1 0 12h-3"></path></svg>
+    </button>
+    <button aria-label="Rehacer (Ctrl+Shift+Z)" style="width: 44px; height: 44px; border-radius: 12px; border: 1px solid #D5DAE3; background: #FFFFFF; display: flex; align-items: center; justify-content: center; cursor: pointer">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1B2333" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 14l5-5-5-5"></path><path d="M20 9H10a6 6 0 0 0 0 12h3"></path></svg>
+    </button>
+    <div role="tablist" style="display: flex; padding: 4px; border-radius: 12px; background: #EEF2F7; gap: 4px">
+      <button role="tab" aria-selected="true" style="height: 38px; padding: 0 16px; border: 0; border-radius: 9px; background: #FFFFFF; font-size: 15px; font-weight: 800; cursor: pointer">Bloques</button>
+      <button role="tab" aria-selected="false" style="height: 38px; padding: 0 16px; border: 0; border-radius: 9px; background: transparent; color: #5B6475; font-size: 15px; font-weight: 800; cursor: pointer">Código</button>
+    </div>
+    <span style="padding: 6px 12px; border-radius: 999px; background: #E3F2F0; color: #0A4F49; font-size: 14px; font-weight: 800">6–8</span>
+  </header>
+
+  <div style="flex-grow: 1; display: flex; min-height: 0">
+    <nav aria-label="Categorías de bloques" style="width: 84px; flex-shrink: 0; background: #FFFFFF; border-right: 1px solid #E2E6EE; padding: 12px 0; display: flex; flex-direction: column; align-items: center; gap: 4px">
+      <sc-for list="{{cats}}" as="c" hint-placeholder-count="8">
+        <button aria-pressed="{{c.on}}" onClick="{{c.pick}}" style="width: 72px; padding: 8px 0; border: 0; border-radius: 12px; background: {{c.bg}}; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer">
+          <span style="width: 28px; height: 28px; border-radius: 14px; background: {{c.color}}"></span>
+          <span style="font-size: 12px; font-weight: 800; color: #1B2333">{{c.label}}</span>
+        </button>
+      </sc-for>
+    </nav>
+
+    <section aria-label="Bloques" style="width: 280px; flex-shrink: 0; background: #FAFBFD; border-right: 1px solid #E2E6EE; padding: 18px 16px; display: flex; flex-direction: column; gap: 10px; overflow: hidden">
+      <h2 style="margin: 0 0 4px; font-size: 18px; font-weight: 900; color: {{catDark}}">{{catName}}</h2>
+      <sc-for list="{{blocks}}" as="b" hint-placeholder-count="7">
+        <div style="display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 14px; border-radius: 12px; background: {{b.bg}}; color: {{b.fg}}; font-size: 16px; font-weight: 800; box-shadow: 0 3px 0 {{b.shadow}}; cursor: grab">
+          <span>{{b.label}}</span>
+          <sc-if value="{{b.hasVal}}" hint-placeholder-val="{{false}}">
+            <span style="padding: 2px 10px; border-radius: 8px; background: #FFFFFF; color: {{b.dark}}; font-size: 15px">{{b.val}}</span>
+          </sc-if>
+        </div>
+      </sc-for>
+    </section>
+
+    <main aria-label="Programa de Luma" style="flex-grow: 1; padding: 20px 24px; display: flex; flex-direction: column; gap: 14px; position: relative; min-width: 0">
+      <div style="display: flex; align-items: center; gap: 10px">
+        <div style="width: 36px; height: 36px; border-radius: 18px; background: #0F6E66; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 900">L</div>
+        <h2 style="margin: 0; font-size: 20px; font-weight: 900">Programa de Luma</h2>
+      </div>
+      <div style="flex-grow: 1; border-radius: 20px; background: #FFFFFF; border: 1px solid #E2E6EE; padding: 28px; display: flex; flex-direction: column; align-items: flex-start">
+        <div style="display: flex; align-items: center; gap: 8px; height: 54px; padding: 0 18px; border-radius: 20px 20px 12px 12px; background: #F5B301; color: #1B2333; font-size: 17px; font-weight: 900; box-shadow: 0 3px 0 #C08C00">
+          Cuando <span style="padding: 2px 10px; border-radius: 8px; background: #FFFFFF; font-size: 15px">al jugar</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; height: 50px; padding: 0 16px; margin-top: 4px; margin-left: 14px; border-radius: 12px; background: #2563EB; color: #FFFFFF; font-size: 16px; font-weight: 800; box-shadow: 0 3px 0 #1A47B0">
+          Mover <span style="padding: 2px 10px; border-radius: 8px; background: #FFFFFF; color: #1D4FC4; font-size: 15px">2</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; height: 50px; padding: 0 16px; margin-top: 4px; margin-left: 14px; border-radius: 12px; background: #6D3FE0; color: #FFFFFF; font-size: 16px; font-weight: 800; box-shadow: 0 3px 0 #4F2AB0">
+          Decir <span style="padding: 2px 10px; border-radius: 8px; background: #FFFFFF; color: #4A2AA8; font-size: 15px">¡Hola!</span>
+        </div>
+        <div style="margin-top: 8px; margin-left: 14px; width: 240px; height: 46px; border-radius: 12px; border: 2px dashed #B7C0CF; color: #5B6475; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700">Soltá un bloque acá</div>
+      </div>
+      <sc-if value="{{oriOpen}}" hint-placeholder-val="{{false}}">
+        <section aria-label="Ideas de Ori" style="position: absolute; right: 40px; bottom: 104px; width: 300px; background: #FFFFFF; border: 2px solid #6D3FE0; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 10px 24px rgba(27, 35, 51, 0.15)">
+          <span style="font-size: 16px; font-weight: 900; color: #4A2AA8">¿Qué querés lograr?</span>
+          <sc-for list="{{ideas}}" as="i" hint-placeholder-count="5">
+            <button style="height: 42px; padding: 0 12px; border-radius: 12px; border: 1.5px solid #D9CEFA; background: #F7F4FE; color: #1B2333; font-size: 15px; font-weight: 800; text-align: left; cursor: pointer">{{i}}</button>
+          </sc-for>
+          <span style="font-size: 13px; color: #5B6475; font-weight: 700">Vos decidís si usás la idea, la cambiás o no.</span>
+        </section>
+      </sc-if>
+      <button onClick="{{toggleOri}}" aria-expanded="{{oriExpanded}}" style="position: absolute; right: 40px; bottom: 36px; height: 56px; padding: 0 20px 0 10px; border-radius: 28px; border: 0; background: #6D3FE0; color: #FFFFFF; display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 900; box-shadow: 0 6px 16px rgba(77, 42, 168, 0.3); cursor: pointer">
+        <span style="width: 38px; height: 38px; border-radius: 19px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; gap: 5px"><span style="width: 6px; height: 9px; border-radius: 3px; background: #4A2AA8"></span><span style="width: 6px; height: 9px; border-radius: 3px; background: #4A2AA8"></span></span>
+        Pedirle una idea a Ori
+      </button>
+    </main>
+
+    <aside aria-label="Escenario" style="width: 440px; flex-shrink: 0; padding: 20px 20px 20px 0; display: flex; flex-direction: column; gap: 14px">
+      <div style="height: 300px; border-radius: 20px; background: #CFEBDF; position: relative; overflow: hidden; border: 1px solid #B8DCCB">
+        <div style="position: absolute; right: 48px; top: 34px; width: 52px; height: 52px; border-radius: 26px; background: #FCEFB4"></div>
+        <div style="position: absolute; left: -60px; bottom: -110px; width: 420px; height: 220px; border-radius: 50%; background: #8CC9A6"></div>
+        <div style="position: absolute; right: -80px; bottom: -130px; width: 440px; height: 230px; border-radius: 50%; background: #6BB48C"></div>
+        <svg style="position: absolute; left: 210px; top: 110px" width="80" height="120" viewBox="0 0 80 120" aria-hidden="true"><path d="M40 0L72 46H56L78 80H2L24 46H8Z" fill="#2E8B57"></path><rect x="34" y="80" width="12" height="26" fill="#7A5230"></rect></svg>
+        <div style="position: absolute; left: {{lumaX}}px; top: 150px; width: 58px; height: 58px; border-radius: 29px; background: #0F6E66; border: 3px solid #FFFFFF; display: flex; align-items: center; justify-content: center; gap: 8px; transition: left 0.8s ease"><span style="width: 7px; height: 11px; border-radius: 4px; background: #FFFFFF"></span><span style="width: 7px; height: 11px; border-radius: 4px; background: #FFFFFF"></span></div>
+        <sc-if value="{{showHola}}" hint-placeholder-val="{{false}}">
+          <div style="position: absolute; left: {{bubbleX}}px; top: 108px; padding: 6px 12px; border-radius: 12px; background: #FFFFFF; font-weight: 800; font-size: 15px">¡Hola!</div>
+        </sc-if>
+      </div>
+      <div style="display: flex; gap: 8px">
+        <button onClick="{{play}}" style="flex-grow: 1; height: 56px; border: 0; border-radius: 16px; background: #F5B301; color: #1B2333; font-size: 19px; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 0 #C08C00; cursor: pointer">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="#1B2333" aria-hidden="true"><path d="M7 4v16l13-8z"></path></svg>Jugar
+        </button>
+        <button onClick="{{stepFn}}" style="width: 96px; height: 56px; border: 1px solid #D5DAE3; border-radius: 16px; background: #FFFFFF; font-size: 16px; font-weight: 800; cursor: pointer">Paso</button>
+        <button aria-label="Volver al inicio" onClick="{{reset}}" style="width: 56px; height: 56px; border: 1px solid #D5DAE3; border-radius: 16px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; cursor: pointer">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1B2333" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v5h5"></path></svg>
+        </button>
+      </div>
+      <section style="background: #FFFFFF; border-radius: 18px; border: 1px solid #E2E6EE; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px">
+        <h2 style="margin: 0; font-size: 16px; font-weight: 900">¿Qué va a hacer Luma?</h2>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px">
+          <sc-for list="{{guesses}}" as="g" hint-placeholder-count="6">
+            <button aria-pressed="{{g.on}}" onClick="{{g.pick}}" style="height: 44px; border-radius: 12px; border: 2px solid {{g.border}}; background: {{g.bg}}; font-size: 14px; font-weight: 800; color: #1B2333; cursor: pointer">{{g.label}}</button>
+          </sc-for>
+        </div>
+        <sc-if value="{{ran}}" hint-placeholder-val="{{false}}">
+          <div role="status" style="padding: 10px 12px; border-radius: 12px; background: {{verdictBg}}; color: {{verdictFg}}; font-size: 14px; font-weight: 800; line-height: 1.4">Lo que pasó de verdad: Luma fue a la derecha y dijo ¡Hola! {{verdict}}</div>
+        </sc-if>
+      </section>
+      <section style="background: #FFFFFF; border-radius: 18px; border: 1px solid #E2E6EE; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; justify-content: space-between; align-items: center">
+          <h2 style="margin: 0; font-size: 16px; font-weight: 900">Personajes</h2>
+          <button style="height: 36px; padding: 0 12px; border-radius: 10px; border: 1px solid #D5DAE3; background: #FFFFFF; font-size: 14px; font-weight: 800; cursor: pointer">Fondo: Bosque</button>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center">
+          <div style="width: 52px; height: 52px; border-radius: 26px; background: #0F6E66; border: 3px solid #F5B301; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 900">L</div>
+          <button aria-label="Agregar personaje" style="width: 52px; height: 52px; border-radius: 26px; border: 2px dashed #B7C0CF; background: #FFFFFF; font-size: 24px; color: #5B6475; cursor: pointer">+</button>
+        </div>
+      </section>
+    </aside>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1366,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var cats = [
+      ['Mirar', '#6D3FE0'], ['Mover', '#2563EB'], ['Sonido', '#BE185D'], ['Control', '#F5B301'],
+      ['Lápiz', '#15803D'], ['Música', '#C2410C'], ['Datos', '#0E7490'], ['Míos', '#5B6475']
+    ];
+    var self = this;
+    var st = this.state || {};
+    var cat = st.cat == null ? 1 : st.cat;
+    var guess = st.guess == null ? -1 : st.guess;
+    var s = st.s || 0;
+    var dark = ['#4A2AA8', '#1D4FC4', '#9D1550', '#6B4700', '#0F5F2C', '#9A3410', '#0B5A70', '#3A4354'];
+    var names = ['Apariencia y tiempo', 'Movimiento', 'Sonidos', 'Eventos y control', 'Lápiz', 'Música', 'Variables y listas', 'Mis bloques'];
+    var lists = {
+      0: [['Decir', '¡Hola!'], ['Pensar', 'Mmm…'], ['Mostrar', ''], ['Esconder', ''], ['Tamaño', '100%'], ['Esperar', '1 s']],
+      1: [['Mover', '1'], ['Retroceder', '1'], ['Girar a la derecha', '90°'], ['Apuntar hacia', 'arriba'], ['Ir a posición', ''], ['Deslizar a posición', ''], ['Rebotar en el borde', '']],
+      2: [['Sonar', 'Pop'], ['Sonar', 'Gato'], ['Detener sonidos', ''], ['Fijar volumen', '100']],
+      3: [['Repetir', '3'], ['Si toca el borde', ''], ['Repetir hasta tocar el borde', ''], ['Enviar mensaje', 'hola']],
+      4: [['Bajar el lápiz', ''], ['Subir el lápiz', ''], ['Color del lápiz', 'azul'], ['Grosor del lápiz', '8'], ['Borrar los trazos', '']],
+      5: [['Tocar nota', 'Do 4'], ['Tocar percusión', 'bombo'], ['Instrumento', 'piano'], ['Velocidad', '120']],
+      6: [['Crear variable', ''], ['Crear lista', '']],
+      7: [['Crear bloque con estos bloques', '']]
+    };
+    var bg = cats[cat][1];
+    var fg = cat === 3 ? '#1B2333' : '#FFFFFF';
+    var shadow = cat === 3 ? '#C08C00' : dark[cat];
+    var gs = ['Derecha', 'Izquierda', 'Arriba', 'Abajo', 'Se queda', 'No sé'];
+    var ran = s >= 2;
+    var verdict = guess === 0 ? '¡Acertaste!' : (guess === 5 ? '¡Ahora ya sabés!' : (guess === -1 ? '' : 'Esta vez no: ¿qué bloque lo hizo ir a la derecha?'));
+    return {
+      catName: names[cat], catDark: dark[cat],
+      cats: cats.map(function (c, i) { var a = i === cat; return { label: c[0], color: c[1], on: a ? 'true' : 'false', bg: a ? '#EEF2F7' : 'transparent', pick: function () { self.setState({ cat: i }); } }; }),
+      blocks: lists[cat].map(function (b) { return { label: b[0], val: b[1], hasVal: b[1] !== '', bg: bg, fg: fg, shadow: shadow, dark: dark[cat] }; }),
+      guesses: gs.map(function (g, i) { var a = i === guess; return { label: g, on: a ? 'true' : 'false', border: a ? '#2563EB' : '#E2E6EE', bg: a ? '#E6EEFD' : '#FFFFFF', pick: function () { self.setState({ guess: i, s: 0 }); } }; }),
+      lumaX: s >= 1 ? 160 : 70,
+      bubbleX: s >= 1 ? 200 : 110,
+      showHola: s >= 2,
+      ran: ran,
+      verdict: verdict,
+      verdictBg: guess === 0 || guess === 5 ? '#E3F2F0' : '#FFF6D6',
+      verdictFg: guess === 0 || guess === 5 ? '#0A4F49' : '#6B4700',
+      play: function () { self.setState({ s: 0 }); setTimeout(function () { self.setState({ s: 1 }); }, 50); setTimeout(function () { self.setState({ s: 2 }); }, 900); },
+      stepFn: function () { self.setState({ s: Math.min(2, s + 1) }); },
+      reset: function () { self.setState({ s: 0 }); },
+      oriOpen: !!st.ori,
+      oriExpanded: st.ori ? 'true' : 'false',
+      toggleOri: function () { self.setState({ ori: !st.ori }); },
+      ideas: ['Avanzar bastante', 'Ir y volver', 'Tocar una melodía', 'Hacer un ritmo', 'Festejar con sonido']
+    };
+  }
+}
+</script>
+</body>
+</html>

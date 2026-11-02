@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Editor de misión (computadora)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&amp;family=JetBrains+Mono:wght@500&amp;display=swap">
+<style>
+body{margin:0;font-family:Nunito,system-ui,sans-serif;color:#1B2333}
+a{color:#0F6E66}a:hover{color:#0A4F49}
+button,select,input{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; display: flex; flex-direction: column; background: #E9EEF5; font-family: Nunito, system-ui, sans-serif; color: #1B2333; overflow: hidden; position: relative">
+
+  <header style="height: 52px; flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 0 12px; background: #FFFFFF; border-bottom: 1px solid #DDE3EC">
+    <a href="#" aria-label="Volver al mapa" style="width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #1B2333; border: 1px solid #DDE3EC">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+    </a>
+    <button onClick="{{toggleMission}}" aria-expanded="{{missionExpanded}}" style="flex: 0 1 720px; min-width: 0; height: 38px; display: flex; align-items: center; gap: 10px; padding: 0 6px 0 4px; border: 1px solid #E4DCFB; border-radius: 12px; background: #F6F3FE; cursor: pointer; text-align: left">
+      <span style="flex-shrink: 0; height: 28px; padding: 0 10px; border-radius: 8px; background: #6D3FE0; color: #FFFFFF; font-size: 13px; font-weight: 900; display: flex; align-items: center">Misión 2</span>
+      <span style="flex-shrink: 0; font-size: 17px; font-weight: 900">La esquina</span>
+      <span style="flex-grow: 1; min-width: 0; font-size: 14px; color: #4A4F63; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">La meta está arriba. Avanzá y girá para llegar.</span>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4A2AA8" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="{{chevron}}"></path></svg>
+    </button>
+    <button onClick="{{openHint}}" style="height: 38px; padding: 0 12px; border-radius: 10px; border: 1px solid #F1D48A; background: #FFF8E1; font-size: 14px; font-weight: 800; cursor: pointer">Pista 1</button>
+    <div style="flex-grow: 1"></div>
+    <sc-for list="{{tools}}" as="t" hint-placeholder-count="5">
+      <button aria-label="{{t.label}}" title="{{t.label}}" style="width: 38px; height: 38px; border-radius: 10px; border: 1px solid #DDE3EC; background: #FFFFFF; display: flex; align-items: center; justify-content: center; cursor: pointer">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1B2333" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{t.d}}"></path></svg>
+      </button>
+    </sc-for>
+    <span style="height: 30px; padding: 0 10px; border-radius: 999px; background: #E3F2F0; color: #0A4F49; font-size: 13px; font-weight: 900; display: flex; align-items: center">6–8</span>
+  </header>
+
+  <sc-if value="{{missionOpen}}" hint-placeholder-val="{{false}}">
+    <section role="dialog" aria-label="Misión 2" style="position: absolute; left: 60px; top: 58px; width: 560px; z-index: 5; background: #FFFFFF; border: 2px solid #6D3FE0; border-radius: 16px; padding: 16px 18px; box-shadow: 0 12px 28px rgba(27, 35, 51, 0.18); display: flex; flex-direction: column; gap: 8px">
+      <span style="font-size: 16px; font-weight: 900">La meta está arriba. Avanzá y girá para llegar.</span>
+      <span style="font-size: 14px; color: #3A4354; line-height: 1.45">Construí con objetos, disfraces, sonidos y todos los bloques. La misión se completa cuando tu programa llega a la meta al jugar.</span>
+      <sc-if value="{{hintOpen}}" hint-placeholder-val="{{false}}">
+        <div style="padding: 10px 12px; border-radius: 10px; background: #FFF8E1; font-size: 14px; font-weight: 700">Pista 1: primero avanzá hasta la esquina; después girá.</div>
+      </sc-if>
+    </section>
+  </sc-if>
+
+  <div style="flex-grow: 1; display: flex; min-height: 0">
+    <nav aria-label="Herramientas" style="width: 68px; flex-shrink: 0; background: #FFFFFF; border-right: 1px solid #DDE3EC; display: flex; flex-direction: column; align-items: center; padding: 10px 0; gap: 4px">
+      <sc-for list="{{acts}}" as="a" hint-placeholder-count="3">
+        <button aria-pressed="{{a.on}}" onClick="{{a.pick}}" style="width: 56px; height: 58px; border: 0; border-radius: 12px; background: {{a.bg}}; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; position: relative">
+          <span style="position: absolute; left: -6px; top: 12px; bottom: 12px; width: 4px; border-radius: 2px; background: {{a.bar}}"></span>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{a.ink}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{a.d}}"></path></svg>
+          <span style="font-size: 11px; font-weight: 900; color: {{a.ink}}">{{a.label}}</span>
+        </button>
+      </sc-for>
+      <div style="flex-grow: 1"></div>
+      <button aria-label="Pedir ayuda a Ori" style="width: 48px; height: 48px; border-radius: 24px; border: 0; background: #6D3FE0; display: flex; align-items: center; justify-content: center; gap: 5px; cursor: pointer"><span style="width: 6px; height: 10px; border-radius: 3px; background: #FFFFFF"></span><span style="width: 6px; height: 10px; border-radius: 3px; background: #FFFFFF"></span></button>
+    </nav>
+
+    <div style="flex-grow: 1; display: flex; gap: 8px; padding: 8px; min-width: 0; position: relative">
+
+      <article aria-label="{{drawerTitle}}" style="width: {{drawerW}}; flex-shrink: 0; display: {{drawer.display}}; flex-direction: column; background: #FFFFFF; border-radius: 14px; border: 1px solid #D5DCE6; overflow: hidden">
+        <header style="height: 40px; flex-shrink: 0; display: flex; align-items: center; gap: 6px; padding: 0 6px 0 14px; border-bottom: 1px solid #EEF1F5; background: #FAFBFD">
+          <span style="width: 10px; height: 10px; border-radius: 5px; background: {{drawerDot}}"></span>
+          <h2 style="margin: 0; font-size: 14px; font-weight: 900; flex-grow: 1">{{drawerTitle}}</h2>
+          <button aria-label="Minimizar" onClick="{{drawer.min}}" style="width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3A4354" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path></svg></button>
+          <button aria-label="{{drawer.maxLabel}}" onClick="{{drawer.max}}" style="width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3A4354" stroke-width="2.5" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"></rect></svg></button>
+        </header>
+
+        <sc-if value="{{isCode}}" hint-placeholder-val="{{true}}">
+          <div style="flex-grow: 1; display: flex; min-height: 0">
+            <div style="width: 70px; flex-shrink: 0; border-right: 1px solid #EEF1F5; padding: 8px 0; display: flex; flex-direction: column; align-items: center; gap: 2px">
+              <sc-for list="{{cats}}" as="c" hint-placeholder-count="8">
+                <button aria-pressed="{{c.on}}" onClick="{{c.pick}}" style="width: 62px; padding: 6px 0; border: 0; border-radius: 10px; background: {{c.bg}}; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer">
+                  <span style="width: 22px; height: 22px; border-radius: 11px; background: {{c.color}}"></span>
+                  <span style="font-size: 10px; font-weight: 900; line-height: 1.1; text-align: center; color: #1B2333">{{c.label}}</span>
+                </button>
+              </sc-for>
+            </div>
+            <div style="flex-grow: 1; padding: 12px; display: flex; flex-direction: column; gap: 8px; overflow: hidden">
+              <span style="font-size: 13px; font-weight: 900; color: {{catDark}}">{{catName}}</span>
+              <sc-for list="{{blocks}}" as="b" hint-placeholder-count="6">
+                <div style="align-self: flex-start; height: 40px; padding: 0 12px; display: flex; align-items: center; gap: 6px; border-radius: 10px; background: {{b.bg}}; color: {{b.fg}}; font-size: 14px; font-weight: 800; box-shadow: 0 2px 0 {{b.shadow}}; cursor: grab">{{b.label}}<sc-if value="{{b.hasVal}}" hint-placeholder-val="{{false}}"><span style="padding: 1px 8px; border-radius: 6px; background: #FFFFFF; color: {{b.dark}}; font-size: 13px">{{b.val}}</span></sc-if></div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{isCostumes}}" hint-placeholder-val="{{false}}">
+          <div style="flex-grow: 1; padding: 12px; display: flex; flex-direction: column; gap: 10px; overflow: hidden">
+            <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px">
+              <button style="height: 36px; border-radius: 10px; border: 1px solid #D5DCE6; background: #FFFFFF; font-size: 13px; font-weight: 800; cursor: pointer">Dibujar</button>
+              <button style="height: 36px; border-radius: 10px; border: 1px solid #D5DCE6; background: #FFFFFF; font-size: 13px; font-weight: 800; cursor: pointer">Subir imagen</button>
+            </div>
+            <span style="font-size: 13px; font-weight: 900; color: #5B6475">DISFRACES DE PIP</span>
+            <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+              <sc-for list="{{costumes}}" as="k" hint-placeholder-count="6">
+                <button aria-pressed="{{k.on}}" onClick="{{k.pick}}" style="height: 84px; border-radius: 12px; border: 2px solid {{k.border}}; background: #F7F9FC; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer">
+                  <span style="width: 34px; height: 34px; border-radius: 17px; background: {{k.color}}"></span>
+                  <span style="font-size: 12px; font-weight: 800; color: #1B2333">{{k.label}}</span>
+                </button>
+              </sc-for>
+            </div>
+            <span style="font-size: 13px; font-weight: 900; color: #5B6475">FONDOS</span>
+            <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+              <sc-for list="{{backs}}" as="f" hint-placeholder-count="6">
+                <button aria-pressed="{{f.on}}" onClick="{{f.pick}}" style="height: 56px; border-radius: 10px; border: 2px solid {{f.border}}; background: {{f.color}}; display: flex; align-items: flex-end; padding: 4px; box-sizing: border-box; cursor: pointer"><span style="padding: 1px 6px; border-radius: 6px; background: #FFFFFF; font-size: 11px; font-weight: 800">{{f.label}}</span></button>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{isSounds}}" hint-placeholder-val="{{false}}">
+          <div style="flex-grow: 1; padding: 12px; display: flex; flex-direction: column; gap: 8px; overflow: hidden">
+            <label style="height: 38px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border-radius: 10px; border: 1px solid #D5DCE6"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5B6475" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg><input aria-label="Buscar sonido" placeholder="Buscar sonido" style="border: 0; outline: none; font-size: 14px; flex-grow: 1"></label>
+            <sc-for list="{{sounds}}" as="s" hint-placeholder-count="8">
+              <div style="height: 44px; display: flex; align-items: center; gap: 10px; padding: 0 8px; border-radius: 10px; background: #F7F9FC">
+                <button aria-label="Escuchar {{s}}" style="width: 30px; height: 30px; border-radius: 15px; border: 0; background: #FCE7F1; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="12" height="12" viewBox="0 0 24 24" fill="#BE185D" aria-hidden="true"><path d="M7 4v16l13-8z"></path></svg></button>
+                <span style="flex-grow: 1; font-size: 14px; font-weight: 800">{{s}}</span>
+                <button style="height: 30px; padding: 0 10px; border-radius: 8px; border: 0; background: #BE185D; color: #FFFFFF; font-size: 12px; font-weight: 900; cursor: pointer">Usar</button>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+      </article>
+
+      <div style="flex-grow: 1; display: {{centerDisplay}}; flex-direction: column; gap: 8px; min-width: 0">
+        <article aria-label="Programa de Pip" style="flex: 1 1 0px; display: {{prog.display}}; flex-direction: column; min-height: 0; background: #FFFFFF; border-radius: 14px; border: 1px solid #D5DCE6; overflow: hidden">
+          <header style="height: 40px; flex-shrink: 0; display: flex; align-items: center; gap: 6px; padding: 0 6px 0 14px; border-bottom: 1px solid #EEF1F5; background: #FAFBFD">
+            <span style="width: 10px; height: 10px; border-radius: 5px; background: #2563EB"></span>
+            <h2 style="margin: 0; font-size: 14px; font-weight: 900; flex-grow: 1">Programa de Pip</h2>
+            <div style="display: flex; align-items: center; border: 1px solid #D5DCE6; border-radius: 9px; overflow: hidden">
+              <button aria-label="Alejar" onClick="{{zoomOut}}" style="width: 30px; height: 28px; border: 0; background: #FFFFFF; font-size: 15px; font-weight: 800; cursor: pointer">−</button>
+              <button aria-label="Volver a 100%" onClick="{{zoomFit}}" style="min-width: 48px; height: 28px; border: 0; border-left: 1px solid #E2E6EE; border-right: 1px solid #E2E6EE; background: #FFFFFF; font-size: 12px; font-weight: 800; cursor: pointer">{{zoomLabel}}</button>
+              <button aria-label="Acercar" onClick="{{zoomIn}}" style="width: 30px; height: 28px; border: 0; background: #FFFFFF; font-size: 15px; font-weight: 800; cursor: pointer">+</button>
+            </div>
+            <button aria-label="Minimizar" onClick="{{prog.min}}" style="width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3A4354" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path></svg></button>
+            <button aria-label="{{prog.maxLabel}}" onClick="{{prog.max}}" style="width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3A4354" stroke-width="2.5" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"></rect></svg></button>
+          </header>
+          <div style="flex-grow: 1; position: relative; overflow: hidden; background-color: #FFFFFF; background-image: radial-gradient(#DDE3EC 1px, transparent 1px); background-size: 18px 18px">
+            <div style="position: absolute; left: 28px; top: 28px; transform: scale({{zoom}}); transform-origin: 0 0; transition: transform 0.2s; display: flex; flex-direction: column; align-items: flex-start">
+              <div style="height: 48px; padding: 0 16px; display: flex; align-items: center; gap: 8px; border-radius: 18px 18px 10px 10px; background: #F5B301; font-weight: 900; font-size: 15px; box-shadow: 0 3px 0 #C08C00">Cuando <span style="padding: 1px 9px; border-radius: 7px; background: #FFFFFF">al jugar</span></div>
+              <div style="height: 44px; padding: 0 14px; margin: 3px 0 0 12px; display: flex; align-items: center; gap: 8px; border-radius: 10px; background: #2563EB; color: #FFFFFF; font-weight: 800; font-size: 15px; box-shadow: 0 3px 0 #1A47B0">Mover <span style="padding: 1px 9px; border-radius: 7px; background: #FFFFFF; color: #1D4FC4">3</span></div>
+              <div style="height: 44px; padding: 0 14px; margin: 3px 0 0 12px; display: flex; align-items: center; gap: 8px; border-radius: 10px; background: #2563EB; color: #FFFFFF; font-weight: 800; font-size: 15px; box-shadow: 0 3px 0 #1A47B0">Girar a la izquierda <span style="padding: 1px 9px; border-radius: 7px; background: #FFFFFF; color: #1D4FC4">90°</span></div>
+              <div style="height: 44px; padding: 0 14px; margin: 3px 0 0 12px; display: flex; align-items: center; gap: 8px; border-radius: 10px; background: #2563EB; color: #FFFFFF; font-weight: 800; font-size: 15px; box-shadow: 0 3px 0 #1A47B0">Mover <span style="padding: 1px 9px; border-radius: 7px; background: #FFFFFF; color: #1D4FC4">2</span></div>
+              <div style="margin: 6px 0 0 12px; width: 220px; height: 40px; border-radius: 10px; border: 2px dashed #B7C0CF; color: #5B6475; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800">Soltá un bloque acá</div>
+            </div>
+          </div>
+        </article>
+
+        <article aria-label="Código" style="flex: 0 0 {{codeH}}; display: {{code.display}}; flex-direction: column; background: #FFFFFF; border-radius: 14px; border: 1px solid #D5DCE6; overflow: hidden">
+          <header style="height: 40px; flex-shrink: 0; display: flex; align-items: center; gap: 6px; padding: 0 6px 0 14px; border-bottom: 1px solid #EEF1F5; background: #FAFBFD">
+            <span style="width: 10px; height: 10px; border-radius: 5px; background: #1B2333"></span>
+            <h2 style="margin: 0; font-size: 14px; font-weight: 900">Código</h2>
+            <div role="tablist" style="display: flex; gap: 2px; margin-left: 8px; flex-grow: 1">
+              <sc-for list="{{langs}}" as="l" hint-placeholder-count="4">
+                <button role="tab" aria-selected="{{l.on}}" onClick="{{l.pick}}" style="height: 28px; padding: 0 10px; border: 0; border-radius: 8px; background: {{l.bg}}; color: #1B2333; font-size: 12px; font-weight: 800; cursor: pointer">{{l.label}}</button>
+              </sc-for>
+            </div>
+            <button aria-label="Minimizar" onClick="{{code.min}}" style="width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3A4354" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path></svg></button>
+            <button aria-label="{{code.maxLabel}}" onClick="{{code.max}}" style="width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3A4354" stroke-width="2.5" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"></rect></svg></button>
+          </header>
+          <pre style="margin: 0; flex-grow: 1; padding: 12px 16px; background: #F4F7FB; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.6; color: #1B2333; white-space: pre-wrap; overflow: hidden">{{codeText}}</pre>
+        </article>
+      </div>
+
+      <div style="width: {{rightW}}; flex-shrink: 0; flex-grow: {{rightGrow}}; display: {{rightDisplay}}; flex-direction: column; gap: 8px; min-width: 0">
+        <article aria-label="Escenario" style="flex: {{stage.flex}}; display: {{stage.display}}; flex-direction: column; background: #FFFFFF; border-radius: 14px; border: 1px solid #D5DCE6; overflow: hidden">
+          <header style="height: 40px; flex-shrink: 0; display: flex; align-items: center; gap: 6px; padding: 0 6px 0 14px; border-bottom: 1px solid #EEF1F5; background: #FAFBFD">
+            <span style="width: 10px; height: 10px; border-radius: 5px; background: #15803D"></span>
+            <h2 style="margin: 0; font-size: 14px; font-weight: 900; flex-grow: 1">Escenario</h2>
+            <button onClick="{{play}}" style="height: 30px; padding: 0 12px; border: 0; border-radius: 8px; background: #15803D; color: #FFFFFF; font-size: 13px; font-weight: 900; display: flex; align-items: center; gap: 6px; cursor: pointer"><svg width="12" height="12" viewBox="0 0 24 24" fill="#FFFFFF" aria-hidden="true"><path d="M7 4v16l13-8z"></path></svg>Jugar</button>
+            <button aria-label="Detener" onClick="{{reset}}" style="width: 30px; height: 30px; border: 0; border-radius: 8px; background: #FDECEC; display: flex; align-items: center; justify-content: center; cursor: pointer"><span style="width: 10px; height: 10px; border-radius: 2px; background: #C53030"></span></button>
+            <button aria-label="Paso a paso" onClick="{{stepFn}}" style="width: 30px; height: 30px; border: 1px solid #D5DCE6; border-radius: 8px; background: #FFFFFF; font-size: 12px; font-weight: 900; cursor: pointer">▸|</button>
+            <button aria-label="Minimizar" onClick="{{stage.min}}" style="width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3A4354" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path></svg></button>
+            <button aria-label="{{stage.maxLabel}}" onClick="{{stage.max}}" style="width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3A4354" stroke-width="2.5" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"></rect></svg></button>
+          </header>
+          <div style="flex-grow: 1; position: relative; overflow: hidden; background: {{bgColor}}">
+            <div style="position: absolute; right: 9%; top: 12%; width: 44px; height: 44px; border-radius: 22px; background: #EFE3B8"></div>
+            <div style="position: absolute; left: -10%; right: -10%; bottom: -18%; height: 46%; border-radius: 50%; background: rgba(255, 255, 255, 0.18)"></div>
+            <div style="position: absolute; left: 70%; top: 10%; width: 34px; height: 34px; border-radius: 6px; border: 3px dashed #F5B301"></div>
+            <div style="position: absolute; left: {{pipX}}%; top: {{pipY}}%; width: 42px; height: 42px; border-radius: 21px; background: {{pipColor}}; border: 3px solid #FFFFFF; transition: left 0.6s ease, top 0.6s ease"></div>
+            <sc-if value="{{won}}" hint-placeholder-val="{{false}}">
+              <div role="status" style="position: absolute; left: 12px; bottom: 12px; padding: 6px 12px; border-radius: 10px; background: #FFFFFF; font-size: 14px; font-weight: 900; color: #0A4F49">¡Llegaste a la meta!</div>
+            </sc-if>
+          </div>
+        </article>
+
+        <article aria-label="Personajes" style="flex: 0 0 auto; display: {{sprites.display}}; flex-direction: column; background: #FFFFFF; border-radius: 14px; border: 1px solid #D5DCE6; overflow: hidden">
+          <header style="height: 40px; flex-shrink: 0; display: flex; align-items: center; gap: 6px; padding: 0 6px 0 14px; border-bottom: 1px solid #EEF1F5; background: #FAFBFD">
+            <span style="width: 10px; height: 10px; border-radius: 5px; background: #F5B301"></span>
+            <h2 style="margin: 0; font-size: 14px; font-weight: 900; flex-grow: 1">Personajes y fondo</h2>
+            <button aria-label="Minimizar" onClick="{{sprites.min}}" style="width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3A4354" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path></svg></button>
+          </header>
+          <div style="padding: 10px 12px; display: flex; align-items: center; gap: 8px">
+            <div style="width: 56px; height: 56px; border-radius: 14px; border: 2px solid #6D3FE0; background: #F6F3FE; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px"><span style="width: 24px; height: 24px; border-radius: 12px; background: {{pipColor}}"></span><span style="font-size: 11px; font-weight: 900">Pip</span></div>
+            <button aria-label="Agregar personaje" style="width: 56px; height: 56px; border-radius: 14px; border: 2px dashed #B7C0CF; background: #FFFFFF; font-size: 22px; color: #5B6475; cursor: pointer">+</button>
+            <div style="width: 1px; height: 40px; background: #E2E6EE; margin: 0 4px"></div>
+            <button onClick="{{goCostumes}}" style="width: 56px; height: 56px; border-radius: 14px; border: 1px solid #D5DCE6; background: {{bgColor}}; display: flex; align-items: flex-end; justify-content: center; padding: 3px; box-sizing: border-box; cursor: pointer"><span style="padding: 0 4px; border-radius: 5px; background: #FFFFFF; font-size: 10px; font-weight: 900">Fondo</span></button>
+            <div style="flex-grow: 1"></div>
+            <button style="height: 36px; padding: 0 10px; border-radius: 10px; border: 1px solid #E4DCFB; background: #F6F3FE; color: #4A2AA8; font-size: 13px; font-weight: 900; cursor: pointer">Preguntar a Ori</button>
+          </div>
+        </article>
+
+        <article aria-label="Pip" style="flex: 0 0 auto; display: {{inspector.display}}; flex-direction: column; background: #FFFFFF; border-radius: 14px; border: 1px solid #D5DCE6; overflow: hidden">
+          <header style="height: 40px; flex-shrink: 0; display: flex; align-items: center; gap: 6px; padding: 0 6px 0 14px; border-bottom: 1px solid #EEF1F5; background: #FAFBFD">
+            <span style="width: 10px; height: 10px; border-radius: 5px; background: #6D3FE0"></span>
+            <h2 style="margin: 0; font-size: 14px; font-weight: 900; flex-grow: 1">Pip</h2>
+            <button aria-label="Minimizar" onClick="{{inspector.min}}" style="width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3A4354" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path></svg></button>
+          </header>
+          <div style="padding: 10px 12px; display: flex; flex-direction: column; gap: 10px">
+            <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px">
+              <sc-for list="{{props}}" as="p" hint-placeholder-count="4">
+                <label style="display: flex; flex-direction: column; gap: 3px; font-size: 11px; font-weight: 900; color: #5B6475">{{p.k}}<input value="{{p.v}}" style="height: 32px; width: 100%; box-sizing: border-box; padding: 0 8px; border-radius: 8px; border: 1px solid #D5DCE6; font-size: 14px; font-weight: 800; color: #1B2333"></label>
+              </sc-for>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 6px">
+              <span style="font-size: 13px; font-weight: 900">¿Qué va a hacer Pip?</span>
+              <div style="display: flex; gap: 4px; flex-wrap: wrap">
+                <sc-for list="{{guesses}}" as="g" hint-placeholder-count="6">
+                  <button aria-pressed="{{g.on}}" onClick="{{g.pick}}" style="height: 30px; padding: 0 10px; border-radius: 15px; border: 1.5px solid {{g.border}}; background: {{g.bg}}; font-size: 12px; font-weight: 800; color: #1B2333; cursor: pointer">{{g.label}}</button>
+                </sc-for>
+              </div>
+              <span role="status" style="font-size: 12px; font-weight: 800; color: #3A4354">Lo que pasó de verdad: {{truth}}</span>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <div style="position: absolute; left: 16px; bottom: 16px; display: {{dockDisplay}}; gap: 8px; z-index: 4">
+        <sc-for list="{{dock}}" as="d" hint-placeholder-count="1">
+          <button onClick="{{d.restore}}" style="height: 34px; padding: 0 12px; border-radius: 10px; border: 1px solid #C9D1DD; background: #FFFFFF; font-size: 13px; font-weight: 800; cursor: pointer; box-shadow: 0 2px 8px rgba(27, 35, 51, 0.12)">{{d.label}} ▴</button>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var self = this;
+    var st = this.state || {};
+    var act = st.act || 'code';
+    var max = st.max || null;
+    var mins = st.mins || {};
+    var zoom = st.zoom || 1;
+    var cat = st.cat == null ? 0 : st.cat;
+    var lang = st.lang || 0;
+    var s = st.s || 0;
+    var guess = st.guess == null ? -1 : st.guess;
+    var bg = st.bg == null ? 0 : st.bg;
+    var costume = st.costume || 0;
+    var labels = { drawer: 'Panel lateral', prog: 'Programa', code: 'Código', stage: 'Escenario', sprites: 'Personajes y fondo', inspector: 'Pip' };
+    var mk = function (id) {
+      var hidden = !!mins[id] || (max && max !== id);
+      return {
+        display: hidden ? 'none' : 'flex',
+        flex: max === id ? '1 1 0px' : '0 0 300px',
+        maxLabel: max === id ? 'Restaurar' : 'Maximizar',
+        min: function () { var m = Object.assign({}, mins); m[id] = true; self.setState({ mins: m, max: max === id ? null : max }); },
+        max: function () { self.setState({ max: max === id ? null : id }); }
+      };
+    };
+    var inCenter = !max || max === 'prog' || max === 'code';
+    var inRight = !max || max === 'stage' || max === 'sprites' || max === 'inspector';
+    var dock = Object.keys(mins).filter(function (k) { return mins[k] && k !== 'drawer'; }).map(function (k) {
+      return { label: labels[k], restore: function () { var m = Object.assign({}, mins); delete m[k]; self.setState({ mins: m }); } };
+    });
+    var cats = [['Movimiento', '#2563EB', '#1D4FC4'], ['Apariencia', '#6D3FE0', '#4A2AA8'], ['Sonido', '#BE185D', '#9D1550'], ['Control', '#F5B301', '#6B4700'], ['Lápiz', '#15803D', '#0F5F2C'], ['Música', '#C2410C', '#9A3410'], ['Variables', '#0E7490', '#0B5A70'], ['Míos', '#5B6475', '#3A4354']];
+    var lists = [
+      [['Mover', '1'], ['Retroceder', '1'], ['Girar a la derecha', '90°'], ['Girar a la izquierda', '90°'], ['Apuntar hacia', 'arriba'], ['Ir a posición', ''], ['Rebotar en el borde', '']],
+      [['Decir', '¡Hola!'], ['Pensar', 'Mmm…'], ['Cambiar disfraz', ''], ['Tamaño', '100%'], ['Esperar', '1 s']],
+      [['Sonar', 'Pop'], ['Sonar', 'Tada'], ['Detener sonidos', ''], ['Fijar volumen', '100']],
+      [['Repetir', '3'], ['Si toca el borde', ''], ['Esperar', '1 s'], ['Enviar mensaje', 'hola']],
+      [['Bajar el lápiz', ''], ['Subir el lápiz', ''], ['Color del lápiz', 'azul']],
+      [['Tocar nota', 'Do 4'], ['Tocar percusión', 'bombo'], ['Instrumento', 'piano']],
+      [['Crear variable', ''], ['Crear lista', '']],
+      [['Crear bloque', '']]
+    ];
+    var backs = [['Galaxia', '#4B3F8F'], ['Bosque', '#4E9A72'], ['Playa', '#D9B36A'], ['Luna', '#3A4354'], ['Arrecife', '#2F8FA3'], ['Castillo', '#8B6FA8']];
+    var costumes = [['Pip', '#2563EB'], ['Pip feliz', '#0E7490'], ['Pip salta', '#6D3FE0'], ['Pip duerme', '#5B6475']];
+    var codes = [
+      'when start\n  move 3\n  turn left 90\n  move 2',
+      'def al_jugar():\n    mover(3)\n    girar_izquierda(90)\n    mover(2)',
+      'onStart(() => {\n  move(3);\n  turnLeft(90);\n  move(2);\n});',
+      'void onStart() {\n  move(3);\n  turnLeft(90);\n  move(2);\n}'
+    ];
+    var path = [[8, 70], [50, 70], [50, 70], [50, 22]];
+    var p = path[Math.min(s, 3)];
+    var c = cats[cat];
+    var gs = ['Derecha', 'Izquierda', 'Arriba', 'Abajo', 'Se queda', 'No sé'];
+    var acts = [['code', 'Código', 'M8 6l-6 6 6 6M16 6l6 6-6 6'], ['costumes', 'Disfraces', 'M4 20l4-12 4 6 4-8 4 14z'], ['sounds', 'Sonidos', 'M11 5L6 9H3v6h3l5 4zM16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12']];
+    return {
+      missionOpen: !!st.mission, missionExpanded: st.mission ? 'true' : 'false',
+      chevron: st.mission ? 'M6 15l6-6 6 6' : 'M6 9l6 6 6-6',
+      toggleMission: function () { self.setState({ mission: !st.mission, hint: false }); },
+      hintOpen: !!st.hint,
+      openHint: function () { self.setState({ mission: true, hint: true }); },
+      tools: [{ label: 'Deshacer', d: 'M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3' }, { label: 'Rehacer', d: 'M15 14l5-5-5-5M20 9H10a6 6 0 0 0 0 12h3' }, { label: 'Teclado', d: 'M3 7h18v10H3zM7 11h.01M11 11h.01M15 11h.01M8 14h8' }, { label: 'Descargar', d: 'M12 4v11M7 10l5 5 5-5M5 20h14' }, { label: 'Ayuda', d: 'M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.7M12 17h.01' }],
+      acts: acts.map(function (a) { var on = act === a[0] && !mins.drawer; return { label: a[1], d: a[2], on: on ? 'true' : 'false', bg: on ? '#EEF2FB' : 'transparent', bar: on ? '#2563EB' : 'transparent', ink: on ? '#1D4FC4' : '#3A4354', pick: function () { var m = Object.assign({}, mins); delete m.drawer; self.setState({ act: a[0], mins: m }); } }; }),
+      drawer: mk('drawer'),
+      drawerW: max === 'drawer' ? '100%' : (act === 'code' ? '330px' : '300px'),
+      drawerTitle: act === 'code' ? 'Bloques' : (act === 'costumes' ? 'Disfraces y fondos' : 'Sonidos'),
+      drawerDot: act === 'code' ? c[1] : (act === 'costumes' ? '#6D3FE0' : '#BE185D'),
+      isCode: act === 'code', isCostumes: act === 'costumes', isSounds: act === 'sounds',
+      cats: cats.map(function (x, i) { var a = i === cat; return { label: x[0], color: x[1], on: a ? 'true' : 'false', bg: a ? '#EEF2F7' : 'transparent', pick: function () { self.setState({ cat: i }); } }; }),
+      catName: c[0], catDark: c[2],
+      blocks: lists[cat].map(function (b) { return { label: b[0], val: b[1], hasVal: b[1] !== '', bg: c[1], fg: cat === 3 ? '#1B2333' : '#FFFFFF', shadow: cat === 3 ? '#C08C00' : c[2], dark: c[2] }; }),
+      costumes: costumes.map(function (k, i) { var a = i === costume; return { label: k[0], color: k[1], on: a ? 'true' : 'false', border: a ? '#6D3FE0' : '#E2E6EE', pick: function () { self.setState({ costume: i }); } }; }),
+      backs: backs.map(function (f, i) { var a = i === bg; return { label: f[0], color: f[1], on: a ? 'true' : 'false', border: a ? '#F5B301' : 'transparent', pick: function () { self.setState({ bg: i }); } }; }),
+      sounds: ['Pop', 'Tada', 'Salto', 'Moneda', 'Magia', 'Pío', 'Rebote', 'Aplauso'],
+      centerDisplay: inCenter ? 'flex' : 'none',
+      prog: mk('prog'), code: mk('code'),
+      codeH: max === 'code' ? '100%' : '150px',
+      langs: ['Agorix Code', 'Python', 'TypeScript', 'Java'].map(function (l, i) { var a = i === lang; return { label: l, on: a ? 'true' : 'false', bg: a ? '#E3F2F0' : 'transparent', pick: function () { self.setState({ lang: i }); } }; }),
+      codeText: codes[lang],
+      zoom: zoom, zoomLabel: Math.round(zoom * 100) + '%',
+      zoomIn: function () { self.setState({ zoom: Math.min(2, zoom + 0.25) }); },
+      zoomOut: function () { self.setState({ zoom: Math.max(0.5, zoom - 0.25) }); },
+      zoomFit: function () { self.setState({ zoom: 1 }); },
+      rightDisplay: inRight ? 'flex' : 'none',
+      rightW: max ? 'auto' : '440px', rightGrow: max ? 1 : 0,
+      stage: Object.assign(mk('stage'), { flex: max === 'stage' ? '1 1 0px' : '1 1 0px' }),
+      sprites: mk('sprites'), inspector: mk('inspector'),
+      bgColor: backs[bg][1], pipColor: costumes[costume][1],
+      pipX: p[0], pipY: p[1], won: s >= 3,
+      play: function () { self.setState({ s: 0 }); [1, 2, 3].forEach(function (k) { setTimeout(function () { self.setState({ s: k }); }, k * 600); }); },
+      stepFn: function () { self.setState({ s: Math.min(3, s + 1) }); },
+      reset: function () { self.setState({ s: 0 }); },
+      goCostumes: function () { var m = Object.assign({}, mins); delete m.drawer; self.setState({ act: 'costumes', mins: m }); },
+      props: [{ k: 'x', v: '0' }, { k: 'y', v: '120' }, { k: 'Dirección', v: '90°' }, { k: 'Tamaño', v: '100%' }],
+      guesses: gs.map(function (g, i) { var a = i === guess; return { label: g, on: a ? 'true' : 'false', border: a ? '#2563EB' : '#D5DCE6', bg: a ? '#EEF2FB' : '#FFFFFF', pick: function () { self.setState({ guess: i }); } }; }),
+      truth: s >= 3 ? 'fue a la derecha y después subió.' + (guess === 0 || guess === 2 ? ' ¡Bien visto!' : '') : '—',
+      dock: dock, dockDisplay: dock.length ? 'flex' : 'none'
+    };
+  }
+}
+</script>
+</body>
+</html>

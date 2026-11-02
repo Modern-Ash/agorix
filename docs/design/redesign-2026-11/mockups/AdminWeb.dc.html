@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Admin – Intervención de Ori (computadora)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&amp;family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap">
+<style>
+body{margin:0;font-family:Inter,system-ui,sans-serif;color:#1B2333}
+a{color:#0F6E66}a:hover{color:#0A4F49}
+button,input{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 1366px; height: 900px; display: flex; flex-direction: column; background: #F3F5F9; font-family: Inter, system-ui, sans-serif; color: #1B2333; overflow: hidden">
+  <header style="height: 64px; flex-shrink: 0; background: #12302F; color: #FFFFFF; display: flex; align-items: center; gap: 14px; padding: 0 24px">
+    <div style="width: 34px; height: 34px; border-radius: 9px; background: #FFFFFF; color: #12302F; display: flex; align-items: center; justify-content: center; font-family: Nunito, sans-serif; font-weight: 900">A</div>
+    <div style="display: flex; flex-direction: column">
+      <span style="font-size: 11px; letter-spacing: 0.08em; color: #A7C4C0; font-weight: 600">AGORIX · OPERACIONES</span>
+      <span style="font-family: Nunito, sans-serif; font-weight: 900; font-size: 19px">Centro de IA</span>
+    </div>
+    <div style="flex-grow: 1"></div>
+    <span style="display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; background: #1E4644; font-size: 13px; font-weight: 600"><span style="width: 8px; height: 8px; border-radius: 4px; background: #4ADE80"></span>Revisión {{rev}} publicada</span>
+    <a href="#" style="height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #5E8580; color: #FFFFFF; display: flex; align-items: center; font-size: 14px; font-weight: 600; text-decoration: none">Volver a Agorix</a>
+  </header>
+
+  <div style="flex-grow: 1; display: flex; min-height: 0">
+    <nav aria-label="Secciones" style="width: 260px; flex-shrink: 0; background: #FFFFFF; border-right: 1px solid #E2E6EE; padding: 18px 14px; box-sizing: border-box; display: flex; flex-direction: column; gap: 2px; overflow: hidden">
+      <sc-for list="{{groups}}" as="g" hint-placeholder-count="4">
+        <span style="padding: 14px 10px 6px; font-size: 11px; letter-spacing: 0.08em; font-weight: 700; color: #5B6475">{{g.title}}</span>
+        <sc-for list="{{g.items}}" as="it" hint-placeholder-count="3">
+          <a href="{{it.href}}" aria-current="{{it.current}}" style="height: 38px; padding: 0 10px; border-radius: 9px; background: {{it.bg}}; color: {{it.color}}; display: flex; align-items: center; justify-content: space-between; font-size: 14px; font-weight: {{it.weight}}; text-decoration: none">
+            <span>{{it.label}}</span>
+            <sc-if value="{{it.hasBadge}}" hint-placeholder-val="{{false}}"><span style="width: 8px; height: 8px; border-radius: 4px; background: #15803D" aria-label="Activa"></span></sc-if>
+          </a>
+        </sc-for>
+      </sc-for>
+      <div style="flex-grow: 1"></div>
+      <button style="height: 40px; border: 1px solid #D5DAE3; border-radius: 10px; background: #FFFFFF; font-size: 14px; font-weight: 600; cursor: pointer">Cerrar sesión</button>
+    </nav>
+
+    <main style="flex-grow: 1; display: flex; flex-direction: column; min-width: 0">
+      <div style="flex-grow: 1; padding: 28px 36px; display: flex; flex-direction: column; gap: 18px; overflow: hidden">
+        <div style="display: flex; flex-direction: column; gap: 6px; max-width: 820px">
+          <span style="font-size: 12px; color: #5B6475; font-weight: 600">Reglas · Cuándo ayuda Ori</span>
+          <h1 style="margin: 0; font-family: Nunito, sans-serif; font-weight: 900; font-size: 30px">Intervención de Ori</h1>
+          <p style="margin: 0; font-size: 14px; color: #5B6475; line-height: 1.5">Cuándo ofrece Ori una idea hecha de bloques. Nunca ofrece una solución al entrar y los validadores siguen decidiendo qué se acepta.</p>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px">
+          <section style="background: #FFFFFF; border: 1px solid #E2E6EE; border-radius: 16px; padding: 20px 22px; display: flex; flex-direction: column; gap: 20px">
+            <h2 style="margin: 0; font-size: 16px; font-weight: 700">Parámetros</h2>
+            <sc-for list="{{params}}" as="p" hint-placeholder-count="4">
+              <div style="display: flex; flex-direction: column; gap: 8px">
+                <div style="display: flex; justify-content: space-between; align-items: center">
+                  <span style="font-size: 14px; font-weight: 600">{{p.label}}</span>
+                  <div style="display: flex; align-items: center; gap: 6px">
+                    <button aria-label="Bajar" onClick="{{p.dec}}" style="width: 32px; height: 32px; border-radius: 8px; border: 1px solid #D5DAE3; background: #FFFFFF; font-size: 16px; cursor: pointer">−</button>
+                    <span style="font-family: 'JetBrains Mono', monospace; font-size: 14px; min-width: 52px; text-align: center; padding: 4px 8px; border-radius: 6px; background: #E3F2F0; color: #0A4F49">{{p.value}}</span>
+                    <button aria-label="Subir" onClick="{{p.inc}}" style="width: 32px; height: 32px; border-radius: 8px; border: 1px solid #D5DAE3; background: #FFFFFF; font-size: 16px; cursor: pointer">+</button>
+                  </div>
+                </div>
+                <div style="position: relative; height: 6px; border-radius: 3px; background: #E2E6EE">
+                  <div style="width: {{p.pct}}%; height: 100%; border-radius: 3px; background: #0F6E66"></div>
+                  <span style="position: absolute; top: -7px; left: calc({{p.pct}}% - 10px); width: 20px; height: 20px; border-radius: 10px; background: #FFFFFF; border: 2px solid #0F6E66; box-sizing: border-box"></span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 12px; color: #5B6475"><span>{{p.hint}}</span><span>{{p.range}}</span></div>
+              </div>
+            </sc-for>
+          </section>
+          <section style="background: #FFFFFF; border: 1px solid #E2E6EE; border-radius: 16px; padding: 20px 22px; display: flex; flex-direction: column; gap: 12px">
+            <div style="display: flex; justify-content: space-between; align-items: center">
+              <h2 style="margin: 0; font-size: 16px; font-weight: 700">Vista previa con aprendices simulados</h2>
+              <span style="font-size: 12px; color: #5B6475">No publica nada</span>
+            </div>
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px">
+              <thead><tr><th style="text-align: left; padding: 8px 0; color: #5B6475; font-weight: 600; border-bottom: 1px solid #E2E6EE">Situación</th><th style="text-align: left; padding: 8px 0; color: #5B6475; font-weight: 600; border-bottom: 1px solid #E2E6EE">¿Ori ofrece una idea?</th></tr></thead>
+              <tbody>
+                <sc-for list="{{sims}}" as="s" hint-placeholder-count="6">
+                  <tr>
+                    <td style="padding: 11px 0; border-bottom: 1px solid #EEF1F5">{{s.label}}</td>
+                    <td style="padding: 11px 0; border-bottom: 1px solid #EEF1F5"><span style="padding: 3px 10px; border-radius: 999px; background: {{s.bg}}; color: {{s.color}}; font-weight: 600; font-size: 13px">{{s.res}}</span></td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+            <span style="font-size: 13px; color: #5B6475">Metas disponibles con este tamaño: {{goals}} de 7.</span>
+          </section>
+        </div>
+      </div>
+      <div role="region" aria-label="Borrador" style="height: 72px; flex-shrink: 0; background: #FFFFFF; border-top: 1px solid #E2E6EE; display: flex; align-items: center; gap: 12px; padding: 0 36px">
+        <span role="status" style="display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: {{draftColor}}"><span style="width: 8px; height: 8px; border-radius: 4px; background: {{draftDot}}"></span>{{draftText}}</span>
+        <div style="flex-grow: 1"></div>
+        <button onClick="{{discard}}" style="height: 44px; padding: 0 16px; border: 0; border-radius: 10px; background: transparent; color: #3A4354; font-size: 14px; font-weight: 600; cursor: pointer">Descartar</button>
+        <button onClick="{{validate}}" style="height: 44px; padding: 0 16px; border: 1px solid #D5DAE3; border-radius: 10px; background: #FFFFFF; font-size: 14px; font-weight: 600; cursor: pointer">Validar cambios</button>
+        <button onClick="{{publish}}" style="height: 44px; padding: 0 18px; border: 0; border-radius: 10px; background: {{pubBg}}; color: #FFFFFF; font-size: 14px; font-weight: 700; cursor: pointer">Publicar revisión {{nextRev}}</button>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1366,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var self = this;
+    var st = this.state || {};
+    var def = { runs: 1, hints: 2, blocks: 8, pct: 100 };
+    var pub = st.pub || def;
+    var v = st.v || pub;
+    var rev = st.rev || 1;
+    var changes = ['runs', 'hints', 'blocks', 'pct'].filter(function (k) { return v[k] !== pub[k]; }).length;
+    var mk = function (label, cur, badge, href) { return { label: label, href: href || '#', current: cur ? 'page' : 'false', bg: cur ? '#E3F2F0' : 'transparent', color: cur ? '#0A4F49' : '#3A4354', weight: cur ? 700 : 500, hasBadge: badge }; };
+    var yes = { res: 'Sí, hasta ' + v.blocks + ' bloques', bg: '#E3F2F0', color: '#0A4F49' };
+    var no = { res: 'No, todavía no', bg: '#F1F3F7', color: '#3A4354' };
+    var sim = function (l, ok) { var r = ok ? yes : no; return { label: l, res: r.res, bg: r.bg, color: r.color }; };
+    var set = function (k, min, max, d) { return function () { var n = Object.assign({}, v); n[k] = Math.max(min, Math.min(max, v[k] + d)); self.setState({ v: n, checked: false }); }; };
+    var param = function (label, k, min, max, step, unit, hint, range) {
+      return { label: label, value: v[k] + unit, pct: Math.round((v[k] - min) / (max - min) * 100), range: range, hint: hint, dec: set(k, min, max, -step), inc: set(k, min, max, step) };
+    };
+    return {
+      rev: rev, nextRev: rev + 1,
+      groups: [
+        { title: 'AGENTES DE ORI', items: [mk('Ori en misiones', false, true), mk('Ori avanzado', false, true), mk('Ori en escenas', false, true), mk('Conversación', false, true), mk('Objetivos', false, true), mk('Tutor clásico', false, true)] },
+        { title: 'REGLAS', items: [mk('Intervención de Ori', true, false, 'AdminWeb.dc.html')] },
+        { title: 'CONTENIDO Y GRUPOS', items: [mk('Misiones', false, false, 'AdminTablet.dc.html'), mk('Modo grupo', false, false, 'AdminCelular.dc.html')] },
+        { title: 'MONITOREO', items: [mk('Chat de Ori (24 h)', false, false), mk('Historial de revisiones', false, false)] }
+      ],
+      params: [
+        param('Corridas que no llegan a la meta', 'runs', 1, 5, 1, '', 'Fallos antes de ofrecer una idea', '1 a 5'),
+        param('Pistas abiertas', 'hints', 2, 5, 1, '', 'La primera pista nunca alcanza', '2 a 5'),
+        param('Bloques por idea', 'blocks', 1, 8, 1, '', 'Tamaño máximo de una idea', '1 a 8'),
+        param('Dispositivos que reciben el cambio', 'pct', 10, 100, 10, ' %', 'Despliegue gradual', '1 a 100 %')
+      ],
+      sims: [sim('Recién entra', false), sim('Primera corrida fallida', v.runs <= 1), sim('Dos corridas fallidas', v.runs <= 2), sim('Abrió la pista 1', false), sim('Abrió la pista 2', v.hints <= 2), sim('Trabado, con 3 pistas', v.hints <= 3)],
+      goals: [1, 2, 3, 4, 5, 6, 8].filter(function (n) { return n <= v.blocks; }).length,
+      draftText: changes === 0 ? (st.justPub ? 'Revisión ' + rev + ' publicada' : 'Sin cambios pendientes') : (st.checked ? 'Validado: ' + changes + ' cambio(s) listos para publicar' : 'Borrador con ' + changes + ' cambio(s) sin publicar'),
+      draftColor: changes === 0 ? '#0A4F49' : (st.checked ? '#0A4F49' : '#8A5A00'),
+      draftDot: changes === 0 ? '#15803D' : (st.checked ? '#15803D' : '#F5B301'),
+      pubBg: changes > 0 ? '#0F6E66' : '#8FB8B4',
+      discard: function () { self.setState({ v: pub, checked: false, justPub: false }); },
+      validate: function () { if (changes > 0) self.setState({ checked: true }); },
+      publish: function () { if (changes > 0) self.setState({ pub: v, rev: rev + 1, checked: false, justPub: true }); }
+    };
+  }
+}
+</script>
+</body>
+</html>
