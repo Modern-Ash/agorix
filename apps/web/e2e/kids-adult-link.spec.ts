@@ -353,7 +353,12 @@ test("an older alias-only account is asked for an email before it can link (#519
   await open(page);
   await openAdults(page);
   await signUp(page, name, "old@example.com");
-  // Pretend the server has no email on file for this old account.
+  // Registration may leave the account without email or with a pending email.
+  const addEmail = page.getByRole("heading", { name: "Agregá tu correo" });
+  const checkAgain = page.getByRole("button", { name: "Ya lo confirmé" });
+  await expect
+    .poll(async () => (await addEmail.isVisible()) || (await checkAgain.isVisible()))
+    .toBe(true);
   let present = false;
   let posted: string | undefined;
   await page.route("**/v1/account/email", async (route) => {
@@ -373,7 +378,8 @@ test("an older alias-only account is asked for an email before it can link (#519
       body: JSON.stringify({ present, verified: false }),
     });
   });
-  await expect(page.getByRole("heading", { name: "Agregá tu correo" })).toBeVisible();
+  if (await checkAgain.isVisible()) await checkAgain.click();
+  await expect(addEmail).toBeVisible();
   await expect(page.getByRole("heading", { name: "Vincular un dispositivo" })).toHaveCount(0);
   await page.getByLabel(/Tu correo/).fill("later@example.com");
   await page.getByRole("button", { name: "Enviar enlace de confirmación" }).click();
