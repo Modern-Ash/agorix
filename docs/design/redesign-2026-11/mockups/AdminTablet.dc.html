@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Admin – Misiones (tablet)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&amp;family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0;font-family:Inter,system-ui,sans-serif;color:#1B2333}
+a{color:#0F6E66}a:hover{color:#0A4F49}
+button,input,textarea,select{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 820px; height: 1180px; display: flex; flex-direction: column; background: #F3F5F9; font-family: Inter, system-ui, sans-serif; color: #1B2333; overflow: hidden">
+  <header style="background: #12302F; color: #FFFFFF; padding: 14px 24px; display: flex; align-items: center; gap: 12px">
+    <div style="width: 32px; height: 32px; border-radius: 9px; background: #FFFFFF; color: #12302F; display: flex; align-items: center; justify-content: center; font-family: Nunito, sans-serif; font-weight: 900">A</div>
+    <span style="font-family: Nunito, sans-serif; font-weight: 900; font-size: 18px; flex-grow: 1">Centro de IA</span>
+    <label style="display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 12px; border-radius: 10px; background: #1E4644; font-size: 14px; font-weight: 600">
+      Sección
+      <select aria-label="Sección" style="border: 0; background: transparent; color: #FFFFFF; font-size: 14px; font-weight: 700">
+        <option>Misiones</option>
+      </select>
+    </label>
+  </header>
+
+  <main style="flex-grow: 1; padding: 24px; display: flex; flex-direction: column; gap: 16px; overflow: hidden">
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <h1 style="margin: 0; font-family: Nunito, sans-serif; font-weight: 900; font-size: 28px">Misiones</h1>
+      <p style="margin: 0; font-size: 14px; color: #5B6475; line-height: 1.5">Las pistas se calculan desde el recorrido. Una misión que el runtime no pueda ganar no se publica.</p>
+    </div>
+    <div role="tablist" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; padding: 5px; background: #E2E6EE; border-radius: 12px">
+      <sc-for list="{{worlds}}" as="w" hint-placeholder-count="4">
+        <button role="tab" aria-selected="{{w.on}}" onClick="{{w.pick}}" style="height: 44px; border: 0; border-radius: 9px; background: {{w.bg}}; font-size: 15px; font-weight: 700; color: #1B2333; cursor: pointer">{{w.label}}</button>
+      </sc-for>
+    </div>
+    <div style="display: flex; gap: 8px">
+      <sc-for list="{{missions}}" as="m" hint-placeholder-count="3">
+        <button aria-pressed="{{m.on}}" onClick="{{m.pick}}" style="flex: 1; height: 56px; border-radius: 12px; border: 2px solid {{m.border}}; background: #FFFFFF; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 0 14px; cursor: pointer">
+          <span style="font-size: 12px; color: #5B6475; font-weight: 600">Misión {{m.n}}</span>
+          <span style="font-size: 15px; font-weight: 700; color: #1B2333">{{m.title}}</span>
+        </button>
+      </sc-for>
+    </div>
+
+    <section style="background: #FFFFFF; border: 1px solid #E2E6EE; border-radius: 16px; padding: 20px; display: flex; gap: 24px">
+      <div style="display: flex; flex-direction: column; gap: 10px">
+        <h2 style="margin: 0; font-size: 16px; font-weight: 700">Recorrido</h2>
+        <div role="grid" aria-label="Tablero de la misión" style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; width: 330px">
+          <sc-for list="{{cells}}" as="c" hint-placeholder-count="36">
+            <button aria-label="{{c.aria}}" onClick="{{c.pick}}" style="height: 52px; border-radius: 8px; border: 0; background: {{c.bg}}; color: {{c.color}}; font-weight: 800; font-size: 14px; cursor: pointer">{{c.text}}</button>
+          </sc-for>
+        </div>
+        <div style="display: flex; gap: 14px; font-size: 13px; color: #3A4354">
+          <span style="display: flex; align-items: center; gap: 6px"><span style="width: 14px; height: 14px; border-radius: 4px; background: #2563EB"></span>Salida (col {{sc}}, fila {{sr}})</span>
+          <span style="display: flex; align-items: center; gap: 6px"><span style="width: 14px; height: 14px; border-radius: 4px; background: #F5B301"></span>Meta (col {{gc}}, fila {{gr}})</span>
+        </div>
+      </div>
+      <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 12px">
+        <h2 style="margin: 0; font-size: 16px; font-weight: 700">Cómo se edita</h2>
+        <p style="margin: 0; font-size: 14px; color: #3A4354; line-height: 1.5">Elegí qué marcar y tocá una celda. El tablero valida en vivo si la misión se puede ganar.</p>
+        <div role="radiogroup" aria-label="Qué marcar" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 4px; background: #F1F3F7; border-radius: 10px">
+          <sc-for list="{{modes}}" as="m" hint-placeholder-count="2">
+            <button role="radio" aria-checked="{{m.checked}}" onClick="{{m.pick}}" style="height: 40px; border: 0; border-radius: 8px; background: {{m.bg}}; font-size: 14px; font-weight: 700; color: #1B2333; cursor: pointer">{{m.label}}</button>
+          </sc-for>
+        </div>
+        <div role="status" style="padding: 12px 14px; border-radius: 12px; background: {{okBg}}; color: {{okFg}}; font-size: 14px; font-weight: 600">{{okText}}</div>
+        <button onClick="{{resetMap}}" style="align-self: flex-start; height: 40px; padding: 0 14px; border: 1px solid #D5DAE3; border-radius: 10px; background: #FFFFFF; font-size: 13px; font-weight: 600; cursor: pointer">Volver a las misiones originales</button>
+      </div>
+    </section>
+
+    <section style="background: #FFFFFF; border: 1px solid #E2E6EE; border-radius: 16px; padding: 20px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px">
+      <sc-for list="{{langs}}" as="l" hint-placeholder-count="2">
+        <div style="display: flex; flex-direction: column; gap: 10px">
+          <h2 style="margin: 0; font-size: 15px; font-weight: 700">{{l.name}}</h2>
+          <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: #3A4354">Título
+            <input value="{{l.title}}" style="height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid #D5DAE3; font-size: 15px; color: #1B2333">
+          </label>
+          <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: #3A4354">Relato
+            <textarea rows="3" style="padding: 10px 12px; border-radius: 10px; border: 1px solid #D5DAE3; font-size: 15px; color: #1B2333; resize: none">{{l.story}}</textarea>
+          </label>
+        </div>
+      </sc-for>
+      <p style="grid-column: 1 / -1; margin: 0; font-size: 13px; color: #5B6475">Letras, números y signos comunes, sin enlaces ni marcas. Estos textos los ven los chicos.</p>
+    </section>
+  </main>
+
+  <div role="region" aria-label="Borrador" style="height: 76px; flex-shrink: 0; background: #FFFFFF; border-top: 1px solid #E2E6EE; display: flex; align-items: center; gap: 10px; padding: 0 24px">
+    <span style="display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: #8A5A00; flex-grow: 1"><span style="width: 8px; height: 8px; border-radius: 4px; background: #F5B301"></span>2 cambios sin publicar</span>
+    <button style="height: 48px; padding: 0 14px; border: 0; border-radius: 10px; background: transparent; color: #3A4354; font-size: 14px; font-weight: 600; cursor: pointer">Descartar</button>
+    <button style="height: 48px; padding: 0 16px; border: 1px solid #D5DAE3; border-radius: 10px; background: #FFFFFF; font-size: 14px; font-weight: 600; cursor: pointer">Validar</button>
+    <button style="height: 48px; padding: 0 18px; border: 0; border-radius: 10px; background: #0F6E66; color: #FFFFFF; font-size: 14px; font-weight: 700; cursor: pointer">Publicar</button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":820,"height":1180}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var self = this;
+    var st = this.state || {};
+    var defs = [{ s: [1, 4], g: [5, 4] }, { s: [1, 5], g: [4, 2] }, { s: [1, 6], g: [6, 1] }];
+    var mi = st.mi || 0;
+    var maps = st.maps || defs;
+    var cur = maps[mi];
+    var mode = st.mode || 0;
+    var sc = cur.s[0], sr = cur.s[1], gc = cur.g[0], gr = cur.g[1];
+    var same = sc === gc && sr === gr;
+    var dist = Math.abs(gc - sc) + Math.abs(gr - sr);
+    var turns = (sc !== gc && sr !== gr) ? 1 : 0;
+    var minCol = Math.min(sc, gc), maxCol = Math.max(sc, gc);
+    var cells = [];
+    for (var r = 1; r <= 6; r++) {
+      for (var c = 1; c <= 6; c++) {
+        (function (r, c) {
+          var start = r === sr && c === sc, goal = r === gr && c === gc;
+          var path = !start && !goal && ((r === sr && c >= minCol && c <= maxCol) || (c === gc && r >= Math.min(sr, gr) && r <= Math.max(sr, gr)));
+          cells.push({
+            aria: 'Columna ' + c + ', fila ' + r,
+            text: start ? 'S' : (goal ? 'M' : ''),
+            bg: start ? '#2563EB' : (goal ? '#F5B301' : (path ? '#DCE7FD' : '#F1F3F7')),
+            color: start ? '#FFFFFF' : '#1B2333',
+            pick: function () {
+              var n = maps.slice(); var m = { s: cur.s, g: cur.g };
+              if (mode === 0) m.s = [c, r]; else m.g = [c, r];
+              n[mi] = m; self.setState({ maps: n });
+            }
+          });
+        })(r, c);
+      }
+    }
+    var titles = [['Camino recto', 'Straight path'], ['La esquina', 'The corner'], ['El zigzag', 'The zigzag']];
+    return {
+      sc: sc, sr: sr, gc: gc, gr: gr,
+      okText: same ? 'La salida y la meta no pueden estar en la misma celda: no se puede publicar.' : ('El runtime puede ganar esta misión en ' + (dist + turns) + ' bloques.'),
+      okBg: same ? '#FDECEC' : '#E3F2F0',
+      okFg: same ? '#9B1C1C' : '#0A4F49',
+      modes: ['Marcar salida', 'Marcar meta'].map(function (l, i) { var a = i === mode; return { label: l, checked: a ? 'true' : 'false', bg: a ? '#FFFFFF' : 'transparent', pick: function () { self.setState({ mode: i }); } }; }),
+      resetMap: function () { self.setState({ maps: defs }); },
+      worlds: ['Espacio', 'Océano', 'Robots', 'Ciudad'].map(function (w, i) { var a = i === (st.w || 0); return { label: w, on: a ? 'true' : 'false', bg: a ? '#FFFFFF' : 'transparent', pick: function () { self.setState({ w: i }); } }; }),
+      missions: [['1', titles[0][0]], ['2', titles[1][0]], ['3', titles[2][0]]].map(function (m, i) { var a = i === mi; return { n: m[0], title: m[1], on: a ? 'true' : 'false', border: a ? '#0F6E66' : '#E2E6EE', pick: function () { self.setState({ mi: i }); } }; }),
+      cells: cells,
+      langs: [
+        { name: 'Español', title: titles[mi][0], story: '[Relato de la misión en español]' },
+        { name: 'English', title: titles[mi][1], story: '[Mission story in English]' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

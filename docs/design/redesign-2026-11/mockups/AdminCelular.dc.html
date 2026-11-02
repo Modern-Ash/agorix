@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Admin – Modo grupo (celular)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&amp;family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0;font-family:Inter,system-ui,sans-serif;color:#1B2333}
+a{color:#0F6E66}a:hover{color:#0A4F49}
+button,input,select{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; display: flex; flex-direction: column; background: #F3F5F9; font-family: Inter, system-ui, sans-serif; color: #1B2333; overflow: hidden">
+  <header style="background: #12302F; color: #FFFFFF; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px">
+    <div style="display: flex; align-items: center; gap: 10px">
+      <div style="width: 30px; height: 30px; border-radius: 8px; background: #FFFFFF; color: #12302F; display: flex; align-items: center; justify-content: center; font-family: Nunito, sans-serif; font-weight: 900">A</div>
+      <span style="font-family: Nunito, sans-serif; font-weight: 900; font-size: 17px; flex-grow: 1">Centro de IA</span>
+      <button aria-label="Menú" style="width: 44px; height: 44px; border-radius: 10px; border: 1px solid #5E8580; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer">
+        <span style="width: 18px; height: 2px; background: #FFFFFF"></span><span style="width: 18px; height: 2px; background: #FFFFFF"></span><span style="width: 18px; height: 2px; background: #FFFFFF"></span>
+      </button>
+    </div>
+    <label style="display: flex; align-items: center; justify-content: space-between; height: 46px; padding: 0 12px; border-radius: 10px; background: #1E4644; font-size: 14px">
+      <span style="color: #A7C4C0; font-weight: 600">Sección</span>
+      <select aria-label="Sección" style="border: 0; background: transparent; color: #FFFFFF; font-size: 15px; font-weight: 700"><option>Modo grupo</option></select>
+    </label>
+  </header>
+
+  <main style="flex-grow: 1; padding: 16px; display: flex; flex-direction: column; gap: 10px; overflow: hidden">
+    <h1 style="margin: 0; font-family: Nunito, sans-serif; font-weight: 900; font-size: 24px">Modo grupo</h1>
+    <p style="margin: 0 0 4px; font-size: 13px; color: #5B6475; line-height: 1.5">Todo se procesa en el dispositivo. Si el modelo falta, falla o duda, el contenido no se comparte.</p>
+
+    <details open style="background: #FFFFFF; border: 1px solid #E2E6EE; border-radius: 14px; padding: 0 14px">
+      <summary style="height: 52px; display: flex; align-items: center; justify-content: space-between; font-size: 15px; font-weight: 700; cursor: pointer">Imágenes <span style="font-size: 12px; color: #0A4F49; background: #E3F2F0; padding: 3px 8px; border-radius: 999px">Revisión activa</span></summary>
+      <div style="display: flex; flex-direction: column; gap: 12px; padding-bottom: 14px">
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+          <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 600; color: #3A4354">Bloquea desde<input value="0.5" inputmode="decimal" style="height: 44px; padding: 0 10px; border-radius: 10px; border: 1px solid #D5DAE3; font-size: 15px"></label>
+          <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 600; color: #3A4354">Duda desde<input value="0.2" inputmode="decimal" style="height: 44px; padding: 0 10px; border-radius: 10px; border: 1px solid #D5DAE3; font-size: 15px"></label>
+        </div>
+        <span style="font-size: 12px; font-weight: 600; color: #3A4354">Categorías bloqueadas</span>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px">
+          <sc-for list="{{cats}}" as="c" hint-placeholder-count="6">
+            <button aria-pressed="{{c.on}}" onClick="{{c.toggle}}" style="display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: 18px; border: 1.5px solid #12302F; background: {{c.bg}}; color: {{c.fg}}; font-size: 13px; font-weight: 600; cursor: pointer">
+              <sc-if value="{{c.checked}}" hint-placeholder-val="{{true}}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"></path></svg></sc-if>{{c.label}}
+            </button>
+          </sc-for>
+        </div>
+      </div>
+    </details>
+
+    <sc-for list="{{sections}}" as="s" hint-placeholder-count="4">
+      <details style="background: #FFFFFF; border: 1px solid #E2E6EE; border-radius: 14px; padding: 0 14px">
+        <summary style="height: 52px; display: flex; align-items: center; justify-content: space-between; font-size: 15px; font-weight: 700; cursor: pointer">{{s.title}}<span style="font-size: 12px; color: #5B6475; font-weight: 500">{{s.sum}}</span></summary>
+      </details>
+    </sc-for>
+  </main>
+
+  <div role="region" aria-label="Borrador" style="flex-shrink: 0; background: #FFFFFF; border-top: 1px solid #E2E6EE; padding: 10px 16px 14px; display: flex; flex-direction: column; gap: 8px">
+    <span role="status" style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: {{draftColor}}"><span style="width: 8px; height: 8px; border-radius: 4px; background: {{draftDot}}"></span>{{draftText}}</span>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+      <button onClick="{{discard}}" style="height: 48px; border: 0; border-radius: 10px; background: #F1F3F7; font-size: 14px; font-weight: 600; cursor: pointer">Descartar</button>
+      <button onClick="{{validate}}" style="height: 48px; border: 1px solid #D5DAE3; border-radius: 10px; background: #FFFFFF; font-size: 14px; font-weight: 600; cursor: pointer">Validar</button>
+      <button onClick="{{publish}}" style="height: 48px; border: 0; border-radius: 10px; background: {{pubBg}}; color: #FFFFFF; font-size: 14px; font-weight: 700; cursor: pointer">Publicar</button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var self = this;
+    var st = this.state || {};
+    var names = ['Violencia', 'Contenido sexual', 'Odio', 'Autolesión', 'Datos personales', 'Otros'];
+    var pub = st.pub || [true, true, true, true, true, true];
+    var cur = st.cur || pub;
+    var changes = cur.filter(function (x, i) { return x !== pub[i]; }).length;
+    return {
+      cats: names.map(function (n, i) {
+        var on = cur[i];
+        return { label: n, on: on ? 'true' : 'false', checked: on, bg: on ? '#12302F' : '#FFFFFF', fg: on ? '#FFFFFF' : '#12302F', toggle: function () { var c = cur.slice(); c[i] = !on; self.setState({ cur: c, checked: false, done: false }); } };
+      }),
+      draftText: changes === 0 ? (st.done ? 'Revisión publicada' : 'Sin cambios pendientes') : (st.checked ? 'Validado: listo para publicar' : changes + ' cambio(s) sin publicar'),
+      draftColor: changes === 0 || st.checked ? '#0A4F49' : '#8A5A00',
+      draftDot: changes === 0 || st.checked ? '#15803D' : '#F5B301',
+      pubBg: changes > 0 ? '#0F6E66' : '#8FB8B4',
+      discard: function () { self.setState({ cur: pub, checked: false }); },
+      validate: function () { if (changes > 0) self.setState({ checked: true }); },
+      publish: function () { if (changes > 0) self.setState({ pub: cur, checked: false, done: true }); },
+      sections: [
+        { title: 'Textos', sum: '4 datos detectados' },
+        { title: 'Cola de aprobación', sum: 'Organizador aprueba' },
+        { title: 'Reacciones', sum: '4 en es · 4 en en' },
+        { title: 'Límites', sum: '4 niños por grupo' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

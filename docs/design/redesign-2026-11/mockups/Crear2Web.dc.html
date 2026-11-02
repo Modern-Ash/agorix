@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Crear escena (computadora)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&amp;display=swap">
+<style>
+body{margin:0;font-family:Nunito,system-ui,sans-serif;color:#1B2333}
+a{color:#0F6E66}a:hover{color:#0A4F49}
+button,input{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; display: flex; flex-direction: column; background: #E9EEF5; font-family: Nunito, system-ui, sans-serif; color: #1B2333; overflow: hidden">
+  <header style="height: 52px; flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 0 12px; background: #FFFFFF; border-bottom: 1px solid #DDE3EC">
+    <a href="#" aria-label="Volver al mapa" style="width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #1B2333; border: 1px solid #DDE3EC">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+    </a>
+    <h1 style="margin: 0; font-size: 20px; font-weight: 900">Nueva escena</h1>
+    <span style="font-size: 14px; color: #5B6475; font-weight: 700">Elegí quién y dónde. Lo demás lo armás programando.</span>
+    <div style="flex-grow: 1"></div>
+    <span style="height: 30px; padding: 0 10px; border-radius: 999px; background: #E3F2F0; color: #0A4F49; font-size: 13px; font-weight: 900; display: flex; align-items: center">6–8</span>
+  </header>
+
+  <div style="flex-grow: 1; display: flex; gap: 8px; padding: 8px; min-height: 0">
+    <article aria-label="Elegir" style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; background: #FFFFFF; border-radius: 14px; border: 1px solid #D5DCE6; overflow: hidden">
+      <header style="height: 56px; flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 0 12px; border-bottom: 1px solid #EEF1F5; background: #FAFBFD">
+        <div role="tablist" style="display: flex; padding: 4px; border-radius: 12px; background: #EEF2F7; gap: 4px">
+          <sc-for list="{{tabs}}" as="t" hint-placeholder-count="2">
+            <button role="tab" aria-selected="{{t.on}}" onClick="{{t.pick}}" style="height: 36px; padding: 0 16px; border: 0; border-radius: 9px; background: {{t.bg}}; font-size: 15px; font-weight: 900; color: #1B2333; display: flex; align-items: center; gap: 8px; cursor: pointer">{{t.label}}<span style="padding: 0 7px; border-radius: 999px; background: {{t.badgeBg}}; font-size: 12px">{{t.count}}</span></button>
+          </sc-for>
+        </div>
+        <div style="display: flex; gap: 4px; flex-grow: 1; min-width: 0; overflow: hidden">
+          <sc-for list="{{filters}}" as="f" hint-placeholder-count="6">
+            <button aria-pressed="{{f.on}}" onClick="{{f.pick}}" style="height: 32px; padding: 0 12px; border-radius: 16px; border: 1.5px solid {{f.border}}; background: {{f.bg}}; color: {{f.fg}}; font-size: 13px; font-weight: 800; cursor: pointer; white-space: nowrap">{{f.label}}</button>
+          </sc-for>
+        </div>
+        <label style="width: 220px; height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border-radius: 10px; border: 1px solid #D5DCE6; background: #FFFFFF">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5B6475" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg>
+          <input aria-label="{{searchLabel}}" placeholder="{{searchLabel}}" style="border: 0; outline: none; font-size: 14px; flex-grow: 1; min-width: 0">
+        </label>
+      </header>
+
+      <div style="flex-grow: 1; padding: 14px; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); grid-auto-rows: 132px; gap: 10px; align-content: start; overflow: hidden">
+        <button style="border-radius: 14px; border: 2px dashed #B7C0CF; background: #FAFBFD; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; cursor: pointer; color: #3A4354">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg>
+          <span style="font-size: 13px; font-weight: 900">Dibujar</span>
+        </button>
+        <button style="border-radius: 14px; border: 2px dashed #B7C0CF; background: #FAFBFD; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; cursor: pointer; color: #3A4354">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"></path></svg>
+          <span style="font-size: 13px; font-weight: 900">Subir</span>
+        </button>
+        <sc-for list="{{items}}" as="it" hint-placeholder-count="12">
+          <button aria-pressed="{{it.on}}" onClick="{{it.pick}}" style="border-radius: 14px; border: 3px solid {{it.border}}; background: {{it.tileBg}}; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; cursor: pointer; position: relative; transition: transform 0.15s; transform: scale({{it.scale}})">
+            <span style="width: {{it.size}}; height: {{it.size2}}; border-radius: {{it.radius}}; background: {{it.color}}; display: flex; align-items: center; justify-content: center; color: #FFFFFF; font-size: 22px; font-weight: 900">{{it.initial}}</span>
+            <span style="font-size: 14px; font-weight: 900; color: #1B2333">{{it.label}}</span>
+            <sc-if value="{{it.checked}}" hint-placeholder-val="{{false}}">
+              <span style="position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; border-radius: 12px; background: #F5B301; display: flex; align-items: center; justify-content: center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1B2333" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"></path></svg></span>
+            </sc-if>
+          </button>
+        </sc-for>
+      </div>
+    </article>
+
+    <aside aria-label="Tu escena" style="width: 440px; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px">
+      <article style="flex-grow: 1; display: flex; flex-direction: column; background: #FFFFFF; border-radius: 14px; border: 1px solid #D5DCE6; overflow: hidden">
+        <header style="height: 40px; flex-shrink: 0; display: flex; align-items: center; gap: 6px; padding: 0 14px; border-bottom: 1px solid #EEF1F5; background: #FAFBFD">
+          <span style="width: 10px; height: 10px; border-radius: 5px; background: #15803D"></span>
+          <h2 style="margin: 0; font-size: 14px; font-weight: 900; flex-grow: 1">Así va a empezar</h2>
+        </header>
+        <div style="flex-grow: 1; position: relative; overflow: hidden; background: {{bgColor}}; transition: background 0.3s">
+          <div style="position: absolute; right: 10%; top: 12%; width: 48px; height: 48px; border-radius: 24px; background: #EFE3B8"></div>
+          <div style="position: absolute; left: -10%; right: -10%; bottom: -20%; height: 48%; border-radius: 50%; background: rgba(255, 255, 255, 0.2)"></div>
+          <div style="position: absolute; left: 50%; top: 52%; width: 92px; height: 92px; margin: -46px 0 0 -46px; border-radius: 46px; background: {{charColor}}; border: 4px solid #FFFFFF; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: 900; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2)">{{charInitial}}</div>
+        </div>
+        <div style="padding: 14px; display: flex; flex-direction: column; gap: 12px">
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+            <button onClick="{{goChar}}" style="height: 60px; padding: 0 12px; border-radius: 12px; border: 1px solid #D5DCE6; background: #FFFFFF; display: flex; align-items: center; gap: 10px; cursor: pointer; text-align: left">
+              <span style="width: 36px; height: 36px; border-radius: 18px; background: {{charColor}}"></span>
+              <span style="display: flex; flex-direction: column"><span style="font-size: 11px; font-weight: 900; color: #5B6475">PERSONAJE</span><span style="font-size: 16px; font-weight: 900">{{charName}}</span></span>
+            </button>
+            <button onClick="{{goBg}}" style="height: 60px; padding: 0 12px; border-radius: 12px; border: 1px solid #D5DCE6; background: #FFFFFF; display: flex; align-items: center; gap: 10px; cursor: pointer; text-align: left">
+              <span style="width: 36px; height: 36px; border-radius: 8px; background: {{bgColor}}"></span>
+              <span style="display: flex; flex-direction: column"><span style="font-size: 11px; font-weight: 900; color: #5B6475">FONDO</span><span style="font-size: 16px; font-weight: 900">{{bgName}}</span></span>
+            </button>
+          </div>
+          <button onClick="{{surprise}}" style="height: 40px; border-radius: 10px; border: 1px solid #E4DCFB; background: #F6F3FE; color: #4A2AA8; font-size: 14px; font-weight: 900; cursor: pointer">Sorprendeme</button>
+          <a href="Editor2Web.dc.html" style="height: 56px; border-radius: 14px; background: #0F6E66; color: #FFFFFF; font-size: 18px; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none">Crear escena<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a>
+        </div>
+      </article>
+    </aside>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var self = this;
+    var st = this.state || {};
+    var tab = st.tab || 0;
+    var flt = st.flt || 0;
+    var ch = st.ch == null ? 1 : st.ch;
+    var bg = st.bg == null ? 2 : st.bg;
+    var chars = [['Nova', '#5B6475', 'Espacio'], ['Luma', '#D99A00', 'Espacio'], ['Cometa', '#C2410C', 'Espacio'], ['Mika', '#E07A3F', 'Animales'], ['Pip', '#2563EB', 'Animales'], ['Tito', '#15803D', 'Animales'], ['Nori', '#7C3AED', 'Mar'], ['Arrecife', '#0E7490', 'Mar'], ['Flor', '#DB6A12', 'Naturaleza'], ['Hongo', '#C53030', 'Naturaleza'], ['Rayo', '#B88A00', 'Fantasía'], ['Pixel', '#6D3FE0', 'Fantasía']];
+    var bgs = [['Bosque', '#4E9A72', 'Naturaleza'], ['Jardín', '#7FB069', 'Naturaleza'], ['Montañas', '#6F8FB8', 'Naturaleza'], ['Playa', '#D9B36A', 'Mar'], ['Arrecife', '#2F8FA3', 'Mar'], ['Luna', '#3A4354', 'Espacio'], ['Galaxia', '#4B3F8F', 'Espacio'], ['Laboratorio', '#5E8C8C', 'Fantasía'], ['Castillo', '#8B6FA8', 'Fantasía']];
+    var fls = tab === 0 ? ['Todos', 'Animales', 'Naturaleza', 'Mar', 'Espacio', 'Fantasía'] : ['Todos', 'Naturaleza', 'Mar', 'Espacio', 'Fantasía'];
+    var src = tab === 0 ? chars : bgs;
+    var sel = tab === 0 ? ch : bg;
+    var items = src.map(function (x, i) { return { x: x, i: i }; }).filter(function (o) { return flt === 0 || o.x[2] === fls[flt]; }).map(function (o) {
+      var on = o.i === sel;
+      return {
+        label: o.x[0], color: o.x[1], initial: tab === 0 ? o.x[0].charAt(0) : '',
+        size: tab === 0 ? '60px' : '100%', size2: tab === 0 ? '60px' : '62px', radius: tab === 0 ? '30px' : '10px',
+        tileBg: tab === 0 ? '#FFFFFF' : '#FAFBFD',
+        on: on ? 'true' : 'false', checked: on, border: on ? '#F5B301' : '#E2E6EE', scale: on ? 1.02 : 1,
+        pick: function () { if (tab === 0) self.setState({ ch: o.i }); else self.setState({ bg: o.i }); }
+      };
+    });
+    return {
+      tabs: [['Personaje', chars.length], ['Fondo', bgs.length]].map(function (t, i) { var a = i === tab; return { label: t[0], count: t[1], on: a ? 'true' : 'false', bg: a ? '#FFFFFF' : 'transparent', badgeBg: a ? '#E3F2F0' : '#DDE3EC', pick: function () { self.setState({ tab: i, flt: 0 }); } }; }),
+      filters: fls.map(function (f, i) { var a = i === flt; return { label: f, on: a ? 'true' : 'false', bg: a ? '#1B2333' : '#FFFFFF', fg: a ? '#FFFFFF' : '#3A4354', border: a ? '#1B2333' : '#D5DCE6', pick: function () { self.setState({ flt: i }); } }; }),
+      searchLabel: tab === 0 ? 'Buscar personaje' : 'Buscar fondo',
+      items: items,
+      charName: chars[ch][0], charColor: chars[ch][1], charInitial: chars[ch][0].charAt(0),
+      bgName: bgs[bg][0], bgColor: bgs[bg][1],
+      goChar: function () { self.setState({ tab: 0, flt: 0 }); },
+      goBg: function () { self.setState({ tab: 1, flt: 0 }); },
+      surprise: function () { self.setState({ ch: Math.floor(Math.random() * chars.length), bg: Math.floor(Math.random() * bgs.length) }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

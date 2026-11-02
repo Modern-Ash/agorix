@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Adultos – Personalizar (celular)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&amp;family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0;font-family:Inter,system-ui,sans-serif;color:#1B2333}
+a{color:#0F6E66}a:hover{color:#0A4F49}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; display: flex; flex-direction: column; background: #F3F5F9; font-family: Inter, system-ui, sans-serif; color: #1B2333; overflow: hidden">
+  <header style="background: #FFFFFF; border-bottom: 1px solid #E2E6EE; padding: 16px 16px 0; display: flex; flex-direction: column; gap: 10px">
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <h1 style="margin: 0; font-family: Nunito, sans-serif; font-weight: 900; font-size: 24px">Adultos</h1>
+      <button aria-label="Salir de Adultos" style="width: 44px; height: 44px; border: 1px solid #D5DAE3; border-radius: 12px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; cursor: pointer">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1B2333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+      </button>
+    </div>
+    <div role="tablist" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr))">
+      <sc-for list="{{tabs}}" as="t" hint-placeholder-count="4">
+        <a href="{{t.href}}" role="tab" aria-selected="{{t.active}}" style="height: 46px; box-sizing: border-box; border-bottom: 3px solid {{t.line}}; display: flex; align-items: center; justify-content: center; color: {{t.color}}; font-size: 13px; font-weight: 700; text-decoration: none">{{t.label}}</a>
+      </sc-for>
+    </div>
+  </header>
+
+  <main style="flex-grow: 1; padding: 16px; display: flex; flex-direction: column; gap: 14px; overflow: hidden">
+    <div role="radiogroup" aria-label="Tipo" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 4px; background: #E7EBF1; border-radius: 12px">
+      <sc-for list="{{kinds}}" as="k" hint-placeholder-count="2">
+        <button role="radio" aria-checked="{{k.checked}}" onClick="{{k.pick}}" style="height: 44px; border: 0; border-radius: 9px; background: {{k.bg}}; color: #1B2333; font-size: 15px; font-weight: 700; cursor: pointer">{{k.label}}</button>
+      </sc-for>
+    </div>
+
+    <div style="display: flex; gap: 8px">
+      <sc-for list="{{filters}}" as="f" hint-placeholder-count="3">
+        <button aria-pressed="{{f.on}}" onClick="{{f.pick}}" style="height: 40px; padding: 0 14px; border-radius: 20px; border: 1px solid {{f.border}}; background: {{f.bg}}; color: {{f.color}}; font-size: 14px; font-weight: 600; cursor: pointer">{{f.label}}</button>
+      </sc-for>
+    </div>
+
+    <div style="background: #FFFFFF; border: 1px solid #E2E6EE; border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px">
+      <div style="display: flex; justify-content: space-between; font-size: 13px"><span style="font-weight: 600">Espacio usado</span><span style="color: #5B6475">1 de 1024 KB</span></div>
+      <div style="height: 8px; border-radius: 4px; background: #E7EBF1; overflow: hidden"><div style="width: 2%; height: 100%; background: #0F6E66"></div></div>
+      <span style="font-size: 12px; color: #5B6475">{{storageNote}}</span>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+      <sc-for list="{{chars}}" as="c" hint-placeholder-count="6">
+        <article style="background: #FFFFFF; border: 1px solid #E2E6EE; border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 10px">
+          <div style="display: flex; align-items: center; gap: 10px">
+            <div style="width: 40px; height: 40px; border-radius: 20px; background: {{c.color}}; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-family: Nunito, sans-serif; font-weight: 900; font-size: 17px">{{c.initial}}</div>
+            <div style="display: flex; flex-direction: column; gap: 1px; min-width: 0">
+              <span style="font-weight: 700; font-size: 15px">{{c.name}}</span>
+              <span style="font-size: 12px; color: #5B6475">{{c.status}}</span>
+            </div>
+          </div>
+          <div style="display: flex; gap: 6px">
+            <sc-if value="{{isSound}}" hint-placeholder-val="{{true}}">
+              <button aria-label="Escuchar sonido de {{c.name}}" style="width: 44px; height: 40px; border-radius: 10px; border: 1px solid #D5DAE3; background: #FFFFFF; display: flex; align-items: center; justify-content: center; cursor: pointer">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="#1B2333" aria-hidden="true"><path d="M7 5v14l12-7z"></path></svg>
+              </button>
+            </sc-if>
+            <button style="flex-grow: 1; height: 40px; border-radius: 10px; border: 0; background: #E3F2F0; color: #0A4F49; font-size: 14px; font-weight: 700; cursor: pointer">Cambiar</button>
+          </div>
+        </article>
+      </sc-for>
+    </div>
+    <span style="font-size: 13px; color: #5B6475; text-align: center">Deslizá para ver más</span>
+  </main>
+
+  <nav aria-label="Principal" style="height: 72px; flex-shrink: 0; background: #FFFFFF; border-top: 1px solid #E2E6EE; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr))">
+    <sc-for list="{{nav}}" as="n" hint-placeholder-count="4">
+      <a href="{{n.href}}" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; color: {{n.color}}; font-size: 12px; font-weight: 700">
+        <span style="width: 24px; height: 5px; border-radius: 3px; background: {{n.dot}}"></span>{{n.label}}
+      </a>
+    </sc-for>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var self = this;
+    var st = this.state || {};
+    var kind = st.kind == null ? 1 : st.kind;
+    var filter = st.filter == null ? 1 : st.filter;
+    var names = ['Resumen', 'Ajustes', 'Personalizar', 'Cuenta'];
+    var hrefs = ['Main.dc.html', 'AdultosTablet.dc.html', 'AdultosCelular.dc.html', 'AdultosCuenta.dc.html'];
+    var fl = ['Exploradores', 'Personajes', 'Fondos'];
+    var sets = [
+      [['Zorro', '#C2410C'], ['Panda', '#3A4354'], ['Rana', '#15803D'], ['León', '#8A5A00'], ['Koala', '#5B6475'], ['Unicornio', '#9D1550']],
+      [['Nova', '#6D3FE0'], ['Luma', '#0F6E66'], ['Cometa', '#C2410C'], ['Mika', '#BE185D'], ['Pip', '#2563EB'], ['Tito', '#15803D']],
+      [['Espacio', '#1E2A4A'], ['Océano', '#0E7490'], ['Robots', '#5B6475'], ['Ciudad', '#C2410C'], ['Bosque', '#2E8B57'], ['Luna', '#3A4354']]
+    ];
+    var own = kind === 1 ? 'Sonido propio' : 'Imagen propia';
+    return {
+      isSound: kind === 1,
+      storageNote: kind === 1 ? 'Los audios se quedan en este dispositivo.' : 'Las imágenes se quedan en este dispositivo.',
+      kinds: ['Imágenes', 'Sonidos'].map(function (l, i) { var a = i === kind; return { label: l, checked: a ? 'true' : 'false', bg: a ? '#FFFFFF' : 'transparent', pick: function () { self.setState({ kind: i }); } }; }),
+      tabs: names.map(function (n, i) { var a = i === 2; return { label: n, href: hrefs[i], active: a ? 'true' : 'false', line: a ? '#0F6E66' : 'transparent', color: a ? '#0A4F49' : '#5B6475' }; }),
+      filters: fl.map(function (l, i) { var a = i === filter; return { label: l, on: a ? 'true' : 'false', bg: a ? '#1B2333' : '#FFFFFF', color: a ? '#FFFFFF' : '#3A4354', border: a ? '#1B2333' : '#D5DAE3', pick: function () { self.setState({ filter: i }); } }; }),
+      chars: sets[filter].map(function (c, i) { return { name: c[0], color: c[1], status: i === 0 ? own : 'Por defecto', initial: c[0].charAt(0) }; }),
+      nav: ['Mapa', 'Crear', 'Mis proyectos', 'Adultos'].map(function (l, i) {
+        var h = ['MapaCelular.dc.html', 'CrearCelular.dc.html', '#', 'Main.dc.html'];
+        return { label: l, href: h[i], color: i === 3 ? '#0A4F49' : '#5B6475', dot: i === 3 ? '#0F6E66' : 'transparent' };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>
