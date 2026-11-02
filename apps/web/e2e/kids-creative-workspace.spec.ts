@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
-test("a new phone scene starts with its script and Play before stage details", async ({ page }) => {
+test("a new phone scene starts with its stage, Play and the program below", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/kids");
   await page.evaluate(() => {
@@ -25,8 +25,8 @@ test("a new phone scene starts with its script and Play before stage details", a
   const [canvasBox, stageBox, playBox] = await Promise.all(
     [canvas, stage, play].map((item) => item.boundingBox()),
   );
-  expect(canvasBox!.y).toBeLessThan(stageBox!.y);
-  expect(playBox!.y).toBeLessThan(canvasBox!.y);
+  expect(playBox!.y).toBeLessThan(stageBox!.y);
+  expect(stageBox!.y).toBeLessThan(canvasBox!.y);
   await expect(play).toBeVisible();
   await page
     .getByRole("navigation", { name: "Categorías de bloques" })

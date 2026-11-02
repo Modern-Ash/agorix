@@ -373,7 +373,6 @@ test("an older alias-only account is asked for an email before it can link (#519
       body: JSON.stringify({ present, verified: false }),
     });
   });
-  await page.getByRole("button", { name: "Ya lo confirmé" }).click();
   await expect(page.getByRole("heading", { name: "Agregá tu correo" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Vincular un dispositivo" })).toHaveCount(0);
   await page.getByLabel(/Tu correo/).fill("later@example.com");

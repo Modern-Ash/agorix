@@ -20,6 +20,7 @@ import {
   selectStudioArt,
   updateStudioArt,
   setStudioActorPosition,
+  setStudioActorAppearance,
   setStudioBackdrop,
   setStudioSceneGoal,
   studioSceneGoal,
@@ -44,6 +45,49 @@ function memory() {
 }
 
 describe("Kids studio projects", () => {
+  it("persists initial direction and size, and rejects invalid appearance without program changes", () => {
+    const { store, index } = memory();
+    const project = createStudioProject("nova", "forest", "es", store, index);
+    const before = store.load(project.id).program;
+    setStudioActorAppearance(project.id, "actor:studio-1-nova", 45, 150, store);
+    expect(store.load(project.id).metadata.actors?.items[0]).toMatchObject({
+      direction: 45,
+      size: 150,
+    });
+    saveStudioProject(project.id, before, "forest", "actor:studio-1-nova", "es", store);
+    expect(store.load(project.id).metadata.actors?.items[0]).toMatchObject({
+      direction: 45,
+      size: 150,
+    });
+    const copy = importStudioProject(exportStudioProject(project.id, store), "es", store, index);
+    expect(store.load(copy.id).metadata.actors?.items[0]).toMatchObject({
+      direction: 45,
+      size: 150,
+    });
+    expect(() =>
+      setStudioActorAppearance(project.id, "actor:studio-1-nova", 181, 150, store),
+    ).toThrow(/invalid studio appearance/);
+    expect(() => setStudioActorAppearance(project.id, "actor:missing", 45, 150, store)).toThrow(
+      /unknown studio actor/,
+    );
+    expect(store.load(project.id).program).toEqual(before);
+  });
+
+  it("persists a built-in costume without changing the canonical program and rejects unknown art", () => {
+    const { store, index } = memory();
+    const project = createStudioProject("nova", "forest", "es", store, index);
+    const before = store.load(project.id).program;
+    selectStudioArt(project.id, "costume:mika", "actor:studio-1-nova", "es", store, index);
+    expect(store.load(project.id).metadata.actors?.items[0]?.costumeId).toBe("costume:mika");
+    saveStudioProject(project.id, before, "forest", "actor:studio-1-nova", "es", store);
+    expect(store.load(project.id).metadata.actors?.items[0]?.costumeId).toBe("costume:mika");
+    expect(store.load(project.id).program).toEqual(before);
+    expect(() =>
+      selectStudioArt(project.id, "costume:unknown", "actor:studio-1-nova", "es", store, index),
+    ).toThrow(/unknown studio art/);
+    expect(store.load(project.id).metadata.actors?.items[0]?.costumeId).toBe("costume:mika");
+  });
+
   it("keeps a child's costume and backdrop in a portable scene only with adult media opt-in", () => {
     const { store, index } = memory();
     const project = createStudioProject("nova", "forest", "es", store, index);

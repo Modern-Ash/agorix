@@ -238,3 +238,108 @@ test("Sounds drawer filters the catalog and adds the chosen sound to the program
   await expect(drawer.getByRole("status")).toContainText("No hay sonidos");
   await expect(drawer.locator(".kids-studio-sound-list li")).toHaveCount(0);
 });
+
+test("Program panel zoom, maximize and dock restore the same editing surface", async ({ page }) => {
+  await page.setViewportSize({ width: 768, height: 1024 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await reloadToMap(page);
+  await page.getByRole("button", { name: "Misión 1" }).click();
+  const program = page.locator(".kids-studio-program-panel");
+  await program.getByRole("button", { name: /Acercar Programa de/ }).click();
+  await expect(program.getByRole("button", { name: /Volver Programa de/ })).toContainText("110 %");
+  await program.getByRole("button", { name: /Maximizar Programa de/ }).click();
+  await expect(program).toHaveClass(/agx-panel--maximized/);
+  await page.keyboard.press("Escape");
+  await expect(program).not.toHaveClass(/agx-panel--maximized/);
+  await program.getByRole("button", { name: /Minimizar Programa de/ }).click();
+  await expect(program).toBeHidden();
+  await page.getByRole("button", { name: /Restaurar Programa/ }).click();
+  await expect(program.locator(".kids-program-zone")).toBeVisible();
+});
+
+test("Kids editor keeps Blocks and Code one tap apart and exposes scene panels", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await reloadToMap(page);
+  await page.getByRole("button", { name: "Misión 1" }).click();
+  const stageHeader = page.locator("[data-panel-id='stage'] > .agx-panel-header");
+  await expect(stageHeader.getByRole("button", { name: "Jugar", exact: true })).toBeVisible();
+  await expect(stageHeader.getByRole("button", { name: "Paso", exact: true })).toBeVisible();
+  await expect(page.locator("[data-panel-id='characters']")).toBeVisible();
+  await expect(page.locator("[data-panel-id='inspector']")).toBeVisible();
+  const inspector = page.locator("[data-panel-id='inspector']");
+  await inspector.getByRole("spinbutton", { name: "Dirección" }).fill("45");
+  await inspector.getByRole("spinbutton", { name: "Dirección" }).blur();
+  await inspector.getByRole("spinbutton", { name: "Tamaño" }).fill("150");
+  await inspector.getByRole("spinbutton", { name: "Tamaño" }).blur();
+  await expect(inspector.getByRole("spinbutton", { name: "Dirección" })).toHaveValue("45");
+  await expect(inspector.getByRole("spinbutton", { name: "Tamaño" })).toHaveValue("150");
+  await page.getByRole("button", { name: "Código", exact: true }).click();
+  await page.getByRole("button", { name: "Bloques", exact: true }).click();
+  await expect(page.locator(".kids-studio-palette")).toBeVisible();
+  await expect(page.locator(".kids-code-strip")).toBeHidden();
+  await page.getByRole("button", { name: "Código", exact: true }).click();
+  await expect(page.locator(".kids-code-strip")).toBeVisible();
+  const codePanel = page.locator("[data-panel-id='code']");
+  await codePanel.getByRole("button", { name: "Minimizar Código" }).click();
+  await expect(codePanel).toBeHidden();
+  await page.getByRole("button", { name: "Restaurar Código desde la barra" }).click();
+  await expect(page.locator(".kids-code-strip")).toBeVisible();
+});
+
+test("Costumes drawer searches built-in looks and backdrops and keeps the chosen look", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await reloadToMap(page);
+  await page.getByRole("button", { name: "Misión 1" }).click();
+  await page.getByRole("button", { name: "Disfraces", exact: true }).click();
+  const drawer = page.locator(".kids-studio-media-panel");
+  const search = drawer.getByRole("searchbox", { name: "Buscar disfraces y fondos" });
+  await search.fill("Mika");
+  await expect(drawer.getByRole("group", { name: "Disfraces" }).getByRole("button")).toHaveCount(1);
+  await drawer.getByRole("button", { name: "Mika" }).click();
+  await expect(drawer.getByRole("button", { name: "Mika" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await search.fill("Luna");
+  await drawer.getByRole("button", { name: "Luna" }).click();
+  await expect(drawer.getByRole("button", { name: "Luna" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await page.reload();
+  await page.getByRole("button", { name: "Misión 1" }).click();
+  await page.getByRole("button", { name: "Disfraces", exact: true }).click();
+  await expect(
+    page.locator(".kids-studio-media-panel").getByRole("button", { name: "Mika" }),
+  ).toHaveAttribute("aria-pressed", "true");
+});

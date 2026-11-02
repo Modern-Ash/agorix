@@ -3742,7 +3742,7 @@
   .kids-studio-program-column > * {
     grid-column: 2;
   }
-  .kids-studio-program-column > .kids-studio-palette {
+  .kids-studio-program-column > .kids-studio-blocks-panel {
     grid-column: 1;
     grid-row: 1 / span 40;
     position: sticky;
@@ -4447,7 +4447,7 @@
 @media (min-width: 900px) {
   .kids-studio > .kids-studio-categories,
   .kids-studio-stage-column,
-  .kids-studio-program-column > .kids-studio-palette,
+  .kids-studio-program-column > .kids-studio-blocks-panel,
   .kids-studio-panel,
   .kids-studio-ori {
     padding: 12px;
@@ -4474,7 +4474,8 @@
     background: #efe8fb;
   }
   .kids-studio-program-column
-    > .kids-studio-palette[data-collapsed="true"]
+    > .kids-studio-blocks-panel
+    .kids-studio-palette[data-collapsed="true"]
     > :not(.kids-studio-panel-head) {
     display: none;
   }
@@ -4675,7 +4676,10 @@
   .kids-studio-program-column:has(.kids-studio-palette[data-contextual="true"]) > * {
     grid-column: 1;
   }
-  .kids-studio-program-column > .kids-studio-palette[data-contextual="true"][data-open="true"] {
+  .kids-studio-program-column
+    > .kids-studio-blocks-panel:has(
+      .kids-studio-palette[data-contextual="true"][data-open="true"]
+    ) {
     position: fixed;
     grid-column: auto;
     grid-row: auto;
@@ -5094,10 +5098,10 @@
   }
   .kids-studio-layout:has(.kids-studio-palette[data-contextual="true"])
     .kids-studio-program-column {
-    order: 1;
+    order: 2;
   }
   .kids-studio-layout:has(.kids-studio-palette[data-contextual="true"]) .kids-studio-stage-column {
-    order: 2;
+    order: 1;
   }
   .kids-studio:has(.kids-studio-palette[data-contextual="true"])
     .kids-studio-stage-heading
@@ -5200,16 +5204,16 @@
     border-radius: 20px 20px 0 0;
     box-shadow: 0 -6px 24px rgb(0 0 0 / 25%);
   }
-  .kids-studio[data-editor-tab="costumes"] .kids-studio-program-column > .kids-studio-palette,
-  .kids-studio[data-editor-tab="sounds"] .kids-studio-program-column > .kids-studio-palette {
+  .kids-studio[data-editor-tab="costumes"] .kids-studio-program-column > .kids-studio-blocks-panel,
+  .kids-studio[data-editor-tab="sounds"] .kids-studio-program-column > .kids-studio-blocks-panel {
     display: none;
   }
 }
 /* Tablet and desktop: Costumes and Sounds open in the left drawer, where the blocks are, so
    the program and the stage stay visible (#1191 2b). */
 @media (min-width: 721px) {
-  .kids-studio[data-editor-tab="costumes"] .kids-studio-program-column > .kids-studio-palette,
-  .kids-studio[data-editor-tab="sounds"] .kids-studio-program-column > .kids-studio-palette {
+  .kids-studio[data-editor-tab="costumes"] .kids-studio-program-column > .kids-studio-blocks-panel,
+  .kids-studio[data-editor-tab="sounds"] .kids-studio-program-column > .kids-studio-blocks-panel {
     display: none;
   }
 }
@@ -5453,4 +5457,186 @@
 .kids-studio-sound-list .kids-button {
   min-width: 44px;
   min-height: 44px;
+}
+
+.kids-studio-program-panel.agx-panel {
+  flex: none;
+  min-width: 0;
+  min-height: 430px;
+}
+.kids-studio-program-panel .agx-panel-body {
+  overflow: auto;
+}
+.kids-studio-program-panel.agx-panel--maximized {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  min-height: 0;
+}
+.kids-studio-program-panel .kids-program-zone {
+  min-width: 0;
+}
+@media (max-width: 720px) {
+  .kids-studio-program-panel.agx-panel {
+    min-height: 260px;
+  }
+  .kids-studio-program-panel.agx-panel--maximized {
+    position: fixed;
+    inset: 0 0 72px;
+    z-index: 30;
+    height: auto;
+    border-radius: 0;
+  }
+}
+
+.kids-studio-characters-panel.agx-panel,
+.kids-studio-inspector-panel.agx-panel {
+  flex: none;
+  min-height: 0;
+  margin-block: 8px;
+}
+.kids-studio-characters-panel .agx-panel-body,
+.kids-studio-inspector-panel .agx-panel-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+  overflow: visible;
+}
+.kids-studio-characters-panel .kids-studio-actors {
+  width: 100%;
+}
+
+.kids-studio-blocks-panel.agx-panel {
+  flex: none;
+  min-width: 0;
+}
+.kids-studio-blocks-panel .agx-panel-body {
+  overflow: auto;
+}
+.kids-studio-blocks-panel .kids-studio-palette {
+  margin: 0;
+  padding: 8px;
+}
+.kids-studio-blocks-panel .kids-studio-palette-head > strong {
+  display: none;
+}
+@media (max-width: 720px) {
+  .kids-studio-blocks-panel.agx-panel,
+  .kids-studio-blocks-panel > .agx-panel-body {
+    display: contents;
+  }
+  .kids-studio-blocks-panel > .agx-panel-header {
+    display: none;
+  }
+  .kids-studio-blocks-panel .kids-studio-palette[data-sheet="open"] {
+    margin: 0;
+    padding: 12px 12px 76px;
+  }
+  .kids-studio-blocks-panel .kids-studio-palette[data-sheet="open"][data-maximized="true"] {
+    padding-bottom: 76px;
+  }
+}
+@media (min-width: 900px) {
+  .kids-studio-blocks-panel .agx-panel-body {
+    overflow: visible;
+  }
+  .kids-studio-blocks-panel .kids-studio-palette {
+    max-height: calc(100dvh - 80px);
+    overflow-y: auto;
+  }
+}
+
+.kids-studio-code-panel.agx-panel {
+  flex: none;
+  min-width: 0;
+}
+.kids-studio-code-panel .agx-panel-body {
+  overflow: visible;
+  padding: 8px;
+}
+.kids-studio-code-panel .kids-studio-panel {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+@media (max-width: 720px) {
+  .kids-studio:has(.kids-studio-palette[data-sheet="open"]) .kids-code-strip {
+    display: none;
+  }
+}
+
+.kids-studio-stage-column .agx-panel-actions .kids-run-controls {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+.kids-studio-stage-column .agx-panel-actions .kids-button {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 4px;
+}
+@media (max-width: 720px) {
+  .kids-studio-stage-column .agx-panel-title {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .kids-studio-mobile-run-controls {
+    display: none !important;
+  }
+}
+@media (max-width: 720px) {
+  .kids-studio-layout .kids-studio-stage-column {
+    order: 1;
+    max-height: min(460px, 58dvh);
+  }
+  .kids-studio-layout .kids-studio-program-column {
+    order: 2;
+  }
+  .kids-studio-layout .kids-studio-stage-column.agx-panel--maximized {
+    max-height: none;
+  }
+}
+
+.kids-studio-costume-library {
+  display: grid;
+  gap: 12px;
+  padding: 8px;
+}
+.kids-studio-costume-library label {
+  display: grid;
+  gap: 4px;
+  font-weight: 700;
+}
+.kids-studio-costume-library input {
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px;
+  border: 2px solid var(--kids-border);
+  border-radius: 10px;
+  font: inherit;
+}
+.kids-studio-costume-library h3 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+}
+.kids-studio-costume-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 6px;
+}
+.kids-studio-costume-grid .kids-button {
+  min-height: 52px;
+  overflow-wrap: anywhere;
+}
+.kids-studio-costume-grid .kids-button[aria-pressed="true"] {
+  border-color: #7256ad;
+  background: #efe8fb;
+  box-shadow: 0 0 0 2px #7256ad;
 }

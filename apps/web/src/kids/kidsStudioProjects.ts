@@ -9,6 +9,7 @@ import type { ProjectAsset, ProjectProgram } from "@agorix/program-model";
 import type { Locale } from "../i18n.js";
 import {
   isGalleryBackdropId,
+  isGalleryCharacterId,
   type KidsGalleryBackdropId,
   type KidsGalleryCharacterId,
 } from "./kidsGallery.js";
@@ -87,7 +88,10 @@ export function saveStudioProject(
   const valid = validateStudioProgram(program);
   const previous = store.has(id) ? store.load(id).metadata : undefined;
   const positions = Object.fromEntries(
-    (previous?.actors?.items ?? []).map((actor) => [actor.id, { x: actor.x, y: actor.y }]),
+    (previous?.actors?.items ?? []).map((actor) => [
+      actor.id,
+      { x: actor.x, y: actor.y, direction: actor.direction, size: actor.size },
+    ]),
   );
   const artAssets = studioArtAssets(
     previous?.assets?.filter((asset) => asset.source.startsWith("data:")),
@@ -200,7 +204,10 @@ export function addStudioArt(
     source: dataUrl,
   };
   const positions = Object.fromEntries(
-    (metadata.actors?.items ?? []).map((actor) => [actor.id, { x: actor.x, y: actor.y }]),
+    (metadata.actors?.items ?? []).map((actor) => [
+      actor.id,
+      { x: actor.x, y: actor.y, direction: actor.direction, size: actor.size },
+    ]),
   );
   const actorCostumes = costumeMap(metadata.actors?.items);
   if (kind === "costume") {
@@ -246,27 +253,31 @@ export function selectStudioArt(
     metadata.assets?.filter((asset) => asset.source.startsWith("data:")),
   );
   const asset = custom.find((item) => item.id === assetId);
-  if (!asset) throw new RangeError("unknown studio art");
+  const galleryCostume = assetId.startsWith("costume:") && isGalleryCharacterId(assetId.slice(8));
+  if (!asset && !galleryCostume) throw new RangeError("unknown studio art");
   const fallback =
     listStudioProjects(storage).find((item) => item.id === id)?.backdropId ?? "forest";
   const actorCostumes = costumeMap(metadata.actors?.items);
-  if (asset.kind === "costume") {
+  if (asset?.kind === "costume" || galleryCostume) {
     if (!metadata.actors?.items.some((actor) => actor.id === actorId))
       throw new RangeError("unknown studio actor");
-    actorCostumes[actorId] = asset.id;
+    actorCostumes[actorId] = assetId;
   }
   const creative = creativeForStudio(
     program,
     fallback,
     locale,
     Object.fromEntries(
-      (metadata.actors?.items ?? []).map((actor) => [actor.id, { x: actor.x, y: actor.y }]),
+      (metadata.actors?.items ?? []).map((actor) => [
+        actor.id,
+        { x: actor.x, y: actor.y, direction: actor.direction, size: actor.size },
+      ]),
     ),
     metadata.stage?.actorOrder,
     {
       assets: custom,
       actorCostumes,
-      stageBackdropId: asset.kind === "backdrop" ? asset.id : metadata.stage?.backdropId,
+      stageBackdropId: asset?.kind === "backdrop" ? asset.id : metadata.stage?.backdropId,
     },
   );
   store.save(id, program, {
@@ -438,7 +449,12 @@ export function importStudioProject(
     program,
     backdropId,
     locale,
-    Object.fromEntries(importedActors.map((actor) => [actor.id, { x: actor.x, y: actor.y }])),
+    Object.fromEntries(
+      importedActors.map((actor) => [
+        actor.id,
+        { x: actor.x, y: actor.y, direction: actor.direction, size: actor.size },
+      ]),
+    ),
     imported.metadata.stage?.actorOrder,
     {
       assets: studioArtAssets(
@@ -479,4 +495,39 @@ export function deleteStudioProject(
   storage.setItem(INDEX, JSON.stringify(projects.filter((item) => item.id !== id)));
   store.remove(id);
   return true;
+}
+
+/** Initial sprite appearance is scene metadata, not a program mutation. */
+export function setStudioActorAppearance(
+  id: string,
+  actorId: string,
+  direction: number,
+  size: number,
+  store: ProjectStore = new ProjectStore(),
+): void {
+  if (
+    !STUDIO_ID.test(id) ||
+    !Number.isInteger(direction) ||
+    direction < -180 ||
+    direction > 180 ||
+    !Number.isInteger(size) ||
+    size < 10 ||
+    size > 400
+  )
+    throw new RangeError("invalid studio appearance");
+  const saved = store.load(id);
+  validateStudioProgram(saved.program);
+  const actors = saved.metadata.actors;
+  if (!actors?.items.some((actor) => actor.id === actorId))
+    throw new RangeError("unknown studio actor");
+  store.save(id, saved.program, {
+    ...saved.metadata,
+    updatedAt: new Date().toISOString(),
+    actors: {
+      ...actors,
+      items: actors.items.map((actor) =>
+        actor.id === actorId ? { ...actor, direction, size } : actor,
+      ),
+    },
+  });
 }
