@@ -24,8 +24,8 @@ test("a map mission uses the complete creative editor and one evaluated project"
       .getByRole("button")
       .count(),
   ).toBeGreaterThan(5);
-  await expect(page.getByRole("button", { name: /Disfraces y fondos/ })).toBeVisible();
-  await page.getByRole("button", { name: /Sonidos/ }).click();
+  await expect(page.getByRole("tab", { name: /Disfraces/ })).toBeVisible();
+  await page.getByRole("tab", { name: /Sonidos/ }).click();
   await expect(page.getByRole("group", { name: "Sonidos" })).toBeVisible();
   await expect(page.getByTestId("scene-goal")).toBeVisible();
   await page.getByRole("button", { name: "¿Qué bloque me ayuda?" }).click();

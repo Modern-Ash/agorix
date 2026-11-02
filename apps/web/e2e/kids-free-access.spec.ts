@@ -54,7 +54,7 @@ for (const [name, viewport] of [
     }, PROGRESS);
     await page.goto("/kids#/crear");
     await page.reload();
-    await expect(page.getByRole("heading", { name: "Escena libre", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Crear", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Crear escena" })).toBeVisible();
     await expect(page.getByRole("button", { name: "¡Crear!", exact: true })).toHaveCount(0);
   });

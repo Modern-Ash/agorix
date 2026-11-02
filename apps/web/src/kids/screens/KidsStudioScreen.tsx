@@ -1142,6 +1142,7 @@ export function KidsStudioScreen({
   }, [blockMenu]);
   // The stage fills the screen so a child can see and play it large; Escape or the button ends it.
   const [stageLarge, setStageLarge] = useState(false);
+  const [programZoom, setProgramZoom] = useState(100);
   useEffect(() => {
     if (!stageLarge) return;
     const onKey = (event: globalThis.KeyboardEvent) => {
@@ -1304,7 +1305,9 @@ export function KidsStudioScreen({
   const [paletteCollapsed, setPaletteCollapsed] = useState(paletteView !== "all");
   const [codeCollapsed, setCodeCollapsed] = useState(false);
   const [oriCollapsed, setOriCollapsed] = useState(true);
-  const [mediaTab, setMediaTab] = useState<"costumes" | "sounds">("costumes");
+  const [editorTab, setEditorTab] = useState<"code" | "costumes" | "sounds">(() =>
+    initialDraw ? "costumes" : "code",
+  );
   const [chooser, setChooser] = useState<"actor" | "backdrop" | null>(null);
   const [oriContext, setOriContext] = useState<
     "actor" | "backdrop" | "costumes" | "sounds" | "program"
@@ -2816,6 +2819,7 @@ export function KidsStudioScreen({
   return (
     <section
       className="kids-screen kids-studio"
+      data-editor-tab={editorTab}
       aria-label={missionDefinition?.title ?? copy.title}
     >
       <header className="kids-studio-header">
@@ -2948,6 +2952,35 @@ export function KidsStudioScreen({
           </button>
         </aside>
       ) : null}
+      <div
+        className="kids-studio-tabs"
+        role="tablist"
+        aria-label={locale === "es" ? "Editor" : "Editor"}
+      >
+        {(
+          [
+            ["code", locale === "es" ? "Código" : "Code", "🧩"],
+            ["costumes", locale === "es" ? "Disfraces" : "Costumes", "🎨"],
+            ["sounds", locale === "es" ? "Sonidos" : "Sounds", "🔊"],
+          ] as const
+        ).map(([tab, label, glyph]) => (
+          <button
+            key={tab}
+            type="button"
+            role="tab"
+            className="kids-studio-tab"
+            aria-selected={editorTab === tab}
+            onClick={() => {
+              setEditorTab(tab);
+              setOriContext(
+                tab === "costumes" ? "costumes" : tab === "sounds" ? "sounds" : "actor",
+              );
+            }}
+          >
+            <span aria-hidden="true">{glyph}</span> {label}
+          </button>
+        ))}
+      </div>
       <nav className="kids-studio-categories" aria-label={copy.categories}>
         {studioCategories({ pen: penEnabled, music: musicEnabled }).map((category) => (
           <button
@@ -3076,44 +3109,116 @@ export function KidsStudioScreen({
       <div className="kids-studio-layout">
         <div className="kids-studio-stage-column" data-large={stageLarge ? "true" : undefined}>
           <div className="kids-studio-stage-heading">
-            <h2>{copy.stage}</h2>
+            <h2 className="kids-sr-only">{copy.stage}</h2>
             <div className="kids-run-controls">
-              <button type="button" className="kids-button kids-primary" onClick={play}>
+              <button
+                type="button"
+                className="kids-button kids-primary kids-flag-button"
+                onClick={play}
+              >
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                  <path d="M5 3v18" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+                  <path d="M6 4h12l-3 4 3 4H6z" fill="currentColor" />
+                </svg>{" "}
                 {copy.run}
               </button>
               <button
                 type="button"
-                className="kids-button"
+                className="kids-button kids-icon-button kids-stop-button"
+                title={copy.reset}
+                onClick={() => {
+                  stopKidsSounds();
+                  stopKidsMusic();
+                  setRun(null);
+                  setFrame(null);
+                }}
+              >
+                <span aria-hidden="true">■</span>
+                <span className="kids-sr-only">{copy.reset}</span>
+              </button>
+              <button
+                type="button"
+                className="kids-button kids-icon-button"
+                title={copy.step}
                 disabled={!run || (frame !== null && frame >= run.frames.length - 1)}
                 onClick={() => {
                   setStepped(true);
                   setFrame(frame === null ? 0 : frame + 1);
                 }}
               >
-                {copy.step}
+                <span aria-hidden="true">⏭</span>
+                <span className="kids-sr-only">{copy.step}</span>
               </button>
+            </div>
+            <div
+              className="kids-stage-view"
+              role="group"
+              aria-label={locale === "es" ? "Vista del juego" : "Game view"}
+            >
+              {zoomFlag ? (
+                <>
+                  <button
+                    type="button"
+                    className="kids-button kids-icon-button"
+                    aria-pressed={!stageLarge}
+                    aria-label={copy.stageNormal}
+                    title={copy.stageNormal}
+                    onClick={() => setStageLarge(false)}
+                  >
+                    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+                      <rect
+                        x="3"
+                        y="5"
+                        width="18"
+                        height="14"
+                        rx="2"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      />
+                      <rect x="13" y="8" width="5" height="5" fill="currentColor" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    className="kids-button kids-icon-button"
+                    aria-pressed={stageLarge}
+                    aria-label={copy.stageLarge}
+                    title={copy.stageLarge}
+                    onClick={() => setStageLarge(true)}
+                  >
+                    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+                      <rect
+                        x="3"
+                        y="5"
+                        width="18"
+                        height="14"
+                        rx="2"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      />
+                      <rect x="6" y="8" width="9" height="8" fill="currentColor" />
+                    </svg>
+                  </button>
+                </>
+              ) : null}
               <button
                 type="button"
-                className="kids-button"
-                onClick={() => {
-                  setRun(null);
-                  setFrame(null);
+                className="kids-button kids-icon-button"
+                aria-label={locale === "es" ? "Pantalla completa" : "Full screen"}
+                title={locale === "es" ? "Pantalla completa" : "Full screen"}
+                onClick={(event) => {
+                  const stage = event.currentTarget
+                    .closest(".kids-studio-stage-column")
+                    ?.querySelector<HTMLElement>(".kids-studio-stage");
+                  void stage?.requestFullscreen?.().catch(() => undefined);
                 }}
               >
-                {copy.reset}
+                <span aria-hidden="true">⛶</span>
               </button>
             </div>
           </div>
-          {zoomFlag ? (
-            <button
-              type="button"
-              className="kids-button kids-studio-stage-zoom"
-              aria-pressed={stageLarge}
-              onClick={() => setStageLarge((large) => !large)}
-            >
-              {stageLarge ? copy.stageNormal : copy.stageLarge}
-            </button>
-          ) : null}
           <KidsBackdrop
             world={{ kind: "gallery", id: stageBackdrop }}
             imageOverride={stageArt}
@@ -3299,7 +3404,7 @@ export function KidsStudioScreen({
                   type="button"
                   className="kids-button"
                   onClick={() => {
-                    setMediaTab("costumes");
+                    setEditorTab("costumes");
                     setDrawingKind("costume");
                     setChooser(null);
                   }}
@@ -3343,7 +3448,7 @@ export function KidsStudioScreen({
                   type="button"
                   className="kids-button"
                   onClick={() => {
-                    setMediaTab("costumes");
+                    setEditorTab("costumes");
                     setDrawingKind("backdrop");
                     setChooser(null);
                   }}
@@ -3353,6 +3458,26 @@ export function KidsStudioScreen({
               ) : null}
             </div>
           ) : null}
+          <h2>{copy.actors}</h2>
+          <div className="kids-studio-actors" role="group" aria-label={copy.actors}>
+            {creative.actors?.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className="kids-button"
+                data-drop-actor={item.id}
+                data-over={over === `actor:${item.id}` ? "true" : undefined}
+                aria-pressed={activeActorId === item.id}
+                onClick={() => selectActor(item.id)}
+              >
+                <KidsSprite
+                  slot={{ kind: "gallery", id: characterOfActor(item.id) }}
+                  label={item.name}
+                />{" "}
+                {item.name} {item.id.split("-")[2]}
+              </button>
+            ))}
+          </div>
           {actor ? (
             <div
               className="kids-studio-actor-inspector"
@@ -3393,183 +3518,6 @@ export function KidsStudioScreen({
                 </button>
               ) : null}
             </div>
-          ) : null}
-          <div
-            className="kids-studio-media-tabs"
-            role="group"
-            aria-label={locale === "es" ? "Medios" : "Media"}
-          >
-            <button
-              type="button"
-              className="kids-button"
-              aria-pressed={mediaTab === "costumes"}
-              onClick={() => {
-                setMediaTab("costumes");
-                setOriContext("costumes");
-              }}
-            >
-              {locale === "es" ? "🎨 Disfraces y fondos" : "🎨 Costumes and backdrops"}
-            </button>
-            <button
-              type="button"
-              className="kids-button"
-              aria-pressed={mediaTab === "sounds"}
-              onClick={() => {
-                setMediaTab("sounds");
-                setOriContext("sounds");
-              }}
-            >
-              {locale === "es" ? "🔊 Sonidos" : "🔊 Sounds"}
-            </button>
-          </div>
-          {mediaTab === "sounds" ? (
-            <div
-              className="kids-studio-media-content"
-              role="group"
-              aria-label={locale === "es" ? "Sonidos" : "Sounds"}
-            >
-              <label>
-                {locale === "es" ? "Sonido" : "Sound"}
-                <select
-                  value={newSound}
-                  onChange={(event) => setNewSound(event.target.value as typeof newSound)}
-                >
-                  {KIDS_SOUNDS.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item[locale]}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button
-                type="button"
-                className="kids-button"
-                onClick={() =>
-                  void playKidsSound(newSound, {
-                    kind: "gallery",
-                    id: characterOfActor(activeActorId),
-                  })
-                }
-              >
-                {locale === "es" ? "▶ Escuchar" : "▶ Listen"}
-              </button>
-              <button
-                type="button"
-                className="kids-button"
-                onClick={() => add({ type: "playSound", soundId: newSound })}
-              >
-                {locale === "es" ? "+ Agregar al programa" : "+ Add to program"}
-              </button>
-            </div>
-          ) : null}
-          {mediaTab === "costumes" && customImagesEnabled ? (
-            <div className="kids-studio-art-controls">
-              <button
-                type="button"
-                className="kids-button"
-                onClick={() => {
-                  setEditingArtId(null);
-                  setDrawingKind("costume");
-                }}
-              >
-                {copy.drawCostume}
-              </button>
-              <button
-                type="button"
-                className="kids-button"
-                onClick={() => {
-                  setEditingArtId(null);
-                  setDrawingKind("backdrop");
-                }}
-              >
-                {copy.drawBackdrop}
-              </button>
-              <label className="kids-button kids-image-file">
-                {copy.uploadCostume}
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  aria-label={copy.uploadCostume}
-                  onChange={(event) => void importImage("costume", event)}
-                />
-              </label>
-              <label className="kids-button kids-image-file">
-                {copy.uploadBackdrop}
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  aria-label={copy.uploadBackdrop}
-                  onChange={(event) => void importImage("backdrop", event)}
-                />
-              </label>
-              {ownCostumes.length ? (
-                <div role="group" aria-label={copy.ownCostumes}>
-                  {ownCostumes.map((asset) => (
-                    <span key={asset.id}>
-                      <button
-                        type="button"
-                        className="kids-button"
-                        aria-pressed={actor?.costumeId === asset.id}
-                        onClick={() => chooseArt(asset.id)}
-                      >
-                        {asset.name}
-                      </button>
-                      <button
-                        type="button"
-                        className="kids-button"
-                        aria-label={`${copy.edit} ${asset.name}`}
-                        onClick={() => {
-                          setEditingArtId(asset.id);
-                          setDrawingKind("costume");
-                        }}
-                      >
-                        {copy.edit}
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-              {ownBackdrops.length ? (
-                <div role="group" aria-label={copy.ownBackdrops}>
-                  {ownBackdrops.map((asset) => (
-                    <span key={asset.id}>
-                      <button
-                        type="button"
-                        className="kids-button"
-                        aria-pressed={creative.stage?.backdropId === asset.id}
-                        onClick={() => chooseArt(asset.id)}
-                      >
-                        {asset.name}
-                      </button>
-                      <button
-                        type="button"
-                        className="kids-button"
-                        aria-label={`${copy.edit} ${asset.name}`}
-                        onClick={() => {
-                          setEditingArtId(asset.id);
-                          setDrawingKind("backdrop");
-                        }}
-                      >
-                        {copy.edit}
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-          {mediaTab === "costumes" && customImagesEnabled && drawingKind ? (
-            <KidsDrawArt
-              kind={drawingKind === "costume" ? "explorer" : "backdrop"}
-              locale={locale}
-              initialImage={creative.assets?.find((asset) => asset.id === editingArtId)?.source}
-              onSave={saveDrawing}
-              onCancel={() => {
-                setDrawingKind(null);
-                setEditingArtId(null);
-              }}
-              onError={() => setError(true)}
-            />
           ) : null}
           <div
             className="kids-studio-placement"
@@ -3817,26 +3765,6 @@ export function KidsStudioScreen({
               ))}
             </div>
           ) : null}
-          <h2>{copy.actors}</h2>
-          <div className="kids-studio-actors" role="group" aria-label={copy.actors}>
-            {creative.actors?.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className="kids-button"
-                data-drop-actor={item.id}
-                data-over={over === `actor:${item.id}` ? "true" : undefined}
-                aria-pressed={activeActorId === item.id}
-                onClick={() => selectActor(item.id)}
-              >
-                <KidsSprite
-                  slot={{ kind: "gallery", id: characterOfActor(item.id) }}
-                  label={item.name}
-                />{" "}
-                {item.name} {item.id.split("-")[2]}
-              </button>
-            ))}
-          </div>
           <div className="kids-studio-add">
             <label>
               {copy.add}
@@ -3878,6 +3806,159 @@ export function KidsStudioScreen({
           </label>
         </div>
         <div className="kids-studio-program-column">
+          {editorTab !== "code" ? (
+            <div className="kids-studio-media-panel" role="tabpanel">
+              {editorTab === "sounds" ? (
+                <div
+                  className="kids-studio-media-content"
+                  role="group"
+                  aria-label={locale === "es" ? "Sonidos" : "Sounds"}
+                >
+                  <label>
+                    {locale === "es" ? "Sonido" : "Sound"}
+                    <select
+                      value={newSound}
+                      onChange={(event) => setNewSound(event.target.value as typeof newSound)}
+                    >
+                      {KIDS_SOUNDS.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item[locale]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    type="button"
+                    className="kids-button"
+                    onClick={() =>
+                      void playKidsSound(newSound, {
+                        kind: "gallery",
+                        id: characterOfActor(activeActorId),
+                      })
+                    }
+                  >
+                    {locale === "es" ? "▶ Escuchar" : "▶ Listen"}
+                  </button>
+                  <button
+                    type="button"
+                    className="kids-button"
+                    onClick={() => add({ type: "playSound", soundId: newSound })}
+                  >
+                    {locale === "es" ? "+ Agregar al programa" : "+ Add to program"}
+                  </button>
+                </div>
+              ) : null}
+              {editorTab === "costumes" && customImagesEnabled ? (
+                <div className="kids-studio-art-controls">
+                  <button
+                    type="button"
+                    className="kids-button"
+                    onClick={() => {
+                      setEditingArtId(null);
+                      setDrawingKind("costume");
+                    }}
+                  >
+                    {copy.drawCostume}
+                  </button>
+                  <button
+                    type="button"
+                    className="kids-button"
+                    onClick={() => {
+                      setEditingArtId(null);
+                      setDrawingKind("backdrop");
+                    }}
+                  >
+                    {copy.drawBackdrop}
+                  </button>
+                  <label className="kids-button kids-image-file">
+                    {copy.uploadCostume}
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      aria-label={copy.uploadCostume}
+                      onChange={(event) => void importImage("costume", event)}
+                    />
+                  </label>
+                  <label className="kids-button kids-image-file">
+                    {copy.uploadBackdrop}
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      aria-label={copy.uploadBackdrop}
+                      onChange={(event) => void importImage("backdrop", event)}
+                    />
+                  </label>
+                  {ownCostumes.length ? (
+                    <div role="group" aria-label={copy.ownCostumes}>
+                      {ownCostumes.map((asset) => (
+                        <span key={asset.id}>
+                          <button
+                            type="button"
+                            className="kids-button"
+                            aria-pressed={actor?.costumeId === asset.id}
+                            onClick={() => chooseArt(asset.id)}
+                          >
+                            {asset.name}
+                          </button>
+                          <button
+                            type="button"
+                            className="kids-button"
+                            aria-label={`${copy.edit} ${asset.name}`}
+                            onClick={() => {
+                              setEditingArtId(asset.id);
+                              setDrawingKind("costume");
+                            }}
+                          >
+                            {copy.edit}
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                  {ownBackdrops.length ? (
+                    <div role="group" aria-label={copy.ownBackdrops}>
+                      {ownBackdrops.map((asset) => (
+                        <span key={asset.id}>
+                          <button
+                            type="button"
+                            className="kids-button"
+                            aria-pressed={creative.stage?.backdropId === asset.id}
+                            onClick={() => chooseArt(asset.id)}
+                          >
+                            {asset.name}
+                          </button>
+                          <button
+                            type="button"
+                            className="kids-button"
+                            aria-label={`${copy.edit} ${asset.name}`}
+                            onClick={() => {
+                              setEditingArtId(asset.id);
+                              setDrawingKind("backdrop");
+                            }}
+                          >
+                            {copy.edit}
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+              {editorTab === "costumes" && customImagesEnabled && drawingKind ? (
+                <KidsDrawArt
+                  kind={drawingKind === "costume" ? "explorer" : "backdrop"}
+                  locale={locale}
+                  initialImage={creative.assets?.find((asset) => asset.id === editingArtId)?.source}
+                  onSave={saveDrawing}
+                  onCancel={() => {
+                    setDrawingKind(null);
+                    setEditingArtId(null);
+                  }}
+                  onError={() => setError(true)}
+                />
+              ) : null}
+            </div>
+          ) : null}
           <div className="kids-studio-workspace-heading">
             <h2>
               {copy.blocks} {actor?.name}
@@ -3914,263 +3995,308 @@ export function KidsStudioScreen({
               </button>
             </div>
           </div>
-          <div className="kids-program-stack">
-            <label>
-              {copy.event}
-              <select
-                value={script?.trigger.type ?? "greenFlag"}
-                onChange={(event) => setEvent(event.target.value as StudioEvent)}
-              >
-                <option value="greenFlag">{copy.onPlay}</option>
-                <option value="onActorClicked">{copy.onTap}</option>
-                <option value="onKeyPressed">{copy.onKey}</option>
-                <option value="onMessage">{copy.onMessage}</option>
-              </select>
-            </label>
-            {script?.trigger.type === "onKeyPressed" ? (
-              <label>
-                {copy.onKey}{" "}
-                <select
-                  value={script.trigger.key}
-                  onChange={(event) => {
-                    const key = event.target.value as (typeof STUDIO_KEYS)[number];
-                    setEventKey(key);
-                    persist(
-                      setStudioTrigger(history, activeActorId, { type: "onKeyPressed", key }),
-                    );
-                  }}
-                >
-                  {STUDIO_KEYS.map((key) => (
-                    <option key={key} value={key}>
-                      {key}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : null}
-            {script?.trigger.type === "onMessage" ? (
-              <label>
-                {copy.onMessage}{" "}
-                <select
-                  value={script.trigger.message}
-                  onChange={(event) => {
-                    const message = event.target.value as (typeof STUDIO_MESSAGES)[number];
-                    setEventMessage(message);
-                    persist(
-                      setStudioTrigger(history, activeActorId, { type: "onMessage", message }),
-                    );
-                  }}
-                >
-                  {STUDIO_MESSAGES.map((message) => (
-                    <option key={message} value={message}>
-                      {message}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : null}
-            <div className="kids-start-block">
-              ▶{" "}
-              {script?.trigger.type === "onActorClicked"
-                ? copy.onTap
-                : script?.trigger.type === "onKeyPressed"
-                  ? `${copy.onKey} ${script.trigger.key}`
-                  : script?.trigger.type === "onMessage"
-                    ? `${copy.onMessage} ${script.trigger.message}`
-                    : copy.onPlay}
-            </div>
-            {script?.trigger.type === "onActorClicked" ? (
-              <p className="kids-note">{copy.tapHint}</p>
-            ) : null}
-            {script?.trigger.type === "onKeyPressed" ? (
-              <button
-                type="button"
-                className="kids-button"
-                disabled={!run}
-                onClick={() =>
-                  fireKey(script.trigger.type === "onKeyPressed" ? script.trigger.key : "")
-                }
-              >
-                {copy.pressKey}: {script.trigger.key}
-              </button>
-            ) : null}
-            <ol
-              ref={programRef}
-              className="kids-program-drop"
-              data-drop-list={JSON.stringify({ container: null })}
-              data-over={
-                over?.startsWith(`${JSON.stringify({ container: null })}#`) ? "true" : undefined
-              }
-              aria-label={copy.dragHint}
-              data-hint={copy.dropHere}
+          <div className="kids-program-zone">
+            <div
+              className="kids-program-stack"
+              style={programZoom === 100 ? undefined : { zoom: programZoom / 100 }}
             >
-              {script?.statements.map((statement, index) => (
-                <li
-                  key={`${script.id}-${index}`}
-                  className="kids-program-block"
-                  data-index={index}
-                  tabIndex={contextMenuFlag || shortcutsFlag ? 0 : undefined}
-                  onContextMenu={(event) => {
-                    if (!contextMenuFlag) return;
-                    event.preventDefault();
-                    setBlockMenu({ index, x: event.clientX, y: event.clientY });
-                  }}
-                  onPointerDown={(event) => {
-                    if (!contextMenuFlag || event.pointerType !== "touch") return;
-                    pressOrigin.current = { x: event.clientX, y: event.clientY };
-                    pressTimer.current = setTimeout(() => {
-                      setBlockMenu({ index, x: event.clientX, y: event.clientY });
-                      pressTimer.current = null;
-                    }, 500);
-                  }}
-                  onPointerMove={(event) => {
-                    if (!pressOrigin.current || !pressTimer.current) return;
-                    if (
-                      Math.hypot(
-                        event.clientX - pressOrigin.current.x,
-                        event.clientY - pressOrigin.current.y,
-                      ) > 8
-                    ) {
-                      clearTimeout(pressTimer.current);
-                      pressTimer.current = null;
-                    }
-                  }}
-                  onPointerUp={() => {
-                    if (pressTimer.current) clearTimeout(pressTimer.current);
-                    pressTimer.current = null;
-                  }}
-                  onPointerCancel={() => {
-                    if (pressTimer.current) clearTimeout(pressTimer.current);
-                    pressTimer.current = null;
-                  }}
-                  onKeyDown={(event) => {
-                    if (
-                      !contextMenuFlag ||
-                      event.target !== event.currentTarget ||
-                      !["F10", "ContextMenu"].includes(event.key) ||
-                      (event.key === "F10" && !event.shiftKey)
-                    )
-                      return;
-                    event.preventDefault();
-                    const rect = event.currentTarget.getBoundingClientRect();
-                    setBlockMenu({ index, x: rect.left + 24, y: rect.bottom });
-                  }}
-                  data-block-path={JSON.stringify([index])}
-                  data-dragging={
-                    drag && drag.from.length === 1 && drag.from[0] === index ? "true" : undefined
-                  }
-                  data-target={
-                    over === `${JSON.stringify({ container: null })}#${index}` ? "true" : undefined
+              <label>
+                {copy.event}
+                <select
+                  value={script?.trigger.type ?? "greenFlag"}
+                  onChange={(event) => setEvent(event.target.value as StudioEvent)}
+                >
+                  <option value="greenFlag">{copy.onPlay}</option>
+                  <option value="onActorClicked">{copy.onTap}</option>
+                  <option value="onKeyPressed">{copy.onKey}</option>
+                  <option value="onMessage">{copy.onMessage}</option>
+                </select>
+              </label>
+              {script?.trigger.type === "onKeyPressed" ? (
+                <label>
+                  {copy.onKey}{" "}
+                  <select
+                    value={script.trigger.key}
+                    onChange={(event) => {
+                      const key = event.target.value as (typeof STUDIO_KEYS)[number];
+                      setEventKey(key);
+                      persist(
+                        setStudioTrigger(history, activeActorId, { type: "onKeyPressed", key }),
+                      );
+                    }}
+                  >
+                    {STUDIO_KEYS.map((key) => (
+                      <option key={key} value={key}>
+                        {key}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+              {script?.trigger.type === "onMessage" ? (
+                <label>
+                  {copy.onMessage}{" "}
+                  <select
+                    value={script.trigger.message}
+                    onChange={(event) => {
+                      const message = event.target.value as (typeof STUDIO_MESSAGES)[number];
+                      setEventMessage(message);
+                      persist(
+                        setStudioTrigger(history, activeActorId, { type: "onMessage", message }),
+                      );
+                    }}
+                  >
+                    {STUDIO_MESSAGES.map((message) => (
+                      <option key={message} value={message}>
+                        {message}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+              <div className="kids-start-block">
+                ▶{" "}
+                {script?.trigger.type === "onActorClicked"
+                  ? copy.onTap
+                  : script?.trigger.type === "onKeyPressed"
+                    ? `${copy.onKey} ${script.trigger.key}`
+                    : script?.trigger.type === "onMessage"
+                      ? `${copy.onMessage} ${script.trigger.message}`
+                      : copy.onPlay}
+              </div>
+              {script?.trigger.type === "onActorClicked" ? (
+                <p className="kids-note">{copy.tapHint}</p>
+              ) : null}
+              {script?.trigger.type === "onKeyPressed" ? (
+                <button
+                  type="button"
+                  className="kids-button"
+                  disabled={!run}
+                  onClick={() =>
+                    fireKey(script.trigger.type === "onKeyPressed" ? script.trigger.key : "")
                   }
                 >
-                  <button
-                    type="button"
-                    className="kids-block-handle"
-                    aria-label={`${copy.moveBlock} ${index + 1}`}
-                    onPointerDown={(event) => beginBlockDrag(event, [index])}
-                    onPointerMove={overBlockDrag}
-                    onPointerUp={endBlockDrag}
-                    onPointerCancel={() => setDrag(null)}
+                  {copy.pressKey}: {script.trigger.key}
+                </button>
+              ) : null}
+              <ol
+                ref={programRef}
+                className="kids-program-drop"
+                data-drop-list={JSON.stringify({ container: null })}
+                data-over={
+                  over?.startsWith(`${JSON.stringify({ container: null })}#`) ? "true" : undefined
+                }
+                aria-label={copy.dragHint}
+                data-hint={copy.dropHere}
+              >
+                {script?.statements.map((statement, index) => (
+                  <li
+                    key={`${script.id}-${index}`}
+                    className="kids-program-block"
+                    data-index={index}
+                    tabIndex={contextMenuFlag || shortcutsFlag ? 0 : undefined}
+                    onContextMenu={(event) => {
+                      if (!contextMenuFlag) return;
+                      event.preventDefault();
+                      setBlockMenu({ index, x: event.clientX, y: event.clientY });
+                    }}
+                    onPointerDown={(event) => {
+                      if (!contextMenuFlag || event.pointerType !== "touch") return;
+                      pressOrigin.current = { x: event.clientX, y: event.clientY };
+                      pressTimer.current = setTimeout(() => {
+                        setBlockMenu({ index, x: event.clientX, y: event.clientY });
+                        pressTimer.current = null;
+                      }, 500);
+                    }}
+                    onPointerMove={(event) => {
+                      if (!pressOrigin.current || !pressTimer.current) return;
+                      if (
+                        Math.hypot(
+                          event.clientX - pressOrigin.current.x,
+                          event.clientY - pressOrigin.current.y,
+                        ) > 8
+                      ) {
+                        clearTimeout(pressTimer.current);
+                        pressTimer.current = null;
+                      }
+                    }}
+                    onPointerUp={() => {
+                      if (pressTimer.current) clearTimeout(pressTimer.current);
+                      pressTimer.current = null;
+                    }}
+                    onPointerCancel={() => {
+                      if (pressTimer.current) clearTimeout(pressTimer.current);
+                      pressTimer.current = null;
+                    }}
+                    onKeyDown={(event) => {
+                      if (
+                        !contextMenuFlag ||
+                        event.target !== event.currentTarget ||
+                        !["F10", "ContextMenu"].includes(event.key) ||
+                        (event.key === "F10" && !event.shiftKey)
+                      )
+                        return;
+                      event.preventDefault();
+                      const rect = event.currentTarget.getBoundingClientRect();
+                      setBlockMenu({ index, x: rect.left + 24, y: rect.bottom });
+                    }}
+                    data-block-path={JSON.stringify([index])}
+                    data-dragging={
+                      drag && drag.from.length === 1 && drag.from[0] === index ? "true" : undefined
+                    }
+                    data-target={
+                      over === `${JSON.stringify({ container: null })}#${index}`
+                        ? "true"
+                        : undefined
+                    }
                   >
-                    ⠿
-                  </button>
-                  <span>{blockLabel(statement)}</span>
-                  {callNumbers(statement, index)}
-                  {statement.type === "repeat" ||
-                  statement.type === "repeatUntil" ||
-                  statement.type === "forever"
-                    ? programList(statement.body, [index])
-                    : null}
-                  {statement.type === "if" ? programList(statement.then, [index]) : null}
-                  {statement.type === "if" && statement.else ? (
-                    <>
-                      <strong>{copy.elseLabel}</strong>
-                      {programList(statement.else, [index], "else")}
-                    </>
-                  ) : null}
-                  {placeChoices([index]).length > 0 ? (
-                    <select
-                      aria-label={`${copy.moveTo} ${index + 1}`}
-                      value=""
-                      onChange={(event) => {
-                        placeChoices([index])[Number(event.target.value)]?.run();
-                      }}
+                    <button
+                      type="button"
+                      className="kids-block-handle"
+                      aria-label={`${copy.moveBlock} ${index + 1}`}
+                      onPointerDown={(event) => beginBlockDrag(event, [index])}
+                      onPointerMove={overBlockDrag}
+                      onPointerUp={endBlockDrag}
+                      onPointerCancel={() => setDrag(null)}
                     >
-                      <option value="">{copy.moveTo}</option>
-                      {placeChoices([index]).map((choice, at) => (
-                        <option key={choice.label} value={at}>
-                          {choice.label}
-                        </option>
-                      ))}
-                    </select>
-                  ) : null}
-                  <button
-                    type="button"
-                    className="kids-button"
-                    aria-label={`${copy.blockUp} ${index + 1}`}
-                    disabled={index === 0}
-                    onClick={() =>
-                      persist(moveStudioStatement(history, activeActorId, index, index - 1))
-                    }
-                  >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    aria-label={`${copy.blockDown} ${index + 1}`}
-                    disabled={index === (script?.statements.length ?? 1) - 1}
-                    onClick={() =>
-                      persist(moveStudioStatement(history, activeActorId, index, index + 1))
-                    }
-                  >
-                    ↓
-                  </button>
-                  {duplicateFlag ? (
+                      ⠿
+                    </button>
+                    <span>{blockLabel(statement)}</span>
+                    {callNumbers(statement, index)}
+                    {statement.type === "repeat" ||
+                    statement.type === "repeatUntil" ||
+                    statement.type === "forever"
+                      ? programList(statement.body, [index])
+                      : null}
+                    {statement.type === "if" ? programList(statement.then, [index]) : null}
+                    {statement.type === "if" && statement.else ? (
+                      <>
+                        <strong>{copy.elseLabel}</strong>
+                        {programList(statement.else, [index], "else")}
+                      </>
+                    ) : null}
+                    {placeChoices([index]).length > 0 ? (
+                      <select
+                        aria-label={`${copy.moveTo} ${index + 1}`}
+                        value=""
+                        onChange={(event) => {
+                          placeChoices([index])[Number(event.target.value)]?.run();
+                        }}
+                      >
+                        <option value="">{copy.moveTo}</option>
+                        {placeChoices([index]).map((choice, at) => (
+                          <option key={choice.label} value={at}>
+                            {choice.label}
+                          </option>
+                        ))}
+                      </select>
+                    ) : null}
                     <button
                       type="button"
                       className="kids-button"
-                      aria-label={`${copy.duplicate} ${index + 1}`}
-                      disabled={(script?.statements.length ?? 0) >= 60}
-                      onClick={() => {
-                        try {
-                          persist(duplicateStudioStatement(history, activeActorId, index));
-                        } catch {
-                          // The program is at its size limit: no copy is made.
-                        }
-                      }}
+                      aria-label={`${copy.blockUp} ${index + 1}`}
+                      disabled={index === 0}
+                      onClick={() =>
+                        persist(moveStudioStatement(history, activeActorId, index, index - 1))
+                      }
                     >
-                      ⧉
+                      ↑
                     </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    className="kids-button"
-                    aria-label={`${copy.remove} ${index + 1}`}
-                    onClick={() => persist(removeStudioStatement(history, activeActorId, index))}
+                    <button
+                      type="button"
+                      className="kids-button"
+                      aria-label={`${copy.blockDown} ${index + 1}`}
+                      disabled={index === (script?.statements.length ?? 1) - 1}
+                      onClick={() =>
+                        persist(moveStudioStatement(history, activeActorId, index, index + 1))
+                      }
+                    >
+                      ↓
+                    </button>
+                    {duplicateFlag ? (
+                      <button
+                        type="button"
+                        className="kids-button"
+                        aria-label={`${copy.duplicate} ${index + 1}`}
+                        disabled={(script?.statements.length ?? 0) >= 60}
+                        onClick={() => {
+                          try {
+                            persist(duplicateStudioStatement(history, activeActorId, index));
+                          } catch {
+                            // The program is at its size limit: no copy is made.
+                          }
+                        }}
+                      >
+                        ⧉
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      className="kids-button"
+                      aria-label={`${copy.remove} ${index + 1}`}
+                      onClick={() => persist(removeStudioStatement(history, activeActorId, index))}
+                    >
+                      ×
+                    </button>
+                  </li>
+                ))}
+                {intentPlan?.statements.map((statement, index) => (
+                  <li
+                    key={`intent-ghost-${index}`}
+                    className="kids-ghost-block"
+                    data-testid="ori-ghost-block"
                   >
-                    ×
-                  </button>
-                </li>
-              ))}
-              {intentPlan?.statements.map((statement, index) => (
-                <li
-                  key={`intent-ghost-${index}`}
-                  className="kids-ghost-block"
-                  data-testid="ori-ghost-block"
-                >
-                  <span>{blockLabel(statement)}</span>
-                  <small>{copy.ghostNote}</small>
-                </li>
-              ))}
-              {oriPreview && proposedStatement ? (
-                <li className="kids-ghost-block" data-testid="ori-ghost-block">
-                  <span>{blockLabel(proposedStatement)}</span>
-                  <small>{copy.ghostNote}</small>
-                </li>
+                    <span>{blockLabel(statement)}</span>
+                    <small>{copy.ghostNote}</small>
+                  </li>
+                ))}
+                {oriPreview && proposedStatement ? (
+                  <li className="kids-ghost-block" data-testid="ori-ghost-block">
+                    <span>{blockLabel(proposedStatement)}</span>
+                    <small>{copy.ghostNote}</small>
+                  </li>
+                ) : null}
+              </ol>
+              {script?.statements.length === 0 ? (
+                <p className="kids-note">{copy.noBlocks}</p>
               ) : null}
-            </ol>
-            {script?.statements.length === 0 ? <p className="kids-note">{copy.noBlocks}</p> : null}
+            </div>
+            <div
+              className="kids-zoom-tools"
+              role="group"
+              aria-label={locale === "es" ? "Zoom del programa" : "Program zoom"}
+            >
+              <button
+                type="button"
+                className="kids-button kids-icon-button"
+                aria-label={locale === "es" ? "Acercar programa" : "Zoom in"}
+                title={locale === "es" ? "Acercar" : "Zoom in"}
+                disabled={programZoom >= 150}
+                onClick={() => setProgramZoom((value) => Math.min(150, value + 10))}
+              >
+                <span aria-hidden="true">+</span>
+              </button>
+              <button
+                type="button"
+                className="kids-button kids-icon-button"
+                aria-label={locale === "es" ? "Alejar programa" : "Zoom out"}
+                title={locale === "es" ? "Alejar" : "Zoom out"}
+                disabled={programZoom <= 60}
+                onClick={() => setProgramZoom((value) => Math.max(60, value - 10))}
+              >
+                <span aria-hidden="true">−</span>
+              </button>
+              <button
+                type="button"
+                className="kids-button kids-icon-button"
+                aria-label={locale === "es" ? "Tamaño original del programa" : "Reset program zoom"}
+                title={`${programZoom}%`}
+                disabled={programZoom === 100}
+                onClick={() => setProgramZoom(100)}
+              >
+                <span aria-hidden="true">=</span>
+              </button>
+            </div>
           </div>
           {paletteView === "all" ? (
             <button
@@ -4663,7 +4789,10 @@ export function KidsStudioScreen({
                 value={newSound}
                 onChoose={(id) => {
                   setNewSound(id);
-                  void playKidsSound(id, { kind: "gallery", id: characterOfActor(activeActorId) });
+                  void playKidsSound(id, {
+                    kind: "gallery",
+                    id: characterOfActor(activeActorId),
+                  });
                 }}
               />
             </KidsPaletteBlock>
@@ -5107,7 +5236,11 @@ export function KidsStudioScreen({
               disabled={!history.current.variables?.length}
               data-kids-block="askChoice"
               onClick={() =>
-                add({ type: "askChoice", promptId: choicePromptId, variableId: selectedVariableId })
+                add({
+                  type: "askChoice",
+                  promptId: choicePromptId,
+                  variableId: selectedVariableId,
+                })
               }
             >
               + {copy.askChoice}

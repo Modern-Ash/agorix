@@ -3609,9 +3609,13 @@
   .kids-studio > * {
     grid-column: 1 / -1;
   }
+  .kids-studio > .kids-studio-tabs {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
   .kids-studio > .kids-studio-categories {
     grid-column: 1;
-    grid-row: 3;
+    grid-row: 4;
     position: sticky;
     top: 8px;
     align-self: start;
@@ -3624,7 +3628,7 @@
   }
   .kids-studio > .kids-studio-layout {
     grid-column: 2;
-    grid-row: 3;
+    grid-row: 4;
   }
   .kids-studio-category {
     display: flex;
@@ -4801,7 +4805,7 @@
   font-size: 0.82rem;
   font-weight: 600;
 }
-.kids-studio-program-column > .kids-program-stack {
+.kids-studio-program-column .kids-program-zone > .kids-program-stack {
   min-height: 430px;
   background-color: #fff;
   background-image: radial-gradient(#dce5f1 1px, transparent 1px);
@@ -4861,6 +4865,7 @@
     max-height: calc(100dvh - 16px);
     overflow-y: auto;
     overscroll-behavior: contain;
+    scroll-padding-top: 76px;
   }
   .kids-studio-stage-heading {
     position: sticky;
@@ -4874,7 +4879,7 @@
   max-height: none;
 }
 @media (min-width: 900px) {
-  .kids-studio-program-column > .kids-program-stack {
+  .kids-studio-program-column .kids-program-zone > .kids-program-stack {
     min-height: max(500px, calc(100dvh - 280px));
   }
 }
@@ -4909,7 +4914,7 @@
     flex-wrap: wrap;
     gap: 6px;
   }
-  .kids-studio-program-column > .kids-program-stack {
+  .kids-studio-program-column .kids-program-zone > .kids-program-stack {
     min-height: 340px;
   }
   .kids-studio-program-column .kids-program-drop {
@@ -4946,4 +4951,168 @@
   min-height: 44px;
   padding: 2px 12px;
   font-size: 0.85rem;
+}
+
+/* Scratch-like editor tabs: Code, Costumes, Sounds sit above the colour rail. */
+.kids-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.kids-studio-tabs {
+  display: flex;
+  gap: 4px;
+  align-items: flex-end;
+  border-bottom: 2px solid var(--kids-border);
+}
+.kids-studio-tab {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 2px solid var(--kids-border);
+  border-bottom: 0;
+  border-radius: 12px 12px 0 0;
+  background: var(--kids-panel);
+  color: var(--kids-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.kids-studio-tab[aria-selected="true"] {
+  background: #efe8fb;
+  border-color: #5d418e;
+  box-shadow: 0 2px 0 #efe8fb;
+  margin-bottom: -2px;
+}
+.kids-studio[data-editor-tab="costumes"] .kids-studio-categories,
+.kids-studio[data-editor-tab="sounds"] .kids-studio-categories,
+.kids-studio[data-editor-tab="costumes"]
+  .kids-studio-program-column
+  > :not(.kids-studio-media-panel),
+.kids-studio[data-editor-tab="sounds"]
+  .kids-studio-program-column
+  > :not(.kids-studio-media-panel) {
+  display: none;
+}
+.kids-studio-media-panel {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--kids-border);
+  border-radius: 14px;
+  background: var(--kids-panel);
+}
+
+/* Stage toolbar like Scratch's: play, step and reset on the left, size on the right. */
+.kids-studio-stage-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.kids-studio-stage-heading .kids-run-controls {
+  flex-wrap: nowrap;
+}
+.kids-studio-stage-heading .kids-run-controls .kids-button {
+  min-height: 44px;
+  padding-inline: 14px;
+  white-space: nowrap;
+}
+.kids-studio-stage-zoom {
+  margin-inline-start: auto;
+}
+
+/* The sprite pane sits right under the stage tools, like Scratch's. */
+.kids-studio-stage-column > h2:has(+ .kids-studio-actors) {
+  margin: 8px 0 0;
+  font-size: 1rem;
+}
+.kids-studio-stage-column > .kids-studio-actors {
+  padding: 8px;
+  border: 1px solid var(--kids-border);
+  border-radius: 12px;
+  background: var(--kids-panel);
+}
+.kids-studio-stage-heading .kids-run-controls .kids-button {
+  flex: none;
+}
+.kids-studio-stage-heading .kids-run-controls .kids-primary {
+  min-width: 104px;
+}
+
+/* Scratch's stage bar: green flag and red stop on the left; stage size and full screen on the right. */
+.kids-flag-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #167a3c;
+  border-color: #0f5c2c;
+  color: #fff;
+}
+.kids-flag-button:hover:not(:disabled) {
+  background: #0f6531;
+}
+.kids-stop-button {
+  color: #c0334d;
+  border-color: #e3a3ae;
+  background: #fdecef;
+}
+.kids-stage-view {
+  display: flex;
+  gap: 4px;
+  margin-inline-start: auto;
+}
+.kids-stage-view .kids-icon-button[aria-pressed="true"] {
+  background: #efe8fb;
+  border-color: #5d418e;
+}
+
+/* Floating zoom tools in the program panel, as in Scratch's workspace. */
+.kids-program-zone {
+  position: relative;
+  display: grid;
+  gap: 8px;
+}
+.kids-zoom-tools {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 4;
+  display: grid;
+  gap: 8px;
+  pointer-events: none;
+}
+.kids-zoom-tools .kids-icon-button {
+  pointer-events: auto;
+  border-radius: 50%;
+  background: var(--kids-panel);
+  box-shadow: 0 3px 10px rgb(0 0 0 / 16%);
+}
+
+/* The Ori help toggle must stand out from the panel behind it. */
+.kids-studio-ori .kids-panel-toggle {
+  background: #5d418e;
+  color: #fff;
+  border: 2px solid #3f2a69;
+  box-shadow: 0 4px 14px rgb(63 42 105 / 38%);
+}
+.kids-studio-ori .kids-panel-toggle:hover {
+  background: #4b3376;
+}
+
+.kids-studio-tab {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+@media (max-width: 480px) {
+  .kids-studio-tabs {
+    gap: 2px;
+  }
+  .kids-studio-tab {
+    flex: 1 1 0;
+    padding-inline: 6px;
+    font-size: 0.85rem;
+  }
 }

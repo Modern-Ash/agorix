@@ -989,6 +989,7 @@ test("a child adds local costume and backdrop images to a free scene", async ({ 
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
   await page.getByRole("button", { name: "Crear escena" }).click();
+  await page.getByRole("tab", { name: /Disfraces/ }).click();
   const fixture = resolve("e2e/fixtures/kids-solid.png");
   await page.getByLabel("Agregar disfraz desde imagen").setInputFiles(fixture);
   await expect(page.getByRole("group", { name: "Mis disfraces" })).toContainText("Mi disfraz 1");
@@ -1006,6 +1007,7 @@ test("a child adds local costume and backdrop images to a free scene", async ({ 
     .filter({ hasText: "Escena libre" })
     .getByRole("button", { name: "Jugar" })
     .click();
+  await page.getByRole("tab", { name: /Disfraces/ }).click();
   await expect(page.getByRole("group", { name: "Mis disfraces" })).toContainText("Mi disfraz 1");
   await expect(page.locator(".kids-studio-stage")).toHaveCSS("background-image", /data:image/);
 });
@@ -1023,6 +1025,7 @@ test("drawn costume and backdrop survive adult-approved export and import", asyn
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
   await page.getByRole("button", { name: "Crear escena" }).click();
+  await page.getByRole("tab", { name: /Disfraces/ }).click();
   await page.getByRole("button", { name: "Dibujar disfraz" }).click();
   const costumeCanvas = page.getByRole("img", { name: "Lienzo para dibujar" });
   await costumeCanvas.scrollIntoViewIfNeeded();

@@ -138,7 +138,9 @@ test("the phone layout has no horizontal scroll and touch-sized category buttons
 test("the making canvas and run controls stay prominent at tablet width", async ({ page }) => {
   await page.setViewportSize({ width: 820, height: 900 });
   await openScene(page);
-  const canvas = page.locator(".kids-studio-program-column > .kids-program-stack");
+  const canvas = page.locator(
+    ".kids-studio-program-column .kids-program-zone > .kids-program-stack",
+  );
   const stage = page.getByRole("group", { name: "Escenario" });
   const play = page.getByRole("button", { name: "Jugar", exact: true });
   const [canvasBox, stageBox, playBox] = await Promise.all(
@@ -175,7 +177,7 @@ test("stage tools expose sprite, backdrop and editable position", async ({ page 
   await page.getByRole("button", { name: "+ Fondo" }).click();
   await expect(page.getByRole("group", { name: "Elegir fondo" })).toBeVisible();
   await page.getByRole("button", { name: "Usar fondo" }).click();
-  await page.getByRole("button", { name: "🔊 Sonidos" }).click();
+  await page.getByRole("tab", { name: /Sonidos/ }).click();
   await expect(page.locator(".kids-studio-media-content")).toBeVisible();
 });
 
@@ -266,16 +268,16 @@ test("the stage can fill the screen, still plays, and Escape brings it back", as
   const normal = (await stage.boundingBox())!;
   const toggle = page.getByRole("button", { name: "Agrandar escenario" });
   await toggle.click();
-  await expect(page.getByRole("button", { name: "Volver al tamaño normal" })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
+  await expect(toggle).toHaveAttribute("aria-pressed", "true");
   const large = (await stage.boundingBox())!;
   expect(large.width).toBeGreaterThan(normal.width);
   expect(large.y + large.height).toBeLessThanOrEqual(800);
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("button", { name: "Agrandar escenario" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Volver al tamaño normal" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   expect((await stage.boundingBox())!.width).toBeCloseTo(normal.width, -1);
 });
 
