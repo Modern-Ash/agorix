@@ -37,6 +37,7 @@
     "@agorix/python-projection": "workspace:*",
     "@agorix/runtime": "workspace:*",
     "@agorix/stage": "workspace:*",
+    "@agorix/studio-ui": "workspace:*",
     "@agorix/tutor-contract": "workspace:*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

@@ -1,6 +1,7 @@
 import {
   useEffect,
   useMemo,
+  useReducer,
   useRef,
   useState,
   type CSSProperties,
@@ -8,6 +9,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from "react";
+import { INITIAL_PANEL_LAYOUT, reducePanelLayout } from "@agorix/studio-ui";
 import {
   parseAgorixProject,
   sanitizeAgorixFilename,
@@ -2871,7 +2873,8 @@ export function App({
     "companion",
   ]);
   const [topbarOpen, setTopbarOpen] = useState(false);
-  const [maximizedPanel, setMaximizedPanel] = useState<PanelId | undefined>(undefined);
+  const [panelLayout, dispatchPanelLayout] = useReducer(reducePanelLayout, INITIAL_PANEL_LAYOUT);
+  const maximizedPanel = panelLayout.maximized as PanelId | undefined;
   const [aiStatus, setAiStatus] = useState<AiStatus>("connecting");
   useEffect(() => {
     let cancelled = false;
@@ -4157,7 +4160,9 @@ export function App({
 
   function closePanel(panel: PanelId) {
     setClosedPanels((current) => (current.includes(panel) ? current : [...current, panel]));
-    setMaximizedPanel((current) => (current === panel ? undefined : current));
+    if (panelLayout.maximized === panel) {
+      dispatchPanelLayout({ type: "restoreMaximized" });
+    }
   }
 
   function restorePanel(panel: PanelId) {
@@ -4168,7 +4173,7 @@ export function App({
   function toggleMaximizedPanel(panel: PanelId) {
     setCollapsedPanels((current) => current.filter((item) => item !== panel));
     setClosedPanels((current) => current.filter((item) => item !== panel));
-    setMaximizedPanel((current) => (current === panel ? undefined : panel));
+    dispatchPanelLayout({ type: "toggleMaximize", id: panel });
   }
 
   function revealCompanion() {

@@ -207,6 +207,9 @@ importers:
       '@agorix/stage':
         specifier: workspace:*
         version: link:../../packages/stage
+      '@agorix/studio-ui':
+        specifier: workspace:*
+        version: link:../../packages/studio-ui
       '@agorix/team-project':
         specifier: workspace:*
         version: link:../../packages/team-project
