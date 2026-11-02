@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "./fixtures.js";
+import { clickCreateScene } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -47,7 +48,7 @@ test("the address follows the screen and Back and Forward keep the scene's block
   await expect(page).toHaveURL(/#\/mapa$/);
   await page.getByRole("button", { name: "Crear", exact: true }).click();
   await expect(page).toHaveURL(/#\/crear$/);
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await expect(page).toHaveURL(/#\/escena\/[A-Za-z0-9_-]+$/);
   await page.getByRole("button", { name: "+ Mover", exact: true }).click();
   await page.getByRole("button", { name: "+ Girar a la derecha" }).click();
@@ -65,7 +66,7 @@ test("reloading on a scene and a mission returns to it", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await seed(page);
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByRole("button", { name: "+ Mover", exact: true }).click();
   await page.reload();
   await expect(page.getByRole("heading", { name: "Escena libre" })).toBeVisible();

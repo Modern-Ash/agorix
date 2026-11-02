@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Browser, type Page } from "./fixtures.js";
-import { passAdultGate, openAdultTab } from "./helpers.js";
+import { passAdultGate, openAdultTab, clickCreateScene } from "./helpers.js";
 
 // Issues #509 to #513. Runs against the DEV/E2E-only in-process backend (AGORIX_DEV_BACKEND=1), which
 // hosts the real project API and link service. Two browser contexts play the adult's phone and the
@@ -89,7 +89,7 @@ test("a never-linked child device makes no link request even with the flag on", 
   });
   await open(page);
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByRole("button", { name: "+ Mover", exact: true }).click();
   await page.waitForTimeout(300);
   expect(calls).toEqual([]);

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "./fixtures.js";
-import { passAdultGate, reloadToMap, openAdultTab } from "./helpers.js";
+import { passAdultGate, reloadToMap, openAdultTab, clickCreateScene } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -37,7 +37,7 @@ test("both packs are on for a new device and an adult can turn each off", async 
   await expect(music).toHaveAttribute("aria-checked", "false");
   await page.getByRole("button", { name: "Mapa", exact: true }).click();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await expect(page.getByRole("group", { name: "Lápiz" })).toHaveCount(0);
   await expect(page.getByRole("group", { name: "Música" })).toHaveCount(0);
   // Ori no longer offers music goals either.
@@ -49,7 +49,7 @@ test("turned off, a scene already built with the packs keeps its blocks, and tur
 }) => {
   await start(page);
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByRole("button", { name: "+ Bajar el lápiz" }).click();
   await page.getByRole("button", { name: "+ Tocar nota" }).click();
   await expect(page.locator(".kids-program-block")).toHaveCount(2);

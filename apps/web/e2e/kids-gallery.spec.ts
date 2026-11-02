@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "./fixtures.js";
-import { reloadTo } from "./helpers.js";
+import { reloadTo, clickCreateScene } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -39,6 +39,7 @@ test("a new child can browse included art, create a project and reopen it", asyn
     "true",
   );
 
+  await page.getByRole("button", { name: /^3 ·/ }).click();
   await expect(page.getByRole("group", { name: "Tu elección" })).toContainText("Nova");
   await expect(page.getByRole("group", { name: "Tu elección" })).toContainText("Bosque");
 
@@ -47,7 +48,7 @@ test("a new child can browse included art, create a project and reopen it", asyn
   ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");
   expect(violations.map((entry) => entry.id)).toEqual([]);
 
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await expect(page.getByRole("group", { name: "Escenario" })).toHaveClass(/kids-art-backdrop/);
   await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
