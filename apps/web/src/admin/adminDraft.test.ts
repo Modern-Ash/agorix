@@ -17,13 +17,13 @@ const published = {
 };
 
 describe("AI Center menu", () => {
-  it("lists every section once, rules first and monitoring last on its own", () => {
+  it("lists every section once, agents first and monitoring last on its own", () => {
     const sections = ADMIN_NAV_GROUPS.flatMap((group) => group.sections);
     expect(new Set(sections).size).toBe(sections.length);
     expect(sections).toHaveLength(10);
     expect(ADMIN_NAV_GROUPS.map((group) => group.title)).toEqual([
-      "Reglas",
       "Agentes de Ori",
+      "Reglas",
       "Contenido y grupos",
       "Monitoreo",
     ]);
@@ -41,7 +41,7 @@ describe("draft changes", () => {
     draft.capabilities.chat.enabled = false;
     draft.behavior.failuresBeforeIdea = 3;
     draft.group.enabled = true;
-    expect(changedSections(published, draft)).toEqual(["behavior", "chat", "group"]);
+    expect(changedSections(published, draft)).toEqual(["chat", "behavior", "group"]);
   });
 
   it("counts a section that appears or disappears as changed", () => {
@@ -56,8 +56,8 @@ describe("draft status", () => {
   });
 
   it("counts pending sections and says when they are validated", () => {
-    expect(draftStatus(1, false)).toBe("1 sección cambiada sin publicar");
-    expect(draftStatus(3, false)).toBe("3 secciones cambiadas sin publicar");
-    expect(draftStatus(2, true)).toBe("Validado: 2 secciones cambiadas, lista para publicar");
+    expect(draftStatus(1, false)).toBe("Borrador con 1 cambio sin publicar");
+    expect(draftStatus(3, false)).toBe("Borrador con 3 cambios sin publicar");
+    expect(draftStatus(2, true)).toBe("Validado: 2 cambios listos para publicar");
   });
 });

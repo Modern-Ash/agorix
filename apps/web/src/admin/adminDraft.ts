@@ -11,10 +11,10 @@ export interface AdminNavGroup {
   readonly sections: readonly AdminSection[];
 }
 
-/** Rules first, then the agents, then content, and monitoring apart from anything that edits. */
+/** Agents, rules, content and monitoring appear in the same order on every viewport. */
 export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
-  { title: "Reglas", sections: ["behavior", "goals"] },
   { title: "Agentes de Ori", sections: ["mission", "studio", "advanced", "chat", "legacy"] },
+  { title: "Reglas", sections: ["behavior", "goals"] },
   { title: "Contenido y grupos", sections: ["catalog", "group"] },
   { title: "Monitoreo", sections: ["monitor"] },
 ];
@@ -42,6 +42,8 @@ export function changedSections(published: DraftShape, draft: DraftShape): Admin
 /** The line on the draft bar: nothing pending, how many sections changed, or ready to publish. */
 export function draftStatus(changed: number, validated: boolean): string {
   if (changed === 0) return "Sin cambios pendientes";
-  const count = changed === 1 ? "1 sección cambiada" : `${changed} secciones cambiadas`;
-  return validated ? `Validado: ${count}, lista para publicar` : `${count} sin publicar`;
+  const count = changed === 1 ? "1 cambio" : `${changed} cambios`;
+  return validated
+    ? `Validado: ${count} ${changed === 1 ? "listo" : "listos"} para publicar`
+    : `Borrador con ${count} sin publicar`;
 }

@@ -34,6 +34,7 @@ export function CatalogSettings({
   readonly onChange: (next: KidsCatalog) => void;
 }) {
   const [world, setWorld] = useState<KidsMissionWorld>("space");
+  const [marker, setMarker] = useState<"start" | "goal">("start");
   const unsolvable = unsolvableKidsMissions(catalog);
   const set = (slot: number, change: Partial<KidsCatalogEntry>) => {
     const entries = catalog[world].map((entry, index) =>
@@ -104,37 +105,103 @@ export function CatalogSettings({
           </legend>
           {unsolvable.includes(`${world}:${slot}`) ? (
             <p role="alert">Esta misión no se puede resolver: no se va a publicar.</p>
-          ) : null}
+          ) : (
+            <p role="status">Recorrido ganable con el runtime.</p>
+          )}
+          <div
+            className="ai-admin-board-tools"
+            role="group"
+            aria-label={`Marcar misión ${slot + 1}`}
+          >
+            <button
+              type="button"
+              aria-pressed={marker === "start"}
+              onClick={() => setMarker("start")}
+            >
+              Marcar inicio
+            </button>
+            <button
+              type="button"
+              aria-pressed={marker === "goal"}
+              onClick={() => setMarker("goal")}
+            >
+              Marcar meta
+            </button>
+          </div>
+          <p className="ai-admin-footnote">
+            El tablero muestra 6 × 6. Las últimas dos filas están fuera del escenario ejecutable de
+            6 × 4 y no admiten inicio ni meta.
+          </p>
+          <div
+            className="ai-admin-board"
+            role="group"
+            aria-label={`Tablero de ${WORLD_NAMES[world]}, misión ${slot + 1}`}
+          >
+            {Array.from({ length: 6 * KIDS_GRID.cols }, (_, index) => {
+              const cx = index % KIDS_GRID.cols;
+              const cy = Math.floor(index / KIDS_GRID.cols);
+              const start = entry.start.cx === cx && entry.start.cy === cy;
+              const goal = entry.goal.cx === cx && entry.goal.cy === cy;
+              return (
+                <button
+                  key={index}
+                  type="button"
+                  disabled={cy >= KIDS_GRID.rows}
+                  aria-label={`Fila ${cy + 1}, columna ${cx + 1}${cy >= KIDS_GRID.rows ? ", fuera del escenario" : start ? ", inicio" : goal ? ", meta" : ""}`}
+                  data-marker={start ? "start" : goal ? "goal" : undefined}
+                  onClick={() => {
+                    if (marker === "start") {
+                      const goalX = Math.min(KIDS_GRID.cols - 1, Math.max(entry.goal.cx, cx + 1));
+                      set(slot, {
+                        start: { cx: Math.min(cx, goalX - 1), cy },
+                        goal: { ...entry.goal, cx: goalX },
+                      });
+                    } else {
+                      const startX = Math.max(0, Math.min(entry.start.cx, cx - 1));
+                      set(slot, {
+                        start: { ...entry.start, cx: startX },
+                        goal: { cx: Math.max(cx, startX + 1), cy },
+                      });
+                    }
+                  }}
+                >
+                  {start ? "I" : goal ? "M" : ""}
+                </button>
+              );
+            })}
+          </div>
           {cell(slot, "start", "cx", "Sale de la columna", entry)}
           {cell(slot, "start", "cy", "Sale de la fila", entry)}
           {cell(slot, "goal", "cx", "Meta en la columna", entry)}
           {cell(slot, "goal", "cy", "Meta en la fila", entry)}
-          {(["es", "en"] as const).map((locale) => (
-            <div key={locale}>
-              <label>
-                Título ({locale === "es" ? "español" : "inglés"})
-                <input
-                  type="text"
-                  maxLength={KIDS_CATALOG_TITLE_MAX}
-                  value={entry.title[locale]}
-                  onChange={(event) =>
-                    set(slot, { title: { ...entry.title, [locale]: event.target.value } })
-                  }
-                />
-              </label>
-              <label>
-                Relato ({locale === "es" ? "español" : "inglés"})
-                <input
-                  type="text"
-                  maxLength={KIDS_CATALOG_STORY_MAX}
-                  value={entry.story[locale]}
-                  onChange={(event) =>
-                    set(slot, { story: { ...entry.story, [locale]: event.target.value } })
-                  }
-                />
-              </label>
-            </div>
-          ))}
+          <div className="ai-admin-catalog-languages">
+            {(["es", "en"] as const).map((locale) => (
+              <div key={locale}>
+                <label>
+                  Título ({locale === "es" ? "español" : "inglés"})
+                  <input
+                    type="text"
+                    maxLength={KIDS_CATALOG_TITLE_MAX}
+                    value={entry.title[locale]}
+                    onChange={(event) =>
+                      set(slot, { title: { ...entry.title, [locale]: event.target.value } })
+                    }
+                  />
+                </label>
+                <label>
+                  Relato ({locale === "es" ? "español" : "inglés"})
+                  <input
+                    type="text"
+                    maxLength={KIDS_CATALOG_STORY_MAX}
+                    value={entry.story[locale]}
+                    onChange={(event) =>
+                      set(slot, { story: { ...entry.story, [locale]: event.target.value } })
+                    }
+                  />
+                </label>
+              </div>
+            ))}
+          </div>
         </fieldset>
       ))}
       <button type="button" onClick={() => onChange(defaultKidsCatalog())}>

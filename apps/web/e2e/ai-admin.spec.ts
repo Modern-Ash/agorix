@@ -83,14 +83,14 @@ test("AI operations console validates, publishes and restores a revision", async
   const draftBar = page.getByRole("region", { name: "Borrador" });
   await expect(draftBar).toContainText("Sin cambios pendientes");
   await page.getByLabel("Instrucción adicional").fill("Preguntá qué predice el estudiante.");
-  await expect(draftBar).toContainText("1 sección cambiada sin publicar");
+  await expect(draftBar).toContainText("Borrador con 1 cambio sin publicar");
   await expect(draftBar).toContainText("Ori en misiones");
   await expect(page.getByRole("button", { name: "Publicar revisión" })).toBeDisabled();
   await page.getByRole("button", { name: "Validar cambios" }).click();
-  await expect(draftBar).toContainText("Validado: 1 sección cambiada, lista para publicar");
+  await expect(draftBar).toContainText("Validado: 1 cambio listo para publicar");
   await page.getByRole("button", { name: "Publicar revisión" }).click();
   await expect(page.getByText("Configuración publicada.")).toBeVisible();
-  await expect(draftBar).toContainText("Sin cambios pendientes");
+  await expect(draftBar).toContainText("Publicado");
   page.on("dialog", (dialog) => void dialog.accept());
   await menu.getByRole("button", { name: /Historial y monitoreo/ }).click();
   await expect(page.getByRole("heading", { name: "Historial y monitoreo" })).toBeVisible();
@@ -99,18 +99,14 @@ test("AI operations console validates, publishes and restores a revision", async
   await menu.getByRole("button", { name: /Ori en misiones/ }).click();
   await expect(page.getByLabel("Instrucción adicional")).toHaveValue("");
 
-  // On a phone the menu folds behind one button, nothing scrolls sideways, and the draft bar stays in view.
+  // On a phone the selector replaces the side menu; the draft bar stays in view.
   await page.setViewportSize({ width: 390, height: 844 });
-  const toggle = page.getByRole("button", { name: /^Menú:/ });
-  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  const selector = page.getByLabel("Sección");
+  await expect(selector).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Centro de IA" })).toBeHidden();
-  await toggle.click();
-  await expect(page.getByRole("navigation", { name: "Centro de IA" })).toBeVisible();
-  await page
-    .getByRole("navigation", { name: "Centro de IA" })
-    .getByRole("button", { name: /Ori en misiones/ })
-    .click();
-  await expect(page.getByRole("navigation", { name: "Centro de IA" })).toBeHidden();
+  await selector.selectOption("monitor");
+  await expect(page.getByRole("heading", { name: "Historial y monitoreo" })).toBeVisible();
+  await selector.selectOption("mission");
   await page.getByLabel("Instrucción adicional").fill("Otra idea.");
   const layout = await page.evaluate(() => {
     const bar = document.querySelector(".ai-admin-draft")!.getBoundingClientRect();
@@ -120,6 +116,12 @@ test("AI operations console validates, publishes and restores a revision", async
     };
   });
   expect(layout).toEqual({ sideways: false, barInView: true });
+  for (const width of [360, 768, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      width,
+    );
+  }
 });
 
 test("AI operations console edits the group settings and cannot weaken the fail-closed rule", async ({
@@ -200,6 +202,13 @@ test("AI operations console edits the group settings and cannot weaken the fail-
   await expect(page.getByText(/esa regla no se puede desactivar/)).toBeVisible();
   // There is no control for the fail-closed rule, and the relay starts off.
   await expect(page.getByLabel(/servicio de apoyo de conexión/)).not.toBeChecked();
+  await page.setViewportSize({ width: 360, height: 844 });
+  await expect(page.getByLabel("Sección")).toHaveValue("group");
+  const imageFold = page.locator(".ai-admin-group-fold").first();
+  await expect(imageFold).toHaveAttribute("open");
+  await imageFold.locator("summary").click();
+  await expect(imageFold.getByLabel(/Revisar imágenes antes/)).toBeHidden();
+  await imageFold.locator("summary").click();
 
   await page.getByLabel(/Niños por grupo/).fill("3");
   await page.getByLabel(/Términos bloqueados \(es\)/).fill("tonto\n\ntonta ");
@@ -275,7 +284,7 @@ test("AI operations console shows Ori's intervention with synthetic learners and
   const table = page.getByRole("table", { name: "Aprendices simulados" });
   await expect(table.getByRole("row", { name: /Recién entra.*No, todavía no/ })).toBeVisible();
   await expect(table.getByRole("row", { name: /Primera corrida fallida.*Sí/ })).toBeVisible();
-  await page.getByLabel(/Corridas que no llegan a la meta/).fill("2");
+  await page.getByRole("spinbutton", { name: /Corridas que no llegan a la meta/ }).fill("2");
   await expect(
     table.getByRole("row", { name: /Primera corrida fallida.*No, todavía/ }),
   ).toBeVisible();
@@ -287,8 +296,8 @@ test("AI operations console shows Ori's intervention with synthetic learners and
   await rollout.fill("25");
   await expect(rollout).toHaveValue("25");
   // The floor is enforced in the control itself: a hint of 1 is clamped to 2.
-  await page.getByLabel(/Pistas abiertas/).fill("1");
-  await expect(page.getByLabel(/Pistas abiertas/)).toHaveValue("2");
+  await page.getByRole("spinbutton", { name: /Pistas abiertas/ }).fill("1");
+  await expect(page.getByRole("spinbutton", { name: /Pistas abiertas/ })).toHaveValue("2");
   await page.getByRole("button", { name: "Validar cambios" }).click();
   await expect(page.getByRole("status").filter({ hasText: "No se puede publicar" })).toContainText(
     "muy pocas metas",
@@ -435,6 +444,14 @@ test("AI operations console edits the missions and shows a mission that cannot b
   await expect(first.getByLabel("Meta en la columna")).toHaveValue("5");
   await first.getByLabel("Meta en la columna").fill("2");
   await expect(first.getByLabel("Meta en la columna")).toHaveValue("5");
+  const board = first.getByRole("group", { name: "Tablero de Océano, misión 1" });
+  await expect(board.getByRole("button")).toHaveCount(36);
+  await expect(board.getByRole("button", { name: /Fila 6, columna 6/ })).toBeDisabled();
+  await board.getByRole("button", { name: "Fila 4, columna 2" }).click();
+  await expect(first.getByLabel("Sale de la columna")).toHaveValue("1");
+  await first.getByRole("button", { name: "Marcar meta" }).click();
+  await board.getByRole("button", { name: "Fila 4, columna 5" }).click();
+  await expect(first.getByLabel("Meta en la fila")).toHaveValue("3");
   await page.getByRole("button", { name: "Validar cambios" }).click();
   await expect(page.getByText("Pasó las pruebas de seguridad")).toBeVisible();
   expect(posted.config?.catalog?.["ocean"]?.[0]?.title.es).toBe("Corriente corta");
