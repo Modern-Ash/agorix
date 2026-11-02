@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { readFile } from "node:fs/promises";
 import { expect, test, type Page } from "@playwright/test";
-import { openAdultTab, passAdultGate } from "../helpers.js";
+import { clickCreateScene, openAdultTab, passAdultGate } from "../helpers.js";
 
 // Anonymous, browser-local journeys. The caller pins AGORIX_EXPECT_SHA before attributing evidence.
 const expectedSha = process.env["AGORIX_EXPECT_SHA"];
@@ -35,7 +35,7 @@ test("Scratch-familiar creation reaches runtime, code and saved project", async 
   page.on("pageerror", (error) => errors.push(error.message));
   await enterFromFreshBrowser(page);
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await expect(page).toHaveURL(/#\/escena\//);
   await expect(page.getByRole("navigation", { name: "Categorías de bloques" })).toBeVisible();
   await openStudioColour(page, "Movimiento");
@@ -88,7 +88,7 @@ test.describe("touch and learner authority", () => {
     );
     await enterFromFreshBrowser(page);
     await page.getByRole("button", { name: "Crear", exact: true }).tap();
-    await page.getByRole("button", { name: "Crear escena" }).tap();
+    await clickCreateScene(page);
     await openStudioColour(page, "Movimiento");
     await page.getByRole("button", { name: "+ Mover", exact: true }).tap();
     const blocks = page.locator(".kids-program-block");
@@ -118,7 +118,7 @@ test.describe("touch and learner authority", () => {
 test("a locally saved scene survives reopening and portable export/import", async ({ page }) => {
   await enterFromFreshBrowser(page);
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await openStudioColour(page, "Movimiento");
   await page.getByRole("button", { name: "+ Mover", exact: true }).click();
   await expect(page.locator(".kids-program-block")).toHaveCount(1);
@@ -165,7 +165,7 @@ for (const [band, index, width, height] of [
     await expect(page.locator('input[name="kids-age-band"]:checked')).toHaveValue(band);
     await page.getByRole("button", { name: "Mapa", exact: true }).click();
     await page.getByRole("button", { name: "Crear", exact: true }).click();
-    await page.getByRole("button", { name: "Crear escena" }).click();
+    await clickCreateScene(page);
     await expect(page.locator(".kids-root")).toHaveAttribute("data-age-band", band);
     await expect(
       page.getByRole("navigation", { name: "Categorías de bloques" }).getByRole("button"),
@@ -192,7 +192,7 @@ test("adult extension switches hide Pen and Music without hiding the core palett
   await music.click();
   await page.getByRole("button", { name: "Mapa", exact: true }).click();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await expect(page.getByRole("group", { name: "Lápiz" })).toHaveCount(0);
   await expect(page.getByRole("group", { name: "Música" })).toHaveCount(0);
   await openStudioColour(page, "Movimiento");
@@ -202,7 +202,7 @@ test("adult extension switches hide Pen and Music without hiding the core palett
 test("Ori's contextual compound idea can be changed and undone before a run", async ({ page }) => {
   await enterFromFreshBrowser(page);
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await openStudioColour(page, "Eventos y control");
   const conditions = page.getByRole("group", { name: "Combinar condiciones" });
   await conditions.getByRole("button", { name: "Pedirle a Ori una combinación" }).click();
