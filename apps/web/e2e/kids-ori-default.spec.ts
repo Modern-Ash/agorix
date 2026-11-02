@@ -1,9 +1,6 @@
 import { expect, test } from "./fixtures.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
-test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem("agorix.kids.freeToScene.off.v1", "1"));
-});
 
 test("Ori accompanies a new learner through onboarding, map, creation and editor", async ({
   page,
@@ -43,14 +40,11 @@ test("Ori accompanies a new learner through onboarding, map, creation and editor
     "¿Qué te gustaría que pase ahí?",
   );
   await page.getByRole("button", { name: "Cerrar" }).click();
-  await page.getByRole("button", { name: /^3 ·/ }).click();
-  await page.getByRole("button", { name: "¡Crear!", exact: true }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
 
   // Ori stays present in free creation whether the local provider has an idea or not.
-  const ori = page.getByRole("button", { name: /Abrir (ayuda|propuesta) de Ori/ });
+  const ori = page.getByRole("button", { name: /(Abrir (ayuda|propuesta)|Mostrar ayuda) de Ori/ });
   await expect(ori).toBeVisible();
-  await ori.click();
-  await expect(page.getByRole("dialog", { name: /Ori/ })).toBeVisible();
 });
 
 test("Ori pauses offscreen and respects reduced motion", async ({ page }) => {
@@ -95,9 +89,17 @@ test("Ori remains visible in an advanced stage without changing the program", as
       "agorix.kids.progress.v1",
       JSON.stringify({ onboarded: true, avatar: "🦊", stars: 3, done: {} }),
     );
+    localStorage.setItem(
+      "agorix.kids.missionScenes.v1",
+      JSON.stringify({
+        "kids.space.kids.m1.straight": "studio-1",
+        "kids.space.kids.m2.corner": "studio-2",
+        "kids.space.kids.m3.zigzag": "studio-3",
+      }),
+    );
     for (const id of ["kids.m1.straight", "kids.m2.corner", "kids.m3.zigzag"])
       localStorage.setItem(
-        `agorix:kids.space.${id}`,
+        `agorix:studio-${["kids.m1.straight", "kids.m2.corner", "kids.m3.zigzag"].indexOf(id) + 1}`,
         JSON.stringify({
           schemaVersion: "agorix/program/v1",
           program: { schema: "agorix/program/v1", scripts: [] },

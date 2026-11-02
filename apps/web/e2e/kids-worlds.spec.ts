@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "./fixtures.js";
-import { reloadToMap } from "./helpers.js";
+import { addStudioBlock, reloadToMap } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -20,11 +20,9 @@ async function start(page: Page) {
   await reloadToMap(page);
 }
 
-async function play(page: Page, squares: string) {
-  await page.getByRole("button", { name: "+ mover", exact: true }).click();
-  await page.getByRole("combobox", { name: "mover 1" }).selectOption(squares);
+async function play(page: Page, squares: number) {
+  await addStudioBlock(page, "Movimiento", "+ Mover", squares);
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Sí", exact: true }).click();
 }
 
 test("every world shows its own three missions", async ({ page }) => {
@@ -53,8 +51,8 @@ test("a world's goal is where its own layout says, and finishing it shows the pr
   await page.getByRole("button", { name: "Océano" }).click();
   await page.getByRole("button", { name: "Misión 1" }).click();
   await expect(page.getByText("Nadá en línea recta hasta el tesoro.")).toBeVisible();
-  await play(page, "4");
-  await expect(page.locator(".kids-run-status")).toContainText("Llegaste");
+  await play(page, 4);
+  await expect(page.getByTestId("scene-goal-result")).toContainText("Lograste la meta");
   await page.getByRole("button", { name: "Volver al mapa" }).click();
   await page.getByRole("button", { name: "Océano" }).click();
   await expect(page.locator(".kids-world-progress")).toHaveText("1 de 3 misiones");
@@ -64,12 +62,11 @@ test("a world's goal is where its own layout says, and finishing it shows the pr
 
   await page.getByRole("button", { name: "Ciudad" }).click();
   await page.getByRole("button", { name: "Misión 1" }).click();
-  await play(page, "4");
-  await expect(page.locator(".kids-run-status")).not.toContainText("Llegaste");
-  await page.getByRole("combobox", { name: "mover 1" }).selectOption("5");
+  await play(page, 4);
+  await expect(page.getByTestId("scene-goal-result")).not.toContainText("Lograste la meta");
+  await addStudioBlock(page, "Movimiento", "+ Mover");
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Sí", exact: true }).click();
-  await expect(page.locator(".kids-run-status")).toContainText("Llegaste");
+  await expect(page.getByTestId("scene-goal-result")).toContainText("Lograste la meta");
 });
 
 test("the hints of a world count its own squares", async ({ page }) => {
@@ -115,8 +112,8 @@ test("published missions replace the built-in ones, and an unreachable server le
   await page.getByRole("button", { name: "Misión 1" }).click();
   await expect(page.getByText("Nadá un poquito hasta el tesoro.")).toBeVisible();
   // The goal is now two squares away, not four.
-  await play(page, "2");
-  await expect(page.locator(".kids-run-status")).toContainText("Llegaste");
+  await play(page, 2);
+  await expect(page.getByTestId("scene-goal-result")).toContainText("Lograste la meta");
 });
 
 test("without a catalog from the server the built-in missions stay", async ({ page }) => {

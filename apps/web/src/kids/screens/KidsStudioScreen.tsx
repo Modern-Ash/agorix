@@ -48,7 +48,7 @@ import { KidsLoopHelp } from "./KidsLoopHelp.js";
 import { KidsSceneGoalPanel } from "./KidsSceneGoalPanel.js";
 import { sceneGoalValid } from "../kidsSceneGoal.js";
 import { sceneGoalMet } from "../kidsSceneGoal.js";
-import { KIDS_MISSION_IDS, getKidsMission } from "@agorix/curriculum";
+import { KIDS_MISSION_IDS, getKidsMission, type KidsCatalog } from "@agorix/curriculum";
 import type { KidsWorld } from "../kidsState.js";
 import { speak } from "../speak.js";
 import { runMultiActorProgram, type MultiActorRunResult, type RuntimeEvent } from "@agorix/runtime";
@@ -69,7 +69,15 @@ import {
 import { bandProfile, codeTabsForBand, type AgeBand, type CodeTab } from "../kidsAgeBand.js";
 import { TOUCH_HOLD_MS, insertIndex, isAddControl, movedFar } from "../kidsDrag.js";
 import {
+  recordKidsPrediction,
+  recordKidsProposalDecision,
+  recordKidsReflection,
+  recordKidsRevision,
+  recordKidsScaffold,
+} from "../kidsEvidence.js";
+import {
   factsOfRun,
+  judgePrediction,
   previewCandidate,
   reflectionFor,
   type CandidatePreview,
@@ -207,6 +215,8 @@ interface Props {
   readonly mission?: {
     readonly world: KidsWorld;
     readonly index: 0 | 1 | 2;
+    /** The missions the administrator published, when they arrived (issue #616). */
+    readonly catalog?: KidsCatalog | undefined;
     readonly onComplete: () => void;
   };
 }
@@ -964,7 +974,7 @@ export function KidsStudioScreen({
 }: Props) {
   const copy = COPY[locale];
   const missionDefinition = mission
-    ? getKidsMission(KIDS_MISSION_IDS[mission.index], locale, mission.world)
+    ? getKidsMission(KIDS_MISSION_IDS[mission.index], locale, mission.world, mission.catalog)
     : null;
   const effectName = (effect: string) =>
     effect === "ghost"
@@ -1075,11 +1085,6 @@ export function KidsStudioScreen({
     try {
       const saved = store.load(id);
       store.save(id, saved.program, { ...saved.metadata, missionProgress: 1 });
-      const legacyId = `kids.${mission.world}.${KIDS_MISSION_IDS[mission.index]}`;
-      if (store.has(legacyId)) {
-        const legacy = store.load(legacyId);
-        store.save(legacyId, legacy.program, { ...legacy.metadata, missionProgress: 1 });
-      }
     } catch {
       // The completed run still counts in this session when local storage is unavailable.
     }
@@ -1280,6 +1285,8 @@ export function KidsStudioScreen({
   );
   // Ori's help since the last run, so a run is counted as helped or on the child's own.
   const helped = useRef(false);
+  // The last run's result, until the child edits the program: that edit is a revision (evidence).
+  const unrevisedRun = useRef<{ readonly unsuccessful: boolean } | null>(null);
   const [palette, setPalette] = useState<HTMLDivElement | null>(null);
   const paletteView = usePaletteView();
   // One-time migration: a saved full-list preference predates the contextual palette.
@@ -1819,6 +1826,16 @@ export function KidsStudioScreen({
   }
 
   function persist(next: EditorHistory, selected: string = activeActorId) {
+    if (unrevisedRun.current && JSON.stringify(next.current) !== JSON.stringify(history.current)) {
+      recordKidsRevision(
+        "sequenceChange",
+        1,
+        unrevisedRun.current.unsuccessful,
+        undefined,
+        helped.current ? "proposed" : "independent",
+      );
+      unrevisedRun.current = null;
+    }
     const nextCreative = creativeForStudio(next.current, backdropId, locale);
     const nextActive = nextCreative.actors?.some((item) => item.id === selected)
       ? selected
@@ -2540,6 +2557,17 @@ export function KidsStudioScreen({
     const reused = reusedConcepts(history.current);
     if (completed && reused.length > 0) recordMastery({ kind: "reuse", concepts: reused });
     helped.current = false;
+    unrevisedRun.current = { unsuccessful: !completed };
+    if (prediction && actor) {
+      const judged = judgePrediction(
+        prediction,
+        factsOfRun(result, activeActorId),
+        actor.name,
+        locale,
+      );
+      // The child's guess is about where the actor ends up; match is what the evidence keeps.
+      recordKidsPrediction("yes", judged.match ? "success" : "short");
+    }
     setRunCount((count) => count + 1);
   }
 
@@ -2676,6 +2704,7 @@ export function KidsStudioScreen({
   function decideOriCompound(decision: "accept" | "change" | "reject") {
     if (!compoundOri || !compoundReview) return;
     try {
+      recordKidsProposalDecision(decision === "change" ? "modify" : decision, false, false);
       if (decision === "reject") {
         rejectProposal(history.current, compoundReview);
         setCompoundOri(null);
@@ -2716,6 +2745,7 @@ export function KidsStudioScreen({
         { actorId: activeActorId, locale, program: history.current },
         oriIdea,
       );
+      recordKidsProposalDecision(decision === "change" ? "modify" : decision, false, false);
       if (decision === "reject") {
         rejectProposal(history.current, review);
         setOriIdea(null);
@@ -2868,6 +2898,7 @@ export function KidsStudioScreen({
                 try {
                   const saved = store.load(id);
                   store.save(id, saved.program, { ...saved.metadata, hintLevel: next });
+                  recordKidsScaffold("hint", Math.min(next, 5) as 1 | 2 | 3 | 4 | 5);
                   setHintLevel(next);
                 } catch {
                   setError(true);
@@ -3717,9 +3748,10 @@ export function KidsStudioScreen({
               name={actor.name}
               facts={factsOfRun(run, activeActorId)}
               predicted={predictedForRun}
-              onExplained={() =>
-                recordMastery({ kind: "explained", concepts: conceptsOfProgram(history.current) })
-              }
+              onExplained={() => {
+                recordKidsReflection("verification");
+                recordMastery({ kind: "explained", concepts: conceptsOfProgram(history.current) });
+              }}
               reflection={reflectionFor(
                 ageBand ?? "6-8",
                 factsOfRun(run, activeActorId),

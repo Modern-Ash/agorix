@@ -78,13 +78,17 @@ for (const viewport of VIEWPORTS) {
     await reloadTo(page, "#/mapa");
     await axe(page, "map");
 
-    // A mission: build, predict, run and reach the goal.
+    // A mission: build in the creative scene, run and reach the goal.
     await page.getByRole("button", { name: "Misión 1" }).click();
-    await page.getByRole("button", { name: "+ mover", exact: true }).click();
-    await page.getByRole("combobox", { name: "mover 1" }).selectOption("4");
+    const motion = page
+      .getByRole("navigation", { name: "Categorías de bloques" })
+      .getByRole("button", { name: "Movimiento" });
+    for (let index = 0; index < 4; index += 1) {
+      await motion.click();
+      await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+    }
     await page.getByRole("button", { name: "Jugar", exact: true }).click();
-    await page.getByRole("dialog").getByRole("button", { name: "Sí", exact: true }).click();
-    await expect(page.locator(".kids-run-status")).toContainText("Llegaste");
+    await expect(page.getByTestId("scene-goal-result")).toContainText("Lograste la meta");
     await axe(page, "mission");
 
     // The work is still there after a reload.
@@ -101,7 +105,7 @@ for (const viewport of VIEWPORTS) {
       .toBeGreaterThan(0);
     await reloadTo(page, "#/mapa");
     await page.getByRole("button", { name: "Misión 1" }).click();
-    await expect(page.getByRole("combobox", { name: "mover 1" })).toHaveValue("4");
+    await expect(page.locator(".kids-program-block")).toHaveCount(4);
 
     // Offline: a free scene is built, played and saved with the network cut.
     await page.getByRole("button", { name: "Volver al mapa" }).click();

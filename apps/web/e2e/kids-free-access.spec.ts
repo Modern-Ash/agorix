@@ -1,5 +1,4 @@
 import { expect, test } from "./fixtures.js";
-import { KIDS_V2_FEATURES } from "../src/kids/kidsFlags.js";
 import { STUDIO_BLOCK_CATEGORY } from "../src/kids/kidsPaletteCatalog.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
@@ -167,73 +166,6 @@ test("a remote Ori ranks the scene goal by index and the wording stays local", a
   await ori.getByRole("button", { name: "Inventá una meta" }).click();
   // Choice 2 is Nova reaching the edge, not the local favourite (Nova touches Mika).
   await expect(ori.getByTestId("ori-scene-goal")).toContainText("llegue al borde");
-});
-
-// Issue #1134: with `freeToScene` on, an old single-explorer project opens as a scene, the old
-// project is left alone, and Crear has one entry.
-test("an old free project opens as a scene and Crear keeps one entry", async ({ page }) => {
-  await SEED(page);
-  await page.evaluate(() => localStorage.setItem("agorix.kids.freeToScene.off.v1", "1"));
-  await page.reload();
-  await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "¡Crear!", exact: true }).click();
-  await expect(page).toHaveURL(/#\/libre\/free-1/);
-  await page.getByRole("button", { name: "+ mover", exact: true }).click();
-
-  await page.evaluate(
-    (features) => {
-      localStorage.setItem(
-        "agorix.kids.flags.v1",
-        JSON.stringify(
-          features
-            .filter((name) => name !== "adultLink" && name !== "groupMode")
-            .concat("freeToScene"),
-        ),
-      );
-    },
-    [...KIDS_V2_FEATURES],
-  );
-  await page.evaluate(() => localStorage.setItem("agorix.kids.freeToScene.off.v1", "0"));
-  await page.goto("/kids#/libre/free-1");
-  await page.reload();
-  await expect(page).toHaveURL(/#\/escena\/studio-1/);
-  await expect(page.getByRole("button", { name: /^Quitar bloque \d+$/ })).toHaveCount(1);
-  await expect(page.getByRole("group", { name: "Escenario" })).toHaveClass(/kids-art-backdrop/);
-  await expect(page.locator(".kids-studio-stage-actor .kids-art-image")).toHaveCount(1);
-
-  // Opening it again finds the same scene instead of making a second one.
-  await page.goto("/kids#/libre/free-1");
-  await page.reload();
-  await expect(page).toHaveURL(/#\/escena\/studio-1/);
-
-  await page.goto("/kids#/crear");
-  await page.reload();
-  await expect(page.getByRole("button", { name: "Crear escena" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "¡Crear!", exact: true })).toHaveCount(0);
-  await expect(page.getByTestId("free-project-note")).toHaveCount(0);
-});
-
-test("a legacy cell goal survives conversion and portable export", async ({ page }) => {
-  await SEED(page);
-  await page.evaluate(() => localStorage.setItem("agorix.kids.freeToScene.off.v1", "1"));
-  await page.reload();
-  await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "¡Crear!", exact: true }).click();
-  await page.getByRole("button", { name: "Tocá el mundo para poner la meta: 5, 3" }).click();
-  await expect(page).toHaveURL(/#\/libre\/free-1/);
-  await page.evaluate(() => localStorage.setItem("agorix.kids.freeToScene.off.v1", "0"));
-  await page.goto("/kids#/libre/free-1");
-  await page.reload();
-  await expect(page).toHaveURL(/#\/escena\/studio-1/);
-  await expect(page.getByTestId("scene-goal")).toContainText("columna 5, fila 3");
-  const download = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Exportar escena" }).click();
-  const gate = page.getByRole("dialog");
-  await gate.getByRole("button", { name: "1", exact: true }).click();
-  await gate.getByRole("button", { name: "2", exact: true }).click();
-  await gate.getByRole("button", { name: "Comprobar" }).click();
-  await gate.getByRole("button", { name: "Incluir imágenes y exportar" }).click();
-  expect((await download).suggestedFilename()).toMatch(/\.agorix$/);
 });
 
 // Issue #1135: with a goal set, Ori can suggest a block the character has not used yet. The block

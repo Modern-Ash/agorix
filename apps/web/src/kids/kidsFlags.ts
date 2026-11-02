@@ -17,21 +17,15 @@ export const KIDS_V2_FEATURES = [
   "groupMode",
   "extensionPen",
   "extensionMusic",
-  "freeToScene",
-  "fullMissionStudio",
 ] as const;
 
 export type KidsV2Feature = (typeof KIDS_V2_FEATURES)[number];
 
 export const KIDS_FLAGS_KEY = "agorix.kids.flags.v1";
-const FREE_TO_SCENE_OFF_KEY = "agorix.kids.freeToScene.off.v1";
-const FULL_MISSION_STUDIO_OFF_KEY = "agorix.kids.fullMissionStudio.off.v1";
 const FLAGS_CHANGED = "agorix:kids-flags-changed";
 // Creative Kids tools are visible by default. Account linking needs a live
 // verification service and remains a separate operational release. Closed groups (ADR 0010)
-// stay off until the legal and privacy review of #556. `freeToScene` (#1134) and
-// `fullMissionStudio` (#1184) are on for existing browsers too: old saved flag lists
-// predate them. Separate off keys support deliberate rollbacks without touching projects.
+// stay off until the legal and privacy review of #556.
 const DEFAULT_FEATURES: readonly KidsV2Feature[] = KIDS_V2_FEATURES.filter(
   (feature) => feature !== "adultLink" && feature !== "groupMode",
 );
@@ -78,34 +72,13 @@ export function kidsV2Features(sources: KidsFlagSources = {}): ReadonlySet<KidsV
     : DEFAULT_FEATURES;
   const saved = stored(sources.storage, defaults);
   if (saved === null) return new Set();
-  if (saved.length === 0) {
-    try {
-      const enabled: KidsV2Feature[] = [];
-      if (sources.storage?.getItem(FREE_TO_SCENE_OFF_KEY) === "0") enabled.push("freeToScene");
-      if (sources.storage?.getItem(FULL_MISSION_STUDIO_OFF_KEY) === "0")
-        enabled.push("fullMissionStudio");
-      return new Set(enabled);
-    } catch {
-      return new Set();
-    }
-  }
+  if (saved.length === 0) return new Set();
   const names: unknown[] = [...saved];
   if (sources.production !== true) {
     const query = new URLSearchParams(sources.search ?? "").get("kidsv2");
     if (query) names.push(...query.split(","));
   }
-  const features = new Set(keep(names));
-  try {
-    if (sources.storage?.getItem(FREE_TO_SCENE_OFF_KEY) === "1") features.delete("freeToScene");
-    else features.add("freeToScene");
-    if (sources.storage?.getItem(FULL_MISSION_STUDIO_OFF_KEY) === "1")
-      features.delete("fullMissionStudio");
-    else features.add("fullMissionStudio");
-  } catch {
-    features.add("freeToScene");
-    features.add("fullMissionStudio");
-  }
-  return features;
+  return new Set(keep(names));
 }
 
 export function kidsV2Enabled(feature: KidsV2Feature, sources: KidsFlagSources = {}): boolean {
@@ -119,16 +92,6 @@ export function setKidsV2Feature(
 ): boolean {
   try {
     if (!storage) return false;
-    if (feature === "freeToScene") {
-      storage.setItem(FREE_TO_SCENE_OFF_KEY, enabled ? "0" : "1");
-      if (typeof window !== "undefined") window.dispatchEvent(new Event(FLAGS_CHANGED));
-      return true;
-    }
-    if (feature === "fullMissionStudio") {
-      storage.setItem(FULL_MISSION_STUDIO_OFF_KEY, enabled ? "0" : "1");
-      if (typeof window !== "undefined") window.dispatchEvent(new Event(FLAGS_CHANGED));
-      return true;
-    }
     const next = kidsV2Features({ storage, production: true });
     const names = new Set(next);
     if (enabled) names.add(feature);

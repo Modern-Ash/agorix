@@ -18,23 +18,6 @@ async function start(page: Page, flags: readonly string[]) {
   await reloadToMap(page);
 }
 
-test("named sound is selected, saved and replayed from the canonical program", async ({ page }) => {
-  await start(page, ["soundLibrary"]);
-  await page.getByRole("button", { name: "Misión 1" }).click();
-  await page.getByRole("button", { name: "+ sonar", exact: true }).click();
-  const choice = page.getByRole("combobox", { name: "sonar 1" });
-  await choice.selectOption("kids:win");
-  await expect(choice).toHaveValue("kids:win");
-  await reloadToMap(page);
-  await page.getByRole("button", { name: "Misión 1" }).click();
-  await expect(page.getByRole("combobox", { name: "sonar 1" })).toHaveValue("kids:win");
-  await page.getByRole("button", { name: "Jugar", exact: true }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "No sé" }).click();
-  await expect(
-    page.locator(".kids-program-block.kids-block-sound .kids-block-mark"),
-  ).toHaveAttribute("aria-label", /1/);
-});
-
 test("adult audio stays in IndexedDB and a bad upload is rejected", async ({ page }) => {
   await start(page, ["soundLibrary", "customAudio"]);
   await page.getByRole("button", { name: "Adultos" }).click();

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { ProjectStore, type BrowserStorageAdapter } from "@agorix/persistence";
 import { getKidsMission, KIDS_MISSION_IDS } from "@agorix/curriculum";
 import {
@@ -19,17 +19,30 @@ function store(values = new Map<string, string>()): ProjectStore {
   return new ProjectStore({ storage });
 }
 
+/** The mission scenes finished in three worlds, as the creative studio saves them. */
 function completeKidsMissions(projects: ProjectStore): void {
+  const scenes: Record<string, string> = {};
   for (const [index, world] of ["space", "ocean", "robots"].entries()) {
     const missionId = KIDS_MISSION_IDS[index]!;
-    projects.save(`kids.${world}.${missionId}`, getKidsMission(missionId, "es").starterProject, {
+    const sceneId = `studio-${index + 1}`;
+    projects.save(sceneId, getKidsMission(missionId, "es").starterProject, {
       createdAt: "2026-10-22T00:00:00.000Z",
       updatedAt: "2026-10-22T00:00:00.000Z",
       missionProgress: 1,
       hintLevel: 0,
     });
+    scenes[`kids.${world}.${missionId}`] = sceneId;
   }
+  const saved = new Map([["agorix.kids.missionScenes.v1", JSON.stringify(scenes)]]);
+  vi.stubGlobal("window", {
+    localStorage: {
+      getItem: (key: string) => saved.get(key) ?? null,
+      setItem: (key: string, value: string) => void saved.set(key, value),
+    },
+  });
 }
+
+afterEach(() => vi.unstubAllGlobals());
 
 describe("Kids advanced progression", () => {
   it("requires three different authored mission indexes, across worlds", () => {

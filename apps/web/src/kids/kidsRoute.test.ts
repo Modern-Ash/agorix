@@ -5,7 +5,6 @@ import { initialKidsState, type KidsState } from "./kidsState.js";
 // Issue #596: a URL hash restores the screen, and nothing but a screen and an app-made id.
 const base: KidsState = { ...initialKidsState("es"), screen: "map" };
 const lookup: KidsRouteLookup = {
-  freeProject: (id) => (id === "free-1" ? { world: "ocean", avatar: "🐼" } : null),
   studioProject: (id) => id === "studio-1",
 };
 const at = (hash: string) => stateFromHash(hash, base, lookup);
@@ -19,7 +18,6 @@ describe("Kids routes", () => {
       { ...base, screen: "parents" },
       { ...base, screen: "advancedControl" },
       { ...base, screen: "editor", missionIndex: 1, world: "robots" },
-      { ...base, screen: "editor", missionIndex: 3, freeProjectId: "free-1", world: "ocean" },
       { ...base, screen: "studio", studioProjectId: "studio-1" },
     ];
     for (const state of states) {
@@ -31,14 +29,8 @@ describe("Kids routes", () => {
     }
   });
 
-  it("restores a free project with its own world and explorer", () => {
-    expect(at("#/libre/free-1")).toMatchObject({
-      screen: "editor",
-      freeProjectId: "free-1",
-      world: "ocean",
-      avatar: "🐼",
-      missionIndex: 3,
-    });
+  it("no longer opens the old #/libre project links", () => {
+    expect(at("#/libre/free-1")).toBeNull();
   });
 
   it("reopens a mission scene deep link with its Map goal context", () => {

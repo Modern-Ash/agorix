@@ -1,4 +1,4 @@
-import type { KidsAvatar, KidsScreen, KidsState, KidsWorld } from "./kidsState.js";
+import type { KidsScreen, KidsState, KidsWorld } from "./kidsState.js";
 import { KIDS_WORLDS } from "./kidsState.js";
 
 /**
@@ -29,19 +29,10 @@ const PLAIN: Readonly<Record<string, KidsScreen>> = {
 const ID = /^[A-Za-z0-9_-]{1,64}$/;
 
 export interface KidsRouteLookup {
-  /** The world and explorer of a free project that still exists. */
-  readonly freeProject: (
-    id: string,
-  ) => { readonly world: KidsWorld; readonly avatar: KidsAvatar } | null;
   readonly studioProject: (id: string) => boolean;
   readonly missionOfStudio?: (
     id: string,
   ) => { readonly world: KidsWorld; readonly index: 0 | 1 | 2 } | null;
-  /**
-   * The scene an old `#/libre/{id}` project becomes (issue #1134), converting it on first open.
-   * Absent or null keeps the old single-explorer editor for projects that cannot convert.
-   */
-  readonly sceneOfFree?: (id: string) => string | null;
 }
 
 export function routeHash(state: KidsState): string | null {
@@ -60,9 +51,7 @@ export function routeHash(state: KidsState): string | null {
     case "studio":
       return state.studioProjectId ? `#/escena/${state.studioProjectId}` : "#/crear";
     case "editor":
-      return state.freeProjectId
-        ? `#/libre/${state.freeProjectId}`
-        : `#/mision/${state.missionIndex + 1}/${state.world}`;
+      return `#/mision/${state.missionIndex + 1}/${state.world}`;
     default: {
       const path = ADVANCED_PATH[state.screen];
       return path ? `#/avanzado/${path}` : "#/mapa";
@@ -93,24 +82,7 @@ export function stateFromHash(
       screen: "editor",
       world,
       missionIndex: (Number(a) - 1) as 0 | 1 | 2,
-      freeProjectId: undefined,
     };
-  }
-  if (head === "libre" && a && ID.test(a) && parts.length === 2) {
-    const sceneId = lookup.sceneOfFree?.(a);
-    if (sceneId && lookup.studioProject(sceneId))
-      return { ...current, screen: "studio", studioProjectId: sceneId, freeProjectId: undefined };
-    const project = lookup.freeProject(a);
-    return project
-      ? {
-          ...current,
-          screen: "editor",
-          world: project.world,
-          avatar: project.avatar,
-          missionIndex: 3,
-          freeProjectId: a,
-        }
-      : null;
   }
   if (head === "escena" && a && ID.test(a) && parts.length === 2) {
     if (!lookup.studioProject(a)) return null;
@@ -121,7 +93,6 @@ export function stateFromHash(
         screen: "editor",
         world: mission.world,
         missionIndex: mission.index,
-        freeProjectId: undefined,
       };
     return { ...current, screen: "studio", studioProjectId: a };
   }

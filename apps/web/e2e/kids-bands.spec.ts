@@ -5,9 +5,9 @@ import { passAdultGate, reloadToMap, openAdultTab } from "./helpers.js";
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
 const BANDS = [
-  { band: "6-8", fontPx: 18, target: 56, solutionStep: true, studioBlocks: 6 },
-  { band: "9-12", fontPx: 16, target: 48, solutionStep: true, studioBlocks: 8 },
-  { band: "13+", fontPx: 15, target: 44, solutionStep: false, studioBlocks: 8 },
+  { band: "6-8", fontPx: 18, studioBlocks: 6 },
+  { band: "9-12", fontPx: 16, studioBlocks: 8 },
+  { band: "13+", fontPx: 15, studioBlocks: 8 },
 ] as const;
 
 async function seed(page: Page, settings: object | null) {
@@ -26,9 +26,7 @@ async function seed(page: Page, settings: object | null) {
 }
 
 for (const profile of BANDS) {
-  test(`the ${profile.band} band changes text, targets, hints and Ori's idea size`, async ({
-    page,
-  }) => {
+  test(`the ${profile.band} band changes text, targets and Ori's idea size`, async ({ page }) => {
     await seed(page, {
       oriSuggestions: true,
       readAloud: false,
@@ -42,17 +40,10 @@ for (const profile of BANDS) {
         page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).fontSize)),
       )
       .toBeCloseTo(profile.fontPx, 1);
-    // Touch targets follow it too, and none is under the 44 px floor.
+    // The creative studio keeps every target at or above the 44 px floor.
     await page.getByRole("button", { name: "Misión 1" }).click();
     const run = await page.getByRole("button", { name: "Jugar", exact: true }).boundingBox();
-    expect(run!.height).toBeGreaterThanOrEqual(profile.target - 1);
-    // The hint ladder reaches the idea itself only in the younger bands.
-    for (const level of [1, 2, 3, 4]) {
-      await page.getByRole("button", { name: `Pista ${level}`, exact: true }).click();
-    }
-    await expect(page.getByRole("button", { name: "Ver idea" })).toHaveCount(
-      profile.solutionStep ? 1 : 0,
-    );
+    expect(run!.height).toBeGreaterThanOrEqual(44 - 1);
     // Ori's goals in the Studio: the younger band gets shorter ideas.
     await page.getByRole("button", { name: "Volver al mapa" }).click();
     await page.getByRole("button", { name: "Crear", exact: true }).click();
