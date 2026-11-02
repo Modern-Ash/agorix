@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openAdultTab, passAdultGate } from "../helpers.js";
+import { clickCreateScene, openAdultTab, passAdultGate } from "../helpers.js";
 
 // Post-deploy smoke for the live site (issue #345). Read-only: it never signs in, never writes
 // to the server, and only touches browser-local state inside throwaway contexts.
@@ -165,7 +165,7 @@ test("a fresh browser sees the creative Kids tools by default", async ({ page })
   await expect(page.locator(".kids-root")).toHaveAttribute("data-block-palette", "scratch");
   await expect(page.locator(".kids-root")).toHaveAttribute("data-age-band", "6-8");
   await expect(page.getByRole("button", { name: "Hablar con Ori" })).toBeVisible();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page.getByRole("tab", { name: /Disfraces/ }).click();
   await expect(page.getByText("Agregar disfraz desde imagen")).toBeVisible();
   await expect(page.getByText("Agregar fondo desde imagen")).toBeVisible();
@@ -180,7 +180,7 @@ test("a fresh browser reaches Escena libre with every category and synchronized 
   await page.getByRole("button", { name: "Seguir" }).click();
   await page.getByRole("button", { name: "¡Empezar!" }).click();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await expect(page).toHaveURL(/#\/escena\//);
   // The free scene exposes every colour without flags, while blocks start folded away.
   await expect.poll(() => page.locator("[data-kids-palette-tool]").count()).toBeGreaterThan(15);
@@ -220,7 +220,7 @@ test("an existing Kids project survives a hard reload with browser cache cleared
   await page.getByRole("button", { name: "Seguir" }).click();
   await page.getByRole("button", { name: "¡Empezar!" }).click();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "Crear escena" }).click();
+  await clickCreateScene(page);
   await page
     .getByRole("navigation", { name: "Categorías de bloques" })
     .getByRole("button", { name: "Movimiento" })
