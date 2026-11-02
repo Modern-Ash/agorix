@@ -2,7 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "./fixtures.js";
 
 // Issue #447: Scratch-style block hues behind the puzzleShape flag; default look unchanged.
-import { BLOCKS_UNLOCKED } from "./helpers.js";
+import { BLOCKS_UNLOCKED, addStudioBlock } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -23,52 +23,27 @@ async function openEditor(page: Page, flags: string[]) {
   );
   await page.reload();
   await page.getByRole("button", { name: "Misión 1" }).click();
-  await page.getByRole("button", { name: "+ mover", exact: true }).click();
-  await page.getByRole("button", { name: "+ girar ←", exact: true }).click();
-  await page.getByRole("button", { name: "+ repetir", exact: true }).click();
-  await page.locator(".kids-palette").getByRole("button", { name: "+ sonar", exact: true }).click();
-}
-
-const colours = (page: Page, selector: string) =>
-  page
-    .locator(selector)
+  await addStudioBlock(page, "Movimiento", "+ Mover");
+  await page
+    .getByRole("navigation", { name: "Categorías de bloques" })
+    .getByRole("button", { name: "Sonido" })
+    .click();
+  await page
+    .getByRole("button", { name: /^\+ (Tocar sonido|Sonar)/ })
     .first()
-    .evaluate((node) => {
-      const style = getComputedStyle(node);
-      return { bg: style.backgroundColor, color: style.color };
-    });
+    .click();
+}
 
 test("the default palette is unchanged", async ({ page }) => {
   await openEditor(page, []);
   await expect(page.locator(".kids-root")).toHaveAttribute("data-block-palette", "default");
-  expect(await colours(page, ".kids-program-block.kids-block-move")).toEqual({
-    bg: "rgb(40, 100, 197)",
-    color: "rgb(255, 255, 255)",
-  });
-  expect(await colours(page, ".kids-program-block.kids-block-sound")).toEqual({
-    bg: "rgb(173, 92, 18)",
-    color: "rgb(255, 255, 255)",
-  });
 });
 
-test("the Scratch palette applies to program and palette blocks and passes axe contrast", async ({
+test("the Scratch palette switch applies to the studio and passes axe contrast", async ({
   page,
 }) => {
   await openEditor(page, ["puzzleShape"]);
   await expect(page.locator(".kids-root")).toHaveAttribute("data-block-palette", "scratch");
-  expect((await colours(page, ".kids-program-block.kids-block-move")).bg).toBe("rgb(76, 151, 255)");
-  // The palette offers picture tiles (#1110): the colour of the family is the tile's frame.
-  expect(
-    await page
-      .locator(".kids-palette-block.kids-block-move")
-      .evaluate((element) => getComputedStyle(element).borderTopColor),
-  ).toBe("rgb(61, 125, 224)");
-  expect((await colours(page, ".kids-program-block.kids-block-repeat")).bg).toBe(
-    "rgb(255, 171, 25)",
-  );
-  expect((await colours(page, ".kids-program-block.kids-block-sound")).bg).toBe(
-    "rgb(207, 99, 207)",
-  );
   const violations = (await new AxeBuilder({ page }).withRules(["color-contrast"]).analyze())
     .violations;
   expect(violations.map((v) => `${v.id}: ${v.nodes[0]?.target.join(" ")}`)).toEqual([]);

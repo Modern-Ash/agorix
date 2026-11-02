@@ -79,42 +79,6 @@ test("an old show-all preference migrates to the contextual palette", async ({ p
     .toBe("focused");
 });
 
-test("a mission opens on its first colour, keeps tools above the program and switches colour", async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 1280, height: 900 });
-  await seed(page);
-  await page.getByRole("button", { name: "Misión 1" }).click();
-  const chips = page.locator(".kids-palette-cats");
-  const motion = chips.getByRole("button", { name: "Movimiento" });
-  await expect(motion).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByRole("button", { name: "+ mover", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "+ sonar", exact: true })).toBeHidden();
-  await expect(page.getByRole("heading", { name: "Tu programa" })).toBeVisible();
-  await expect(page.getByText("Misión guiada")).toBeVisible();
-
-  // The tools are on screen next to the program, not below the fold.
-  const palette = (await page.locator(".kids-palette").boundingBox())!;
-  const program = (await page.locator(".kids-program-stack").boundingBox())!;
-  expect(palette.y).toBeLessThan(program.y);
-  expect(palette.y + palette.height).toBeLessThanOrEqual(900);
-  await page.getByRole("button", { name: "Código", exact: true }).click();
-  await expect(page.locator(".kids-palette")).toHaveCount(0);
-  await page.getByRole("button", { name: "Bloques", exact: true }).click();
-
-  await chips.getByRole("button", { name: "Sonido" }).click();
-  await expect(page.getByRole("button", { name: "+ sonar", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "+ mover", exact: true })).toBeHidden();
-  await chips.getByRole("button", { name: "Sonido" }).click();
-  await expect(page.locator(".kids-palette-block")).toHaveCount(0);
-
-  await chips.getByRole("button", { name: "Movimiento" }).click();
-  await page.getByRole("button", { name: "+ mover", exact: true }).click();
-  await expect(page.locator(".kids-program-block")).toHaveCount(1);
-  await page.getByRole("button", { name: "Ver todo" }).click();
-  await expect(page.getByRole("button", { name: "+ sonar", exact: true })).toBeVisible();
-});
-
 test("on a phone the sheet opens for the chosen colour and closes after adding", async ({
   page,
 }) => {

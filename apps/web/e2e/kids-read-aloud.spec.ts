@@ -150,9 +150,17 @@ test("advanced stages read only their visible mission instruction or result", as
   await stubSpeech(page);
   await start(page, true);
   await page.evaluate(() => {
+    localStorage.setItem(
+      "agorix.kids.missionScenes.v1",
+      JSON.stringify({
+        "kids.space.kids.m1.straight": "studio-1",
+        "kids.space.kids.m2.corner": "studio-2",
+        "kids.space.kids.m3.zigzag": "studio-3",
+      }),
+    );
     for (const id of ["kids.m1.straight", "kids.m2.corner", "kids.m3.zigzag"]) {
       localStorage.setItem(
-        `agorix:kids.space.${id}`,
+        `agorix:studio-${["kids.m1.straight", "kids.m2.corner", "kids.m3.zigzag"].indexOf(id) + 1}`,
         JSON.stringify({
           schemaVersion: "agorix/program/v1",
           program: { schema: "agorix/program/v1", scripts: [] },

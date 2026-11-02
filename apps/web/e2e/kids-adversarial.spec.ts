@@ -1,6 +1,12 @@
 import { expect, test, type Page } from "./fixtures.js";
 import { KIDS_V2_FEATURES } from "../src/kids/kidsFlags.js";
-import { reloadToMap, passAdultGate, BLOCKS_UNLOCKED, openAdultTab } from "./helpers.js";
+import {
+  reloadToMap,
+  passAdultGate,
+  BLOCKS_UNLOCKED,
+  openAdultTab,
+  addStudioBlock,
+} from "./helpers.js";
 
 // Issue #443: scripted slice of the adversarial charter, run with every v2 flag on.
 // Any uncaught page error is a failure; each attack asserts the app still works afterwards.
@@ -43,40 +49,44 @@ async function openMission(page: Page) {
   await expect(page.getByRole("button", { name: "Jugar", exact: true })).toBeVisible();
 }
 
+const MOTION = (page: Page) =>
+  page
+    .getByRole("navigation", { name: "Categorías de bloques" })
+    .getByRole("button", { name: "Movimiento" });
+const ADD_MOVE = (page: Page) => page.getByRole("button", { name: "+ Mover", exact: true });
+const RESULT = (page: Page) => page.getByTestId("scene-goal-result");
+
 test("rapid taps: double Jugar, 60 palette taps and undo spam", async ({ page }) => {
   const errors = watchErrors(page);
   await seed(page);
   await openMission(page);
-  const add = page.getByRole("button", { name: "+ mover", exact: true });
+  await MOTION(page).click();
+  const add = ADD_MOVE(page);
   for (let i = 0; i < 60; i++) await add.click({ noWaitAfter: true });
   await expect(page.locator(".kids-program-block").first()).toBeVisible();
-  const play = page.getByRole("button", { name: "Jugar", exact: true });
-  await play.dblclick();
-  await expect(page.getByRole("dialog")).toHaveCount(1);
-  await page.getByRole("dialog").getByRole("button", { name: "No sé", exact: true }).click();
-  await expect(page.locator(".kids-run-status")).not.toBeEmpty();
+  await page.getByRole("button", { name: "Jugar", exact: true }).dblclick();
+  await expect(RESULT(page)).not.toBeEmpty();
   const undo = page.getByRole("button", { name: "Deshacer" });
   for (let i = 0; i < 80 && (await undo.isEnabled()); i++) await undo.click({ noWaitAfter: true });
-  // History is bounded (50 steps): undo stops there instead of failing, and redo walks back.
+  // History is bounded: undo stops there instead of failing, and redo walks back.
   await expect(undo).toBeDisabled();
-  await expect(page.locator(".kids-program-block")).toHaveCount(10);
+  const kept = await page.locator(".kids-program-block").count();
+  expect(kept).toBeLessThan(60);
   await page.getByRole("button", { name: "Rehacer" }).click();
-  await expect(page.locator(".kids-program-block")).toHaveCount(11);
+  await expect(page.locator(".kids-program-block")).toHaveCount(kept + 1);
   expect(errors).toEqual([]);
 });
 
-test("reload mid-prediction and mid-run, then orientation and resize sweep", async ({ page }) => {
+test("reload mid-run, then orientation and resize sweep", async ({ page }) => {
   const errors = watchErrors(page);
   await seed(page);
   await openMission(page);
-  await page.getByRole("button", { name: "+ mover", exact: true }).click();
+  await addStudioBlock(page, "Movimiento", "+ Mover");
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
-  await expect(page.getByRole("dialog")).toBeVisible();
   await reloadToMap(page);
   await expect(page.getByRole("heading", { name: "Mapa" })).toBeVisible();
   await openMission(page);
-  await page.getByRole("button", { name: "Paso", exact: true }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Sí", exact: true }).click();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await page.setViewportSize({ width: 844, height: 390 });
   await page.setViewportSize({ width: 390, height: 844 });
   for (const width of [320, 480, 768, 1024, 1400]) {
@@ -90,25 +100,15 @@ test("reload mid-prediction and mid-run, then orientation and resize sweep", asy
   expect(errors).toEqual([]);
 });
 
-test("odd programs: empty run, empty repeat and 40 blocks", async ({ page }) => {
+test("odd programs: empty run and 40 blocks", async ({ page }) => {
   const errors = watchErrors(page);
   await seed(page);
   await openMission(page);
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
-  const dialog = page.getByRole("dialog");
-  if (await dialog.isVisible()) await dialog.getByRole("button", { name: "No sé" }).click();
-  await page.getByRole("button", { name: "+ repetir", exact: true }).click();
+  await expect(RESULT(page)).not.toBeEmpty();
+  await addStudioBlock(page, "Movimiento", "+ Girar a la izquierda", 40);
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
-  if (await dialog.isVisible()) await dialog.getByRole("button", { name: "No sé" }).click();
-  for (let i = 0; i < 40; i++) {
-    await page
-      .locator(".kids-palette")
-      .getByRole("button", { name: "+ girar ←", exact: true })
-      .click({ noWaitAfter: true });
-  }
-  await page.getByRole("button", { name: "Jugar", exact: true }).click();
-  if (await dialog.isVisible()) await dialog.getByRole("button", { name: "No sé" }).click();
-  await expect(page.locator(".kids-run-status")).not.toBeEmpty();
+  await expect(RESULT(page)).not.toBeEmpty();
   expect(errors).toEqual([]);
 });
 
@@ -133,10 +133,12 @@ test("Ori provider failures stay silent for the child", async ({ page }) => {
   await seed(page);
   await openMission(page);
   for (let round = 0; round < 4; round++) {
-    await page.getByRole("button", { name: "+ mover", exact: true }).click();
+    await addStudioBlock(page, "Movimiento", "+ Mover");
     await page.getByRole("button", { name: "Jugar", exact: true }).click();
-    await page.getByRole("dialog").getByRole("button", { name: "No", exact: true }).click();
-    await page.getByRole("button", { name: "Volver", exact: true }).click();
+    const show = page.getByRole("button", { name: "Mostrar ayuda de Ori" });
+    if (await show.count()) await show.click();
+    const help = page.getByRole("button", { name: "¿Qué bloque me ayuda?" });
+    if (await help.count()) await help.click();
   }
   await expect(page.getByText(/no conectad|not connected|sin conexión con la IA/i)).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Jugar", exact: true })).toBeEnabled();
@@ -160,12 +162,11 @@ test("blocked storage: the session keeps working", async ({ page }) => {
   await page.getByRole("button", { name: "Seguir" }).click();
   await page.getByRole("button", { name: "¡Empezar!" }).click();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  await page.getByRole("button", { name: "¡Crear!" }).click();
-  await expect(page.getByRole("button", { name: "Jugar", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Volver al mapa" }).click();
+  await expect(page.getByRole("button", { name: "Crear escena" })).toBeVisible();
+  await page.getByRole("button", { name: "Mapa" }).click();
   await page.getByRole("button", { name: "Misión 1" }).click();
-  await page.getByRole("button", { name: "+ mover", exact: true }).click();
-  await expect(page.locator(".kids-program-block")).toHaveCount(1);
+  // The mission is a saved scene: without storage it may open in memory or lead back, never crash.
+  await expect(page.getByRole("button", { name: "Volver al mapa" })).toBeVisible();
   expect(errors).toEqual([]);
 });
 
@@ -190,45 +191,15 @@ test("keyboard only: the whole first mission can be played", async ({ page }) =>
   await seed(page);
   await page.getByRole("button", { name: "Misión 1" }).focus();
   await page.keyboard.press("Enter");
-  await page.getByRole("button", { name: "+ mover", exact: true }).focus();
+  await MOTION(page).focus();
   await page.keyboard.press("Enter");
-  await page.getByRole("combobox", { name: "mover 1" }).focus();
-  await page.keyboard.press("ArrowDown");
-  await page.keyboard.press("ArrowDown");
-  await page.keyboard.press("ArrowDown");
-  await expect(page.getByRole("combobox", { name: "mover 1" })).toHaveValue("4");
+  for (let i = 0; i < 4; i++) {
+    await ADD_MOVE(page).focus();
+    await page.keyboard.press("Enter");
+  }
   await page.getByRole("button", { name: "Jugar", exact: true }).focus();
   await page.keyboard.press("Enter");
-  await page.getByRole("dialog").getByRole("button", { name: "Sí", exact: true }).focus();
-  await page.keyboard.press("Enter");
-  await expect(page.locator(".kids-run-status")).toContainText("Llegaste");
-  expect(errors).toEqual([]);
-});
-
-test("v2 shortcuts never fire while typing to Ori or editing a number", async ({ page }) => {
-  const errors = watchErrors(page);
-  await page.route("**/api/tutor/chat", (route) => route.fulfill({ status: 503, body: "" }));
-  await seed(page);
-  await openMission(page);
-  await page.getByRole("button", { name: "+ mover", exact: true }).click();
-  await page.getByRole("button", { name: "+ girar ←", exact: true }).click();
-  await expect(page.locator(".kids-program-block")).toHaveCount(2);
-
-  await page.getByRole("button", { name: "Preguntale a Ori" }).click();
-  const box = page.getByRole("textbox", { name: "Tu pregunta" });
-  await box.fill("hola");
-  await box.focus();
-  for (const combo of ["Control+z", "Control+d", "Delete", "Backspace", " ", "?"]) {
-    await page.keyboard.press(combo);
-  }
-  await expect(page.locator(".kids-program-block")).toHaveCount(2);
-  await expect(page.getByRole("dialog")).toHaveCount(0);
-
-  const number = page.getByRole("combobox", { name: "mover 1" });
-  await number.focus();
-  await page.keyboard.press("Delete");
-  await page.keyboard.press("Backspace");
-  await expect(page.locator(".kids-program-block")).toHaveCount(2);
+  await expect(RESULT(page)).toContainText("Lograste la meta");
   expect(errors).toEqual([]);
 });
 

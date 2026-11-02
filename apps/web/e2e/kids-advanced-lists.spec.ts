@@ -13,9 +13,17 @@ async function enterScore(page: Page) {
       "agorix.kids.progress.v1",
       JSON.stringify({ onboarded: true, avatar: "🦊", stars: 3, done: {} }),
     );
+    localStorage.setItem(
+      "agorix.kids.missionScenes.v1",
+      JSON.stringify({
+        "kids.space.kids.m1.straight": "studio-1",
+        "kids.space.kids.m2.corner": "studio-2",
+        "kids.space.kids.m3.zigzag": "studio-3",
+      }),
+    );
     for (const id of ["kids.m1.straight", "kids.m2.corner", "kids.m3.zigzag"]) {
       localStorage.setItem(
-        `agorix:kids.space.${id}`,
+        `agorix:studio-${["kids.m1.straight", "kids.m2.corner", "kids.m3.zigzag"].indexOf(id) + 1}`,
         JSON.stringify({
           schemaVersion: "agorix/program/v1",
           program: { schema: "agorix/program/v1", scripts: [] },

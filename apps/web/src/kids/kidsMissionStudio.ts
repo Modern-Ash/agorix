@@ -137,7 +137,12 @@ export function ensureMissionStudio(
   const character = CHARACTER[avatar];
   const actorId = `actor:studio-1-${character}`;
 
-  const scene = createStudioProject(character, BACKDROP[world], locale, store, storage);
+  let scene: ReturnType<typeof createStudioProject>;
+  try {
+    scene = createStudioProject(character, BACKDROP[world], locale, store, storage);
+  } catch {
+    return null;
+  }
   try {
     const saved = store.load(scene.id);
     store.save(scene.id, saved.program, {
