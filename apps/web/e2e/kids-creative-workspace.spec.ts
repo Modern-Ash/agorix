@@ -17,7 +17,9 @@ test("a new phone scene starts with its script and Play before stage details", a
   await page.getByRole("button", { name: "Crear", exact: true }).click();
   await page.getByRole("button", { name: "Crear escena", exact: true }).click();
 
-  const canvas = page.locator(".kids-studio-program-column > .kids-program-stack");
+  const canvas = page.locator(
+    ".kids-studio-program-column .kids-program-zone > .kids-program-stack",
+  );
   const stage = page.getByRole("group", { name: "Escenario" });
   const play = page.getByRole("button", { name: "Jugar", exact: true });
   const [canvasBox, stageBox, playBox] = await Promise.all(

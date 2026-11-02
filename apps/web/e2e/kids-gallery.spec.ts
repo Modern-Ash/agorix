@@ -38,10 +38,9 @@ test("a new child can browse included art, create a project and reopen it", asyn
     "aria-pressed",
     "true",
   );
-  await page.getByRole("button", { name: /^3 ·/ }).click();
 
-  await expect(page.getByLabel("Tu elección")).toContainText("Personaje: Nova");
-  await expect(page.getByLabel("Tu elección")).toContainText("Fondo: Bosque");
+  await expect(page.getByRole("group", { name: "Tu elección" })).toContainText("Nova");
+  await expect(page.getByRole("group", { name: "Tu elección" })).toContainText("Bosque");
 
   const violations = (
     await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()

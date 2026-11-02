@@ -54,8 +54,8 @@ export function CreateScreen({ t, locale, avatar, world, readAloud = true, onStu
   useEffect(() => {
     saveCreateSelection({ avatar: chosenAvatar, world: chosenWorld, scene: sceneCharacter });
   }, [chosenAvatar, chosenWorld, sceneCharacter]);
-  // Phone: Crear is a three-step flow (character, backdrop, create); wide screens show it all (#1111).
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  // Phone: character and backdrop are two tabs; wide screens show both. The scene opens any time.
+  const [step, setStep] = useState<1 | 2>(1);
   const [characterCategory, setCharacterCategory] = useState<KidsGalleryCategory>("all");
   const [backdropCategory, setBackdropCategory] = useState<KidsGalleryCategory>("all");
   const [characterSearch, setCharacterSearch] = useState("");
@@ -118,38 +118,16 @@ export function CreateScreen({ t, locale, avatar, world, readAloud = true, onStu
       aria-labelledby="kids-create-title"
       data-step={step}
     >
-      <h1 id="kids-create-title">{t("create")}</h1>
-      <ListenButton t={t} locale={locale} enabled={readAloud} text={t("createNote")} />
+      <header className="kids-create-head">
+        <h1 id="kids-create-title">{t("create")}</h1>
+        <ListenButton t={t} locale={locale} enabled={readAloud} text={t("createNote")} />
+      </header>
       <p className="kids-note">{t("createNote")}</p>
-      <div className="kids-studio-entry">
-        <div>
-          <h2>{locale === "es" ? "Escena libre" : "Free scene"}</h2>
-          <p>
-            {locale === "es"
-              ? "Creá con varios personajes y todos los bloques. Cada personaje puede tener su propio programa."
-              : "Create with several characters and every block. Each can have its own program."}
-          </p>
-        </div>
-        <button type="button" className="kids-button kids-primary" onClick={finishScene}>
-          {locale === "es" ? "Crear escena" : "Create scene"}
-        </button>
-        <p className="kids-note kids-create-ready" data-testid="studio-ready">
-          {locale === "es" ? "¡Todo listo!" : "All set!"}{" "}
-          {galleryCharacterName(selectedScene.characterId, locale)} {locale === "es" ? "en" : "in"}{" "}
-          {galleryBackdropName(selectedScene.backdropId, locale)} ·{" "}
-          {locale === "es" ? "Listo para programar" : "Ready to program"}
-        </p>
-        <p className="kids-note" data-testid="studio-start-note">
-          {locale === "es"
-            ? `La escena empieza con ${galleryCharacterName(selectedScene.characterId, locale)}.`
-            : `The scene starts with ${galleryCharacterName(selectedScene.characterId, locale)}.`}
-        </p>
-      </div>
       <nav
         className="kids-create-steps"
         aria-label={locale === "es" ? "Pasos para crear" : "Steps to create"}
       >
-        {([1, 2, 3] as const).map((number) => (
+        {([1, 2] as const).map((number) => (
           <button
             key={number}
             type="button"
@@ -162,47 +140,40 @@ export function CreateScreen({ t, locale, avatar, world, readAloud = true, onStu
               ? locale === "es"
                 ? "Personaje"
                 : "Character"
-              : number === 2
-                ? locale === "es"
-                  ? "Fondo"
-                  : "Backdrop"
-                : locale === "es"
-                  ? "¡Crear!"
-                  : "Create!"}
+              : locale === "es"
+                ? "Fondo"
+                : "Backdrop"}
           </button>
         ))}
       </nav>
       <div
         className="kids-create-next"
-        aria-label={locale === "es" ? "Continuar creación" : "Continue creating"}
+        role="group"
+        aria-label={locale === "es" ? "Tu elección" : "Your selection"}
       >
-        <span className="kids-create-next-selection" aria-live="polite">
-          {galleryCharacterName(selectedScene.characterId, locale)} ·{" "}
-          {galleryBackdropName(selectedScene.backdropId, locale)}
-        </span>
+        <div className="kids-create-pick">
+          <KidsSprite slot={{ kind: "gallery", id: selectedScene.characterId }} />
+          <span>
+            <small>{locale === "es" ? "Personaje" : "Character"}</small>
+            {galleryCharacterName(selectedScene.characterId, locale)}
+          </span>
+        </div>
+        <div className="kids-create-pick">
+          <KidsBackdrop
+            world={{ kind: "gallery", id: selectedScene.backdropId }}
+            className="kids-create-selection-backdrop"
+          />
+          <span>
+            <small>{locale === "es" ? "Fondo" : "Backdrop"}</small>
+            {galleryBackdropName(selectedScene.backdropId, locale)}
+          </span>
+        </div>
         <button
           type="button"
-          className="kids-button kids-primary kids-create-advance"
-          onClick={() => (step < 3 ? setStep(step === 1 ? 2 : 3) : finishScene())}
-        >
-          {step === 1
-            ? locale === "es"
-              ? "Continuar: elegir fondo"
-              : "Continue: choose backdrop"
-            : step === 2
-              ? locale === "es"
-                ? "Continuar: revisar escena"
-                : "Continue: review scene"
-              : locale === "es"
-                ? "Finalizar y abrir escena"
-                : "Finish and open scene"}
-        </button>
-        <button
-          type="button"
-          className="kids-button kids-primary kids-create-finish"
+          className="kids-button kids-primary kids-create-go"
           onClick={finishScene}
         >
-          {locale === "es" ? "Finalizar y abrir escena" : "Finish and open scene"}
+          {locale === "es" ? "Crear escena" : "Create scene"}
         </button>
       </div>
       <div className="kids-create-step" data-create-step="1">
@@ -254,26 +225,32 @@ export function CreateScreen({ t, locale, avatar, world, readAloud = true, onStu
             </button>
           ))}
         </div>
-        {customEnabled ? (
-          <label className="kids-button kids-image-file kids-create-upload">
-            {locale === "es" ? "Subir mi propio personaje" : "Upload my own character"}
-            <input
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              aria-label={locale === "es" ? "Subir mi propio personaje" : "Upload my own character"}
-              onChange={(event) => void uploadSceneImage("costume", event)}
-            />
-          </label>
-        ) : null}
-        {customEnabled ? (
-          <button
-            type="button"
-            className="kids-button kids-create-upload"
-            onClick={() => onStudio(selectedScene.characterId, selectedScene.backdropId, "costume")}
-          >
-            {locale === "es" ? "Dibujar mi propio personaje" : "Draw my own character"}
-          </button>
-        ) : null}
+        <div className="kids-create-media">
+          {customEnabled ? (
+            <label className="kids-button kids-image-file kids-create-upload">
+              {locale === "es" ? "Subir mi propio personaje" : "Upload my own character"}
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                aria-label={
+                  locale === "es" ? "Subir mi propio personaje" : "Upload my own character"
+                }
+                onChange={(event) => void uploadSceneImage("costume", event)}
+              />
+            </label>
+          ) : null}
+          {customEnabled ? (
+            <button
+              type="button"
+              className="kids-button kids-create-upload"
+              onClick={() =>
+                onStudio(selectedScene.characterId, selectedScene.backdropId, "costume")
+              }
+            >
+              {locale === "es" ? "Dibujar mi propio personaje" : "Draw my own character"}
+            </button>
+          ) : null}
+        </div>
       </div>
       <div className="kids-create-step" data-create-step="2">
         <div className="kids-gallery-head">
@@ -324,56 +301,36 @@ export function CreateScreen({ t, locale, avatar, world, readAloud = true, onStu
             </button>
           ))}
         </div>
-        {customEnabled ? (
-          <label className="kids-button kids-image-file kids-create-upload">
-            {locale === "es" ? "Subir mi propio fondo" : "Upload my own backdrop"}
-            <input
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              aria-label={locale === "es" ? "Subir mi propio fondo" : "Upload my own backdrop"}
-              onChange={(event) => void uploadSceneImage("backdrop", event)}
-            />
-          </label>
-        ) : null}
-        {customEnabled ? (
-          <button
-            type="button"
-            className="kids-button kids-create-upload"
-            onClick={() =>
-              onStudio(selectedScene.characterId, selectedScene.backdropId, "backdrop")
-            }
-          >
-            {locale === "es" ? "Dibujar mi propio fondo" : "Draw my own backdrop"}
-          </button>
-        ) : null}
+        <div className="kids-create-media">
+          {customEnabled ? (
+            <label className="kids-button kids-image-file kids-create-upload">
+              {locale === "es" ? "Subir mi propio fondo" : "Upload my own backdrop"}
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                aria-label={locale === "es" ? "Subir mi propio fondo" : "Upload my own backdrop"}
+                onChange={(event) => void uploadSceneImage("backdrop", event)}
+              />
+            </label>
+          ) : null}
+          {customEnabled ? (
+            <button
+              type="button"
+              className="kids-button kids-create-upload"
+              onClick={() =>
+                onStudio(selectedScene.characterId, selectedScene.backdropId, "backdrop")
+              }
+            >
+              {locale === "es" ? "Dibujar mi propio fondo" : "Draw my own backdrop"}
+            </button>
+          ) : null}
+        </div>
       </div>
-      <div className="kids-create-step" data-create-step="3">
+      <div className="kids-create-notes">
         {customEnabled ? <p className="kids-note">{t("imagesStay")}</p> : null}
         <p role="status" className="kids-note">
           {imageMessage}
         </p>
-        <div
-          className="kids-create-selection"
-          aria-label={locale === "es" ? "Tu elección" : "Your selection"}
-        >
-          <div>
-            <KidsSprite slot={{ kind: "gallery", id: selectedScene.characterId }} />
-            <span>
-              {locale === "es" ? "Personaje" : "Character"}:{" "}
-              {galleryCharacterName(selectedScene.characterId, locale)}
-            </span>
-          </div>
-          <div>
-            <KidsBackdrop
-              world={{ kind: "gallery", id: selectedScene.backdropId }}
-              className="kids-create-selection-backdrop"
-            />
-            <span>
-              {locale === "es" ? "Fondo" : "Backdrop"}:{" "}
-              {galleryBackdropName(selectedScene.backdropId, locale)}
-            </span>
-          </div>
-        </div>
       </div>
     </section>
   );

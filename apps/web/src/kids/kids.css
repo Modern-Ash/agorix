@@ -3265,21 +3265,6 @@
   color: var(--kids-text);
   max-width: min(92vw, 520px);
 }
-.kids-studio-entry {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1.25rem;
-  border: 2px solid var(--kids-ink, #38304e);
-  border-radius: 1.25rem;
-  background: #f5edff;
-}
-
-.kids-studio-entry h2,
-.kids-studio-entry p {
-  margin: 0 0 0.4rem;
-}
 .kids-studio-header,
 .kids-studio-header > div,
 .kids-run-controls,
@@ -3293,8 +3278,38 @@
   flex-wrap: wrap;
   gap: 0.6rem;
 }
+/* One slim menu bar, like Scratch's: back, the title, then icon tools that keep their names. */
 .kids-studio-header {
   justify-content: space-between;
+  flex-wrap: nowrap;
+  gap: 8px;
+  padding-block: 4px;
+}
+.kids-studio-header h1 {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: 1.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kids-studio-header .kids-studio-back {
+  flex: none;
+  white-space: nowrap;
+}
+.kids-studio-header > .kids-studio-menu {
+  flex: none;
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+.kids-icon-button {
+  width: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  font-size: 1.2rem;
+  line-height: 1;
 }
 .kids-studio-placement {
   margin-block: 0.75rem;
@@ -3594,9 +3609,13 @@
   .kids-studio > * {
     grid-column: 1 / -1;
   }
+  .kids-studio > .kids-studio-tabs {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
   .kids-studio > .kids-studio-categories {
     grid-column: 1;
-    grid-row: 3;
+    grid-row: 4;
     position: sticky;
     top: 8px;
     align-self: start;
@@ -3609,7 +3628,7 @@
   }
   .kids-studio > .kids-studio-layout {
     grid-column: 2;
-    grid-row: 3;
+    grid-row: 4;
   }
   .kids-studio-category {
     display: flex;
@@ -3714,13 +3733,27 @@
     box-shadow: 0 6px 18px rgb(0 0 0 / 22%);
   }
   .kids-studio-header {
-    flex-wrap: wrap;
-    gap: 8px;
+    flex-wrap: nowrap;
+    gap: 6px;
   }
   .kids-studio-header > div {
     display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
+  /* On a phone the back button is an arrow; its name stays for screen readers. */
+  .kids-studio-back-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .kids-studio-header .kids-studio-back {
+    width: 44px;
+    min-width: 44px;
+    padding: 0;
   }
   .kids-studio h1 {
     font-size: 1.5rem;
@@ -3751,10 +3784,6 @@
 @media (max-width: 720px) {
   .kids-studio-layout {
     grid-template-columns: 1fr;
-  }
-  .kids-studio-entry {
-    align-items: flex-start;
-    flex-direction: column;
   }
 }
 
@@ -4043,7 +4072,21 @@
   justify-self: start;
 }
 
-/* Crear keeps the next action beside the selection while the gallery scrolls. */
+/* Crear: one bar keeps the choice and the single action in view while the gallery scrolls. */
+.kids-create-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.kids-create-head h1 {
+  margin: 0;
+}
+.kids-create-head .kids-listen {
+  width: auto;
+  min-height: 44px;
+  padding-inline: 14px;
+}
 .kids-create-steps {
   display: none;
 }
@@ -4053,9 +4096,8 @@
   z-index: 8;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 12px 16px;
   margin: 12px 0;
   padding: 10px 12px;
   border: 1px solid var(--kids-border);
@@ -4063,28 +4105,60 @@
   background: var(--kids-panel);
   box-shadow: 0 5px 18px rgb(0 0 0 / 12%);
 }
-.kids-create-next-selection {
+.kids-create-pick {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   min-width: 0;
   font-weight: 700;
 }
-.kids-create-advance {
-  display: none;
+.kids-create-pick > span {
+  display: grid;
+  line-height: 1.2;
+}
+.kids-create-pick small {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--kids-muted, #5b5870);
+}
+.kids-create-pick .kids-art-image,
+.kids-create-pick .kids-art-emoji,
+.kids-create-pick .kids-create-selection-backdrop {
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: none;
+  border-radius: 0.6rem;
+  overflow: hidden;
+}
+.kids-create-go {
+  margin-inline-start: auto;
+  min-height: 48px;
+  padding-inline: 22px;
 }
 .kids-create-step {
   display: grid;
   gap: 16px;
   min-width: 0;
 }
+.kids-create-media {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 10px;
+}
+.kids-create-notes {
+  display: grid;
+  gap: 8px;
+}
 @media (max-width: 720px) {
   .kids-create-steps {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;
   }
   .kids-create-steps .kids-button {
     min-height: 44px;
     padding-inline: 6px;
-    font-size: 0.85rem;
+    font-size: 0.9rem;
   }
   .kids-create-steps .kids-button[aria-current="step"] {
     border-color: #5d418e;
@@ -4094,23 +4168,15 @@
     top: 0;
     margin-block: 8px;
   }
-  .kids-create-next-selection {
+  .kids-create-pick {
+    flex: 1 1 40%;
+  }
+  .kids-create-go {
     flex: 1 1 100%;
-  }
-  .kids-create-advance {
-    display: inline-flex;
-    width: 100%;
-    justify-content: center;
-  }
-  .kids-create-finish {
-    display: none;
+    margin-inline-start: 0;
   }
   .kids-create[data-step="1"] [data-create-step="2"],
-  .kids-create[data-step="1"] [data-create-step="3"],
-  .kids-create[data-step="2"] [data-create-step="1"],
-  .kids-create[data-step="2"] [data-create-step="3"],
-  .kids-create[data-step="3"] [data-create-step="1"],
-  .kids-create[data-step="3"] [data-create-step="2"] {
+  .kids-create[data-step="2"] [data-create-step="1"] {
     display: none;
   }
 }
@@ -4739,7 +4805,7 @@
   font-size: 0.82rem;
   font-weight: 600;
 }
-.kids-studio-program-column > .kids-program-stack {
+.kids-studio-program-column .kids-program-zone > .kids-program-stack {
   min-height: 430px;
   background-color: #fff;
   background-image: radial-gradient(#dce5f1 1px, transparent 1px);
@@ -4799,6 +4865,7 @@
     max-height: calc(100dvh - 16px);
     overflow-y: auto;
     overscroll-behavior: contain;
+    scroll-padding-top: 76px;
   }
   .kids-studio-stage-heading {
     position: sticky;
@@ -4812,7 +4879,7 @@
   max-height: none;
 }
 @media (min-width: 900px) {
-  .kids-studio-program-column > .kids-program-stack {
+  .kids-studio-program-column .kids-program-zone > .kids-program-stack {
     min-height: max(500px, calc(100dvh - 280px));
   }
 }
@@ -4847,7 +4914,7 @@
     flex-wrap: wrap;
     gap: 6px;
   }
-  .kids-studio-program-column > .kids-program-stack {
+  .kids-studio-program-column .kids-program-zone > .kids-program-stack {
     min-height: 340px;
   }
   .kids-studio-program-column .kids-program-drop {
@@ -4858,5 +4925,194 @@
   }
   .kids-studio-workspace-heading span {
     flex-basis: 100%;
+  }
+}
+
+/* In the studio the first-step hint is one slim line, not a banner. */
+.kids-studio .kids-tutorial {
+  margin: 0 0 6px;
+  padding: 4px 10px;
+  border-width: 1px;
+  border-radius: 10px;
+  gap: 6px;
+}
+.kids-studio .kids-tutorial p {
+  flex: 1 1 200px;
+  font-size: 0.95rem;
+}
+
+/* On a phone the studio is one column that may shrink: the slim header must not widen it. */
+@media (max-width: 720px) {
+  .kids-studio {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.kids-studio .kids-tutorial .kids-button {
+  min-height: 44px;
+  padding: 2px 12px;
+  font-size: 0.85rem;
+}
+
+/* Scratch-like editor tabs: Code, Costumes, Sounds sit above the colour rail. */
+.kids-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.kids-studio-tabs {
+  display: flex;
+  gap: 4px;
+  align-items: flex-end;
+  border-bottom: 2px solid var(--kids-border);
+}
+.kids-studio-tab {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 2px solid var(--kids-border);
+  border-bottom: 0;
+  border-radius: 12px 12px 0 0;
+  background: var(--kids-panel);
+  color: var(--kids-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.kids-studio-tab[aria-selected="true"] {
+  background: #efe8fb;
+  border-color: #5d418e;
+  box-shadow: 0 2px 0 #efe8fb;
+  margin-bottom: -2px;
+}
+.kids-studio[data-editor-tab="costumes"] .kids-studio-categories,
+.kids-studio[data-editor-tab="sounds"] .kids-studio-categories,
+.kids-studio[data-editor-tab="costumes"]
+  .kids-studio-program-column
+  > :not(.kids-studio-media-panel),
+.kids-studio[data-editor-tab="sounds"]
+  .kids-studio-program-column
+  > :not(.kids-studio-media-panel) {
+  display: none;
+}
+.kids-studio-media-panel {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--kids-border);
+  border-radius: 14px;
+  background: var(--kids-panel);
+}
+
+/* Stage toolbar like Scratch's: play, step and reset on the left, size on the right. */
+.kids-studio-stage-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.kids-studio-stage-heading .kids-run-controls {
+  flex-wrap: nowrap;
+}
+.kids-studio-stage-heading .kids-run-controls .kids-button {
+  min-height: 44px;
+  padding-inline: 14px;
+  white-space: nowrap;
+}
+.kids-studio-stage-zoom {
+  margin-inline-start: auto;
+}
+
+/* The sprite pane sits right under the stage tools, like Scratch's. */
+.kids-studio-stage-column > h2:has(+ .kids-studio-actors) {
+  margin: 8px 0 0;
+  font-size: 1rem;
+}
+.kids-studio-stage-column > .kids-studio-actors {
+  padding: 8px;
+  border: 1px solid var(--kids-border);
+  border-radius: 12px;
+  background: var(--kids-panel);
+}
+.kids-studio-stage-heading .kids-run-controls .kids-button {
+  flex: none;
+}
+.kids-studio-stage-heading .kids-run-controls .kids-primary {
+  min-width: 104px;
+}
+
+/* Scratch's stage bar: green flag and red stop on the left; stage size and full screen on the right. */
+.kids-flag-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #167a3c;
+  border-color: #0f5c2c;
+  color: #fff;
+}
+.kids-flag-button:hover:not(:disabled) {
+  background: #0f6531;
+}
+.kids-stop-button {
+  color: #c0334d;
+  border-color: #e3a3ae;
+  background: #fdecef;
+}
+.kids-stage-view {
+  display: flex;
+  gap: 4px;
+  margin-inline-start: auto;
+}
+.kids-stage-view .kids-icon-button[aria-pressed="true"] {
+  background: #efe8fb;
+  border-color: #5d418e;
+}
+
+/* Floating zoom tools in the program panel, as in Scratch's workspace. */
+.kids-program-zone {
+  position: relative;
+  display: grid;
+  gap: 8px;
+}
+.kids-zoom-tools {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 4;
+  display: grid;
+  gap: 8px;
+  pointer-events: none;
+}
+.kids-zoom-tools .kids-icon-button {
+  pointer-events: auto;
+  border-radius: 50%;
+  background: var(--kids-panel);
+  box-shadow: 0 3px 10px rgb(0 0 0 / 16%);
+}
+
+/* The Ori help toggle must stand out from the panel behind it. */
+.kids-studio-ori .kids-panel-toggle {
+  background: #5d418e;
+  color: #fff;
+  border: 2px solid #3f2a69;
+  box-shadow: 0 4px 14px rgb(63 42 105 / 38%);
+}
+.kids-studio-ori .kids-panel-toggle:hover {
+  background: #4b3376;
+}
+
+.kids-studio-tab {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+@media (max-width: 480px) {
+  .kids-studio-tabs {
+    gap: 2px;
+  }
+  .kids-studio-tab {
+    flex: 1 1 0;
+    padding-inline: 6px;
+    font-size: 0.85rem;
   }
 }
