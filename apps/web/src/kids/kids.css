@@ -3265,21 +3265,6 @@
   color: var(--kids-text);
   max-width: min(92vw, 520px);
 }
-.kids-studio-entry {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1.25rem;
-  border: 2px solid var(--kids-ink, #38304e);
-  border-radius: 1.25rem;
-  background: #f5edff;
-}
-
-.kids-studio-entry h2,
-.kids-studio-entry p {
-  margin: 0 0 0.4rem;
-}
 .kids-studio-header,
 .kids-studio-header > div,
 .kids-run-controls,
@@ -3293,8 +3278,38 @@
   flex-wrap: wrap;
   gap: 0.6rem;
 }
+/* One slim menu bar, like Scratch's: back, the title, then icon tools that keep their names. */
 .kids-studio-header {
   justify-content: space-between;
+  flex-wrap: nowrap;
+  gap: 8px;
+  padding-block: 4px;
+}
+.kids-studio-header h1 {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: 1.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kids-studio-header .kids-studio-back {
+  flex: none;
+  white-space: nowrap;
+}
+.kids-studio-header > .kids-studio-menu {
+  flex: none;
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+.kids-icon-button {
+  width: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  font-size: 1.2rem;
+  line-height: 1;
 }
 .kids-studio-placement {
   margin-block: 0.75rem;
@@ -3714,13 +3729,27 @@
     box-shadow: 0 6px 18px rgb(0 0 0 / 22%);
   }
   .kids-studio-header {
-    flex-wrap: wrap;
-    gap: 8px;
+    flex-wrap: nowrap;
+    gap: 6px;
   }
   .kids-studio-header > div {
     display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
+  /* On a phone the back button is an arrow; its name stays for screen readers. */
+  .kids-studio-back-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .kids-studio-header .kids-studio-back {
+    width: 44px;
+    min-width: 44px;
+    padding: 0;
   }
   .kids-studio h1 {
     font-size: 1.5rem;
@@ -3751,10 +3780,6 @@
 @media (max-width: 720px) {
   .kids-studio-layout {
     grid-template-columns: 1fr;
-  }
-  .kids-studio-entry {
-    align-items: flex-start;
-    flex-direction: column;
   }
 }
 
@@ -4043,7 +4068,21 @@
   justify-self: start;
 }
 
-/* Crear keeps the next action beside the selection while the gallery scrolls. */
+/* Crear: one bar keeps the choice and the single action in view while the gallery scrolls. */
+.kids-create-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.kids-create-head h1 {
+  margin: 0;
+}
+.kids-create-head .kids-listen {
+  width: auto;
+  min-height: 44px;
+  padding-inline: 14px;
+}
 .kids-create-steps {
   display: none;
 }
@@ -4053,9 +4092,8 @@
   z-index: 8;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 12px 16px;
   margin: 12px 0;
   padding: 10px 12px;
   border: 1px solid var(--kids-border);
@@ -4063,28 +4101,60 @@
   background: var(--kids-panel);
   box-shadow: 0 5px 18px rgb(0 0 0 / 12%);
 }
-.kids-create-next-selection {
+.kids-create-pick {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   min-width: 0;
   font-weight: 700;
 }
-.kids-create-advance {
-  display: none;
+.kids-create-pick > span {
+  display: grid;
+  line-height: 1.2;
+}
+.kids-create-pick small {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--kids-muted, #5b5870);
+}
+.kids-create-pick .kids-art-image,
+.kids-create-pick .kids-art-emoji,
+.kids-create-pick .kids-create-selection-backdrop {
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: none;
+  border-radius: 0.6rem;
+  overflow: hidden;
+}
+.kids-create-go {
+  margin-inline-start: auto;
+  min-height: 48px;
+  padding-inline: 22px;
 }
 .kids-create-step {
   display: grid;
   gap: 16px;
   min-width: 0;
 }
+.kids-create-media {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 10px;
+}
+.kids-create-notes {
+  display: grid;
+  gap: 8px;
+}
 @media (max-width: 720px) {
   .kids-create-steps {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;
   }
   .kids-create-steps .kids-button {
     min-height: 44px;
     padding-inline: 6px;
-    font-size: 0.85rem;
+    font-size: 0.9rem;
   }
   .kids-create-steps .kids-button[aria-current="step"] {
     border-color: #5d418e;
@@ -4094,23 +4164,15 @@
     top: 0;
     margin-block: 8px;
   }
-  .kids-create-next-selection {
+  .kids-create-pick {
+    flex: 1 1 40%;
+  }
+  .kids-create-go {
     flex: 1 1 100%;
-  }
-  .kids-create-advance {
-    display: inline-flex;
-    width: 100%;
-    justify-content: center;
-  }
-  .kids-create-finish {
-    display: none;
+    margin-inline-start: 0;
   }
   .kids-create[data-step="1"] [data-create-step="2"],
-  .kids-create[data-step="1"] [data-create-step="3"],
-  .kids-create[data-step="2"] [data-create-step="1"],
-  .kids-create[data-step="2"] [data-create-step="3"],
-  .kids-create[data-step="3"] [data-create-step="1"],
-  .kids-create[data-step="3"] [data-create-step="2"] {
+  .kids-create[data-step="2"] [data-create-step="1"] {
     display: none;
   }
 }
@@ -4859,4 +4921,29 @@
   .kids-studio-workspace-heading span {
     flex-basis: 100%;
   }
+}
+
+/* In the studio the first-step hint is one slim line, not a banner. */
+.kids-studio .kids-tutorial {
+  margin: 0 0 6px;
+  padding: 4px 10px;
+  border-width: 1px;
+  border-radius: 10px;
+  gap: 6px;
+}
+.kids-studio .kids-tutorial p {
+  flex: 1 1 200px;
+  font-size: 0.95rem;
+}
+
+/* On a phone the studio is one column that may shrink: the slim header must not widen it. */
+@media (max-width: 720px) {
+  .kids-studio {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.kids-studio .kids-tutorial .kids-button {
+  min-height: 44px;
+  padding: 2px 12px;
+  font-size: 0.85rem;
 }

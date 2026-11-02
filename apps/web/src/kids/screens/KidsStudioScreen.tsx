@@ -2819,48 +2819,69 @@ export function KidsStudioScreen({
       aria-label={missionDefinition?.title ?? copy.title}
     >
       <header className="kids-studio-header">
-        <button type="button" className="kids-button" onClick={onBack}>
-          {mission ? (locale === "es" ? "Volver al mapa" : "Back to map") : copy.back}
+        <button type="button" className="kids-button kids-studio-back" onClick={onBack}>
+          <span aria-hidden="true">←</span>{" "}
+          <span className="kids-studio-back-label">
+            {mission ? (locale === "es" ? "Volver al mapa" : "Back to map") : copy.back}
+          </span>
         </button>
         <h1>{missionDefinition?.title ?? copy.title}</h1>
-        <div>
+        <div className="kids-studio-menu">
+          <button
+            type="button"
+            className="kids-button kids-icon-button"
+            aria-label={copy.undo}
+            title={copy.undo}
+            disabled={!history.canUndo}
+            onClick={() => persist(undoCanonicalTransaction(history).history)}
+          >
+            <span aria-hidden="true">↶</span>
+          </button>
+          <button
+            type="button"
+            className="kids-button kids-icon-button"
+            aria-label={copy.redo}
+            title={copy.redo}
+            disabled={!history.canRedo}
+            onClick={() => persist(redoCanonicalTransaction(history).history)}
+          >
+            <span aria-hidden="true">↷</span>
+          </button>
           {shortcutsFlag ? (
-            <button type="button" className="kids-button" onClick={() => setHelpOpen(true)}>
-              {copy.shortcutsOpen}
+            <button
+              type="button"
+              className="kids-button kids-icon-button"
+              aria-label={copy.shortcutsOpen}
+              title={copy.shortcutsOpen}
+              onClick={() => setHelpOpen(true)}
+            >
+              <span aria-hidden="true">⌨</span>
             </button>
           ) : null}
-          <button type="button" className="kids-button" onClick={() => downloadScene()}>
-            {copy.exportScene}
+          <button
+            type="button"
+            className="kids-button kids-icon-button"
+            aria-label={copy.exportScene}
+            title={copy.exportScene}
+            onClick={() => downloadScene()}
+          >
+            <span aria-hidden="true">⬇</span>
           </button>
           {tutorialFlag ? (
             <button
               type="button"
-              className="kids-button"
+              className="kids-button kids-icon-button"
+              aria-label={studioTutorialText("help", locale)}
+              title={studioTutorialText("help", locale)}
               onClick={() => {
                 setStudioTutorialDone(false);
                 setStepped(false);
                 setTutorialOpen(true);
               }}
             >
-              {studioTutorialText("help", locale)}
+              <span aria-hidden="true">?</span>
             </button>
           ) : null}
-          <button
-            type="button"
-            className="kids-button"
-            disabled={!history.canUndo}
-            onClick={() => persist(undoCanonicalTransaction(history).history)}
-          >
-            {copy.undo}
-          </button>
-          <button
-            type="button"
-            className="kids-button"
-            disabled={!history.canRedo}
-            onClick={() => persist(redoCanonicalTransaction(history).history)}
-          >
-            {copy.redo}
-          </button>
         </div>
       </header>
       {missionDefinition ? (

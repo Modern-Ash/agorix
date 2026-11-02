@@ -19,25 +19,25 @@ test("the scene character and backdrop stay chosen and start the same scene", as
   });
   await page.reload();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
-  const note = page.getByTestId("studio-start-note");
-  await expect(note).toHaveText("La escena empieza con Nova.");
+  const choice = page.getByRole("group", { name: "Tu elección" });
+  await expect(choice).toContainText("Nova");
   await expect(page.getByRole("button", { name: /Elegí tu personaje: 🐼|: 🐼$/ })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Nova", exact: true })).toHaveAttribute(
     "aria-pressed",
     "true",
   );
 
-  // On a phone Crear is three steps: character, backdrop, create (#1111).
+  // On a phone Crear is two tabs, character and backdrop; the scene opens from the bar at any time.
   const step = (n: number) =>
     page.getByRole("navigation", { name: "Pasos para crear" }).getByRole("button", {
       name: new RegExp(`^${n} ·`),
     });
   await page.getByRole("button", { name: "Cometa", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Continuar: elegir fondo" })).toBeVisible();
   await step(2).click();
   const backdrop = page.getByLabel("Fondos incluidos").getByRole("button", { name: "Arrecife" });
   await backdrop.click();
-  await expect(page.getByLabel("Continuar creación")).toContainText("Cometa · Arrecife");
+  await expect(choice).toContainText("Cometa");
+  await expect(choice).toContainText("Arrecife");
   await step(1).click();
   await expect(page.getByRole("button", { name: "Cometa", exact: true })).toHaveAttribute(
     "aria-pressed",
@@ -47,13 +47,6 @@ test("the scene character and backdrop stay chosen and start the same scene", as
     "aria-pressed",
     "false",
   );
-  await expect(note).toHaveText("La escena empieza con Cometa.");
-  await expect(page.getByTestId("studio-ready")).toHaveText(
-    "¡Todo listo! Cometa en Arrecife · Listo para programar",
-  );
-  await step(3).click();
-  await expect(page.getByLabel("Tu elección")).toContainText("Personaje: Cometa");
-  await expect(page.getByLabel("Tu elección")).toContainText("Fondo: Arrecife");
   const violations = (
     await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
   ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");
@@ -78,14 +71,13 @@ test("the scene character and backdrop stay chosen and start the same scene", as
     "true",
   );
 
-  await step(3).click();
-  await page.getByRole("button", { name: "Finalizar y abrir escena" }).click();
+  await page.getByRole("button", { name: "Crear escena" }).click();
   await expect(
     page.getByRole("group", { name: "Personajes" }).getByRole("button").first(),
   ).toContainText("Cometa");
 });
 
-test("on a phone Crear is three steps with a ready summary, no sideways scroll and touch targets", async ({
+test("on a phone Crear is two tabs with the choice and one action always in view, no sideways scroll and touch targets", async ({
   page,
 }) => {
   for (const width of [390, 320]) {
@@ -108,17 +100,16 @@ test("on a phone Crear is three steps with a ready summary, no sideways scroll a
     );
     await expect(page.getByLabel("Personajes incluidos")).toBeVisible();
     await expect(page.getByLabel("Fondos incluidos")).toBeHidden();
-    await expect(page.getByTestId("studio-ready")).toContainText("¡Todo listo! Nova en");
-    await page.getByRole("button", { name: "Continuar: elegir fondo" }).click();
+    await expect(page.getByRole("group", { name: "Tu elección" })).toContainText("Nova");
+    await expect(page.getByRole("button", { name: "Crear escena" })).toBeVisible();
+    await steps.getByRole("button", { name: /^2 ·/ }).click();
     await expect(steps.getByRole("button", { name: /^2 ·/ })).toHaveAttribute(
       "aria-current",
       "step",
     );
     await expect(page.getByLabel("Fondos incluidos")).toBeVisible();
     await expect(page.getByLabel("Personajes incluidos")).toBeHidden();
-    await page.getByRole("button", { name: "Continuar: revisar escena" }).click();
-    await expect(page.getByLabel("Tu elección")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Finalizar y abrir escena" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Crear escena" })).toBeVisible();
     for (const button of await steps.getByRole("button").all())
       expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
