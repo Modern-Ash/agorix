@@ -250,7 +250,11 @@ test("reviewed adult account build exposes account linking without group mode", 
   await passAdultGate(page);
   await openAdultTab(page, "Cuenta y privacidad");
   // The account panel draws only after its availability check answers over the network, which can
-  // take longer than the default 5 s on the first request through the tunnel.
+  // take longer than the default 5 s on the first request through the tunnel. One path at a time:
+  // the account card appears once its option is chosen.
+  await page
+    .getByRole("button", { name: "Entrar / Crear cuenta", exact: true })
+    .click({ timeout: 20_000 });
   await expect(page.getByRole("heading", { name: "Mi cuenta de adulto" })).toBeVisible({
     timeout: 20_000,
   });
