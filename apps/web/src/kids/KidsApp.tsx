@@ -98,6 +98,9 @@ export function KidsApp({
   useOriCursorTracking(state.screen);
   // The age-band notice can be put away for this visit; nothing is stored, so it returns next time.
   const [bandAskClosed, setBandAskClosed] = useState(false);
+  const [bandHelpOpen, setBandHelpOpen] = useState(false);
+  const bandLabel =
+    adultSettings.ageBand === "6-8" ? "6–8" : adultSettings.ageBand === "9-12" ? "9–12" : "13+";
 
   // Which grown-ups tab opens after the gate: a shortcut lands on the tab it is about (#1109).
   const [adultTab, setAdultTab] = useState<AdultTab>("summary");
@@ -263,13 +266,26 @@ export function KidsApp({
       ) : null}
       {ageBandsEnabled ? (
         <header className="kids-age-header">
-          <span className="kids-band-chip">
-            {adultSettings.ageBand === "6-8"
-              ? "6–8"
-              : adultSettings.ageBand === "9-12"
-                ? "9–12"
-                : "13+"}
-          </span>
+          <button
+            type="button"
+            className="kids-band-chip"
+            aria-expanded={bandHelpOpen}
+            aria-label={
+              state.locale === "es"
+                ? `Franja de edad ${bandLabel}. Tocá para saber qué es.`
+                : `Age band ${bandLabel}. Tap to learn what it is.`
+            }
+            onClick={() => setBandHelpOpen((open) => !open)}
+          >
+            {bandLabel}
+          </button>
+          {bandHelpOpen ? (
+            <p className="kids-band-help" role="status">
+              {state.locale === "es"
+                ? "Es la franja de edad que una persona adulta eligió en Adultos. Cambia los lenguajes y las ayudas que ves."
+                : "This is the age band a grown-up chose in Grown-ups. It changes the languages and help you see."}
+            </p>
+          ) : null}
         </header>
       ) : null}
       {adultLinkEnabled ? <VerifyLanding locale={state.locale} /> : null}

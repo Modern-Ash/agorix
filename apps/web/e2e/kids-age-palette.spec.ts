@@ -70,3 +70,27 @@ for (const [band, palette, label] of [
     expect(violations.map((v) => `${v.id}: ${v.nodes[0]?.target.join(" ")}`)).toEqual([]);
   });
 }
+
+test("the age chip explains itself when tapped (#1207)", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem("agorix.kids.flags.v1", JSON.stringify(["ageBands"]));
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  const chip = page.locator(".kids-band-chip");
+  await expect(chip).toBeVisible();
+  await expect(page.locator(".kids-band-help")).toHaveCount(0);
+  await chip.click();
+  await expect(page.locator(".kids-band-help")).toContainText(
+    "una persona adulta eligió en Adultos",
+  );
+  await chip.click();
+  await expect(page.locator(".kids-band-help")).toHaveCount(0);
+});
