@@ -282,7 +282,7 @@ export function KidsApp({
           {bandHelpOpen ? (
             <p className="kids-band-help" role="status">
               {state.locale === "es"
-                ? "Es la franja de edad que una persona adulta eligió en Adultos. Cambia los lenguajes y las ayudas que ves."
+                ? "Es la franja de edad que una persona adulta eligió en Adultos. Define los lenguajes y las ayudas que ves."
                 : "This is the age band a grown-up chose in Grown-ups. It changes the languages and help you see."}
             </p>
           ) : null}
