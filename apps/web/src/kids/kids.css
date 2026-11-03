@@ -6285,3 +6285,46 @@ body:has(.kids-create) {
 .kids-ori-context-note .kids-button {
   justify-self: start;
 }
+
+/* The age chip explains itself when tapped (#1207). */
+.kids-age-header {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+button.kids-band-chip {
+  min-height: 44px;
+  cursor: pointer;
+}
+.kids-band-help {
+  flex: 1 1 100%;
+  max-width: 46ch;
+  margin: 0 0 0 auto;
+  padding: 10px 12px;
+  border: 1px solid var(--kids-border);
+  border-radius: 12px;
+  background: var(--kids-panel);
+  font-size: 0.9rem;
+}
+/* The privacy and diagnostics disclosures read as buttons, not a speck of triangle (#1208). */
+.kids-adult-diagnosis summary,
+.kids-adult-privacy summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-size: 1.05rem;
+}
+.kids-adult-diagnosis summary::marker,
+.kids-adult-privacy summary::marker {
+  font-size: 1.4em;
+}
+/* The last row of explorers and backdrops is centred, not stranded on the left (#1208). */
+.kids-images-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.kids-images-list > .kids-image-row {
+  flex: 1 1 220px;
+  max-width: 360px;
+}
