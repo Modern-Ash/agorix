@@ -8,7 +8,9 @@ import {
   useTypewriter,
 } from "../kidsOriMotion.js";
 import { expressionForMotion } from "../kidsOriExpression.js";
-import { useOriContextText } from "../kidsOriCursor.js";
+import { getOriContext, useOriContextText } from "../kidsOriCursor.js";
+import type { OriContext } from "../kidsOriContext.js";
+import { OriContextNote } from "./OriContextNote.js";
 import { KidsSprite } from "./KidsArt.js";
 
 const GUIDANCE: Record<KidsScreen, { es: string; en: string }> = {
@@ -80,6 +82,8 @@ export function KidsOriGuide({
   const [open, setOpen] = useState(false);
   // The window grows out of the avatar and folds back into it; `closing` keeps it mounted meanwhile.
   const [closing, setClosing] = useState(false);
+  // What Ori was looking at when it was tapped; the learner can correct it before anything else.
+  const [seen, setSeen] = useState<OriContext | null>(null);
   const visible = useOriPageVisible();
   const context = useOriContextText(locale);
   const motion = open ? "listening" : screen === "reflect" ? "observing" : "idle";
@@ -116,7 +120,10 @@ export function KidsOriGuide({
         data-ori-paused={!visible}
         data-ori-context={context}
         aria-label={locale === "es" ? "Hablar con Ori" : "Talk with Ori"}
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setSeen(getOriContext());
+          setOpen(true);
+        }}
       >
         <KidsSprite slot="ori" expression={expressionForMotion(motion, undefined)} />
         <span>{motion === "idle" ? "Ori" : oriMotionStatus(motion, locale)}</span>
@@ -144,6 +151,13 @@ export function KidsOriGuide({
             <div className="kids-ori-stage">
               <KidsSprite slot="ori" expression="happy" talking />
             </div>
+            {seen ? (
+              <OriContextNote
+                context={seen}
+                locale={locale}
+                onCorrect={() => setSeen({ screen: seen.screen })}
+              />
+            ) : null}
             <p className="kids-ori-guide-message">
               <span className="kids-visually-hidden">{message}</span>
               <span aria-hidden="true">{typed}</span>

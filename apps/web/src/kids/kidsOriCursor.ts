@@ -52,3 +52,8 @@ export function useOriContextText(locale: Locale): string | undefined {
   );
   return context ? describeContext(context, locale) : undefined;
 }
+
+/** What Ori is looking at right now; read once, when the learner taps Ori, never on a timer. */
+export function getOriContext(): OriContext | null {
+  return current;
+}
