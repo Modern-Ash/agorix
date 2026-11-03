@@ -25,7 +25,7 @@ test("the base URL welcomes a returning player without erasing progress or deep 
   await page.goto("/");
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole("heading", { name: "¡Hola!" })).toBeVisible();
-  await page.getByRole("button", { name: "Ir al mapa" }).click();
+  await page.getByRole("button", { name: "Volver al mapa" }).click();
   await expect(page).toHaveURL(/#\/mapa$/);
   await expect(page.getByRole("heading", { name: "Mapa" })).toBeVisible();
   await page.goBack();

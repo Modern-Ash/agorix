@@ -147,7 +147,7 @@ test("a returning browser sees the welcome screen at the base URL", async ({ pag
   await page.goto("/");
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole("heading", { name: "¡Hola!" })).toBeVisible();
-  await page.getByRole("button", { name: "Ir al mapa" }).click();
+  await page.getByRole("button", { name: "Volver al mapa" }).click();
   await expect(page.getByRole("heading", { name: "Mapa" })).toBeVisible();
 });
 

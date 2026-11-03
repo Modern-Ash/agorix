@@ -38,6 +38,15 @@ export interface KidsState {
   readonly missionIndex: 0 | 1 | 2;
   /** ID of a multi-character creative scene. */
   readonly studioProjectId?: string | undefined;
+  /** The screen a scene or mission was opened from, so Back returns there (issue #1207). */
+  readonly origin?: "map" | "create" | "projects" | undefined;
+}
+
+/** Map, Create and Projects are where a scene can be opened from; anything else keeps the last one. */
+function originOf(state: KidsState): KidsState["origin"] {
+  return state.screen === "map" || state.screen === "create" || state.screen === "projects"
+    ? state.screen
+    : state.origin;
 }
 
 export type KidsAction =
@@ -98,6 +107,7 @@ export function kidsReducer(state: KidsState, action: KidsAction): KidsState {
         ...state,
         missionIndex: action.missionIndex,
         screen: "editor",
+        origin: originOf(state),
       };
     case "openAdvancedScene":
       return { ...state, screen: "advanced" };
@@ -110,13 +120,19 @@ export function kidsReducer(state: KidsState, action: KidsAction): KidsState {
     case "openAdvancedMessage":
       return { ...state, screen: "advancedMessage" };
     case "openStudio":
-      return { ...state, studioProjectId: action.projectId, screen: "studio" };
+      return {
+        ...state,
+        studioProjectId: action.projectId,
+        screen: "studio",
+        origin: originOf(state),
+      };
     case "openSavedMission":
       return {
         ...state,
         world: action.world,
         missionIndex: action.missionIndex,
         screen: "editor",
+        origin: originOf(state),
       };
   }
 }

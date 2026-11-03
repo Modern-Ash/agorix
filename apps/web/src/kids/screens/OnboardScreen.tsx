@@ -150,7 +150,7 @@ export function OnboardScreen({
         ) : null}
         {step > 0 ? (
           <button type="button" className="kids-back" aria-label={t("back")} onClick={onBack}>
-            <span aria-hidden="true">←</span>
+            <span aria-hidden="true">←</span> <span>{t("back")}</span>
           </button>
         ) : null}
         <button type="button" className="kids-next" onClick={onNext}>

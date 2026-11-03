@@ -2466,12 +2466,18 @@
 }
 
 .kids-back {
-  width: 64px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 18px;
+  min-width: 64px;
+  font-weight: 700;
+  font-size: 1rem;
   min-height: 64px;
   border: 1px solid var(--kids-border);
   border-radius: 20px;
   background: var(--kids-panel);
-  font-size: 1.5rem;
   cursor: pointer;
 }
 
