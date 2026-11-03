@@ -108,6 +108,7 @@ export function MapScreen({
     (index) => missionState(progress, world, index) === "current",
   );
   const nextMission = nextIndex === undefined ? null : nextIndex;
+  const fresh = Object.keys(progress.done).length === 0;
   return (
     <section className="kids-map" aria-labelledby="kids-title" data-world={world} style={vars}>
       <header className="kids-map-top">
@@ -137,49 +138,32 @@ export function MapScreen({
       </header>
       <div className="kids-map-orientation">
         <p className="kids-map-orientation-kicker">
-          {locale === "es" ? "Dos maneras de empezar" : "Two ways to start"}
+          {locale === "es" ? "Tu recorrido" : "Your path"}
         </p>
-        <h2>
-          {locale === "es"
-            ? "Creá a tu manera o aprendé con misiones"
-            : "Create your way or learn with missions"}
-        </h2>
+        <h2>{locale === "es" ? "Empezá por la próxima misión" : "Start with the next mission"}</h2>
         <p>
           {locale === "es"
-            ? "Si ya conocés los bloques, entrá a Crear y armá una escena libre. El mapa es un recorrido opcional para practicar ideas paso a paso; no hace falta completarlo para crear."
-            : "If you already know blocks, open Create and build a free scene. The map is an optional path to practice ideas step by step; you do not need to finish it to create."}
+            ? "Cada misión te enseña una idea nueva, paso a paso. Cuando quieras, creá tu propia escena: no hace falta terminar el mapa."
+            : "Each mission teaches one new idea, step by step. Create your own scene whenever you like: you do not need to finish the map."}
         </p>
       </div>
       {/* What to do now: the next mission in this world, or a way on when the world is complete. */}
       <div className="kids-map-next" data-testid="map-next">
-        {onCreate ? (
-          <button
-            type="button"
-            className="kids-button kids-primary kids-map-next-create"
-            onClick={onCreate}
-          >
-            <span aria-hidden="true">✨</span>
-            <span>
-              {locale === "es" ? "Crear sin misiones" : "Create without missions"}
-              <small>
-                {locale === "es"
-                  ? "Entrá al editor, elegí personajes y programá tu escena"
-                  : "Open the editor, choose sprites and code your scene"}
-              </small>
-            </span>
-          </button>
-        ) : null}
         {nextMission !== null ? (
           <button
             type="button"
-            className="kids-button kids-map-next-main"
+            className="kids-button kids-primary kids-map-next-main"
             onClick={() => onMission(nextMission)}
           >
             <span aria-hidden="true">▶</span>
             <span>
               {locale === "es"
-                ? "Aprender con una misión: Seguir con"
-                : "Learn with a mission: Continue with"}{" "}
+                ? fresh
+                  ? "Empezar con"
+                  : "Seguir con"
+                : fresh
+                  ? "Start with"
+                  : "Continue with"}{" "}
               <strong>
                 {getKidsMission(KIDS_MISSION_IDS[nextMission]!, locale, world, catalog).title}
               </strong>
@@ -193,6 +177,19 @@ export function MapScreen({
               : "World complete! Pick another world above or create something of your own."}
           </p>
         )}
+        {onCreate ? (
+          <button type="button" className="kids-button kids-map-next-create" onClick={onCreate}>
+            <span aria-hidden="true">✨</span>
+            <span>
+              {locale === "es" ? "Crear sin misiones" : "Create without missions"}
+              <small>
+                {locale === "es"
+                  ? "Entrá al editor, elegí personajes y programá tu escena"
+                  : "Open the editor, choose sprites and code your scene"}
+              </small>
+            </span>
+          </button>
+        ) : null}
       </div>
 
       {/* These concepts describe the optional mission path below the main creation choice. */}
