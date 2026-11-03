@@ -90,9 +90,11 @@ function Eye({
         ry={expression === "curious" && cx > 60 ? 7 : 10}
         fill="#fff"
       />
-      <g className="kids-ori-pupil" style={{ transform: `translate(${gaze.x}px, ${gaze.y}px)` }}>
-        <circle cx={cx} cy="50.5" r="5.2" fill="#2d1f66" />
-        <circle cx={cx + 1.8} cy="48" r="1.7" fill="#fff" />
+      <g className="kids-ori-look">
+        <g className="kids-ori-pupil" style={{ transform: `translate(${gaze.x}px, ${gaze.y}px)` }}>
+          <circle cx={cx} cy="50.5" r="5.2" fill="#2d1f66" />
+          <circle cx={cx + 1.8} cy="48" r="1.7" fill="#fff" />
+        </g>
       </g>
     </g>
   );
