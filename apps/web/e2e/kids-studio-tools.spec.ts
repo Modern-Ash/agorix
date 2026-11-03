@@ -1,5 +1,5 @@
 import { expect, test } from "./fixtures.js";
-import { clickCreateScene } from "./helpers.js";
+import { clickCreateScene, categoryNav } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -26,7 +26,7 @@ for (const [name, viewport] of [
   test(`the category toolbar is visible above the stage on ${name}`, async ({ page }) => {
     await page.setViewportSize(viewport);
     await openScene(page);
-    const toolbar = page.getByRole("navigation", { name: "Categorías de bloques" });
+    const toolbar = await categoryNav(page);
     const stage = page.getByRole("group", { name: "Escenario" });
     await expect(toolbar).toBeVisible();
     const toolbarBox = await toolbar.boundingBox();
@@ -130,7 +130,7 @@ test("the phone layout has no horizontal scroll and touch-sized category buttons
   await page.setViewportSize({ width: 390, height: 844 });
   await openScene(page);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
-  const toolbar = page.getByRole("navigation", { name: "Categorías de bloques" });
+  const toolbar = await categoryNav(page);
   for (const button of await toolbar.getByRole("button").all()) {
     expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
   }
@@ -355,7 +355,7 @@ test("a category moves only the block list, and the blocks, code and Ori help fo
 }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await openScene(page);
-  const rail = page.getByRole("navigation", { name: "Categorías de bloques" });
+  const rail = await categoryNav(page);
   const before = await page.evaluate(() => window.scrollY);
   await rail.getByRole("button", { name: "Música" }).click();
   await expect(page.locator("#kids-studio-cat-music")).toBeFocused();

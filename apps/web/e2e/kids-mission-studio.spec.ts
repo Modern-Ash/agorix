@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { categoryNav } from "./helpers.js";
 
 test("a map mission uses the complete creative editor and one evaluated project", async ({
   page,
@@ -17,13 +18,8 @@ test("a map mission uses the complete creative editor and one evaluated project"
   await expect(page.getByRole("heading", { name: "Camino recto" })).toBeVisible();
   await expect(page.getByRole("button", { name: "+ Objeto" })).toBeVisible();
   await expect(page.getByRole("button", { name: "+ Fondo" })).toBeVisible();
-  await expect(page.getByRole("navigation", { name: "Categorías de bloques" })).toBeVisible();
-  expect(
-    await page
-      .getByRole("navigation", { name: "Categorías de bloques" })
-      .getByRole("button")
-      .count(),
-  ).toBeGreaterThan(5);
+  await expect(await categoryNav(page)).toBeVisible();
+  expect(await (await categoryNav(page)).getByRole("button").count()).toBeGreaterThan(5);
   await expect(page.getByRole("tab", { name: /Disfraces/ })).toBeVisible();
   await page.getByRole("tab", { name: /Sonidos/ }).click();
   await expect(page.getByRole("group", { name: "Sonidos" })).toBeVisible();
@@ -63,9 +59,7 @@ test("only the creative scene run completes a map mission", async ({ page }) => 
   await page.getByRole("button", { name: "Misión 1" }).click();
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await expect(page.getByTestId("scene-goal-result")).toContainText("Todavía no");
-  const motion = page
-    .getByRole("navigation", { name: "Categorías de bloques" })
-    .getByRole("button", { name: "Movimiento" });
+  const motion = (await categoryNav(page)).getByRole("button", { name: "Movimiento" });
   const add = page.getByRole("button", { name: "+ Mover", exact: true });
   for (let index = 0; index < 4; index += 1) {
     await motion.click();

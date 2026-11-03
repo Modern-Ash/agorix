@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "./fixtures.js";
 import { KIDS_V2_FEATURES } from "../src/kids/kidsFlags.js";
-import { passAdultGate, openAdultTab } from "./helpers.js";
+import { passAdultGate, openAdultTab, categoryNav } from "./helpers.js";
 
 // Issue #437: the golden Kids journey. Every additive Kids v2 change must keep it green.
 test.use({ hasTouch: true, serviceWorkers: "block" });
@@ -12,9 +12,7 @@ const VIEWPORTS = [
 ] as const;
 
 async function addMoves(page: Page, count: number) {
-  const motion = page
-    .getByRole("navigation", { name: "Categorías de bloques" })
-    .getByRole("button", { name: "Movimiento" });
+  const motion = (await categoryNav(page)).getByRole("button", { name: "Movimiento" });
   for (let index = 0; index < count; index += 1) {
     await motion.click();
     await page.getByRole("button", { name: "+ Mover", exact: true }).click();

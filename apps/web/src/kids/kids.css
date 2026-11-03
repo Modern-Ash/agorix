@@ -3709,7 +3709,7 @@
     border: 0;
     border-radius: 12px;
     background: transparent;
-    font-size: 0.72rem;
+    font-size: 0.82rem;
     line-height: 1.15;
     text-align: center;
   }
@@ -6116,4 +6116,47 @@ body:has(.kids-create) {
   background:
     linear-gradient(90deg, rgba(255, 255, 255, 0.12) 1px, transparent 1px) 0 0 / 28px 28px,
     linear-gradient(0deg, rgba(255, 255, 255, 0.12) 1px, transparent 1px) 0 0 / 28px 28px;
+}
+
+/* A block's own controls sit after its label instead of on top of it (#1205). */
+.kids-studio-program-column .kids-program-block {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+.kids-studio-program-column .kids-program-block > .kids-block-handle + span {
+  flex: 1 1 calc(100% - 64px);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.kids-studio-program-column .kids-program-block > ol,
+.kids-studio-program-column .kids-program-block > ul,
+.kids-studio-program-column .kids-program-block > strong {
+  flex: 0 0 100%;
+}
+.kids-studio-program-column .kids-program-block > .kids-button {
+  flex: 0 0 auto;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 8px;
+  margin: 0;
+}
+/* Value fields: a quiet label beside a compact input. */
+.kids-studio-actor-inspector label {
+  gap: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+/* Tablet and desktop: the second column (block categories) opens from the Code button (#1205). */
+@media (min-width: 900px) {
+  .kids-studio:not([data-categories-open="true"]) {
+    grid-template-columns: 68px 0 minmax(0, 1fr);
+  }
+}
+@media (min-width: 721px) {
+  .kids-studio:not([data-categories-open="true"]) > .kids-studio-categories {
+    display: none;
+  }
 }

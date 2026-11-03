@@ -6,6 +6,7 @@ import {
   BLOCKS_UNLOCKED,
   openAdultTab,
   addStudioBlock,
+  categoryNav,
 } from "./helpers.js";
 
 // Issue #443: scripted slice of the adversarial charter, run with every v2 flag on.
@@ -49,10 +50,8 @@ async function openMission(page: Page) {
   await expect(page.getByRole("button", { name: "Jugar", exact: true })).toBeVisible();
 }
 
-const MOTION = (page: Page) =>
-  page
-    .getByRole("navigation", { name: "Categorías de bloques" })
-    .getByRole("button", { name: "Movimiento" });
+const MOTION = async (page: Page) =>
+  (await categoryNav(page)).getByRole("button", { name: "Movimiento" });
 const ADD_MOVE = (page: Page) => page.getByRole("button", { name: "+ Mover", exact: true });
 const RESULT = (page: Page) => page.getByTestId("scene-goal-result");
 
@@ -60,7 +59,7 @@ test("rapid taps: double Jugar, 60 palette taps and undo spam", async ({ page })
   const errors = watchErrors(page);
   await seed(page);
   await openMission(page);
-  await MOTION(page).click();
+  await (await MOTION(page)).click();
   const add = ADD_MOVE(page);
   for (let i = 0; i < 60; i++) await add.click({ noWaitAfter: true });
   await expect(page.locator(".kids-program-block").first()).toBeVisible();
@@ -196,7 +195,7 @@ test("keyboard only: the whole first mission can be played", async ({ page }) =>
   await seed(page);
   await page.getByRole("button", { name: "Misión 1" }).focus();
   await page.keyboard.press("Enter");
-  await MOTION(page).focus();
+  await (await MOTION(page)).focus();
   await page.keyboard.press("Enter");
   for (let i = 0; i < 4; i++) {
     await ADD_MOVE(page).focus();

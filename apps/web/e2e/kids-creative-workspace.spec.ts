@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { clickCreateScene } from "./helpers.js";
+import { clickCreateScene, categoryNav } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -29,10 +29,7 @@ test("a new phone scene starts with its stage, Play and the program below", asyn
   expect(playBox!.y).toBeLessThan(stageBox!.y);
   expect(stageBox!.y).toBeLessThan(canvasBox!.y);
   await expect(play).toBeVisible();
-  await page
-    .getByRole("navigation", { name: "Categorías de bloques" })
-    .getByRole("button", { name: "Mis bloques" })
-    .click();
+  await (await categoryNav(page)).getByRole("button", { name: "Mis bloques" }).click();
   await expect(page.locator('.kids-studio-palette[data-open-cat="myBlocks"]')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });

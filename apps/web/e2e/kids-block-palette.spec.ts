@@ -2,7 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "./fixtures.js";
 
 // Issue #447: Scratch-style block hues behind the puzzleShape flag; default look unchanged.
-import { BLOCKS_UNLOCKED, addStudioBlock } from "./helpers.js";
+import { BLOCKS_UNLOCKED, addStudioBlock, categoryNav } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -24,10 +24,7 @@ async function openEditor(page: Page, flags: string[]) {
   await page.reload();
   await page.getByRole("button", { name: "Misión 1" }).click();
   await addStudioBlock(page, "Movimiento", "+ Mover");
-  await page
-    .getByRole("navigation", { name: "Categorías de bloques" })
-    .getByRole("button", { name: "Sonido" })
-    .click();
+  await (await categoryNav(page)).getByRole("button", { name: "Sonido" }).click();
   await page
     .getByRole("button", { name: /^\+ (Tocar sonido|Sonar)/ })
     .first()
