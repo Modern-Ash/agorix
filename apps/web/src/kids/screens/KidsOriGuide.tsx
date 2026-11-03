@@ -3,6 +3,7 @@ import type { Locale } from "../../i18n.js";
 import type { KidsScreen } from "../kidsState.js";
 import { oriMotionStatus, useOriPageVisible } from "../kidsOriMotion.js";
 import { expressionForMotion } from "../kidsOriExpression.js";
+import { useOriContextText } from "../kidsOriCursor.js";
 import { KidsSprite } from "./KidsArt.js";
 
 const GUIDANCE: Record<KidsScreen, { es: string; en: string }> = {
@@ -73,6 +74,7 @@ export function KidsOriGuide({
 }) {
   const [open, setOpen] = useState(false);
   const visible = useOriPageVisible();
+  const context = useOriContextText(locale);
   const motion = open ? "listening" : screen === "reflect" ? "observing" : "idle";
   const trigger = useRef<HTMLButtonElement>(null);
   function close() {
@@ -89,6 +91,7 @@ export function KidsOriGuide({
         className="kids-ori-float-trigger"
         data-ori-state={motion}
         data-ori-paused={!visible}
+        data-ori-context={context}
         aria-label={locale === "es" ? "Hablar con Ori" : "Talk with Ori"}
         onClick={() => setOpen(true)}
       >

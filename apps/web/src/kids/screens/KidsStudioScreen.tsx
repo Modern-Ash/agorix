@@ -198,6 +198,7 @@ import {
 } from "../kidsOriCompound.js";
 import { useOriPageVisible } from "../kidsOriMotion.js";
 import { expressionForMotion, outcomeOfRun, useOriReaction } from "../kidsOriExpression.js";
+import { useOriContextText } from "../kidsOriCursor.js";
 import { KidsBackdrop, KidsSprite } from "./KidsArt.js";
 import { KidsSoundPicker } from "./KidsSoundPicker.js";
 import { KIDS_SHORTCUTS, kidsShortcut } from "../kidsShortcuts.js";
@@ -1168,6 +1169,7 @@ export function KidsStudioScreen({
   const [oriBusy, setOriBusy] = useState(false);
   const [oriReaction, reactOri] = useOriReaction();
   const oriPageVisible = useOriPageVisible();
+  const oriContextText = useOriContextText(locale);
   const [error, setError] = useState(false);
   const [exportingMedia, setExportingMedia] = useState(false);
   const customImagesEnabled = useKidsFlag("customImages");
@@ -3058,6 +3060,7 @@ export function KidsStudioScreen({
           className="kids-studio-ori-rail kids-ori-float-trigger"
           data-ori-state={oriMotion}
           data-ori-paused={!oriPageVisible}
+          data-ori-context={oriContextText}
           aria-label={locale === "es" ? "Abrir Ori" : "Open Ori"}
           onClick={() => openOri("actor")}
         >
@@ -3639,7 +3642,11 @@ export function KidsStudioScreen({
             className="kids-studio-inspector-panel"
           >
             {actor ? (
-              <div className="kids-studio-actor-inspector">
+              <div
+                className="kids-studio-actor-inspector"
+                data-ori-sprite-x={actor.x}
+                data-ori-sprite-y={actor.y}
+              >
                 <strong>{actor.name}</strong>
                 <label>
                   x{" "}
@@ -4387,6 +4394,7 @@ export function KidsStudioScreen({
                     <li
                       key={`${script.id}-${index}`}
                       className="kids-program-block"
+                      data-ori-block={statement.type}
                       data-index={index}
                       tabIndex={contextMenuFlag || shortcutsFlag ? 0 : undefined}
                       onContextMenu={(event) => {
@@ -6635,6 +6643,7 @@ export function KidsStudioScreen({
                     className="kids-ori-float-trigger"
                     data-ori-state={oriMotion}
                     data-ori-paused={!oriPageVisible}
+                    data-ori-context={oriContextText}
                     aria-label={copy.showOri}
                     aria-expanded={false}
                     onClick={() => setOriCollapsed(false)}
