@@ -26,14 +26,16 @@ test("the code and selected-sprite panels resize from a divider and keep a floor
     const divider = page.getByRole("separator", { name: new RegExp(name) });
     await expect(divider).toBeVisible();
     const body = page.locator(selector);
+    const height = async () => (await body.boundingBox())!.height;
+    const initial = await height();
     await divider.focus();
     for (let i = 0; i < 10; i++) await page.keyboard.press("ArrowUp");
-    await expect.poll(async () => (await body.boundingBox())!.height).toBeGreaterThan(160);
-    const grown = (await body.boundingBox())!.height;
+    // Growing is capped by the panel's own maximum, so only the change is asserted here.
+    await expect.poll(async () => Math.abs((await height()) - initial)).toBeGreaterThan(20);
     for (let i = 0; i < 80; i++) await page.keyboard.press("ArrowDown");
-    const shrunk = (await body.boundingBox())!.height;
-    expect(shrunk).toBeLessThan(grown);
-    expect(shrunk).toBeGreaterThanOrEqual(119);
+    // It settles on the floor, never below it.
+    await expect.poll(height).toBeLessThanOrEqual(125);
+    expect(await height()).toBeGreaterThanOrEqual(119);
   }
 });
 

@@ -60,6 +60,15 @@ describe("panel layout reducer", () => {
     expect(run(INITIAL_PANEL_LAYOUT, { type: "setSize", id: "p", size: 1e9 }).sizes.p).toBe(4000);
     expect(run(INITIAL_PANEL_LAYOUT, { type: "setSize", id: "p", size: NaN }).sizes.p).toBe(120);
   });
+
+  it("resizeBy accumulates from the stored size, so rapid steps never repeat the same base", () => {
+    let state = INITIAL_PANEL_LAYOUT;
+    for (let i = 0; i < 3; i++)
+      state = run(state, { type: "resizeBy", id: "p", delta: 16, base: 200 });
+    expect(state.sizes.p).toBe(248);
+    state = run(state, { type: "resizeBy", id: "p", delta: -1000, base: 200 });
+    expect(state.sizes.p).toBe(120);
+  });
 });
 
 describe("panel layout persistence", () => {

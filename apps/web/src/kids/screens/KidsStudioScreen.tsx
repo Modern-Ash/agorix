@@ -2854,6 +2854,12 @@ export function KidsStudioScreen({
       className="kids-screen kids-studio"
       data-editor-tab={editorTab}
       data-categories-open={categoriesOpen ? "true" : undefined}
+      data-code-sized={panelLayout.state.sizes.code === undefined ? undefined : "true"}
+      data-inspector-sized={panelLayout.state.sizes.inspector === undefined ? undefined : "true"}
+      style={{
+        ["--kids-code-height" as string]: `${panelLayout.state.sizes.code ?? 0}px`,
+        ["--kids-inspector-height" as string]: `${panelLayout.state.sizes.inspector ?? 0}px`,
+      }}
       aria-label={missionDefinition?.title ?? copy.title}
     >
       <header className="kids-studio-header">

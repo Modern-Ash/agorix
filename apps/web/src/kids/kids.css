@@ -6160,3 +6160,23 @@ body:has(.kids-create) {
     display: none;
   }
 }
+
+/* Code and the selected sprite resize from a divider above them; they keep a floor and scroll inside (#1206). */
+.kids-studio[data-code-sized="true"] .kids-studio-code-panel .agx-panel-body {
+  box-sizing: border-box;
+  height: var(--kids-code-height);
+  min-height: 120px;
+  max-height: 80vh;
+  overflow: auto;
+}
+.kids-studio[data-inspector-sized="true"] .kids-studio-inspector-panel .agx-panel-body {
+  box-sizing: border-box;
+  height: var(--kids-inspector-height);
+  min-height: 120px;
+  max-height: 60vh;
+  overflow: auto;
+}
+.kids-studio .agx-panel-divider--horizontal {
+  min-height: 12px;
+  margin-block: -2px;
+}
