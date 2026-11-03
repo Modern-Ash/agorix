@@ -2206,6 +2206,7 @@
 
 .kids-onboard {
   min-height: calc(100vh - 32px);
+  min-height: calc(100dvh - 32px);
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -2454,8 +2455,14 @@
 }
 
 .kids-onboard-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
   display: flex;
   gap: 12px;
+  /* The actions stay in view on short windows; the fade keeps the content readable behind them. */
+  padding: 12px 0 calc(8px + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, var(--kids-canvas) 72%, transparent);
 }
 
 .kids-back {
