@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "./fixtures.js";
-import { clickCreateScene } from "./helpers.js";
+import { clickCreateScene, categoryNav } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -29,7 +29,7 @@ for (const viewport of viewports) {
   }, info) => {
     await page.setViewportSize(viewport);
     await beginFreshScene(page);
-    const categories = page.getByRole("navigation", { name: "Categorías de bloques" });
+    const categories = await categoryNav(page);
     await expect(categories.getByRole("button")).toHaveCount(8);
     const palette = page.locator(".kids-studio-palette");
     const blocks = page.locator(".kids-program-drop > .kids-program-block");

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { clickCreateScene, openAdultTab, passAdultGate } from "../helpers.js";
+import { clickCreateScene, openAdultTab, passAdultGate, categoryNav } from "../helpers.js";
 
 // Post-deploy smoke for the live site (issue #345). Read-only: it never signs in, never writes
 // to the server, and only touches browser-local state inside throwaway contexts.
@@ -147,7 +147,7 @@ test("a returning browser sees the welcome screen at the base URL", async ({ pag
   await page.goto("/");
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole("heading", { name: "¡Hola!" })).toBeVisible();
-  await page.getByRole("button", { name: "Ir al mapa" }).click();
+  await page.getByRole("button", { name: "Volver al mapa" }).click();
   await expect(page.getByRole("heading", { name: "Mapa" })).toBeVisible();
 });
 
@@ -184,7 +184,7 @@ test("a fresh browser reaches Escena libre with every category and synchronized 
   await expect(page).toHaveURL(/#\/escena\//);
   // The free scene exposes every colour without flags, while blocks start folded away.
   await expect.poll(() => page.locator("[data-kids-palette-tool]").count()).toBeGreaterThan(15);
-  const categories = page.getByRole("navigation", { name: "Categorías de bloques" });
+  const categories = await categoryNav(page);
   await expect(categories.getByRole("button")).toHaveText([
     "Movimiento",
     "Apariencia y tiempo",
@@ -221,10 +221,7 @@ test("an existing Kids project survives a hard reload with browser cache cleared
   await page.getByRole("button", { name: "¡Empezar!" }).click();
   await page.getByRole("button", { name: "Crear", exact: true }).click();
   await clickCreateScene(page);
-  await page
-    .getByRole("navigation", { name: "Categorías de bloques" })
-    .getByRole("button", { name: "Movimiento" })
-    .click();
+  await (await categoryNav(page)).getByRole("button", { name: "Movimiento" }).click();
   await page.getByRole("button", { name: "+ Mover", exact: true }).click();
   await expect(page.locator(".kids-program-block")).toHaveCount(1);
   const projectUrl = page.url();

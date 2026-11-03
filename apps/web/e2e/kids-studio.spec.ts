@@ -7,7 +7,7 @@ import {
   evaluateOriStudioOutput,
   ORI_STUDIO_VERSION,
 } from "@agorix/ori-agent";
-import { reloadTo, clickCreateScene } from "./helpers.js";
+import { reloadTo, clickCreateScene, categoryNav } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -2032,7 +2032,7 @@ test("free scene shows Media and Logic as snap-together blocks and keeps tools o
 // Issue #1110: a category bar over the palette jumps to each block family without hiding any.
 test("the block category bar jumps to each family and wraps on a phone", async ({ page }) => {
   await openStudio(page, "9-12");
-  const bar = page.getByRole("navigation", { name: "Categorías de bloques" });
+  const bar = await categoryNav(page);
   await expect(bar.getByRole("button")).toHaveText([
     "Movimiento",
     "Apariencia y tiempo",

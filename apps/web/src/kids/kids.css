@@ -2466,12 +2466,18 @@
 }
 
 .kids-back {
-  width: 64px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 18px;
+  min-width: 64px;
+  font-weight: 700;
+  font-size: 1rem;
   min-height: 64px;
   border: 1px solid var(--kids-border);
   border-radius: 20px;
   background: var(--kids-panel);
-  font-size: 1.5rem;
   cursor: pointer;
 }
 
@@ -3709,7 +3715,7 @@
     border: 0;
     border-radius: 12px;
     background: transparent;
-    font-size: 0.72rem;
+    font-size: 0.82rem;
     line-height: 1.15;
     text-align: center;
   }
@@ -6116,6 +6122,69 @@ body:has(.kids-create) {
   background:
     linear-gradient(90deg, rgba(255, 255, 255, 0.12) 1px, transparent 1px) 0 0 / 28px 28px,
     linear-gradient(0deg, rgba(255, 255, 255, 0.12) 1px, transparent 1px) 0 0 / 28px 28px;
+}
+
+/* A block's own controls sit after its label instead of on top of it (#1205). */
+.kids-studio-program-column .kids-program-block {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+.kids-studio-program-column .kids-program-block > .kids-block-handle + span {
+  flex: 1 1 calc(100% - 64px);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.kids-studio-program-column .kids-program-block > ol,
+.kids-studio-program-column .kids-program-block > ul,
+.kids-studio-program-column .kids-program-block > strong {
+  flex: 0 0 100%;
+}
+.kids-studio-program-column .kids-program-block > .kids-button {
+  flex: 0 0 auto;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 8px;
+  margin: 0;
+}
+/* Value fields: a quiet label beside a compact input. */
+.kids-studio-actor-inspector label {
+  gap: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+/* Tablet and desktop: the second column (block categories) opens from the Code button (#1205). */
+@media (min-width: 900px) {
+  .kids-studio:not([data-categories-open="true"]) {
+    grid-template-columns: 68px 0 minmax(0, 1fr);
+  }
+}
+@media (min-width: 721px) {
+  .kids-studio:not([data-categories-open="true"]) > .kids-studio-categories {
+    display: none;
+  }
+}
+
+/* Code and the selected sprite resize from a divider above them; they keep a floor and scroll inside (#1206). */
+.kids-studio[data-code-sized="true"] .kids-studio-code-panel .agx-panel-body {
+  box-sizing: border-box;
+  height: var(--kids-code-height);
+  min-height: 120px;
+  max-height: 80vh;
+  overflow: auto;
+}
+.kids-studio[data-inspector-sized="true"] .kids-studio-inspector-panel .agx-panel-body {
+  box-sizing: border-box;
+  height: var(--kids-inspector-height);
+  min-height: 120px;
+  max-height: 60vh;
+  overflow: auto;
+}
+.kids-studio .agx-panel-divider--horizontal {
+  min-height: 12px;
+  margin-block: -2px;
 }
 
 /* Past the daily goal: the bar turns warm and says by how much (#1208). */

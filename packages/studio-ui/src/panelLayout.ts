@@ -20,6 +20,13 @@ export type PanelLayoutAction =
   | { readonly type: "toggleMaximize"; readonly id: string }
   | { readonly type: "restoreMaximized" }
   | { readonly type: "setSize"; readonly id: string; readonly size: number }
+  /** Grow or shrink from the stored size, or from `base` (its measured size) the first time. */
+  | {
+      readonly type: "resizeBy";
+      readonly id: string;
+      readonly delta: number;
+      readonly base: number;
+    }
   | { readonly type: "zoomBy"; readonly id: string; readonly delta: number }
   | { readonly type: "zoomReset"; readonly id: string }
   | { readonly type: "hydrate"; readonly state: PanelLayoutState };
@@ -71,6 +78,14 @@ export function reducePanelLayout(
       return state.maximized === undefined ? state : { ...state, maximized: undefined };
     case "setSize":
       return { ...state, sizes: { ...state.sizes, [action.id]: clampPanelSize(action.size) } };
+    case "resizeBy":
+      return {
+        ...state,
+        sizes: {
+          ...state.sizes,
+          [action.id]: clampPanelSize((state.sizes[action.id] ?? action.base) + action.delta),
+        },
+      };
     case "zoomBy":
       return {
         ...state,

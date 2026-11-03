@@ -34,6 +34,8 @@ interface Props {
   readonly onSettings: (settings: AdultSettings) => void;
   /** The tab shown after the gate; a link from a project opens Account directly. */
   readonly initialTab?: AdultTab;
+  /** A way out of the door screen, back to the map, without solving anything (issue #1207). */
+  readonly onBack?: () => void;
 }
 
 const COPY = {
@@ -54,7 +56,7 @@ const COPY = {
     pinWait: "Esperá un momento antes de probar de nuevo:",
     pinSeconds: "segundos",
     pinKept: "El PIN se guarda solo en este dispositivo, nunca el número en sí.",
-    exit: "Salir",
+    exit: "Salir y bloquear",
     today: "Tiempo de hoy",
     goal: "Meta diaria",
     minutes: "min",
@@ -129,7 +131,7 @@ const COPY = {
     pinWait: "Wait a moment before trying again:",
     pinSeconds: "seconds",
     pinKept: "The PIN stays on this device only, and never the number itself.",
-    exit: "Exit",
+    exit: "Exit and lock",
     today: "Time today",
     goal: "Daily goal",
     minutes: "min",
@@ -195,6 +197,7 @@ export function ParentsScreen({
   settings,
   onSettings,
   initialTab = "summary",
+  onBack,
 }: Props) {
   const [tab, setTab] = useState<AdultTab>(initialTab);
   const [digits, setDigits] = useState("");
@@ -318,6 +321,11 @@ export function ParentsScreen({
   if (!unlocked)
     return (
       <section className="kids-screen kids-parents-gate" aria-labelledby="kids-parents-title">
+        {onBack ? (
+          <button type="button" className="kids-button kids-parents-back" onClick={onBack}>
+            <span aria-hidden="true">←</span> {t("backMap")}
+          </button>
+        ) : null}
         <p className="kids-parents-kicker">🔒 {copy.gate}</p>
         <h1 id="kids-parents-title">{heading}</h1>
         <output className="kids-gate-display" aria-label={heading}>

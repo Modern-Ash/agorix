@@ -198,7 +198,7 @@ test("adult gate protects real progress, settings and AI status", async ({ page 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("button", { name: "Salir" }).click();
   await expect(page.getByRole("heading", { name: /PIN de adulto/ })).toBeVisible();
-  await page.getByRole("button", { name: "Mapa" }).click();
+  await page.getByRole("button", { name: "Mapa", exact: true }).click();
   await expect(page.getByRole("button", { name: "Escuchar" })).toHaveCount(0);
   await page.locator(".kids-node.current").click();
   await expect(page.locator(".kids-ori-card")).toHaveCount(0);
