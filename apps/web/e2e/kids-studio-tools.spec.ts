@@ -170,7 +170,7 @@ test("stage tools expose sprite, backdrop and editable position", async ({ page 
   await page.getByRole("button", { name: "+ Objeto" }).click();
   await expect(page.getByRole("group", { name: "Elegir objeto" })).toBeVisible();
   await page.getByRole("button", { name: "Agregar objeto" }).click();
-  const inspector = page.getByLabel("Objeto seleccionado");
+  const inspector = page.getByLabel("Objeto seleccionado", { exact: true });
   await expect(inspector).toBeVisible();
   await inspector.getByRole("spinbutton", { name: "x" }).fill("120");
   await inspector.getByRole("spinbutton", { name: "x" }).blur();

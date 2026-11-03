@@ -2854,6 +2854,12 @@ export function KidsStudioScreen({
       className="kids-screen kids-studio"
       data-editor-tab={editorTab}
       data-categories-open={categoriesOpen ? "true" : undefined}
+      data-code-sized={panelLayout.state.sizes.code === undefined ? undefined : "true"}
+      data-inspector-sized={panelLayout.state.sizes.inspector === undefined ? undefined : "true"}
+      style={{
+        ["--kids-code-height" as string]: `${panelLayout.state.sizes.code ?? 0}px`,
+        ["--kids-inspector-height" as string]: `${panelLayout.state.sizes.inspector ?? 0}px`,
+      }}
       aria-label={missionDefinition?.title ?? copy.title}
     >
       <header className="kids-studio-header">
@@ -3609,6 +3615,18 @@ export function KidsStudioScreen({
               {locale === "es" ? "Elegir fondo o disfraz" : "Choose backdrop or costume"}
             </button>
           </Panel>
+          <PanelDivider
+            controller={panelLayout}
+            id="inspector"
+            title={locale === "es" ? "Objeto seleccionado" : "Selected sprite"}
+            orientation="horizontal"
+            direction={-1}
+            size={() =>
+              document
+                .querySelector(".kids-studio-inspector-panel .agx-panel-body")
+                ?.getBoundingClientRect().height ?? 160
+            }
+          />
           <Panel
             controller={panelLayout}
             id="inspector"
@@ -6789,6 +6807,18 @@ export function KidsStudioScreen({
               ) : null}
             </div>
           ) : null}
+          <PanelDivider
+            controller={panelLayout}
+            id="code"
+            title={copy.code}
+            orientation="horizontal"
+            direction={-1}
+            size={() =>
+              document
+                .querySelector(".kids-studio-code-panel .agx-panel-body")
+                ?.getBoundingClientRect().height ?? 240
+            }
+          />
           <Panel
             controller={panelLayout}
             id="code"
