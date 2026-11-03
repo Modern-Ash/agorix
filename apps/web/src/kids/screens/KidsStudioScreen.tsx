@@ -3039,11 +3039,14 @@ export function KidsStudioScreen({
       {oriSuggestions ? (
         <button
           type="button"
-          className="kids-studio-ori-rail kids-button"
+          className="kids-studio-ori-rail kids-ori-float-trigger"
+          data-ori-state={oriMotion}
+          data-ori-paused={!oriPageVisible}
           aria-label={locale === "es" ? "Abrir Ori" : "Open Ori"}
           onClick={() => openOri("actor")}
         >
-          <span aria-hidden="true">✦</span> Ori
+          <KidsSprite slot="ori" expression={oriExpression} />
+          <span>Ori</span>
         </button>
       ) : null}
       <nav
@@ -6598,14 +6601,29 @@ export function KidsStudioScreen({
           {oriSuggestions ? (
             <div className="kids-studio-ori" data-collapsed={oriCollapsed ? "true" : undefined}>
               <div className="kids-studio-panel-head">
-                <button
-                  type="button"
-                  className="kids-panel-toggle"
-                  aria-expanded={!oriCollapsed}
-                  onClick={() => setOriCollapsed((value) => !value)}
-                >
-                  {oriCollapsed ? copy.showOri : copy.hideOri}
-                </button>
+                {oriCollapsed ? (
+                  <button
+                    type="button"
+                    className="kids-ori-float-trigger"
+                    data-ori-state={oriMotion}
+                    data-ori-paused={!oriPageVisible}
+                    aria-label={copy.showOri}
+                    aria-expanded={false}
+                    onClick={() => setOriCollapsed(false)}
+                  >
+                    <KidsSprite slot="ori" expression={oriExpression} />
+                    <span>Ori</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="kids-panel-toggle"
+                    aria-expanded
+                    onClick={() => setOriCollapsed(true)}
+                  >
+                    {copy.hideOri}
+                  </button>
+                )}
               </div>
               <div className="kids-ori-stage">
                 <KidsSprite slot="ori" expression={oriExpression} talking={Boolean(oriIdea)} />
