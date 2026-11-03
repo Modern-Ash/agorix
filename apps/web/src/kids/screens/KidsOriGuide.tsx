@@ -8,6 +8,7 @@ import {
   useTypewriter,
 } from "../kidsOriMotion.js";
 import { expressionForMotion } from "../kidsOriExpression.js";
+import { useOriContextText } from "../kidsOriCursor.js";
 import { KidsSprite } from "./KidsArt.js";
 
 const GUIDANCE: Record<KidsScreen, { es: string; en: string }> = {
@@ -80,6 +81,7 @@ export function KidsOriGuide({
   // The window grows out of the avatar and folds back into it; `closing` keeps it mounted meanwhile.
   const [closing, setClosing] = useState(false);
   const visible = useOriPageVisible();
+  const context = useOriContextText(locale);
   const motion = open ? "listening" : screen === "reflect" ? "observing" : "idle";
   const trigger = useRef<HTMLButtonElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
@@ -112,6 +114,7 @@ export function KidsOriGuide({
         className="kids-ori-float-trigger"
         data-ori-state={motion}
         data-ori-paused={!visible}
+        data-ori-context={context}
         aria-label={locale === "es" ? "Hablar con Ori" : "Talk with Ori"}
         onClick={() => setOpen(true)}
       >

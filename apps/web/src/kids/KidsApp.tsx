@@ -57,6 +57,7 @@ import { useKidsText, type KidsText } from "./useKidsText.js";
 import { stopSpeaking } from "./speak.js";
 import { KidsOriGuide } from "./screens/KidsOriGuide.js";
 import { useOriGaze } from "./kidsOriGaze.js";
+import { useOriCursorTracking } from "./kidsOriCursor.js";
 import { KidsStudioScreen } from "./screens/KidsStudioScreen.js";
 import { ensureMissionStudio, missionOfStudio } from "./kidsMissionStudio.js";
 import {
@@ -94,6 +95,7 @@ export function KidsApp({
     () => initialState ?? stateFromLocation(startingState(progress), progress),
   );
   const [adultSettings, setAdultSettings] = useState<AdultSettings>(() => loadAdultSettings());
+  useOriCursorTracking(state.screen);
   // The age-band notice can be put away for this visit; nothing is stored, so it returns next time.
   const [bandAskClosed, setBandAskClosed] = useState(false);
 
