@@ -37,3 +37,29 @@ for (const viewport of [
     }
   });
 }
+
+test("the block categories stay folded until Code is tapped on desktop (#1205)", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Misión 1" }).click();
+  const nav = page.getByRole("navigation", { name: "Categorías de bloques" });
+  const code = page.getByRole("tab", { name: /Código/ });
+  await expect(code).toBeVisible();
+  await expect(nav).toBeHidden();
+  await code.click();
+  await expect(nav).toBeVisible();
+  await expect(nav.getByRole("button", { name: "Movimiento" })).toBeVisible();
+  await page.getByRole("tab", { name: /Disfraces/ }).click();
+  await expect(nav).toBeHidden();
+});

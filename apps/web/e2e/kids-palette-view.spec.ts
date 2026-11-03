@@ -1,7 +1,7 @@
 // Plain Playwright, not ./fixtures.js: this spec needs the real default and a preference that survives
 // a reload.
 import { expect, test } from "@playwright/test";
-import { clickCreateScene } from "./helpers.js";
+import { clickCreateScene, categoryNav } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -25,7 +25,7 @@ test("Escena libre opens one colour at a time and closes after adding a block", 
   await seed(page);
   await page.getByRole("button", { name: "Crear", exact: true }).click();
   await clickCreateScene(page);
-  const rail = page.getByRole("navigation", { name: "Categorías de bloques" });
+  const rail = await categoryNav(page);
   const tools = page.locator("[data-kids-palette-tool]:visible");
   const program = page.locator(".kids-studio-program-column");
   const programBefore = await program.boundingBox();
@@ -89,10 +89,7 @@ test("on a phone the sheet opens for the chosen colour and closes after adding",
   await clickCreateScene(page);
   await expect(page.locator(".kids-studio-palette")).toBeHidden();
   await expect(page.getByRole("button", { name: "+ Decir", exact: true })).toBeHidden();
-  await page
-    .getByRole("navigation", { name: "Categorías de bloques" })
-    .getByRole("button", { name: "Apariencia y tiempo" })
-    .click();
+  await (await categoryNav(page)).getByRole("button", { name: "Apariencia y tiempo" }).click();
   await expect(page.getByRole("button", { name: "+ Decir", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "+ Mover", exact: true })).toBeHidden();
   await page.getByRole("button", { name: "+ Decir", exact: true }).click();

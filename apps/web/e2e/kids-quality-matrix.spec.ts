@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "./fixtures.js";
-import { passAdultGate, reloadTo, clickCreateScene } from "./helpers.js";
+import { passAdultGate, reloadTo, clickCreateScene, categoryNav } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -80,9 +80,7 @@ for (const viewport of VIEWPORTS) {
 
     // A mission: build in the creative scene, run and reach the goal.
     await page.getByRole("button", { name: "Misión 1" }).click();
-    const motion = page
-      .getByRole("navigation", { name: "Categorías de bloques" })
-      .getByRole("button", { name: "Movimiento" });
+    const motion = (await categoryNav(page)).getByRole("button", { name: "Movimiento" });
     for (let index = 0; index < 4; index += 1) {
       await motion.click();
       await page.getByRole("button", { name: "+ Mover", exact: true }).click();

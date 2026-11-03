@@ -6148,3 +6148,15 @@ body:has(.kids-create) {
   font-size: 0.8rem;
   font-weight: 600;
 }
+
+/* Tablet and desktop: the second column (block categories) opens from the Code button (#1205). */
+@media (min-width: 900px) {
+  .kids-studio:not([data-categories-open="true"]) {
+    grid-template-columns: 68px 0 minmax(0, 1fr);
+  }
+}
+@media (min-width: 721px) {
+  .kids-studio:not([data-categories-open="true"]) > .kids-studio-categories {
+    display: none;
+  }
+}
