@@ -29,6 +29,10 @@ export function LinkPanel({ locale, api: provided }: Props) {
   const [projectCopyEligible, setProjectCopyEligible] = useState(false);
   const [link, setLink] = useState<LinkState | null>(() => loadLink());
   const [refresh, setRefresh] = useState(0);
+  // One path at a time: a code for this device, or an adult account. Already linked or signed in
+  // opens the matching one; otherwise the learner of the screen chooses (issue #1208).
+  const [chosen, setChosen] = useState<"code" | "account" | null>(null);
+  const path = session !== null ? "account" : (chosen ?? (link !== null ? "code" : null));
 
   useEffect(() => {
     let cancelled = false;
@@ -87,37 +91,40 @@ export function LinkPanel({ locale, api: provided }: Props) {
         <button
           type="button"
           className="kids-button"
-          onClick={() =>
-            document.getElementById("kids-link-this-title")?.scrollIntoView({ block: "start" })
-          }
+          aria-pressed={path === "code"}
+          disabled={session !== null}
+          onClick={() => setChosen("code")}
         >
           {locale === "es" ? "Ya tengo un código" : "I have a code"}
         </button>
         <button
           type="button"
           className="kids-button"
-          onClick={() =>
-            document.getElementById("kids-link-account-title")?.scrollIntoView({ block: "start" })
-          }
+          aria-pressed={path === "account"}
+          onClick={() => setChosen("account")}
         >
           {locale === "es" ? "Entrar / Crear cuenta" : "Sign in / Create account"}
         </button>
       </div>
-      <ThisDeviceCard locale={locale} api={api} link={link} onLink={setLink} />
-      <AdultAccountCard
-        locale={locale}
-        api={api}
-        session={session}
-        email={email}
-        onSession={(next) => {
-          setSession(next);
-          window.dispatchEvent(new Event(ADULT_SESSION_CHANGED_EVENT));
-        }}
-        onEmail={(next) => {
-          setEmail(next);
-          window.dispatchEvent(new Event(ADULT_SESSION_CHANGED_EVENT));
-        }}
-      />
+      {path === "code" ? (
+        <ThisDeviceCard locale={locale} api={api} link={link} onLink={setLink} />
+      ) : null}
+      {path === "account" ? (
+        <AdultAccountCard
+          locale={locale}
+          api={api}
+          session={session}
+          email={email}
+          onSession={(next) => {
+            setSession(next);
+            window.dispatchEvent(new Event(ADULT_SESSION_CHANGED_EVENT));
+          }}
+          onEmail={(next) => {
+            setEmail(next);
+            window.dispatchEvent(new Event(ADULT_SESSION_CHANGED_EVENT));
+          }}
+        />
+      ) : null}
       {session !== null && email?.verified ? (
         <>
           {projectCopyEligible ? (
