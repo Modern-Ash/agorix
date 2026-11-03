@@ -125,8 +125,8 @@ test("a locally saved scene survives reopening and portable export/import", asyn
   await expect(scene).toBeVisible();
   await scene.getByRole("button", { name: "Jugar" }).click();
   await expect(page.locator(".kids-program-block")).toHaveCount(1);
-  await page.getByRole("button", { name: "Volver a Crear" }).click();
-  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  // A scene opened from Mis proyectos goes back to Mis proyectos.
+  await page.getByRole("button", { name: "Volver a Mis proyectos" }).click();
   const download = page.waitForEvent("download");
   await page
     .getByRole("article")
