@@ -6186,3 +6186,23 @@ body:has(.kids-create) {
   min-height: 12px;
   margin-block: -2px;
 }
+
+/* Past the daily goal: the bar turns warm and says by how much (#1208). */
+.kids-time-over {
+  color: #8a3b00;
+  font-weight: 700;
+}
+.kids-adult-card:has(.kids-time-over) .kids-time-track span {
+  background: #c2410c;
+}
+.kids-images-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.kids-images-confirm p {
+  flex: 1 1 100%;
+  margin: 0;
+  font-weight: 700;
+}
