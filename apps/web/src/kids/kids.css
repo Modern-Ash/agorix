@@ -983,7 +983,7 @@
   display: flex;
   justify-content: flex-end;
   position: fixed;
-  right: max(16px, calc((100vw - 1100px) / 2 + 16px));
+  right: max(12px, env(safe-area-inset-right));
   bottom: calc(16px + env(safe-area-inset-bottom));
   z-index: 60;
 }
@@ -1580,7 +1580,7 @@
 }
 .kids-ori-guide-zone {
   position: fixed;
-  right: max(16px, calc((100vw - 1100px) / 2 + 16px));
+  right: max(12px, env(safe-area-inset-right));
   bottom: calc(16px + env(safe-area-inset-bottom));
   z-index: 60;
 }
@@ -6079,17 +6079,16 @@ body:has(.kids-create) {
   }
 }
 
-/* In the editor Ori keeps the same animated face as every other screen, not a plain button. */
-.kids-studio-ori-rail.kids-ori-float-trigger {
-  flex-direction: column;
-  justify-content: center;
-  gap: 2px;
-  width: 68px;
-  min-height: 72px;
-  padding: 4px;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  box-shadow: none;
+/* In the editor Ori keeps the same animated face and the same corner as every other screen. */
+.kids-studio > .kids-studio-ori-rail.kids-ori-float-trigger {
+  position: fixed;
+  right: max(12px, env(safe-area-inset-right));
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  z-index: 60;
+  width: auto;
+  min-height: 54px;
+  padding: 5px 14px 5px 7px;
+  font-size: 1rem;
 }
 .kids-studio-ori .kids-studio-panel-head .kids-ori-float-trigger {
   box-shadow: 0 4px 14px #31246d24;
@@ -6099,4 +6098,22 @@ body:has(.kids-create) {
   border: 0;
   background: transparent;
   box-shadow: none;
+}
+
+/* The same faint grid as the rest of the app, on the map and over the editor stage backdrop. */
+.kids-map {
+  background:
+    linear-gradient(90deg, rgba(23, 32, 29, 0.045) 1px, transparent 1px) 0 0 / 28px 28px,
+    linear-gradient(0deg, rgba(23, 32, 29, 0.035) 1px, transparent 1px) 0 0 / 28px 28px,
+    var(--world-tint);
+}
+.kids-studio-stage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.12) 1px, transparent 1px) 0 0 / 28px 28px,
+    linear-gradient(0deg, rgba(255, 255, 255, 0.12) 1px, transparent 1px) 0 0 / 28px 28px;
 }
