@@ -1,5 +1,5 @@
 import { expect, test } from "./fixtures.js";
-import { clickCreateScene, categoryNav } from "./helpers.js";
+import { clickCreateScene, categoryNav, settleAnimations } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -161,6 +161,7 @@ test("Ori opens from the selected sprite with contextual help", async ({ page })
   await expect(page.locator(".kids-ori-context")).toContainText("Estamos trabajando con");
   const button = page.getByRole("button", { name: "Pedirle una idea a Ori" });
   await expect(button).toBeVisible();
+  await settleAnimations(page);
   expect((await button.boundingBox())!.width).toBeGreaterThan(150);
 });
 

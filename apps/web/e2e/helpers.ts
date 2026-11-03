@@ -121,3 +121,19 @@ export async function categoryNav(page: Page) {
   if (!(await nav.isVisible()) && (await code.isVisible())) await code.click();
   return nav;
 }
+
+/**
+ * Wait for the finite animations on the page (Ori's window growing, suggestions entering) to end,
+ * so a measurement or an accessibility scan does not catch a half-faded element.
+ */
+export async function settleAnimations(page: Page): Promise<void> {
+  await page.waitForFunction(() =>
+    document
+      .getAnimations()
+      .every(
+        (animation) =>
+          animation.playState !== "running" ||
+          animation.effect?.getComputedTiming().endTime === Infinity,
+      ),
+  );
+}
