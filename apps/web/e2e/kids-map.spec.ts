@@ -242,16 +242,14 @@ test("the map says what to do next, opens that mission, explains locks and leads
   });
   await page.reload();
   const next = page.getByTestId("map-next");
-  await expect(
-    page.getByRole("heading", { name: "Creá a tu manera o aprendé con misiones" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Empezá por la próxima misión" })).toBeVisible();
   await expect(page.locator(".kids-map-orientation")).toContainText(
-    "no hace falta completarlo para crear",
+    "no hace falta terminar el mapa",
   );
   const create = next.getByRole("button", { name: /Crear sin misiones/ });
-  const mission = next.getByRole("button", { name: /Aprender con una misión/ });
+  const mission = next.getByRole("button", { name: /Empezar con/ });
   await expect(mission).toContainText("Camino recto");
-  expect((await create.boundingBox())!.y).toBeLessThan((await mission.boundingBox())!.y);
+  expect((await mission.boundingBox())!.y).toBeLessThan((await create.boundingBox())!.y);
   await expect(page.getByText("Terminá la misión 1 para abrirla")).toBeVisible();
   // Each mission says what to do and which idea it teaches, not just a title.
   await expect(page.getByText("Ordená los pasos para llegar a la meta.").first()).toBeVisible();
@@ -263,7 +261,7 @@ test("the map says what to do next, opens that mission, explains locks and leads
   await page.getByRole("button", { name: "Mapa" }).click();
   await page
     .getByTestId("map-next")
-    .getByRole("button", { name: /Aprender con una misión/ })
+    .getByRole("button", { name: /Empezar con/ })
     .click();
   await expect(page).toHaveURL(/#\/mision\/1\//);
 });

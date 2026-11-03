@@ -124,7 +124,7 @@ test("Ori's mission request omits account and device link data", async ({ page }
   });
   await page.reload();
   await page.getByRole("button", { name: "Misión 1" }).click();
-  await page.getByRole("button", { name: "Mostrar ayuda de Ori" }).click();
+  await page.getByRole("button", { name: /^(Mostrar ayuda de Ori|Abrir Ori)$/ }).click();
   await page.getByRole("button", { name: "Pedirle una idea a Ori" }).click();
   await expect.poll(() => bodies.length).toBeGreaterThan(0);
   expect(bodies.join("\n")).not.toMatch(

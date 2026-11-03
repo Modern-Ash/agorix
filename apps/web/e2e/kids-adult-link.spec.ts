@@ -333,7 +333,7 @@ test("Ori requests from a linked device never carry link data", async ({ page, b
 
   await tablet.getByRole("button", { name: "Mapa" }).click();
   await tablet.getByRole("button", { name: "Misión 1" }).click();
-  await tablet.getByRole("button", { name: "Mostrar ayuda de Ori" }).click();
+  await tablet.getByRole("button", { name: /^(Mostrar ayuda de Ori|Abrir Ori)$/ }).click();
   await tablet.getByRole("button", { name: "Pedirle una idea a Ori" }).click();
   await tablet.waitForTimeout(500);
 

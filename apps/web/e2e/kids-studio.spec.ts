@@ -12,7 +12,7 @@ import { reloadTo, clickCreateScene } from "./helpers.js";
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
 async function askStudioOri(page: Page) {
-  const open = page.getByRole("button", { name: "Mostrar ayuda de Ori" });
+  const open = page.getByRole("button", { name: /^(Mostrar ayuda de Ori|Abrir Ori)$/ });
   if (await open.isVisible()) await open.click();
   await page.getByRole("button", { name: "Pedirle una idea a Ori" }).click();
 }
@@ -677,7 +677,7 @@ test("a goal from the closed list becomes several ghost blocks and only changes 
 }) => {
   // The 9–12 band offers every goal; the 6–8 band keeps Ori's ideas to six blocks (issue #607).
   await openStudio(page, "9-12");
-  await page.getByRole("button", { name: "Mostrar ayuda de Ori" }).click();
+  await page.getByRole("button", { name: /^(Mostrar ayuda de Ori|Abrir Ori)$/ }).click();
   await page.getByRole("button", { name: "Hacer un cuadrado" }).click();
   await expect(page.getByTestId("intent-card")).toContainText("Ori propone 8 bloques");
   await expect(page.getByTestId("ori-ghost-block")).toHaveCount(8);
@@ -1824,7 +1824,7 @@ test("Ori's tune is heard first, only joins the program when used, and can be un
     ),
   );
   await page.reload();
-  await page.getByRole("button", { name: "Mostrar ayuda de Ori" }).click();
+  await page.getByRole("button", { name: /^(Mostrar ayuda de Ori|Abrir Ori)$/ }).click();
   await expect(page.getByRole("button", { name: "Tocar una melodía" })).toBeVisible();
   await page.getByRole("button", { name: "Tocar una melodía" }).click();
   const card = page.getByTestId("intent-card");

@@ -135,7 +135,7 @@ test("Ori provider failures stay silent for the child", async ({ page }) => {
   for (let round = 0; round < 4; round++) {
     await addStudioBlock(page, "Movimiento", "+ Mover");
     await page.getByRole("button", { name: "Jugar", exact: true }).click();
-    const show = page.getByRole("button", { name: "Mostrar ayuda de Ori" });
+    const show = page.getByRole("button", { name: /^(Mostrar ayuda de Ori|Abrir Ori)$/ });
     if (await show.count()) await show.click();
     const help = page.getByRole("button", { name: "¿Qué bloque me ayuda?" });
     if (await help.count()) await help.click();

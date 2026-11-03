@@ -105,7 +105,9 @@ export async function solveMission(page: Page, index: 0 | 1 | 2): Promise<void> 
 export async function clickCreateScene(page: Page): Promise<void> {
   const steps = page.getByRole("navigation", { name: "Pasos para crear" });
   const start = page.getByRole("button", { name: "Crear escena", exact: true });
-  if (!(await start.isVisible()) && (await steps.isVisible())) {
+  // Wait for the screen to settle on one of the two layouts before choosing a path.
+  await start.or(steps).first().waitFor();
+  if (!(await start.isVisible())) {
     await steps.getByRole("button", { name: /^3 ·/ }).click();
   }
   await start.click();

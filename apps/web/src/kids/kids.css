@@ -2206,6 +2206,7 @@
 
 .kids-onboard {
   min-height: calc(100vh - 32px);
+  min-height: calc(100dvh - 32px);
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -2454,8 +2455,14 @@
 }
 
 .kids-onboard-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
   display: flex;
   gap: 12px;
+  /* The actions stay in view on short windows; the fade keeps the content readable behind them. */
+  padding: 12px 0 calc(8px + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, var(--kids-canvas) 72%, transparent);
 }
 
 .kids-back {
@@ -2667,7 +2674,7 @@
 
 .kids-connector {
   width: 4px;
-  height: 28px;
+  height: 18px;
   border-radius: 2px;
   background: repeating-linear-gradient(to bottom, var(--world-ink) 0 6px, transparent 6px 12px);
 }
@@ -6063,4 +6070,33 @@ body:has(.kids-create) {
     border-radius: 12px;
     box-shadow: 0 2px 12px rgb(0 0 0 / 18%);
   }
+}
+
+/* One way in to Ori: the activity rail button where it exists, the floating card only on phones. */
+@media (min-width: 721px) {
+  .kids-studio-ori[data-collapsed="true"] {
+    display: none;
+  }
+}
+
+/* In the editor Ori keeps the same animated face as every other screen, not a plain button. */
+.kids-studio-ori-rail.kids-ori-float-trigger {
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  width: 68px;
+  min-height: 72px;
+  padding: 4px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  box-shadow: none;
+}
+.kids-studio-ori .kids-studio-panel-head .kids-ori-float-trigger {
+  box-shadow: 0 4px 14px #31246d24;
+}
+.kids-studio-ori[data-collapsed="true"] {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
