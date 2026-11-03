@@ -49,11 +49,12 @@ export function StudioIntentPicker({
   return (
     <div role="group" aria-label={es ? "¿Qué querés lograr?" : "What do you want to achieve?"}>
       <strong>{es ? "¿Qué querés lograr?" : "What do you want to achieve?"}</strong>
-      {intents.map((intent) => (
+      {intents.map((intent, index) => (
         <button
           key={intent}
           type="button"
-          className="kids-button"
+          className="kids-button kids-ori-suggestion"
+          style={{ ["--ori-step" as string]: index }}
           disabled={disabled}
           onClick={() => onPick(intent)}
         >

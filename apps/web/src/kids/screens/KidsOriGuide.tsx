@@ -1,7 +1,12 @@
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import type { Locale } from "../../i18n.js";
 import type { KidsScreen } from "../kidsState.js";
-import { oriMotionStatus, useOriPageVisible } from "../kidsOriMotion.js";
+import {
+  oriMotionStatus,
+  prefersReducedMotion,
+  useOriPageVisible,
+  useTypewriter,
+} from "../kidsOriMotion.js";
 import { expressionForMotion } from "../kidsOriExpression.js";
 import { useOriContextText } from "../kidsOriCursor.js";
 import { KidsSprite } from "./KidsArt.js";
@@ -73,13 +78,31 @@ export function KidsOriGuide({
   readonly docked?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  // The window grows out of the avatar and folds back into it; `closing` keeps it mounted meanwhile.
+  const [closing, setClosing] = useState(false);
   const visible = useOriPageVisible();
   const context = useOriContextText(locale);
   const motion = open ? "listening" : screen === "reflect" ? "observing" : "idle";
   const trigger = useRef<HTMLButtonElement>(null);
+  const dialog = useRef<HTMLDivElement>(null);
+  const message = GUIDANCE[screen][locale];
+  const typed = useTypewriter(message, open && !closing);
+  useLayoutEffect(() => {
+    if (!open || !trigger.current || !dialog.current) return;
+    const from = trigger.current.getBoundingClientRect();
+    const to = dialog.current.getBoundingClientRect();
+    dialog.current.style.setProperty("--ori-origin-x", `${from.left + from.width / 2 - to.left}px`);
+    dialog.current.style.setProperty("--ori-origin-y", `${from.top + from.height / 2 - to.top}px`);
+  }, [open]);
   function close() {
-    setOpen(false);
-    requestAnimationFrame(() => trigger.current?.focus());
+    const finish = () => {
+      setOpen(false);
+      setClosing(false);
+      requestAnimationFrame(() => trigger.current?.focus());
+    };
+    if (prefersReducedMotion()) return finish();
+    setClosing(true);
+    window.setTimeout(finish, 200);
   }
   return (
     <div
@@ -101,7 +124,9 @@ export function KidsOriGuide({
       {open ? (
         <div className="kids-ori-panel-layer" role="presentation">
           <div
+            ref={dialog}
             className="kids-ori-float-dialog"
+            data-closing={closing ? "true" : undefined}
             role="dialog"
             aria-label={locale === "es" ? "Ori te acompaña" : "Ori is with you"}
             onKeyDown={(event) => {
@@ -119,7 +144,10 @@ export function KidsOriGuide({
             <div className="kids-ori-stage">
               <KidsSprite slot="ori" expression="happy" talking />
             </div>
-            <p className="kids-ori-guide-message">{GUIDANCE[screen][locale]}</p>
+            <p className="kids-ori-guide-message">
+              <span className="kids-visually-hidden">{message}</span>
+              <span aria-hidden="true">{typed}</span>
+            </p>
           </div>
         </div>
       ) : null}
