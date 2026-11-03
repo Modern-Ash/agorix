@@ -385,10 +385,10 @@ test("a category moves only the block list, and the blocks, code and Ori help fo
   await page.getByRole("button", { name: "Mostrar código" }).click();
   await expect(page.locator(".kids-code-strip")).toBeVisible();
 
-  await page.getByRole("button", { name: "Mostrar ayuda de Ori" }).click();
+  await page.getByRole("button", { name: /^(Mostrar ayuda de Ori|Abrir Ori)$/ }).click();
   await expect(page.getByRole("button", { name: "Pedirle una idea a Ori" })).toBeVisible();
   await page.getByRole("button", { name: "Ocultar ayuda de Ori" }).click();
   await expect(page.getByRole("button", { name: "Pedirle una idea a Ori" })).toBeHidden();
-  await page.getByRole("button", { name: "Mostrar ayuda de Ori" }).click();
+  await page.getByRole("button", { name: /^(Mostrar ayuda de Ori|Abrir Ori)$/ }).click();
   await expect(page.getByRole("button", { name: "Pedirle una idea a Ori" })).toBeVisible();
 });

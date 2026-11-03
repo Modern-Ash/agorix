@@ -6071,3 +6071,10 @@ body:has(.kids-create) {
     box-shadow: 0 2px 12px rgb(0 0 0 / 18%);
   }
 }
+
+/* One way in to Ori: the activity rail button where it exists, the floating card only on phones. */
+@media (min-width: 721px) {
+  .kids-studio-ori[data-collapsed="true"] {
+    display: none;
+  }
+}
