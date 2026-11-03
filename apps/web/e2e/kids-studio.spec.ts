@@ -7,7 +7,7 @@ import {
   evaluateOriStudioOutput,
   ORI_STUDIO_VERSION,
 } from "@agorix/ori-agent";
-import { reloadTo, clickCreateScene, categoryNav } from "./helpers.js";
+import { reloadTo, clickCreateScene, categoryNav, settleAnimations } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -692,6 +692,7 @@ test("a goal from the closed list becomes several ghost blocks and only changes 
   await expect(page.locator(".kids-program-block")).toHaveCount(6);
   await page.getByRole("button", { name: "Deshacer" }).click();
   await expect(page.locator(".kids-program-block")).toHaveCount(0);
+  await settleAnimations(page);
   const violations = (
     await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
   ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");

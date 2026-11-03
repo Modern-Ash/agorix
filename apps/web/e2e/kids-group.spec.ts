@@ -26,10 +26,17 @@ async function open(page: Page, flags: string[] = ["adultLink", "groupMode"]) {
   await page.reload();
 }
 
-async function openAdults(page: Page) {
+async function openAdults(page: Page, path: "account" | "code" = "account") {
   await page.getByRole("button", { name: "Adultos" }).click();
   await passAdultGate(page);
   await openAdultTab(page, "Cuenta y privacidad");
+  // One path at a time (#1208): a code for this device, or an adult account.
+  await page
+    .getByRole("button", {
+      name: path === "code" ? "Ya tengo un código" : "Entrar / Crear cuenta",
+      exact: true,
+    })
+    .click();
 }
 
 async function newPage(browser: Browser): Promise<Page> {
@@ -88,7 +95,7 @@ async function codeFromOrganizer(page: Page, previous = ""): Promise<string> {
 async function childJoins(browser: Browser, code: string): Promise<{ page: Page; alias: string }> {
   const tablet = await newPage(browser);
   await open(tablet);
-  await openAdults(tablet);
+  await openAdults(tablet, "code");
   await tablet.getByLabel("Código de ingreso").fill(code);
   await tablet.getByRole("button", { name: "Unirme" }).click();
   await expect(tablet.getByText("Este dispositivo está en un grupo.")).toBeVisible();

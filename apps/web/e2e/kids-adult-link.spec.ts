@@ -27,10 +27,18 @@ async function open(page: Page, flags: string[] = ["adultLink"]) {
   await page.reload();
 }
 
-async function openAdults(page: Page) {
+async function openAdults(page: Page, path: "account" | "code" | "none" = "account") {
   await page.getByRole("button", { name: "Adultos" }).click();
   await passAdultGate(page);
   await openAdultTab(page, "Cuenta y privacidad");
+  // One path at a time (#1208): a code for this device, or an adult account.
+  if (path !== "none")
+    await page
+      .getByRole("button", {
+        name: path === "code" ? "Ya tengo un código" : "Entrar / Crear cuenta",
+        exact: true,
+      })
+      .click();
 }
 
 async function newPage(browser: Browser): Promise<Page> {
@@ -72,7 +80,7 @@ test("nothing appears while the flag is off, and no link endpoint is called", as
     if (/\/v1\/(link|account)/.test(request.url())) calls.push(request.url());
   });
   await open(page, []);
-  await openAdults(page);
+  await openAdults(page, "none");
   await expect(page.getByRole("heading", { name: "Cuenta de adulto y vinculación" })).toHaveCount(
     0,
   );
@@ -134,7 +142,7 @@ test("adult signs up, verifies by email, links a child tablet, sees its summary 
   // Child tablet
   const tablet = await newPage(browser);
   await open(tablet);
-  await openAdults(tablet);
+  await openAdults(tablet, "code");
   await expect(tablet.getByRole("heading", { name: "Este dispositivo" })).toBeVisible();
   const keypad = tablet.getByRole("group", { name: "Código de 6 números" });
   for (const digit of "000000".slice(0, 0) + codeText) {
@@ -177,7 +185,7 @@ test("adult signs up, verifies by email, links a child tablet, sees its summary 
 
 test("the child's wrong code reads as a calm, generic message", async ({ page }) => {
   await open(page);
-  await openAdults(page);
+  await openAdults(page, "code");
   const keypad = page.getByRole("group", { name: "Código de 6 números" });
   for (const digit of "000000")
     await keypad.getByRole("button", { name: digit, exact: true }).click();
@@ -227,7 +235,7 @@ test("the panel is simply absent where the server has no link service", async ({
     }),
   );
   await open(page);
-  await openAdults(page);
+  await openAdults(page, "none");
   await expect(page.getByRole("heading", { name: "Cuenta de adulto y vinculación" })).toHaveCount(
     0,
   );
@@ -244,7 +252,7 @@ test("a throttled device reads the same calm message and keeps working", async (
     }),
   );
   await open(page);
-  await openAdults(page);
+  await openAdults(page, "code");
   const keypad = page.getByRole("group", { name: "Código de 6 números" });
   for (const digit of "123456")
     await keypad.getByRole("button", { name: digit, exact: true }).click();
@@ -256,7 +264,7 @@ test("a throttled device reads the same calm message and keeps working", async (
 test("offline while redeeming explains it and does not link", async ({ page }) => {
   await page.route("**/v1/link/redeem", (route) => route.abort("internetdisconnected"));
   await open(page);
-  await openAdults(page);
+  await openAdults(page, "code");
   const keypad = page.getByRole("group", { name: "Código de 6 números" });
   for (const digit of "123456")
     await keypad.getByRole("button", { name: digit, exact: true }).click();
@@ -282,7 +290,7 @@ test("when the browser cannot keep the link, the device releases it at once", as
     return route.fulfill({ status: 204 });
   });
   await open(page);
-  await openAdults(page);
+  await openAdults(page, "code");
   await page.evaluate(() => {
     const original = Storage.prototype.setItem;
     Storage.prototype.setItem = function (key: string, value: string) {
@@ -322,7 +330,7 @@ test("Ori requests from a linked device never carry link data", async ({ page, b
     await route.fulfill({ status: 503, body: "" });
   });
   await open(tablet);
-  await openAdults(tablet);
+  await openAdults(tablet, "code");
   const keypad = tablet.getByRole("group", { name: "Código de 6 números" });
   for (const digit of code) await keypad.getByRole("button", { name: digit, exact: true }).click();
   await keypad.getByRole("button", { name: "Vincular" }).click();
@@ -403,7 +411,7 @@ test("deleting the account needs the password, removes everything and the tablet
 
   const tablet = await newPage(browser);
   await open(tablet);
-  await openAdults(tablet);
+  await openAdults(tablet, "code");
   const keypad = tablet.getByRole("group", { name: "Código de 6 números" });
   for (const digit of code) await keypad.getByRole("button", { name: digit, exact: true }).click();
   await keypad.getByRole("button", { name: "Vincular" }).click();
@@ -438,4 +446,21 @@ test("deleting the account needs the password, removes everything and the tablet
     })
     .toBeNull();
   await tablet.context().close();
+});
+
+test("linking shows one path at a time, chosen from two clear options (#1208)", async ({
+  page,
+}) => {
+  await open(page);
+  await openAdults(page, "none");
+  const device = page.getByRole("heading", { name: "Este dispositivo" });
+  const user = page.getByLabel("Usuario");
+  await expect(device).toHaveCount(0);
+  await expect(user).toHaveCount(0);
+  await page.getByRole("button", { name: "Ya tengo un código", exact: true }).click();
+  await expect(device).toBeVisible();
+  await expect(user).toHaveCount(0);
+  await page.getByRole("button", { name: "Entrar / Crear cuenta", exact: true }).click();
+  await expect(user).toBeVisible();
+  await expect(device).toHaveCount(0);
 });

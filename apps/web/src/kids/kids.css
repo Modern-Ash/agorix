@@ -6328,3 +6328,25 @@ button.kids-band-chip {
   flex: 1 1 220px;
   max-width: 360px;
 }
+
+/* Adults on wide screens: cards fill the row instead of leaving half of it empty, and Account
+   and privacy uses two columns (#1208). */
+@media (min-width: 900px) {
+  .kids-adult-grid {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    align-items: start;
+  }
+  .kids-link {
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    align-items: start;
+  }
+  .kids-link > h2,
+  .kids-link > p,
+  .kids-link > details,
+  .kids-link > .kids-link-paths {
+    grid-column: 1 / -1;
+  }
+}
+.kids-adult-card.kids-link {
+  grid-column: 1 / -1;
+}
