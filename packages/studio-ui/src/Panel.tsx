@@ -314,7 +314,7 @@ export function PanelDivider({
     if (event.key !== grow && event.key !== shrink) return;
     event.preventDefault();
     const step = (event.key === grow ? DIVIDER_STEP : -DIVIDER_STEP) * direction;
-    dispatch({ type: "setSize", id, size: size() + step });
+    dispatch({ type: "resizeBy", id, delta: step, base: size() });
   };
 
   return (

@@ -208,6 +208,8 @@ interface Props {
   readonly id: string;
   readonly locale: Locale;
   readonly onBack: () => void;
+  /** Where Back leads, named after the screen the scene was opened from. */
+  readonly backLabel?: string | undefined;
   readonly oriSuggestions: boolean;
   readonly readAloud?: boolean;
   /** The adult's age band; absent while the age-band switch is off, which shows every language. */
@@ -964,6 +966,7 @@ export function KidsStudioScreen({
   id,
   locale,
   onBack,
+  backLabel,
   oriSuggestions,
   readAloud = true,
   ageBand,
@@ -2854,13 +2857,20 @@ export function KidsStudioScreen({
       className="kids-screen kids-studio"
       data-editor-tab={editorTab}
       data-categories-open={categoriesOpen ? "true" : undefined}
+      data-code-sized={panelLayout.state.sizes.code === undefined ? undefined : "true"}
+      data-inspector-sized={panelLayout.state.sizes.inspector === undefined ? undefined : "true"}
+      style={{
+        ["--kids-code-height" as string]: `${panelLayout.state.sizes.code ?? 0}px`,
+        ["--kids-inspector-height" as string]: `${panelLayout.state.sizes.inspector ?? 0}px`,
+      }}
       aria-label={missionDefinition?.title ?? copy.title}
     >
       <header className="kids-studio-header">
         <button type="button" className="kids-button kids-studio-back" onClick={onBack}>
           <span aria-hidden="true">←</span>{" "}
           <span className="kids-studio-back-label">
-            {mission ? (locale === "es" ? "Volver al mapa" : "Back to map") : copy.back}
+            {backLabel ??
+              (mission ? (locale === "es" ? "Volver al mapa" : "Back to map") : copy.back)}
           </span>
         </button>
         {missionDefinition ? (
@@ -3609,6 +3619,18 @@ export function KidsStudioScreen({
               {locale === "es" ? "Elegir fondo o disfraz" : "Choose backdrop or costume"}
             </button>
           </Panel>
+          <PanelDivider
+            controller={panelLayout}
+            id="inspector"
+            title={locale === "es" ? "Objeto seleccionado" : "Selected sprite"}
+            orientation="horizontal"
+            direction={-1}
+            size={() =>
+              document
+                .querySelector(".kids-studio-inspector-panel .agx-panel-body")
+                ?.getBoundingClientRect().height ?? 160
+            }
+          />
           <Panel
             controller={panelLayout}
             id="inspector"
@@ -6789,6 +6811,18 @@ export function KidsStudioScreen({
               ) : null}
             </div>
           ) : null}
+          <PanelDivider
+            controller={panelLayout}
+            id="code"
+            title={copy.code}
+            orientation="horizontal"
+            direction={-1}
+            size={() =>
+              document
+                .querySelector(".kids-studio-code-panel .agx-panel-body")
+                ?.getBoundingClientRect().height ?? 240
+            }
+          />
           <Panel
             controller={panelLayout}
             id="code"

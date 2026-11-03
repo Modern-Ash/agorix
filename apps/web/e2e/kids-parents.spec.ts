@@ -127,7 +127,9 @@ test("adult gate protects real progress, settings and AI status", async ({ page 
   await expect(
     page.getByRole("heading", { name: "Misiones completadas" }).locator(".."),
   ).toContainText("1");
-  await expect(page.getByText("Todavía no hay evidencia suficiente")).toBeVisible();
+  await expect(
+    page.getByText("Completó misiones, pero todavía no hay señales de comprensión registradas"),
+  ).toBeVisible();
   await expect(page.getByRole("switch")).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Estado de la IA" })).toHaveCount(0);
   // The status was asked for once at the door, not again per tab.
@@ -196,7 +198,7 @@ test("adult gate protects real progress, settings and AI status", async ({ page 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("button", { name: "Salir" }).click();
   await expect(page.getByRole("heading", { name: /PIN de adulto/ })).toBeVisible();
-  await page.getByRole("button", { name: "Mapa" }).click();
+  await page.getByRole("button", { name: "Mapa", exact: true }).click();
   await expect(page.getByRole("button", { name: "Escuchar" })).toHaveCount(0);
   await page.locator(".kids-node.current").click();
   await expect(page.locator(".kids-ori-card")).toHaveCount(0);

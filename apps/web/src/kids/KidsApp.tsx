@@ -334,7 +334,8 @@ export function KidsApp({
             oriSuggestions={adultSettings.oriSuggestions}
             readAloud={adultSettings.readAloud}
             ageBand={ageBandsEnabled ? adultSettings.ageBand : undefined}
-            onBack={() => dispatch({ type: "go", screen: "map" })}
+            backLabel={backLabelFor(state.origin ?? "map", state.locale)}
+            onBack={() => dispatch({ type: "go", screen: state.origin ?? "map" })}
             onComplete={() => update(markMissionDone(progress, state.world, state.missionIndex))}
           />
         ) : state.screen === "advanced" ? (
@@ -370,7 +371,8 @@ export function KidsApp({
             oriSuggestions={adultSettings.oriSuggestions}
             ageBand={ageBandsEnabled ? adultSettings.ageBand : undefined}
             initialDraw={studioDraw}
-            onBack={() => dispatch({ type: "go", screen: "create" })}
+            backLabel={backLabelFor(state.origin ?? "create", state.locale)}
+            onBack={() => dispatch({ type: "go", screen: state.origin ?? "create" })}
           />
         ) : state.screen === "create" ? (
           <CreateScreen
@@ -426,6 +428,7 @@ export function KidsApp({
             settings={adultSettings}
             onSettings={updateAdultSettings}
             initialTab={adultTab}
+            onBack={() => dispatch({ type: "go", screen: "map" })}
           />
         ) : (
           <section className="kids-screen" aria-labelledby="kids-title">
@@ -474,6 +477,7 @@ function MissionStudioEntry({
   oriSuggestions,
   readAloud,
   ageBand,
+  backLabel,
   onBack,
   onComplete,
 }: {
@@ -484,6 +488,7 @@ function MissionStudioEntry({
   readonly oriSuggestions: boolean;
   readonly readAloud: boolean;
   readonly ageBand?: AgeBand | undefined;
+  readonly backLabel: string;
   readonly onBack: () => void;
   readonly onComplete: () => void;
 }) {
@@ -505,6 +510,7 @@ function MissionStudioEntry({
       readAloud={readAloud}
       ageBand={ageBand}
       mission={{ world, index: missionIndex, catalog, onComplete }}
+      backLabel={backLabel}
       onBack={onBack}
     />
   ) : (
@@ -519,6 +525,14 @@ function MissionStudioEntry({
       </button>
     </section>
   );
+}
+
+/** Where Back leads and how it says so: the screen the scene was opened from (issue #1207). */
+function backLabelFor(origin: "map" | "create" | "projects", locale: Locale): string {
+  if (origin === "create") return locale === "es" ? "Volver a Crear" : "Back to Create";
+  if (origin === "projects")
+    return locale === "es" ? "Volver a Mis proyectos" : "Back to My projects";
+  return locale === "es" ? "Volver al mapa" : "Back to map";
 }
 
 function routeLookup(): KidsRouteLookup {

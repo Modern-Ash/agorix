@@ -2466,12 +2466,18 @@
 }
 
 .kids-back {
-  width: 64px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 18px;
+  min-width: 64px;
+  font-weight: 700;
+  font-size: 1rem;
   min-height: 64px;
   border: 1px solid var(--kids-border);
   border-radius: 20px;
   background: var(--kids-panel);
-  font-size: 1.5rem;
   cursor: pointer;
 }
 
@@ -6159,6 +6165,46 @@ body:has(.kids-create) {
   .kids-studio:not([data-categories-open="true"]) > .kids-studio-categories {
     display: none;
   }
+}
+
+/* Code and the selected sprite resize from a divider above them; they keep a floor and scroll inside (#1206). */
+.kids-studio[data-code-sized="true"] .kids-studio-code-panel .agx-panel-body {
+  box-sizing: border-box;
+  height: var(--kids-code-height);
+  min-height: 120px;
+  max-height: 80vh;
+  overflow: auto;
+}
+.kids-studio[data-inspector-sized="true"] .kids-studio-inspector-panel .agx-panel-body {
+  box-sizing: border-box;
+  height: var(--kids-inspector-height);
+  min-height: 120px;
+  max-height: 60vh;
+  overflow: auto;
+}
+.kids-studio .agx-panel-divider--horizontal {
+  min-height: 12px;
+  margin-block: -2px;
+}
+
+/* Past the daily goal: the bar turns warm and says by how much (#1208). */
+.kids-time-over {
+  color: #8a3b00;
+  font-weight: 700;
+}
+.kids-adult-card:has(.kids-time-over) .kids-time-track span {
+  background: #c2410c;
+}
+.kids-images-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.kids-images-confirm p {
+  flex: 1 1 100%;
+  margin: 0;
+  font-weight: 700;
 }
 
 /* Ori's eyes follow the pointer: two variables set by useOriGaze move the pupils inside the eye. */

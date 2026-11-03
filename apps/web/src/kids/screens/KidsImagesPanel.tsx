@@ -21,6 +21,7 @@ export function KidsImagesPanel({ locale, t }: Props) {
   const [images, setImages] = useState(loadKidsImages);
   const [custom, setCustom] = useState(loadKidsCustom);
   const [message, setMessage] = useState("");
+  const [confirmingRemoveAll, setConfirmingRemoveAll] = useState(false);
   const [filter, setFilter] = useState<"explorers" | "characters" | "backdrops">("explorers");
   const worlds = kidsTable(locale, "worlds");
   const used = Math.ceil(imageStorageBytes(images) / 1024);
@@ -80,6 +81,7 @@ export function KidsImagesPanel({ locale, t }: Props) {
   }
 
   function removeAll() {
+    setConfirmingRemoveAll(false);
     const saved = clearKidsImages();
     if (!saved.ok) return showSaveFailure(saved.reason);
     setImages(saved.images);
@@ -92,6 +94,13 @@ export function KidsImagesPanel({ locale, t }: Props) {
     setMessage(t("imageRemoved"));
   }
 
+  const shownCustom = custom.filter((item) =>
+    filter === "characters"
+      ? item.kind === "explorer"
+      : filter === "backdrops"
+        ? item.kind === "backdrop"
+        : false,
+  );
   return (
     <section className="kids-adult-card kids-images-panel" aria-labelledby="kids-images-title">
       <h2 id="kids-images-title">{t("gameImages")}</h2>
@@ -167,43 +176,52 @@ export function KidsImagesPanel({ locale, t }: Props) {
           </div>
         ))}
       </div>
-      <button
-        type="button"
-        className="kids-button"
-        disabled={Object.keys(images).length === 0}
-        onClick={removeAll}
-      >
-        {t("removeAllImages")}
-      </button>
-      <h3>
-        {t("customExplorer")} / {t("customBackdrop")}
-      </h3>
+      {confirmingRemoveAll ? (
+        <div role="group" aria-label={t("removeAllConfirm")} className="kids-images-confirm">
+          <p>{t("removeAllConfirm")}</p>
+          <button type="button" className="kids-button kids-primary" onClick={removeAll}>
+            {t("removeAllYes")}
+          </button>
+          <button
+            type="button"
+            className="kids-button"
+            onClick={() => setConfirmingRemoveAll(false)}
+          >
+            {t("removeAllCancel")}
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="kids-button"
+          disabled={Object.keys(images).length === 0}
+          onClick={() => setConfirmingRemoveAll(true)}
+        >
+          {t("removeAllImages")}
+        </button>
+      )}
+      {shownCustom.length > 0 ? (
+        <h3>
+          {t("customExplorer")} / {t("customBackdrop")}
+        </h3>
+      ) : null}
       <div className="kids-images-list">
-        {custom
-          .filter((item) =>
-            filter === "characters"
-              ? item.kind === "explorer"
-              : filter === "backdrops"
-                ? item.kind === "backdrop"
-                : false,
-          )
-          .map((item) => (
-            <div className="kids-image-row" key={item.id}>
-              <span
-                className="kids-image-preview"
-                role="img"
-                aria-label={t(item.kind === "explorer" ? "customExplorer" : "customBackdrop")}
-                style={{ backgroundImage: `url("${item.dataUrl}")` }}
-              />
-              <strong>
-                {t(item.kind === "explorer" ? "customExplorer" : "customBackdrop")}{" "}
-                {item.id.slice(7)}
-              </strong>
-              <button type="button" className="kids-button" onClick={() => removeCustom(item.id)}>
-                {t("removeImage")} {item.id.slice(7)}
-              </button>
-            </div>
-          ))}
+        {shownCustom.map((item) => (
+          <div className="kids-image-row" key={item.id}>
+            <span
+              className="kids-image-preview"
+              role="img"
+              aria-label={t(item.kind === "explorer" ? "customExplorer" : "customBackdrop")}
+              style={{ backgroundImage: `url("${item.dataUrl}")` }}
+            />
+            <strong>
+              {t(item.kind === "explorer" ? "customExplorer" : "customBackdrop")} {item.id.slice(7)}
+            </strong>
+            <button type="button" className="kids-button" onClick={() => removeCustom(item.id)}>
+              {t("removeImage")} {item.id.slice(7)}
+            </button>
+          </div>
+        ))}
       </div>
       <p role="status" className="kids-note">
         {message}
