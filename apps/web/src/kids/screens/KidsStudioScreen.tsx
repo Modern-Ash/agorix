@@ -208,6 +208,8 @@ interface Props {
   readonly id: string;
   readonly locale: Locale;
   readonly onBack: () => void;
+  /** Where Back leads, named after the screen the scene was opened from. */
+  readonly backLabel?: string | undefined;
   readonly oriSuggestions: boolean;
   readonly readAloud?: boolean;
   /** The adult's age band; absent while the age-band switch is off, which shows every language. */
@@ -964,6 +966,7 @@ export function KidsStudioScreen({
   id,
   locale,
   onBack,
+  backLabel,
   oriSuggestions,
   readAloud = true,
   ageBand,
@@ -2866,7 +2869,8 @@ export function KidsStudioScreen({
         <button type="button" className="kids-button kids-studio-back" onClick={onBack}>
           <span aria-hidden="true">←</span>{" "}
           <span className="kids-studio-back-label">
-            {mission ? (locale === "es" ? "Volver al mapa" : "Back to map") : copy.back}
+            {backLabel ??
+              (mission ? (locale === "es" ? "Volver al mapa" : "Back to map") : copy.back)}
           </span>
         </button>
         {missionDefinition ? (
