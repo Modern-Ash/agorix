@@ -198,7 +198,9 @@ import {
 } from "../kidsOriCompound.js";
 import { useOriPageVisible } from "../kidsOriMotion.js";
 import { expressionForMotion, outcomeOfRun, useOriReaction } from "../kidsOriExpression.js";
-import { useOriContextText } from "../kidsOriCursor.js";
+import { getOriContext, useOriContextText } from "../kidsOriCursor.js";
+import type { OriContext } from "../kidsOriContext.js";
+import { OriContextNote } from "./OriContextNote.js";
 import { KidsBackdrop, KidsSprite } from "./KidsArt.js";
 import { KidsSoundPicker } from "./KidsSoundPicker.js";
 import { KIDS_SHORTCUTS, kidsShortcut } from "../kidsShortcuts.js";
@@ -1321,6 +1323,8 @@ export function KidsStudioScreen({
   const [paletteCollapsed, setPaletteCollapsed] = useState(paletteView !== "all");
   const [codeCollapsed, setCodeCollapsed] = useState(false);
   const [oriCollapsed, setOriCollapsed] = useState(true);
+  // What Ori was looking at when the learner tapped it (issue #1209).
+  const [oriSeen, setOriSeen] = useState<OriContext | null>(null);
   // On tablet and desktop the block categories stay folded until the learner taps Code (#1205).
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [editorTab, setEditorTab] = useState<"code" | "costumes" | "sounds">(() =>
@@ -1952,6 +1956,7 @@ export function KidsStudioScreen({
 
   function openOri(context: typeof oriContext) {
     setOriContext(context);
+    setOriSeen(getOriContext());
     setOriCollapsed(false);
   }
 
@@ -6646,7 +6651,10 @@ export function KidsStudioScreen({
                     data-ori-context={oriContextText}
                     aria-label={copy.showOri}
                     aria-expanded={false}
-                    onClick={() => setOriCollapsed(false)}
+                    onClick={() => {
+                      setOriSeen(getOriContext());
+                      setOriCollapsed(false);
+                    }}
                   >
                     <KidsSprite slot="ori" expression={oriExpression} />
                     <span>Ori</span>
@@ -6665,6 +6673,13 @@ export function KidsStudioScreen({
               <div className="kids-ori-stage">
                 <KidsSprite slot="ori" expression={oriExpression} talking={Boolean(oriIdea)} />
               </div>
+              {oriSeen ? (
+                <OriContextNote
+                  context={oriSeen}
+                  locale={locale}
+                  onCorrect={() => setOriSeen({ screen: oriSeen.screen })}
+                />
+              ) : null}
               <p className="kids-ori-context" role="status">
                 {locale === "es"
                   ? oriContext === "actor"
