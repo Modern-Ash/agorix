@@ -87,3 +87,26 @@ test("image settings remain hidden when the feature flag is off", async ({ page 
   await openAdults(page);
   await expect(page.getByRole("region", { name: "Imágenes del juego" })).toHaveCount(0);
 });
+
+test("removing every image asks first, and cancel keeps them (#1208)", async ({ page }) => {
+  await start(page, true);
+  await openAdults(page);
+  const panel = page.getByRole("region", { name: "Imágenes del juego" });
+  await panel
+    .getByLabel("Elegir imagen para Ori")
+    .setInputFiles(resolve("e2e/fixtures/kids-gps-zero.jpg"));
+  await expect(panel.getByRole("status")).toHaveText("Imagen guardada en este dispositivo.");
+  const count = () =>
+    page.evaluate(
+      () => Object.keys(JSON.parse(localStorage.getItem("agorix.kids.imgs.v1") ?? "{}")).length,
+    );
+  await panel.getByRole("button", { name: "Quitar todas" }).click();
+  await expect(panel.getByText("¿Quitar todas las imágenes de este dispositivo?")).toBeVisible();
+  expect(await count()).toBe(1);
+  await panel.getByRole("button", { name: "Cancelar" }).click();
+  expect(await count()).toBe(1);
+  await panel.getByRole("button", { name: "Quitar todas" }).click();
+  await panel.getByRole("button", { name: "Sí, quitar todas" }).click();
+  await expect(panel.getByRole("status")).toHaveText("Imagen quitada.");
+  expect(await count()).toBe(0);
+});

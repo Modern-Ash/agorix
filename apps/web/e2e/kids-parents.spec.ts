@@ -127,7 +127,9 @@ test("adult gate protects real progress, settings and AI status", async ({ page 
   await expect(
     page.getByRole("heading", { name: "Misiones completadas" }).locator(".."),
   ).toContainText("1");
-  await expect(page.getByText("Todavía no hay evidencia suficiente")).toBeVisible();
+  await expect(
+    page.getByText("Completó misiones, pero todavía no hay señales de comprensión registradas"),
+  ).toBeVisible();
   await expect(page.getByRole("switch")).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Estado de la IA" })).toHaveCount(0);
   // The status was asked for once at the door, not again per tab.

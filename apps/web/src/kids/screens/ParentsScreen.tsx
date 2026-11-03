@@ -62,6 +62,9 @@ const COPY = {
     understanding: "Comprensión observada",
     observed: "Hay señales registradas",
     notObserved: "Todavía no hay evidencia suficiente",
+    notObservedAfterMissions:
+      "Completó misiones, pero todavía no hay señales de comprensión registradas",
+    overGoal: "Pasó la meta por",
     practice: "Conceptos practicados",
     world: "mundo",
     worlds: "mundos",
@@ -134,6 +137,8 @@ const COPY = {
     understanding: "Observed understanding",
     observed: "Evidence has been recorded",
     notObserved: "Not enough evidence yet",
+    notObservedAfterMissions: "Missions are done, but no signs of understanding are recorded yet",
+    overGoal: "Over the goal by",
     practice: "Concepts practised",
     world: "world",
     worlds: "worlds",
@@ -400,6 +405,11 @@ export function ParentsScreen({
                 >
                   <span style={{ width: `${percent}%` }} />
                 </div>
+                {minutes > settings.dailyLimitMinutes ? (
+                  <p className="kids-note kids-time-over" role="status">
+                    {copy.overGoal} {minutes - settings.dailyLimitMinutes} {copy.minutes}
+                  </p>
+                ) : null}
                 <div className="kids-adult-limit kids-adult-limit-inline">
                   <span>{copy.goal}</span>
                   <button
@@ -432,7 +442,11 @@ export function ParentsScreen({
                 <strong className="kids-adult-number">{summary.completedMissions}</strong>
                 <p>
                   <strong>{copy.understanding}:</strong>{" "}
-                  {summary.understandingObserved ? copy.observed : copy.notObserved}
+                  {summary.understandingObserved
+                    ? copy.observed
+                    : summary.completedMissions > 0
+                      ? copy.notObservedAfterMissions
+                      : copy.notObserved}
                 </p>
               </section>
               <section className="kids-adult-card" aria-labelledby="kids-concepts-title">
