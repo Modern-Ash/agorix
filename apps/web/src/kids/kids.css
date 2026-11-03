@@ -6206,3 +6206,61 @@ body:has(.kids-create) {
   margin: 0;
   font-weight: 700;
 }
+
+/* Ori's eyes follow the pointer: two variables set by useOriGaze move the pupils inside the eye. */
+.kids-ori-face .kids-ori-look {
+  transform: translate(calc(var(--ori-look-x, 0) * 1px), calc(var(--ori-look-y, 0) * 1px));
+  transition: transform 90ms ease-out;
+}
+.kids-ori-face[data-ori-tracking="true"] .kids-ori-pupil {
+  animation: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  /* The window grows out of the avatar in 220 ms with a fade, and folds back into it in 200 ms. */
+  .kids-ori-float-dialog {
+    transform-origin: var(--ori-origin-x, 100%) var(--ori-origin-y, 100%);
+    animation: kids-ori-window-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .kids-ori-float-dialog[data-closing="true"] {
+    animation: kids-ori-window-out 200ms ease-in both;
+  }
+  /* Suggestions enter one after another, 50 ms apart. */
+  .kids-ori-suggestion {
+    animation: kids-ori-suggestion-in 220ms ease-out both;
+    animation-delay: calc(var(--ori-step, 0) * 50ms);
+  }
+  .kids-studio-ori:not([data-collapsed="true"]) {
+    transform-origin: 100% 100%;
+    animation: kids-ori-window-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+}
+@keyframes kids-ori-window-in {
+  from {
+    opacity: 0;
+    transform: scale(0.15);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes kids-ori-window-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.15);
+  }
+}
+@keyframes kids-ori-suggestion-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

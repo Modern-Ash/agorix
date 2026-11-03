@@ -56,6 +56,7 @@ import { bandProfile, type AgeBand } from "./kidsAgeBand.js";
 import { useKidsText, type KidsText } from "./useKidsText.js";
 import { stopSpeaking } from "./speak.js";
 import { KidsOriGuide } from "./screens/KidsOriGuide.js";
+import { useOriGaze } from "./kidsOriGaze.js";
 import { KidsStudioScreen } from "./screens/KidsStudioScreen.js";
 import { ensureMissionStudio, missionOfStudio } from "./kidsMissionStudio.js";
 import {
@@ -80,6 +81,7 @@ export function KidsApp({
   initialState,
   initialProgress,
 }: { readonly initialState?: KidsState; readonly initialProgress?: KidsProgress } = {}) {
+  useOriGaze();
   const scratchBlocks = useKidsFlag("puzzleShape");
   const adultLinkEnabled = useKidsFlag("adultLink");
   const ageBandsEnabled = useKidsFlag("ageBands");
