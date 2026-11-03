@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { readFile } from "node:fs/promises";
 import { expect, test, type Page } from "@playwright/test";
-import { clickCreateScene, openAdultTab, passAdultGate } from "../helpers.js";
+import { clickCreateScene, openAdultTab, passAdultGate, categoryNav } from "../helpers.js";
 
 // Anonymous, browser-local journeys. The caller pins AGORIX_EXPECT_SHA before attributing evidence.
 const expectedSha = process.env["AGORIX_EXPECT_SHA"];
@@ -22,10 +22,7 @@ async function enterFromFreshBrowser(page: Page) {
 }
 
 async function openStudioColour(page: Page, name: string) {
-  await page
-    .getByRole("navigation", { name: "Categorías de bloques" })
-    .getByRole("button", { name })
-    .click();
+  await (await categoryNav(page)).getByRole("button", { name }).click();
 }
 
 test("Scratch-familiar creation reaches runtime, code and saved project", async ({
@@ -37,7 +34,7 @@ test("Scratch-familiar creation reaches runtime, code and saved project", async 
   await page.getByRole("button", { name: "Crear", exact: true }).click();
   await clickCreateScene(page);
   await expect(page).toHaveURL(/#\/escena\//);
-  await expect(page.getByRole("navigation", { name: "Categorías de bloques" })).toBeVisible();
+  await expect(await categoryNav(page)).toBeVisible();
   await openStudioColour(page, "Movimiento");
   await page.getByRole("button", { name: "+ Mover", exact: true }).click();
   await expect(page.locator(".kids-program-block")).toHaveCount(1);
@@ -167,9 +164,7 @@ for (const [band, index, width, height] of [
     await page.getByRole("button", { name: "Crear", exact: true }).click();
     await clickCreateScene(page);
     await expect(page.locator(".kids-root")).toHaveAttribute("data-age-band", band);
-    await expect(
-      page.getByRole("navigation", { name: "Categorías de bloques" }).getByRole("button"),
-    ).toHaveCount(8);
+    await expect((await categoryNav(page)).getByRole("button")).toHaveCount(8);
     await openStudioColour(page, "Movimiento");
     await expect(page.getByRole("button", { name: "+ Mover", exact: true })).toBeVisible();
     await page.screenshot({ path: testInfo.outputPath(`scene-${band}.png`), fullPage: true });

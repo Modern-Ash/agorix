@@ -1316,6 +1316,8 @@ export function KidsStudioScreen({
   const [paletteCollapsed, setPaletteCollapsed] = useState(paletteView !== "all");
   const [codeCollapsed, setCodeCollapsed] = useState(false);
   const [oriCollapsed, setOriCollapsed] = useState(true);
+  // On tablet and desktop the block categories stay folded until the learner taps Code (#1205).
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [editorTab, setEditorTab] = useState<"code" | "costumes" | "sounds">(() =>
     initialDraw ? "costumes" : "code",
   );
@@ -2851,12 +2853,7 @@ export function KidsStudioScreen({
     <section
       className="kids-screen kids-studio"
       data-editor-tab={editorTab}
-      data-code-sized={panelLayout.state.sizes.code === undefined ? undefined : "true"}
-      data-inspector-sized={panelLayout.state.sizes.inspector === undefined ? undefined : "true"}
-      style={{
-        ["--kids-code-height" as string]: `${panelLayout.state.sizes.code ?? 0}px`,
-        ["--kids-inspector-height" as string]: `${panelLayout.state.sizes.inspector ?? 0}px`,
-      }}
+      data-categories-open={categoriesOpen ? "true" : undefined}
       aria-label={missionDefinition?.title ?? copy.title}
     >
       <header className="kids-studio-header">
@@ -3031,6 +3028,9 @@ export function KidsStudioScreen({
             className="kids-studio-tab"
             aria-selected={editorTab === tab}
             onClick={() => {
+              setCategoriesOpen(
+                tab === "code" ? (editorTab === "code" ? !categoriesOpen : true) : false,
+              );
               setEditorTab(tab);
               if (tab === "code") panelLayout.dispatch({ type: "restore", id: "code" });
               setOriContext(

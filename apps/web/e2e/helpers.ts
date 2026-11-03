@@ -65,9 +65,7 @@ export async function addStudioBlock(
   label: string,
   times = 1,
 ): Promise<void> {
-  const open = page
-    .getByRole("navigation", { name: "Categorías de bloques" })
-    .getByRole("button", { name: category });
+  const open = (await categoryNav(page)).getByRole("button", { name: category });
   for (let index = 0; index < times; index += 1) {
     await open.click();
     await page.getByRole("button", { name: label, exact: true }).click();
@@ -111,4 +109,15 @@ export async function clickCreateScene(page: Page): Promise<void> {
     await steps.getByRole("button", { name: /^3 ·/ }).click();
   }
   await start.click();
+}
+
+/**
+ * The block categories. On tablet and desktop they fold away until the Code button opens them
+ * (#1205); on a phone they are already in view.
+ */
+export async function categoryNav(page: Page) {
+  const nav = page.getByRole("navigation", { name: "Categorías de bloques" });
+  const code = page.getByRole("tab", { name: /Código/ });
+  if (!(await nav.isVisible()) && (await code.isVisible())) await code.click();
+  return nav;
 }
