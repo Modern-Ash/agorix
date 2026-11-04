@@ -1,5 +1,16 @@
-import type { ReactNode } from "react";
+import { createContext, useContext, type ReactNode } from "react";
 import type { StudioBlockKind } from "../kidsPaletteCatalog.js";
+
+/**
+ * Dependencies between blocks (#1235): the screen says which blocks have an unmet need and shows
+ * the reason when one is tapped. Without a provider every block is available.
+ */
+export interface PaletteRules {
+  /** The hint for a block that is not ready yet, or `undefined` when it can be added. */
+  readonly unmetFor: (block: StudioBlockKind) => string | undefined;
+  readonly onBlocked: (hint: string) => void;
+}
+export const PaletteRulesContext = createContext<PaletteRules | null>(null);
 
 /** Block-shaped palette tools. Looks, Motion, Media and Logic are migrated. */
 export type KidsPaletteTone = "looks" | "motion" | "sound" | "control";
@@ -74,11 +85,13 @@ export function KidsPaletteBlock({
   readonly tone: KidsPaletteTone;
   readonly children?: ReactNode;
 }) {
+  const rules = useContext(PaletteRulesContext);
   return (
     <div className={`kids-palette-tool kids-palette-tool-${tone}`} data-kids-palette-tool={tone}>
       <span className="kids-palette-tool-actions">
         {actions.map((action) => {
           const adds = action.kind !== "tool";
+          const unmet = adds && action.block ? rules?.unmetFor(action.block) : undefined;
           return (
             <button
               key={action.label}
@@ -86,13 +99,16 @@ export function KidsPaletteBlock({
               className="kids-palette-tool-add"
               data-kids-palette-action={adds ? "add" : "tool"}
               data-kids-block={adds ? action.block : undefined}
-              data-kids-add={adds ? "true" : undefined}
+              data-kids-add={adds && unmet === undefined ? "true" : undefined}
+              data-kids-unmet={unmet === undefined ? undefined : "true"}
+              aria-disabled={unmet === undefined ? undefined : true}
+              title={unmet}
               data-kids-add-label={adds ? action.label : undefined}
               data-glyph={
                 (adds && action.block ? GLYPH[action.block] : undefined) ?? TONE_GLYPH[tone]
               }
               disabled={action.disabled ?? false}
-              onClick={action.onAdd}
+              onClick={unmet === undefined ? action.onAdd : () => rules?.onBlocked(unmet)}
             >
               {adds ? <span className="kids-visually-hidden">+ </span> : null}
               {action.label}
