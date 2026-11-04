@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Ori v1 error",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "code",
+    "retryable"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "ori/error/v1"
+    },
+    "code": {
+      "enum": [
+        "INVALID_REQUEST",
+        "TOOL_DENIED",
+        "BUDGET_EXCEEDED",
+        "PROVIDER_UNAVAILABLE",
+        "INTERNAL"
+      ]
+    },
+    "retryable": {
+      "type": "boolean"
+    }
+  }
+}
