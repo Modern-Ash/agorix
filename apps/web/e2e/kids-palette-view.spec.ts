@@ -1,6 +1,6 @@
 // Plain Playwright, not ./fixtures.js: this spec needs the real default and a preference that survives
 // a reload.
-import { expect, test } from "@playwright/test";
+import { plainTest as test, expect } from "./fixtures.js";
 import { clickCreateScene, categoryNav } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });

@@ -9,6 +9,23 @@ export default defineConfig({
   testIgnore: "prod/**",
   // A rare timing flake in CI should not block a PR; a real failure fails twice and still shows red.
   retries: process.env["CI"] ? 1 : 0,
+  // Chromium runs everything. WebKit (Safari, iPad) is opt-in with AGORIX_E2E_WEBKIT=1 and runs the
+  // child's journeys below (issue #1220). Left out on purpose: kids-quality-matrix, whose offline
+  // leg depends on the service worker that the e2e suite blocks, so a lazy stylesheet fails to load
+  // in Safari; the rest of the suite is Chromium-only until measured.
+  projects: [
+    { name: "chromium", use: { browserName: "chromium" } },
+    ...(process.env["AGORIX_E2E_WEBKIT"] === "1"
+      ? [
+          {
+            name: "webkit",
+            use: { browserName: "webkit" as const },
+            testMatch:
+              /kids-(child-journey|golden|mission-studio|create-selection|routes|map|shell|gallery|delete-project|free-access|studio-tools)\.spec\.ts/,
+          },
+        ]
+      : []),
+  ],
   webServer: {
     // AGORIX_DEV_BACKEND mounts the in-process DEV/E2E-only account backend (never part of the build).
     command: `AGORIX_DEV_BACKEND=1 corepack pnpm preview --host ${host} --port ${port}`,

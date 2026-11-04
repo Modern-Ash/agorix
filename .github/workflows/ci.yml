@@ -206,6 +206,32 @@ jobs:
           path: apps/web/test-results
           retention-days: 7
 
+  # Children use tablets, so Safari's engine matters: run the child's journeys in WebKit too (#1220).
+  browser-smoke-webkit:
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm --filter @agorix/web exec playwright test --project=webkit
+        env:
+          AGORIX_E2E_WEBKIT: "1"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-webkit-results
+          path: apps/web/test-results
+          retention-days: 7
+
   vscode-extension-smoke:
     runs-on: ubuntu-latest
     strategy:
