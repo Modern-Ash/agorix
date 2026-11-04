@@ -25,7 +25,55 @@ import {
   renameStudioProcedure,
   deleteStudioProcedure,
   studioProcedureUses,
+  setStudioStatementField,
 } from "./kidsStudioModel.js";
+
+describe("editing a block already in the program (#1240)", () => {
+  const nova = "actor:studio-1-nova";
+  const base = () => {
+    let history = createEditorHistory(createStudioProgram("nova"));
+    history = appendStudioStatement(history, nova, { type: "move", steps: 40 });
+    history = appendStudioStatement(history, nova, { type: "turn", degrees: 90 });
+    history = appendStudioStatement(history, nova, { type: "say", text: "Hola" });
+    return history;
+  };
+  const statement = (history: ReturnType<typeof base>, index: number) =>
+    validateStudioProgram(history.current).scripts[0]!.statements[index]!;
+
+  it("changes one value, validated, as one undoable step", () => {
+    const history = setStudioStatementField(base(), nova, 0, "steps", 100);
+    expect(statement(history, 0)).toEqual({ type: "move", steps: 100 });
+    expect(statement(history, 1)).toEqual({ type: "turn", degrees: 90 });
+    expect(history.canUndo).toBe(true);
+  });
+
+  it("takes text and closed lists", () => {
+    let history = setStudioStatementField(base(), nova, 1, "degrees", -45);
+    history = setStudioStatementField(history, nova, 2, "text", "Chau");
+    expect(statement(history, 1)).toEqual({ type: "turn", degrees: -45 });
+    expect(statement(history, 2)).toEqual({ type: "say", text: "Chau" });
+  });
+
+  it("refuses a value outside the closed lists, and changes nothing", () => {
+    const history = base();
+    expect(() => setStudioStatementField(history, nova, 0, "steps", 37)).toThrow();
+    expect(() => setStudioStatementField(history, nova, 0, "steps", 0)).toThrow();
+    expect(() => setStudioStatementField(history, nova, 1, "degrees", 30)).toThrow();
+    expect(() => setStudioStatementField(history, nova, 2, "text", "")).toThrow();
+    expect(() => setStudioStatementField(history, nova, 2, "text", "x".repeat(200))).toThrow();
+    expect(statement(history, 0)).toEqual({ type: "move", steps: 40 });
+  });
+
+  it("refuses a field the block does not expose, or a block that does not exist", () => {
+    const history = base();
+    expect(() => setStudioStatementField(history, nova, 0, "degrees", 90)).toThrow(RangeError);
+    expect(() => setStudioStatementField(history, nova, 0, "type", "turn")).toThrow(RangeError);
+    expect(() => setStudioStatementField(history, nova, 9, "steps", 40)).toThrow(RangeError);
+    expect(() => setStudioStatementField(history, "actor:none", 0, "steps", 40)).toThrow(
+      RangeError,
+    );
+  });
+});
 
 describe("Kids creative studio", () => {
   it("keeps edge and distance sensors canonical, bounded and projectable", () => {
