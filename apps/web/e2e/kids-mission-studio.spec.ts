@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { plainTest as test, expect } from "./fixtures.js";
 import { categoryNav } from "./helpers.js";
 
 test("a map mission uses the complete creative editor and one evaluated project", async ({
