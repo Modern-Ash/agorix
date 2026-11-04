@@ -6472,6 +6472,38 @@ button.kids-band-chip {
     z-index: 41;
     pointer-events: auto;
   }
+  /* Anchored (#1242): right below the character, block or stage it is about. */
+  .kids-inspector-card[data-anchored="true"] {
+    left: var(--kids-card-left);
+    top: var(--kids-card-top);
+    bottom: auto;
+    overflow: visible;
+  }
+  .kids-inspector-card[data-anchored="true"] .kids-inspector-head,
+  .kids-inspector-card[data-anchored="true"] .kids-inspector-body {
+    /* The card clips its own content; the pointer below sits outside it. */
+    border-radius: inherit;
+  }
+  .kids-inspector-card[data-anchored="true"]::before {
+    content: "";
+    position: absolute;
+    left: calc(var(--kids-card-arrow) - 8px);
+    width: 14px;
+    height: 14px;
+    border: 1px solid var(--kids-border);
+    background: #fff;
+    transform: rotate(45deg);
+  }
+  .kids-inspector-card[data-anchored="true"][data-placement="below"]::before {
+    top: -8px;
+    border-right: 0;
+    border-bottom: 0;
+  }
+  .kids-inspector-card[data-anchored="true"][data-placement="above"]::before {
+    bottom: -8px;
+    border-left: 0;
+    border-top: 0;
+  }
 }
 @media (max-width: 720px) {
   .kids-inspector-dock {
@@ -6603,4 +6635,9 @@ button.kids-band-chip {
   border-radius: 12px;
   background: #fff;
   font: inherit;
+}
+
+/* A double click on a block opens its properties: it must not also select the word (#1242). */
+.kids-program-block {
+  user-select: none;
 }

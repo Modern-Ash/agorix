@@ -169,3 +169,43 @@ test("the card rides above the on-screen keyboard (#1231)", async ({ page }) => 
     .poll(async () => Math.round((await card(page).boundingBox())!.y - open.y))
     .toBeLessThanOrEqual(1);
 });
+
+test("on a wide screen the card appears right next to what it is about (#1242)", async ({
+  page,
+}) => {
+  await freeScene(page, { width: 1280, height: 800 });
+  const actorBox = (await firstActor(page).boundingBox())!;
+  await firstActor(page).dblclick();
+  await expect(card(page)).toBeVisible();
+  await expect(card(page)).toHaveAttribute("data-anchored", "true");
+  const box = (await card(page).boundingBox())!;
+  // Right below the character, or right above it when there is no room: touching distance either
+  // way, never the old fixed corner, and always inside the window.
+  const below =
+    box.y >= actorBox.y + actorBox.height && box.y - (actorBox.y + actorBox.height) < 24;
+  const above = box.y + box.height <= actorBox.y && actorBox.y - (box.y + box.height) < 24;
+  expect(below || above).toBe(true);
+  expect(box.x).toBeGreaterThanOrEqual(7);
+  expect(box.x + box.width).toBeLessThanOrEqual(1280 - 7);
+  expect(box.y).toBeGreaterThanOrEqual(7);
+  expect(box.y + box.height).toBeLessThanOrEqual(800 - 7);
+  // It follows the character when the character moves.
+  await card(page).getByRole("button", { name: "Ubicar personaje →" }).click();
+  await expect
+    .poll(async () => {
+      const moved = (await firstActor(page).boundingBox())!;
+      const now = (await card(page).boundingBox())!;
+      const centre = now.x + now.width / 2;
+      return Math.abs(centre - (moved.x + moved.width / 2)) <= now.width / 2;
+    })
+    .toBe(true);
+});
+
+test("on a phone the card stays a bottom sheet so the stage stays in view (#1242)", async ({
+  page,
+}) => {
+  await freeScene(page, { width: 390, height: 844 });
+  await firstActor(page).dblclick();
+  await expect(card(page)).toBeVisible();
+  await expect(card(page)).not.toHaveAttribute("data-anchored", "true");
+});
