@@ -1,5 +1,5 @@
 import { expect, test } from "./fixtures.js";
-import { reloadToMap } from "./helpers.js";
+import { reloadToMap, openSelectedSprite } from "./helpers.js";
 
 // Issue #1190: the Studio panel maximize now runs on the shared panel layout reducer.
 const WIDTHS = [
@@ -334,14 +334,15 @@ test("Kids editor keeps Blocks and Code one tap apart and exposes scene panels",
   await expect(stageHeader.getByRole("button", { name: "Jugar", exact: true })).toBeVisible();
   await expect(stageHeader.getByRole("button", { name: "Paso", exact: true })).toBeVisible();
   await expect(page.locator("[data-panel-id='characters']")).toBeVisible();
-  await expect(page.locator("[data-panel-id='inspector']")).toBeVisible();
-  const inspector = page.locator("[data-panel-id='inspector']");
+  const inspector = await openSelectedSprite(page);
   await inspector.getByRole("spinbutton", { name: "Dirección" }).fill("45");
   await inspector.getByRole("spinbutton", { name: "Dirección" }).blur();
   await inspector.getByRole("spinbutton", { name: "Tamaño" }).fill("150");
   await inspector.getByRole("spinbutton", { name: "Tamaño" }).blur();
   await expect(inspector.getByRole("spinbutton", { name: "Dirección" })).toHaveValue("45");
   await expect(inspector.getByRole("spinbutton", { name: "Tamaño" })).toHaveValue("150");
+  // The floating card sits above the bottom bar: put it away before using the bar.
+  await inspector.getByRole("button", { name: /^Cerrar/ }).click();
   await page.getByRole("button", { name: "Código", exact: true }).click();
   await page.getByRole("button", { name: "Bloques", exact: true }).click();
   await expect(page.locator(".kids-studio-palette")).toBeVisible();

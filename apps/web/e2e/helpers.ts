@@ -137,3 +137,19 @@ export async function settleAnimations(page: Page): Promise<void> {
       ),
   );
 }
+
+/**
+ * Open the floating "Objeto seleccionado" card (#1231): tap a character on the stage, which shows
+ * the round button, then tap the button. Returns the card.
+ */
+export async function openSelectedSprite(page: Page, which: "first" | "last" = "first") {
+  const actors = page.locator(".kids-studio-stage-actor");
+  const button = page.getByRole("button", { name: /^Objeto seleccionado: / });
+  // Already selected (the round button is there): no need to tap the stage again.
+  if (!(await button.isVisible()))
+    await (which === "last" ? actors.last() : actors.first()).click();
+  const card = page.getByLabel("Objeto seleccionado", { exact: true });
+  if (!(await card.isVisible())) await button.click();
+  await expect(card).toBeVisible();
+  return card;
+}
