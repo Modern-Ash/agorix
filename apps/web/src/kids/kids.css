@@ -6543,3 +6543,44 @@ button.kids-band-chip {
     transform: translateY(0) rotate(5deg);
   }
 }
+
+/* A hint over the stage while a mouse (or keyboard focus) is on a character: how to open its
+   Properties. It sits at the bottom of the stage, so the stage's clipping never cuts it. */
+.kids-studio-stage-hint {
+  position: absolute;
+  z-index: 30;
+  left: 50%;
+  bottom: 8px;
+  max-width: calc(100% - 16px);
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #2b1a63;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 20px;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  opacity: 0;
+  pointer-events: none;
+}
+.kids-studio-stage-hint[data-visible="true"] {
+  opacity: 0.95;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .kids-studio-stage-hint {
+    transition: opacity 140ms ease-out;
+  }
+  .kids-studio-stage-hint[data-visible="true"] {
+    transition-delay: 250ms;
+  }
+}
+
+/* Ori's open card sits above its own button instead of under it (wide screens). */
+@media (min-width: 721px) {
+  .kids-studio-ori:not([data-collapsed="true"]) {
+    bottom: calc(96px + env(safe-area-inset-bottom));
+    /* Leaves the editor's top bar (undo, redo, help) uncovered. */
+    max-height: max(280px, min(680px, calc(100dvh - 290px)));
+  }
+}
