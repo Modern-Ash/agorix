@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Ori v1 proposal",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "operations",
+    "requiresLearnerApproval"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "ori/proposal/v1"
+    },
+    "operations": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "payload"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "payload": {
+            "type": "object",
+            "maxProperties": 16
+          }
+        }
+      }
+    },
+    "requiresLearnerApproval": {
+      "const": true
+    }
+  }
+}
