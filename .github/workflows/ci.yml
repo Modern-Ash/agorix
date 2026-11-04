@@ -167,6 +167,45 @@ jobs:
           path: apps/web/test-results
           retention-days: 7
 
+  # The production specs (apps/web/e2e/prod) only ran after a deploy, and broke it twice when a flow
+  # changed. Run them here against the same nginx image the deploy builds, on loopback (#1220).
+  prod-smoke-local:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build the production image
+        run: |
+          SHA12="$(git rev-parse HEAD | cut -c1-12)"
+          echo "SHA12=$SHA12" >> "$GITHUB_ENV"
+          docker build -f deploy/web/Dockerfile --build-arg GIT_SHA="$SHA12" -t agorix-web:ci .
+      - name: Serve it on loopback
+        run: |
+          docker run -d --name agorix-web -p 127.0.0.1:8470:80 agorix-web:ci
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8470/healthz >/dev/null && break; sleep 1; done
+          curl -fsS http://127.0.0.1:8470/version.json
+      - run: pnpm --filter @agorix/web exec playwright install --with-deps chromium
+      - name: Production specs against the local image
+        # Account linking is off in this build (no project service behind nginx), as in a default deploy.
+        run: pnpm --filter @agorix/web test:prod
+        env:
+          AGORIX_E2E_BASE_URL: http://127.0.0.1:8470
+          AGORIX_EXPECT_SHA: ${{ env.SHA12 }}
+          AGORIX_EXPECT_ADULT_LINK: "0"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: prod-smoke-local-results
+          path: apps/web/test-results
+          retention-days: 7
+
   vscode-extension-smoke:
     runs-on: ubuntu-latest
     strategy:
