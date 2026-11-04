@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Ori v1 refusal",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "reason"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "ori/refusal/v1"
+    },
+    "reason": {
+      "enum": [
+        "unsafe",
+        "out-of-scope",
+        "insufficient-permission",
+        "invalid-context"
+      ]
+    }
+  }
+}
