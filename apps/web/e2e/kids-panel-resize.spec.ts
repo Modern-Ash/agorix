@@ -15,14 +15,9 @@ async function openMission(page: import("@playwright/test").Page) {
   await page.getByRole("button", { name: "Misión 1" }).click();
 }
 
-test("the code and selected-sprite panels resize from a divider and keep a floor (#1206)", async ({
-  page,
-}) => {
+test("the code panel resizes from a divider and keep a floor (#1206)", async ({ page }) => {
   await openMission(page);
-  for (const [name, selector] of [
-    ["Código", ".kids-studio-code-panel .agx-panel-body"],
-    ["Objeto seleccionado", ".kids-studio-inspector-panel .agx-panel-body"],
-  ] as const) {
+  for (const [name, selector] of [["Código", ".kids-studio-code-panel .agx-panel-body"]] as const) {
     const divider = page.getByRole("separator", { name: new RegExp(name) });
     await expect(divider).toBeVisible();
     const body = page.locator(selector);

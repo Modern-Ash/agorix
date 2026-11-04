@@ -1,5 +1,5 @@
 import { expect, test } from "./fixtures.js";
-import { clickCreateScene, categoryNav, settleAnimations } from "./helpers.js";
+import { clickCreateScene, categoryNav, settleAnimations, openSelectedSprite } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -157,7 +157,8 @@ test("Ori opens from the selected sprite with contextual help", async ({ page })
   await page.setViewportSize({ width: 1280, height: 800 });
   await openScene(page);
   await expect(page.getByRole("button", { name: "Pedirle una idea a Ori" })).toBeHidden();
-  await page.getByRole("button", { name: "Ori y este objeto" }).click();
+  const card = await openSelectedSprite(page);
+  await card.getByRole("button", { name: "Ori y este objeto" }).click();
   await expect(page.locator(".kids-ori-context")).toContainText("Estamos trabajando con");
   const button = page.getByRole("button", { name: "Pedirle una idea a Ori" });
   await expect(button).toBeVisible();
@@ -171,8 +172,7 @@ test("stage tools expose sprite, backdrop and editable position", async ({ page 
   await page.getByRole("button", { name: "+ Objeto" }).click();
   await expect(page.getByRole("group", { name: "Elegir objeto" })).toBeVisible();
   await page.getByRole("button", { name: "Agregar objeto" }).click();
-  const inspector = page.getByLabel("Objeto seleccionado", { exact: true });
-  await expect(inspector).toBeVisible();
+  const inspector = await openSelectedSprite(page, "last");
   await inspector.getByRole("spinbutton", { name: "x" }).fill("120");
   await inspector.getByRole("spinbutton", { name: "x" }).blur();
   await expect(inspector.getByRole("spinbutton", { name: "x" })).toHaveValue("120");

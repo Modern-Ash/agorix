@@ -7,7 +7,13 @@ import {
   evaluateOriStudioOutput,
   ORI_STUDIO_VERSION,
 } from "@agorix/ori-agent";
-import { reloadTo, clickCreateScene, categoryNav, settleAnimations } from "./helpers.js";
+import {
+  reloadTo,
+  clickCreateScene,
+  categoryNav,
+  settleAnimations,
+  openSelectedSprite,
+} from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -1113,7 +1119,8 @@ test("a child places a character and the stage keeps that position after reopeni
   const actor = page.getByRole("group", { name: "Escenario" }).getByRole("button").first();
   await expect(actor).toHaveCSS("left", /%|px/);
   const before = await actor.getAttribute("style");
-  await page.getByRole("button", { name: "Ubicar personaje →" }).click();
+  const card = await openSelectedSprite(page);
+  await card.getByRole("button", { name: "Ubicar personaje →" }).click();
   const placed = await actor.getAttribute("style");
   expect(placed).not.toBe(before);
   await reloadTo(page, "#/proyectos");
@@ -1157,7 +1164,8 @@ test("a child drags the selected character and changes its layer", async ({ page
   await page.mouse.up();
   const moved = await first.getAttribute("style");
   expect(moved).not.toBe(before);
-  await page.getByRole("button", { name: "Traer adelante" }).click();
+  const card = await openSelectedSprite(page);
+  await card.getByRole("button", { name: "Traer adelante" }).click();
   await expect(first).toHaveCSS("z-index", "2");
   await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();

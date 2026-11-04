@@ -1,4 +1,4 @@
-import type { CSSProperties, PointerEventHandler, ReactNode } from "react";
+import type { CSSProperties, MouseEventHandler, PointerEventHandler, ReactNode } from "react";
 import { useKidsFlag } from "../kidsFlags.js";
 import { loadKidsImages, type KidsImageSlot } from "../kidsImages.js";
 import { resolveKidsCustom } from "../kidsCustom.js";
@@ -91,6 +91,7 @@ export function KidsBackdrop({
   onPointerMove,
   onPointerUp,
   onPointerCancel,
+  onClick,
 }: {
   readonly world: KidsWorldRef;
   readonly baseWorld?: KidsWorld;
@@ -106,6 +107,7 @@ export function KidsBackdrop({
   readonly onPointerMove?: PointerEventHandler<HTMLDivElement>;
   readonly onPointerUp?: PointerEventHandler<HTMLDivElement>;
   readonly onPointerCancel?: PointerEventHandler<HTMLDivElement>;
+  readonly onClick?: MouseEventHandler<HTMLDivElement>;
 }) {
   const enabled = useKidsFlag("customImages");
   const image = imageOverride ?? backdropImage(world, enabled);
@@ -120,6 +122,7 @@ export function KidsBackdrop({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
+      onClick={onClick}
       style={{
         background: fallbackBackground ?? KIDS_WORLD_STYLES[fallbackWorld].bg,
         ...style,
