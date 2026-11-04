@@ -1575,7 +1575,7 @@ export function deleteStudioProcedure(
 }
 
 /**
- * Change one value of a block already in a character's program (issue #1239). Only the fields a
+ * Change one value of a block already in a character's program (issue #1240). Only the fields a
  * block exposes can change (`kidsBlockProperties`), and the whole program is validated again, so
  * a value outside the closed lists throws and nothing is recorded. One undoable step.
  */

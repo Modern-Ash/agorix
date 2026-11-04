@@ -12,20 +12,12 @@ import {
 } from "./kidsStudioChoices.js";
 
 /**
- * What a child can change on a block already in the program (issue #1239): the same closed lists
+ * What a child can change on a block already in the program (issue #1240): the same closed lists
  * the palette offers when the block is added, so a value is never on screen without being valid.
  * `setStudioStatementField` re-validates the whole program; this table only says what to show.
  */
 export type BlockFieldKey =
-  | "steps"
-  | "degrees"
-  | "seconds"
-  | "count"
-  | "size"
-  | "delta"
-  | "soundId"
-  | "costumeId"
-  | "text";
+  "steps" | "degrees" | "seconds" | "count" | "size" | "delta" | "soundId" | "costumeId" | "text";
 
 export type BlockField =
   | {
@@ -59,7 +51,7 @@ const FIELD_OF: Partial<Record<Statement["type"], readonly BlockFieldKey[]>> = {
 
 const LABELS: Record<Locale, Record<BlockFieldKey, string>> = {
   es: {
-    steps: "Pasos",
+    steps: "Casillas",
     degrees: "Grados",
     seconds: "Segundos",
     count: "Veces",
@@ -70,7 +62,7 @@ const LABELS: Record<Locale, Record<BlockFieldKey, string>> = {
     text: "Texto",
   },
   en: {
-    steps: "Steps",
+    steps: "Cells",
     degrees: "Degrees",
     seconds: "Seconds",
     count: "Times",
@@ -92,10 +84,19 @@ export function editableFields(statement: Statement, locale: Locale): readonly B
     const current = (statement as unknown as Record<string, unknown>)[key];
     switch (key) {
       case "steps": {
+        // The palette and the block read in cells of 40 steps; the model accepts any multiple of 20.
         const steps = Array.from({ length: 21 }, (_, index) => (index - 10) * 20).filter(
           (value) => value !== 0,
         );
-        return [{ key, kind: "choice", label: label(key), value: String(current), options: numbers(steps) }];
+        return [
+          {
+            key,
+            kind: "choice",
+            label: label(key),
+            value: String(current),
+            options: steps.map((value) => ({ value: String(value), label: String(value / 40) })),
+          },
+        ];
       }
       case "degrees":
         return [
@@ -108,13 +109,45 @@ export function editableFields(statement: Statement, locale: Locale): readonly B
           },
         ];
       case "seconds":
-        return [{ key, kind: "choice", label: label(key), value: String(current), options: numbers(STUDIO_WAIT_SECONDS) }];
+        return [
+          {
+            key,
+            kind: "choice",
+            label: label(key),
+            value: String(current),
+            options: numbers(STUDIO_WAIT_SECONDS),
+          },
+        ];
       case "count":
-        return [{ key, kind: "choice", label: label(key), value: String(current), options: numbers(STUDIO_REPEAT_COUNTS) }];
+        return [
+          {
+            key,
+            kind: "choice",
+            label: label(key),
+            value: String(current),
+            options: numbers(STUDIO_REPEAT_COUNTS),
+          },
+        ];
       case "size":
-        return [{ key, kind: "choice", label: label(key), value: String(current), options: numbers(STUDIO_SIZES) }];
+        return [
+          {
+            key,
+            kind: "choice",
+            label: label(key),
+            value: String(current),
+            options: numbers(STUDIO_SIZES),
+          },
+        ];
       case "delta":
-        return [{ key, kind: "choice", label: label(key), value: String(current), options: numbers(STUDIO_SIZE_DELTAS) }];
+        return [
+          {
+            key,
+            kind: "choice",
+            label: label(key),
+            value: String(current),
+            options: numbers(STUDIO_SIZE_DELTAS),
+          },
+        ];
       case "soundId":
         return [
           {
@@ -122,10 +155,12 @@ export function editableFields(statement: Statement, locale: Locale): readonly B
             kind: "choice",
             label: label(key),
             value: String(current),
-            options: KIDS_SOUNDS.filter((sound) => sound.id !== KIDS_CUSTOM_SOUND_ID).map((sound) => ({
-              value: sound.id,
-              label: sound[locale],
-            })),
+            options: KIDS_SOUNDS.filter((sound) => sound.id !== KIDS_CUSTOM_SOUND_ID).map(
+              (sound) => ({
+                value: sound.id,
+                label: sound[locale],
+              }),
+            ),
           },
         ];
       case "costumeId":
@@ -143,7 +178,13 @@ export function editableFields(statement: Statement, locale: Locale): readonly B
         ];
       case "text":
         return [
-          { key, kind: "text", label: label(key), value: String(current), maxLength: STUDIO_BUBBLE_MAX_LENGTH },
+          {
+            key,
+            kind: "text",
+            label: label(key),
+            value: String(current),
+            maxLength: STUDIO_BUBBLE_MAX_LENGTH,
+          },
         ];
     }
   });

@@ -6584,3 +6584,23 @@ button.kids-band-chip {
     max-height: max(280px, min(680px, calc(100dvh - 290px)));
   }
 }
+
+/* Properties of a block already in the program (#1240): labelled closed lists, 44 px tall. */
+.kids-studio-block-props {
+  display: grid;
+  gap: 12px;
+}
+.kids-studio-block-props label {
+  display: grid;
+  gap: 4px;
+  font-weight: 700;
+}
+.kids-studio-block-props select,
+.kids-studio-block-props input {
+  min-height: 44px;
+  padding: 0 10px;
+  border: 2px solid var(--kids-border);
+  border-radius: 12px;
+  background: #fff;
+  font: inherit;
+}

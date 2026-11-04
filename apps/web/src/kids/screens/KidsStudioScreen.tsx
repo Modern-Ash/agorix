@@ -87,6 +87,7 @@ import {
 import { StudioCoach, StudioIntentPicker, StudioPrediction } from "./KidsStudioCoach.js";
 import { KidsPaletteBlock, PaletteRulesContext } from "./KidsPaletteBlock.js";
 import { needHint, paletteFacts, unmetNeed } from "../kidsPaletteRules.js";
+import { editableFields, parseFieldValue } from "../kidsBlockProperties.js";
 import {
   CHOICE_CATALOG,
   CHOICE_PROMPT_IDS,
@@ -163,6 +164,7 @@ import {
   removeStudioStatement,
   renameStudioProcedure,
   setStudioTrigger,
+  setStudioStatementField,
   studioProcedureUses,
   studioActorId,
   type StudioStatement,
@@ -1333,7 +1335,10 @@ export function KidsStudioScreen({
   const [inspectorOpen, setInspectorOpen] = useState(false);
   // Blocks that depend on something not in the project yet are dimmed; tapping one says why.
   const [paletteHint, setPaletteHint] = useState<string | null>(null);
-  const [inspectorKind, setInspectorKind] = useState<"actor" | "backdrop">("actor");
+  const [inspectorKind, setInspectorKind] = useState<"actor" | "backdrop" | "block">("actor");
+  // Which block of the active character the Properties card shows (kind "block").
+  const [inspectorBlock, setInspectorBlock] = useState(0);
+  const [fieldRevision, setFieldRevision] = useState(0);
   const lastBareTap = useRef(0);
   // A hint while a mouse (or the keyboard) is over a character: how to open its Properties.
   const [actorHint, setActorHint] = useState<"mouse" | "keyboard" | null>(null);
@@ -1341,6 +1346,16 @@ export function KidsStudioScreen({
   const lastActorTap = useRef<{ id: string; at: number } | null>(null);
   const inspectorClose = useRef<HTMLButtonElement>(null);
   const keyboardInset = useKeyboardInset(inspectorOpen);
+  // The block the Properties card edits, if it still exists and has something to edit.
+  const blockProps = inspectorKind === "block" ? script?.statements[inspectorBlock] : undefined;
+  // Adding or removing blocks would leave the card on a different block: close it.
+  const blockCount = script?.statements.length ?? 0;
+  const lastBlockCount = useRef(blockCount);
+  useEffect(() => {
+    if (lastBlockCount.current !== blockCount)
+      setInspectorOpen((open) => (inspectorKind === "block" ? false : open));
+    lastBlockCount.current = blockCount;
+  }, [blockCount, inspectorKind]);
   useEffect(() => {
     if (paletteHint === null) return undefined;
     const timer = window.setTimeout(() => setPaletteHint(null), 5000);
@@ -1922,8 +1937,9 @@ export function KidsStudioScreen({
     }
   }
 
-  function openInspector(kind: "actor" | "backdrop" = "actor") {
+  function openInspector(kind: "actor" | "backdrop" | "block" = "actor", blockIndex = 0) {
     setInspectorKind(kind);
+    setInspectorBlock(blockIndex);
     setInspectorOpen(true);
     window.setTimeout(() => {
       inspectorClose.current?.focus({ preventScroll: true });
@@ -1936,6 +1952,8 @@ export function KidsStudioScreen({
   }
 
   function selectActor(next: string) {
+    // The card's block belongs to the character that was active.
+    if (inspectorKind === "block") setInspectorOpen(false);
     try {
       saveStudioProject(id, history.current, backdropId, next, locale, store);
       setActiveActorId(next);
@@ -2154,7 +2172,30 @@ export function KidsStudioScreen({
     }
   }
 
+  function setBlockField(index: number, key: string, raw: string) {
+    try {
+      const field = editableFields(script!.statements[index]!, locale).find(
+        (item) => item.key === key,
+      );
+      if (!field) return;
+      persist(
+        setStudioStatementField(
+          history,
+          activeActorId,
+          index,
+          key,
+          parseFieldValue(field.key, raw),
+        ),
+      );
+    } catch {
+      // A value outside the closed lists cannot be chosen from here; a text that is empty or too
+      // long is put back as it was.
+    }
+    setFieldRevision((value) => value + 1);
+  }
+
   function blockAction(action: "duplicate" | "delete" | "up" | "down", index: number) {
+    if (inspectorKind === "block") setInspectorOpen(false);
     try {
       if (action === "duplicate") persist(duplicateStudioStatement(history, activeActorId, index));
       if (action === "delete") persist(removeStudioStatement(history, activeActorId, index));
@@ -3301,6 +3342,19 @@ export function KidsStudioScreen({
                 {label}
               </button>
             ))}
+            {script?.statements[blockMenu.index] &&
+            editableFields(script.statements[blockMenu.index]!, locale).length > 0 ? (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  openInspector("block", blockMenu.index);
+                  setBlockMenu(null);
+                }}
+              >
+                {locale === "es" ? "Propiedades" : "Properties"}
+              </button>
+            ) : null}
           </div>
         ) : null}
         {shortcutsFlag && helpOpen ? (
@@ -4430,7 +4484,25 @@ export function KidsStudioScreen({
                           if (pressTimer.current) clearTimeout(pressTimer.current);
                           pressTimer.current = null;
                         }}
+                        onDoubleClick={(event) => {
+                          if (
+                            event.target instanceof Element &&
+                            event.target.closest("button, select, input")
+                          )
+                            return;
+                          if (editableFields(statement, locale).length > 0)
+                            openInspector("block", index);
+                        }}
                         onKeyDown={(event) => {
+                          if (
+                            event.key === "Enter" &&
+                            event.target === event.currentTarget &&
+                            editableFields(statement, locale).length > 0
+                          ) {
+                            event.preventDefault();
+                            openInspector("block", index);
+                            return;
+                          }
                           if (
                             !contextMenuFlag ||
                             event.target !== event.currentTarget ||
@@ -6964,7 +7036,7 @@ export function KidsStudioScreen({
             onCancel={() => setExportingMedia(false)}
           />
         ) : null}
-        {actor && inspectorOpen ? (
+        {actor && inspectorOpen && (inspectorKind !== "block" || blockProps !== undefined) ? (
           <div
             className="kids-inspector-dock"
             data-open="true"
@@ -6981,7 +7053,9 @@ export function KidsStudioScreen({
                   <strong>
                     {inspectorKind === "backdrop"
                       ? `${locale === "es" ? "Fondo" : "Backdrop"} · ${galleryBackdropName(stageBackdrop, locale)}`
-                      : `${actor.name} · x ${actor.x} · y ${actor.y}`}
+                      : inspectorKind === "block" && blockProps
+                        ? `${locale === "es" ? "Bloque" : "Block"} · ${blockLabel(blockProps)}`
+                        : `${actor.name} · x ${actor.x} · y ${actor.y}`}
                   </strong>
                 </div>
                 <button
@@ -6995,7 +7069,42 @@ export function KidsStudioScreen({
                 </button>
               </header>
               <div className="kids-inspector-body">
-                {inspectorKind === "backdrop" ? (
+                {inspectorKind === "block" && blockProps ? (
+                  <div className="kids-studio-block-props" role="group">
+                    {editableFields(blockProps, locale).map((field) => (
+                      <label key={`${inspectorBlock}-${field.key}-${fieldRevision}`}>
+                        <span>{field.label}</span>
+                        {field.kind === "choice" ? (
+                          <select
+                            value={field.value}
+                            onChange={(event) =>
+                              setBlockField(inspectorBlock, field.key, event.target.value)
+                            }
+                          >
+                            {field.options.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            type="text"
+                            defaultValue={field.value}
+                            maxLength={field.maxLength}
+                            onBlur={(event) => {
+                              if (event.target.value !== field.value)
+                                setBlockField(inspectorBlock, field.key, event.target.value);
+                            }}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") event.currentTarget.blur();
+                            }}
+                          />
+                        )}
+                      </label>
+                    ))}
+                  </div>
+                ) : inspectorKind === "backdrop" ? (
                   <div className="kids-studio-backdrop-props" role="group">
                     <p>
                       {locale === "es"
