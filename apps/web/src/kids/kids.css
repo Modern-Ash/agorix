@@ -6519,3 +6519,27 @@ button.kids-band-chip {
   background: #f3edfc;
   font-weight: 700;
 }
+
+/* Ori's quiet invitation after a pause at the start (#1237): the label changes to "¿Una idea?" and
+   the avatar bobs three times. Nothing is attached to it; reduced motion keeps only the label. */
+.kids-ori-float-trigger[data-ori-state="nudge"] {
+  border-color: #5130a8;
+  box-shadow: 0 0 0 4px #8f74d640;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .kids-ori-float-trigger[data-ori-state="nudge"] > span:first-child {
+    animation: kids-ori-nudge 1.4s ease-in-out 3;
+  }
+}
+@keyframes kids-ori-nudge {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0);
+  }
+  30% {
+    transform: translateY(-6px) rotate(-6deg);
+  }
+  60% {
+    transform: translateY(0) rotate(5deg);
+  }
+}
