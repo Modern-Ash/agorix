@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Ori v1 tool-call",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "name",
+    "grantId"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "ori/tool-call/v1"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "grantId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    }
+  }
+}
