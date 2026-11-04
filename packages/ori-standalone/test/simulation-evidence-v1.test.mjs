@@ -1,0 +1,14 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {reconcileHostSimulation} from "../src/simulation-evidence-v1.mjs";
+import {runEvidenceGatedAgent} from "../src/evidence-gated-agent.mjs";
+const snapshot={allowedBlocks:["move","turn"]};
+const trace={steps:[{index:0,description:"Step 0"},{index:1,description:"Step 1"}]};
+const context={sessionId:"synthetic",learningStage:"connect",capabilities:["inspectProgram","inspectTrace"],grants:["inspectProgram","inspectTrace"],attempts:1,hintsUsed:1};
+const tools={inspectProgram:async()=>snapshot,inspectTrace:async()=>trace};
+test("valid host evidence",()=>assert.equal(reconcileHostSimulation({snapshot,trace,expectedSteps:2}).complete,true));
+test("rejects unordered trace",()=>assert.throws(()=>reconcileHostSimulation({snapshot,trace:{steps:[{index:1,description:"bad"}]},expectedSteps:1})));
+test("rejects trace over budget",()=>assert.throws(()=>reconcileHostSimulation({snapshot,trace,expectedSteps:1})));
+test("incomplete evidence suppresses proposal",async()=>assert.equal((await runEvidenceGatedAgent({hostContext:context,intent:"move",tools,expectedSteps:3})).proposal,null));
+test("complete evidence keeps review-only proposal",async()=>{const result=await runEvidenceGatedAgent({hostContext:context,intent:"move",tools,expectedSteps:2});assert.equal(result.proposal.blocks[0].kind,"move");assert.equal(result.appliedChanges,false);});
+test("no trace grant suppresses proposal",async()=>assert.equal((await runEvidenceGatedAgent({hostContext:{...context,grants:["inspectProgram"],capabilities:["inspectProgram"]},intent:"move",tools,expectedSteps:2})).proposal,null));
