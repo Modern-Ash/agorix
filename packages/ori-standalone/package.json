@@ -1,0 +1,22 @@
+{
+  "name": "@modern-ash/ori",
+  "version": "0.1.0-dev",
+  "private": true,
+  "type": "module",
+  "description": "Headless educational coding harness, default Agorix profile",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test",
+    "demo": "node examples/agorix-demo.mjs",
+    "check": "node --check src/harness.mjs && node --check src/contracts.mjs && node --check src/tools.mjs && node --check src/providers.mjs && node --check src/host-proposal-request.mjs && node --check src/host-proposal-cli-adapter.mjs && node --check src/host-proposal-router.mjs && node --check src/ollama.mjs && node --check src/output-guard.mjs && node --check src/agorix-adapter.mjs && node --check examples/agorix-demo.mjs && node --check examples/ollama-demo.mjs && node --check src/agorix-proposals.mjs && node --check src/agorix-operations.mjs && node --check examples/tutor-api/server.mjs && node --check examples/tutor-api/demo.mjs && node --check src/tutor-client.mjs && node --check examples/tutor-api/client-demo.mjs && node --check src/agorix-kids-compat.mjs && node --check src/shadow-metadata.mjs && node --check examples/shadow-api/server.mjs && node --check src/shadow-plan.mjs && node --check examples/shadow-api/serve.mjs",
+    "demo:ollama": "node examples/ollama-demo.mjs",
+    "demo:tutor-api": "node examples/tutor-api/demo.mjs",
+    "demo:tutor-client": "node examples/tutor-api/client-demo.mjs",
+    "serve:shadow": "node examples/shadow-api/serve.mjs",
+    "demo:local-preview": "node examples/local-preview-demo.mjs",
+    "smoke:opencode": "node examples/opencode-gated-smoke.mjs",
+    "demo:agent-runtime": "node examples/local-agent-runtime.mjs"
+  }
+}
