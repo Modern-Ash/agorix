@@ -1335,6 +1335,8 @@ export function KidsStudioScreen({
   const [paletteHint, setPaletteHint] = useState<string | null>(null);
   const [inspectorKind, setInspectorKind] = useState<"actor" | "backdrop">("actor");
   const lastBareTap = useRef(0);
+  // A hint while a mouse (or the keyboard) is over a character: how to open its Properties.
+  const [actorHint, setActorHint] = useState<"mouse" | "keyboard" | null>(null);
   // A second tap on the same character within this time opens its panel.
   const lastActorTap = useRef<{ id: string; at: number } | null>(null);
   const inspectorClose = useRef<HTMLButtonElement>(null);
@@ -3523,7 +3525,16 @@ export function KidsStudioScreen({
                       zIndex: (shownStage?.actorOrder?.indexOf(item.id) ?? 0) + 1,
                     }}
                     aria-label={`${copy.chooseActor}: ${item.name} ${item.id}`}
+                    aria-describedby="kids-actor-hint-text"
                     aria-pressed={activeActorId === item.id}
+                    onPointerEnter={(event) => {
+                      if (event.pointerType !== "touch") setActorHint("mouse");
+                    }}
+                    onPointerLeave={() => setActorHint(null)}
+                    onFocus={(event) => {
+                      if (event.currentTarget.matches(":focus-visible")) setActorHint("keyboard");
+                    }}
+                    onBlur={() => setActorHint(null)}
                     onClick={(event) => {
                       if (suppressStageClick.current) {
                         suppressStageClick.current = false;
@@ -3571,6 +3582,24 @@ export function KidsStudioScreen({
                   </button>
                 );
               })}
+              <span id="kids-actor-hint-text" className="kids-visually-hidden">
+                {locale === "es"
+                  ? "Doble clic o doble toque para ver sus propiedades. Con teclado, Enter otra vez."
+                  : "Double-click or double-tap for its properties. With the keyboard, Enter again."}
+              </span>
+              <span
+                className="kids-studio-stage-hint"
+                aria-hidden="true"
+                data-visible={actorHint === null ? undefined : "true"}
+              >
+                {actorHint === "keyboard"
+                  ? locale === "es"
+                    ? "Enter otra vez: propiedades"
+                    : "Enter again: properties"
+                  : locale === "es"
+                    ? "Doble clic: propiedades"
+                    : "Double-click: properties"}
+              </span>
             </KidsBackdrop>
             <div
               className="kids-studio-stage-actions"
