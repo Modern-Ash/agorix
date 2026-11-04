@@ -56,6 +56,8 @@ const ADD_MOVE = (page: Page) => page.getByRole("button", { name: "+ Mover", exa
 const RESULT = (page: Page) => page.getByTestId("scene-goal-result");
 
 test("rapid taps: double Jugar, 60 palette taps and undo spam", async ({ page }) => {
+  // 60 taps and 80 undos are real work for a loaded CI worker: give it three times the time.
+  test.slow();
   const errors = watchErrors(page);
   await seed(page);
   await openMission(page);

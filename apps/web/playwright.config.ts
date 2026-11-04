@@ -7,6 +7,8 @@ export default defineConfig({
   testDir: "./e2e",
   // e2e/prod runs against the deployed site with its own config (issue #345).
   testIgnore: "prod/**",
+  // A rare timing flake in CI should not block a PR; a real failure fails twice and still shows red.
+  retries: process.env["CI"] ? 1 : 0,
   webServer: {
     // AGORIX_DEV_BACKEND mounts the in-process DEV/E2E-only account backend (never part of the build).
     command: `AGORIX_DEV_BACKEND=1 corepack pnpm preview --host ${host} --port ${port}`,

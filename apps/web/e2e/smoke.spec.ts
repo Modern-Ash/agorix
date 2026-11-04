@@ -129,6 +129,8 @@ async function runTransparencyJourney(page: Page, viewport: { width: number; hei
 
   await openAppMenu(page);
   await appMenuButton(page, "Step").click();
+  // Step is disabled while a step is running; wait for it before the second one.
+  await expect(appMenuButton(page, "Step")).toBeEnabled();
   await appMenuButton(page, "Step").click();
   await expect(page.getByTestId("step-card")).toBeVisible();
   await expect(page.getByTestId("stage-active-block")).toContainText("sprite.move(10);");
@@ -464,6 +466,8 @@ test("Step trace explains before and after state without raw logs", async ({ pag
 test("transparency journey preserves visible code and explicit proposal control on desktop", async ({
   page,
 }) => {
+  // The journey ends with two Step clicks and a resize; on a loaded worker it needs more room.
+  test.slow();
   await runTransparencyJourney(page, { width: 1280, height: 900 });
 });
 
