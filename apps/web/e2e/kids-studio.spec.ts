@@ -1164,7 +1164,11 @@ test("a child drags the selected character and changes its layer", async ({ page
   await page.mouse.up();
   const moved = await first.getAttribute("style");
   expect(moved).not.toBe(before);
-  const card = await openSelectedSprite(page);
+  // The other character now overlaps this one on the stage: open the panel with the keyboard.
+  await first.focus();
+  await page.keyboard.press("Enter");
+  const card = page.getByLabel("Propiedades", { exact: true });
+  await expect(card).toBeVisible();
   await card.getByRole("button", { name: "Traer adelante" }).click();
   await expect(first).toHaveCSS("z-index", "2");
   await reloadTo(page, "#/proyectos");

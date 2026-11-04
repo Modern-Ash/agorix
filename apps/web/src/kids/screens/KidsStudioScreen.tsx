@@ -1327,17 +1327,19 @@ export function KidsStudioScreen({
   // The selected-sprite panel floats and opens on demand (issue #1231): a tap on a character shows
   // its round button; the panel opens only when the button is tapped. Pure display state: the
   // active character, its blocks and every action are the ones the editor already has.
-  const [inspectorPicked, setInspectorPicked] = useState(false);
+  // What the Properties card shows: the selected character, or the stage backdrop.
   const [inspectorOpen, setInspectorOpen] = useState(false);
-  const inspectorButton = useRef<HTMLButtonElement>(null);
+  const [inspectorKind, setInspectorKind] = useState<"actor" | "backdrop">("actor");
+  const lastBareTap = useRef(0);
+  // A second tap on the same character within this time opens its panel.
+  const lastActorTap = useRef<{ id: string; at: number } | null>(null);
   const inspectorClose = useRef<HTMLButtonElement>(null);
-  const keyboardInset = useKeyboardInset(inspectorPicked && inspectorOpen);
+  const keyboardInset = useKeyboardInset(inspectorOpen);
   useEffect(() => {
     if (!inspectorOpen) return undefined;
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       setInspectorOpen(false);
-      inspectorButton.current?.focus();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
@@ -1899,6 +1901,19 @@ export function KidsStudioScreen({
     } catch {
       setError(true);
     }
+  }
+
+  function openInspector(kind: "actor" | "backdrop" = "actor") {
+    setInspectorKind(kind);
+    setInspectorOpen(true);
+    window.setTimeout(() => {
+      inspectorClose.current?.focus({ preventScroll: true });
+      // On a phone the card covers the lower half: keep the stage above it.
+      if (window.matchMedia("(max-width: 720px)").matches)
+        document
+          .querySelector(".kids-studio-stage")
+          ?.scrollIntoView({ block: "start", behavior: "auto" });
+    }, 0);
   }
 
   function selectActor(next: string) {
@@ -2705,7 +2720,6 @@ export function KidsStudioScreen({
   }
 
   function tapActor(actorId: string) {
-    setInspectorPicked(true);
     if (
       !run ||
       !history.current.scripts.some(
@@ -2885,7 +2899,7 @@ export function KidsStudioScreen({
       data-editor-tab={editorTab}
       data-categories-open={categoriesOpen ? "true" : undefined}
       data-code-sized={panelLayout.state.sizes.code === undefined ? undefined : "true"}
-      data-inspector-open={inspectorPicked && inspectorOpen ? "true" : undefined}
+      data-inspector-open={inspectorOpen ? "true" : undefined}
       style={{
         ["--kids-code-height" as string]: `${panelLayout.state.sizes.code ?? 0}px`,
       }}
@@ -3392,11 +3406,16 @@ export function KidsStudioScreen({
             onPointerUp={(event) => captureStagePointer(event, false)}
             onPointerCancel={(event) => captureStagePointer(event, false)}
             onClick={(event) => {
-              // A tap on the bare stage puts the sprite panel away; the active character stays.
-              if (event.target === event.currentTarget) {
-                setInspectorPicked(false);
-                setInspectorOpen(false);
+              if (event.target !== event.currentTarget) return;
+              // One tap on the bare stage puts the card away; two open the backdrop's properties.
+              const now = performance.now();
+              if (now - lastBareTap.current < 380) {
+                lastBareTap.current = 0;
+                openInspector("backdrop");
+                return;
               }
+              lastBareTap.current = now;
+              setInspectorOpen(false);
             }}
           >
             {mission && sceneGoal?.kind === "reachCell" ? (
@@ -3466,11 +3485,24 @@ export function KidsStudioScreen({
                   }}
                   aria-label={`${copy.chooseActor}: ${item.name} ${item.id}`}
                   aria-pressed={activeActorId === item.id}
-                  onClick={() => {
+                  onClick={(event) => {
                     if (suppressStageClick.current) {
                       suppressStageClick.current = false;
                       return;
                     }
+                    // Double tap (mouse or finger), or Enter / Space on the character that is
+                    // already selected, opens its panel; one tap only selects, as before.
+                    const now = performance.now();
+                    const last = lastActorTap.current;
+                    const again =
+                      (last?.id === item.id && now - last.at < 380) ||
+                      (event.detail === 0 && activeActorId === item.id);
+                    if (again) {
+                      lastActorTap.current = null;
+                      openInspector("actor");
+                      return;
+                    }
+                    lastActorTap.current = { id: item.id, at: now };
                     tapActor(item.id);
                   }}
                   onPointerDown={(event) => beginDrag(event, item.id, item.x, item.y)}
@@ -3639,10 +3671,7 @@ export function KidsStudioScreen({
                   data-drop-actor={item.id}
                   data-over={over === `actor:${item.id}` ? "true" : undefined}
                   aria-pressed={activeActorId === item.id}
-                  onClick={() => {
-                    setInspectorPicked(true);
-                    selectActor(item.id);
-                  }}
+                  onClick={() => selectActor(item.id)}
                 >
                   <KidsSprite
                     slot={{ kind: "gallery", id: characterOfActor(item.id) }}
@@ -3655,6 +3684,11 @@ export function KidsStudioScreen({
             <button type="button" className="kids-button" onClick={() => setEditorTab("costumes")}>
               {locale === "es" ? "Elegir fondo o disfraz" : "Choose backdrop or costume"}
             </button>
+            <p className="kids-note kids-studio-double-tap-hint">
+              {locale === "es"
+                ? "Tocá dos veces un personaje del escenario para ver su panel."
+                : "Double-tap a character on the stage to see its panel."}
+            </p>
           </Panel>
           <div className="kids-studio-prediction-block">
             <StudioPrediction
@@ -6809,207 +6843,217 @@ export function KidsStudioScreen({
           onCancel={() => setExportingMedia(false)}
         />
       ) : null}
-      {actor && inspectorPicked ? (
+      {actor && inspectorOpen ? (
         <div
           className="kids-inspector-dock"
-          data-open={inspectorOpen ? "true" : undefined}
+          data-open="true"
           style={{ ["--kids-keyboard-inset" as string]: `${keyboardInset}px` }}
         >
-          <button
-            ref={inspectorButton}
-            type="button"
-            className="kids-inspector-fab"
-            aria-expanded={inspectorOpen}
-            aria-controls="kids-inspector-card"
-            aria-label={`${locale === "es" ? "Objeto seleccionado" : "Selected sprite"}: ${actor.name}`}
-            onClick={() => {
-              const next = !inspectorOpen;
-              setInspectorOpen(next);
-              if (next)
-                window.setTimeout(() => {
-                  inspectorClose.current?.focus({ preventScroll: true });
-                  // On a phone the card covers the lower half: keep the stage above it.
-                  if (window.matchMedia("(max-width: 720px)").matches)
-                    document
-                      .querySelector(".kids-studio-stage")
-                      ?.scrollIntoView({ block: "start", behavior: "auto" });
-                }, 0);
-            }}
+          <section
+            id="kids-inspector-card"
+            className="kids-inspector-card"
+            aria-label={locale === "es" ? "Propiedades" : "Properties"}
           >
-            <span aria-hidden="true">{Array.from(actor.name)[0]?.toUpperCase() ?? "?"}</span>
-          </button>
-          {inspectorOpen ? (
-            <section
-              id="kids-inspector-card"
-              className="kids-inspector-card"
-              aria-label={locale === "es" ? "Objeto seleccionado" : "Selected sprite"}
-            >
-              <header className="kids-inspector-head">
-                <div className="kids-inspector-title">
-                  <small>{locale === "es" ? "Objeto seleccionado" : "Selected sprite"}</small>
-                  <strong>
-                    {actor.name} · x {actor.x} · y {actor.y}
-                  </strong>
-                </div>
-                <button
-                  ref={inspectorClose}
-                  type="button"
-                  className="kids-inspector-close"
-                  aria-label={
-                    locale === "es" ? "Cerrar objeto seleccionado" : "Close selected sprite"
-                  }
-                  onClick={() => {
-                    setInspectorOpen(false);
-                    inspectorButton.current?.focus();
-                  }}
-                >
-                  <span aria-hidden="true">✕</span>
-                </button>
-              </header>
-              <div className="kids-inspector-body">
-                {actor ? (
-                  <div
-                    className="kids-studio-actor-inspector"
-                    data-ori-sprite-x={actor.x}
-                    data-ori-sprite-y={actor.y}
-                  >
-                    <label>
-                      x{" "}
-                      <input
-                        type="number"
-                        min={0}
-                        max={320}
-                        key={`${actor.id}-x-${placementRevision}`}
-                        defaultValue={actor.x}
-                        onBlur={(event) => {
-                          if (event.target.value.trim())
-                            setActorCoordinate("x", Number(event.target.value));
-                        }}
-                      />
-                    </label>
-                    <label>
-                      y{" "}
-                      <input
-                        type="number"
-                        min={-100}
-                        max={120}
-                        key={`${actor.id}-y-${placementRevision}`}
-                        defaultValue={actor.y}
-                        onBlur={(event) => {
-                          if (event.target.value.trim())
-                            setActorCoordinate("y", Number(event.target.value));
-                        }}
-                      />
-                    </label>
-                    <label>
-                      {locale === "es" ? "Dirección" : "Direction"}
-                      <input
-                        type="number"
-                        min={-180}
-                        max={180}
-                        key={`${actor.id}-direction-${placementRevision}`}
-                        defaultValue={actor.direction}
-                        onBlur={(event) => {
-                          if (event.target.value.trim())
-                            setActorAppearance("direction", Number(event.target.value));
-                        }}
-                      />
-                      °
-                    </label>
-                    <label>
-                      {copy.size}
-                      <input
-                        type="number"
-                        min={10}
-                        max={400}
-                        key={`${actor.id}-size-${placementRevision}`}
-                        defaultValue={actor.size}
-                        onBlur={(event) => {
-                          if (event.target.value.trim())
-                            setActorAppearance("size", Number(event.target.value));
-                        }}
-                      />
-                      %
-                    </label>
-                    {oriSuggestions ? (
-                      <button
-                        type="button"
-                        className="kids-button"
-                        onClick={() => openOri("actor")}
-                      >
-                        {locale === "es" ? "✦ Ori y este objeto" : "✦ Ori and this sprite"}
-                      </button>
-                    ) : null}
-                  </div>
-                ) : null}
-                <div
-                  className="kids-studio-placement"
-                  role="group"
-                  aria-label={`${copy.place}: ${actor?.name ?? ""}`}
-                >
-                  <span>
-                    {copy.place}: {actor?.name}
-                  </span>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    aria-label={`${copy.place} ←`}
-                    disabled={!actor || actor.x <= 0}
-                    onClick={() => placeActor(-20, 0)}
-                  >
-                    ←
-                  </button>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    aria-label={`${copy.place} ↑`}
-                    disabled={!actor || actor.y <= -100}
-                    onClick={() => placeActor(0, -20)}
-                  >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    aria-label={`${copy.place} ↓`}
-                    disabled={!actor || actor.y >= 120}
-                    onClick={() => placeActor(0, 20)}
-                  >
-                    ↓
-                  </button>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    aria-label={`${copy.place} →`}
-                    disabled={!actor || actor.x >= 320}
-                    onClick={() => placeActor(20, 0)}
-                  >
-                    →
-                  </button>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    disabled={
-                      !actor ||
-                      (creative.stage?.actorOrder?.indexOf(actor.id) ?? 0) ===
-                        (creative.stage?.actorOrder?.length ?? 1) - 1
-                    }
-                    onClick={() => changeLayer("forward")}
-                  >
-                    {copy.forward}
-                  </button>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    disabled={!actor || (creative.stage?.actorOrder?.indexOf(actor.id) ?? 0) === 0}
-                    onClick={() => changeLayer("backward")}
-                  >
-                    {copy.backward}
-                  </button>
-                </div>
+            <header className="kids-inspector-head">
+              <div className="kids-inspector-title">
+                <small>{locale === "es" ? "Propiedades" : "Properties"}</small>
+                <strong>
+                  {inspectorKind === "backdrop"
+                    ? `${locale === "es" ? "Fondo" : "Backdrop"} · ${galleryBackdropName(stageBackdrop, locale)}`
+                    : `${actor.name} · x ${actor.x} · y ${actor.y}`}
+                </strong>
               </div>
-            </section>
-          ) : null}
+              <button
+                ref={inspectorClose}
+                type="button"
+                className="kids-inspector-close"
+                aria-label={locale === "es" ? "Cerrar propiedades" : "Close properties"}
+                onClick={() => setInspectorOpen(false)}
+              >
+                <span aria-hidden="true">✕</span>
+              </button>
+            </header>
+            <div className="kids-inspector-body">
+              {inspectorKind === "backdrop" ? (
+                <div className="kids-studio-backdrop-props" role="group">
+                  <p>
+                    {locale === "es"
+                      ? "Es el fondo de toda la escena. Cambiarlo no mueve a los personajes."
+                      : "This is the backdrop of the whole scene. Changing it does not move the characters."}
+                  </p>
+                  <button
+                    type="button"
+                    className="kids-button"
+                    onClick={() => {
+                      setInspectorOpen(false);
+                      setEditorTab("costumes");
+                    }}
+                  >
+                    {locale === "es" ? "Elegir fondo" : "Choose backdrop"}
+                  </button>
+                  {customImagesEnabled ? (
+                    <button
+                      type="button"
+                      className="kids-button"
+                      onClick={() => {
+                        setInspectorOpen(false);
+                        setEditorTab("costumes");
+                        setDrawingKind("backdrop");
+                        setChooser(null);
+                      }}
+                    >
+                      {locale === "es" ? "Dibujar fondo" : "Draw backdrop"}
+                    </button>
+                  ) : null}
+                </div>
+              ) : (
+                <>
+                  {actor ? (
+                    <div
+                      className="kids-studio-actor-inspector"
+                      data-ori-sprite-x={actor.x}
+                      data-ori-sprite-y={actor.y}
+                    >
+                      <label>
+                        x{" "}
+                        <input
+                          type="number"
+                          min={0}
+                          max={320}
+                          key={`${actor.id}-x-${placementRevision}`}
+                          defaultValue={actor.x}
+                          onBlur={(event) => {
+                            if (event.target.value.trim())
+                              setActorCoordinate("x", Number(event.target.value));
+                          }}
+                        />
+                      </label>
+                      <label>
+                        y{" "}
+                        <input
+                          type="number"
+                          min={-100}
+                          max={120}
+                          key={`${actor.id}-y-${placementRevision}`}
+                          defaultValue={actor.y}
+                          onBlur={(event) => {
+                            if (event.target.value.trim())
+                              setActorCoordinate("y", Number(event.target.value));
+                          }}
+                        />
+                      </label>
+                      <label>
+                        {locale === "es" ? "Dirección" : "Direction"}
+                        <input
+                          type="number"
+                          min={-180}
+                          max={180}
+                          key={`${actor.id}-direction-${placementRevision}`}
+                          defaultValue={actor.direction}
+                          onBlur={(event) => {
+                            if (event.target.value.trim())
+                              setActorAppearance("direction", Number(event.target.value));
+                          }}
+                        />
+                        °
+                      </label>
+                      <label>
+                        {copy.size}
+                        <input
+                          type="number"
+                          min={10}
+                          max={400}
+                          key={`${actor.id}-size-${placementRevision}`}
+                          defaultValue={actor.size}
+                          onBlur={(event) => {
+                            if (event.target.value.trim())
+                              setActorAppearance("size", Number(event.target.value));
+                          }}
+                        />
+                        %
+                      </label>
+                      {oriSuggestions ? (
+                        <button
+                          type="button"
+                          className="kids-button"
+                          onClick={() => openOri("actor")}
+                        >
+                          {locale === "es" ? "✦ Ori y este objeto" : "✦ Ori and this sprite"}
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  <div
+                    className="kids-studio-placement"
+                    role="group"
+                    aria-label={`${copy.place}: ${actor?.name ?? ""}`}
+                  >
+                    <span>
+                      {copy.place}: {actor?.name}
+                    </span>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      aria-label={`${copy.place} ←`}
+                      disabled={!actor || actor.x <= 0}
+                      onClick={() => placeActor(-20, 0)}
+                    >
+                      ←
+                    </button>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      aria-label={`${copy.place} ↑`}
+                      disabled={!actor || actor.y <= -100}
+                      onClick={() => placeActor(0, -20)}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      aria-label={`${copy.place} ↓`}
+                      disabled={!actor || actor.y >= 120}
+                      onClick={() => placeActor(0, 20)}
+                    >
+                      ↓
+                    </button>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      aria-label={`${copy.place} →`}
+                      disabled={!actor || actor.x >= 320}
+                      onClick={() => placeActor(20, 0)}
+                    >
+                      →
+                    </button>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      disabled={
+                        !actor ||
+                        (creative.stage?.actorOrder?.indexOf(actor.id) ?? 0) ===
+                          (creative.stage?.actorOrder?.length ?? 1) - 1
+                      }
+                      onClick={() => changeLayer("forward")}
+                    >
+                      {copy.forward}
+                    </button>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      disabled={
+                        !actor || (creative.stage?.actorOrder?.indexOf(actor.id) ?? 0) === 0
+                      }
+                      onClick={() => changeLayer("backward")}
+                    >
+                      {copy.backward}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </section>
         </div>
       ) : null}
     </section>

@@ -6358,25 +6358,6 @@ button.kids-band-chip {
 .kids-inspector-dock > * {
   pointer-events: auto;
 }
-.kids-inspector-fab {
-  width: 56px;
-  height: 56px;
-  display: grid;
-  place-items: center;
-  padding: 0;
-  border: 2px solid #0f6e66;
-  border-radius: 50%;
-  background: #0f6e66;
-  color: #fff;
-  box-shadow: 0 6px 18px #0b514b55;
-  font: 800 1.4rem var(--kids-font-display, inherit);
-  cursor: pointer;
-}
-.kids-inspector-fab[aria-expanded="true"] {
-  background: #fff;
-  color: #0f6e66;
-}
-.kids-inspector-fab:focus-visible,
 .kids-inspector-close:focus-visible {
   outline: 3px solid var(--kids-runtime-strong);
   outline-offset: 2px;
@@ -6480,4 +6461,13 @@ button.kids-band-chip {
 /* The page can scroll the stage fully above the open card. */
 .kids-studio[data-inspector-open="true"] {
   padding-bottom: calc(48vh + 96px);
+}
+
+/* A double tap must not zoom the page: the stage characters take the tap themselves (#1231). */
+.kids-studio-stage-actor {
+  touch-action: manipulation;
+}
+.kids-studio-double-tap-hint {
+  margin: 4px 0 0;
+  flex: 1 1 100%;
 }
