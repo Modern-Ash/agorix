@@ -1,0 +1,11 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {assertEffectiveOpenCodeConfig} from "../src/opencode-effective-config.mjs";
+import {ProviderError} from "../src/providers.mjs";
+const safe={permission:{"*":"deny"},agent:{plan:{permission:{"*":"deny"}}},mcp:{}};
+test("accepts restrictive effective snapshot",()=>assert.equal(assertEffectiveOpenCodeConfig(safe),true));
+test("rejects permissive default",()=>assert.throws(()=>assertEffectiveOpenCodeConfig({...safe,permission:{"*":"allow"}}),ProviderError));
+test("rejects permissive override",()=>assert.throws(()=>assertEffectiveOpenCodeConfig({...safe,permission:{"*":"deny",bash:"allow"}}),ProviderError));
+test("rejects MCP activation",()=>assert.throws(()=>assertEffectiveOpenCodeConfig({...safe,mcp:{example:{enabled:true}}}),ProviderError));
+test("rejects agent override",()=>assert.throws(()=>assertEffectiveOpenCodeConfig({...safe,agent:{plan:{permission:{"*":"deny",edit:"allow"}}}}),ProviderError));
+test("rejects missing permissions",()=>assert.throws(()=>assertEffectiveOpenCodeConfig({}),ProviderError));
