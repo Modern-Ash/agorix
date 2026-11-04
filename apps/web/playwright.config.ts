@@ -7,6 +7,9 @@ export default defineConfig({
   testDir: "./e2e",
   // e2e/prod runs against the deployed site with its own config (issue #345).
   testIgnore: "prod/**",
+  // Keep the snapshot names from before the projects existed (no project name in the file name).
+  snapshotPathTemplate:
+    "{snapshotDir}/{testFileDir}/{testFileName}-snapshots/{arg}{-snapshotSuffix}{ext}",
   // A rare timing flake in CI should not block a PR; a real failure fails twice and still shows red.
   retries: process.env["CI"] ? 1 : 0,
   // Chromium runs everything. WebKit (Safari, iPad) is opt-in with AGORIX_E2E_WEBKIT=1 and runs the
