@@ -6,6 +6,7 @@ import {
   useState,
   type ChangeEvent,
   type PointerEvent,
+  useCallback,
 } from "react";
 import {
   inStudioRange,
@@ -204,6 +205,7 @@ import { expressionForMotion, outcomeOfRun, useOriReaction } from "../kidsOriExp
 import { getOriContext, useOriContextText } from "../kidsOriCursor.js";
 import { useKeyboardInset } from "../kidsKeyboardInset.js";
 import { useOriNudge } from "../kidsOriNudge.js";
+import { useAnchoredPosition } from "../kidsAnchoredPosition.js";
 import type { OriContext } from "../kidsOriContext.js";
 import { OriContextNote } from "./OriContextNote.js";
 import { KidsBackdrop, KidsSprite } from "./KidsArt.js";
@@ -1345,9 +1347,31 @@ export function KidsStudioScreen({
   // A second tap on the same character within this time opens its panel.
   const lastActorTap = useRef<{ id: string; at: number } | null>(null);
   const inspectorClose = useRef<HTMLButtonElement>(null);
+  const inspectorCard = useRef<HTMLElement>(null);
   const keyboardInset = useKeyboardInset(inspectorOpen);
   // The block the Properties card edits, if it still exists and has something to edit.
   const blockProps = inspectorKind === "block" ? script?.statements[inspectorBlock] : undefined;
+  // The card appears right below what it is about (#1242): the character, the block or the stage.
+  const inspectorAnchor = useCallback((): Element | null => {
+    if (inspectorKind === "block")
+      return document.querySelector(
+        `.kids-studio-program-column .kids-program-block[data-index="${inspectorBlock}"]`,
+      );
+    if (inspectorKind === "backdrop") return document.querySelector(".kids-studio-stage");
+    return (
+      [...document.querySelectorAll<HTMLElement>(".kids-studio-stage-actor")].find((node) =>
+        node.getAttribute("aria-label")?.endsWith(activeActorId),
+      ) ?? null
+    );
+  }, [inspectorKind, inspectorBlock, activeActorId]);
+  const anchored = useAnchoredPosition(inspectorOpen, inspectorAnchor, inspectorCard, [
+    actor?.x,
+    actor?.y,
+    actor?.size,
+    inspectorKind,
+    inspectorBlock,
+    script?.statements.length,
+  ]);
   // Adding or removing blocks would leave the card on a different block: close it.
   const blockCount = script?.statements.length ?? 0;
   const lastBlockCount = useRef(blockCount);
@@ -7046,6 +7070,19 @@ export function KidsStudioScreen({
               id="kids-inspector-card"
               className="kids-inspector-card"
               aria-label={locale === "es" ? "Propiedades" : "Properties"}
+
+              ref={inspectorCard}
+              data-anchored={anchored ? "true" : undefined}
+              data-placement={anchored?.placement}
+              style={
+                anchored
+                  ? ({
+                      ["--kids-card-left" as string]: `${anchored.left}px`,
+                      ["--kids-card-top" as string]: `${anchored.top}px`,
+                      ["--kids-card-arrow" as string]: `${anchored.arrow}px`,
+                    } as React.CSSProperties)
+                  : undefined
+              }
             >
               <header className="kids-inspector-head">
                 <div className="kids-inspector-title">
