@@ -121,6 +121,32 @@ test("a device without audio never stops the run", async ({ page }) => {
   await page.getByRole("button", { name: "+ Mover", exact: true }).click();
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await expect(page.getByText("2 bloques ejecutados")).toBeVisible();
-  // Safari reports a lazy stylesheet it cancels as "Unable to preload CSS" (#1226); that is about loading, not about audio, so it is not counted here.
+  // Reloading while the lazy stylesheet is still loading cancels it, and Safari then reports
+  // "Unable to preload CSS" (#1226: only on a reload, never in a normal session). That is about
+  // loading, not about audio, so it is not counted here; the test below covers a normal session.
   expect(crashes.filter((message) => !/^Unable to preload CSS/.test(message))).toEqual([]);
+});
+
+test("a normal session loads, builds and plays without any page error (#1226)", async ({
+  page,
+}) => {
+  const crashes: string[] = [];
+  page.on("pageerror", (error) => crashes.push(error.message));
+  await page.addInitScript(() => {
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/kids");
+  await page.waitForLoadState("networkidle");
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await clickCreateScene(page);
+  await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByText("1 bloque ejecutado")).toBeVisible();
+  await page.waitForTimeout(1500);
+  expect(crashes).toEqual([]);
 });
