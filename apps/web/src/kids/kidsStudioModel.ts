@@ -1574,6 +1574,45 @@ export function deleteStudioProcedure(
   });
 }
 
+/**
+ * Change one value of a block already in a character's program (issue #1239). Only the fields a
+ * block exposes can change (`kidsBlockProperties`), and the whole program is validated again, so
+ * a value outside the closed lists throws and nothing is recorded. One undoable step.
+ */
+const EDITABLE_FIELDS: Partial<Record<Statement["type"], readonly string[]>> = {
+  move: ["steps"],
+  turn: ["degrees"],
+  wait: ["seconds"],
+  repeat: ["count"],
+  setSize: ["size"],
+  changeSize: ["delta"],
+  playSound: ["soundId"],
+  switchCostume: ["costumeId"],
+  say: ["text"],
+  think: ["text"],
+};
+
+export function setStudioStatementField(
+  history: EditorHistory,
+  actorId: string,
+  index: number,
+  field: string,
+  value: number | string,
+): EditorHistory {
+  return withScript(history, actorId, `edit ${field}`, (script) => {
+    const statement = script.statements[index];
+    if (!statement) throw new RangeError("unknown block");
+    if (!(EDITABLE_FIELDS[statement.type] ?? []).includes(field))
+      throw new RangeError("that value of this block cannot be edited");
+    return {
+      ...script,
+      statements: script.statements.map((item, position) =>
+        position === index ? ({ ...item, [field]: value } as Statement) : item,
+      ),
+    };
+  });
+}
+
 export function setStudioTrigger(
   history: EditorHistory,
   actorId: string,
