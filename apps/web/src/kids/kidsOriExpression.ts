@@ -27,6 +27,7 @@ export function expressionForMotion(
     case "thinking":
       return "thinking";
     case "proposal":
+    case "nudge":
     case "listening":
       return "curious";
     case "observing":

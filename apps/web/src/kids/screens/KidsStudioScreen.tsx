@@ -200,6 +200,7 @@ import { useOriPageVisible } from "../kidsOriMotion.js";
 import { expressionForMotion, outcomeOfRun, useOriReaction } from "../kidsOriExpression.js";
 import { getOriContext, useOriContextText } from "../kidsOriCursor.js";
 import { useKeyboardInset } from "../kidsKeyboardInset.js";
+import { useOriNudge } from "../kidsOriNudge.js";
 import type { OriContext } from "../kidsOriContext.js";
 import { OriContextNote } from "./OriContextNote.js";
 import { KidsBackdrop, KidsSprite } from "./KidsArt.js";
@@ -1721,6 +1722,11 @@ export function KidsStudioScreen({
     });
     return choices;
   }
+  // A pause at the very start: Ori's button invites, with no idea attached (#1237).
+  const projectIsEmpty = history.current.scripts.every((entry) => entry.statements.length === 0);
+  const oriNudging = useOriNudge(
+    oriSuggestions && oriCollapsed && projectIsEmpty && !run && !oriBusy && oriPageVisible,
+  );
   const oriMotion = oriBusy
     ? "thinking"
     : oriIdea
@@ -1729,7 +1735,9 @@ export function KidsStudioScreen({
         ? "fallback"
         : run
           ? "observing"
-          : "idle";
+          : oriNudging
+            ? "nudge"
+            : "idle";
   const oriExpression = oriReaction ?? expressionForMotion(oriMotion, outcomeOfRun(run?.outcome));
   const selectedFrame = frame === null ? null : run?.frames[frame];
   const shownActors = selectedFrame?.actors ?? run?.actors;
@@ -3103,7 +3111,9 @@ export function KidsStudioScreen({
           onClick={() => openOri("actor")}
         >
           <KidsSprite slot="ori" expression={oriExpression} />
-          <span>Ori</span>
+          <span>
+            {oriMotion === "nudge" ? (locale === "es" ? "¿Una idea?" : "An idea?") : "Ori"}
+          </span>
         </button>
       ) : null}
       <nav
@@ -6565,7 +6575,13 @@ export function KidsStudioScreen({
                     }}
                   >
                     <KidsSprite slot="ori" expression={oriExpression} />
-                    <span>Ori</span>
+                    <span>
+                      {oriMotion === "nudge"
+                        ? locale === "es"
+                          ? "¿Una idea?"
+                          : "An idea?"
+                        : "Ori"}
+                    </span>
                   </button>
                 ) : (
                   <button

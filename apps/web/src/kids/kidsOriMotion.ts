@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 export type OriMotionState =
-  "idle" | "listening" | "thinking" | "proposal" | "observing" | "fallback";
+  "idle" | "listening" | "thinking" | "proposal" | "observing" | "fallback" | "nudge";
 
 export function useOriPageVisible(): boolean {
   const [visible, setVisible] = useState(
@@ -24,6 +24,7 @@ export function oriMotionStatus(state: OriMotionState, locale: "es" | "en"): str
       proposal: "Ori tiene una idea para revisar",
       observing: "Ori mira lo que pasó",
       fallback: "Ori tiene un mensaje",
+      nudge: "Ori puede darte una idea si querés",
     },
     en: {
       idle: "Ori is here",
@@ -32,6 +33,7 @@ export function oriMotionStatus(state: OriMotionState, locale: "es" | "en"): str
       proposal: "Ori has an idea to review",
       observing: "Ori is watching what happened",
       fallback: "Ori has a message",
+      nudge: "Ori can give you an idea if you like",
     },
   } as const;
   return labels[locale][state];
