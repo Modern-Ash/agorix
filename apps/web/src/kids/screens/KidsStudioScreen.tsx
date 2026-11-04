@@ -85,7 +85,8 @@ import {
   type Direction,
 } from "../kidsStudioCoach.js";
 import { StudioCoach, StudioIntentPicker, StudioPrediction } from "./KidsStudioCoach.js";
-import { KidsPaletteBlock } from "./KidsPaletteBlock.js";
+import { KidsPaletteBlock, PaletteRulesContext } from "./KidsPaletteBlock.js";
+import { needHint, paletteFacts, unmetNeed } from "../kidsPaletteRules.js";
 import {
   CHOICE_CATALOG,
   CHOICE_PROMPT_IDS,
@@ -1329,12 +1330,19 @@ export function KidsStudioScreen({
   // active character, its blocks and every action are the ones the editor already has.
   // What the Properties card shows: the selected character, or the stage backdrop.
   const [inspectorOpen, setInspectorOpen] = useState(false);
+  // Blocks that depend on something not in the project yet are dimmed; tapping one says why.
+  const [paletteHint, setPaletteHint] = useState<string | null>(null);
   const [inspectorKind, setInspectorKind] = useState<"actor" | "backdrop">("actor");
   const lastBareTap = useRef(0);
   // A second tap on the same character within this time opens its panel.
   const lastActorTap = useRef<{ id: string; at: number } | null>(null);
   const inspectorClose = useRef<HTMLButtonElement>(null);
   const keyboardInset = useKeyboardInset(inspectorOpen);
+  useEffect(() => {
+    if (paletteHint === null) return undefined;
+    const timer = window.setTimeout(() => setPaletteHint(null), 5000);
+    return () => window.clearTimeout(timer);
+  }, [paletteHint]);
   useEffect(() => {
     if (!inspectorOpen) return undefined;
     const onKey = (event: KeyboardEvent) => {
@@ -1438,7 +1446,8 @@ export function KidsStudioScreen({
     };
     const down = (event: globalThis.PointerEvent) => {
       const button = (event.target as HTMLElement).closest("button");
-      if (!button || button.disabled || !isAddControl(button)) return;
+      if (!button || button.disabled || button.dataset.kidsUnmet === "true") return;
+      if (!isAddControl(button)) return;
       const touch = event.pointerType === "touch";
       start = { x: event.clientX, y: event.clientY, button, touch, armed: !touch, timer: null };
       if (touch)
@@ -2893,685 +2902,1019 @@ export function KidsStudioScreen({
     stepped,
   });
 
+  const paletteFactsNow = paletteFacts(history.current.scripts, creative.actors?.length ?? 1);
+  const paletteRules = {
+    unmetFor: (block: Parameters<typeof unmetNeed>[0]) => {
+      const need = unmetNeed(block, paletteFactsNow);
+      return need === undefined ? undefined : needHint(need, locale);
+    },
+    onBlocked: setPaletteHint,
+  };
+
   return (
-    <section
-      className="kids-screen kids-studio"
-      data-editor-tab={editorTab}
-      data-categories-open={categoriesOpen ? "true" : undefined}
-      data-code-sized={panelLayout.state.sizes.code === undefined ? undefined : "true"}
-      data-inspector-open={inspectorOpen ? "true" : undefined}
-      style={{
-        ["--kids-code-height" as string]: `${panelLayout.state.sizes.code ?? 0}px`,
-      }}
-      aria-label={missionDefinition?.title ?? copy.title}
-    >
-      <header className="kids-studio-header">
-        <button type="button" className="kids-button kids-studio-back" onClick={onBack}>
-          <span aria-hidden="true">←</span>{" "}
-          <span className="kids-studio-back-label">
-            {backLabel ??
-              (mission ? (locale === "es" ? "Volver al mapa" : "Back to map") : copy.back)}
-          </span>
-        </button>
-        {missionDefinition ? (
-          <h1 className="kids-studio-mission">
-            <button
-              type="button"
-              className="kids-mission-pill"
-              aria-expanded={missionOpen}
-              aria-controls="kids-mission-popover"
-              onClick={() => setMissionOpen((open) => !open)}
-            >
-              <strong>
-                {locale === "es" ? `Misión ${mission!.index + 1}` : `Mission ${mission!.index + 1}`}
-                {" · "}
-                {missionDefinition.title}
-              </strong>
-              <span className="kids-mission-pill-goal">{missionDefinition.goal.learnerFacing}</span>
-            </button>
-          </h1>
-        ) : (
-          <h1>{copy.title}</h1>
-        )}
-        {missionDefinition && hintLevel < missionDefinition.hintLadder.length ? (
-          <button
-            type="button"
-            className="kids-button kids-hint-button"
-            onClick={() => {
-              const next = hintLevel + 1;
-              try {
-                const saved = store.load(id);
-                store.save(id, saved.program, { ...saved.metadata, hintLevel: next });
-                recordKidsScaffold("hint", Math.min(next, 5) as 1 | 2 | 3 | 4 | 5);
-                setHintLevel(next);
-                setMissionOpen(true);
-              } catch {
-                setError(true);
-              }
-            }}
-          >
-            {locale === "es" ? "Pista" : "Hint"} {hintLevel + 1}
+    <PaletteRulesContext.Provider value={paletteRules}>
+      <section
+        className="kids-screen kids-studio"
+        data-editor-tab={editorTab}
+        data-categories-open={categoriesOpen ? "true" : undefined}
+        data-code-sized={panelLayout.state.sizes.code === undefined ? undefined : "true"}
+        data-inspector-open={inspectorOpen ? "true" : undefined}
+        style={{
+          ["--kids-code-height" as string]: `${panelLayout.state.sizes.code ?? 0}px`,
+        }}
+        aria-label={missionDefinition?.title ?? copy.title}
+      >
+        <header className="kids-studio-header">
+          <button type="button" className="kids-button kids-studio-back" onClick={onBack}>
+            <span aria-hidden="true">←</span>{" "}
+            <span className="kids-studio-back-label">
+              {backLabel ??
+                (mission ? (locale === "es" ? "Volver al mapa" : "Back to map") : copy.back)}
+            </span>
           </button>
-        ) : null}
-        <div className="kids-studio-menu">
-          <button
-            type="button"
-            className="kids-button kids-icon-button"
-            aria-label={copy.undo}
-            title={copy.undo}
-            disabled={!history.canUndo}
-            onClick={() => persist(undoCanonicalTransaction(history).history)}
-          >
-            <span aria-hidden="true">↶</span>
-          </button>
-          <button
-            type="button"
-            className="kids-button kids-icon-button"
-            aria-label={copy.redo}
-            title={copy.redo}
-            disabled={!history.canRedo}
-            onClick={() => persist(redoCanonicalTransaction(history).history)}
-          >
-            <span aria-hidden="true">↷</span>
-          </button>
-          {shortcutsFlag ? (
-            <button
-              type="button"
-              className="kids-button kids-icon-button"
-              aria-label={copy.shortcutsOpen}
-              title={copy.shortcutsOpen}
-              onClick={() => setHelpOpen(true)}
-            >
-              <span aria-hidden="true">⌨</span>
-            </button>
-          ) : null}
-          <button
-            type="button"
-            className="kids-button kids-icon-button"
-            aria-label={copy.exportScene}
-            title={copy.exportScene}
-            onClick={() => downloadScene()}
-          >
-            <span aria-hidden="true">⬇</span>
-          </button>
-          {tutorialFlag ? (
-            <button
-              type="button"
-              className="kids-button kids-icon-button"
-              aria-label={studioTutorialText("help", locale)}
-              title={studioTutorialText("help", locale)}
-              onClick={() => {
-                setStudioTutorialDone(false);
-                setStepped(false);
-                setTutorialOpen(true);
-              }}
-            >
-              <span aria-hidden="true">?</span>
-            </button>
-          ) : null}
-        </div>
-        {missionDefinition ? (
-          <section
-            className="kids-mission-studio-intro"
-            id="kids-mission-popover"
-            role="region"
-            aria-label={locale === "es" ? "Misión" : "Mission"}
-            hidden={!missionOpen}
-          >
-            <p>{missionDefinition.goal.learnerFacing}</p>
-            {readAloud ? (
+          {missionDefinition ? (
+            <h1 className="kids-studio-mission">
               <button
                 type="button"
-                className="kids-button kids-listen"
-                aria-label={locale === "es" ? "Escuchar" : "Listen"}
-                onClick={() => speak(missionDefinition.goal.learnerFacing, locale)}
+                className="kids-mission-pill"
+                aria-expanded={missionOpen}
+                aria-controls="kids-mission-popover"
+                onClick={() => setMissionOpen((open) => !open)}
               >
-                🔊 {locale === "es" ? "Escuchar" : "Listen"}
+                <strong>
+                  {locale === "es"
+                    ? `Misión ${mission!.index + 1}`
+                    : `Mission ${mission!.index + 1}`}
+                  {" · "}
+                  {missionDefinition.title}
+                </strong>
+                <span className="kids-mission-pill-goal">
+                  {missionDefinition.goal.learnerFacing}
+                </span>
               </button>
-            ) : null}
-            <p className="kids-note">
-              {locale === "es"
-                ? "Construí con objetos, disfraces, sonidos y todos los bloques. La misión se completa cuando tu programa llega a la meta al jugar."
-                : "Build with sprites, costumes, sounds and all blocks. The mission is complete when your program reaches the goal during play."}
-            </p>
-            {missionDefinition.hintLadder.slice(0, hintLevel).map((hint) => (
-              <p className="kids-note" key={hint.level}>
-                {locale === "es" ? "Pista" : "Hint"} {hint.level}: {hint.text}
-              </p>
-            ))}
-          </section>
-        ) : null}
-      </header>
-      {tutorialFlag && tutorialOpen && tutorialStep !== null ? (
-        <aside className="kids-tutorial" aria-label={studioTutorialText("title", locale)}>
-          <p aria-live="polite" data-testid="studio-tutorial">
-            {studioTutorialText(tutorialStep, locale)}
-          </p>
-          <button
-            type="button"
-            className="kids-button"
-            onClick={() => {
-              setStudioTutorialDone(true);
-              setTutorialOpen(false);
-            }}
-          >
-            {studioTutorialText("skip", locale)}
-          </button>
-        </aside>
-      ) : null}
-      <div
-        className="kids-studio-tabs"
-        role="tablist"
-        aria-label={locale === "es" ? "Editor" : "Editor"}
-      >
-        {(
-          [
-            ["code", locale === "es" ? "Código" : "Code", "🧩"],
-            ["costumes", locale === "es" ? "Disfraces" : "Costumes", "🎨"],
-            ["sounds", locale === "es" ? "Sonidos" : "Sounds", "🔊"],
-          ] as const
-        ).map(([tab, label, glyph]) => (
-          <button
-            key={tab}
-            type="button"
-            role="tab"
-            className="kids-studio-tab"
-            aria-selected={editorTab === tab}
-            onClick={() => {
-              setCategoriesOpen(
-                tab === "code" ? (editorTab === "code" ? !categoriesOpen : true) : false,
-              );
-              setEditorTab(tab);
-              if (tab === "code") panelLayout.dispatch({ type: "restore", id: "code" });
-              setOriContext(
-                tab === "costumes" ? "costumes" : tab === "sounds" ? "sounds" : "actor",
-              );
-            }}
-          >
-            <span aria-hidden="true">{glyph}</span> {label}
-          </button>
-        ))}
-      </div>
-      {oriSuggestions ? (
-        <button
-          type="button"
-          className="kids-studio-ori-rail kids-ori-float-trigger"
-          data-ori-state={oriMotion}
-          data-ori-paused={!oriPageVisible}
-          data-ori-context={oriContextText}
-          aria-label={locale === "es" ? "Abrir Ori" : "Open Ori"}
-          onClick={() => openOri("actor")}
-        >
-          <KidsSprite slot="ori" expression={oriExpression} />
-          <span>Ori</span>
-        </button>
-      ) : null}
-      <nav
-        className="kids-studio-bottombar"
-        aria-label={locale === "es" ? "Herramientas del editor" : "Editor tools"}
-      >
-        {(
-          [
-            ["blocks", locale === "es" ? "Bloques" : "Blocks", "🧩"],
-            ["costumes", locale === "es" ? "Disfraces" : "Costumes", "🎨"],
-            ["sounds", locale === "es" ? "Sonidos" : "Sounds", "🔊"],
-            ["code", locale === "es" ? "Código" : "Code", "</>"],
-          ] as const
-        ).map(([tool, label, glyph]) => {
-          const pressed =
-            tool === "blocks"
-              ? editorTab === "code" && (paletteView === "all" ? sheetOpen : openCategory !== null)
-              : tool === "code"
-                ? false
-                : editorTab === tool;
-          return (
+            </h1>
+          ) : (
+            <h1>{copy.title}</h1>
+          )}
+          {missionDefinition && hintLevel < missionDefinition.hintLadder.length ? (
             <button
-              key={tool}
               type="button"
-              className="kids-studio-bottom-button"
-              aria-pressed={tool === "code" ? undefined : pressed}
+              className="kids-button kids-hint-button"
               onClick={() => {
-                if (tool === "blocks") {
-                  setEditorTab("code");
-                  setOriContext("actor");
-                  if (paletteView === "all")
-                    setSheetOpen((open) => (editorTab === "code" ? !open : true));
-                  else
-                    setOpenCategory(
-                      (current) =>
-                        current ??
-                        studioCategories({ pen: penEnabled, music: musicEnabled })[0] ??
-                        null,
-                    );
-                  return;
+                const next = hintLevel + 1;
+                try {
+                  const saved = store.load(id);
+                  store.save(id, saved.program, { ...saved.metadata, hintLevel: next });
+                  recordKidsScaffold("hint", Math.min(next, 5) as 1 | 2 | 3 | 4 | 5);
+                  setHintLevel(next);
+                  setMissionOpen(true);
+                } catch {
+                  setError(true);
                 }
-                if (tool === "code") {
-                  setEditorTab("code");
-                  panelLayout.dispatch({ type: "restore", id: "code" });
-                  setSheetOpen(false);
-                  setBlocksSheetMaximized(false);
-                  setCodeCollapsed(false);
-                  window.setTimeout(
-                    () =>
-                      document
-                        .querySelector(".kids-code-strip")
-                        ?.scrollIntoView({ block: "center", behavior: "auto" }),
-                    0,
-                  );
-                  return;
-                }
-                setSheetOpen(false);
-                setBlocksSheetMaximized(false);
-                panelLayout.dispatch({ type: "restoreMaximized" });
-                setEditorTab(editorTab === tool ? "code" : tool);
-                setOriContext(editorTab === tool ? "actor" : tool);
               }}
             >
-              <span aria-hidden="true">{glyph}</span>
-              <span>{label}</span>
+              {locale === "es" ? "Pista" : "Hint"} {hintLevel + 1}
             </button>
-          );
-        })}
-      </nav>
-      <nav className="kids-studio-categories" aria-label={copy.categories}>
-        {studioCategories({ pen: penEnabled, music: musicEnabled }).map((category) => (
-          <button
-            key={category}
-            type="button"
-            className="kids-studio-category"
-            data-category={category}
-            aria-current={
-              (paletteView === "all" ? activeCategory : openCategory) === category
-                ? "true"
-                : undefined
-            }
-            aria-expanded={paletteView === "focused" ? openCategory === category : undefined}
-            aria-controls="kids-studio-block-palette"
-            onClick={(event) => {
-              if (paletteView === "all") {
-                setSheetOpen(true);
-                setPaletteCollapsed(false);
-                setActiveCategory(category);
-                window.setTimeout(() => {
-                  const heading = document.getElementById(studioCategoryId(category));
-                  if (!heading || !palette) return;
-                  const top =
-                    heading.getBoundingClientRect().top -
-                    palette.getBoundingClientRect().top +
-                    palette.scrollTop;
-                  palette.scrollTo({ top, behavior: "auto" });
-                  heading.focus({ preventScroll: true });
-                }, 0);
-                return;
-              }
-              const next = openCategory === category ? null : category;
-              const bounds = event.currentTarget.getBoundingClientRect();
-              palette?.style.setProperty(
-                "--kids-palette-left",
-                `${Math.max(8, Math.min(bounds.right + 8, window.innerWidth - 328))}px`,
-              );
-              palette?.style.setProperty(
-                "--kids-palette-top",
-                `${Math.max(8, Math.min(bounds.top, window.innerHeight * 0.25))}px`,
-              );
-              setOpenCategory(next);
-              if (palette) palette.scrollTop = 0;
-            }}
-          >
-            {categoryLabel[category]}
-          </button>
-        ))}
-      </nav>
-      {blockMenu ? (
+          ) : null}
+          <div className="kids-studio-menu">
+            <button
+              type="button"
+              className="kids-button kids-icon-button"
+              aria-label={copy.undo}
+              title={copy.undo}
+              disabled={!history.canUndo}
+              onClick={() => persist(undoCanonicalTransaction(history).history)}
+            >
+              <span aria-hidden="true">↶</span>
+            </button>
+            <button
+              type="button"
+              className="kids-button kids-icon-button"
+              aria-label={copy.redo}
+              title={copy.redo}
+              disabled={!history.canRedo}
+              onClick={() => persist(redoCanonicalTransaction(history).history)}
+            >
+              <span aria-hidden="true">↷</span>
+            </button>
+            {shortcutsFlag ? (
+              <button
+                type="button"
+                className="kids-button kids-icon-button"
+                aria-label={copy.shortcutsOpen}
+                title={copy.shortcutsOpen}
+                onClick={() => setHelpOpen(true)}
+              >
+                <span aria-hidden="true">⌨</span>
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="kids-button kids-icon-button"
+              aria-label={copy.exportScene}
+              title={copy.exportScene}
+              onClick={() => downloadScene()}
+            >
+              <span aria-hidden="true">⬇</span>
+            </button>
+            {tutorialFlag ? (
+              <button
+                type="button"
+                className="kids-button kids-icon-button"
+                aria-label={studioTutorialText("help", locale)}
+                title={studioTutorialText("help", locale)}
+                onClick={() => {
+                  setStudioTutorialDone(false);
+                  setStepped(false);
+                  setTutorialOpen(true);
+                }}
+              >
+                <span aria-hidden="true">?</span>
+              </button>
+            ) : null}
+          </div>
+          {missionDefinition ? (
+            <section
+              className="kids-mission-studio-intro"
+              id="kids-mission-popover"
+              role="region"
+              aria-label={locale === "es" ? "Misión" : "Mission"}
+              hidden={!missionOpen}
+            >
+              <p>{missionDefinition.goal.learnerFacing}</p>
+              {readAloud ? (
+                <button
+                  type="button"
+                  className="kids-button kids-listen"
+                  aria-label={locale === "es" ? "Escuchar" : "Listen"}
+                  onClick={() => speak(missionDefinition.goal.learnerFacing, locale)}
+                >
+                  🔊 {locale === "es" ? "Escuchar" : "Listen"}
+                </button>
+              ) : null}
+              <p className="kids-note">
+                {locale === "es"
+                  ? "Construí con objetos, disfraces, sonidos y todos los bloques. La misión se completa cuando tu programa llega a la meta al jugar."
+                  : "Build with sprites, costumes, sounds and all blocks. The mission is complete when your program reaches the goal during play."}
+              </p>
+              {missionDefinition.hintLadder.slice(0, hintLevel).map((hint) => (
+                <p className="kids-note" key={hint.level}>
+                  {locale === "es" ? "Pista" : "Hint"} {hint.level}: {hint.text}
+                </p>
+              ))}
+            </section>
+          ) : null}
+        </header>
+        {tutorialFlag && tutorialOpen && tutorialStep !== null ? (
+          <aside className="kids-tutorial" aria-label={studioTutorialText("title", locale)}>
+            <p aria-live="polite" data-testid="studio-tutorial">
+              {studioTutorialText(tutorialStep, locale)}
+            </p>
+            <button
+              type="button"
+              className="kids-button"
+              onClick={() => {
+                setStudioTutorialDone(true);
+                setTutorialOpen(false);
+              }}
+            >
+              {studioTutorialText("skip", locale)}
+            </button>
+          </aside>
+        ) : null}
         <div
-          ref={blockMenuRef}
-          className="kids-block-menu"
-          role="menu"
-          aria-label={copy.menuTitle}
-          style={{ left: blockMenu.x, top: blockMenu.y }}
-          onKeyDown={(event) => {
-            const items = [
-              ...event.currentTarget.querySelectorAll<HTMLElement>("[role='menuitem']"),
-            ];
-            const current = items.indexOf(document.activeElement as HTMLElement);
-            if (event.key === "Escape") {
-              event.preventDefault();
-              setBlockMenu(null);
-            }
-            if (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "Tab") {
-              event.preventDefault();
-              const delta = event.key === "ArrowUp" || event.shiftKey ? -1 : 1;
-              items[(current + delta + items.length) % items.length]?.focus();
-            }
-          }}
+          className="kids-studio-tabs"
+          role="tablist"
+          aria-label={locale === "es" ? "Editor" : "Editor"}
         >
           {(
             [
-              ["duplicate", copy.duplicate],
-              ["delete", copy.remove],
-              ["up", copy.menuUp],
-              ["down", copy.menuDown],
+              ["code", locale === "es" ? "Código" : "Code", "🧩"],
+              ["costumes", locale === "es" ? "Disfraces" : "Costumes", "🎨"],
+              ["sounds", locale === "es" ? "Sonidos" : "Sounds", "🔊"],
             ] as const
-          ).map(([action, label]) => (
+          ).map(([tab, label, glyph]) => (
             <button
-              key={action}
+              key={tab}
               type="button"
-              role="menuitem"
+              role="tab"
+              className="kids-studio-tab"
+              aria-selected={editorTab === tab}
               onClick={() => {
-                blockAction(action, blockMenu.index);
-                setBlockMenu(null);
+                setCategoriesOpen(
+                  tab === "code" ? (editorTab === "code" ? !categoriesOpen : true) : false,
+                );
+                setEditorTab(tab);
+                if (tab === "code") panelLayout.dispatch({ type: "restore", id: "code" });
+                setOriContext(
+                  tab === "costumes" ? "costumes" : tab === "sounds" ? "sounds" : "actor",
+                );
               }}
             >
-              {label}
+              <span aria-hidden="true">{glyph}</span> {label}
             </button>
           ))}
         </div>
-      ) : null}
-      {shortcutsFlag && helpOpen ? (
-        <div
-          className="kids-shortcuts-dialog"
-          role="dialog"
-          aria-modal="true"
-          aria-label={copy.shortcutsTitle}
-          onKeyDown={(event) => {
-            if (event.key === "Escape") {
-              event.preventDefault();
-              setHelpOpen(false);
-            }
-          }}
-        >
-          <h2>{copy.shortcutsTitle}</h2>
-          <ul>
-            {KIDS_SHORTCUTS.filter((item) => item.id !== "run").map((item) => (
-              <li key={item.id}>
-                <kbd>{item.key}</kbd> {SHORTCUT_LABEL[locale][item.id]}
-              </li>
-            ))}
-          </ul>
+        {oriSuggestions ? (
           <button
             type="button"
-            className="kids-button"
-            autoFocus
-            onClick={() => setHelpOpen(false)}
+            className="kids-studio-ori-rail kids-ori-float-trigger"
+            data-ori-state={oriMotion}
+            data-ori-paused={!oriPageVisible}
+            data-ori-context={oriContextText}
+            aria-label={locale === "es" ? "Abrir Ori" : "Open Ori"}
+            onClick={() => openOri("actor")}
           >
-            {copy.shortcutsClose}
+            <KidsSprite slot="ori" expression={oriExpression} />
+            <span>Ori</span>
           </button>
-        </div>
-      ) : null}
-      <div
-        className="kids-studio-layout"
-        data-stage-minimized={panelLayout.state.minimized.includes("stage") ? "true" : undefined}
-        style={{
-          ["--kids-stage-width" as string]:
-            panelLayout.state.sizes.stage === undefined
-              ? "minmax(320px, 4fr)"
-              : `min(${panelLayout.state.sizes.stage}px, 45vw)`,
-        }}
-      >
-        <PanelDock
-          panels={[
-            { id: "stage", title: copy.stage, accent: "#0F6E66" },
-            { id: "program", title: locale === "es" ? "Programa" : "Program", accent: "#2563EB" },
-            { id: "code", title: copy.code, accent: "#2563EB" },
-          ]}
-          controller={panelLayout}
-        />
-        <Panel
-          id="stage"
-          title={copy.stage}
-          accent="#0F6E66"
-          zoomable
-          minimizable
-          maximizable
-          className="kids-studio-stage-column"
-          controller={panelLayout}
-          actions={
-            <div className="kids-run-controls">
-              <button
-                type="button"
-                className="kids-button kids-primary kids-flag-button"
-                onClick={play}
-              >
-                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-                  <path d="M5 3v18" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-                  <path d="M6 4h12l-3 4 3 4H6z" fill="currentColor" />
-                </svg>{" "}
-                {copy.run}
-              </button>
-              <button
-                type="button"
-                className="kids-button kids-icon-button kids-stop-button"
-                title={copy.reset}
-                onClick={() => {
-                  stopKidsSounds();
-                  stopKidsMusic();
-                  setRun(null);
-                  setFrame(null);
-                }}
-              >
-                <span aria-hidden="true">■</span>
-                <span className="kids-sr-only">{copy.reset}</span>
-              </button>
-              <button
-                type="button"
-                className="kids-button kids-icon-button"
-                title={copy.step}
-                disabled={!run || (frame !== null && frame >= run.frames.length - 1)}
-                onClick={() => {
-                  setStepped(true);
-                  setFrame(frame === null ? 0 : frame + 1);
-                }}
-              >
-                <span aria-hidden="true">⏭</span>
-                <span className="kids-sr-only">{copy.step}</span>
-              </button>
-            </div>
-          }
+        ) : null}
+        <nav
+          className="kids-studio-bottombar"
+          aria-label={locale === "es" ? "Herramientas del editor" : "Editor tools"}
         >
-          <div className="kids-studio-stage-heading">
-            <h2 className="kids-sr-only">{copy.stage}</h2>
-            <div
-              className="kids-stage-view"
-              role="group"
-              aria-label={locale === "es" ? "Vista del juego" : "Game view"}
-            >
+          {(
+            [
+              ["blocks", locale === "es" ? "Bloques" : "Blocks", "🧩"],
+              ["costumes", locale === "es" ? "Disfraces" : "Costumes", "🎨"],
+              ["sounds", locale === "es" ? "Sonidos" : "Sounds", "🔊"],
+              ["code", locale === "es" ? "Código" : "Code", "</>"],
+            ] as const
+          ).map(([tool, label, glyph]) => {
+            const pressed =
+              tool === "blocks"
+                ? editorTab === "code" &&
+                  (paletteView === "all" ? sheetOpen : openCategory !== null)
+                : tool === "code"
+                  ? false
+                  : editorTab === tool;
+            return (
               <button
+                key={tool}
                 type="button"
-                className="kids-button kids-icon-button"
-                aria-label={locale === "es" ? "Pantalla completa" : "Full screen"}
-                title={locale === "es" ? "Pantalla completa" : "Full screen"}
-                onClick={(event) => {
-                  const stage = event.currentTarget
-                    .closest(".kids-studio-stage-column")
-                    ?.querySelector<HTMLElement>(".kids-studio-stage");
-                  void stage?.requestFullscreen?.().catch(() => undefined);
+                className="kids-studio-bottom-button"
+                aria-pressed={tool === "code" ? undefined : pressed}
+                onClick={() => {
+                  if (tool === "blocks") {
+                    setEditorTab("code");
+                    setOriContext("actor");
+                    if (paletteView === "all")
+                      setSheetOpen((open) => (editorTab === "code" ? !open : true));
+                    else
+                      setOpenCategory(
+                        (current) =>
+                          current ??
+                          studioCategories({ pen: penEnabled, music: musicEnabled })[0] ??
+                          null,
+                      );
+                    return;
+                  }
+                  if (tool === "code") {
+                    setEditorTab("code");
+                    panelLayout.dispatch({ type: "restore", id: "code" });
+                    setSheetOpen(false);
+                    setBlocksSheetMaximized(false);
+                    setCodeCollapsed(false);
+                    window.setTimeout(
+                      () =>
+                        document
+                          .querySelector(".kids-code-strip")
+                          ?.scrollIntoView({ block: "center", behavior: "auto" }),
+                      0,
+                    );
+                    return;
+                  }
+                  setSheetOpen(false);
+                  setBlocksSheetMaximized(false);
+                  panelLayout.dispatch({ type: "restoreMaximized" });
+                  setEditorTab(editorTab === tool ? "code" : tool);
+                  setOriContext(editorTab === tool ? "actor" : tool);
                 }}
               >
-                <span aria-hidden="true">⛶</span>
+                <span aria-hidden="true">{glyph}</span>
+                <span>{label}</span>
               </button>
-            </div>
-          </div>
-          <KidsBackdrop
-            world={{ kind: "gallery", id: stageBackdrop }}
-            imageOverride={stageArt}
-            className="kids-studio-stage"
-            role="group"
-            label={copy.stage}
-            onPointerDown={(event) => {
-              if (event.target === event.currentTarget)
-                event.currentTarget.setPointerCapture(event.pointerId);
-              captureStagePointer(event, true);
-            }}
-            onPointerMove={(event) => captureStagePointer(event, event.buttons !== 0)}
-            onPointerUp={(event) => captureStagePointer(event, false)}
-            onPointerCancel={(event) => captureStagePointer(event, false)}
-            onClick={(event) => {
-              if (event.target !== event.currentTarget) return;
-              // One tap on the bare stage puts the card away; two open the backdrop's properties.
-              const now = performance.now();
-              if (now - lastBareTap.current < 380) {
-                lastBareTap.current = 0;
-                openInspector("backdrop");
-                return;
+            );
+          })}
+        </nav>
+        <nav className="kids-studio-categories" aria-label={copy.categories}>
+          {studioCategories({ pen: penEnabled, music: musicEnabled }).map((category) => (
+            <button
+              key={category}
+              type="button"
+              className="kids-studio-category"
+              data-category={category}
+              aria-current={
+                (paletteView === "all" ? activeCategory : openCategory) === category
+                  ? "true"
+                  : undefined
               }
-              lastBareTap.current = now;
-              setInspectorOpen(false);
+              aria-expanded={paletteView === "focused" ? openCategory === category : undefined}
+              aria-controls="kids-studio-block-palette"
+              onClick={(event) => {
+                if (paletteView === "all") {
+                  setSheetOpen(true);
+                  setPaletteCollapsed(false);
+                  setActiveCategory(category);
+                  window.setTimeout(() => {
+                    const heading = document.getElementById(studioCategoryId(category));
+                    if (!heading || !palette) return;
+                    const top =
+                      heading.getBoundingClientRect().top -
+                      palette.getBoundingClientRect().top +
+                      palette.scrollTop;
+                    palette.scrollTo({ top, behavior: "auto" });
+                    heading.focus({ preventScroll: true });
+                  }, 0);
+                  return;
+                }
+                const next = openCategory === category ? null : category;
+                const bounds = event.currentTarget.getBoundingClientRect();
+                palette?.style.setProperty(
+                  "--kids-palette-left",
+                  `${Math.max(8, Math.min(bounds.right + 8, window.innerWidth - 328))}px`,
+                );
+                palette?.style.setProperty(
+                  "--kids-palette-top",
+                  `${Math.max(8, Math.min(bounds.top, window.innerHeight * 0.25))}px`,
+                );
+                setOpenCategory(next);
+                if (palette) palette.scrollTop = 0;
+              }}
+            >
+              {categoryLabel[category]}
+            </button>
+          ))}
+        </nav>
+        {blockMenu ? (
+          <div
+            ref={blockMenuRef}
+            className="kids-block-menu"
+            role="menu"
+            aria-label={copy.menuTitle}
+            style={{ left: blockMenu.x, top: blockMenu.y }}
+            onKeyDown={(event) => {
+              const items = [
+                ...event.currentTarget.querySelectorAll<HTMLElement>("[role='menuitem']"),
+              ];
+              const current = items.indexOf(document.activeElement as HTMLElement);
+              if (event.key === "Escape") {
+                event.preventDefault();
+                setBlockMenu(null);
+              }
+              if (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "Tab") {
+                event.preventDefault();
+                const delta = event.key === "ArrowUp" || event.shiftKey ? -1 : 1;
+                items[(current + delta + items.length) % items.length]?.focus();
+              }
             }}
           >
-            {mission && sceneGoal?.kind === "reachCell" ? (
-              <span
-                className="kids-mission-studio-target"
-                style={{
-                  left: `${Math.max(4, Math.min(90, 8 + sceneGoal.cx * 10))}%`,
-                  top: `${Math.max(8, Math.min(82, 40 + (sceneGoal.cy * 40) / 3))}%`,
+            {(
+              [
+                ["duplicate", copy.duplicate],
+                ["delete", copy.remove],
+                ["up", copy.menuUp],
+                ["down", copy.menuDown],
+              ] as const
+            ).map(([action, label]) => (
+              <button
+                key={action}
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  blockAction(action, blockMenu.index);
+                  setBlockMenu(null);
                 }}
-                aria-label={locale === "es" ? "Meta de la misión" : "Mission goal"}
               >
-                🌎
-              </span>
-            ) : null}
-            {shownActors?.some((entry) => entry.world.pen?.segments.length) ? (
-              <svg
-                className="kids-studio-pen"
-                viewBox="0 0 100 100"
-                preserveAspectRatio="none"
-                aria-hidden="true"
-              >
-                {shownActors.flatMap((entry) =>
-                  (entry.world.pen?.segments ?? []).map((segment, index) => (
-                    <line
-                      key={`${entry.id}-${index}`}
-                      x1={stageX(segment.x1)}
-                      y1={stageY(segment.y1)}
-                      x2={stageX(segment.x2)}
-                      y2={stageY(segment.y2)}
-                      stroke={PEN_HEX[segment.color]}
-                      strokeWidth={segment.size / 2}
-                      strokeLinecap="round"
-                      vectorEffect="non-scaling-stroke"
-                    />
-                  )),
-                )}
-              </svg>
-            ) : null}
-            {creative.actors?.map((item) => {
-              const final = shownActors?.find((entry) => entry.id === item.id);
-              const characterId = characterOfCostume(
-                final?.world.sprite.costumeId,
-                characterOfActor(item.id),
-              );
-              const x =
-                dragPreview?.id === item.id ? dragPreview.x : (final?.world.sprite.x ?? item.x);
-              const y =
-                dragPreview?.id === item.id ? dragPreview.y : (final?.world.sprite.y ?? item.y);
-              const sprite = final?.world.sprite;
-              const costumeArt = customImagesEnabled
-                ? creative.assets?.find(
-                    (asset) =>
-                      asset.id === (sprite?.costumeId ?? item.costumeId) &&
-                      asset.source.startsWith("data:"),
-                  )?.source
-                : undefined;
-              if (sprite?.visible === false) return null;
-              return (
+                {label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {shortcutsFlag && helpOpen ? (
+          <div
+            className="kids-shortcuts-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label={copy.shortcutsTitle}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                event.preventDefault();
+                setHelpOpen(false);
+              }
+            }}
+          >
+            <h2>{copy.shortcutsTitle}</h2>
+            <ul>
+              {KIDS_SHORTCUTS.filter((item) => item.id !== "run").map((item) => (
+                <li key={item.id}>
+                  <kbd>{item.key}</kbd> {SHORTCUT_LABEL[locale][item.id]}
+                </li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              className="kids-button"
+              autoFocus
+              onClick={() => setHelpOpen(false)}
+            >
+              {copy.shortcutsClose}
+            </button>
+          </div>
+        ) : null}
+        <div
+          className="kids-studio-layout"
+          data-stage-minimized={panelLayout.state.minimized.includes("stage") ? "true" : undefined}
+          style={{
+            ["--kids-stage-width" as string]:
+              panelLayout.state.sizes.stage === undefined
+                ? "minmax(320px, 4fr)"
+                : `min(${panelLayout.state.sizes.stage}px, 45vw)`,
+          }}
+        >
+          <PanelDock
+            panels={[
+              { id: "stage", title: copy.stage, accent: "#0F6E66" },
+              { id: "program", title: locale === "es" ? "Programa" : "Program", accent: "#2563EB" },
+              { id: "code", title: copy.code, accent: "#2563EB" },
+            ]}
+            controller={panelLayout}
+          />
+          <Panel
+            id="stage"
+            title={copy.stage}
+            accent="#0F6E66"
+            zoomable
+            minimizable
+            maximizable
+            className="kids-studio-stage-column"
+            controller={panelLayout}
+            actions={
+              <div className="kids-run-controls">
                 <button
-                  key={item.id}
                   type="button"
-                  className="kids-studio-stage-actor"
-                  style={{
-                    left: `${Math.max(4, Math.min(90, 8 + x / 4))}%`,
-                    top: `${Math.max(8, Math.min(82, 40 + y / 3))}%`,
-                    zIndex: (shownStage?.actorOrder?.indexOf(item.id) ?? 0) + 1,
-                  }}
-                  aria-label={`${copy.chooseActor}: ${item.name} ${item.id}`}
-                  aria-pressed={activeActorId === item.id}
-                  onClick={(event) => {
-                    if (suppressStageClick.current) {
-                      suppressStageClick.current = false;
-                      return;
-                    }
-                    // Double tap (mouse or finger), or Enter / Space on the character that is
-                    // already selected, opens its panel; one tap only selects, as before.
-                    const now = performance.now();
-                    const last = lastActorTap.current;
-                    const again =
-                      (last?.id === item.id && now - last.at < 380) ||
-                      (event.detail === 0 && activeActorId === item.id);
-                    if (again) {
-                      lastActorTap.current = null;
-                      openInspector("actor");
-                      return;
-                    }
-                    lastActorTap.current = { id: item.id, at: now };
-                    tapActor(item.id);
-                  }}
-                  onPointerDown={(event) => beginDrag(event, item.id, item.x, item.y)}
-                  onPointerMove={moveDrag}
-                  onPointerUp={endDrag}
-                  onPointerCancel={() => {
-                    dragStart.current = null;
-                    setDragPreview(null);
+                  className="kids-button kids-primary kids-flag-button"
+                  onClick={play}
+                >
+                  <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                    <path
+                      d="M5 3v18"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                    />
+                    <path d="M6 4h12l-3 4 3 4H6z" fill="currentColor" />
+                  </svg>{" "}
+                  {copy.run}
+                </button>
+                <button
+                  type="button"
+                  className="kids-button kids-icon-button kids-stop-button"
+                  title={copy.reset}
+                  onClick={() => {
+                    stopKidsSounds();
+                    stopKidsMusic();
+                    setRun(null);
+                    setFrame(null);
                   }}
                 >
-                  <span
-                    className="kids-studio-stage-costume"
-                    style={{ transform: `scale(${(sprite?.size ?? 100) / 100})` }}
-                  >
-                    <KidsSprite
-                      slot={{ kind: "gallery", id: characterId }}
-                      imageOverride={costumeArt}
-                      label={item.name}
-                    />
-                  </span>
-                  {sprite?.bubble ? (
-                    <span className="kids-studio-bubble">
-                      {sprite.bubble.kind === "think" ? "☁ " : ""}
-                      {sprite.bubble.text}
-                    </span>
-                  ) : null}
+                  <span aria-hidden="true">■</span>
+                  <span className="kids-sr-only">{copy.reset}</span>
                 </button>
-              );
-            })}
-          </KidsBackdrop>
-          <div
-            className="kids-studio-stage-actions"
-            role="group"
-            aria-label={locale === "es" ? "Herramientas de escena" : "Stage tools"}
+                <button
+                  type="button"
+                  className="kids-button kids-icon-button"
+                  title={copy.step}
+                  disabled={!run || (frame !== null && frame >= run.frames.length - 1)}
+                  onClick={() => {
+                    setStepped(true);
+                    setFrame(frame === null ? 0 : frame + 1);
+                  }}
+                >
+                  <span aria-hidden="true">⏭</span>
+                  <span className="kids-sr-only">{copy.step}</span>
+                </button>
+              </div>
+            }
           >
-            <button
-              type="button"
-              className="kids-button"
-              aria-expanded={chooser === "actor"}
-              onClick={() => setChooser(chooser === "actor" ? null : "actor")}
+            <div className="kids-studio-stage-heading">
+              <h2 className="kids-sr-only">{copy.stage}</h2>
+              <div
+                className="kids-stage-view"
+                role="group"
+                aria-label={locale === "es" ? "Vista del juego" : "Game view"}
+              >
+                <button
+                  type="button"
+                  className="kids-button kids-icon-button"
+                  aria-label={locale === "es" ? "Pantalla completa" : "Full screen"}
+                  title={locale === "es" ? "Pantalla completa" : "Full screen"}
+                  onClick={(event) => {
+                    const stage = event.currentTarget
+                      .closest(".kids-studio-stage-column")
+                      ?.querySelector<HTMLElement>(".kids-studio-stage");
+                    void stage?.requestFullscreen?.().catch(() => undefined);
+                  }}
+                >
+                  <span aria-hidden="true">⛶</span>
+                </button>
+              </div>
+            </div>
+            <KidsBackdrop
+              world={{ kind: "gallery", id: stageBackdrop }}
+              imageOverride={stageArt}
+              className="kids-studio-stage"
+              role="group"
+              label={copy.stage}
+              onPointerDown={(event) => {
+                if (event.target === event.currentTarget)
+                  event.currentTarget.setPointerCapture(event.pointerId);
+                captureStagePointer(event, true);
+              }}
+              onPointerMove={(event) => captureStagePointer(event, event.buttons !== 0)}
+              onPointerUp={(event) => captureStagePointer(event, false)}
+              onPointerCancel={(event) => captureStagePointer(event, false)}
+              onClick={(event) => {
+                if (event.target !== event.currentTarget) return;
+                // One tap on the bare stage puts the card away; two open the backdrop's properties.
+                const now = performance.now();
+                if (now - lastBareTap.current < 380) {
+                  lastBareTap.current = 0;
+                  openInspector("backdrop");
+                  return;
+                }
+                lastBareTap.current = now;
+                setInspectorOpen(false);
+              }}
             >
-              {locale === "es" ? "+ Objeto" : "+ Sprite"}
-            </button>
-            <button
-              type="button"
-              className="kids-button"
-              aria-expanded={chooser === "backdrop"}
-              onClick={() => setChooser(chooser === "backdrop" ? null : "backdrop")}
+              {mission && sceneGoal?.kind === "reachCell" ? (
+                <span
+                  className="kids-mission-studio-target"
+                  style={{
+                    left: `${Math.max(4, Math.min(90, 8 + sceneGoal.cx * 10))}%`,
+                    top: `${Math.max(8, Math.min(82, 40 + (sceneGoal.cy * 40) / 3))}%`,
+                  }}
+                  aria-label={locale === "es" ? "Meta de la misión" : "Mission goal"}
+                >
+                  🌎
+                </span>
+              ) : null}
+              {shownActors?.some((entry) => entry.world.pen?.segments.length) ? (
+                <svg
+                  className="kids-studio-pen"
+                  viewBox="0 0 100 100"
+                  preserveAspectRatio="none"
+                  aria-hidden="true"
+                >
+                  {shownActors.flatMap((entry) =>
+                    (entry.world.pen?.segments ?? []).map((segment, index) => (
+                      <line
+                        key={`${entry.id}-${index}`}
+                        x1={stageX(segment.x1)}
+                        y1={stageY(segment.y1)}
+                        x2={stageX(segment.x2)}
+                        y2={stageY(segment.y2)}
+                        stroke={PEN_HEX[segment.color]}
+                        strokeWidth={segment.size / 2}
+                        strokeLinecap="round"
+                        vectorEffect="non-scaling-stroke"
+                      />
+                    )),
+                  )}
+                </svg>
+              ) : null}
+              {creative.actors?.map((item) => {
+                const final = shownActors?.find((entry) => entry.id === item.id);
+                const characterId = characterOfCostume(
+                  final?.world.sprite.costumeId,
+                  characterOfActor(item.id),
+                );
+                const x =
+                  dragPreview?.id === item.id ? dragPreview.x : (final?.world.sprite.x ?? item.x);
+                const y =
+                  dragPreview?.id === item.id ? dragPreview.y : (final?.world.sprite.y ?? item.y);
+                const sprite = final?.world.sprite;
+                const costumeArt = customImagesEnabled
+                  ? creative.assets?.find(
+                      (asset) =>
+                        asset.id === (sprite?.costumeId ?? item.costumeId) &&
+                        asset.source.startsWith("data:"),
+                    )?.source
+                  : undefined;
+                if (sprite?.visible === false) return null;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="kids-studio-stage-actor"
+                    style={{
+                      left: `${Math.max(4, Math.min(90, 8 + x / 4))}%`,
+                      top: `${Math.max(8, Math.min(82, 40 + y / 3))}%`,
+                      zIndex: (shownStage?.actorOrder?.indexOf(item.id) ?? 0) + 1,
+                    }}
+                    aria-label={`${copy.chooseActor}: ${item.name} ${item.id}`}
+                    aria-pressed={activeActorId === item.id}
+                    onClick={(event) => {
+                      if (suppressStageClick.current) {
+                        suppressStageClick.current = false;
+                        return;
+                      }
+                      // Double tap (mouse or finger), or Enter / Space on the character that is
+                      // already selected, opens its panel; one tap only selects, as before.
+                      const now = performance.now();
+                      const last = lastActorTap.current;
+                      const again =
+                        (last?.id === item.id && now - last.at < 380) ||
+                        (event.detail === 0 && activeActorId === item.id);
+                      if (again) {
+                        lastActorTap.current = null;
+                        openInspector("actor");
+                        return;
+                      }
+                      lastActorTap.current = { id: item.id, at: now };
+                      tapActor(item.id);
+                    }}
+                    onPointerDown={(event) => beginDrag(event, item.id, item.x, item.y)}
+                    onPointerMove={moveDrag}
+                    onPointerUp={endDrag}
+                    onPointerCancel={() => {
+                      dragStart.current = null;
+                      setDragPreview(null);
+                    }}
+                  >
+                    <span
+                      className="kids-studio-stage-costume"
+                      style={{ transform: `scale(${(sprite?.size ?? 100) / 100})` }}
+                    >
+                      <KidsSprite
+                        slot={{ kind: "gallery", id: characterId }}
+                        imageOverride={costumeArt}
+                        label={item.name}
+                      />
+                    </span>
+                    {sprite?.bubble ? (
+                      <span className="kids-studio-bubble">
+                        {sprite.bubble.kind === "think" ? "☁ " : ""}
+                        {sprite.bubble.text}
+                      </span>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </KidsBackdrop>
+            <div
+              className="kids-studio-stage-actions"
+              role="group"
+              aria-label={locale === "es" ? "Herramientas de escena" : "Stage tools"}
             >
-              {locale === "es" ? "+ Fondo" : "+ Backdrop"}
-            </button>
-            {oriSuggestions ? (
               <button
                 type="button"
                 className="kids-button"
-                onClick={() => openOri(chooser === "backdrop" ? "backdrop" : "actor")}
+                aria-expanded={chooser === "actor"}
+                onClick={() => setChooser(chooser === "actor" ? null : "actor")}
               >
-                {locale === "es" ? "✦ Preguntar a Ori" : "✦ Ask Ori"}
+                {locale === "es" ? "+ Objeto" : "+ Sprite"}
               </button>
+              <button
+                type="button"
+                className="kids-button"
+                aria-expanded={chooser === "backdrop"}
+                onClick={() => setChooser(chooser === "backdrop" ? null : "backdrop")}
+              >
+                {locale === "es" ? "+ Fondo" : "+ Backdrop"}
+              </button>
+              {oriSuggestions ? (
+                <button
+                  type="button"
+                  className="kids-button"
+                  onClick={() => openOri(chooser === "backdrop" ? "backdrop" : "actor")}
+                >
+                  {locale === "es" ? "✦ Preguntar a Ori" : "✦ Ask Ori"}
+                </button>
+              ) : null}
+            </div>
+            {chooser === "actor" ? (
+              <div
+                className="kids-studio-chooser"
+                role="group"
+                aria-label={locale === "es" ? "Elegir objeto" : "Choose sprite"}
+              >
+                <label>
+                  {locale === "es" ? "Biblioteca" : "Library"}
+                  <select
+                    value={newCharacter}
+                    onChange={(event) =>
+                      setNewCharacter(event.target.value as KidsGalleryCharacterId)
+                    }
+                  >
+                    {KIDS_GALLERY_CHARACTERS.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {galleryCharacterName(item.id, locale)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  className="kids-button"
+                  disabled={(creative.actors?.length ?? 0) >= 12}
+                  onClick={() => {
+                    addActor();
+                    setChooser(null);
+                  }}
+                >
+                  {locale === "es" ? "Agregar objeto" : "Add sprite"}
+                </button>
+                {customImagesEnabled ? (
+                  <button
+                    type="button"
+                    className="kids-button"
+                    onClick={() => {
+                      setEditorTab("costumes");
+                      setDrawingKind("costume");
+                      setChooser(null);
+                    }}
+                  >
+                    {locale === "es" ? "Dibujar disfraz" : "Draw costume"}
+                  </button>
+                ) : null}
+              </div>
             ) : null}
-          </div>
-          {chooser === "actor" ? (
-            <div
-              className="kids-studio-chooser"
-              role="group"
-              aria-label={locale === "es" ? "Elegir objeto" : "Choose sprite"}
+            {chooser === "backdrop" ? (
+              <div
+                className="kids-studio-chooser"
+                role="group"
+                aria-label={locale === "es" ? "Elegir fondo" : "Choose backdrop"}
+              >
+                <label>
+                  {locale === "es" ? "Biblioteca" : "Library"}
+                  <select
+                    value={newBackdrop}
+                    onChange={(event) =>
+                      setNewBackdrop(event.target.value as KidsGalleryBackdropId)
+                    }
+                  >
+                    {KIDS_GALLERY_BACKDROPS.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {galleryBackdropName(item.id, locale)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  className="kids-button"
+                  onClick={() => {
+                    changeBackdrop(newBackdrop);
+                    setChooser(null);
+                  }}
+                >
+                  {locale === "es" ? "Usar fondo" : "Use backdrop"}
+                </button>
+                {customImagesEnabled ? (
+                  <button
+                    type="button"
+                    className="kids-button"
+                    onClick={() => {
+                      setEditorTab("costumes");
+                      setDrawingKind("backdrop");
+                      setChooser(null);
+                    }}
+                  >
+                    {locale === "es" ? "Dibujar fondo" : "Draw backdrop"}
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+            <Panel
+              controller={panelLayout}
+              id="characters"
+              title={locale === "es" ? "Personajes y fondo" : "Sprites and backdrop"}
+              accent="#7C3AED"
+              className="kids-studio-characters-panel"
             >
+              <div className="kids-studio-actors" role="group" aria-label={copy.actors}>
+                {creative.actors?.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="kids-button"
+                    data-drop-actor={item.id}
+                    data-over={over === `actor:${item.id}` ? "true" : undefined}
+                    aria-pressed={activeActorId === item.id}
+                    onClick={() => selectActor(item.id)}
+                  >
+                    <KidsSprite
+                      slot={{ kind: "gallery", id: characterOfActor(item.id) }}
+                      label={item.name}
+                    />{" "}
+                    {item.name} {item.id.split("-")[2]}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                className="kids-button"
+                onClick={() => setEditorTab("costumes")}
+              >
+                {locale === "es" ? "Elegir fondo o disfraz" : "Choose backdrop or costume"}
+              </button>
+              <p className="kids-note kids-studio-double-tap-hint">
+                {locale === "es"
+                  ? "Tocá dos veces un personaje del escenario para ver su panel."
+                  : "Double-tap a character on the stage to see its panel."}
+              </p>
+            </Panel>
+            <div className="kids-studio-prediction-block">
+              <StudioPrediction
+                locale={locale}
+                name={actor?.name ?? ""}
+                value={prediction}
+                onChange={setPrediction}
+              />
+              <p className="kids-note">
+                {copy.facts}:{" "}
+                {run
+                  ? `${run.trace.length} ${locale === "es" ? (run.trace.length === 1 ? "bloque ejecutado" : "bloques ejecutados") : run.trace.length === 1 ? "block executed" : "blocks executed"}`
+                  : "—"}
+              </p>
+            </div>
+            {pendingChoiceId ? (
+              <div role="group" aria-label={copy.askChoice} className="kids-studio-compound">
+                <strong>{CHOICE_CATALOG[pendingChoiceId].prompt[locale]}</strong>
+                {CHOICE_CATALOG[pendingChoiceId].options.map((option, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    className="kids-button"
+                    onClick={() => {
+                      try {
+                        choiceAnswers.current = {
+                          ...choiceAnswers.current,
+                          [pendingChoiceId]: index + 1,
+                        };
+                        const result = runMultiActorProgram(history.current, creative, {
+                          events,
+                          keysDown: heldKeys,
+                          pointer: pointerRef.current,
+                          choices: choiceAnswers.current,
+                        });
+                        recordRunResult(result);
+                        presentRun(result);
+                        setError(false);
+                      } catch {
+                        setError(true);
+                      }
+                    }}
+                  >
+                    {option[locale]}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            {run?.outcome === "stopped" && !pendingChoiceId ? (
+              <p className="kids-note" role="status">
+                {locale === "es" ? "Programa detenido: " : "Program stopped: "}
+                {(() => {
+                  const scope = run.trace
+                    .filter((entry) => entry.statementType === "stop")
+                    .at(-1)?.stopScope;
+                  return scope === "script"
+                    ? copy.stopScript
+                    : scope === "actor"
+                      ? copy.stopActor
+                      : scope === "scene"
+                        ? copy.stopScene
+                        : copy.stop;
+                })()}
+              </p>
+            ) : null}
+            {run?.trace.some((entry) => entry.statementType === "waitUntil" && entry.note) ? (
+              <p className="kids-note" role="status">
+                {oriSuggestions ? "Ori: " : ""}
+                {copy.waitUntilTimeout}
+              </p>
+            ) : null}
+            {run?.outcome === "budget-exceeded" &&
+            run.trace.some((entry) => entry.statementType === "forever") ? (
+              <p className="kids-note" role="status">
+                {oriSuggestions ? "Ori: " : ""}
+                {copy.foreverBudget}
+              </p>
+            ) : null}
+            {oriSuggestions ? (
+              <KidsLoopHelp
+                locale={locale}
+                program={history.current}
+                run={run}
+                actorId={activeActorId}
+                onApplyProgram={(next, label) => {
+                  try {
+                    persist(recordCanonicalTransaction(history, { label, after: next }).history);
+                    helped.current = true;
+                    reactOri("happy");
+                  } catch {
+                    setError(true);
+                  }
+                }}
+              />
+            ) : null}
+            <KidsSceneGoalPanel
+              locale={locale}
+              actors={creative.actors ?? []}
+              goal={
+                sceneGoal !== null &&
+                sceneGoalValid(
+                  sceneGoal,
+                  (creative.actors ?? []).map((item) => item.id),
+                )
+                  ? sceneGoal
+                  : null
+              }
+              run={run}
+              program={history.current}
+              oriSuggestions={oriSuggestions}
+              fixed={Boolean(mission)}
+              onApplyProgram={(next, label) => {
+                try {
+                  persist(recordCanonicalTransaction(history, { label, after: next }).history);
+                  helped.current = true;
+                  reactOri("happy");
+                } catch {
+                  setError(true);
+                }
+              }}
+              onChange={(next) => {
+                try {
+                  setStudioSceneGoal(id, next, store);
+                  setSceneGoal(next);
+                } catch {
+                  setError(true);
+                }
+              }}
+            />
+            {run && actor ? (
+              <StudioCoach
+                key={runCount}
+                locale={locale}
+                name={actor.name}
+                facts={factsOfRun(run, activeActorId)}
+                predicted={predictedForRun}
+                onExplained={() => {
+                  recordKidsReflection("verification");
+                  recordMastery({
+                    kind: "explained",
+                    concepts: conceptsOfProgram(history.current),
+                  });
+                }}
+                reflection={reflectionFor(
+                  ageBand ?? "6-8",
+                  factsOfRun(run, activeActorId),
+                  script?.statements.map((statement) => statement.type) ?? [],
+                  actor.name,
+                  locale,
+                )}
+              />
+            ) : null}
+            {run?.trace.some((entry) => entry.conditionResult !== undefined) ? (
+              <p className="kids-note" role="status">
+                {copy.conditionResult}:{" "}
+                {run.trace.filter((entry) => entry.conditionResult !== undefined).at(-1)
+                  ?.conditionResult
+                  ? copy.yes
+                  : copy.no}
+              </p>
+            ) : null}
+            {run ? (
+              <p className="kids-note">
+                {copy.volume}: {shownWorld?.sounds?.volume ?? 100}%
+              </p>
+            ) : null}
+            {history.current.variables?.length || history.current.lists?.length ? (
+              <div className="kids-studio-watchers" aria-label={copy.watchers}>
+                <h3>{copy.watchers}</h3>
+                {history.current.variables
+                  ?.filter((item) => shownWorld?.variables?.[item.id]?.visible !== false)
+                  .map((item) => (
+                    <p key={item.id}>
+                      {item.name}: {shownWorld?.variables?.[item.id]?.value ?? item.initialValue}
+                    </p>
+                  ))}
+                {history.current.lists?.map((item) => (
+                  <p key={item.id}>
+                    {item.name}:{" "}
+                    {(
+                      shownActors?.find((entry) => entry.id === activeActorId)?.world.lists?.[
+                        item.id
+                      ]?.items ?? item.initialItems
+                    ).join(", ") || "—"}
+                  </p>
+                ))}
+              </div>
+            ) : null}
+            <div className="kids-studio-add">
               <label>
-                {locale === "es" ? "Biblioteca" : "Library"}
+                {copy.add}
                 <select
                   value={newCharacter}
                   onChange={(event) =>
@@ -3589,2360 +3932,1009 @@ export function KidsStudioScreen({
                 type="button"
                 className="kids-button"
                 disabled={(creative.actors?.length ?? 0) >= 12}
-                onClick={() => {
-                  addActor();
-                  setChooser(null);
-                }}
+                onClick={addActor}
               >
-                {locale === "es" ? "Agregar objeto" : "Add sprite"}
+                + {copy.add}
               </button>
-              {customImagesEnabled ? (
-                <button
-                  type="button"
-                  className="kids-button"
-                  onClick={() => {
-                    setEditorTab("costumes");
-                    setDrawingKind("costume");
-                    setChooser(null);
-                  }}
-                >
-                  {locale === "es" ? "Dibujar disfraz" : "Draw costume"}
-                </button>
+              {(creative.actors?.length ?? 0) >= 12 ? (
+                <p className="kids-note">{copy.actorLimit}</p>
               ) : null}
             </div>
-          ) : null}
-          {chooser === "backdrop" ? (
-            <div
-              className="kids-studio-chooser"
-              role="group"
-              aria-label={locale === "es" ? "Elegir fondo" : "Choose backdrop"}
-            >
-              <label>
-                {locale === "es" ? "Biblioteca" : "Library"}
-                <select
-                  value={newBackdrop}
-                  onChange={(event) => setNewBackdrop(event.target.value as KidsGalleryBackdropId)}
-                >
-                  {KIDS_GALLERY_BACKDROPS.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {galleryBackdropName(item.id, locale)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button
-                type="button"
-                className="kids-button"
-                onClick={() => {
-                  changeBackdrop(newBackdrop);
-                  setChooser(null);
-                }}
-              >
-                {locale === "es" ? "Usar fondo" : "Use backdrop"}
-              </button>
-              {customImagesEnabled ? (
-                <button
-                  type="button"
-                  className="kids-button"
-                  onClick={() => {
-                    setEditorTab("costumes");
-                    setDrawingKind("backdrop");
-                    setChooser(null);
-                  }}
-                >
-                  {locale === "es" ? "Dibujar fondo" : "Draw backdrop"}
-                </button>
-              ) : null}
-            </div>
-          ) : null}
-          <Panel
-            controller={panelLayout}
-            id="characters"
-            title={locale === "es" ? "Personajes y fondo" : "Sprites and backdrop"}
-            accent="#7C3AED"
-            className="kids-studio-characters-panel"
-          >
-            <div className="kids-studio-actors" role="group" aria-label={copy.actors}>
-              {creative.actors?.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  className="kids-button"
-                  data-drop-actor={item.id}
-                  data-over={over === `actor:${item.id}` ? "true" : undefined}
-                  aria-pressed={activeActorId === item.id}
-                  onClick={() => selectActor(item.id)}
-                >
-                  <KidsSprite
-                    slot={{ kind: "gallery", id: characterOfActor(item.id) }}
-                    label={item.name}
-                  />{" "}
-                  {item.name} {item.id.split("-")[2]}
-                </button>
-              ))}
-            </div>
-            <button type="button" className="kids-button" onClick={() => setEditorTab("costumes")}>
-              {locale === "es" ? "Elegir fondo o disfraz" : "Choose backdrop or costume"}
-            </button>
-            <p className="kids-note kids-studio-double-tap-hint">
-              {locale === "es"
-                ? "Tocá dos veces un personaje del escenario para ver su panel."
-                : "Double-tap a character on the stage to see its panel."}
-            </p>
-          </Panel>
-          <div className="kids-studio-prediction-block">
-            <StudioPrediction
-              locale={locale}
-              name={actor?.name ?? ""}
-              value={prediction}
-              onChange={setPrediction}
-            />
-            <p className="kids-note">
-              {copy.facts}:{" "}
-              {run
-                ? `${run.trace.length} ${locale === "es" ? (run.trace.length === 1 ? "bloque ejecutado" : "bloques ejecutados") : run.trace.length === 1 ? "block executed" : "blocks executed"}`
-                : "—"}
-            </p>
-          </div>
-          {pendingChoiceId ? (
-            <div role="group" aria-label={copy.askChoice} className="kids-studio-compound">
-              <strong>{CHOICE_CATALOG[pendingChoiceId].prompt[locale]}</strong>
-              {CHOICE_CATALOG[pendingChoiceId].options.map((option, index) => (
-                <button
-                  key={index}
-                  type="button"
-                  className="kids-button"
-                  onClick={() => {
-                    try {
-                      choiceAnswers.current = {
-                        ...choiceAnswers.current,
-                        [pendingChoiceId]: index + 1,
-                      };
-                      const result = runMultiActorProgram(history.current, creative, {
-                        events,
-                        keysDown: heldKeys,
-                        pointer: pointerRef.current,
-                        choices: choiceAnswers.current,
-                      });
-                      recordRunResult(result);
-                      presentRun(result);
-                      setError(false);
-                    } catch {
-                      setError(true);
-                    }
-                  }}
-                >
-                  {option[locale]}
-                </button>
-              ))}
-            </div>
-          ) : null}
-          {run?.outcome === "stopped" && !pendingChoiceId ? (
-            <p className="kids-note" role="status">
-              {locale === "es" ? "Programa detenido: " : "Program stopped: "}
-              {(() => {
-                const scope = run.trace
-                  .filter((entry) => entry.statementType === "stop")
-                  .at(-1)?.stopScope;
-                return scope === "script"
-                  ? copy.stopScript
-                  : scope === "actor"
-                    ? copy.stopActor
-                    : scope === "scene"
-                      ? copy.stopScene
-                      : copy.stop;
-              })()}
-            </p>
-          ) : null}
-          {run?.trace.some((entry) => entry.statementType === "waitUntil" && entry.note) ? (
-            <p className="kids-note" role="status">
-              {oriSuggestions ? "Ori: " : ""}
-              {copy.waitUntilTimeout}
-            </p>
-          ) : null}
-          {run?.outcome === "budget-exceeded" &&
-          run.trace.some((entry) => entry.statementType === "forever") ? (
-            <p className="kids-note" role="status">
-              {oriSuggestions ? "Ori: " : ""}
-              {copy.foreverBudget}
-            </p>
-          ) : null}
-          {oriSuggestions ? (
-            <KidsLoopHelp
-              locale={locale}
-              program={history.current}
-              run={run}
-              actorId={activeActorId}
-              onApplyProgram={(next, label) => {
-                try {
-                  persist(recordCanonicalTransaction(history, { label, after: next }).history);
-                  helped.current = true;
-                  reactOri("happy");
-                } catch {
-                  setError(true);
-                }
-              }}
-            />
-          ) : null}
-          <KidsSceneGoalPanel
-            locale={locale}
-            actors={creative.actors ?? []}
-            goal={
-              sceneGoal !== null &&
-              sceneGoalValid(
-                sceneGoal,
-                (creative.actors ?? []).map((item) => item.id),
-              )
-                ? sceneGoal
-                : null
-            }
-            run={run}
-            program={history.current}
-            oriSuggestions={oriSuggestions}
-            fixed={Boolean(mission)}
-            onApplyProgram={(next, label) => {
-              try {
-                persist(recordCanonicalTransaction(history, { label, after: next }).history);
-                helped.current = true;
-                reactOri("happy");
-              } catch {
-                setError(true);
-              }
-            }}
-            onChange={(next) => {
-              try {
-                setStudioSceneGoal(id, next, store);
-                setSceneGoal(next);
-              } catch {
-                setError(true);
-              }
-            }}
-          />
-          {run && actor ? (
-            <StudioCoach
-              key={runCount}
-              locale={locale}
-              name={actor.name}
-              facts={factsOfRun(run, activeActorId)}
-              predicted={predictedForRun}
-              onExplained={() => {
-                recordKidsReflection("verification");
-                recordMastery({ kind: "explained", concepts: conceptsOfProgram(history.current) });
-              }}
-              reflection={reflectionFor(
-                ageBand ?? "6-8",
-                factsOfRun(run, activeActorId),
-                script?.statements.map((statement) => statement.type) ?? [],
-                actor.name,
-                locale,
-              )}
-            />
-          ) : null}
-          {run?.trace.some((entry) => entry.conditionResult !== undefined) ? (
-            <p className="kids-note" role="status">
-              {copy.conditionResult}:{" "}
-              {run.trace.filter((entry) => entry.conditionResult !== undefined).at(-1)
-                ?.conditionResult
-                ? copy.yes
-                : copy.no}
-            </p>
-          ) : null}
-          {run ? (
-            <p className="kids-note">
-              {copy.volume}: {shownWorld?.sounds?.volume ?? 100}%
-            </p>
-          ) : null}
-          {history.current.variables?.length || history.current.lists?.length ? (
-            <div className="kids-studio-watchers" aria-label={copy.watchers}>
-              <h3>{copy.watchers}</h3>
-              {history.current.variables
-                ?.filter((item) => shownWorld?.variables?.[item.id]?.visible !== false)
-                .map((item) => (
-                  <p key={item.id}>
-                    {item.name}: {shownWorld?.variables?.[item.id]?.value ?? item.initialValue}
-                  </p>
-                ))}
-              {history.current.lists?.map((item) => (
-                <p key={item.id}>
-                  {item.name}:{" "}
-                  {(
-                    shownActors?.find((entry) => entry.id === activeActorId)?.world.lists?.[item.id]
-                      ?.items ?? item.initialItems
-                  ).join(", ") || "—"}
-                </p>
-              ))}
-            </div>
-          ) : null}
-          <div className="kids-studio-add">
-            <label>
-              {copy.add}
+            <label className="kids-studio-backdrop-select">
+              {copy.backdrop}
               <select
-                value={newCharacter}
-                onChange={(event) => setNewCharacter(event.target.value as KidsGalleryCharacterId)}
+                value={backdropId}
+                onChange={(event) => changeBackdrop(event.target.value as KidsGalleryBackdropId)}
               >
-                {KIDS_GALLERY_CHARACTERS.map((item) => (
+                {KIDS_GALLERY_BACKDROPS.map((item) => (
                   <option key={item.id} value={item.id}>
-                    {galleryCharacterName(item.id, locale)}
+                    {galleryBackdropName(item.id, locale)}
                   </option>
                 ))}
               </select>
             </label>
-            <button
-              type="button"
-              className="kids-button"
-              disabled={(creative.actors?.length ?? 0) >= 12}
-              onClick={addActor}
-            >
-              + {copy.add}
-            </button>
-            {(creative.actors?.length ?? 0) >= 12 ? (
-              <p className="kids-note">{copy.actorLimit}</p>
-            ) : null}
-          </div>
-          <label className="kids-studio-backdrop-select">
-            {copy.backdrop}
-            <select
-              value={backdropId}
-              onChange={(event) => changeBackdrop(event.target.value as KidsGalleryBackdropId)}
-            >
-              {KIDS_GALLERY_BACKDROPS.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {galleryBackdropName(item.id, locale)}
-                </option>
-              ))}
-            </select>
-          </label>
-        </Panel>
-        <PanelDivider
-          controller={panelLayout}
-          id="stage"
-          title={copy.stage}
-          direction={-1}
-          size={() =>
-            document.querySelector(".kids-studio-stage-column")?.getBoundingClientRect().width ??
-            320
-          }
-        />
-        <div className="kids-studio-program-column">
-          {editorTab !== "code" ? (
-            <Panel
-              controller={panelLayout}
-              id="media"
-              title={
-                editorTab === "sounds"
-                  ? locale === "es"
-                    ? "Sonidos"
-                    : "Sounds"
-                  : locale === "es"
-                    ? "Disfraces"
-                    : "Costumes"
-              }
-              accent={editorTab === "sounds" ? "#BE185D" : "#7C3AED"}
-              zoomable={editorTab === "costumes"}
-              maximizable
-              className="kids-studio-media-panel"
-            >
-              {editorTab === "sounds" ? (
-                <div
-                  className="kids-studio-media-content"
-                  role="group"
-                  aria-label={locale === "es" ? "Sonidos" : "Sounds"}
-                >
-                  <label className="kids-studio-sound-search">
-                    {locale === "es" ? "Buscar sonidos" : "Search sounds"}
-                    <input
-                      type="search"
-                      value={soundQuery}
-                      onChange={(event) => setSoundQuery(event.target.value)}
-                    />
-                  </label>
-                  <ul className="kids-studio-sound-list">
-                    {KIDS_SOUNDS.filter((item) =>
+          </Panel>
+          <PanelDivider
+            controller={panelLayout}
+            id="stage"
+            title={copy.stage}
+            direction={-1}
+            size={() =>
+              document.querySelector(".kids-studio-stage-column")?.getBoundingClientRect().width ??
+              320
+            }
+          />
+          <div className="kids-studio-program-column">
+            {editorTab !== "code" ? (
+              <Panel
+                controller={panelLayout}
+                id="media"
+                title={
+                  editorTab === "sounds"
+                    ? locale === "es"
+                      ? "Sonidos"
+                      : "Sounds"
+                    : locale === "es"
+                      ? "Disfraces"
+                      : "Costumes"
+                }
+                accent={editorTab === "sounds" ? "#BE185D" : "#7C3AED"}
+                zoomable={editorTab === "costumes"}
+                maximizable
+                className="kids-studio-media-panel"
+              >
+                {editorTab === "sounds" ? (
+                  <div
+                    className="kids-studio-media-content"
+                    role="group"
+                    aria-label={locale === "es" ? "Sonidos" : "Sounds"}
+                  >
+                    <label className="kids-studio-sound-search">
+                      {locale === "es" ? "Buscar sonidos" : "Search sounds"}
+                      <input
+                        type="search"
+                        value={soundQuery}
+                        onChange={(event) => setSoundQuery(event.target.value)}
+                      />
+                    </label>
+                    <ul className="kids-studio-sound-list">
+                      {KIDS_SOUNDS.filter((item) =>
+                        item[locale]
+                          .toLocaleLowerCase(locale)
+                          .includes(soundQuery.trim().toLocaleLowerCase(locale)),
+                      ).map((item) => (
+                        <li key={item.id}>
+                          <span>{item[locale]}</span>
+                          <button
+                            type="button"
+                            className="kids-button"
+                            aria-label={`${locale === "es" ? "Escuchar" : "Listen to"} ${item[locale]}`}
+                            onClick={() =>
+                              void playKidsSound(item.id, {
+                                kind: "gallery",
+                                id: characterOfActor(activeActorId),
+                              })
+                            }
+                          >
+                            ▶
+                          </button>
+                          <button
+                            type="button"
+                            className="kids-button"
+                            aria-label={`${locale === "es" ? "Usar" : "Use"} ${item[locale]}`}
+                            onClick={() => {
+                              setNewSound(item.id);
+                              add({ type: "playSound", soundId: item.id });
+                            }}
+                          >
+                            {locale === "es" ? "Usar" : "Use"}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                    {KIDS_SOUNDS.some((item) =>
                       item[locale]
                         .toLocaleLowerCase(locale)
                         .includes(soundQuery.trim().toLocaleLowerCase(locale)),
-                    ).map((item) => (
-                      <li key={item.id}>
-                        <span>{item[locale]}</span>
+                    ) ? null : (
+                      <p role="status">
+                        {locale === "es"
+                          ? "No hay sonidos para esa búsqueda."
+                          : "No sounds match that search."}
+                      </p>
+                    )}
+                  </div>
+                ) : null}
+                {editorTab === "costumes" ? (
+                  <div className="kids-studio-costume-library">
+                    <label>
+                      {locale === "es"
+                        ? "Buscar disfraces y fondos"
+                        : "Search costumes and backdrops"}
+                      <input
+                        type="search"
+                        value={costumeQuery}
+                        onChange={(event) => setCostumeQuery(event.target.value)}
+                      />
+                    </label>
+                    <div role="group" aria-label={locale === "es" ? "Disfraces" : "Costumes"}>
+                      <h3>{locale === "es" ? "Disfraces" : "Costumes"}</h3>
+                      <div className="kids-studio-costume-grid">
+                        {KIDS_GALLERY_CHARACTERS.filter((item) =>
+                          item[locale]
+                            .toLocaleLowerCase(locale)
+                            .includes(costumeQuery.trim().toLocaleLowerCase(locale)),
+                        ).map((item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            className="kids-button"
+                            aria-pressed={actor?.costumeId === `costume:${item.id}`}
+                            onClick={() => chooseArt(`costume:${item.id}`)}
+                          >
+                            <span aria-hidden="true">{item.glyph}</span> {item[locale]}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div role="group" aria-label={locale === "es" ? "Fondos" : "Backdrops"}>
+                      <h3>{locale === "es" ? "Fondos" : "Backdrops"}</h3>
+                      <div className="kids-studio-costume-grid">
+                        {KIDS_GALLERY_BACKDROPS.filter((item) =>
+                          item[locale]
+                            .toLocaleLowerCase(locale)
+                            .includes(costumeQuery.trim().toLocaleLowerCase(locale)),
+                        ).map((item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            className="kids-button"
+                            aria-pressed={backdropId === item.id}
+                            onClick={() => changeBackdrop(item.id)}
+                          >
+                            <span aria-hidden="true">{item.glyph}</span> {item[locale]}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+                {editorTab === "costumes" && customImagesEnabled ? (
+                  <div className="kids-studio-art-controls">
+                    <button
+                      type="button"
+                      className="kids-button"
+                      onClick={() => {
+                        setEditingArtId(null);
+                        setDrawingKind("costume");
+                      }}
+                    >
+                      {copy.drawCostume}
+                    </button>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      onClick={() => {
+                        setEditingArtId(null);
+                        setDrawingKind("backdrop");
+                      }}
+                    >
+                      {copy.drawBackdrop}
+                    </button>
+                    <label className="kids-button kids-image-file">
+                      {copy.uploadCostume}
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        aria-label={copy.uploadCostume}
+                        onChange={(event) => void importImage("costume", event)}
+                      />
+                    </label>
+                    <label className="kids-button kids-image-file">
+                      {copy.uploadBackdrop}
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        aria-label={copy.uploadBackdrop}
+                        onChange={(event) => void importImage("backdrop", event)}
+                      />
+                    </label>
+                    {ownCostumes.length ? (
+                      <div role="group" aria-label={copy.ownCostumes}>
+                        {ownCostumes.map((asset) => (
+                          <span key={asset.id}>
+                            <button
+                              type="button"
+                              className="kids-button"
+                              aria-pressed={actor?.costumeId === asset.id}
+                              onClick={() => chooseArt(asset.id)}
+                            >
+                              {asset.name}
+                            </button>
+                            <button
+                              type="button"
+                              className="kids-button"
+                              aria-label={`${copy.edit} ${asset.name}`}
+                              onClick={() => {
+                                setEditingArtId(asset.id);
+                                setDrawingKind("costume");
+                              }}
+                            >
+                              {copy.edit}
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                    {ownBackdrops.length ? (
+                      <div role="group" aria-label={copy.ownBackdrops}>
+                        {ownBackdrops.map((asset) => (
+                          <span key={asset.id}>
+                            <button
+                              type="button"
+                              className="kids-button"
+                              aria-pressed={creative.stage?.backdropId === asset.id}
+                              onClick={() => chooseArt(asset.id)}
+                            >
+                              {asset.name}
+                            </button>
+                            <button
+                              type="button"
+                              className="kids-button"
+                              aria-label={`${copy.edit} ${asset.name}`}
+                              onClick={() => {
+                                setEditingArtId(asset.id);
+                                setDrawingKind("backdrop");
+                              }}
+                            >
+                              {copy.edit}
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+                {editorTab === "costumes" && customImagesEnabled && drawingKind ? (
+                  <KidsDrawArt
+                    kind={drawingKind === "costume" ? "explorer" : "backdrop"}
+                    locale={locale}
+                    initialImage={
+                      creative.assets?.find((asset) => asset.id === editingArtId)?.source
+                    }
+                    onSave={saveDrawing}
+                    onCancel={() => {
+                      setDrawingKind(null);
+                      setEditingArtId(null);
+                    }}
+                    onError={() => setError(true)}
+                  />
+                ) : null}
+              </Panel>
+            ) : null}
+            <div className="kids-studio-workspace-heading">
+              <span>
+                {locale === "es"
+                  ? "Arrastrá bloques o tocá un color para construir"
+                  : "Drag blocks or choose a colour to build"}
+              </span>
+              <div className="kids-studio-mobile-run-controls">
+                <button type="button" className="kids-button kids-primary" onClick={play}>
+                  {copy.run}
+                </button>
+                <button
+                  type="button"
+                  className="kids-button"
+                  disabled={!run || (frame !== null && frame >= run.frames.length - 1)}
+                  onClick={() => {
+                    setStepped(true);
+                    setFrame(frame === null ? 0 : frame + 1);
+                  }}
+                >
+                  {copy.step}
+                </button>
+                <button
+                  type="button"
+                  className="kids-button"
+                  onClick={() => {
+                    setRun(null);
+                    setFrame(null);
+                  }}
+                >
+                  {copy.reset}
+                </button>
+              </div>
+            </div>
+            <Panel
+              controller={panelLayout}
+              id="program"
+              title={`${locale === "es" ? "Programa de" : "Program for"} ${actor?.name ?? ""}`}
+              accent="#2563EB"
+              zoomable
+              minimizable
+              maximizable
+              className="kids-studio-program-panel"
+            >
+              <div className="kids-program-zone">
+                <div className="kids-program-stack">
+                  <label>
+                    {copy.event}
+                    <select
+                      value={script?.trigger.type ?? "greenFlag"}
+                      onChange={(event) => setEvent(event.target.value as StudioEvent)}
+                    >
+                      <option value="greenFlag">{copy.onPlay}</option>
+                      <option value="onActorClicked">{copy.onTap}</option>
+                      <option value="onKeyPressed">{copy.onKey}</option>
+                      <option value="onMessage">{copy.onMessage}</option>
+                    </select>
+                  </label>
+                  {script?.trigger.type === "onKeyPressed" ? (
+                    <label>
+                      {copy.onKey}{" "}
+                      <select
+                        value={script.trigger.key}
+                        onChange={(event) => {
+                          const key = event.target.value as (typeof STUDIO_KEYS)[number];
+                          setEventKey(key);
+                          persist(
+                            setStudioTrigger(history, activeActorId, { type: "onKeyPressed", key }),
+                          );
+                        }}
+                      >
+                        {STUDIO_KEYS.map((key) => (
+                          <option key={key} value={key}>
+                            {key}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
+                  {script?.trigger.type === "onMessage" ? (
+                    <label>
+                      {copy.onMessage}{" "}
+                      <select
+                        value={script.trigger.message}
+                        onChange={(event) => {
+                          const message = event.target.value as (typeof STUDIO_MESSAGES)[number];
+                          setEventMessage(message);
+                          persist(
+                            setStudioTrigger(history, activeActorId, {
+                              type: "onMessage",
+                              message,
+                            }),
+                          );
+                        }}
+                      >
+                        {STUDIO_MESSAGES.map((message) => (
+                          <option key={message} value={message}>
+                            {message}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
+                  <div className="kids-start-block">
+                    ▶{" "}
+                    {script?.trigger.type === "onActorClicked"
+                      ? copy.onTap
+                      : script?.trigger.type === "onKeyPressed"
+                        ? `${copy.onKey} ${script.trigger.key}`
+                        : script?.trigger.type === "onMessage"
+                          ? `${copy.onMessage} ${script.trigger.message}`
+                          : copy.onPlay}
+                  </div>
+                  {script?.trigger.type === "onActorClicked" ? (
+                    <p className="kids-note">{copy.tapHint}</p>
+                  ) : null}
+                  {script?.trigger.type === "onKeyPressed" ? (
+                    <button
+                      type="button"
+                      className="kids-button"
+                      disabled={!run}
+                      onClick={() =>
+                        fireKey(script.trigger.type === "onKeyPressed" ? script.trigger.key : "")
+                      }
+                    >
+                      {copy.pressKey}: {script.trigger.key}
+                    </button>
+                  ) : null}
+                  <ol
+                    ref={programRef}
+                    className="kids-program-drop"
+                    data-drop-list={JSON.stringify({ container: null })}
+                    data-over={
+                      over?.startsWith(`${JSON.stringify({ container: null })}#`)
+                        ? "true"
+                        : undefined
+                    }
+                    aria-label={copy.dragHint}
+                    data-hint={copy.dropHere}
+                  >
+                    {script?.statements.map((statement, index) => (
+                      <li
+                        key={`${script.id}-${index}`}
+                        className="kids-program-block"
+                        data-ori-block={statement.type}
+                        data-index={index}
+                        tabIndex={contextMenuFlag || shortcutsFlag ? 0 : undefined}
+                        onContextMenu={(event) => {
+                          if (!contextMenuFlag) return;
+                          event.preventDefault();
+                          setBlockMenu({ index, x: event.clientX, y: event.clientY });
+                        }}
+                        onPointerDown={(event) => {
+                          if (!contextMenuFlag || event.pointerType !== "touch") return;
+                          pressOrigin.current = { x: event.clientX, y: event.clientY };
+                          pressTimer.current = setTimeout(() => {
+                            setBlockMenu({ index, x: event.clientX, y: event.clientY });
+                            pressTimer.current = null;
+                          }, 500);
+                        }}
+                        onPointerMove={(event) => {
+                          if (!pressOrigin.current || !pressTimer.current) return;
+                          if (
+                            Math.hypot(
+                              event.clientX - pressOrigin.current.x,
+                              event.clientY - pressOrigin.current.y,
+                            ) > 8
+                          ) {
+                            clearTimeout(pressTimer.current);
+                            pressTimer.current = null;
+                          }
+                        }}
+                        onPointerUp={() => {
+                          if (pressTimer.current) clearTimeout(pressTimer.current);
+                          pressTimer.current = null;
+                        }}
+                        onPointerCancel={() => {
+                          if (pressTimer.current) clearTimeout(pressTimer.current);
+                          pressTimer.current = null;
+                        }}
+                        onKeyDown={(event) => {
+                          if (
+                            !contextMenuFlag ||
+                            event.target !== event.currentTarget ||
+                            !["F10", "ContextMenu"].includes(event.key) ||
+                            (event.key === "F10" && !event.shiftKey)
+                          )
+                            return;
+                          event.preventDefault();
+                          const rect = event.currentTarget.getBoundingClientRect();
+                          setBlockMenu({ index, x: rect.left + 24, y: rect.bottom });
+                        }}
+                        data-block-path={JSON.stringify([index])}
+                        data-dragging={
+                          drag && drag.from.length === 1 && drag.from[0] === index
+                            ? "true"
+                            : undefined
+                        }
+                        data-target={
+                          over === `${JSON.stringify({ container: null })}#${index}`
+                            ? "true"
+                            : undefined
+                        }
+                      >
+                        <button
+                          type="button"
+                          className="kids-block-handle"
+                          aria-label={`${copy.moveBlock} ${index + 1}`}
+                          onPointerDown={(event) => beginBlockDrag(event, [index])}
+                          onPointerMove={overBlockDrag}
+                          onPointerUp={endBlockDrag}
+                          onPointerCancel={() => setDrag(null)}
+                        >
+                          ⠿
+                        </button>
+                        <span>{blockLabel(statement)}</span>
+                        {callNumbers(statement, index)}
+                        {statement.type === "repeat" ||
+                        statement.type === "repeatUntil" ||
+                        statement.type === "forever"
+                          ? programList(statement.body, [index])
+                          : null}
+                        {statement.type === "if" ? programList(statement.then, [index]) : null}
+                        {statement.type === "if" && statement.else ? (
+                          <>
+                            <strong>{copy.elseLabel}</strong>
+                            {programList(statement.else, [index], "else")}
+                          </>
+                        ) : null}
+                        {placeChoices([index]).length > 0 ? (
+                          <select
+                            aria-label={`${copy.moveTo} ${index + 1}`}
+                            value=""
+                            onChange={(event) => {
+                              placeChoices([index])[Number(event.target.value)]?.run();
+                            }}
+                          >
+                            <option value="">{copy.moveTo}</option>
+                            {placeChoices([index]).map((choice, at) => (
+                              <option key={choice.label} value={at}>
+                                {choice.label}
+                              </option>
+                            ))}
+                          </select>
+                        ) : null}
                         <button
                           type="button"
                           className="kids-button"
-                          aria-label={`${locale === "es" ? "Escuchar" : "Listen to"} ${item[locale]}`}
+                          aria-label={`${copy.blockUp} ${index + 1}`}
+                          disabled={index === 0}
                           onClick={() =>
-                            void playKidsSound(item.id, {
-                              kind: "gallery",
-                              id: characterOfActor(activeActorId),
-                            })
+                            persist(moveStudioStatement(history, activeActorId, index, index - 1))
                           }
                         >
-                          ▶
+                          ↑
                         </button>
                         <button
                           type="button"
                           className="kids-button"
-                          aria-label={`${locale === "es" ? "Usar" : "Use"} ${item[locale]}`}
-                          onClick={() => {
-                            setNewSound(item.id);
-                            add({ type: "playSound", soundId: item.id });
-                          }}
+                          aria-label={`${copy.blockDown} ${index + 1}`}
+                          disabled={index === (script?.statements.length ?? 1) - 1}
+                          onClick={() =>
+                            persist(moveStudioStatement(history, activeActorId, index, index + 1))
+                          }
                         >
-                          {locale === "es" ? "Usar" : "Use"}
+                          ↓
+                        </button>
+                        {duplicateFlag ? (
+                          <button
+                            type="button"
+                            className="kids-button"
+                            aria-label={`${copy.duplicate} ${index + 1}`}
+                            disabled={(script?.statements.length ?? 0) >= 60}
+                            onClick={() => {
+                              try {
+                                persist(duplicateStudioStatement(history, activeActorId, index));
+                              } catch {
+                                // The program is at its size limit: no copy is made.
+                              }
+                            }}
+                          >
+                            ⧉
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          className="kids-button"
+                          aria-label={`${copy.remove} ${index + 1}`}
+                          onClick={() =>
+                            persist(removeStudioStatement(history, activeActorId, index))
+                          }
+                        >
+                          ×
                         </button>
                       </li>
                     ))}
-                  </ul>
-                  {KIDS_SOUNDS.some((item) =>
-                    item[locale]
-                      .toLocaleLowerCase(locale)
-                      .includes(soundQuery.trim().toLocaleLowerCase(locale)),
-                  ) ? null : (
-                    <p role="status">
-                      {locale === "es"
-                        ? "No hay sonidos para esa búsqueda."
-                        : "No sounds match that search."}
-                    </p>
-                  )}
-                </div>
-              ) : null}
-              {editorTab === "costumes" ? (
-                <div className="kids-studio-costume-library">
-                  <label>
-                    {locale === "es"
-                      ? "Buscar disfraces y fondos"
-                      : "Search costumes and backdrops"}
-                    <input
-                      type="search"
-                      value={costumeQuery}
-                      onChange={(event) => setCostumeQuery(event.target.value)}
-                    />
-                  </label>
-                  <div role="group" aria-label={locale === "es" ? "Disfraces" : "Costumes"}>
-                    <h3>{locale === "es" ? "Disfraces" : "Costumes"}</h3>
-                    <div className="kids-studio-costume-grid">
-                      {KIDS_GALLERY_CHARACTERS.filter((item) =>
-                        item[locale]
-                          .toLocaleLowerCase(locale)
-                          .includes(costumeQuery.trim().toLocaleLowerCase(locale)),
-                      ).map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          className="kids-button"
-                          aria-pressed={actor?.costumeId === `costume:${item.id}`}
-                          onClick={() => chooseArt(`costume:${item.id}`)}
-                        >
-                          <span aria-hidden="true">{item.glyph}</span> {item[locale]}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div role="group" aria-label={locale === "es" ? "Fondos" : "Backdrops"}>
-                    <h3>{locale === "es" ? "Fondos" : "Backdrops"}</h3>
-                    <div className="kids-studio-costume-grid">
-                      {KIDS_GALLERY_BACKDROPS.filter((item) =>
-                        item[locale]
-                          .toLocaleLowerCase(locale)
-                          .includes(costumeQuery.trim().toLocaleLowerCase(locale)),
-                      ).map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          className="kids-button"
-                          aria-pressed={backdropId === item.id}
-                          onClick={() => changeBackdrop(item.id)}
-                        >
-                          <span aria-hidden="true">{item.glyph}</span> {item[locale]}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-              {editorTab === "costumes" && customImagesEnabled ? (
-                <div className="kids-studio-art-controls">
-                  <button
-                    type="button"
-                    className="kids-button"
-                    onClick={() => {
-                      setEditingArtId(null);
-                      setDrawingKind("costume");
-                    }}
-                  >
-                    {copy.drawCostume}
-                  </button>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    onClick={() => {
-                      setEditingArtId(null);
-                      setDrawingKind("backdrop");
-                    }}
-                  >
-                    {copy.drawBackdrop}
-                  </button>
-                  <label className="kids-button kids-image-file">
-                    {copy.uploadCostume}
-                    <input
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp"
-                      aria-label={copy.uploadCostume}
-                      onChange={(event) => void importImage("costume", event)}
-                    />
-                  </label>
-                  <label className="kids-button kids-image-file">
-                    {copy.uploadBackdrop}
-                    <input
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp"
-                      aria-label={copy.uploadBackdrop}
-                      onChange={(event) => void importImage("backdrop", event)}
-                    />
-                  </label>
-                  {ownCostumes.length ? (
-                    <div role="group" aria-label={copy.ownCostumes}>
-                      {ownCostumes.map((asset) => (
-                        <span key={asset.id}>
-                          <button
-                            type="button"
-                            className="kids-button"
-                            aria-pressed={actor?.costumeId === asset.id}
-                            onClick={() => chooseArt(asset.id)}
-                          >
-                            {asset.name}
-                          </button>
-                          <button
-                            type="button"
-                            className="kids-button"
-                            aria-label={`${copy.edit} ${asset.name}`}
-                            onClick={() => {
-                              setEditingArtId(asset.id);
-                              setDrawingKind("costume");
-                            }}
-                          >
-                            {copy.edit}
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  ) : null}
-                  {ownBackdrops.length ? (
-                    <div role="group" aria-label={copy.ownBackdrops}>
-                      {ownBackdrops.map((asset) => (
-                        <span key={asset.id}>
-                          <button
-                            type="button"
-                            className="kids-button"
-                            aria-pressed={creative.stage?.backdropId === asset.id}
-                            onClick={() => chooseArt(asset.id)}
-                          >
-                            {asset.name}
-                          </button>
-                          <button
-                            type="button"
-                            className="kids-button"
-                            aria-label={`${copy.edit} ${asset.name}`}
-                            onClick={() => {
-                              setEditingArtId(asset.id);
-                              setDrawingKind("backdrop");
-                            }}
-                          >
-                            {copy.edit}
-                          </button>
-                        </span>
-                      ))}
-                    </div>
+                    {intentPlan?.statements.map((statement, index) => (
+                      <li
+                        key={`intent-ghost-${index}`}
+                        className="kids-ghost-block"
+                        data-testid="ori-ghost-block"
+                      >
+                        <span>{blockLabel(statement)}</span>
+                        <small>{copy.ghostNote}</small>
+                      </li>
+                    ))}
+                    {oriPreview && proposedStatement ? (
+                      <li className="kids-ghost-block" data-testid="ori-ghost-block">
+                        <span>{blockLabel(proposedStatement)}</span>
+                        <small>{copy.ghostNote}</small>
+                      </li>
+                    ) : null}
+                  </ol>
+                  {script?.statements.length === 0 ? (
+                    <p className="kids-note">{copy.noBlocks}</p>
                   ) : null}
                 </div>
-              ) : null}
-              {editorTab === "costumes" && customImagesEnabled && drawingKind ? (
-                <KidsDrawArt
-                  kind={drawingKind === "costume" ? "explorer" : "backdrop"}
-                  locale={locale}
-                  initialImage={creative.assets?.find((asset) => asset.id === editingArtId)?.source}
-                  onSave={saveDrawing}
-                  onCancel={() => {
-                    setDrawingKind(null);
-                    setEditingArtId(null);
-                  }}
-                  onError={() => setError(true)}
-                />
-              ) : null}
+              </div>
             </Panel>
-          ) : null}
-          <div className="kids-studio-workspace-heading">
-            <span>
-              {locale === "es"
-                ? "Arrastrá bloques o tocá un color para construir"
-                : "Drag blocks or choose a colour to build"}
-            </span>
-            <div className="kids-studio-mobile-run-controls">
-              <button type="button" className="kids-button kids-primary" onClick={play}>
-                {copy.run}
-              </button>
-              <button
-                type="button"
-                className="kids-button"
-                disabled={!run || (frame !== null && frame >= run.frames.length - 1)}
-                onClick={() => {
-                  setStepped(true);
-                  setFrame(frame === null ? 0 : frame + 1);
-                }}
+            <Panel
+              controller={panelLayout}
+              id="blocks"
+              title={copy.blocksTitle}
+              accent="#7C3AED"
+              className="kids-studio-blocks-panel"
+            >
+              <div
+                id="kids-studio-block-palette"
+                className="kids-studio-palette"
+                ref={setPalette}
+                data-contextual={paletteView === "focused" ? "true" : undefined}
+                data-open={paletteView === "focused" && openCategory !== null ? "true" : undefined}
+                data-maximized={blocksSheetMaximized ? "true" : undefined}
+                data-sheet={
+                  paletteView === "focused"
+                    ? openCategory
+                      ? "open"
+                      : "closed"
+                    : sheetOpen
+                      ? "open"
+                      : "closed"
+                }
+                data-collapsed={paletteView === "all" && paletteCollapsed ? "true" : undefined}
+                data-view={paletteView}
+                data-open-cat={paletteView === "focused" ? (openCategory ?? "none") : undefined}
+                role="region"
+                aria-label={
+                  openCategory
+                    ? `${copy.blocksTitle}: ${categoryLabel[openCategory]}`
+                    : copy.blocksTitle
+                }
               >
-                {copy.step}
-              </button>
-              <button
-                type="button"
-                className="kids-button"
-                onClick={() => {
-                  setRun(null);
-                  setFrame(null);
-                }}
-              >
-                {copy.reset}
-              </button>
-            </div>
-          </div>
-          <Panel
-            controller={panelLayout}
-            id="program"
-            title={`${locale === "es" ? "Programa de" : "Program for"} ${actor?.name ?? ""}`}
-            accent="#2563EB"
-            zoomable
-            minimizable
-            maximizable
-            className="kids-studio-program-panel"
-          >
-            <div className="kids-program-zone">
-              <div className="kids-program-stack">
-                <label>
-                  {copy.event}
-                  <select
-                    value={script?.trigger.type ?? "greenFlag"}
-                    onChange={(event) => setEvent(event.target.value as StudioEvent)}
-                  >
-                    <option value="greenFlag">{copy.onPlay}</option>
-                    <option value="onActorClicked">{copy.onTap}</option>
-                    <option value="onKeyPressed">{copy.onKey}</option>
-                    <option value="onMessage">{copy.onMessage}</option>
-                  </select>
-                </label>
-                {script?.trigger.type === "onKeyPressed" ? (
-                  <label>
-                    {copy.onKey}{" "}
-                    <select
-                      value={script.trigger.key}
-                      onChange={(event) => {
-                        const key = event.target.value as (typeof STUDIO_KEYS)[number];
-                        setEventKey(key);
-                        persist(
-                          setStudioTrigger(history, activeActorId, { type: "onKeyPressed", key }),
-                        );
-                      }}
-                    >
-                      {STUDIO_KEYS.map((key) => (
-                        <option key={key} value={key}>
-                          {key}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                ) : null}
-                {script?.trigger.type === "onMessage" ? (
-                  <label>
-                    {copy.onMessage}{" "}
-                    <select
-                      value={script.trigger.message}
-                      onChange={(event) => {
-                        const message = event.target.value as (typeof STUDIO_MESSAGES)[number];
-                        setEventMessage(message);
-                        persist(
-                          setStudioTrigger(history, activeActorId, { type: "onMessage", message }),
-                        );
-                      }}
-                    >
-                      {STUDIO_MESSAGES.map((message) => (
-                        <option key={message} value={message}>
-                          {message}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                ) : null}
-                <div className="kids-start-block">
-                  ▶{" "}
-                  {script?.trigger.type === "onActorClicked"
-                    ? copy.onTap
-                    : script?.trigger.type === "onKeyPressed"
-                      ? `${copy.onKey} ${script.trigger.key}`
-                      : script?.trigger.type === "onMessage"
-                        ? `${copy.onMessage} ${script.trigger.message}`
-                        : copy.onPlay}
-                </div>
-                {script?.trigger.type === "onActorClicked" ? (
-                  <p className="kids-note">{copy.tapHint}</p>
-                ) : null}
-                {script?.trigger.type === "onKeyPressed" ? (
+                <div className="kids-studio-panel-head kids-studio-palette-head">
+                  <strong>
+                    {paletteView === "focused" && openCategory
+                      ? categoryLabel[openCategory]
+                      : copy.blocksTitle}
+                  </strong>
                   <button
                     type="button"
-                    className="kids-button"
-                    disabled={!run}
+                    className="kids-panel-toggle kids-sheet-maximize"
+                    aria-label={
+                      blocksSheetMaximized
+                        ? locale === "es"
+                          ? "Restaurar hoja de Bloques"
+                          : "Restore Blocks sheet"
+                        : locale === "es"
+                          ? "Maximizar hoja de Bloques"
+                          : "Maximize Blocks sheet"
+                    }
+                    aria-pressed={blocksSheetMaximized}
+                    onClick={() => setBlocksSheetMaximized((value) => !value)}
+                  >
+                    <span aria-hidden="true">{blocksSheetMaximized ? "❐" : "□"}</span>
+                  </button>
+                  {paletteView === "all" ? (
+                    <button
+                      type="button"
+                      className="kids-panel-toggle kids-palette-view-toggle"
+                      onClick={() => writePaletteView("focused")}
+                    >
+                      {copy.viewFocused}
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="kids-panel-toggle kids-palette-collapse"
+                    aria-expanded={paletteView === "all" ? !paletteCollapsed : undefined}
                     onClick={() =>
-                      fireKey(script.trigger.type === "onKeyPressed" ? script.trigger.key : "")
+                      paletteView === "all"
+                        ? setPaletteCollapsed((value) => !value)
+                        : setOpenCategory(null)
                     }
                   >
-                    {copy.pressKey}: {script.trigger.key}
+                    {paletteView === "all" && paletteCollapsed ? copy.showBlocks : copy.hideBlocks}
                   </button>
-                ) : null}
-                <ol
-                  ref={programRef}
-                  className="kids-program-drop"
-                  data-drop-list={JSON.stringify({ container: null })}
-                  data-over={
-                    over?.startsWith(`${JSON.stringify({ container: null })}#`) ? "true" : undefined
-                  }
-                  aria-label={copy.dragHint}
-                  data-hint={copy.dropHere}
-                >
-                  {script?.statements.map((statement, index) => (
-                    <li
-                      key={`${script.id}-${index}`}
-                      className="kids-program-block"
-                      data-ori-block={statement.type}
-                      data-index={index}
-                      tabIndex={contextMenuFlag || shortcutsFlag ? 0 : undefined}
-                      onContextMenu={(event) => {
-                        if (!contextMenuFlag) return;
-                        event.preventDefault();
-                        setBlockMenu({ index, x: event.clientX, y: event.clientY });
-                      }}
-                      onPointerDown={(event) => {
-                        if (!contextMenuFlag || event.pointerType !== "touch") return;
-                        pressOrigin.current = { x: event.clientX, y: event.clientY };
-                        pressTimer.current = setTimeout(() => {
-                          setBlockMenu({ index, x: event.clientX, y: event.clientY });
-                          pressTimer.current = null;
-                        }, 500);
-                      }}
-                      onPointerMove={(event) => {
-                        if (!pressOrigin.current || !pressTimer.current) return;
-                        if (
-                          Math.hypot(
-                            event.clientX - pressOrigin.current.x,
-                            event.clientY - pressOrigin.current.y,
-                          ) > 8
-                        ) {
-                          clearTimeout(pressTimer.current);
-                          pressTimer.current = null;
-                        }
-                      }}
-                      onPointerUp={() => {
-                        if (pressTimer.current) clearTimeout(pressTimer.current);
-                        pressTimer.current = null;
-                      }}
-                      onPointerCancel={() => {
-                        if (pressTimer.current) clearTimeout(pressTimer.current);
-                        pressTimer.current = null;
-                      }}
-                      onKeyDown={(event) => {
-                        if (
-                          !contextMenuFlag ||
-                          event.target !== event.currentTarget ||
-                          !["F10", "ContextMenu"].includes(event.key) ||
-                          (event.key === "F10" && !event.shiftKey)
-                        )
-                          return;
-                        event.preventDefault();
-                        const rect = event.currentTarget.getBoundingClientRect();
-                        setBlockMenu({ index, x: rect.left + 24, y: rect.bottom });
-                      }}
-                      data-block-path={JSON.stringify([index])}
-                      data-dragging={
-                        drag && drag.from.length === 1 && drag.from[0] === index
-                          ? "true"
-                          : undefined
-                      }
-                      data-target={
-                        over === `${JSON.stringify({ container: null })}#${index}`
-                          ? "true"
-                          : undefined
-                      }
-                    >
-                      <button
-                        type="button"
-                        className="kids-block-handle"
-                        aria-label={`${copy.moveBlock} ${index + 1}`}
-                        onPointerDown={(event) => beginBlockDrag(event, [index])}
-                        onPointerMove={overBlockDrag}
-                        onPointerUp={endBlockDrag}
-                        onPointerCancel={() => setDrag(null)}
-                      >
-                        ⠿
-                      </button>
-                      <span>{blockLabel(statement)}</span>
-                      {callNumbers(statement, index)}
-                      {statement.type === "repeat" ||
-                      statement.type === "repeatUntil" ||
-                      statement.type === "forever"
-                        ? programList(statement.body, [index])
-                        : null}
-                      {statement.type === "if" ? programList(statement.then, [index]) : null}
-                      {statement.type === "if" && statement.else ? (
-                        <>
-                          <strong>{copy.elseLabel}</strong>
-                          {programList(statement.else, [index], "else")}
-                        </>
-                      ) : null}
-                      {placeChoices([index]).length > 0 ? (
-                        <select
-                          aria-label={`${copy.moveTo} ${index + 1}`}
-                          value=""
-                          onChange={(event) => {
-                            placeChoices([index])[Number(event.target.value)]?.run();
-                          }}
-                        >
-                          <option value="">{copy.moveTo}</option>
-                          {placeChoices([index]).map((choice, at) => (
-                            <option key={choice.label} value={at}>
-                              {choice.label}
-                            </option>
-                          ))}
-                        </select>
-                      ) : null}
-                      <button
-                        type="button"
-                        className="kids-button"
-                        aria-label={`${copy.blockUp} ${index + 1}`}
-                        disabled={index === 0}
-                        onClick={() =>
-                          persist(moveStudioStatement(history, activeActorId, index, index - 1))
-                        }
-                      >
-                        ↑
-                      </button>
-                      <button
-                        type="button"
-                        className="kids-button"
-                        aria-label={`${copy.blockDown} ${index + 1}`}
-                        disabled={index === (script?.statements.length ?? 1) - 1}
-                        onClick={() =>
-                          persist(moveStudioStatement(history, activeActorId, index, index + 1))
-                        }
-                      >
-                        ↓
-                      </button>
-                      {duplicateFlag ? (
-                        <button
-                          type="button"
-                          className="kids-button"
-                          aria-label={`${copy.duplicate} ${index + 1}`}
-                          disabled={(script?.statements.length ?? 0) >= 60}
-                          onClick={() => {
-                            try {
-                              persist(duplicateStudioStatement(history, activeActorId, index));
-                            } catch {
-                              // The program is at its size limit: no copy is made.
-                            }
-                          }}
-                        >
-                          ⧉
-                        </button>
-                      ) : null}
-                      <button
-                        type="button"
-                        className="kids-button"
-                        aria-label={`${copy.remove} ${index + 1}`}
-                        onClick={() =>
-                          persist(removeStudioStatement(history, activeActorId, index))
-                        }
-                      >
-                        ×
-                      </button>
-                    </li>
-                  ))}
-                  {intentPlan?.statements.map((statement, index) => (
-                    <li
-                      key={`intent-ghost-${index}`}
-                      className="kids-ghost-block"
-                      data-testid="ori-ghost-block"
-                    >
-                      <span>{blockLabel(statement)}</span>
-                      <small>{copy.ghostNote}</small>
-                    </li>
-                  ))}
-                  {oriPreview && proposedStatement ? (
-                    <li className="kids-ghost-block" data-testid="ori-ghost-block">
-                      <span>{blockLabel(proposedStatement)}</span>
-                      <small>{copy.ghostNote}</small>
-                    </li>
-                  ) : null}
-                </ol>
-                {script?.statements.length === 0 ? (
-                  <p className="kids-note">{copy.noBlocks}</p>
-                ) : null}
-              </div>
-            </div>
-          </Panel>
-          <Panel
-            controller={panelLayout}
-            id="blocks"
-            title={copy.blocksTitle}
-            accent="#7C3AED"
-            className="kids-studio-blocks-panel"
-          >
-            <div
-              id="kids-studio-block-palette"
-              className="kids-studio-palette"
-              ref={setPalette}
-              data-contextual={paletteView === "focused" ? "true" : undefined}
-              data-open={paletteView === "focused" && openCategory !== null ? "true" : undefined}
-              data-maximized={blocksSheetMaximized ? "true" : undefined}
-              data-sheet={
-                paletteView === "focused"
-                  ? openCategory
-                    ? "open"
-                    : "closed"
-                  : sheetOpen
-                    ? "open"
-                    : "closed"
-              }
-              data-collapsed={paletteView === "all" && paletteCollapsed ? "true" : undefined}
-              data-view={paletteView}
-              data-open-cat={paletteView === "focused" ? (openCategory ?? "none") : undefined}
-              role="region"
-              aria-label={
-                openCategory
-                  ? `${copy.blocksTitle}: ${categoryLabel[openCategory]}`
-                  : copy.blocksTitle
-              }
-            >
-              <div className="kids-studio-panel-head kids-studio-palette-head">
-                <strong>
-                  {paletteView === "focused" && openCategory
-                    ? categoryLabel[openCategory]
-                    : copy.blocksTitle}
-                </strong>
-                <button
-                  type="button"
-                  className="kids-panel-toggle kids-sheet-maximize"
-                  aria-label={
-                    blocksSheetMaximized
-                      ? locale === "es"
-                        ? "Restaurar hoja de Bloques"
-                        : "Restore Blocks sheet"
-                      : locale === "es"
-                        ? "Maximizar hoja de Bloques"
-                        : "Maximize Blocks sheet"
-                  }
-                  aria-pressed={blocksSheetMaximized}
-                  onClick={() => setBlocksSheetMaximized((value) => !value)}
-                >
-                  <span aria-hidden="true">{blocksSheetMaximized ? "❐" : "□"}</span>
-                </button>
-                {paletteView === "all" ? (
-                  <button
-                    type="button"
-                    className="kids-panel-toggle kids-palette-view-toggle"
-                    onClick={() => writePaletteView("focused")}
-                  >
-                    {copy.viewFocused}
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  className="kids-panel-toggle kids-palette-collapse"
-                  aria-expanded={paletteView === "all" ? !paletteCollapsed : undefined}
-                  onClick={() =>
-                    paletteView === "all"
-                      ? setPaletteCollapsed((value) => !value)
-                      : setOpenCategory(null)
-                  }
-                >
-                  {paletteView === "all" && paletteCollapsed ? copy.showBlocks : copy.hideBlocks}
-                </button>
-              </div>
-              <p className="kids-note kids-studio-sheet-hint">
-                {paletteView === "focused" && openCategory === null
-                  ? copy.pickCategory
-                  : copy.sheetHint}
-              </p>
-              {/* A shelf over the whole palette: it suggests where to begin and hides nothing (#1110). */}
-              <section className="kids-studio-starters" aria-label={copy.starters}>
-                <h3>{copy.starters}</h3>
-                <p className="kids-note">{copy.startersNote}</p>
-                <div className="kids-studio-starter-row">
-                  {starterShelf(script?.statements ?? []).map((kind) => (
-                    <button
-                      key={kind}
-                      type="button"
-                      className="kids-button"
-                      data-starter={kind}
-                      onClick={() => add(starterStatement(kind, newSound))}
-                    >
-                      ★ {starterLabel(kind, copy)}
-                    </button>
-                  ))}
                 </div>
-              </section>
-              <h3 id={studioCategoryId("looks")} tabIndex={-1}>
-                {copy.paletteLooks}
-              </h3>
-              <KidsPaletteBlock
-                tone="looks"
-                actions={[
-                  {
-                    label: copy.say,
-                    disabled: !bubbleText.trim(),
-                    block: "say",
-                    onAdd: () => add({ type: "say", text: bubbleText.trim() }),
-                  },
-                  {
-                    label: copy.think,
-                    disabled: !bubbleText.trim(),
-                    block: "think",
-                    onAdd: () => add({ type: "think", text: bubbleText.trim() }),
-                  },
-                ]}
-              >
-                <input
-                  type="text"
-                  aria-label={`${copy.say} / ${copy.think}`}
-                  maxLength={STUDIO_BUBBLE_MAX_LENGTH}
-                  value={bubbleText}
-                  onChange={(event) => setBubbleText(event.target.value)}
-                />
-              </KidsPaletteBlock>
-              <KidsPaletteBlock
-                tone="looks"
-                actions={[{ label: copy.show, block: "show", onAdd: () => add({ type: "show" }) }]}
-              />
-              <KidsPaletteBlock
-                tone="looks"
-                actions={[{ label: copy.hide, block: "hide", onAdd: () => add({ type: "hide" }) }]}
-              />
-              <KidsPaletteBlock
-                tone="looks"
-                actions={[
-                  {
-                    label: copy.size,
-                    block: "setSize",
-                    onAdd: () => add({ type: "setSize", size: spriteSize }),
-                  },
-                ]}
-              >
-                <select
-                  aria-label={copy.size}
-                  value={spriteSize}
-                  onChange={(event) => setSpriteSize(Number(event.target.value))}
-                >
-                  {STUDIO_SIZES.map((size) => (
-                    <option key={size} value={size}>
-                      {size}%
-                    </option>
-                  ))}
-                </select>
-              </KidsPaletteBlock>
-              <KidsPaletteBlock
-                tone="looks"
-                actions={[
-                  {
-                    label: copy.growShrink,
-                    block: "changeSize",
-                    onAdd: () => add({ type: "changeSize", delta: sizeDelta }),
-                  },
-                ]}
-              >
-                <select
-                  aria-label={copy.growShrink}
-                  value={sizeDelta}
-                  onChange={(event) => setSizeDelta(Number(event.target.value))}
-                >
-                  {STUDIO_SIZE_DELTAS.map((delta) => (
-                    <option key={delta} value={delta}>
-                      {delta > 0 ? "+" : ""}
-                      {delta}%
-                    </option>
-                  ))}
-                </select>
-              </KidsPaletteBlock>
-              <KidsPaletteBlock
-                tone="looks"
-                actions={[
-                  {
-                    label: copy.setEffect,
-                    block: "setEffect",
-                    onAdd: () => add({ type: "setEffect", effect: effectKind, value: effectValue }),
-                  },
-                  {
-                    label: copy.changeEffect,
-                    block: "changeEffect",
-                    onAdd: () =>
-                      add({ type: "changeEffect", effect: effectKind, delta: effectDelta }),
-                  },
-                  {
-                    label: copy.clearEffects,
-                    block: "clearEffects",
-                    onAdd: () => add({ type: "clearEffects" }),
-                  },
-                ]}
-              >
-                <select
-                  aria-label={copy.setEffect}
-                  value={effectKind}
-                  onChange={(event) => {
-                    const next = event.target.value as typeof effectKind;
-                    setEffectKind(next);
-                    setEffectValue(next === "brightness" ? 0 : 50);
-                  }}
-                >
-                  {(["color", "ghost", "brightness"] as const).map((effect) => (
-                    <option key={effect} value={effect}>
-                      {effectName(effect)}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  aria-label={`${copy.setEffect}: ${effectName(effectKind)}`}
-                  value={effectValue}
-                  onChange={(event) => setEffectValue(Number(event.target.value))}
-                >
-                  {studioEffectValues(effectKind).map((value) => (
-                    <option key={value} value={value}>
-                      {value}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  aria-label={copy.changeEffect}
-                  value={effectDelta}
-                  onChange={(event) => setEffectDelta(Number(event.target.value))}
-                >
-                  {STUDIO_EFFECT_DELTAS.map((delta) => (
-                    <option key={delta} value={delta}>
-                      {delta > 0 ? "+" : ""}
-                      {delta}
-                    </option>
-                  ))}
-                </select>
-              </KidsPaletteBlock>
-              <KidsPaletteBlock
-                tone="looks"
-                actions={[
-                  {
-                    label: copy.wait,
-                    block: "wait",
-                    onAdd: () => add({ type: "wait", seconds: waitSeconds }),
-                  },
-                ]}
-              >
-                <select
-                  aria-label={copy.wait}
-                  value={waitSeconds}
-                  onChange={(event) => setWaitSeconds(Number(event.target.value))}
-                >
-                  {STUDIO_WAIT_SECONDS.map((seconds) => (
-                    <option key={seconds} value={seconds}>
-                      {seconds}s
-                    </option>
-                  ))}
-                </select>
-              </KidsPaletteBlock>
-              <h3 id={studioCategoryId("motion")} tabIndex={-1}>
-                {copy.paletteMotion}
-              </h3>
-              <KidsPaletteBlock
-                tone="motion"
-                actions={[
-                  {
-                    label: copy.move,
-                    block: "move",
-                    onAdd: () => add({ type: "move", steps: moveCells * 40 }),
-                  },
-                  {
-                    label: copy.moveBackward,
-                    block: "move",
-                    onAdd: () => add({ type: "move", steps: -moveCells * 40 }),
-                  },
-                ]}
-              >
-                <select
-                  aria-label={copy.move}
-                  value={moveCells}
-                  onChange={(event) => setMoveCells(Number(event.target.value))}
-                >
-                  {STUDIO_MOVE_CELLS.map((count) => (
-                    <option key={count} value={count}>
-                      {count}
-                    </option>
-                  ))}
-                </select>
-              </KidsPaletteBlock>
-              <KidsPaletteBlock
-                tone="motion"
-                actions={[
-                  {
-                    label: copy.goTo,
-                    disabled: targetOutOfRange,
-                    block: "goTo",
-                    onAdd: () => add({ type: "goTo", x: targetX, y: targetY }),
-                  },
-                  {
-                    label: `${copy.glideTo} (${waitSeconds}s)`,
-                    disabled: targetOutOfRange,
-                    block: "glideTo",
-                    onAdd: () =>
-                      add({ type: "glideTo", x: targetX, y: targetY, seconds: waitSeconds }),
-                  },
-                ]}
-              >
-                <input
-                  type="number"
-                  aria-label={copy.xCoordinate}
-                  min={STUDIO_X_RANGE.min}
-                  max={STUDIO_X_RANGE.max}
-                  step={1}
-                  value={targetX}
-                  onChange={(event) => setTargetX(Number(event.target.value))}
-                />
-                <input
-                  type="number"
-                  aria-label={copy.yCoordinate}
-                  min={STUDIO_Y_RANGE.min}
-                  max={STUDIO_Y_RANGE.max}
-                  step={1}
-                  value={targetY}
-                  onChange={(event) => setTargetY(Number(event.target.value))}
-                />
-              </KidsPaletteBlock>
-              <KidsPaletteBlock
-                tone="motion"
-                actions={[
-                  {
-                    label: copy.turnLeft,
-                    block: "turn",
-                    onAdd: () => add({ type: "turn", degrees: -turnAmount }),
-                  },
-                  {
-                    label: copy.turnRight,
-                    block: "turn",
-                    onAdd: () => add({ type: "turn", degrees: turnAmount }),
-                  },
-                ]}
-              >
-                <select
-                  aria-label={copy.turnAmount}
-                  value={turnAmount}
-                  onChange={(event) => setTurnAmount(Number(event.target.value))}
-                >
-                  {STUDIO_TURN_AMOUNTS.map((degrees) => (
-                    <option key={degrees} value={degrees}>
-                      {degrees}°
-                    </option>
-                  ))}
-                </select>
-              </KidsPaletteBlock>
-              <KidsPaletteBlock
-                tone="motion"
-                actions={[
-                  {
-                    label: copy.pointDirection,
-                    block: "pointInDirection",
-                    onAdd: () => add({ type: "pointInDirection", degrees: pointDegrees }),
-                  },
-                ]}
-              >
-                <select
-                  aria-label={copy.pointDirection}
-                  value={pointDegrees}
-                  onChange={(event) => setPointDegrees(Number(event.target.value))}
-                >
-                  {directionOptions.map((item) => (
-                    <option key={item.degrees} value={item.degrees}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-              </KidsPaletteBlock>
-              {pointTarget ? (
+                {paletteHint !== null ? (
+                  <p className="kids-palette-hint" role="status">
+                    {paletteHint}
+                  </p>
+                ) : null}
+                <p className="kids-note kids-studio-sheet-hint">
+                  {paletteView === "focused" && openCategory === null
+                    ? copy.pickCategory
+                    : copy.sheetHint}
+                </p>
+                {/* A shelf over the whole palette: it suggests where to begin and hides nothing (#1110). */}
+                <section className="kids-studio-starters" aria-label={copy.starters}>
+                  <h3>{copy.starters}</h3>
+                  <p className="kids-note">{copy.startersNote}</p>
+                  <div className="kids-studio-starter-row">
+                    {starterShelf(script?.statements ?? []).map((kind) => (
+                      <button
+                        key={kind}
+                        type="button"
+                        className="kids-button"
+                        data-starter={kind}
+                        onClick={() => add(starterStatement(kind, newSound))}
+                      >
+                        ★ {starterLabel(kind, copy)}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+                <h3 id={studioCategoryId("looks")} tabIndex={-1}>
+                  {copy.paletteLooks}
+                </h3>
                 <KidsPaletteBlock
-                  tone="motion"
+                  tone="looks"
                   actions={[
                     {
-                      label: copy.pointTowards,
-                      block: "pointTowards",
-                      onAdd: () => add({ type: "pointTowards", actorId: pointTarget.id }),
+                      label: copy.say,
+                      disabled: !bubbleText.trim(),
+                      block: "say",
+                      onAdd: () => add({ type: "say", text: bubbleText.trim() }),
+                    },
+                    {
+                      label: copy.think,
+                      disabled: !bubbleText.trim(),
+                      block: "think",
+                      onAdd: () => add({ type: "think", text: bubbleText.trim() }),
+                    },
+                  ]}
+                >
+                  <input
+                    type="text"
+                    aria-label={`${copy.say} / ${copy.think}`}
+                    maxLength={STUDIO_BUBBLE_MAX_LENGTH}
+                    value={bubbleText}
+                    onChange={(event) => setBubbleText(event.target.value)}
+                  />
+                </KidsPaletteBlock>
+                <KidsPaletteBlock
+                  tone="looks"
+                  actions={[
+                    { label: copy.show, block: "show", onAdd: () => add({ type: "show" }) },
+                  ]}
+                />
+                <KidsPaletteBlock
+                  tone="looks"
+                  actions={[
+                    { label: copy.hide, block: "hide", onAdd: () => add({ type: "hide" }) },
+                  ]}
+                />
+                <KidsPaletteBlock
+                  tone="looks"
+                  actions={[
+                    {
+                      label: copy.size,
+                      block: "setSize",
+                      onAdd: () => add({ type: "setSize", size: spriteSize }),
                     },
                   ]}
                 >
                   <select
-                    aria-label={copy.pointTowards}
-                    value={pointTarget.id}
-                    onChange={(event) => setPointTargetId(event.target.value)}
+                    aria-label={copy.size}
+                    value={spriteSize}
+                    onChange={(event) => setSpriteSize(Number(event.target.value))}
                   >
-                    {otherActors.map((item) => (
-                      <option key={item.id} value={item.id}>
+                    {STUDIO_SIZES.map((size) => (
+                      <option key={size} value={size}>
+                        {size}%
+                      </option>
+                    ))}
+                  </select>
+                </KidsPaletteBlock>
+                <KidsPaletteBlock
+                  tone="looks"
+                  actions={[
+                    {
+                      label: copy.growShrink,
+                      block: "changeSize",
+                      onAdd: () => add({ type: "changeSize", delta: sizeDelta }),
+                    },
+                  ]}
+                >
+                  <select
+                    aria-label={copy.growShrink}
+                    value={sizeDelta}
+                    onChange={(event) => setSizeDelta(Number(event.target.value))}
+                  >
+                    {STUDIO_SIZE_DELTAS.map((delta) => (
+                      <option key={delta} value={delta}>
+                        {delta > 0 ? "+" : ""}
+                        {delta}%
+                      </option>
+                    ))}
+                  </select>
+                </KidsPaletteBlock>
+                <KidsPaletteBlock
+                  tone="looks"
+                  actions={[
+                    {
+                      label: copy.setEffect,
+                      block: "setEffect",
+                      onAdd: () =>
+                        add({ type: "setEffect", effect: effectKind, value: effectValue }),
+                    },
+                    {
+                      label: copy.changeEffect,
+                      block: "changeEffect",
+                      onAdd: () =>
+                        add({ type: "changeEffect", effect: effectKind, delta: effectDelta }),
+                    },
+                    {
+                      label: copy.clearEffects,
+                      block: "clearEffects",
+                      onAdd: () => add({ type: "clearEffects" }),
+                    },
+                  ]}
+                >
+                  <select
+                    aria-label={copy.setEffect}
+                    value={effectKind}
+                    onChange={(event) => {
+                      const next = event.target.value as typeof effectKind;
+                      setEffectKind(next);
+                      setEffectValue(next === "brightness" ? 0 : 50);
+                    }}
+                  >
+                    {(["color", "ghost", "brightness"] as const).map((effect) => (
+                      <option key={effect} value={effect}>
+                        {effectName(effect)}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    aria-label={`${copy.setEffect}: ${effectName(effectKind)}`}
+                    value={effectValue}
+                    onChange={(event) => setEffectValue(Number(event.target.value))}
+                  >
+                    {studioEffectValues(effectKind).map((value) => (
+                      <option key={value} value={value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    aria-label={copy.changeEffect}
+                    value={effectDelta}
+                    onChange={(event) => setEffectDelta(Number(event.target.value))}
+                  >
+                    {STUDIO_EFFECT_DELTAS.map((delta) => (
+                      <option key={delta} value={delta}>
+                        {delta > 0 ? "+" : ""}
+                        {delta}
+                      </option>
+                    ))}
+                  </select>
+                </KidsPaletteBlock>
+                <KidsPaletteBlock
+                  tone="looks"
+                  actions={[
+                    {
+                      label: copy.wait,
+                      block: "wait",
+                      onAdd: () => add({ type: "wait", seconds: waitSeconds }),
+                    },
+                  ]}
+                >
+                  <select
+                    aria-label={copy.wait}
+                    value={waitSeconds}
+                    onChange={(event) => setWaitSeconds(Number(event.target.value))}
+                  >
+                    {STUDIO_WAIT_SECONDS.map((seconds) => (
+                      <option key={seconds} value={seconds}>
+                        {seconds}s
+                      </option>
+                    ))}
+                  </select>
+                </KidsPaletteBlock>
+                <h3 id={studioCategoryId("motion")} tabIndex={-1}>
+                  {copy.paletteMotion}
+                </h3>
+                <KidsPaletteBlock
+                  tone="motion"
+                  actions={[
+                    {
+                      label: copy.move,
+                      block: "move",
+                      onAdd: () => add({ type: "move", steps: moveCells * 40 }),
+                    },
+                    {
+                      label: copy.moveBackward,
+                      block: "move",
+                      onAdd: () => add({ type: "move", steps: -moveCells * 40 }),
+                    },
+                  ]}
+                >
+                  <select
+                    aria-label={copy.move}
+                    value={moveCells}
+                    onChange={(event) => setMoveCells(Number(event.target.value))}
+                  >
+                    {STUDIO_MOVE_CELLS.map((count) => (
+                      <option key={count} value={count}>
+                        {count}
+                      </option>
+                    ))}
+                  </select>
+                </KidsPaletteBlock>
+                <KidsPaletteBlock
+                  tone="motion"
+                  actions={[
+                    {
+                      label: copy.goTo,
+                      disabled: targetOutOfRange,
+                      block: "goTo",
+                      onAdd: () => add({ type: "goTo", x: targetX, y: targetY }),
+                    },
+                    {
+                      label: `${copy.glideTo} (${waitSeconds}s)`,
+                      disabled: targetOutOfRange,
+                      block: "glideTo",
+                      onAdd: () =>
+                        add({ type: "glideTo", x: targetX, y: targetY, seconds: waitSeconds }),
+                    },
+                  ]}
+                >
+                  <input
+                    type="number"
+                    aria-label={copy.xCoordinate}
+                    min={STUDIO_X_RANGE.min}
+                    max={STUDIO_X_RANGE.max}
+                    step={1}
+                    value={targetX}
+                    onChange={(event) => setTargetX(Number(event.target.value))}
+                  />
+                  <input
+                    type="number"
+                    aria-label={copy.yCoordinate}
+                    min={STUDIO_Y_RANGE.min}
+                    max={STUDIO_Y_RANGE.max}
+                    step={1}
+                    value={targetY}
+                    onChange={(event) => setTargetY(Number(event.target.value))}
+                  />
+                </KidsPaletteBlock>
+                <KidsPaletteBlock
+                  tone="motion"
+                  actions={[
+                    {
+                      label: copy.turnLeft,
+                      block: "turn",
+                      onAdd: () => add({ type: "turn", degrees: -turnAmount }),
+                    },
+                    {
+                      label: copy.turnRight,
+                      block: "turn",
+                      onAdd: () => add({ type: "turn", degrees: turnAmount }),
+                    },
+                  ]}
+                >
+                  <select
+                    aria-label={copy.turnAmount}
+                    value={turnAmount}
+                    onChange={(event) => setTurnAmount(Number(event.target.value))}
+                  >
+                    {STUDIO_TURN_AMOUNTS.map((degrees) => (
+                      <option key={degrees} value={degrees}>
+                        {degrees}°
+                      </option>
+                    ))}
+                  </select>
+                </KidsPaletteBlock>
+                <KidsPaletteBlock
+                  tone="motion"
+                  actions={[
+                    {
+                      label: copy.pointDirection,
+                      block: "pointInDirection",
+                      onAdd: () => add({ type: "pointInDirection", degrees: pointDegrees }),
+                    },
+                  ]}
+                >
+                  <select
+                    aria-label={copy.pointDirection}
+                    value={pointDegrees}
+                    onChange={(event) => setPointDegrees(Number(event.target.value))}
+                  >
+                    {directionOptions.map((item) => (
+                      <option key={item.degrees} value={item.degrees}>
                         {item.name}
                       </option>
                     ))}
                   </select>
                 </KidsPaletteBlock>
-              ) : null}
-              <KidsPaletteBlock
-                tone="motion"
-                actions={[
-                  {
-                    label: copy.bounceOnEdge,
-                    block: "bounceOnEdge",
-                    onAdd: () => add({ type: "bounceOnEdge" }),
-                  },
-                ]}
-              />
-              <KidsPaletteBlock
-                tone="motion"
-                actions={[
-                  {
-                    label: copy.layerFront,
-                    block: "goToLayer",
-                    onAdd: () => add({ type: "goToLayer", layer: "front" }),
-                  },
-                ]}
-              />
-              <KidsPaletteBlock
-                tone="motion"
-                actions={[
-                  {
-                    label: copy.layerBack,
-                    block: "goToLayer",
-                    onAdd: () => add({ type: "goToLayer", layer: "back" }),
-                  },
-                ]}
-              />
-              <h3 id={studioCategoryId("media")} tabIndex={-1}>
-                {copy.paletteMedia}
-              </h3>
-              <KidsPaletteBlock
-                tone="looks"
-                actions={[
-                  {
-                    label: copy.costume,
-                    block: "switchCostume",
-                    onAdd: () => add({ type: "switchCostume", costumeId: `costume:${newCostume}` }),
-                  },
-                ]}
-              >
-                <select
-                  aria-label={copy.costume}
-                  value={newCostume}
-                  onChange={(event) => setNewCostume(event.target.value as KidsGalleryCharacterId)}
-                >
-                  {KIDS_GALLERY_CHARACTERS.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {galleryCharacterName(item.id, locale)}
-                    </option>
-                  ))}
-                </select>
-              </KidsPaletteBlock>
-              <KidsPaletteBlock
-                tone="looks"
-                actions={[
-                  {
-                    label: copy.switchBackdrop,
-                    block: "switchBackdrop",
-                    onAdd: () =>
-                      add({ type: "switchBackdrop", backdropId: `backdrop:${newBackdrop}` }),
-                  },
-                ]}
-              >
-                <select
-                  aria-label={copy.switchBackdrop}
-                  value={newBackdrop}
-                  onChange={(event) => setNewBackdrop(event.target.value as KidsGalleryBackdropId)}
-                >
-                  {KIDS_GALLERY_BACKDROPS.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {galleryBackdropName(item.id, locale)}
-                    </option>
-                  ))}
-                </select>
-              </KidsPaletteBlock>
-              <KidsPaletteBlock
-                tone="sound"
-                actions={[
-                  {
-                    label: copy.sound,
-                    block: "playSound",
-                    onAdd: () => add({ type: "playSound", soundId: newSound }),
-                  },
-                  {
-                    label: `▶ ${copy.sound}`,
-                    kind: "tool",
-                    onAdd: () =>
-                      void playKidsSound(newSound, {
-                        kind: "gallery",
-                        id: characterOfActor(activeActorId),
-                      }),
-                  },
-                ]}
-              >
-                <KidsSoundPicker
-                  locale={locale}
-                  value={newSound}
-                  onChoose={(id) => {
-                    setNewSound(id);
-                    void playKidsSound(id, {
-                      kind: "gallery",
-                      id: characterOfActor(activeActorId),
-                    });
-                  }}
-                />
-              </KidsPaletteBlock>
-              <KidsPaletteBlock
-                tone="sound"
-                actions={[
-                  {
-                    label: copy.stopSounds,
-                    block: "stopSounds",
-                    onAdd: () => add({ type: "stopSounds" }),
-                  },
-                ]}
-              />
-              <KidsPaletteBlock
-                tone="sound"
-                actions={[
-                  {
-                    label: copy.setVolume,
-                    disabled: !inStudioRange(volume, STUDIO_VOLUME_RANGE),
-                    block: "setVolume",
-                    onAdd: () => add({ type: "setVolume", volume }),
-                  },
-                ]}
-              >
-                <input
-                  type="number"
-                  aria-label={copy.volume}
-                  min={STUDIO_VOLUME_RANGE.min}
-                  max={STUDIO_VOLUME_RANGE.max}
-                  step={1}
-                  value={volume}
-                  onChange={(event) => setVolume(Number(event.target.value))}
-                />
-              </KidsPaletteBlock>
-              <KidsPaletteBlock
-                tone="sound"
-                actions={[
-                  {
-                    label: copy.changeVolume,
-                    disabled: !inStudioRange(volumeChange, STUDIO_VOLUME_DELTA_RANGE),
-                    block: "changeVolume",
-                    onAdd: () => add({ type: "changeVolume", delta: volumeChange }),
-                  },
-                ]}
-              >
-                <input
-                  type="number"
-                  aria-label={copy.volumeChange}
-                  min={STUDIO_VOLUME_DELTA_RANGE.min}
-                  max={STUDIO_VOLUME_DELTA_RANGE.max}
-                  step={1}
-                  value={volumeChange}
-                  onChange={(event) => setVolumeChange(Number(event.target.value))}
-                />
-              </KidsPaletteBlock>
-              <h3 id={studioCategoryId("logic")} tabIndex={-1}>
-                {copy.paletteLogic}
-              </h3>
-              <KidsPaletteBlock
-                tone="control"
-                actions={[
-                  {
-                    label: `${copy.repeat} → ${copy.thenMove}`,
-                    block: "repeat",
-                    onAdd: () =>
-                      add({
-                        type: "repeat",
-                        count: repeatCount,
-                        body: [{ type: "move", steps: 40 }],
-                      }),
-                  },
-                  {
-                    label: copy.groupRepeat,
-                    kind: "tool",
-                    disabled: (script?.statements.length ?? 0) < groupCount,
-                    onAdd: () => groupLast("repeat"),
-                  },
-                ]}
-              >
-                <label>
-                  {copy.repeat}{" "}
-                  <select
-                    aria-label={copy.repeat}
-                    value={repeatCount}
-                    onChange={(event) => setRepeatCount(Number(event.target.value))}
+                {pointTarget ? (
+                  <KidsPaletteBlock
+                    tone="motion"
+                    actions={[
+                      {
+                        label: copy.pointTowards,
+                        block: "pointTowards",
+                        onAdd: () => add({ type: "pointTowards", actorId: pointTarget.id }),
+                      },
+                    ]}
                   >
-                    {STUDIO_REPEAT_COUNTS.map((count) => (
-                      <option key={count} value={count}>
-                        {count}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  {copy.groupCount}{" "}
-                  <select
-                    aria-label={copy.groupCount}
-                    value={groupCount}
-                    onChange={(event) => setGroupCount(Number(event.target.value))}
-                  >
-                    {[1, 2, 3].map((count) => (
-                      <option key={count} value={count}>
-                        {count}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </KidsPaletteBlock>
-              <KidsPaletteBlock
-                tone="control"
-                actions={[
-                  {
-                    label: `${copy.forever} → ${copy.thenMove}`,
-                    disabled: containsForever(script?.statements ?? []),
-                    block: "forever",
-                    onAdd: () => add({ type: "forever", body: [{ type: "move", steps: 40 }] }),
-                  },
-                  {
-                    label: copy.groupForever,
-                    kind: "tool",
-                    disabled:
-                      containsForever(script?.statements ?? []) ||
-                      (script?.statements.length ?? 0) < groupCount,
-                    onAdd: () => groupLast("forever"),
-                  },
-                ]}
-              />
-              <h3 id={studioCategoryId("myBlocks")} tabIndex={-1}>
-                {copy.myBlocks}
-              </h3>
-              <label>
-                {copy.myBlockName}
-                <input
-                  type="text"
-                  maxLength={STUDIO_NAME_MAX_LENGTH}
-                  value={blockName}
-                  onChange={(event) => setBlockName(event.target.value)}
-                />
-              </label>
-              <label>
-                {copy.numberTitle}
-                <input
-                  type="text"
-                  maxLength={STUDIO_NAME_MAX_LENGTH}
-                  value={numberTitle}
-                  onChange={(event) => setNumberTitle(event.target.value)}
-                />
-              </label>
-              <button
-                type="button"
-                className="kids-button"
-                disabled={
-                  !numberTitle.trim() ||
-                  blockNumbers.length >= 3 ||
-                  blockNumbers.some(
-                    (item) => item.toLowerCase() === numberTitle.trim().toLowerCase(),
-                  )
-                }
-                onClick={() => {
-                  setBlockNumbers([...blockNumbers, numberTitle.trim()]);
-                  setNumberTitle("");
-                }}
-              >
-                {copy.addNumber}
-              </button>
-              {blockNumbers.map((title) => (
-                <button
-                  key={title}
-                  type="button"
-                  className="kids-button"
-                  aria-label={`${copy.removeNumber}: ${title}`}
-                  onClick={() => setBlockNumbers(blockNumbers.filter((item) => item !== title))}
-                >
-                  {title} ✕
-                </button>
-              ))}
-              <button
-                type="button"
-                className="kids-button"
-                disabled={!blockName.trim() || (script?.statements.length ?? 0) < groupCount}
-                onClick={() => {
-                  authorBlock(() =>
-                    createStudioProcedure(
-                      history,
-                      activeActorId,
-                      groupCount,
-                      blockName.trim(),
-                      blockNumbers,
-                    ),
-                  );
-                  setBlockName("");
-                  setBlockNumbers([]);
-                }}
-              >
-                {copy.makeBlock}
-              </button>
-              <ul className="kids-studio-my-blocks">
-                {script?.procedures?.map((item) => {
-                  const uses = studioProcedureUses(history.current, activeActorId, item.id);
-                  const draft = blockRenames[item.id] ?? item.name;
-                  return (
-                    <li key={item.id}>
-                      <strong>{item.name}</strong>
-                      {procedureBlocks(item, item.body, [])}
-                      {item.params?.map((param) => (
-                        <button
-                          key={param.id}
-                          type="button"
-                          className="kids-button"
-                          aria-label={`${copy.removeNumber}: ${param.name} (${item.name})`}
-                          onClick={() =>
-                            authorBlock(() =>
-                              removeStudioProcedureNumber(
-                                history,
-                                activeActorId,
-                                item.id,
-                                param.id,
-                              ),
-                            )
-                          }
-                        >
-                          {param.name} ✕
-                        </button>
-                      ))}
-                      {(item.params?.length ?? 0) < 3 ? (
-                        <>
-                          <label>
-                            {copy.numberTitle} ({item.name})
-                            <input
-                              type="text"
-                              maxLength={STUDIO_NAME_MAX_LENGTH}
-                              value={numberTitles[item.id] ?? ""}
-                              onChange={(event) =>
-                                setNumberTitles({ ...numberTitles, [item.id]: event.target.value })
-                              }
-                            />
-                          </label>
-                          <button
-                            type="button"
-                            className="kids-button"
-                            disabled={!(numberTitles[item.id] ?? "").trim()}
-                            onClick={() => {
-                              authorBlock(() =>
-                                addStudioProcedureNumber(
-                                  history,
-                                  activeActorId,
-                                  item.id,
-                                  (numberTitles[item.id] ?? "").trim(),
-                                ),
-                              );
-                              setNumberTitles({ ...numberTitles, [item.id]: "" });
-                            }}
-                          >
-                            {copy.addNumber}: {item.name}
-                          </button>
-                        </>
-                      ) : null}
-                      <button
-                        data-kids-block="callProcedure"
-                        type="button"
-                        className="kids-button"
-                        onClick={() => {
-                          const units = studioProcedureNumberUnits(item, script?.procedures);
-                          add({
-                            type: "callProcedure",
-                            procedureId: item.id,
-                            ...(item.params
-                              ? {
-                                  args: units.map((unit) => ({
-                                    type: "numericLiteral" as const,
-                                    value: STUDIO_NUMBER_DEFAULTS[unit],
-                                  })),
-                                }
-                              : {}),
-                          } as StudioStatement);
-                        }}
-                      >
-                        + {copy.useBlock}: {item.name}
-                      </button>
-                      {otherActors.length > 0 ? (
-                        <>
-                          <label>
-                            {copy.copyBlockTo} ({item.name})
-                            <select
-                              value={copyTargets[item.id] ?? otherActors[0]?.id ?? ""}
-                              onChange={(event) =>
-                                setCopyTargets({ ...copyTargets, [item.id]: event.target.value })
-                              }
-                            >
-                              {otherActors.map((other) => (
-                                <option key={other.id} value={other.id}>
-                                  {other.name}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                          <button
-                            type="button"
-                            className="kids-button"
-                            onClick={() =>
-                              authorBlock(() =>
-                                copyStudioProcedure(
-                                  history,
-                                  activeActorId,
-                                  item.id,
-                                  copyTargets[item.id] ?? otherActors[0]?.id ?? "",
-                                ),
-                              )
-                            }
-                          >
-                            {copy.copyBlockTo}: {item.name}
-                          </button>
-                        </>
-                      ) : null}
-                      <label>
-                        {copy.renameBlock}: {item.name}
-                        <input
-                          type="text"
-                          maxLength={STUDIO_NAME_MAX_LENGTH}
-                          value={draft}
-                          onChange={(event) =>
-                            setBlockRenames({ ...blockRenames, [item.id]: event.target.value })
-                          }
-                        />
-                      </label>
-                      <button
-                        type="button"
-                        className="kids-button"
-                        disabled={!draft.trim() || draft.trim() === item.name}
-                        onClick={() =>
-                          authorBlock(() =>
-                            renameStudioProcedure(history, activeActorId, item.id, draft.trim()),
-                          )
-                        }
-                      >
-                        {copy.renameBlock}
-                      </button>
-                      {blockToDelete === item.id ? (
-                        <div role="group" aria-label={`${copy.deleteBlock}: ${item.name}`}>
-                          <p>
-                            {copy.blockInUse} {uses} {copy.times}.
-                          </p>
-                          <button
-                            type="button"
-                            className="kids-button"
-                            onClick={() =>
-                              authorBlock(() =>
-                                deleteStudioProcedure(history, activeActorId, item.id, "inline"),
-                              )
-                            }
-                          >
-                            {copy.inlineAndDelete}
-                          </button>
-                          <button
-                            type="button"
-                            className="kids-button"
-                            onClick={() => setBlockToDelete(null)}
-                          >
-                            {copy.keepBlock}
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          className="kids-button"
-                          onClick={() =>
-                            uses > 0
-                              ? setBlockToDelete(item.id)
-                              : authorBlock(() =>
-                                  deleteStudioProcedure(history, activeActorId, item.id, "refuse"),
-                                )
-                          }
-                        >
-                          {copy.deleteBlock}: {item.name}
-                        </button>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-              <i hidden data-cat-start="logic" />
-              <button
-                type="button"
-                className="kids-button"
-                data-kids-block="if"
-                onClick={() =>
-                  add({
-                    type: "if",
-                    condition: STUDIO_EDGE_CONDITION,
-                    then: [{ type: "move", steps: 40 }],
-                  })
-                }
-              >
-                + {copy.ifTouchEdge}
-              </button>
-              <button
-                type="button"
-                className="kids-button"
-                data-kids-block="waitUntil"
-                onClick={() => add({ type: "waitUntil", condition: STUDIO_EDGE_CONDITION })}
-              >
-                + {copy.waitUntilEdge}
-              </button>
-              <label>
-                {copy.stop}{" "}
-                <select
-                  aria-label={copy.stop}
-                  value={stopScope}
-                  onChange={(event) =>
-                    setStopScope(event.target.value as "script" | "actor" | "scene")
-                  }
-                >
-                  <option value="script">{copy.stopScript}</option>
-                  <option value="actor">{copy.stopActor}</option>
-                  <option value="scene">{copy.stopScene}</option>
-                </select>
-              </label>
-              <button
-                type="button"
-                className="kids-button"
-                data-kids-block="stop"
-                onClick={() => add({ type: "stop", scope: stopScope })}
-              >
-                + {copy.stop}
-              </button>
-              <label>
-                {copy.askChoicePrompt}{" "}
-                <select
-                  value={choicePromptId}
-                  onChange={(event) => setChoicePromptId(event.target.value as ChoicePromptId)}
-                >
-                  {CHOICE_PROMPT_IDS.map((id) => (
-                    <option key={id} value={id}>
-                      {CHOICE_CATALOG[id].prompt[locale]}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {history.current.variables?.length ? (
-                <p className="kids-note">
-                  {copy.askChoiceVariable}:{" "}
-                  {history.current.variables.find((item) => item.id === selectedVariableId)?.name}
-                </p>
-              ) : null}
-              <button
-                type="button"
-                className="kids-button"
-                disabled={!history.current.variables?.length}
-                data-kids-block="askChoice"
-                onClick={() =>
-                  add({
-                    type: "askChoice",
-                    promptId: choicePromptId,
-                    variableId: selectedVariableId,
-                  })
-                }
-              >
-                + {copy.askChoice}
-              </button>
-              <button
-                type="button"
-                className="kids-button"
-                disabled={(script?.statements.length ?? 0) < groupCount}
-                onClick={() => groupLast("if", STUDIO_EDGE_CONDITION)}
-              >
-                {copy.groupIfTouchEdge}
-              </button>
-              <button
-                type="button"
-                className="kids-button"
-                disabled={(script?.statements.length ?? 0) < groupCount}
-                data-kids-block="repeatUntil"
-                onClick={() => groupLast("repeatUntil", STUDIO_EDGE_CONDITION)}
-              >
-                {copy.groupUntilEdge}
-              </button>
-              <label>
-                {copy.senseKey}{" "}
-                <select
-                  value={senseKey}
-                  onChange={(event) =>
-                    setSenseKey(event.target.value as (typeof STUDIO_KEYS)[number])
-                  }
-                >
-                  {STUDIO_KEYS.map((key) => (
-                    <option key={key} value={key}>
-                      {key}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <div role="group" aria-label={copy.heldKeys}>
-                <strong>{copy.heldKeys}</strong>
-                {STUDIO_KEYS.map((key) => (
-                  <label key={key}>
-                    <input
-                      type="checkbox"
-                      checked={heldKeys.includes(key)}
-                      onChange={(event) =>
-                        setHeldKeys(
-                          event.target.checked
-                            ? [...heldKeys, key]
-                            : heldKeys.filter((item) => item !== key),
-                        )
-                      }
-                    />{" "}
-                    {key}
-                  </label>
-                ))}
-              </div>
-              <button
-                type="button"
-                className="kids-button"
-                onClick={() =>
-                  add({
-                    type: "if",
-                    condition: { type: "keyDown", key: senseKey },
-                    then: [{ type: "move", steps: 40 }],
-                  })
-                }
-              >
-                + {copy.ifKeyDown}
-              </button>
-              <button
-                type="button"
-                className="kids-button"
-                onClick={() =>
-                  add({
-                    type: "if",
-                    condition: { type: "mouseDown" },
-                    then: [{ type: "move", steps: 40 }],
-                  })
-                }
-              >
-                + {copy.ifMouseDown}
-              </button>
-              <button
-                type="button"
-                className="kids-button"
-                disabled={(script?.statements.length ?? 0) < groupCount}
-                onClick={() => groupLast("if", { type: "keyDown", key: senseKey })}
-              >
-                {copy.groupIfKeyDown}
-              </button>
-              <label>
-                {copy.timerSeconds}{" "}
-                <select
-                  value={timerSeconds}
-                  onChange={(event) => setTimerSeconds(Number(event.target.value))}
-                >
-                  {[1, 2, 3, 5, 10].map((seconds) => (
-                    <option key={seconds} value={seconds}>
-                      {seconds}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button
-                type="button"
-                className="kids-button"
-                disabled={(script?.statements.length ?? 0) < groupCount}
-                onClick={() =>
-                  groupLast("repeatUntil", {
-                    type: "greaterThan",
-                    left: { type: "timer" },
-                    right: { type: "numericLiteral", value: timerSeconds },
-                  } as Expression)
-                }
-              >
-                {copy.groupUntilTimer}
-              </button>
-              <div role="group" aria-label={copy.compoundTitle} className="kids-studio-compound">
-                <strong>{copy.compoundTitle}</strong>
-                {(
-                  [
-                    [copy.compoundFirst, compoundA, setCompoundA],
-                    [copy.compoundSecond, compoundB, setCompoundB],
-                  ] as const
-                ).map(([label, value, setValue], index) => (
-                  <label key={label}>
-                    {label}{" "}
                     <select
-                      value={value}
-                      disabled={index === 1 && compoundJoin === "none"}
-                      onChange={(event) => setValue(event.target.value as ConditionPreset)}
-                    >
-                      <option value="key">{copy.presetKey}</option>
-                      <option value="mouse">{copy.presetMouse}</option>
-                      <option value="edge">{copy.presetEdge}</option>
-                      {otherActors.length > 0 ? (
-                        <option value="touch">{copy.presetTouch}</option>
-                      ) : null}
-                      <option value="timer">{copy.presetTimer}</option>
-                    </select>
-                  </label>
-                ))}
-                <label>
-                  {copy.compoundJoin}{" "}
-                  <select
-                    value={compoundJoin}
-                    onChange={(event) => setCompoundJoin(event.target.value as typeof compoundJoin)}
-                  >
-                    <option value="and">{copy.compoundAnd}</option>
-                    <option value="or">{copy.compoundOr}</option>
-                    <option value="none">{copy.compoundNone}</option>
-                  </select>
-                </label>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={compoundNot}
-                    onChange={(event) => setCompoundNot(event.target.checked)}
-                  />
-                  {copy.compoundNot}
-                </label>
-                <button
-                  type="button"
-                  className="kids-button"
-                  data-testid="compound-if"
-                  disabled={compoundCondition() === null}
-                  onClick={() => {
-                    const joined = compoundCondition();
-                    if (joined)
-                      add({ type: "if", condition: joined, then: [{ type: "move", steps: 40 }] });
-                  }}
-                >
-                  + {copy.compoundAdd}:{" "}
-                  {compoundCondition()
-                    ? expressionLabel(compoundCondition()!, history.current, locale)
-                    : ""}{" "}
-                  → {copy.thenMove}
-                </button>
-                <button
-                  type="button"
-                  className="kids-button"
-                  data-testid="compound-wait-until"
-                  disabled={compoundCondition() === null}
-                  onClick={() => {
-                    const joined = compoundCondition();
-                    if (joined) add({ type: "waitUntil", condition: joined });
-                  }}
-                >
-                  + {copy.waitUntil}:{" "}
-                  {compoundCondition()
-                    ? expressionLabel(compoundCondition()!, history.current, locale)
-                    : ""}
-                </button>
-                <button
-                  type="button"
-                  className="kids-button"
-                  disabled={
-                    compoundCondition() === null || (script?.statements.length ?? 0) < groupCount
-                  }
-                  onClick={() => {
-                    const joined = compoundCondition();
-                    if (joined) groupLast("if", joined);
-                  }}
-                >
-                  {copy.compoundGroup}
-                </button>
-                {oriSuggestions ? (
-                  <>
-                    <button
-                      type="button"
-                      className="kids-button"
-                      disabled={!script || script.statements.length >= 60}
-                      onClick={askOriCompound}
-                    >
-                      {locale === "es"
-                        ? "Pedirle a Ori una combinación"
-                        : "Ask Ori for a combination"}
-                    </button>
-                    {compoundOri && compoundReview ? (
-                      <div className="kids-ori-proposal" data-testid="ori-compound-proposal">
-                        <p>{explainOriCompound(compoundOri.join, locale)}</p>
-                        <p className="kids-note">
-                          {locale === "es"
-                            ? "Idea de Ori: todavía no está en tu programa. Revisá el bloque antes de decidir."
-                            : "Ori's idea is not in your program yet. Review the block before deciding."}
-                        </p>
-                        <strong>
-                          + {copy.compoundAdd}:{" "}
-                          {expressionLabel(
-                            (
-                              oriCompoundStatement(compoundOri.join) as Extract<
-                                Statement,
-                                { type: "if" }
-                              >
-                            ).condition,
-                            history.current,
-                            locale,
-                          )}{" "}
-                          → {copy.thenMove}
-                        </strong>
-                        <div>
-                          <button
-                            type="button"
-                            className="kids-button kids-primary"
-                            onClick={() => decideOriCompound("accept")}
-                          >
-                            {copy.use}
-                          </button>
-                          <button
-                            type="button"
-                            className="kids-button"
-                            onClick={() => decideOriCompound("change")}
-                          >
-                            {copy.change}
-                          </button>
-                          <button
-                            type="button"
-                            className="kids-button"
-                            onClick={() => decideOriCompound("reject")}
-                          >
-                            {copy.reject}
-                          </button>
-                        </div>
-                      </div>
-                    ) : null}
-                  </>
-                ) : null}
-              </div>
-              {penEnabled ? (
-                <div role="group" aria-label={copy.penTitle}>
-                  <strong id={studioCategoryId("pen")} tabIndex={-1}>
-                    {copy.penTitle}
-                  </strong>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    data-kids-block="penDown"
-                    onClick={() => add({ type: "penDown" })}
-                  >
-                    + {copy.penDown}
-                  </button>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    data-kids-block="penUp"
-                    onClick={() => add({ type: "penUp" })}
-                  >
-                    + {copy.penUp}
-                  </button>
-                  <label>
-                    {copy.penColor}{" "}
-                    <select
-                      value={penColor}
-                      onChange={(event) => setPenColor(event.target.value as PenColor)}
-                    >
-                      {PEN_COLORS.map((color) => (
-                        <option key={color} value={color}>
-                          {copy.penColors[color]}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    data-kids-block="setPenColor"
-                    onClick={() => add({ type: "setPenColor", color: penColor })}
-                  >
-                    + {copy.penColor}
-                  </button>
-                  <label>
-                    {copy.penSize}{" "}
-                    <select
-                      value={penSize}
-                      onChange={(event) => setPenSize(Number(event.target.value))}
-                    >
-                      {STUDIO_PEN_SIZES.map((size) => (
-                        <option key={size} value={size}>
-                          {size}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    data-kids-block="setPenSize"
-                    onClick={() => add({ type: "setPenSize", size: penSize })}
-                  >
-                    + {copy.penSize}
-                  </button>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    data-kids-block="clearPen"
-                    onClick={() => add({ type: "clearPen" })}
-                  >
-                    + {copy.clearPen}
-                  </button>
-                </div>
-              ) : null}
-              {musicEnabled ? (
-                <div role="group" aria-label={copy.musicTitle}>
-                  <strong id={studioCategoryId("music")} tabIndex={-1}>
-                    {copy.musicTitle}
-                  </strong>
-                  <label>
-                    {copy.noteLabel}{" "}
-                    <select
-                      value={musicNote}
-                      onChange={(event) => setMusicNote(Number(event.target.value))}
-                    >
-                      {STUDIO_NOTES.map((note) => (
-                        <option key={note} value={note}>
-                          {noteName(note, locale)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    {copy.beatsLabel}{" "}
-                    <select
-                      value={musicBeats}
-                      onChange={(event) => setMusicBeats(Number(event.target.value) as MusicBeats)}
-                    >
-                      {MUSIC_BEATS.map((beats) => (
-                        <option key={beats} value={beats}>
-                          {beats}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    data-kids-block="playNote"
-                    onClick={() => add({ type: "playNote", note: musicNote, beats: musicBeats })}
-                  >
-                    + {copy.playNote}
-                  </button>
-                  <label>
-                    {copy.playDrum}{" "}
-                    <select
-                      value={musicDrum}
-                      onChange={(event) => setMusicDrum(event.target.value as MusicDrum)}
-                    >
-                      {MUSIC_DRUMS.map((drum) => (
-                        <option key={drum} value={drum}>
-                          {copy.drums[drum]}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    data-kids-block="playDrum"
-                    onClick={() => add({ type: "playDrum", drum: musicDrum, beats: musicBeats })}
-                  >
-                    + {copy.playDrum}
-                  </button>
-                  <label>
-                    {copy.setInstrument}{" "}
-                    <select
-                      value={musicInstrument}
-                      onChange={(event) =>
-                        setMusicInstrument(event.target.value as MusicInstrument)
-                      }
-                    >
-                      {MUSIC_INSTRUMENTS.map((instrument) => (
-                        <option key={instrument} value={instrument}>
-                          {copy.instruments[instrument]}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    data-kids-block="setInstrument"
-                    onClick={() => add({ type: "setInstrument", instrument: musicInstrument })}
-                  >
-                    + {copy.setInstrument}
-                  </button>
-                  <label>
-                    {copy.setTempo}{" "}
-                    <select
-                      value={musicTempo}
-                      onChange={(event) => setMusicTempo(Number(event.target.value))}
-                    >
-                      {STUDIO_TEMPOS.map((bpm) => (
-                        <option key={bpm} value={bpm}>
-                          {bpm}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    data-kids-block="setTempo"
-                    onClick={() => add({ type: "setTempo", bpm: musicTempo })}
-                  >
-                    + {copy.setTempo}
-                  </button>
-                  <label>
-                    {copy.setPitch}{" "}
-                    <select
-                      value={musicPitch}
-                      onChange={(event) => setMusicPitch(Number(event.target.value))}
-                    >
-                      {STUDIO_PITCHES.map((semitones) => (
-                        <option key={semitones} value={semitones}>
-                          {semitones}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    data-kids-block="setPitch"
-                    onClick={() => add({ type: "setPitch", semitones: musicPitch })}
-                  >
-                    + {copy.setPitch}
-                  </button>
-                  <label>
-                    {copy.setPan}{" "}
-                    <select
-                      value={musicPan}
-                      onChange={(event) => setMusicPan(Number(event.target.value))}
-                    >
-                      {STUDIO_PANS.map((pan) => (
-                        <option key={pan} value={pan}>
-                          {pan}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    data-kids-block="setPan"
-                    onClick={() => add({ type: "setPan", pan: musicPan })}
-                  >
-                    + {copy.setPan}
-                  </button>
-                </div>
-              ) : null}
-              <i hidden data-cat-start="logic" />
-              {targetActorId ? (
-                <>
-                  <label>
-                    {copy.touchActor}{" "}
-                    <select
-                      value={targetActorId}
-                      onChange={(event) => setSensorTargetId(event.target.value)}
+                      aria-label={copy.pointTowards}
+                      value={pointTarget.id}
+                      onChange={(event) => setPointTargetId(event.target.value)}
                     >
                       {otherActors.map((item) => (
                         <option key={item.id} value={item.id}>
@@ -5950,1112 +4942,2197 @@ export function KidsStudioScreen({
                         </option>
                       ))}
                     </select>
+                  </KidsPaletteBlock>
+                ) : null}
+                <KidsPaletteBlock
+                  tone="motion"
+                  actions={[
+                    {
+                      label: copy.bounceOnEdge,
+                      block: "bounceOnEdge",
+                      onAdd: () => add({ type: "bounceOnEdge" }),
+                    },
+                  ]}
+                />
+                <KidsPaletteBlock
+                  tone="motion"
+                  actions={[
+                    {
+                      label: copy.layerFront,
+                      block: "goToLayer",
+                      onAdd: () => add({ type: "goToLayer", layer: "front" }),
+                    },
+                  ]}
+                />
+                <KidsPaletteBlock
+                  tone="motion"
+                  actions={[
+                    {
+                      label: copy.layerBack,
+                      block: "goToLayer",
+                      onAdd: () => add({ type: "goToLayer", layer: "back" }),
+                    },
+                  ]}
+                />
+                <h3 id={studioCategoryId("media")} tabIndex={-1}>
+                  {copy.paletteMedia}
+                </h3>
+                <KidsPaletteBlock
+                  tone="looks"
+                  actions={[
+                    {
+                      label: copy.costume,
+                      block: "switchCostume",
+                      onAdd: () =>
+                        add({ type: "switchCostume", costumeId: `costume:${newCostume}` }),
+                    },
+                  ]}
+                >
+                  <select
+                    aria-label={copy.costume}
+                    value={newCostume}
+                    onChange={(event) =>
+                      setNewCostume(event.target.value as KidsGalleryCharacterId)
+                    }
+                  >
+                    {KIDS_GALLERY_CHARACTERS.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {galleryCharacterName(item.id, locale)}
+                      </option>
+                    ))}
+                  </select>
+                </KidsPaletteBlock>
+                <KidsPaletteBlock
+                  tone="looks"
+                  actions={[
+                    {
+                      label: copy.switchBackdrop,
+                      block: "switchBackdrop",
+                      onAdd: () =>
+                        add({ type: "switchBackdrop", backdropId: `backdrop:${newBackdrop}` }),
+                    },
+                  ]}
+                >
+                  <select
+                    aria-label={copy.switchBackdrop}
+                    value={newBackdrop}
+                    onChange={(event) =>
+                      setNewBackdrop(event.target.value as KidsGalleryBackdropId)
+                    }
+                  >
+                    {KIDS_GALLERY_BACKDROPS.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {galleryBackdropName(item.id, locale)}
+                      </option>
+                    ))}
+                  </select>
+                </KidsPaletteBlock>
+                <KidsPaletteBlock
+                  tone="sound"
+                  actions={[
+                    {
+                      label: copy.sound,
+                      block: "playSound",
+                      onAdd: () => add({ type: "playSound", soundId: newSound }),
+                    },
+                    {
+                      label: `▶ ${copy.sound}`,
+                      kind: "tool",
+                      onAdd: () =>
+                        void playKidsSound(newSound, {
+                          kind: "gallery",
+                          id: characterOfActor(activeActorId),
+                        }),
+                    },
+                  ]}
+                >
+                  <KidsSoundPicker
+                    locale={locale}
+                    value={newSound}
+                    onChoose={(id) => {
+                      setNewSound(id);
+                      void playKidsSound(id, {
+                        kind: "gallery",
+                        id: characterOfActor(activeActorId),
+                      });
+                    }}
+                  />
+                </KidsPaletteBlock>
+                <KidsPaletteBlock
+                  tone="sound"
+                  actions={[
+                    {
+                      label: copy.stopSounds,
+                      block: "stopSounds",
+                      onAdd: () => add({ type: "stopSounds" }),
+                    },
+                  ]}
+                />
+                <KidsPaletteBlock
+                  tone="sound"
+                  actions={[
+                    {
+                      label: copy.setVolume,
+                      disabled: !inStudioRange(volume, STUDIO_VOLUME_RANGE),
+                      block: "setVolume",
+                      onAdd: () => add({ type: "setVolume", volume }),
+                    },
+                  ]}
+                >
+                  <input
+                    type="number"
+                    aria-label={copy.volume}
+                    min={STUDIO_VOLUME_RANGE.min}
+                    max={STUDIO_VOLUME_RANGE.max}
+                    step={1}
+                    value={volume}
+                    onChange={(event) => setVolume(Number(event.target.value))}
+                  />
+                </KidsPaletteBlock>
+                <KidsPaletteBlock
+                  tone="sound"
+                  actions={[
+                    {
+                      label: copy.changeVolume,
+                      disabled: !inStudioRange(volumeChange, STUDIO_VOLUME_DELTA_RANGE),
+                      block: "changeVolume",
+                      onAdd: () => add({ type: "changeVolume", delta: volumeChange }),
+                    },
+                  ]}
+                >
+                  <input
+                    type="number"
+                    aria-label={copy.volumeChange}
+                    min={STUDIO_VOLUME_DELTA_RANGE.min}
+                    max={STUDIO_VOLUME_DELTA_RANGE.max}
+                    step={1}
+                    value={volumeChange}
+                    onChange={(event) => setVolumeChange(Number(event.target.value))}
+                  />
+                </KidsPaletteBlock>
+                <h3 id={studioCategoryId("logic")} tabIndex={-1}>
+                  {copy.paletteLogic}
+                </h3>
+                <KidsPaletteBlock
+                  tone="control"
+                  actions={[
+                    {
+                      label: `${copy.repeat} → ${copy.thenMove}`,
+                      block: "repeat",
+                      onAdd: () =>
+                        add({
+                          type: "repeat",
+                          count: repeatCount,
+                          body: [{ type: "move", steps: 40 }],
+                        }),
+                    },
+                    {
+                      label: copy.groupRepeat,
+                      kind: "tool",
+                      disabled: (script?.statements.length ?? 0) < groupCount,
+                      onAdd: () => groupLast("repeat"),
+                    },
+                  ]}
+                >
+                  <label>
+                    {copy.repeat}{" "}
+                    <select
+                      aria-label={copy.repeat}
+                      value={repeatCount}
+                      onChange={(event) => setRepeatCount(Number(event.target.value))}
+                    >
+                      {STUDIO_REPEAT_COUNTS.map((count) => (
+                        <option key={count} value={count}>
+                          {count}
+                        </option>
+                      ))}
+                    </select>
                   </label>
+                  <label>
+                    {copy.groupCount}{" "}
+                    <select
+                      aria-label={copy.groupCount}
+                      value={groupCount}
+                      onChange={(event) => setGroupCount(Number(event.target.value))}
+                    >
+                      {[1, 2, 3].map((count) => (
+                        <option key={count} value={count}>
+                          {count}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </KidsPaletteBlock>
+                <KidsPaletteBlock
+                  tone="control"
+                  actions={[
+                    {
+                      label: `${copy.forever} → ${copy.thenMove}`,
+                      disabled: containsForever(script?.statements ?? []),
+                      block: "forever",
+                      onAdd: () => add({ type: "forever", body: [{ type: "move", steps: 40 }] }),
+                    },
+                    {
+                      label: copy.groupForever,
+                      kind: "tool",
+                      disabled:
+                        containsForever(script?.statements ?? []) ||
+                        (script?.statements.length ?? 0) < groupCount,
+                      onAdd: () => groupLast("forever"),
+                    },
+                  ]}
+                />
+                <h3 id={studioCategoryId("myBlocks")} tabIndex={-1}>
+                  {copy.myBlocks}
+                </h3>
+                <label>
+                  {copy.myBlockName}
+                  <input
+                    type="text"
+                    maxLength={STUDIO_NAME_MAX_LENGTH}
+                    value={blockName}
+                    onChange={(event) => setBlockName(event.target.value)}
+                  />
+                </label>
+                <label>
+                  {copy.numberTitle}
+                  <input
+                    type="text"
+                    maxLength={STUDIO_NAME_MAX_LENGTH}
+                    value={numberTitle}
+                    onChange={(event) => setNumberTitle(event.target.value)}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="kids-button"
+                  disabled={
+                    !numberTitle.trim() ||
+                    blockNumbers.length >= 3 ||
+                    blockNumbers.some(
+                      (item) => item.toLowerCase() === numberTitle.trim().toLowerCase(),
+                    )
+                  }
+                  onClick={() => {
+                    setBlockNumbers([...blockNumbers, numberTitle.trim()]);
+                    setNumberTitle("");
+                  }}
+                >
+                  {copy.addNumber}
+                </button>
+                {blockNumbers.map((title) => (
                   <button
+                    key={title}
                     type="button"
                     className="kids-button"
-                    onClick={() =>
-                      add({
-                        type: "if",
-                        condition: { type: "touchingActor", actorId: targetActorId },
-                        then: [{ type: "move", steps: 40 }],
-                      })
-                    }
+                    aria-label={`${copy.removeNumber}: ${title}`}
+                    onClick={() => setBlockNumbers(blockNumbers.filter((item) => item !== title))}
                   >
-                    + {copy.ifTouchActor}
+                    {title} ✕
                   </button>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    disabled={(script?.statements.length ?? 0) < groupCount}
-                    onClick={() =>
-                      groupLast("if", { type: "touchingActor", actorId: targetActorId })
-                    }
-                  >
-                    {copy.groupIfTouchActor}
-                  </button>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    disabled={(script?.statements.length ?? 0) < groupCount}
-                    onClick={() =>
-                      groupLast("repeatUntil", { type: "touchingActor", actorId: targetActorId })
-                    }
-                  >
-                    {copy.groupUntilActor}
-                  </button>
-                </>
-              ) : null}
-              <label>
-                {copy.message}{" "}
-                <select
-                  value={eventMessage}
-                  onChange={(event) =>
-                    setEventMessage(event.target.value as (typeof STUDIO_MESSAGES)[number])
+                ))}
+                <button
+                  type="button"
+                  className="kids-button"
+                  disabled={!blockName.trim() || (script?.statements.length ?? 0) < groupCount}
+                  onClick={() => {
+                    authorBlock(() =>
+                      createStudioProcedure(
+                        history,
+                        activeActorId,
+                        groupCount,
+                        blockName.trim(),
+                        blockNumbers,
+                      ),
+                    );
+                    setBlockName("");
+                    setBlockNumbers([]);
+                  }}
+                >
+                  {copy.makeBlock}
+                </button>
+                <ul className="kids-studio-my-blocks">
+                  {script?.procedures?.map((item) => {
+                    const uses = studioProcedureUses(history.current, activeActorId, item.id);
+                    const draft = blockRenames[item.id] ?? item.name;
+                    return (
+                      <li key={item.id}>
+                        <strong>{item.name}</strong>
+                        {procedureBlocks(item, item.body, [])}
+                        {item.params?.map((param) => (
+                          <button
+                            key={param.id}
+                            type="button"
+                            className="kids-button"
+                            aria-label={`${copy.removeNumber}: ${param.name} (${item.name})`}
+                            onClick={() =>
+                              authorBlock(() =>
+                                removeStudioProcedureNumber(
+                                  history,
+                                  activeActorId,
+                                  item.id,
+                                  param.id,
+                                ),
+                              )
+                            }
+                          >
+                            {param.name} ✕
+                          </button>
+                        ))}
+                        {(item.params?.length ?? 0) < 3 ? (
+                          <>
+                            <label>
+                              {copy.numberTitle} ({item.name})
+                              <input
+                                type="text"
+                                maxLength={STUDIO_NAME_MAX_LENGTH}
+                                value={numberTitles[item.id] ?? ""}
+                                onChange={(event) =>
+                                  setNumberTitles({
+                                    ...numberTitles,
+                                    [item.id]: event.target.value,
+                                  })
+                                }
+                              />
+                            </label>
+                            <button
+                              type="button"
+                              className="kids-button"
+                              disabled={!(numberTitles[item.id] ?? "").trim()}
+                              onClick={() => {
+                                authorBlock(() =>
+                                  addStudioProcedureNumber(
+                                    history,
+                                    activeActorId,
+                                    item.id,
+                                    (numberTitles[item.id] ?? "").trim(),
+                                  ),
+                                );
+                                setNumberTitles({ ...numberTitles, [item.id]: "" });
+                              }}
+                            >
+                              {copy.addNumber}: {item.name}
+                            </button>
+                          </>
+                        ) : null}
+                        <button
+                          data-kids-block="callProcedure"
+                          type="button"
+                          className="kids-button"
+                          onClick={() => {
+                            const units = studioProcedureNumberUnits(item, script?.procedures);
+                            add({
+                              type: "callProcedure",
+                              procedureId: item.id,
+                              ...(item.params
+                                ? {
+                                    args: units.map((unit) => ({
+                                      type: "numericLiteral" as const,
+                                      value: STUDIO_NUMBER_DEFAULTS[unit],
+                                    })),
+                                  }
+                                : {}),
+                            } as StudioStatement);
+                          }}
+                        >
+                          + {copy.useBlock}: {item.name}
+                        </button>
+                        {otherActors.length > 0 ? (
+                          <>
+                            <label>
+                              {copy.copyBlockTo} ({item.name})
+                              <select
+                                value={copyTargets[item.id] ?? otherActors[0]?.id ?? ""}
+                                onChange={(event) =>
+                                  setCopyTargets({ ...copyTargets, [item.id]: event.target.value })
+                                }
+                              >
+                                {otherActors.map((other) => (
+                                  <option key={other.id} value={other.id}>
+                                    {other.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                            <button
+                              type="button"
+                              className="kids-button"
+                              onClick={() =>
+                                authorBlock(() =>
+                                  copyStudioProcedure(
+                                    history,
+                                    activeActorId,
+                                    item.id,
+                                    copyTargets[item.id] ?? otherActors[0]?.id ?? "",
+                                  ),
+                                )
+                              }
+                            >
+                              {copy.copyBlockTo}: {item.name}
+                            </button>
+                          </>
+                        ) : null}
+                        <label>
+                          {copy.renameBlock}: {item.name}
+                          <input
+                            type="text"
+                            maxLength={STUDIO_NAME_MAX_LENGTH}
+                            value={draft}
+                            onChange={(event) =>
+                              setBlockRenames({ ...blockRenames, [item.id]: event.target.value })
+                            }
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          className="kids-button"
+                          disabled={!draft.trim() || draft.trim() === item.name}
+                          onClick={() =>
+                            authorBlock(() =>
+                              renameStudioProcedure(history, activeActorId, item.id, draft.trim()),
+                            )
+                          }
+                        >
+                          {copy.renameBlock}
+                        </button>
+                        {blockToDelete === item.id ? (
+                          <div role="group" aria-label={`${copy.deleteBlock}: ${item.name}`}>
+                            <p>
+                              {copy.blockInUse} {uses} {copy.times}.
+                            </p>
+                            <button
+                              type="button"
+                              className="kids-button"
+                              onClick={() =>
+                                authorBlock(() =>
+                                  deleteStudioProcedure(history, activeActorId, item.id, "inline"),
+                                )
+                              }
+                            >
+                              {copy.inlineAndDelete}
+                            </button>
+                            <button
+                              type="button"
+                              className="kids-button"
+                              onClick={() => setBlockToDelete(null)}
+                            >
+                              {copy.keepBlock}
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            className="kids-button"
+                            onClick={() =>
+                              uses > 0
+                                ? setBlockToDelete(item.id)
+                                : authorBlock(() =>
+                                    deleteStudioProcedure(
+                                      history,
+                                      activeActorId,
+                                      item.id,
+                                      "refuse",
+                                    ),
+                                  )
+                            }
+                          >
+                            {copy.deleteBlock}: {item.name}
+                          </button>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+                <i hidden data-cat-start="logic" />
+                <button
+                  type="button"
+                  className="kids-button"
+                  data-kids-block="if"
+                  onClick={() =>
+                    add({
+                      type: "if",
+                      condition: STUDIO_EDGE_CONDITION,
+                      then: [{ type: "move", steps: 40 }],
+                    })
                   }
                 >
-                  {STUDIO_MESSAGES.map((message) => (
-                    <option key={message} value={message}>
-                      {message}
-                    </option>
+                  + {copy.ifTouchEdge}
+                </button>
+                <button
+                  type="button"
+                  className="kids-button"
+                  data-kids-block="waitUntil"
+                  onClick={() => add({ type: "waitUntil", condition: STUDIO_EDGE_CONDITION })}
+                >
+                  + {copy.waitUntilEdge}
+                </button>
+                <label>
+                  {copy.stop}{" "}
+                  <select
+                    aria-label={copy.stop}
+                    value={stopScope}
+                    onChange={(event) =>
+                      setStopScope(event.target.value as "script" | "actor" | "scene")
+                    }
+                  >
+                    <option value="script">{copy.stopScript}</option>
+                    <option value="actor">{copy.stopActor}</option>
+                    <option value="scene">{copy.stopScene}</option>
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  className="kids-button"
+                  data-kids-block="stop"
+                  onClick={() => add({ type: "stop", scope: stopScope })}
+                >
+                  + {copy.stop}
+                </button>
+                <label>
+                  {copy.askChoicePrompt}{" "}
+                  <select
+                    value={choicePromptId}
+                    onChange={(event) => setChoicePromptId(event.target.value as ChoicePromptId)}
+                  >
+                    {CHOICE_PROMPT_IDS.map((id) => (
+                      <option key={id} value={id}>
+                        {CHOICE_CATALOG[id].prompt[locale]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {history.current.variables?.length ? (
+                  <p className="kids-note">
+                    {copy.askChoiceVariable}:{" "}
+                    {history.current.variables.find((item) => item.id === selectedVariableId)?.name}
+                  </p>
+                ) : null}
+                <button
+                  type="button"
+                  className="kids-button"
+                  disabled={!history.current.variables?.length}
+                  data-kids-block="askChoice"
+                  onClick={() =>
+                    add({
+                      type: "askChoice",
+                      promptId: choicePromptId,
+                      variableId: selectedVariableId,
+                    })
+                  }
+                >
+                  + {copy.askChoice}
+                </button>
+                <button
+                  type="button"
+                  className="kids-button"
+                  disabled={(script?.statements.length ?? 0) < groupCount}
+                  onClick={() => groupLast("if", STUDIO_EDGE_CONDITION)}
+                >
+                  {copy.groupIfTouchEdge}
+                </button>
+                <button
+                  type="button"
+                  className="kids-button"
+                  disabled={(script?.statements.length ?? 0) < groupCount}
+                  data-kids-block="repeatUntil"
+                  onClick={() => groupLast("repeatUntil", STUDIO_EDGE_CONDITION)}
+                >
+                  {copy.groupUntilEdge}
+                </button>
+                <label>
+                  {copy.senseKey}{" "}
+                  <select
+                    value={senseKey}
+                    onChange={(event) =>
+                      setSenseKey(event.target.value as (typeof STUDIO_KEYS)[number])
+                    }
+                  >
+                    {STUDIO_KEYS.map((key) => (
+                      <option key={key} value={key}>
+                        {key}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div role="group" aria-label={copy.heldKeys}>
+                  <strong>{copy.heldKeys}</strong>
+                  {STUDIO_KEYS.map((key) => (
+                    <label key={key}>
+                      <input
+                        type="checkbox"
+                        checked={heldKeys.includes(key)}
+                        onChange={(event) =>
+                          setHeldKeys(
+                            event.target.checked
+                              ? [...heldKeys, key]
+                              : heldKeys.filter((item) => item !== key),
+                          )
+                        }
+                      />{" "}
+                      {key}
+                    </label>
                   ))}
-                </select>
-              </label>
-              <button
-                type="button"
-                className="kids-button"
-                data-kids-block="broadcast"
-                onClick={() => add({ type: "broadcast", message: eventMessage })}
-              >
-                + {copy.message}
-              </button>
-              <h3 id={studioCategoryId("data")} tabIndex={-1}>
-                {copy.paletteData}
-              </h3>
-              <label>
-                {copy.dataName}{" "}
-                <input
-                  type="text"
-                  maxLength={STUDIO_NAME_MAX_LENGTH}
-                  value={dataName}
-                  onChange={(event) => setDataName(event.target.value)}
-                />
-              </label>
-              <button
-                type="button"
-                className="kids-button"
-                disabled={!dataName.trim() || (history.current.variables?.length ?? 0) >= 3}
-                onClick={() => createData("variable")}
-              >
-                + {copy.newVariable}
-              </button>
-              <button
-                type="button"
-                className="kids-button"
-                disabled={!dataName.trim() || (history.current.lists?.length ?? 0) >= 3}
-                onClick={() => createData("list")}
-              >
-                + {copy.newList}
-              </button>
-              <label>
-                {copy.number}{" "}
-                <input
-                  type="number"
-                  min={-100}
-                  max={100}
-                  step={1}
-                  value={dataValue}
-                  onChange={(event) => setDataValue(Number(event.target.value))}
-                />
-              </label>
-              {history.current.variables?.length ? (
-                <>
-                  <label>
-                    {copy.variable}{" "}
-                    <select
-                      value={
-                        history.current.variables.some((item) => item.id === variableId)
-                          ? variableId
-                          : history.current.variables[0]!.id
-                      }
-                      onChange={(event) => setVariableId(event.target.value)}
-                    >
-                      {history.current.variables.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    disabled={!Number.isInteger(dataValue) || Math.abs(dataValue) > 100}
-                    data-kids-block="setVariable"
-                    onClick={() =>
-                      add({
-                        type: "setVariable",
-                        variableId,
-                        value: { type: "numericLiteral", value: dataValue },
-                      })
-                    }
+                </div>
+                <button
+                  type="button"
+                  className="kids-button"
+                  onClick={() =>
+                    add({
+                      type: "if",
+                      condition: { type: "keyDown", key: senseKey },
+                      then: [{ type: "move", steps: 40 }],
+                    })
+                  }
+                >
+                  + {copy.ifKeyDown}
+                </button>
+                <button
+                  type="button"
+                  className="kids-button"
+                  onClick={() =>
+                    add({
+                      type: "if",
+                      condition: { type: "mouseDown" },
+                      then: [{ type: "move", steps: 40 }],
+                    })
+                  }
+                >
+                  + {copy.ifMouseDown}
+                </button>
+                <button
+                  type="button"
+                  className="kids-button"
+                  disabled={(script?.statements.length ?? 0) < groupCount}
+                  onClick={() => groupLast("if", { type: "keyDown", key: senseKey })}
+                >
+                  {copy.groupIfKeyDown}
+                </button>
+                <label>
+                  {copy.timerSeconds}{" "}
+                  <select
+                    value={timerSeconds}
+                    onChange={(event) => setTimerSeconds(Number(event.target.value))}
                   >
-                    + {copy.setVariable}
-                  </button>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    onClick={() =>
-                      add({
-                        type: "setVariable",
-                        variableId: selectedVariableId,
-                        value: { type: "xPosition" },
-                      })
-                    }
-                  >
-                    + {copy.saveX}
-                  </button>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    onClick={() =>
-                      add({
-                        type: "setVariable",
-                        variableId: selectedVariableId,
-                        value: { type: "yPosition" },
-                      })
-                    }
-                  >
-                    + {copy.saveY}
-                  </button>
-                  {targetActorId ? (
-                    <>
-                      <label>
-                        {copy.distanceTarget}{" "}
-                        <select
-                          value={targetActorId}
-                          onChange={(event) => setSensorTargetId(event.target.value)}
-                        >
-                          {otherActors.map((item) => (
-                            <option key={item.id} value={item.id}>
-                              {item.name}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <button
-                        type="button"
-                        className="kids-button"
-                        onClick={() =>
-                          add({
-                            type: "setVariable",
-                            variableId: selectedVariableId,
-                            value: { type: "distanceToActor", actorId: targetActorId },
-                          })
-                        }
+                    {[1, 2, 3, 5, 10].map((seconds) => (
+                      <option key={seconds} value={seconds}>
+                        {seconds}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  className="kids-button"
+                  disabled={(script?.statements.length ?? 0) < groupCount}
+                  onClick={() =>
+                    groupLast("repeatUntil", {
+                      type: "greaterThan",
+                      left: { type: "timer" },
+                      right: { type: "numericLiteral", value: timerSeconds },
+                    } as Expression)
+                  }
+                >
+                  {copy.groupUntilTimer}
+                </button>
+                <div role="group" aria-label={copy.compoundTitle} className="kids-studio-compound">
+                  <strong>{copy.compoundTitle}</strong>
+                  {(
+                    [
+                      [copy.compoundFirst, compoundA, setCompoundA],
+                      [copy.compoundSecond, compoundB, setCompoundB],
+                    ] as const
+                  ).map(([label, value, setValue], index) => (
+                    <label key={label}>
+                      {label}{" "}
+                      <select
+                        value={value}
+                        disabled={index === 1 && compoundJoin === "none"}
+                        onChange={(event) => setValue(event.target.value as ConditionPreset)}
                       >
-                        + {copy.saveDistance}
-                      </button>
-                    </>
-                  ) : null}
-                  <button
-                    type="button"
-                    className="kids-button"
-                    onClick={() =>
-                      add({
-                        type: "setVariable",
-                        variableId: selectedVariableId,
-                        value: { type: "timer" },
-                      })
-                    }
-                  >
-                    + {copy.saveTimer}
-                  </button>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    onClick={() =>
-                      add({
-                        type: "setVariable",
-                        variableId: selectedVariableId,
-                        value: { type: "mouseX" },
-                      })
-                    }
-                  >
-                    + {copy.saveMouseX}
-                  </button>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    onClick={() =>
-                      add({
-                        type: "setVariable",
-                        variableId: selectedVariableId,
-                        value: { type: "mouseY" },
-                      })
-                    }
-                  >
-                    + {copy.saveMouseY}
-                  </button>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    disabled={!Number.isInteger(dataValue) || Math.abs(dataValue) > 100}
-                    data-kids-block="changeVariable"
-                    onClick={() =>
-                      add({
-                        type: "changeVariable",
-                        variableId,
-                        delta: { type: "numericLiteral", value: dataValue },
-                      })
-                    }
-                  >
-                    + {copy.changeVariable}
-                  </button>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    data-kids-block="showVariable"
-                    onClick={() => add({ type: "showVariable", variableId: selectedVariableId })}
-                  >
-                    + {copy.showVariable}
-                  </button>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    data-kids-block="hideVariable"
-                    onClick={() => add({ type: "hideVariable", variableId: selectedVariableId })}
-                  >
-                    + {copy.hideVariable}
-                  </button>
+                        <option value="key">{copy.presetKey}</option>
+                        <option value="mouse">{copy.presetMouse}</option>
+                        <option value="edge">{copy.presetEdge}</option>
+                        {otherActors.length > 0 ? (
+                          <option value="touch">{copy.presetTouch}</option>
+                        ) : null}
+                        <option value="timer">{copy.presetTimer}</option>
+                      </select>
+                    </label>
+                  ))}
                   <label>
-                    {copy.randomMin}{" "}
-                    <input
-                      type="number"
-                      min={-100}
-                      max={100}
-                      step={randomDecimal ? 0.1 : 1}
-                      value={randomMin}
-                      onChange={(event) => setRandomMin(Number(event.target.value))}
-                    />
-                  </label>
-                  <label>
-                    {copy.randomMax}{" "}
-                    <input
-                      type="number"
-                      min={-100}
-                      max={100}
-                      step={randomDecimal ? 0.1 : 1}
-                      value={randomMax}
-                      onChange={(event) => setRandomMax(Number(event.target.value))}
-                    />
-                  </label>
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={randomDecimal}
-                      onChange={(event) => setRandomDecimal(event.target.checked)}
-                    />
-                    {copy.randomDecimal}
-                  </label>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    disabled={
-                      (randomDecimal
-                        ? Math.abs(randomMin * 10 - Math.round(randomMin * 10)) > 1e-9 ||
-                          Math.abs(randomMax * 10 - Math.round(randomMax * 10)) > 1e-9
-                        : !Number.isInteger(randomMin) || !Number.isInteger(randomMax)) ||
-                      Math.abs(randomMin) > 100 ||
-                      Math.abs(randomMax) > 100 ||
-                      randomMin > randomMax
-                    }
-                    onClick={() =>
-                      add({
-                        type: "setVariable",
-                        variableId,
-                        value: {
-                          type: randomDecimal ? "random" : "randomInteger",
-                          min: { type: "numericLiteral", value: randomMin },
-                          max: { type: "numericLiteral", value: randomMax },
-                        },
-                      })
-                    }
-                  >
-                    + {copy.setRandom}
-                  </button>
-                  <label>
-                    {copy.sourceVariable}{" "}
+                    {copy.compoundJoin}{" "}
                     <select
-                      value={
-                        history.current.variables.some((item) => item.id === sourceVariableId)
-                          ? sourceVariableId
-                          : history.current.variables[0]!.id
-                      }
-                      onChange={(event) => setSourceVariableId(event.target.value)}
-                    >
-                      {history.current.variables.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    {copy.mathOperator}{" "}
-                    <select
-                      value={mathOperator}
+                      value={compoundJoin}
                       onChange={(event) =>
-                        setMathOperator(event.target.value as typeof mathOperator)
+                        setCompoundJoin(event.target.value as typeof compoundJoin)
                       }
                     >
-                      <option value="add">+</option>
-                      <option value="subtract">−</option>
-                      <option value="multiply">×</option>
-                      <option value="divide">÷</option>
-                      <option value="modulo">{locale === "es" ? "resto" : "mod"}</option>
-                    </select>
-                  </label>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    disabled={
-                      !Number.isInteger(dataValue) ||
-                      Math.abs(dataValue) > 100 ||
-                      ((mathOperator === "divide" || mathOperator === "modulo") && dataValue === 0)
-                    }
-                    onClick={() =>
-                      add({
-                        type: "setVariable",
-                        variableId: selectedVariableId,
-                        value: calculation(),
-                      })
-                    }
-                  >
-                    + {copy.calculate}
-                  </button>
-                  <label>
-                    {copy.mathFunction}{" "}
-                    <select
-                      value={mathFn}
-                      onChange={(event) => setMathFn(event.target.value as typeof mathFn)}
-                    >
-                      <option value="abs">{copy.fnAbs}</option>
-                      <option value="round">{copy.fnRound}</option>
-                      <option value="floor">{copy.fnFloor}</option>
-                      <option value="ceiling">{copy.fnCeiling}</option>
-                    </select>
-                  </label>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    onClick={() =>
-                      add({
-                        type: "setVariable",
-                        variableId: selectedVariableId,
-                        value: {
-                          type: "mathFunction",
-                          function: mathFn,
-                          value: { type: "variable", variableId: selectedSourceVariableId },
-                        },
-                      })
-                    }
-                  >
-                    + {copy.applyFunction}
-                  </button>
-                  <label>
-                    {copy.compareOperator}{" "}
-                    <select
-                      value={compareOperator}
-                      onChange={(event) =>
-                        setCompareOperator(event.target.value as typeof compareOperator)
-                      }
-                    >
-                      <option value="greaterThan">&gt;</option>
-                      <option value="lessThan">&lt;</option>
-                      <option value="equals">=</option>
-                      <option value="lessOrEqual">&le;</option>
-                      <option value="greaterOrEqual">&ge;</option>
+                      <option value="and">{copy.compoundAnd}</option>
+                      <option value="or">{copy.compoundOr}</option>
+                      <option value="none">{copy.compoundNone}</option>
                     </select>
                   </label>
                   <label>
                     <input
                       type="checkbox"
-                      checked={compareCalculation}
-                      onChange={(event) => setCompareCalculation(event.target.checked)}
+                      checked={compoundNot}
+                      onChange={(event) => setCompoundNot(event.target.checked)}
                     />
-                    {copy.compareCalculation}
+                    {copy.compoundNot}
                   </label>
                   <button
                     type="button"
                     className="kids-button"
-                    disabled={
-                      !Number.isInteger(dataValue) ||
-                      Math.abs(dataValue) > 100 ||
-                      (compareCalculation &&
-                        (mathOperator === "divide" || mathOperator === "modulo") &&
-                        dataValue === 0)
-                    }
-                    onClick={() =>
-                      add({
-                        type: "if",
-                        condition: condition(),
-                        then: [{ type: "move", steps: 40 }],
-                      })
-                    }
-                  >
-                    + {copy.ifLabel} {expressionLabel(condition(), history.current)} →{" "}
-                    {copy.thenMove}
-                  </button>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    disabled={
-                      (script?.statements.length ?? 0) < groupCount ||
-                      !Number.isInteger(dataValue) ||
-                      Math.abs(dataValue) > 100 ||
-                      (compareCalculation &&
-                        (mathOperator === "divide" || mathOperator === "modulo") &&
-                        dataValue === 0)
-                    }
-                    onClick={() => groupLast("if")}
-                  >
-                    {copy.groupIf}
-                  </button>
-                </>
-              ) : null}
-              {history.current.lists?.length ? (
-                <>
-                  <label>
-                    {copy.list}{" "}
-                    <select
-                      value={
-                        history.current.lists.some((item) => item.id === listId)
-                          ? listId
-                          : history.current.lists[0]!.id
-                      }
-                      onChange={(event) => setListId(event.target.value)}
-                    >
-                      {history.current.lists.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    disabled={!Number.isInteger(dataValue) || Math.abs(dataValue) > 100}
-                    data-kids-block="listAdd"
-                    onClick={() =>
-                      add({
-                        type: "listAdd",
-                        listId,
-                        value: { type: "numericLiteral", value: dataValue },
-                      })
-                    }
-                  >
-                    + {copy.listAdd}
-                  </button>
-                  <label>
-                    {copy.listIndex}{" "}
-                    <input
-                      type="number"
-                      min={1}
-                      max={10}
-                      step={1}
-                      value={listIndex}
-                      onChange={(event) => setListIndex(Number(event.target.value))}
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    disabled={!Number.isInteger(listIndex) || listIndex < 1 || listIndex > 10}
-                    data-kids-block="listRemoveAt"
-                    onClick={() =>
-                      add({
-                        type: "listRemoveAt",
-                        listId,
-                        index: { type: "numericLiteral", value: listIndex },
-                      })
-                    }
-                  >
-                    + {copy.listRemove}
-                  </button>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    disabled={
-                      !Number.isInteger(listIndex) ||
-                      listIndex < 1 ||
-                      listIndex > 10 ||
-                      !Number.isInteger(dataValue) ||
-                      Math.abs(dataValue) > 100
-                    }
-                    data-kids-block="listInsertAt"
-                    onClick={() =>
-                      add({
-                        type: "listInsertAt",
-                        listId,
-                        index: { type: "numericLiteral", value: listIndex },
-                        value: { type: "numericLiteral", value: dataValue },
-                      })
-                    }
-                  >
-                    + {copy.listInsert}
-                  </button>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    disabled={
-                      !Number.isInteger(listIndex) ||
-                      listIndex < 1 ||
-                      listIndex > 10 ||
-                      !Number.isInteger(dataValue) ||
-                      Math.abs(dataValue) > 100
-                    }
-                    data-kids-block="listReplaceAt"
-                    onClick={() =>
-                      add({
-                        type: "listReplaceAt",
-                        listId,
-                        index: { type: "numericLiteral", value: listIndex },
-                        value: { type: "numericLiteral", value: dataValue },
-                      })
-                    }
-                  >
-                    + {copy.listReplace}
-                  </button>
-                  {history.current.variables?.length ? (
-                    <>
-                      <button
-                        type="button"
-                        className="kids-button"
-                        disabled={!Number.isInteger(listIndex) || listIndex < 1 || listIndex > 10}
-                        onClick={() =>
-                          add({
-                            type: "setVariable",
-                            variableId,
-                            value: {
-                              type: "listItem",
-                              listId,
-                              index: { type: "numericLiteral", value: listIndex },
-                            },
-                          })
-                        }
-                      >
-                        + {copy.listRead}
-                      </button>
-                      <button
-                        type="button"
-                        className="kids-button"
-                        onClick={() =>
-                          add({
-                            type: "setVariable",
-                            variableId,
-                            value: { type: "listLength", listId },
-                          })
-                        }
-                      >
-                        + {copy.listLength}
-                      </button>
-                    </>
-                  ) : null}
-                </>
-              ) : null}
-            </div>
-          </Panel>
-          {oriSuggestions ? (
-            <div className="kids-studio-ori" data-collapsed={oriCollapsed ? "true" : undefined}>
-              <div className="kids-studio-panel-head">
-                {oriCollapsed ? (
-                  <button
-                    type="button"
-                    className="kids-ori-float-trigger"
-                    data-ori-state={oriMotion}
-                    data-ori-paused={!oriPageVisible}
-                    data-ori-context={oriContextText}
-                    aria-label={copy.showOri}
-                    aria-expanded={false}
+                    data-testid="compound-if"
+                    disabled={compoundCondition() === null}
                     onClick={() => {
-                      setOriSeen(getOriContext());
-                      setOriCollapsed(false);
+                      const joined = compoundCondition();
+                      if (joined)
+                        add({ type: "if", condition: joined, then: [{ type: "move", steps: 40 }] });
                     }}
                   >
-                    <KidsSprite slot="ori" expression={oriExpression} />
-                    <span>Ori</span>
+                    + {copy.compoundAdd}:{" "}
+                    {compoundCondition()
+                      ? expressionLabel(compoundCondition()!, history.current, locale)
+                      : ""}{" "}
+                    → {copy.thenMove}
                   </button>
-                ) : (
+                  <button
+                    type="button"
+                    className="kids-button"
+                    data-testid="compound-wait-until"
+                    disabled={compoundCondition() === null}
+                    onClick={() => {
+                      const joined = compoundCondition();
+                      if (joined) add({ type: "waitUntil", condition: joined });
+                    }}
+                  >
+                    + {copy.waitUntil}:{" "}
+                    {compoundCondition()
+                      ? expressionLabel(compoundCondition()!, history.current, locale)
+                      : ""}
+                  </button>
+                  <button
+                    type="button"
+                    className="kids-button"
+                    disabled={
+                      compoundCondition() === null || (script?.statements.length ?? 0) < groupCount
+                    }
+                    onClick={() => {
+                      const joined = compoundCondition();
+                      if (joined) groupLast("if", joined);
+                    }}
+                  >
+                    {copy.compoundGroup}
+                  </button>
+                  {oriSuggestions ? (
+                    <>
+                      <button
+                        type="button"
+                        className="kids-button"
+                        disabled={!script || script.statements.length >= 60}
+                        onClick={askOriCompound}
+                      >
+                        {locale === "es"
+                          ? "Pedirle a Ori una combinación"
+                          : "Ask Ori for a combination"}
+                      </button>
+                      {compoundOri && compoundReview ? (
+                        <div className="kids-ori-proposal" data-testid="ori-compound-proposal">
+                          <p>{explainOriCompound(compoundOri.join, locale)}</p>
+                          <p className="kids-note">
+                            {locale === "es"
+                              ? "Idea de Ori: todavía no está en tu programa. Revisá el bloque antes de decidir."
+                              : "Ori's idea is not in your program yet. Review the block before deciding."}
+                          </p>
+                          <strong>
+                            + {copy.compoundAdd}:{" "}
+                            {expressionLabel(
+                              (
+                                oriCompoundStatement(compoundOri.join) as Extract<
+                                  Statement,
+                                  { type: "if" }
+                                >
+                              ).condition,
+                              history.current,
+                              locale,
+                            )}{" "}
+                            → {copy.thenMove}
+                          </strong>
+                          <div>
+                            <button
+                              type="button"
+                              className="kids-button kids-primary"
+                              onClick={() => decideOriCompound("accept")}
+                            >
+                              {copy.use}
+                            </button>
+                            <button
+                              type="button"
+                              className="kids-button"
+                              onClick={() => decideOriCompound("change")}
+                            >
+                              {copy.change}
+                            </button>
+                            <button
+                              type="button"
+                              className="kids-button"
+                              onClick={() => decideOriCompound("reject")}
+                            >
+                              {copy.reject}
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+                    </>
+                  ) : null}
+                </div>
+                {penEnabled ? (
+                  <div role="group" aria-label={copy.penTitle}>
+                    <strong id={studioCategoryId("pen")} tabIndex={-1}>
+                      {copy.penTitle}
+                    </strong>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      data-kids-block="penDown"
+                      onClick={() => add({ type: "penDown" })}
+                    >
+                      + {copy.penDown}
+                    </button>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      data-kids-block="penUp"
+                      onClick={() => add({ type: "penUp" })}
+                    >
+                      + {copy.penUp}
+                    </button>
+                    <label>
+                      {copy.penColor}{" "}
+                      <select
+                        value={penColor}
+                        onChange={(event) => setPenColor(event.target.value as PenColor)}
+                      >
+                        {PEN_COLORS.map((color) => (
+                          <option key={color} value={color}>
+                            {copy.penColors[color]}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      data-kids-block="setPenColor"
+                      onClick={() => add({ type: "setPenColor", color: penColor })}
+                    >
+                      + {copy.penColor}
+                    </button>
+                    <label>
+                      {copy.penSize}{" "}
+                      <select
+                        value={penSize}
+                        onChange={(event) => setPenSize(Number(event.target.value))}
+                      >
+                        {STUDIO_PEN_SIZES.map((size) => (
+                          <option key={size} value={size}>
+                            {size}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      data-kids-block="setPenSize"
+                      onClick={() => add({ type: "setPenSize", size: penSize })}
+                    >
+                      + {copy.penSize}
+                    </button>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      data-kids-block="clearPen"
+                      onClick={() => add({ type: "clearPen" })}
+                    >
+                      + {copy.clearPen}
+                    </button>
+                  </div>
+                ) : null}
+                {musicEnabled ? (
+                  <div role="group" aria-label={copy.musicTitle}>
+                    <strong id={studioCategoryId("music")} tabIndex={-1}>
+                      {copy.musicTitle}
+                    </strong>
+                    <label>
+                      {copy.noteLabel}{" "}
+                      <select
+                        value={musicNote}
+                        onChange={(event) => setMusicNote(Number(event.target.value))}
+                      >
+                        {STUDIO_NOTES.map((note) => (
+                          <option key={note} value={note}>
+                            {noteName(note, locale)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      {copy.beatsLabel}{" "}
+                      <select
+                        value={musicBeats}
+                        onChange={(event) =>
+                          setMusicBeats(Number(event.target.value) as MusicBeats)
+                        }
+                      >
+                        {MUSIC_BEATS.map((beats) => (
+                          <option key={beats} value={beats}>
+                            {beats}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      data-kids-block="playNote"
+                      onClick={() => add({ type: "playNote", note: musicNote, beats: musicBeats })}
+                    >
+                      + {copy.playNote}
+                    </button>
+                    <label>
+                      {copy.playDrum}{" "}
+                      <select
+                        value={musicDrum}
+                        onChange={(event) => setMusicDrum(event.target.value as MusicDrum)}
+                      >
+                        {MUSIC_DRUMS.map((drum) => (
+                          <option key={drum} value={drum}>
+                            {copy.drums[drum]}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      data-kids-block="playDrum"
+                      onClick={() => add({ type: "playDrum", drum: musicDrum, beats: musicBeats })}
+                    >
+                      + {copy.playDrum}
+                    </button>
+                    <label>
+                      {copy.setInstrument}{" "}
+                      <select
+                        value={musicInstrument}
+                        onChange={(event) =>
+                          setMusicInstrument(event.target.value as MusicInstrument)
+                        }
+                      >
+                        {MUSIC_INSTRUMENTS.map((instrument) => (
+                          <option key={instrument} value={instrument}>
+                            {copy.instruments[instrument]}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      data-kids-block="setInstrument"
+                      onClick={() => add({ type: "setInstrument", instrument: musicInstrument })}
+                    >
+                      + {copy.setInstrument}
+                    </button>
+                    <label>
+                      {copy.setTempo}{" "}
+                      <select
+                        value={musicTempo}
+                        onChange={(event) => setMusicTempo(Number(event.target.value))}
+                      >
+                        {STUDIO_TEMPOS.map((bpm) => (
+                          <option key={bpm} value={bpm}>
+                            {bpm}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      data-kids-block="setTempo"
+                      onClick={() => add({ type: "setTempo", bpm: musicTempo })}
+                    >
+                      + {copy.setTempo}
+                    </button>
+                    <label>
+                      {copy.setPitch}{" "}
+                      <select
+                        value={musicPitch}
+                        onChange={(event) => setMusicPitch(Number(event.target.value))}
+                      >
+                        {STUDIO_PITCHES.map((semitones) => (
+                          <option key={semitones} value={semitones}>
+                            {semitones}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      data-kids-block="setPitch"
+                      onClick={() => add({ type: "setPitch", semitones: musicPitch })}
+                    >
+                      + {copy.setPitch}
+                    </button>
+                    <label>
+                      {copy.setPan}{" "}
+                      <select
+                        value={musicPan}
+                        onChange={(event) => setMusicPan(Number(event.target.value))}
+                      >
+                        {STUDIO_PANS.map((pan) => (
+                          <option key={pan} value={pan}>
+                            {pan}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      data-kids-block="setPan"
+                      onClick={() => add({ type: "setPan", pan: musicPan })}
+                    >
+                      + {copy.setPan}
+                    </button>
+                  </div>
+                ) : null}
+                <i hidden data-cat-start="logic" />
+                {targetActorId ? (
+                  <>
+                    <label>
+                      {copy.touchActor}{" "}
+                      <select
+                        value={targetActorId}
+                        onChange={(event) => setSensorTargetId(event.target.value)}
+                      >
+                        {otherActors.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      onClick={() =>
+                        add({
+                          type: "if",
+                          condition: { type: "touchingActor", actorId: targetActorId },
+                          then: [{ type: "move", steps: 40 }],
+                        })
+                      }
+                    >
+                      + {copy.ifTouchActor}
+                    </button>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      disabled={(script?.statements.length ?? 0) < groupCount}
+                      onClick={() =>
+                        groupLast("if", { type: "touchingActor", actorId: targetActorId })
+                      }
+                    >
+                      {copy.groupIfTouchActor}
+                    </button>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      disabled={(script?.statements.length ?? 0) < groupCount}
+                      onClick={() =>
+                        groupLast("repeatUntil", { type: "touchingActor", actorId: targetActorId })
+                      }
+                    >
+                      {copy.groupUntilActor}
+                    </button>
+                  </>
+                ) : null}
+                <label>
+                  {copy.message}{" "}
+                  <select
+                    value={eventMessage}
+                    onChange={(event) =>
+                      setEventMessage(event.target.value as (typeof STUDIO_MESSAGES)[number])
+                    }
+                  >
+                    {STUDIO_MESSAGES.map((message) => (
+                      <option key={message} value={message}>
+                        {message}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  className="kids-button"
+                  data-kids-block="broadcast"
+                  onClick={() => add({ type: "broadcast", message: eventMessage })}
+                >
+                  + {copy.message}
+                </button>
+                <h3 id={studioCategoryId("data")} tabIndex={-1}>
+                  {copy.paletteData}
+                </h3>
+                <label>
+                  {copy.dataName}{" "}
+                  <input
+                    type="text"
+                    maxLength={STUDIO_NAME_MAX_LENGTH}
+                    value={dataName}
+                    onChange={(event) => setDataName(event.target.value)}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="kids-button"
+                  disabled={!dataName.trim() || (history.current.variables?.length ?? 0) >= 3}
+                  onClick={() => createData("variable")}
+                >
+                  + {copy.newVariable}
+                </button>
+                <button
+                  type="button"
+                  className="kids-button"
+                  disabled={!dataName.trim() || (history.current.lists?.length ?? 0) >= 3}
+                  onClick={() => createData("list")}
+                >
+                  + {copy.newList}
+                </button>
+                <label>
+                  {copy.number}{" "}
+                  <input
+                    type="number"
+                    min={-100}
+                    max={100}
+                    step={1}
+                    value={dataValue}
+                    onChange={(event) => setDataValue(Number(event.target.value))}
+                  />
+                </label>
+                {history.current.variables?.length ? (
+                  <>
+                    <label>
+                      {copy.variable}{" "}
+                      <select
+                        value={
+                          history.current.variables.some((item) => item.id === variableId)
+                            ? variableId
+                            : history.current.variables[0]!.id
+                        }
+                        onChange={(event) => setVariableId(event.target.value)}
+                      >
+                        {history.current.variables.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      disabled={!Number.isInteger(dataValue) || Math.abs(dataValue) > 100}
+                      data-kids-block="setVariable"
+                      onClick={() =>
+                        add({
+                          type: "setVariable",
+                          variableId,
+                          value: { type: "numericLiteral", value: dataValue },
+                        })
+                      }
+                    >
+                      + {copy.setVariable}
+                    </button>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      onClick={() =>
+                        add({
+                          type: "setVariable",
+                          variableId: selectedVariableId,
+                          value: { type: "xPosition" },
+                        })
+                      }
+                    >
+                      + {copy.saveX}
+                    </button>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      onClick={() =>
+                        add({
+                          type: "setVariable",
+                          variableId: selectedVariableId,
+                          value: { type: "yPosition" },
+                        })
+                      }
+                    >
+                      + {copy.saveY}
+                    </button>
+                    {targetActorId ? (
+                      <>
+                        <label>
+                          {copy.distanceTarget}{" "}
+                          <select
+                            value={targetActorId}
+                            onChange={(event) => setSensorTargetId(event.target.value)}
+                          >
+                            {otherActors.map((item) => (
+                              <option key={item.id} value={item.id}>
+                                {item.name}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <button
+                          type="button"
+                          className="kids-button"
+                          onClick={() =>
+                            add({
+                              type: "setVariable",
+                              variableId: selectedVariableId,
+                              value: { type: "distanceToActor", actorId: targetActorId },
+                            })
+                          }
+                        >
+                          + {copy.saveDistance}
+                        </button>
+                      </>
+                    ) : null}
+                    <button
+                      type="button"
+                      className="kids-button"
+                      onClick={() =>
+                        add({
+                          type: "setVariable",
+                          variableId: selectedVariableId,
+                          value: { type: "timer" },
+                        })
+                      }
+                    >
+                      + {copy.saveTimer}
+                    </button>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      onClick={() =>
+                        add({
+                          type: "setVariable",
+                          variableId: selectedVariableId,
+                          value: { type: "mouseX" },
+                        })
+                      }
+                    >
+                      + {copy.saveMouseX}
+                    </button>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      onClick={() =>
+                        add({
+                          type: "setVariable",
+                          variableId: selectedVariableId,
+                          value: { type: "mouseY" },
+                        })
+                      }
+                    >
+                      + {copy.saveMouseY}
+                    </button>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      disabled={!Number.isInteger(dataValue) || Math.abs(dataValue) > 100}
+                      data-kids-block="changeVariable"
+                      onClick={() =>
+                        add({
+                          type: "changeVariable",
+                          variableId,
+                          delta: { type: "numericLiteral", value: dataValue },
+                        })
+                      }
+                    >
+                      + {copy.changeVariable}
+                    </button>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      data-kids-block="showVariable"
+                      onClick={() => add({ type: "showVariable", variableId: selectedVariableId })}
+                    >
+                      + {copy.showVariable}
+                    </button>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      data-kids-block="hideVariable"
+                      onClick={() => add({ type: "hideVariable", variableId: selectedVariableId })}
+                    >
+                      + {copy.hideVariable}
+                    </button>
+                    <label>
+                      {copy.randomMin}{" "}
+                      <input
+                        type="number"
+                        min={-100}
+                        max={100}
+                        step={randomDecimal ? 0.1 : 1}
+                        value={randomMin}
+                        onChange={(event) => setRandomMin(Number(event.target.value))}
+                      />
+                    </label>
+                    <label>
+                      {copy.randomMax}{" "}
+                      <input
+                        type="number"
+                        min={-100}
+                        max={100}
+                        step={randomDecimal ? 0.1 : 1}
+                        value={randomMax}
+                        onChange={(event) => setRandomMax(Number(event.target.value))}
+                      />
+                    </label>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={randomDecimal}
+                        onChange={(event) => setRandomDecimal(event.target.checked)}
+                      />
+                      {copy.randomDecimal}
+                    </label>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      disabled={
+                        (randomDecimal
+                          ? Math.abs(randomMin * 10 - Math.round(randomMin * 10)) > 1e-9 ||
+                            Math.abs(randomMax * 10 - Math.round(randomMax * 10)) > 1e-9
+                          : !Number.isInteger(randomMin) || !Number.isInteger(randomMax)) ||
+                        Math.abs(randomMin) > 100 ||
+                        Math.abs(randomMax) > 100 ||
+                        randomMin > randomMax
+                      }
+                      onClick={() =>
+                        add({
+                          type: "setVariable",
+                          variableId,
+                          value: {
+                            type: randomDecimal ? "random" : "randomInteger",
+                            min: { type: "numericLiteral", value: randomMin },
+                            max: { type: "numericLiteral", value: randomMax },
+                          },
+                        })
+                      }
+                    >
+                      + {copy.setRandom}
+                    </button>
+                    <label>
+                      {copy.sourceVariable}{" "}
+                      <select
+                        value={
+                          history.current.variables.some((item) => item.id === sourceVariableId)
+                            ? sourceVariableId
+                            : history.current.variables[0]!.id
+                        }
+                        onChange={(event) => setSourceVariableId(event.target.value)}
+                      >
+                        {history.current.variables.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      {copy.mathOperator}{" "}
+                      <select
+                        value={mathOperator}
+                        onChange={(event) =>
+                          setMathOperator(event.target.value as typeof mathOperator)
+                        }
+                      >
+                        <option value="add">+</option>
+                        <option value="subtract">−</option>
+                        <option value="multiply">×</option>
+                        <option value="divide">÷</option>
+                        <option value="modulo">{locale === "es" ? "resto" : "mod"}</option>
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      disabled={
+                        !Number.isInteger(dataValue) ||
+                        Math.abs(dataValue) > 100 ||
+                        ((mathOperator === "divide" || mathOperator === "modulo") &&
+                          dataValue === 0)
+                      }
+                      onClick={() =>
+                        add({
+                          type: "setVariable",
+                          variableId: selectedVariableId,
+                          value: calculation(),
+                        })
+                      }
+                    >
+                      + {copy.calculate}
+                    </button>
+                    <label>
+                      {copy.mathFunction}{" "}
+                      <select
+                        value={mathFn}
+                        onChange={(event) => setMathFn(event.target.value as typeof mathFn)}
+                      >
+                        <option value="abs">{copy.fnAbs}</option>
+                        <option value="round">{copy.fnRound}</option>
+                        <option value="floor">{copy.fnFloor}</option>
+                        <option value="ceiling">{copy.fnCeiling}</option>
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      onClick={() =>
+                        add({
+                          type: "setVariable",
+                          variableId: selectedVariableId,
+                          value: {
+                            type: "mathFunction",
+                            function: mathFn,
+                            value: { type: "variable", variableId: selectedSourceVariableId },
+                          },
+                        })
+                      }
+                    >
+                      + {copy.applyFunction}
+                    </button>
+                    <label>
+                      {copy.compareOperator}{" "}
+                      <select
+                        value={compareOperator}
+                        onChange={(event) =>
+                          setCompareOperator(event.target.value as typeof compareOperator)
+                        }
+                      >
+                        <option value="greaterThan">&gt;</option>
+                        <option value="lessThan">&lt;</option>
+                        <option value="equals">=</option>
+                        <option value="lessOrEqual">&le;</option>
+                        <option value="greaterOrEqual">&ge;</option>
+                      </select>
+                    </label>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={compareCalculation}
+                        onChange={(event) => setCompareCalculation(event.target.checked)}
+                      />
+                      {copy.compareCalculation}
+                    </label>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      disabled={
+                        !Number.isInteger(dataValue) ||
+                        Math.abs(dataValue) > 100 ||
+                        (compareCalculation &&
+                          (mathOperator === "divide" || mathOperator === "modulo") &&
+                          dataValue === 0)
+                      }
+                      onClick={() =>
+                        add({
+                          type: "if",
+                          condition: condition(),
+                          then: [{ type: "move", steps: 40 }],
+                        })
+                      }
+                    >
+                      + {copy.ifLabel} {expressionLabel(condition(), history.current)} →{" "}
+                      {copy.thenMove}
+                    </button>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      disabled={
+                        (script?.statements.length ?? 0) < groupCount ||
+                        !Number.isInteger(dataValue) ||
+                        Math.abs(dataValue) > 100 ||
+                        (compareCalculation &&
+                          (mathOperator === "divide" || mathOperator === "modulo") &&
+                          dataValue === 0)
+                      }
+                      onClick={() => groupLast("if")}
+                    >
+                      {copy.groupIf}
+                    </button>
+                  </>
+                ) : null}
+                {history.current.lists?.length ? (
+                  <>
+                    <label>
+                      {copy.list}{" "}
+                      <select
+                        value={
+                          history.current.lists.some((item) => item.id === listId)
+                            ? listId
+                            : history.current.lists[0]!.id
+                        }
+                        onChange={(event) => setListId(event.target.value)}
+                      >
+                        {history.current.lists.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      disabled={!Number.isInteger(dataValue) || Math.abs(dataValue) > 100}
+                      data-kids-block="listAdd"
+                      onClick={() =>
+                        add({
+                          type: "listAdd",
+                          listId,
+                          value: { type: "numericLiteral", value: dataValue },
+                        })
+                      }
+                    >
+                      + {copy.listAdd}
+                    </button>
+                    <label>
+                      {copy.listIndex}{" "}
+                      <input
+                        type="number"
+                        min={1}
+                        max={10}
+                        step={1}
+                        value={listIndex}
+                        onChange={(event) => setListIndex(Number(event.target.value))}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      disabled={!Number.isInteger(listIndex) || listIndex < 1 || listIndex > 10}
+                      data-kids-block="listRemoveAt"
+                      onClick={() =>
+                        add({
+                          type: "listRemoveAt",
+                          listId,
+                          index: { type: "numericLiteral", value: listIndex },
+                        })
+                      }
+                    >
+                      + {copy.listRemove}
+                    </button>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      disabled={
+                        !Number.isInteger(listIndex) ||
+                        listIndex < 1 ||
+                        listIndex > 10 ||
+                        !Number.isInteger(dataValue) ||
+                        Math.abs(dataValue) > 100
+                      }
+                      data-kids-block="listInsertAt"
+                      onClick={() =>
+                        add({
+                          type: "listInsertAt",
+                          listId,
+                          index: { type: "numericLiteral", value: listIndex },
+                          value: { type: "numericLiteral", value: dataValue },
+                        })
+                      }
+                    >
+                      + {copy.listInsert}
+                    </button>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      disabled={
+                        !Number.isInteger(listIndex) ||
+                        listIndex < 1 ||
+                        listIndex > 10 ||
+                        !Number.isInteger(dataValue) ||
+                        Math.abs(dataValue) > 100
+                      }
+                      data-kids-block="listReplaceAt"
+                      onClick={() =>
+                        add({
+                          type: "listReplaceAt",
+                          listId,
+                          index: { type: "numericLiteral", value: listIndex },
+                          value: { type: "numericLiteral", value: dataValue },
+                        })
+                      }
+                    >
+                      + {copy.listReplace}
+                    </button>
+                    {history.current.variables?.length ? (
+                      <>
+                        <button
+                          type="button"
+                          className="kids-button"
+                          disabled={!Number.isInteger(listIndex) || listIndex < 1 || listIndex > 10}
+                          onClick={() =>
+                            add({
+                              type: "setVariable",
+                              variableId,
+                              value: {
+                                type: "listItem",
+                                listId,
+                                index: { type: "numericLiteral", value: listIndex },
+                              },
+                            })
+                          }
+                        >
+                          + {copy.listRead}
+                        </button>
+                        <button
+                          type="button"
+                          className="kids-button"
+                          onClick={() =>
+                            add({
+                              type: "setVariable",
+                              variableId,
+                              value: { type: "listLength", listId },
+                            })
+                          }
+                        >
+                          + {copy.listLength}
+                        </button>
+                      </>
+                    ) : null}
+                  </>
+                ) : null}
+              </div>
+            </Panel>
+            {oriSuggestions ? (
+              <div className="kids-studio-ori" data-collapsed={oriCollapsed ? "true" : undefined}>
+                <div className="kids-studio-panel-head">
+                  {oriCollapsed ? (
+                    <button
+                      type="button"
+                      className="kids-ori-float-trigger"
+                      data-ori-state={oriMotion}
+                      data-ori-paused={!oriPageVisible}
+                      data-ori-context={oriContextText}
+                      aria-label={copy.showOri}
+                      aria-expanded={false}
+                      onClick={() => {
+                        setOriSeen(getOriContext());
+                        setOriCollapsed(false);
+                      }}
+                    >
+                      <KidsSprite slot="ori" expression={oriExpression} />
+                      <span>Ori</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="kids-panel-toggle"
+                      aria-expanded
+                      onClick={() => setOriCollapsed(true)}
+                    >
+                      {copy.hideOri}
+                    </button>
+                  )}
+                </div>
+                <div className="kids-ori-stage">
+                  <KidsSprite slot="ori" expression={oriExpression} talking={Boolean(oriIdea)} />
+                </div>
+                {oriSeen ? (
+                  <OriContextNote
+                    context={oriSeen}
+                    locale={locale}
+                    onCorrect={() => setOriSeen({ screen: oriSeen.screen })}
+                  />
+                ) : null}
+                <p className="kids-ori-context" role="status">
+                  {locale === "es"
+                    ? oriContext === "actor"
+                      ? `Estamos trabajando con ${actor?.name ?? "un objeto"}. Podés ubicarlo, elegir un disfraz o pedir una idea para su programa.`
+                      : oriContext === "backdrop"
+                        ? "Elegí un fondo para tu escena. Ori puede ayudarte a decidir qué acción debería ocurrir allí."
+                        : oriContext === "costumes"
+                          ? `Elegí o dibujá un disfraz para ${actor?.name ?? "tu objeto"}. Después podés crear bloques para cambiar su apariencia.`
+                          : oriContext === "sounds"
+                            ? "Escuchá un sonido y agregalo al programa cuando te guste. Ori puede sugerir cuándo usarlo."
+                            : run
+                              ? `Tu última ejecución recorrió ${run.trace.length} bloques. Revisemos qué pasó antes de cambiar el programa.`
+                              : `Estamos editando el programa de ${actor?.name ?? "tu objeto"}. Contame qué querés que haga.`
+                    : oriContext === "actor"
+                      ? `We're working with ${actor?.name ?? "a sprite"}. You can position it, choose a costume, or ask for a program idea.`
+                      : oriContext === "backdrop"
+                        ? "Choose a backdrop for your scene. Ori can help you decide what should happen there."
+                        : oriContext === "costumes"
+                          ? `Choose or draw a costume for ${actor?.name ?? "your sprite"}, then add blocks to change its look.`
+                          : oriContext === "sounds"
+                            ? "Listen to a sound and add it to the program when you like it. Ori can suggest when to use it."
+                            : run
+                              ? `Your last run executed ${run.trace.length} blocks. Let's inspect what happened before changing the program.`
+                              : `We're editing ${actor?.name ?? "your sprite"}'s program. What would you like it to do?`}
+                </p>
+                <button
+                  type="button"
+                  className="kids-button kids-ori-action"
+                  data-ori-state={oriMotion}
+                  data-ori-paused={!oriPageVisible}
+                  disabled={oriBusy}
+                  onClick={() => void askOri()}
+                >
+                  <span aria-hidden="true">
+                    <OriFace expression={oriExpression} />
+                  </span>
+                  <span>{copy.idea}</span>
+                </button>
+                <StudioIntentPicker
+                  locale={locale}
+                  intents={ORI_STUDIO_INTENTS.filter(
+                    (intent) =>
+                      oriIntentsWithin({
+                        ...pacedPolicy,
+                        maxProposalBlocks: Math.min(
+                          pacedPolicy.maxProposalBlocks,
+                          ageBand ? bandProfile(ageBand).oriMaxBlocks : 8,
+                        ),
+                      }).includes(intent) &&
+                      (musicEnabled || !["melody", "rhythm", "cheer"].includes(intent)),
+                  )}
+                  disabled={oriBusy}
+                  onPick={startIntent}
+                />
+                {intentPlan ? (
+                  <div className="kids-ori-proposal" data-testid="intent-card">
+                    <p>
+                      {locale === "es"
+                        ? `Ori propone ${intentPlan.statements.length} bloques para lo que querés lograr.`
+                        : `Ori suggests ${intentPlan.statements.length} blocks for your goal.`}
+                    </p>
+                    {intentPlan.preview ? (
+                      <p className="kids-note" data-testid="ori-evidence">
+                        {copy.evidenceNow} ({intentPlan.preview.from.x}, {intentPlan.preview.from.y}
+                        ) · {intentPlan.preview.stepsBefore} {copy.evidenceBlocks}.{" "}
+                        {copy.evidenceWith} ({intentPlan.preview.to.x}, {intentPlan.preview.to.y}) ·{" "}
+                        {intentPlan.preview.stepsAfter} {copy.evidenceBlocks}.
+                        {intentPlan.preview.outcome !== "completed" ? ` ${copy.evidenceStops}` : ""}
+                      </p>
+                    ) : null}
+                    <div>
+                      {intentPlan.statements.some((statement) =>
+                        ["playSound", "playNote", "playDrum"].includes(statement.type),
+                      ) ? (
+                        <button type="button" className="kids-button" onClick={listenToIdea}>
+                          {locale === "es" ? "Escuchar la idea" : "Listen to the idea"}
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        className="kids-button kids-primary"
+                        onClick={() => decideIntent("accept")}
+                      >
+                        {copy.use}
+                      </button>
+                      <button
+                        type="button"
+                        className="kids-button"
+                        onClick={() => decideIntent("reject")}
+                      >
+                        {copy.reject}
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+                {!oriBusy && oriMessage && !oriIdea ? (
+                  <p role="status" className="kids-note">
+                    {oriMessage}
+                  </p>
+                ) : null}
+                {oriBusy ? (
+                  <p role="status" className="kids-note">
+                    {locale === "es" ? "Ori está pensando..." : "Ori is thinking..."}
+                  </p>
+                ) : null}
+                {oriIdea ? (
+                  <div className="kids-ori-proposal">
+                    <p>{oriMessage || copy.ideaText}</p>
+                    {oriPreview ? (
+                      <p className="kids-note" data-testid="ori-evidence">
+                        {copy.evidenceNow} ({oriPreview.from.x}, {oriPreview.from.y}) ·{" "}
+                        {oriPreview.stepsBefore} {copy.evidenceBlocks}. {copy.evidenceWith} (
+                        {oriPreview.to.x}, {oriPreview.to.y}) · {oriPreview.stepsAfter}{" "}
+                        {copy.evidenceBlocks}.
+                        {oriPreview.outcome !== "completed" ? ` ${copy.evidenceStops}` : ""}
+                      </p>
+                    ) : null}
+                    <strong>
+                      {proposedStatement?.type === "move"
+                        ? `+ ${copy.move} ${proposedStatement.steps / 40}`
+                        : proposedStatement?.type === "turn"
+                          ? `+ ${proposedStatement.degrees < 0 ? copy.turnLeft : copy.turnRight}`
+                          : proposedStatement?.type === "callProcedure"
+                            ? `+ ${blockLabel(proposedStatement)}`
+                            : ""}
+                    </strong>
+                    <div>
+                      <button
+                        type="button"
+                        className="kids-button kids-primary"
+                        onClick={() => decideOri("accept")}
+                      >
+                        {copy.use}
+                      </button>
+                      {canChangeIdea ? (
+                        <button
+                          type="button"
+                          className="kids-button"
+                          onClick={() => decideOri("change")}
+                        >
+                          {copy.change}
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        className="kids-button"
+                        onClick={() => decideOri("reject")}
+                      >
+                        {copy.reject}
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+            <PanelDivider
+              controller={panelLayout}
+              id="code"
+              title={copy.code}
+              orientation="horizontal"
+              direction={-1}
+              size={() =>
+                document
+                  .querySelector(".kids-studio-code-panel .agx-panel-body")
+                  ?.getBoundingClientRect().height ?? 240
+              }
+            />
+            <Panel
+              controller={panelLayout}
+              id="code"
+              title={copy.code}
+              accent="#2563EB"
+              minimizable
+              className="kids-studio-code-panel"
+            >
+              <section
+                className="kids-studio-panel"
+                data-collapsed={codeCollapsed ? "true" : undefined}
+              >
+                <div className="kids-studio-panel-head">
                   <button
                     type="button"
                     className="kids-panel-toggle"
-                    aria-expanded
-                    onClick={() => setOriCollapsed(true)}
+                    aria-expanded={!codeCollapsed}
+                    onClick={() => setCodeCollapsed((value) => !value)}
                   >
-                    {copy.hideOri}
+                    {codeCollapsed ? copy.showCode : copy.hideCode}
                   </button>
-                )}
-              </div>
-              <div className="kids-ori-stage">
-                <KidsSprite slot="ori" expression={oriExpression} talking={Boolean(oriIdea)} />
-              </div>
-              {oriSeen ? (
-                <OriContextNote
-                  context={oriSeen}
-                  locale={locale}
-                  onCorrect={() => setOriSeen({ screen: oriSeen.screen })}
-                />
-              ) : null}
-              <p className="kids-ori-context" role="status">
-                {locale === "es"
-                  ? oriContext === "actor"
-                    ? `Estamos trabajando con ${actor?.name ?? "un objeto"}. Podés ubicarlo, elegir un disfraz o pedir una idea para su programa.`
-                    : oriContext === "backdrop"
-                      ? "Elegí un fondo para tu escena. Ori puede ayudarte a decidir qué acción debería ocurrir allí."
-                      : oriContext === "costumes"
-                        ? `Elegí o dibujá un disfraz para ${actor?.name ?? "tu objeto"}. Después podés crear bloques para cambiar su apariencia.`
-                        : oriContext === "sounds"
-                          ? "Escuchá un sonido y agregalo al programa cuando te guste. Ori puede sugerir cuándo usarlo."
-                          : run
-                            ? `Tu última ejecución recorrió ${run.trace.length} bloques. Revisemos qué pasó antes de cambiar el programa.`
-                            : `Estamos editando el programa de ${actor?.name ?? "tu objeto"}. Contame qué querés que haga.`
-                  : oriContext === "actor"
-                    ? `We're working with ${actor?.name ?? "a sprite"}. You can position it, choose a costume, or ask for a program idea.`
-                    : oriContext === "backdrop"
-                      ? "Choose a backdrop for your scene. Ori can help you decide what should happen there."
-                      : oriContext === "costumes"
-                        ? `Choose or draw a costume for ${actor?.name ?? "your sprite"}, then add blocks to change its look.`
-                        : oriContext === "sounds"
-                          ? "Listen to a sound and add it to the program when you like it. Ori can suggest when to use it."
-                          : run
-                            ? `Your last run executed ${run.trace.length} blocks. Let's inspect what happened before changing the program.`
-                            : `We're editing ${actor?.name ?? "your sprite"}'s program. What would you like it to do?`}
-              </p>
-              <button
-                type="button"
-                className="kids-button kids-ori-action"
-                data-ori-state={oriMotion}
-                data-ori-paused={!oriPageVisible}
-                disabled={oriBusy}
-                onClick={() => void askOri()}
-              >
-                <span aria-hidden="true">
-                  <OriFace expression={oriExpression} />
-                </span>
-                <span>{copy.idea}</span>
-              </button>
-              <StudioIntentPicker
-                locale={locale}
-                intents={ORI_STUDIO_INTENTS.filter(
-                  (intent) =>
-                    oriIntentsWithin({
-                      ...pacedPolicy,
-                      maxProposalBlocks: Math.min(
-                        pacedPolicy.maxProposalBlocks,
-                        ageBand ? bandProfile(ageBand).oriMaxBlocks : 8,
-                      ),
-                    }).includes(intent) &&
-                    (musicEnabled || !["melody", "rhythm", "cheer"].includes(intent)),
-                )}
-                disabled={oriBusy}
-                onPick={startIntent}
-              />
-              {intentPlan ? (
-                <div className="kids-ori-proposal" data-testid="intent-card">
-                  <p>
-                    {locale === "es"
-                      ? `Ori propone ${intentPlan.statements.length} bloques para lo que querés lograr.`
-                      : `Ori suggests ${intentPlan.statements.length} blocks for your goal.`}
-                  </p>
-                  {intentPlan.preview ? (
-                    <p className="kids-note" data-testid="ori-evidence">
-                      {copy.evidenceNow} ({intentPlan.preview.from.x}, {intentPlan.preview.from.y})
-                      · {intentPlan.preview.stepsBefore} {copy.evidenceBlocks}. {copy.evidenceWith}{" "}
-                      ({intentPlan.preview.to.x}, {intentPlan.preview.to.y}) ·{" "}
-                      {intentPlan.preview.stepsAfter} {copy.evidenceBlocks}.
-                      {intentPlan.preview.outcome !== "completed" ? ` ${copy.evidenceStops}` : ""}
-                    </p>
-                  ) : null}
-                  <div>
-                    {intentPlan.statements.some((statement) =>
-                      ["playSound", "playNote", "playDrum"].includes(statement.type),
-                    ) ? (
-                      <button type="button" className="kids-button" onClick={listenToIdea}>
-                        {locale === "es" ? "Escuchar la idea" : "Listen to the idea"}
-                      </button>
-                    ) : null}
-                    <button
-                      type="button"
-                      className="kids-button kids-primary"
-                      onClick={() => decideIntent("accept")}
-                    >
-                      {copy.use}
-                    </button>
-                    <button
-                      type="button"
-                      className="kids-button"
-                      onClick={() => decideIntent("reject")}
-                    >
-                      {copy.reject}
-                    </button>
-                  </div>
                 </div>
-              ) : null}
-              {!oriBusy && oriMessage && !oriIdea ? (
-                <p role="status" className="kids-note">
-                  {oriMessage}
-                </p>
-              ) : null}
-              {oriBusy ? (
-                <p role="status" className="kids-note">
-                  {locale === "es" ? "Ori está pensando..." : "Ori is thinking..."}
-                </p>
-              ) : null}
-              {oriIdea ? (
-                <div className="kids-ori-proposal">
-                  <p>{oriMessage || copy.ideaText}</p>
-                  {oriPreview ? (
-                    <p className="kids-note" data-testid="ori-evidence">
-                      {copy.evidenceNow} ({oriPreview.from.x}, {oriPreview.from.y}) ·{" "}
-                      {oriPreview.stepsBefore} {copy.evidenceBlocks}. {copy.evidenceWith} (
-                      {oriPreview.to.x}, {oriPreview.to.y}) · {oriPreview.stepsAfter}{" "}
-                      {copy.evidenceBlocks}.
-                      {oriPreview.outcome !== "completed" ? ` ${copy.evidenceStops}` : ""}
-                    </p>
-                  ) : null}
-                  <strong>
-                    {proposedStatement?.type === "move"
-                      ? `+ ${copy.move} ${proposedStatement.steps / 40}`
-                      : proposedStatement?.type === "turn"
-                        ? `+ ${proposedStatement.degrees < 0 ? copy.turnLeft : copy.turnRight}`
-                        : proposedStatement?.type === "callProcedure"
-                          ? `+ ${blockLabel(proposedStatement)}`
-                          : ""}
-                  </strong>
-                  <div>
-                    <button
-                      type="button"
-                      className="kids-button kids-primary"
-                      onClick={() => decideOri("accept")}
-                    >
-                      {copy.use}
-                    </button>
-                    {canChangeIdea ? (
+                <div className="kids-code-languages" role="group" aria-label={copy.code}>
+                  {codeTabs.map((tab) => {
+                    const item = tab === "node" ? "typescript" : tab;
+                    return (
                       <button
                         type="button"
-                        className="kids-button"
-                        onClick={() => decideOri("change")}
+                        key={tab}
+                        aria-pressed={shownLanguage === item}
+                        onClick={() => {
+                          setLanguage(item);
+                          setSheetOpen(false);
+                          setBlocksSheetMaximized(false);
+                        }}
                       >
-                        {copy.change}
+                        {item === "agorix"
+                          ? "Agorix Code"
+                          : item === "python"
+                            ? "Python"
+                            : item === "java"
+                              ? "Java"
+                              : "TypeScript"}
                       </button>
-                    ) : null}
+                    );
+                  })}
+                  {ageBand === "6-8" ? (
                     <button
                       type="button"
-                      className="kids-button"
-                      onClick={() => decideOri("reject")}
+                      aria-expanded={showMoreLanguages}
+                      onClick={() => setShowMoreLanguages(!showMoreLanguages)}
                     >
-                      {copy.reject}
+                      {showMoreLanguages ? copy.fewerLanguages : copy.moreLanguages}
                     </button>
-                  </div>
+                  ) : null}
                 </div>
-              ) : null}
-            </div>
-          ) : null}
-          <PanelDivider
-            controller={panelLayout}
-            id="code"
-            title={copy.code}
-            orientation="horizontal"
-            direction={-1}
-            size={() =>
-              document
-                .querySelector(".kids-studio-code-panel .agx-panel-body")
-                ?.getBoundingClientRect().height ?? 240
-            }
+                <pre className="kids-code-strip" tabIndex={0} aria-label={copy.code}>
+                  {currentLine ? (
+                    <>
+                      {code.slice(0, currentLine.start)}
+                      <mark className="kids-code-current" data-testid="code-current">
+                        {code.slice(currentLine.start, currentLine.end)}
+                      </mark>
+                      {code.slice(currentLine.end)}
+                    </>
+                  ) : (
+                    code
+                  )}
+                </pre>
+              </section>
+            </Panel>
+          </div>
+        </div>
+        {error ? (
+          <p role="alert" className="kids-note">
+            {copy.saveError}
+          </p>
+        ) : null}
+        {exportingMedia ? (
+          <ExportMediaDialog
+            locale={locale}
+            onConfirm={() => {
+              downloadScene(true);
+              setExportingMedia(false);
+            }}
+            onCancel={() => setExportingMedia(false)}
           />
-          <Panel
-            controller={panelLayout}
-            id="code"
-            title={copy.code}
-            accent="#2563EB"
-            minimizable
-            className="kids-studio-code-panel"
+        ) : null}
+        {actor && inspectorOpen ? (
+          <div
+            className="kids-inspector-dock"
+            data-open="true"
+            style={{ ["--kids-keyboard-inset" as string]: `${keyboardInset}px` }}
           >
             <section
-              className="kids-studio-panel"
-              data-collapsed={codeCollapsed ? "true" : undefined}
+              id="kids-inspector-card"
+              className="kids-inspector-card"
+              aria-label={locale === "es" ? "Propiedades" : "Properties"}
             >
-              <div className="kids-studio-panel-head">
+              <header className="kids-inspector-head">
+                <div className="kids-inspector-title">
+                  <small>{locale === "es" ? "Propiedades" : "Properties"}</small>
+                  <strong>
+                    {inspectorKind === "backdrop"
+                      ? `${locale === "es" ? "Fondo" : "Backdrop"} · ${galleryBackdropName(stageBackdrop, locale)}`
+                      : `${actor.name} · x ${actor.x} · y ${actor.y}`}
+                  </strong>
+                </div>
                 <button
+                  ref={inspectorClose}
                   type="button"
-                  className="kids-panel-toggle"
-                  aria-expanded={!codeCollapsed}
-                  onClick={() => setCodeCollapsed((value) => !value)}
+                  className="kids-inspector-close"
+                  aria-label={locale === "es" ? "Cerrar propiedades" : "Close properties"}
+                  onClick={() => setInspectorOpen(false)}
                 >
-                  {codeCollapsed ? copy.showCode : copy.hideCode}
+                  <span aria-hidden="true">✕</span>
                 </button>
-              </div>
-              <div className="kids-code-languages" role="group" aria-label={copy.code}>
-                {codeTabs.map((tab) => {
-                  const item = tab === "node" ? "typescript" : tab;
-                  return (
-                    <button
-                      type="button"
-                      key={tab}
-                      aria-pressed={shownLanguage === item}
-                      onClick={() => {
-                        setLanguage(item);
-                        setSheetOpen(false);
-                        setBlocksSheetMaximized(false);
-                      }}
-                    >
-                      {item === "agorix"
-                        ? "Agorix Code"
-                        : item === "python"
-                          ? "Python"
-                          : item === "java"
-                            ? "Java"
-                            : "TypeScript"}
-                    </button>
-                  );
-                })}
-                {ageBand === "6-8" ? (
-                  <button
-                    type="button"
-                    aria-expanded={showMoreLanguages}
-                    onClick={() => setShowMoreLanguages(!showMoreLanguages)}
-                  >
-                    {showMoreLanguages ? copy.fewerLanguages : copy.moreLanguages}
-                  </button>
-                ) : null}
-              </div>
-              <pre className="kids-code-strip" tabIndex={0} aria-label={copy.code}>
-                {currentLine ? (
-                  <>
-                    {code.slice(0, currentLine.start)}
-                    <mark className="kids-code-current" data-testid="code-current">
-                      {code.slice(currentLine.start, currentLine.end)}
-                    </mark>
-                    {code.slice(currentLine.end)}
-                  </>
-                ) : (
-                  code
-                )}
-              </pre>
-            </section>
-          </Panel>
-        </div>
-      </div>
-      {error ? (
-        <p role="alert" className="kids-note">
-          {copy.saveError}
-        </p>
-      ) : null}
-      {exportingMedia ? (
-        <ExportMediaDialog
-          locale={locale}
-          onConfirm={() => {
-            downloadScene(true);
-            setExportingMedia(false);
-          }}
-          onCancel={() => setExportingMedia(false)}
-        />
-      ) : null}
-      {actor && inspectorOpen ? (
-        <div
-          className="kids-inspector-dock"
-          data-open="true"
-          style={{ ["--kids-keyboard-inset" as string]: `${keyboardInset}px` }}
-        >
-          <section
-            id="kids-inspector-card"
-            className="kids-inspector-card"
-            aria-label={locale === "es" ? "Propiedades" : "Properties"}
-          >
-            <header className="kids-inspector-head">
-              <div className="kids-inspector-title">
-                <small>{locale === "es" ? "Propiedades" : "Properties"}</small>
-                <strong>
-                  {inspectorKind === "backdrop"
-                    ? `${locale === "es" ? "Fondo" : "Backdrop"} · ${galleryBackdropName(stageBackdrop, locale)}`
-                    : `${actor.name} · x ${actor.x} · y ${actor.y}`}
-                </strong>
-              </div>
-              <button
-                ref={inspectorClose}
-                type="button"
-                className="kids-inspector-close"
-                aria-label={locale === "es" ? "Cerrar propiedades" : "Close properties"}
-                onClick={() => setInspectorOpen(false)}
-              >
-                <span aria-hidden="true">✕</span>
-              </button>
-            </header>
-            <div className="kids-inspector-body">
-              {inspectorKind === "backdrop" ? (
-                <div className="kids-studio-backdrop-props" role="group">
-                  <p>
-                    {locale === "es"
-                      ? "Es el fondo de toda la escena. Cambiarlo no mueve a los personajes."
-                      : "This is the backdrop of the whole scene. Changing it does not move the characters."}
-                  </p>
-                  <button
-                    type="button"
-                    className="kids-button"
-                    onClick={() => {
-                      setInspectorOpen(false);
-                      setEditorTab("costumes");
-                    }}
-                  >
-                    {locale === "es" ? "Elegir fondo" : "Choose backdrop"}
-                  </button>
-                  {customImagesEnabled ? (
+              </header>
+              <div className="kids-inspector-body">
+                {inspectorKind === "backdrop" ? (
+                  <div className="kids-studio-backdrop-props" role="group">
+                    <p>
+                      {locale === "es"
+                        ? "Es el fondo de toda la escena. Cambiarlo no mueve a los personajes."
+                        : "This is the backdrop of the whole scene. Changing it does not move the characters."}
+                    </p>
                     <button
                       type="button"
                       className="kids-button"
                       onClick={() => {
                         setInspectorOpen(false);
                         setEditorTab("costumes");
-                        setDrawingKind("backdrop");
-                        setChooser(null);
                       }}
                     >
-                      {locale === "es" ? "Dibujar fondo" : "Draw backdrop"}
+                      {locale === "es" ? "Elegir fondo" : "Choose backdrop"}
                     </button>
-                  ) : null}
-                </div>
-              ) : (
-                <>
-                  {actor ? (
-                    <div
-                      className="kids-studio-actor-inspector"
-                      data-ori-sprite-x={actor.x}
-                      data-ori-sprite-y={actor.y}
-                    >
-                      <label>
-                        x{" "}
-                        <input
-                          type="number"
-                          min={0}
-                          max={320}
-                          key={`${actor.id}-x-${placementRevision}`}
-                          defaultValue={actor.x}
-                          onBlur={(event) => {
-                            if (event.target.value.trim())
-                              setActorCoordinate("x", Number(event.target.value));
-                          }}
-                        />
-                      </label>
-                      <label>
-                        y{" "}
-                        <input
-                          type="number"
-                          min={-100}
-                          max={120}
-                          key={`${actor.id}-y-${placementRevision}`}
-                          defaultValue={actor.y}
-                          onBlur={(event) => {
-                            if (event.target.value.trim())
-                              setActorCoordinate("y", Number(event.target.value));
-                          }}
-                        />
-                      </label>
-                      <label>
-                        {locale === "es" ? "Dirección" : "Direction"}
-                        <input
-                          type="number"
-                          min={-180}
-                          max={180}
-                          key={`${actor.id}-direction-${placementRevision}`}
-                          defaultValue={actor.direction}
-                          onBlur={(event) => {
-                            if (event.target.value.trim())
-                              setActorAppearance("direction", Number(event.target.value));
-                          }}
-                        />
-                        °
-                      </label>
-                      <label>
-                        {copy.size}
-                        <input
-                          type="number"
-                          min={10}
-                          max={400}
-                          key={`${actor.id}-size-${placementRevision}`}
-                          defaultValue={actor.size}
-                          onBlur={(event) => {
-                            if (event.target.value.trim())
-                              setActorAppearance("size", Number(event.target.value));
-                          }}
-                        />
-                        %
-                      </label>
-                      {oriSuggestions ? (
-                        <button
-                          type="button"
-                          className="kids-button"
-                          onClick={() => openOri("actor")}
-                        >
-                          {locale === "es" ? "✦ Ori y este objeto" : "✦ Ori and this sprite"}
-                        </button>
-                      ) : null}
-                    </div>
-                  ) : null}
-                  <div
-                    className="kids-studio-placement"
-                    role="group"
-                    aria-label={`${copy.place}: ${actor?.name ?? ""}`}
-                  >
-                    <span>
-                      {copy.place}: {actor?.name}
-                    </span>
-                    <button
-                      type="button"
-                      className="kids-button"
-                      aria-label={`${copy.place} ←`}
-                      disabled={!actor || actor.x <= 0}
-                      onClick={() => placeActor(-20, 0)}
-                    >
-                      ←
-                    </button>
-                    <button
-                      type="button"
-                      className="kids-button"
-                      aria-label={`${copy.place} ↑`}
-                      disabled={!actor || actor.y <= -100}
-                      onClick={() => placeActor(0, -20)}
-                    >
-                      ↑
-                    </button>
-                    <button
-                      type="button"
-                      className="kids-button"
-                      aria-label={`${copy.place} ↓`}
-                      disabled={!actor || actor.y >= 120}
-                      onClick={() => placeActor(0, 20)}
-                    >
-                      ↓
-                    </button>
-                    <button
-                      type="button"
-                      className="kids-button"
-                      aria-label={`${copy.place} →`}
-                      disabled={!actor || actor.x >= 320}
-                      onClick={() => placeActor(20, 0)}
-                    >
-                      →
-                    </button>
-                    <button
-                      type="button"
-                      className="kids-button"
-                      disabled={
-                        !actor ||
-                        (creative.stage?.actorOrder?.indexOf(actor.id) ?? 0) ===
-                          (creative.stage?.actorOrder?.length ?? 1) - 1
-                      }
-                      onClick={() => changeLayer("forward")}
-                    >
-                      {copy.forward}
-                    </button>
-                    <button
-                      type="button"
-                      className="kids-button"
-                      disabled={
-                        !actor || (creative.stage?.actorOrder?.indexOf(actor.id) ?? 0) === 0
-                      }
-                      onClick={() => changeLayer("backward")}
-                    >
-                      {copy.backward}
-                    </button>
+                    {customImagesEnabled ? (
+                      <button
+                        type="button"
+                        className="kids-button"
+                        onClick={() => {
+                          setInspectorOpen(false);
+                          setEditorTab("costumes");
+                          setDrawingKind("backdrop");
+                          setChooser(null);
+                        }}
+                      >
+                        {locale === "es" ? "Dibujar fondo" : "Draw backdrop"}
+                      </button>
+                    ) : null}
                   </div>
-                </>
-              )}
-            </div>
-          </section>
-        </div>
-      ) : null}
-    </section>
+                ) : (
+                  <>
+                    {actor ? (
+                      <div
+                        className="kids-studio-actor-inspector"
+                        data-ori-sprite-x={actor.x}
+                        data-ori-sprite-y={actor.y}
+                      >
+                        <label>
+                          x{" "}
+                          <input
+                            type="number"
+                            min={0}
+                            max={320}
+                            key={`${actor.id}-x-${placementRevision}`}
+                            defaultValue={actor.x}
+                            onBlur={(event) => {
+                              if (event.target.value.trim())
+                                setActorCoordinate("x", Number(event.target.value));
+                            }}
+                          />
+                        </label>
+                        <label>
+                          y{" "}
+                          <input
+                            type="number"
+                            min={-100}
+                            max={120}
+                            key={`${actor.id}-y-${placementRevision}`}
+                            defaultValue={actor.y}
+                            onBlur={(event) => {
+                              if (event.target.value.trim())
+                                setActorCoordinate("y", Number(event.target.value));
+                            }}
+                          />
+                        </label>
+                        <label>
+                          {locale === "es" ? "Dirección" : "Direction"}
+                          <input
+                            type="number"
+                            min={-180}
+                            max={180}
+                            key={`${actor.id}-direction-${placementRevision}`}
+                            defaultValue={actor.direction}
+                            onBlur={(event) => {
+                              if (event.target.value.trim())
+                                setActorAppearance("direction", Number(event.target.value));
+                            }}
+                          />
+                          °
+                        </label>
+                        <label>
+                          {copy.size}
+                          <input
+                            type="number"
+                            min={10}
+                            max={400}
+                            key={`${actor.id}-size-${placementRevision}`}
+                            defaultValue={actor.size}
+                            onBlur={(event) => {
+                              if (event.target.value.trim())
+                                setActorAppearance("size", Number(event.target.value));
+                            }}
+                          />
+                          %
+                        </label>
+                        {oriSuggestions ? (
+                          <button
+                            type="button"
+                            className="kids-button"
+                            onClick={() => openOri("actor")}
+                          >
+                            {locale === "es" ? "✦ Ori y este objeto" : "✦ Ori and this sprite"}
+                          </button>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    <div
+                      className="kids-studio-placement"
+                      role="group"
+                      aria-label={`${copy.place}: ${actor?.name ?? ""}`}
+                    >
+                      <span>
+                        {copy.place}: {actor?.name}
+                      </span>
+                      <button
+                        type="button"
+                        className="kids-button"
+                        aria-label={`${copy.place} ←`}
+                        disabled={!actor || actor.x <= 0}
+                        onClick={() => placeActor(-20, 0)}
+                      >
+                        ←
+                      </button>
+                      <button
+                        type="button"
+                        className="kids-button"
+                        aria-label={`${copy.place} ↑`}
+                        disabled={!actor || actor.y <= -100}
+                        onClick={() => placeActor(0, -20)}
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        className="kids-button"
+                        aria-label={`${copy.place} ↓`}
+                        disabled={!actor || actor.y >= 120}
+                        onClick={() => placeActor(0, 20)}
+                      >
+                        ↓
+                      </button>
+                      <button
+                        type="button"
+                        className="kids-button"
+                        aria-label={`${copy.place} →`}
+                        disabled={!actor || actor.x >= 320}
+                        onClick={() => placeActor(20, 0)}
+                      >
+                        →
+                      </button>
+                      <button
+                        type="button"
+                        className="kids-button"
+                        disabled={
+                          !actor ||
+                          (creative.stage?.actorOrder?.indexOf(actor.id) ?? 0) ===
+                            (creative.stage?.actorOrder?.length ?? 1) - 1
+                        }
+                        onClick={() => changeLayer("forward")}
+                      >
+                        {copy.forward}
+                      </button>
+                      <button
+                        type="button"
+                        className="kids-button"
+                        disabled={
+                          !actor || (creative.stage?.actorOrder?.indexOf(actor.id) ?? 0) === 0
+                        }
+                        onClick={() => changeLayer("backward")}
+                      >
+                        {copy.backward}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </section>
+          </div>
+        ) : null}
+      </section>
+    </PaletteRulesContext.Provider>
   );
 }

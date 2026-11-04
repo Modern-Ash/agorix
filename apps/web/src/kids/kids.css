@@ -6502,3 +6502,20 @@ button.kids-band-chip {
   margin: 4px 0 0;
   flex: 1 1 100%;
 }
+
+/* A block that depends on something the project does not have yet (#1235): dimmed, with the reason
+   on tap and as a tooltip. It stays in the palette so the catalog is whole. */
+.kids-palette-tool-add[data-kids-unmet="true"] {
+  opacity: 0.5;
+  cursor: help;
+  filter: grayscale(0.4);
+}
+.kids-palette-hint {
+  margin: 6px 0;
+  padding: 8px 10px;
+  border: 1px solid var(--kids-border);
+  border-left: 4px solid #5130a8;
+  border-radius: 10px;
+  background: #f3edfc;
+  font-weight: 700;
+}
