@@ -24,7 +24,7 @@ export default defineConfig({
             name: "webkit",
             use: { browserName: "webkit" as const },
             testMatch:
-              /kids-(child-journey|golden|mission-studio|create-selection|routes|map|shell|gallery|delete-project|free-access|studio-tools)\.spec\.ts/,
+              /kids-(child-journey|audio|golden|mission-studio|create-selection|routes|map|shell|gallery|delete-project|free-access|studio-tools)\.spec\.ts/,
           },
         ]
       : []),
