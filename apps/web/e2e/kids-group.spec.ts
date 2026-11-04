@@ -55,11 +55,11 @@ async function newPage(browser: Browser): Promise<Page> {
   return context.newPage();
 }
 
-// The dev mailbox keeps only the latest message of the whole server, and other spec files run in
-// parallel, so wait for the one addressed to this test's own address.
+// The dev mailbox is shared by the whole server and other spec files run in parallel, so ask for
+// the message addressed to this test's own (unique) address instead of the latest one overall.
 async function mailToken(page: Page, to: string): Promise<string> {
   for (let attempt = 0; attempt < 40; attempt += 1) {
-    const response = await page.request.get("/v1/__dev/mail");
+    const response = await page.request.get(`/v1/__dev/mail?to=${encodeURIComponent(to)}`);
     const body = (await response.json()) as { token?: string; to?: string };
     if (body.to === to && body.token !== undefined) return body.token;
     await page.waitForTimeout(250);
@@ -120,6 +120,8 @@ test("organizer runs a group of two children and starts a team project", async (
   page,
   browser,
 }) => {
+  // Three browser contexts and an account sign-up: it outgrows 30 s when the whole suite runs.
+  test.slow();
   // The organizer's device follows the admin registry (served by tutor-api in production).
   await page.route("**/api/tutor/group-config", (route) =>
     route.fulfill({
