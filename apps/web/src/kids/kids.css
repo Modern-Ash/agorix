@@ -3398,6 +3398,37 @@
 .kids-studio-stage-actor[aria-pressed="true"]:active {
   cursor: grabbing;
 }
+/* Roll over: a mouse (never a finger) lights the character a child can tap twice for its
+   properties. It animates a ring and a glow, not `transform`, which dragging and the costume
+   size already use. Reduced motion keeps the colour change without the transition. */
+@media (hover: hover) and (pointer: fine) {
+  .kids-studio-stage-actor:hover:not([aria-pressed="true"]) {
+    border-color: #8f74d6;
+    box-shadow: 0 0 0 4px #8f74d633;
+  }
+  .kids-studio-stage-actor[aria-pressed="true"]:hover {
+    box-shadow: 0 0 0 5px #5130a833;
+  }
+}
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .kids-studio-stage-actor {
+    transition:
+      border-color 140ms ease-out,
+      box-shadow 180ms ease-out;
+  }
+  /* The costume breathes a little while the mouse is over it. */
+  .kids-studio-stage-actor:hover .kids-studio-stage-costume {
+    animation: kids-actor-hover 900ms ease-in-out infinite alternate;
+  }
+}
+@keyframes kids-actor-hover {
+  from {
+    filter: none;
+  }
+  to {
+    filter: drop-shadow(0 3px 5px #3d238a40) brightness(1.04);
+  }
+}
 .kids-studio-stage-actor .kids-sprite {
   max-width: 100%;
   max-height: 100%;
