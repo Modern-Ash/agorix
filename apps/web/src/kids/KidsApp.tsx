@@ -57,6 +57,7 @@ import { useKidsText, type KidsText } from "./useKidsText.js";
 import { stopSpeaking } from "./speak.js";
 import { KidsOriGuide } from "./screens/KidsOriGuide.js";
 import { useOriGaze } from "./kidsOriGaze.js";
+import { KidsTipLayer } from "./screens/KidsTipLayer.js";
 import { useOriCursorTracking } from "./kidsOriCursor.js";
 import { KidsStudioScreen } from "./screens/KidsStudioScreen.js";
 import { ensureMissionStudio, missionOfStudio } from "./kidsMissionStudio.js";
@@ -460,6 +461,7 @@ export function KidsApp({
       state.screen !== "map" ? (
         <KidsOriGuide screen={state.screen} locale={state.locale} aboveNav={showNav} />
       ) : null}
+      <KidsTipLayer locale={state.locale} />
       {showNav ? (
         <nav className="kids-nav" aria-label={t("map")}>
           {NAV.map((item) => (
