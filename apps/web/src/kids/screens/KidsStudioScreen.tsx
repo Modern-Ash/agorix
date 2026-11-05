@@ -457,7 +457,6 @@ const COPY = {
     showBlocks: "Mostrar bloques",
     hideCode: "Ocultar código",
     showCode: "Mostrar código",
-    hideOri: "Ocultar ayuda de Ori",
     showOri: "Mostrar ayuda de Ori",
     idea: "Pedirle una idea a Ori",
     sheetOpen: "Agregar bloques",
@@ -727,7 +726,6 @@ const COPY = {
     showBlocks: "Show blocks",
     hideCode: "Hide code",
     showCode: "Show code",
-    hideOri: "Hide Ori help",
     showOri: "Show Ori help",
     idea: "Ask Ori for an idea",
     sheetOpen: "Add blocks",
@@ -3197,8 +3195,17 @@ export function KidsStudioScreen({
             data-ori-state={oriMotion}
             data-ori-paused={!oriPageVisible}
             data-ori-context={oriContextText}
-            aria-label={locale === "es" ? "Abrir Ori" : "Open Ori"}
-            onClick={() => openOri("actor")}
+            aria-label={
+              oriCollapsed
+                ? locale === "es"
+                  ? "Abrir Ori"
+                  : "Open Ori"
+                : locale === "es"
+                  ? "Cerrar Ori"
+                  : "Close Ori"
+            }
+            aria-expanded={!oriCollapsed}
+            onClick={() => (oriCollapsed ? openOri("actor") : setOriCollapsed(true))}
           >
             <KidsSprite slot="ori" expression={oriExpression} />
             <span>
@@ -6784,20 +6791,18 @@ export function KidsStudioScreen({
                           : "Ori"}
                       </span>
                     </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className="kids-panel-toggle"
-                      aria-expanded
-                      onClick={() => setOriCollapsed(true)}
-                    >
-                      {copy.hideOri}
-                    </button>
-                  )}
+                  ) : null}
                 </div>
-                <div className="kids-ori-stage">
+                {/* Hidden by CSS while collapsed; tapping the face of the open card hides Ori. */}
+                <button
+                  type="button"
+                  className="kids-ori-stage kids-ori-stage-close"
+                  aria-label={locale === "es" ? "Ocultar Ori" : "Hide Ori"}
+                  aria-expanded={!oriCollapsed}
+                  onClick={() => setOriCollapsed(true)}
+                >
                   <KidsSprite slot="ori" expression={oriExpression} talking={Boolean(oriIdea)} />
-                </div>
+                </button>
                 {oriSeen ? (
                   <OriContextNote
                     context={oriSeen}
