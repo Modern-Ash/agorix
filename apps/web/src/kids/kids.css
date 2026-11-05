@@ -6641,3 +6641,17 @@ button.kids-band-chip {
 .kids-program-block {
   user-select: none;
 }
+
+/* Ori hides when its own face is tapped again, so there is no separate hide button (#1244). */
+.kids-ori-stage-close {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.kids-ori-stage-close:focus-visible {
+  outline: 3px solid var(--kids-runtime-strong);
+  outline-offset: 2px;
+  border-radius: 16px;
+}

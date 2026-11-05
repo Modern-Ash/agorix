@@ -92,7 +92,8 @@ test("reduced motion keeps the label but does not animate the avatar (#1237)", a
 test("tapping the invitation opens Ori as usual and ends it (#1237)", async ({ page }) => {
   await emptyScene(page);
   await page.clock.fastForward(26_000);
-  await rail(page).click();
+  const button = page.locator(".kids-studio-ori-rail");
+  await button.click();
   await expect(page.locator(".kids-studio-ori:not([data-collapsed='true'])")).toBeVisible();
-  await expect(rail(page)).not.toHaveAttribute("data-ori-state", "nudge");
+  await expect(button).not.toHaveAttribute("data-ori-state", "nudge");
 });
