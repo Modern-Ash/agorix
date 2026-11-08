@@ -22,6 +22,8 @@ async function start(page: Page, viewport = { width: 1280, height: 900 }) {
 
 /** Tab through the page once and list the controls that showed no tooltip. */
 async function silentControls(page: Page, limit = 400): Promise<string[]> {
+  // The tips listen once the layer has mounted; tabbing before that would miss the first control.
+  await page.waitForFunction(() => document.documentElement.dataset.kidsTips === "on");
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   const silent: string[] = [];
   const seen = new Set<string>();
