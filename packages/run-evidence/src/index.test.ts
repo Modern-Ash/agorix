@@ -1,0 +1,202 @@
+import { describe, expect, it } from "vitest";
+import {
+  SCHEMA_VERSION,
+  type ProjectCreativeState,
+  type ProjectProgram,
+  type Script,
+} from "@agorix/program-model";
+import { runMultiActorProgram } from "@agorix/runtime";
+import { diagnoseRun, surfacedFinding, toProviderFinding } from "./index.js";
+
+const program = (scripts: Script[]): ProjectProgram => ({ schema: SCHEMA_VERSION, scripts });
+const creative = (scripts: Script[]): ProjectCreativeState => ({
+  actors: scripts.map((script, index) => ({
+    id: `actor:${index + 1}`,
+    name: `A${index + 1}`,
+    x: 0,
+    y: 0,
+    direction: 0,
+    size: 100,
+    visible: true,
+    scripts: [script.id],
+  })),
+});
+const diagnose = (scripts: Script[], extra: Partial<Parameters<typeof diagnoseRun>[0]> = {}) => {
+  const p = program(scripts);
+  const c = creative(scripts);
+  return diagnoseRun({ program: p, creative: c, run: runMultiActorProgram(p, c), ...extra });
+};
+
+const flag = { type: "greenFlag" } as const;
+
+describe("run evidence findings", () => {
+  it("says a message nobody sends is why its script never started", () => {
+    const [finding] = diagnose([
+      { id: "a", trigger: flag, statements: [{ type: "move", steps: 20 }] },
+      { id: "b", trigger: { type: "onMessage", message: "hola" }, statements: [{ type: "hide" }] },
+    ]);
+    expect(finding).toMatchObject({
+      kind: "neverStarted",
+      actorId: "actor:2",
+      nodeIds: ["scripts[1]"],
+      counts: { senders: 0 },
+      event: { type: "message", name: "hola", senders: 0 },
+    });
+    expect(finding!.confidence).toBeGreaterThanOrEqual(0.9);
+  });
+
+  it("is less sure when a sender exists but did not run, and quiet when the message arrived", () => {
+    const scripts: Script[] = [
+      { id: "a", trigger: flag, statements: [{ type: "broadcast", message: "hola" }] },
+      { id: "b", trigger: { type: "onMessage", message: "hola" }, statements: [{ type: "hide" }] },
+    ];
+    expect(diagnose(scripts)).toEqual([]);
+    const notRun = diagnose([
+      {
+        id: "a",
+        trigger: { type: "onKeyPressed", key: "Space" },
+        statements: [{ type: "broadcast", message: "hola" }],
+      },
+      scripts[1]!,
+    ]);
+    const heard = notRun.find((item) => item.nodeIds[0] === "scripts[1]")!;
+    expect(heard.counts).toEqual({ senders: 1 });
+    expect(heard.confidence).toBeLessThan(0.9);
+  });
+
+  it("treats a key or a tap not yet done as a weak finding that is not surfaced", () => {
+    const findings = diagnose([
+      {
+        id: "a",
+        trigger: { type: "onKeyPressed", key: "ArrowUp" },
+        statements: [{ type: "move", steps: 20 }],
+      },
+    ]);
+    expect(findings[0]).toMatchObject({
+      kind: "neverStarted",
+      event: { type: "key", name: "ArrowUp" },
+    });
+    expect(surfacedFinding(findings)).toBeUndefined();
+  });
+
+  it("does not call an unfinished live run a failure", () => {
+    expect(
+      diagnose(
+        [
+          {
+            id: "b",
+            trigger: { type: "onMessage", message: "hola" },
+            statements: [{ type: "hide" }],
+          },
+        ],
+        { final: false },
+      ),
+    ).toEqual([]);
+  });
+
+  it("finds a message that was sent and that nothing receives", () => {
+    const [finding] = diagnose([
+      { id: "a", trigger: flag, statements: [{ type: "broadcast", message: "listo" }] },
+    ]);
+    expect(finding).toMatchObject({
+      kind: "messageUnheard",
+      nodeIds: ["scripts[0]/statements[0]"],
+      counts: { sent: 1 },
+    });
+  });
+
+  it("finds an if that always said no, with how many times it was asked", () => {
+    const findings = diagnose([
+      {
+        id: "a",
+        trigger: flag,
+        statements: [
+          {
+            type: "repeat",
+            count: 3,
+            body: [
+              {
+                type: "if",
+                condition: {
+                  type: "greaterThan",
+                  left: { type: "xPosition" },
+                  right: { type: "numericLiteral", value: 100 },
+                },
+                then: [{ type: "hide" }],
+              },
+            ],
+          },
+        ],
+      },
+    ]);
+    expect(findings[0]).toMatchObject({
+      kind: "conditionNeverTrue",
+      nodeIds: ["scripts[0]/statements[0]/body[0]"],
+      counts: { yes: 0, no: 3 },
+    });
+    expect(surfacedFinding(findings)).toBe(findings[0]);
+  });
+
+  it("stays silent for an if that sometimes said yes", () => {
+    expect(
+      diagnose([
+        {
+          id: "a",
+          trigger: flag,
+          statements: [
+            { type: "move", steps: 40 },
+            {
+              type: "if",
+              condition: {
+                type: "greaterThan",
+                left: { type: "xPosition" },
+                right: { type: "numericLiteral", value: 10 },
+              },
+              then: [{ type: "hide" }],
+            },
+          ],
+        },
+      ]),
+    ).toEqual([]);
+  });
+
+  it("adds the prediction that did not match", () => {
+    const [finding] = diagnose(
+      [{ id: "a", trigger: flag, statements: [{ type: "move", steps: 20 }] }],
+      {
+        predictionMatched: false,
+      },
+    );
+    expect(finding).toMatchObject({ kind: "predictionMismatch" });
+  });
+
+  it("limits the diagnosis to one character", () => {
+    const scripts: Script[] = [
+      { id: "a", trigger: { type: "onMessage", message: "hola" }, statements: [{ type: "hide" }] },
+      { id: "b", trigger: { type: "onMessage", message: "vamos" }, statements: [{ type: "hide" }] },
+    ];
+    const only = diagnose(scripts, { actorId: "actor:2" });
+    expect(only.map((item) => item.actorId)).toEqual(["actor:2"]);
+  });
+
+  it("is deterministic and orders by confidence", () => {
+    const scripts: Script[] = [
+      { id: "a", trigger: { type: "onKeyPressed", key: "Space" }, statements: [{ type: "hide" }] },
+      { id: "b", trigger: { type: "onMessage", message: "hola" }, statements: [{ type: "hide" }] },
+    ];
+    const first = diagnose(scripts);
+    expect(JSON.stringify(diagnose(scripts))).toBe(JSON.stringify(first));
+    expect(first.map((item) => item.confidence)).toEqual(
+      [...first.map((i) => i.confidence)].sort((a, b) => b - a),
+    );
+  });
+
+  it("sends a provider only the shape: no ids, names or learner values", () => {
+    const [finding] = diagnose([
+      { id: "b", trigger: { type: "onMessage", message: "hola" }, statements: [{ type: "hide" }] },
+    ]);
+    const sent = toProviderFinding(finding!);
+    expect(sent).toEqual({ kind: "neverStarted", counts: { senders: 0 }, eventType: "message" });
+    expect(JSON.stringify(sent)).not.toMatch(/hola|actor|scripts\[/);
+  });
+});
