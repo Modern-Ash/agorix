@@ -64,6 +64,14 @@ const INTENT_SIZES: Readonly<Record<OriStudioIntent, number>> = {
   melody: 6,
   rhythm: 6,
   cheer: 2,
+  jump: 3,
+  spin: 7,
+  grow: 5,
+  bounce: 6,
+  hideSeek: 3,
+  wander: 5,
+  follow: 5,
+  greet: 2,
 };
 
 export function oriIntentSize(intent: OriStudioIntent): number {

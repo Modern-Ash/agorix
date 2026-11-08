@@ -526,3 +526,11 @@ Mis proyectos → **Importar de Scratch (.sb3)** reads `project.json` from the f
 - **Decir con variable** (`say` / `think` with `append`): the text, one space, then a number (a variable, a position, a calculation) written in the bubble, e.g. "Puntos: 7". The number is evaluated by the deterministic runtime, so the trace shows exactly what was said; decimals are kept to two places.
 - This is the part of Scratch's `join` that nearly every score or counter project uses. **Text operators in general** (letter of, length, joining two texts) stay out: they need variables that hold text, which would let free text typed by a child travel through the program, and the product excludes that (see the functional matrix). The text in a bubble is still only what the child types into the bubble itself.
 - The Scratch importer turns `say (join "Puntos: " (variable))` into this block.
+
+## More ideas from Ori (what Scratch's blocks make easy to ask for)
+
+Ori's goal list in the Studio grew from 7 to 15. The new ones use the blocks added for Scratch compatibility and are still the same kind of thing: a goal picked from a closed list (never typed), turned by deterministic code into two to eight blocks, shown as ghost blocks with the evidence of where the character would end up, and added only if the learner uses the idea.
+
+- **Saltar** (up and down with _Cambiar y_), **Dar una vuelta** (four turns with waits so the rotation shows), **Crecer y volver** (size steps, then back to 100), **Rebotar en el borde**, **Esconderse y aparecer**, **Ir a lugares al azar**, **Ir hacia el ratón** and **Saludar** (two fixed greetings, in the learner's language, written by Ori and not by the child).
+- Each idea only uses the values the scene already allows; the host check refuses any other value or text. A test builds every idea in both languages, accepts it into a scene program and runs it: it must pass the scene's own validation and do something visible or audible.
+- Two ideas Scratch projects love are left out on purpose: a forever loop that follows the mouse, and a score counter. The first would trigger the loop help on Ori's own idea; the second needs a variable the idea cannot declare.

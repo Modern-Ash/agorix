@@ -713,6 +713,22 @@ test("a goal from the closed list becomes several ghost blocks and only changes 
   expect(violations.map((entry) => entry.id)).toEqual([]);
 });
 
+test("an idea that plays with how the character looks, like jumping, can be used and run", async ({
+  page,
+}) => {
+  await openStudio(page, "9-12");
+  await page.getByRole("button", { name: /^(Mostrar ayuda de Ori|Abrir Ori)$/ }).click();
+  await page.getByRole("button", { name: "Saltar" }).click();
+  await expect(page.getByTestId("intent-card")).toContainText("Ori propone 3 bloques");
+  await expect(page.getByTestId("ori-ghost-block")).toHaveCount(3);
+  await expect(page.locator(".kids-program-block")).toHaveCount(0);
+  await page.getByTestId("intent-card").getByRole("button", { name: "Usar idea" }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(3);
+  await expect(page.locator(".kids-program-block").first()).toContainText("Cambiar y en -80");
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Paso", exact: true })).toBeEnabled();
+});
+
 test("Ori checks a prediction and explains the run from its trace, by age band", async ({
   page,
 }) => {
