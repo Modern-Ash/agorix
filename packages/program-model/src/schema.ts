@@ -268,6 +268,15 @@ export interface GoToStatement {
 
 export type GoToTarget = "random" | "mouse";
 
+/** How the character's picture follows its heading: Scratch's three rotation styles. */
+export type RotationStyle = "all" | "leftRight" | "none";
+
+/** Scratch's "set rotation style": turn all around, only face left or right, or never rotate. */
+export interface SetRotationStyleStatement {
+  readonly type: "setRotationStyle";
+  readonly style: RotationStyle;
+}
+
 /**
  * Scratch's "go to random position" and "go to mouse-pointer": the sprite jumps inside the stage
  * to a seeded random spot, or to the pointer captured for the run.
@@ -613,6 +622,7 @@ export type Statement =
   | MoveStatement
   | GoToStatement
   | GoToTargetStatement
+  | SetRotationStyleStatement
   | SetXStatement
   | SetYStatement
   | ChangeXStatement

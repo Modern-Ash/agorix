@@ -96,6 +96,7 @@ describe("runtime operation allowlist", () => {
       "setPenColor",
       "setPenSize",
       "setPitch",
+      "setRotationStyle",
       "setSize",
       "setTempo",
       "setVariable",

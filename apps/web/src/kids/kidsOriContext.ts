@@ -29,6 +29,7 @@ const FAMILY: Record<string, string> = {
   move: "motion",
   goTo: "motion",
   goToTarget: "motion",
+  setRotationStyle: "motion",
   setX: "motion",
   setY: "motion",
   changeX: "motion",
