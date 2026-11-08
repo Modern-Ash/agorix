@@ -537,7 +537,8 @@ export function thinkWorld(world: WorldState, text: string): WorldState {
 
 /** Removes the speech or thought bubble, as the end of "say for N seconds". */
 export function clearBubbleWorld(world: WorldState): WorldState {
-  const { bubble: _bubble, ...sprite } = world.sprite;
+  const sprite = { ...world.sprite };
+  delete sprite.bubble;
   return createWorldState({ ...world, sprite });
 }
 
