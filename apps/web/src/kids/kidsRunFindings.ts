@@ -107,6 +107,34 @@ export function findingSentence(finding: Finding, locale: Locale, band: AgeBand)
         : young
           ? `The “If” always said yes (${times(yes, locale)}).`
           : `The “If” condition was checked ${times(yes, locale)} and was always true.`;
+    case "hiddenCharacter": {
+      const actions = finding.counts["actions"] ?? 1;
+      return es
+        ? young
+          ? "El personaje se escondió, por eso no se ve nada. Agregá «Mostrar»."
+          : `El programa hizo ${actions} ${actions === 1 ? "cosa" : "cosas"} con el personaje, pero terminó escondido: por eso no se ve. Falta un «Mostrar».`
+        : young
+          ? "The character hid, so nothing shows. Add “Show”."
+          : `The program did ${actions} ${actions === 1 ? "thing" : "things"} with the character, but it ended hidden, so nothing shows. A “Show” is missing.`;
+    }
+    case "soundSilent": {
+      const played = finding.counts["played"] ?? 1;
+      return es
+        ? young
+          ? "El sonido sonó con el volumen en 0, por eso no se oye."
+          : `El sonido se reprodujo ${times(played, locale)} con el volumen en 0, así que no se escucha. Subí el volumen antes del sonido.`
+        : young
+          ? "The sound played with the volume at 0, so you cannot hear it."
+          : `The sound played ${times(played, locale)} with the volume at 0, so it cannot be heard. Turn the volume up before the sound.`;
+    }
+    case "workingAgainstEachOther":
+      return es
+        ? young
+          ? "Dos programas del personaje lo empujan para lados distintos, por eso queda en el mismo lugar."
+          : "Dos programas de este personaje lo mueven en direcciones opuestas y se cancelan: termina donde empezó."
+        : young
+          ? "Two programs of the character push it in different directions, so it stays in the same place."
+          : "Two programs of this character move it in opposite directions and cancel out: it ends where it began.";
     case "predictionMismatch":
       return es
         ? young

@@ -35,6 +35,16 @@ const findings: Finding[] = [
   { ...base, kind: "conditionNeverTrue", counts: { yes: 0, no: 4 } },
   { ...base, kind: "conditionNeverFalse", counts: { yes: 5, no: 0 } },
   { ...base, kind: "predictionMismatch", counts: {}, nodeIds: [] },
+  { ...base, kind: "hiddenCharacter", counts: { actions: 1 } },
+  { ...base, kind: "hiddenCharacter", counts: { actions: 3 } },
+  { ...base, kind: "soundSilent", counts: { played: 1 } },
+  { ...base, kind: "soundSilent", counts: { played: 4 } },
+  {
+    ...base,
+    kind: "workingAgainstEachOther",
+    counts: { scripts: 2 },
+    nodeIds: ["scripts[0]/statements[0]", "scripts[0]/statements[1]"],
+  },
 ];
 
 describe("sentences for what Ori noticed", () => {

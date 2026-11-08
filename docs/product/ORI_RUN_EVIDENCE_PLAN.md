@@ -82,5 +82,6 @@ Rule for adding a kind: a fixture project where it fires, one where it must not,
 
 - Increment 1 (the `run-evidence` package, kinds 1–3 and 7, no UI): merged (#1275).
 - Increment 3 (the timeline and "Ver cuándo pasó"): live trace entries carry `at`, findings carry `traceIndex`, a slider scrubs the recorded frames with marks where Ori noticed something. In review.
+- Increment 4 (more findings): a character that acted but ends hidden, a sound played at volume 0, and two scripts of one character pushing it in opposite directions; the hidden one also offers _Mostrar_ as a proposal. "Nothing visible changed" is covered by the hidden case only; clamping at the edge is left out because it is often intended. In review.
 - Increment 5 (fix proposals), first fix only: a script that waits for a message nothing sends gets a proposal to send it from the first green-flag character, with the exact block shown and accept / decline (`kidsRunFixes.ts`). Other findings have no obvious small fix and offer none. In review.
 - Increment 2 (the "Ori vio algo" marker, sentences by language and age band, "Ver en el programa"): in review. The loop findings still live in `kidsOriLoopDebug` and `KidsLoopHelp`; the marker stays quiet when they explain the run, and they move into the finding contract later. Evidence-log counters (decision 3) are not wired yet.

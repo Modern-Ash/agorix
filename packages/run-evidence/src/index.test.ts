@@ -152,7 +152,7 @@ describe("run evidence findings", () => {
                 left: { type: "xPosition" },
                 right: { type: "numericLiteral", value: 10 },
               },
-              then: [{ type: "hide" }],
+              then: [{ type: "turn", degrees: 90 }],
             },
           ],
         },
@@ -238,5 +238,104 @@ describe("run evidence findings", () => {
     ]);
     expect(never[0]!.traceIndex).toBeUndefined();
     expect(JSON.stringify(toProviderFinding(sent[0]!))).not.toMatch(/traceIndex/);
+  });
+
+  it("notices a character that acted but ends hidden, with the hide as its moment", () => {
+    const findings = diagnose([
+      {
+        id: "a",
+        trigger: flag,
+        statements: [{ type: "hide" }, { type: "move", steps: 40 }, { type: "say", text: "hola" }],
+      },
+    ]);
+    expect(findings[0]).toMatchObject({
+      kind: "hiddenCharacter",
+      actorId: "actor:1",
+      nodeIds: ["scripts[0]/statements[0]"],
+      counts: { actions: 2 },
+      traceIndex: 0,
+    });
+    expect(surfacedFinding(findings)).toBe(findings[0]);
+  });
+
+  it("is quiet about a hidden character that did nothing visible, or that is shown again", () => {
+    expect(diagnose([{ id: "a", trigger: flag, statements: [{ type: "hide" }] }])).toEqual([]);
+    expect(
+      diagnose([
+        {
+          id: "a",
+          trigger: flag,
+          statements: [{ type: "hide" }, { type: "move", steps: 40 }, { type: "show" }],
+        },
+      ]),
+    ).toEqual([]);
+  });
+
+  it("notices a sound played with the volume at zero", () => {
+    const withSound = (statements: Script["statements"]) => {
+      const scripts: Script[] = [{ id: "a", trigger: flag, statements }];
+      const p = program(scripts);
+      const c: ProjectCreativeState = {
+        ...creative(scripts),
+        assets: [
+          { id: "kids:pop", kind: "sound", name: "Pop", source: "builtin:kids-sound:kids:pop" },
+        ],
+      };
+      return diagnoseRun({ program: p, creative: c, run: runMultiActorProgram(p, c) });
+    };
+    const findings = withSound([
+      { type: "setVolume", volume: 0 },
+      { type: "playSound", soundId: "kids:pop" },
+    ]);
+    expect(findings[0]).toMatchObject({
+      kind: "soundSilent",
+      nodeIds: ["scripts[0]/statements[1]"],
+      counts: { played: 1 },
+      traceIndex: 1,
+    });
+    expect(withSound([{ type: "playSound", soundId: "kids:pop" }])).toEqual([]);
+  });
+
+  describe("two scripts of one character", () => {
+    const sameCharacter = (left: number, right: number) => {
+      const scripts: Script[] = [
+        {
+          id: "a",
+          trigger: flag,
+          statements: [{ type: "repeat", count: 3, body: [{ type: "changeX", dx: left }] }],
+        },
+        {
+          id: "b",
+          trigger: flag,
+          statements: [{ type: "repeat", count: 3, body: [{ type: "changeX", dx: right }] }],
+        },
+      ];
+      const p = program(scripts);
+      const c: ProjectCreativeState = {
+        actors: [
+          {
+            id: "actor:1",
+            name: "A",
+            x: 160,
+            y: 0,
+            direction: 0,
+            size: 100,
+            visible: true,
+            scripts: ["a", "b"],
+          },
+        ],
+      };
+      return diagnoseRun({ program: p, creative: c, run: runMultiActorProgram(p, c) });
+    };
+    it("notices them pushing it back and forth", () => {
+      const found = sameCharacter(40, -40).find((item) => item.kind === "workingAgainstEachOther");
+      expect(found).toMatchObject({ actorId: "actor:1", counts: { scripts: 2 } });
+      expect(found!.nodeIds).toHaveLength(2);
+    });
+    it("is quiet when they add up to a real move", () => {
+      expect(sameCharacter(40, 20).some((item) => item.kind === "workingAgainstEachOther")).toBe(
+        false,
+      );
+    });
   });
 });

@@ -23,34 +23,41 @@ export interface RunFix {
 }
 
 export function fixFor(finding: Finding, raw: ProjectProgram): RunFix | null {
-  if (
-    finding.kind !== "neverStarted" ||
-    finding.event?.type !== "message" ||
-    finding.event.name === undefined ||
-    (finding.counts["senders"] ?? 0) !== 0
-  )
-    return null;
   let program: ProjectProgram;
   try {
     program = validateStudioProgram(raw);
   } catch {
     return null;
   }
-  const waiting = /^scripts\[(\d+)\]/.exec(finding.nodeIds[0] ?? "");
-  const waitingIndex = waiting ? Number(waiting[1]) : -1;
-  const scriptIndex = program.scripts.findIndex(
-    (script, index) => index !== waitingIndex && script.trigger.type === "greenFlag",
-  );
-  if (scriptIndex < 0) return null;
-  const script = program.scripts[scriptIndex]!;
+  const place = /^scripts\[(\d+)\]/.exec(finding.nodeIds[0] ?? "");
+  const placeIndex = place ? Number(place[1]) : -1;
+  let scriptIndex = -1;
+  let statement: Statement | null = null;
+  if (
+    finding.kind === "neverStarted" &&
+    finding.event?.type === "message" &&
+    finding.event.name !== undefined &&
+    (finding.counts["senders"] ?? 0) === 0
+  ) {
+    // Send the missing message from the first other character that starts with the green flag.
+    scriptIndex = program.scripts.findIndex(
+      (script, index) => index !== placeIndex && script.trigger.type === "greenFlag",
+    );
+    statement = { type: "broadcast", message: finding.event.name };
+  } else if (finding.kind === "hiddenCharacter" && placeIndex >= 0) {
+    // The hide came from this script: show the character again at its end.
+    scriptIndex = placeIndex;
+    statement = { type: "show" };
+  }
+  const script = program.scripts[scriptIndex];
+  if (script === undefined || statement === null) return null;
   const owner = actorOfScript(script.id);
   if (!owner) return null;
-  const statement: Statement = { type: "broadcast", message: finding.event.name };
   try {
     validateStudioProgram({
       ...program,
       scripts: program.scripts.map((item, index) =>
-        index === scriptIndex ? { ...item, statements: [...item.statements, statement] } : item,
+        index === scriptIndex ? { ...item, statements: [...item.statements, statement!] } : item,
       ),
     });
   } catch {
@@ -60,6 +67,10 @@ export function fixFor(finding: Finding, raw: ProjectProgram): RunFix | null {
 }
 
 export function explainFix(finding: Finding, locale: Locale): string {
+  if (finding.kind === "hiddenCharacter")
+    return locale === "es"
+      ? "Si al final agregás «Mostrar», el personaje vuelve a verse."
+      : "If you add “Show” at the end, the character is seen again.";
   const name = finding.event?.name ?? "";
   return locale === "es"
     ? `Si otro personaje manda el mensaje «${name}», este programa va a poder empezar.`
@@ -80,7 +91,14 @@ export function proposeRunFix(
     id: `ori-run-fix-${finding.id}`,
     baseProgram: current,
     source: { kind: "learning-companion", capability: "builder" },
-    purpose: locale === "es" ? "Mandar el mensaje que falta" : "Send the missing message",
+    purpose:
+      finding.kind === "hiddenCharacter"
+        ? locale === "es"
+          ? "Volver a mostrar al personaje"
+          : "Show the character again"
+        : locale === "es"
+          ? "Mandar el mensaje que falta"
+          : "Send the missing message",
     rationale: explainFix(finding, locale),
     affectedActorIds: [fix.actorId],
     affectedScriptIds: [script.id],

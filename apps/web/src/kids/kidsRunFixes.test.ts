@@ -79,3 +79,31 @@ describe("the fix Ori can offer for a message nobody sends", () => {
     ).toThrow();
   });
 });
+
+describe("the fix Ori can offer for a character that ends hidden", () => {
+  const base = program({ type: "onMessage", message: "hola" });
+  const hidden: Finding = {
+    id: "hiddenCharacter:actor:studio-2-nova",
+    kind: "hiddenCharacter",
+    actorId: "actor:studio-2-nova",
+    nodeIds: ["scripts[1]/statements[0]"],
+    counts: { actions: 2 },
+    traceIndex: 0,
+    confidence: 0.8,
+  };
+  it("offers to show it again at the end of the script that hid it", () => {
+    expect(fixFor(hidden, base)).toMatchObject({
+      scriptIndex: 1,
+      statement: { type: "show" },
+      actorId: "actor:studio-2-nova",
+    });
+    const proposal = proposeRunFix(base, hidden, "es");
+    expect(proposal.rationale).toContain("«Mostrar»");
+    const accepted = acceptProposal(base, reviewRunFix(base, hidden, proposal)).program;
+    expect(accepted.scripts[1]!.statements.at(-1)).toEqual({ type: "show" });
+    expect(base.scripts[1]!.statements).toHaveLength(1);
+  });
+  it("offers nothing without a place to put it", () => {
+    expect(fixFor({ ...hidden, nodeIds: [] }, base)).toBeNull();
+  });
+});
