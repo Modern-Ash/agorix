@@ -1,9 +1,5 @@
-import {
-  REPEAT_UNTIL_MAX_PASSES,
-  type ProjectProgram,
-  type Statement,
-  type Trigger,
-} from "@agorix/program-model";
+import { diagnoseRun } from "@agorix/run-evidence";
+import { type ProjectProgram, type Statement, type Trigger } from "@agorix/program-model";
 import {
   createProgramProposal,
   createProposalReview,
@@ -42,9 +38,10 @@ function scriptIndexOf(program: ProjectProgram, actorId: string): number {
   });
 }
 
-const LOOPS: readonly LoopKind[] = ["forever", "repeatUntil", "waitUntil"];
-
-/** The first top-level loop of this character that the run cut off, or null. */
+/**
+ * The first top-level loop of this character that the run cut off, or null. The detection is the
+ * `loopNeverEnds` finding of `@agorix/run-evidence`; the sentences are written here.
+ */
 export function diagnoseLoop(
   program: ProjectProgram,
   run: MultiActorRunResult,
@@ -53,58 +50,31 @@ export function diagnoseLoop(
 ): LoopDiagnosis | null {
   const scriptIndex = scriptIndexOf(program, actorId);
   if (scriptIndex < 0) return null;
-  const statements = program.scripts[scriptIndex]!.statements;
-  const entries = run.trace.filter((entry) => entry.actorId === actorId);
   const es = locale === "es";
-  for (const [statementIndex, statement] of statements.entries()) {
-    if (!LOOPS.includes(statement.type as LoopKind)) continue;
-    const base = `scripts[${scriptIndex}]/statements[${statementIndex}]`;
-    const own = entries.filter((entry) => entry.path === base || entry.path.startsWith(`${base}/`));
-    if (statement.type === "forever" && run.outcome === "budget-exceeded" && own.length > 0) {
-      const passes = own.filter((entry) => entry.statementType !== "forever").length;
-      return {
-        kind: "forever",
-        statementIndex,
-        scriptIndex,
-        evidence: [
-          es
-            ? `«Por siempre» no tiene un final propio: el programa corrió ${passes} bloques dentro del bucle y se cortó por el límite de pasos.`
-            : `“Forever” has no end of its own: the program ran ${passes} blocks inside the loop and was cut by the step limit.`,
-        ],
-      };
-    }
-    if (statement.type === "repeatUntil") {
-      // The first body block runs once per pass, so its count is the number of passes.
-      const passes = own.filter((entry) => entry.path === `${base}/body[0]`).length;
-      if (passes >= REPEAT_UNTIL_MAX_PASSES)
-        return {
-          kind: "repeatUntil",
-          statementIndex,
-          scriptIndex,
-          evidence: [
-            es
-              ? `La condición se revisó ${passes} veces y siempre dio «no», así que «Repetir hasta» nunca llegó a su final.`
-              : `The condition was checked ${passes} times and always said “no”, so “Repeat until” never reached its end.`,
-          ],
-        };
-    }
-    if (
-      statement.type === "waitUntil" &&
-      own.some((entry) => entry.note?.startsWith("waitUntil"))
-    ) {
-      return {
-        kind: "waitUntil",
-        statementIndex,
-        scriptIndex,
-        evidence: [
-          es
-            ? "«Esperar hasta» esperó 10 segundos del programa y la condición nunca dio «sí»."
-            : "“Wait until” waited 10 program seconds and the condition never said “yes”.",
-        ],
-      };
-    }
-  }
-  return null;
+  const found = diagnoseRun({ program, run, actorId })
+    .flatMap((finding) => {
+      const place = /^scripts\[(\d+)\]\/statements\[(\d+)\]$/.exec(finding.nodeIds[0] ?? "");
+      return finding.kind === "loopNeverEnds" && place && Number(place[1]) === scriptIndex
+        ? [{ finding, statementIndex: Number(place[2]) }]
+        : [];
+    })
+    .sort((a, b) => a.statementIndex - b.statementIndex)[0];
+  if (found === undefined) return null;
+  const { finding, statementIndex } = found;
+  const passes = finding.counts["passes"] ?? 0;
+  const evidence =
+    finding.loop === "forever"
+      ? es
+        ? `«Por siempre» no tiene un final propio: el programa corrió ${passes} bloques dentro del bucle y se cortó por el límite de pasos.`
+        : `“Forever” has no end of its own: the program ran ${passes} blocks inside the loop and was cut by the step limit.`
+      : finding.loop === "repeatUntil"
+        ? es
+          ? `La condición se revisó ${passes} veces y siempre dio «no», así que «Repetir hasta» nunca llegó a su final.`
+          : `The condition was checked ${passes} times and always said “no”, so “Repeat until” never reached its end.`
+        : es
+          ? "«Esperar hasta» esperó 10 segundos del programa y la condición nunca dio «sí»."
+          : "“Wait until” waited 10 program seconds and the condition never said “yes”.";
+  return { kind: finding.loop!, statementIndex, scriptIndex, evidence: [evidence] };
 }
 
 /** When does this character's script start? A sentence per trigger. */

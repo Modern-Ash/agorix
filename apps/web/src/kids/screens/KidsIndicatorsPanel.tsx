@@ -23,6 +23,9 @@ const COPY = {
     predictionHelp: "Predicciones que coincidieron con lo que mostró el programa.",
     fallbacks: "Ori sin conexión",
     fallbacksHelp: "Veces que Ori respondió con reglas locales: ofertas y charla.",
+    noticed: "Avisos de Ori",
+    noticedHelp:
+      "Veces que Ori mostró «vio algo» después de una corrida, y cuántos arreglos que propuso se usaron.",
     runs: "corridas",
     none: "sin datos",
     clear: "Borrar indicadores",
@@ -44,6 +47,9 @@ const COPY = {
     predictionHelp: "Predictions that matched what the program showed.",
     fallbacks: "Ori offline",
     fallbacksHelp: "Times Ori answered with local rules: offers and chat.",
+    noticed: "Ori notices",
+    noticedHelp:
+      "Times Ori showed “noticed something” after a run, and how many of its proposed fixes were used.",
     runs: "runs",
     none: "no data",
     clear: "Clear indicators",
@@ -98,6 +104,15 @@ export function KidsIndicatorsPanel({ locale }: { readonly locale: Locale }) {
             </dt>
             <dd>{pct(summary.predictionPercent)}</dd>
             <dd className="kids-note">{copy.predictionHelp}</dd>
+          </div>
+          <div>
+            <dt title={copy.noticedHelp} tabIndex={0}>
+              {copy.noticed} <span aria-hidden="true">ⓘ</span>
+            </dt>
+            <dd>
+              {summary.totals.oriNoticed} ({summary.totals.oriFixesUsed})
+            </dd>
+            <dd className="kids-note">{copy.noticedHelp}</dd>
           </div>
           <div>
             <dt title={copy.fallbacksHelp} tabIndex={0}>

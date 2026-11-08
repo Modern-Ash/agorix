@@ -135,6 +135,16 @@ export function findingSentence(finding: Finding, locale: Locale, band: AgeBand)
         : young
           ? "Two programs of the character push it in different directions, so it stays in the same place."
           : "Two programs of this character move it in opposite directions and cancel out: it ends where it began.";
+    case "loopNeverEnds": {
+      const passes = finding.counts["passes"] ?? 0;
+      return es
+        ? young
+          ? "Este bucle no termina nunca. Dale una salida para que el programa pare."
+          : `Este bucle no tiene un final: corrió ${passes} pasos y el programa tuvo que cortarlo.`
+        : young
+          ? "This loop never ends. Give it a way out so the program can stop."
+          : `This loop has no end: it ran ${passes} steps and the program had to cut it off.`;
+    }
     case "predictionMismatch":
       return es
         ? young
