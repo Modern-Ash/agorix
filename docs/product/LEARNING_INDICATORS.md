@@ -19,6 +19,7 @@ Whole-number counters per local day, under `agorix.kids.indicators.v1`, for 14 d
 | `chatFallbacks`      | the chat answered with its generic reply because the server did not |
 | `oriNoticed`         | Ori's "noticed something" marker appeared after a run               |
 | `oriFixesUsed`       | the child accepted a fix Ori proposed from that marker              |
+| `oriRephrased`       | the child asked Ori to say it another way and got an answer         |
 
 ## What is shown (last 7 days)
 
@@ -27,7 +28,7 @@ Whole-number counters per local day, under `agorix.kids.indicators.v1`, for 14 d
 - **Hints per run** = `hints / runs`, one decimal.
 - **Prediction hits** = `predictionsMatched / predictions`.
 - **Ori offline** = `oriFallbacks + chatFallbacks`.
-- **Ori notices** = `oriNoticed`, with `oriFixesUsed` in brackets. Only the two totals: which kind of thing Ori noticed is not kept, so the numbers cannot become a record of what a child got wrong.
+- **Ori notices** = `oriNoticed`, followed by `oriFixesUsed` and `oriRephrased`. Only the two totals: which kind of thing Ori noticed is not kept, so the numbers cannot become a record of what a child got wrong.
 
 A ratio with nothing to divide shows "no data", never 0%. These are conversation starters for an adult, not a grade: a low independence on a new topic is normal.
 

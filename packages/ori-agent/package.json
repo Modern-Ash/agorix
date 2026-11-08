@@ -13,6 +13,7 @@
     "@agorix/curriculum": "workspace:*",
     "@agorix/program-model": "workspace:*",
     "@agorix/proposals": "workspace:*",
+    "@agorix/run-evidence": "workspace:*",
     "@agorix/runtime": "workspace:*",
     "@agorix/tutor-contract": "workspace:*"
   }

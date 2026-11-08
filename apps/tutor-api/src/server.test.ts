@@ -335,6 +335,54 @@ describe("tutor HTTP server (issue #348)", () => {
     for (let i = 0; i < 4; i++) expect((await sendChat("¿Cómo muevo? ")).status).toBe(200);
     expect((await sendChat("¿Cómo muevo? ")).status).toBe(429);
   });
+  it("rewords a finding only from a closed request, and says unavailable otherwise", async () => {
+    const rephrase = {
+      version: "agorix/run-finding-rephrase/v1",
+      locale: "es",
+      band: "9-12",
+      finding: { kind: "conditionNeverTrue", counts: { yes: 0, no: 4 } },
+      local: "La condición del «Si» se revisó 4 veces y nunca fue verdadera.",
+    };
+    const call = (base: string, body: unknown, origin = base) =>
+      fetch(`${base}/api/tutor/run-finding/rephrase`, {
+        method: "POST",
+        headers: { "content-type": "application/json", origin },
+        body: JSON.stringify(body),
+      });
+    // No model configured: the browser keeps the local sentence.
+    const none = await start({ AGORIX_TUTOR_ADAPTER: "fake" });
+    expect((await call(none, rephrase)).status).toBe(503);
+    expect((await call(none, { ...rephrase, program: {} })).status).toBe(400);
+    expect((await call(none, rephrase, "https://evil.example")).status).toBe(403);
+    expect((await fetch(`${none}/api/tutor/run-finding/rephrase`)).status).toBe(405);
+    // A model that answers, and one whose answer fails a check.
+    const seen: unknown[] = [];
+    const answering = {
+      health: async () => ({ configured: true, available: true, providerInUse: "codex" }),
+      diagnostics: () => ({
+        lastErrorClass: null,
+        attempts: 0,
+        modelResponses: 0,
+        p50Ms: null,
+        p95Ms: null,
+      }),
+      rephrase: async (context: unknown) => {
+        seen.push(context);
+        return "El «Si» siempre dijo que no (4 veces).";
+      },
+    } as unknown as ReturnType<typeof createOriCliService>;
+    const yes = await start({ AGORIX_TUTOR_ADAPTER: "fake" }, undefined, answering);
+    const ok = await call(yes, rephrase);
+    expect(ok.status).toBe(200);
+    expect(await ok.json()).toEqual({ text: "El «Si» siempre dijo que no (4 veces)." });
+    expect(seen).toHaveLength(1);
+    const failing = {
+      ...answering,
+      rephrase: async () => null,
+    } as unknown as ReturnType<typeof createOriCliService>;
+    const no = await start({ AGORIX_TUTOR_ADAPTER: "fake" }, undefined, failing);
+    expect((await call(no, rephrase)).status).toBe(503);
+  });
   it("reports not configured when no provider is set (normal local mode)", async () => {
     const base = await start({ AGORIX_TUTOR_ADAPTER: "openai-compatible" });
     const response = await fetch(`${base}/api/tutor/health`);

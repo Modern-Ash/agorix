@@ -464,6 +464,9 @@ importers:
       '@agorix/proposals':
         specifier: workspace:*
         version: link:../proposals
+      '@agorix/run-evidence':
+        specifier: workspace:*
+        version: link:../run-evidence
       '@agorix/runtime':
         specifier: workspace:*
         version: link:../runtime

@@ -22,6 +22,7 @@ import { computeKidsOri } from "./deterministic.js";
 
 export { computeKidsOri, type KidsOriKind, type KidsOriOffer } from "./deterministic.js";
 export * from "./chat.js";
+export * from "./rephrase.js";
 export * from "./goals.js";
 export * from "./sceneGoals.js";
 export * from "./advanced.js";

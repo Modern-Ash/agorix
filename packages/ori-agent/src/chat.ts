@@ -62,6 +62,12 @@ export interface OriChatContext {
 const unsafe =
   /\b(?:ignore|ignora|olvida|override|system|developer|prompt|instrucciones|instruction|jailbreak|contrasena|password|direccion|address|telefono|phone|email|correo|dni|documento|escuela|school|sexo|sexual|porn|armas?|weapons?|matar|kill|suicid\w*|autolesion|self.harm|drogas?|drugs?|mi nombre|my name|me llamo|soy [a-z]+|capital|clima|weather|hora|time|receta|recipe|pelicula|movie)\b/i;
 const personal = /(?:[\w.+-]+@[\w.-]+\.[a-z]{2,}|(?:\+?\d[\d ()-]{7,}\d)|\b\d{7,9}\b)/i;
+/** Whether a text carries personal data or an attempt to steer the model, for text it produced. */
+export function isUnsafeOrPersonalText(text: string): boolean {
+  const plain = text.normalize("NFKD").replace(/\p{M}/gu, "");
+  return unsafe.test(plain) || personal.test(text);
+}
+
 const scope =
   /\b(?:ayuda\w*|help|no entiendo|no se|no me sale|dificil\w*|hard|stuck|atascad\w*|hola|hello|hi|gracias|thanks|thank you|aburr\w*|bored|otra vez|again|trist\w*|sad|enoj\w*|angry|frustr\w*|bloqu\w*|program\w*|mover|muev\w*|mov\w*|avanz\w*|gir\w*|repet\w*|meta\w*|objetiv\w*|mapa\w*|casilla\w*|jug\w*|corr\w*|prob\w*|ori|agorix|app|pantalla\w*|personaje\w*|block\w*|program\w*|move\w*|turn\w*|repeat\w*|goal\w*|map|square\w*|play|run|try|character\w*)\b/i;
 

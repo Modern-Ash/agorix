@@ -50,6 +50,7 @@ import {
   getOriAgentDefinitions,
   ORI_AGENT_LOCKED_RULES,
   ORI_INTERVENTION_DEFAULT,
+  parseOriRephraseRequest,
   runOriChat,
   simulateOriIntervention,
   type OriAgentCapability,
@@ -716,6 +717,10 @@ export function createTutorServer(options: TutorServerOptions): Server {
       if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
       return respondStudio(request, response);
     }
+    if (path === "/api/tutor/run-finding/rephrase") {
+      if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
+      return respondRephrase(request, response);
+    }
     if (path === "/api/tutor/chat") {
       if (request.method !== "POST") return send(response, 405, error("method-not-allowed"));
       return respondChat(request, response);
@@ -1121,6 +1126,35 @@ export function createTutorServer(options: TutorServerOptions): Server {
       message: decision.message,
       ...(decision.proposal ? { proposal: decision.proposal } : {}),
     });
+  }
+
+  /**
+   * Another way to say what Ori noticed in a run. The request is a closed shape (a provider-safe
+   * finding and its local sentence, nothing from the learner); any failure is "unavailable" and
+   * the browser keeps the local sentence.
+   */
+  async function respondRephrase(
+    request: IncomingMessage,
+    response: ServerResponse,
+  ): Promise<void> {
+    if (!(request.headers["content-type"] ?? "").includes("application/json"))
+      return send(response, 415, error("unsupported-media-type"));
+    if (!sameOrigin(request)) return send(response, 403, error("forbidden-origin"));
+    const body = await readBody(request);
+    if (body === "too-large") return send(response, 413, error("payload-too-large"));
+    let context: ReturnType<typeof parseOriRephraseRequest>;
+    try {
+      context = parseOriRephraseRequest(JSON.parse(body));
+    } catch {
+      context = null;
+    }
+    if (context === null) return send(response, 400, error("invalid-request"));
+    if (!allowed(request, "chat")) return send(response, 429, error("rate-limited"));
+    if (!options.ori || policy("chat")?.enabled === false)
+      return send(response, 503, error("rephrase-unavailable"));
+    const text = await options.ori.rephrase(context);
+    if (text === null) return send(response, 503, error("rephrase-unavailable"));
+    return send(response, 200, { text });
   }
 
   async function respondChat(request: IncomingMessage, response: ServerResponse): Promise<void> {

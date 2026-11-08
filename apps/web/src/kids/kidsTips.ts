@@ -228,6 +228,10 @@ export const TIP_RULES: readonly TipRule[] = [
     tip: t("Ori vio algo en lo que pasó", "Ori noticed something in what happened"),
   },
   {
+    match: cls("kids-ori-rephrase-button"),
+    tip: t("Pedirle a Ori que lo diga con otras palabras", "Ask Ori to say it in other words"),
+  },
+  {
     match: cls("kids-show-when"),
     tip: t("Ir al momento en que pasó", "Go to the moment it happened"),
   },
