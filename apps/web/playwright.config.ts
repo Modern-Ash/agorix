@@ -17,7 +17,16 @@ export default defineConfig({
   // leg depends on the service worker that the e2e suite blocks, so a lazy stylesheet fails to load
   // in Safari; the rest of the suite is Chromium-only until measured.
   projects: [
-    { name: "chromium", use: { browserName: "chromium" } },
+    {
+      name: "chromium",
+      use: {
+        browserName: "chromium",
+        // A flake that passes on its retry leaves nothing behind, so CI keeps the trace of every
+        // failed attempt (issue #1230: a Step button "not stable" that never reproduced locally).
+        // Chromium only: with tracing on, WebKit failed to import lazy module scripts in CI.
+        trace: process.env["CI"] ? "retain-on-failure" : "off",
+      },
+    },
     ...(process.env["AGORIX_E2E_WEBKIT"] === "1"
       ? [
           {

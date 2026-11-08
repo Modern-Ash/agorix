@@ -159,12 +159,15 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: pnpm --filter @agorix/web test:e2e
-      # A failed visual comparison is only useful with the actual and diff images.
+      # A failed visual comparison is only useful with the actual and diff images, and a test that
+      # failed once and passed on its retry is only diagnosable from its trace, so this runs even
+      # when the job is green (the folder only holds what failed).
       - uses: actions/upload-artifact@v4
-        if: failure()
+        if: ${{ !cancelled() }}
         with:
           name: playwright-results
           path: apps/web/test-results
+          if-no-files-found: ignore
           retention-days: 7
 
   # The production specs (apps/web/e2e/prod) only ran after a deploy, and broke it twice when a flow
