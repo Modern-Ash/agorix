@@ -201,6 +201,9 @@ importers:
       '@agorix/python-projection':
         specifier: workspace:*
         version: link:../../packages/python-projection
+      '@agorix/run-evidence':
+        specifier: workspace:*
+        version: link:../../packages/run-evidence
       '@agorix/runtime':
         specifier: workspace:*
         version: link:../../packages/runtime

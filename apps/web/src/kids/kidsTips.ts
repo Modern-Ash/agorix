@@ -224,6 +224,14 @@ export const TIP_RULES: readonly TipRule[] = [
     ),
   },
   {
+    match: cls("kids-ori-noticed-button"),
+    tip: t("Ori vio algo en lo que pasó", "Ori noticed something in what happened"),
+  },
+  {
+    match: cls("kids-show-in-program"),
+    tip: t("Mostrar el bloque del que habla Ori", "Show the block Ori is talking about"),
+  },
+  {
     match: named(/Paso$|Step$/),
     tip: t("Paso: ver un bloque por vez", "Step: watch one block at a time"),
   },
