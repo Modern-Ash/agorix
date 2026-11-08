@@ -538,3 +538,7 @@ Ori's goal list in the Studio grew from 7 to 15. The new ones use the blocks add
 ## "How do you say this in code?" (a bridge Scratch does not have)
 
 When the learner asks Ori about a block from the Properties card, Ori's answer now also shows the line of that block in the code the learner is looking at (Agorix Code, Python, TypeScript or Java) and what each part means: the name of the call, and each value ("40: how many steps, 40 is one square"). Loops and conditions get one sentence for the whole line. The line is read from the same block-to-text mapping that highlights the running line, so it always matches the code on screen; the explanation is written from the block's kind, not by a model, so it is always there, offline, in both languages. Agorix Code is shown as it is, since it already reads like a sentence.
+
+## Clones
+
+The largest block family of Scratch that is still missing. It changes the model, the runtime, the stage and the Studio's one-script-per-character rule, so it has its own design for the owner to decide before anything is written: [CLONES_DESIGN.md](CLONES_DESIGN.md).
