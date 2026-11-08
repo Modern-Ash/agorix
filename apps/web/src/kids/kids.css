@@ -6695,3 +6695,23 @@ button.kids-band-chip {
     transition: transform 120ms ease-out;
   }
 }
+
+/* Ori noticed something in the run (run-evidence): a quiet marker, and the block it points at. */
+.kids-ori-noticed {
+  margin: 8px 0;
+}
+.kids-ori-noticed-panel {
+  margin-top: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--kids-border);
+  border-radius: 12px;
+  background: #f4efff;
+}
+.kids-ori-noticed-panel p {
+  margin: 0 0 8px;
+}
+.kids-program-block[data-finding="true"],
+.kids-program-drop[data-finding="true"] {
+  outline: 3px solid #f2a33a;
+  outline-offset: 2px;
+}

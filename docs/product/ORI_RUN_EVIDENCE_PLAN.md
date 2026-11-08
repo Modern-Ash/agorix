@@ -80,4 +80,5 @@ Rule for adding a kind: a fixture project where it fires, one where it must not,
 
 ## Status
 
-- Increment 1 (the `run-evidence` package, kinds 1–3 and 7, no UI): PR #1275.
+- Increment 1 (the `run-evidence` package, kinds 1–3 and 7, no UI): merged (#1275).
+- Increment 2 (the "Ori vio algo" marker, sentences by language and age band, "Ver en el programa"): in review. The loop findings still live in `kidsOriLoopDebug` and `KidsLoopHelp`; the marker stays quiet when they explain the run, and they move into the finding contract later. Evidence-log counters (decision 3) are not wired yet.

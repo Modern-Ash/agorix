@@ -47,7 +47,11 @@ import { projectJava } from "@agorix/java-projection";
 import { conceptsOfProgram, reusedConcepts } from "@agorix/learning-evidence";
 import { recordMastery } from "../kidsMastery.js";
 import { ProjectStore, sanitizeAgorixFilename, type ProjectSceneGoal } from "@agorix/persistence";
+import { diagnoseRun, surfacedFinding, type Finding } from "@agorix/run-evidence";
+import { findingBlockIndex, findingScriptIndex } from "../kidsRunFindings.js";
+import { diagnoseLoop } from "../kidsOriLoopDebug.js";
 import { KidsLoopHelp } from "./KidsLoopHelp.js";
+import { KidsRunMarker } from "./KidsRunMarker.js";
 import { KidsSceneGoalPanel } from "./KidsSceneGoalPanel.js";
 import { sceneGoalValid } from "../kidsSceneGoal.js";
 import { sceneGoalMet } from "../kidsSceneGoal.js";
@@ -1315,6 +1319,7 @@ export function KidsStudioScreen({
     ? sensorTargetId
     : otherActors[0]?.id;
   const script = history.current.scripts.find((item) => actor?.scripts?.includes(item.id));
+  const scriptIndexOfActor = script === undefined ? -1 : history.current.scripts.indexOf(script);
   const selectedVariableId = history.current.variables?.some((item) => item.id === variableId)
     ? variableId
     : (history.current.variables?.[0]?.id ?? variableId);
@@ -1879,6 +1884,19 @@ export function KidsStudioScreen({
   const oriExpression = oriReaction ?? expressionForMotion(oriMotion, outcomeOfRun(run?.outcome));
   const loopRun =
     foreverNoticed && run ? ({ ...run, outcome: "budget-exceeded" } as MultiActorRunResult) : run;
+  // What Ori noticed in this run, from its trace alone; none while a run is still going, and
+  // none when the loop help already explains the run.
+  const noticed = useMemo(() => {
+    if (!run || playing || !oriSuggestions) return undefined;
+    if (diagnoseLoop(history.current, loopRun ?? run, activeActorId, locale) !== null)
+      return undefined;
+    return surfacedFinding(
+      diagnoseRun({ program: history.current, creative, run, actorId: activeActorId }),
+    );
+    // history.current is a ref read; the run and the character decide when to look again.
+  }, [run, playing, oriSuggestions, activeActorId, locale, creative, loopRun]);
+  const [pointedAt, setPointedAt] = useState<{ finding: Finding; run: unknown } | null>(null);
+  const pointed = pointedAt !== null && pointedAt.run === run ? pointedAt.finding : null;
   const selectedFrame = frame === null ? null : run?.frames[frame];
   const shownActors = selectedFrame?.actors ?? run?.actors;
   const shownWorld = shownActors?.find((entry) => entry.id === activeActorId)?.world;
@@ -4221,6 +4239,25 @@ export function KidsStudioScreen({
                 {copy.foreverBudget}
               </p>
             ) : null}
+            {noticed ? (
+              <KidsRunMarker
+                key={`${noticed.id}-${runCount}`}
+                finding={noticed}
+                locale={locale}
+                band={ageBand ?? "6-8"}
+                onShow={(finding) => {
+                  setPointedAt({ finding, run });
+                  const index = findingBlockIndex(finding);
+                  document
+                    .querySelector(
+                      index === null
+                        ? ".kids-studio-program-column .kids-program-drop"
+                        : `.kids-studio-program-column .kids-program-block[data-index="${index}"]`,
+                    )
+                    ?.scrollIntoView({ block: "center", behavior: "smooth" });
+                }}
+              />
+            ) : null}
             {oriSuggestions ? (
               <KidsLoopHelp
                 locale={locale}
@@ -4761,6 +4798,13 @@ export function KidsStudioScreen({
                   <ol
                     ref={programRef}
                     className="kids-program-drop"
+                    data-finding={
+                      pointed !== null &&
+                      findingScriptIndex(pointed) === scriptIndexOfActor &&
+                      findingBlockIndex(pointed) === null
+                        ? "true"
+                        : undefined
+                    }
                     data-drop-list={JSON.stringify({ container: null })}
                     data-over={
                       over?.startsWith(`${JSON.stringify({ container: null })}#`)
@@ -4776,6 +4820,13 @@ export function KidsStudioScreen({
                         className="kids-program-block"
                         data-ori-block={statement.type}
                         data-index={index}
+                        data-finding={
+                          pointed !== null &&
+                          findingScriptIndex(pointed) === scriptIndexOfActor &&
+                          findingBlockIndex(pointed) === index
+                            ? "true"
+                            : undefined
+                        }
                         tabIndex={contextMenuFlag || shortcutsFlag ? 0 : undefined}
                         onContextMenu={(event) => {
                           if (!contextMenuFlag) return;
