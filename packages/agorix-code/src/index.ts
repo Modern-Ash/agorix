@@ -162,7 +162,9 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
       writeMapped(
         writer,
         nodeId,
-        indent + (statement.target === "random" ? "go to random position" : "go to mouse pointer") + "\n",
+        indent +
+          (statement.target === "random" ? "go to random position" : "go to mouse pointer") +
+          "\n",
       );
       return;
     case "setX":

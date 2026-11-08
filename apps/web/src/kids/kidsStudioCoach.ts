@@ -109,7 +109,16 @@ export function blockName(type: string, locale: Locale): string {
   return BLOCK_NAME[locale][type] ?? type;
 }
 
-const MOVES = new Set(["move", "goTo", "glideTo", "goToTarget", "setX", "setY", "changeX", "changeY"]);
+const MOVES = new Set([
+  "move",
+  "goTo",
+  "glideTo",
+  "goToTarget",
+  "setX",
+  "setY",
+  "changeX",
+  "changeY",
+]);
 
 export function factsOfRun(run: MultiActorRunResult, actorId: string): ActorFacts {
   const entries = run.trace.filter((entry) => entry.actorId === actorId);

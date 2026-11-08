@@ -516,7 +516,10 @@ function statementFromBlock(
         ...paramFrom(block, "stepsFrom"),
       };
     case "motion_go_to_target":
-      return { type: "goToTarget", target: stringField(block, "target", path) as "random" | "mouse" };
+      return {
+        type: "goToTarget",
+        target: stringField(block, "target", path) as "random" | "mouse",
+      };
     case "motion_set_x":
       return { type: "setX", x: numberField(block, "x", path) };
     case "motion_set_y":
