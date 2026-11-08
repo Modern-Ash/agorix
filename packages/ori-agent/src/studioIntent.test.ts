@@ -107,4 +107,62 @@ describe("Studio goal to blocks", () => {
     };
     expect(() => proposeOriStudioIntent({ ...context, program: full }, "square")).toThrow();
   });
+
+  describe("the ideas that play with how the character looks and moves", () => {
+    const NEW = [
+      "jump",
+      "spin",
+      "grow",
+      "bounce",
+      "hideSeek",
+      "wander",
+      "follow",
+      "greet",
+    ] as const;
+
+    it("proposes a short, closed sequence for each, and changes nothing by itself", () => {
+      for (const intent of NEW) {
+        const proposal = proposeOriStudioIntent(context, intent);
+        expect(proposal.operations.length).toBeGreaterThanOrEqual(2);
+        expect(proposal.operations.length).toBeLessThanOrEqual(8);
+        expect(program.scripts[0]?.statements).toHaveLength(1);
+        validateOriStudioIntentProposal(context, proposal);
+      }
+    });
+
+    it("greets in the learner's language, with words Ori wrote", () => {
+      const says = (locale: "es" | "en") =>
+        proposeOriStudioIntent({ ...context, locale }, "greet").operations.map((operation) =>
+          operation.type === "appendStatement" && operation.statement.type === "say"
+            ? operation.statement.text
+            : "",
+        );
+      expect(says("es")).toEqual(["¡Hola!", "¿Jugamos?"]);
+      expect(says("en")).toEqual(["Hello!", "Shall we play?"]);
+    });
+
+    it("refuses any value outside the closed ones", () => {
+      const base = proposeOriStudioIntent(context, "jump");
+      const withStatement = (statement: unknown) => ({
+        ...base,
+        operations: [
+          { type: "appendStatement" as const, scriptIndex: 0, statement },
+          ...base.operations.slice(1),
+        ],
+      });
+      for (const bad of [
+        { type: "changeY", dy: 100 },
+        { type: "wait", seconds: 5 },
+        { type: "changeSize", delta: 50 },
+        { type: "setSize", size: 150 },
+        { type: "goToTarget", target: "moon" },
+        { type: "say", text: "Dame tu nombre", seconds: 2 },
+        { type: "say", text: "¡Hola!", seconds: 3 },
+        { type: "setVolume", volume: 100 },
+      ])
+        expect(() =>
+          validateOriStudioIntentProposal(context, withStatement(bad) as never),
+        ).toThrow();
+    });
+  });
 });

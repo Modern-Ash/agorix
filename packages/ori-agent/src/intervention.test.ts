@@ -56,7 +56,7 @@ describe("Ori intervention policy", () => {
 
   it("hides the goals that no longer fit and simulates synthetic learners", () => {
     const small = { ...ORI_INTERVENTION_DEFAULT, maxProposalBlocks: 3 };
-    expect(oriIntentsWithin(small)).toEqual(["ahead", "cheer"]);
+    expect(oriIntentsWithin(small)).toEqual(["ahead", "cheer", "jump", "hideSeek", "greet"]);
     const rows = simulateOriIntervention({ minFailedRuns: 2, minHints: 3, maxProposalBlocks: 6 });
     const offers = Object.fromEntries(rows.map((row) => [row.learner, row.offersIdea]));
     expect(offers).toEqual({

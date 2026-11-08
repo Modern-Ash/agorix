@@ -330,6 +330,14 @@ export const ORI_STUDIO_INTENTS = [
   "melody",
   "rhythm",
   "cheer",
+  "jump",
+  "spin",
+  "grow",
+  "bounce",
+  "hideSeek",
+  "wander",
+  "follow",
+  "greet",
 ] as const;
 export type OriStudioIntent = (typeof ORI_STUDIO_INTENTS)[number];
 
@@ -337,9 +345,46 @@ export type OriStudioIntent = (typeof ORI_STUDIO_INTENTS)[number];
 const IDEA_SOUND_IDS = ["kids:win", "kids:sparkle", "kids:bell", "kids:tada"];
 const IDEA_NOTES = [60, 62, 64, 65, 67, 69, 71, 72];
 
+/** The fixed words of the greeting idea: Ori writes these, never the child. */
+const GREETINGS = {
+  es: ["¡Hola!", "¿Jugamos?"],
+  en: ["Hello!", "Shall we play?"],
+} as const;
+
+/** The other closed blocks the ideas use, each with the only values an idea may give it. */
+function closedIdeaBlock(statement: Statement): boolean {
+  switch (statement.type) {
+    case "turn":
+      return statement.degrees === 90 || statement.degrees === -90;
+    case "wait":
+      return statement.seconds === 0.5 || statement.seconds === 1;
+    case "changeY":
+      return statement.dy === -80 || statement.dy === 80;
+    case "changeSize":
+      return statement.delta === 25;
+    case "setSize":
+      return statement.size === 100;
+    case "hide":
+    case "show":
+    case "bounceOnEdge":
+      return true;
+    case "goToTarget":
+      return statement.target === "random" || statement.target === "mouse";
+    case "say":
+      return (
+        statement.seconds === 2 &&
+        statement.append === undefined &&
+        [...GREETINGS.es, ...GREETINGS.en].some((text) => text === statement.text)
+      );
+    default:
+      return false;
+  }
+}
+
 function allowedForIntent(statement: Statement, script: Script): boolean {
   return (
     allowed(statement, script) ||
+    closedIdeaBlock(statement) ||
     (statement.type === "playSound" && IDEA_SOUND_IDS.includes(statement.soundId)) ||
     (statement.type === "playNote" &&
       IDEA_NOTES.includes(statement.note) &&
@@ -404,7 +449,60 @@ const INTENT_BLOCKS: Readonly<Record<OriStudioIntent, readonly Statement[]>> = {
     { type: "move", steps: 40 },
     { type: "turn", degrees: -90 },
   ],
+  jump: [
+    { type: "changeY", dy: -80 },
+    { type: "wait", seconds: 0.5 },
+    { type: "changeY", dy: 80 },
+  ],
+  spin: [
+    { type: "turn", degrees: 90 },
+    { type: "wait", seconds: 0.5 },
+    { type: "turn", degrees: 90 },
+    { type: "wait", seconds: 0.5 },
+    { type: "turn", degrees: 90 },
+    { type: "wait", seconds: 0.5 },
+    { type: "turn", degrees: 90 },
+  ],
+  grow: [
+    { type: "changeSize", delta: 25 },
+    { type: "wait", seconds: 0.5 },
+    { type: "changeSize", delta: 25 },
+    { type: "wait", seconds: 0.5 },
+    { type: "setSize", size: 100 },
+  ],
+  bounce: [
+    { type: "move", steps: 120 },
+    { type: "bounceOnEdge" },
+    { type: "move", steps: 120 },
+    { type: "bounceOnEdge" },
+    { type: "move", steps: 120 },
+    { type: "bounceOnEdge" },
+  ],
+  hideSeek: [{ type: "hide" }, { type: "wait", seconds: 1 }, { type: "show" }],
+  wander: [
+    { type: "goToTarget", target: "random" },
+    { type: "wait", seconds: 1 },
+    { type: "goToTarget", target: "random" },
+    { type: "wait", seconds: 1 },
+    { type: "goToTarget", target: "random" },
+  ],
+  follow: [
+    { type: "goToTarget", target: "mouse" },
+    { type: "wait", seconds: 0.5 },
+    { type: "goToTarget", target: "mouse" },
+    { type: "wait", seconds: 0.5 },
+    { type: "goToTarget", target: "mouse" },
+  ],
+  // Filled in by `intentBlocks`: the words depend on the language.
+  greet: [],
 };
+
+/** The blocks of an idea; the greeting is the only one whose words change with the language. */
+function intentBlocks(intent: OriStudioIntent, locale: "es" | "en"): readonly Statement[] {
+  if (intent === "greet")
+    return GREETINGS[locale].map((text) => ({ type: "say" as const, text, seconds: 2 }));
+  return INTENT_BLOCKS[intent];
+}
 
 export function isOriStudioIntent(value: unknown): value is OriStudioIntent {
   return (ORI_STUDIO_INTENTS as readonly unknown[]).includes(value);
@@ -416,7 +514,7 @@ export function proposeOriStudioIntent(
 ): ProgramProposal {
   const selected = target(context);
   if (!isOriStudioIntent(intent)) throw new Error("unknown intent");
-  const statements = INTENT_BLOCKS[intent];
+  const statements = intentBlocks(intent, context.locale);
   const first = selected.script.statements.length;
   if (first + statements.length > MAX_STATEMENTS) throw new Error("not enough room");
   const proposal = createProgramProposal({
