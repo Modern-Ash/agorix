@@ -73,6 +73,8 @@ export interface MultiActorTraceEntry {
   readonly note?: string;
   readonly conditionResult?: boolean;
   readonly args?: readonly number[];
+  /** Live runs only: seconds the statement took (a wait, a glide, a note), for pacing playback. */
+  readonly seconds?: number;
   readonly worldBefore: WorldState;
   readonly worldAfter: WorldState;
 }
