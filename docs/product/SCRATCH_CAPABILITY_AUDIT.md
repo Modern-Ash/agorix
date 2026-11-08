@@ -538,3 +538,11 @@ Ori's goal list in the Studio grew from 7 to 15. The new ones use the blocks add
 ## "How do you say this in code?" (a bridge Scratch does not have)
 
 When the learner asks Ori about a block from the Properties card, Ori's answer now also shows the line of that block in the code the learner is looking at (Agorix Code, Python, TypeScript or Java) and what each part means: the name of the call, and each value ("40: how many steps, 40 is one square"). Loops and conditions get one sentence for the whole line. The line is read from the same block-to-text mapping that highlights the running line, so it always matches the code on screen; the explanation is written from the block's kind, not by a model, so it is always there, offline, in both languages. Agorix Code is shown as it is, since it already reads like a sentence.
+
+## Ori sees the same blocks written again and again
+
+After a run, Ori's "noticed something" marker can now also say that the same blocks are written out repeatedly, from the program alone:
+
+- **In a row** (one to three blocks, three or more times): Ori offers a `Repetir` as a proposal with the exact block shown. It replaces the run in one undoable step; a run of four becomes a repeat of three plus the leftover copy, since the Kids repeat block holds 2, 3 or 5. The proposal is re-checked before it is shown or accepted.
+- **Apart** (a group of two or three blocks that comes back later): Ori only says so and points to **Mis bloques**. It does not build the block: the rule that Ori cannot create, rename or delete a block of the learner's own still holds, and the proposal contract has no operation for it.
+- Both are weak findings (0.62 and 0.6): any failure Ori found in the run is shown first, and only one finding is shown per run.

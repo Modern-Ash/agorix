@@ -107,3 +107,74 @@ describe("the fix Ori can offer for a character that ends hidden", () => {
     expect(fixFor({ ...hidden, nodeIds: [] }, base)).toBeNull();
   });
 });
+
+describe("the fix Ori can offer for blocks written out in a row", () => {
+  const move = { type: "move", steps: 40 } as const;
+  const turn = { type: "turn", degrees: 90 } as const;
+  const withStatements = (statements: ProjectProgram["scripts"][number]["statements"]) =>
+    validateStudioProgram({
+      schema: SCHEMA_VERSION,
+      scripts: [{ id: "studio-actor-1-mika", trigger: { type: "greenFlag" }, statements }],
+    });
+  const finding = (start: number, period: number, times: number): Finding => ({
+    id: `repeatedBlocks:scripts[0]/statements[${start}]`,
+    kind: "repeatedBlocks",
+    actorId: "actor:studio-1-mika",
+    nodeIds: [`scripts[0]/statements[${start}]`],
+    counts: { period, times },
+    confidence: 0.62,
+  });
+
+  it("puts a run of three into one repeat of three, and changes nothing until accepted", () => {
+    const program = withStatements([move, move, move]);
+    const proposal = proposeRunFix(program, finding(0, 1, 3), "es");
+    expect(proposal.rationale).toContain("«Repetir»");
+    const accepted = acceptProposal(program, reviewRunFix(program, finding(0, 1, 3), proposal));
+    expect(accepted.program.scripts[0]!.statements).toEqual([
+      { type: "repeat", count: 3, body: [move] },
+    ]);
+    expect(program.scripts[0]!.statements).toHaveLength(3);
+  });
+
+  it("keeps a leftover copy when the run is not a count the repeat block holds", () => {
+    const program = withStatements([turn, move, move, move, move]);
+    const accepted = acceptProposal(
+      program,
+      reviewRunFix(program, finding(1, 1, 4), proposeRunFix(program, finding(1, 1, 4), "es")),
+    ).program;
+    expect(accepted.scripts[0]!.statements).toEqual([
+      turn,
+      { type: "repeat", count: 3, body: [move] },
+      move,
+    ]);
+  });
+
+  it("repeats a group of two or three blocks, up to five times", () => {
+    const program = withStatements([move, turn, move, turn, move, turn, move, turn, move, turn]);
+    const accepted = acceptProposal(
+      program,
+      reviewRunFix(program, finding(0, 2, 5), proposeRunFix(program, finding(0, 2, 5), "en")),
+    ).program;
+    expect(accepted.scripts[0]!.statements).toEqual([
+      { type: "repeat", count: 5, body: [move, turn] },
+    ]);
+  });
+
+  it("offers nothing if the run is not really there, or for blocks that are apart", () => {
+    const program = withStatements([move, move, turn]);
+    expect(fixFor(finding(0, 1, 3), program)).toBeNull();
+    expect(fixFor({ ...finding(0, 1, 3), kind: "repeatedApart" }, program)).toBeNull();
+    expect(fixFor({ ...finding(0, 4, 3) }, withStatements([move, move, move]))).toBeNull();
+  });
+
+  it("refuses a proposal that is not exactly the fix", () => {
+    const program = withStatements([move, move, move]);
+    const proposal = proposeRunFix(program, finding(0, 1, 3), "es");
+    expect(() =>
+      reviewRunFix(program, finding(0, 1, 3), {
+        ...proposal,
+        operations: proposal.operations.slice(0, 2),
+      }),
+    ).toThrow();
+  });
+});
