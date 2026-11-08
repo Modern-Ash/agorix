@@ -52,6 +52,12 @@ import { findingBlockIndex, findingScriptIndex } from "../kidsRunFindings.js";
 import { diagnoseLoop } from "../kidsOriLoopDebug.js";
 import { KidsLoopHelp } from "./KidsLoopHelp.js";
 import { KidsRunMarker } from "./KidsRunMarker.js";
+import {
+  explainCodeLine,
+  LANGUAGE_NAME,
+  type CodeExplanation,
+  type ExplainedLanguage,
+} from "../kidsCodeExplain.js";
 import { bumpIndicator } from "../kidsIndicators.js";
 import { KidsTimeline } from "./KidsTimeline.js";
 import { KidsSceneGoalPanel } from "./KidsSceneGoalPanel.js";
@@ -1500,6 +1506,11 @@ export function KidsStudioScreen({
   >("program");
   // The property the learner asked Ori about from the Properties card.
   const [oriProperty, setOriProperty] = useState<PropertySubject | null>(null);
+  // The line of code of the block Ori was asked about, with what its parts mean.
+  const [oriCode, setOriCode] = useState<{
+    readonly language: ExplainedLanguage;
+    readonly explanation: CodeExplanation;
+  } | null>(null);
   const [activeCategory, setActiveCategory] = useState<StudioCategory | null>(null);
   const [openCategory, setOpenCategory] = useState<StudioCategory | null>(null);
   useEffect(() => {
@@ -2255,10 +2266,23 @@ export function KidsStudioScreen({
           : { kind: "actor" };
     setOriProperty(subject);
     openOri("property");
+    // For a block, also say how it is written in the code the learner is looking at.
+    const block = inspectorKind === "block" ? blockProps : undefined;
+    const range =
+      block !== undefined && scriptIndexOfActor >= 0
+        ? codeView.rangesOf(`scripts[${scriptIndexOfActor}]/statements[${inspectorBlock}]`)?.[0]
+        : undefined;
+    if (block !== undefined && range !== undefined) {
+      const end = code.indexOf("\n", range.start);
+      const line = code.slice(range.start, end === -1 ? range.end : Math.min(end, range.end));
+      const language: ExplainedLanguage = shownLanguage;
+      setOriCode({ language, explanation: explainCodeLine(block, line, language, locale) });
+    } else setOriCode(null);
   }
 
   function openOri(context: typeof oriContext) {
     setOriContext(context);
+    setOriCode(null);
     setOriSeen(getOriContext());
     setOriCollapsed(false);
   }
@@ -7369,6 +7393,28 @@ export function KidsStudioScreen({
                                 ? `Your last run executed ${run.trace.length} blocks. Let's inspect what happened before changing the program.`
                                 : `We're editing ${actor?.name ?? "your sprite"}'s program. What would you like it to do?`}
                 </p>
+                {oriContext === "property" && oriCode ? (
+                  <div className="kids-ori-code" data-testid="ori-code-line">
+                    <p>
+                      {locale === "es"
+                        ? `Así se escribe en ${LANGUAGE_NAME[oriCode.language]}:`
+                        : `This is how it is written in ${LANGUAGE_NAME[oriCode.language]}:`}
+                    </p>
+                    <code>{oriCode.explanation.line}</code>
+                    {oriCode.explanation.parts.length > 0 ? (
+                      <dl>
+                        {oriCode.explanation.parts.map((part, index) => (
+                          <div key={`${index}-${part.code}`}>
+                            <dt>
+                              <code>{part.code}</code>
+                            </dt>
+                            <dd>{part.meaning}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    ) : null}
+                  </div>
+                ) : null}
                 <button
                   type="button"
                   className="kids-button kids-ori-action"
