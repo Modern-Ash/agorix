@@ -493,3 +493,11 @@ Compared against Scratch 3's core palette, the free scene lacked a handful of bl
 - **Dirección** (`direction` expression): the heading as a number, savable into a variable.
 
 Still open against Scratch, in this order: siguiente disfraz, ir a azar/mouse, anunciar y esperar, textos (unir, letra de, longitud), then importing `.sb3` projects. **Preguntar y responder** with free text stays a deliberate difference (no free text from a child; see the functional matrix).
+
+## Go to random or the pointer, and broadcast and wait (second Scratch-compatibility increment)
+
+- **Ir a un lugar al azar / Ir al puntero** (`goToTarget` with `random` or `mouse`): random uses the run's seeded stream inside the stage bounds (same seed, same spot); the pointer is the one captured for the run, kept inside the stage. The pen trail follows.
+- **Enviar mensaje y esperar** (`broadcast` with `wait`): in live play the sender holds until every script the message started has finished (a message nobody hears does not hold it). An instant run (reduced motion) treats it as a plain broadcast, because the batch runner runs scripts one after another.
+- **Siguiente disfraz** is not added yet: in the model a costume is a gallery character, not a per-sprite list, so "next" has no list to cycle. It needs per-actor costume lists first.
+
+Still open, in order: text operators, then importing `.sb3` projects.

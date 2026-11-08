@@ -94,3 +94,67 @@ describe("Scratch motion and looks blocks", () => {
     expect(live.running).toBe(false);
   });
 });
+
+describe("go to random position or the pointer, and broadcast and wait", () => {
+  it("goes to a seeded random spot inside the stage, the same one every time", () => {
+    const p = program([{ type: "goToTarget", target: "random" }]);
+    const spots = [1, 2, 3, 4, 5, 6].map((seed) => {
+      const { x, y } = runProgram(p, createWorldState(), { randomSeed: seed }).world.sprite;
+      expect(x).toBeGreaterThanOrEqual(0);
+      expect(x).toBeLessThanOrEqual(320);
+      expect(y).toBeGreaterThanOrEqual(-100);
+      expect(y).toBeLessThanOrEqual(120);
+      return `${x},${y}`;
+    });
+    expect(new Set(spots).size).toBeGreaterThan(1);
+    const again = runProgram(p, createWorldState(), { randomSeed: 3 }).world.sprite;
+    expect(`${again.x},${again.y}`).toBe(spots[2]);
+  });
+
+  it("goes to the pointer captured for the run, kept inside the stage", () => {
+    const p = program([{ type: "goToTarget", target: "mouse" }]);
+    const inside = runProgram(p, createWorldState(), {
+      pointer: { x: 100, y: 20, down: false },
+    }).world.sprite;
+    expect([inside.x, inside.y]).toEqual([100, 20]);
+    const outside = runProgram(p, createWorldState(), {
+      pointer: { x: 900, y: -900, down: false },
+    }).world.sprite;
+    expect([outside.x, outside.y]).toEqual([320, -100]);
+  });
+
+  const talker = (wait: boolean): ProjectProgram => ({
+    schema: SCHEMA_VERSION,
+    scripts: [
+      {
+        id: "sender",
+        trigger: { type: "greenFlag" },
+        statements: [
+          { type: "broadcast", message: "go", ...(wait ? { wait: true } : {}) },
+          { type: "setX", x: 99 },
+        ],
+      },
+      {
+        id: "listener",
+        trigger: { type: "onMessage", message: "go" },
+        statements: [
+          { type: "wait", seconds: 1 },
+          { type: "setY", y: 7 },
+        ],
+      },
+    ],
+  });
+
+  function senderX(wait: boolean, seconds: number): number {
+    const live = createLiveRuntime(talker(wait));
+    live.fire({ type: "start" });
+    for (let t = 0; t < seconds; t += LIVE_TICK_SECONDS) live.advance(LIVE_TICK_SECONDS);
+    return live.result().actors[0]!.world.sprite.x;
+  }
+
+  it("a plain broadcast lets the sender go on; broadcast and wait holds it until the listener ends", () => {
+    expect(senderX(false, 0.3)).toBe(99);
+    expect(senderX(true, 0.3)).toBe(0);
+    expect(senderX(true, 2)).toBe(99);
+  });
+});

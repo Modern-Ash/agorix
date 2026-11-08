@@ -42,6 +42,7 @@ export interface KidsPaletteAction {
 const GLYPH: Partial<Record<string, string>> = {
   move: "➜",
   goTo: "⌖",
+  goToTarget: "🎲",
   setX: "⇤",
   setY: "⇥",
   changeX: "↔",

@@ -36,6 +36,8 @@ const bool = (value: boolean): Expression => ({ type: "booleanLiteral", value })
 const statements: Statement[] = [
   { type: "move", steps: 40 },
   { type: "goTo", x: 10, y: 20 },
+  { type: "goToTarget", target: "random" },
+  { type: "goToTarget", target: "mouse" },
   { type: "setX", x: 30 },
   { type: "setY", y: 40 },
   { type: "changeX", dx: -20 },
@@ -68,6 +70,7 @@ const statements: Statement[] = [
   { type: "setVolume", volume: 80 },
   { type: "changeVolume", delta: -10 },
   { type: "broadcast", message: "hola" },
+  { type: "broadcast", message: "hola", wait: true },
   { type: "setVariable", variableId: "v", value: num(3) },
   { type: "setVariable", variableId: "v", value: { type: "mouseX" } },
   { type: "setVariable", variableId: "v", value: { type: "mouseY" } },

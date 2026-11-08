@@ -138,6 +138,8 @@ export function projectPython(program: ProjectProgram): LanguageProjectionResult
         "say_for",
         "think",
         "think_for",
+        "go_to_random",
+        "go_to_mouse",
         "set_x",
         "set_y",
         "change_x",
@@ -216,6 +218,13 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
           ", " +
           formatNumber(statement.seconds) +
           ")\n",
+      );
+      return;
+    case "goToTarget":
+      writeMapped(
+        writer,
+        nodeId,
+        indent + (statement.target === "random" ? "go_to_random()" : "go_to_mouse()") + "\n",
       );
       return;
     case "setX":
@@ -905,6 +914,8 @@ const PYTHON_PROJECTION_IDENTIFIERS: ReadonlySet<string> = new Set([
   "say_for",
   "think",
   "think_for",
+  "go_to_random",
+  "go_to_mouse",
   "set_x",
   "set_y",
   "change_x",

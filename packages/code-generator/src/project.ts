@@ -285,6 +285,12 @@ function projectStatement(
         `${pad}sprite.glideTo(${formatNumber(statement.x)}, ${formatNumber(statement.y)}, ${formatNumber(statement.seconds)});\n`,
       );
       return;
+    case "goToTarget":
+      write(
+        writer,
+        `${pad}sprite.${statement.target === "random" ? "goToRandom" : "goToMouse"}();\n`,
+      );
+      return;
     case "setX":
       write(writer, `${pad}sprite.setX(${formatNumber(statement.x)});\n`);
       return;
@@ -459,7 +465,10 @@ function projectStatement(
       write(writer, `${pad}sound.changeVolume(${statement.delta});\n`);
       return;
     case "broadcast":
-      write(writer, `${pad}stage.broadcast(${JSON.stringify(statement.message)});\n`);
+      write(
+        writer,
+        `${pad}stage.${statement.wait === true ? "broadcastAndWait" : "broadcast"}(${JSON.stringify(statement.message)});\n`,
+      );
       return;
     case "setVariable":
       write(

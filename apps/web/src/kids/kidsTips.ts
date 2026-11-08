@@ -31,6 +31,10 @@ export const BLOCK_TIPS: Readonly<Record<string, Tip>> = {
     en: "Move: the character walks where it faces",
   },
   goTo: { es: "Ir a una posición del escenario", en: "Jump to a spot on the stage" },
+  goToTarget: {
+    es: "Ir a un lugar al azar o hacia el puntero",
+    en: "Jump to a random spot or to the pointer",
+  },
   setX: { es: "Fijar la posición de lado a lado", en: "Set the left-right position" },
   setY: { es: "Fijar la altura en el escenario", en: "Set the height on the stage" },
   changeX: { es: "Correr hacia un lado sin girar", en: "Slide sideways without turning" },
@@ -89,8 +93,8 @@ export const BLOCK_TIPS: Readonly<Record<string, Tip>> = {
   waitUntil: { es: "Esperar hasta que pase algo", en: "Wait until something happens" },
   if: { es: "Si pasa algo, hacer estos bloques", en: "If something happens, do these blocks" },
   broadcast: {
-    es: "Mandar un mensaje a los demás personajes",
-    en: "Send a message to the other characters",
+    es: "Mandar un mensaje a los demás personajes (o esperar a que terminen)",
+    en: "Send a message to the other characters (or wait for them to finish)",
   },
   callProcedure: { es: "Usar un bloque que armaste vos", en: "Use a block you made" },
   penDown: {

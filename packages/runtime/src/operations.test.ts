@@ -71,6 +71,7 @@ describe("runtime operation allowlist", () => {
       "glideTo",
       "goTo",
       "goToLayer",
+      "goToTarget",
       "hide",
       "hideVariable",
       "if",

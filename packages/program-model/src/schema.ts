@@ -266,6 +266,17 @@ export interface GoToStatement {
   readonly y: number;
 }
 
+export type GoToTarget = "random" | "mouse";
+
+/**
+ * Scratch's "go to random position" and "go to mouse-pointer": the sprite jumps inside the stage
+ * to a seeded random spot, or to the pointer captured for the run.
+ */
+export interface GoToTargetStatement {
+  readonly type: "goToTarget";
+  readonly target: GoToTarget;
+}
+
 /** Sets only the x coordinate; y and heading stay as they are. */
 export interface SetXStatement {
   readonly type: "setX";
@@ -503,6 +514,11 @@ export interface ChangeVolumeStatement {
 export interface BroadcastStatement {
   readonly type: "broadcast";
   readonly message: string;
+  /**
+   * Scratch's "broadcast and wait": in live play the sender waits until every script this message
+   * started has finished. An instant (batch) run treats it as a plain broadcast.
+   */
+  readonly wait?: boolean;
 }
 
 export interface SetVariableStatement {
@@ -596,6 +612,7 @@ export interface IfStatement {
 export type Statement =
   | MoveStatement
   | GoToStatement
+  | GoToTargetStatement
   | SetXStatement
   | SetYStatement
   | ChangeXStatement

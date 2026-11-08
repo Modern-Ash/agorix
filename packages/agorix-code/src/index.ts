@@ -158,6 +158,15 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
           " seconds\n",
       );
       return;
+    case "goToTarget":
+      writeMapped(
+        writer,
+        nodeId,
+        indent +
+          (statement.target === "random" ? "go to random position" : "go to mouse pointer") +
+          "\n",
+      );
+      return;
     case "setX":
       writeMapped(writer, nodeId, indent + "set x to " + formatNumber(statement.x) + "\n");
       return;

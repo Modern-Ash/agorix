@@ -1448,7 +1448,7 @@ test("free scene composes data, repeat, message and key events in a fresh sessio
   await page.getByRole("spinbutton", { name: "Número" }).fill("1");
   await page.getByRole("button", { name: /\+ Si .* → mover 1/ }).click();
   await page.getByRole("button", { name: "+ Repetir", exact: false }).click();
-  await page.getByRole("button", { name: "+ Enviar mensaje" }).click();
+  await page.getByRole("button", { name: "+ Enviar mensaje", exact: true }).click();
   await page.getByRole("button", { name: "+ Agregar personaje" }).click();
   await page.getByRole("combobox", { name: "Cuando" }).selectOption("onMessage");
   await page.getByRole("button", { name: "+ Mover" }).click();

@@ -572,3 +572,22 @@ describe("Scratch motion and looks blocks", () => {
       expect(() => validateProgram(base(statement) as never)).toThrow();
   });
 });
+
+describe("go to target and broadcast and wait", () => {
+  const base = (statement: unknown) => ({
+    schema: "agorix/program/v1",
+    scripts: [{ id: "a", trigger: { type: "onStart" }, statements: [statement] }],
+  });
+  it("accepts random and mouse targets and a waiting broadcast", () => {
+    for (const statement of [
+      { type: "goToTarget", target: "random" },
+      { type: "goToTarget", target: "mouse" },
+      { type: "broadcast", message: "go", wait: true },
+    ])
+      expect(() => validateProgram(base(statement) as never)).not.toThrow();
+  });
+  it("rejects an unknown target", () => {
+    expect(() => validateProgram(base({ type: "goToTarget", target: "moon" }) as never)).toThrow();
+    expect(() => validateProgram(base({ type: "goToTarget" }) as never)).toThrow();
+  });
+});

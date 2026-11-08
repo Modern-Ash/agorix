@@ -30,6 +30,7 @@ export type BlockType =
   | "event_broadcast"
   | "motion_move"
   | "motion_go_to"
+  | "motion_go_to_target"
   | "motion_set_x"
   | "motion_set_y"
   | "motion_change_x"
@@ -514,6 +515,11 @@ function statementFromBlock(
         steps: numberField(block, "steps", path),
         ...paramFrom(block, "stepsFrom"),
       };
+    case "motion_go_to_target":
+      return {
+        type: "goToTarget",
+        target: stringField(block, "target", path) as "random" | "mouse",
+      };
     case "motion_set_x":
       return { type: "setX", x: numberField(block, "x", path) };
     case "motion_set_y":
@@ -655,7 +661,11 @@ function statementFromBlock(
     case "sound_change_volume":
       return { type: "changeVolume", delta: numberField(block, "delta", path) };
     case "event_broadcast":
-      return { type: "broadcast", message: stringField(block, "message", path) };
+      return {
+        type: "broadcast",
+        message: stringField(block, "message", path),
+        ...(block.fields?.["wait"] === true ? { wait: true as const } : {}),
+      };
     case "variables_set":
       return {
         type: "setVariable",
@@ -971,6 +981,8 @@ function statementToBlock(
       };
     case "goTo":
       return { id, type: "motion_go_to", fields: { x: statement.x, y: statement.y } };
+    case "goToTarget":
+      return { id, type: "motion_go_to_target", fields: { target: statement.target } };
     case "setX":
       return { id, type: "motion_set_x", fields: { x: statement.x } };
     case "setY":
@@ -1112,7 +1124,14 @@ function statementToBlock(
     case "changeVolume":
       return { id, type: "sound_change_volume", fields: { delta: statement.delta } };
     case "broadcast":
-      return { id, type: "event_broadcast", fields: { message: statement.message } };
+      return {
+        id,
+        type: "event_broadcast",
+        fields: {
+          message: statement.message,
+          ...(statement.wait === true ? { wait: true } : {}),
+        },
+      };
     case "setVariable":
       return {
         id,

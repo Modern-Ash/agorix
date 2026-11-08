@@ -106,6 +106,10 @@ interface Activation {
   wakeAt: number;
   lastAt: number;
   alive: boolean;
+  /** Set by the broadcast that started it; the sender of a broadcast-and-wait watches these. */
+  token?: number;
+  /** "Broadcast and wait": the token whose scripts must all finish before this one goes on. */
+  waitingFor?: number;
   /** A glide in progress: the sprite is carried tick by tick, drawing its pen trail as it goes. */
   glide?: {
     readonly fromX: number;
@@ -138,7 +142,8 @@ export function createLiveRuntime(
   const frames: MultiActorFrame[] = [];
   const activations: MultiActorScriptActivation[] = [];
   const active: Activation[] = [];
-  const pending: RuntimeEvent[] = [];
+  const pending: { readonly event: RuntimeEvent; readonly token?: number }[] = [];
+  let nextToken = 1;
   const stopped = new Set<string>();
   let outcome: MultiActorRunResult["outcome"] = "completed";
   let randomState = options.randomSeed;
@@ -163,7 +168,12 @@ export function createLiveRuntime(
         visible: other.world.sprite.visible ?? true,
       }));
 
-  function start(actor: RuntimeActorMutable, scriptIndex: number, event: RuntimeEvent) {
+  function start(
+    actor: RuntimeActorMutable,
+    scriptIndex: number,
+    event: RuntimeEvent,
+    token?: number,
+  ) {
     const script = program.scripts[scriptIndex];
     if (script === undefined) return;
     // The same script starting again restarts it, as in Scratch.
@@ -215,13 +225,15 @@ export function createLiveRuntime(
       wakeAt: now,
       lastAt: 0,
       alive: true,
+      ...(token === undefined ? {} : { token }),
     });
   }
 
-  function dispatch(event: RuntimeEvent) {
+  function dispatch(event: RuntimeEvent, token?: number) {
     for (const actor of actors) {
       if (stopped.has(actor.id)) continue;
-      for (const [index] of scriptsForActor(program, actor, event)) start(actor, index, event);
+      for (const [index] of scriptsForActor(program, actor, event))
+        start(actor, index, event, token);
     }
   }
 
@@ -265,8 +277,14 @@ export function createLiveRuntime(
     }
     if (raw.statementType === "broadcast") {
       const statement = statementAtNodeId(single, raw.nodeId);
-      if (statement?.type === "broadcast")
-        pending.push({ type: "message", message: statement.message, senderActorId: actor.id });
+      if (statement?.type === "broadcast") {
+        const token = statement.wait === true ? nextToken++ : undefined;
+        pending.push({
+          event: { type: "message", message: statement.message, senderActorId: actor.id },
+          ...(token === undefined ? {} : { token }),
+        });
+        if (token !== undefined) activation.waitingFor = token;
+      }
     }
     steps += 1;
     // A wait or glide lasts its seconds; a note or drum lasts its beats ("play until done").
@@ -372,10 +390,19 @@ export function createLiveRuntime(
     now = Math.round((now + LIVE_TICK_SECONDS) * 1e6) / 1e6;
     tickIndex += 1;
     sampleInputs();
-    for (const event of pending.splice(0)) dispatch(event);
+    for (const { event, token } of pending.splice(0)) dispatch(event, token);
     advanceGlides();
     for (const activation of [...active]) {
       if (!activation.alive || halted || activation.wakeAt > now + 1e-9) continue;
+      if (activation.waitingFor !== undefined) {
+        // Broadcast and wait: go on once nothing the message started is still running (or queued).
+        const token = activation.waitingFor;
+        const busy =
+          pending.some((item) => item.token === token) ||
+          active.some((other) => other.alive && other.token === token);
+        if (busy) continue;
+        delete activation.waitingFor;
+      }
       const entry = stepActivation(activation);
       if (entry) produced.push(entry);
       if (trace.length >= maxEntries) {
@@ -394,7 +421,7 @@ export function createLiveRuntime(
   return {
     fire(event) {
       if (halted || pending.length >= LIVE_MAX_PENDING) return;
-      pending.push(cloneRuntimeEvent(event));
+      pending.push({ event: cloneRuntimeEvent(event) });
       inputs.push({ tick: tickIndex + 1, kind: "event", event: cloneRuntimeEvent(event) });
     },
     advance(seconds) {
