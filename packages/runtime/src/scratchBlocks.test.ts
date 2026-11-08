@@ -159,6 +159,33 @@ describe("go to random position or the pointer, and broadcast and wait", () => {
   });
 });
 
+describe("next costume", () => {
+  const costumes = ["costume:mika", "costume:studio-art-1", "costume:studio-art-2"];
+  const after = (times: number, start?: string) => {
+    const world = createWorldState(
+      start === undefined ? {} : { sprite: { x: 0, y: 0, heading: 0, costumeId: start } },
+    );
+    return runProgram(
+      program(
+        Array.from(
+          { length: times },
+          () => ({ type: "nextCostume", costumeIds: costumes }) as Statement,
+        ),
+      ),
+      world,
+    ).world.sprite.costumeId;
+  };
+  it("goes to the next costume in the list and wraps around", () => {
+    expect(after(1, "costume:mika")).toBe("costume:studio-art-1");
+    expect(after(2, "costume:mika")).toBe("costume:studio-art-2");
+    expect(after(3, "costume:mika")).toBe("costume:mika");
+  });
+  it("goes to the first costume when the current one is not in the list", () => {
+    expect(after(1, "costume:nova")).toBe("costume:mika");
+    expect(after(1)).toBe("costume:mika");
+  });
+});
+
 describe("rotation style", () => {
   it("sets the style, and 'all around' puts it back to the default", () => {
     const style = (statements: Statement[]) =>

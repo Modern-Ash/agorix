@@ -28,6 +28,7 @@ const PANELS: Record<string, { es: string; en: string }> = {
 const FAMILY: Record<string, string> = {
   move: "motion",
   goTo: "motion",
+  nextCostume: "looks",
   goToTarget: "motion",
   setRotationStyle: "motion",
   setX: "motion",

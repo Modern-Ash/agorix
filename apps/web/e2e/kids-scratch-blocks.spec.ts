@@ -66,6 +66,45 @@ test("broadcast and wait is a block of its own and shows as such", async ({ page
   );
 });
 
+test("next costume needs a costume the child drew, then cycles back to the character", async ({
+  page,
+}) => {
+  await openScene(page);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  // Nothing to change to yet: the block stays and says why.
+  await page
+    .getByRole("button", { name: "+ Siguiente disfraz", exact: true })
+    .click({ force: true });
+  await expect(page.getByText("Primero dibujá otro disfraz").first()).toBeVisible();
+  await expect(page.locator(".kids-program-block")).toHaveCount(0);
+
+  await page.getByRole("tab", { name: /Disfraces/ }).click();
+  await page.getByRole("button", { name: "Dibujar disfraz" }).click();
+  const canvas = page.getByRole("img", { name: "Lienzo para dibujar" });
+  await canvas.scrollIntoViewIfNeeded();
+  const bounds = (await canvas.boundingBox())!;
+  await page.mouse.click(bounds.x + 80, bounds.y + 80);
+  await page.getByRole("button", { name: "Guardar dibujo" }).click();
+  await expect(page.locator(".kids-studio-stage-actor .kids-art-image")).toHaveCSS(
+    "background-image",
+    /data:image\/(png|webp)/,
+  );
+
+  await page.getByRole("tab", { name: /Código/ }).click();
+  await page.getByRole("button", { name: "+ Siguiente disfraz", exact: true }).click();
+  await expect(page.locator(".kids-program-block").first()).toContainText("Siguiente disfraz (2)");
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  // The drawn costume was showing; the next one in the list is the character itself.
+  await expect
+    .poll(() =>
+      page
+        .locator(".kids-studio-stage-actor .kids-art-image")
+        .first()
+        .evaluate((node) => getComputedStyle(node).backgroundImage),
+    )
+    .not.toMatch(/data:image\/(png|webp)/);
+});
+
 test("the rotation style decides how a turn looks on stage", async ({ page }) => {
   await openScene(page);
   await page.getByRole("combobox", { name: "Estilo de giro" }).selectOption("none");

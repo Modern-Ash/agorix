@@ -76,6 +76,7 @@ export type StudioStatement = Extract<
       | "changeEffect"
       | "clearEffects"
       | "switchCostume"
+      | "nextCostume"
       | "switchBackdrop"
       | "playSound"
       | "stopSounds"
@@ -463,6 +464,16 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0, arity
     return (STUDIO_PANS as readonly number[]).includes(statement.pan);
   if (statement.type === "goToLayer")
     return statement.layer === "front" || statement.layer === "back";
+  if (statement.type === "nextCostume")
+    return (
+      statement.costumeIds.length >= 2 &&
+      new Set(statement.costumeIds).size === statement.costumeIds.length &&
+      statement.costumeIds.every(
+        (id) =>
+          (id.startsWith("costume:") && isGalleryCharacterId(id.slice(8))) ||
+          (id.startsWith("costume:") && STUDIO_ART_ID.test(id)),
+      )
+    );
   if (statement.type === "switchCostume")
     return (
       isGalleryCharacterId(statement.costumeId.slice(8)) &&

@@ -80,6 +80,7 @@ describe("runtime operation allowlist", () => {
       "listRemoveAt",
       "listReplaceAt",
       "move",
+      "nextCostume",
       "penDown",
       "penUp",
       "playDrum",

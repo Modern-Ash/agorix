@@ -260,6 +260,7 @@ const COPY = {
     reset: "Volver al inicio",
     move: "Mover",
     goTo: "Ir a posición",
+    nextCostume: "Siguiente disfraz",
     rotationStyle: "Estilo de giro",
     rotationAll: "Toda la vuelta",
     rotationLeftRight: "Izquierda y derecha",
@@ -544,6 +545,7 @@ const COPY = {
     reset: "Back to start",
     move: "Move",
     goTo: "Go to position",
+    nextCostume: "Next costume",
     rotationStyle: "Rotation style",
     rotationAll: "All around",
     rotationLeftRight: "Left and right",
@@ -2503,6 +2505,8 @@ export function KidsStudioScreen({
         return `${copy.goTo}: ${statement.x}, ${statement.y}`;
       case "glideTo":
         return `${copy.glideTo}: ${statement.x}, ${statement.y} (${statement.seconds}s)`;
+      case "nextCostume":
+        return `${copy.nextCostume} (${statement.costumeIds.length})`;
       case "setRotationStyle":
         return `${copy.rotationStyle}: ${
           statement.style === "all"
@@ -3238,7 +3242,11 @@ export function KidsStudioScreen({
     stepped,
   });
 
-  const paletteFactsNow = paletteFacts(history.current.scripts, creative.actors?.length ?? 1);
+  const paletteFactsNow = paletteFacts(
+    history.current.scripts,
+    creative.actors?.length ?? 1,
+    ownCostumes.length,
+  );
   const paletteRules = {
     unmetFor: (block: Parameters<typeof unmetNeed>[0]) => {
       const need = unmetNeed(block, paletteFactsNow);
@@ -5522,6 +5530,23 @@ export function KidsStudioScreen({
                     ))}
                   </select>
                 </KidsPaletteBlock>
+                <KidsPaletteBlock
+                  tone="looks"
+                  actions={[
+                    {
+                      label: copy.nextCostume,
+                      block: "nextCostume",
+                      onAdd: () =>
+                        add({
+                          type: "nextCostume",
+                          costumeIds: [
+                            `costume:${characterOfActor(activeActorId)}`,
+                            ...ownCostumes.map((asset) => asset.id),
+                          ],
+                        }),
+                    },
+                  ]}
+                />
                 <KidsPaletteBlock
                   tone="looks"
                   actions={[

@@ -79,6 +79,7 @@ export type {
   PointTowardsStatement,
   BounceOnEdgeStatement,
   GoToTargetStatement,
+  NextCostumeStatement,
   SetRotationStyleStatement,
   RotationStyle,
   SetXStatement,

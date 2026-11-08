@@ -36,6 +36,7 @@ const bool = (value: boolean): Expression => ({ type: "booleanLiteral", value })
 const statements: Statement[] = [
   { type: "move", steps: 40 },
   { type: "goTo", x: 10, y: 20 },
+  { type: "nextCostume", costumeIds: ["costume:mika", "costume:studio-art-1"] },
   { type: "setRotationStyle", style: "leftRight" },
   { type: "goToTarget", target: "random" },
   { type: "goToTarget", target: "mouse" },
