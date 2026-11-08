@@ -40,6 +40,7 @@ export {
   LIVE_MAX_SECONDS,
   LIVE_TICK_SECONDS,
   createLiveRuntime,
+  createReplayRuntime,
   replayLiveRuntime,
   type LiveInput,
   type LiveInputLog,

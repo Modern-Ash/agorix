@@ -55,7 +55,9 @@ import type { KidsWorld } from "../kidsState.js";
 import { speak } from "../speak.js";
 import {
   createLiveRuntime,
+  createReplayRuntime,
   runMultiActorProgram,
+  type LiveInputLog,
   type LiveRuntime,
   type MultiActorRunResult,
   type MultiActorTraceEntry,
@@ -980,7 +982,7 @@ const SHORTCUT_LABEL: Record<"es" | "en", Record<string, string>> = {
 
 /** Statements that move the sprite; the stage animates the move instead of jumping. */
 const MOVING = new Set(["move", "goTo", "glideTo", "bounceOnEdge"]);
-/** A step lasts a couple of ticks on screen so walking looks continuous. */
+/** The runtime carries a glide tick by tick; each tick eases over a couple of ticks on screen. */
 const LIVE_STEP_SECONDS = 0.07;
 
 /** Seconds a forever loop runs before Ori offers help with a loop that does not end. */
@@ -1135,6 +1137,14 @@ export function KidsStudioScreen({
   const [playing, setPlaying] = useState(false);
   const liveRef = useRef<LiveRuntime | null>(null);
   const liveRecorded = useRef(false);
+  // What the last live run read from outside, kept in memory only so it can be watched again.
+  const [lastLive, setLastLive] = useState<{
+    readonly log: LiveInputLog;
+    readonly program: typeof history.current;
+    readonly creative: typeof creative;
+    readonly programJson: string;
+  } | null>(null);
+  const replaying = useRef(false);
   // Seconds each actor's last move should take on screen, so a glide slides and a step is smooth.
   const motionRef = useRef<Record<string, number>>({});
   // A forever loop that has run for a few seconds is a loop that does not end: Ori can help.
@@ -1888,6 +1898,19 @@ export function KidsStudioScreen({
       );
   }
 
+  function captureLiveLog() {
+    const live = liveRef.current;
+    if (!live || replaying.current) return;
+    const log = live.inputLog();
+    if (log.ticks > 0)
+      setLastLive({
+        log,
+        program: history.current,
+        creative,
+        programJson: JSON.stringify(history.current),
+      });
+  }
+
   function recordLiveRun() {
     const live = liveRef.current;
     if (!live || liveRecorded.current) return;
@@ -1909,9 +1932,7 @@ export function KidsStudioScreen({
       last = now;
       for (const entry of produced) {
         presentLiveEntry(entry);
-        if (MOVING.has(entry.statementType))
-          motionRef.current[entry.actorId] =
-            entry.statementType === "glideTo" && entry.seconds ? entry.seconds : LIVE_STEP_SECONDS;
+        if (MOVING.has(entry.statementType)) motionRef.current[entry.actorId] = LIVE_STEP_SECONDS;
         if (entry.statementType === "forever") sawForever = true;
       }
       if (produced.length > 0 || !live.running) setRun(live.result());
@@ -1921,6 +1942,7 @@ export function KidsStudioScreen({
         frameId = window.requestAnimationFrame(loop);
         return;
       }
+      captureLiveLog();
       recordLiveRun();
       setPlaying(false);
     };
@@ -2924,6 +2946,7 @@ export function KidsStudioScreen({
         stopKidsMusic();
         liveRef.current = live;
         liveRecorded.current = false;
+        replaying.current = false;
         motionRef.current = {};
         setForeverNoticed(false);
         setRun(live.result());
@@ -2938,8 +2961,31 @@ export function KidsStudioScreen({
     }
   }
 
+  /** Watches the last live run again, with the same inputs it had; nothing is recorded twice. */
+  function replay() {
+    if (!lastLive) return;
+    try {
+      stopLive();
+      const again = createReplayRuntime(lastLive.program, lastLive.creative, lastLive.log);
+      stopKidsSounds();
+      stopKidsMusic();
+      liveRef.current = again;
+      liveRecorded.current = true;
+      replaying.current = true;
+      motionRef.current = {};
+      setForeverNoticed(false);
+      setRun(again.result());
+      setFrame(null);
+      setPlaying(true);
+      setError(false);
+    } catch {
+      setError(true);
+    }
+  }
+
   /** Ends the live session where it is; what ran is still recorded as evidence. */
   function stopLive() {
+    captureLiveLog();
     recordLiveRun();
     liveRef.current = null;
     setPlaying(false);
@@ -3643,6 +3689,16 @@ export function KidsStudioScreen({
                   <span aria-hidden="true">⏭</span>
                   <span className="kids-sr-only">{copy.step}</span>
                 </button>
+                {lastLive && lastLive.programJson === JSON.stringify(history.current) ? (
+                  <button
+                    type="button"
+                    className="kids-button kids-replay-button"
+                    disabled={playing}
+                    onClick={replay}
+                  >
+                    <span aria-hidden="true">↺</span> {locale === "es" ? "Otra vez" : "Again"}
+                  </button>
+                ) : null}
               </div>
             }
           >

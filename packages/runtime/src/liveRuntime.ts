@@ -24,7 +24,7 @@ import {
   type RuntimeActorMutable,
   type RuntimeEvent,
 } from "./multiActor.js";
-import { cloneWorldState, type WorldState } from "./world.js";
+import { cloneWorldState, createWorldState, drawPenTrail, type WorldState } from "./world.js";
 
 /** Scratch-like frame rate: each live script runs at most one statement per tick. */
 export const LIVE_TICK_SECONDS = 1 / 30;
@@ -106,6 +106,15 @@ interface Activation {
   wakeAt: number;
   lastAt: number;
   alive: boolean;
+  /** A glide in progress: the sprite is carried tick by tick, drawing its pen trail as it goes. */
+  glide?: {
+    readonly fromX: number;
+    readonly fromY: number;
+    readonly toX: number;
+    readonly toY: number;
+    readonly startAt: number;
+    readonly seconds: number;
+  };
 }
 
 /**
@@ -284,6 +293,24 @@ export function createLiveRuntime(
       worldAfter: raw.worldAfter,
     };
     trace.push(mapped);
+    if (raw.statementType === "glideTo" && occupied > 0) {
+      // The statement jumped to its target and drew its whole trail; undo that and glide instead.
+      const { sprite } = raw.worldBefore;
+      const { sprite: end } = raw.worldAfter;
+      actor.world = createWorldState({
+        ...actor.world,
+        sprite: { ...actor.world.sprite, x: sprite.x, y: sprite.y },
+        ...(raw.worldBefore.pen === undefined ? {} : { pen: raw.worldBefore.pen }),
+      });
+      activation.glide = {
+        fromX: sprite.x,
+        fromY: sprite.y,
+        toX: end.x,
+        toY: end.y,
+        startAt: now,
+        seconds: occupied,
+      };
+    }
     if (frames.length < LIVE_MAX_FRAMES)
       frames.push({
         step: mapped.step,
@@ -326,11 +353,27 @@ export function createLiveRuntime(
     }
   }
 
+  function advanceGlides() {
+    for (const activation of active) {
+      const glide = activation.glide;
+      if (!activation.alive || glide === undefined) continue;
+      const progress = Math.min(1, (now - glide.startAt) / glide.seconds);
+      const done = progress >= 1 - 1e-9;
+      const x = done ? glide.toX : glide.fromX + (glide.toX - glide.fromX) * progress;
+      const y = done ? glide.toY : glide.fromY + (glide.toY - glide.fromY) * progress;
+      const before = activation.actor.world;
+      const moved = createWorldState({ ...before, sprite: { ...before.sprite, x, y } });
+      activation.actor.world = drawPenTrail(before, moved).world;
+      if (done) delete activation.glide;
+    }
+  }
+
   function tick(produced: MultiActorTraceEntry[]) {
     now = Math.round((now + LIVE_TICK_SECONDS) * 1e6) / 1e6;
     tickIndex += 1;
     sampleInputs();
     for (const event of pending.splice(0)) dispatch(event);
+    advanceGlides();
     for (const activation of [...active]) {
       if (!activation.alive || halted || activation.wakeAt > now + 1e-9) continue;
       const entry = stepActivation(activation);
@@ -397,8 +440,11 @@ export function createLiveRuntime(
   };
 }
 
-/** Rebuilds a live run from its input log: same program and project in, same run out. */
-export function replayLiveRuntime(
+/**
+ * Plays a recorded live run back through the same runtime, feeding it the logged inputs at their
+ * ticks, so a caller can watch it again at real speed. It ends when the log does.
+ */
+export function createReplayRuntime(
   programInput: ProjectProgram,
   creativeInput: ProjectCreativeState,
   log: LiveInputLog,
@@ -407,7 +453,7 @@ export function replayLiveRuntime(
   let keys: readonly string[] = [];
   let pointer = { x: 0, y: 0, down: false };
   const choices: Record<string, number> = {};
-  const live = createLiveRuntime(programInput, creativeInput, {
+  const inner = createLiveRuntime(programInput, creativeInput, {
     ...options,
     ...(log.randomSeed === undefined ? {} : { randomSeed: log.randomSeed }),
     keysDown: () => keys,
@@ -415,18 +461,51 @@ export function replayLiveRuntime(
     choices,
   });
   let next = 0;
-  for (let tick = 1; tick <= log.ticks; tick += 1) {
-    for (; next < log.inputs.length && log.inputs[next]!.tick <= tick; next += 1) {
-      const input = log.inputs[next]!;
-      if (input.kind === "event") live.fire(input.event);
-      else if (input.kind === "keys") keys = input.keys;
-      else if (input.kind === "pointer") pointer = { x: input.x, y: input.y, down: input.down };
-      else {
-        for (const key of Object.keys(choices)) delete choices[key];
-        Object.assign(choices, input.choices);
+  let ticks = 0;
+  let accumulated = 0;
+  return {
+    // The log is the only source of events; live input during a replay is ignored.
+    fire() {},
+    advance(seconds) {
+      const produced: MultiActorTraceEntry[] = [];
+      if (!Number.isFinite(seconds) || seconds <= 0) return produced;
+      accumulated += seconds;
+      while (accumulated + 1e-9 >= LIVE_TICK_SECONDS && ticks < log.ticks) {
+        accumulated -= LIVE_TICK_SECONDS;
+        ticks += 1;
+        for (; next < log.inputs.length && log.inputs[next]!.tick <= ticks; next += 1) {
+          const input = log.inputs[next]!;
+          if (input.kind === "event") inner.fire(input.event);
+          else if (input.kind === "keys") keys = input.keys;
+          else if (input.kind === "pointer") pointer = { x: input.x, y: input.y, down: input.down };
+          else {
+            for (const key of Object.keys(choices)) delete choices[key];
+            Object.assign(choices, input.choices);
+          }
+        }
+        produced.push(...inner.advance(LIVE_TICK_SECONDS));
       }
-    }
-    live.advance(LIVE_TICK_SECONDS);
-  }
-  return live;
+      return produced;
+    },
+    get running() {
+      return ticks < log.ticks;
+    },
+    get now() {
+      return inner.now;
+    },
+    result: () => inner.result(),
+    inputLog: () => inner.inputLog(),
+  };
+}
+
+/** Rebuilds a live run from its input log at once: same program and project in, same run out. */
+export function replayLiveRuntime(
+  programInput: ProjectProgram,
+  creativeInput: ProjectCreativeState,
+  log: LiveInputLog,
+  options: Pick<LiveRuntimeOptions, "goal" | "maxSeconds" | "maxEntries"> = {},
+): LiveRuntime {
+  const replay = createReplayRuntime(programInput, creativeInput, log, options);
+  replay.advance(log.ticks * LIVE_TICK_SECONDS + 1e-6);
+  return replay;
 }

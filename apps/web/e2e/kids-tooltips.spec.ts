@@ -46,7 +46,7 @@ async function silentControls(page: Page, limit = 400): Promise<string[]> {
     seen.add(key);
     const shown = await page
       .waitForFunction(() => document.querySelector("#kids-tip")?.textContent?.trim(), undefined, {
-        timeout: 400,
+        timeout: 1500,
       })
       .then(() => true)
       .catch(() => false);

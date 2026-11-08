@@ -51,3 +51,18 @@ test("moves slide and turns rotate on stage while Play runs", async ({ page }) =
     )
     .toContain("rotate(90deg)");
 });
+
+test("Replay watches the last run again and ends where it ended", async ({ page }) => {
+  await openScene(page);
+  for (let i = 0; i < 3; i++)
+    await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  const actor = page.locator(".kids-studio-stage-actor").first();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  const replay = page.locator(".kids-replay-button");
+  await expect(replay).toBeEnabled();
+  const left = await actor.evaluate((node) => (node as HTMLElement).style.left);
+  expect(left).not.toBe("8%");
+  await replay.click();
+  await expect(replay).toBeEnabled();
+  await expect.poll(() => actor.evaluate((node) => (node as HTMLElement).style.left)).toBe(left);
+});
