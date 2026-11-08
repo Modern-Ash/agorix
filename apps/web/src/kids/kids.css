@@ -6715,3 +6715,31 @@ button.kids-band-chip {
   outline: 3px solid #f2a33a;
   outline-offset: 2px;
 }
+
+/* The line over the run, with a mark where Ori noticed something. */
+.kids-timeline {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  margin: 6px 0;
+}
+.kids-timeline input[type="range"] {
+  width: 100%;
+  min-height: 44px;
+}
+.kids-timeline-marks {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 6px;
+  height: 8px;
+  pointer-events: none;
+}
+.kids-timeline-marks i {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  margin-left: -4px;
+  border-radius: 50%;
+  background: #f2a33a;
+}

@@ -199,4 +199,44 @@ describe("run evidence findings", () => {
     expect(sent).toEqual({ kind: "neverStarted", counts: { senders: 0 }, eventType: "message" });
     expect(JSON.stringify(sent)).not.toMatch(/hola|actor|scripts\[/);
   });
+
+  it("says when in the run it happened, as an index into the trace", () => {
+    const sent = diagnose([
+      {
+        id: "a",
+        trigger: flag,
+        statements: [
+          { type: "move", steps: 20 },
+          { type: "broadcast", message: "listo" },
+        ],
+      },
+    ]);
+    expect(sent[0]).toMatchObject({ kind: "messageUnheard", traceIndex: 1 });
+    const asked = diagnose([
+      {
+        id: "a",
+        trigger: flag,
+        statements: [
+          { type: "move", steps: 20 },
+          { type: "move", steps: 20 },
+          {
+            type: "if",
+            condition: {
+              type: "greaterThan",
+              left: { type: "xPosition" },
+              right: { type: "numericLiteral", value: 900 },
+            },
+            then: [{ type: "hide" }],
+          },
+        ],
+      },
+    ]);
+    expect(asked[0]).toMatchObject({ kind: "conditionNeverTrue", traceIndex: 2 });
+    // Something that never happened has no moment.
+    const never = diagnose([
+      { id: "b", trigger: { type: "onMessage", message: "hola" }, statements: [{ type: "hide" }] },
+    ]);
+    expect(never[0]!.traceIndex).toBeUndefined();
+    expect(JSON.stringify(toProviderFinding(sent[0]!))).not.toMatch(/traceIndex/);
+  });
 });

@@ -52,6 +52,7 @@ import { findingBlockIndex, findingScriptIndex } from "../kidsRunFindings.js";
 import { diagnoseLoop } from "../kidsOriLoopDebug.js";
 import { KidsLoopHelp } from "./KidsLoopHelp.js";
 import { KidsRunMarker } from "./KidsRunMarker.js";
+import { KidsTimeline } from "./KidsTimeline.js";
 import { KidsSceneGoalPanel } from "./KidsSceneGoalPanel.js";
 import { sceneGoalValid } from "../kidsSceneGoal.js";
 import { sceneGoalMet } from "../kidsSceneGoal.js";
@@ -3999,6 +4000,19 @@ export function KidsStudioScreen({
                     : "Double-click: properties"}
               </span>
             </KidsBackdrop>
+            {run && !playing ? (
+              <KidsTimeline
+                count={run.frames.length}
+                frame={frame}
+                seconds={run.trace[frame ?? run.frames.length - 1]?.at}
+                marks={noticed?.traceIndex === undefined ? [] : [noticed.traceIndex]}
+                locale={locale}
+                onSeek={(next) => {
+                  stopLive();
+                  setFrame(next);
+                }}
+              />
+            ) : null}
             <div
               className="kids-studio-stage-actions"
               role="group"
@@ -4255,6 +4269,12 @@ export function KidsStudioScreen({
                 }}
                 locale={locale}
                 band={ageBand ?? "6-8"}
+                onShowWhen={(traceIndex) => {
+                  setFrame(Math.min(traceIndex, (run?.frames.length ?? 1) - 1));
+                  document
+                    .querySelector(".kids-studio-stage")
+                    ?.scrollIntoView({ block: "center", behavior: "smooth" });
+                }}
                 onShow={(finding) => {
                   setPointedAt({ finding, run });
                   const index = findingBlockIndex(finding);

@@ -75,6 +75,8 @@ export interface MultiActorTraceEntry {
   readonly args?: readonly number[];
   /** Live runs only: seconds the statement took (a wait, a glide, a note), for pacing playback. */
   readonly seconds?: number;
+  /** Live runs only: virtual seconds since the run began when the statement ran, for a timeline. */
+  readonly at?: number;
   readonly worldBefore: WorldState;
   readonly worldAfter: WorldState;
 }

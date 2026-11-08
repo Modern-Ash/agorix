@@ -307,6 +307,7 @@ export function createLiveRuntime(
       ...(raw.conditionResult === undefined ? {} : { conditionResult: raw.conditionResult }),
       ...(raw.args === undefined ? {} : { args: raw.args }),
       ...(occupied > 0 ? { seconds: occupied } : {}),
+      at: now,
       worldBefore: raw.worldBefore,
       worldAfter: raw.worldAfter,
     };

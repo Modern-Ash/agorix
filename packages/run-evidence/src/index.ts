@@ -33,6 +33,11 @@ export interface Finding {
   /** The blocks the finding is about, in the canonical node-id form. */
   readonly nodeIds: readonly string[];
   readonly counts: Readonly<Record<string, number>>;
+  /**
+   * Where in the run it happened: the index into the run's trace (and frames) of the first
+   * statement the finding is about. Absent for something that never happened.
+   */
+  readonly traceIndex?: number;
   readonly event?: FindingEvent;
   /** 0 to 1. Only the most confident finding is surfaced; low ones are kept for tests and tools. */
   readonly confidence: number;
@@ -167,12 +172,14 @@ export function diagnoseRun(input: DiagnoseInput): readonly Finding[] {
 
   // 2. A message that was sent and that no script receives.
   const sentNodes = new Map<string, MultiActorTraceEntry[]>();
-  for (const entry of run.trace) {
-    if (!wants(entry.actorId)) continue;
+  const sentAt = new Map<string, number>();
+  run.trace.forEach((entry, index) => {
+    if (!wants(entry.actorId)) return;
     const statement = statementAt(program, entry.nodeId);
-    if (statement?.type !== "broadcast" || receivers.has(statement.message)) continue;
+    if (statement?.type !== "broadcast" || receivers.has(statement.message)) return;
     sentNodes.set(entry.nodeId, [...(sentNodes.get(entry.nodeId) ?? []), entry]);
-  }
+    if (!sentAt.has(entry.nodeId)) sentAt.set(entry.nodeId, index);
+  });
   for (const [nodeId, entries] of sentNodes) {
     const statement = statementAt(program, nodeId);
     if (statement?.type !== "broadcast") continue;
@@ -182,6 +189,7 @@ export function diagnoseRun(input: DiagnoseInput): readonly Finding[] {
       actorId: entries[0]!.actorId,
       nodeIds: [nodeId],
       counts: { sent: entries.length },
+      traceIndex: sentAt.get(nodeId)!,
       event: {
         type: "message",
         name: statement.message,
@@ -192,15 +200,15 @@ export function diagnoseRun(input: DiagnoseInput): readonly Finding[] {
   }
 
   // 3. A condition that always gave the same answer.
-  const asked = new Map<string, { yes: number; no: number; actorId: string }>();
-  for (const entry of run.trace) {
-    if (entry.conditionResult === undefined || !wants(entry.actorId)) continue;
-    const seen = asked.get(entry.nodeId) ?? { yes: 0, no: 0, actorId: entry.actorId };
+  const asked = new Map<string, { yes: number; no: number; actorId: string; first: number }>();
+  run.trace.forEach((entry, index) => {
+    if (entry.conditionResult === undefined || !wants(entry.actorId)) return;
+    const seen = asked.get(entry.nodeId) ?? { yes: 0, no: 0, actorId: entry.actorId, first: index };
     if (entry.conditionResult) seen.yes += 1;
     else seen.no += 1;
     asked.set(entry.nodeId, seen);
-  }
-  for (const [nodeId, { yes, no, actorId }] of asked) {
+  });
+  for (const [nodeId, { yes, no, actorId, first }] of asked) {
     if (statementAt(program, nodeId)?.type !== "if") continue;
     if (yes === 0)
       out.push({
@@ -209,6 +217,7 @@ export function diagnoseRun(input: DiagnoseInput): readonly Finding[] {
         actorId,
         nodeIds: [nodeId],
         counts: { yes, no },
+        traceIndex: first,
         confidence: no >= 2 ? 0.8 : 0.6,
       });
     else if (no === 0 && yes >= 3)
@@ -218,6 +227,7 @@ export function diagnoseRun(input: DiagnoseInput): readonly Finding[] {
         actorId,
         nodeIds: [nodeId],
         counts: { yes, no },
+        traceIndex: first,
         confidence: 0.4,
       });
   }

@@ -18,6 +18,7 @@ export function KidsRunMarker({
   locale,
   band,
   onShow,
+  onShowWhen,
   onApplyProgram,
 }: {
   readonly finding: Finding;
@@ -25,6 +26,8 @@ export function KidsRunMarker({
   readonly locale: Locale;
   readonly band: AgeBand;
   readonly onShow: (finding: Finding) => void;
+  /** Jump the timeline to the moment it happened. */
+  readonly onShowWhen: (traceIndex: number) => void;
   /** The learner accepted Ori's change: the new canonical program, recorded as one undoable step. */
   readonly onApplyProgram: (program: ProjectProgram, label: string) => void;
 }) {
@@ -60,6 +63,15 @@ export function KidsRunMarker({
               onClick={() => onShow(finding)}
             >
               {es ? "Ver en el programa" : "Show in the program"}
+            </button>
+          ) : null}
+          {finding.traceIndex !== undefined ? (
+            <button
+              type="button"
+              className="kids-button kids-show-when"
+              onClick={() => onShowWhen(finding.traceIndex!)}
+            >
+              {es ? "Ver cuándo pasó" : "See when it happened"}
             </button>
           ) : null}
           {review && sent?.type === "appendStatement" && sent.statement.type === "broadcast" ? (

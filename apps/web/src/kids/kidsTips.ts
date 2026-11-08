@@ -228,6 +228,17 @@ export const TIP_RULES: readonly TipRule[] = [
     tip: t("Ori vio algo en lo que pasó", "Ori noticed something in what happened"),
   },
   {
+    match: cls("kids-show-when"),
+    tip: t("Ir al momento en que pasó", "Go to the moment it happened"),
+  },
+  {
+    match: (control) => control.matches(".kids-timeline input[type='range']"),
+    tip: t(
+      "Arrastrá para ver cómo estaba la escena en cada paso",
+      "Drag to see the scene at each step",
+    ),
+  },
+  {
     match: cls("kids-show-in-program"),
     tip: t("Mostrar el bloque del que habla Ori", "Show the block Ori is talking about"),
   },
