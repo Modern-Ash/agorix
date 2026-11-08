@@ -527,6 +527,15 @@ importers:
         specifier: workspace:*
         version: link:../program-model
 
+  packages/run-evidence:
+    dependencies:
+      '@agorix/program-model':
+        specifier: workspace:*
+        version: link:../program-model
+      '@agorix/runtime':
+        specifier: workspace:*
+        version: link:../runtime
+
   packages/runtime:
     dependencies:
       '@agorix/program-model':
