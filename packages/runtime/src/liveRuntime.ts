@@ -24,7 +24,7 @@ import {
   type RuntimeActorMutable,
   type RuntimeEvent,
 } from "./multiActor.js";
-import { cloneWorldState, type WorldState } from "./world.js";
+import { cloneWorldState, createWorldState, drawPenTrail, type WorldState } from "./world.js";
 
 /** Scratch-like frame rate: each live script runs at most one statement per tick. */
 export const LIVE_TICK_SECONDS = 1 / 30;
@@ -34,6 +34,40 @@ export const LIVE_MAX_SECONDS = 600;
 export const LIVE_MAX_ENTRIES = 3_000;
 /** Frames kept for stepping back through a run; later statements still run and are traced. */
 export const LIVE_MAX_FRAMES = 1_000;
+
+/** Most recorded inputs per session; past it the session ends like an exhausted budget. */
+export const LIVE_MAX_INPUTS = 100_000;
+/** Events waiting for the next tick; more are ignored, so a held key cannot flood a session. */
+const LIVE_MAX_PENDING = 64;
+
+/**
+ * Everything from outside that shaped a live run, stamped with the tick it was read at. With the
+ * same program, project and this log, `replayLiveRuntime` rebuilds the same run exactly: the
+ * runtime owns no clock and reads no input except through this log.
+ */
+export type LiveInput =
+  | { readonly tick: number; readonly kind: "event"; readonly event: RuntimeEvent }
+  | { readonly tick: number; readonly kind: "keys"; readonly keys: readonly string[] }
+  | {
+      readonly tick: number;
+      readonly kind: "pointer";
+      readonly x: number;
+      readonly y: number;
+      readonly down: boolean;
+    }
+  | {
+      readonly tick: number;
+      readonly kind: "choices";
+      readonly choices: Readonly<Record<string, number>>;
+    };
+
+export interface LiveInputLog {
+  readonly version: 1;
+  /** Ticks the session ran. */
+  readonly ticks: number;
+  readonly randomSeed?: number;
+  readonly inputs: readonly LiveInput[];
+}
 
 export interface LiveRuntimeOptions {
   readonly goal?: WorldState["goal"];
@@ -58,6 +92,8 @@ export interface LiveRuntime {
   readonly now: number;
   /** The run so far, in the same shape as a finished batch run. */
   result(): MultiActorRunResult;
+  /** The inputs read so far; feed it to `replayLiveRuntime` to rebuild this exact run. */
+  inputLog(): LiveInputLog;
 }
 
 interface Activation {
@@ -70,6 +106,15 @@ interface Activation {
   wakeAt: number;
   lastAt: number;
   alive: boolean;
+  /** A glide in progress: the sprite is carried tick by tick, drawing its pen trail as it goes. */
+  glide?: {
+    readonly fromX: number;
+    readonly fromY: number;
+    readonly toX: number;
+    readonly toY: number;
+    readonly startAt: number;
+    readonly seconds: number;
+  };
 }
 
 /**
@@ -101,6 +146,12 @@ export function createLiveRuntime(
   let accumulated = 0;
   let halted = false;
   let steps = 0;
+  let tickIndex = 0;
+  const inputs: LiveInput[] = [];
+  // What statements read during a tick: sampled once at its start and logged when it changes.
+  let sampledKeys: readonly string[] = [];
+  let sampledPointer = { x: 0, y: 0, down: false };
+  let sampledChoices: Readonly<Record<string, number>> = {};
 
   const sensors = (self: RuntimeActorMutable) =>
     actors
@@ -138,12 +189,14 @@ export function createLiveRuntime(
         return sensors(actor);
       },
       get keysDown() {
-        return options.keysDown?.() ?? [];
+        return sampledKeys;
       },
       get pointer() {
-        return options.pointer?.() ?? { x: 0, y: 0, down: false };
+        return sampledPointer;
       },
-      ...(options.choices === undefined ? {} : { choices: options.choices }),
+      get choices() {
+        return sampledChoices;
+      },
     };
     const stepper = createScriptStepper(
       singleScriptProgram(program, script),
@@ -216,6 +269,10 @@ export function createLiveRuntime(
         pending.push({ type: "message", message: statement.message, senderActorId: actor.id });
     }
     steps += 1;
+    // A wait or glide lasts its seconds; a note or drum lasts its beats ("play until done").
+    const occupied =
+      Math.round((Math.max(0, result.at - activation.lastAt) + (raw.audio?.seconds ?? 0)) * 1000) /
+      1000;
     const mapped: MultiActorTraceEntry = {
       step: steps,
       activationId: activation.id,
@@ -231,10 +288,29 @@ export function createLiveRuntime(
       ...(raw.audio === undefined ? {} : { audio: raw.audio }),
       ...(raw.conditionResult === undefined ? {} : { conditionResult: raw.conditionResult }),
       ...(raw.args === undefined ? {} : { args: raw.args }),
+      ...(occupied > 0 ? { seconds: occupied } : {}),
       worldBefore: raw.worldBefore,
       worldAfter: raw.worldAfter,
     };
     trace.push(mapped);
+    if (raw.statementType === "glideTo" && occupied > 0) {
+      // The statement jumped to its target and drew its whole trail; undo that and glide instead.
+      const { sprite } = raw.worldBefore;
+      const { sprite: end } = raw.worldAfter;
+      actor.world = createWorldState({
+        ...actor.world,
+        sprite: { ...actor.world.sprite, x: sprite.x, y: sprite.y },
+        ...(raw.worldBefore.pen === undefined ? {} : { pen: raw.worldBefore.pen }),
+      });
+      activation.glide = {
+        fromX: sprite.x,
+        fromY: sprite.y,
+        toX: end.x,
+        toY: end.y,
+        startAt: now,
+        seconds: occupied,
+      };
+    }
     if (frames.length < LIVE_MAX_FRAMES)
       frames.push({
         step: mapped.step,
@@ -246,16 +322,58 @@ export function createLiveRuntime(
         stage: cloneRuntimeStage(stage),
         actors: snapshotActors(actors),
       });
-    // A wait lasts its seconds; a note or drum lasts its beats ("play until done").
-    const waited = Math.max(0, result.at - activation.lastAt);
     activation.lastAt = result.at;
-    activation.wakeAt = now + waited + (raw.audio?.seconds ?? 0);
+    activation.wakeAt = now + occupied;
     return mapped;
+  }
+
+  function sampleInputs() {
+    const keys = [...(options.keysDown?.() ?? [])];
+    if (keys.join("\u0000") !== sampledKeys.join("\u0000")) {
+      sampledKeys = keys;
+      inputs.push({ tick: tickIndex, kind: "keys", keys });
+    }
+    const pointer = options.pointer?.() ?? { x: 0, y: 0, down: false };
+    if (
+      pointer.x !== sampledPointer.x ||
+      pointer.y !== sampledPointer.y ||
+      pointer.down !== sampledPointer.down
+    ) {
+      sampledPointer = { x: pointer.x, y: pointer.y, down: pointer.down };
+      inputs.push({ tick: tickIndex, kind: "pointer", ...sampledPointer });
+    }
+    const choices = { ...options.choices };
+    if (JSON.stringify(choices) !== JSON.stringify(sampledChoices)) {
+      sampledChoices = choices;
+      inputs.push({ tick: tickIndex, kind: "choices", choices });
+    }
+    if (inputs.length >= LIVE_MAX_INPUTS) {
+      outcome = "budget-exceeded";
+      endAll();
+    }
+  }
+
+  function advanceGlides() {
+    for (const activation of active) {
+      const glide = activation.glide;
+      if (!activation.alive || glide === undefined) continue;
+      const progress = Math.min(1, (now - glide.startAt) / glide.seconds);
+      const done = progress >= 1 - 1e-9;
+      const x = done ? glide.toX : glide.fromX + (glide.toX - glide.fromX) * progress;
+      const y = done ? glide.toY : glide.fromY + (glide.toY - glide.fromY) * progress;
+      const before = activation.actor.world;
+      const moved = createWorldState({ ...before, sprite: { ...before.sprite, x, y } });
+      activation.actor.world = drawPenTrail(before, moved).world;
+      if (done) delete activation.glide;
+    }
   }
 
   function tick(produced: MultiActorTraceEntry[]) {
     now = Math.round((now + LIVE_TICK_SECONDS) * 1e6) / 1e6;
+    tickIndex += 1;
+    sampleInputs();
     for (const event of pending.splice(0)) dispatch(event);
+    advanceGlides();
     for (const activation of [...active]) {
       if (!activation.alive || halted || activation.wakeAt > now + 1e-9) continue;
       const entry = stepActivation(activation);
@@ -275,8 +393,9 @@ export function createLiveRuntime(
 
   return {
     fire(event) {
-      if (halted) return;
-      pending.push(event);
+      if (halted || pending.length >= LIVE_MAX_PENDING) return;
+      pending.push(cloneRuntimeEvent(event));
+      inputs.push({ tick: tickIndex + 1, kind: "event", event: cloneRuntimeEvent(event) });
     },
     advance(seconds) {
       const produced: MultiActorTraceEntry[] = [];
@@ -298,6 +417,14 @@ export function createLiveRuntime(
     get now() {
       return now;
     },
+    inputLog() {
+      return {
+        version: 1,
+        ticks: tickIndex,
+        ...(options.randomSeed === undefined ? {} : { randomSeed: options.randomSeed }),
+        inputs: [...inputs],
+      };
+    },
     result() {
       return {
         outcome,
@@ -311,4 +438,74 @@ export function createLiveRuntime(
       };
     },
   };
+}
+
+/**
+ * Plays a recorded live run back through the same runtime, feeding it the logged inputs at their
+ * ticks, so a caller can watch it again at real speed. It ends when the log does.
+ */
+export function createReplayRuntime(
+  programInput: ProjectProgram,
+  creativeInput: ProjectCreativeState,
+  log: LiveInputLog,
+  options: Pick<LiveRuntimeOptions, "goal" | "maxSeconds" | "maxEntries"> = {},
+): LiveRuntime {
+  let keys: readonly string[] = [];
+  let pointer = { x: 0, y: 0, down: false };
+  const choices: Record<string, number> = {};
+  const inner = createLiveRuntime(programInput, creativeInput, {
+    ...options,
+    ...(log.randomSeed === undefined ? {} : { randomSeed: log.randomSeed }),
+    keysDown: () => keys,
+    pointer: () => pointer,
+    choices,
+  });
+  let next = 0;
+  let ticks = 0;
+  let accumulated = 0;
+  return {
+    // The log is the only source of events; live input during a replay is ignored.
+    fire() {},
+    advance(seconds) {
+      const produced: MultiActorTraceEntry[] = [];
+      if (!Number.isFinite(seconds) || seconds <= 0) return produced;
+      accumulated += seconds;
+      while (accumulated + 1e-9 >= LIVE_TICK_SECONDS && ticks < log.ticks) {
+        accumulated -= LIVE_TICK_SECONDS;
+        ticks += 1;
+        for (; next < log.inputs.length && log.inputs[next]!.tick <= ticks; next += 1) {
+          const input = log.inputs[next]!;
+          if (input.kind === "event") inner.fire(input.event);
+          else if (input.kind === "keys") keys = input.keys;
+          else if (input.kind === "pointer") pointer = { x: input.x, y: input.y, down: input.down };
+          else {
+            for (const key of Object.keys(choices)) delete choices[key];
+            Object.assign(choices, input.choices);
+          }
+        }
+        produced.push(...inner.advance(LIVE_TICK_SECONDS));
+      }
+      return produced;
+    },
+    get running() {
+      return ticks < log.ticks;
+    },
+    get now() {
+      return inner.now;
+    },
+    result: () => inner.result(),
+    inputLog: () => inner.inputLog(),
+  };
+}
+
+/** Rebuilds a live run from its input log at once: same program and project in, same run out. */
+export function replayLiveRuntime(
+  programInput: ProjectProgram,
+  creativeInput: ProjectCreativeState,
+  log: LiveInputLog,
+  options: Pick<LiveRuntimeOptions, "goal" | "maxSeconds" | "maxEntries"> = {},
+): LiveRuntime {
+  const replay = createReplayRuntime(programInput, creativeInput, log, options);
+  replay.advance(log.ticks * LIVE_TICK_SECONDS + 1e-6);
+  return replay;
 }

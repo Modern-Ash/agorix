@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { createLiveRuntime, LIVE_TICK_SECONDS } from "./liveRuntime.js";
+import { createLiveRuntime, LIVE_TICK_SECONDS, replayLiveRuntime } from "./liveRuntime.js";
 import { runMultiActorProgram } from "./multiActor.js";
 
 const program = (scripts: unknown[]) => ({ schema: "agorix/program/v1", scripts }) as never;
 const flag = { type: "greenFlag" };
+
+const penProgram = (scripts: unknown[]) =>
+  ({ schema: "agorix/program/v1", extensions: ["pen"], scripts }) as never;
 
 function run(live: ReturnType<typeof createLiveRuntime>, seconds: number) {
   const entries = [];
@@ -169,5 +172,101 @@ describe("live runtime", () => {
       return JSON.stringify(live.result());
     };
     expect(once()).toBe(once());
+  });
+
+  it("records the inputs it read and rebuilds the exact same run from them", () => {
+    const p = program([
+      {
+        id: "a",
+        trigger: flag,
+        statements: [
+          {
+            type: "forever",
+            body: [
+              { type: "move", steps: 1 },
+              { type: "wait", seconds: 0.1 },
+            ],
+          },
+        ],
+      },
+      {
+        id: "k",
+        trigger: { type: "onKeyPressed", key: "ArrowUp" },
+        statements: [{ type: "turn", degrees: 90 }],
+      },
+      {
+        id: "m",
+        trigger: { type: "onKeyPressed", key: "Space" },
+        statements: [{ type: "glideTo", x: 100, y: 20, seconds: 0.5 }],
+      },
+    ]);
+    let keys: string[] = [];
+    let pointer = { x: 0, y: 0, down: false };
+    const live = createLiveRuntime(
+      p,
+      {},
+      { keysDown: () => keys, pointer: () => pointer, randomSeed: 7 },
+    );
+    live.fire({ type: "start" });
+    run(live, 0.4);
+    keys = ["ArrowUp"];
+    live.fire({ type: "keyPressed", key: "ArrowUp" });
+    pointer = { x: 10, y: 5, down: true };
+    run(live, 0.3);
+    keys = [];
+    live.fire({ type: "keyPressed", key: "Space" });
+    run(live, 1.2);
+    const log = live.inputLog();
+    expect(log.inputs.map((input) => input.kind)).toEqual(
+      expect.arrayContaining(["event", "keys", "pointer"]),
+    );
+    const again = replayLiveRuntime(p, {}, log);
+    expect(JSON.stringify(again.result())).toBe(JSON.stringify(live.result()));
+    expect(JSON.stringify(again.inputLog())).toBe(JSON.stringify(log));
+  });
+
+  it("stamps how long a wait or glide took on its trace entry", () => {
+    const p = program([
+      {
+        id: "a",
+        trigger: flag,
+        statements: [
+          { type: "glideTo", x: 40, y: 0, seconds: 1 },
+          { type: "move", steps: 1 },
+        ],
+      },
+    ]);
+    const live = createLiveRuntime(p);
+    live.fire({ type: "start" });
+    run(live, 2);
+    const [glide, move] = live.result().trace;
+    expect(glide!.seconds).toBe(1);
+    expect(move!.seconds).toBeUndefined();
+  });
+
+  it("carries a glide tick by tick and draws its pen trail as it goes", () => {
+    const p = penProgram([
+      {
+        id: "a",
+        trigger: flag,
+        statements: [
+          { type: "penDown" },
+          { type: "glideTo", x: 100, y: 0, seconds: 1 },
+          { type: "move", steps: 0 },
+        ],
+      },
+    ]);
+    const live = createLiveRuntime(p);
+    live.fire({ type: "start" });
+    run(live, 0.5);
+    const half = live.result().actors[0]!.world;
+    expect(half.sprite.x).toBeGreaterThan(30);
+    expect(half.sprite.x).toBeLessThan(70);
+    const trail = half.pen?.segments ?? [];
+    expect(Math.max(...trail.map((segment) => segment.x2))).toBeCloseTo(half.sprite.x, 0);
+    run(live, 1);
+    const end = live.result().actors[0]!.world;
+    expect(end.sprite.x).toBe(100);
+    expect(Math.max(...(end.pen?.segments ?? []).map((segment) => segment.x2))).toBe(100);
   });
 });

@@ -195,6 +195,13 @@ export const TIP_RULES: readonly TipRule[] = [
     tip: t("Volver al inicio: frenar y empezar de nuevo", "Back to start: stop and begin again"),
   },
   {
+    match: cls("kids-replay-button"),
+    tip: t(
+      "Otra vez: ver de nuevo lo que pasó, con lo mismo que tocaste",
+      "Again: watch what happened once more, with the same taps and keys",
+    ),
+  },
+  {
     match: named(/Paso$|Step$/),
     tip: t("Paso: ver un bloque por vez", "Step: watch one block at a time"),
   },
