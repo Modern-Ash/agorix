@@ -88,3 +88,43 @@ test("Ori offers the message that is missing, shows the block, and only adds it 
   await expect(page.locator(".kids-program-block")).toHaveCount(2);
   await expect(page.locator(".kids-program-block").last()).toContainText("Enviar mensaje");
 });
+
+test("the timeline scrubs the run, and Ori takes you to the moment it noticed", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await clickCreateScene(page);
+  await page.getByRole("button", { name: "+ Si el ratón está pulsado, mover 1" }).click();
+  await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  const actor = page.locator(".kids-studio-stage-actor").first();
+  const start = await actor.evaluate((node) => (node as HTMLElement).style.left);
+  // No timeline before a run.
+  await expect(page.locator(".kids-timeline")).toHaveCount(0);
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  const slider = page.locator('.kids-timeline input[type="range"]');
+  await expect(slider).toBeVisible();
+  await expect(slider).toHaveValue("2");
+  const end = await actor.evaluate((node) => (node as HTMLElement).style.left);
+  expect(end).not.toBe(start);
+  // Dragging back shows the scene as it was then.
+  await slider.fill("0");
+  await expect.poll(() => actor.evaluate((node) => (node as HTMLElement).style.left)).toBe(start);
+  await slider.fill("2");
+  await expect.poll(() => actor.evaluate((node) => (node as HTMLElement).style.left)).toBe(end);
+  // Ori's finding is about the first step: "see when" goes there.
+  await page.getByRole("button", { name: /Ori vio algo/ }).click();
+  await page.getByRole("button", { name: "Ver cuándo pasó" }).click();
+  await expect(slider).toHaveValue("0");
+});

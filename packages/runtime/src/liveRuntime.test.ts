@@ -269,4 +269,24 @@ describe("live runtime", () => {
     expect(end.sprite.x).toBe(100);
     expect(Math.max(...(end.pen?.segments ?? []).map((segment) => segment.x2))).toBe(100);
   });
+
+  it("stamps each live trace entry with the virtual second it ran at", () => {
+    const p = program([
+      {
+        id: "a",
+        trigger: flag,
+        statements: [
+          { type: "wait", seconds: 1 },
+          { type: "move", steps: 1 },
+        ],
+      },
+    ]);
+    const live = createLiveRuntime(p);
+    live.fire({ type: "start" });
+    run(live, 3);
+    const [wait, move] = live.result().trace;
+    expect(wait!.at).toBeLessThan(0.2);
+    expect(move!.at).toBeGreaterThanOrEqual(1);
+    expect(move!.at!).toBeGreaterThan(wait!.at!);
+  });
 });
