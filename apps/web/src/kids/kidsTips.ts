@@ -605,6 +605,66 @@ export const TIP_RULES: readonly TipRule[] = [
     match: (c) => c.matches(".kids-path button, .kids-concepts button"),
     tip: t("Ver qué se aprende en este mundo", "See what you learn in this world"),
   },
+  // The grown-ups area.
+  {
+    match: (c) => c.getAttribute("role") === "tab" && c.id.startsWith("kids-adult-tab-"),
+    tip: t("Cambiar de sección de Adultos", "Switch grown-ups section"),
+  },
+  {
+    match: cls("kids-adult-switch"),
+    tip: t("Encender o apagar esta opción", "Turn this option on or off"),
+  },
+  {
+    match: named(/Salir y bloquear|Exit and lock/),
+    tip: t("Volver a bloquear la zona de adultos", "Lock the grown-ups area again"),
+  },
+  {
+    match: named(/^(Meta diaria|Daily goal)/),
+    tip: t("Cambiar el tiempo de juego sugerido por día", "Change the suggested play time per day"),
+  },
+  {
+    match: named(/^(Borrar indicadores|Clear indicators)/),
+    tip: t(
+      "Borrar los conteos guardados en este dispositivo",
+      "Erase the counts kept on this device",
+    ),
+  },
+  {
+    match: named(/^(Ver privacidad|See privacy)/),
+    tip: t("Ir a la sección de privacidad", "Go to the privacy section"),
+  },
+  {
+    match: named(/^(Seguir con|Keep )/),
+    tip: t("Confirmar la franja de edad actual", "Confirm the current age band"),
+  },
+  {
+    match: (c) => c.closest("#kids-adult-panel-customize") !== null,
+    tip: t("Ver y administrar esta lista", "See and manage this list"),
+  },
+  {
+    match: (c) => c.matches("summary") && c.closest("#kids-adult-panel-account") !== null,
+    tip: t("Abrir o cerrar esta sección", "Open or close this section"),
+  },
+  // Mis proyectos.
+  {
+    match: (c) => c.matches(".kids-projects-header .kids-primary"),
+    tip: t("Empezar un proyecto nuevo", "Start a new project"),
+  },
+  {
+    match: (c) => c.closest(".kids-project-card") !== null && /^(Jugar|Play)$/.test(label(c)),
+    tip: t("Abrir este proyecto y jugarlo", "Open this project and play it"),
+  },
+  {
+    match: (c) => c.closest(".kids-project-card") !== null && /^(Exportar|Export)/.test(label(c)),
+    tip: t("Guardar este proyecto en un archivo", "Save this project to a file"),
+  },
+  {
+    match: (c) => c.closest(".kids-project-card") !== null && /^(Borrar|Delete)/.test(label(c)),
+    tip: t(
+      "Borrar este proyecto (un adulto lo confirma)",
+      "Delete this project (a grown-up confirms)",
+    ),
+  },
   // Crear.
   {
     match: named(/^[12] · /),
