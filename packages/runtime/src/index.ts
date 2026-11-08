@@ -35,10 +35,14 @@ export {
 } from "./multiActor.js";
 export {
   LIVE_MAX_ENTRIES,
+  LIVE_MAX_INPUTS,
   LIVE_MAX_FRAMES,
   LIVE_MAX_SECONDS,
   LIVE_TICK_SECONDS,
   createLiveRuntime,
+  replayLiveRuntime,
+  type LiveInput,
+  type LiveInputLog,
   type LiveRuntime,
   type LiveRuntimeOptions,
 } from "./liveRuntime.js";
