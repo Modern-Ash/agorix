@@ -45,6 +45,8 @@ test("records the guess and the revision after a run, from the child's actions o
   expect(await evidence(page)).toEqual([]);
   await page.getByLabel("a la derecha", { exact: true }).check();
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  // The run is recorded when the live session ends, a moment after Play.
+  await expect.poll(async () => (await evidence(page)).length).toBeGreaterThan(0);
   await addStudioBlock(page, "Movimiento", "+ Mover");
   const events = await evidence(page);
   expect(events.map((event: { kind: string }) => event.kind)).toEqual([

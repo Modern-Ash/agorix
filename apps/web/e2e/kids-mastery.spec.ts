@@ -31,8 +31,9 @@ test("a finished run, a guess that matched and help are kept as counters, never 
   await page.getByRole("button", { name: "+ Mover", exact: true }).click();
   await page.getByRole("button", { name: "+ Girar a la derecha" }).click();
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  // The run is recorded when the live session ends, a moment after Play.
+  await expect.poll(async () => (await mastery(page))?.version).toBe(1);
   let state = await mastery(page);
-  expect(state.version).toBe(1);
   expect(state.concepts["programming.sequence"].counts).toMatchObject({
     runs: 1,
     independentRuns: 1,
@@ -55,8 +56,10 @@ test("a finished run, a guess that matched and help are kept as counters, never 
   await page.getByRole("button", { name: "Pedirle una idea a Ori" }).click();
   await page.getByRole("button", { name: "Usar idea" }).click();
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect
+    .poll(async () => (await mastery(page))?.concepts["programming.sequence"]?.counts.helpedRuns)
+    .toBe(1);
   state = await mastery(page);
-  expect(state.concepts["programming.sequence"].counts.helpedRuns).toBe(1);
 
   // Only counters, stages and changes with a day: nothing the child built or wrote.
   const raw = JSON.stringify(state);
@@ -71,6 +74,9 @@ test("a free scene that repeats a block reaches the repetition concept", async (
   await page.getByRole("button", { name: "+ Girar a la derecha" }).click();
   await page.getByRole("button", { name: "Repetir estos bloques", exact: true }).click();
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect
+    .poll(async () => (await mastery(page))?.concepts["programming.repetition"]?.stage)
+    .toBe(4);
   const state = await mastery(page);
   // Finished without help in a free scene: Crea.
   expect(state.concepts["programming.repetition"].stage).toBe(4);

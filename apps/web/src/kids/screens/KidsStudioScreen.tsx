@@ -53,7 +53,14 @@ import { sceneGoalMet } from "../kidsSceneGoal.js";
 import { KIDS_MISSION_IDS, getKidsMission, type KidsCatalog } from "@agorix/curriculum";
 import type { KidsWorld } from "../kidsState.js";
 import { speak } from "../speak.js";
-import { runMultiActorProgram, type MultiActorRunResult, type RuntimeEvent } from "@agorix/runtime";
+import {
+  createLiveRuntime,
+  runMultiActorProgram,
+  type LiveRuntime,
+  type MultiActorRunResult,
+  type MultiActorTraceEntry,
+  type RuntimeEvent,
+} from "@agorix/runtime";
 import {
   acceptProposal,
   modifyProposal,
@@ -130,7 +137,7 @@ import { playKidsSound, stopKidsSounds } from "../kidsSoundPlayer.js";
 import { loadKidsMastery } from "../kidsMastery.js";
 import { adaptInterventionByStage, stageBand, stagesOfProgram } from "../kidsStageAdaptation.js";
 import { useInterventionPolicy } from "../kidsBehavior.js";
-import { noteName, playKidsMusic, stopKidsMusic } from "../kidsMusic.js";
+import { noteName, playKidsMusic, playKidsMusicEntry, stopKidsMusic } from "../kidsMusic.js";
 import {
   addStudioActor,
   addStudioList,
@@ -354,7 +361,7 @@ const COPY = {
     forever: "Por siempre",
     groupForever: "Repetir por siempre estos bloques",
     foreverBudget:
-      "Tu programa sigue y sigue: lo paramos. Mirá cómo quedó la escena y probá cambiar el bucle.",
+      "Tu programa sigue y sigue: tocá ■ para pararlo. Mirá cómo va la escena y probá cambiar el bucle.",
     waitUntil: "Esperar hasta",
     waitUntilEdge: "Esperar hasta tocar el borde",
     waitUntilTimeout:
@@ -623,7 +630,7 @@ const COPY = {
     forever: "Forever",
     groupForever: "Repeat these blocks forever",
     foreverBudget:
-      "Your program keeps going: we stopped it. Look at the scene and try changing the loop.",
+      "Your program keeps going: tap ■ to stop it. Look at the scene and try changing the loop.",
     waitUntil: "Wait until",
     waitUntilEdge: "Wait until touching the edge",
     waitUntilTimeout:
@@ -971,6 +978,9 @@ const SHORTCUT_LABEL: Record<"es" | "en", Record<string, string>> = {
   },
 };
 
+/** Seconds a forever loop runs before Ori offers help with a loop that does not end. */
+const LIVE_FOREVER_NOTICE_SECONDS = 2.5;
+
 export function KidsStudioScreen({
   id,
   locale,
@@ -1115,8 +1125,15 @@ export function KidsStudioScreen({
   const pendingChoiceId = waitingChoiceId(run);
   const [events, setEvents] = useState<readonly RuntimeEvent[]>([{ type: "start" }]);
   const [frame, setFrame] = useState<number | null>(null);
-  // Play shows the recorded run frame by frame, like a green flag, instead of jumping to the end.
+  // Play is a live session, like a green flag: scripts run at once in real time until they end,
+  // a forever loop runs until Stop, and keys, clicks and the pointer act while it runs.
   const [playing, setPlaying] = useState(false);
+  const liveRef = useRef<LiveRuntime | null>(null);
+  const liveRecorded = useRef(false);
+  // A forever loop that has run for a few seconds is a loop that does not end: Ori can help.
+  const [foreverNoticed, setForeverNoticed] = useState(false);
+  const heldKeysRef = useRef<readonly string[]>([]);
+  heldKeysRef.current = heldKeys;
   const tutorialFlag = useKidsFlag("tutorial");
   const duplicateFlag = useKidsFlag("duplicate");
   const contextMenuFlag = useKidsFlag("contextMenu");
@@ -1792,6 +1809,8 @@ export function KidsStudioScreen({
             ? "nudge"
             : "idle";
   const oriExpression = oriReaction ?? expressionForMotion(oriMotion, outcomeOfRun(run?.outcome));
+  const loopRun =
+    foreverNoticed && run ? ({ ...run, outcome: "budget-exceeded" } as MultiActorRunResult) : run;
   const selectedFrame = frame === null ? null : run?.frames[frame];
   const shownActors = selectedFrame?.actors ?? run?.actors;
   const shownWorld = shownActors?.find((entry) => entry.id === activeActorId)?.world;
@@ -1845,36 +1864,76 @@ export function KidsStudioScreen({
     return { start: range.start, end: end === -1 || end > range.end ? range.end : end };
   })();
 
-  useEffect(() => {
-    if (!playing) return;
-    if (frame === null || !run || frame >= run.frames.length) {
-      setPlaying(false);
+  function presentLiveEntry(entry: MultiActorTraceEntry) {
+    if (entry.statementType === "stopSounds") {
+      stopKidsSounds();
       return;
     }
-    const entry = run.trace[frame];
-    if (entry?.statementType === "playSound") {
-      const owner = creative.actors?.find((item) => item.id === entry.actorId);
-      if (owner)
-        void playKidsSound(
-          entry.worldAfter.sounds?.activeSoundIds.at(-1) ?? "kids:pop",
-          { kind: "gallery", id: characterOfActor(owner.id) },
-          { volume: entry.worldAfter.sounds?.volume ?? 100 },
-        );
-    } else if (entry?.statementType === "stopSounds") stopKidsSounds();
-    const base = Math.max(25, Math.min(220, Math.round(1800 / Math.max(1, run.frames.length))));
-    const delay = entry?.statementType === "wait" ? base * 2 : base;
-    const timer = window.setTimeout(() => {
-      if (frame + 1 < run.frames.length) setFrame(frame + 1);
-      else {
-        setPlaying(false);
-        setFrame(null);
+    // Music pack: a note, drum or sound in a music project plays when its block runs.
+    if (playKidsMusicEntry(entry)) return;
+    if (entry.statementType !== "playSound") return;
+    const owner = creative.actors?.find((item) => item.id === entry.actorId);
+    if (owner)
+      void playKidsSound(
+        entry.worldAfter.sounds?.activeSoundIds.at(-1) ?? "kids:pop",
+        { kind: "gallery", id: characterOfActor(owner.id) },
+        { volume: entry.worldAfter.sounds?.volume ?? 100 },
+      );
+  }
+
+  function recordLiveRun() {
+    const live = liveRef.current;
+    if (!live || liveRecorded.current) return;
+    const result = live.result();
+    if (result.trace.length === 0) return;
+    liveRecorded.current = true;
+    recordRunResult(result);
+  }
+
+  // The live loop: advance virtual time by the real time elapsed and show the run as it goes.
+  useEffect(() => {
+    const live = liveRef.current;
+    if (!playing || !live) return;
+    let last = performance.now();
+    let frameId = 0;
+    let sawForever = live.result().trace.some((entry) => entry.statementType === "forever");
+    const loop = (now: number) => {
+      const produced = live.advance(Math.min(0.1, (now - last) / 1000));
+      last = now;
+      for (const entry of produced) {
+        presentLiveEntry(entry);
+        if (entry.statementType === "forever") sawForever = true;
       }
-    }, delay);
-    return () => window.clearTimeout(timer);
-  }, [playing, frame, run]);
+      if (produced.length > 0 || !live.running) setRun(live.result());
+      if (live.now > LIVE_FOREVER_NOTICE_SECONDS && live.running && sawForever)
+        setForeverNoticed(true);
+      if (live.running) {
+        frameId = window.requestAnimationFrame(loop);
+        return;
+      }
+      recordLiveRun();
+      setPlaying(false);
+    };
+    frameId = window.requestAnimationFrame(loop);
+    return () => window.cancelAnimationFrame(frameId);
+    // The session lives in a ref; only starting or ending it should restart the loop.
+  }, [playing]);
+
+  // Editing or resetting clears the run, which ends the session with it.
+  useEffect(() => {
+    if (run === null && liveRef.current) {
+      liveRef.current = null;
+      setPlaying(false);
+    }
+  }, [run]);
 
   function fireKey(key: string) {
     if (!run || !STUDIO_KEYS.includes(key as (typeof STUDIO_KEYS)[number])) return;
+    if (liveRef.current) {
+      liveRef.current.fire({ type: "keyPressed", key });
+      setPlaying(true);
+      return;
+    }
     const nextEvents: readonly RuntimeEvent[] = [...events, { type: "keyPressed", key }];
     setRun(
       runMultiActorProgram(history.current, creative, {
@@ -1902,7 +1961,8 @@ export function KidsStudioScreen({
     const previous = pointerRef.current;
     if (previous.x === x && previous.y === y && previous.down === down) return;
     pointerRef.current = { x, y, down };
-    if (run) {
+    // A live session reads the pointer as it runs; only an instant run needs recomputing.
+    if (run && !liveRef.current) {
       setRun(
         runMultiActorProgram(history.current, creative, {
           events,
@@ -2777,12 +2837,11 @@ export function KidsStudioScreen({
     setRunCount((count) => count + 1);
   }
 
-  function presentRun(result: MultiActorRunResult, live = false) {
+  function presentRun(result: MultiActorRunResult) {
     setRun(result);
     setFrame(null);
     stopKidsSounds();
     stopKidsMusic();
-    if (live) return; // The playback loop plays each sound when its frame is reached.
     // Music pack: a timeline from the trace; plain sounds below only play without it.
     const timeline = playKidsMusic(result.trace);
     let soundsPlayed = 0;
@@ -2831,27 +2890,48 @@ export function KidsStudioScreen({
   function play() {
     try {
       choiceAnswers.current = {};
-      const result = runMultiActorProgram(history.current, creative, {
-        keysDown: heldKeys,
-        pointer: pointerRef.current,
-        choices: choiceAnswers.current,
-      });
-      recordRunResult(result);
+      stopLive();
       const reduced =
         typeof window.matchMedia === "function" &&
         window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      const live = !reduced && result.frames.length > 1;
-      presentRun(result, live);
-      if (live) {
-        setFrame(0);
+      if (reduced || typeof window.requestAnimationFrame !== "function") {
+        // Reduced motion: no live session, the run is shown finished, as before.
+        const result = runMultiActorProgram(history.current, creative, {
+          keysDown: heldKeys,
+          pointer: pointerRef.current,
+          choices: choiceAnswers.current,
+        });
+        recordRunResult(result);
+        presentRun(result);
+      } else {
+        const live = createLiveRuntime(history.current, creative, {
+          keysDown: () => heldKeysRef.current,
+          pointer: () => pointerRef.current,
+          choices: choiceAnswers.current,
+        });
+        live.fire({ type: "start" });
+        stopKidsSounds();
+        stopKidsMusic();
+        liveRef.current = live;
+        liveRecorded.current = false;
+        setForeverNoticed(false);
+        setRun(live.result());
+        setFrame(null);
         setPlaying(true);
-      } else setPlaying(false);
+      }
       setPredictedForRun(prediction);
       setEvents([{ type: "start" }]);
       setError(false);
     } catch {
       setError(true);
     }
+  }
+
+  /** Ends the live session where it is; what ran is still recorded as evidence. */
+  function stopLive() {
+    recordLiveRun();
+    liveRef.current = null;
+    setPlaying(false);
   }
 
   function tapActor(actorId: string) {
@@ -2863,6 +2943,12 @@ export function KidsStudioScreen({
           entry.trigger.type === "onActorClicked",
       )
     ) {
+      selectActor(actorId);
+      return;
+    }
+    if (liveRef.current) {
+      liveRef.current.fire({ type: "actorClicked", actorId });
+      setPlaying(true);
       selectActor(actorId);
       return;
     }
@@ -3522,9 +3608,9 @@ export function KidsStudioScreen({
                   className="kids-button kids-icon-button kids-stop-button"
                   title={copy.reset}
                   onClick={() => {
+                    stopLive();
                     stopKidsSounds();
                     stopKidsMusic();
-                    setPlaying(false);
                     setRun(null);
                     setFrame(null);
                   }}
@@ -3538,7 +3624,7 @@ export function KidsStudioScreen({
                   title={copy.step}
                   disabled={!run || (frame !== null && frame >= run.frames.length - 1)}
                   onClick={() => {
-                    setPlaying(false);
+                    stopLive();
                     setStepped(true);
                     setFrame(frame === null ? 0 : frame + 1);
                   }}
@@ -3974,8 +4060,8 @@ export function KidsStudioScreen({
                 {copy.waitUntilTimeout}
               </p>
             ) : null}
-            {run?.outcome === "budget-exceeded" &&
-            run.trace.some((entry) => entry.statementType === "forever") ? (
+            {loopRun?.outcome === "budget-exceeded" &&
+            loopRun.trace.some((entry) => entry.statementType === "forever") ? (
               <p className="kids-note" role="status">
                 {oriSuggestions ? "Ori: " : ""}
                 {copy.foreverBudget}
@@ -3985,7 +4071,7 @@ export function KidsStudioScreen({
               <KidsLoopHelp
                 locale={locale}
                 program={history.current}
-                run={run}
+                run={loopRun}
                 actorId={activeActorId}
                 onApplyProgram={(next, label) => {
                   try {
@@ -4032,7 +4118,7 @@ export function KidsStudioScreen({
                 }
               }}
             />
-            {run && actor ? (
+            {run && actor && !playing ? (
               <StudioCoach
                 key={runCount}
                 locale={locale}

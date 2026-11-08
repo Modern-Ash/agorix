@@ -95,6 +95,8 @@ export interface ExecutionBoundary {
 
 export interface ExecutionOptions {
   readonly maxSteps?: number;
+  /** Cap on virtual seconds one activation may wait; defaults to MAX_VIRTUAL_SECONDS. */
+  readonly maxVirtualSeconds?: number;
   readonly stopAfterSteps?: number;
   readonly shouldStop?: (boundary: ExecutionBoundary) => boolean;
   readonly collectObservations?: boolean;
@@ -285,7 +287,8 @@ function normalizeRandomSeed(seed: number | undefined): number {
 
 function advanceVirtualClock(state: MutableRunState, seconds: number): void {
   state.virtualSeconds = Math.round((state.virtualSeconds + seconds) * 1000) / 1000;
-  if (state.virtualSeconds > MAX_VIRTUAL_SECONDS) throw new ExecutionHalt("budget-exceeded");
+  if (state.virtualSeconds > (state.options.maxVirtualSeconds ?? MAX_VIRTUAL_SECONDS))
+    throw new ExecutionHalt("budget-exceeded");
 }
 
 function addNote(state: MutableRunState, note: string): void {
@@ -501,7 +504,18 @@ function paramValue(state: MutableRunState, id: ProcedureParamId): number {
   return frame?.[Number(id.slice(1)) - 1] ?? 0;
 }
 
-function executeStatement(statement: Statement, path: string, state: MutableRunState): void {
+/** One executed statement, handed out as soon as it ends so a scheduler can interleave scripts. */
+export interface StatementTick {
+  readonly entry: ExecutionTraceEntry;
+  /** Virtual seconds this activation has waited once the statement ended. */
+  readonly at: number;
+}
+
+function* executeStatement(
+  statement: Statement,
+  path: string,
+  state: MutableRunState,
+): Generator<StatementTick, void, void> {
   assertStatementBoundary(path, state);
   assertAllowedRuntimeOperation("statement", statement.type, path);
   const nodeId = nodeIdFromPath(path);
@@ -764,7 +778,7 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
               ),
             );
       for (let i = 0; i < times; i += 1) {
-        executeStatements(statement.body, `${path}.body`, state);
+        yield* executeStatements(statement.body, `${path}.body`, state);
       }
       break;
     }
@@ -792,7 +806,7 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
         state.paramFrames.push(callArgs);
       }
       try {
-        executeStatements(
+        yield* executeStatements(
           procedure.body,
           `scripts[${state.scriptIndex}].procedures[${procedureIndex}].body`,
           state,
@@ -811,7 +825,7 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
           break;
         }
         passes += 1;
-        executeStatements(statement.body, `${path}.body`, state);
+        yield* executeStatements(statement.body, `${path}.body`, state);
       }
       break;
     }
@@ -820,9 +834,9 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
         evaluateExpression(statement.condition, `${path}.condition`, state),
       );
       if (conditionResult) {
-        executeStatements(statement.then, `${path}.then`, state);
+        yield* executeStatements(statement.then, `${path}.then`, state);
       } else if (statement.else !== undefined) {
-        executeStatements(statement.else, `${path}.else`, state);
+        yield* executeStatements(statement.else, `${path}.else`, state);
       }
       break;
     default: {
@@ -845,7 +859,7 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
 
   state.stepsUsed += 1;
   const worldAfter = cloneWorldState(state.world);
-  state.trace.push({
+  const entry: ExecutionTraceEntry = {
     step: state.stepsUsed,
     nodeId,
     path: nodeId,
@@ -866,7 +880,8 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
     ...(callArgs === undefined ? {} : { args: callArgs }),
     worldBefore: before,
     worldAfter,
-  });
+  };
+  state.trace.push(entry);
   recordObservation(state, {
     kind: "statement-end",
     step: state.stepsUsed,
@@ -875,11 +890,12 @@ function executeStatement(statement: Statement, path: string, state: MutableRunS
     world: worldAfter,
     event: state.event,
   });
+  yield { entry, at: state.virtualSeconds };
   if (statement.type === "stop") throw new ExecutionHalt("stopped", statement.scope);
   if (choicePending) throw new ExecutionHalt("stopped", "scene");
   if (waitUntilTimedOut) throw new ExecutionHalt("stopped");
   if (statement.type === "forever") {
-    for (;;) executeStatements(statement.body, `${path}.body`, state);
+    for (;;) yield* executeStatements(statement.body, `${path}.body`, state);
   }
 }
 
@@ -917,15 +933,20 @@ function seedProgramVariables(
   return next;
 }
 
-function executeStatements(
+/** Runs a script's statements to the end; the batch runner has no scheduler to hand ticks to. */
+function drain(ticks: Generator<StatementTick, void, void>): void {
+  while (ticks.next().done !== true);
+}
+
+function* executeStatements(
   statements: readonly Statement[],
   path: string,
   state: MutableRunState,
-): void {
+): Generator<StatementTick, void, void> {
   for (let i = 0; i < statements.length; i += 1) {
     const statement = statements[i];
     if (statement !== undefined) {
-      executeStatement(statement, `${path}[${i}]`, state);
+      yield* executeStatement(statement, `${path}[${i}]`, state);
     }
   }
 }
@@ -987,7 +1008,7 @@ export function runProgram(
       state.script = script;
       state.scriptIndex = i;
       try {
-        executeStatements(script.statements, `scripts[${i}].statements`, state);
+        drain(executeStatements(script.statements, `scripts[${i}].statements`, state));
       } catch (error) {
         if (error instanceof ExecutionHalt && error.stopScope === "script") {
           scriptStopped = true;
@@ -1048,6 +1069,97 @@ export function runProgram(
     }
     throw error;
   }
+}
+
+export type StepperResult =
+  | { readonly kind: "statement"; readonly entry: ExecutionTraceEntry; readonly at: number }
+  | {
+      readonly kind: "done";
+      readonly outcome: RunOutcome;
+      readonly stopScope?: StopStatement["scope"];
+    };
+
+/**
+ * One activation of a script that advances a statement at a time, so a scheduler can interleave
+ * many scripts in virtual time (live play). `world` and `randomState` are shared with the caller,
+ * which owns them between steps. Running it to the end gives the same trace as `runProgram`.
+ */
+export interface ScriptStepper {
+  world: WorldState;
+  randomState: number;
+  step(): StepperResult;
+}
+
+export function createScriptStepper(
+  program: ProjectProgram,
+  initialWorld: WorldState,
+  options: ExecutionOptions = {},
+): ScriptStepper {
+  const validated = validateProgram(program);
+  assertProgramOperationsAllowed(validated);
+  const script = validated.scripts[0];
+  if (script === undefined || validated.scripts.length !== 1) {
+    throw new RangeError("a script stepper runs exactly one script");
+  }
+  assertTrigger(script.trigger, "scripts[0].trigger");
+  const state: MutableRunState = {
+    world: seedProgramLists(
+      seedProgramVariables(initialWorld, validated.variables),
+      validated.lists,
+    ),
+    stepsUsed: 0,
+    maxSteps: normalizeBudget(options.maxSteps),
+    options,
+    event: options.event ?? "greenFlag",
+    trace: [],
+    observations: [],
+    randomState: normalizeRandomSeed(options.randomSeed),
+    virtualSeconds: 0,
+    script,
+    scriptIndex: 0,
+    callDepth: 0,
+    paramFrames: [],
+    notes: [],
+  };
+  const statements = executeStatements(script.statements, "scripts[0].statements", state);
+  let finished = false;
+  return {
+    get world() {
+      return state.world;
+    },
+    set world(world: WorldState) {
+      state.world = world;
+    },
+    get randomState() {
+      return state.randomState;
+    },
+    set randomState(value: number) {
+      state.randomState = value;
+    },
+    step(): StepperResult {
+      if (finished) return { kind: "done", outcome: "completed" };
+      try {
+        const next = statements.next();
+        if (next.done === true) {
+          finished = true;
+          return { kind: "done", outcome: "completed" };
+        }
+        // The trace is read from each tick; keep nothing here so a long loop stays flat in memory.
+        state.trace.length = 0;
+        return { kind: "statement", entry: next.value.entry, at: next.value.at };
+      } catch (error) {
+        finished = true;
+        if (error instanceof ExecutionHalt) {
+          return {
+            kind: "done",
+            outcome: error.outcome,
+            ...(error.stopScope === undefined ? {} : { stopScope: error.stopScope }),
+          };
+        }
+        throw error;
+      }
+    },
+  };
 }
 
 export function toSanitizedTutorContext(result: RunResult): SanitizedTutorContext {
