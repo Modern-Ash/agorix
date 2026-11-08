@@ -62,7 +62,7 @@ Any model decision about whether to show a finding, which finding, or what to ch
 3. **On by default** wherever the host has a model configured (the adult Ori switch still turns it off, because the marker itself is hidden then).
 4. **Adult counter: yes** (`oriRephrased`, whole number).
 
-## As built (PR #1287)
+## As built (PR #1288)
 
 - `@agorix/ori-agent` `rephrase.ts`: the closed request, the instructions, the validation chain and `runOriRephrase`. Check 6 uses the chat's unsafe and personal-data filters on the text (`isUnsafeOrPersonalText`) instead of a full learning-companion response, which needs a mission and a program this path never has.
 - Route `POST /api/tutor/run-finding/rephrase` in the tutor server. It reuses the **chat** capability's policy and rate budget rather than adding a capability to the admin configuration; the chat budget is small, which suits a tap on request.
