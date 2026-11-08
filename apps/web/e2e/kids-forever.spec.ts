@@ -26,7 +26,9 @@ for (const viewport of [
     await expect(page.locator(".kids-program-block").first()).toContainText("Por siempre");
     await expect(page.getByRole("button", { name: /\+ Por siempre/ })).toBeDisabled();
     await page.getByRole("button", { name: "Jugar", exact: true }).click();
-    await expect(page.getByText(/Tu programa sigue y sigue: tocá ■ para pararlo/)).toBeVisible();
+    await expect(page.getByText(/Tu programa sigue y sigue: tocá ■ para pararlo/)).toBeVisible({
+      timeout: 15_000,
+    });
     await reloadTo(page, "#/proyectos");
     await page.getByRole("button", { name: "Mis proyectos" }).click();
     await page

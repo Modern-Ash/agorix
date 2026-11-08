@@ -986,7 +986,7 @@ const MOVING = new Set(["move", "goTo", "glideTo", "bounceOnEdge"]);
 const LIVE_STEP_SECONDS = 0.07;
 
 /** Seconds a forever loop runs before Ori offers help with a loop that does not end. */
-const LIVE_FOREVER_NOTICE_SECONDS = 2.5;
+const LIVE_FOREVER_NOTICE_SECONDS = 1.5;
 
 export function KidsStudioScreen({
   id,
@@ -1928,7 +1928,7 @@ export function KidsStudioScreen({
     let frameId = 0;
     let sawForever = live.result().trace.some((entry) => entry.statementType === "forever");
     const loop = (now: number) => {
-      const produced = live.advance(Math.min(0.1, (now - last) / 1000));
+      const produced = live.advance(Math.min(0.25, (now - last) / 1000));
       last = now;
       for (const entry of produced) {
         presentLiveEntry(entry);
