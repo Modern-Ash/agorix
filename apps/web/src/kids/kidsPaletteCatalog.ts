@@ -35,6 +35,7 @@ export const STUDIO_BLOCK_CATEGORY = {
   bounceOnEdge: "motion",
   goToLayer: "motion",
   switchCostume: "media",
+  nextCostume: "media",
   switchBackdrop: "media",
   playSound: "media",
   stopSounds: "media",

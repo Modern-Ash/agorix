@@ -68,6 +68,7 @@ import {
   changeVolumeWorld,
   switchBackdropWorld,
   switchCostumeWorld,
+  nextCostumeWorld,
   thinkWorld,
   touchingGoal,
   turnWorld,
@@ -728,6 +729,9 @@ function* executeStatement(
     }
     case "switchCostume":
       state.world = switchCostumeWorld(state.world, statement.costumeId);
+      break;
+    case "nextCostume":
+      state.world = nextCostumeWorld(state.world, statement.costumeIds);
       break;
     case "switchBackdrop":
       state.world = switchBackdropWorld(state.world, statement.backdropId);

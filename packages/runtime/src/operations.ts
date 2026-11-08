@@ -51,6 +51,7 @@ export const RUNTIME_STATEMENT_OPERATIONS = Object.freeze([
   "wait",
   "waitUntil",
   "switchCostume",
+  "nextCostume",
   "switchBackdrop",
   "playSound",
   "stopSounds",

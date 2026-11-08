@@ -474,6 +474,16 @@ export interface SwitchCostumeStatement {
   readonly costumeId: string;
 }
 
+/**
+ * Scratch's "next costume": moves to the costume after the current one in this list, and wraps
+ * around. The list is fixed when the block is made (the character's own costume first); a current
+ * costume that is not in it goes to the first one.
+ */
+export interface NextCostumeStatement {
+  readonly type: "nextCostume";
+  readonly costumeIds: readonly string[];
+}
+
 export interface SwitchBackdropStatement {
   readonly type: "switchBackdrop";
   readonly backdropId: string;
@@ -646,6 +656,7 @@ export type Statement =
   | WaitStatement
   | WaitUntilStatement
   | SwitchCostumeStatement
+  | NextCostumeStatement
   | SwitchBackdropStatement
   | PlaySoundStatement
   | StopSoundsStatement

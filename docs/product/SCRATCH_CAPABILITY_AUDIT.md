@@ -510,3 +510,9 @@ Mis proyectos → **Importar de Scratch (.sb3)** reads `project.json` from the f
 - **Snapped to the scene's closed lists:** moves, turns, sizes, waits and repeat counts take the nearest allowed value; positions are rescaled from Scratch's 480 by 360 stage; text is cut to 80 characters. Blocks that came across changed are counted as adjusted.
 - **Left behind and counted by reason:** other scripts of a sprite, sprites past twelve, variables past three, more than three different broadcast messages, blocks with no equivalent (costumes, sensing of other sprites, custom blocks, lists, music, effects, ...), and blocks whose value comes from another block that the scene cannot compute.
 - **Safety:** only `project.json` is read, with size limits; nothing in the file is executed; the result must pass the same validation as any scene, and a block the scene rejects is dropped and reported instead of failing the import.
+
+## Next costume (fourth Scratch-compatibility increment)
+
+- **Siguiente disfraz** (`nextCostume` with a fixed list): moves to the next costume in the list and wraps around. In the model a costume is a gallery character or a drawing the child made, not a per-sprite list, so the block carries its own list: the character's own costume first, then the child's drawn costumes at the moment the block is added (a costume drawn later needs the block added again). A current costume that is not in the list goes to the first one.
+- With nothing drawn there is nothing to change to, so the block stays in the palette dimmed with its reason ("Primero dibujá otro disfraz"), like the other blocks that need something first.
+- The Scratch importer does not map `next costume`: a Scratch sprite's costumes are not ours.

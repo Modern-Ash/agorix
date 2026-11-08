@@ -260,6 +260,7 @@ const COPY = {
     reset: "Volver al inicio",
     move: "Mover",
     goTo: "Ir a posición",
+    nextCostume: "Siguiente disfraz",
     goToRandom: "Ir a un lugar al azar",
     goToMouse: "Ir al puntero",
     messageAndWait: "Enviar mensaje y esperar",
@@ -540,6 +541,7 @@ const COPY = {
     reset: "Back to start",
     move: "Move",
     goTo: "Go to position",
+    nextCostume: "Next costume",
     goToRandom: "Go to a random spot",
     goToMouse: "Go to the pointer",
     messageAndWait: "Broadcast message and wait",
@@ -2481,6 +2483,8 @@ export function KidsStudioScreen({
         return `${copy.goTo}: ${statement.x}, ${statement.y}`;
       case "glideTo":
         return `${copy.glideTo}: ${statement.x}, ${statement.y} (${statement.seconds}s)`;
+      case "nextCostume":
+        return `${copy.nextCostume} (${statement.costumeIds.length})`;
       case "goToTarget":
         return statement.target === "random" ? copy.goToRandom : copy.goToMouse;
       case "setX":
@@ -3208,7 +3212,11 @@ export function KidsStudioScreen({
     stepped,
   });
 
-  const paletteFactsNow = paletteFacts(history.current.scripts, creative.actors?.length ?? 1);
+  const paletteFactsNow = paletteFacts(
+    history.current.scripts,
+    creative.actors?.length ?? 1,
+    ownCostumes.length,
+  );
   const paletteRules = {
     unmetFor: (block: Parameters<typeof unmetNeed>[0]) => {
       const need = unmetNeed(block, paletteFactsNow);
@@ -5472,6 +5480,23 @@ export function KidsStudioScreen({
                     ))}
                   </select>
                 </KidsPaletteBlock>
+                <KidsPaletteBlock
+                  tone="looks"
+                  actions={[
+                    {
+                      label: copy.nextCostume,
+                      block: "nextCostume",
+                      onAdd: () =>
+                        add({
+                          type: "nextCostume",
+                          costumeIds: [
+                            `costume:${characterOfActor(activeActorId)}`,
+                            ...ownCostumes.map((asset) => asset.id),
+                          ],
+                        }),
+                    },
+                  ]}
+                />
                 <KidsPaletteBlock
                   tone="looks"
                   actions={[

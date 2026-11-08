@@ -31,6 +31,10 @@ export const BLOCK_TIPS: Readonly<Record<string, Tip>> = {
     en: "Move: the character walks where it faces",
   },
   goTo: { es: "Ir a una posición del escenario", en: "Jump to a spot on the stage" },
+  nextCostume: {
+    es: "Pasar al siguiente disfraz",
+    en: "Change to the next costume",
+  },
   goToTarget: {
     es: "Ir a un lugar al azar o hacia el puntero",
     en: "Jump to a random spot or to the pointer",

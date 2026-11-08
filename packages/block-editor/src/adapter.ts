@@ -30,6 +30,7 @@ export type BlockType =
   | "event_broadcast"
   | "motion_move"
   | "motion_go_to"
+  | "looks_next_costume"
   | "motion_go_to_target"
   | "motion_set_x"
   | "motion_set_y"
@@ -515,6 +516,13 @@ function statementFromBlock(
         steps: numberField(block, "steps", path),
         ...paramFrom(block, "stepsFrom"),
       };
+    case "looks_next_costume": {
+      const ids = block.fields?.["costumeIds"];
+      return {
+        type: "nextCostume",
+        costumeIds: Array.isArray(ids) ? ids.map((item) => String(item)) : [],
+      };
+    }
     case "motion_go_to_target":
       return {
         type: "goToTarget",
@@ -981,6 +989,8 @@ function statementToBlock(
       };
     case "goTo":
       return { id, type: "motion_go_to", fields: { x: statement.x, y: statement.y } };
+    case "nextCostume":
+      return { id, type: "looks_next_costume", fields: { costumeIds: [...statement.costumeIds] } };
     case "goToTarget":
       return { id, type: "motion_go_to_target", fields: { target: statement.target } };
     case "setX":

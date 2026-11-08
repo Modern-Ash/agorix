@@ -563,6 +563,13 @@ export function switchCostumeWorld(world: WorldState, costumeId: string): WorldS
   return createWorldState({ ...world, sprite: { ...world.sprite, costumeId } });
 }
 
+/** The costume after the current one in `costumeIds`, wrapping; the first when not in the list. */
+export function nextCostumeWorld(world: WorldState, costumeIds: readonly string[]): WorldState {
+  const at = world.sprite.costumeId === undefined ? -1 : costumeIds.indexOf(world.sprite.costumeId);
+  const next = costumeIds[(at + 1) % costumeIds.length];
+  return next === undefined ? world : switchCostumeWorld(world, next);
+}
+
 export function switchBackdropWorld(world: WorldState, backdropId: string): WorldState {
   return createWorldState({ ...world, backdropId });
 }
