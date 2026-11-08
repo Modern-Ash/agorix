@@ -520,3 +520,9 @@ Mis proyectos → **Importar de Scratch (.sb3)** reads `project.json` from the f
 ## Rotation style (third Scratch-compatibility increment)
 
 - **Estilo de giro** (`setRotationStyle`: `all`, `leftRight`, `none`): since Turn now rotates the character on stage, games need Scratch's way to keep it from going upside down. _Toda la vuelta_ is the default and what a sprite does if the block is never used; _Izquierda y derecha_ mirrors the picture when it faces left; _Sin girar_ keeps it upright. The style lives in the sprite's world state and the stage draws it from there; the Scratch importer maps `set rotation style`.
+
+## Say with a number after the text (the useful part of Scratch's "join")
+
+- **Decir con variable** (`say` / `think` with `append`): the text, one space, then a number (a variable, a position, a calculation) written in the bubble, e.g. "Puntos: 7". The number is evaluated by the deterministic runtime, so the trace shows exactly what was said; decimals are kept to two places.
+- This is the part of Scratch's `join` that nearly every score or counter project uses. **Text operators in general** (letter of, length, joining two texts) stay out: they need variables that hold text, which would let free text typed by a child travel through the program, and the product excludes that (see the functional matrix). The text in a bubble is still only what the child types into the bubble itself.
+- The Scratch importer turns `say (join "Puntos: " (variable))` into this block.

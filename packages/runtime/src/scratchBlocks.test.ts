@@ -205,3 +205,61 @@ describe("rotation style", () => {
     expect("rotationStyle" in world.sprite).toBe(false);
   });
 });
+
+describe("say with a number after the text", () => {
+  const withScore = (statements: Statement[]): ProjectProgram => ({
+    schema: SCHEMA_VERSION,
+    variables: [{ id: "score", name: "score", initialValue: 0, visible: false }],
+    scripts: [{ id: "main", trigger: { type: "onStart" }, statements }],
+  });
+  it("writes the variable's value right after the text, in the bubble and the trace", () => {
+    const result = runProgram(
+      withScore([
+        {
+          type: "changeVariable",
+          variableId: "score",
+          delta: { type: "numericLiteral", value: 7 },
+        },
+        {
+          type: "say",
+          text: "Puntos: ",
+          append: { type: "variable", variableId: "score" },
+        },
+      ]),
+      createWorldState(),
+    );
+    expect(result.world.sprite.bubble).toEqual({ kind: "say", text: "Puntos: 7" });
+    expect(result.trace.at(-1)!.worldAfter.sprite.bubble?.text).toBe("Puntos: 7");
+  });
+  it("works for think, for a position and together with seconds", () => {
+    const result = runProgram(
+      program([
+        { type: "setX", x: 42 },
+        { type: "think", text: "x = ", append: { type: "xPosition" }, seconds: 1 },
+      ]),
+      createWorldState(),
+    );
+    expect(result.trace.at(-1)!.worldAfter.sprite.bubble).toEqual({
+      kind: "think",
+      text: "x = 42",
+    });
+    expect(result.world.sprite.bubble).toBeUndefined();
+  });
+  it("keeps a decimal short", () => {
+    const result = runProgram(
+      program([
+        {
+          type: "say",
+          text: "n =",
+          append: {
+            type: "divide",
+            left: { type: "numericLiteral", value: 10 },
+            right: { type: "numericLiteral", value: 3 },
+          },
+        },
+      ]),
+      createWorldState(),
+    );
+    expect(result.world.sprite.bubble?.text).toBe("n = 3.33");
+  });
+});

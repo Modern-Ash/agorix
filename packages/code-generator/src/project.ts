@@ -391,21 +391,18 @@ function projectStatement(
       write(writer, `${pad}sprite.bounceOnEdge();\n`);
       return;
     case "say":
-      write(
-        writer,
+    case "think": {
+      const message =
+        statement.append === undefined
+          ? JSON.stringify(statement.text)
+          : `${JSON.stringify(statement.text)} + String(${formatExpression(statement.append, `${nodeId}/append`, context)})`;
+      const call =
         statement.seconds === undefined
-          ? `${pad}sprite.say(${JSON.stringify(statement.text)});\n`
-          : `${pad}sprite.sayFor(${JSON.stringify(statement.text)}, ${formatNumber(statement.seconds)});\n`,
-      );
+          ? `${statement.type}(${message})`
+          : `${statement.type}For(${message}, ${formatNumber(statement.seconds)})`;
+      write(writer, `${pad}sprite.${call};\n`);
       return;
-    case "think":
-      write(
-        writer,
-        statement.seconds === undefined
-          ? `${pad}sprite.think(${JSON.stringify(statement.text)});\n`
-          : `${pad}sprite.thinkFor(${JSON.stringify(statement.text)}, ${formatNumber(statement.seconds)});\n`,
-      );
-      return;
+    }
     case "show":
       write(writer, `${pad}sprite.show();\n`);
       return;

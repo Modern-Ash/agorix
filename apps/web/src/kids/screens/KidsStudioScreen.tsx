@@ -274,6 +274,7 @@ const COPY = {
     changeY: "Cambiar y en",
     shiftAmount: "Cuánto",
     sayFor: "Decir por",
+    sayWithVariable: "Decir con variable",
     thinkFor: "Pensar por",
     saveDirection: "Guardar dirección",
     glideTo: "Deslizar a posición",
@@ -559,6 +560,7 @@ const COPY = {
     changeY: "Change y by",
     shiftAmount: "How much",
     sayFor: "Say for",
+    sayWithVariable: "Say with a variable",
     thinkFor: "Think for",
     saveDirection: "Save direction",
     glideTo: "Glide to position",
@@ -2554,8 +2556,10 @@ export function KidsStudioScreen({
       case "say":
       case "think":
         return `${statement.type === "say" ? copy.say : copy.think}: ${statement.text}${
-          statement.seconds === undefined ? "" : ` (${statement.seconds}s)`
-        }`;
+          statement.append === undefined
+            ? ""
+            : ` + ${expressionLabel(statement.append, history.current, locale)}`
+        }${statement.seconds === undefined ? "" : ` (${statement.seconds}s)`}`;
       case "show":
         return copy.show;
       case "hide":
@@ -5093,6 +5097,18 @@ export function KidsStudioScreen({
                       block: "say",
                       onAdd: () =>
                         add({ type: "say", text: bubbleText.trim(), seconds: waitSeconds }),
+                    },
+                    {
+                      label: copy.sayWithVariable,
+                      disabled:
+                        !bubbleText.trim() || (history.current.variables?.length ?? 0) === 0,
+                      block: "say",
+                      onAdd: () =>
+                        add({
+                          type: "say",
+                          text: bubbleText.trim(),
+                          append: { type: "variable", variableId: selectedVariableId },
+                        }),
                     },
                     {
                       label: `${copy.thinkFor} ${waitSeconds} s`,

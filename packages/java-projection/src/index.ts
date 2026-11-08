@@ -537,17 +537,17 @@ function statement(writer: Writer, node: Statement, nodeId: string, depth: numbe
     case "clearEffects":
       return line("clearEffects()");
     case "say":
+    case "think": {
+      const message =
+        node.append === undefined
+          ? literal(node.text)
+          : `${literal(node.text)} + (${num(node.append, "append")})`;
       return line(
         node.seconds === undefined
-          ? `say(${literal(node.text)})`
-          : `sayFor(${literal(node.text)}, ${number(node.seconds)})`,
+          ? `${node.type}(${message})`
+          : `${node.type}For(${message}, ${number(node.seconds)})`,
       );
-    case "think":
-      return line(
-        node.seconds === undefined
-          ? `think(${literal(node.text)})`
-          : `thinkFor(${literal(node.text)}, ${number(node.seconds)})`,
-      );
+    }
     case "show":
       return line("show()");
     case "hide":

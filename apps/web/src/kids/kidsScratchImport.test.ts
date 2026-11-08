@@ -132,4 +132,23 @@ describe("Scratch import", () => {
     expect(program.scripts[0]!.statements[0]!.type).toBe("turn");
     expect(report.dropped.some((item) => item.what.includes("motion_movesteps"))).toBe(true);
   });
+
+  it("turns a Scratch join of a text and a variable into a say with the value after it", () => {
+    const joined = project();
+    const blocks = (joined.targets[1] as { blocks: Record<string, unknown> }).blocks;
+    blocks["say"] = block("looks_say", {
+      next: "rep",
+      inputs: { MESSAGE: [3, "join", [10, "Hola"]] },
+    });
+    blocks["join"] = block("operator_join", {
+      inputs: { STRING1: lit("Puntos: ", 10), STRING2: [3, "val", [10, ""]] },
+    });
+    blocks["val"] = block("data_variable", { fields: { VARIABLE: ["score", "v1"] } });
+    const { program } = convertScratchProject(joined);
+    expect(program.scripts[0]!.statements[2]).toMatchObject({
+      type: "say",
+      text: "Puntos:",
+      append: { type: "variable", variableId: "studio-var-1" },
+    });
+  });
 });

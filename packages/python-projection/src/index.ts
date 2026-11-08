@@ -388,33 +388,29 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
       writeMapped(writer, nodeId, indent + "bounce_on_edge()\n");
       return;
     case "say":
+    case "think": {
+      const message =
+        statement.append === undefined
+          ? JSON.stringify(statement.text)
+          : JSON.stringify(statement.text) +
+            " + str(" +
+            expressionText(writer, statement.append, nodeId + "/append") +
+            ")";
       writeMapped(
         writer,
         nodeId,
         statement.seconds === undefined
-          ? indent + "say(" + JSON.stringify(statement.text) + ")\n"
+          ? indent + statement.type + "(" + message + ")\n"
           : indent +
-              "say_for(" +
-              JSON.stringify(statement.text) +
+              statement.type +
+              "_for(" +
+              message +
               ", " +
               formatNumber(statement.seconds) +
               ")\n",
       );
       return;
-    case "think":
-      writeMapped(
-        writer,
-        nodeId,
-        statement.seconds === undefined
-          ? indent + "think(" + JSON.stringify(statement.text) + ")\n"
-          : indent +
-              "think_for(" +
-              JSON.stringify(statement.text) +
-              ", " +
-              formatNumber(statement.seconds) +
-              ")\n",
-      );
-      return;
+    }
     case "show":
       writeMapped(writer, nodeId, indent + "show()\n");
       return;

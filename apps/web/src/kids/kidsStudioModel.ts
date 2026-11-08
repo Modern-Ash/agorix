@@ -498,7 +498,8 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0, arity
       statement.text.trim().length > 0 &&
       statement.text.length <= STUDIO_BUBBLE_MAX_LENGTH &&
       (statement.seconds === undefined ||
-        (STUDIO_WAIT_SECONDS as readonly number[]).includes(statement.seconds))
+        (STUDIO_WAIT_SECONDS as readonly number[]).includes(statement.seconds)) &&
+      (statement.append === undefined || checkedNumber(statement.append, program))
     );
   if (statement.type === "show" || statement.type === "hide") return true;
   if (statement.type === "changeSize")
