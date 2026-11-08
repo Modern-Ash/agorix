@@ -135,6 +135,8 @@ export interface BlockNode {
     readonly max?: BlockNode;
     readonly delta?: BlockNode;
     readonly index?: BlockNode;
+    /** The number written after the text of say and think. */
+    readonly append?: BlockNode;
     /** The numbers of a custom block call, in order. */
     readonly arg1?: BlockNode;
     readonly arg2?: BlockNode;
@@ -309,7 +311,7 @@ function booleanField(block: BlockNode, name: string, path: string): boolean {
 
 function requiredInput(
   block: BlockNode,
-  name: "condition" | "left" | "right" | "value" | "min" | "max" | "delta" | "index",
+  name: "condition" | "left" | "right" | "value" | "min" | "max" | "delta" | "index" | "append",
   path: string,
 ): BlockNode {
   const input = block.inputs?.[name];
@@ -615,9 +617,22 @@ function statementFromBlock(
     case "motion_bounce_on_edge":
       return { type: "bounceOnEdge" };
     case "looks_say":
-      return { type: "say", text: stringField(block, "text", path), ...optionalSeconds(block) };
     case "looks_think":
-      return { type: "think", text: stringField(block, "text", path), ...optionalSeconds(block) };
+      return {
+        type: block.type === "looks_say" ? "say" : "think",
+        text: stringField(block, "text", path),
+        ...optionalSeconds(block),
+        ...(block.inputs?.["append"] === undefined
+          ? {}
+          : {
+              append: expressionFromBlock(
+                requiredInput(block, "append", path),
+                `${nodeId}/append`,
+                `${path}.inputs.append`,
+                mapping,
+              ),
+            }),
+      };
     case "looks_show":
       return { type: "show" };
     case "looks_hide":
@@ -1069,22 +1084,19 @@ function statementToBlock(
     case "bounceOnEdge":
       return { id, type: "motion_bounce_on_edge" };
     case "say":
-      return {
-        id,
-        type: "looks_say",
-        fields: {
-          text: statement.text,
-          ...(statement.seconds === undefined ? {} : { seconds: statement.seconds }),
-        },
-      };
     case "think":
       return {
         id,
-        type: "looks_think",
+        type: statement.type === "say" ? "looks_say" : "looks_think",
         fields: {
           text: statement.text,
           ...(statement.seconds === undefined ? {} : { seconds: statement.seconds }),
         },
+        ...(statement.append === undefined
+          ? {}
+          : {
+              inputs: { append: expressionToBlock(statement.append, `${nodeId}/append`, mapping) },
+            }),
       };
     case "show":
       return { id, type: "looks_show" };

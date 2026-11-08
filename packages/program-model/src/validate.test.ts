@@ -591,3 +591,28 @@ describe("go to target and broadcast and wait", () => {
     expect(() => validateProgram(base({ type: "goToTarget" }) as never)).toThrow();
   });
 });
+
+describe("say with a number after the text", () => {
+  const base = (statement: unknown) => ({
+    schema: "agorix/program/v1",
+    variables: [{ id: "v", name: "v", initialValue: 0, visible: false }],
+    scripts: [{ id: "a", trigger: { type: "onStart" }, statements: [statement] }],
+  });
+  it("accepts an expression after the text and rejects an unknown variable in it", () => {
+    expect(() =>
+      validateProgram(
+        base({ type: "say", text: "x", append: { type: "variable", variableId: "v" } }) as never,
+      ),
+    ).not.toThrow();
+    expect(() =>
+      validateProgram(
+        base({
+          type: "think",
+          text: "x",
+          append: { type: "variable", variableId: "nope" },
+        }) as never,
+      ),
+    ).toThrow();
+    expect(() => validateProgram(base({ type: "say", text: "x", append: 5 }) as never)).toThrow();
+  });
+});

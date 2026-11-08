@@ -65,3 +65,14 @@ test("broadcast and wait is a block of its own and shows as such", async ({ page
     "Enviar mensaje y esperar",
   );
 });
+
+test("say with a variable shows its value after the text", async ({ page }) => {
+  await openScene(page);
+  await page.getByRole("textbox", { name: "Nombre" }).fill("Puntos");
+  await page.getByRole("button", { name: "+ Crear variable" }).click();
+  await page.getByRole("button", { name: "+ Cambiar variable" }).first().click();
+  await page.getByRole("button", { name: "+ Decir con variable", exact: true }).click();
+  await expect(page.locator(".kids-program-block").last()).toContainText("Decir: ¡Hola! + Puntos");
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.locator(".kids-studio-bubble")).toContainText(/¡Hola!\s?\d/);
+});

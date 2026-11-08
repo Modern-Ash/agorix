@@ -514,6 +514,19 @@ export interface StatementTick {
   readonly at: number;
 }
 
+/** The text of a bubble: the fixed words, then the number after them if there is one. */
+function bubbleText(
+  statement: { readonly text: string; readonly append?: Expression },
+  path: string,
+  state: MutableRunState,
+): string {
+  if (statement.append === undefined) return statement.text;
+  const value = evaluateNumber(statement.append, `${path}.append`, state);
+  // One space between the words and the number unless the words already end with one.
+  const gap = /\s$/.test(statement.text) ? "" : " ";
+  return statement.text + gap + String(Math.round(value * 100) / 100);
+}
+
 function* executeStatement(
   statement: Statement,
   path: string,
@@ -646,11 +659,11 @@ function* executeStatement(
       state.world = bounceOnEdgeWorld(state.world, DEFAULT_STAGE_BOUNDS);
       break;
     case "say":
-      state.world = sayWorld(state.world, statement.text);
+      state.world = sayWorld(state.world, bubbleText(statement, path, state));
       if (statement.seconds !== undefined) advanceVirtualClock(state, statement.seconds);
       break;
     case "think":
-      state.world = thinkWorld(state.world, statement.text);
+      state.world = thinkWorld(state.world, bubbleText(statement, path, state));
       if (statement.seconds !== undefined) advanceVirtualClock(state, statement.seconds);
       break;
     case "show":

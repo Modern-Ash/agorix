@@ -407,16 +407,19 @@ class Converter {
       case "looks_think":
       case "looks_sayforsecs":
       case "looks_thinkforsecs": {
-        const raw = this.literal(block, "MESSAGE")?.trim();
+        const joined = this.joinedMessage(block);
+        const raw = (joined?.text ?? this.literal(block, "MESSAGE"))?.trim();
         if (raw === undefined || raw === "") return missing();
         const text = raw.slice(0, STUDIO_BUBBLE_MAX_LENGTH);
         this.adjust(text, raw);
         const kind = block.opcode.includes("say") ? "say" : "think";
-        if (!block.opcode.endsWith("forsecs")) return { type: kind, text };
+        const append = joined?.append === undefined ? {} : { append: joined.append };
+        if (!block.opcode.endsWith("forsecs")) return { type: kind, text, ...append };
         const seconds = num("SECS");
         return {
           type: kind,
           text,
+          ...append,
           seconds: nearest(seconds ?? 2, STUDIO_WAIT_SECONDS),
         };
       }
@@ -559,6 +562,26 @@ class Converter {
         this.drop(block.opcode);
         return undefined;
     }
+  }
+
+  /**
+   * Scratch's `join` in a bubble: a fixed text and a number or variable after it. Anything else
+   * (text from a variable, a join of joins) has no place in the scene and is left behind.
+   */
+  joinedMessage(
+    block: ScratchBlock,
+  ): { readonly text: string; readonly append?: Expression } | undefined {
+    const reference = block.inputs["MESSAGE"]?.[1];
+    const join = typeof reference === "string" ? this.blocks.get(reference) : undefined;
+    if (join?.opcode !== "operator_join") return undefined;
+    const text = this.literal(join, "STRING1");
+    if (text === undefined) return undefined;
+    const append = this.numberExpression(join, "STRING2");
+    if (append === undefined) {
+      if ((this.literal(join, "STRING2") ?? "") !== "") this.drop("join (a second text)");
+      return { text };
+    }
+    return { text, append };
   }
 
   broadcastName(block: ScratchBlock): string | undefined {

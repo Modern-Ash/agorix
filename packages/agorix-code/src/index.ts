@@ -298,25 +298,17 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
       writeMapped(writer, nodeId, indent + "bounce on edge\n");
       return;
     case "say":
-      writeMapped(
-        writer,
-        nodeId,
-        indent +
-          "say " +
-          JSON.stringify(statement.text) +
-          (statement.seconds === undefined
-            ? ""
-            : " for " + formatNumber(statement.seconds) + " seconds") +
-          "\n",
-      );
-      return;
     case "think":
       writeMapped(
         writer,
         nodeId,
         indent +
-          "think " +
+          statement.type +
+          " " +
           JSON.stringify(statement.text) +
+          (statement.append === undefined
+            ? ""
+            : " + " + expressionText(writer, statement.append, nodeId + "/append")) +
           (statement.seconds === undefined
             ? ""
             : " for " + formatNumber(statement.seconds) + " seconds") +

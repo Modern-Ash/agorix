@@ -430,12 +430,15 @@ export interface SayStatement {
   readonly text: string;
   /** Scratch's "say for N seconds": the bubble stays this many virtual seconds, then goes away. */
   readonly seconds?: number;
+  /** Scratch's "join": a number (a variable, a position...) written right after the text. */
+  readonly append?: Expression;
 }
 
 export interface ThinkStatement {
   readonly type: "think";
   readonly text: string;
   readonly seconds?: number;
+  readonly append?: Expression;
 }
 
 export interface ShowStatement {

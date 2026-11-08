@@ -98,6 +98,16 @@ export class ProgramValidationError extends Error {
   }
 }
 
+/** The optional number written after the text of say and think (Scratch's "join"). */
+function optionalAppend(
+  input: Record<string, unknown>,
+  path: string,
+  state: ValidationState,
+): { readonly append?: Expression } {
+  if (input.append === undefined) return {};
+  return { append: validateExpression(input.append, `${path}.append`, state) };
+}
+
 /** The optional "for N seconds" of say and think: bounded like a wait. */
 function optionalBubbleSeconds(
   input: Record<string, unknown>,
@@ -644,12 +654,14 @@ function validateStatement(
         type: "say",
         text: checkText(input.text, `${path}.text`),
         ...optionalBubbleSeconds(input, path),
+        ...optionalAppend(input, path, state),
       };
     case "think":
       return {
         type: "think",
         text: checkText(input.text, `${path}.text`),
         ...optionalBubbleSeconds(input, path),
+        ...optionalAppend(input, path, state),
       };
     case "show":
       return { type: "show" };

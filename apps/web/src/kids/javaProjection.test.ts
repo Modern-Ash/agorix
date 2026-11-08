@@ -54,6 +54,8 @@ const statements: Statement[] = [
   { type: "say", text: 'Hola "mundo"' },
   { type: "think", text: "Mmm" },
   { type: "say", text: "Con tiempo", seconds: 2 },
+  { type: "say", text: "Puntos: ", append: { type: "variable", variableId: "v" } },
+  { type: "think", text: "x = ", append: { type: "xPosition" }, seconds: 1 },
   { type: "think", text: "Con tiempo", seconds: 1 },
   { type: "show" },
   { type: "hide" },
