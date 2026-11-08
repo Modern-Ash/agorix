@@ -15,7 +15,10 @@ export type FindingKind =
   | "messageUnheard"
   | "conditionNeverTrue"
   | "conditionNeverFalse"
-  | "predictionMismatch";
+  | "predictionMismatch"
+  | "hiddenCharacter"
+  | "soundSilent"
+  | "workingAgainstEachOther";
 
 /** The event a script waits for, as a closed shape. `name` is a key or message name. */
 export interface FindingEvent {
@@ -119,6 +122,33 @@ function eventOf(script: Script): FindingEvent | undefined {
   if (trigger.type === "onMessage") return { type: "message", name: trigger.message };
   return undefined;
 }
+
+/** Statements whose result a learner expects to see on the stage. */
+const SHOWN = new Set([
+  "move",
+  "goTo",
+  "glideTo",
+  "goToTarget",
+  "setX",
+  "setY",
+  "changeX",
+  "changeY",
+  "turn",
+  "say",
+  "think",
+  "bounceOnEdge",
+]);
+const MOVES = new Set([
+  "move",
+  "goTo",
+  "glideTo",
+  "goToTarget",
+  "setX",
+  "setY",
+  "changeX",
+  "changeY",
+  "bounceOnEdge",
+]);
 
 export function diagnoseRun(input: DiagnoseInput): readonly Finding[] {
   const { program, creative, run } = input;
@@ -232,7 +262,86 @@ export function diagnoseRun(input: DiagnoseInput): readonly Finding[] {
       });
   }
 
-  // 4. The learner's guess did not match what happened.
+  // 4. The program acted, but the character is hidden at the end, so nothing shows.
+  for (const actor of run.actors) {
+    if (!wants(actor.id) || actor.world.sprite.visible !== false) continue;
+    const entries = run.trace
+      .map((entry, index) => ({ entry, index }))
+      .filter(({ entry }) => entry.actorId === actor.id);
+    const acted = entries.filter(({ entry }) => SHOWN.has(entry.statementType)).length;
+    if (acted === 0) continue;
+    const hid = entries.filter(({ entry }) => entry.statementType === "hide").at(-1);
+    out.push({
+      id: `hiddenCharacter:${actor.id}`,
+      kind: "hiddenCharacter",
+      actorId: actor.id,
+      nodeIds: hid === undefined ? [] : [hid.entry.nodeId],
+      counts: { actions: acted },
+      ...(hid === undefined ? {} : { traceIndex: hid.index }),
+      confidence: hid === undefined ? 0.6 : 0.8,
+    });
+  }
+
+  // 5. A sound that played with the volume at zero.
+  const silent = new Map<string, { count: number; first: number; actorId: string }>();
+  run.trace.forEach((entry, index) => {
+    if (entry.statementType !== "playSound" || !wants(entry.actorId)) return;
+    if ((entry.worldAfter.sounds?.volume ?? 100) !== 0) return;
+    const seen = silent.get(entry.nodeId) ?? { count: 0, first: index, actorId: entry.actorId };
+    seen.count += 1;
+    silent.set(entry.nodeId, seen);
+  });
+  for (const [nodeId, { count, first, actorId }] of silent)
+    out.push({
+      id: `soundSilent:${nodeId}`,
+      kind: "soundSilent",
+      actorId,
+      nodeIds: [nodeId],
+      counts: { played: count },
+      traceIndex: first,
+      confidence: 0.85,
+    });
+
+  // 6. Two scripts of one character pushing it in opposite directions, so it goes nowhere.
+  const pushed = new Map<
+    string,
+    Map<string, { dx: number; dy: number; first: number; node: string }>
+  >();
+  run.trace.forEach((entry, index) => {
+    if (!wants(entry.actorId) || !MOVES.has(entry.statementType)) return;
+    const dx = entry.worldAfter.sprite.x - entry.worldBefore.sprite.x;
+    const dy = entry.worldAfter.sprite.y - entry.worldBefore.sprite.y;
+    if (dx === 0 && dy === 0) return;
+    const scripts = pushed.get(entry.actorId) ?? new Map();
+    const seen = scripts.get(entry.scriptId) ?? { dx: 0, dy: 0, first: index, node: entry.nodeId };
+    seen.dx += dx;
+    seen.dy += dy;
+    scripts.set(entry.scriptId, seen);
+    pushed.set(entry.actorId, scripts);
+  });
+  for (const [actorId, scripts] of pushed) {
+    const list = [...scripts.values()].filter(
+      (item) => Math.abs(item.dx) + Math.abs(item.dy) >= 40,
+    );
+    for (let a = 0; a < list.length; a += 1)
+      for (let b = a + 1; b < list.length; b += 1) {
+        const x = list[a]!;
+        const y = list[b]!;
+        const reach = Math.max(Math.abs(x.dx) + Math.abs(x.dy), Math.abs(y.dx) + Math.abs(y.dy));
+        if (Math.abs(x.dx + y.dx) + Math.abs(x.dy + y.dy) > reach * 0.1) continue;
+        out.push({
+          id: `workingAgainstEachOther:${x.node}:${y.node}`,
+          kind: "workingAgainstEachOther",
+          actorId,
+          nodeIds: [x.node, y.node],
+          counts: { scripts: 2 },
+          traceIndex: Math.min(x.first, y.first),
+          confidence: 0.65,
+        });
+      }
+  }
+
+  // 7. The learner's guess did not match what happened.
   if (input.predictionMatched === false && final)
     out.push({
       id: "predictionMismatch",

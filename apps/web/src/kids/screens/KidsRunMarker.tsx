@@ -74,7 +74,9 @@ export function KidsRunMarker({
               {es ? "Ver cuándo pasó" : "See when it happened"}
             </button>
           ) : null}
-          {review && sent?.type === "appendStatement" && sent.statement.type === "broadcast" ? (
+          {review &&
+          sent?.type === "appendStatement" &&
+          (sent.statement.type === "broadcast" || sent.statement.type === "show") ? (
             <div className="kids-ori-proposal" data-testid="ori-fix">
               <p>{review.proposal.rationale}</p>
               <p className="kids-note">
@@ -83,7 +85,12 @@ export function KidsRunMarker({
                   : "Ori's idea is not in your program yet. Review the change before deciding."}
               </p>
               <strong data-testid="ori-fix-diff">
-                + {es ? "Enviar mensaje" : "Broadcast message"}: {sent.statement.message}
+                +{" "}
+                {sent.statement.type === "show"
+                  ? es
+                    ? "Mostrar"
+                    : "Show"
+                  : `${es ? "Enviar mensaje" : "Broadcast message"}: ${sent.statement.message}`}
               </strong>
               <div className="kids-ori-actions">
                 <button

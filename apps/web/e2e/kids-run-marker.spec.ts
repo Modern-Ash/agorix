@@ -128,3 +128,31 @@ test("the timeline scrubs the run, and Ori takes you to the moment it noticed", 
   await page.getByRole("button", { name: "Ver cuándo pasó" }).click();
   await expect(slider).toHaveValue("0");
 });
+
+test("Ori notices a hidden character and offers to show it, only if accepted", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await clickCreateScene(page);
+  await page.getByRole("button", { name: "+ Esconder", exact: true }).click();
+  await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await page.getByRole("button", { name: /Ori vio algo/ }).click();
+  await expect(page.locator(".kids-ori-noticed-panel")).toContainText("no se ve");
+  await expect(page.getByTestId("ori-fix-diff")).toContainText("Mostrar");
+  await expect(page.locator(".kids-program-block")).toHaveCount(2);
+  await page.getByRole("button", { name: "Usar este cambio" }).click();
+  await expect(page.locator(".kids-program-block")).toHaveCount(3);
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Paso", exact: true })).toBeEnabled();
+  await expect(page.locator(".kids-ori-noticed")).toHaveCount(0);
+});
