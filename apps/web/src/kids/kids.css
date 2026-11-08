@@ -6246,10 +6246,11 @@ body:has(.kids-create) {
   .kids-ori-float-dialog[data-closing="true"] {
     animation: kids-ori-window-out 200ms ease-in both;
   }
-  /* Suggestions enter one after another, 50 ms apart. */
+  /* Suggestions enter one after another, 50 ms apart; after the fifth they come together, so a
+     long list (Ori has fifteen goals) is not still fading in when someone reads it. */
   .kids-ori-suggestion {
     animation: kids-ori-suggestion-in 220ms ease-out both;
-    animation-delay: calc(var(--ori-step, 0) * 50ms);
+    animation-delay: calc(min(var(--ori-step, 0), 5) * 50ms);
   }
   .kids-studio-ori:not([data-collapsed="true"]) {
     transform-origin: 100% 100%;
@@ -6742,4 +6743,35 @@ button.kids-band-chip {
   margin-left: -4px;
   border-radius: 50%;
   background: #f2a33a;
+}
+
+/* "How do you say this in code?": the line and what its parts mean, in Ori's panel. */
+.kids-ori-code {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border: 1px solid var(--kids-border);
+  border-radius: 10px;
+  background: #fff;
+}
+.kids-ori-code > code {
+  display: block;
+  overflow-x: auto;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: #f1eefc;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+.kids-ori-code dl {
+  margin: 8px 0 0;
+}
+.kids-ori-code dl > div {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.kids-ori-code dt {
+  flex: 0 0 auto;
+}
+.kids-ori-code dd {
+  margin: 0;
 }

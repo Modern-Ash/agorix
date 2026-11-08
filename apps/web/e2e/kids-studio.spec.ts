@@ -602,6 +602,8 @@ test("Ori's face follows real events and respects reduced motion", async ({ page
   await expect(face).toHaveAttribute("data-ori-expression", "curious");
   await page.getByRole("button", { name: "Usar idea" }).click();
   await expect(face).toHaveAttribute("data-ori-expression", "happy");
+  // Contrast is measured on settled colours, not in the middle of a fade.
+  await settleAnimations(page);
   const violations = (
     await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
   ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");
@@ -1745,6 +1747,8 @@ test("Ori suggests using a block the child made; the child reviews, changes and 
   await askStudioOri(page);
   await expect(page.locator(".kids-ori-proposal")).toContainText("+ Usar: Cuadrado");
   expect(await page.locator(".kids-program-block").allInnerTexts()).toEqual(before);
+  // Contrast is measured on settled colours, not in the middle of a fade.
+  await settleAnimations(page);
   const violations = (
     await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()
   ).violations.filter((entry) => entry.impact === "serious" || entry.impact === "critical");

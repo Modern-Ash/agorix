@@ -109,3 +109,30 @@ test("a block with nothing to edit does not open an empty card, and removing the
   await page.getByRole("button", { name: "Quitar bloque 1" }).click();
   await expect(card(page)).toHaveCount(0);
 });
+
+test("Ori says how the block is written in the code the child is looking at, part by part", async ({
+  page,
+}) => {
+  await sceneWith(page);
+  await page.getByRole("tab", { name: /Código/ }).click();
+  await page.getByRole("button", { name: "Más lenguajes" }).click();
+  await page.getByRole("button", { name: "Python", exact: true }).click();
+  await blocks(page)
+    .first()
+    .dblclick({ position: { x: 90, y: 14 } });
+  await expect(card(page)).toBeVisible();
+  await card(page)
+    .getByRole("button", { name: /Preguntarle a Ori sobre esto/ })
+    .click();
+  const code = page.getByTestId("ori-code-line");
+  await expect(code).toContainText("Así se escribe en Python");
+  await expect(code.locator("code").first()).toHaveText("move(40)");
+  await expect(code).toContainText("mueve al personaje");
+  await expect(code).toContainText("cuántos pasos da");
+  // Another language shows the same block in that language.
+  await page.getByRole("button", { name: "Java", exact: true }).click();
+  await card(page)
+    .getByRole("button", { name: /Preguntarle a Ori sobre esto/ })
+    .click();
+  await expect(page.getByTestId("ori-code-line").locator("code").first()).toHaveText("move(40);");
+});
