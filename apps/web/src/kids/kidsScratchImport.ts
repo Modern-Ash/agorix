@@ -1,0 +1,748 @@
+import {
+  SCHEMA_VERSION,
+  type Expression,
+  type ProjectProgram,
+  type Script,
+  type Statement,
+  type Trigger,
+} from "@agorix/program-model";
+import { KIDS_GALLERY_CHARACTERS, type KidsGalleryBackdropId } from "./kidsGallery.js";
+import { KIDS_SOUNDS } from "./kidsSoundLibrary.js";
+import {
+  STUDIO_BUBBLE_MAX_LENGTH,
+  STUDIO_REPEAT_COUNTS,
+  STUDIO_SHIFT_AMOUNTS,
+  STUDIO_SIZES,
+  STUDIO_SIZE_DELTAS,
+  STUDIO_TURN_AMOUNTS,
+  STUDIO_WAIT_SECONDS,
+} from "./kidsStudioChoices.js";
+import { STUDIO_EDGE_CONDITION, studioActorId, validateStudioProgram } from "./kidsStudioModel.js";
+
+/**
+ * Brings a Scratch 3 project (`project.json` of an `.sb3`) into the Kids free scene. Scratch is
+ * far wider than the scene, so this is an honest starter import, never a faithful copy: each
+ * sprite keeps its first script, values snap to the scene's closed lists, and everything that
+ * cannot come across is counted in a report the learner (or an adult) can read. The program that
+ * comes out always passes `validateStudioProgram`; nothing is executed from the file.
+ */
+export interface ScratchImportReport {
+  readonly sprites: number;
+  readonly spritesSkipped: number;
+  readonly blocksImported: number;
+  /** Blocks that came across with a value snapped to what the scene allows. */
+  readonly blocksAdjusted: number;
+  /** What did not come across, by reason, most frequent first. */
+  readonly dropped: readonly { readonly what: string; readonly count: number }[];
+}
+
+export interface ScratchImportResult {
+  readonly program: ProjectProgram;
+  readonly backdropId: KidsGalleryBackdropId;
+  readonly positions: Readonly<
+    Record<string, { x: number; y: number; direction: number; size: number }>
+  >;
+  readonly report: ScratchImportReport;
+}
+
+const MAX_SPRITES = 12;
+const MESSAGES = ["hola", "vamos", "listo"] as const;
+const KEYS: Readonly<Record<string, string>> = {
+  space: "Space",
+  "up arrow": "ArrowUp",
+  "down arrow": "ArrowDown",
+  "left arrow": "ArrowLeft",
+  "right arrow": "ArrowRight",
+};
+const DATA_NAME = /^[\p{L}\p{N}][\p{L}\p{N} _-]{0,19}$/u;
+
+type Json = Record<string, unknown>;
+type Primitive = readonly [number, unknown, ...unknown[]];
+interface ScratchBlock {
+  readonly opcode: string;
+  readonly next: string | null;
+  readonly inputs: Record<string, readonly unknown[]>;
+  readonly fields: Record<string, readonly unknown[]>;
+  readonly topLevel: boolean;
+}
+
+const isRecord = (value: unknown): value is Json =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+function nearest<T extends number>(value: number, list: readonly T[]): T {
+  let best = list[0]!;
+  for (const item of list) if (Math.abs(item - value) < Math.abs(best - value)) best = item;
+  return best;
+}
+
+function parseBlock(raw: unknown): ScratchBlock | undefined {
+  if (!isRecord(raw) || typeof raw["opcode"] !== "string") return undefined;
+  const inputs = isRecord(raw["inputs"]) ? raw["inputs"] : {};
+  const fields = isRecord(raw["fields"]) ? raw["fields"] : {};
+  return {
+    opcode: raw["opcode"],
+    next: typeof raw["next"] === "string" ? raw["next"] : null,
+    inputs: Object.fromEntries(
+      Object.entries(inputs).filter((entry): entry is [string, unknown[]] =>
+        Array.isArray(entry[1]),
+      ),
+    ),
+    fields: Object.fromEntries(
+      Object.entries(fields).filter((entry): entry is [string, unknown[]] =>
+        Array.isArray(entry[1]),
+      ),
+    ),
+    topLevel: raw["topLevel"] === true,
+  };
+}
+
+class Converter {
+  adjusted = 0;
+  readonly dropped = new Map<string, number>();
+  readonly variableIds = new Map<string, string>();
+  readonly messages = new Map<string, string>();
+  readonly spriteActorIds = new Map<string, string>();
+  usesPen = false;
+  blocks = new Map<string, ScratchBlock>();
+
+  drop(what: string): void {
+    this.dropped.set(what, (this.dropped.get(what) ?? 0) + 1);
+  }
+
+  adjust<T>(value: T, original: unknown): T {
+    if (value !== original) this.adjusted += 1;
+    return value;
+  }
+
+  // --- inputs -------------------------------------------------------------
+
+  /** A literal typed into a slot, as text. Reporters and unknown shapes give undefined. */
+  literal(block: ScratchBlock, name: string): string | undefined {
+    const input = block.inputs[name];
+    const shadow = input?.[1];
+    if (Array.isArray(shadow) && (shadow as unknown as Primitive).length >= 2) {
+      const [type, value] = shadow as unknown as Primitive;
+      if (type >= 4 && type <= 10 && (typeof value === "string" || typeof value === "number"))
+        return String(value);
+    }
+    return undefined;
+  }
+
+  number(block: ScratchBlock, name: string): number | undefined {
+    const text = this.literal(block, name);
+    if (text === undefined || text.trim() === "") return undefined;
+    const value = Number(text);
+    return Number.isFinite(value) ? value : undefined;
+  }
+
+  /** The value of a dropdown: a shadow menu block's only field, or a plain field. */
+  menu(block: ScratchBlock, name: string): string | undefined {
+    const field = block.fields[name]?.[0];
+    if (typeof field === "string") return field;
+    const reference = block.inputs[name]?.[1];
+    if (typeof reference === "string") {
+      const menu = this.blocks.get(reference);
+      const value = menu === undefined ? undefined : Object.values(menu.fields)[0]?.[0];
+      if (typeof value === "string") return value;
+    }
+    return undefined;
+  }
+
+  substack(block: ScratchBlock, name: string): string | undefined {
+    const reference = block.inputs[name]?.[1];
+    return typeof reference === "string" ? reference : undefined;
+  }
+
+  // --- expressions --------------------------------------------------------
+
+  variable(name: string): Expression | undefined {
+    const id = this.variableIds.get(name);
+    return id === undefined ? undefined : { type: "variable", variableId: id };
+  }
+
+  /** A number the scene can compute with; undefined when it cannot be built. */
+  numberExpression(block: ScratchBlock, name: string): Expression | undefined {
+    const input = block.inputs[name];
+    const shadow = input?.[1];
+    if (Array.isArray(shadow)) {
+      const [type, value] = shadow as unknown as Primitive;
+      if (type === 12 && typeof value === "string") return this.variable(value);
+      const literal = this.number(block, name);
+      if (literal !== undefined) {
+        const small = Math.max(-100, Math.min(100, Math.round(literal * 10) / 10));
+        return { type: "numericLiteral", value: this.adjust(small, literal) };
+      }
+    }
+    if (typeof shadow === "string") {
+      const inner = this.blocks.get(shadow);
+      if (inner !== undefined) return this.reporter(inner);
+    }
+    return undefined;
+  }
+
+  reporter(block: ScratchBlock): Expression | undefined {
+    switch (block.opcode) {
+      case "data_variable": {
+        const name = block.fields["VARIABLE"]?.[0];
+        return typeof name === "string" ? this.variable(name) : undefined;
+      }
+      case "motion_xposition":
+        return { type: "xPosition" };
+      case "motion_yposition":
+        return { type: "yPosition" };
+      case "motion_direction":
+        return { type: "direction" };
+      case "sensing_timer":
+        return { type: "timer" };
+      case "sensing_mousex":
+        return { type: "mouseX" };
+      case "sensing_mousey":
+        return { type: "mouseY" };
+      case "operator_add":
+      case "operator_subtract":
+      case "operator_multiply":
+      case "operator_divide":
+      case "operator_mod": {
+        const left = this.numberExpression(block, "NUM1");
+        const right = this.numberExpression(block, "NUM2");
+        if (left === undefined || right === undefined) return undefined;
+        const type = {
+          operator_add: "add",
+          operator_subtract: "subtract",
+          operator_multiply: "multiply",
+          operator_divide: "divide",
+          operator_mod: "modulo",
+        }[block.opcode] as "add" | "subtract" | "multiply" | "divide" | "modulo";
+        return { type, left, right };
+      }
+      case "operator_random": {
+        const min = this.numberExpression(block, "FROM");
+        const max = this.numberExpression(block, "TO");
+        return min === undefined || max === undefined
+          ? undefined
+          : { type: "randomInteger", min, max };
+      }
+      default:
+        return undefined;
+    }
+  }
+
+  condition(input: readonly unknown[] | undefined): Expression | undefined {
+    const reference = input?.[1];
+    const block = typeof reference === "string" ? this.blocks.get(reference) : undefined;
+    return block === undefined ? undefined : this.booleanBlock(block);
+  }
+
+  booleanBlock(block: ScratchBlock): Expression | undefined {
+    switch (block.opcode) {
+      case "sensing_keypressed": {
+        const key = this.menu(block, "KEY_OPTION")?.toLowerCase();
+        const mapped = key === undefined ? undefined : KEYS[key];
+        return mapped === undefined ? undefined : { type: "keyDown", key: mapped };
+      }
+      case "sensing_mousedown":
+        return { type: "mouseDown" };
+      case "sensing_touchingobject": {
+        const target = this.menu(block, "TOUCHINGOBJECTMENU");
+        if (target === "_edge_") return { ...STUDIO_EDGE_CONDITION };
+        const actorId = target === undefined ? undefined : this.spriteActorIds.get(target);
+        return actorId === undefined ? undefined : { type: "touchingActor", actorId };
+      }
+      case "operator_lt":
+      case "operator_gt":
+      case "operator_equals": {
+        const left = this.numberExpression(block, "OPERAND1");
+        const right = this.numberExpression(block, "OPERAND2");
+        if (left === undefined || right === undefined) return undefined;
+        const type = {
+          operator_lt: "lessThan",
+          operator_gt: "greaterThan",
+          operator_equals: "equals",
+        }[block.opcode] as "lessThan" | "greaterThan" | "equals";
+        return { type, left, right };
+      }
+      case "operator_and":
+      case "operator_or": {
+        const left = this.condition(block.inputs["OPERAND1"]);
+        const right = this.condition(block.inputs["OPERAND2"]);
+        return left === undefined || right === undefined
+          ? undefined
+          : { type: block.opcode === "operator_and" ? "and" : "or", left, right };
+      }
+      case "operator_not": {
+        const value = this.condition(block.inputs["OPERAND"]);
+        return value === undefined ? undefined : { type: "not", value };
+      }
+      default:
+        return undefined;
+    }
+  }
+
+  // --- statements ---------------------------------------------------------
+
+  stack(startId: string | undefined | null): Statement[] {
+    const out: Statement[] = [];
+    let id = startId ?? null;
+    let guard = 0;
+    while (id !== null && guard++ < 500) {
+      const block = this.blocks.get(id);
+      if (block === undefined) break;
+      const statement = this.statement(block);
+      if (statement !== undefined) out.push(statement);
+      id = block.next;
+    }
+    return out;
+  }
+
+  /** x and y of Scratch's 480 by 360 stage, centred and y-up, on the scene's stage. */
+  stageX(x: number): number {
+    return Math.max(0, Math.min(320, Math.round(160 + (x * 2) / 3)));
+  }
+  stageY(y: number): number {
+    return Math.max(-100, Math.min(120, Math.round(10 - (y * 110) / 180)));
+  }
+
+  statement(block: ScratchBlock): Statement | undefined {
+    const num = (name: string) => this.number(block, name);
+    const missing = () => {
+      this.drop(`${block.opcode} (value comes from another block)`);
+      return undefined;
+    };
+    switch (block.opcode) {
+      case "motion_movesteps": {
+        const steps = num("STEPS");
+        if (steps === undefined) return missing();
+        const cells = Math.max(1, Math.min(10, Math.round(Math.abs((steps * 2) / 3) / 20)));
+        const value = Math.sign(steps || 1) * cells * 20;
+        return { type: "move", steps: this.adjust(value, steps) };
+      }
+      case "motion_turnright":
+      case "motion_turnleft": {
+        const degrees = num("DEGREES");
+        if (degrees === undefined) return missing();
+        const amount = nearest(Math.abs(degrees), STUDIO_TURN_AMOUNTS);
+        this.adjust(amount, Math.abs(degrees));
+        return {
+          type: "turn",
+          degrees: block.opcode === "motion_turnright" ? amount : -amount,
+        };
+      }
+      case "motion_pointindirection": {
+        const direction = num("DIRECTION");
+        if (direction === undefined) return missing();
+        const heading = (((direction - 90 + 540) % 360) + 360) % 360;
+        const signed = heading > 180 ? heading - 360 : heading;
+        const choices = [0, 90, 180, -90] as const;
+        const best = choices.reduce((a, b) =>
+          Math.min(Math.abs(a - signed), 360 - Math.abs(a - signed)) <=
+          Math.min(Math.abs(b - signed), 360 - Math.abs(b - signed))
+            ? a
+            : b,
+        );
+        return { type: "pointInDirection", degrees: this.adjust(best, signed) };
+      }
+      case "motion_gotoxy": {
+        const x = num("X");
+        const y = num("Y");
+        if (x === undefined || y === undefined) return missing();
+        this.adjusted += 1;
+        return { type: "goTo", x: this.stageX(x), y: this.stageY(y) };
+      }
+      case "motion_glidesecstoxy": {
+        const x = num("X");
+        const y = num("Y");
+        const seconds = num("SECS");
+        if (x === undefined || y === undefined || seconds === undefined) return missing();
+        this.adjusted += 1;
+        return {
+          type: "glideTo",
+          x: this.stageX(x),
+          y: this.stageY(y),
+          seconds: nearest(seconds, STUDIO_WAIT_SECONDS),
+        };
+      }
+      case "motion_setx": {
+        const x = num("X");
+        if (x === undefined) return missing();
+        this.adjusted += 1;
+        return { type: "setX", x: this.stageX(x) };
+      }
+      case "motion_sety": {
+        const y = num("Y");
+        if (y === undefined) return missing();
+        this.adjusted += 1;
+        return { type: "setY", y: this.stageY(y) };
+      }
+      case "motion_changexby": {
+        const dx = num("DX");
+        if (dx === undefined) return missing();
+        const value = nearest((dx * 2) / 3, STUDIO_SHIFT_AMOUNTS);
+        return { type: "changeX", dx: this.adjust(value, dx) };
+      }
+      case "motion_changeyby": {
+        const dy = num("DY");
+        if (dy === undefined) return missing();
+        const value = nearest((-dy * 110) / 180, STUDIO_SHIFT_AMOUNTS);
+        return { type: "changeY", dy: this.adjust(value, dy) };
+      }
+      case "motion_ifonedgebounce":
+        return { type: "bounceOnEdge" };
+      case "motion_goto": {
+        const target = this.menu(block, "TO");
+        if (target === "_random_") return { type: "goToTarget", target: "random" };
+        if (target === "_mouse_") return { type: "goToTarget", target: "mouse" };
+        this.drop("motion_goto (a sprite as the target)");
+        return undefined;
+      }
+      case "motion_pointtowards": {
+        const target = this.menu(block, "TOWARDS");
+        const actorId = target === undefined ? undefined : this.spriteActorIds.get(target);
+        if (actorId === undefined) {
+          this.drop("motion_pointtowards (not a sprite of this project)");
+          return undefined;
+        }
+        return { type: "pointTowards", actorId };
+      }
+      case "looks_say":
+      case "looks_think":
+      case "looks_sayforsecs":
+      case "looks_thinkforsecs": {
+        const raw = this.literal(block, "MESSAGE")?.trim();
+        if (raw === undefined || raw === "") return missing();
+        const text = raw.slice(0, STUDIO_BUBBLE_MAX_LENGTH);
+        this.adjust(text, raw);
+        const kind = block.opcode.includes("say") ? "say" : "think";
+        if (!block.opcode.endsWith("forsecs")) return { type: kind, text };
+        const seconds = num("SECS");
+        return {
+          type: kind,
+          text,
+          seconds: nearest(seconds ?? 2, STUDIO_WAIT_SECONDS),
+        };
+      }
+      case "looks_show":
+        return { type: "show" };
+      case "looks_hide":
+        return { type: "hide" };
+      case "looks_setsizeto": {
+        const size = num("SIZE");
+        if (size === undefined) return missing();
+        return { type: "setSize", size: this.adjust(nearest(size, STUDIO_SIZES), size) };
+      }
+      case "looks_changesizeby": {
+        const change = num("CHANGE");
+        if (change === undefined) return missing();
+        return {
+          type: "changeSize",
+          delta: this.adjust(nearest(change, STUDIO_SIZE_DELTAS), change),
+        };
+      }
+      case "looks_gotofrontback": {
+        const layer = this.menu(block, "FRONT_BACK");
+        return { type: "goToLayer", layer: layer === "back" ? "back" : "front" };
+      }
+      case "control_wait": {
+        const seconds = num("DURATION");
+        if (seconds === undefined) return missing();
+        return {
+          type: "wait",
+          seconds: this.adjust(nearest(seconds, STUDIO_WAIT_SECONDS), seconds),
+        };
+      }
+      case "control_repeat": {
+        const times = num("TIMES");
+        const body = this.stack(this.substack(block, "SUBSTACK"));
+        if (times === undefined) return missing();
+        if (body.length === 0) return undefined;
+        const count = nearest(times, STUDIO_REPEAT_COUNTS);
+        return { type: "repeat", count: this.adjust(count, times), body: body.slice(0, 3) };
+      }
+      case "control_forever": {
+        const body = this.stack(this.substack(block, "SUBSTACK"));
+        return body.length === 0 ? undefined : { type: "forever", body };
+      }
+      case "control_if":
+      case "control_if_else": {
+        const test = this.condition(block.inputs["CONDITION"]);
+        const then = this.stack(this.substack(block, "SUBSTACK"));
+        const otherwise =
+          block.opcode === "control_if_else" ? this.stack(this.substack(block, "SUBSTACK2")) : [];
+        if (test === undefined) {
+          this.drop(`${block.opcode} (a condition the scene has no block for)`);
+          return undefined;
+        }
+        if (then.length === 0) return undefined;
+        return {
+          type: "if",
+          condition: test,
+          then: then.slice(0, 3),
+          ...(otherwise.length > 0 ? { else: otherwise.slice(0, 3) } : {}),
+        };
+      }
+      case "control_wait_until": {
+        const test = this.condition(block.inputs["CONDITION"]);
+        if (test === undefined) {
+          this.drop("control_wait_until (a condition the scene has no block for)");
+          return undefined;
+        }
+        return { type: "waitUntil", condition: test };
+      }
+      case "control_repeat_until": {
+        const test = this.condition(block.inputs["CONDITION"]);
+        const body = this.stack(this.substack(block, "SUBSTACK"));
+        if (test === undefined) {
+          this.drop("control_repeat_until (a condition the scene has no block for)");
+          return undefined;
+        }
+        return body.length === 0 ? undefined : { type: "repeatUntil", condition: test, body };
+      }
+      case "control_stop": {
+        const option = this.menu(block, "STOP_OPTION");
+        if (option === "all") return { type: "stop", scope: "scene" };
+        if (option === "this script") return { type: "stop", scope: "script" };
+        this.drop("control_stop (other scripts in the sprite)");
+        return undefined;
+      }
+      case "event_broadcast":
+      case "event_broadcastandwait": {
+        const name = this.broadcastName(block);
+        const message = name === undefined ? undefined : this.messageFor(name);
+        if (message === undefined) {
+          this.drop("event_broadcast (more than three different messages)");
+          return undefined;
+        }
+        return {
+          type: "broadcast",
+          message,
+          ...(block.opcode === "event_broadcastandwait" ? { wait: true as const } : {}),
+        };
+      }
+      case "sound_play":
+      case "sound_playuntildone": {
+        const name = this.menu(block, "SOUND_MENU") ?? "";
+        const key = name.trim().toLowerCase();
+        const found = KIDS_SOUNDS.find(
+          (item) => item.es.toLowerCase() === key || item.en.toLowerCase() === key,
+        );
+        if (found === undefined) this.adjusted += 1;
+        return { type: "playSound", soundId: found?.id ?? "kids:pop" };
+      }
+      case "sound_stopallsounds":
+        return { type: "stopSounds" };
+      case "pen_penDown":
+        this.usesPen = true;
+        return { type: "penDown" };
+      case "pen_penUp":
+        this.usesPen = true;
+        return { type: "penUp" };
+      case "pen_clear":
+        this.usesPen = true;
+        return { type: "clearPen" };
+      case "data_setvariableto":
+      case "data_changevariableby": {
+        const name = block.fields["VARIABLE"]?.[0];
+        const id = typeof name === "string" ? this.variableIds.get(name) : undefined;
+        if (id === undefined) {
+          this.drop(`${block.opcode} (more than three variables, or an unsupported name)`);
+          return undefined;
+        }
+        const value = this.numberExpression(block, "VALUE");
+        if (value === undefined) {
+          this.drop(`${block.opcode} (a value the scene cannot compute)`);
+          return undefined;
+        }
+        return block.opcode === "data_setvariableto"
+          ? { type: "setVariable", variableId: id, value }
+          : { type: "changeVariable", variableId: id, delta: value };
+      }
+      default:
+        this.drop(block.opcode);
+        return undefined;
+    }
+  }
+
+  broadcastName(block: ScratchBlock): string | undefined {
+    const shadow = block.inputs["BROADCAST_INPUT"]?.[1];
+    if (Array.isArray(shadow) && typeof shadow[1] === "string") return shadow[1];
+    const reference = block.inputs["BROADCAST_INPUT"]?.[1];
+    if (typeof reference === "string") {
+      const menu = this.blocks.get(reference);
+      const value = menu === undefined ? undefined : Object.values(menu.fields)[0]?.[0];
+      if (typeof value === "string") return value;
+    }
+    return undefined;
+  }
+
+  messageFor(name: string): string | undefined {
+    const known = this.messages.get(name);
+    if (known !== undefined) return known;
+    const preset = MESSAGES[this.messages.size];
+    if (preset === undefined) return undefined;
+    this.messages.set(name, preset);
+    return preset;
+  }
+
+  trigger(hat: ScratchBlock): Trigger | undefined {
+    switch (hat.opcode) {
+      case "event_whenflagclicked":
+        return { type: "greenFlag" };
+      case "event_whenthisspriteclicked":
+        return { type: "onActorClicked" };
+      case "event_whenkeypressed": {
+        const key = (this.menu(hat, "KEY_OPTION") ?? "").toLowerCase();
+        const mapped = KEYS[key];
+        return mapped === undefined ? undefined : { type: "onKeyPressed", key: mapped };
+      }
+      case "event_whenbroadcastreceived": {
+        const name = hat.fields["BROADCAST_OPTION"]?.[0];
+        const message = typeof name === "string" ? this.messageFor(name) : undefined;
+        return message === undefined ? undefined : { type: "onMessage", message };
+      }
+      default:
+        return undefined;
+    }
+  }
+}
+
+const HAT_ORDER = [
+  "event_whenflagclicked",
+  "event_whenkeypressed",
+  "event_whenthisspriteclicked",
+  "event_whenbroadcastreceived",
+];
+
+/** Keeps the statements the scene accepts, one at a time, so one bad block never sinks a script. */
+function legalize(
+  script: Script,
+  baseline: ProjectProgram,
+  position: number,
+  converter: Converter,
+): Script {
+  const kept: Statement[] = [];
+  for (const statement of script.statements) {
+    const candidate: ProjectProgram = {
+      ...baseline,
+      scripts: baseline.scripts.map((item, index) =>
+        index === position ? { ...script, statements: [...kept, statement] } : item,
+      ),
+    };
+    try {
+      validateStudioProgram(candidate);
+      kept.push(statement);
+    } catch {
+      converter.drop(`${statement.type} (outside the Kids scene's limits)`);
+    }
+  }
+  return { ...script, statements: kept };
+}
+
+export function convertScratchProject(raw: unknown): ScratchImportResult {
+  if (!isRecord(raw) || !Array.isArray(raw["targets"]))
+    throw new RangeError("not a Scratch 3 project");
+  const targets = raw["targets"].filter(isRecord);
+  const stage = targets.find((target) => target["isStage"] === true);
+  const sprites = targets.filter((target) => target["isStage"] !== true);
+  if (sprites.length === 0) throw new RangeError("the project has no sprites");
+
+  const converter = new Converter();
+  const used = sprites.slice(0, MAX_SPRITES);
+  used.forEach((sprite, index) => {
+    const character = KIDS_GALLERY_CHARACTERS[index % KIDS_GALLERY_CHARACTERS.length]!;
+    if (typeof sprite["name"] === "string")
+      converter.spriteActorIds.set(sprite["name"], studioActorId(index + 1, character.id));
+  });
+
+  // Up to three variables, from the stage first, then the sprites.
+  const names: string[] = [];
+  for (const target of [stage, ...sprites]) {
+    const variables = isRecord(target?.["variables"]) ? target["variables"] : {};
+    for (const entry of Object.values(variables)) {
+      const name = Array.isArray(entry) ? entry[0] : undefined;
+      if (typeof name === "string" && DATA_NAME.test(name) && !names.includes(name))
+        names.push(name);
+    }
+  }
+  names
+    .slice(0, 3)
+    .forEach((name, index) => converter.variableIds.set(name, `studio-var-${index + 1}`));
+  for (const name of names.slice(3)) converter.drop(`variable "${name}" (more than three)`);
+
+  const scripts: Script[] = [];
+  const positions: Record<string, { x: number; y: number; direction: number; size: number }> = {};
+  const baseline: ProjectProgram = {
+    schema: SCHEMA_VERSION,
+    scripts: [],
+  };
+  used.forEach((sprite, index) => {
+    const character = KIDS_GALLERY_CHARACTERS[index % KIDS_GALLERY_CHARACTERS.length]!;
+    const blocks = new Map<string, ScratchBlock>();
+    const rawBlocks = isRecord(sprite["blocks"]) ? sprite["blocks"] : {};
+    for (const [id, value] of Object.entries(rawBlocks)) {
+      const block = parseBlock(value);
+      if (block !== undefined) blocks.set(id, block);
+    }
+    converter.blocks = blocks;
+    const supported = [...blocks.entries()]
+      .filter(([, block]) => block.topLevel && HAT_ORDER.includes(block.opcode))
+      .sort((a, b) => HAT_ORDER.indexOf(a[1].opcode) - HAT_ORDER.indexOf(b[1].opcode));
+    let trigger: Trigger = { type: "greenFlag" };
+    let statements: Statement[] = [];
+    let imported = 0;
+    for (const [, hat] of supported) {
+      const found = converter.trigger(hat);
+      if (found === undefined) continue;
+      trigger = found;
+      statements = converter.stack(hat.next);
+      imported = 1;
+      break;
+    }
+    // The scene gives each character one script; every other stack is left behind and counted.
+    const stacks = [...blocks.values()].filter((block) => block.topLevel).length;
+    for (let i = 0; i < stacks - imported; i += 1) converter.drop("another script of the sprite");
+    const id = `studio-actor-${index + 1}-${character.id}`;
+    scripts.push({ id, trigger, statements });
+    const x = typeof sprite["x"] === "number" ? sprite["x"] : 0;
+    const y = typeof sprite["y"] === "number" ? sprite["y"] : 0;
+    const direction = typeof sprite["direction"] === "number" ? sprite["direction"] : 90;
+    const size = typeof sprite["size"] === "number" ? sprite["size"] : 100;
+    positions[studioActorId(index + 1, character.id)] = {
+      x: converter.stageX(x),
+      y: converter.stageY(y),
+      direction: Math.round((((direction - 90 + 540) % 360) + 360) % 360) - 180 || 0,
+      size: Math.max(10, Math.min(400, Math.round(size))),
+    };
+  });
+  for (let i = MAX_SPRITES; i < sprites.length; i += 1) converter.drop("sprite (more than twelve)");
+
+  const variables = names.slice(0, 3).map((name, index) => ({
+    id: `studio-var-${index + 1}`,
+    name,
+    initialValue: 0,
+    visible: true,
+  }));
+  const withData: ProjectProgram = {
+    ...baseline,
+    ...(variables.length > 0 ? { variables } : {}),
+    scripts: scripts.map((script) => ({ ...script, statements: [] })),
+  };
+  const draft: ProjectProgram = converter.usesPen ? { ...withData, extensions: ["pen"] } : withData;
+  const legal = scripts.map((script, position) => legalize(script, draft, position, converter));
+  const program = validateStudioProgram({ ...draft, scripts: legal });
+  const kept = legal.reduce((sum, script) => sum + script.statements.length, 0);
+
+  const dropped = [...converter.dropped.entries()]
+    .map(([what, count]) => ({ what, count }))
+    .sort((a, b) => b.count - a.count || a.what.localeCompare(b.what));
+  return {
+    program,
+    backdropId: "forest",
+    positions,
+    report: {
+      sprites: used.length,
+      spritesSkipped: Math.max(0, sprites.length - MAX_SPRITES),
+      blocksImported: kept,
+      blocksAdjusted: converter.adjusted,
+      dropped,
+    },
+  };
+}

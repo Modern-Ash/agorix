@@ -501,3 +501,12 @@ Still open against Scratch, in this order: siguiente disfraz, ir a azar/mouse, a
 - **Siguiente disfraz** is not added yet: in the model a costume is a gallery character, not a per-sprite list, so "next" has no list to cycle. It needs per-actor costume lists first.
 
 Still open, in order: text operators, then importing `.sb3` projects.
+
+## Importing Scratch projects (.sb3), starter import
+
+Mis proyectos → **Importar de Scratch (.sb3)** reads `project.json` from the file (a zip, or the bare JSON) and builds a free scene from it. Scratch is much wider than the scene, so this is a starter import, not a faithful copy, and the learner or an adult sees a report of everything that did not come across.
+
+- **What comes across:** up to twelve sprites (each takes a gallery character), the first script of each (flag, key, click or message), and the blocks the scene has: motion, looks, wait, repeat, forever, if / if-else, wait until, repeat until, stop, broadcast (and wait), play sound (by name when it matches a bundled sound), pen, and up to three numeric variables.
+- **Snapped to the scene's closed lists:** moves, turns, sizes, waits and repeat counts take the nearest allowed value; positions are rescaled from Scratch's 480 by 360 stage; text is cut to 80 characters. Blocks that came across changed are counted as adjusted.
+- **Left behind and counted by reason:** other scripts of a sprite, sprites past twelve, variables past three, more than three different broadcast messages, blocks with no equivalent (costumes, sensing of other sprites, custom blocks, lists, music, effects, ...), and blocks whose value comes from another block that the scene cannot compute.
+- **Safety:** only `project.json` is read, with size limits; nothing in the file is executed; the result must pass the same validation as any scene, and a block the scene rejects is dropped and reported instead of failing the import.

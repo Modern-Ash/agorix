@@ -1,3 +1,4 @@
+import type { ScratchImportResult } from "./kidsScratchImport.js";
 import {
   parseAgorixProject,
   ProjectStore,
@@ -473,6 +474,41 @@ export function importStudioProject(
     store.save(project.id, program, {
       ...imported.metadata,
       actors: { activeId: activeActorId, items: creative.actors! },
+      stage: creative.stage!,
+      assets: creative.assets!,
+    });
+    storage.setItem(INDEX, JSON.stringify([...previous, project]));
+    return project;
+  } catch (error) {
+    store.remove(project.id);
+    throw error;
+  }
+}
+
+/**
+ * Creates a free scene from a converted Scratch project. The program already passed
+ * `validateStudioProgram`; nothing from the file is kept except what that program holds.
+ */
+export function importScratchStudioProject(
+  imported: ScratchImportResult,
+  locale: Locale,
+  store: ProjectStore = new ProjectStore(),
+  storage: StudioStorage | undefined = browserStorage(),
+): KidsStudioProject {
+  if (!storage) throw new Error("studio storage unavailable");
+  const program = validateStudioProgram(imported.program);
+  const creative = creativeForStudio(program, imported.backdropId, locale, imported.positions);
+  const previous = listStudioProjects(storage);
+  const project = { id: nextId(previous), backdropId: imported.backdropId };
+  try {
+    const now = new Date().toISOString();
+    store.save(project.id, program, {
+      createdAt: now,
+      updatedAt: now,
+      missionProgress: 0,
+      hintLevel: 0,
+      locale,
+      actors: { activeId: creative.actors![0]!.id, items: creative.actors! },
       stage: creative.stage!,
       assets: creative.assets!,
     });
