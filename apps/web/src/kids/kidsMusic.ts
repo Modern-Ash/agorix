@@ -217,6 +217,26 @@ export function playKidsMusic(
   return plan.length;
 }
 
+/**
+ * Live play: one executed statement is heard as soon as it runs, on a context kept for the run.
+ * Returns true when the statement was music (so a plain sound is not played twice). Presentation
+ * only, like `playKidsMusic`.
+ */
+export function playKidsMusicEntry(
+  entry: ExecutionTraceEntry,
+  deps: MusicDependencies = {},
+): boolean {
+  const [event] = planMusic([entry]);
+  if (!event) return false;
+  try {
+    active ??= (deps.createContext ?? (() => new AudioContext()))();
+    schedule(active, event, active.currentTime + 0.01);
+  } catch {
+    stopKidsMusic();
+  }
+  return true;
+}
+
 const SOLFEGE = ["Do", "Do#", "Re", "Re#", "Mi", "Fa", "Fa#", "Sol", "Sol#", "La", "La#", "Si"];
 const LETTERS = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 

@@ -103,7 +103,7 @@ export interface MultiActorExecutionOptions extends Pick<ExecutionOptions, "maxS
   readonly initialStage?: MultiActorRuntimeStage;
 }
 
-interface RuntimeActorMutable {
+export interface RuntimeActorMutable {
   id: string;
   name: string;
   world: WorldState;
@@ -113,14 +113,14 @@ interface RuntimeActorMutable {
   scriptIds?: readonly string[];
 }
 
-interface RuntimeStageMutable {
+export interface RuntimeStageMutable {
   backdropId?: string;
   width?: number;
   height?: number;
   actorOrder: string[];
 }
 
-function defaultActor(): ProjectActor {
+export function defaultActor(): ProjectActor {
   return {
     id: "actor:main",
     name: "Actor",
@@ -132,7 +132,7 @@ function defaultActor(): ProjectActor {
   };
 }
 
-function cloneRuntimeStage(stage: RuntimeStageMutable): MultiActorRuntimeStage {
+export function cloneRuntimeStage(stage: RuntimeStageMutable): MultiActorRuntimeStage {
   return {
     actorOrder: [...stage.actorOrder],
     ...(stage.backdropId === undefined ? {} : { backdropId: stage.backdropId }),
@@ -154,7 +154,9 @@ function cloneRuntimeActor(actor: RuntimeActorMutable): MultiActorRuntimeActor {
   };
 }
 
-function snapshotActors(actors: readonly RuntimeActorMutable[]): readonly MultiActorRuntimeActor[] {
+export function snapshotActors(
+  actors: readonly RuntimeActorMutable[],
+): readonly MultiActorRuntimeActor[] {
   return actors.map((actor) => cloneRuntimeActor(actor));
 }
 
@@ -177,7 +179,7 @@ function actorWorld(
   });
 }
 
-function stageForCreative(creative: ProjectCreativeState): RuntimeStageMutable {
+export function stageForCreative(creative: ProjectCreativeState): RuntimeStageMutable {
   const actorInputs = creative.actors?.length ? creative.actors : [defaultActor()];
   const orderedIds = creative.stage?.actorOrder?.length
     ? creative.stage.actorOrder
@@ -190,7 +192,7 @@ function stageForCreative(creative: ProjectCreativeState): RuntimeStageMutable {
   };
 }
 
-function actorsForCreative(
+export function actorsForCreative(
   creative: ProjectCreativeState,
   stage: RuntimeStageMutable,
   goal: WorldState["goal"] | undefined,
@@ -226,7 +228,7 @@ function actorsForCreative(
   });
 }
 
-function scriptsForActor(
+export function scriptsForActor(
   program: ProjectProgram,
   actor: RuntimeActorMutable,
   event: RuntimeEvent,
@@ -258,7 +260,7 @@ function triggerMatchesEvent(
   }
 }
 
-function cloneRuntimeEvent(event: RuntimeEvent): RuntimeEvent {
+export function cloneRuntimeEvent(event: RuntimeEvent): RuntimeEvent {
   switch (event.type) {
     case "start":
       return { type: "start" };
@@ -275,7 +277,7 @@ function cloneRuntimeEvent(event: RuntimeEvent): RuntimeEvent {
   }
 }
 
-function programEventForRuntimeEvent(event: RuntimeEvent): ProgramEvent {
+export function programEventForRuntimeEvent(event: RuntimeEvent): ProgramEvent {
   switch (event.type) {
     case "start":
       return "greenFlag";
@@ -292,7 +294,7 @@ function initialEvents(events: readonly RuntimeEvent[] | undefined): RuntimeEven
   return events === undefined ? [{ type: "start" }] : events.map(cloneRuntimeEvent);
 }
 
-function reasonForActivation(
+export function reasonForActivation(
   event: RuntimeEvent,
   script: Script,
   actor: RuntimeActorMutable,
@@ -311,7 +313,7 @@ function reasonForActivation(
   }
 }
 
-function statementAtNodeId(script: Script, nodeId: string) {
+export function statementAtNodeId(script: Script, nodeId: string) {
   const segments = [...nodeId.matchAll(/\/(statements|procedures|body|then|else)\[(\d+)\]/g)].map(
     (match) => ({
       segment: match[1],
@@ -354,7 +356,7 @@ function statementAtNodeId(script: Script, nodeId: string) {
   return current;
 }
 
-function singleScriptProgram(program: ProjectProgram, script: Script): ProjectProgram {
+export function singleScriptProgram(program: ProjectProgram, script: Script): ProjectProgram {
   return {
     schema: program.schema,
     ...(program.variables === undefined ? {} : { variables: program.variables }),
@@ -364,7 +366,7 @@ function singleScriptProgram(program: ProjectProgram, script: Script): ProjectPr
   };
 }
 
-function remapNodeId(nodeId: string, scriptIndex: number): string {
+export function remapNodeId(nodeId: string, scriptIndex: number): string {
   return nodeId.replace(/^scripts\[0\]/, `scripts[${scriptIndex}]`);
 }
 

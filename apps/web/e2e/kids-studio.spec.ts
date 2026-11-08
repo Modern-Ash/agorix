@@ -78,6 +78,9 @@ test("free scene asks only bundled choices and waits for the child to decide", a
 test("free scene records stage pointer for mouse sensors without storing it in the project", async ({
   page,
 }) => {
+  // A one-shot script reads the pointer once in a live session (as in Scratch), so this check of
+  // pointer capture uses the instant run, which recomputes as the pointer moves.
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/kids");
   await page.evaluate(() => {

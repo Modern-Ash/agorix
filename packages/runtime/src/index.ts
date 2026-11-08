@@ -33,6 +33,15 @@ export {
   type MultiActorTraceEntry,
   type RuntimeEvent,
 } from "./multiActor.js";
+export {
+  LIVE_MAX_ENTRIES,
+  LIVE_MAX_FRAMES,
+  LIVE_MAX_SECONDS,
+  LIVE_TICK_SECONDS,
+  createLiveRuntime,
+  type LiveRuntime,
+  type LiveRuntimeOptions,
+} from "./liveRuntime.js";
 export { RuntimeExecutionError } from "./errors.js";
 export {
   assertAllowedRuntimeOperation,
