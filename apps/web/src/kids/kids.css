@@ -6687,3 +6687,11 @@ button.kids-band-chip {
   margin-top: 12px;
   width: 100%;
 }
+
+/* Live play: turning and resizing ease in instead of snapping. Moves are timed per actor inline
+   so a glide takes exactly its seconds. */
+@media (prefers-reduced-motion: no-preference) {
+  .kids-studio-stage-costume[data-live="true"] {
+    transition: transform 120ms ease-out;
+  }
+}

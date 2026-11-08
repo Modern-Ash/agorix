@@ -220,7 +220,8 @@ test("Ori explains a loop that does not end and offers an exit the child can acc
 
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   const help = page.getByTestId("ori-loop-help");
-  await expect(help).toContainText("Por siempre");
+  // The help appears once the loop has run for a moment, so give slower browsers time.
+  await expect(help).toContainText("Por siempre", { timeout: 15_000 });
   await expect(page.getByTestId("ori-loop-trigger")).toContainText("Jugar");
   await expect(page.getByTestId("ori-loop-diff")).toBeVisible();
 

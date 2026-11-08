@@ -56,7 +56,9 @@ import type { KidsWorld } from "../kidsState.js";
 import { speak } from "../speak.js";
 import {
   createLiveRuntime,
+  createReplayRuntime,
   runMultiActorProgram,
+  type LiveInputLog,
   type LiveRuntime,
   type MultiActorRunResult,
   type MultiActorTraceEntry,
@@ -996,8 +998,13 @@ const SHORTCUT_LABEL: Record<"es" | "en", Record<string, string>> = {
   },
 };
 
+/** Statements that move the sprite; the stage animates the move instead of jumping. */
+const MOVING = new Set(["move", "goTo", "glideTo", "bounceOnEdge"]);
+/** The runtime carries a glide tick by tick; each tick eases over a couple of ticks on screen. */
+const LIVE_STEP_SECONDS = 0.07;
+
 /** Seconds a forever loop runs before Ori offers help with a loop that does not end. */
-const LIVE_FOREVER_NOTICE_SECONDS = 2.5;
+const LIVE_FOREVER_NOTICE_SECONDS = 1.5;
 
 export function KidsStudioScreen({
   id,
@@ -1149,6 +1156,16 @@ export function KidsStudioScreen({
   const [playing, setPlaying] = useState(false);
   const liveRef = useRef<LiveRuntime | null>(null);
   const liveRecorded = useRef(false);
+  // What the last live run read from outside, kept in memory only so it can be watched again.
+  const [lastLive, setLastLive] = useState<{
+    readonly log: LiveInputLog;
+    readonly program: typeof history.current;
+    readonly creative: typeof creative;
+    readonly programJson: string;
+  } | null>(null);
+  const replaying = useRef(false);
+  // Seconds each actor's last move should take on screen, so a glide slides and a step is smooth.
+  const motionRef = useRef<Record<string, number>>({});
   // A forever loop that has run for a few seconds is a loop that does not end: Ori can help.
   const [foreverNoticed, setForeverNoticed] = useState(false);
   const heldKeysRef = useRef<readonly string[]>([]);
@@ -1900,6 +1917,19 @@ export function KidsStudioScreen({
       );
   }
 
+  function captureLiveLog() {
+    const live = liveRef.current;
+    if (!live || replaying.current) return;
+    const log = live.inputLog();
+    if (log.ticks > 0)
+      setLastLive({
+        log,
+        program: history.current,
+        creative,
+        programJson: JSON.stringify(history.current),
+      });
+  }
+
   function recordLiveRun() {
     const live = liveRef.current;
     if (!live || liveRecorded.current) return;
@@ -1917,10 +1947,11 @@ export function KidsStudioScreen({
     let frameId = 0;
     let sawForever = live.result().trace.some((entry) => entry.statementType === "forever");
     const loop = (now: number) => {
-      const produced = live.advance(Math.min(0.1, (now - last) / 1000));
+      const produced = live.advance(Math.min(0.25, (now - last) / 1000));
       last = now;
       for (const entry of produced) {
         presentLiveEntry(entry);
+        if (MOVING.has(entry.statementType)) motionRef.current[entry.actorId] = LIVE_STEP_SECONDS;
         if (entry.statementType === "forever") sawForever = true;
       }
       if (produced.length > 0 || !live.running) setRun(live.result());
@@ -1930,6 +1961,7 @@ export function KidsStudioScreen({
         frameId = window.requestAnimationFrame(loop);
         return;
       }
+      captureLiveLog();
       recordLiveRun();
       setPlaying(false);
     };
@@ -2943,6 +2975,8 @@ export function KidsStudioScreen({
         stopKidsMusic();
         liveRef.current = live;
         liveRecorded.current = false;
+        replaying.current = false;
+        motionRef.current = {};
         setForeverNoticed(false);
         setRun(live.result());
         setFrame(null);
@@ -2956,8 +2990,31 @@ export function KidsStudioScreen({
     }
   }
 
+  /** Watches the last live run again, with the same inputs it had; nothing is recorded twice. */
+  function replay() {
+    if (!lastLive) return;
+    try {
+      stopLive();
+      const again = createReplayRuntime(lastLive.program, lastLive.creative, lastLive.log);
+      stopKidsSounds();
+      stopKidsMusic();
+      liveRef.current = again;
+      liveRecorded.current = true;
+      replaying.current = true;
+      motionRef.current = {};
+      setForeverNoticed(false);
+      setRun(again.result());
+      setFrame(null);
+      setPlaying(true);
+      setError(false);
+    } catch {
+      setError(true);
+    }
+  }
+
   /** Ends the live session where it is; what ran is still recorded as evidence. */
   function stopLive() {
+    captureLiveLog();
     recordLiveRun();
     liveRef.current = null;
     setPlaying(false);
@@ -3661,6 +3718,16 @@ export function KidsStudioScreen({
                   <span aria-hidden="true">⏭</span>
                   <span className="kids-sr-only">{copy.step}</span>
                 </button>
+                {lastLive && lastLive.programJson === JSON.stringify(history.current) ? (
+                  <button
+                    type="button"
+                    className="kids-button kids-replay-button"
+                    disabled={playing}
+                    onClick={replay}
+                  >
+                    <span aria-hidden="true">↺</span> {locale === "es" ? "Otra vez" : "Again"}
+                  </button>
+                ) : null}
               </div>
             }
           >
@@ -3778,6 +3845,11 @@ export function KidsStudioScreen({
                       left: `${Math.max(4, Math.min(90, 8 + x / 4))}%`,
                       top: `${Math.max(8, Math.min(82, 40 + y / 3))}%`,
                       zIndex: (shownStage?.actorOrder?.indexOf(item.id) ?? 0) + 1,
+                      ...(playing && dragPreview?.id !== item.id
+                        ? {
+                            transition: `left ${motionRef.current[item.id] ?? LIVE_STEP_SECONDS}s linear, top ${motionRef.current[item.id] ?? LIVE_STEP_SECONDS}s linear`,
+                          }
+                        : {}),
                     }}
                     aria-label={`${copy.chooseActor}: ${item.name} ${item.id}`}
                     aria-describedby="kids-actor-hint-text"
@@ -3820,7 +3892,12 @@ export function KidsStudioScreen({
                   >
                     <span
                       className="kids-studio-stage-costume"
-                      style={{ transform: `scale(${(sprite?.size ?? 100) / 100})` }}
+                      data-live={playing ? "true" : undefined}
+                      style={{
+                        transform: `scale(${(sprite?.size ?? 100) / 100})${
+                          sprite?.heading ? ` rotate(${sprite.heading}deg)` : ""
+                        }`,
+                      }}
                     >
                       <KidsSprite
                         slot={{ kind: "gallery", id: characterId }}
