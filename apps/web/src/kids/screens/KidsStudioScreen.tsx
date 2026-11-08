@@ -89,6 +89,7 @@ import { StudioCoach, StudioIntentPicker, StudioPrediction } from "./KidsStudioC
 import { KidsPaletteBlock, PaletteRulesContext } from "./KidsPaletteBlock.js";
 import { needHint, paletteFacts, unmetNeed } from "../kidsPaletteRules.js";
 import { editableFields, parseFieldValue } from "../kidsBlockProperties.js";
+import { propertyHelp, type PropertySubject } from "../kidsPropertyHelp.js";
 import {
   CHOICE_CATALOG,
   CHOICE_PROMPT_IDS,
@@ -1401,8 +1402,10 @@ export function KidsStudioScreen({
   );
   const [chooser, setChooser] = useState<"actor" | "backdrop" | null>(null);
   const [oriContext, setOriContext] = useState<
-    "actor" | "backdrop" | "costumes" | "sounds" | "program"
+    "actor" | "backdrop" | "costumes" | "sounds" | "program" | "property"
   >("program");
+  // The property the learner asked Ori about from the Properties card.
+  const [oriProperty, setOriProperty] = useState<PropertySubject | null>(null);
   const [activeCategory, setActiveCategory] = useState<StudioCategory | null>(null);
   const [openCategory, setOpenCategory] = useState<StudioCategory | null>(null);
   useEffect(() => {
@@ -2045,6 +2048,17 @@ export function KidsStudioScreen({
     } catch {
       setError(true);
     }
+  }
+
+  function askOriAboutProperty() {
+    const subject: PropertySubject =
+      inspectorKind === "block" && blockProps
+        ? { kind: "block", fields: editableFields(blockProps, locale).map((field) => field.key) }
+        : inspectorKind === "backdrop"
+          ? { kind: "backdrop" }
+          : { kind: "actor" };
+    setOriProperty(subject);
+    openOri("property");
   }
 
   function openOri(context: typeof oriContext) {
@@ -6811,29 +6825,31 @@ export function KidsStudioScreen({
                   />
                 ) : null}
                 <p className="kids-ori-context" role="status">
-                  {locale === "es"
-                    ? oriContext === "actor"
-                      ? `Estamos trabajando con ${actor?.name ?? "un objeto"}. Podés ubicarlo, elegir un disfraz o pedir una idea para su programa.`
-                      : oriContext === "backdrop"
-                        ? "Elegí un fondo para tu escena. Ori puede ayudarte a decidir qué acción debería ocurrir allí."
-                        : oriContext === "costumes"
-                          ? `Elegí o dibujá un disfraz para ${actor?.name ?? "tu objeto"}. Después podés crear bloques para cambiar su apariencia.`
-                          : oriContext === "sounds"
-                            ? "Escuchá un sonido y agregalo al programa cuando te guste. Ori puede sugerir cuándo usarlo."
-                            : run
-                              ? `Tu última ejecución recorrió ${run.trace.length} bloques. Revisemos qué pasó antes de cambiar el programa.`
-                              : `Estamos editando el programa de ${actor?.name ?? "tu objeto"}. Contame qué querés que haga.`
-                    : oriContext === "actor"
-                      ? `We're working with ${actor?.name ?? "a sprite"}. You can position it, choose a costume, or ask for a program idea.`
-                      : oriContext === "backdrop"
-                        ? "Choose a backdrop for your scene. Ori can help you decide what should happen there."
-                        : oriContext === "costumes"
-                          ? `Choose or draw a costume for ${actor?.name ?? "your sprite"}, then add blocks to change its look.`
-                          : oriContext === "sounds"
-                            ? "Listen to a sound and add it to the program when you like it. Ori can suggest when to use it."
-                            : run
-                              ? `Your last run executed ${run.trace.length} blocks. Let's inspect what happened before changing the program.`
-                              : `We're editing ${actor?.name ?? "your sprite"}'s program. What would you like it to do?`}
+                  {oriContext === "property" && oriProperty
+                    ? propertyHelp(oriProperty, locale)
+                    : locale === "es"
+                      ? oriContext === "actor"
+                        ? `Estamos trabajando con ${actor?.name ?? "un objeto"}. Podés ubicarlo, elegir un disfraz o pedir una idea para su programa.`
+                        : oriContext === "backdrop"
+                          ? "Elegí un fondo para tu escena. Ori puede ayudarte a decidir qué acción debería ocurrir allí."
+                          : oriContext === "costumes"
+                            ? `Elegí o dibujá un disfraz para ${actor?.name ?? "tu objeto"}. Después podés crear bloques para cambiar su apariencia.`
+                            : oriContext === "sounds"
+                              ? "Escuchá un sonido y agregalo al programa cuando te guste. Ori puede sugerir cuándo usarlo."
+                              : run
+                                ? `Tu última ejecución recorrió ${run.trace.length} bloques. Revisemos qué pasó antes de cambiar el programa.`
+                                : `Estamos editando el programa de ${actor?.name ?? "tu objeto"}. Contame qué querés que haga.`
+                      : oriContext === "actor"
+                        ? `We're working with ${actor?.name ?? "a sprite"}. You can position it, choose a costume, or ask for a program idea.`
+                        : oriContext === "backdrop"
+                          ? "Choose a backdrop for your scene. Ori can help you decide what should happen there."
+                          : oriContext === "costumes"
+                            ? `Choose or draw a costume for ${actor?.name ?? "your sprite"}, then add blocks to change its look.`
+                            : oriContext === "sounds"
+                              ? "Listen to a sound and add it to the program when you like it. Ori can suggest when to use it."
+                              : run
+                                ? `Your last run executed ${run.trace.length} blocks. Let's inspect what happened before changing the program.`
+                                : `We're editing ${actor?.name ?? "your sprite"}'s program. What would you like it to do?`}
                 </p>
                 <button
                   type="button"
@@ -7324,6 +7340,14 @@ export function KidsStudioScreen({
                     </div>
                   </>
                 )}
+                <button
+                  type="button"
+                  className="kids-button kids-inspector-ask-ori"
+                  onClick={askOriAboutProperty}
+                >
+                  <span aria-hidden="true">✦</span>{" "}
+                  {locale === "es" ? "Preguntarle a Ori sobre esto" : "Ask Ori about this"}
+                </button>
               </div>
             </section>
           </div>

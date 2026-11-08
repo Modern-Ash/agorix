@@ -6683,3 +6683,7 @@ button.kids-band-chip {
     opacity: 1;
   }
 }
+.kids-inspector-ask-ori {
+  margin-top: 12px;
+  width: 100%;
+}
