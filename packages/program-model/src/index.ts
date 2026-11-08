@@ -78,6 +78,7 @@ export type {
   PointInDirectionStatement,
   PointTowardsStatement,
   BounceOnEdgeStatement,
+  GoToTargetStatement,
   SetXStatement,
   SetYStatement,
   ChangeXStatement,

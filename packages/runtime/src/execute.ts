@@ -549,6 +549,24 @@ function* executeStatement(
     case "goTo":
       state.world = goToWorld(state.world, statement.x, statement.y);
       break;
+    case "goToTarget": {
+      if (statement.target === "random") {
+        // Inside the same bounds the stage shows; the seeded stream keeps a run reproducible.
+        const x = Math.floor(nextRandomUnit(state) * 321);
+        const y = Math.floor(nextRandomUnit(state) * 221) - 100;
+        state.world = goToWorld(state.world, x, y);
+      } else {
+        const pointer = state.options.pointer;
+        const px = pointer !== undefined && Number.isFinite(pointer.x) ? pointer.x : 0;
+        const py = pointer !== undefined && Number.isFinite(pointer.y) ? pointer.y : 0;
+        state.world = goToWorld(
+          state.world,
+          Math.max(0, Math.min(320, px)),
+          Math.max(-100, Math.min(120, py)),
+        );
+      }
+      break;
+    }
     case "setX":
       state.world = goToWorld(state.world, statement.x, state.world.sprite.y);
       break;
@@ -873,6 +891,7 @@ function* executeStatement(
   if (
     statement.type === "move" ||
     statement.type === "goTo" ||
+    statement.type === "goToTarget" ||
     statement.type === "setX" ||
     statement.type === "setY" ||
     statement.type === "changeX" ||

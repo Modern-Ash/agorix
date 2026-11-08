@@ -463,6 +463,11 @@ function validateStatement(
       checkBounds(input.y, -1000, 1000, `${path}.y`);
       return { type: "goTo", x: input.x, y: input.y };
     }
+    case "goToTarget":
+      if (input.target !== "random" && input.target !== "mouse") {
+        fail("INVALID_FIELD_TYPE", `${path}.target`, 'expected "random" or "mouse"', input.target);
+      }
+      return { type: "goToTarget", target: input.target };
     case "setX": {
       if (typeof input.x !== "number") {
         fail("MISSING_FIELD", `${path}.x`, "expected a number", input.x);
@@ -739,6 +744,7 @@ function validateStatement(
           EVENT_MESSAGE_MAX_LENGTH,
           "event message",
         ),
+        ...(input.wait === true ? { wait: true as const } : {}),
       };
     case "setVariable":
       return {

@@ -23,6 +23,7 @@ export const STUDIO_BLOCK_CATEGORY = {
   wait: "looks",
   move: "motion",
   goTo: "motion",
+  goToTarget: "motion",
   setX: "motion",
   setY: "motion",
   changeX: "motion",

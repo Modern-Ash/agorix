@@ -33,6 +33,8 @@ export const JAVA_PROJECTION = {
 export const JAVA_SUPPORT_API = [
   "move",
   "goTo",
+  "goToRandom",
+  "goToMouse",
   "setX",
   "setY",
   "changeX",
@@ -65,6 +67,7 @@ export const JAVA_SUPPORT_API = [
   "setVolume",
   "changeVolume",
   "broadcast",
+  "broadcastAndWait",
   "showVariable",
   "hideVariable",
   "showList",
@@ -106,6 +109,8 @@ export const JAVA_SUPPORT_API = [
 export const JAVA_SUPPORT_STUB = `class Sprite {
     void move(double steps) {}
     void goTo(double x, double y) {}
+    void goToRandom() {}
+    void goToMouse() {}
     void setX(double x) {}
     void setY(double y) {}
     void changeX(double dx) {}
@@ -137,6 +142,7 @@ export const JAVA_SUPPORT_STUB = `class Sprite {
     void setVolume(double volume) {}
     void changeVolume(double delta) {}
     void broadcast(String message) {}
+    void broadcastAndWait(String message) {}
     void showVariable(String name) {}
     void hideVariable(String name) {}
     void showList(String name) {}
@@ -492,6 +498,8 @@ function statement(writer: Writer, node: Statement, nodeId: string, depth: numbe
       );
     case "goTo":
       return line(`goTo(${number(node.x)}, ${number(node.y)})`);
+    case "goToTarget":
+      return line(node.target === "random" ? "goToRandom()" : "goToMouse()");
     case "setX":
       return line(`setX(${number(node.x)})`);
     case "setY":
@@ -563,7 +571,11 @@ function statement(writer: Writer, node: Statement, nodeId: string, depth: numbe
     case "changeVolume":
       return line(`changeVolume(${number(node.delta)})`);
     case "broadcast":
-      return line(`broadcast(${literal(node.message)})`);
+      return line(
+        node.wait === true
+          ? `broadcastAndWait(${literal(node.message)})`
+          : `broadcast(${literal(node.message)})`,
+      );
     case "setVariable":
       return line(`${variableName(writer, node.variableId)} = ${num(node.value, "value")}`);
     case "changeVariable":
@@ -763,6 +775,7 @@ export const javaLanguagePack: LanguagePack = {
   supportedCanonicalOperations: [
     "move",
     "goTo",
+    "goToTarget",
     "setX",
     "setY",
     "changeX",

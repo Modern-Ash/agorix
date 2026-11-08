@@ -260,6 +260,9 @@ const COPY = {
     reset: "Volver al inicio",
     move: "Mover",
     goTo: "Ir a posición",
+    goToRandom: "Ir a un lugar al azar",
+    goToMouse: "Ir al puntero",
+    messageAndWait: "Enviar mensaje y esperar",
     setX: "Fijar x",
     setY: "Fijar y",
     changeX: "Cambiar x en",
@@ -537,6 +540,9 @@ const COPY = {
     reset: "Back to start",
     move: "Move",
     goTo: "Go to position",
+    goToRandom: "Go to a random spot",
+    goToMouse: "Go to the pointer",
+    messageAndWait: "Broadcast message and wait",
     setX: "Set x",
     setY: "Set y",
     changeX: "Change x by",
@@ -2475,6 +2481,8 @@ export function KidsStudioScreen({
         return `${copy.goTo}: ${statement.x}, ${statement.y}`;
       case "glideTo":
         return `${copy.glideTo}: ${statement.x}, ${statement.y} (${statement.seconds}s)`;
+      case "goToTarget":
+        return statement.target === "random" ? copy.goToRandom : copy.goToMouse;
       case "setX":
         return `${copy.setX}: ${statement.x}`;
       case "setY":
@@ -2531,7 +2539,7 @@ export function KidsStudioScreen({
       case "wait":
         return `${copy.wait}: ${statement.seconds}s`;
       case "broadcast":
-        return `${copy.message}: ${statement.message}`;
+        return `${statement.wait === true ? copy.messageAndWait : copy.message}: ${statement.message}`;
       case "setVariable":
       case "changeVariable":
         return `${statement.type === "setVariable" ? copy.setVariable : copy.changeVariable}: ${history.current.variables?.find((item) => item.id === statement.variableId)?.name ?? "?"} ${expressionLabel(statement.type === "setVariable" ? statement.value : statement.delta, history.current)}`;
@@ -5278,6 +5286,21 @@ export function KidsStudioScreen({
                   tone="motion"
                   actions={[
                     {
+                      label: copy.goToRandom,
+                      block: "goToTarget",
+                      onAdd: () => add({ type: "goToTarget", target: "random" }),
+                    },
+                    {
+                      label: copy.goToMouse,
+                      block: "goToTarget",
+                      onAdd: () => add({ type: "goToTarget", target: "mouse" }),
+                    },
+                  ]}
+                />
+                <KidsPaletteBlock
+                  tone="motion"
+                  actions={[
+                    {
                       label: copy.setX,
                       disabled: !inStudioRange(targetX, STUDIO_X_RANGE),
                       block: "setX",
@@ -6530,6 +6553,14 @@ export function KidsStudioScreen({
                   onClick={() => add({ type: "broadcast", message: eventMessage })}
                 >
                   + {copy.message}
+                </button>
+                <button
+                  type="button"
+                  className="kids-button"
+                  data-kids-block="broadcast"
+                  onClick={() => add({ type: "broadcast", message: eventMessage, wait: true })}
+                >
+                  + {copy.messageAndWait}
                 </button>
                 <h3 id={studioCategoryId("data")} tabIndex={-1}>
                   {copy.paletteData}
