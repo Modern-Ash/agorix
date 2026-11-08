@@ -6,6 +6,10 @@ import type { Locale } from "../../i18n.js";
 import type { AgeBand } from "../kidsAgeBand.js";
 import { findingSentence } from "../kidsRunFindings.js";
 import { proposeRunFix, reviewRunFix } from "../kidsRunFixes.js";
+import { requestFindingRephrase, type RephraseResult } from "../kidsFindingRephrase.js";
+
+/** Once the server says there is no model, the button is not offered again in this session. */
+let rephraseUnavailable = false;
 
 /**
  * "Ori vio algo": a quiet marker after a run that looks wrong. Nothing speaks on its own; tapping
@@ -22,6 +26,7 @@ export function KidsRunMarker({
   onApplyProgram,
   onDecision,
   onShown,
+  onRephrased,
 }: {
   readonly finding: Finding;
   readonly program: ProjectProgram;
@@ -36,7 +41,11 @@ export function KidsRunMarker({
   readonly onDecision: (decision: "accept" | "reject") => void;
   /** The marker was shown (once per run). */
   readonly onShown: () => void;
+  /** The learner asked for another way to say it and got one. */
+  readonly onRephrased: () => void;
 }) {
+  const [rephrase, setRephrase] = useState<RephraseResult | "loading" | null>(null);
+  const [unavailable, setUnavailable] = useState(rephraseUnavailable);
   useEffect(() => {
     onShown();
     // Once, when the marker appears for this run.
@@ -73,6 +82,41 @@ export function KidsRunMarker({
               onClick={() => onShow(finding)}
             >
               {es ? "Ver en el programa" : "Show in the program"}
+            </button>
+          ) : null}
+          {rephrase !== null && rephrase !== "loading" && rephrase.status === "ok" ? (
+            <p className="kids-ori-rephrase" data-testid="ori-rephrase">
+              <strong>{es ? "Ori lo dice así:" : "Ori puts it this way:"}</strong> {rephrase.text}
+            </p>
+          ) : null}
+          {rephrase !== null && rephrase !== "loading" && rephrase.status === "failed" ? (
+            <p className="kids-note" data-testid="ori-rephrase-failed">
+              {es
+                ? "Ahora no pude decirlo distinto. La primera frase sigue valiendo."
+                : "I could not say it another way right now. The first sentence still holds."}
+            </p>
+          ) : null}
+          {!unavailable &&
+          (rephrase === null || rephrase === "loading" || rephrase.status !== "ok") ? (
+            <button
+              type="button"
+              className="kids-button kids-ori-rephrase-button"
+              disabled={rephrase === "loading"}
+              onClick={() => {
+                setRephrase("loading");
+                void requestFindingRephrase(finding, locale, band).then((result) => {
+                  if (result.status === "unavailable") {
+                    rephraseUnavailable = true;
+                    setUnavailable(true);
+                    setRephrase(null);
+                    return;
+                  }
+                  setRephrase(result);
+                  if (result.status === "ok") onRephrased();
+                });
+              }}
+            >
+              {es ? "Decímelo de otra forma" : "Say it another way"}
             </button>
           ) : null}
           {finding.traceIndex !== undefined ? (

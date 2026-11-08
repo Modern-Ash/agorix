@@ -25,7 +25,7 @@ const COPY = {
     fallbacksHelp: "Veces que Ori respondió con reglas locales: ofertas y charla.",
     noticed: "Avisos de Ori",
     noticedHelp:
-      "Veces que Ori mostró «vio algo» después de una corrida, y cuántos arreglos que propuso se usaron.",
+      "Avisos «vio algo» de Ori después de una corrida · arreglos propuestos que se usaron · veces que se le pidió decirlo de otra forma.",
     runs: "corridas",
     none: "sin datos",
     clear: "Borrar indicadores",
@@ -49,7 +49,7 @@ const COPY = {
     fallbacksHelp: "Times Ori answered with local rules: offers and chat.",
     noticed: "Ori notices",
     noticedHelp:
-      "Times Ori showed “noticed something” after a run, and how many of its proposed fixes were used.",
+      "Ori “noticed something” notices after a run · proposed fixes that were used · times it was asked to say it another way.",
     runs: "runs",
     none: "no data",
     clear: "Clear indicators",
@@ -110,7 +110,8 @@ export function KidsIndicatorsPanel({ locale }: { readonly locale: Locale }) {
               {copy.noticed} <span aria-hidden="true">ⓘ</span>
             </dt>
             <dd>
-              {summary.totals.oriNoticed} ({summary.totals.oriFixesUsed})
+              {summary.totals.oriNoticed} · {summary.totals.oriFixesUsed} ·{" "}
+              {summary.totals.oriRephrased}
             </dd>
             <dd className="kids-note">{copy.noticedHelp}</dd>
           </div>

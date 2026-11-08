@@ -21,6 +21,7 @@ export const INDICATOR_COUNTERS = [
   "chatFallbacks",
   "oriNoticed",
   "oriFixesUsed",
+  "oriRephrased",
 ] as const;
 export type IndicatorCounter = (typeof INDICATOR_COUNTERS)[number];
 export type IndicatorDay = Readonly<Record<IndicatorCounter, number>>;

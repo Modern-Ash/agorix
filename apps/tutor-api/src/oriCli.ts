@@ -11,7 +11,9 @@ import {
   type OriAgentDecision,
   composeOriInstructions,
   runOriChat,
+  runOriRephrase,
   type OriChatContext,
+  type OriRephraseContext,
   runOriGoalAgent,
   runOriSceneGoalAgent,
   runOriAdvancedStage,
@@ -61,6 +63,8 @@ export interface OriCliService {
   diagnostics(): OriCliDiagnostics;
   respond(context: OriAgentContext): Promise<OriAgentDecision>;
   chat(context: OriChatContext): Promise<string>;
+  /** Another way to say a finding, or null when there is no model or its answer fails a check. */
+  rephrase(context: OriRephraseContext): Promise<string | null>;
   proposeGoal(locale: OriLocale): Promise<OriGoalDecision>;
   proposeSceneGoal(
     locale: OriLocale,
@@ -322,6 +326,15 @@ export function createOriCliService(
       const policy = policyFor("chat");
       const provider = await select(policy);
       return runOriChat(context, provider ? textModelWithFailover(provider, policy) : undefined);
+    },
+    async rephrase(context) {
+      // Same budget and provider routing as the chat: it is a short, coach-like text.
+      const policy = policyFor("chat");
+      const provider = await select(policy);
+      return runOriRephrase(
+        context,
+        provider ? textModelWithFailover(provider, policy) : undefined,
+      );
     },
     async proposeGoal(locale) {
       const policy = policyFor("goals");

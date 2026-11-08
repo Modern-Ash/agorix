@@ -4274,6 +4274,7 @@ export function KidsStudioScreen({
                 locale={locale}
                 band={ageBand ?? "6-8"}
                 onShown={() => bumpIndicator("oriNoticed")}
+                onRephrased={() => bumpIndicator("oriRephrased")}
                 onDecision={(decision) => {
                   // The diff was on screen, so it was inspected; nothing was run on it yet.
                   recordKidsProposalDecision(decision, true, false);

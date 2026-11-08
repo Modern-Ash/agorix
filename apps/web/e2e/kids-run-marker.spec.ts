@@ -176,3 +176,79 @@ test("Ori notices a hidden character and offers to show it, only if accepted", a
   await expect(page.getByRole("button", { name: "Paso", exact: true })).toBeEnabled();
   await expect(page.locator(".kids-ori-noticed")).toHaveCount(0);
 });
+
+async function openNoticedScene(page: import("@playwright/test").Page) {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/kids");
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("agorix.locale", "es");
+    localStorage.setItem(
+      "agorix.kids.progress.v1",
+      JSON.stringify({ onboarded: true, avatar: "🐸", stars: 0, done: {} }),
+    );
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await clickCreateScene(page);
+  await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  await page.getByRole("button", { name: "+ Agregar personaje" }).click();
+  await page.getByRole("combobox", { name: "Cuando" }).selectOption("onMessage");
+  await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  await page.getByRole("button", { name: /Ori vio algo/ }).click();
+}
+
+test("the child can ask Ori to say it another way, and only the finding travels", async ({
+  page,
+}) => {
+  let sent: Record<string, unknown> | undefined;
+  await page.route("**/api/tutor/run-finding/rephrase", async (route) => {
+    sent = JSON.parse(route.request().postData() ?? "{}") as Record<string, unknown>;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ text: "Este personaje espera un mensaje que nadie manda." }),
+    });
+  });
+  await openNoticedScene(page);
+  // Nothing is asked until the child taps.
+  expect(sent).toBeUndefined();
+  const first = await page.locator(".kids-ori-noticed-panel p").first().innerText();
+  await page.getByRole("button", { name: "Decímelo de otra forma" }).click();
+  await expect(page.getByTestId("ori-rephrase")).toContainText("espera un mensaje que nadie manda");
+  // The first sentence is still there, and the new one sits below it.
+  await expect(page.locator(".kids-ori-noticed-panel")).toContainText(first);
+  expect(Object.keys(sent!).sort()).toEqual(["band", "finding", "local", "locale", "version"]);
+  expect(JSON.stringify(sent)).not.toMatch(/vamos|scripts\[|actor:|studio-actor/);
+  const counters = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem("agorix.kids.indicators.v1") ?? "{}"),
+  );
+  expect(
+    Object.values(counters.days as Record<string, { oriRephrased: number }>)[0]!.oriRephrased,
+  ).toBe(1);
+});
+
+test("without a model the button goes away; a failed answer leaves the first sentence", async ({
+  page,
+}) => {
+  await page.route("**/api/tutor/run-finding/rephrase", (route) =>
+    route.fulfill({ status: 503, contentType: "application/json", body: '{"error":"x"}' }),
+  );
+  await openNoticedScene(page);
+  const first = await page.locator(".kids-ori-noticed-panel p").first().innerText();
+  await page.getByRole("button", { name: "Decímelo de otra forma" }).click();
+  await expect(page.getByRole("button", { name: "Decímelo de otra forma" })).toHaveCount(0);
+  await expect(page.locator(".kids-ori-noticed-panel")).toContainText(first);
+  await expect(page.getByTestId("ori-rephrase-failed")).toHaveCount(0);
+});
+
+test("a failing server shows a short note and keeps the button", async ({ page }) => {
+  await page.route("**/api/tutor/run-finding/rephrase", (route) =>
+    route.fulfill({ status: 500, contentType: "application/json", body: '{"error":"x"}' }),
+  );
+  await openNoticedScene(page);
+  await page.getByRole("button", { name: "Decímelo de otra forma" }).click();
+  await expect(page.getByTestId("ori-rephrase-failed")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Decímelo de otra forma" })).toBeVisible();
+});
