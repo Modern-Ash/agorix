@@ -978,6 +978,11 @@ const SHORTCUT_LABEL: Record<"es" | "en", Record<string, string>> = {
   },
 };
 
+/** Statements that move the sprite; the stage animates the move instead of jumping. */
+const MOVING = new Set(["move", "goTo", "glideTo", "bounceOnEdge"]);
+/** A step lasts a couple of ticks on screen so walking looks continuous. */
+const LIVE_STEP_SECONDS = 0.07;
+
 /** Seconds a forever loop runs before Ori offers help with a loop that does not end. */
 const LIVE_FOREVER_NOTICE_SECONDS = 2.5;
 
@@ -1130,6 +1135,8 @@ export function KidsStudioScreen({
   const [playing, setPlaying] = useState(false);
   const liveRef = useRef<LiveRuntime | null>(null);
   const liveRecorded = useRef(false);
+  // Seconds each actor's last move should take on screen, so a glide slides and a step is smooth.
+  const motionRef = useRef<Record<string, number>>({});
   // A forever loop that has run for a few seconds is a loop that does not end: Ori can help.
   const [foreverNoticed, setForeverNoticed] = useState(false);
   const heldKeysRef = useRef<readonly string[]>([]);
@@ -1902,6 +1909,9 @@ export function KidsStudioScreen({
       last = now;
       for (const entry of produced) {
         presentLiveEntry(entry);
+        if (MOVING.has(entry.statementType))
+          motionRef.current[entry.actorId] =
+            entry.statementType === "glideTo" && entry.seconds ? entry.seconds : LIVE_STEP_SECONDS;
         if (entry.statementType === "forever") sawForever = true;
       }
       if (produced.length > 0 || !live.running) setRun(live.result());
@@ -2914,6 +2924,7 @@ export function KidsStudioScreen({
         stopKidsMusic();
         liveRef.current = live;
         liveRecorded.current = false;
+        motionRef.current = {};
         setForeverNoticed(false);
         setRun(live.result());
         setFrame(null);
@@ -3749,6 +3760,11 @@ export function KidsStudioScreen({
                       left: `${Math.max(4, Math.min(90, 8 + x / 4))}%`,
                       top: `${Math.max(8, Math.min(82, 40 + y / 3))}%`,
                       zIndex: (shownStage?.actorOrder?.indexOf(item.id) ?? 0) + 1,
+                      ...(playing && dragPreview?.id !== item.id
+                        ? {
+                            transition: `left ${motionRef.current[item.id] ?? LIVE_STEP_SECONDS}s linear, top ${motionRef.current[item.id] ?? LIVE_STEP_SECONDS}s linear`,
+                          }
+                        : {}),
                     }}
                     aria-label={`${copy.chooseActor}: ${item.name} ${item.id}`}
                     aria-describedby="kids-actor-hint-text"
@@ -3791,7 +3807,12 @@ export function KidsStudioScreen({
                   >
                     <span
                       className="kids-studio-stage-costume"
-                      style={{ transform: `scale(${(sprite?.size ?? 100) / 100})` }}
+                      data-live={playing ? "true" : undefined}
+                      style={{
+                        transform: `scale(${(sprite?.size ?? 100) / 100})${
+                          sprite?.heading ? ` rotate(${sprite.heading}deg)` : ""
+                        }`,
+                      }}
                     >
                       <KidsSprite
                         slot={{ kind: "gallery", id: characterId }}
