@@ -125,7 +125,10 @@ export function KidsTipLayer({ locale }: { readonly locale: Locale }) {
     document.addEventListener("pointerup", () => (touch = null), true);
     document.addEventListener("keydown", onKey, true);
     window.addEventListener("scroll", hide, true);
+    // Says the listeners are attached, so a test (or a tool) does not act a moment too early.
+    document.documentElement.dataset.kidsTips = "on";
     return () => {
+      delete document.documentElement.dataset.kidsTips;
       clear();
       document.removeEventListener("pointerover", onOver, true);
       document.removeEventListener("pointerout", onOut, true);
