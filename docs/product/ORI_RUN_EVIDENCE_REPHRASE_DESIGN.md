@@ -55,9 +55,16 @@ Recommended: **only on request.** The marker opens with the local sentence as to
 
 Any model decision about whether to show a finding, which finding, or what to change; rephrasing fix proposals (they stay deterministic and reviewable); chat about findings.
 
-## Decisions for the owner
+## Decisions (owner, 2026-11-08)
 
-1. **Free-text rephrase with these validators**, or **closed variants** (the model only picks among several pre-written phrasings, as the chat does)? Closed variants are safest but add little over what local copy can do; free text is the real value and the real risk.
-2. **On request only** (recommended) or shown automatically after the marker?
-3. **Default off** with an adult switch (recommended), or on wherever a model is configured?
-4. Is the adult counter wanted?
+1. **Free text, restricted by validation** (not closed variants). Read as: the model writes the sentence, and every check above is applied by code, never by the model; any failure keeps the local sentence.
+2. **On request only.**
+3. **On by default** wherever the host has a model configured (the adult Ori switch still turns it off, because the marker itself is hidden then).
+4. **Adult counter: yes** (`oriRephrased`, whole number).
+
+## As built (PR #1287)
+
+- `@agorix/ori-agent` `rephrase.ts`: the closed request, the instructions, the validation chain and `runOriRephrase`. Check 6 uses the chat's unsafe and personal-data filters on the text (`isUnsafeOrPersonalText`) instead of a full learning-companion response, which needs a mission and a program this path never has.
+- Route `POST /api/tutor/run-finding/rephrase` in the tutor server. It reuses the **chat** capability's policy and rate budget rather than adding a capability to the admin configuration; the chat budget is small, which suits a tap on request.
+- Web: _Decímelo de otra forma_ in the marker. The sentence it sends has the learner's message names taken out. A missing host or model (404, 502, 503, 504) hides the button for the session; any other failure shows one short note and keeps the button. The first sentence is never replaced.
+- A deviation from the text above: a failure now shows a short note, because a button that silently does nothing is worse than one that says so.
