@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "./fixtures.js";
-import { clickCreateScene } from "./helpers.js";
+import { clickCreateScene, passAdultGate, reloadTo } from "./helpers.js";
 
 // Issue #1246: nearly every control says what it does. The audit tabs through a screen with the
 // keyboard (focus shows the tooltip at once) and reports every control that stayed silent, so a
@@ -138,4 +138,36 @@ test("a long press on a phone shows the tip, and a drag does not (#1246)", async
   });
   await expect(tip).toHaveText(/Disfraces: elegí o dibujá/, { timeout: 2500 });
   await bar.dispatchEvent("pointerup", { pointerType: "touch", bubbles: true });
+});
+
+test("My projects controls say what they do (#1246)", async ({ page }) => {
+  test.setTimeout(120_000);
+  await start(page);
+  await page.getByRole("button", { name: "Crear", exact: true }).click();
+  await clickCreateScene(page);
+  await page.getByRole("button", { name: "+ Mover", exact: true }).click();
+  await reloadTo(page, "#/proyectos");
+  await page.getByRole("button", { name: "Mis proyectos" }).click();
+  await expect(page.locator(".kids-project-card").first()).toBeVisible();
+  expect(await silentControls(page), "Mis proyectos").toEqual([]);
+});
+
+test("the grown-ups area controls say what they do (#1246)", async ({ page }) => {
+  test.setTimeout(180_000);
+  await start(page);
+  await page.getByRole("button", { name: "Adultos" }).click();
+  await passAdultGate(page);
+  const tabs = page.getByRole("tab");
+  const count = await tabs.count();
+  expect(count).toBeGreaterThan(1);
+  // Every tab is audited and reported together, so one run lists what is missing.
+  const silent: Record<string, string[]> = {};
+  for (let index = 0; index < count; index += 1) {
+    const tab = tabs.nth(index);
+    await tab.click();
+    await expect(tab).toHaveAttribute("aria-selected", "true");
+    const found = await silentControls(page);
+    if (found.length > 0) silent[`tab ${index + 1}`] = found;
+  }
+  expect(silent, "controls without a tooltip in the grown-ups area").toEqual({});
 });
