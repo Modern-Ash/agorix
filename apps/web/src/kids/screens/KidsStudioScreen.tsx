@@ -4243,6 +4243,16 @@ export function KidsStudioScreen({
               <KidsRunMarker
                 key={`${noticed.id}-${runCount}`}
                 finding={noticed}
+                program={history.current}
+                onApplyProgram={(next, label) => {
+                  try {
+                    persist(recordCanonicalTransaction(history, { label, after: next }).history);
+                    helped.current = true;
+                    reactOri("happy");
+                  } catch {
+                    setError(true);
+                  }
+                }}
                 locale={locale}
                 band={ageBand ?? "6-8"}
                 onShow={(finding) => {
