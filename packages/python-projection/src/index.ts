@@ -139,6 +139,7 @@ export function projectPython(program: ProjectProgram): LanguageProjectionResult
         "think",
         "think_for",
         "next_costume",
+        "set_rotation_style",
         "go_to_random",
         "go_to_mouse",
         "set_x",
@@ -226,6 +227,13 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
         writer,
         nodeId,
         indent + "next_costume(" + JSON.stringify(statement.costumeIds) + ")\n",
+      );
+      return;
+    case "setRotationStyle":
+      writeMapped(
+        writer,
+        nodeId,
+        indent + "set_rotation_style(" + JSON.stringify(statement.style) + ")\n",
       );
       return;
     case "goToTarget":
@@ -923,6 +931,7 @@ const PYTHON_PROJECTION_IDENTIFIERS: ReadonlySet<string> = new Set([
   "think",
   "think_for",
   "next_costume",
+  "set_rotation_style",
   "go_to_random",
   "go_to_mouse",
   "set_x",

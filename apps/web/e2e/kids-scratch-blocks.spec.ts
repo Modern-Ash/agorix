@@ -104,3 +104,19 @@ test("next costume needs a costume the child drew, then cycles back to the chara
     )
     .not.toMatch(/data:image\/(png|webp)/);
 });
+
+test("the rotation style decides how a turn looks on stage", async ({ page }) => {
+  await openScene(page);
+  await page.getByRole("combobox", { name: "Estilo de giro" }).selectOption("none");
+  await page.getByRole("button", { name: "+ Estilo de giro", exact: true }).click();
+  await page.getByRole("button", { name: "+ Girar a la derecha" }).click();
+  await expect(page.locator(".kids-program-block").first()).toContainText(
+    "Estilo de giro: Sin girar",
+  );
+  const costume = page.locator(".kids-studio-stage-actor .kids-studio-stage-costume").first();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  // Turning without rotating leaves the picture upright.
+  await expect
+    .poll(() => costume.evaluate((node) => (node as HTMLElement).style.transform))
+    .not.toContain("rotate");
+});

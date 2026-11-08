@@ -24,6 +24,8 @@ export interface SpriteState extends Position {
   readonly visible?: boolean;
   readonly size?: number;
   readonly costumeId?: string;
+  /** Absent means "all around" (the default), so sprites that never set it look as before. */
+  readonly rotationStyle?: "leftRight" | "none";
   readonly bubble?: LooksBubble;
   /** Absent while every effect is zero, so sprites without effects look exactly as before. */
   readonly effects?: SpriteEffects;
@@ -294,6 +296,9 @@ export function createWorldState(input: WorldStateInput = {}): WorldState {
       visible: input.sprite?.visible ?? true,
       size: normalizeCoordinate(input.sprite?.size ?? 100),
       ...(input.sprite?.costumeId === undefined ? {} : { costumeId: input.sprite.costumeId }),
+      ...(input.sprite?.rotationStyle === "leftRight" || input.sprite?.rotationStyle === "none"
+        ? { rotationStyle: input.sprite.rotationStyle }
+        : {}),
       ...normalizeEffects(input.sprite?.effects),
       ...(input.sprite?.bubble === undefined
         ? {}
@@ -540,6 +545,18 @@ export function clearBubbleWorld(world: WorldState): WorldState {
   const sprite = { ...world.sprite };
   delete sprite.bubble;
   return createWorldState({ ...world, sprite });
+}
+
+export function setRotationStyleWorld(
+  world: WorldState,
+  style: "all" | "leftRight" | "none",
+): WorldState {
+  const sprite = { ...world.sprite };
+  delete sprite.rotationStyle;
+  return createWorldState({
+    ...world,
+    sprite: style === "all" ? sprite : { ...sprite, rotationStyle: style },
+  });
 }
 
 export function showWorld(world: WorldState): WorldState {

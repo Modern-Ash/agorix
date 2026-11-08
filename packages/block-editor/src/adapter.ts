@@ -31,6 +31,7 @@ export type BlockType =
   | "motion_move"
   | "motion_go_to"
   | "looks_next_costume"
+  | "motion_set_rotation_style"
   | "motion_go_to_target"
   | "motion_set_x"
   | "motion_set_y"
@@ -523,6 +524,11 @@ function statementFromBlock(
         costumeIds: Array.isArray(ids) ? ids.map((item) => String(item)) : [],
       };
     }
+    case "motion_set_rotation_style":
+      return {
+        type: "setRotationStyle",
+        style: stringField(block, "style", path) as "all" | "leftRight" | "none",
+      };
     case "motion_go_to_target":
       return {
         type: "goToTarget",
@@ -991,6 +997,8 @@ function statementToBlock(
       return { id, type: "motion_go_to", fields: { x: statement.x, y: statement.y } };
     case "nextCostume":
       return { id, type: "looks_next_costume", fields: { costumeIds: [...statement.costumeIds] } };
+    case "setRotationStyle":
+      return { id, type: "motion_set_rotation_style", fields: { style: statement.style } };
     case "goToTarget":
       return { id, type: "motion_go_to_target", fields: { target: statement.target } };
     case "setX":

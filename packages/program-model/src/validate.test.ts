@@ -608,3 +608,20 @@ describe("next costume", () => {
       expect(() => validateProgram(base({ type: "nextCostume", costumeIds }) as never)).toThrow();
   });
 });
+
+describe("rotation style", () => {
+  const base = (statement: unknown) => ({
+    schema: "agorix/program/v1",
+    scripts: [{ id: "a", trigger: { type: "onStart" }, statements: [statement] }],
+  });
+  it("accepts the three styles and rejects anything else", () => {
+    for (const style of ["all", "leftRight", "none"])
+      expect(() =>
+        validateProgram(base({ type: "setRotationStyle", style }) as never),
+      ).not.toThrow();
+    expect(() =>
+      validateProgram(base({ type: "setRotationStyle", style: "spin" }) as never),
+    ).toThrow();
+    expect(() => validateProgram(base({ type: "setRotationStyle" }) as never)).toThrow();
+  });
+});

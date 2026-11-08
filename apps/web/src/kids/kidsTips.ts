@@ -35,6 +35,10 @@ export const BLOCK_TIPS: Readonly<Record<string, Tip>> = {
     es: "Pasar al siguiente disfraz",
     en: "Change to the next costume",
   },
+  setRotationStyle: {
+    es: "Elegir cómo se ve al girar: toda la vuelta o solo de lado",
+    en: "Choose how it looks when it turns",
+  },
   goToTarget: {
     es: "Ir a un lugar al azar o hacia el puntero",
     en: "Jump to a random spot or to the pointer",

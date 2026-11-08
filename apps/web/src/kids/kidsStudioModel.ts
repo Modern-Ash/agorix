@@ -61,6 +61,7 @@ export type StudioStatement = Extract<
       | "move"
       | "goTo"
       | "goToTarget"
+      | "setRotationStyle"
       | "setX"
       | "setY"
       | "changeX"
@@ -406,6 +407,10 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0, arity
     );
   if (statement.type === "goTo")
     return inStudioRange(statement.x, STUDIO_X_RANGE) && inStudioRange(statement.y, STUDIO_Y_RANGE);
+  if (statement.type === "setRotationStyle")
+    return (
+      statement.style === "all" || statement.style === "leftRight" || statement.style === "none"
+    );
   if (statement.type === "goToTarget")
     return statement.target === "random" || statement.target === "mouse";
   if (statement.type === "setX") return inStudioRange(statement.x, STUDIO_X_RANGE);

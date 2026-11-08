@@ -261,6 +261,10 @@ const COPY = {
     move: "Mover",
     goTo: "Ir a posición",
     nextCostume: "Siguiente disfraz",
+    rotationStyle: "Estilo de giro",
+    rotationAll: "Toda la vuelta",
+    rotationLeftRight: "Izquierda y derecha",
+    rotationNone: "Sin girar",
     goToRandom: "Ir a un lugar al azar",
     goToMouse: "Ir al puntero",
     messageAndWait: "Enviar mensaje y esperar",
@@ -542,6 +546,10 @@ const COPY = {
     move: "Move",
     goTo: "Go to position",
     nextCostume: "Next costume",
+    rotationStyle: "Rotation style",
+    rotationAll: "All around",
+    rotationLeftRight: "Left and right",
+    rotationNone: "Don't rotate",
     goToRandom: "Go to a random spot",
     goToMouse: "Go to the pointer",
     messageAndWait: "Broadcast message and wait",
@@ -872,6 +880,19 @@ const stageY = (y: number) => Math.max(8, Math.min(82, 40 + y / 3));
 
 type StudioEvent = "greenFlag" | "onActorClicked" | "onKeyPressed" | "onMessage";
 
+/**
+ * How the picture follows the heading: all around (default), mirrored when it faces left, or not
+ * at all, matching Scratch's three rotation styles.
+ */
+function costumeTurn(
+  sprite: { readonly heading: number; readonly rotationStyle?: "leftRight" | "none" } | undefined,
+): string {
+  if (!sprite || sprite.rotationStyle === "none") return "";
+  if (sprite.rotationStyle === "leftRight")
+    return Math.cos((sprite.heading * Math.PI) / 180) < -1e-9 ? " scaleX(-1)" : "";
+  return sprite.heading ? ` rotate(${sprite.heading}deg)` : "";
+}
+
 function expressionLabel(
   value: Expression,
   program: ProjectProgram,
@@ -1079,6 +1100,7 @@ export function KidsStudioScreen({
   const [effectDelta, setEffectDelta] = useState(25);
   const [waitSeconds, setWaitSeconds] = useState(1);
   const [shiftAmount, setShiftAmount] = useState<number>(40);
+  const [rotationStyle, setRotationStyle] = useState<"all" | "leftRight" | "none">("all");
   const [stopScope, setStopScope] = useState<"script" | "actor" | "scene">("script");
   const [choicePromptId, setChoicePromptId] = useState<ChoicePromptId>("path");
   const [volume, setVolume] = useState(100);
@@ -2485,6 +2507,14 @@ export function KidsStudioScreen({
         return `${copy.glideTo}: ${statement.x}, ${statement.y} (${statement.seconds}s)`;
       case "nextCostume":
         return `${copy.nextCostume} (${statement.costumeIds.length})`;
+      case "setRotationStyle":
+        return `${copy.rotationStyle}: ${
+          statement.style === "all"
+            ? copy.rotationAll
+            : statement.style === "leftRight"
+              ? copy.rotationLeftRight
+              : copy.rotationNone
+        }`;
       case "goToTarget":
         return statement.target === "random" ? copy.goToRandom : copy.goToMouse;
       case "setX":
@@ -3910,9 +3940,7 @@ export function KidsStudioScreen({
                       className="kids-studio-stage-costume"
                       data-live={playing ? "true" : undefined}
                       style={{
-                        transform: `scale(${(sprite?.size ?? 100) / 100})${
-                          sprite?.heading ? ` rotate(${sprite.heading}deg)` : ""
-                        }`,
+                        transform: `scale(${(sprite?.size ?? 100) / 100})${costumeTurn(sprite)}`,
                       }}
                     >
                       <KidsSprite
@@ -5289,6 +5317,28 @@ export function KidsStudioScreen({
                     value={targetY}
                     onChange={(event) => setTargetY(Number(event.target.value))}
                   />
+                </KidsPaletteBlock>
+                <KidsPaletteBlock
+                  tone="motion"
+                  actions={[
+                    {
+                      label: copy.rotationStyle,
+                      block: "setRotationStyle",
+                      onAdd: () => add({ type: "setRotationStyle", style: rotationStyle }),
+                    },
+                  ]}
+                >
+                  <select
+                    aria-label={copy.rotationStyle}
+                    value={rotationStyle}
+                    onChange={(event) =>
+                      setRotationStyle(event.target.value as "all" | "leftRight" | "none")
+                    }
+                  >
+                    <option value="all">{copy.rotationAll}</option>
+                    <option value="leftRight">{copy.rotationLeftRight}</option>
+                    <option value="none">{copy.rotationNone}</option>
+                  </select>
                 </KidsPaletteBlock>
                 <KidsPaletteBlock
                   tone="motion"

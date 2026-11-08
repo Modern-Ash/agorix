@@ -516,3 +516,7 @@ Mis proyectos → **Importar de Scratch (.sb3)** reads `project.json` from the f
 - **Siguiente disfraz** (`nextCostume` with a fixed list): moves to the next costume in the list and wraps around. In the model a costume is a gallery character or a drawing the child made, not a per-sprite list, so the block carries its own list: the character's own costume first, then the child's drawn costumes at the moment the block is added (a costume drawn later needs the block added again). A current costume that is not in the list goes to the first one.
 - With nothing drawn there is nothing to change to, so the block stays in the palette dimmed with its reason ("Primero dibujá otro disfraz"), like the other blocks that need something first.
 - The Scratch importer does not map `next costume`: a Scratch sprite's costumes are not ours.
+
+## Rotation style (third Scratch-compatibility increment)
+
+- **Estilo de giro** (`setRotationStyle`: `all`, `leftRight`, `none`): since Turn now rotates the character on stage, games need Scratch's way to keep it from going upside down. _Toda la vuelta_ is the default and what a sprite does if the block is never used; _Izquierda y derecha_ mirrors the picture when it faces left; _Sin girar_ keeps it upright. The style lives in the sprite's world state and the stage draws it from there; the Scratch importer maps `set rotation style`.

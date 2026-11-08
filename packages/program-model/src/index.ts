@@ -80,6 +80,8 @@ export type {
   BounceOnEdgeStatement,
   GoToTargetStatement,
   NextCostumeStatement,
+  SetRotationStyleStatement,
+  RotationStyle,
   SetXStatement,
   SetYStatement,
   ChangeXStatement,
