@@ -1,5 +1,16 @@
 import type { ExecutionTraceEntry } from "@agorix/runtime";
 import { KIDS_EXTRA_SOUNDS, type KidsSoundCategory } from "./kidsSoundCatalog.js";
+import { voiced } from "./kidsSoundVoices.js";
+
+/** Filtered-noise texture (air, water, footsteps). The filter sweeps startHz to endHz. */
+export interface SoundNoise {
+  readonly filter: BiquadFilterType;
+  readonly startHz: number;
+  readonly endHz: number;
+  readonly q: number;
+  /** Seconds of fade-in before the noise decays; 0 is an instant hit. */
+  readonly attack: number;
+}
 
 export interface SoundParameters {
   readonly wave: OscillatorType;
@@ -7,6 +18,14 @@ export interface SoundParameters {
   readonly endHz: number;
   readonly duration: number;
   readonly gain: number;
+  /** Melody: evenly spaced pitches replacing the single startHz-to-endHz glide. */
+  readonly notes?: readonly number[];
+  /** Overtone ratios stacked on the base pitch (a bell is inharmonic, not one pure tone). */
+  readonly partials?: readonly number[];
+  /** Pitch wobble: LFO rate in Hz and depth in Hz (voices, buzzing, trills). */
+  readonly vibrato?: { readonly hz: number; readonly depth: number };
+  /** When set the sound is noise only, shaped by a sweeping filter. */
+  readonly noise?: SoundNoise;
 }
 
 const CORE_SOUNDS = [
@@ -110,7 +129,9 @@ export interface KidsSound {
   readonly parameters: SoundParameters;
 }
 
-export const KIDS_SOUNDS: readonly KidsSound[] = [...CORE_SOUNDS, ...KIDS_EXTRA_SOUNDS];
+export const KIDS_SOUNDS: readonly KidsSound[] = [...CORE_SOUNDS, ...KIDS_EXTRA_SOUNDS].map(
+  (item) => ({ ...item, parameters: voiced(item.id, item.parameters) }),
+);
 
 export const KIDS_CUSTOM_SOUND_ID = "kids:custom";
 export type KidsSoundId = string;
