@@ -338,4 +338,77 @@ describe("run evidence findings", () => {
       );
     });
   });
+
+  describe("a loop that does not end", () => {
+    it("finds a forever the run had to cut off, with how many blocks ran inside it", () => {
+      const [finding] = diagnose([
+        {
+          id: "a",
+          trigger: flag,
+          statements: [{ type: "forever", body: [{ type: "move", steps: 1 }] }],
+        },
+      ]).filter((item) => item.kind === "loopNeverEnds");
+      expect(finding).toMatchObject({
+        loop: "forever",
+        nodeIds: ["scripts[0]/statements[0]"],
+        traceIndex: 0,
+      });
+      expect(finding!.counts["passes"]).toBeGreaterThan(100);
+    });
+
+    it("finds a repeat until that never reached its end", () => {
+      const found = diagnose([
+        {
+          id: "a",
+          trigger: flag,
+          statements: [
+            {
+              type: "repeatUntil",
+              condition: {
+                type: "greaterThan",
+                left: { type: "xPosition" },
+                right: { type: "numericLiteral", value: 900 },
+              },
+              body: [{ type: "turn", degrees: 1 }],
+            },
+          ],
+        },
+      ]).filter((item) => item.kind === "loopNeverEnds");
+      expect(found[0]).toMatchObject({ loop: "repeatUntil" });
+    });
+
+    it("finds a wait until that timed out", () => {
+      const found = diagnose([
+        {
+          id: "a",
+          trigger: flag,
+          statements: [{ type: "waitUntil", condition: { type: "keyDown", key: "Space" } }],
+        },
+      ]).filter((item) => item.kind === "loopNeverEnds");
+      expect(found[0]).toMatchObject({ loop: "waitUntil" });
+    });
+
+    it("is quiet for loops that ended, and a provider only learns which loop", () => {
+      const ended = diagnose([
+        {
+          id: "a",
+          trigger: flag,
+          statements: [{ type: "repeat", count: 3, body: [{ type: "move", steps: 20 }] }],
+        },
+      ]);
+      expect(ended.some((item) => item.kind === "loopNeverEnds")).toBe(false);
+      const [finding] = diagnose([
+        {
+          id: "a",
+          trigger: flag,
+          statements: [{ type: "forever", body: [{ type: "move", steps: 1 }] }],
+        },
+      ]).filter((item) => item.kind === "loopNeverEnds");
+      expect(toProviderFinding(finding!)).toEqual({
+        kind: "loopNeverEnds",
+        counts: { passes: finding!.counts["passes"] },
+        loop: "forever",
+      });
+    });
+  });
 });

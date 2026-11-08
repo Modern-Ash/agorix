@@ -24,6 +24,13 @@ test("Ori notices a condition that never held, and points at its block", async (
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   const marker = page.getByRole("button", { name: /Ori vio algo/ });
   await expect(marker).toBeVisible();
+  // The adult counter notes that Ori noticed something: a whole number, nothing else.
+  const counters = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem("agorix.kids.indicators.v1") ?? "{}"),
+  );
+  expect(
+    Object.values(counters.days as Record<string, { oriNoticed: number }>)[0]!.oriNoticed,
+  ).toBe(1);
   await marker.click();
   await expect(page.locator(".kids-ori-noticed-panel")).toContainText("dijo que no");
   await page.getByRole("button", { name: "Ver en el programa" }).click();
@@ -84,6 +91,19 @@ test("Ori offers the message that is missing, shows the block, and only adds it 
   await page.getByRole("group", { name: "Personajes" }).getByRole("button").last().click();
   await page.getByRole("button", { name: /Ori vio algo/ }).click();
   await page.getByRole("button", { name: "Usar este cambio" }).click();
+  // The decision is in the evidence log (no text) and counts as a fix used.
+  const events = await page.evaluate(() =>
+    JSON.parse(sessionStorage.getItem("agorix.kids.reflections.v1") ?? "[]"),
+  );
+  expect(events).toContainEqual(
+    expect.objectContaining({ kind: "proposalDecided", decision: "accept" }),
+  );
+  const counters = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem("agorix.kids.indicators.v1") ?? "{}"),
+  );
+  expect(
+    Object.values(counters.days as Record<string, { oriFixesUsed: number }>)[0]!.oriFixesUsed,
+  ).toBe(1);
   await page.getByRole("group", { name: "Personajes" }).getByRole("button").first().click();
   await expect(page.locator(".kids-program-block")).toHaveCount(2);
   await expect(page.locator(".kids-program-block").last()).toContainText("Enviar mensaje");

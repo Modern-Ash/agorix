@@ -52,6 +52,7 @@ import { findingBlockIndex, findingScriptIndex } from "../kidsRunFindings.js";
 import { diagnoseLoop } from "../kidsOriLoopDebug.js";
 import { KidsLoopHelp } from "./KidsLoopHelp.js";
 import { KidsRunMarker } from "./KidsRunMarker.js";
+import { bumpIndicator } from "../kidsIndicators.js";
 import { KidsTimeline } from "./KidsTimeline.js";
 import { KidsSceneGoalPanel } from "./KidsSceneGoalPanel.js";
 import { sceneGoalValid } from "../kidsSceneGoal.js";
@@ -1891,8 +1892,11 @@ export function KidsStudioScreen({
     if (!run || playing || !oriSuggestions) return undefined;
     if (diagnoseLoop(history.current, loopRun ?? run, activeActorId, locale) !== null)
       return undefined;
+    // A loop that does not end has its own help, with its own proposal: the marker leaves it be.
     return surfacedFinding(
-      diagnoseRun({ program: history.current, creative, run, actorId: activeActorId }),
+      diagnoseRun({ program: history.current, creative, run, actorId: activeActorId }).filter(
+        (finding) => finding.kind !== "loopNeverEnds",
+      ),
     );
     // history.current is a ref read; the run and the character decide when to look again.
   }, [run, playing, oriSuggestions, activeActorId, locale, creative, loopRun]);
@@ -4269,6 +4273,12 @@ export function KidsStudioScreen({
                 }}
                 locale={locale}
                 band={ageBand ?? "6-8"}
+                onShown={() => bumpIndicator("oriNoticed")}
+                onDecision={(decision) => {
+                  // The diff was on screen, so it was inspected; nothing was run on it yet.
+                  recordKidsProposalDecision(decision, true, false);
+                  if (decision === "accept") bumpIndicator("oriFixesUsed");
+                }}
                 onShowWhen={(traceIndex) => {
                   setFrame(Math.min(traceIndex, (run?.frames.length ?? 1) - 1));
                   document

@@ -1,8 +1,9 @@
-import type {
-  ProjectCreativeState,
-  ProjectProgram,
-  Script,
-  Statement,
+import {
+  REPEAT_UNTIL_MAX_PASSES,
+  type ProjectCreativeState,
+  type ProjectProgram,
+  type Script,
+  type Statement,
 } from "@agorix/program-model";
 import type { MultiActorRunResult, MultiActorTraceEntry } from "@agorix/runtime";
 
@@ -18,7 +19,11 @@ export type FindingKind =
   | "predictionMismatch"
   | "hiddenCharacter"
   | "soundSilent"
-  | "workingAgainstEachOther";
+  | "workingAgainstEachOther"
+  | "loopNeverEnds";
+
+/** Which loop did not end. */
+export type LoopKindFound = "forever" | "repeatUntil" | "waitUntil";
 
 /** The event a script waits for, as a closed shape. `name` is a key or message name. */
 export interface FindingEvent {
@@ -42,6 +47,8 @@ export interface Finding {
    */
   readonly traceIndex?: number;
   readonly event?: FindingEvent;
+  /** For `loopNeverEnds`: which loop. */
+  readonly loop?: LoopKindFound;
   /** 0 to 1. Only the most confident finding is surfaced; low ones are kept for tests and tools. */
   readonly confidence: number;
 }
@@ -341,7 +348,49 @@ export function diagnoseRun(input: DiagnoseInput): readonly Finding[] {
       }
   }
 
-  // 7. The learner's guess did not match what happened.
+  // 7. A loop the run had to cut off: a forever, a repeat until or a wait until that never ended.
+  program.scripts.forEach((script, scriptIndex) => {
+    script.statements.forEach((statement, statementIndex) => {
+      if (
+        statement.type !== "forever" &&
+        statement.type !== "repeatUntil" &&
+        statement.type !== "waitUntil"
+      )
+        return;
+      const base = `scripts[${scriptIndex}]/statements[${statementIndex}]`;
+      const own = run.trace
+        .map((entry, index) => ({ entry, index }))
+        .filter(
+          ({ entry }) =>
+            entry.scriptId === script.id &&
+            (entry.nodeId === base || entry.nodeId.startsWith(`${base}/`)),
+        );
+      const first = own[0];
+      if (first === undefined || !wants(first.entry.actorId)) return;
+      let passes = 0;
+      if (statement.type === "forever") {
+        if (run.outcome !== "budget-exceeded") return;
+        passes = own.filter(({ entry }) => entry.statementType !== "forever").length;
+      } else if (statement.type === "repeatUntil") {
+        passes = own.filter(({ entry }) => entry.nodeId === `${base}/body[0]`).length;
+        if (passes < REPEAT_UNTIL_MAX_PASSES) return;
+      } else {
+        if (!own.some(({ entry }) => entry.note?.startsWith("waitUntil"))) return;
+      }
+      out.push({
+        id: `loopNeverEnds:${base}`,
+        kind: "loopNeverEnds",
+        actorId: first.entry.actorId,
+        nodeIds: [base],
+        counts: { passes },
+        traceIndex: first.index,
+        loop: statement.type,
+        confidence: 0.9,
+      });
+    });
+  });
+
+  // 8. The learner's guess did not match what happened.
   if (input.predictionMatched === false && final)
     out.push({
       id: "predictionMismatch",
@@ -369,6 +418,7 @@ export interface ProviderFinding {
   readonly kind: FindingKind;
   readonly counts: Readonly<Record<string, number>>;
   readonly eventType?: FindingEvent["type"];
+  readonly loop?: LoopKindFound;
 }
 
 export function toProviderFinding(finding: Finding): ProviderFinding {
@@ -376,5 +426,6 @@ export function toProviderFinding(finding: Finding): ProviderFinding {
     kind: finding.kind,
     counts: { ...finding.counts },
     ...(finding.event === undefined ? {} : { eventType: finding.event.type }),
+    ...(finding.loop === undefined ? {} : { loop: finding.loop }),
   };
 }

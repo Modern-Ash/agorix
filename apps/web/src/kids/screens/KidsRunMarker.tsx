@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { acceptProposal, rejectProposal } from "@agorix/proposals";
 import type { ProjectProgram } from "@agorix/program-model";
 import type { Finding } from "@agorix/run-evidence";
@@ -20,6 +20,8 @@ export function KidsRunMarker({
   onShow,
   onShowWhen,
   onApplyProgram,
+  onDecision,
+  onShown,
 }: {
   readonly finding: Finding;
   readonly program: ProjectProgram;
@@ -30,7 +32,15 @@ export function KidsRunMarker({
   readonly onShowWhen: (traceIndex: number) => void;
   /** The learner accepted Ori's change: the new canonical program, recorded as one undoable step. */
   readonly onApplyProgram: (program: ProjectProgram, label: string) => void;
+  /** The learner decided on the proposal, for the evidence log and the adult counters. */
+  readonly onDecision: (decision: "accept" | "reject") => void;
+  /** The marker was shown (once per run). */
+  readonly onShown: () => void;
 }) {
+  useEffect(() => {
+    onShown();
+    // Once, when the marker appears for this run.
+  }, []);
   const [open, setOpen] = useState(false);
   const [declined, setDeclined] = useState(false);
   const es = locale === "es";
@@ -96,9 +106,10 @@ export function KidsRunMarker({
                 <button
                   type="button"
                   className="kids-button kids-primary"
-                  onClick={() =>
-                    onApplyProgram(acceptProposal(program, review).program, "Ori run fix")
-                  }
+                  onClick={() => {
+                    onDecision("accept");
+                    onApplyProgram(acceptProposal(program, review).program, "Ori run fix");
+                  }}
                 >
                   {es ? "Usar este cambio" : "Use this change"}
                 </button>
@@ -107,6 +118,7 @@ export function KidsRunMarker({
                   className="kids-button"
                   onClick={() => {
                     rejectProposal(program, review);
+                    onDecision("reject");
                     setDeclined(true);
                   }}
                 >
