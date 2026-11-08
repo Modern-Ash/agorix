@@ -56,7 +56,7 @@ Rule for adding a kind: a fixture project where it fires, one where it must not,
 3. Time stamps and the timeline; "Ver cuándo pasó"; works for replayed runs.
 4. Kinds 4–6.
 5. Fix proposals for the findings that have an obvious, small fix; visible diff.
-6. Optional rephrasing through the tutor API with structured input only.
+6. Optional rephrasing through the tutor API with structured input only. Design for review: [ORI_RUN_EVIDENCE_REPHRASE_DESIGN.md](ORI_RUN_EVIDENCE_REPHRASE_DESIGN.md).
 
 ## Validation
 
