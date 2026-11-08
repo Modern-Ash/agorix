@@ -158,6 +158,18 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
           " seconds\n",
       );
       return;
+    case "setX":
+      writeMapped(writer, nodeId, indent + "set x to " + formatNumber(statement.x) + "\n");
+      return;
+    case "setY":
+      writeMapped(writer, nodeId, indent + "set y to " + formatNumber(statement.y) + "\n");
+      return;
+    case "changeX":
+      writeMapped(writer, nodeId, indent + "change x by " + formatNumber(statement.dx) + "\n");
+      return;
+    case "changeY":
+      writeMapped(writer, nodeId, indent + "change y by " + formatNumber(statement.dy) + "\n");
+      return;
     case "goTo":
       writeMapped(
         writer,
@@ -277,10 +289,30 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
       writeMapped(writer, nodeId, indent + "bounce on edge\n");
       return;
     case "say":
-      writeMapped(writer, nodeId, indent + "say " + JSON.stringify(statement.text) + "\n");
+      writeMapped(
+        writer,
+        nodeId,
+        indent +
+          "say " +
+          JSON.stringify(statement.text) +
+          (statement.seconds === undefined
+            ? ""
+            : " for " + formatNumber(statement.seconds) + " seconds") +
+          "\n",
+      );
       return;
     case "think":
-      writeMapped(writer, nodeId, indent + "think " + JSON.stringify(statement.text) + "\n");
+      writeMapped(
+        writer,
+        nodeId,
+        indent +
+          "think " +
+          JSON.stringify(statement.text) +
+          (statement.seconds === undefined
+            ? ""
+            : " for " + formatNumber(statement.seconds) + " seconds") +
+          "\n",
+      );
       return;
     case "show":
       writeMapped(writer, nodeId, indent + "show\n");
@@ -526,6 +558,8 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return "distance to " + JSON.stringify(expression.actorId);
     case "xPosition":
       return "x position";
+    case "direction":
+      return "direction";
     case "yPosition":
       return "y position";
     case "timer":

@@ -33,6 +33,10 @@ export const JAVA_PROJECTION = {
 export const JAVA_SUPPORT_API = [
   "move",
   "goTo",
+  "setX",
+  "setY",
+  "changeX",
+  "changeY",
   "glideTo",
   "turn",
   "pointInDirection",
@@ -43,7 +47,9 @@ export const JAVA_SUPPORT_API = [
   "changeEffect",
   "clearEffects",
   "say",
+  "sayFor",
   "think",
+  "thinkFor",
   "show",
   "hide",
   "setSize",
@@ -82,6 +88,7 @@ export const JAVA_SUPPORT_API = [
   "touchingStageEdge",
   "distanceToActor",
   "xPosition",
+  "direction",
   "yPosition",
   "timer",
   "keyDown",
@@ -99,6 +106,10 @@ export const JAVA_SUPPORT_API = [
 export const JAVA_SUPPORT_STUB = `class Sprite {
     void move(double steps) {}
     void goTo(double x, double y) {}
+    void setX(double x) {}
+    void setY(double y) {}
+    void changeX(double dx) {}
+    void changeY(double dy) {}
     void glideTo(double x, double y, double seconds) {}
     void turn(double degrees) {}
     void pointInDirection(double degrees) {}
@@ -109,7 +120,9 @@ export const JAVA_SUPPORT_STUB = `class Sprite {
     void changeEffect(String effect, double delta) {}
     void clearEffects() {}
     void say(String text) {}
+    void sayFor(String text, double seconds) {}
     void think(String text) {}
+    void thinkFor(String text, double seconds) {}
     void show() {}
     void hide() {}
     void setSize(double size) {}
@@ -147,6 +160,7 @@ export const JAVA_SUPPORT_STUB = `class Sprite {
     boolean touchingStageEdge(double minX, double maxX, double minY, double maxY) { return false; }
     double distanceToActor(String actor) { return 0; }
     double xPosition() { return 0; }
+    double direction() { return 0; }
     double yPosition() { return 0; }
     double timer() { return 0; }
     boolean keyDown(String key) { return false; }
@@ -378,6 +392,8 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return `distanceToActor(${literal(expression.actorId)})`;
     case "xPosition":
       return "xPosition()";
+    case "direction":
+      return "direction()";
     case "yPosition":
       return "yPosition()";
     case "timer":
@@ -476,6 +492,14 @@ function statement(writer: Writer, node: Statement, nodeId: string, depth: numbe
       );
     case "goTo":
       return line(`goTo(${number(node.x)}, ${number(node.y)})`);
+    case "setX":
+      return line(`setX(${number(node.x)})`);
+    case "setY":
+      return line(`setY(${number(node.y)})`);
+    case "changeX":
+      return line(`changeX(${number(node.dx)})`);
+    case "changeY":
+      return line(`changeY(${number(node.dy)})`);
     case "glideTo":
       return line(`glideTo(${number(node.x)}, ${number(node.y)}, ${number(node.seconds)})`);
     case "turn":
@@ -497,9 +521,17 @@ function statement(writer: Writer, node: Statement, nodeId: string, depth: numbe
     case "clearEffects":
       return line("clearEffects()");
     case "say":
-      return line(`say(${literal(node.text)})`);
+      return line(
+        node.seconds === undefined
+          ? `say(${literal(node.text)})`
+          : `sayFor(${literal(node.text)}, ${number(node.seconds)})`,
+      );
     case "think":
-      return line(`think(${literal(node.text)})`);
+      return line(
+        node.seconds === undefined
+          ? `think(${literal(node.text)})`
+          : `thinkFor(${literal(node.text)}, ${number(node.seconds)})`,
+      );
     case "show":
       return line("show()");
     case "hide":
@@ -731,6 +763,10 @@ export const javaLanguagePack: LanguagePack = {
   supportedCanonicalOperations: [
     "move",
     "goTo",
+    "setX",
+    "setY",
+    "changeX",
+    "changeY",
     "glideTo",
     "turn",
     "pointInDirection",

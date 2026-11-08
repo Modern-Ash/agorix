@@ -31,6 +31,10 @@ export const BLOCK_TIPS: Readonly<Record<string, Tip>> = {
     en: "Move: the character walks where it faces",
   },
   goTo: { es: "Ir a una posición del escenario", en: "Jump to a spot on the stage" },
+  setX: { es: "Fijar la posición de lado a lado", en: "Set the left-right position" },
+  setY: { es: "Fijar la altura en el escenario", en: "Set the height on the stage" },
+  changeX: { es: "Correr hacia un lado sin girar", en: "Slide sideways without turning" },
+  changeY: { es: "Subir o bajar sin girar", en: "Move up or down without turning" },
   glideTo: { es: "Deslizarse suave hasta una posición", en: "Glide smoothly to a spot" },
   turn: { es: "Girar: el personaje mira para otro lado", en: "Turn: changes where it faces" },
   pointInDirection: {
@@ -46,8 +50,14 @@ export const BLOCK_TIPS: Readonly<Record<string, Tip>> = {
     es: "Pasar delante o detrás de los demás",
     en: "Go in front of or behind the others",
   },
-  say: { es: "Decir algo en una burbuja", en: "Say something in a bubble" },
-  think: { es: "Pensar algo en una burbuja", en: "Think something in a bubble" },
+  say: {
+    es: "Decir algo en una burbuja (o por unos segundos)",
+    en: "Say something in a bubble (or for a few seconds)",
+  },
+  think: {
+    es: "Pensar algo en una burbuja (o por unos segundos)",
+    en: "Think something in a bubble (or for a few seconds)",
+  },
   show: { es: "Mostrar al personaje", en: "Show the character" },
   hide: { es: "Esconder al personaje", en: "Hide the character" },
   setSize: { es: "Poner un tamaño: más grande o más chico", en: "Set a size: bigger or smaller" },

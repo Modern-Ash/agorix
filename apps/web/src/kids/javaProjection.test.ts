@@ -36,6 +36,10 @@ const bool = (value: boolean): Expression => ({ type: "booleanLiteral", value })
 const statements: Statement[] = [
   { type: "move", steps: 40 },
   { type: "goTo", x: 10, y: 20 },
+  { type: "setX", x: 30 },
+  { type: "setY", y: 40 },
+  { type: "changeX", dx: -20 },
+  { type: "changeY", dy: 20 },
   { type: "glideTo", x: 5, y: 5, seconds: 1 },
   { type: "turn", degrees: 90 },
   { type: "pointInDirection", degrees: 0 },
@@ -47,6 +51,8 @@ const statements: Statement[] = [
   { type: "clearEffects" },
   { type: "say", text: 'Hola "mundo"' },
   { type: "think", text: "Mmm" },
+  { type: "say", text: "Con tiempo", seconds: 2 },
+  { type: "think", text: "Con tiempo", seconds: 1 },
   { type: "show" },
   { type: "hide" },
   { type: "setSize", size: 120 },
@@ -113,7 +119,11 @@ const statements: Statement[] = [
       right: {
         type: "greaterOrEqual",
         left: { type: "distanceToActor", actorId: "actor:other" },
-        right: { type: "add", left: { type: "xPosition" }, right: { type: "yPosition" } },
+        right: {
+          type: "add",
+          left: { type: "xPosition" },
+          right: { type: "add", left: { type: "yPosition" }, right: { type: "direction" } },
+        },
       },
     },
     then: [

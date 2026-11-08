@@ -47,6 +47,7 @@ export const SCENE_NUMBER_EXPRESSIONS = [
   "numericLiteral",
   "xPosition",
   "yPosition",
+  "direction",
   "timer",
   "mouseX",
   "mouseY",

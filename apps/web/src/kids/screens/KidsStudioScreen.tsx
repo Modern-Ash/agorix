@@ -21,6 +21,7 @@ import {
   STUDIO_REPEAT_COUNTS,
   STUDIO_SIZE_DELTAS,
   STUDIO_SIZES,
+  STUDIO_SHIFT_AMOUNTS,
   STUDIO_TURN_AMOUNTS,
   STUDIO_WAIT_SECONDS,
   studioEffectValues,
@@ -257,6 +258,14 @@ const COPY = {
     reset: "Volver al inicio",
     move: "Mover",
     goTo: "Ir a posición",
+    setX: "Fijar x",
+    setY: "Fijar y",
+    changeX: "Cambiar x en",
+    changeY: "Cambiar y en",
+    shiftAmount: "Cuánto",
+    sayFor: "Decir por",
+    thinkFor: "Pensar por",
+    saveDirection: "Guardar dirección",
     glideTo: "Deslizar a posición",
     xCoordinate: "Posición horizontal",
     yCoordinate: "Posición vertical",
@@ -526,6 +535,14 @@ const COPY = {
     reset: "Back to start",
     move: "Move",
     goTo: "Go to position",
+    setX: "Set x",
+    setY: "Set y",
+    changeX: "Change x by",
+    changeY: "Change y by",
+    shiftAmount: "How much",
+    sayFor: "Say for",
+    thinkFor: "Think for",
+    saveDirection: "Save direction",
     glideTo: "Glide to position",
     xCoordinate: "Horizontal position",
     yCoordinate: "Vertical position",
@@ -852,6 +869,7 @@ function expressionLabel(
 ): string {
   if (value.type === "xPosition") return "X";
   if (value.type === "yPosition") return "Y";
+  if (value.type === "direction") return locale === "es" ? "dirección" : "direction";
   if (value.type === "touchingActor")
     return `${locale === "es" ? "tocando" : "touching"} ${galleryCharacterName(characterOfActor(value.actorId), locale)}`;
   if (value.type === "touchingStageEdge")
@@ -1045,6 +1063,7 @@ export function KidsStudioScreen({
   const [effectValue, setEffectValue] = useState(50);
   const [effectDelta, setEffectDelta] = useState(25);
   const [waitSeconds, setWaitSeconds] = useState(1);
+  const [shiftAmount, setShiftAmount] = useState<number>(40);
   const [stopScope, setStopScope] = useState<"script" | "actor" | "scene">("script");
   const [choicePromptId, setChoicePromptId] = useState<ChoicePromptId>("path");
   const [volume, setVolume] = useState(100);
@@ -2424,6 +2443,14 @@ export function KidsStudioScreen({
         return `${copy.goTo}: ${statement.x}, ${statement.y}`;
       case "glideTo":
         return `${copy.glideTo}: ${statement.x}, ${statement.y} (${statement.seconds}s)`;
+      case "setX":
+        return `${copy.setX}: ${statement.x}`;
+      case "setY":
+        return `${copy.setY}: ${statement.y}`;
+      case "changeX":
+        return `${copy.changeX} ${statement.dx}`;
+      case "changeY":
+        return `${copy.changeY} ${statement.dy}`;
       case "turn":
         return `${statement.degrees < 0 ? copy.turnLeft : copy.turnRight} ${Math.abs(statement.degrees)}°`;
       case "pointInDirection":
@@ -2452,7 +2479,9 @@ export function KidsStudioScreen({
         return `${copy.changeVolume}: ${statement.delta}`;
       case "say":
       case "think":
-        return `${statement.type === "say" ? copy.say : copy.think}: ${statement.text}`;
+        return `${statement.type === "say" ? copy.say : copy.think}: ${statement.text}${
+          statement.seconds === undefined ? "" : ` (${statement.seconds}s)`
+        }`;
       case "show":
         return copy.show;
       case "hide":
@@ -4937,6 +4966,20 @@ export function KidsStudioScreen({
                       block: "think",
                       onAdd: () => add({ type: "think", text: bubbleText.trim() }),
                     },
+                    {
+                      label: `${copy.sayFor} ${waitSeconds} s`,
+                      disabled: !bubbleText.trim(),
+                      block: "say",
+                      onAdd: () =>
+                        add({ type: "say", text: bubbleText.trim(), seconds: waitSeconds }),
+                    },
+                    {
+                      label: `${copy.thinkFor} ${waitSeconds} s`,
+                      disabled: !bubbleText.trim(),
+                      block: "think",
+                      onAdd: () =>
+                        add({ type: "think", text: bubbleText.trim(), seconds: waitSeconds }),
+                    },
                   ]}
                 >
                   <input
@@ -5153,6 +5196,50 @@ export function KidsStudioScreen({
                     value={targetY}
                     onChange={(event) => setTargetY(Number(event.target.value))}
                   />
+                </KidsPaletteBlock>
+                <KidsPaletteBlock
+                  tone="motion"
+                  actions={[
+                    {
+                      label: copy.setX,
+                      disabled: !inStudioRange(targetX, STUDIO_X_RANGE),
+                      block: "setX",
+                      onAdd: () => add({ type: "setX", x: targetX }),
+                    },
+                    {
+                      label: copy.setY,
+                      disabled: !inStudioRange(targetY, STUDIO_Y_RANGE),
+                      block: "setY",
+                      onAdd: () => add({ type: "setY", y: targetY }),
+                    },
+                  ]}
+                />
+                <KidsPaletteBlock
+                  tone="motion"
+                  actions={[
+                    {
+                      label: copy.changeX,
+                      block: "changeX",
+                      onAdd: () => add({ type: "changeX", dx: shiftAmount }),
+                    },
+                    {
+                      label: copy.changeY,
+                      block: "changeY",
+                      onAdd: () => add({ type: "changeY", dy: shiftAmount }),
+                    },
+                  ]}
+                >
+                  <select
+                    aria-label={copy.shiftAmount}
+                    value={shiftAmount}
+                    onChange={(event) => setShiftAmount(Number(event.target.value))}
+                  >
+                    {STUDIO_SHIFT_AMOUNTS.map((amount) => (
+                      <option key={amount} value={amount}>
+                        {amount}
+                      </option>
+                    ))}
+                  </select>
                 </KidsPaletteBlock>
                 <KidsPaletteBlock
                   tone="motion"
@@ -6465,6 +6552,19 @@ export function KidsStudioScreen({
                       }
                     >
                       + {copy.saveY}
+                    </button>
+                    <button
+                      type="button"
+                      className="kids-button"
+                      onClick={() =>
+                        add({
+                          type: "setVariable",
+                          variableId: selectedVariableId,
+                          value: { type: "direction" },
+                        })
+                      }
+                    >
+                      + {copy.saveDirection}
                     </button>
                     {targetActorId ? (
                       <>

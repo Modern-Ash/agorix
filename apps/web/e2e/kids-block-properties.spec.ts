@@ -69,7 +69,7 @@ test("turn, sound, costume and speech blocks edit from the card (#1240)", async 
     .getByRole("button", { name: /^Cerrar/ })
     .click();
 
-  await page.getByRole("button", { name: "+ Decir" }).click();
+  await page.getByRole("button", { name: "+ Decir", exact: true }).click();
   await blocks(page)
     .nth(3)
     .dblclick({ position: { x: 90, y: 14 } });

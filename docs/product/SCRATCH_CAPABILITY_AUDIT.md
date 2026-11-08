@@ -483,3 +483,13 @@ No. `apps/web/src/App.tsx` (5,264 lines, served at `/advanced`) is the original 
 ### Operators closed in the free scene (#1131)
 
 `lessOrEqual`, `greaterOrEqual`, `and`, `or`, `not` and decimal `random` moved from `EXPRESSIONS_NOT_IN_SCENE` to the offered lists in `kidsCreationCoverage.ts`. The scene accepts conditions two levels deep and decimals in tenths, within -100 to 100. Still hidden by design: `touchingGoal` and `booleanLiteral`. Control flow and sensors the engine lacks are tracked in #1132.
+
+## Scratch's most used blocks (plan "Scratch compatible, and better")
+
+Compared against Scratch 3's core palette, the free scene lacked a handful of blocks nearly every Scratch project uses. This increment adds, as canonical statements and expressions with deterministic runtime evidence, code projections (Agorix Code, Python, TypeScript, Java), tooltips and Kids palette entries:
+
+- **Fijar x / Fijar y / Cambiar x / Cambiar y** (`setX`, `setY`, `changeX`, `changeY`): move along one axis without turning; the pen trail follows. Set uses the stage ranges; change uses the closed list in `STUDIO_SHIFT_AMOUNTS`.
+- **Decir / Pensar por N segundos** (`say` and `think` with optional `seconds`): the bubble shows in the trace for that time and is gone once it passes, in the batch runner and in live play. A plain say still stays.
+- **Dirección** (`direction` expression): the heading as a number, savable into a variable.
+
+Still open against Scratch, in this order: siguiente disfraz, ir a azar/mouse, anunciar y esperar, textos (unir, letra de, longitud), then importing `.sb3` projects. **Preguntar y responder** with free text stays a deliberate difference (no free text from a child; see the functional matrix).

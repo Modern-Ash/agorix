@@ -60,6 +60,7 @@ import {
   setPenSizeWorld,
   clearPenWorld,
   drawPenTrail,
+  clearBubbleWorld,
   changeSpriteSizeWorld,
   showWorld,
   stopSoundsWorld,
@@ -337,6 +338,8 @@ function evaluateExpression(
     }
     case "xPosition":
       return state.world.sprite.x;
+    case "direction":
+      return state.world.sprite.heading;
     case "yPosition":
       return state.world.sprite.y;
     case "timer":
@@ -546,6 +549,26 @@ function* executeStatement(
     case "goTo":
       state.world = goToWorld(state.world, statement.x, statement.y);
       break;
+    case "setX":
+      state.world = goToWorld(state.world, statement.x, state.world.sprite.y);
+      break;
+    case "setY":
+      state.world = goToWorld(state.world, state.world.sprite.x, statement.y);
+      break;
+    case "changeX":
+      state.world = goToWorld(
+        state.world,
+        state.world.sprite.x + statement.dx,
+        state.world.sprite.y,
+      );
+      break;
+    case "changeY":
+      state.world = goToWorld(
+        state.world,
+        state.world.sprite.x,
+        state.world.sprite.y + statement.dy,
+      );
+      break;
     case "glideTo":
       state.world = goToWorld(state.world, statement.x, statement.y);
       advanceVirtualClock(state, statement.seconds);
@@ -606,9 +629,11 @@ function* executeStatement(
       break;
     case "say":
       state.world = sayWorld(state.world, statement.text);
+      if (statement.seconds !== undefined) advanceVirtualClock(state, statement.seconds);
       break;
     case "think":
       state.world = thinkWorld(state.world, statement.text);
+      if (statement.seconds !== undefined) advanceVirtualClock(state, statement.seconds);
       break;
     case "show":
       state.world = showWorld(state.world);
@@ -848,6 +873,10 @@ function* executeStatement(
   if (
     statement.type === "move" ||
     statement.type === "goTo" ||
+    statement.type === "setX" ||
+    statement.type === "setY" ||
+    statement.type === "changeX" ||
+    statement.type === "changeY" ||
     statement.type === "glideTo" ||
     statement.type === "bounceOnEdge"
   ) {
@@ -891,6 +920,9 @@ function* executeStatement(
     event: state.event,
   });
   yield { entry, at: state.virtualSeconds };
+  // "Say for N seconds": the bubble is gone once the time has passed, i.e. when this resumes.
+  if ((statement.type === "say" || statement.type === "think") && statement.seconds !== undefined)
+    state.world = clearBubbleWorld(state.world);
   if (statement.type === "stop") throw new ExecutionHalt("stopped", statement.scope);
   if (choicePending) throw new ExecutionHalt("stopped", "scene");
   if (waitUntilTimedOut) throw new ExecutionHalt("stopped");

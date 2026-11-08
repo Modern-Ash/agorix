@@ -40,6 +40,11 @@ export interface DistanceToActorExpression {
   readonly actorId: string;
 }
 
+/** Heading in degrees, as set by turn and point in direction. */
+export interface DirectionExpression {
+  readonly type: "direction";
+}
+
 export interface XPositionExpression {
   readonly type: "xPosition";
 }
@@ -209,6 +214,7 @@ export type Expression =
   | TouchingStageEdgeExpression
   | DistanceToActorExpression
   | XPositionExpression
+  | DirectionExpression
   | TimerExpression
   | KeyDownExpression
   | MouseXExpression
@@ -258,6 +264,30 @@ export interface GoToStatement {
   readonly type: "goTo";
   readonly x: number;
   readonly y: number;
+}
+
+/** Sets only the x coordinate; y and heading stay as they are. */
+export interface SetXStatement {
+  readonly type: "setX";
+  readonly x: number;
+}
+
+/** Sets only the y coordinate; x and heading stay as they are. */
+export interface SetYStatement {
+  readonly type: "setY";
+  readonly y: number;
+}
+
+/** Moves the sprite sideways by dx without turning it. */
+export interface ChangeXStatement {
+  readonly type: "changeX";
+  readonly dx: number;
+}
+
+/** Moves the sprite up or down by dy without turning it. */
+export interface ChangeYStatement {
+  readonly type: "changeY";
+  readonly dy: number;
 }
 
 /** Ends at the target like goTo and spends the given virtual seconds; no in-between positions. */
@@ -387,11 +417,14 @@ export interface ClearEffectsStatement {
 export interface SayStatement {
   readonly type: "say";
   readonly text: string;
+  /** Scratch's "say for N seconds": the bubble stays this many virtual seconds, then goes away. */
+  readonly seconds?: number;
 }
 
 export interface ThinkStatement {
   readonly type: "think";
   readonly text: string;
+  readonly seconds?: number;
 }
 
 export interface ShowStatement {
@@ -563,6 +596,10 @@ export interface IfStatement {
 export type Statement =
   | MoveStatement
   | GoToStatement
+  | SetXStatement
+  | SetYStatement
+  | ChangeXStatement
+  | ChangeYStatement
   | GlideToStatement
   | TurnStatement
   | PointInDirectionStatement
