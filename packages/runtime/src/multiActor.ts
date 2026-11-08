@@ -15,6 +15,7 @@ import {
   type ExecutionOptions,
   type RunOutcome,
 } from "./execute.js";
+import { COPIES_CAP, liveCopies, settleCopiesWorld } from "./copies.js";
 import { cloneWorldState, createWorldState, type WorldState } from "./world.js";
 
 export interface MultiActorRuntimeActor {
@@ -511,6 +512,13 @@ export function runMultiActorProgram(
           });
         }
         actor.world = cloneWorldState(result.world);
+        // A run keeps at most COPIES_CAP live copies; the character that just made them gives up the extra.
+        const over = liveCopies(actors.map((item) => item.world)) - COPIES_CAP;
+        if (over > 0 && actor.world.copies !== undefined)
+          actor.world = createWorldState({
+            ...actor.world,
+            copies: actor.world.copies.slice(0, Math.max(0, actor.world.copies.length - over)),
+          });
         stepsUsed += result.stepsUsed;
         if (result.outcome === "budget-exceeded") break eventLoop;
         if (result.outcome === "stopped") {
@@ -525,6 +533,8 @@ export function runMultiActorProgram(
     }
   }
 
+  // A run shown finished has no clock: falling copies have landed and followers trail behind.
+  for (const actor of actors) actor.world = settleCopiesWorld(actor.world);
   return {
     outcome,
     stage: cloneRuntimeStage(stage),

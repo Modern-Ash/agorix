@@ -18,6 +18,7 @@ export const RUNTIME_STATEMENT_OPERATIONS = Object.freeze([
   "move",
   "goTo",
   "goToTarget",
+  "createCopies",
   "setRotationStyle",
   "setX",
   "setY",

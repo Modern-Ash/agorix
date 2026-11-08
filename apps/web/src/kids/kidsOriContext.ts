@@ -30,6 +30,7 @@ const FAMILY: Record<string, string> = {
   goTo: "motion",
   nextCostume: "looks",
   goToTarget: "motion",
+  createCopies: "looks",
   setRotationStyle: "motion",
   setX: "motion",
   setY: "motion",

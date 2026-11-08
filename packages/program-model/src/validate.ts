@@ -473,6 +473,28 @@ function validateStatement(
       checkBounds(input.y, -1000, 1000, `${path}.y`);
       return { type: "goTo", x: input.x, y: input.y };
     }
+    case "createCopies":
+      if (
+        !Number.isInteger(input.count) ||
+        (input.count as number) < 1 ||
+        (input.count as number) > 10
+      ) {
+        fail(
+          "NUMERIC_OUT_OF_BOUNDS",
+          `${path}.count`,
+          "expected a whole number from 1 to 10",
+          input.count,
+        );
+      }
+      if (input.rule !== "spread" && input.rule !== "fall" && input.rule !== "follow") {
+        fail(
+          "INVALID_FIELD_TYPE",
+          `${path}.rule`,
+          'expected "spread", "fall" or "follow"',
+          input.rule,
+        );
+      }
+      return { type: "createCopies", count: input.count as number, rule: input.rule };
     case "setRotationStyle":
       if (input.style !== "all" && input.style !== "leftRight" && input.style !== "none") {
         fail(

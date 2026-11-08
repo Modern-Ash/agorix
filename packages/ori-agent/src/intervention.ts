@@ -72,6 +72,8 @@ const INTENT_SIZES: Readonly<Record<OriStudioIntent, number>> = {
   wander: 5,
   follow: 5,
   greet: 2,
+  rain: 2,
+  crowd: 2,
 };
 
 export function oriIntentSize(intent: OriStudioIntent): number {

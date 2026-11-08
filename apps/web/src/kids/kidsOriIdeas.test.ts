@@ -42,6 +42,7 @@ describe("Ori's ideas inside the Kids scene", () => {
           last.sprite.y !== first.sprite.y ||
           last.sprite.heading !== first.sprite.heading ||
           (last.sprite.size ?? 100) !== (first.sprite.size ?? 100) ||
+          (last.copies?.length ?? 0) > 0 ||
           run.trace.some(
             (entry) =>
               entry.worldAfter.sprite.visible === false ||
