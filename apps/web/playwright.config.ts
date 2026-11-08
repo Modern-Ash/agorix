@@ -37,6 +37,9 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
   },
   use: {
+    // A flake that passes on its retry leaves nothing behind, so CI keeps the trace of every
+    // failed attempt (issue #1230: a Step button "not stable" that never reproduced locally).
+    trace: process.env["CI"] ? "retain-on-failure" : "off",
     baseURL: `http://${host}:${port}`,
     // The product opens in Spanish (issue #351); the existing journeys assert English copy.
     storageState: {
