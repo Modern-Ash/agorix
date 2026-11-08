@@ -5,12 +5,15 @@ import type { Locale } from "../../i18n.js";
 import { missionOfStudio } from "../kidsMissionStudio.js";
 import type { KidsText } from "../useKidsText.js";
 import { DeleteProjectDialog } from "./DeleteProjectDialog.js";
+import { convertScratchProject, type ScratchImportReport } from "../kidsScratchImport.js";
+import { readScratchProject } from "../kidsScratchZip.js";
 import { ExportMediaDialog } from "./ExportMediaDialog.js";
 import { KidsBackdrop } from "./KidsArt.js";
 import { ListenButton } from "./ListenButton.js";
 import {
   deleteStudioProject,
   exportStudioProject,
+  importScratchStudioProject,
   importStudioProject,
   listStudioProjects,
 } from "../kidsStudioProjects.js";
@@ -27,6 +30,10 @@ export function ProjectsScreen({ t, locale, readAloud = true, onCreate, onStudio
   const [store] = useState(() => new ProjectStore());
   const [studios, setStudios] = useState(() => listStudioProjects());
   const [message, setMessage] = useState("");
+  const [scratchImport, setScratchImport] = useState<{
+    readonly id: string;
+    readonly report: ScratchImportReport;
+  } | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [exportingMedia, setExportingMedia] = useState<string | null>(null);
   function confirmDelete() {
@@ -61,6 +68,26 @@ export function ProjectsScreen({ t, locale, readAloud = true, onCreate, onStudio
     } catch {
       setMessage(locale === "es" ? "No se pudo exportar." : "Could not export.");
     }
+  }
+
+  async function importScratch(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const converted = convertScratchProject(await readScratchProject(await file.arrayBuffer()));
+      const scene = importScratchStudioProject(converted, locale, store);
+      setStudios(listStudioProjects());
+      setScratchImport({ id: scene.id, report: converted.report });
+      setMessage("");
+    } catch {
+      setScratchImport(null);
+      setMessage(
+        locale === "es"
+          ? "Este proyecto de Scratch no se pudo importar."
+          : "This Scratch project could not be imported.",
+      );
+    }
+    event.target.value = "";
   }
 
   async function importFile(event: ChangeEvent<HTMLInputElement>) {
@@ -101,9 +128,47 @@ export function ProjectsScreen({ t, locale, readAloud = true, onCreate, onStudio
           onChange={(event) => void importFile(event)}
         />
       </label>
+      <label className="kids-import-label kids-button">
+        {locale === "es" ? "Importar de Scratch (.sb3)" : "Import from Scratch (.sb3)"}
+        <input
+          type="file"
+          accept=".sb3,application/zip,application/json"
+          onChange={(event) => void importScratch(event)}
+        />
+      </label>
       <p role="status" className="kids-note">
         {message}
       </p>
+      {scratchImport ? (
+        <section className="kids-scratch-report" aria-label="Scratch">
+          <p>
+            {locale === "es"
+              ? `Traje ${scratchImport.report.sprites} objeto(s) y ${scratchImport.report.blocksImported} bloque(s) de Scratch; ${scratchImport.report.blocksAdjusted} se ajustaron a lo que permite la escena.`
+              : `Brought ${scratchImport.report.sprites} sprite(s) and ${scratchImport.report.blocksImported} block(s) from Scratch; ${scratchImport.report.blocksAdjusted} were adjusted to what the scene allows.`}
+          </p>
+          {scratchImport.report.dropped.length > 0 ? (
+            <details>
+              <summary>
+                {locale === "es" ? "Lo que no pude traer" : "What I could not bring"}
+              </summary>
+              <ul>
+                {scratchImport.report.dropped.map((item) => (
+                  <li key={item.what}>
+                    {item.what} × {item.count}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          ) : null}
+          <button
+            type="button"
+            className="kids-button kids-primary"
+            onClick={() => onStudio(scratchImport.id)}
+          >
+            {locale === "es" ? "Abrir la escena" : "Open the scene"}
+          </button>
+        </section>
+      ) : null}
       {deleting ? (
         <DeleteProjectDialog
           locale={locale}
