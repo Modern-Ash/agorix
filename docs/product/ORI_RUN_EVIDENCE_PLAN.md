@@ -71,9 +71,13 @@ Rule for adding a kind: a fixture project where it fires, one where it must not,
 - A project and its findings work with no AI available and no credentials.
 - Child safety and privacy override engagement: no counters of "failures", no streaks, nothing stored beyond the existing evidence log.
 
-## Decisions for the owner
+## Decisions (owner, 2026-11-08)
 
-1. Marker shown by default, or only when the child asks Ori?
-2. Is optional model rephrasing in scope, or keep wording purely local?
-3. May a finding kind count in the evidence log (counters only, no text), or stay out of it?
-4. Wording by age band: same sentence, or simpler for 6–8?
+1. **The marker is shown by default** after a run that looks wrong (the adult Ori switch still hides it).
+2. **Model rephrasing is in scope**, always behind the deterministic sentence and always fed the structured finding only (`toProviderFinding`).
+3. **A finding kind may count in the evidence log**, counters only (kind and count, no text, no names, no values). Read as the first option offered: counting is allowed.
+4. **Wording changes by age band**: the structured finding is the same; the sentence is rendered per band and language.
+
+## Status
+
+- Increment 1 (the `run-evidence` package, kinds 1–3 and 7, no UI): PR #1275.
