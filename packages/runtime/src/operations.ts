@@ -17,6 +17,10 @@ import { RuntimeExecutionError } from "./errors.js";
 export const RUNTIME_STATEMENT_OPERATIONS = Object.freeze([
   "move",
   "goTo",
+  "setX",
+  "setY",
+  "changeX",
+  "changeY",
   "glideTo",
   "turn",
   "pointInDirection",
@@ -75,6 +79,7 @@ export const RUNTIME_EXPRESSION_OPERATIONS = Object.freeze([
   "touchingStageEdge",
   "distanceToActor",
   "xPosition",
+  "direction",
   "timer",
   "keyDown",
   "mouseX",
@@ -186,6 +191,7 @@ function assertExpressionAllowed(expression: Expression, path: string): void {
     case "touchingStageEdge":
     case "distanceToActor":
     case "xPosition":
+    case "direction":
     case "yPosition":
     case "timer":
     case "keyDown":

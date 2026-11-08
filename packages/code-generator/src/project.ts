@@ -167,6 +167,8 @@ function formatExpression(
       return `sprite.distanceToActor(${JSON.stringify(expression.actorId)})`;
     case "xPosition":
       return "sprite.x";
+    case "direction":
+      return "sprite.direction";
     case "yPosition":
       return "sprite.y";
     case "timer":
@@ -283,6 +285,18 @@ function projectStatement(
         `${pad}sprite.glideTo(${formatNumber(statement.x)}, ${formatNumber(statement.y)}, ${formatNumber(statement.seconds)});\n`,
       );
       return;
+    case "setX":
+      write(writer, `${pad}sprite.setX(${formatNumber(statement.x)});\n`);
+      return;
+    case "setY":
+      write(writer, `${pad}sprite.setY(${formatNumber(statement.y)});\n`);
+      return;
+    case "changeX":
+      write(writer, `${pad}sprite.changeX(${formatNumber(statement.dx)});\n`);
+      return;
+    case "changeY":
+      write(writer, `${pad}sprite.changeY(${formatNumber(statement.dy)});\n`);
+      return;
     case "goTo":
       write(
         writer,
@@ -365,10 +379,20 @@ function projectStatement(
       write(writer, `${pad}sprite.bounceOnEdge();\n`);
       return;
     case "say":
-      write(writer, `${pad}sprite.say(${JSON.stringify(statement.text)});\n`);
+      write(
+        writer,
+        statement.seconds === undefined
+          ? `${pad}sprite.say(${JSON.stringify(statement.text)});\n`
+          : `${pad}sprite.sayFor(${JSON.stringify(statement.text)}, ${formatNumber(statement.seconds)});\n`,
+      );
       return;
     case "think":
-      write(writer, `${pad}sprite.think(${JSON.stringify(statement.text)});\n`);
+      write(
+        writer,
+        statement.seconds === undefined
+          ? `${pad}sprite.think(${JSON.stringify(statement.text)});\n`
+          : `${pad}sprite.thinkFor(${JSON.stringify(statement.text)}, ${formatNumber(statement.seconds)});\n`,
+      );
       return;
     case "show":
       write(writer, `${pad}sprite.show();\n`);

@@ -30,6 +30,10 @@ export type BlockType =
   | "event_broadcast"
   | "motion_move"
   | "motion_go_to"
+  | "motion_set_x"
+  | "motion_set_y"
+  | "motion_change_x"
+  | "motion_change_y"
   | "motion_turn"
   | "motion_point_in_direction"
   | "motion_point_towards"
@@ -77,6 +81,7 @@ export type BlockType =
   | "sensing_touching_stage_edge"
   | "sensing_distance_to_actor"
   | "sensing_x_position"
+  | "sensing_direction"
   | "sensing_y_position"
   | "sensing_timer"
   | "sensing_key_down"
@@ -248,6 +253,12 @@ function numberField(block: BlockNode, name: string, path: string): number {
   return value;
 }
 
+/** The optional "for N seconds" of say and think; the program validator checks the range. */
+function optionalSeconds(block: BlockNode): { seconds?: number } {
+  const value = block.fields?.["seconds"];
+  return typeof value === "number" ? { seconds: value } : {};
+}
+
 /** `<field>From`: a custom block number that replaces the fixed value; the program validator checks it. */
 function paramFrom(block: BlockNode, name: string): { [key: string]: ProcedureParamId } {
   const value = block.fields?.[name];
@@ -353,6 +364,8 @@ function expressionFromBlock(
       return { type: "distanceToActor", actorId: stringField(block, "actorId", path) };
     case "sensing_x_position":
       return { type: "xPosition" };
+    case "sensing_direction":
+      return { type: "direction" };
     case "sensing_y_position":
       return { type: "yPosition" };
     case "sensing_timer":
@@ -501,6 +514,14 @@ function statementFromBlock(
         steps: numberField(block, "steps", path),
         ...paramFrom(block, "stepsFrom"),
       };
+    case "motion_set_x":
+      return { type: "setX", x: numberField(block, "x", path) };
+    case "motion_set_y":
+      return { type: "setY", y: numberField(block, "y", path) };
+    case "motion_change_x":
+      return { type: "changeX", dx: numberField(block, "dx", path) };
+    case "motion_change_y":
+      return { type: "changeY", dy: numberField(block, "dy", path) };
     case "motion_go_to":
       return { type: "goTo", x: numberField(block, "x", path), y: numberField(block, "y", path) };
     case "motion_turn":
@@ -588,9 +609,9 @@ function statementFromBlock(
     case "motion_bounce_on_edge":
       return { type: "bounceOnEdge" };
     case "looks_say":
-      return { type: "say", text: stringField(block, "text", path) };
+      return { type: "say", text: stringField(block, "text", path), ...optionalSeconds(block) };
     case "looks_think":
-      return { type: "think", text: stringField(block, "text", path) };
+      return { type: "think", text: stringField(block, "text", path), ...optionalSeconds(block) };
     case "looks_show":
       return { type: "show" };
     case "looks_hide":
@@ -812,6 +833,8 @@ function expressionToBlock(
       return { id, type: "sensing_distance_to_actor", fields: { actorId: expression.actorId } };
     case "xPosition":
       return { id, type: "sensing_x_position" };
+    case "direction":
+      return { id, type: "sensing_direction" };
     case "yPosition":
       return { id, type: "sensing_y_position" };
     case "timer":
@@ -948,6 +971,14 @@ function statementToBlock(
       };
     case "goTo":
       return { id, type: "motion_go_to", fields: { x: statement.x, y: statement.y } };
+    case "setX":
+      return { id, type: "motion_set_x", fields: { x: statement.x } };
+    case "setY":
+      return { id, type: "motion_set_y", fields: { y: statement.y } };
+    case "changeX":
+      return { id, type: "motion_change_x", fields: { dx: statement.dx } };
+    case "changeY":
+      return { id, type: "motion_change_y", fields: { dy: statement.dy } };
     case "turn":
       return {
         id,
@@ -1026,9 +1057,23 @@ function statementToBlock(
     case "bounceOnEdge":
       return { id, type: "motion_bounce_on_edge" };
     case "say":
-      return { id, type: "looks_say", fields: { text: statement.text } };
+      return {
+        id,
+        type: "looks_say",
+        fields: {
+          text: statement.text,
+          ...(statement.seconds === undefined ? {} : { seconds: statement.seconds }),
+        },
+      };
     case "think":
-      return { id, type: "looks_think", fields: { text: statement.text } };
+      return {
+        id,
+        type: "looks_think",
+        fields: {
+          text: statement.text,
+          ...(statement.seconds === undefined ? {} : { seconds: statement.seconds }),
+        },
+      };
     case "show":
       return { id, type: "looks_show" };
     case "hide":

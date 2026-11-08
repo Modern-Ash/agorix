@@ -98,6 +98,19 @@ export class ProgramValidationError extends Error {
   }
 }
 
+/** The optional "for N seconds" of say and think: bounded like a wait. */
+function optionalBubbleSeconds(
+  input: Record<string, unknown>,
+  path: string,
+): { readonly seconds?: number } {
+  if (input.seconds === undefined) return {};
+  if (typeof input.seconds !== "number") {
+    fail("MISSING_FIELD", `${path}.seconds`, "expected a number", input.seconds);
+  }
+  checkBounds(input.seconds, WAIT_SECONDS_MIN, WAIT_SECONDS_MAX, `${path}.seconds`);
+  return { seconds: input.seconds };
+}
+
 function fail(
   code: ProgramValidationErrorCode,
   path: string,
@@ -320,6 +333,8 @@ function validateExpression(input: unknown, path: string, state: ValidationState
       return { type: "distanceToActor", actorId: checkText(input.actorId, `${path}.actorId`) };
     case "xPosition":
       return { type: "xPosition" };
+    case "direction":
+      return { type: "direction" };
     case "yPosition":
       return { type: "yPosition" };
     case "timer":
@@ -447,6 +462,34 @@ function validateStatement(
       checkBounds(input.x, -1000, 1000, `${path}.x`);
       checkBounds(input.y, -1000, 1000, `${path}.y`);
       return { type: "goTo", x: input.x, y: input.y };
+    }
+    case "setX": {
+      if (typeof input.x !== "number") {
+        fail("MISSING_FIELD", `${path}.x`, "expected a number", input.x);
+      }
+      checkBounds(input.x, -1000, 1000, `${path}.x`);
+      return { type: "setX", x: input.x };
+    }
+    case "setY": {
+      if (typeof input.y !== "number") {
+        fail("MISSING_FIELD", `${path}.y`, "expected a number", input.y);
+      }
+      checkBounds(input.y, -1000, 1000, `${path}.y`);
+      return { type: "setY", y: input.y };
+    }
+    case "changeX": {
+      if (typeof input.dx !== "number") {
+        fail("MISSING_FIELD", `${path}.dx`, "expected a number", input.dx);
+      }
+      checkBounds(input.dx, -1000, 1000, `${path}.dx`);
+      return { type: "changeX", dx: input.dx };
+    }
+    case "changeY": {
+      if (typeof input.dy !== "number") {
+        fail("MISSING_FIELD", `${path}.dy`, "expected a number", input.dy);
+      }
+      checkBounds(input.dy, -1000, 1000, `${path}.dy`);
+      return { type: "changeY", dy: input.dy };
     }
     case "glideTo": {
       if (
@@ -592,9 +635,17 @@ function validateStatement(
     case "bounceOnEdge":
       return { type: "bounceOnEdge" };
     case "say":
-      return { type: "say", text: checkText(input.text, `${path}.text`) };
+      return {
+        type: "say",
+        text: checkText(input.text, `${path}.text`),
+        ...optionalBubbleSeconds(input, path),
+      };
     case "think":
-      return { type: "think", text: checkText(input.text, `${path}.text`) };
+      return {
+        type: "think",
+        text: checkText(input.text, `${path}.text`),
+        ...optionalBubbleSeconds(input, path),
+      };
     case "show":
       return { type: "show" };
     case "hide":

@@ -543,3 +543,32 @@ describe("graphic effect statements", () => {
     }
   });
 });
+
+describe("Scratch motion and looks blocks", () => {
+  const base = (statement: unknown) => ({
+    schema: "agorix/program/v1",
+    scripts: [{ id: "a", trigger: { type: "onStart" }, statements: [statement] }],
+  });
+  it("accepts set/change x and y and say or think for N seconds", () => {
+    for (const statement of [
+      { type: "setX", x: 10 },
+      { type: "setY", y: -10 },
+      { type: "changeX", dx: 5 },
+      { type: "changeY", dy: -5 },
+      { type: "say", text: "Hola", seconds: 2 },
+      { type: "think", text: "Mmm", seconds: 0.5 },
+    ])
+      expect(() => validateProgram(base(statement) as never)).not.toThrow();
+  });
+  it("rejects missing, out-of-range and mistyped values", () => {
+    for (const statement of [
+      { type: "setX" },
+      { type: "setY", y: 5000 },
+      { type: "changeX", dx: "1" },
+      { type: "changeY", dy: -2000 },
+      { type: "say", text: "Hola", seconds: 99 },
+      { type: "think", text: "Mmm", seconds: "2" },
+    ])
+      expect(() => validateProgram(base(statement) as never)).toThrow();
+  });
+});

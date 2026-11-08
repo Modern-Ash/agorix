@@ -1,6 +1,7 @@
 import {
   inStudioRange,
   STUDIO_BUBBLE_MAX_LENGTH,
+  STUDIO_SHIFT_AMOUNTS,
   STUDIO_VOLUME_DELTA_RANGE,
   STUDIO_VOLUME_RANGE,
   STUDIO_X_RANGE,
@@ -59,6 +60,10 @@ export type StudioStatement = Extract<
     type:
       | "move"
       | "goTo"
+      | "setX"
+      | "setY"
+      | "changeX"
+      | "changeY"
       | "glideTo"
       | "turn"
       | "pointInDirection"
@@ -204,6 +209,7 @@ function checkedNumber(value: Expression, program: ProjectProgram, depth = 0, ar
   if (
     value.type === "xPosition" ||
     value.type === "yPosition" ||
+    value.type === "direction" ||
     value.type === "timer" ||
     value.type === "mouseX" ||
     value.type === "mouseY"
@@ -398,6 +404,12 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0, arity
     );
   if (statement.type === "goTo")
     return inStudioRange(statement.x, STUDIO_X_RANGE) && inStudioRange(statement.y, STUDIO_Y_RANGE);
+  if (statement.type === "setX") return inStudioRange(statement.x, STUDIO_X_RANGE);
+  if (statement.type === "setY") return inStudioRange(statement.y, STUDIO_Y_RANGE);
+  if (statement.type === "changeX")
+    return (STUDIO_SHIFT_AMOUNTS as readonly number[]).includes(statement.dx);
+  if (statement.type === "changeY")
+    return (STUDIO_SHIFT_AMOUNTS as readonly number[]).includes(statement.dy);
   if (statement.type === "turn")
     return (
       paramInScope(statement.degreesFrom, arity) &&
@@ -463,7 +475,12 @@ function checked(statement: Statement, program: ProjectProgram, depth = 0, arity
   if (statement.type === "changeVolume")
     return inStudioRange(statement.delta, STUDIO_VOLUME_DELTA_RANGE);
   if (statement.type === "say" || statement.type === "think")
-    return statement.text.trim().length > 0 && statement.text.length <= STUDIO_BUBBLE_MAX_LENGTH;
+    return (
+      statement.text.trim().length > 0 &&
+      statement.text.length <= STUDIO_BUBBLE_MAX_LENGTH &&
+      (statement.seconds === undefined ||
+        (STUDIO_WAIT_SECONDS as readonly number[]).includes(statement.seconds))
+    );
   if (statement.type === "show" || statement.type === "hide") return true;
   if (statement.type === "changeSize")
     return (STUDIO_SIZE_DELTAS as readonly number[]).includes(statement.delta);

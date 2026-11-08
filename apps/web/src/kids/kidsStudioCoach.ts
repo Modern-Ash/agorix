@@ -62,6 +62,10 @@ const BLOCK_NAME: Record<Locale, Record<string, string>> = {
     move: "Mover",
     turn: "Girar",
     goTo: "Ir a",
+    setX: "Fijar x",
+    setY: "Fijar y",
+    changeX: "Cambiar x",
+    changeY: "Cambiar y",
     glideTo: "Deslizar a",
     pointInDirection: "Apuntar hacia",
     pointTowards: "Apuntar a",
@@ -79,6 +83,10 @@ const BLOCK_NAME: Record<Locale, Record<string, string>> = {
     move: "Move",
     turn: "Turn",
     goTo: "Go to",
+    setX: "Set x",
+    setY: "Set y",
+    changeX: "Change x",
+    changeY: "Change y",
     glideTo: "Glide to",
     pointInDirection: "Point toward",
     pointTowards: "Point at",
@@ -99,7 +107,7 @@ export function blockName(type: string, locale: Locale): string {
   return BLOCK_NAME[locale][type] ?? type;
 }
 
-const MOVES = new Set(["move", "goTo", "glideTo"]);
+const MOVES = new Set(["move", "goTo", "glideTo", "setX", "setY", "changeX", "changeY"]);
 
 export function factsOfRun(run: MultiActorRunResult, actorId: string): ActorFacts {
   const entries = run.trace.filter((entry) => entry.actorId === actorId);

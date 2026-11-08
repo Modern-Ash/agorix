@@ -132,9 +132,16 @@ export function projectPython(program: ProjectProgram): LanguageProjectionResult
         "touching_stage_edge",
         "distance_to_actor",
         "x_position",
+        "direction",
         "y_position",
         "say",
+        "say_for",
         "think",
+        "think_for",
+        "set_x",
+        "set_y",
+        "change_x",
+        "change_y",
         "show",
         "hide",
         "set_size",
@@ -210,6 +217,18 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
           formatNumber(statement.seconds) +
           ")\n",
       );
+      return;
+    case "setX":
+      writeMapped(writer, nodeId, indent + "set_x(" + formatNumber(statement.x) + ")\n");
+      return;
+    case "setY":
+      writeMapped(writer, nodeId, indent + "set_y(" + formatNumber(statement.y) + ")\n");
+      return;
+    case "changeX":
+      writeMapped(writer, nodeId, indent + "change_x(" + formatNumber(statement.dx) + ")\n");
+      return;
+    case "changeY":
+      writeMapped(writer, nodeId, indent + "change_y(" + formatNumber(statement.dy) + ")\n");
       return;
     case "goTo":
       writeMapped(
@@ -344,10 +363,32 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
       writeMapped(writer, nodeId, indent + "bounce_on_edge()\n");
       return;
     case "say":
-      writeMapped(writer, nodeId, indent + "say(" + JSON.stringify(statement.text) + ")\n");
+      writeMapped(
+        writer,
+        nodeId,
+        statement.seconds === undefined
+          ? indent + "say(" + JSON.stringify(statement.text) + ")\n"
+          : indent +
+              "say_for(" +
+              JSON.stringify(statement.text) +
+              ", " +
+              formatNumber(statement.seconds) +
+              ")\n",
+      );
       return;
     case "think":
-      writeMapped(writer, nodeId, indent + "think(" + JSON.stringify(statement.text) + ")\n");
+      writeMapped(
+        writer,
+        nodeId,
+        statement.seconds === undefined
+          ? indent + "think(" + JSON.stringify(statement.text) + ")\n"
+          : indent +
+              "think_for(" +
+              JSON.stringify(statement.text) +
+              ", " +
+              formatNumber(statement.seconds) +
+              ")\n",
+      );
       return;
     case "show":
       writeMapped(writer, nodeId, indent + "show()\n");
@@ -606,6 +647,8 @@ function expressionText(writer: Writer, expression: Expression, nodeId: string):
       return "distance_to_actor(" + JSON.stringify(expression.actorId) + ")";
     case "xPosition":
       return "x_position()";
+    case "direction":
+      return "direction()";
     case "yPosition":
       return "y_position()";
     case "timer":
@@ -856,9 +899,16 @@ const PYTHON_PROJECTION_IDENTIFIERS: ReadonlySet<string> = new Set([
   "touching_stage_edge",
   "distance_to_actor",
   "x_position",
+  "direction",
   "y_position",
   "say",
+  "say_for",
   "think",
+  "think_for",
+  "set_x",
+  "set_y",
+  "change_x",
+  "change_y",
   "show",
   "hide",
   "set_size",

@@ -78,6 +78,10 @@ export type {
   PointInDirectionStatement,
   PointTowardsStatement,
   BounceOnEdgeStatement,
+  SetXStatement,
+  SetYStatement,
+  ChangeXStatement,
+  ChangeYStatement,
   VariableExpression,
 } from "./schema.js";
 export { CHOICE_CATALOG, CHOICE_PROMPT_IDS, isChoicePromptId } from "./choiceCatalog.js";

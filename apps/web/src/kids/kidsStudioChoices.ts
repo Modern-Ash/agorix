@@ -11,6 +11,8 @@ export const STUDIO_EFFECT_DELTAS = [-25, 25] as const;
 export const STUDIO_BRIGHTNESS_VALUES = [-50, -25, 0, 25, 50] as const;
 export const STUDIO_LEVEL_VALUES = [0, 25, 50, 75, 100] as const;
 export const STUDIO_TURN_AMOUNTS = [45, 90, 180] as const;
+/** Sideways or vertical nudges of the "change x / change y" blocks, in stage units. */
+export const STUDIO_SHIFT_AMOUNTS = [-80, -40, -20, 20, 40, 80] as const;
 export const STUDIO_POINT_DIRECTIONS = [0, 90, 180, -90] as const;
 /** Palette moves in whole cells of 40 steps; the model accepts any multiple of 20 up to 200. */
 export const STUDIO_MOVE_CELLS = [1, 2, 3, 4, 5] as const;
