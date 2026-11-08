@@ -20,7 +20,9 @@ export type FindingKind =
   | "hiddenCharacter"
   | "soundSilent"
   | "workingAgainstEachOther"
-  | "loopNeverEnds";
+  | "loopNeverEnds"
+  | "repeatedBlocks"
+  | "repeatedApart";
 
 /** Which loop did not end. */
 export type LoopKindFound = "forever" | "repeatUntil" | "waitUntil";
@@ -127,6 +129,49 @@ function eventOf(script: Script): FindingEvent | undefined {
   if (trigger.type === "onKeyPressed") return { type: "key", name: trigger.key };
   if (trigger.type === "onActorClicked") return { type: "click" };
   if (trigger.type === "onMessage") return { type: "message", name: trigger.message };
+  return undefined;
+}
+
+/** Fewest times the same blocks must be written before Ori says so, and the longest group. */
+const MIN_REPEATED = 3;
+const MAX_PERIOD = 3;
+
+function repeatedWriting(statements: readonly Statement[]):
+  | {
+      readonly kind: "repeatedBlocks" | "repeatedApart";
+      start: number;
+      period: number;
+      times: number;
+    }
+  | undefined {
+  const keys = statements.map((statement) => JSON.stringify(statement));
+  // In a row first: one to three blocks written out three or more times, one after the other.
+  for (let start = 0; start < keys.length; start += 1)
+    for (let period = 1; period <= MAX_PERIOD; period += 1) {
+      let times = 1;
+      while (
+        start + (times + 1) * period <= keys.length &&
+        keys
+          .slice(start, start + period)
+          .every((key, offset) => key === keys[start + times * period + offset])
+      )
+        times += 1;
+      if (times >= MIN_REPEATED) return { kind: "repeatedBlocks", start, period, times };
+    }
+  // Apart: two or three blocks that come back later, not one right after the other.
+  for (let period = 2; period <= MAX_PERIOD; period += 1)
+    for (let start = 0; start + period <= keys.length; start += 1) {
+      const group = keys.slice(start, start + period);
+      let times = 1;
+      let next = start + period;
+      while (next + period <= keys.length) {
+        if (group.every((key, offset) => key === keys[next + offset])) {
+          times += 1;
+          next += period;
+        } else next += 1;
+      }
+      if (times >= MIN_REPEATED) return { kind: "repeatedApart", start, period, times };
+    }
   return undefined;
 }
 
@@ -390,7 +435,24 @@ export function diagnoseRun(input: DiagnoseInput): readonly Finding[] {
     });
   });
 
-  // 8. The learner's guess did not match what happened.
+  // 8. The same blocks written out again and again: in a row (a repeat would do) or apart (a
+  // block of the learner's own would). Found in the program, so it shows after any run.
+  program.scripts.forEach((script, scriptIndex) => {
+    const actorId = actorsOfScript(creative, script)[0] ?? "";
+    if (!wants(actorId)) return;
+    const found = repeatedWriting(script.statements);
+    if (found === undefined) return;
+    out.push({
+      id: `${found.kind}:scripts[${scriptIndex}]/statements[${found.start}]`,
+      kind: found.kind,
+      actorId,
+      nodeIds: [`scripts[${scriptIndex}]/statements[${found.start}]`],
+      counts: { period: found.period, times: found.times },
+      confidence: found.kind === "repeatedBlocks" ? 0.62 : 0.6,
+    });
+  });
+
+  // 9. The learner's guess did not match what happened.
   if (input.predictionMatched === false && final)
     out.push({
       id: "predictionMismatch",

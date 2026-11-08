@@ -61,7 +61,13 @@ export function KidsRunMarker({
       return null;
     }
   })();
-  const sent = review?.proposal.operations[0];
+  // The block the fix puts in the program, to show before the learner decides.
+  const shown = (() => {
+    const first = review?.proposal.operations[0];
+    if (first?.type === "appendStatement" || first?.type === "replaceStatement")
+      return first.statement;
+    return undefined;
+  })();
   return (
     <section className="kids-ori-noticed" data-finding-kind={finding.kind}>
       <button
@@ -129,8 +135,8 @@ export function KidsRunMarker({
             </button>
           ) : null}
           {review &&
-          sent?.type === "appendStatement" &&
-          (sent.statement.type === "broadcast" || sent.statement.type === "show") ? (
+          shown !== undefined &&
+          (shown.type === "broadcast" || shown.type === "show" || shown.type === "repeat") ? (
             <div className="kids-ori-proposal" data-testid="ori-fix">
               <p>{review.proposal.rationale}</p>
               <p className="kids-note">
@@ -140,11 +146,17 @@ export function KidsRunMarker({
               </p>
               <strong data-testid="ori-fix-diff">
                 +{" "}
-                {sent.statement.type === "show"
+                {shown.type === "show"
                   ? es
                     ? "Mostrar"
                     : "Show"
-                  : `${es ? "Enviar mensaje" : "Broadcast message"}: ${sent.statement.message}`}
+                  : shown.type === "repeat"
+                    ? es
+                      ? `Repetir ${shown.count} veces: ${shown.body.length} ${shown.body.length === 1 ? "bloque" : "bloques"}`
+                      : `Repeat ${shown.count} times: ${shown.body.length} ${shown.body.length === 1 ? "block" : "blocks"}`
+                    : shown.type === "broadcast"
+                      ? `${es ? "Enviar mensaje" : "Broadcast message"}: ${shown.message}`
+                      : ""}
               </strong>
               <div className="kids-ori-actions">
                 <button
