@@ -510,3 +510,19 @@ Mis proyectos → **Importar de Scratch (.sb3)** reads `project.json` from the f
 - **Snapped to the scene's closed lists:** moves, turns, sizes, waits and repeat counts take the nearest allowed value; positions are rescaled from Scratch's 480 by 360 stage; text is cut to 80 characters. Blocks that came across changed are counted as adjusted.
 - **Left behind and counted by reason:** other scripts of a sprite, sprites past twelve, variables past three, more than three different broadcast messages, blocks with no equivalent (costumes, sensing of other sprites, custom blocks, lists, music, effects, ...), and blocks whose value comes from another block that the scene cannot compute.
 - **Safety:** only `project.json` is read, with size limits; nothing in the file is executed; the result must pass the same validation as any scene, and a block the scene rejects is dropped and reported instead of failing the import.
+
+## Next costume (fourth Scratch-compatibility increment)
+
+- **Siguiente disfraz** (`nextCostume` with a fixed list): moves to the next costume in the list and wraps around. In the model a costume is a gallery character or a drawing the child made, not a per-sprite list, so the block carries its own list: the character's own costume first, then the child's drawn costumes at the moment the block is added (a costume drawn later needs the block added again). A current costume that is not in the list goes to the first one.
+- With nothing drawn there is nothing to change to, so the block stays in the palette dimmed with its reason ("Primero dibujá otro disfraz"), like the other blocks that need something first.
+- The Scratch importer does not map `next costume`: a Scratch sprite's costumes are not ours.
+
+## Rotation style (third Scratch-compatibility increment)
+
+- **Estilo de giro** (`setRotationStyle`: `all`, `leftRight`, `none`): since Turn now rotates the character on stage, games need Scratch's way to keep it from going upside down. _Toda la vuelta_ is the default and what a sprite does if the block is never used; _Izquierda y derecha_ mirrors the picture when it faces left; _Sin girar_ keeps it upright. The style lives in the sprite's world state and the stage draws it from there; the Scratch importer maps `set rotation style`.
+
+## Say with a number after the text (the useful part of Scratch's "join")
+
+- **Decir con variable** (`say` / `think` with `append`): the text, one space, then a number (a variable, a position, a calculation) written in the bubble, e.g. "Puntos: 7". The number is evaluated by the deterministic runtime, so the trace shows exactly what was said; decimals are kept to two places.
+- This is the part of Scratch's `join` that nearly every score or counter project uses. **Text operators in general** (letter of, length, joining two texts) stay out: they need variables that hold text, which would let free text typed by a child travel through the program, and the product excludes that (see the functional matrix). The text in a bubble is still only what the child types into the bubble itself.
+- The Scratch importer turns `say (join "Puntos: " (variable))` into this block.

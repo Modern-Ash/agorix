@@ -158,6 +158,23 @@ function writeStatement(writer: Writer, statement: Statement, nodeId: string, de
           " seconds\n",
       );
       return;
+    case "nextCostume":
+      writeMapped(writer, nodeId, indent + "next costume of " + statement.costumeIds.length + "\n");
+      return;
+    case "setRotationStyle":
+      writeMapped(
+        writer,
+        nodeId,
+        indent +
+          "set rotation style " +
+          (statement.style === "leftRight"
+            ? "left-right"
+            : statement.style === "none"
+              ? "don't rotate"
+              : "all around") +
+          "\n",
+      );
+      return;
     case "goToTarget":
       writeMapped(
         writer,

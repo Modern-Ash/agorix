@@ -103,6 +103,8 @@ describe("Python projection", () => {
         "say_for",
         "think",
         "think_for",
+        "next_costume",
+        "set_rotation_style",
         "go_to_random",
         "go_to_mouse",
         "set_x",

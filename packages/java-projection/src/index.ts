@@ -33,6 +33,8 @@ export const JAVA_PROJECTION = {
 export const JAVA_SUPPORT_API = [
   "move",
   "goTo",
+  "nextCostume",
+  "setRotationStyle",
   "goToRandom",
   "goToMouse",
   "setX",
@@ -109,6 +111,8 @@ export const JAVA_SUPPORT_API = [
 export const JAVA_SUPPORT_STUB = `class Sprite {
     void move(double steps) {}
     void goTo(double x, double y) {}
+    void nextCostume(String[] costumes) {}
+    void setRotationStyle(String style) {}
     void goToRandom() {}
     void goToMouse() {}
     void setX(double x) {}
@@ -498,6 +502,10 @@ function statement(writer: Writer, node: Statement, nodeId: string, depth: numbe
       );
     case "goTo":
       return line(`goTo(${number(node.x)}, ${number(node.y)})`);
+    case "nextCostume":
+      return line(`nextCostume(new String[] {${node.costumeIds.map(literal).join(", ")}})`);
+    case "setRotationStyle":
+      return line(`setRotationStyle(${literal(node.style)})`);
     case "goToTarget":
       return line(node.target === "random" ? "goToRandom()" : "goToMouse()");
     case "setX":
@@ -775,6 +783,8 @@ export const javaLanguagePack: LanguagePack = {
   supportedCanonicalOperations: [
     "move",
     "goTo",
+    "nextCostume",
+    "setRotationStyle",
     "goToTarget",
     "setX",
     "setY",

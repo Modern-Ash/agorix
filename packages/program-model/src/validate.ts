@@ -473,6 +473,16 @@ function validateStatement(
       checkBounds(input.y, -1000, 1000, `${path}.y`);
       return { type: "goTo", x: input.x, y: input.y };
     }
+    case "setRotationStyle":
+      if (input.style !== "all" && input.style !== "leftRight" && input.style !== "none") {
+        fail(
+          "INVALID_FIELD_TYPE",
+          `${path}.style`,
+          'expected "all", "leftRight" or "none"',
+          input.style,
+        );
+      }
+      return { type: "setRotationStyle", style: input.style };
     case "goToTarget":
       if (input.target !== "random" && input.target !== "mouse") {
         fail("INVALID_FIELD_TYPE", `${path}.target`, 'expected "random" or "mouse"', input.target);
@@ -700,6 +710,28 @@ function validateStatement(
       };
     case "switchCostume":
       return { type: "switchCostume", costumeId: checkText(input.costumeId, `${path}.costumeId`) };
+    case "nextCostume": {
+      if (!Array.isArray(input.costumeIds)) {
+        fail(
+          "MISSING_FIELD",
+          `${path}.costumeIds`,
+          "expected a list of costumes",
+          input.costumeIds,
+        );
+      }
+      const ids = (input.costumeIds as unknown[]).map((item, index) =>
+        checkText(item, `${path}.costumeIds[${index}]`),
+      );
+      if (ids.length < 2 || ids.length > 24 || new Set(ids).size !== ids.length) {
+        fail(
+          "INVALID_FIELD_TYPE",
+          `${path}.costumeIds`,
+          "expected two to 24 different costumes",
+          input.costumeIds,
+        );
+      }
+      return { type: "nextCostume", costumeIds: ids };
+    }
     case "switchBackdrop":
       return {
         type: "switchBackdrop",

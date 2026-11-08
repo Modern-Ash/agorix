@@ -43,6 +43,8 @@ const GLYPH: Partial<Record<string, string>> = {
   move: "➜",
   goTo: "⌖",
   goToTarget: "🎲",
+  nextCostume: "👗",
+  setRotationStyle: "🔄",
   setX: "⇤",
   setY: "⇥",
   changeX: "↔",

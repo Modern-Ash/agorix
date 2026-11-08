@@ -66,11 +66,66 @@ test("broadcast and wait is a block of its own and shows as such", async ({ page
   );
 });
 
+test("next costume needs a costume the child drew, then cycles back to the character", async ({
+  page,
+}) => {
+  await openScene(page);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  // Nothing to change to yet: the block stays and says why.
+  await page
+    .getByRole("button", { name: "+ Siguiente disfraz", exact: true })
+    .click({ force: true });
+  await expect(page.getByText("Primero dibujá otro disfraz").first()).toBeVisible();
+  await expect(page.locator(".kids-program-block")).toHaveCount(0);
+
+  await page.getByRole("tab", { name: /Disfraces/ }).click();
+  await page.getByRole("button", { name: "Dibujar disfraz" }).click();
+  const canvas = page.getByRole("img", { name: "Lienzo para dibujar" });
+  await canvas.scrollIntoViewIfNeeded();
+  const bounds = (await canvas.boundingBox())!;
+  await page.mouse.click(bounds.x + 80, bounds.y + 80);
+  await page.getByRole("button", { name: "Guardar dibujo" }).click();
+  await expect(page.locator(".kids-studio-stage-actor .kids-art-image")).toHaveCSS(
+    "background-image",
+    /data:image\/(png|webp)/,
+  );
+
+  await page.getByRole("tab", { name: /Código/ }).click();
+  await page.getByRole("button", { name: "+ Siguiente disfraz", exact: true }).click();
+  await expect(page.locator(".kids-program-block").first()).toContainText("Siguiente disfraz (2)");
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  // The drawn costume was showing; the next one in the list is the character itself.
+  await expect
+    .poll(() =>
+      page
+        .locator(".kids-studio-stage-actor .kids-art-image")
+        .first()
+        .evaluate((node) => getComputedStyle(node).backgroundImage),
+    )
+    .not.toMatch(/data:image\/(png|webp)/);
+});
+
+test("the rotation style decides how a turn looks on stage", async ({ page }) => {
+  await openScene(page);
+  await page.getByRole("combobox", { name: "Estilo de giro" }).selectOption("none");
+  await page.getByRole("button", { name: "+ Estilo de giro", exact: true }).click();
+  await page.getByRole("button", { name: "+ Girar a la derecha" }).click();
+  await expect(page.locator(".kids-program-block").first()).toContainText(
+    "Estilo de giro: Sin girar",
+  );
+  const costume = page.locator(".kids-studio-stage-actor .kids-studio-stage-costume").first();
+  await page.getByRole("button", { name: "Jugar", exact: true }).click();
+  // Turning without rotating leaves the picture upright.
+  await expect
+    .poll(() => costume.evaluate((node) => (node as HTMLElement).style.transform))
+    .not.toContain("rotate");
+});
+
 test("say with a variable shows its value after the text", async ({ page }) => {
   await openScene(page);
   await page.getByRole("textbox", { name: "Nombre" }).fill("Puntos");
   await page.getByRole("button", { name: "+ Crear variable" }).click();
-  await page.getByRole("button", { name: "+ Cambiar variable" }).first().click();
+  await page.getByRole("button", { name: "+ Guardar posición X", exact: true }).click();
   await page.getByRole("button", { name: "+ Decir con variable", exact: true }).click();
   await expect(page.locator(".kids-program-block").last()).toContainText("Decir: ¡Hola! + Puntos");
   await page.getByRole("button", { name: "Jugar", exact: true }).click();

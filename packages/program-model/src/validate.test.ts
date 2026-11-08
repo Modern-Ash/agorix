@@ -592,6 +592,40 @@ describe("go to target and broadcast and wait", () => {
   });
 });
 
+describe("next costume", () => {
+  const base = (statement: unknown) => ({
+    schema: "agorix/program/v1",
+    scripts: [{ id: "a", trigger: { type: "onStart" }, statements: [statement] }],
+  });
+  it("accepts a list of two or more different costumes", () => {
+    expect(() =>
+      validateProgram(base({ type: "nextCostume", costumeIds: ["a", "b"] }) as never),
+    ).not.toThrow();
+  });
+  it("rejects a missing, short, repeated or oversized list", () => {
+    const many = Array.from({ length: 25 }, (_value, index) => `c${index}`);
+    for (const costumeIds of [undefined, ["a"], ["a", "a"], many, ["a", 2]])
+      expect(() => validateProgram(base({ type: "nextCostume", costumeIds }) as never)).toThrow();
+  });
+});
+
+describe("rotation style", () => {
+  const base = (statement: unknown) => ({
+    schema: "agorix/program/v1",
+    scripts: [{ id: "a", trigger: { type: "onStart" }, statements: [statement] }],
+  });
+  it("accepts the three styles and rejects anything else", () => {
+    for (const style of ["all", "leftRight", "none"])
+      expect(() =>
+        validateProgram(base({ type: "setRotationStyle", style }) as never),
+      ).not.toThrow();
+    expect(() =>
+      validateProgram(base({ type: "setRotationStyle", style: "spin" }) as never),
+    ).toThrow();
+    expect(() => validateProgram(base({ type: "setRotationStyle" }) as never)).toThrow();
+  });
+});
+
 describe("say with a number after the text", () => {
   const base = (statement: unknown) => ({
     schema: "agorix/program/v1",

@@ -24,6 +24,8 @@ export interface SpriteState extends Position {
   readonly visible?: boolean;
   readonly size?: number;
   readonly costumeId?: string;
+  /** Absent means "all around" (the default), so sprites that never set it look as before. */
+  readonly rotationStyle?: "leftRight" | "none";
   readonly bubble?: LooksBubble;
   /** Absent while every effect is zero, so sprites without effects look exactly as before. */
   readonly effects?: SpriteEffects;
@@ -294,6 +296,9 @@ export function createWorldState(input: WorldStateInput = {}): WorldState {
       visible: input.sprite?.visible ?? true,
       size: normalizeCoordinate(input.sprite?.size ?? 100),
       ...(input.sprite?.costumeId === undefined ? {} : { costumeId: input.sprite.costumeId }),
+      ...(input.sprite?.rotationStyle === "leftRight" || input.sprite?.rotationStyle === "none"
+        ? { rotationStyle: input.sprite.rotationStyle }
+        : {}),
       ...normalizeEffects(input.sprite?.effects),
       ...(input.sprite?.bubble === undefined
         ? {}
@@ -542,6 +547,18 @@ export function clearBubbleWorld(world: WorldState): WorldState {
   return createWorldState({ ...world, sprite });
 }
 
+export function setRotationStyleWorld(
+  world: WorldState,
+  style: "all" | "leftRight" | "none",
+): WorldState {
+  const sprite = { ...world.sprite };
+  delete sprite.rotationStyle;
+  return createWorldState({
+    ...world,
+    sprite: style === "all" ? sprite : { ...sprite, rotationStyle: style },
+  });
+}
+
 export function showWorld(world: WorldState): WorldState {
   return createWorldState({ ...world, sprite: { ...world.sprite, visible: true } });
 }
@@ -561,6 +578,13 @@ export function changeSpriteSizeWorld(world: WorldState, delta: number): WorldSt
 
 export function switchCostumeWorld(world: WorldState, costumeId: string): WorldState {
   return createWorldState({ ...world, sprite: { ...world.sprite, costumeId } });
+}
+
+/** The costume after the current one in `costumeIds`, wrapping; the first when not in the list. */
+export function nextCostumeWorld(world: WorldState, costumeIds: readonly string[]): WorldState {
+  const at = world.sprite.costumeId === undefined ? -1 : costumeIds.indexOf(world.sprite.costumeId);
+  const next = costumeIds[(at + 1) % costumeIds.length];
+  return next === undefined ? world : switchCostumeWorld(world, next);
 }
 
 export function switchBackdropWorld(world: WorldState, backdropId: string): WorldState {

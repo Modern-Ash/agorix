@@ -61,6 +61,7 @@ import {
   clearPenWorld,
   drawPenTrail,
   clearBubbleWorld,
+  setRotationStyleWorld,
   changeSpriteSizeWorld,
   showWorld,
   stopSoundsWorld,
@@ -68,6 +69,7 @@ import {
   changeVolumeWorld,
   switchBackdropWorld,
   switchCostumeWorld,
+  nextCostumeWorld,
   thinkWorld,
   touchingGoal,
   turnWorld,
@@ -562,6 +564,9 @@ function* executeStatement(
     case "goTo":
       state.world = goToWorld(state.world, statement.x, statement.y);
       break;
+    case "setRotationStyle":
+      state.world = setRotationStyleWorld(state.world, statement.style);
+      break;
     case "goToTarget": {
       if (statement.target === "random") {
         // Inside the same bounds the stage shows; the seeded stream keeps a run reproducible.
@@ -741,6 +746,9 @@ function* executeStatement(
     }
     case "switchCostume":
       state.world = switchCostumeWorld(state.world, statement.costumeId);
+      break;
+    case "nextCostume":
+      state.world = nextCostumeWorld(state.world, statement.costumeIds);
       break;
     case "switchBackdrop":
       state.world = switchBackdropWorld(state.world, statement.backdropId);

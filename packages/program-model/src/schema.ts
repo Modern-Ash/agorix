@@ -268,6 +268,15 @@ export interface GoToStatement {
 
 export type GoToTarget = "random" | "mouse";
 
+/** How the character's picture follows its heading: Scratch's three rotation styles. */
+export type RotationStyle = "all" | "leftRight" | "none";
+
+/** Scratch's "set rotation style": turn all around, only face left or right, or never rotate. */
+export interface SetRotationStyleStatement {
+  readonly type: "setRotationStyle";
+  readonly style: RotationStyle;
+}
+
 /**
  * Scratch's "go to random position" and "go to mouse-pointer": the sprite jumps inside the stage
  * to a seeded random spot, or to the pointer captured for the run.
@@ -477,6 +486,16 @@ export interface SwitchCostumeStatement {
   readonly costumeId: string;
 }
 
+/**
+ * Scratch's "next costume": moves to the costume after the current one in this list, and wraps
+ * around. The list is fixed when the block is made (the character's own costume first); a current
+ * costume that is not in it goes to the first one.
+ */
+export interface NextCostumeStatement {
+  readonly type: "nextCostume";
+  readonly costumeIds: readonly string[];
+}
+
 export interface SwitchBackdropStatement {
   readonly type: "switchBackdrop";
   readonly backdropId: string;
@@ -616,6 +635,7 @@ export type Statement =
   | MoveStatement
   | GoToStatement
   | GoToTargetStatement
+  | SetRotationStyleStatement
   | SetXStatement
   | SetYStatement
   | ChangeXStatement
@@ -649,6 +669,7 @@ export type Statement =
   | WaitStatement
   | WaitUntilStatement
   | SwitchCostumeStatement
+  | NextCostumeStatement
   | SwitchBackdropStatement
   | PlaySoundStatement
   | StopSoundsStatement
