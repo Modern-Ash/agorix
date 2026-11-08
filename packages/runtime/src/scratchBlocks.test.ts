@@ -158,3 +158,23 @@ describe("go to random position or the pointer, and broadcast and wait", () => {
     expect(senderX(true, 2)).toBe(99);
   });
 });
+
+describe("rotation style", () => {
+  it("sets the style, and 'all around' puts it back to the default", () => {
+    const style = (statements: Statement[]) =>
+      runProgram(program(statements), createWorldState()).world.sprite.rotationStyle;
+    expect(style([{ type: "setRotationStyle", style: "leftRight" }])).toBe("leftRight");
+    expect(style([{ type: "setRotationStyle", style: "none" }])).toBe("none");
+    expect(
+      style([
+        { type: "setRotationStyle", style: "none" },
+        { type: "setRotationStyle", style: "all" },
+      ]),
+    ).toBeUndefined();
+  });
+
+  it("leaves sprites that never set it exactly as before", () => {
+    const world = runProgram(program([{ type: "turn", degrees: 90 }]), createWorldState()).world;
+    expect("rotationStyle" in world.sprite).toBe(false);
+  });
+});

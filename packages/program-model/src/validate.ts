@@ -463,6 +463,16 @@ function validateStatement(
       checkBounds(input.y, -1000, 1000, `${path}.y`);
       return { type: "goTo", x: input.x, y: input.y };
     }
+    case "setRotationStyle":
+      if (input.style !== "all" && input.style !== "leftRight" && input.style !== "none") {
+        fail(
+          "INVALID_FIELD_TYPE",
+          `${path}.style`,
+          'expected "all", "leftRight" or "none"',
+          input.style,
+        );
+      }
+      return { type: "setRotationStyle", style: input.style };
     case "goToTarget":
       if (input.target !== "random" && input.target !== "mouse") {
         fail("INVALID_FIELD_TYPE", `${path}.target`, 'expected "random" or "mouse"', input.target);

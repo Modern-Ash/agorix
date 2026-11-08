@@ -385,6 +385,13 @@ class Converter {
         const value = nearest((-dy * 110) / 180, STUDIO_SHIFT_AMOUNTS);
         return { type: "changeY", dy: this.adjust(value, dy) };
       }
+      case "motion_setrotationstyle": {
+        const style = this.menu(block, "STYLE");
+        return {
+          type: "setRotationStyle",
+          style: style === "left-right" ? "leftRight" : style === "don't rotate" ? "none" : "all",
+        };
+      }
       case "motion_ifonedgebounce":
         return { type: "bounceOnEdge" };
       case "motion_goto": {

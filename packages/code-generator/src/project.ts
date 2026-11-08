@@ -285,6 +285,9 @@ function projectStatement(
         `${pad}sprite.glideTo(${formatNumber(statement.x)}, ${formatNumber(statement.y)}, ${formatNumber(statement.seconds)});\n`,
       );
       return;
+    case "setRotationStyle":
+      write(writer, `${pad}sprite.setRotationStyle(${JSON.stringify(statement.style)});\n`);
+      return;
     case "goToTarget":
       write(
         writer,

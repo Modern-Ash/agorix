@@ -1868,7 +1868,7 @@ test("Ori's tune is heard first, only joins the program when used, and can be un
 test("free scene shows Looks and Motion as snap-together blocks and keeps tap, Enter and drag", async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 1280, height: 3200 });
+  await page.setViewportSize({ width: 1280, height: 4400 });
   await page.goto("/kids");
   await page.evaluate(() => {
     localStorage.clear();
@@ -1944,7 +1944,7 @@ test("free scene shows Looks and Motion as snap-together blocks and keeps tap, E
 test("free scene shows Media and Logic as snap-together blocks and keeps tools out of drag", async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 1280, height: 3800 });
+  await page.setViewportSize({ width: 1280, height: 4400 });
   await page.goto("/kids");
   await page.evaluate(() => {
     localStorage.clear();

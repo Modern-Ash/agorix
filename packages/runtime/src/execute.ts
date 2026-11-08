@@ -61,6 +61,7 @@ import {
   clearPenWorld,
   drawPenTrail,
   clearBubbleWorld,
+  setRotationStyleWorld,
   changeSpriteSizeWorld,
   showWorld,
   stopSoundsWorld,
@@ -548,6 +549,9 @@ function* executeStatement(
       break;
     case "goTo":
       state.world = goToWorld(state.world, statement.x, statement.y);
+      break;
+    case "setRotationStyle":
+      state.world = setRotationStyleWorld(state.world, statement.style);
       break;
     case "goToTarget": {
       if (statement.target === "random") {
