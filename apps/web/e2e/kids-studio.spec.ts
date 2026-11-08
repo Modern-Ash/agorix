@@ -13,6 +13,8 @@ import {
   categoryNav,
   settleAnimations,
   openSelectedSprite,
+  expectInViewport,
+  TALL_VIEWPORT,
 } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
@@ -1868,7 +1870,7 @@ test("Ori's tune is heard first, only joins the program when used, and can be un
 test("free scene shows Looks and Motion as snap-together blocks and keeps tap, Enter and drag", async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 1280, height: 4400 });
+  await page.setViewportSize({ width: 1280, height: TALL_VIEWPORT });
   await page.goto("/kids");
   await page.evaluate(() => {
     localStorage.clear();
@@ -1911,6 +1913,7 @@ test("free scene shows Looks and Motion as snap-together blocks and keeps tap, E
   // Drag into the empty program first, like the existing drag suite: the ghost uses the visible label.
   const turn = palette.getByRole("button", { name: "+ Girar a la derecha", exact: true });
   const drop = page.locator(".kids-program-drop");
+  await expectInViewport(page, turn, "the turn block");
   const from = (await turn.boundingBox())!;
   const to = (await drop.boundingBox())!;
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
@@ -1944,7 +1947,7 @@ test("free scene shows Looks and Motion as snap-together blocks and keeps tap, E
 test("free scene shows Media and Logic as snap-together blocks and keeps tools out of drag", async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 1280, height: 4400 });
+  await page.setViewportSize({ width: 1280, height: TALL_VIEWPORT });
   await page.goto("/kids");
   await page.evaluate(() => {
     localStorage.clear();
@@ -1980,6 +1983,7 @@ test("free scene shows Media and Logic as snap-together blocks and keeps tools o
   await backdropBlock.getByRole("combobox", { name: "Cambiar fondo" }).selectOption("forest");
   const drop = page.locator(".kids-program-drop");
   await backdropAdd.scrollIntoViewIfNeeded();
+  await expectInViewport(page, backdropAdd, "the backdrop block");
   const from = (await backdropAdd.boundingBox())!;
   const to = (await drop.boundingBox())!;
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);

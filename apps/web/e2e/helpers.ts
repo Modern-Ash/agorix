@@ -151,3 +151,26 @@ export async function openSelectedSprite(page: Page, which: "first" | "last" = "
   await expect(card).toBeVisible();
   return card;
 }
+
+/**
+ * The viewport height of the tests that drag from the block palette. The palette scrolls inside
+ * its own column, so a block below the fold cannot be dragged to the program; these tests use a
+ * viewport tall enough for the blocks they drag. When the palette grows and a block falls out of
+ * view, `expectInViewport` says so by name, so the fix is this one number and not a drag that
+ * silently does nothing.
+ */
+export const TALL_VIEWPORT = 4400;
+
+export async function expectInViewport(
+  page: Page,
+  target: ReturnType<Page["locator"]>,
+  name = "the dragged block",
+): Promise<void> {
+  const box = await target.boundingBox();
+  const height = page.viewportSize()?.height ?? 0;
+  expect(box, `${name} is not on the page`).not.toBeNull();
+  expect(
+    box!.y + box!.height / 2 >= 0 && box!.y + box!.height / 2 <= height,
+    `${name} has its middle at y=${Math.round(box!.y + box!.height / 2)} of a ${height}px viewport: raise TALL_VIEWPORT in e2e/helpers.ts`,
+  ).toBe(true);
+}

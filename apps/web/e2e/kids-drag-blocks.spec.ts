@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "./fixtures.js";
-import { clickCreateScene } from "./helpers.js";
+import { clickCreateScene, expectInViewport, TALL_VIEWPORT } from "./helpers.js";
 
 test.use({ hasTouch: true, serviceWorkers: "block" });
 
@@ -38,6 +38,7 @@ async function dragBetween(
 
 const center = async (locator: ReturnType<Page["locator"]>) => {
   await locator.scrollIntoViewIfNeeded();
+  await expectInViewport(locator.page(), locator);
   const box = (await locator.boundingBox())!;
   return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
 };
@@ -80,7 +81,7 @@ async function touchPointer(
 test("dragging a block from the panel into the program adds it, a tap still does, a miss does not", async ({
   page,
 }) => {
-  await openScene(page, 1280, 4400);
+  await openScene(page, 1280, TALL_VIEWPORT);
   await expect(page.locator(".kids-program-drop")).toHaveAttribute(
     "data-hint",
     "Soltá acá para agregar",
@@ -104,7 +105,7 @@ test("dragging a block from the panel into the program adds it, a tap still does
 test("a touch drag waits for the 250ms hold, then adds one block and cleans up the ghost", async ({
   page,
 }) => {
-  await openScene(page, 1280, 4400);
+  await openScene(page, 1280, TALL_VIEWPORT);
   const add = page.getByRole("button", { name: "+ Mover", exact: true });
   const from = await center(add);
   const to = await center(page.locator(".kids-program-drop"));
@@ -119,7 +120,7 @@ test("a touch drag waits for the 250ms hold, then adds one block and cleans up t
 });
 
 test("a touch that moves before the hold is a scroll and adds no block", async ({ page }) => {
-  await openScene(page, 1280, 4400);
+  await openScene(page, 1280, TALL_VIEWPORT);
   const add = page.getByRole("button", { name: "+ Mover", exact: true });
   const from = await center(add);
   const to = await center(page.locator(".kids-program-drop"));
@@ -136,7 +137,7 @@ test("a touch that moves before the hold is a scroll and adds no block", async (
 test("blocks reorder with the keyboard buttons and by dragging the handle, and undo restores them", async ({
   page,
 }) => {
-  await openScene(page, 1280, 4400);
+  await openScene(page, 1280, TALL_VIEWPORT);
   await page.getByRole("button", { name: "+ Mover", exact: true }).click();
   await page.getByRole("button", { name: "+ Girar a la derecha" }).click();
   await page.getByRole("button", { name: "+ Esperar", exact: true }).click();
@@ -182,7 +183,7 @@ async function repeatOfTwo(page: Page) {
 test("a block can be dragged into a repeat and taken out again, and the keyboard does the same", async ({
   page,
 }) => {
-  await openScene(page, 1280, 4400);
+  await openScene(page, 1280, TALL_VIEWPORT);
   await repeatOfTwo(page);
   // Drag the loose "Esperar" into the repeat's body: it becomes a third block inside it.
   const handle = await center(page.getByRole("button", { name: "Arrastrar bloque 2" }));
@@ -207,7 +208,7 @@ test("a block can be dragged into a repeat and taken out again, and the keyboard
 test("a block can be given to another character by dragging it onto them or by choosing them", async ({
   page,
 }) => {
-  await openScene(page, 1280, 4400);
+  await openScene(page, 1280, TALL_VIEWPORT);
   await page.getByRole("button", { name: "+ Agregar personaje" }).click();
   await page.getByRole("group", { name: "Personajes" }).getByRole("button").first().click();
   await page.getByRole("button", { name: "+ Mover", exact: true }).click();
@@ -239,7 +240,7 @@ test("a block can be given to another character by dragging it onto them or by c
 test("a block dragged from the panel lands inside a repeat when dropped there", async ({
   page,
 }) => {
-  await openScene(page, 1280, 4400);
+  await openScene(page, 1280, TALL_VIEWPORT);
   await page.getByRole("button", { name: "+ Mover", exact: true }).click();
   await page.getByRole("button", { name: "+ Girar a la derecha" }).click();
   await page.getByRole("button", { name: "Repetir estos bloques", exact: true }).click();
