@@ -53,6 +53,8 @@ test("every language is offered while the age-band switch is off, and Java shows
 test("the line of the stepped block is highlighted in Java and in the other languages", async ({
   page,
 }) => {
+  // Reduced motion skips the live playback, so Play leaves the run ready to step from its start.
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await openScene(page);
   await page.getByRole("button", { name: "+ Mover", exact: true }).click();
   await page.getByRole("button", { name: "+ Girar a la derecha" }).click();

@@ -555,7 +555,10 @@ test("free scene draws with the pen extension and keeps the drawing blocks after
   expect(violations.map((entry) => entry.id)).toEqual([]);
   await page.getByRole("button", { name: "Jugar", exact: true }).click();
   await expect(page.locator(".kids-studio-pen line").first()).toHaveAttribute("stroke", "#ef627d");
-  expect(await page.locator(".kids-studio-pen line").count()).toBeGreaterThanOrEqual(3);
+  // Play now shows the run live, so the strokes appear as it advances.
+  await expect
+    .poll(async () => page.locator(".kids-studio-pen line").count())
+    .toBeGreaterThanOrEqual(3);
   await reloadTo(page, "#/proyectos");
   await page.getByRole("button", { name: "Mis proyectos" }).click();
   await page

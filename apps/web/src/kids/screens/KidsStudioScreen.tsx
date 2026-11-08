@@ -1115,6 +1115,8 @@ export function KidsStudioScreen({
   const pendingChoiceId = waitingChoiceId(run);
   const [events, setEvents] = useState<readonly RuntimeEvent[]>([{ type: "start" }]);
   const [frame, setFrame] = useState<number | null>(null);
+  // Play shows the recorded run frame by frame, like a green flag, instead of jumping to the end.
+  const [playing, setPlaying] = useState(false);
   const tutorialFlag = useKidsFlag("tutorial");
   const duplicateFlag = useKidsFlag("duplicate");
   const contextMenuFlag = useKidsFlag("contextMenu");
@@ -1842,6 +1844,34 @@ export function KidsStudioScreen({
     const end = code.indexOf("\n", range.start);
     return { start: range.start, end: end === -1 || end > range.end ? range.end : end };
   })();
+
+  useEffect(() => {
+    if (!playing) return;
+    if (frame === null || !run || frame >= run.frames.length) {
+      setPlaying(false);
+      return;
+    }
+    const entry = run.trace[frame];
+    if (entry?.statementType === "playSound") {
+      const owner = creative.actors?.find((item) => item.id === entry.actorId);
+      if (owner)
+        void playKidsSound(
+          entry.worldAfter.sounds?.activeSoundIds.at(-1) ?? "kids:pop",
+          { kind: "gallery", id: characterOfActor(owner.id) },
+          { volume: entry.worldAfter.sounds?.volume ?? 100 },
+        );
+    } else if (entry?.statementType === "stopSounds") stopKidsSounds();
+    const base = Math.max(25, Math.min(220, Math.round(1800 / Math.max(1, run.frames.length))));
+    const delay = entry?.statementType === "wait" ? base * 2 : base;
+    const timer = window.setTimeout(() => {
+      if (frame + 1 < run.frames.length) setFrame(frame + 1);
+      else {
+        setPlaying(false);
+        setFrame(null);
+      }
+    }, delay);
+    return () => window.clearTimeout(timer);
+  }, [playing, frame, run]);
 
   function fireKey(key: string) {
     if (!run || !STUDIO_KEYS.includes(key as (typeof STUDIO_KEYS)[number])) return;
@@ -2747,11 +2777,12 @@ export function KidsStudioScreen({
     setRunCount((count) => count + 1);
   }
 
-  function presentRun(result: MultiActorRunResult) {
+  function presentRun(result: MultiActorRunResult, live = false) {
     setRun(result);
     setFrame(null);
     stopKidsSounds();
     stopKidsMusic();
+    if (live) return; // The playback loop plays each sound when its frame is reached.
     // Music pack: a timeline from the trace; plain sounds below only play without it.
     const timeline = playKidsMusic(result.trace);
     let soundsPlayed = 0;
@@ -2806,7 +2837,15 @@ export function KidsStudioScreen({
         choices: choiceAnswers.current,
       });
       recordRunResult(result);
-      presentRun(result);
+      const reduced =
+        typeof window.matchMedia === "function" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const live = !reduced && result.frames.length > 1;
+      presentRun(result, live);
+      if (live) {
+        setFrame(0);
+        setPlaying(true);
+      } else setPlaying(false);
       setPredictedForRun(prediction);
       setEvents([{ type: "start" }]);
       setError(false);
@@ -3485,6 +3524,7 @@ export function KidsStudioScreen({
                   onClick={() => {
                     stopKidsSounds();
                     stopKidsMusic();
+                    setPlaying(false);
                     setRun(null);
                     setFrame(null);
                   }}
@@ -3498,6 +3538,7 @@ export function KidsStudioScreen({
                   title={copy.step}
                   disabled={!run || (frame !== null && frame >= run.frames.length - 1)}
                   onClick={() => {
+                    setPlaying(false);
                     setStepped(true);
                     setFrame(frame === null ? 0 : frame + 1);
                   }}
