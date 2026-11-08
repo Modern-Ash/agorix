@@ -1,26 +1,45 @@
 import { useState } from "react";
+import { acceptProposal, rejectProposal } from "@agorix/proposals";
+import type { ProjectProgram } from "@agorix/program-model";
 import type { Finding } from "@agorix/run-evidence";
 import type { Locale } from "../../i18n.js";
 import type { AgeBand } from "../kidsAgeBand.js";
 import { findingSentence } from "../kidsRunFindings.js";
+import { proposeRunFix, reviewRunFix } from "../kidsRunFixes.js";
 
 /**
  * "Ori vio algo": a quiet marker after a run that looks wrong. Nothing speaks on its own; tapping
- * it shows one sentence of evidence from the run and can point at the block it is about.
+ * it shows one sentence of evidence from the run, can point at the block it is about and, where
+ * the fix is obvious, offers it as a proposal the learner accepts or declines.
  */
 export function KidsRunMarker({
   finding,
+  program,
   locale,
   band,
   onShow,
+  onApplyProgram,
 }: {
   readonly finding: Finding;
+  readonly program: ProjectProgram;
   readonly locale: Locale;
   readonly band: AgeBand;
   readonly onShow: (finding: Finding) => void;
+  /** The learner accepted Ori's change: the new canonical program, recorded as one undoable step. */
+  readonly onApplyProgram: (program: ProjectProgram, label: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [declined, setDeclined] = useState(false);
   const es = locale === "es";
+  const review = (() => {
+    if (!open || declined) return null;
+    try {
+      return reviewRunFix(program, finding, proposeRunFix(program, finding, locale));
+    } catch {
+      return null;
+    }
+  })();
+  const sent = review?.proposal.operations[0];
   return (
     <section className="kids-ori-noticed" data-finding-kind={finding.kind}>
       <button
@@ -42,6 +61,40 @@ export function KidsRunMarker({
             >
               {es ? "Ver en el programa" : "Show in the program"}
             </button>
+          ) : null}
+          {review && sent?.type === "appendStatement" && sent.statement.type === "broadcast" ? (
+            <div className="kids-ori-proposal" data-testid="ori-fix">
+              <p>{review.proposal.rationale}</p>
+              <p className="kids-note">
+                {es
+                  ? "Idea de Ori: todavía no está en tu programa. Revisá el cambio antes de decidir."
+                  : "Ori's idea is not in your program yet. Review the change before deciding."}
+              </p>
+              <strong data-testid="ori-fix-diff">
+                + {es ? "Enviar mensaje" : "Broadcast message"}: {sent.statement.message}
+              </strong>
+              <div className="kids-ori-actions">
+                <button
+                  type="button"
+                  className="kids-button kids-primary"
+                  onClick={() =>
+                    onApplyProgram(acceptProposal(program, review).program, "Ori run fix")
+                  }
+                >
+                  {es ? "Usar este cambio" : "Use this change"}
+                </button>
+                <button
+                  type="button"
+                  className="kids-button"
+                  onClick={() => {
+                    rejectProposal(program, review);
+                    setDeclined(true);
+                  }}
+                >
+                  {es ? "Ahora no" : "Not now"}
+                </button>
+              </div>
+            </div>
           ) : null}
         </div>
       ) : null}
