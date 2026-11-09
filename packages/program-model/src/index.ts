@@ -22,6 +22,7 @@ export type {
   OnKeyPressedTrigger,
   OnMessageTrigger,
   OnBackdropSwitchTrigger,
+  OnTimerOverTrigger,
   OnStartTrigger,
   PlaySoundStatement,
   ProgramEvent,

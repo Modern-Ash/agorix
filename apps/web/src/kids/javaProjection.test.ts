@@ -276,6 +276,11 @@ const everything: ProjectProgram = {
       trigger: { type: "onBackdropSwitch", backdropId: "backdrop:forest" },
       statements: [{ type: "say", text: "fondo" }],
     },
+    {
+      id: "tm",
+      trigger: { type: "onTimerOver", seconds: 3 },
+      statements: [{ type: "say", text: "tiempo" }],
+    },
     { id: "o", trigger: { type: "onStart" }, statements: [{ type: "show" }] },
   ],
 };

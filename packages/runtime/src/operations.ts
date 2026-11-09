@@ -133,6 +133,7 @@ export const RUNTIME_TRIGGER_OPERATIONS = Object.freeze([
   "onActorClicked",
   "onMessage",
   "onBackdropSwitch",
+  "onTimerOver",
 ] as const);
 
 export const RUNTIME_OPERATIONS = Object.freeze({

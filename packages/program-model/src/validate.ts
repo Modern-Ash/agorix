@@ -1088,6 +1088,13 @@ function validateTrigger(input: unknown, path: string): Trigger {
           "event message",
         ),
       };
+    case "onTimerOver": {
+      if (typeof input.seconds !== "number") {
+        fail("MISSING_FIELD", `${path}.seconds`, "expected a number", input.seconds);
+      }
+      checkBounds(input.seconds, WAIT_SECONDS_MIN, WAIT_SECONDS_MAX, `${path}.seconds`);
+      return { type: "onTimerOver", seconds: input.seconds };
+    }
     case "onBackdropSwitch":
       return {
         type: "onBackdropSwitch",

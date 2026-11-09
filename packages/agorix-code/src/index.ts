@@ -144,6 +144,8 @@ function triggerText(trigger: Trigger): string {
       return `when message ${JSON.stringify(trigger.message)} received\n`;
     case "onBackdropSwitch":
       return `when backdrop switches to ${JSON.stringify(trigger.backdropId)}\n`;
+    case "onTimerOver":
+      return `when ${trigger.seconds} seconds have passed\n`;
   }
 }
 

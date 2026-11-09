@@ -75,6 +75,7 @@ const TRIGGER_SAMPLES: Readonly<Record<string, Trigger>> = {
   onActorClicked: { type: "onActorClicked" },
   onKeyPressed: { type: "onKeyPressed", key: "Space" },
   onMessage: { type: "onMessage", message: "hola" },
+  onTimerOver: { type: "onTimerOver", seconds: 3 },
   onBackdropSwitch: { type: "onBackdropSwitch", backdropId: "backdrop:forest" },
   onStart: { type: "onStart" },
 };

@@ -16,6 +16,7 @@ import {
   singleScriptProgram,
   snapshotActors,
   stageForCreative,
+  timerSecondsOf,
   statementAtNodeId,
   type MultiActorFrame,
   type MultiActorRunResult,
@@ -156,6 +157,9 @@ export function createLiveRuntime(
   let outcome: MultiActorRunResult["outcome"] = "completed";
   let randomState = options.randomSeed;
   let now = 0;
+  // When "start" was dispatched, and the timer hats still waiting for their seconds.
+  let startedAt: number | undefined;
+  const waitingTimers = new Set(timerSecondsOf(program));
   let accumulated = 0;
   let halted = false;
   let steps = 0;
@@ -242,6 +246,7 @@ export function createLiveRuntime(
   }
 
   function dispatch(event: RuntimeEvent, token?: number) {
+    if (event.type === "start" && startedAt === undefined) startedAt = now;
     for (const actor of actors) {
       if (stopped.has(actor.id)) continue;
       for (const [index] of scriptsForActor(program, actor, event))
@@ -426,6 +431,12 @@ export function createLiveRuntime(
     tickIndex += 1;
     sampleInputs();
     for (const { event, token } of pending.splice(0)) dispatch(event, token);
+    if (startedAt !== undefined && !halted)
+      for (const seconds of [...waitingTimers])
+        if (now - startedAt + 1e-9 >= seconds) {
+          waitingTimers.delete(seconds);
+          dispatch({ type: "timerPassed", seconds });
+        }
     advanceGlides();
     for (const activation of [...active]) {
       if (!activation.alive || halted || activation.wakeAt > now + 1e-9) continue;
@@ -481,6 +492,7 @@ export function createLiveRuntime(
         !halted &&
         (active.length > 0 ||
           pending.length > 0 ||
+          (startedAt !== undefined && waitingTimers.size > 0) ||
           actors.some((actor) => copiesMoving(actor.world)))
       );
     },

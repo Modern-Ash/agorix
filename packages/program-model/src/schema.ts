@@ -825,16 +825,28 @@ export interface OnBackdropSwitchTrigger {
   readonly backdropId: string;
 }
 
+/** Starts the script once, this many seconds after the run began (Scratch: when timer > N). */
+export interface OnTimerOverTrigger {
+  readonly type: "onTimerOver";
+  readonly seconds: number;
+}
+
 export type Trigger =
   | OnStartTrigger
   | GreenFlagTrigger
   | OnKeyPressedTrigger
   | OnActorClickedTrigger
   | OnMessageTrigger
-  | OnBackdropSwitchTrigger;
+  | OnBackdropSwitchTrigger
+  | OnTimerOverTrigger;
 
 export type ProgramEvent =
-  "greenFlag" | "actorClicked" | `key:${string}` | `message:${string}` | `backdrop:${string}`;
+  | "greenFlag"
+  | "actorClicked"
+  | `key:${string}`
+  | `message:${string}`
+  | `backdrop:${string}`
+  | `timer:${number}`;
 
 // --- Script / ProjectProgram ------------------------------------------------
 

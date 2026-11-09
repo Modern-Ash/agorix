@@ -50,7 +50,8 @@ export type RuntimeEvent =
   | { readonly type: "keyPressed"; readonly key: string }
   | { readonly type: "actorClicked"; readonly actorId: string }
   | { readonly type: "message"; readonly message: string; readonly senderActorId?: string }
-  | { readonly type: "backdropSwitched"; readonly backdropId: string };
+  | { readonly type: "backdropSwitched"; readonly backdropId: string }
+  | { readonly type: "timerPassed"; readonly seconds: number };
 
 export interface MultiActorScriptActivation {
   readonly id: string;
@@ -266,6 +267,8 @@ function triggerMatchesEvent(
       return event.type === "message" && trigger.message === event.message;
     case "onBackdropSwitch":
       return event.type === "backdropSwitched" && trigger.backdropId === event.backdropId;
+    case "onTimerOver":
+      return event.type === "timerPassed" && trigger.seconds === event.seconds;
   }
 }
 
@@ -285,6 +288,8 @@ export function cloneRuntimeEvent(event: RuntimeEvent): RuntimeEvent {
       };
     case "backdropSwitched":
       return { type: "backdropSwitched", backdropId: event.backdropId };
+    case "timerPassed":
+      return { type: "timerPassed", seconds: event.seconds };
   }
 }
 
@@ -300,11 +305,34 @@ export function programEventForRuntimeEvent(event: RuntimeEvent): ProgramEvent {
       return `message:${event.message}`;
     case "backdropSwitched":
       return `backdrop:${event.backdropId}`;
+    case "timerPassed":
+      return `timer:${event.seconds}`;
   }
 }
 
-function initialEvents(events: readonly RuntimeEvent[] | undefined): RuntimeEvent[] {
-  return events === undefined ? [{ type: "start" }] : events.map(cloneRuntimeEvent);
+/** The seconds some script waits for with "when the time passes", smallest first, each once. */
+export function timerSecondsOf(program: ProjectProgram): readonly number[] {
+  const seconds = new Set<number>();
+  for (const script of program.scripts)
+    if (script.trigger.type === "onTimerOver") seconds.add(script.trigger.seconds);
+  return [...seconds].sort((a, b) => a - b);
+}
+
+function initialEvents(
+  events: readonly RuntimeEvent[] | undefined,
+  program: ProjectProgram,
+): RuntimeEvent[] {
+  const given =
+    events === undefined ? [{ type: "start" } as RuntimeEvent] : events.map(cloneRuntimeEvent);
+  // The batch runner has no clock: when the run starts, the time-driven scripts follow, soonest first.
+  return given.some((event) => event.type === "start")
+    ? [
+        ...given,
+        ...timerSecondsOf(program).map(
+          (seconds) => ({ type: "timerPassed", seconds }) as RuntimeEvent,
+        ),
+      ]
+    : given;
 }
 
 export function reasonForActivation(
@@ -325,6 +353,8 @@ export function reasonForActivation(
         : `Message ${JSON.stringify(event.message)} was broadcast by ${event.senderActorId}`;
     case "backdropSwitched":
       return `Backdrop ${JSON.stringify(event.backdropId)} was switched to`;
+    case "timerPassed":
+      return `${event.seconds} seconds passed`;
   }
 }
 
@@ -423,7 +453,7 @@ export function runMultiActorProgram(
   const trace: MultiActorTraceEntry[] = [];
   const frames: MultiActorFrame[] = [];
   const activations: MultiActorScriptActivation[] = [];
-  const queue = initialEvents(options.events);
+  const queue = initialEvents(options.events, program);
   const stoppedActors = new Set<string>();
   let randomState = options.randomSeed;
 
