@@ -266,7 +266,7 @@ describe("Studio ideas that add the copy script", () => {
       ...proposal,
       operations: [{ type: "addScript", script }, ...rest],
     });
-    const good = (added as { script: { statements: unknown[] } }).script;
+    const good = (added as unknown as { script: { statements: unknown[] } }).script;
     expect(() =>
       validateOriStudioIntentProposal(context, forge({ ...good, id: "studio-actor-2-mika-clone" })),
     ).toThrow();
