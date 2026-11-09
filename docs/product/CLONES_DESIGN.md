@@ -63,3 +63,7 @@ The runtime remains deterministic and the trace remains the evidence; every prog
 ## Status
 
 Size B built and merged (#1298): `createCopies` statement, deterministic runtime, stage, projections, Scratch import, Ori ideas _rain_ and _crowd_. Size A not started.
+
+## Update (owner, 2026-11-09)
+
+The owner approved **size A** (a copy with its own script, the clone hat). Its design and increments are in [SCRATCH_PARITY_DESIGNS.md](SCRATCH_PARITY_DESIGNS.md).
